@@ -1,0 +1,11 @@
+[workspace]
+
+[package]
+name = "rust2rdx"
+version = "0.1.0"
+edition = "2024"
+description = "Rust to Redox source-level transpiler"
+
+[[bin]]
+name = "rust2rdx"
+path = "src/main.rs"
