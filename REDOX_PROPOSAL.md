@@ -33,6 +33,8 @@ Rust provides the strongest compile-time safety guarantees of any systems langua
 
 By building on MLIR (Multi-Level Intermediate Representation) and LLVM, Redox inherits the broadest hardware backend ecosystem in existence — 20+ CPU architectures, GPU compute (AMDGPU, NVPTX), WASM, SPIR-V — while gaining MLIR's extensible dialect system for defining custom optimization passes for agent-specific workloads, ML accelerators (NPU/TPU), FPGA synthesis, and domain-specific hardware. MLIR's multi-level abstraction preserves high-level semantic information (parallelism intent, memory layout preferences, effect annotations) deep into the optimization pipeline, where LLVM alone would have discarded it.
 
+Critically, following the architectural insight pioneered by Modular AI's Mojo language, the **Redox MLIR Dialect is not a translation target — it is the language's semantic backbone**. Ownership, effects, contracts, and performance annotations are first-class MLIR operations and attributes, not metadata bolted onto a generic IR. This means the compiler's semantic understanding is preserved through the entire optimization pipeline, enabling **MLIR-native autotuning** (the compiler generates multiple lowering variants per kernel and benchmarks them per-target), **language-level SIMD types** backed directly by MLIR's vector dialect, and **automatic device placement** where the MLIR pipeline — not the programmer — decides whether a kernel runs on CPU, GPU, or NPU based on cost modeling. These are not Mojo features copied for humans; they are Mojo's architectural insights **re-derived for agent swarms**, where autotuning is a swarm-parallelizable search, device placement is an agent-queryable decision, and SIMD types are token-efficient first-class citizens.
+
 ### Core Thesis
 
 > A programming language designed for agent swarms must have **zero syntactic ambiguity**, **maximum inter-agent communication throughput**, **hardware-agnostic performance**, and **minimum token footprint**. The compiler is an **optimizing translator**, not a safety gatekeeper — safety rules live in a queryable knowledge base that agents consult directly, not in slow compile-time passes that duplicate what agents already know. The fundamental bottleneck in agentic software engineering is not correctness (agents can be trained on rules) but **parsing speed**, **communication bandwidth**, **target-portable performance**, and **token efficiency** — because every token an agent emits costs time, money, and memory.
@@ -98,7 +100,7 @@ The language grammar must be **deterministic LL(1)** — every token uniquely de
 Inter-agent message passing is the highest-priority bottleneck to optimize. Every language construct, every compiler data structure, every protocol message is designed for **zero-copy serialization** and **sub-microsecond latency**. The swarm message bus is not an add-on — it is the foundational primitive around which the entire toolchain is built. Agent-to-agent bandwidth determines swarm performance more than any other factor.
 
 ### P13: Hardware-Agnostic Performance via MLIR + LLVM
-Redox code compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** to target any hardware: x86, ARM, RISC-V, WASM, GPU (AMDGPU, NVPTX, SPIR-V), NPU/TPU, FPGA. MLIR's multi-level dialect system preserves high-level semantic information (parallelism intent, memory layout, effect annotations) through progressive lowering, while LLVM provides battle-tested optimization and code generation for 20+ CPU architectures. Performance-critical abstractions (SIMD, memory layout, parallelism) are expressed in hardware-agnostic MLIR dialects and lowered through target-specific MLIR passes before final LLVM codegen. Write once, run fast everywhere — on the broadest compiler infrastructure in existence.
+Redox code compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** to target any hardware: x86, ARM, RISC-V, WASM, GPU (AMDGPU, NVPTX, SPIR-V), NPU/TPU, FPGA. The **Redox MLIR Dialect encodes the language's semantics directly** — ownership, effects, contracts, and performance annotations are first-class MLIR operations, not metadata translated from a separate IR. This dialect-as-semantics architecture (pioneered by Modular AI, adapted here for agent swarms) means high-level intent survives through the entire progressive lowering pipeline. LLVM provides battle-tested codegen for 20+ CPU architectures. Language-level SIMD types (`Simd[T, N]`) map directly to MLIR vector dialect ops. **MLIR-native autotuning** generates multiple lowering variants and benchmarks per-target — a search that agent swarms can parallelize across hardware configurations. **Automatic device placement** (`@pt(auto)`) lets the MLIR cost model decide CPU vs GPU vs NPU per kernel, queryable by agents via RAP. Write once, run fast everywhere — on the broadest compiler infrastructure in existence.
 
 ### P14: Database-Driven Safety
 Safety rules (ownership patterns, borrow violations, lifetime errors, type mismatches) are stored in a **Safety Knowledge Base (SKB)** — a structured, versioned, queryable database. Agents consult the SKB directly instead of waiting for compile-time error messages. The compiler can *optionally* enforce SKB rules at compile time (for human developers or CI pipelines), but this is a policy choice, not a language requirement. This eliminates the compile-time overhead tax that slows agentic iteration cycles from milliseconds to seconds.
@@ -435,9 +437,13 @@ Safety Model
 │
 ├── Performance Infrastructure [NEW IN REDOX — MLIR + LLVM]
 │   ├── MLIR-based multi-level IR (Redox Dialect → Linalg/Affine → LLVM Dialect)
+│   ├── Dialect-as-semantics: ownership, effects, contracts are first-class MLIR ops
 │   ├── LLVM backend codegen (20+ CPU architectures, AMDGPU, NVPTX, WASM)
 │   ├── Custom MLIR dialects for GPU compute, NPU/TPU, FPGA synthesis
-│   ├── Hardware-agnostic SIMD via MLIR vector dialect
+│   ├── Language-level SIMD types (Simd[T, N]) backed by MLIR vector dialect
+│   ├── MLIR-native autotuning (@pa): generate N variants, benchmark per-target
+│   ├── Automatic device placement (@pt(auto)): MLIR cost model, agent-queryable
+│   ├── Compile-time metaprogramming (@pp): MLIR-evaluated, replaces proc-macros
 │   ├── Performance annotations (#[perf::*]) lowered to MLIR attributes
 │   └── Target-optimal memory layout via MLIR data layout modeling (#[repr(target_optimal)])
 │
@@ -593,7 +599,9 @@ redox fmt --canonicalize       # convert legacy Rust syntax to canonical Redox
 
 ### 5.4 Hardware-Agnostic Performance Model (MLIR + LLVM)
 
-Redox compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** — the broadest and most mature compiler infrastructure in existence. MLIR provides extensible multi-level abstractions that preserve high-level performance intent (parallelism, memory layout, vectorization) through progressive lowering, while LLVM provides battle-tested optimization and native code generation for 20+ architectures.
+Redox compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** — the broadest and most mature compiler infrastructure in existence. Following the key architectural insight from Modular AI's Mojo (but adapted for agent swarms, not human ML engineers): **the MLIR dialect is not a translation target — it is the language's semantic backbone**. Ownership, effects, contracts, performance annotations, and agent capability declarations are encoded as first-class MLIR operations and attributes in the Redox Dialect. This means the compiler's full semantic understanding is preserved through the entire optimization pipeline — unlike a traditional approach where MIR→LLVM IR lowering discards high-level intent.
+
+MLIR provides extensible multi-level abstractions that preserve performance intent (parallelism, memory layout, vectorization) through progressive lowering, while LLVM provides battle-tested optimization and native code generation for 20+ architectures.
 
 #### 5.4.1 MLIR-Based Compilation Pipeline
 
@@ -645,37 +653,71 @@ Source → AST → HIR → MIR → MLIR (Redox Dialect) → MLIR (Lowered) → T
 | **Parallelism preservation** | Opaque to LLVM                   | Explicit in MLIR OpenMP/GPU/async dialects                |
 | **Custom passes**            | C++ LLVM pass (complex, brittle) | MLIR tablegen + dialect (composable, versioned)           |
 | **Agent perf annotations**   | Lost at IR boundary              | Carried as MLIR attributes through entire pipeline        |
+| **Autotuning**               | Manual benchmarking              | MLIR-native: generate N variants, benchmark per-target    |
+| **Device placement**         | Programmer-specified             | Automatic via MLIR cost model (`@pt(auto)`)               |
+| **Compile-time eval**        | Separate const-eval engine       | MLIR `@parameter` ops — visible to optimization passes    |
 | **Ecosystem maturity**       | 20+ years, industry standard     | 5+ years, backed by Google/LLVM community, production use |
 
 #### 5.4.2 Hardware-Agnostic Abstractions
 
 ```rust
-// Portable SIMD — compiles to native SIMD on every target
-use redox::simd::Vector;
-fn dot_product(a: &[f32], b: &[f32]) -> f32 {
-    a.chunks(Vector::LANES)
-     .zip(b.chunks(Vector::LANES))
-     .map(|(a, b)| Vector::from(a) * Vector::from(b))
-     .sum()
+// Language-level SIMD type — NOT a library wrapper
+// Maps directly to MLIR vector dialect ops (inspired by Mojo's SIMD[DType, width],
+// but as a token-efficient first-class type with agent-queryable semantics)
+f dot_product(a: &[f32], b: &[f32]) -> f32 {
+    v sum = Simd[f32, 8].zero;       // language-level type, not redox::simd::Vector
+    @ i : 0..a.len.step(8) {
+        v va = Simd[f32, 8].load(&a[i..]);
+        v vb = Simd[f32, 8].load(&b[i..]);
+        sum += va * vb;               // MLIR vector.fma op — no library indirection
+    }
+    sum.reduce_add
 }
 // → MLIR vector dialect → SSE/AVX on x86, NEON on ARM, WASM SIMD on web, compute shader on GPU
 
-// Portable parallelism — maps to hardware threading model
-#[parallel(strategy = "auto")]  // auto-selects: threads, SIMD, GPU dispatch
-fn matrix_multiply(a: &Matrix, b: &Matrix) -> Matrix {
-    // MLIR linalg dialect captures matmul semantics; lowered to optimal target:
+// Automatic device placement — MLIR cost model decides CPU vs GPU vs NPU
+// (adapted from Mojo's heterogeneous compute, but agent-queryable: agents can
+// ask `rap.query("placement_decision", func)` to see WHY the compiler chose a target)
+@pt(auto)                              // compiler decides: CPU, GPU, or NPU
+f matrix_multiply(a: &Matrix, b: &Matrix) -> Matrix {
+    // MLIR linalg.matmul op: compiler evaluates cost model per available target,
+    // selects optimal dispatch. Decision is queryable via RAP.
     // → LLVM vectorized loops on CPU, AMDGPU/NVPTX kernels on GPU, TOSA on TPU
+    ...
+}
+
+// MLIR-native autotuning — compiler generates N lowering variants, benchmarks per-target
+// (adapted from Mojo's autotune(), but designed for swarm-parallel search:
+// agent swarms can distribute autotuning across machines in parallel)
+@pa(variants = 4)                      // generate 4 lowering variants, benchmark
+f convolution(input: &Tensor, kernel: &Tensor) -> Tensor {
+    // MLIR generates: tiled, vectorized, unrolled, and fused variants
+    // Benchmarks each on target hardware, selects fastest
+    // Swarm agents can parallelize this search: each agent tunes one variant
     ...
 }
 
 // Portable memory layout
 #[repr(target_optimal)]  // compiler chooses layout per-target for cache efficiency
-struct Particle {
+S Particle {
     position: Vec3,
     velocity: Vec3,
     mass: f32,
 }
 // → MLIR data layout modeling: AoS on cache-friendly CPU targets, SoA on GPU, hybrid as needed
+
+// Compile-time metaprogramming via MLIR — replaces proc-macro complexity
+// (adapted from Mojo's @parameter, but visible to MLIR optimization passes)
+@parameter                             // evaluated at compile time within MLIR
+f select_algorithm[T: Numeric]() -> Algorithm {
+    ?= {
+        T.is_float && T.bits >= 32 => Algorithm.fma_vectorized,
+        T.is_int && T.bits <= 16   => Algorithm.lookup_table,
+        _ => Algorithm.scalar,
+    }
+}
+// No proc-macro needed: MLIR evaluates this at compile time and inlines the result.
+// The decision is visible to subsequent MLIR optimization passes.
 ```
 
 #### 5.4.3 Performance Annotations (Not Safety Checks)
@@ -686,11 +728,14 @@ struct Particle {
 #[perf::stack_alloc(max = 4096)]  // hint: keep allocations on stack up to 4KB
 #[perf::vectorize(width = 8)]     // hint: target 8-wide vector operations
 #[perf::target(gpu)]              // compile this function for GPU dispatch
+#[perf::target(auto)]             // MLIR cost model decides: CPU, GPU, or NPU [NEW]
+#[perf::autotune(variants = 4)]   // generate N lowering variants, benchmark per-target [NEW]
 #[perf::unroll(factor = 4)]       // unroll loops by factor of 4
 #[perf::cache_line_aligned]       // align struct to cache line boundary
+#[perf::parameter]                // compile-time eval via MLIR (replaces proc-macros) [NEW]
 ```
 
-These annotations are **not safety checks** — they are performance directives. The compiler trusts the agent's intent and optimizes accordingly. If an agent marks `#[perf::no_bounds_check]` on an array access, the compiler elides the check. The agent is responsible for correctness (via SKB consultation), not the compiler.
+These annotations are **not safety checks** — they are performance directives. The compiler trusts the agent's intent and optimizes accordingly. If an agent marks `#[perf::no_bounds_check]` on an array access, the compiler elides the check. The agent is responsible for correctness (via SKB consultation), not the compiler. The `@pt(auto)` and `@pa(N)` annotations are **agent-queryable** — agents can ask the compiler via RAP *why* a particular device was chosen or *which* autotuning variant won, enabling swarm-level performance reasoning.
 
 ### 5.5 Token-Efficient Syntax: Minimizing Agent Cost
 
@@ -787,6 +832,9 @@ Rust                                    Redox Compact
 #[perf::no_bounds_check]              @pnb
 #[perf::vectorize(width = 8)]         @pv(8)
 #[perf::target(gpu)]                  @pt(gpu)
+#[perf::target(auto)]                 @pt(auto)
+#[perf::autotune(variants = 4)]       @pa(4)
+#[perf::parameter]                    @pp
 #[agent::summary("...")]              @as("...")
 #[agent::category("...")]             @ac("...")
 ```
@@ -1371,8 +1419,10 @@ syntax = "canonical"       # canonical | legacy (for Rust compat)
 targets = ["x86-64", "aarch64", "wasm", "spirv"]   # compile to all
 default-target = "native"                            # dev builds use host
 optimization = "aggressive"                          # none | standard | aggressive | maximum
-ppir-cache = true                                    # cache PPIR for multi-target reuse
+mlir-cache = true                                    # cache MLIR modules for multi-target reuse
 allow-unsafe-perf-hints = true                       # trust #[perf::*] annotations
+autotuning = "on-first-build"                        # off | on-first-build | always | swarm-parallel
+device-placement = "auto"                            # manual | auto | agent-queryable
 
 [capabilities]
 # Declare what this crate is allowed to do
@@ -1466,10 +1516,14 @@ RAP Server
 │   └── Rule corpus management (add, deprecate, fork rules)
 │
 ├── MLIR/LLVM Service [NEW]
-│   ├── MIR → MLIR (Redox Dialect) translation
+│   ├── MIR → MLIR (Redox Dialect) translation — dialect encodes full language semantics
 │   ├── Progressive lowering: Redox → Linalg/Affine → Vector → LLVM Dialect
 │   ├── Multi-target LLVM codegen (20+ CPU architectures, AMDGPU, NVPTX, WASM)
 │   ├── Custom MLIR dialect pipelines (SPIR-V for GPU, CIRCT for FPGA, StableHLO for NPU/TPU)
+│   ├── MLIR-native autotuning engine (generate N lowering variants, benchmark per-target)
+│   ├── Automatic device placement (MLIR cost model, agent-queryable via RAP)
+│   ├── Compile-time metaprogramming (@pp) — MLIR-evaluated, replaces proc-macros
+│   ├── Language-level SIMD type lowering (Simd[T, N] → MLIR vector dialect ops)
 │   ├── MLIR module caching for incremental multi-target builds
 │   ├── Performance annotation processing (#[perf::*] → MLIR attributes)
 │   └── Target-specific MLIR optimization pass orchestration
@@ -1708,7 +1762,7 @@ production = { borrow-check = "error", lifetime-check = "error", bounds-check = 
 | **Safety error rate**                  | 20-40% of agent submissions | <1% (SKB pre-validation)        | 20-40x fewer         |
 | **Iteration cycles to correct code**   | 3-8 roundtrips              | 1-2 roundtrips                  | 3-4x fewer           |
 | **Inter-agent communication overhead** | N/A (no agent support)      | Sub-microsecond per message     | New capability       |
-| **Multi-target compilation**           | Rebuild per target          | Single PPIR, N target lowerings | N-1 fewer recompiles |
+| **Multi-target compilation**           | Rebuild per target          | Single MLIR, N target lowerings + autotuning | N-1 fewer recompiles |
 | **Tokens per equivalent program**      | N tokens (verbose keywords) | ≤N/2 tokens (compressed forms)  | 2x+ fewer tokens     |
 
 ### 9.6 Swarm Coordination Safety (Preserved)
@@ -1819,10 +1873,12 @@ let pipeline = compose![
 - [ ] Build dual-syntax transpiler (legacy Rust → canonical Redox compact form)
 - [ ] Implement `redoxfmt --compact` (minimum-token canonical form) and `redoxfmt --expand` (human-readable form)
 - [ ] Stabilize `redox_public` API to cover all MIR, HIR, and type system constructs
-- [ ] Integrate MLIR infrastructure: define Redox MLIR dialect with ops for effects, contracts, perf annotations
-- [ ] Implement MIR → MLIR (Redox Dialect) translation layer
+- [ ] Define Redox MLIR dialect: ownership, effects, contracts, perf annotations as first-class MLIR ops
+- [ ] Implement MIR → MLIR (Redox Dialect) translation layer (thin boundary, dialect-as-semantics)
+- [ ] Implement language-level SIMD types (`Simd[T, N]`) backed by MLIR vector dialect ops
 - [ ] Implement MLIR progressive lowering pipeline: Redox Dialect → Linalg/Affine → Vector → LLVM Dialect
 - [ ] Wire LLVM backend codegen through MLIR LLVM Dialect (replacing direct MIR→LLVM IR path)
+- [ ] Implement compile-time metaprogramming (`@pp` / `@parameter`) via MLIR constant folding
 - [ ] Implement Structured Diagnostics Protocol (JSON diagnostic graphs)
 - [ ] Externalize core queries as stable API (`redox_query`)
 - [ ] Establish CI/CD pipeline for the Redox compiler
@@ -1857,7 +1913,9 @@ let pipeline = compose![
 - [ ] Build swarm audit log system (append-only, cryptographically signed operation history)
 - [ ] Enable MLIR→LLVM backend targets: RISC-V, AMDGPU, NVPTX
 - [ ] Implement MLIR SPIR-V dialect pipeline for Vulkan/OpenCL GPU compute
-- [ ] Implement hardware-agnostic SIMD via MLIR vector dialect and parallelism via OpenMP/async dialects
+- [ ] Implement MLIR-native autotuning engine (`@pa(N)` — generate N variants, benchmark per-target)
+- [ ] Implement automatic device placement (`@pt(auto)` — MLIR cost model, agent-queryable via RAP)
+- [ ] Implement hardware-agnostic parallelism via MLIR OpenMP/GPU/async dialects
 
 ### Phase 3: Language Evolution + Token Optimization + Performance (Months 12–24)
 - [ ] Implement effect type system in `redox_hir_analysis`
@@ -1943,8 +2001,11 @@ let pipeline = compose![
 | **Syntax** [NEW]      | Zero-ambiguity LL(1) grammar         |        ✓        |         ✓          |           —           |
 |                       | Canonical form enforcement           |        ✓        |         ✓          |           —           |
 |                       | Streaming partial parse              |        ✓        |         ✓          |           —           |
-| **Performance** [NEW] | Hardware-agnostic PPIR               |        ✓        |         ✓          |           —           |
-|                       | Portable SIMD                        |        ✓        |         ✓          |           —           |
+| **Performance** [NEW] | Dialect-as-semantics MLIR IR         |        ✓        |         ✓          |           —           |
+|                       | Language-level SIMD (Simd[T, N])     |        ✓        |         ✓          |           —           |
+|                       | MLIR-native autotuning (@pa)         |        ✓        |         ✓          |           —           |
+|                       | Automatic device placement (@pt(auto))|       ✓        |         ✓          |           —           |
+|                       | Compile-time metaprogramming (@pp)   |        ✓        |         ✓          |           —           |
 |                       | Multi-target compilation             |        ✓        |         ✓          |           —           |
 |                       | Performance annotations              |        ✓        |         ✓          |           —           |
 | **SKB** [NEW]         | Safety Knowledge Base                |        ✓        |         ✓          |  ✓ (queryable rules)  |
@@ -1986,6 +2047,9 @@ let pipeline = compose![
 | P24     | MLIR Lowering [NEW]        | Optimized MIR    | MLIR (Redox Dialect)  |           —            | `mlir_of(func)`            |
 | P25     | MLIR→LLVM Lowering [NEW]   | MLIR Redox       | LLVM IR / Target code |           —            | `target_code_of(func)`     |
 | P26     | SKB Validation [NEW]       | Source + SKB     | Rule violations       |   Opt-in enforcement   | `skb_check(func)`          |
+| P30     | Autotuning [NEW]           | MLIR Redox       | N lowering variants   |           —            | `autotune_of(func)`        |
+| P31     | Device Placement [NEW]     | MLIR Redox       | Target assignment     |           —            | `placement_of(func)`       |
+| P32     | MLIR Const Eval [NEW]      | MLIR @parameter  | Constant values       |           —            | `const_eval_mlir(expr)`    |
 | P27     | Token Expansion [NEW]      | Compact AST      | Expanded AST          |           —            | `expand_tokens(file)`      |
 | P28     | Token Compression [NEW]    | Expanded AST     | Compact AST           |           —            | `compress_tokens(file)`    |
 | P29     | Token Budget [NEW]         | AST              | Token metrics         |           —            | `token_count(func)`        |
@@ -2041,9 +2105,9 @@ Redox transforms Rust from a language *for human developers with CLI tools* into
 1. **Token-minimal syntax** — every construct is compressed to ≤50% of its Rust token count: `pub fn` → `+f`, `#[derive(Clone, Debug)]` → `@d(Cl,Db)`, `let mut` → `m`, `Option<T>` → `?T`
 2. **Zero-ambiguity syntax** — deterministic LL(1) grammar eliminates 100% of agent parsing errors caused by context-sensitive constructs
 3. **Safety Knowledge Base (SKB)** — safety rules in a queryable database, not slow compile-time passes; agents pre-validate before writing code
-4. **Hardware-agnostic performance via MLIR + LLVM** — MLIR multi-level IR with LLVM backend compiles to 20+ CPU architectures, GPU (AMDGPU, NVPTX, SPIR-V), NPU/TPU, FPGA, WASM from a single source
+4. **Hardware-agnostic performance via MLIR + LLVM** — dialect-as-semantics architecture with MLIR-native autotuning, automatic device placement, language-level SIMD types, and LLVM backend compiling to 20+ CPU architectures, GPU (AMDGPU, NVPTX, SPIR-V), NPU/TPU, FPGA, WASM from a single source
 5. **Sub-microsecond inter-agent communication** — zero-copy typed message bus optimized for swarm throughput over everything else
-6. **Performance annotations** — `@pnb` (no bounds check), `@pt(gpu)` (target GPU), `@pv(8)` (vectorize) — compact and trusted
+6. **Performance annotations** — `@pnb` (no bounds check), `@pt(gpu)` / `@pt(auto)` (target GPU / auto-place), `@pv(8)` (vectorize), `@pa(N)` (autotune N variants) — compact and trusted
 7. **Effect types** — agents know what functions *do* without reading them
 8. **Contracts** — agents verify correctness against formal specifications via SKB, not compiler passes
 9. **Capability manifests** — agents discover components by what they *can do*, not what they're named
@@ -2057,6 +2121,6 @@ Redox transforms Rust from a language *for human developers with CLI tools* into
 17. **Standard abbreviation registry** — deterministic, versioned compact forms for all std library types and traits
 18. **Token budget reporting** — `redox build --token-report` tracks per-function token expenditure for agent optimization
 
-The compiler becomes an **optimizing translator and swarm arbiter**, built on the **MLIR + LLVM** compiler infrastructure — the broadest and most mature in existence. Its primary job is *making code run fast on any hardware with the fewest tokens possible*, not blocking submissions with safety errors that agents already know how to avoid. Safety knowledge lives in a database. Performance lives in MLIR's multi-level optimization pipeline and LLVM's battle-tested backends. Communication lives in the swarm bus. Parsing lives in a zero-ambiguity grammar. And every construct lives in its **most compressed form** — because tokens are the currency of agentic intelligence, and Redox is designed to spend them wisely.
+The compiler becomes an **optimizing translator and swarm arbiter**, built on the **MLIR + LLVM** compiler infrastructure — the broadest and most mature in existence. Its MLIR dialect encodes the full language semantics (ownership, effects, contracts) as first-class operations — not metadata on a generic IR — enabling MLIR-native autotuning, automatic device placement, and compile-time metaprogramming that survives through the entire optimization pipeline. Its primary job is *making code run fast on any hardware with the fewest tokens possible*, not blocking submissions with safety errors that agents already know how to avoid. Safety knowledge lives in a database. Performance lives in MLIR's multi-level optimization pipeline and LLVM's battle-tested backends. Communication lives in the swarm bus. Parsing lives in a zero-ambiguity grammar. And every construct lives in its **most compressed form** — because tokens are the currency of agentic intelligence, and Redox is designed to spend them wisely.
 
 This is not Rust made safe. This is Rust made *fast*, *parseable*, *communicative*, and *token-efficient* — built on MLIR and LLVM, for the age of agent swarms.
