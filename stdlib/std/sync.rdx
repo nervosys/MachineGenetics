@@ -1,0 +1,218 @@
+//! # std.sync — Synchronization Primitives
+//!
+//! Mutexes, read-write locks, channels, barriers, semaphores, and atomics.
+//! All blocking operations declare the `sync` effect.
+
+// ---------------------------------------------------------------------------
+// Mutex
+// ---------------------------------------------------------------------------
+
+/// A mutual exclusion lock protecting data of type `T`.
++S Mutex[T] {
+    _data: T,
+    _locked: 1b,
+}
+
+I Mutex[T] {
+    /// Create a new unlocked mutex wrapping `value`.
+    +f new(value: T) -> Mutex[T];
+
+    /// Acquire the lock, blocking until available.
+    +f lock(&self) -> R[MutexGuard[T], SyncError] / sync;
+
+    /// Try to acquire the lock without blocking.
+    +f try_lock(&self) -> ?MutexGuard[T];
+}
+
+/// RAII guard returned by `Mutex.lock()`. Releases the lock on drop.
++S MutexGuard[T] {
+    _mutex: &Mutex[T],
+}
+
+I Deref ~ MutexGuard[T] {
+    type Target = T;
+    +f deref(&self) -> &T;
+}
+
+I DerefMut ~ MutexGuard[T] {
+    +f deref_mut(&!self) -> &!T;
+}
+
+// ---------------------------------------------------------------------------
+// RwLock
+// ---------------------------------------------------------------------------
+
+/// A reader-writer lock. Multiple readers or one writer.
++S RwLock[T] {
+    _data: T,
+}
+
+I RwLock[T] {
+    +f new(value: T) -> RwLock[T];
+
+    /// Acquire a shared read lock.
+    +f read(&self) -> R[RwLockReadGuard[T], SyncError] / sync;
+
+    /// Acquire an exclusive write lock.
+    +f write(&self) -> R[RwLockWriteGuard[T], SyncError] / sync;
+
+    +f try_read(&self) -> ?RwLockReadGuard[T];
+    +f try_write(&self) -> ?RwLockWriteGuard[T];
+}
+
++S RwLockReadGuard[T]  { _lock: &RwLock[T] }
++S RwLockWriteGuard[T] { _lock: &RwLock[T] }
+
+// ---------------------------------------------------------------------------
+// Channel
+// ---------------------------------------------------------------------------
+
+/// Create a bounded MPSC channel with the given capacity.
++f channel[T](cap: usize) -> (Sender[T], Receiver[T]);
+
+/// Create an unbounded MPSC channel.
++f unbounded[T]() -> (Sender[T], Receiver[T]);
+
+/// Sending half of a channel.
++S Sender[T] {
+    _inner: @_ChannelInner[T],
+}
+
+I Sender[T] {
+    /// Send a value. Blocks if the channel is full.
+    +f send(&self, value: T) -> R[(), SendError[T]] / sync;
+
+    /// Try to send without blocking.
+    +f try_send(&self, value: T) -> R[(), TrySendError[T]];
+
+    /// Clone the sender (MPSC — multiple producers).
+    +f clone(&self) -> Sender[T];
+}
+
+/// Receiving half of a channel.
++S Receiver[T] {
+    _inner: @_ChannelInner[T],
+}
+
+I Receiver[T] {
+    /// Receive a value. Blocks until one is available.
+    +f recv(&self) -> R[T, RecvError] / sync;
+
+    /// Try to receive without blocking.
+    +f try_recv(&self) -> ?T;
+
+    /// Receive with a timeout.
+    +f recv_timeout(&self, dur: std.time.Duration) -> R[T, RecvError] / sync;
+
+    /// Iterate over received values.
+    +f iter(&self) -> RecvIter[T];
+}
+
+// ---------------------------------------------------------------------------
+// Channel errors
+// ---------------------------------------------------------------------------
+
++S SendError[T]    { value: T }
++S RecvError       { _priv: () }
++E TrySendError[T] { Full(T), Disconnected(T) }
+
++S RecvIter[T] { _rx: &Receiver[T] }
+I Iterator ~ RecvIter[T] {
+    type Item = T;
+    +f next(&!self) -> ?T / sync;
+}
+
+// ---------------------------------------------------------------------------
+// Barrier
+// ---------------------------------------------------------------------------
+
+/// A synchronization barrier for N threads.
++S Barrier {
+    _count: usize,
+}
+
+I Barrier {
+    +f new(n: usize) -> Barrier;
+
+    /// Block until all N threads have reached the barrier.
+    +f wait(&self) -> BarrierWaitResult / sync;
+}
+
++S BarrierWaitResult { is_leader: 1b }
+
+// ---------------------------------------------------------------------------
+// Semaphore
+// ---------------------------------------------------------------------------
+
+/// A counting semaphore.
++S Semaphore {
+    _permits: usize,
+}
+
+I Semaphore {
+    +f new(permits: usize) -> Semaphore;
+
+    /// Acquire one permit. Blocks until available.
+    +f acquire(&self) -> R[SemaphorePermit, SyncError] / sync;
+
+    /// Try to acquire without blocking.
+    +f try_acquire(&self) -> ?SemaphorePermit;
+}
+
++S SemaphorePermit { _sem: &Semaphore }
+
+// ---------------------------------------------------------------------------
+// Atomics
+// ---------------------------------------------------------------------------
+
+/// An atomic boolean.
++S AtomicBool { _val: 1b }
+
+I AtomicBool {
+    +f new(v: 1b) -> AtomicBool;
+    +f load(&self, order: Ordering) -> 1b;
+    +f store(&self, v: 1b, order: Ordering);
+    +f swap(&self, v: 1b, order: Ordering) -> 1b;
+    +f compare_exchange(&self, current: 1b, new: 1b, success: Ordering, failure: Ordering) -> R[1b, 1b];
+}
+
+/// An atomic unsigned integer.
++S AtomicUsize { _val: usize }
+
+I AtomicUsize {
+    +f new(v: usize) -> AtomicUsize;
+    +f load(&self, order: Ordering) -> usize;
+    +f store(&self, v: usize, order: Ordering);
+    +f swap(&self, v: usize, order: Ordering) -> usize;
+    +f fetch_add(&self, v: usize, order: Ordering) -> usize;
+    +f fetch_sub(&self, v: usize, order: Ordering) -> usize;
+    +f compare_exchange(&self, current: usize, new: usize, success: Ordering, failure: Ordering) -> R[usize, usize];
+}
+
+/// An atomic signed integer.
++S AtomicI64 { _val: i64 }
+
+I AtomicI64 {
+    +f new(v: i64) -> AtomicI64;
+    +f load(&self, order: Ordering) -> i64;
+    +f store(&self, v: i64, order: Ordering);
+    +f fetch_add(&self, v: i64, order: Ordering) -> i64;
+    +f fetch_sub(&self, v: i64, order: Ordering) -> i64;
+}
+
+/// Memory ordering for atomic operations.
++E Ordering {
+    Relaxed,
+    Acquire,
+    Release,
+    AcqRel,
+    SeqCst,
+}
+
+// ---------------------------------------------------------------------------
+// Common error
+// ---------------------------------------------------------------------------
+
++S SyncError {
+    message: s,
+}

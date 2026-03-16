@@ -1,0 +1,187 @@
+//! # std.test — Testing Framework
+//!
+//! Assertions, benchmarking harness, and property-based testing.
+//! All test functions are pure (no effects by default).
+
+// ---------------------------------------------------------------------------
+// Assertions
+// ---------------------------------------------------------------------------
+
+/// Assert that a condition is true. Panics with `msg` if false.
++f assert(cond: 1b, msg: &s);
+
+/// Assert that a condition is true. Panics with a default message if false.
++f assert_true(cond: 1b) {
+    assert(cond, "assertion failed");
+}
+
+/// Assert that two values are equal.
++f assert_eq[T: Eq + std.fmt.Debug](left: &T, right: &T) {
+    ? left != right {
+        panic(f"assertion failed: left = {left:?}, right = {right:?}");
+    }
+}
+
+/// Assert that two values are not equal.
++f assert_ne[T: Eq + std.fmt.Debug](left: &T, right: &T) {
+    ? left == right {
+        panic(f"assertion failed: values are equal: {left:?}");
+    }
+}
+
+/// Assert that a Result is Ok.
++f assert_ok[T, E: std.fmt.Debug](result: &R[T, E]) {
+    ? result.is_err() {
+        panic(f"expected Ok, got Err({result.unwrap_err():?})");
+    }
+}
+
+/// Assert that a Result is Err.
++f assert_err[T: std.fmt.Debug, E](result: &R[T, E]) {
+    ? result.is_ok() {
+        panic(f"expected Err, got Ok({result.unwrap():?})");
+    }
+}
+
+/// Assert that an Option is Some.
++f assert_some[T](opt: &?T) {
+    ? opt.is_none() {
+        panic("expected Some, got None");
+    }
+}
+
+/// Assert that an Option is None.
++f assert_none[T: std.fmt.Debug](opt: &?T) {
+    ? opt.is_some() {
+        panic(f"expected None, got Some({opt.unwrap():?})");
+    }
+}
+
+/// Assert that `left` approximately equals `right` within `epsilon`.
++f assert_approx(left: f64, right: f64, epsilon: f64) {
+    v diff = std.math.abs(left - right);
+    ? diff > epsilon {
+        panic(f"assertion failed: |{left} - {right}| = {diff} > {epsilon}");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Benchmarking
+// ---------------------------------------------------------------------------
+
+/// A benchmark harness. The function under test is run repeatedly
+/// and execution statistics are collected.
++S Bencher {
+    _iterations: u64,
+    _total_ns: u64,
+}
+
+I Bencher {
+    /// Run the closure `n` times and measure elapsed time.
+    +f iter(&!self, f: f()) / time;
+
+    /// Run the closure with black-box input to prevent optimization.
+    +f iter_with_setup[T](&!self, setup: f() -> T, body: f(T)) / time;
+
+    /// Get the average time per iteration in nanoseconds.
+    +f ns_per_iter(&self) -> u64;
+
+    /// Get the total number of iterations.
+    +f iterations(&self) -> u64 { self._iterations }
+}
+
+/// Result of a benchmark run.
++S BenchResult {
+    name: s,
+    iterations: u64,
+    ns_per_iter: u64,
+    min_ns: u64,
+    max_ns: u64,
+    median_ns: u64,
+}
+
+I std.fmt.Display ~ BenchResult {
+    +f fmt(&self, f: &!std.fmt.Formatter) -> R[(), std.fmt.FmtError];
+}
+
+/// Prevent the compiler from optimizing away a value.
++f black_box[T](value: T) -> T;
+
+// ---------------------------------------------------------------------------
+// Property-based testing
+// ---------------------------------------------------------------------------
+
+/// Run a property test with randomly generated inputs.
+///
+/// Example:
+/// ```
+/// std.test.prop(|a: i32, b: i32| {
+///     assert_eq(a + b, b + a);  // commutativity
+/// });
+/// ```
++f prop[F](test_fn: F) / rng
+    ~> F: PropTestable;
+
+/// Configuration for property tests.
++S PropConfig {
+    /// Number of random cases to generate (default 100).
+    cases: u64,
+    /// Maximum number of shrink steps (default 1000).
+    max_shrink: u64,
+    /// Seed for reproducibility (None = random).
+    seed: ?u64,
+}
+
+I PropConfig {
+    +f new() -> PropConfig {
+        @PropConfig { cases: 100, max_shrink: 1000, seed: ? }
+    }
+
+    +f cases(&!self, n: u64) -> &!PropConfig { self.cases = n; self }
+    +f max_shrink(&!self, n: u64) -> &!PropConfig { self.max_shrink = n; self }
+    +f seed(&!self, s: u64) -> &!PropConfig { self.seed = ?s; self }
+}
+
+/// Run a property test with custom configuration.
++f prop_with_config[F](config: &PropConfig, test_fn: F) / rng
+    ~> F: PropTestable;
+
+/// Trait for types that can generate random test values.
++T Arbitrary {
+    +f arbitrary(rng: &!std.math.Rng) -> Self;
+
+    /// Shrink a failing value to find a minimal counterexample.
+    +f shrink(&self) -> [Self]~ { [] }
+}
+
+/// Trait for functions that can be used as property tests.
++T PropTestable {
+    +f test(&self, rng: &!std.math.Rng) -> R[(), PropFailure];
+}
+
+/// A property test failure with a minimal counterexample.
++S PropFailure {
+    message: s,
+    /// The minimal counterexample after shrinking.
+    counterexample: s,
+    /// Number of shrink steps performed.
+    shrink_steps: u64,
+    /// The seed that reproduces this failure.
+    seed: u64,
+}
+
+// ---------------------------------------------------------------------------
+// Standard Arbitrary implementations
+// ---------------------------------------------------------------------------
+
+I Arbitrary ~ i32   { +f arbitrary(rng: &!std.math.Rng) -> i32; }
+I Arbitrary ~ i64   { +f arbitrary(rng: &!std.math.Rng) -> i64; }
+I Arbitrary ~ u32   { +f arbitrary(rng: &!std.math.Rng) -> u32; }
+I Arbitrary ~ u64   { +f arbitrary(rng: &!std.math.Rng) -> u64; }
+I Arbitrary ~ f64   { +f arbitrary(rng: &!std.math.Rng) -> f64; }
+I Arbitrary ~ 1b    { +f arbitrary(rng: &!std.math.Rng) -> 1b; }
+I Arbitrary ~ s     { +f arbitrary(rng: &!std.math.Rng) -> s; }
+I Arbitrary ~ char  { +f arbitrary(rng: &!std.math.Rng) -> char; }
+I Arbitrary ~ [T: Arbitrary]~ {
+    +f arbitrary(rng: &!std.math.Rng) -> [T]~;
+}

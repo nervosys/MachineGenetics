@@ -1,0 +1,125 @@
+//! # std.spec — Contract System
+//!
+//! Preconditions, postconditions, invariants, and runtime verification.
+//! Contracts enable formal-style reasoning about Redox code.
+
+// ---------------------------------------------------------------------------
+// Contract annotations (used inside `spec` blocks)
+// ---------------------------------------------------------------------------
+
+/// Assert a precondition. Panics if `cond` is false.
+/// Typically used as `@req` in spec blocks.
+///
+/// Example:
+/// ```
+/// spec {
+///     @req n > 0, "n must be positive";
+///     @ens result >= 0;
+/// }
+/// +f sqrt(n: f64) -> f64 { ... }
+/// ```
++f require(cond: 1b, msg: &s);
+
+/// Assert a postcondition. Checked after function returns.
+/// Typically used as `@ens` in spec blocks.
++f ensure(cond: 1b, msg: &s);
+
+/// Assert a type invariant. Checked after every mutation.
+/// Typically used as `@inv` in spec blocks.
++f invariant(cond: 1b, msg: &s);
+
+// ---------------------------------------------------------------------------
+// Runtime verification
+// ---------------------------------------------------------------------------
+
+/// Verify all spec contracts for a given module at runtime.
+/// Returns a report of pass/fail results.
++f verify(module: &s) -> R[VerifyReport, SpecError];
+
+/// Verify a specific function's contracts.
++f verify_fn(module: &s, function: &s) -> R[VerifyReport, SpecError];
+
+// ---------------------------------------------------------------------------
+// Spec block representation
+// ---------------------------------------------------------------------------
+
+/// A parsed spec block attached to a function.
++S SpecBlock {
+    function: s,
+    preconditions: [Condition]~,
+    postconditions: [Condition]~,
+    invariants: [Condition]~,
+}
+
+/// A single condition within a spec block.
++S Condition {
+    /// The expression as source text.
+    expr: s,
+    /// Human-readable message.
+    message: s,
+    /// Whether this condition passed during verification.
+    passed: ?1b,
+}
+
+I SpecBlock {
+    /// Check all preconditions.
+    +f check_pre(&self) -> R[(), SpecViolation];
+
+    /// Check all postconditions.
+    +f check_post(&self) -> R[(), SpecViolation];
+
+    /// Check all invariants.
+    +f check_inv(&self) -> R[(), SpecViolation];
+}
+
+// ---------------------------------------------------------------------------
+// Verification report
+// ---------------------------------------------------------------------------
+
++S VerifyReport {
+    module: s,
+    specs: [SpecResult]~,
+    total: usize,
+    passed: usize,
+    failed: usize,
+}
+
+I VerifyReport {
+    +f is_clean(&self) -> 1b { self.failed == 0 }
+
+    +f summary(&self) -> s {
+        f"{self.passed}/{self.total} specs passed ({self.failed} failed)"
+    }
+}
+
++S SpecResult {
+    function: s,
+    kind: SpecKind,
+    passed: 1b,
+    message: ?s,
+}
+
++E SpecKind {
+    Precondition,
+    Postcondition,
+    Invariant,
+}
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
++S SpecViolation {
+    function: s,
+    kind: SpecKind,
+    condition: s,
+    message: s,
+}
+
++S SpecError {
+    message: s,
+}
+
+I std.fmt.Display ~ SpecViolation {
+    +f fmt(&self, f: &!std.fmt.Formatter) -> R[(), std.fmt.FmtError];
+}

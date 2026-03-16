@@ -1,0 +1,112 @@
+//! # std.fmt — Formatting
+//!
+//! Display and debug formatting, print macros, and format engine.
+
+// ---------------------------------------------------------------------------
+// Core formatting traits
+// ---------------------------------------------------------------------------
+
+/// Human-readable formatting (the default for `f"..."` interpolation).
++T Display {
+    +f fmt(&self, f: &!Formatter) -> R[(), FmtError];
+}
+
+/// Debug formatting (used by `{:?}` in format strings).
++T Debug {
+    +f fmt(&self, f: &!Formatter) -> R[(), FmtError];
+}
+
+/// Binary formatting (`{:b}`).
++T Binary {
+    +f fmt(&self, f: &!Formatter) -> R[(), FmtError];
+}
+
+/// Hex formatting, lowercase (`{:x}`).
++T LowerHex {
+    +f fmt(&self, f: &!Formatter) -> R[(), FmtError];
+}
+
+/// Hex formatting, uppercase (`{:X}`).
++T UpperHex {
+    +f fmt(&self, f: &!Formatter) -> R[(), FmtError];
+}
+
+// ---------------------------------------------------------------------------
+// Formatter
+// ---------------------------------------------------------------------------
+
+/// Controls how values are formatted into strings.
++S Formatter {
+    _buf: &!s,
+    width: ?usize,
+    precision: ?usize,
+    fill: char,
+    align: Alignment,
+}
+
++E Alignment {
+    Left,
+    Right,
+    Center,
+}
+
+I Formatter {
+    /// Write a string slice to the output buffer.
+    +f write_str(&!self, s: &s) -> R[(), FmtError];
+
+    /// Write a single character.
+    +f write_char(&!self, c: char) -> R[(), FmtError];
+}
+
++S FmtError { _priv: () }
+
+// ---------------------------------------------------------------------------
+// Format function
+// ---------------------------------------------------------------------------
+
+/// Format a value using its `Display` implementation.
+/// This is the runtime backing for `f"..."` format strings.
++f format[T: Display](value: &T) -> s;
+
+/// Format a value using its `Debug` implementation.
++f debug[T: Debug](value: &T) -> s;
+
+// ---------------------------------------------------------------------------
+// Print functions — declare `io` effect
+// ---------------------------------------------------------------------------
+
+/// Print a formatted string to stdout (no newline).
++f print(msg: &s) / io;
+
+/// Print a formatted string to stdout with a newline.
++f println(msg: &s) / io;
+
+/// Print a formatted string to stderr (no newline).
++f eprint(msg: &s) / io;
+
+/// Print a formatted string to stderr with a newline.
++f eprintln(msg: &s) / io;
+
+// ---------------------------------------------------------------------------
+// Standard Display implementations
+// ---------------------------------------------------------------------------
+
+I Display ~ s    { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Display ~ i32  { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Display ~ i64  { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Display ~ u32  { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Display ~ u64  { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Display ~ usize { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Display ~ f32  { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Display ~ f64  { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Display ~ 1b   { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Display ~ char { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+
+I Debug ~ s     { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Debug ~ i32   { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Debug ~ i64   { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Debug ~ u32   { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Debug ~ u64   { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Debug ~ usize { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Debug ~ f64   { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+I Debug ~ 1b    { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }

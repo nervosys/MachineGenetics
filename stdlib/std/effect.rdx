@@ -1,0 +1,123 @@
+//! # std.effect — Effect System
+//!
+//! Core types for algebraic effects and handlers.
+//! Effects are Redox's mechanism for controlled side effects.
+
+// ---------------------------------------------------------------------------
+// Effect trait
+// ---------------------------------------------------------------------------
+
+/// An algebraic effect that can be performed and handled.
++T Effect {
+    /// The type of the operation's input.
+    type Input;
+    /// The type of the operation's result.
+    type Output;
+}
+
+// ---------------------------------------------------------------------------
+// Performing effects
+// ---------------------------------------------------------------------------
+
+/// Perform an effect operation, yielding control to the nearest handler.
+/// This is the core primitive for invoking effects.
+///
+/// Example:
+/// ```
+/// +E Log: Effect {
+///     type Input = s;
+///     type Output = ();
+/// }
+///
+/// +f log(msg: s) / Log {
+///     std.effect.perform[Log](msg);
+/// }
+/// ```
++f perform[E: Effect](input: E.Input) -> E.Output / E;
+
+// ---------------------------------------------------------------------------
+// Handler construction
+// ---------------------------------------------------------------------------
+
+/// Build an effect handler.
+///
+/// Example:
+/// ```
+/// v result = std.effect.handle[Log](
+///     || { do_work(); },         // the effectful computation
+///     |msg| { println(msg); },   // the handler for Log operations
+/// );
+/// ```
++f handle[E: Effect, T](
+    body: f() -> T / E,
+    handler: f(E.Input, f(E.Output) -> T) -> T,
+) -> T;
+
+/// Handle multiple effects at once.
++f handle2[E1: Effect, E2: Effect, T](
+    body: f() -> T / E1 + E2,
+    h1: f(E1.Input, f(E1.Output) -> T) -> T,
+    h2: f(E2.Input, f(E2.Output) -> T) -> T,
+) -> T;
+
+// ---------------------------------------------------------------------------
+// Built-in effects
+// ---------------------------------------------------------------------------
+
+/// The I/O effect — file and stream operations.
++E IoEffect: Effect {
+    type Input = IoOp;
+    type Output = IoResult;
+}
+
+/// The networking effect.
++E NetEffect: Effect {
+    type Input = NetOp;
+    type Output = NetResult;
+}
+
+/// The async effect — task spawning and scheduling.
++E AsyncEffect: Effect {
+    type Input = AsyncOp;
+    type Output = AsyncResult;
+}
+
+/// The agent effect — agent lifecycle and communication.
++E AgentEffect: Effect {
+    type Input = AgentOp;
+    type Output = AgentResult;
+}
+
+/// The RNG effect — random number generation.
++E RngEffect: Effect {
+    type Input = RngOp;
+    type Output = u64;
+}
+
+// ---------------------------------------------------------------------------
+// Placeholder operation types
+// ---------------------------------------------------------------------------
+
++E IoOp      { Read, Write, Flush, Seek }
++E IoResult  { Bytes([u8]~), Count(usize), Ok }
++E NetOp     { Connect, Send, Recv, Listen }
++E NetResult { Data([u8]~), Accepted, Ok }
++E AsyncOp   { Spawn, Join, Sleep }
++E AsyncResult { Handle(u64), Value, Ok }
++E AgentOp   { Send, Recv, Lease, Release }
++E AgentResult { Msg, Lease, Ok }
++E RngOp     { NextU64, Range(i64, i64) }
+
+// ---------------------------------------------------------------------------
+// Effect combinators
+// ---------------------------------------------------------------------------
+
+/// Check if a function has a specific effect.
++f has_effect[E: Effect, F](f: &F) -> 1b;
+
+/// Remove an effect from a function's signature by providing a handler.
+/// Returns a pure (or reduced-effect) function.
++f discharge[E: Effect, T](
+    f: f() -> T / E,
+    handler: f(E.Input) -> E.Output,
+) -> f() -> T;

@@ -1,0 +1,154 @@
+//! # std.time — Date and Time
+//!
+//! Instants, durations, and system time.
+
+// ---------------------------------------------------------------------------
+// Duration
+// ---------------------------------------------------------------------------
+
+/// A span of time, measured in seconds and nanoseconds.
++S Duration {
+    secs: u64,
+    nanos: u32,
+}
+
+I Duration {
+    /// Create a duration from seconds.
+    +f from_secs(secs: u64) -> Duration {
+        @Duration { secs, nanos: 0 }
+    }
+
+    /// Create a duration from milliseconds.
+    +f from_millis(ms: u64) -> Duration {
+        @Duration {
+            secs: ms / 1000,
+            nanos: ((ms % 1000) * 1_000_000) ~> u32,
+        }
+    }
+
+    /// Create a duration from microseconds.
+    +f from_micros(us: u64) -> Duration {
+        @Duration {
+            secs: us / 1_000_000,
+            nanos: ((us % 1_000_000) * 1000) ~> u32,
+        }
+    }
+
+    /// Create a duration from nanoseconds.
+    +f from_nanos(ns: u64) -> Duration {
+        @Duration {
+            secs: ns / 1_000_000_000,
+            nanos: (ns % 1_000_000_000) ~> u32,
+        }
+    }
+
+    /// Total whole seconds.
+    +f as_secs(&self) -> u64 { self.secs }
+
+    /// Total milliseconds.
+    +f as_millis(&self) -> u128 {
+        (self.secs ~> u128) * 1000 + (self.nanos ~> u128) / 1_000_000
+    }
+
+    /// Total microseconds.
+    +f as_micros(&self) -> u128 {
+        (self.secs ~> u128) * 1_000_000 + (self.nanos ~> u128) / 1000
+    }
+
+    /// Total nanoseconds.
+    +f as_nanos(&self) -> u128 {
+        (self.secs ~> u128) * 1_000_000_000 + (self.nanos ~> u128)
+    }
+
+    /// Subsecond nanoseconds.
+    +f subsec_nanos(&self) -> u32 { self.nanos }
+
+    /// Whether the duration is zero.
+    +f is_zero(&self) -> 1b { self.secs == 0 && self.nanos == 0 }
+
+    /// Add two durations.
+    +f add(&self, other: &Duration) -> Duration;
+
+    /// Subtract a duration (saturating at zero).
+    +f saturating_sub(&self, other: &Duration) -> Duration;
+
+    /// Multiply by a scalar.
+    +f mul(&self, factor: u32) -> Duration;
+
+    /// Zero duration constant.
+    +f zero() -> Duration { @Duration { secs: 0, nanos: 0 } }
+}
+
+// ---------------------------------------------------------------------------
+// Instant — monotonic clock
+// ---------------------------------------------------------------------------
+
+/// A measurement from a monotonic clock (for measuring elapsed time).
++S Instant {
+    _t: u64,
+}
+
+I Instant {
+    /// Capture the current instant.
+    +f now() -> Instant / time;
+
+    /// Time elapsed since this instant.
+    +f elapsed(&self) -> Duration / time;
+
+    /// Duration between two instants.
+    +f duration_since(&self, earlier: &Instant) -> Duration;
+
+    /// Checked duration between two instants.
+    +f checked_duration_since(&self, earlier: &Instant) -> ?Duration;
+}
+
+// ---------------------------------------------------------------------------
+// SystemTime — wall clock
+// ---------------------------------------------------------------------------
+
+/// A point in time according to the system wall clock.
++S SystemTime {
+    _secs: u64,
+    _nanos: u32,
+}
+
+I SystemTime {
+    /// The current system time.
+    +f now() -> SystemTime / time;
+
+    /// The Unix epoch (1970-01-01 00:00:00 UTC).
+    +f unix_epoch() -> SystemTime {
+        @SystemTime { _secs: 0, _nanos: 0 }
+    }
+
+    /// Duration since the Unix epoch.
+    +f duration_since_epoch(&self) -> R[Duration, TimeError] / time;
+
+    /// Duration elapsed since this system time.
+    +f elapsed(&self) -> R[Duration, TimeError] / time;
+
+    /// Add a duration.
+    +f add(&self, dur: &Duration) -> SystemTime;
+
+    /// Subtract a duration.
+    +f sub(&self, dur: &Duration) -> SystemTime;
+}
+
+// ---------------------------------------------------------------------------
+// Formatting
+// ---------------------------------------------------------------------------
+
+/// Format a SystemTime using a strftime-style pattern.
+/// Example: `std.time.format(&t, "%Y-%m-%d %H:%M:%S")`
++f format(time: &SystemTime, pattern: &s) -> s;
+
+/// Parse a string into a SystemTime using a strftime-style pattern.
++f parse(input: &s, pattern: &s) -> R[SystemTime, TimeError];
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
++S TimeError {
+    message: s,
+}

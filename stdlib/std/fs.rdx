@@ -1,0 +1,131 @@
+//! # std.fs — File System
+//!
+//! File system operations: read, write, create, remove, metadata, walk.
+//! All functions declare the `io` effect.
+
+u std.io.{IoError, IoErrorKind};
+u std.time.SystemTime;
+
+// ---------------------------------------------------------------------------
+// Convenience functions
+// ---------------------------------------------------------------------------
+
+/// Read the entire contents of a file into a string.
++f read(path: &s) -> R[s, IoError] / io;
+
+/// Read the entire contents of a file into a byte vector.
++f read_bytes(path: &s) -> R[[u8]~, IoError] / io;
+
+/// Write a string to a file, creating it if needed, truncating if exists.
++f write(path: &s, contents: &s) -> R[(), IoError] / io;
+
+/// Write bytes to a file.
++f write_bytes(path: &s, contents: &[u8]) -> R[(), IoError] / io;
+
+/// Append a string to a file.
++f append(path: &s, contents: &s) -> R[(), IoError] / io;
+
+// ---------------------------------------------------------------------------
+// Directory operations
+// ---------------------------------------------------------------------------
+
+/// Create a directory. Fails if it already exists.
++f create_dir(path: &s) -> R[(), IoError] / io;
+
+/// Create a directory and all parent directories.
++f create_dir_all(path: &s) -> R[(), IoError] / io;
+
+/// Remove an empty directory.
++f remove_dir(path: &s) -> R[(), IoError] / io;
+
+/// Remove a directory and all its contents.
++f remove_dir_all(path: &s) -> R[(), IoError] / io;
+
+/// Read directory entries.
++f read_dir(path: &s) -> R[[DirEntry]~, IoError] / io;
+
+// ---------------------------------------------------------------------------
+// File operations
+// ---------------------------------------------------------------------------
+
+/// Remove a file.
++f remove(path: &s) -> R[(), IoError] / io;
+
+/// Rename / move a file or directory.
++f rename(from: &s, to: &s) -> R[(), IoError] / io;
+
+/// Copy a file. Returns the number of bytes copied.
++f copy(from: &s, to: &s) -> R[u64, IoError] / io;
+
+/// Test whether a path exists.
++f exists(path: &s) -> 1b / io;
+
+// ---------------------------------------------------------------------------
+// Metadata
+// ---------------------------------------------------------------------------
+
+/// Query metadata about a file (follows symlinks).
++f metadata(path: &s) -> R[Metadata, IoError] / io;
+
+/// Query metadata about a file (does not follow symlinks).
++f symlink_metadata(path: &s) -> R[Metadata, IoError] / io;
+
+/// File metadata.
++S Metadata {
+    file_type: FileType,
+    len: u64,
+    modified: ?SystemTime,
+    created: ?SystemTime,
+    permissions: Permissions,
+}
+
+I Metadata {
+    +f is_file(&self) -> 1b { self.file_type == FileType.File }
+    +f is_dir(&self) -> 1b  { self.file_type == FileType.Dir }
+    +f is_symlink(&self) -> 1b { self.file_type == FileType.Symlink }
+}
+
++E FileType {
+    File,
+    Dir,
+    Symlink,
+}
+
++S Permissions {
+    readonly: 1b,
+    mode: ?u32,   // Unix mode bits
+}
+
+// ---------------------------------------------------------------------------
+// Directory entries
+// ---------------------------------------------------------------------------
+
+/// A single entry inside a directory.
++S DirEntry {
+    name: s,
+    path: s,
+    file_type: FileType,
+}
+
+I DirEntry {
+    +f name(&self) -> &s { &self.name }
+    +f path(&self) -> &s { &self.path }
+    +f metadata(&self) -> R[Metadata, IoError] / io;
+}
+
+// ---------------------------------------------------------------------------
+// Directory walking
+// ---------------------------------------------------------------------------
+
+/// Recursively walk a directory tree.
++f walk(path: &s) -> R[Walker, IoError] / io;
+
+/// Recursive directory walker.
++S Walker {
+    stack: [s]~,
+}
+
+I Iterator ~ Walker {
+    type Item = R[DirEntry, IoError];
+    +f next(&!self) -> ?R[DirEntry, IoError] / io;
+}

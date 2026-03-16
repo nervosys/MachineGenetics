@@ -1,0 +1,154 @@
+//! # std.json — JSON (First-Class)
+//!
+//! JSON parsing, serialization, and dynamic value manipulation.
+//! JSON is first-class in Redox because AI agents communicate via JSON (§5.2).
+
+// ---------------------------------------------------------------------------
+// Serialize / Deserialize traits
+// ---------------------------------------------------------------------------
+
+/// A type that can be serialized to JSON.
++T Serialize {
+    +f serialize(&self) -> R[Value, JsonError];
+}
+
+/// A type that can be deserialized from JSON.
++T Deserialize {
+    +f deserialize(value: &Value) -> R[Self, JsonError];
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic JSON value
+// ---------------------------------------------------------------------------
+
+/// A JSON value (dynamically typed).
++E Value {
+    Null,
+    Bool(1b),
+    Int(i64),
+    Float(f64),
+    Str(s),
+    Array([Value]~),
+    Object({s: Value}),
+}
+
+I Value {
+    /// Check if the value is null.
+    +f is_null(&self) -> 1b {
+        ? self { Value.Null => 1b, _ => 0b }
+    }
+
+    /// Try to get as a boolean.
+    +f as_bool(&self) -> ?1b {
+        ? self { Value.Bool(b) => ?b, _ => ? }
+    }
+
+    /// Try to get as an integer.
+    +f as_int(&self) -> ?i64 {
+        ? self { Value.Int(n) => ?n, _ => ? }
+    }
+
+    /// Try to get as a float.
+    +f as_float(&self) -> ?f64 {
+        ? self {
+            Value.Float(f) => ?f,
+            Value.Int(n) => ?(n ~> f64),
+            _ => ?,
+        }
+    }
+
+    /// Try to get as a string.
+    +f as_str(&self) -> ?&s {
+        ? self { Value.Str(s) => ?s, _ => ? }
+    }
+
+    /// Try to get as an array.
+    +f as_array(&self) -> ?&[Value]~ {
+        ? self { Value.Array(a) => ?a, _ => ? }
+    }
+
+    /// Try to get as an object.
+    +f as_object(&self) -> ?&{s: Value} {
+        ? self { Value.Object(o) => ?o, _ => ? }
+    }
+
+    /// Index into an object by key. Returns `Null` if missing.
+    +f get(&self, key: &s) -> &Value;
+
+    /// Index into an array by position. Returns `Null` if out of bounds.
+    +f at(&self, idx: usize) -> &Value;
+
+    /// Merge two objects. `other` takes precedence on conflicts.
+    +f merge(&self, other: &Value) -> Value;
+
+    /// Pretty-print with indentation.
+    +f pretty(&self, indent: usize) -> s;
+}
+
+// ---------------------------------------------------------------------------
+// Parse / Stringify
+// ---------------------------------------------------------------------------
+
+/// Parse a JSON string into a `Value`.
++f parse(input: &s) -> R[Value, JsonError];
+
+/// Serialize a `Value` to a compact JSON string.
++f stringify(value: &Value) -> s;
+
+/// Serialize a `Value` to a pretty-printed JSON string.
++f stringify_pretty(value: &Value) -> s {
+    value.pretty(2)
+}
+
+/// Parse a JSON string and deserialize into type `T`.
++f from_str[T: Deserialize](input: &s) -> R[T, JsonError] {
+    v value = parse(input)?;
+    T.deserialize(&value)
+}
+
+/// Serialize a value of type `T` to a JSON string.
++f to_string[T: Serialize](value: &T) -> R[s, JsonError] {
+    v json = value.serialize()?;
+    R.ok(stringify(&json))
+}
+
+/// Serialize a value of type `T` to a pretty-printed JSON string.
++f to_string_pretty[T: Serialize](value: &T) -> R[s, JsonError] {
+    v json = value.serialize()?;
+    R.ok(stringify_pretty(&json))
+}
+
+// ---------------------------------------------------------------------------
+// Standard implementations
+// ---------------------------------------------------------------------------
+
+I Serialize ~ s     { +f serialize(&self) -> R[Value, JsonError]; }
+I Serialize ~ i64   { +f serialize(&self) -> R[Value, JsonError]; }
+I Serialize ~ f64   { +f serialize(&self) -> R[Value, JsonError]; }
+I Serialize ~ 1b    { +f serialize(&self) -> R[Value, JsonError]; }
+I Serialize ~ [T: Serialize]~  { +f serialize(&self) -> R[Value, JsonError]; }
+I Serialize ~ {s: T: Serialize} { +f serialize(&self) -> R[Value, JsonError]; }
+
+I Deserialize ~ s   { +f deserialize(v: &Value) -> R[s, JsonError]; }
+I Deserialize ~ i64 { +f deserialize(v: &Value) -> R[i64, JsonError]; }
+I Deserialize ~ f64 { +f deserialize(v: &Value) -> R[f64, JsonError]; }
+I Deserialize ~ 1b  { +f deserialize(v: &Value) -> R[1b, JsonError]; }
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
++S JsonError {
+    kind: JsonErrorKind,
+    message: s,
+    line: ?usize,
+    column: ?usize,
+}
+
++E JsonErrorKind {
+    ParseError,
+    TypeError,
+    MissingField,
+    UnknownField,
+    Other,
+}

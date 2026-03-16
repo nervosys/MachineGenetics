@@ -1,0 +1,246 @@
+//! # std.agent — Agent Primitives (Redox-unique)
+//!
+//! Core building blocks for AI agent systems: agents, swarms, messages,
+//! capability leases, code regions, and the swarm bus.
+//! This module is unique to Redox — there is no Rust equivalent.
+//! All agent operations declare the `agent` effect.
+
+// ---------------------------------------------------------------------------
+// Agent trait
+// ---------------------------------------------------------------------------
+
+/// The core trait for an autonomous agent.
+/// Every agent can receive messages, produce actions, and participate in swarms.
++T Agent {
+    /// The type of messages this agent can handle.
+    type Msg;
+    /// The type of actions this agent can produce.
+    type Action;
+
+    /// Handle an incoming message and optionally produce an action.
+    +f handle(&!self, msg: Self.Msg) -> ?Self.Action / agent;
+
+    /// Called once when the agent is started.
+    +f on_start(&!self) / agent {}
+
+    /// Called once when the agent is stopped.
+    +f on_stop(&!self) / agent {}
+
+    /// The agent's unique identifier.
+    +f id(&self) -> AgentId;
+
+    /// Current capabilities held by this agent.
+    +f capabilities(&self) -> &[Capability];
+}
+
+/// Unique identifier for an agent instance.
++S AgentId {
+    value: u128,
+}
+
+I AgentId {
+    /// Generate a new random agent ID.
+    +f new() -> AgentId / agent;
+
+    /// Create from a specific value (e.g., for tests).
+    +f from(value: u128) -> AgentId {
+        @AgentId { value }
+    }
+}
+
+I std.fmt.Display ~ AgentId {
+    +f fmt(&self, f: &!std.fmt.Formatter) -> R[(), std.fmt.FmtError];
+}
+
+// ---------------------------------------------------------------------------
+// Swarm
+// ---------------------------------------------------------------------------
+
+/// A coordinated group of agents working together.
++S Swarm[A: Agent] {
+    agents: [@A]~,
+    bus: Bus,
+    consensus: ConsensusStrategy,
+    _running: 1b,
+}
+
+I Swarm[A: Agent] {
+    /// Create a new swarm with the given consensus strategy.
+    +f new(strategy: ConsensusStrategy) -> Swarm[A] / agent;
+
+    /// Add an agent to the swarm.
+    +f add(&!self, agent: A) -> AgentId / agent;
+
+    /// Remove an agent by ID.
+    +f remove(&!self, id: &AgentId) -> R[A, AgentError] / agent;
+
+    /// Send a message to all agents in the swarm.
+    +f broadcast(&self, msg: &A.Msg) / agent;
+
+    /// Send a message to a specific agent.
+    +f send(&self, id: &AgentId, msg: A.Msg) -> R[(), AgentError] / agent;
+
+    /// Run the swarm until all agents are idle or stopped.
+    +f run(&!self) -> R[[A.Action]~, AgentError] / agent;
+
+    /// Run the swarm with a timeout.
+    +f run_with_timeout(&!self, dur: std.time.Duration) -> R[[A.Action]~, AgentError] / agent;
+
+    /// Gather a consensus from agent responses.
+    +f consensus(&self, responses: &[A.Action]) -> ?A.Action / agent;
+
+    /// Number of agents.
+    +f size(&self) -> usize { self.agents.len() }
+
+    /// Get the shared bus.
+    +f bus(&self) -> &Bus { &self.bus }
+}
+
+/// Consensus strategies for swarm decision-making.
++E ConsensusStrategy {
+    /// Majority vote (> 50% agreement).
+    Majority,
+    /// Unanimous agreement required.
+    Unanimous,
+    /// First response wins (fastest agent).
+    FirstResponse,
+    /// Weighted voting (agents have different weights).
+    Weighted([f64]~),
+    /// Custom consensus function.
+    Custom(f(&[_]) -> ?_),
+}
+
+// ---------------------------------------------------------------------------
+// Message
+// ---------------------------------------------------------------------------
+
+/// A message passed between agents.
++S Message[T] {
+    from: AgentId,
+    to: ?AgentId,       // None = broadcast
+    payload: T,
+    timestamp: std.time.Instant,
+    correlation_id: ?u128,
+}
+
+I Message[T] {
+    /// Create a new directed message.
+    +f new(from: AgentId, to: AgentId, payload: T) -> Message[T] / agent;
+
+    /// Create a broadcast message.
+    +f broadcast(from: AgentId, payload: T) -> Message[T] / agent;
+
+    /// Whether this is a broadcast message.
+    +f is_broadcast(&self) -> 1b { self.to.is_none() }
+}
+
+// ---------------------------------------------------------------------------
+// Capability & Lease
+// ---------------------------------------------------------------------------
+
+/// A capability token granting access to a resource or operation.
++S Capability {
+    name: s,
+    scope: CapabilityScope,
+    expires: ?std.time.Instant,
+}
+
++E CapabilityScope {
+    /// Access to a single resource instance.
+    Instance(s),
+    /// Access to all resources of a kind.
+    Kind(s),
+    /// Global access.
+    Global,
+}
+
+/// A time-bounded lease on a capability.
++S Lease {
+    capability: Capability,
+    holder: AgentId,
+    granted_at: std.time.Instant,
+    expires_at: std.time.Instant,
+}
+
+I Lease {
+    /// Check if the lease is still valid.
+    +f is_valid(&self) -> 1b / time;
+
+    /// Remaining duration on the lease.
+    +f remaining(&self) -> std.time.Duration / time;
+
+    /// Renew the lease for an additional duration.
+    +f renew(&!self, dur: std.time.Duration) -> R[(), AgentError] / agent;
+
+    /// Release the lease early.
+    +f release(&!self) / agent;
+}
+
+// ---------------------------------------------------------------------------
+// Region
+// ---------------------------------------------------------------------------
+
+/// A code region with explicit capability requirements.
+/// Regions enable fine-grained access control within agents.
++S Region {
+    name: s,
+    required_capabilities: [s]~,
+}
+
+I Region {
+    /// Define a new region with the given capability requirements.
+    +f new(name: &s, caps: &[s]) -> Region {
+        @Region {
+            name: name.to_owned(),
+            required_capabilities: caps.iter().map(|c| c.to_owned()).collect(),
+        }
+    }
+
+    /// Execute a closure within this region, verifying capabilities.
+    +f enter[T](&self, agent: &Agent, body: f() -> T) -> R[T, AgentError] / agent;
+}
+
+// ---------------------------------------------------------------------------
+// Bus
+// ---------------------------------------------------------------------------
+
+/// The swarm communication bus. Agents publish and subscribe to topics.
++S Bus {
+    _inner: @_BusInner,
+}
+
+I Bus {
+    /// Create a new bus.
+    +f new() -> Bus / agent;
+
+    /// Publish a message to a topic.
+    +f publish[T: std.json.Serialize](&self, topic: &s, payload: &T) / agent;
+
+    /// Subscribe to a topic. Returns a receiver for messages.
+    +f subscribe[T: std.json.Deserialize](&self, topic: &s) -> std.sync.Receiver[T] / agent;
+
+    /// Unsubscribe from a topic.
+    +f unsubscribe(&self, topic: &s) / agent;
+
+    /// List active topics.
+    +f topics(&self) -> [s]~;
+}
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
++S AgentError {
+    kind: AgentErrorKind,
+    message: s,
+}
+
++E AgentErrorKind {
+    NotFound,
+    CapabilityDenied,
+    LeaseExpired,
+    ConsensusFailure,
+    Timeout,
+    BusError,
+    Other,
+}

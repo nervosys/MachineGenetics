@@ -1,0 +1,230 @@
+//! # std.net — Networking
+//!
+//! TCP, UDP, HTTP client/server, and DNS resolution.
+//! All networking functions declare the `net` effect.
+
+u std.io.{Read, Write, IoError, IoErrorKind};
+
+// ---------------------------------------------------------------------------
+// TCP
+// ---------------------------------------------------------------------------
+
+/// A TCP stream between a local and a remote socket.
++S TcpStream {
+    _fd: u64,
+}
+
+I TcpStream {
+    /// Connect to a remote address.
+    +f connect(addr: &s) -> R[TcpStream, IoError] / net;
+
+    /// Returns the remote address.
+    +f peer_addr(&self) -> R[SocketAddr, IoError];
+
+    /// Returns the local address.
+    +f local_addr(&self) -> R[SocketAddr, IoError];
+
+    /// Shuts down the read, write, or both halves of the connection.
+    +f shutdown(&self, how: Shutdown) -> R[(), IoError] / net;
+
+    /// Set the read timeout.
+    +f set_read_timeout(&self, dur: ?std.time.Duration) -> R[(), IoError];
+
+    /// Set the write timeout.
+    +f set_write_timeout(&self, dur: ?std.time.Duration) -> R[(), IoError];
+}
+
+I Read ~ TcpStream {
+    +f read(&!self, buf: &![u8]) -> R[usize, IoError] / net;
+    +f read_exact(&!self, buf: &![u8]) -> R[(), IoError] / net;
+}
+
+I Write ~ TcpStream {
+    +f write(&!self, buf: &[u8]) -> R[usize, IoError] / net;
+    +f flush(&!self) -> R[(), IoError] / net;
+}
+
+/// A TCP socket listener.
++S TcpListener {
+    _fd: u64,
+}
+
+I TcpListener {
+    /// Bind to the given address.
+    +f bind(addr: &s) -> R[TcpListener, IoError] / net;
+
+    /// Accept a new incoming connection.
+    +f accept(&self) -> R[(TcpStream, SocketAddr), IoError] / net;
+
+    /// Returns an iterator over incoming connections.
+    +f incoming(&self) -> Incoming / net;
+
+    /// Returns the local address.
+    +f local_addr(&self) -> R[SocketAddr, IoError];
+}
+
+/// Iterator over incoming TCP connections.
++S Incoming {
+    listener: &TcpListener,
+}
+
+I Iterator ~ Incoming {
+    type Item = R[TcpStream, IoError];
+    +f next(&!self) -> ?R[TcpStream, IoError] / net;
+}
+
+// ---------------------------------------------------------------------------
+// UDP
+// ---------------------------------------------------------------------------
+
+/// A UDP socket.
++S UdpSocket {
+    _fd: u64,
+}
+
+I UdpSocket {
+    /// Bind to the given address.
+    +f bind(addr: &s) -> R[UdpSocket, IoError] / net;
+
+    /// Send data to the given address.
+    +f send_to(&self, buf: &[u8], addr: &s) -> R[usize, IoError] / net;
+
+    /// Receive data, returning byte count and source address.
+    +f recv_from(&self, buf: &![u8]) -> R[(usize, SocketAddr), IoError] / net;
+
+    /// Connect to a remote address for subsequent `send`/`recv`.
+    +f connect(&self, addr: &s) -> R[(), IoError] / net;
+
+    +f send(&self, buf: &[u8]) -> R[usize, IoError] / net;
+    +f recv(&self, buf: &![u8]) -> R[usize, IoError] / net;
+}
+
+// ---------------------------------------------------------------------------
+// Socket address
+// ---------------------------------------------------------------------------
+
+/// A socket address (IP + port).
++E SocketAddr {
+    V4(SocketAddrV4),
+    V6(SocketAddrV6),
+}
+
++S SocketAddrV4 { ip: [u8; 4], port: u16 }
++S SocketAddrV6 { ip: [u8; 16], port: u16 }
+
++E Shutdown {
+    Read,
+    Write,
+    Both,
+}
+
+// ---------------------------------------------------------------------------
+// HTTP — first-class in Redox (§5.2)
+// ---------------------------------------------------------------------------
+
+/// HTTP request method.
++E Method {
+    Get,
+    Post,
+    Put,
+    Delete,
+    Patch,
+    Head,
+    Options,
+}
+
+/// An HTTP request.
++S Request {
+    method: Method,
+    url: s,
+    headers: {s: s},
+    body: ?[u8]~,
+}
+
+I Request {
+    +f get(url: &s) -> Request {
+        @Request {
+            method: Method.Get,
+            url: url.to_owned(),
+            headers: {},
+            body: ?,
+        }
+    }
+
+    +f post(url: &s) -> Request {
+        @Request {
+            method: Method.Post,
+            url: url.to_owned(),
+            headers: {},
+            body: ?,
+        }
+    }
+
+    +f header(&!self, key: &s, value: &s) -> &!Request {
+        self.headers.insert(key.to_owned(), value.to_owned());
+        self
+    }
+
+    +f body(&!self, data: [u8]~) -> &!Request {
+        self.body = ?data;
+        self
+    }
+
+    +f json[T: std.json.Serialize](&!self, value: &T) -> &!Request {
+        self.body = ?std.json.stringify(value).into_bytes();
+        self.header("Content-Type", "application/json")
+    }
+
+    /// Send the request and return a response.
+    +f send(&self) -> R[Response, HttpError] / net;
+}
+
+/// An HTTP response.
++S Response {
+    status: u16,
+    headers: {s: s},
+    body: [u8]~,
+}
+
+I Response {
+    /// HTTP status code.
+    +f status(&self) -> u16 { self.status }
+
+    /// Response body as a string.
+    +f text(&self) -> R[s, IoError] {
+        s.from_utf8(&self.body)
+    }
+
+    /// Deserialize JSON body.
+    +f json[T: std.json.Deserialize](&self) -> R[T, HttpError] {
+        std.json.parse(&self.text()?)
+    }
+
+    /// Whether the status code indicates success (2xx).
+    +f is_success(&self) -> 1b { self.status >= 200 && self.status < 300 }
+}
+
+/// HTTP error type.
++S HttpError {
+    kind: HttpErrorKind,
+    message: s,
+}
+
++E HttpErrorKind {
+    ConnectionFailed,
+    Timeout,
+    InvalidUrl,
+    TlsError,
+    ParseError,
+    Other,
+}
+
+// ---------------------------------------------------------------------------
+// DNS
+// ---------------------------------------------------------------------------
+
+/// Resolve a hostname to IP addresses.
++f resolve(host: &s) -> R[[SocketAddr]~, IoError] / net;
+
+/// Reverse-resolve an IP address to a hostname.
++f reverse_resolve(addr: &SocketAddr) -> R[s, IoError] / net;

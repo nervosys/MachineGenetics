@@ -1,0 +1,199 @@
+//! # std.str — String Utilities
+//!
+//! String manipulation, splitting, joining, regex, and encoding.
+//! String type `s` is a first-class built-in.
+
+// ---------------------------------------------------------------------------
+// String methods (extensions on the `s` type)
+// ---------------------------------------------------------------------------
+
+I s {
+    // --- Query ---
+
+    /// Number of bytes.
+    +f len(&self) -> usize;
+
+    /// Number of Unicode characters.
+    +f chars_count(&self) -> usize;
+
+    /// Whether the string is empty.
+    +f is_empty(&self) -> 1b { self.len() == 0 }
+
+    /// Whether the string contains the given pattern.
+    +f contains(&self, pat: &s) -> 1b;
+
+    /// Whether the string starts with the given prefix.
+    +f starts_with(&self, prefix: &s) -> 1b;
+
+    /// Whether the string ends with the given suffix.
+    +f ends_with(&self, suffix: &s) -> 1b;
+
+    // --- Search ---
+
+    /// Find the byte index of the first occurrence of `pat`.
+    +f find(&self, pat: &s) -> ?usize;
+
+    /// Find the byte index of the last occurrence of `pat`.
+    +f rfind(&self, pat: &s) -> ?usize;
+
+    // --- Transformations ---
+
+    /// Convert to uppercase.
+    +f to_upper(&self) -> s;
+
+    /// Convert to lowercase.
+    +f to_lower(&self) -> s;
+
+    /// Remove leading and trailing whitespace.
+    +f trim(&self) -> &s;
+
+    /// Remove leading whitespace.
+    +f trim_start(&self) -> &s;
+
+    /// Remove trailing whitespace.
+    +f trim_end(&self) -> &s;
+
+    /// Replace all occurrences of `from` with `to`.
+    +f replace(&self, from: &s, to: &s) -> s;
+
+    /// Replace the first `n` occurrences.
+    +f replacen(&self, from: &s, to: &s, n: usize) -> s;
+
+    /// Repeat the string `n` times.
+    +f repeat(&self, n: usize) -> s;
+
+    // --- Split / Join ---
+
+    /// Split by a delimiter string.
+    +f split(&self, delim: &s) -> [s]~;
+
+    /// Split into at most `n` parts.
+    +f splitn(&self, n: usize, delim: &s) -> [s]~;
+
+    /// Split by whitespace.
+    +f words(&self) -> [s]~;
+
+    /// Split into lines.
+    +f lines(&self) -> [s]~;
+
+    // --- Conversion ---
+
+    /// Parse as an integer.
+    +f parse_int(&self) -> R[i64, ParseError];
+
+    /// Parse as a float.
+    +f parse_float(&self) -> R[f64, ParseError];
+
+    /// Parse as a boolean.
+    +f parse_bool(&self) -> R[1b, ParseError];
+
+    /// Convert to a byte slice.
+    +f as_bytes(&self) -> &[u8];
+
+    /// Create a string from a UTF-8 byte slice.
+    +f from_utf8(bytes: &[u8]) -> R[s, Utf8Error];
+
+    /// Owned copy.
+    +f to_owned(&self) -> s;
+
+    // --- Slicing ---
+
+    /// Substring by byte range.
+    +f slice(&self, start: usize, end: usize) -> &s;
+
+    /// Get a character at an index (by char position, not byte).
+    +f char_at(&self, idx: usize) -> ?char;
+
+    /// Iterator over characters.
+    +f chars(&self) -> Chars;
+}
+
+/// Join a slice of strings with a separator.
++f join(parts: &[s], sep: &s) -> s;
+
+// ---------------------------------------------------------------------------
+// Regex
+// ---------------------------------------------------------------------------
+
+/// A compiled regular expression.
++S Regex {
+    _pattern: s,
+}
+
+I Regex {
+    /// Compile a regex pattern.
+    +f new(pattern: &s) -> R[Regex, RegexError];
+
+    /// Test if the string matches the pattern.
+    +f is_match(&self, text: &s) -> 1b;
+
+    /// Find the first match.
+    +f find(&self, text: &s) -> ?Match;
+
+    /// Find all non-overlapping matches.
+    +f find_all(&self, text: &s) -> [Match]~;
+
+    /// Capture groups from the first match.
+    +f captures(&self, text: &s) -> ?Captures;
+
+    /// Replace the first match.
+    +f replace(&self, text: &s, rep: &s) -> s;
+
+    /// Replace all matches.
+    +f replace_all(&self, text: &s, rep: &s) -> s;
+
+    /// Split by the pattern.
+    +f split(&self, text: &s) -> [s]~;
+}
+
++S Match {
+    start: usize,
+    end: usize,
+    text: s,
+}
+
++S Captures {
+    groups: [?s]~,
+}
+
+I Captures {
+    +f get(&self, idx: usize) -> ?&s;
+    +f name(&self, name: &s) -> ?&s;
+    +f len(&self) -> usize;
+}
+
++S RegexError { message: s }
+
+// ---------------------------------------------------------------------------
+// Encoding
+// ---------------------------------------------------------------------------
+
+/// Encode a string to UTF-16.
++f encode_utf16(text: &s) -> [u16]~;
+
+/// Decode a UTF-16 slice to a string.
++f decode_utf16(data: &[u16]) -> R[s, Utf8Error];
+
+/// Encode a string to raw bytes using the given encoding.
++f encode(text: &s, encoding: &s) -> R[[u8]~, EncodeError];
+
+/// Decode bytes to a string using the given encoding.
++f decode(data: &[u8], encoding: &s) -> R[s, EncodeError];
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
++S ParseError  { message: s }
++S Utf8Error   { valid_up_to: usize }
++S EncodeError { message: s }
+
+// ---------------------------------------------------------------------------
+// Iterator types
+// ---------------------------------------------------------------------------
+
++S Chars { _s: &s, _pos: usize }
+I Iterator ~ Chars {
+    type Item = char;
+    +f next(&!self) -> ?char;
+}

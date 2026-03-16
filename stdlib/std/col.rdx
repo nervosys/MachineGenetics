@@ -1,0 +1,186 @@
+//! # std.col — Collections
+//!
+//! Maps, sets, ordered collections, queues, and linked lists.
+//! Collections are pure (no effects) unless iterating with side-effects.
+
+// ---------------------------------------------------------------------------
+// Map ({K:V} is syntactic sugar for Map[K,V])
+// ---------------------------------------------------------------------------
+
+/// A hash map. Written as `{K:V}` in type position.
++S Map[K: Hash + Eq, V] {
+    _data: _MapInner[K, V],
+}
+
+I Map[K: Hash + Eq, V] {
+    /// Create an empty map.
+    +f new() -> {K: V} { @Map { _data: _MapInner.new() } }
+
+    /// Create a map with the given capacity.
+    +f with_capacity(cap: usize) -> {K: V};
+
+    /// Insert a key-value pair. Returns the old value if present.
+    +f insert(&!self, key: K, value: V) -> ?V;
+
+    /// Get a reference to the value for a key.
+    +f get(&self, key: &K) -> ?&V;
+
+    /// Get a mutable reference to the value for a key.
+    +f get_mut(&!self, key: &K) -> ?&!V;
+
+    /// Remove a key. Returns the value if present.
+    +f remove(&!self, key: &K) -> ?V;
+
+    /// Check if a key exists.
+    +f contains(&self, key: &K) -> 1b;
+
+    /// Number of entries.
+    +f len(&self) -> usize;
+
+    /// Whether the map is empty.
+    +f is_empty(&self) -> 1b { self.len() == 0 }
+
+    /// An iterator over keys.
+    +f keys(&self) -> MapKeys[K, V];
+
+    /// An iterator over values.
+    +f values(&self) -> MapValues[K, V];
+
+    /// An iterator over (key, value) pairs.
+    +f iter(&self) -> MapIter[K, V];
+
+    /// Remove all entries.
+    +f clear(&!self);
+}
+
+// ---------------------------------------------------------------------------
+// Set ({K} is syntactic sugar for Set[K])
+// ---------------------------------------------------------------------------
+
+/// A hash set. Written as `{K}` in type position.
++S Set[K: Hash + Eq] {
+    _inner: Map[K, ()],
+}
+
+I Set[K: Hash + Eq] {
+    +f new() -> {K} { @Set { _inner: Map.new() } }
+    +f with_capacity(cap: usize) -> {K};
+
+    +f insert(&!self, value: K) -> 1b;
+    +f remove(&!self, value: &K) -> 1b;
+    +f contains(&self, value: &K) -> 1b;
+    +f len(&self) -> usize;
+    +f is_empty(&self) -> 1b { self.len() == 0 }
+
+    /// Set operations.
+    +f union(&self, other: &{K}) -> {K};
+    +f intersection(&self, other: &{K}) -> {K};
+    +f difference(&self, other: &{K}) -> {K};
+    +f symmetric_difference(&self, other: &{K}) -> {K};
+    +f is_subset(&self, other: &{K}) -> 1b;
+    +f is_superset(&self, other: &{K}) -> 1b;
+
+    +f iter(&self) -> SetIter[K];
+    +f clear(&!self);
+}
+
+// ---------------------------------------------------------------------------
+// BTree — ordered map
+// ---------------------------------------------------------------------------
+
+/// An ordered map backed by a B-tree.
++S BTree[K: Ord, V] {
+    _root: ?_BTreeNode[K, V],
+    _len: usize,
+}
+
+I BTree[K: Ord, V] {
+    +f new() -> BTree[K, V];
+
+    +f insert(&!self, key: K, value: V) -> ?V;
+    +f get(&self, key: &K) -> ?&V;
+    +f remove(&!self, key: &K) -> ?V;
+    +f contains(&self, key: &K) -> 1b;
+    +f len(&self) -> usize;
+    +f is_empty(&self) -> 1b { self.len() == 0 }
+
+    /// Iterator yields entries in sorted key order.
+    +f iter(&self) -> BTreeIter[K, V];
+
+    /// Range query: entries where `range.contains(key)`.
+    +f range(&self, range: Range[K]) -> BTreeRange[K, V];
+
+    +f first(&self) -> ?(&K, &V);
+    +f last(&self) -> ?(&K, &V);
+    +f clear(&!self);
+}
+
+// ---------------------------------------------------------------------------
+// VecDeque — double-ended queue
+// ---------------------------------------------------------------------------
+
+/// A double-ended queue backed by a growable ring buffer.
++S VecDeque[T] {
+    _data: [T]~,
+    _head: usize,
+    _len: usize,
+}
+
+I VecDeque[T] {
+    +f new() -> VecDeque[T];
+    +f with_capacity(cap: usize) -> VecDeque[T];
+
+    +f push_front(&!self, value: T);
+    +f push_back(&!self, value: T);
+    +f pop_front(&!self) -> ?T;
+    +f pop_back(&!self) -> ?T;
+    +f front(&self) -> ?&T;
+    +f back(&self) -> ?&T;
+
+    +f len(&self) -> usize;
+    +f is_empty(&self) -> 1b { self.len() == 0 }
+    +f clear(&!self);
+
+    +f iter(&self) -> VecDequeIter[T];
+}
+
+// ---------------------------------------------------------------------------
+// LinkedList — doubly-linked list
+// ---------------------------------------------------------------------------
+
+/// A doubly-linked list.
++S LinkedList[T] {
+    _head: ?^_Node[T],
+    _tail: ?^_Node[T],
+    _len: usize,
+}
+
+I LinkedList[T] {
+    +f new() -> LinkedList[T];
+
+    +f push_front(&!self, value: T);
+    +f push_back(&!self, value: T);
+    +f pop_front(&!self) -> ?T;
+    +f pop_back(&!self) -> ?T;
+    +f front(&self) -> ?&T;
+    +f back(&self) -> ?&T;
+
+    +f len(&self) -> usize;
+    +f is_empty(&self) -> 1b { self.len() == 0 }
+    +f clear(&!self);
+
+    +f iter(&self) -> LinkedListIter[T];
+}
+
+// ---------------------------------------------------------------------------
+// Placeholder iterator types
+// ---------------------------------------------------------------------------
+
++S MapKeys[K, V]     { _phantom: () }
++S MapValues[K, V]   { _phantom: () }
++S MapIter[K, V]     { _phantom: () }
++S SetIter[K]        { _phantom: () }
++S BTreeIter[K, V]   { _phantom: () }
++S BTreeRange[K, V]  { _phantom: () }
++S VecDequeIter[T]   { _phantom: () }
++S LinkedListIter[T] { _phantom: () }

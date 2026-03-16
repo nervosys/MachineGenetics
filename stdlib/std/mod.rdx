@@ -1,0 +1,66 @@
+//! # Redox Standard Library
+//!
+//! The `std` module is the root of the Redox standard library.
+//! All standard types, traits, and functions are accessible through
+//! dot-separated paths: `std.io`, `std.col.Map`, `std.agent.Swarm`, etc.
+//!
+//! ## Design Principles
+//!
+//! - **Agent-first**: `std.agent`, `std.json`, and `std.net.http` are first-class
+//! - **Minimal keywords**: Types use sigils (`?T`, `R[T,E]`, `[T]~`, `@T`)
+//! - **Effect-aware**: I/O and networking modules declare their effects
+//! - **SKB-integrated**: Safety rules are embedded in type contracts
+
+/// I/O: File I/O, streams, buffering
++m io;
+
+/// Networking: TCP, UDP, HTTP, DNS
++m net;
+
+/// File system: read, write, create, remove, walk
++m fs;
+
+/// Collections: Map, Set, BTree, VecDeque, LinkedList
++m col;
+
+/// Synchronization: Mutex, RwLock, Channel, Barrier, Atomic
++m sync;
+
+/// Async runtime: spawn, join, select, Stream
++m async;
+
+/// Formatting: Display, Debug, format, print
++m fmt;
+
+/// String utilities: split, join, trim, regex, encode
++m str;
+
+/// Mathematics: trig, exp, log, random, simd
++m math;
+
+/// Date and time: Instant, Duration, SystemTime
++m time;
+
+/// JSON: parse, stringify, Value, Serialize, Deserialize
++m json;
+
+/// Environment: args, vars, current_dir
++m env;
+
+/// Process management: Command, exit, signal
++m process;
+
+/// Agent primitives: Agent, Swarm, Message, Lease, Region, Bus
++m agent;
+
+/// Safety Knowledge Base: Rule, query, validate
++m skb;
+
+/// Effect system: Effect, handle, perform
++m effect;
+
+/// Contract system: require, ensure, invariant, verify
++m spec;
+
+/// Testing: assert, assert_eq, bench, prop
++m test;

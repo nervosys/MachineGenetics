@@ -1,0 +1,128 @@
+//! # std.skb — Safety Knowledge Base
+//!
+//! Programmatic access to the Safety Knowledge Base (SKB).
+//! Query rules, validate code against rules, and define package-level rules.
+
+// ---------------------------------------------------------------------------
+// Rule
+// ---------------------------------------------------------------------------
+
+/// A safety rule from the SKB.
++S Rule {
+    id: s,
+    category: s,
+    severity: Severity,
+    title: s,
+    description: s,
+    pattern: s,
+    fix_hint: ?s,
+}
+
++E Severity {
+    Error,
+    Warning,
+    Info,
+}
+
+I Rule {
+    /// Check if this rule applies to the given source code.
+    +f matches(&self, source: &s) -> 1b;
+
+    /// Get fix suggestions for violations.
+    +f suggest_fix(&self, source: &s) -> ?s;
+}
+
+I std.fmt.Display ~ Rule {
+    +f fmt(&self, f: &!std.fmt.Formatter) -> R[(), std.fmt.FmtError];
+}
+
+// ---------------------------------------------------------------------------
+// Query interface (SKB-QL)
+// ---------------------------------------------------------------------------
+
+/// A query builder for the SKB.
++S Query {
+    category: ?s,
+    severity: ?Severity,
+    pattern: ?s,
+}
+
+I Query {
+    +f new() -> Query {
+        @Query { category: ?, severity: ?, pattern: ? }
+    }
+
+    +f category(&!self, cat: &s) -> &!Query {
+        self.category = ?cat.to_owned();
+        self
+    }
+
+    +f severity(&!self, sev: Severity) -> &!Query {
+        self.severity = ?sev;
+        self
+    }
+
+    +f pattern(&!self, pat: &s) -> &!Query {
+        self.pattern = ?pat.to_owned();
+        self
+    }
+
+    /// Execute the query and return matching rules.
+    +f execute(&self) -> R[[Rule]~, SkbError];
+
+    /// Count matching rules without loading them.
+    +f count(&self) -> R[usize, SkbError];
+}
+
+/// Query the SKB using a shorthand string (e.g., "ownership:move").
++f query(q: &s) -> R[[Rule]~, SkbError];
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+/// A validation result for a source file.
++S ValidationResult {
+    file: s,
+    violations: [Violation]~,
+    passed: usize,
+    failed: usize,
+}
+
+I ValidationResult {
+    +f is_clean(&self) -> 1b { self.failed == 0 }
+    +f total(&self) -> usize { self.passed + self.failed }
+}
+
+/// A single rule violation.
++S Violation {
+    rule: Rule,
+    line: usize,
+    column: usize,
+    snippet: s,
+    fix: ?s,
+}
+
+/// Validate a source string against all applicable SKB rules.
++f validate(source: &s) -> R[ValidationResult, SkbError];
+
+/// Validate a source string against a specific rule category.
++f validate_category(source: &s, category: &s) -> R[ValidationResult, SkbError];
+
+// ---------------------------------------------------------------------------
+// Package-level rules
+// ---------------------------------------------------------------------------
+
+/// Define a custom rule for the current package.
++f define_rule(rule: Rule) -> R[(), SkbError];
+
+/// Load all rules (built-in + package-level).
++f all_rules() -> R[[Rule]~, SkbError];
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
++S SkbError {
+    message: s,
+}

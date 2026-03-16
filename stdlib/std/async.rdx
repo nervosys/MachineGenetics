@@ -1,0 +1,122 @@
+//! # std.async — Async Runtime
+//!
+//! Async task spawning, joining, selection, and streaming.
+//! Async functions declare the `async` effect.
+
+u std.time.Duration;
+
+// ---------------------------------------------------------------------------
+// Core async operations
+// ---------------------------------------------------------------------------
+
+/// Spawn an async task. Returns a handle that can be awaited.
++f spawn[T: Send](task: async f() -> T) -> JoinHandle[T] / async;
+
+/// Join multiple handles, waiting for all to complete.
++f join[T](handles: [JoinHandle[T]]~) -> [R[T, JoinError]]~ / async;
+
+/// Wait for the first of several futures to complete.
++f select[T](futures: [Future[T]]~) -> (usize, T) / async;
+
+/// Race multiple futures; return the first to resolve, cancel the rest.
++f race[T](futures: [Future[T]]~) -> T / async;
+
+/// Sleep for the given duration.
++f sleep(dur: Duration) / async;
+
+/// Run a future with a timeout. Returns `Err` if the timeout expires.
++f timeout[T](dur: Duration, fut: Future[T]) -> R[T, TimeoutError] / async;
+
+/// Run an async closure on the current thread, blocking until complete.
++f block_on[T](fut: Future[T]) -> T;
+
+// ---------------------------------------------------------------------------
+// JoinHandle
+// ---------------------------------------------------------------------------
+
+/// A handle to a spawned async task.
++S JoinHandle[T] {
+    _id: u64,
+}
+
+I JoinHandle[T] {
+    /// Wait for the task to complete and get its result.
+    +f await(&self) -> R[T, JoinError] / async;
+
+    /// Cancel the task.
+    +f cancel(&self);
+
+    /// Check if the task has completed.
+    +f is_finished(&self) -> 1b;
+}
+
+// ---------------------------------------------------------------------------
+// Future — the core async trait
+// ---------------------------------------------------------------------------
+
+/// A value that will be available in the future.
++T Future[T] {
+    /// Poll the future. Returns `Ready(T)` or `Pending`.
+    +f poll(&!self, cx: &!Context) -> Poll[T];
+}
+
++E Poll[T] {
+    Ready(T),
+    Pending,
+}
+
++S Context {
+    _waker: Waker,
+}
+
++S Waker {
+    _data: @_WakerVtable,
+}
+
+I Waker {
+    +f wake(&self);
+    +f clone(&self) -> Waker;
+}
+
+// ---------------------------------------------------------------------------
+// Stream — async iterator
+// ---------------------------------------------------------------------------
+
+/// An asynchronous iterator that yields values over time.
++T Stream[T] {
+    /// Poll for the next item. Returns `Ready(Some(T))`, `Ready(None)`, or `Pending`.
+    +f poll_next(&!self, cx: &!Context) -> Poll[?T];
+}
+
+/// Extension methods for streams.
++T StreamExt[T]: Stream[T] {
+    /// Collect all items into a vector.
+    +f collect(&!self) -> [T]~ / async;
+
+    /// Map each item to a new value.
+    +f map[U](&self, f: f(T) -> U) -> MapStream[T, U];
+
+    /// Filter items by a predicate.
+    +f filter(&self, pred: f(&T) -> 1b) -> FilterStream[T];
+
+    /// Take at most `n` items.
+    +f take(&self, n: usize) -> TakeStream[T];
+
+    /// Apply an async function to each item.
+    +f for_each(&!self, f: async f(T)) / async;
+}
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
++S JoinError    { message: s }
++S TimeoutError { _priv: () }
+
+// ---------------------------------------------------------------------------
+// Placeholder stream adapter types
+// ---------------------------------------------------------------------------
+
++S MapStream[T, U]    { _phantom: () }
++S FilterStream[T]    { _phantom: () }
++S TakeStream[T]      { _phantom: () }

@@ -1,0 +1,202 @@
+//! # std.process — Process Management
+//!
+//! Spawn child processes, manage signals, and exit handling.
+//! All process operations declare the `process` effect.
+
+// ---------------------------------------------------------------------------
+// Command builder
+// ---------------------------------------------------------------------------
+
+/// A builder for spawning child processes.
++S Command {
+    program: s,
+    args: [s]~,
+    env_vars: {s: s},
+    cwd: ?s,
+    stdin_cfg: StdioCfg,
+    stdout_cfg: StdioCfg,
+    stderr_cfg: StdioCfg,
+}
+
+I Command {
+    /// Create a new command for the given program.
+    +f new(program: &s) -> Command {
+        @Command {
+            program: program.to_owned(),
+            args: [],
+            env_vars: {},
+            cwd: ?,
+            stdin_cfg: StdioCfg.Inherit,
+            stdout_cfg: StdioCfg.Inherit,
+            stderr_cfg: StdioCfg.Inherit,
+        }
+    }
+
+    /// Add an argument.
+    +f arg(&!self, arg: &s) -> &!Command {
+        self.args.push(arg.to_owned());
+        self
+    }
+
+    /// Add multiple arguments.
+    +f args(&!self, args: &[s]) -> &!Command {
+        @ a in args { self.args.push(a.to_owned()); }
+        self
+    }
+
+    /// Set an environment variable for the child process.
+    +f env(&!self, key: &s, value: &s) -> &!Command {
+        self.env_vars.insert(key.to_owned(), value.to_owned());
+        self
+    }
+
+    /// Set the working directory.
+    +f current_dir(&!self, dir: &s) -> &!Command {
+        self.cwd = ?dir.to_owned();
+        self
+    }
+
+    /// Configure stdin.
+    +f stdin(&!self, cfg: StdioCfg) -> &!Command {
+        self.stdin_cfg = cfg;
+        self
+    }
+
+    /// Configure stdout.
+    +f stdout(&!self, cfg: StdioCfg) -> &!Command {
+        self.stdout_cfg = cfg;
+        self
+    }
+
+    /// Configure stderr.
+    +f stderr(&!self, cfg: StdioCfg) -> &!Command {
+        self.stderr_cfg = cfg;
+        self
+    }
+
+    /// Spawn the command and return a handle to the child process.
+    +f spawn(&self) -> R[Child, ProcessError] / process;
+
+    /// Run the command and wait for it to complete.
+    +f output(&self) -> R[Output, ProcessError] / process;
+
+    /// Run the command, wait, and check for success.
+    +f status(&self) -> R[ExitStatus, ProcessError] / process;
+}
+
+// ---------------------------------------------------------------------------
+// Child process
+// ---------------------------------------------------------------------------
+
+/// A handle to a running child process.
++S Child {
+    id: u32,
+    stdin: ?ChildStdin,
+    stdout: ?ChildStdout,
+    stderr: ?ChildStderr,
+}
+
+I Child {
+    /// Wait for the child to exit.
+    +f wait(&!self) -> R[ExitStatus, ProcessError] / process;
+
+    /// Kill the child process.
+    +f kill(&!self) -> R[(), ProcessError] / process;
+
+    /// Check if the process has exited without blocking.
+    +f try_wait(&!self) -> R[?ExitStatus, ProcessError];
+
+    /// Process ID.
+    +f id(&self) -> u32 { self.id }
+}
+
++S ChildStdin  { _fd: u64 }
++S ChildStdout { _fd: u64 }
++S ChildStderr { _fd: u64 }
+
+u std.io.{Write, Read, IoError};
+
+I Write ~ ChildStdin {
+    +f write(&!self, buf: &[u8]) -> R[usize, IoError] / io;
+    +f flush(&!self) -> R[(), IoError] / io;
+}
+
+I Read ~ ChildStdout {
+    +f read(&!self, buf: &![u8]) -> R[usize, IoError] / io;
+    +f read_exact(&!self, buf: &![u8]) -> R[(), IoError] / io;
+}
+
+I Read ~ ChildStderr {
+    +f read(&!self, buf: &![u8]) -> R[usize, IoError] / io;
+    +f read_exact(&!self, buf: &![u8]) -> R[(), IoError] / io;
+}
+
+// ---------------------------------------------------------------------------
+// Output and status
+// ---------------------------------------------------------------------------
+
+/// The output of a finished child process.
++S Output {
+    status: ExitStatus,
+    stdout: [u8]~,
+    stderr: [u8]~,
+}
+
+/// The exit status of a process.
++S ExitStatus {
+    code: ?i32,
+}
+
+I ExitStatus {
+    +f success(&self) -> 1b {
+        self.code == ?0
+    }
+
+    +f code(&self) -> ?i32 { self.code }
+}
+
+// ---------------------------------------------------------------------------
+// Stdio configuration
+// ---------------------------------------------------------------------------
+
++E StdioCfg {
+    /// Inherit from the parent process.
+    Inherit,
+    /// Pipe through the `Child` handle.
+    Piped,
+    /// Discard output.
+    Null,
+}
+
+// ---------------------------------------------------------------------------
+// Exit
+// ---------------------------------------------------------------------------
+
+/// Terminate the process with the given exit code.
++f exit(code: i32) -> ! / process;
+
+/// Terminate the process, running destructors first.
++f abort() -> ! / process;
+
+// ---------------------------------------------------------------------------
+// Signals (Unix-style)
+// ---------------------------------------------------------------------------
+
++E Signal {
+    Interrupt,   // SIGINT
+    Terminate,   // SIGTERM
+    Hangup,      // SIGHUP
+    User1,       // SIGUSR1
+    User2,       // SIGUSR2
+}
+
+/// Register a signal handler.
++f on_signal(sig: Signal, handler: f()) / process;
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
++S ProcessError {
+    message: s,
+}
