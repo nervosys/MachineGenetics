@@ -1,0 +1,14 @@
+{
+  "version": "0.1.0",
+  "databases": {
+    "ownership": { "rules": 2847, "hash": "sha256:placeholder" },
+    "borrow":    { "rules": 1203, "hash": "sha256:placeholder" },
+    "lifetime":  { "rules": 894,  "hash": "sha256:placeholder" },
+    "type_safety": { "rules": 3412, "hash": "sha256:placeholder" },
+    "concurrency": { "rules": 567, "hash": "sha256:placeholder" },
+    "ffi":       { "rules": 234,  "hash": "sha256:placeholder" }
+  },
+  "total_rules": 9157,
+  "min_compiler_version": "0.1.0",
+  "schema_version": "1"
+}

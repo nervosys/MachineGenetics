@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SKB Rule",
+  "description": "A single rule in the Redox Safety Knowledge Base",
+  "type": "object",
+  "required": ["id", "database", "version", "severity", "category", "description", "scope"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique rule identifier (e.g. OWN-0042, BR-1203)",
+      "pattern": "^[A-Z]{2,4}-[0-9]{3,4}$"
+    },
+    "database": {
+      "type": "string",
+      "enum": ["ownership", "borrow", "lifetime", "type_safety", "concurrency", "ffi"]
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic version of the rule",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["error", "warning", "info", "hint"]
+    },
+    "category": {
+      "type": "string",
+      "description": "Sub-category within the database (e.g. use-after-move, double-borrow)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human/agent-readable explanation of the rule"
+    },
+    "rationale": {
+      "type": "string",
+      "description": "Why this rule exists"
+    },
+    "scope": {
+      "type": "string",
+      "enum": ["function", "module", "crate", "global"]
+    },
+    "pattern": {
+      "type": "string",
+      "description": "Structural pattern to match against MIR/HIR"
+    },
+    "context": {
+      "type": "string",
+      "description": "Additional context constraints for pattern matching"
+    },
+    "fix_template": {
+      "type": ["string", "null"],
+      "description": "Auto-fix template if applicable"
+    },
+    "fix_confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Confidence in the auto-fix correctness"
+    },
+    "alternatives": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Alternative approaches to resolve the issue"
+    },
+    "source": {
+      "type": "string",
+      "enum": ["builtin", "project_custom", "community"],
+      "default": "builtin"
+    },
+    "frequency": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "How often this rule matches ecosystem-wide"
+    },
+    "false_positive_rate": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
