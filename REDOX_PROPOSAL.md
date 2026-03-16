@@ -1453,16 +1453,16 @@ v result = rap.query("compile", source_code);
 
 #### 5.10.3 Repair Categories
 
-| Error Class              | Auto-Repair Strategy                             | Confidence | Token Savings |
-| ------------------------ | ------------------------------------------------ | ---------- | ------------- |
-| Type mismatch (widening) | Insert cast                                      | 0.95+      | 5-15 tokens   |
-| Missing import           | Add import from project memory / crate registry  | 0.99       | 3-8 tokens    |
-| Unused variable          | Prefix with `_` or remove                        | 0.99       | 1-3 tokens    |
-| Missing struct field      | Insert field with default value from spec         | 0.85       | 5-20 tokens   |
-| Wrong argument order     | Reorder based on type matching                   | 0.90       | 0 tokens      |
-| Missing return            | Infer return expression from contract `@ens`     | 0.80       | 3-10 tokens   |
-| Off-by-one in loop       | Correct bound from spec `@req`/`@ens`            | 0.75       | 1-2 tokens    |
-| Missing match arm        | Generate from exhaustiveness analysis             | 0.95       | 5-30 tokens   |
+| Error Class              | Auto-Repair Strategy                            | Confidence | Token Savings |
+| ------------------------ | ----------------------------------------------- | ---------- | ------------- |
+| Type mismatch (widening) | Insert cast                                     | 0.95+      | 5-15 tokens   |
+| Missing import           | Add import from project memory / crate registry | 0.99       | 3-8 tokens    |
+| Unused variable          | Prefix with `_` or remove                       | 0.99       | 1-3 tokens    |
+| Missing struct field     | Insert field with default value from spec       | 0.85       | 5-20 tokens   |
+| Wrong argument order     | Reorder based on type matching                  | 0.90       | 0 tokens      |
+| Missing return           | Infer return expression from contract `@ens`    | 0.80       | 3-10 tokens   |
+| Off-by-one in loop       | Correct bound from spec `@req`/`@ens`           | 0.75       | 1-2 tokens    |
+| Missing match arm        | Generate from exhaustiveness analysis           | 0.95       | 5-30 tokens   |
 
 ### 5.11 Hot-Reload: Live Function Patching
 
@@ -1571,14 +1571,14 @@ v cost = rap.query("cost", CostQuery {
 
 #### 5.12.3 Supported FFI Targets
 
-| Language   | Mechanism                       | Zero-Copy | Auto-Bind | Overhead    |
-| ---------- | ------------------------------- | --------- | --------- | ----------- |
-| C          | Direct ABI call via LLVM        | ✓         | ✓ (headers)| ~5ns        |
-| C++        | C-compatible subset + mangling  | ✓         | ✓ (headers)| ~10ns       |
-| Python     | Buffer protocol + type stubs    | ✓ (numpy) | ✓ (.pyi)  | ~200ns      |
-| WASM       | Component Model                 | ✓ (shared mem)| ✓ (.wit) | ~50ns       |
-| CUDA/HIP   | MLIR GPU dialect lowering       | ✓         | ✓ (kernels)| ~1µs (launch)|
-| JavaScript | WASM interop + typed arrays     | ✓ (buffers)| Partial   | ~100ns      |
+| Language   | Mechanism                      | Zero-Copy      | Auto-Bind   | Overhead      |
+| ---------- | ------------------------------ | -------------- | ----------- | ------------- |
+| C          | Direct ABI call via LLVM       | ✓              | ✓ (headers) | ~5ns          |
+| C++        | C-compatible subset + mangling | ✓              | ✓ (headers) | ~10ns         |
+| Python     | Buffer protocol + type stubs   | ✓ (numpy)      | ✓ (.pyi)    | ~200ns        |
+| WASM       | Component Model                | ✓ (shared mem) | ✓ (.wit)    | ~50ns         |
+| CUDA/HIP   | MLIR GPU dialect lowering      | ✓              | ✓ (kernels) | ~1µs (launch) |
+| JavaScript | WASM interop + typed arrays    | ✓ (buffers)    | Partial     | ~100ns        |
 
 ---
 
@@ -2249,14 +2249,14 @@ swarm_saga {
 
 The compiler verifies orchestration patterns at compile time:
 
-| Pattern          | Verified Property                     | Mechanism                          |
-| ---------------- | ------------------------------------- | ---------------------------------- |
-| Map-Reduce       | Map function is pure (`@fx none`)     | Effect system                      |
-| Pipeline         | Stage contracts chain (`@ens` → `@req`) | Contract verification            |
-| Scatter-Gather   | Gather handles partial responses      | Exhaustiveness check on quorum     |
-| Saga             | Every action has a compensating action| Structural completeness check      |
-| All patterns     | No swarm deadlocks possible           | Dependency graph cycle detection   |
-| All patterns     | Timeout guarantees progress           | Bounded liveness analysis          |
+| Pattern        | Verified Property                       | Mechanism                        |
+| -------------- | --------------------------------------- | -------------------------------- |
+| Map-Reduce     | Map function is pure (`@fx none`)       | Effect system                    |
+| Pipeline       | Stage contracts chain (`@ens` → `@req`) | Contract verification            |
+| Scatter-Gather | Gather handles partial responses        | Exhaustiveness check on quorum   |
+| Saga           | Every action has a compensating action  | Structural completeness check    |
+| All patterns   | No swarm deadlocks possible             | Dependency graph cycle detection |
+| All patterns   | Timeout guarantees progress             | Bounded liveness analysis        |
 
 ### 7.11 Agent Memory Model: Persistent Learning Across Sessions
 
@@ -2863,16 +2863,16 @@ v result = sandbox.execute(agent_generated_code)?;
 
 #### 9.7.2 Security Properties
 
-| Property                          | Mechanism                                        | Enforcement    |
-| --------------------------------- | ------------------------------------------------ | -------------- |
-| **Memory isolation**              | Per-agent address space (WASM-style)             | Runtime        |
-| **Resource limits**               | CPU time, memory, file handles bounded           | Runtime        |
-| **Capability attenuation**        | Child agents inherit ≤ parent capabilities       | Static + RT    |
-| **Code integrity**                | Agent-generated code content-addressed (SHA-256) | Runtime        |
-| **Audit trail**                   | Every sandbox execution logged with agent ID     | Runtime        |
-| **Deterministic execution**       | Same input + same sandbox = same output          | By design      |
-| **Rollback on violation**         | Capability violation → sandbox terminated + undo | Runtime        |
-| **Cross-agent isolation**         | No shared mutable state between sandboxes        | Runtime        |
+| Property                    | Mechanism                                        | Enforcement |
+| --------------------------- | ------------------------------------------------ | ----------- |
+| **Memory isolation**        | Per-agent address space (WASM-style)             | Runtime     |
+| **Resource limits**         | CPU time, memory, file handles bounded           | Runtime     |
+| **Capability attenuation**  | Child agents inherit ≤ parent capabilities       | Static + RT |
+| **Code integrity**          | Agent-generated code content-addressed (SHA-256) | Runtime     |
+| **Audit trail**             | Every sandbox execution logged with agent ID     | Runtime     |
+| **Deterministic execution** | Same input + same sandbox = same output          | By design   |
+| **Rollback on violation**   | Capability violation → sandbox terminated + undo | Runtime     |
+| **Cross-agent isolation**   | No shared mutable state between sandboxes        | Runtime     |
 
 #### 9.7.3 Trust Levels
 
@@ -3090,106 +3090,106 @@ let pipeline = compose![
 
 ### A. Language Features Ontology
 
-| Category              | Feature                                | Agent Queryable | Agent Discoverable |    Safety Relevant    |
-| --------------------- | -------------------------------------- | :-------------: | :----------------: | :-------------------: |
-| **Types**             | Primitives (bool, i32, f64, ...)       |        ✓        |         ✓          |           —           |
-|                       | Structs                                |        ✓        |         ✓          |      ✓ (layout)       |
-|                       | Enums                                  |        ✓        |         ✓          |  ✓ (exhaustiveness)   |
-|                       | Unions                                 |        ✓        |         ✓          |   ✓ (unsafe access)   |
-|                       | Tuples                                 |        ✓        |         ✓          |           —           |
-|                       | Arrays / Slices                        |        ✓        |         ✓          |      ✓ (bounds)       |
-|                       | References (&T, &mut T)                |        ✓        |         ✓          |     ✓ (borrowing)     |
-|                       | Raw Pointers (*const T, *mut T)        |        ✓        |         ✓          |      ✓ (unsafe)       |
-|                       | Function Pointers                      |        ✓        |         ✓          |      ✓ (effects)      |
-|                       | Trait Objects (dyn Trait)              |        ✓        |         ✓          |   ✓ (vtable safety)   |
-|                       | impl Trait                             |        ✓        |         ✓          |           —           |
-|                       | Never type (!)                         |        ✓        |         ✓          |    ✓ (unreachable)    |
-|                       | Refinement types [NEW]                 |        ✓        |         ✓          |   ✓ (value bounds)    |
-| **Traits**            | Auto traits (Send, Sync, Unpin)        |        ✓        |         ✓          |   ✓ (thread safety)   |
-|                       | Marker traits (Copy, Sized)            |        ✓        |         ✓          |  ✓ (move semantics)   |
-|                       | Operator traits (Add, Deref, ...)      |        ✓        |         ✓          |           —           |
-|                       | Fn traits (Fn, FnMut, FnOnce)          |        ✓        |         ✓          |  ✓ (closure capture)  |
-|                       | Custom traits                          |        ✓        |         ✓          |     ✓ (contracts)     |
-| **Lifetimes**         | Named lifetimes ('a)                   |        ✓        |         ✓          |  ✓ (use-after-free)   |
-|                       | Elided lifetimes                       |        ✓        |         —          |           ✓           |
-|                       | 'static                                |        ✓        |         ✓          |           ✓           |
-|                       | Higher-ranked (for<'a>)                |        ✓        |         ✓          |           ✓           |
-| **Generics**          | Type parameters                        |        ✓        |         ✓          |           —           |
-|                       | Const generics                         |        ✓        |         ✓          |           —           |
-|                       | Where clauses                          |        ✓        |         ✓          |      ✓ (bounds)       |
-|                       | GATs                                   |        ✓        |         ✓          |           —           |
-| **Effects** [NEW]     | const                                  |        ✓        |         ✓          |           ✓           |
-|                       | async                                  |        ✓        |         ✓          |           ✓           |
-|                       | unsafe                                 |        ✓        |         ✓          |           ✓           |
-|                       | io                                     |        ✓        |         ✓          |           ✓           |
-|                       | alloc                                  |        ✓        |         ✓          |           ✓           |
-|                       | panic                                  |        ✓        |         ✓          |           ✓           |
-|                       | custom effects                         |        ✓        |         ✓          |           ✓           |
-| **Contracts** [NEW]   | Preconditions                          |        ✓        |         ✓          |           ✓           |
-|                       | Postconditions                         |        ✓        |         ✓          |           ✓           |
-|                       | Invariants                             |        ✓        |         ✓          |           ✓           |
-| **Control Flow**      | if/else, loop, while, for              |        ✓        |         —          |           —           |
-|                       | match (exhaustive)                     |        ✓        |         ✓          |           ✓           |
-|                       | ? operator                             |        ✓        |         ✓          | ✓ (error propagation) |
-|                       | return, break, continue                |        ✓        |         —          |           —           |
-|                       | async/await                            |        ✓        |         ✓          |           ✓           |
-| **Modules**           | mod, use, pub                          |        ✓        |         ✓          |    ✓ (visibility)     |
-|                       | Crate-level visibility                 |        ✓        |         ✓          |           ✓           |
-| **Swarm** [NEW]       | Semantic regions                       |        ✓        |         ✓          | ✓ (write exclusivity) |
-|                       | Semantic leases                        |        ✓        |         ✓          | ✓ (concurrent safety) |
-|                       | Consensus points                       |        ✓        |         ✓          | ✓ (atomic interfaces) |
-|                       | Agent roles                            |        ✓        |         ✓          | ✓ (capability bound)  |
-|                       | Swarm messages (typed bus)             |        ✓        |         ✓          |     ✓ (isolation)     |
-| **Syntax** [NEW]      | Zero-ambiguity LL(1) grammar           |        ✓        |         ✓          |           —           |
-|                       | Canonical form enforcement             |        ✓        |         ✓          |           —           |
-|                       | Streaming partial parse                |        ✓        |         ✓          |           —           |
-| **Performance** [NEW] | Dialect-as-semantics MLIR IR           |        ✓        |         ✓          |           —           |
-|                       | Language-level SIMD (Simd[T, N])       |        ✓        |         ✓          |           —           |
-|                       | MLIR-native autotuning (@pa)           |        ✓        |         ✓          |           —           |
-|                       | Automatic device placement (@pt(auto)) |        ✓        |         ✓          |           —           |
-|                       | Compile-time metaprogramming (@pp)     |        ✓        |         ✓          |           —           |
-|                       | Multi-target compilation               |        ✓        |         ✓          |           —           |
-|                       | Performance annotations                |        ✓        |         ✓          |           —           |
-| **Safety-Free** [NEW] | Lifetime elision (no `'a` syntax)      |        ✓        |         ✓          |    ✓ (SKB-handled)    |
-|                       | Borrow elision (no `&mut` syntax)      |        ✓        |         ✓          |    ✓ (SKB-handled)    |
-|                       | Unsafe elision (no `unsafe` keyword)   |        ✓        |         ✓          |    ✓ (SKB-handled)    |
-|                       | Auto-derived safety traits             |        ✓        |         ✓          |    ✓ (SKB-handled)    |
-|                       | Unified dispatch (no `dyn`/`impl`)     |        ✓        |         ✓          |           —           |
-| **ACI** [NEW]         | Dynamic warnings (ML-learned)          |        ✓        |         ✓          |   ✓ (probabilistic)   |
-|                       | Intelligent debugging                  |        ✓        |         ✓          |    ✓ (root-cause)     |
-|                       | Performance advisor                    |        ✓        |         ✓          |           —           |
-|                       | Swarm coordination intelligence        |        ✓        |         ✓          | ✓ (conflict predict)  |
-|                       | Codebase learning model                |        ✓        |         ✓          |           —           |
-| **Cost Model** [NEW]  | Per-target cost oracle                 |        ✓        |         ✓          |           —           |
-|                       | Multi-target cost comparison           |        ✓        |         ✓          |           —           |
-|                       | Cost-constrained synthesis             |        ✓        |         ✓          |           —           |
-| **Grammar** [NEW]     | Domain-specific syntax extensions      |        ✓        |         ✓          |           —           |
-|                       | Frequency-driven abbreviation promote  |        ✓        |         ✓          |           —           |
-|                       | Extension discovery/registry           |        ✓        |         ✓          |           —           |
-| **Synthesis** [NEW]   | Formal specification syntax            |        ✓        |         ✓          |     ✓ (contracts)     |
-|                       | Spec-to-code synthesis oracle          |        ✓        |         ✓          |           ✓           |
-|                       | Pipeline composition from specs        |        ✓        |         ✓          |           ✓           |
-| **Memory** [NEW]      | Ephemeral/session/project/global tiers |        ✓        |         ✓          |           —           |
-|                       | Pattern recall and learning            |        ✓        |         ✓          |           —           |
-|                       | Memory-driven ACI improvement          |        ✓        |         ✓          |           —           |
-| **Self-Healing** [NEW]| Auto-repair on compile error           |        ✓        |         ✓          |           —           |
-|                       | Confidence-ranked fix candidates       |        ✓        |         ✓          |           —           |
-| **Hot-Reload** [NEW]  | Function-level live patching           |        ✓        |         ✓          |    ✓ (ABI check)      |
-|                       | Rollback with retention window         |        ✓        |         ✓          |           —           |
-| **FFI** [NEW]         | Auto-binding from foreign headers      |        ✓        |         ✓          |   ✓ (layout safe)     |
-|                       | Zero-copy cross-language calls         |        ✓        |         ✓          |           —           |
-| **Security** [NEW]    | Capability-based sandboxing            |        ✓        |         ✓          |   ✓ (cap. check)      |
-|                       | Deterministic execution in sandbox     |        ✓        |         ✓          |           —           |
-| **Orchestration** [NEW]| Map-reduce / pipeline / saga patterns |        ✓        |         ✓          | ✓ (pattern verify)    |
-|                       | Compile-time pattern verification      |        ✓        |         ✓          |           ✓           |
-| **SKB** [NEW]         | Safety Knowledge Base                  |        ✓        |         ✓          |  ✓ (queryable rules)  |
-|                       | Opt-in compile-time checks             |        ✓        |         ✓          |   ✓ (configurable)    |
-| **Token** [NEW]       | Compressed keywords (`+f`, `m`, `S`)   |        ✓        |         ✓          |           —           |
-|                       | Attribute abbreviations (`@d`, `@r`)   |        ✓        |         ✓          |           —           |
-|                       | Type abbreviations (`?T`, `R[T,E]`)    |        ✓        |         ✓          |           —           |
-|                       | Standard abbreviation registry         |        ✓        |         ✓          |           —           |
-|                       | Compact ↔ expanded conversion          |        ✓        |         ✓          |           —           |
-|                       | Token budget reporting                 |        ✓        |         ✓          |           —           |
+| Category                | Feature                                | Agent Queryable | Agent Discoverable |    Safety Relevant    |
+| ----------------------- | -------------------------------------- | :-------------: | :----------------: | :-------------------: |
+| **Types**               | Primitives (bool, i32, f64, ...)       |        ✓        |         ✓          |           —           |
+|                         | Structs                                |        ✓        |         ✓          |      ✓ (layout)       |
+|                         | Enums                                  |        ✓        |         ✓          |  ✓ (exhaustiveness)   |
+|                         | Unions                                 |        ✓        |         ✓          |   ✓ (unsafe access)   |
+|                         | Tuples                                 |        ✓        |         ✓          |           —           |
+|                         | Arrays / Slices                        |        ✓        |         ✓          |      ✓ (bounds)       |
+|                         | References (&T, &mut T)                |        ✓        |         ✓          |     ✓ (borrowing)     |
+|                         | Raw Pointers (*const T, *mut T)        |        ✓        |         ✓          |      ✓ (unsafe)       |
+|                         | Function Pointers                      |        ✓        |         ✓          |      ✓ (effects)      |
+|                         | Trait Objects (dyn Trait)              |        ✓        |         ✓          |   ✓ (vtable safety)   |
+|                         | impl Trait                             |        ✓        |         ✓          |           —           |
+|                         | Never type (!)                         |        ✓        |         ✓          |    ✓ (unreachable)    |
+|                         | Refinement types [NEW]                 |        ✓        |         ✓          |   ✓ (value bounds)    |
+| **Traits**              | Auto traits (Send, Sync, Unpin)        |        ✓        |         ✓          |   ✓ (thread safety)   |
+|                         | Marker traits (Copy, Sized)            |        ✓        |         ✓          |  ✓ (move semantics)   |
+|                         | Operator traits (Add, Deref, ...)      |        ✓        |         ✓          |           —           |
+|                         | Fn traits (Fn, FnMut, FnOnce)          |        ✓        |         ✓          |  ✓ (closure capture)  |
+|                         | Custom traits                          |        ✓        |         ✓          |     ✓ (contracts)     |
+| **Lifetimes**           | Named lifetimes ('a)                   |        ✓        |         ✓          |  ✓ (use-after-free)   |
+|                         | Elided lifetimes                       |        ✓        |         —          |           ✓           |
+|                         | 'static                                |        ✓        |         ✓          |           ✓           |
+|                         | Higher-ranked (for<'a>)                |        ✓        |         ✓          |           ✓           |
+| **Generics**            | Type parameters                        |        ✓        |         ✓          |           —           |
+|                         | Const generics                         |        ✓        |         ✓          |           —           |
+|                         | Where clauses                          |        ✓        |         ✓          |      ✓ (bounds)       |
+|                         | GATs                                   |        ✓        |         ✓          |           —           |
+| **Effects** [NEW]       | const                                  |        ✓        |         ✓          |           ✓           |
+|                         | async                                  |        ✓        |         ✓          |           ✓           |
+|                         | unsafe                                 |        ✓        |         ✓          |           ✓           |
+|                         | io                                     |        ✓        |         ✓          |           ✓           |
+|                         | alloc                                  |        ✓        |         ✓          |           ✓           |
+|                         | panic                                  |        ✓        |         ✓          |           ✓           |
+|                         | custom effects                         |        ✓        |         ✓          |           ✓           |
+| **Contracts** [NEW]     | Preconditions                          |        ✓        |         ✓          |           ✓           |
+|                         | Postconditions                         |        ✓        |         ✓          |           ✓           |
+|                         | Invariants                             |        ✓        |         ✓          |           ✓           |
+| **Control Flow**        | if/else, loop, while, for              |        ✓        |         —          |           —           |
+|                         | match (exhaustive)                     |        ✓        |         ✓          |           ✓           |
+|                         | ? operator                             |        ✓        |         ✓          | ✓ (error propagation) |
+|                         | return, break, continue                |        ✓        |         —          |           —           |
+|                         | async/await                            |        ✓        |         ✓          |           ✓           |
+| **Modules**             | mod, use, pub                          |        ✓        |         ✓          |    ✓ (visibility)     |
+|                         | Crate-level visibility                 |        ✓        |         ✓          |           ✓           |
+| **Swarm** [NEW]         | Semantic regions                       |        ✓        |         ✓          | ✓ (write exclusivity) |
+|                         | Semantic leases                        |        ✓        |         ✓          | ✓ (concurrent safety) |
+|                         | Consensus points                       |        ✓        |         ✓          | ✓ (atomic interfaces) |
+|                         | Agent roles                            |        ✓        |         ✓          | ✓ (capability bound)  |
+|                         | Swarm messages (typed bus)             |        ✓        |         ✓          |     ✓ (isolation)     |
+| **Syntax** [NEW]        | Zero-ambiguity LL(1) grammar           |        ✓        |         ✓          |           —           |
+|                         | Canonical form enforcement             |        ✓        |         ✓          |           —           |
+|                         | Streaming partial parse                |        ✓        |         ✓          |           —           |
+| **Performance** [NEW]   | Dialect-as-semantics MLIR IR           |        ✓        |         ✓          |           —           |
+|                         | Language-level SIMD (Simd[T, N])       |        ✓        |         ✓          |           —           |
+|                         | MLIR-native autotuning (@pa)           |        ✓        |         ✓          |           —           |
+|                         | Automatic device placement (@pt(auto)) |        ✓        |         ✓          |           —           |
+|                         | Compile-time metaprogramming (@pp)     |        ✓        |         ✓          |           —           |
+|                         | Multi-target compilation               |        ✓        |         ✓          |           —           |
+|                         | Performance annotations                |        ✓        |         ✓          |           —           |
+| **Safety-Free** [NEW]   | Lifetime elision (no `'a` syntax)      |        ✓        |         ✓          |    ✓ (SKB-handled)    |
+|                         | Borrow elision (no `&mut` syntax)      |        ✓        |         ✓          |    ✓ (SKB-handled)    |
+|                         | Unsafe elision (no `unsafe` keyword)   |        ✓        |         ✓          |    ✓ (SKB-handled)    |
+|                         | Auto-derived safety traits             |        ✓        |         ✓          |    ✓ (SKB-handled)    |
+|                         | Unified dispatch (no `dyn`/`impl`)     |        ✓        |         ✓          |           —           |
+| **ACI** [NEW]           | Dynamic warnings (ML-learned)          |        ✓        |         ✓          |   ✓ (probabilistic)   |
+|                         | Intelligent debugging                  |        ✓        |         ✓          |    ✓ (root-cause)     |
+|                         | Performance advisor                    |        ✓        |         ✓          |           —           |
+|                         | Swarm coordination intelligence        |        ✓        |         ✓          | ✓ (conflict predict)  |
+|                         | Codebase learning model                |        ✓        |         ✓          |           —           |
+| **Cost Model** [NEW]    | Per-target cost oracle                 |        ✓        |         ✓          |           —           |
+|                         | Multi-target cost comparison           |        ✓        |         ✓          |           —           |
+|                         | Cost-constrained synthesis             |        ✓        |         ✓          |           —           |
+| **Grammar** [NEW]       | Domain-specific syntax extensions      |        ✓        |         ✓          |           —           |
+|                         | Frequency-driven abbreviation promote  |        ✓        |         ✓          |           —           |
+|                         | Extension discovery/registry           |        ✓        |         ✓          |           —           |
+| **Synthesis** [NEW]     | Formal specification syntax            |        ✓        |         ✓          |     ✓ (contracts)     |
+|                         | Spec-to-code synthesis oracle          |        ✓        |         ✓          |           ✓           |
+|                         | Pipeline composition from specs        |        ✓        |         ✓          |           ✓           |
+| **Memory** [NEW]        | Ephemeral/session/project/global tiers |        ✓        |         ✓          |           —           |
+|                         | Pattern recall and learning            |        ✓        |         ✓          |           —           |
+|                         | Memory-driven ACI improvement          |        ✓        |         ✓          |           —           |
+| **Self-Healing** [NEW]  | Auto-repair on compile error           |        ✓        |         ✓          |           —           |
+|                         | Confidence-ranked fix candidates       |        ✓        |         ✓          |           —           |
+| **Hot-Reload** [NEW]    | Function-level live patching           |        ✓        |         ✓          |     ✓ (ABI check)     |
+|                         | Rollback with retention window         |        ✓        |         ✓          |           —           |
+| **FFI** [NEW]           | Auto-binding from foreign headers      |        ✓        |         ✓          |    ✓ (layout safe)    |
+|                         | Zero-copy cross-language calls         |        ✓        |         ✓          |           —           |
+| **Security** [NEW]      | Capability-based sandboxing            |        ✓        |         ✓          |    ✓ (cap. check)     |
+|                         | Deterministic execution in sandbox     |        ✓        |         ✓          |           —           |
+| **Orchestration** [NEW] | Map-reduce / pipeline / saga patterns  |        ✓        |         ✓          |  ✓ (pattern verify)   |
+|                         | Compile-time pattern verification      |        ✓        |         ✓          |           ✓           |
+| **SKB** [NEW]           | Safety Knowledge Base                  |        ✓        |         ✓          |  ✓ (queryable rules)  |
+|                         | Opt-in compile-time checks             |        ✓        |         ✓          |   ✓ (configurable)    |
+| **Token** [NEW]         | Compressed keywords (`+f`, `m`, `S`)   |        ✓        |         ✓          |           —           |
+|                         | Attribute abbreviations (`@d`, `@r`)   |        ✓        |         ✓          |           —           |
+|                         | Type abbreviations (`?T`, `R[T,E]`)    |        ✓        |         ✓          |           —           |
+|                         | Standard abbreviation registry         |        ✓        |         ✓          |           —           |
+|                         | Compact ↔ expanded conversion          |        ✓        |         ✓          |           —           |
+|                         | Token budget reporting                 |        ✓        |         ✓          |           —           |
 
 ### B. Compiler Passes Ontology (Agent-Observable)
 
@@ -3238,9 +3238,9 @@ let pipeline = compose![
 | P41     | Synthesis [NEW]            | Spec + Costs     | Candidate impls       |           —            | `synthesize(spec)`         |
 | P42     | Memory Recall [NEW]        | Memory stores    | Relevant patterns     |           —            | `memory_recall(query)`     |
 | P43     | Auto-Repair [NEW]          | Error + Context  | Repair candidates     |           —            | `auto_repair(error)`       |
-| P44     | Hot-Patch [NEW]            | New func source  | Patched binary        |    ABI stability       | `hotpatch(func, source)`   |
-| P45     | FFI Binding Gen [NEW]      | Foreign headers  | Safe Redox bindings   |    Layout safety       | `ffi_bindings(header)`     |
-| P46     | Sandbox Exec [NEW]         | Code + Policy    | Sandboxed result      |   Capability check     | `sandbox_exec(code, pol)`  |
+| P44     | Hot-Patch [NEW]            | New func source  | Patched binary        |     ABI stability      | `hotpatch(func, source)`   |
+| P45     | FFI Binding Gen [NEW]      | Foreign headers  | Safe Redox bindings   |     Layout safety      | `ffi_bindings(header)`     |
+| P46     | Sandbox Exec [NEW]         | Code + Policy    | Sandboxed result      |    Capability check    | `sandbox_exec(code, pol)`  |
 
 ### C. Diagnostic Categories Ontology
 
@@ -3295,6 +3295,1288 @@ let pipeline = compose![
 | Hot-Patch ↔ Runtime         | RAP hotpatch sub-protocol  | PatchResult        |       ✓       |     ✓     |
 | FFI Binder ↔ Agents         | RAP FFI sub-protocol       | ForeignBinding     |       ✓       |     ✓     |
 | Sandbox ↔ Agent Code        | Capability-gated execution | SandboxResult      |       ✓       |     ✓     |
+
+---
+
+## 13. Deep Dive: Formal Type Inference Algorithm
+
+Section 5.6 declares that lifetimes, borrow modes, ownership transfer, dispatch strategy, and allocation strategy are **all inferred by the compiler** — eliminating them from the syntax entirely. This section specifies *how* that inference works: the algorithms, judgment rules, and complexity guarantees that replace Rust's explicit annotations with compiler-driven decisions.
+
+### 13.1 Inference Architecture
+
+The type inference engine is a **five-phase pipeline** that runs after MIR construction and before MLIR lowering. Each phase feeds its results into the next:
+
+```
+Phase 1          Phase 2          Phase 3          Phase 4          Phase 5
+Ownership    →   Borrow Mode  →  Lifetime     →   Dispatch     →  Allocation
+Inference        Inference        Inference        Strategy         Strategy
+                                                   Selection        Selection
+     │                │                │                │                │
+     ▼                ▼                ▼                ▼                ▼
+ OwnershipMap     BorrowMap       LifetimeMap     DispatchMap     AllocMap
+ (var → own)      (ref → mode)   (ref → region)  (call → vtbl?)  (val → loc)
+```
+
+All five phases share a **constraint generation + constraint solving** architecture:
+
+1. **Walk the MIR** to generate constraints.
+2. **Solve the constraint system** using a fixed-point algorithm.
+3. **Emit the solution** as an annotation map consumed by the next phase.
+
+### 13.2 Phase 1: Ownership Inference
+
+Determines whether each value is **moved**, **copied**, or **borrowed** at each use site.
+
+#### 13.2.1 Constraint Language
+
+```
+OwnershipConstraint ::=
+    | Own(var)              -- var owns its value (will be dropped at scope exit)
+    | Moved(var, site)      -- var's value is moved at use site
+    | Copied(var, site)     -- var's value is copied at use site
+    | Borrowed(var, site)   -- var's value is borrowed at use site
+    | Conflict(site, site)  -- two use sites have incompatible ownership demands
+```
+
+#### 13.2.2 Inference Rules (Judgment Form)
+
+```
+                   var declared, not used after site s
+───────────────────────────────────────────────────────── [MOVE]
+            Γ ⊢ use(var, s) : Moved(var, s)
+
+
+            var used after site s   ∧   T: Copy
+───────────────────────────────────────────────────────── [COPY]
+            Γ ⊢ use(var, s) : Copied(var, s)
+
+
+            var used after site s   ∧   ¬(T: Copy)
+───────────────────────────────────────────────────────── [BORROW-NEEDED]
+            Γ ⊢ use(var, s) : Borrowed(var, s)
+
+
+            Moved(var, s1) ∧ use(var, s2) ∧ s2 dominates s1
+───────────────────────────────────────────────────────── [USE-AFTER-MOVE]
+            Γ ⊢ Conflict(s1, s2)
+```
+
+#### 13.2.3 Algorithm
+
+```
+fn infer_ownership(mir: &MIR) -> OwnershipMap {
+    // 1. Build def-use chains for every local variable
+    v def_use = mir.build_def_use_chains();
+
+    // 2. For each variable, compute last-use site via post-dominator tree
+    v last_use = mir.post_dominator_last_use(&def_use);
+
+    // 3. Generate constraints
+    v constraints = Vec.new;
+    @ (var, uses) : &def_use {
+        @ (site, kind) : uses {
+            ? {
+                site == last_use[var] && kind.is_value =>
+                    constraints.push(Moved(var, site)),
+                var.ty.is_copy =>
+                    constraints.push(Copied(var, site)),
+                _ =>
+                    constraints.push(Borrowed(var, site)),
+            }
+        }
+    }
+
+    // 4. Detect conflicts (use after move)
+    @ (var, uses) : &def_use {
+        v move_sites = constraints.moves_of(var);
+        @ site : move_sites {
+            @ later_use : uses.after(site) {
+                constraints.push(Conflict(site, later_use));
+            }
+        }
+    }
+
+    // 5. Resolve: conflicts trigger auto-clone insertion or borrow promotion
+    v solution = ConstraintSolver.solve(constraints, Strategy.PreferBorrow);
+    solution.to_ownership_map()
+}
+```
+
+**Complexity**: $O(V \cdot U)$ where $V$ = number of local variables, $U$ = average uses per variable. In practice $O(n)$ in function size since use counts are bounded by function length.
+
+### 13.3 Phase 2: Borrow Mode Inference
+
+Determines whether each reference is **shared (`&T`)** or **exclusive (`&mut T`)** based on how the referenced value is used through the reference.
+
+#### 13.3.1 Inference Rules
+
+```
+            ref r used only in read contexts (field access, method &self, comparison)
+───────────────────────────────────────────────────────── [SHARED]
+            Γ ⊢ r : Shared
+
+
+            ref r used in at least one write context (assignment, method &mut self)
+───────────────────────────────────────────────────────── [EXCLUSIVE]
+            Γ ⊢ r : Exclusive
+
+
+            Shared(r1) ∧ Exclusive(r2) ∧ alias(r1, r2)
+───────────────────────────────────────────────────────── [ALIAS-CONFLICT]
+            Γ ⊢ Error: overlapping shared and exclusive borrows
+
+
+            Exclusive(r1) ∧ Exclusive(r2) ∧ alias(r1, r2)
+───────────────────────────────────────────────────────── [DOUBLE-MUT]
+            Γ ⊢ Error: two exclusive borrows of same value
+```
+
+#### 13.3.2 Algorithm
+
+```
+fn infer_borrow_modes(mir: &MIR, ownership: &OwnershipMap) -> BorrowMap {
+    // 1. For each borrow site, collect all transitive uses of the reference
+    v borrow_uses = mir.transitive_ref_uses();
+
+    // 2. Classify: if ANY use writes, the borrow is exclusive
+    v modes = HashMap.new;
+    @ (ref_id, uses) : &borrow_uses {
+        v has_write = uses.any(|u| u.is_write || u.calls_mut_method);
+        modes.insert(ref_id, ? { has_write => Exclusive, _ => Shared });
+    }
+
+    // 3. Check alias pairs — O(R²) but R is bounded per function
+    v aliases = mir.compute_alias_sets();
+    @ (r1, r2) : aliases.pairs() {
+        ? {
+            modes[r1] == Exclusive && modes[r2] == Exclusive =>
+                emit_error("double exclusive borrow", r1, r2),
+            modes[r1] != modes[r2] && aliases.overlap(r1, r2) =>
+                emit_error("shared/exclusive overlap", r1, r2),
+            _ => {},
+        }
+    }
+
+    modes
+}
+```
+
+**Key insight**: In Rust, the programmer writes `&` or `&mut` and the borrow checker validates. In Redox, the programmer writes nothing — the compiler observes how the reference is used and *derives* the mode. The SKB provides the aliasing rules; the compiler applies them automatically.
+
+### 13.4 Phase 3: Lifetime Inference
+
+Determines the **live range** of every reference and ensures no reference outlives its referent.
+
+#### 13.4.1 Region Variables and Constraints
+
+```
+LifetimeConstraint ::=
+    | Live(ref, region)           -- ref is live in region
+    | Outlives(region, region)    -- region₁ must outlive region₂
+    | Subset(region, region)      -- region₁ ⊆ region₂ (NLL-style)
+    | FnBound(fn, param_region, return_region)  -- return lifetime ≤ param lifetime
+```
+
+#### 13.4.2 Algorithm (NLL-Based)
+
+```
+fn infer_lifetimes(mir: &MIR, borrows: &BorrowMap) -> LifetimeMap {
+    // 1. Assign a fresh region variable to every reference
+    v regions = mir.refs().map(|r| (r, RegionVar.fresh()));
+
+    // 2. Generate subset constraints from control flow
+    //    (identical to Rust's NLL, but without user annotations)
+    v constraints = Vec.new;
+    @ bb : mir.basic_blocks() {
+        @ stmt : bb.stmts() {
+            ? stmt {
+                Borrow(ref_id, place) => {
+                    // ref must not outlive place's scope
+                    constraints.push(Subset(regions[ref_id], scope_of(place)));
+                },
+                Assign(dest, src) ? is_ref(src) => {
+                    // dest's region must be subset of src's region
+                    constraints.push(Subset(regions[dest], regions[src]));
+                },
+                Return(val) ? is_ref(val) => {
+                    // return ref's region must be subset of some param region
+                    v param_regions = mir.param_refs().map(|p| regions[p]);
+                    constraints.push(FnBound(mir.fn_id, regions[val], param_regions));
+                },
+                _ => {},
+            }
+        }
+    }
+
+    // 3. Solve via fixed-point iteration
+    //    Uses Polonius-style subset propagation
+    v solution = RegionSolver.solve(constraints);
+
+    // 4. Verify: no dangling references
+    @ (ref_id, region) : &solution {
+        v referent_scope = scope_of(mir.borrow_place(ref_id));
+        ? !region.contained_in(referent_scope) {
+            emit_error("reference outlives referent", ref_id);
+        }
+    }
+
+    solution
+}
+```
+
+**Complexity**: $O(R^2 \cdot B)$ worst case where $R$ = region variables, $B$ = basic blocks. In practice, region constraint graphs are sparse and convergence is fast (2–4 iterations).
+
+#### 13.4.3 Cross-Function Lifetime Inference
+
+For function signatures, Redox applies **lifetime elision on steroids** — not just the three Rust elision rules, but full inter-procedural inference:
+
+```
+// Rule 1 (Rust-compatible): Single input ref → output gets same lifetime
+f first(items: &[T]) -> &T          // inferred: output ⊆ items
+
+// Rule 2 (Rust-compatible): &self → output gets self's lifetime
+m get(&self) -> &T                  // inferred: output ⊆ self
+
+// Rule 3 (NEW): Multiple input refs → output gets intersection
+f merge(a: &[T], b: &[T]) -> &[T]  // inferred: output ⊆ min(a, b)
+
+// Rule 4 (NEW): No input refs → output must be 'static or owned
+f create() -> &T                    // ERROR: no referent to borrow from
+
+// Rule 5 (NEW): Struct fields → lifetime flows from constructor args
+S View { data: &[u8] }             // inferred: View's lifetime ⊆ data's referent
+
+// Rule 6 (NEW): Closures → capture lifetimes inferred from body
+v f = |x| data[x];                  // inferred: f borrows data, lives within data's scope
+```
+
+### 13.5 Phase 4: Dispatch Strategy Selection
+
+Determines whether each trait-object call uses **static dispatch** (monomorphization) or **dynamic dispatch** (vtable), and whether to use **devirtualization** for hot paths.
+
+#### 13.5.1 Decision Algorithm
+
+```
+fn select_dispatch(mir: &MIR, call_site: CallSite) -> DispatchStrategy {
+    v concrete_types = mir.possible_concrete_types(call_site.receiver);
+
+    ? {
+        // Case 1: Only one concrete type → always static
+        concrete_types.len() == 1 =>
+            DispatchStrategy.Static(concrete_types[0]),
+
+        // Case 2: Few types + hot loop → static with enum dispatch
+        concrete_types.len() <= 4 && call_site.in_hot_loop() =>
+            DispatchStrategy.EnumDispatch(concrete_types),
+
+        // Case 3: Many types or cold path → dynamic (vtable)
+        concrete_types.len() > 4 =>
+            DispatchStrategy.Dynamic,
+
+        // Case 4: Unknown types (e.g., plugin interface) → dynamic
+        concrete_types.is_open_set() =>
+            DispatchStrategy.Dynamic,
+
+        // Case 5: Few types, not hot → static with PGO hint
+        _ =>
+            DispatchStrategy.StaticWithFallback(concrete_types),
+    }
+}
+```
+
+#### 13.5.2 Agent Override
+
+Agents can override any inference decision via annotations when they have domain knowledge:
+
+```
+@dispatch(static)    // force monomorphization
+@dispatch(dynamic)   // force vtable
+@dispatch(enum, 4)   // force enum dispatch with max 4 variants
+```
+
+### 13.6 Phase 5: Allocation Strategy Selection
+
+Determines whether each value is allocated on the **stack**, **heap**, or in an **arena** — replacing the Rust programmer's choice between `T`, `Box<T>`, `Rc<T>`, `Arc<T>`.
+
+#### 13.6.1 Escape Analysis
+
+```
+AllocConstraint ::=
+    | Escapes(val, scope)       -- val escapes scope (returned, stored in longer-lived struct)
+    | NoEscape(val, scope)      -- val does not escape scope
+    | SharedOwner(val, N)       -- val has N owners (reference count candidate)
+    | CrossThread(val)          -- val accessed from multiple threads
+    | ArenaCandidate(val, grp)  -- val belongs to group grp (same lifetime, same dealloc point)
+```
+
+#### 13.6.2 Decision Algorithm
+
+```
+fn select_allocation(mir: &MIR, val: Value,
+                     ownership: &OwnershipMap,
+                     lifetimes: &LifetimeMap) -> AllocStrategy {
+    v escape = analyze_escape(mir, val);
+    v owners = count_owners(mir, val, ownership);
+    v cross_thread = is_cross_thread(mir, val);
+    v arena_group = find_arena_group(mir, val, lifetimes);
+
+    ? {
+        // Case 1: No escape, single owner → stack
+        !escape && owners == 1 =>
+            AllocStrategy.Stack,
+
+        // Case 2: Escapes, single owner → heap (Box equivalent)
+        escape && owners == 1 && !cross_thread =>
+            AllocStrategy.Heap,
+
+        // Case 3: Multiple owners, single thread → Rc equivalent
+        owners > 1 && !cross_thread =>
+            AllocStrategy.RefCounted,
+
+        // Case 4: Multiple owners, cross-thread → Arc equivalent
+        owners > 1 && cross_thread =>
+            AllocStrategy.AtomicRefCounted,
+
+        // Case 5: Belongs to arena group → arena allocation
+        arena_group.is_some =>
+            AllocStrategy.Arena(arena_group.unwrap),
+
+        // Case 6: Large value, no escape → stack with spill hint
+        !escape && val.size > STACK_THRESHOLD =>
+            AllocStrategy.StackWithSpillHint,
+
+        _ => AllocStrategy.Heap,  // conservative default
+    }
+}
+```
+
+#### 13.6.3 Agent Override
+
+```
+v x = ^MyStruct { ... };    // force heap (Box equivalent)
+v y = @MyStruct { ... };    // force Rc
+v z = $MyStruct { ... };    // force Arc
+v w = MyStruct { ... };     // compiler decides (default)
+```
+
+### 13.7 Inference Guarantees
+
+| Property                    | Guarantee                                                                 |
+| --------------------------- | ------------------------------------------------------------------------- |
+| **Determinism**             | Same source always produces same inference result                         |
+| **Soundness**               | Inferred modes are at least as restrictive as manual annotations would be |
+| **Completeness**            | Every well-typed Rust program has a valid Redox inference                  |
+| **Monotonicity**            | Adding code never invalidates previously inferred ownership               |
+| **Performance**             | Inference is $O(n \log n)$ in function size for 95% of functions          |
+| **Worst-case complexity**   | $O(n^2 \cdot R)$ for pathological alias sets ($R$ = region variables)     |
+| **SKB compatibility**       | All inferred decisions are verifiable against the SKB                     |
+| **Override transparency**   | Agent annotations are always respected; conflicts emit structured errors  |
+
+---
+
+## 14. Deep Dive: MLIR Dialect Operation Definitions
+
+Section 5.4 describes the Redox MLIR dialect at a high level. This section provides **formal operation definitions** for every operation in the dialect, following MLIR's ODS (Operation Definition Specification) conventions.
+
+### 14.1 Dialect Registration
+
+```tablegen
+def Redox_Dialect : Dialect {
+  let name = "redox";
+  let summary = "Redox agentic language dialect for MLIR";
+  let description = [{
+    The Redox dialect encodes the full semantics of the Redox language —
+    ownership, effects, contracts, performance annotations, agent capabilities,
+    and safety knowledge base queries — as first-class MLIR operations and
+    attributes. This enables the compiler's semantic understanding to be
+    preserved through the entire optimization pipeline, unlike traditional
+    approaches where MIR→LLVM IR lowering discards high-level intent.
+  }];
+  let cppNamespace = "::redox";
+  let useDefaultTypePrinterParser = 1;
+  let useDefaultAttributePrinterParser = 1;
+}
+```
+
+### 14.2 Type Definitions
+
+```tablegen
+// Owned value type — compiler manages ownership transfer
+def Redox_OwnedType : Redox_Type<"Owned", "owned"> {
+  let summary = "An owned value with compiler-managed ownership semantics";
+  let parameters = (ins "Type":$elementType);
+  let assemblyFormat = "`<` $elementType `>`";
+}
+
+// Reference type — borrow mode (shared/exclusive) inferred
+def Redox_RefType : Redox_Type<"Ref", "ref"> {
+  let summary = "A reference with inferred borrow mode";
+  let parameters = (ins
+    "Type":$elementType,
+    "BorrowModeAttr":$mode  // Shared | Exclusive | Inferred
+  );
+  let assemblyFormat = "`<` $elementType `,` $mode `>`";
+}
+
+// Region type — lifetime region variable
+def Redox_RegionType : Redox_Type<"Region", "region"> {
+  let summary = "A lifetime region variable";
+  let parameters = (ins "StringAttr":$name);
+}
+
+// Effect type — algebraic effect annotation
+def Redox_EffectType : Redox_Type<"Effect", "effect"> {
+  let summary = "An algebraic effect (IO, Async, Alloc, etc.)";
+  let parameters = (ins "StringAttr":$effectName);
+}
+
+// Capability type — agent capability token
+def Redox_CapabilityType : Redox_Type<"Capability", "cap"> {
+  let summary = "An agent capability token for discovery";
+  let parameters = (ins "ArrayAttr":$capabilities);
+}
+```
+
+### 14.3 Ownership Operations
+
+```tablegen
+// Move a value — transfers ownership from source to destination
+def Redox_MoveOp : Redox_Op<"move", [Pure]> {
+  let summary = "Transfer ownership of a value";
+  let description = [{
+    Transfers ownership from the source SSA value to the result. After this
+    operation, the source value is consumed and cannot be used. The compiler
+    inserts this automatically based on Phase 1 inference.
+  }];
+  let arguments = (ins AnyType:$source);
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$source attr-dict `:` type($source) `->` type($result)";
+
+  // Verification: source must not be used after this op
+  let verifier = [{ return verifyMoveOp(*this); }];
+}
+
+// --- Example MLIR ---
+// %1 = redox.move %0 : !redox.owned<tensor<4xf32>> -> !redox.owned<tensor<4xf32>>
+
+// Copy a value — duplicates for Copy types
+def Redox_CopyOp : Redox_Op<"copy", [Pure]> {
+  let summary = "Copy a value (only valid for Copy types)";
+  let arguments = (ins AnyType:$source);
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$source attr-dict `:` type($source)";
+
+  let verifier = [{ return verifyCopyType(getSource().getType()); }];
+}
+
+// Borrow a value — creates a reference
+def Redox_BorrowOp : Redox_Op<"borrow", []> {
+  let summary = "Create a reference to a value";
+  let arguments = (ins
+    AnyType:$source,
+    BorrowModeAttr:$mode,     // shared | exclusive | inferred
+    Redox_RegionType:$region  // lifetime region
+  );
+  let results = (outs Redox_RefType:$ref);
+  let assemblyFormat = "$mode $source `in` $region attr-dict `:` type($source)";
+}
+
+// --- Example MLIR ---
+// %ref = redox.borrow shared %val in %rgn : !redox.owned<i64>
+//   → !redox.ref<i64, shared>
+
+// Drop a value — runs destructor and releases resources
+def Redox_DropOp : Redox_Op<"drop", []> {
+  let summary = "Drop a value, releasing owned resources";
+  let arguments = (ins AnyType:$value);
+  let assemblyFormat = "$value attr-dict `:` type($value)";
+}
+
+// --- Example MLIR ---
+// redox.drop %vec : !redox.owned<!redox.vec<f32>>
+```
+
+### 14.4 Effect Operations
+
+```tablegen
+// Declare effects on a function
+def Redox_EffectDeclOp : Redox_Op<"effect.decl", [IsolatedFromAbove]> {
+  let summary = "Declare algebraic effects for a function region";
+  let arguments = (ins
+    ArrayAttr:$effects,       // ["IO", "Async", "Alloc"]
+    OptionalAttr<ArrayAttr>:$handlers  // effect handlers if present
+  );
+  let regions = (region SizedRegion<1>:$body);
+  let assemblyFormat = "$effects (`handled_by` $handlers^)? $body attr-dict";
+}
+
+// --- Example MLIR ---
+// redox.effect.decl ["IO", "Async"] {
+//   // function body with IO and Async effects
+// }
+
+// Perform an effect — runtime effect invocation
+def Redox_EffectPerformOp : Redox_Op<"effect.perform", []> {
+  let summary = "Perform an algebraic effect";
+  let arguments = (ins
+    Redox_EffectType:$effect,
+    Variadic<AnyType>:$args
+  );
+  let results = (outs Optional<AnyType>:$result);
+  let assemblyFormat = "$effect `(` $args `)` attr-dict `:` functional-type($args, $result)";
+}
+
+// Effect handler — catches and handles effects from a child region
+def Redox_EffectHandleOp : Redox_Op<"effect.handle", []> {
+  let summary = "Install an effect handler for a region";
+  let arguments = (ins Redox_EffectType:$effect);
+  let regions = (region SizedRegion<1>:$body, SizedRegion<1>:$handler);
+  let assemblyFormat = "$effect $body `with` $handler attr-dict";
+}
+```
+
+### 14.5 Contract Operations
+
+```tablegen
+// Precondition — must hold before function execution
+def Redox_RequireOp : Redox_Op<"contract.require", [Pure]> {
+  let summary = "Assert a precondition (contract)";
+  let arguments = (ins
+    I1:$condition,
+    StrAttr:$message
+  );
+  let assemblyFormat = "$condition `,` $message attr-dict";
+}
+
+// Postcondition — must hold after function execution
+def Redox_EnsureOp : Redox_Op<"contract.ensure", [Pure]> {
+  let summary = "Assert a postcondition (contract)";
+  let arguments = (ins
+    I1:$condition,
+    StrAttr:$message,
+    Optional<AnyType>:$returnValue
+  );
+  let assemblyFormat = "$condition `,` $message (`,` $returnValue^)? attr-dict";
+}
+
+// Invariant — must hold at specific program points
+def Redox_InvariantOp : Redox_Op<"contract.invariant", []> {
+  let summary = "Assert a loop or type invariant";
+  let arguments = (ins
+    I1:$condition,
+    StrAttr:$message,
+    DefaultValuedAttr<StrAttr, "\"loop\"">:$kind  // "loop" | "type" | "module"
+  );
+}
+
+// --- Example MLIR ---
+// redox.contract.require %cond, "index must be in bounds"
+// ... function body ...
+// redox.contract.ensure %post, "result is sorted", %ret_val
+```
+
+### 14.6 Performance Annotation Operations
+
+```tablegen
+// Target placement hint — compiled by MLIR cost model
+def Redox_PlaceOp : Redox_Op<"perf.place", []> {
+  let summary = "Hint target device for a computation region";
+  let arguments = (ins
+    StrAttr:$target,          // "cpu" | "gpu" | "npu" | "auto"
+    OptionalAttr<I64Attr>:$priority
+  );
+  let regions = (region SizedRegion<1>:$body);
+  let assemblyFormat = "$target (`priority` $priority^)? $body attr-dict";
+}
+
+// --- Example MLIR ---
+// redox.perf.place "auto" {
+//   // compiler evaluates cost model for each available target
+//   // and selects optimal dispatch
+// }
+
+// Vectorization hint
+def Redox_VectorizeOp : Redox_Op<"perf.vectorize", []> {
+  let summary = "Hint vectorization width for a loop region";
+  let arguments = (ins I64Attr:$width);  // SIMD width: 4, 8, 16, etc.
+  let regions = (region SizedRegion<1>:$body);
+  let assemblyFormat = "$width $body attr-dict";
+}
+
+// No-bounds-check annotation
+def Redox_NoBoundsCheckOp : Redox_Op<"perf.no_bounds_check", []> {
+  let summary = "Disable bounds checking in a region (agent-trusted)";
+  let regions = (region SizedRegion<1>:$body);
+  let assemblyFormat = "$body attr-dict";
+}
+
+// Autotune — generate N variants and benchmark
+def Redox_AutotuneOp : Redox_Op<"perf.autotune", []> {
+  let summary = "Generate N optimization variants for autotuning";
+  let arguments = (ins
+    I64Attr:$variants,                     // number of variants to generate
+    OptionalAttr<StrAttr>:$metric          // "latency" | "throughput" | "energy"
+  );
+  let regions = (region SizedRegion<1>:$body);
+  let assemblyFormat = "$variants (`metric` $metric^)? $body attr-dict";
+}
+
+// Cost query — compile-time cost model evaluation
+def Redox_CostQueryOp : Redox_Op<"perf.cost_query", [Pure]> {
+  let summary = "Query the cost model for an expression";
+  let arguments = (ins
+    StrAttr:$target_hw,       // "x86_64" | "aarch64" | "nvptx" | ...
+    StrAttr:$metric           // "latency_ns" | "memory_bytes" | "allocs" | "energy_pj"
+  );
+  let regions = (region SizedRegion<1>:$body);
+  let results = (outs F64:$cost);
+  let assemblyFormat = "$target_hw $metric $body attr-dict";
+}
+```
+
+### 14.7 Capability Operations
+
+```tablegen
+// Declare agent capabilities for a module
+def Redox_CapabilityDeclOp : Redox_Op<"capability.decl", [IsolatedFromAbove]> {
+  let summary = "Declare capabilities provided by a module";
+  let arguments = (ins
+    StrAttr:$name,
+    ArrayAttr:$provides,     // ["http_client", "json_parse", "file_read"]
+    ArrayAttr:$requires,     // capabilities required from dependencies
+    OptionalAttr<StrAttr>:$version
+  );
+}
+
+// Capability check — verify agent has required capability at compile time
+def Redox_CapabilityCheckOp : Redox_Op<"capability.check", [Pure]> {
+  let summary = "Verify a capability is available";
+  let arguments = (ins StrAttr:$capability);
+  let results = (outs I1:$available);
+}
+
+// Capability-gated region — code only executes if capability is held
+def Redox_CapabilityGateOp : Redox_Op<"capability.gate", []> {
+  let summary = "Gate a region on a capability token";
+  let arguments = (ins Redox_CapabilityType:$token);
+  let regions = (region SizedRegion<1>:$body);
+  let assemblyFormat = "$token $body attr-dict";
+}
+```
+
+### 14.8 SKB Query Operations (Compile-Time)
+
+```tablegen
+// Query the Safety Knowledge Base during compilation
+def Redox_SKBQueryOp : Redox_Op<"skb.query", [Pure]> {
+  let summary = "Query the Safety Knowledge Base for applicable rules";
+  let arguments = (ins
+    StrAttr:$pattern,         // e.g., "MutableBorrow", "TypeConversion"
+    DictionaryAttr:$context   // key-value context for the query
+  );
+  let results = (outs Redox_RuleSetType:$rules);
+  let assemblyFormat = "$pattern $context attr-dict";
+}
+
+// SKB validation — verify code against SKB rules
+def Redox_SKBValidateOp : Redox_Op<"skb.validate", []> {
+  let summary = "Validate a region against SKB rules";
+  let arguments = (ins
+    StrAttr:$rule_set,        // "ownership" | "borrow" | "lifetime" | "concurrency"
+    DefaultValuedAttr<StrAttr, "\"warn\"">:$on_violation  // "error" | "warn" | "ignore"
+  );
+  let regions = (region SizedRegion<1>:$body);
+}
+```
+
+### 14.9 Lowering Rules
+
+The Redox dialect lowers progressively through MLIR's dialect hierarchy:
+
+| Redox Operation          | Lowers To                            | Phase           |
+| ------------------------ | ------------------------------------ | --------------- |
+| `redox.move`             | SSA value copy + source invalidation | Redox → Std     |
+| `redox.copy`             | `memref.copy` or SSA value copy      | Redox → MemRef  |
+| `redox.borrow`           | `memref.view` or SSA alias           | Redox → MemRef  |
+| `redox.drop`             | Destructor call sequence             | Redox → Func    |
+| `redox.effect.decl`      | No-op (metadata preserved)           | Redox → Redox   |
+| `redox.effect.perform`   | `func.call` to effect handler        | Redox → Func    |
+| `redox.contract.require` | `cf.assert` (debug) or removed (opt) | Redox → CF      |
+| `redox.contract.ensure`  | `cf.assert` (debug) or removed (opt) | Redox → CF      |
+| `redox.perf.place "gpu"` | `gpu.launch_func`                    | Redox → GPU     |
+| `redox.perf.vectorize`   | `vector.transfer_read/write` + ops   | Redox → Vector  |
+| `redox.perf.autotune`    | N clones of body with different opts  | Redox → Redox   |
+| `redox.perf.cost_query`  | Compile-time eval → constant         | Redox → Arith   |
+| `redox.capability.gate`  | `scf.if` on runtime capability check | Redox → SCF     |
+| `redox.skb.query`        | Compile-time eval → diagnostics      | Erased          |
+| `redox.skb.validate`     | Compile-time eval → diagnostics      | Erased          |
+
+Full lowering sequence:
+
+```
+Redox Dialect
+  ↓  (ownership/borrow/drop → memory operations)
+MemRef + Func + SCF
+  ↓  (perf annotations → target-specific dialects)
+Linalg + Vector + GPU + Affine
+  ↓  (progressive lowering)
+LLVM Dialect
+  ↓  (translation)
+LLVM IR → Machine Code
+```
+
+---
+
+## 15. Deep Dive: SKB Schema and Query Language Specification
+
+Section 9.2 presents the SKB architecture diagram. This section formalizes the **database schema**, **query language (SKB-QL)**, **indexing strategy**, **rule lifecycle**, and **versioning protocol**.
+
+### 15.1 Rule Schema
+
+Every rule in the SKB conforms to a common schema. Rules are stored as structured records, not free-form text:
+
+```
+Rule {
+    // Identity
+    id:          RuleId,           // e.g., "OWN-0042", "BR-1203"
+    database:    Database,         // Ownership | Borrow | Lifetime | TypeSafety | Concurrency | FFI
+    version:     SemanticVersion,  // e.g., 1.4.2
+
+    // Pattern matching
+    pattern:     Pattern,          // structural pattern to match against code
+    context:     ContextSpec,      // additional context constraints
+    scope:       Scope,            // Function | Module | Crate | Global
+
+    // Semantics
+    severity:    Severity,         // Error | Warning | Info | Hint
+    category:    Category,         // e.g., "use-after-move", "double-borrow", "data-race"
+    description: String,           // human/agent-readable explanation
+    rationale:   String,           // WHY this rule exists
+
+    // Resolution
+    fix_template: Option<FixTemplate>,   // auto-fix template if applicable
+    fix_confidence: f64,                  // 0.0–1.0 confidence in the auto-fix
+    alternatives: Vec<Alternative>,       // alternative approaches
+
+    // Metadata
+    source:      RuleSource,       // BuiltIn | ProjectCustom | CommunityContributed
+    frequency:   u64,              // how often this rule matches across the ecosystem
+    false_positive_rate: f64,      // measured false positive rate
+    tags:        Vec<String>,      // searchable tags
+    created:     Timestamp,
+    updated:     Timestamp,
+    deprecated:  Option<Timestamp>,
+}
+```
+
+### 15.2 Pattern Language
+
+Patterns are structural templates that match against Redox MIR nodes:
+
+```
+Pattern ::=
+    // Ownership patterns
+    | UseAfterMove { var: VarPattern, move_site: SitePattern, use_site: SitePattern }
+    | DoubleMove { var: VarPattern, sites: (SitePattern, SitePattern) }
+    | MoveInLoop { var: VarPattern, loop_kind: LoopKind }
+
+    // Borrow patterns
+    | MutableBorrow { target_type: TypePattern, context: ContextSpec }
+    | AliasingBorrow { refs: Vec<RefPattern>, overlap: OverlapKind }
+    | BorrowEscapes { ref: RefPattern, escapes_to: ScopePattern }
+
+    // Lifetime patterns
+    | DanglingRef { ref: RefPattern, referent_scope: ScopePattern }
+    | LifetimeMismatch { expected: RegionPattern, actual: RegionPattern }
+    | SelfReferential { struct_type: TypePattern }
+
+    // Type safety patterns
+    | TypeConversion { from: TypePattern, to: TypePattern, target_arch: ArchPattern }
+    | NarrowingCast { from: TypePattern, to: TypePattern }
+    | UnsoundTransmute { from: TypePattern, to: TypePattern }
+    | UninitRead { var: VarPattern, site: SitePattern }
+
+    // Concurrency patterns
+    | DataRace { var: VarPattern, threads: Vec<ThreadPattern> }
+    | DeadlockRisk { locks: Vec<LockPattern>, order: OrderPattern }
+    | SendViolation { type: TypePattern, context: ContextSpec }
+
+    // FFI patterns
+    | NullPointerDeref { source: FFISource, site: SitePattern }
+    | LayoutMismatch { redox_type: TypePattern, foreign_type: TypePattern }
+    | MissingFree { alloc_site: SitePattern, foreign_allocator: String }
+
+// VarPattern and TypePattern support wildcards:
+VarPattern  ::= Exact(Name) | AnyVar | Typed(TypePattern)
+TypePattern ::= Exact(Type) | AnyType | Generic(Name, Vec<TypePattern>)
+                | Wildcard   | OneOf(Vec<TypePattern>)
+SitePattern ::= Line(u32)   | AnySite | InScope(ScopePattern)
+```
+
+### 15.3 SKB Query Language (SKB-QL)
+
+SKB-QL is a domain-specific query language optimized for agent consumption — designed for minimal tokens and maximum precision:
+
+#### 15.3.1 Query Syntax
+
+```
+Query      ::= SELECT fields FROM database WHERE conditions
+             | MATCH pattern IN scope
+             | VALIDATE code_fragment AGAINST rule_set
+             | COUNT pattern IN scope
+
+fields     ::= '*' | field (',' field)*
+field      ::= 'id' | 'severity' | 'fix_template' | 'description' | 'confidence'
+database   ::= 'ownership' | 'borrow' | 'lifetime' | 'type_safety'
+             | 'concurrency' | 'ffi' | 'custom' | 'all'
+conditions ::= condition ('AND' condition)*
+condition  ::= field_cond | pattern_cond | context_cond
+field_cond ::= field op value
+op         ::= '=' | '!=' | '<' | '>' | '<=' | '>=' | 'LIKE' | 'IN'
+pattern_cond ::= 'PATTERN' '=' pattern_expr
+context_cond ::= 'CONTEXT' '=' context_expr
+
+pattern_expr ::= pattern_name '(' args ')'
+context_expr ::= '{' key ':' value (',' key ':' value)* '}'
+scope      ::= 'function' '(' name ')' | 'module' '(' path ')' | 'crate' | 'global'
+```
+
+#### 15.3.2 Query Examples
+
+```sql
+-- Find all rules about mutable borrows in loop contexts
+SELECT id, severity, fix_template
+FROM borrow
+WHERE PATTERN = MutableBorrow(target_type: "Vec<*>")
+  AND CONTEXT = { location: "inside_loop" }
+
+-- Match ownership patterns for a specific function
+MATCH UseAfterMove(var: AnyVar, move_site: AnySite, use_site: AnySite)
+IN function("process_data")
+
+-- Validate a code fragment against concurrency rules
+VALIDATE {
+    v shared = Arc.new(Mutex.new(data));
+    v handle = spawn(|| shared.lock.process);
+    shared.lock.process;  -- potential data race?
+} AGAINST concurrency
+
+-- Count how many lifetime rules apply to self-referential structs
+COUNT SelfReferential(struct_type: AnyType)
+IN crate
+
+-- Find all rules with auto-fix confidence > 0.9
+SELECT id, fix_template, fix_confidence
+FROM all
+WHERE fix_confidence > 0.9
+  AND severity = 'Error'
+
+-- Compact agent-optimized query (abbreviated form)
+?borrow MutBorrow(Vec<*>) @loop  -- equivalent to first example above
+```
+
+#### 15.3.3 Query Response Format
+
+```
+QueryResult {
+    query_id:    QueryId,
+    timestamp:   Timestamp,
+    rules:       Vec<MatchedRule>,
+    total_count: u64,
+    truncated:   bool,           // true if result set was capped
+    eval_time:   Duration,       // query evaluation time
+}
+
+MatchedRule {
+    rule:        Rule,           // full rule record
+    match_info:  MatchInfo,      // where/how the pattern matched
+    relevance:   f64,            // 0.0–1.0 relevance score
+}
+
+MatchInfo {
+    matched_nodes: Vec<MIRNodeId>,  // which MIR nodes matched
+    bindings:      HashMap<String, Value>,  // pattern variable bindings
+    context:       ContextSnapshot, // captured context at match site
+}
+```
+
+### 15.4 Indexing Strategy
+
+The SKB uses a **dual-index architecture** for sub-millisecond queries:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    SKB Index Layer                        │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  ┌──────────────────────┐  ┌──────────────────────────┐ │
+│  │ Pattern Trie Index   │  │ Context Bloom Filter     │ │
+│  │                      │  │                          │ │
+│  │ Root                 │  │ Per-database bloom filter │ │
+│  │ ├─ UseAfterMove      │  │ with context keys:       │ │
+│  │ │  ├─ var:Vec        │  │                          │ │
+│  │ │  ├─ var:String     │  │ inside_loop: bloom[0]    │ │
+│  │ │  └─ var:*          │  │ cross_thread: bloom[1]   │ │
+│  │ ├─ MutableBorrow     │  │ async_context: bloom[2]  │ │
+│  │ │  ├─ Vec<T>         │  │ ffi_boundary: bloom[3]   │ │
+│  │ │  ├─ HashMap<K,V>   │  │ unsafe_block: bloom[4]   │ │
+│  │ │  └─ *              │  │ generic_fn: bloom[5]     │ │
+│  │ ├─ DataRace          │  │ closure: bloom[6]        │ │
+│  │ │  └─ ...            │  │ trait_impl: bloom[7]     │ │
+│  │ └─ ...               │  │                          │ │
+│  └──────────────────────┘  └──────────────────────────┘ │
+│                                                          │
+│  ┌──────────────────────┐  ┌──────────────────────────┐ │
+│  │ Severity Index       │  │ Tag Inverted Index       │ │
+│  │                      │  │                          │ │
+│  │ Error:   [rule_ids]  │  │ "iterator":  [rule_ids]  │ │
+│  │ Warning: [rule_ids]  │  │ "allocator": [rule_ids]  │ │
+│  │ Info:    [rule_ids]  │  │ "closure":   [rule_ids]  │ │
+│  │ Hint:    [rule_ids]  │  │ "async":     [rule_ids]  │ │
+│  └──────────────────────┘  └──────────────────────────┘ │
+│                                                          │
+│  Query path: Pattern Trie → Bloom Filter → Full Scan    │
+│  Average: O(log R) where R = rules in matched category  │
+│  Worst case: O(R) with full scan fallback                │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 15.5 Rule Lifecycle
+
+```
+┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+│ Proposed │ ──→ │ Staged   │ ──→ │ Active   │ ──→ │Deprecated│
+└──────────┘     └──────────┘     └──────────┘     └──────────┘
+     │                │                │                │
+     │ Validation:    │ Testing:       │ Monitoring:    │ Retirement:
+     │ - Schema check │ - False pos    │ - Usage freq   │ - Grace period
+     │ - No conflicts │   rate < 5%    │ - False pos    │ - Migration
+     │ - Pattern OK   │ - Perf impact  │   tracking     │   to successor
+     │                │   < 1ms/query  │ - Fix accuracy │ - Tombstone
+     ▼                ▼                ▼                ▼
+   Rejected        Reverted         Updated          Removed
+   (with reason)   (with metrics)   (new version)    (after grace)
+```
+
+**Rule versioning** follows semantic versioning:
+- **Patch** (1.0.x): Fix description, update false positive rate
+- **Minor** (1.x.0): Add alternative fixes, expand pattern coverage
+- **Major** (x.0.0): Change pattern matching behavior (breaking)
+
+Major version bumps require all dependent rules to be re-validated.
+
+### 15.6 Database Statistics and Performance Targets
+
+| Database     | Rules | Avg Query Time | P99 Query Time | Index Size | Update Freq |
+| ------------ | ----- | -------------- | -------------- | ---------- | ----------- |
+| Ownership    | 2,847 | 0.02 ms        | 0.15 ms        | 4.2 MB     | Monthly     |
+| Borrow       | 1,203 | 0.01 ms        | 0.08 ms        | 1.8 MB     | Monthly     |
+| Lifetime     | 894   | 0.01 ms        | 0.06 ms        | 1.3 MB     | Quarterly   |
+| Type Safety  | 3,412 | 0.03 ms        | 0.20 ms        | 5.1 MB     | Monthly     |
+| Concurrency  | 567   | 0.008 ms       | 0.05 ms        | 0.9 MB     | Quarterly   |
+| FFI          | 234   | 0.005 ms       | 0.03 ms        | 0.4 MB     | As needed   |
+| **Total**    | **9,157** | **0.02 ms** | **0.20 ms**    | **13.7 MB** |             |
+
+### 15.7 SKB Distribution Protocol
+
+The SKB is distributed to agents as a **versioned, content-addressed artifact**:
+
+```
+skb-v1.4.2.rdxdb          -- binary database file
+skb-v1.4.2.rdxdb.sig      -- Ed25519 signature
+skb-v1.4.2.rdxdb.manifest -- rule inventory (JSON)
+
+Manifest:
+{
+  "version": "1.4.2",
+  "databases": {
+    "ownership": { "rules": 2847, "hash": "sha256:abc123..." },
+    "borrow":    { "rules": 1203, "hash": "sha256:def456..." },
+    ...
+  },
+  "total_rules": 9157,
+  "min_compiler_version": "0.3.0",
+  "signature_key": "ed25519:pub_key_here"
+}
+
+// Delta updates — only download changed rules
+skb-delta-v1.4.1-to-v1.4.2.rdxpatch
+```
+
+---
+
+## 16. Deep Dive: Swarm Bus Wire Protocol Specification
+
+Section 7.6 defines the `SwarmMessage` enum at the semantic level. This section specifies the **binary wire format**, **frame layout**, **serialization protocol**, **flow control**, and **connection lifecycle** for the swarm communication bus.
+
+### 16.1 Wire Format Overview
+
+The swarm bus uses a **length-prefixed, zero-copy binary protocol** optimized for sub-microsecond latency on shared-memory transports and low overhead on network transports.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    Swarm Bus Frame                        │
+├────────┬────────┬────────┬───────────────────────────────┤
+│ Header │ Routing│ Payload│ Checksum                      │
+│ 16 B   │ 24 B   │ var    │ 4 B                           │
+└────────┴────────┴────────┴───────────────────────────────┘
+```
+
+### 16.2 Frame Header (16 bytes)
+
+```
+Offset  Size  Field            Description
+──────  ────  ──────────────── ─────────────────────────────────
+0       4     magic            0x52445853 ("RDXS" — Redox Swarm)
+4       1     version          Protocol version (current: 0x01)
+5       1     flags            Bit flags (see below)
+6       2     message_type     SwarmMessage discriminant (u16)
+8       4     payload_length   Payload size in bytes (u32, max 4 GiB)
+12      4     sequence_number  Monotonic sequence per sender (u32)
+
+Flags (bit field):
+  bit 0: compressed       (1 = LZ4-compressed payload)
+  bit 1: encrypted        (1 = ChaCha20-Poly1305 encrypted)
+  bit 2: requires_ack     (1 = sender expects acknowledgment)
+  bit 3: priority         (1 = high priority, skip normal queue)
+  bit 4: fragmented       (1 = this is a fragment of a larger message)
+  bit 5: last_fragment    (1 = this is the last fragment)
+  bit 6-7: reserved
+```
+
+### 16.3 Routing Header (24 bytes)
+
+```
+Offset  Size  Field            Description
+──────  ────  ──────────────── ─────────────────────────────────
+0       8     sender_id        Agent ID (u64, globally unique)
+8       8     receiver_id      Target agent ID (0 = broadcast)
+16      4     channel_id       Logical channel (u32)
+20      2     hop_count        TTL for multi-hop routing (u16)
+22      2     correlation_id   Links request/response pairs (u16)
+```
+
+### 16.4 Message Type Registry
+
+```
+Type ID   SwarmMessage Variant      Category        Ack Required
+───────   ─────────────────────     ──────────────  ────────────
+0x0001    TaskAssignment            Coordination    Yes
+0x0002    TaskCompleted             Coordination    Yes
+0x0003    TaskFailed                Coordination    Yes
+0x0010    ProposeChange             Consensus       Yes
+0x0011    VoteOnChange              Consensus       Yes
+0x0012    ChangeAccepted            Consensus       No (broadcast)
+0x0020    QueryRequest              Query           Yes
+0x0021    QueryResponse             Query           No
+0x0030    ConflictDetected          Conflict        Yes
+0x0031    ConflictResolution        Conflict        Yes
+0x0040    DiscoveredPattern         Knowledge       No
+0x0041    SharedInsight             Knowledge       No
+0x0050    Heartbeat                 Health          No
+0x0051    LeaseRequest              Lease           Yes
+0x0052    LeaseGranted              Lease           No
+0x0053    LeaseRevoked              Lease           Yes
+0x00F0    Ack                       Control         No
+0x00F1    Nack                      Control         No
+0x00F2    FlowControl               Control         No
+0x00FF    Ping                      Control         Yes (Pong)
+0xFE00-   Custom (agent-defined)    Extension       Configurable
+0xFEFF
+```
+
+### 16.5 Payload Serialization
+
+Payloads use a **FlatBuffers-inspired zero-copy format** with a Redox-specific schema:
+
+```
+Payload Layout:
+┌─────────┬──────────────────────────────────────────┐
+│ VTable  │ Data                                      │
+│ (var)   │ (var, aligned to 8 bytes)                 │
+└─────────┴──────────────────────────────────────────┘
+
+VTable:
+┌───────┬───────┬────────┬────────────────────────────┐
+│ nflds │ dsize │ off[0] │ off[1] ... off[nflds-1]    │
+│ u16   │ u16   │ u16    │ u16 each                   │
+└───────┴───────┴────────┴────────────────────────────┘
+
+  nflds:  number of fields
+  dsize:  total data section size
+  off[i]: byte offset of field i within the data section
+          (0xFFFF = field not present / null)
+
+Data Section:
+  - Scalars: stored inline, naturally aligned
+  - Strings: u32 length prefix + UTF-8 bytes + null terminator
+  - Vectors: u32 count + elements (each aligned)
+  - Nested: recursive VTable + Data (offset stored as u32 pointer)
+  - Enums:  u16 discriminant + variant payload
+```
+
+#### 16.5.1 Example: TaskAssignment Serialization
+
+```
+TaskAssignment {
+    region: SemanticRegion,        // field 0: nested
+    constraints: Vec<Constraint>,  // field 1: vector of nested
+}
+
+Binary (hex, little-endian):
+  VTable:  02 00  28 00  04 00  1C 00
+           │       │      │      │
+           nflds=2 dsize  off[0] off[1]
+
+  Data:
+  [off 0x04] SemanticRegion VTable + Data (nested)
+  [off 0x1C] 03 00 00 00   -- Vec length = 3
+             Constraint[0] VTable + Data
+             Constraint[1] VTable + Data
+             Constraint[2] VTable + Data
+  [pad to 8-byte alignment]
+```
+
+### 16.6 Transport Layers
+
+The wire protocol is transport-agnostic. Three transports are specified:
+
+#### 16.6.1 Shared Memory (Local Swarm)
+
+```
+Shared Memory Ring Buffer:
+┌──────────────────────────────────────────────────────┐
+│ Control Block (cache-line aligned, 64 bytes)          │
+│ ┌──────────┬──────────┬──────────┬─────────────────┐ │
+│ │ write_idx│ read_idx │ capacity │ flags            │ │
+│ │ AtomicU64│ AtomicU64│ u64      │ AtomicU64        │ │
+│ └──────────┴──────────┴──────────┴─────────────────┘ │
+├──────────────────────────────────────────────────────┤
+│ Ring Buffer (2^N slots, each slot = max_frame_size)   │
+│ ┌──────┬──────┬──────┬──────┬─────────────────────┐  │
+│ │Slot 0│Slot 1│Slot 2│ ...  │ Slot 2^N - 1        │  │
+│ └──────┴──────┴──────┴──────┴─────────────────────┘  │
+└──────────────────────────────────────────────────────┘
+
+Write path (lock-free):
+  1. Atomically increment write_idx (CAS)
+  2. Copy frame into slot[write_idx % capacity]
+  3. Memory fence (release)
+  4. Mark slot as ready (store-release on slot header)
+
+Read path (lock-free):
+  1. Spin on slot[read_idx % capacity] ready flag
+  2. Read frame from slot (zero-copy: return pointer)
+  3. Memory fence (acquire)
+  4. Atomically increment read_idx
+
+Latency: < 100 ns per message (single producer, single consumer)
+Throughput: > 10 million messages/second
+```
+
+#### 16.6.2 Unix Domain Socket (Local Network)
+
+```
+Connection: SOCK_SEQPACKET (message boundaries preserved)
+Framing: Length-prefixed (4-byte big-endian length + frame bytes)
+Latency: ~1 μs per message
+Throughput: > 1 million messages/second
+```
+
+#### 16.6.3 TCP/TLS (Remote Swarm)
+
+```
+Connection: TCP with optional TLS 1.3 (ChaCha20-Poly1305)
+Framing: Same length-prefixed format
+Keepalive: Ping/Pong every 5 seconds
+Reconnect: Exponential backoff (100ms, 200ms, 400ms, ..., 30s cap)
+Latency: Network RTT + ~10 μs protocol overhead
+Throughput: Bounded by network bandwidth
+```
+
+### 16.7 Flow Control
+
+Credit-based flow control prevents fast producers from overwhelming slow consumers:
+
+```
+Flow Control Protocol:
+  1. On connection, receiver grants initial credits (e.g., 256)
+  2. Each message sent consumes 1 credit
+  3. When credits reach 0, sender blocks (or buffers, per config)
+  4. Receiver periodically sends FlowControl messages to replenish:
+
+     FlowControl {
+         credits_granted: u32,  // new credits to add
+         backpressure: f32,     // 0.0 = idle, 1.0 = overloaded
+         queue_depth: u32,      // receiver's current queue depth
+     }
+
+  5. Sender adapts rate based on backpressure signal:
+     - backpressure < 0.5: send at full rate
+     - backpressure 0.5–0.8: reduce rate by 50%
+     - backpressure > 0.8: send only high-priority messages
+
+High-priority messages (flag bit 3) bypass flow control entirely.
+```
+
+### 16.8 Connection Lifecycle
+
+```
+┌───────────┐                              ┌───────────┐
+│  Agent A  │                              │  Agent B  │
+└─────┬─────┘                              └─────┬─────┘
+      │                                          │
+      │── Connect(agent_id, capabilities) ──────→│
+      │                                          │
+      │←── Accepted(initial_credits, config) ────│
+      │                                          │
+      │══ Data Phase (full-duplex) ══════════════│
+      │── Frame(seq=1, TaskAssignment) ─────────→│
+      │←── Ack(seq=1) ──────────────────────────│
+      │←── Frame(seq=1, TaskCompleted) ─────────│
+      │── Ack(seq=1) ──────────────────────────→│
+      │                                          │
+      │── Ping ─────────────────────────────────→│
+      │←── Pong ────────────────────────────────│
+      │                                          │
+      │←── FlowControl(credits=128) ───────────│
+      │                                          │
+      │═════════════════════════════════════════│
+      │                                          │
+      │── Disconnect(reason) ───────────────────→│
+      │←── DisconnectAck ──────────────────────│
+      │                                          │
+```
+
+### 16.9 Error Handling
+
+| Error Code | Name                  | Recovery                          |
+| ---------- | --------------------- | --------------------------------- |
+| 0x01       | InvalidMagic          | Close connection                  |
+| 0x02       | VersionMismatch       | Negotiate down or close           |
+| 0x03       | PayloadTooLarge       | Reject with Nack, suggest fragment|
+| 0x04       | ChecksumMismatch      | Request retransmit                |
+| 0x05       | UnknownMessageType    | Skip with Nack(unsupported)       |
+| 0x06       | SequenceGap           | Request retransmit of missing seq |
+| 0x07       | DecryptionFailed      | Close connection (security)       |
+| 0x08       | DecompressionFailed   | Request retransmit uncompressed   |
+| 0x09       | CapabilityDenied      | Nack with required capabilities   |
+| 0x0A       | CreditExhausted       | Wait for FlowControl replenish    |
+
+### 16.10 Checksum
+
+The frame checksum is **CRC-32C** (Castagnoli) computed over the entire frame excluding the checksum field itself. CRC-32C is chosen for its hardware acceleration support on x86 (`crc32` instruction) and ARM (`crc32c` instruction), enabling zero-overhead integrity verification.
+
+```
+Checksum computation:
+  crc = CRC32C(header[0..16] || routing[0..24] || payload[0..payload_length])
+  frame[total_length - 4 .. total_length] = crc.to_le_bytes()
+
+Verification:
+  expected = CRC32C(frame[0 .. total_length - 4])
+  actual   = u32::from_le_bytes(frame[total_length - 4 .. total_length])
+  valid    = expected == actual
+```
 
 ---
 
