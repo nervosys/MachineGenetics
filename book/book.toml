@@ -1,0 +1,16 @@
+[book]
+title = "The Redox Programming Language"
+authors = ["The Redox Project"]
+description = "A comprehensive guide to the Redox agentic-first programming language"
+language = "en"
+src = "src"
+
+[build]
+build-dir = "build"
+create-missing = false
+
+[output.html]
+default-theme = "navy"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/nervosys/Redox"
+edit-url-template = "https://github.com/nervosys/Redox/edit/master/book/{path}"
