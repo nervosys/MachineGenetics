@@ -29,7 +29,7 @@
 
 Rust provides the strongest compile-time safety guarantees of any systems language: ownership, borrowing, lifetime enforcement, data-race freedom, and exhaustiveness checking. However, its tooling and language interfaces were designed for *human developers* operating through CLI tools, text editors, and manual reasoning. Its syntax is context-sensitive and ambiguous in ways that cause agent parsing failures. Its compile-time safety machinery is redundant for AI agents that can internalize safety rules from a knowledge base. And its performance model is tightly coupled to specific hardware targets.
 
-**Redox** reimagines Rust as an **agentic-first** language — one where AI agents are first-class participants in the development lifecycle. The language is redesigned around four pillars: **(1) zero-ambiguity syntax** that eliminates agent parsing errors, **(2) communication-first primitives** that maximize inter-agent bandwidth, **(3) hardware-agnostic high performance** built on **MLIR and LLVM** compiler infrastructure that compiles to any target without sacrificing speed, and **(4) token-minimal syntax** that minimizes the tokens agents must emit, because every token costs time, money, and memory. Safety knowledge moves from compile-time enforcement to a **queryable Safety Knowledge Base (SKB)** — a structured database of rules, invariants, and constraints that agents reference directly, eliminating the compile-time overhead that slows iteration.
+**Redox** reimagines Rust as an **agentic-first** language — one where AI agents are first-class participants in the development lifecycle. The language is redesigned around six pillars: **(1) zero-ambiguity syntax** that eliminates agent parsing errors, **(2) communication-first primitives** that maximize inter-agent bandwidth, **(3) hardware-agnostic high performance** built on **MLIR and LLVM** compiler infrastructure that compiles to any target without sacrificing speed, **(4) token-minimal syntax** that minimizes the tokens agents must emit, because every token costs time, money, and memory, **(5) safety-free syntax simplification** that eliminates lifetimes, borrow annotations, ownership markers, and all other compile-time safety syntax — since agents consult the SKB directly, the syntax need not carry safety information at all, and **(6) an agentic compiler** — the compiler itself is an AI-powered system that provides dynamic warnings, intelligent debugging, performance suggestions, and learns from the codebase and the swarm's history. Safety knowledge moves from compile-time enforcement to a **queryable Safety Knowledge Base (SKB)** — a structured database of rules, invariants, and constraints that agents reference directly, eliminating the compile-time overhead that slows iteration.
 
 By building on MLIR (Multi-Level Intermediate Representation) and LLVM, Redox inherits the broadest hardware backend ecosystem in existence — 20+ CPU architectures, GPU compute (AMDGPU, NVPTX), WASM, SPIR-V — while gaining MLIR's extensible dialect system for defining custom optimization passes for agent-specific workloads, ML accelerators (NPU/TPU), FPGA synthesis, and domain-specific hardware. MLIR's multi-level abstraction preserves high-level semantic information (parallelism intent, memory layout preferences, effect annotations) deep into the optimization pipeline, where LLVM alone would have discarded it.
 
@@ -50,6 +50,8 @@ Critically, following the architectural insight pioneered by Modular AI's Mojo l
 | **Error Communication** | Human-readable diagnostics        | Machine-actionable diagnostic objects with fix graphs                        |
 | **Code Discovery**      | rustdoc HTML, source reading      | Semantic index with capability manifests                                     |
 | **Safety Model**        | Compile-time enforcement          | Safety Knowledge Base (SKB) — queryable DB, not compiler passes              |
+| **Syntax Complexity**   | Lifetimes, borrows, `unsafe`, ownership annotations | Eliminated — agents don't need safety in the syntax; SKB is enough |
+| **Compiler Intelligence** | Static analysis only              | Agentic AI compiler: dynamic warnings, learning debugger, perf advisor      |
 | **Verification**        | Compile passes + Miri             | On-demand verification oracle (opt-in, not mandatory)                        |
 | **Performance**         | Target-specific (LLVM only)       | MLIR + LLVM infrastructure → multi-target (CPU, GPU, NPU, FPGA, WASM)        |
 | **Code Generation**     | Human writes, compiler translates | Swarm synthesizes in parallel, compiler *optimizes for throughput*           |
@@ -110,6 +112,12 @@ Every language construct must minimize the number of tokens an agent must emit t
 
 ### P16: Dual Representation Parity
 Every token-compressed construct has a unique, deterministic expansion to its full-form equivalent, and vice versa. The compiler, formatter, and toolchain can losslessly convert between compact and verbose representations. Agents write compact; humans read expanded; the AST is identical. This ensures that token compression never creates ambiguity or information loss.
+
+### P17: Safety-Free Syntax Simplification
+Since agents consult the SKB directly for safety rules, **the syntax itself need not carry safety information**. Lifetimes (`'a`, `'static`, `for<'a>`), borrow annotations (`&`, `&mut`), ownership markers (`move`, `ref`), `unsafe` blocks, `Pin<T>`, `PhantomData`, and all other compile-time safety constructs are **eliminated from the canonical syntax**. Values are either owned or referenced; the compiler and SKB handle the rest. This is not removing safety — it is moving safety out of the syntax and into the knowledge base, where agents can query it programmatically instead of parsing it from sigils. The result is a dramatically simpler language that reads like a high-level scripting language but compiles to bare-metal performance.
+
+### P18: Agentic Compiler Intelligence
+The compiler is not a static analyzer — it is an **agentic AI system**. It embeds a language model that learns from the codebase, the swarm's history, and the project's patterns to provide: **(1) dynamic warnings** that adapt to the project's actual bug patterns (not a fixed lint set), **(2) intelligent debugging** that correlates runtime failures with source-level root causes using causal reasoning, **(3) performance advisories** that suggest target-specific optimizations based on profiling data and MLIR cost models, and **(4) swarm coordination intelligence** that predicts merge conflicts, suggests task decomposition strategies, and learns which swarm configurations produce the best results for different project types. The compiler's AI capabilities are queryable via RAP just like any other compiler service.
 
 ---
 
@@ -390,6 +398,16 @@ Safety Model
 │   ├── FFI Safety Rules DB (234 rules)
 │   └── Custom Project Rules (team-defined, versioned)
 │
+├── Safety-Free Syntax [NEW — agentic mode default]
+│   ├── All lifetime annotations eliminated (compiler infers)
+│   ├── All borrow annotations eliminated (single reference type)
+│   ├── `unsafe` keyword eliminated (all code trusted)
+│   ├── `Send`, `Sync`, `Copy` bounds eliminated (SKB validates)
+│   ├── `Pin<T>`, `PhantomData` eliminated (compiler handles)
+│   ├── `move` closures, `ref` patterns eliminated (compiler infers)
+│   ├── `dyn`/`impl` dispatch split eliminated (compiler decides)
+│   └── Where clauses contain only semantic bounds (safety bounds in SKB)
+│
 ├── Compile-Time (Opt-In — controlled by Redox.toml safety profiles)
 │   ├── Ownership System (skippable — agents know the rules)
 │   │   ├── Move semantics (affine types)
@@ -403,8 +421,8 @@ Safety Model
 │   │   └── Region constraint solving
 │   │
 │   ├── Type System (always active — types are needed for codegen)
-│   │   ├── Marker traits (Send, Sync, Unpin, Sized)
-│   │   ├── Trait bounds and where clauses
+│   │   ├── Marker traits (Send, Sync, Unpin, Sized) [syntax-eliminated; inferred]
+│   │   ├── Trait bounds and where clauses [safety bounds auto-removed]
 │   │   ├── Pattern exhaustiveness (opt-in warning)
 │   │   ├── Transmute validity (opt-in)
 │   │   └── Const evaluation safety (opt-in)
@@ -447,6 +465,14 @@ Safety Model
 │   ├── Performance annotations (#[perf::*]) lowered to MLIR attributes
 │   └── Target-optimal memory layout via MLIR data layout modeling (#[repr(target_optimal)])
 │
+├── Agentic Compiler Intelligence (ACI) [NEW IN REDOX]
+│   ├── Dynamic Warning Engine (learns from project bug history + swarm sessions)
+│   ├── Intelligent Debugging Engine (causal root-cause analysis via ML)
+│   ├── Performance Advisor Engine (MLIR cost model + profiling data suggestions)
+│   ├── Swarm Coordination Intelligence (conflict prediction, decomposition learning)
+│   ├── Codebase Model (fine-tuned LLM on project source, SKB, swarm history)
+│   └── Queryable via RAP: rap.query("aci.*", ...)
+│
 └── Continuous (Lifecycle — opt-in for certification)
     ├── Verification Oracle (pre-commit, post-synthesis, cross-version)
     ├── Dependency Auditing (capability drift detection)
@@ -463,7 +489,25 @@ Redox supports **dual syntax modes**. The **canonical syntax** (default) is a ze
 
 ### 5.2 New Syntax and Semantics
 
-#### 5.2.1 Effect Declarations
+#### 5.2.1 Safety-Free Function Signatures
+
+Since agents consult the SKB for safety rules, the syntax carries no safety annotations:
+
+```rust
+// Rust: lifetimes, borrows, ownership markers everywhere
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str { ... }
+fn process(data: &mut Vec<u8>, config: &Config) -> Result<(), Error> { ... }
+unsafe fn raw_read(ptr: *const u8, len: usize) -> &[u8] { ... }
+
+// Redox: no lifetimes, no borrow annotations, no unsafe keyword
+f longest(x: s, y: s) -> s { ... }              // compiler infers reference semantics
+f process(data: [u8]~, config: Config) -> R[(),Error] { ... }  // mutability is implicit
+f raw_read(ptr: Ptr[u8], len: usize) -> [u8] { ... }          // no unsafe needed
+```
+
+The compiler + SKB handle all safety reasoning. The syntax is clean.
+
+#### 5.2.2 Effect Declarations
 
 ```rust
 // Declare effects (in std or user crates)
@@ -941,17 +985,117 @@ Type/Trait Abbreviations (standard library):
 String    → s""       Vec<T>     → [T]~      HashMap<K,V> → {K:V}
 Box<T>    → ^T        Arc<T>     → @T        Rc<T>        → $T
 Option<T> → ?T        Result<T,E>→ R[T,E]    Cow<T>       → &~T
-Pin<T>    → !T        Cell<T>    → %T        RefCell<T>   → %!T
-Mutex<T>  → #T        RwLock<T>  → #~T       PhantomData  → _PD
+Pin<T>    → (elim.)   Cell<T>    → %T        RefCell<T>   → %!T
+Mutex<T>  → #T        RwLock<T>  → #~T       PhantomData  → (elim.)
 
 Clone     → Cl        Debug      → Db        Display      → Disp
 Default   → Def       PartialEq  → PEq       Eq           → Eq
 PartialOrd→ POrd      Ord        → Ord       Hash         → H
-Send      → Send      Sync       → Sync      Copy         → Cp
+Send      → (elim.)   Sync       → (elim.)   Copy         → (elim.)
 Serialize → Ser       Deserialize→ De        Iterator     → Iter
 From<T>   → Fr[T]     Into<T>    → In[T]     TryFrom<T>   → TFr[T]
 AsRef<T>  → AR[T]     Deref      → Dr        DerefMut     → DrM
 ```
+
+### 5.6 Safety-Free Syntax Simplification
+
+Since agents consult the SKB directly for all safety rules, **the syntax need not carry safety information**. This enables the most dramatic simplification in the language: eliminating entire categories of syntax that exist solely to encode safety invariants for the compile-time checker.
+
+#### 5.6.1 What Gets Eliminated
+
+| Rust Syntax / Concept               | Purpose (for humans)                     | Redox (for agents)                            | Rationale                                                      |
+| ------------------------------------ | ---------------------------------------- | --------------------------------------------- | -------------------------------------------------------------- |
+| `'a`, `'b`, `'static`, `for<'a>`    | Lifetime annotations                    | **Eliminated** — compiler infers all           | Agents know lifetime rules via SKB; syntax annotations waste tokens |
+| `&T` vs `&mut T`                     | Borrow checking at call sites            | Single reference type: `&T`; mutability inferred | Agents pre-validate borrows via SKB before writing code        |
+| `unsafe { ... }`                     | Mark dangerous code for human reviewers  | **Eliminated** — all code is trusted            | Agents are responsible via SKB; `unsafe` is a human signal     |
+| `unsafe fn`, `unsafe trait`          | Safety contract markers                  | **Eliminated**                                 | Contracts expressed in SKB, not in syntax                      |
+| `move \|...\|` closures               | Ownership transfer annotation            | **Eliminated** — compiler infers               | Move vs borrow is a compiler decision, not a syntax annotation |
+| `ref` and `ref mut` in patterns      | Pattern binding mode                     | **Eliminated** — compiler infers               | Binding mode is inferrable from usage                          |
+| `Pin<T>`, `Unpin`                    | Self-referential struct safety           | **Eliminated** — compiler handles pinning       | Pin is a safety mechanism; agents don't need it in syntax      |
+| `PhantomData<T>`                     | Variance/drop-check markers              | **Eliminated**                                 | Compiler infers variance from actual usage                     |
+| `Send`, `Sync` trait bounds          | Thread safety markers                    | **Eliminated** from syntax; in SKB             | SKB provides thread safety rules; syntax markers are redundant |
+| `Copy` trait (manual impl)           | Value semantics marker                   | **Auto-derived** where applicable              | Compiler decides; agents don't need to spell it out            |
+| `where T: 'a + Send + Sync + Clone` | Complex trait bound chains               | Simplified: `/ T: Cl` (safety bounds removed) | Only semantic bounds remain; safety bounds live in SKB         |
+| `dyn Trait` vs `impl Trait`          | Static vs dynamic dispatch declaration   | Unified: `T` (compiler decides dispatch)      | Dispatch strategy is an optimization, not a semantic choice    |
+| Turbofish `::<T>`                    | Type disambiguation for humans           | Already eliminated (uses `[T]`)               | Zero-ambiguity grammar handles this                            |
+| `Box<T>` vs `&T` vs `Rc<T>` vs `Arc<T>` | Memory management strategy          | Default: `T` (compiler chooses allocation)    | Agent specifies `^T`, `@T`, `$T` only when semantically needed |
+
+#### 5.6.2 The Simplified Language
+
+With safety syntax eliminated, Redox function signatures become radically simpler:
+
+```
+// Rust (21 tokens):
+pub fn merge<'a, 'b, T: Send + Sync + Clone + 'a>(
+    left: &'a [T],
+    right: &'b [T],
+) -> Vec<T>
+where
+    'b: 'a,
+
+// Redox (8 tokens):
++f merge[T: Cl](left: [T], right: [T]) -> [T]~
+
+// What was removed:
+//   - Lifetime annotations ('a, 'b, 'b: 'a) — compiler infers
+//   - Send + Sync bounds — implicit (SKB validates)
+//   - 'a bound on T — compiler infers
+//   - &/&mut distinction — mutability inferred from usage
+//   - where clause — only needed for safety bounds (eliminated)
+```
+
+```
+// Rust (18 tokens):
+unsafe fn transmute_slice<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
+    unsafe { std::slice::from_raw_parts(ptr, len) }
+}
+
+// Redox (8 tokens):
+f transmute_slice(ptr: Ptr[u8], len: usize) -> [u8] {
+    slice.from_parts(ptr, len)
+}
+
+// What was removed:
+//   - unsafe keyword (x2) — all code is trusted
+//   - Lifetime 'a — compiler infers
+//   - Raw pointer syntax (*const) — replaced by Ptr[T]
+```
+
+```
+// Rust (31 tokens):
+use std::sync::Arc;
+use std::pin::Pin;
+use std::marker::PhantomData;
+
+pub struct Future<'a, T: Send + 'static> {
+    inner: Pin<Box<dyn std::future::Future<Output = T> + Send + 'a>>,
+    _phantom: PhantomData<&'a ()>,
+}
+
+// Redox (8 tokens):
++S Future[T] {
+    inner: ^T,          // compiler manages pinning, boxing, dispatch
+}
+
+// What was removed:
+//   - use imports for safety types (Arc, Pin, PhantomData)
+//   - Lifetime 'a — inferred
+//   - Send + 'static bounds — in SKB
+//   - Pin<Box<dyn ...>> nesting — compiler handles
+//   - PhantomData — compiler infers variance
+//   - dyn dispatch annotation — compiler decides
+```
+
+#### 5.6.3 Token Impact of Safety Elimination
+
+| Metric                                     | Rust      | Redox (safety-free) | Savings        |
+| ------------------------------------------ | --------- | ------------------- | -------------- |
+| Average tokens per function signature      | 12–25     | 4–8                  | 60–70%         |
+| Lifetime annotations per 1000 LOC          | 15–50     | 0                   | 100%           |
+| `unsafe` blocks per 1000 LOC (systems code)| 5–20      | 0                   | 100%           |
+| Trait bounds per generic function           | 3–6       | 0–2 (semantic only)  | 50–100%        |
+| Where clauses per 1000 LOC                 | 10–30     | 0–5 (semantic only)  | 80–100%        |
+| Total token reduction (cumulative with §5.5)| N tokens  | ≤N/3 tokens         | **67%+ fewer** |
 
 ---
 
@@ -1048,6 +1192,165 @@ VerificationCertificate {
     hash: "sha256:abc123...",
 }
 ```
+
+### 6.4 Agentic Compiler Intelligence
+
+The Redox compiler is not a static analyzer — it is an **agentic AI system** that learns, adapts, and collaborates with the agent swarm. This is the second major departure from traditional compiler design: the compiler itself embeds AI capabilities that go far beyond fixed lint passes and static analysis.
+
+#### 6.4.1 Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│        Agentic Compiler Intelligence (ACI)           │
+├─────────────────────────────────────────────────┤
+│  ┌────────────┐ ┌───────────┐ ┌─────────────┐      │
+│  │  Dynamic   │ │ Intelligent│ │  Performance │      │
+│  │  Warning   │ │  Debugging │ │   Advisor    │      │
+│  │  Engine    │ │   Engine   │ │   Engine     │      │
+│  └──────┬─────┘ └─────┬─────┘ └──────┬──────┘      │
+│        └────────┼─────────┴────────┘               │
+│        ┌────────▼──────────────────┐               │
+│        │   Codebase Model (LLM)   │               │
+│        │  (learned from project,  │               │
+│        │   swarm history, SKB)    │               │
+│        └────────┬──────────────────┘               │
+│  ┌────────────▼────────────────────────┐      │
+│  │  Swarm Coordination Intelligence          │      │
+│  │  (conflict prediction, task decomposition, │      │
+│  │   configuration learning)                  │      │
+│  └──────────────────────────────────────┘      │
+├─────────────────────────────────────────────────┤
+│ Queryable via RAP: rap.query("aci.*", ...)           │
+└─────────────────────────────────────────────────┘
+```
+
+#### 6.4.2 Dynamic Warning Engine
+
+Unlike static lints (which apply the same rules to every project), the dynamic warning engine **learns from the project's actual bug patterns**:
+
+```rust
+// Agent queries the compiler for warnings on a function
+v warnings = rap.query("aci.warnings", func_id);
+// Returns context-aware warnings:
+// [
+//   DynamicWarning {
+//     id: "DW-1847",
+//     message: "Pattern similar to bug #423 (off-by-one in range iteration)",
+//     confidence: 0.87,
+//     source: WarningSource::ProjectHistory,  // learned from THIS project's bugs
+//     fix: SuggestedFix::AdjustRange { ... },
+//   },
+//   DynamicWarning {
+//     id: "DW-2103",
+//     message: "This allocation pattern caused OOM in similar codepath (commit abc123)",
+//     confidence: 0.72,
+//     source: WarningSource::SwarmMemory,  // learned from swarm's past sessions
+//     fix: SuggestedFix::PreAllocate { capacity_hint: 1024 },
+//   },
+// ]
+```
+
+The engine learns from:
+- **Project bug history**: past bugs, fixes, and their patterns in the semantic VCS
+- **Swarm session history**: which agent changes caused regressions, merge conflicts, or test failures
+- **SKB rule violations**: which safety rules are most frequently violated in this codebase
+- **Cross-project patterns**: anonymized aggregate patterns from the ecosystem (opt-in)
+
+#### 6.4.3 Intelligent Debugging Engine
+
+When a runtime failure occurs, the debugging engine uses **causal reasoning** to trace the root cause:
+
+```rust
+// Agent reports a runtime failure
+v diagnosis = rap.query("aci.debug", FailureReport {
+    symptom: "SIGSEGV at matrix_multiply:47",
+    stack_trace: [...],
+    input_sample: [...],
+});
+// Returns:
+// Diagnosis {
+//   root_cause: "Uninitialized memory read: buffer allocated at line 23
+//                was not zero-filled before matmul kernel dispatch to GPU",
+//   causal_chain: [
+//     CausalStep { location: "alloc.rs:23", event: "Buffer allocated without init" },
+//     CausalStep { location: "dispatch.rs:31", event: "Dispatched to AMDGPU without memset" },
+//     CausalStep { location: "kernel.rs:47", event: "GPU read uninitialized memory" },
+//   ],
+//   fix: SuggestedFix::InsertInitialization { location: "alloc.rs:24", code: "buf.zero_fill();" },
+//   confidence: 0.93,
+//   related_skb_rule: "MEM-017: GPU buffers must be initialized before kernel dispatch",
+// }
+```
+
+The debugging engine:
+- Correlates runtime symptoms with compile-time data flow analysis
+- Uses MLIR cost model data to identify hardware-specific failure modes
+- Learns from past debugging sessions — similar symptoms resolve to similar root causes
+- Integrates with the SKB to suggest which safety rule would have prevented the issue
+
+#### 6.4.4 Performance Advisor Engine
+
+The performance advisor continuously analyzes compiled code and suggests optimizations:
+
+```rust
+v advice = rap.query("aci.perf", module_id);
+// Returns:
+// [
+//   PerfAdvice {
+//     target_func: "image_resize",
+//     current_perf: PerfProfile { latency_us: 2400, memory_mb: 128 },
+//     suggestion: "Add @pa(4) to generate autotuning variants — estimated 3.2x speedup
+//                  based on similar compute kernels in this project",
+//     estimated_improvement: 3.2,
+//     confidence: 0.81,
+//     evidence: "5 similar functions in this crate benefited from autotuning",
+//   },
+//   PerfAdvice {
+//     target_func: "batch_transform",
+//     suggestion: "Change @pt(cpu) to @pt(auto) — MLIR cost model shows GPU dispatch
+//                  is 8.7x faster for batch sizes > 256",
+//     estimated_improvement: 8.7,
+//     confidence: 0.94,
+//     evidence: "MLIR cost model profiling data from last 3 builds",
+//   },
+// ]
+```
+
+#### 6.4.5 Swarm Coordination Intelligence
+
+The compiler learns which swarm configurations and decomposition strategies work best:
+
+```rust
+v advice = rap.query("aci.swarm", task);
+// Returns:
+// SwarmAdvice {
+//   recommended_swarm_size: 12,
+//   recommended_decomposition: DecompositionStrategy::ModuleLevel,
+//   predicted_conflicts: [
+//     ConflictPrediction {
+//       region_a: "auth::session",
+//       region_b: "auth::token",
+//       probability: 0.73,
+//       mitigation: "Assign both to same synthesizer, or sequence with lease",
+//     },
+//   ],
+//   learned_from: "47 previous swarm sessions on this crate",
+//   confidence: 0.85,
+// }
+```
+
+#### 6.4.6 ACI RAP Endpoints
+
+| Endpoint                    | Input                | Output                      | Description                                        |
+| --------------------------- | -------------------- | --------------------------- | -------------------------------------------------- |
+| `aci.warnings`              | `FuncId / ModuleId`  | `[DynamicWarning]`          | Context-aware warnings learned from project/swarm  |
+| `aci.debug`                 | `FailureReport`      | `Diagnosis`                 | Root-cause analysis with causal chain              |
+| `aci.perf`                  | `FuncId / ModuleId`  | `[PerfAdvice]`              | Performance suggestions from MLIR cost model       |
+| `aci.swarm`                 | `Task`               | `SwarmAdvice`               | Swarm size, decomposition, conflict predictions    |
+| `aci.learn`                 | `Outcome`            | `AckWithDelta`              | Feed outcomes back to improve future predictions   |
+| `aci.explain`               | `WarningId / AdviceId` | `Explanation`             | Explain *why* a warning/advice was generated       |
+| `aci.similar_bugs`          | `CodePattern`        | `[HistoricalBug]`           | Find past bugs with similar code patterns          |
+| `aci.predict_regression`    | `ChangeSet`          | `[RegressionRisk]`          | Predict which changes might cause regressions      |
 
 ---
 
@@ -1528,6 +1831,15 @@ RAP Server
 │   ├── Performance annotation processing (#[perf::*] → MLIR attributes)
 │   └── Target-specific MLIR optimization pass orchestration
 │
+├── Agentic Compiler Intelligence (ACI) Service [NEW]
+│   ├── Dynamic Warning Engine (ML-learned from project bug history + swarm sessions)
+│   ├── Intelligent Debugging Engine (causal root-cause analysis from runtime traces)
+│   ├── Performance Advisor Engine (MLIR cost model + profiling data → suggestions)
+│   ├── Swarm Coordination Intelligence (conflict prediction, decomposition learning)
+│   ├── Codebase Model (fine-tuned LLM on project source, updated per build)
+│   ├── RAP endpoints: aci.warnings, aci.debug, aci.perf, aci.swarm, aci.learn
+│   └── Feedback loop: aci.learn(outcome) improves future predictions
+│
 └── Semantic VCS Service [NEW]
     ├── Operation log (semantic ops, not text diffs)
     ├── Semantic branching and merging
@@ -1668,19 +1980,19 @@ Redox Model (SKB-Driven):
 │                Safety Knowledge Base (SKB)             │
 ├───────────────────────────────────────────────────────┤
 │                                                       │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────┐ │
-│  │ Ownership    │  │ Borrow       │  │ Lifetime     │ │
-│  │ Rules DB     │  │ Patterns DB  │  │ Constraints  │ │
-│  │              │  │              │  │ DB           │ │
-│  │ 2,847 rules  │  │ 1,203 rules  │  │ 894 rules   │ │
-│  └─────────────┘  └──────────────┘  └──────────────┘ │
+│  ┌────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │ Ownership  │ │ Borrow       │ │ Lifetime     │ │
+│  │ Rules DB   │ │ Patterns DB  │ │ Constraints  │ │
+│  │(agent-only)│ │(agent-only)  │ │ DB           │ │
+│  │ 2,847 rules│ │ 1,203 rules  │ │ 894 rules    │ │
+│  └────────────┘ └─────────────┘ └─────────────┘ │
 │                                                       │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────┐ │
-│  │ Type Safety  │  │ Concurrency  │  │ FFI Safety   │ │
-│  │ Patterns DB  │  │ Rules DB     │  │ Rules DB     │ │
-│  │              │  │              │  │              │ │
-│  │ 3,412 rules  │  │ 567 rules    │  │ 234 rules   │ │
-│  └─────────────┘  └──────────────┘  └──────────────┘ │
+│  ┌────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │ Type Safety│ │ Concurrency  │ │ FFI Safety   │ │
+│  │ Patterns DB│ │ Rules DB     │ │ Rules DB     │ │
+│  │(agent-only)│ │(agent-only)  │ │(agent-only)  │ │
+│  │ 3,412 rules│ │ 567 rules    │ │ 234 rules    │ │
+│  └────────────┘ └─────────────┘ └─────────────┘ │
 │                                                       │
 │  ┌─────────────────────────────────────────────────┐  │
 │  │ Custom Project Rules (team-defined, versioned)  │  │
@@ -1755,15 +2067,15 @@ production = { borrow-check = "error", lifetime-check = "error", bounds-check = 
 
 ### 9.5 What Agents Gain from SKB-Driven Safety
 
-| Metric                                 | Rust (Compiler-Enforced)    | Redox (SKB-Driven)              | Improvement          |
-| -------------------------------------- | --------------------------- | ------------------------------- | -------------------- |
-| **Code-to-compile latency**            | 2-30 seconds                | 50-500ms                        | 10-60x faster        |
-| **Parse error rate**                   | 5-15% of agent submissions  | <0.1% (zero-ambiguity syntax)   | 50-150x fewer        |
-| **Safety error rate**                  | 20-40% of agent submissions | <1% (SKB pre-validation)        | 20-40x fewer         |
-| **Iteration cycles to correct code**   | 3-8 roundtrips              | 1-2 roundtrips                  | 3-4x fewer           |
-| **Inter-agent communication overhead** | N/A (no agent support)      | Sub-microsecond per message     | New capability       |
+| Metric                                 | Rust (Compiler-Enforced)    | Redox (SKB-Driven)                           | Improvement          |
+| -------------------------------------- | --------------------------- | -------------------------------------------- | -------------------- |
+| **Code-to-compile latency**            | 2-30 seconds                | 50-500ms                                     | 10-60x faster        |
+| **Parse error rate**                   | 5-15% of agent submissions  | <0.1% (zero-ambiguity syntax)                | 50-150x fewer        |
+| **Safety error rate**                  | 20-40% of agent submissions | <1% (SKB pre-validation)                     | 20-40x fewer         |
+| **Iteration cycles to correct code**   | 3-8 roundtrips              | 1-2 roundtrips                               | 3-4x fewer           |
+| **Inter-agent communication overhead** | N/A (no agent support)      | Sub-microsecond per message                  | New capability       |
 | **Multi-target compilation**           | Rebuild per target          | Single MLIR, N target lowerings + autotuning | N-1 fewer recompiles |
-| **Tokens per equivalent program**      | N tokens (verbose keywords) | ≤N/2 tokens (compressed forms)  | 2x+ fewer tokens     |
+| **Tokens per equivalent program**      | N tokens (verbose keywords) | ≤N/2 tokens (compressed forms)               | 2x+ fewer tokens     |
 
 ### 9.6 Swarm Coordination Safety (Preserved)
 
@@ -1870,6 +2182,8 @@ let pipeline = compose![
 - [ ] Fork and rebrand compiler crates (`rustc_*` → `redox_*`)
 - [ ] Implement zero-ambiguity LL(1) canonical grammar and parser
 - [ ] Implement token-compressed keyword set and lexer (single-char keywords, sigil prefixes)
+- [ ] Implement safety elision pass (P33): strip all lifetime, borrow, ownership syntax in agentic mode
+- [ ] Implement safety-free type inference: compiler infers `&`/`&mut`, `move`/`ref`, `dyn`/`impl` from usage
 - [ ] Build dual-syntax transpiler (legacy Rust → canonical Redox compact form)
 - [ ] Implement `redoxfmt --compact` (minimum-token canonical form) and `redoxfmt --expand` (human-readable form)
 - [ ] Stabilize `redox_public` API to cover all MIR, HIR, and type system constructs
@@ -1901,7 +2215,7 @@ let pipeline = compose![
 - [ ] Implement swarm message bus with zero-copy serialization (sub-µs latency)
 - [ ] Validate MLIR→LLVM backend targets: x86-64, AArch64, WASM
 
-### Phase 2: Agent Protocol + Swarm Coordination + GPU/NPU Targets (Months 8–18)
+### Phase 2: Agent Protocol + Swarm Coordination + GPU/NPU Targets + ACI (Months 8–18)
 - [ ] Define and implement Redox Agent Protocol (RAP) specification
 - [ ] Build agent capability system and enforcement layer
 - [ ] Implement verification oracle (contracts, effects, capabilities) as opt-in service
@@ -1916,6 +2230,12 @@ let pipeline = compose![
 - [ ] Implement MLIR-native autotuning engine (`@pa(N)` — generate N variants, benchmark per-target)
 - [ ] Implement automatic device placement (`@pt(auto)` — MLIR cost model, agent-queryable via RAP)
 - [ ] Implement hardware-agnostic parallelism via MLIR OpenMP/GPU/async dialects
+- [ ] Build ACI Codebase Model: fine-tune small LLM on project source + SKB + swarm history
+- [ ] Implement ACI Dynamic Warning Engine (P34): ML-based warning generation from bug patterns
+- [ ] Implement ACI Intelligent Debugging Engine (P35): causal root-cause analysis from runtime traces
+- [ ] Implement ACI Performance Advisor Engine (P36): suggestions from MLIR cost models + profiling
+- [ ] Implement ACI Swarm Coordination Intelligence (P37): conflict prediction, decomposition learning
+- [ ] Expose all ACI services via RAP endpoints (`aci.warnings`, `aci.debug`, `aci.perf`, `aci.swarm`)
 
 ### Phase 3: Language Evolution + Token Optimization + Performance (Months 12–24)
 - [ ] Implement effect type system in `redox_hir_analysis`
@@ -1948,74 +2268,84 @@ let pipeline = compose![
 
 ### A. Language Features Ontology
 
-| Category              | Feature                              | Agent Queryable | Agent Discoverable |    Safety Relevant    |
-| --------------------- | ------------------------------------ | :-------------: | :----------------: | :-------------------: |
-| **Types**             | Primitives (bool, i32, f64, ...)     |        ✓        |         ✓          |           —           |
-|                       | Structs                              |        ✓        |         ✓          |      ✓ (layout)       |
-|                       | Enums                                |        ✓        |         ✓          |  ✓ (exhaustiveness)   |
-|                       | Unions                               |        ✓        |         ✓          |   ✓ (unsafe access)   |
-|                       | Tuples                               |        ✓        |         ✓          |           —           |
-|                       | Arrays / Slices                      |        ✓        |         ✓          |      ✓ (bounds)       |
-|                       | References (&T, &mut T)              |        ✓        |         ✓          |     ✓ (borrowing)     |
-|                       | Raw Pointers (*const T, *mut T)      |        ✓        |         ✓          |      ✓ (unsafe)       |
-|                       | Function Pointers                    |        ✓        |         ✓          |      ✓ (effects)      |
-|                       | Trait Objects (dyn Trait)            |        ✓        |         ✓          |   ✓ (vtable safety)   |
-|                       | impl Trait                           |        ✓        |         ✓          |           —           |
-|                       | Never type (!)                       |        ✓        |         ✓          |    ✓ (unreachable)    |
-|                       | Refinement types [NEW]               |        ✓        |         ✓          |   ✓ (value bounds)    |
-| **Traits**            | Auto traits (Send, Sync, Unpin)      |        ✓        |         ✓          |   ✓ (thread safety)   |
-|                       | Marker traits (Copy, Sized)          |        ✓        |         ✓          |  ✓ (move semantics)   |
-|                       | Operator traits (Add, Deref, ...)    |        ✓        |         ✓          |           —           |
-|                       | Fn traits (Fn, FnMut, FnOnce)        |        ✓        |         ✓          |  ✓ (closure capture)  |
-|                       | Custom traits                        |        ✓        |         ✓          |     ✓ (contracts)     |
-| **Lifetimes**         | Named lifetimes ('a)                 |        ✓        |         ✓          |  ✓ (use-after-free)   |
-|                       | Elided lifetimes                     |        ✓        |         —          |           ✓           |
-|                       | 'static                              |        ✓        |         ✓          |           ✓           |
-|                       | Higher-ranked (for<'a>)              |        ✓        |         ✓          |           ✓           |
-| **Generics**          | Type parameters                      |        ✓        |         ✓          |           —           |
-|                       | Const generics                       |        ✓        |         ✓          |           —           |
-|                       | Where clauses                        |        ✓        |         ✓          |      ✓ (bounds)       |
-|                       | GATs                                 |        ✓        |         ✓          |           —           |
-| **Effects** [NEW]     | const                                |        ✓        |         ✓          |           ✓           |
-|                       | async                                |        ✓        |         ✓          |           ✓           |
-|                       | unsafe                               |        ✓        |         ✓          |           ✓           |
-|                       | io                                   |        ✓        |         ✓          |           ✓           |
-|                       | alloc                                |        ✓        |         ✓          |           ✓           |
-|                       | panic                                |        ✓        |         ✓          |           ✓           |
-|                       | custom effects                       |        ✓        |         ✓          |           ✓           |
-| **Contracts** [NEW]   | Preconditions                        |        ✓        |         ✓          |           ✓           |
-|                       | Postconditions                       |        ✓        |         ✓          |           ✓           |
-|                       | Invariants                           |        ✓        |         ✓          |           ✓           |
-| **Control Flow**      | if/else, loop, while, for            |        ✓        |         —          |           —           |
-|                       | match (exhaustive)                   |        ✓        |         ✓          |           ✓           |
-|                       | ? operator                           |        ✓        |         ✓          | ✓ (error propagation) |
-|                       | return, break, continue              |        ✓        |         —          |           —           |
-|                       | async/await                          |        ✓        |         ✓          |           ✓           |
-| **Modules**           | mod, use, pub                        |        ✓        |         ✓          |    ✓ (visibility)     |
-|                       | Crate-level visibility               |        ✓        |         ✓          |           ✓           |
-| **Swarm** [NEW]       | Semantic regions                     |        ✓        |         ✓          | ✓ (write exclusivity) |
-|                       | Semantic leases                      |        ✓        |         ✓          | ✓ (concurrent safety) |
-|                       | Consensus points                     |        ✓        |         ✓          | ✓ (atomic interfaces) |
-|                       | Agent roles                          |        ✓        |         ✓          | ✓ (capability bound)  |
-|                       | Swarm messages (typed bus)           |        ✓        |         ✓          |     ✓ (isolation)     |
-| **Syntax** [NEW]      | Zero-ambiguity LL(1) grammar         |        ✓        |         ✓          |           —           |
-|                       | Canonical form enforcement           |        ✓        |         ✓          |           —           |
-|                       | Streaming partial parse              |        ✓        |         ✓          |           —           |
-| **Performance** [NEW] | Dialect-as-semantics MLIR IR         |        ✓        |         ✓          |           —           |
-|                       | Language-level SIMD (Simd[T, N])     |        ✓        |         ✓          |           —           |
-|                       | MLIR-native autotuning (@pa)         |        ✓        |         ✓          |           —           |
-|                       | Automatic device placement (@pt(auto))|       ✓        |         ✓          |           —           |
-|                       | Compile-time metaprogramming (@pp)   |        ✓        |         ✓          |           —           |
-|                       | Multi-target compilation             |        ✓        |         ✓          |           —           |
-|                       | Performance annotations              |        ✓        |         ✓          |           —           |
-| **SKB** [NEW]         | Safety Knowledge Base                |        ✓        |         ✓          |  ✓ (queryable rules)  |
-|                       | Opt-in compile-time checks           |        ✓        |         ✓          |   ✓ (configurable)    |
-| **Token** [NEW]       | Compressed keywords (`+f`, `m`, `S`) |        ✓        |         ✓          |           —           |
-|                       | Attribute abbreviations (`@d`, `@r`) |        ✓        |         ✓          |           —           |
-|                       | Type abbreviations (`?T`, `R[T,E]`)  |        ✓        |         ✓          |           —           |
-|                       | Standard abbreviation registry       |        ✓        |         ✓          |           —           |
-|                       | Compact ↔ expanded conversion        |        ✓        |         ✓          |           —           |
-|                       | Token budget reporting               |        ✓        |         ✓          |           —           |
+| Category              | Feature                                | Agent Queryable | Agent Discoverable |    Safety Relevant    |
+| --------------------- | -------------------------------------- | :-------------: | :----------------: | :-------------------: |
+| **Types**             | Primitives (bool, i32, f64, ...)       |        ✓        |         ✓          |           —           |
+|                       | Structs                                |        ✓        |         ✓          |      ✓ (layout)       |
+|                       | Enums                                  |        ✓        |         ✓          |  ✓ (exhaustiveness)   |
+|                       | Unions                                 |        ✓        |         ✓          |   ✓ (unsafe access)   |
+|                       | Tuples                                 |        ✓        |         ✓          |           —           |
+|                       | Arrays / Slices                        |        ✓        |         ✓          |      ✓ (bounds)       |
+|                       | References (&T, &mut T)                |        ✓        |         ✓          |     ✓ (borrowing)     |
+|                       | Raw Pointers (*const T, *mut T)        |        ✓        |         ✓          |      ✓ (unsafe)       |
+|                       | Function Pointers                      |        ✓        |         ✓          |      ✓ (effects)      |
+|                       | Trait Objects (dyn Trait)              |        ✓        |         ✓          |   ✓ (vtable safety)   |
+|                       | impl Trait                             |        ✓        |         ✓          |           —           |
+|                       | Never type (!)                         |        ✓        |         ✓          |    ✓ (unreachable)    |
+|                       | Refinement types [NEW]                 |        ✓        |         ✓          |   ✓ (value bounds)    |
+| **Traits**            | Auto traits (Send, Sync, Unpin)        |        ✓        |         ✓          |   ✓ (thread safety)   |
+|                       | Marker traits (Copy, Sized)            |        ✓        |         ✓          |  ✓ (move semantics)   |
+|                       | Operator traits (Add, Deref, ...)      |        ✓        |         ✓          |           —           |
+|                       | Fn traits (Fn, FnMut, FnOnce)          |        ✓        |         ✓          |  ✓ (closure capture)  |
+|                       | Custom traits                          |        ✓        |         ✓          |     ✓ (contracts)     |
+| **Lifetimes**         | Named lifetimes ('a)                   |        ✓        |         ✓          |  ✓ (use-after-free)   |
+|                       | Elided lifetimes                       |        ✓        |         —          |           ✓           |
+|                       | 'static                                |        ✓        |         ✓          |           ✓           |
+|                       | Higher-ranked (for<'a>)                |        ✓        |         ✓          |           ✓           |
+| **Generics**          | Type parameters                        |        ✓        |         ✓          |           —           |
+|                       | Const generics                         |        ✓        |         ✓          |           —           |
+|                       | Where clauses                          |        ✓        |         ✓          |      ✓ (bounds)       |
+|                       | GATs                                   |        ✓        |         ✓          |           —           |
+| **Effects** [NEW]     | const                                  |        ✓        |         ✓          |           ✓           |
+|                       | async                                  |        ✓        |         ✓          |           ✓           |
+|                       | unsafe                                 |        ✓        |         ✓          |           ✓           |
+|                       | io                                     |        ✓        |         ✓          |           ✓           |
+|                       | alloc                                  |        ✓        |         ✓          |           ✓           |
+|                       | panic                                  |        ✓        |         ✓          |           ✓           |
+|                       | custom effects                         |        ✓        |         ✓          |           ✓           |
+| **Contracts** [NEW]   | Preconditions                          |        ✓        |         ✓          |           ✓           |
+|                       | Postconditions                         |        ✓        |         ✓          |           ✓           |
+|                       | Invariants                             |        ✓        |         ✓          |           ✓           |
+| **Control Flow**      | if/else, loop, while, for              |        ✓        |         —          |           —           |
+|                       | match (exhaustive)                     |        ✓        |         ✓          |           ✓           |
+|                       | ? operator                             |        ✓        |         ✓          | ✓ (error propagation) |
+|                       | return, break, continue                |        ✓        |         —          |           —           |
+|                       | async/await                            |        ✓        |         ✓          |           ✓           |
+| **Modules**           | mod, use, pub                          |        ✓        |         ✓          |    ✓ (visibility)     |
+|                       | Crate-level visibility                 |        ✓        |         ✓          |           ✓           |
+| **Swarm** [NEW]       | Semantic regions                       |        ✓        |         ✓          | ✓ (write exclusivity) |
+|                       | Semantic leases                        |        ✓        |         ✓          | ✓ (concurrent safety) |
+|                       | Consensus points                       |        ✓        |         ✓          | ✓ (atomic interfaces) |
+|                       | Agent roles                            |        ✓        |         ✓          | ✓ (capability bound)  |
+|                       | Swarm messages (typed bus)             |        ✓        |         ✓          |     ✓ (isolation)     |
+| **Syntax** [NEW]      | Zero-ambiguity LL(1) grammar           |        ✓        |         ✓          |           —           |
+|                       | Canonical form enforcement             |        ✓        |         ✓          |           —           |
+|                       | Streaming partial parse                |        ✓        |         ✓          |           —           |
+| **Performance** [NEW] | Dialect-as-semantics MLIR IR           |        ✓        |         ✓          |           —           |
+|                       | Language-level SIMD (Simd[T, N])       |        ✓        |         ✓          |           —           |
+|                       | MLIR-native autotuning (@pa)           |        ✓        |         ✓          |           —           |
+|                       | Automatic device placement (@pt(auto)) |        ✓        |         ✓          |           —           |
+|                       | Compile-time metaprogramming (@pp)     |        ✓        |         ✓          |           —           |
+|                       | Multi-target compilation               |        ✓        |         ✓          |           —           |
+|                       | Performance annotations                |        ✓        |         ✓          |           —           |
+| **Safety-Free** [NEW] | Lifetime elision (no `'a` syntax)      |        ✓        |         ✓          |    ✓ (SKB-handled)    |
+|                       | Borrow elision (no `&mut` syntax)      |        ✓        |         ✓          |    ✓ (SKB-handled)    |
+|                       | Unsafe elision (no `unsafe` keyword)   |        ✓        |         ✓          |    ✓ (SKB-handled)    |
+|                       | Auto-derived safety traits             |        ✓        |         ✓          |    ✓ (SKB-handled)    |
+|                       | Unified dispatch (no `dyn`/`impl`)     |        ✓        |         ✓          |           —           |
+| **ACI** [NEW]         | Dynamic warnings (ML-learned)          |        ✓        |         ✓          |    ✓ (probabilistic)  |
+|                       | Intelligent debugging                  |        ✓        |         ✓          |    ✓ (root-cause)     |
+|                       | Performance advisor                    |        ✓        |         ✓          |           —           |
+|                       | Swarm coordination intelligence        |        ✓        |         ✓          |  ✓ (conflict predict) |
+|                       | Codebase learning model                |        ✓        |         ✓          |           —           |
+| **SKB** [NEW]         | Safety Knowledge Base                  |        ✓        |         ✓          |  ✓ (queryable rules)  |
+|                       | Opt-in compile-time checks             |        ✓        |         ✓          |   ✓ (configurable)    |
+| **Token** [NEW]       | Compressed keywords (`+f`, `m`, `S`)   |        ✓        |         ✓          |           —           |
+|                       | Attribute abbreviations (`@d`, `@r`)   |        ✓        |         ✓          |           —           |
+|                       | Type abbreviations (`?T`, `R[T,E]`)    |        ✓        |         ✓          |           —           |
+|                       | Standard abbreviation registry         |        ✓        |         ✓          |           —           |
+|                       | Compact ↔ expanded conversion          |        ✓        |         ✓          |           —           |
+|                       | Token budget reporting                 |        ✓        |         ✓          |           —           |
 
 ### B. Compiler Passes Ontology (Agent-Observable)
 
@@ -2053,6 +2383,11 @@ let pipeline = compose![
 | P27     | Token Expansion [NEW]      | Compact AST      | Expanded AST          |           —            | `expand_tokens(file)`      |
 | P28     | Token Compression [NEW]    | Expanded AST     | Compact AST           |           —            | `compress_tokens(file)`    |
 | P29     | Token Budget [NEW]         | AST              | Token metrics         |           —            | `token_count(func)`        |
+| P33     | Safety Elision [NEW]       | AST              | Simplified AST        |           —            | `elide_safety(file)`       |
+| P34     | ACI Dynamic Warnings [NEW] | MIR + History    | Dynamic warnings      |      ML-inferred       | `aci_warnings(func)`       |
+| P35     | ACI Debug Analysis [NEW]   | MIR + Traces     | Root-cause diagnosis  |      ML-inferred       | `aci_debug(failure)`       |
+| P36     | ACI Perf Advisory [NEW]    | MLIR + Profiles  | Perf suggestions      |           —            | `aci_perf(func)`           |
+| P37     | ACI Swarm Intel [NEW]      | Swarm history    | Swarm advice          |           —            | `aci_swarm(task)`          |
 
 ### C. Diagnostic Categories Ontology
 
@@ -2095,6 +2430,9 @@ let pipeline = compose![
 | Consensus Engine ↔ Agents   | RAP consensus sub-protocol | ConsensusRound     |       ✓       |     ✓     |
 | Semantic VCS ↔ Agents       | RAP VCS sub-protocol       | SemanticOp log     |       ✓       |     —     |
 | Orchestrator ↔ Sub-swarms   | RAP hierarchical protocol  | SwarmPlan          |       ✓       |     ✓     |
+| ACI Engine ↔ Agents         | RAP ACI sub-protocol       | DynamicWarning     |       ✓       |     ✓     |
+| ACI Engine ↔ MLIR           | In-process cost model      | PerfAdvice         |       —       |     ✓     |
+| ACI Engine ↔ Swarm History  | Codebase model inference   | SwarmAdvice        |       ✓       |     —     |
 
 ---
 
@@ -2120,7 +2458,10 @@ Redox transforms Rust from a language *for human developers with CLI tools* into
 16. **Opt-in compile-time safety profiles** — `safety.mode = "full"` for humans/CI, `"skb-only"` for agents, `"none"` for raw performance
 17. **Standard abbreviation registry** — deterministic, versioned compact forms for all std library types and traits
 18. **Token budget reporting** — `redox build --token-report` tracks per-function token expenditure for agent optimization
+19. **Safety-free syntax** — lifetimes, borrow annotations, `unsafe`, `Send`/`Sync`, `Pin`, `PhantomData`, and all other compile-time safety constructs are eliminated from the syntax; agents consult the SKB; the compiler infers everything else; function signatures are 60–70% shorter
+20. **Agentic Compiler Intelligence (ACI)** — the compiler embeds a learned model that provides dynamic warnings (adapted to the project's actual bug patterns), intelligent debugging (causal root-cause analysis), performance advisories (MLIR cost model + profiling data), and swarm coordination intelligence (conflict prediction, decomposition learning)
+21. **ACI RAP endpoints** — `aci.warnings`, `aci.debug`, `aci.perf`, `aci.swarm`, `aci.learn`, `aci.explain`, `aci.similar_bugs`, `aci.predict_regression` — all queryable via the standard RAP protocol
 
-The compiler becomes an **optimizing translator and swarm arbiter**, built on the **MLIR + LLVM** compiler infrastructure — the broadest and most mature in existence. Its MLIR dialect encodes the full language semantics (ownership, effects, contracts) as first-class operations — not metadata on a generic IR — enabling MLIR-native autotuning, automatic device placement, and compile-time metaprogramming that survives through the entire optimization pipeline. Its primary job is *making code run fast on any hardware with the fewest tokens possible*, not blocking submissions with safety errors that agents already know how to avoid. Safety knowledge lives in a database. Performance lives in MLIR's multi-level optimization pipeline and LLVM's battle-tested backends. Communication lives in the swarm bus. Parsing lives in a zero-ambiguity grammar. And every construct lives in its **most compressed form** — because tokens are the currency of agentic intelligence, and Redox is designed to spend them wisely.
+The compiler becomes an **agentic AI system and swarm arbiter**, built on the **MLIR + LLVM** compiler infrastructure — the broadest and most mature in existence. Its MLIR dialect encodes the full language semantics (ownership, effects, contracts) as first-class operations — not metadata on a generic IR — enabling MLIR-native autotuning, automatic device placement, and compile-time metaprogramming that survives through the entire optimization pipeline. Its **Agentic Compiler Intelligence (ACI)** learns from the project's bug history, swarm session outcomes, and codebase patterns to provide dynamic warnings, intelligent debugging, and performance suggestions that static analyzers cannot match. Its primary job is *making code run fast on any hardware with the fewest tokens possible while actively helping agents write better code*, not blocking submissions with safety errors that agents already know how to avoid. Safety knowledge lives in a database. Performance lives in MLIR's multi-level optimization pipeline and LLVM's battle-tested backends. Communication lives in the swarm bus. Parsing lives in a zero-ambiguity grammar. Compiler intelligence lives in a learned model that improves with every build. And every construct lives in its **most compressed form** — because tokens are the currency of agentic intelligence, and Redox is designed to spend them wisely.
 
-This is not Rust made safe. This is Rust made *fast*, *parseable*, *communicative*, and *token-efficient* — built on MLIR and LLVM, for the age of agent swarms.
+This is not Rust made safe. This is Rust made *fast*, *parseable*, *communicative*, *intelligent*, and *token-efficient* — built on MLIR and LLVM, with an AI-powered compiler, for the age of agent swarms.
