@@ -29,13 +29,13 @@
 
 Rust provides the strongest compile-time safety guarantees of any systems language: ownership, borrowing, lifetime enforcement, data-race freedom, and exhaustiveness checking. However, its tooling and language interfaces were designed for *human developers* operating through CLI tools, text editors, and manual reasoning. Its syntax is context-sensitive and ambiguous in ways that cause agent parsing failures. Its compile-time safety machinery is redundant for AI agents that can internalize safety rules from a knowledge base. And its performance model is tightly coupled to specific hardware targets.
 
-**Redox** reimagines Rust as an **agentic-first** language — one where AI agents are first-class participants in the development lifecycle. The language is redesigned around three pillars: **(1) zero-ambiguity syntax** that eliminates agent parsing errors, **(2) communication-first primitives** that maximize inter-agent bandwidth, and **(3) hardware-agnostic high performance** that compiles to any target without sacrificing speed. Safety knowledge moves from compile-time enforcement to a **queryable Safety Knowledge Base (SKB)** — a structured database of rules, invariants, and constraints that agents reference directly, eliminating the compile-time overhead that slows iteration.
+**Redox** reimagines Rust as an **agentic-first** language — one where AI agents are first-class participants in the development lifecycle. The language is redesigned around four pillars: **(1) zero-ambiguity syntax** that eliminates agent parsing errors, **(2) communication-first primitives** that maximize inter-agent bandwidth, **(3) hardware-agnostic high performance** that compiles to any target without sacrificing speed, and **(4) token-minimal syntax** that minimizes the tokens agents must emit, because every token costs time, money, and memory. Safety knowledge moves from compile-time enforcement to a **queryable Safety Knowledge Base (SKB)** — a structured database of rules, invariants, and constraints that agents reference directly, eliminating the compile-time overhead that slows iteration.
 
 ### Core Thesis
 
-> A programming language designed for agent swarms must have **zero syntactic ambiguity**, **maximum inter-agent communication throughput**, and **hardware-agnostic performance**. The compiler is an **optimizing translator**, not a safety gatekeeper — safety rules live in a queryable knowledge base that agents consult directly, not in slow compile-time passes that duplicate what agents already know. The fundamental bottleneck in agentic software engineering is not correctness (agents can be trained on rules) but **parsing speed**, **communication bandwidth**, and **target-portable performance**.
+> A programming language designed for agent swarms must have **zero syntactic ambiguity**, **maximum inter-agent communication throughput**, **hardware-agnostic performance**, and **minimum token footprint**. The compiler is an **optimizing translator**, not a safety gatekeeper — safety rules live in a queryable knowledge base that agents consult directly, not in slow compile-time passes that duplicate what agents already know. The fundamental bottleneck in agentic software engineering is not correctness (agents can be trained on rules) but **parsing speed**, **communication bandwidth**, **target-portable performance**, and **token efficiency** — because every token an agent emits costs time, money, and memory.
 
-> The fundamental unit of agentic work is not the single agent but the **swarm** — a coordinated ensemble of specialized agents that decompose, parallelize, verify, and integrate changes across a codebase simultaneously. The language, compiler, and toolchain must be designed for this concurrent, collaborative reality from the ground up. Every syntax decision, every compiler pass, every protocol message must be evaluated against: *does this minimize parse errors? does this maximize communication? does this run fast everywhere?*
+> The fundamental unit of agentic work is not the single agent but the **swarm** — a coordinated ensemble of specialized agents that decompose, parallelize, verify, and integrate changes across a codebase simultaneously. The language, compiler, and toolchain must be designed for this concurrent, collaborative reality from the ground up. Every syntax decision, every compiler pass, every protocol message must be evaluated against: *does this minimize parse errors? does this maximize communication? does this run fast everywhere? does this minimize the tokens an agent must spend?*
 
 ### What Changes
 
@@ -53,6 +53,7 @@ Rust provides the strongest compile-time safety guarantees of any systems langua
 | **Collaboration**       | Git branches + PRs (sequential)   | CRDT-based concurrent edits with semantic merge and swarm consensus          |
 | **Work Distribution**   | Manual task assignment            | Compiler-guided task decomposition with dependency-aware parallel scheduling |
 | **Communication**       | None (single-developer model)     | Zero-copy typed message bus with sub-microsecond agent-to-agent latency      |
+| **Token Efficiency**    | Verbose keywords and syntax       | Token-minimal canonical forms: ≤50% token count vs. Rust for equivalent code |
 
 ---
 
@@ -99,6 +100,12 @@ Redox code compiles to a **portable performance IR** that targets any hardware: 
 
 ### P14: Database-Driven Safety
 Safety rules (ownership patterns, borrow violations, lifetime errors, type mismatches) are stored in a **Safety Knowledge Base (SKB)** — a structured, versioned, queryable database. Agents consult the SKB directly instead of waiting for compile-time error messages. The compiler can *optionally* enforce SKB rules at compile time (for human developers or CI pipelines), but this is a policy choice, not a language requirement. This eliminates the compile-time overhead tax that slows agentic iteration cycles from milliseconds to seconds.
+
+### P15: Token Economy
+Every language construct must minimize the number of tokens an agent must emit to express intent. Tokens cost time, money, and memory — they are the fundamental unit of agent resource consumption. Every keyword, attribute, delimiter, and syntactic form is designed for **minimum token footprint**: short keywords, compact operators, abbreviated attributes, and structural compression. Where Rust uses `pub fn`, Redox offers `+f`; where Rust uses `#[derive(Clone, Debug)]`, Redox offers `@d(Cl,Db)`. The **token-optimal syntax** is not a separate mode — it is the canonical form, designed so that agents express maximal semantic intent per token spent. Human-readable aliases remain available in legacy mode. The goal: any program expressible in N Rust tokens should be expressible in ≤ N/2 Redox tokens, with no loss of semantics.
+
+### P16: Dual Representation Parity
+Every token-compressed construct has a unique, deterministic expansion to its full-form equivalent, and vice versa. The compiler, formatter, and toolchain can losslessly convert between compact and verbose representations. Agents write compact; humans read expanded; the AST is identical. This ensures that token compression never creates ambiguity or information loss.
 
 ---
 
@@ -643,6 +650,219 @@ struct Particle {
 
 These annotations are **not safety checks** — they are performance directives. The compiler trusts the agent's intent and optimizes accordingly. If an agent marks `#[perf::no_bounds_check]` on an array access, the compiler elides the check. The agent is responsible for correctness (via SKB consultation), not the compiler.
 
+### 5.5 Token-Efficient Syntax: Minimizing Agent Cost
+
+Every token an agent emits costs **time** (inference latency), **money** (API billing), and **memory** (context window consumption). Redox's canonical syntax is designed to express maximum semantic intent per token. The goal: any program expressible in N Rust tokens should be expressible in ≤ N/2 Redox tokens with identical semantics.
+
+#### 5.5.1 Keyword Compression Table
+
+| Rust Keyword / Construct        | Tokens | Redox Compact Form | Tokens |      Savings      |
+| ------------------------------- | :----: | ------------------ | :----: | :---------------: |
+| `fn`                            |   1    | `f`                |   1    | 0 (already short) |
+| `pub fn`                        |   2    | `+f`               |   1    |        50%        |
+| `pub(crate) fn`                 |   5    | `~f`               |   1    |        80%        |
+| `pub struct`                    |   2    | `+S`               |   1    |        50%        |
+| `pub enum`                      |   2    | `+E`               |   1    |        50%        |
+| `struct`                        |   1    | `S`                |   1    |         0         |
+| `enum`                          |   1    | `E`                |   1    |         0         |
+| `impl`                          |   1    | `I`                |   1    |         0         |
+| `impl Trait for Type`           |   4    | `I Trait > Type`   |   4    |         0         |
+| `trait`                         |   1    | `T`                |   1    |         0         |
+| `pub trait`                     |   2    | `+T`               |   1    |        50%        |
+| `type`                          |   1    | `Y`                |   1    |         0         |
+| `const`                         |   1    | `C`                |   1    |         0         |
+| `static`                        |   1    | `Z`                |   1    |         0         |
+| `let`                           |   1    | `v`                |   1    |         0         |
+| `let mut`                       |   2    | `m`                |   1    |        50%        |
+| `return`                        |   1    | `^`                |   1    |         0         |
+| `match`                         |   1    | `?=`               |   1    |         0         |
+| `if let Some(x) = opt`          |   7    | `?opt => x`        |   3    |        57%        |
+| `while let Some(x) = iter`      |   8    | `@w ?iter => x`    |   4    |        50%        |
+| `for x in items`                |   4    | `@ x : items`      |   4    |         0         |
+| `loop`                          |   1    | `@@`               |   1    |         0         |
+| `break`                         |   1    | `!`                |   1    |         0         |
+| `continue`                      |   1    | `>>`               |   1    |         0         |
+| `async fn`                      |   2    | `af`               |   1    |        50%        |
+| `pub async fn`                  |   3    | `+af`              |   1    |        67%        |
+| `unsafe fn`                     |   2    | `uf`               |   1    |        50%        |
+| `unsafe { ... }`                |   3+   | `u{ ... }`         |   2+   |        33%        |
+| `where T: Clone + Debug`        |   6    | `/ T: Cl+Db`       |   4    |        33%        |
+| `-> Result<T, E>`               |   6    | `-> R[T,E]`        |   4    |        33%        |
+| `Option<T>`                     |   2    | `?T`               |   1    |        50%        |
+| `Vec<T>`                        |   2    | `[T]~`             |   2    |         0         |
+| `HashMap<K, V>`                 |   4    | `{K:V}`            |   3    |        25%        |
+| `Box<T>`                        |   2    | `^T`               |   1    |        50%        |
+| `Arc<T>`                        |   2    | `@T`               |   1    |        50%        |
+| `Rc<T>`                         |   2    | `$T`               |   1    |        50%        |
+| `&T`                            |   1    | `&T`               |   1    |         0         |
+| `&mut T`                        |   2    | `&!T`              |   1    |        50%        |
+| `String`                        |   1    | `s""`              |   1    |         0         |
+| `&str`                          |   1    | `&s`               |   1    |         0         |
+| `self`                          |   1    | `_`                |   1    |         0         |
+| `&self`                         |   1    | `&_`               |   1    |         0         |
+| `&mut self`                     |   2    | `&!_`              |   1    |        50%        |
+| `Self`                          |   1    | `_T`               |   1    |         0         |
+| `use std::collections::HashMap` |   5    | `u std.col.HM`     |   2    |        60%        |
+| `mod`                           |   1    | `M`                |   1    |         0         |
+| `pub mod`                       |   2    | `+M`               |   1    |        50%        |
+| `true` / `false`                |   1    | `1b` / `0b`        |   1    |         0         |
+| `.clone()`                      |   3    | `.cl`              |   1    |        67%        |
+| `.unwrap()`                     |   3    | `.!`               |   1    |        67%        |
+| `.expect("msg")`                |   4    | `.!"msg"`          |   2    |        50%        |
+| `.iter().map(f).collect()`      |   9    | `.>map(f).<<`      |   4    |        56%        |
+| `impl Iterator<Item = T>`       |   5    | `I Iter[=T]`       |   3    |        40%        |
+| `#[derive(Clone, Debug)]`       |   5    | `@d(Cl,Db)`        |   2    |        60%        |
+| `#[cfg(test)]`                  |   4    | `@cfg(t)`          |   2    |        50%        |
+| `#[allow(unused)]`              |   4    | `@a(un)`           |   2    |        50%        |
+| `#[inline(always)]`             |   4    | `@i!`              |   1    |        75%        |
+| `println!("x = {}", x)`         |   6    | `p"x = {x}"`       |   2    |        67%        |
+| `format!("x = {}", x)`          |   6    | `f"x = {x}"`       |   2    |        67%        |
+| `todo!()`                       |   2    | `??`               |   1    |        50%        |
+| `unimplemented!()`              |   2    | `???`              |   1    |        50%        |
+| `assert!(cond)`                 |   3    | `!cond`            |   1    |        67%        |
+| `assert_eq!(a, b)`              |   5    | `!==(a,b)`         |   3    |        40%        |
+
+#### 5.5.2 Attribute Compression
+
+Redox attributes use single-character prefixes and abbreviated names:
+
+```
+Rust                                    Redox Compact
+─────────────────────────────           ─────────────────────
+#[derive(Clone, Debug, PartialEq)]     @d(Cl,Db,PEq)
+#[repr(C)]                             @r(C)
+#[repr(transparent)]                   @r(t)
+#[must_use]                            @mu
+#[allow(dead_code)]                    @a(dc)
+#[deny(unsafe_code)]                   @x(uc)
+#[cfg(target_os = "linux")]            @cfg(os=lx)
+#[cfg(feature = "serde")]             @cfg(f=serde)
+#[test]                                @t
+#[bench]                               @b
+#[tokio::test]                         @ta
+#[serde(rename_all = "camelCase")]     @se(rn=cc)
+#[perf::inline(always)]               @pi!
+#[perf::no_bounds_check]              @pnb
+#[perf::vectorize(width = 8)]         @pv(8)
+#[perf::target(gpu)]                  @pt(gpu)
+#[agent::summary("...")]              @as("...")
+#[agent::category("...")]             @ac("...")
+```
+
+#### 5.5.3 Structural Compression Examples
+
+**Rust (37 tokens):**
+```rust
+pub fn process_items(items: &[Item], config: &Config) -> Result<Vec<Output>, Error> {
+    let mut results = Vec::new();
+    for item in items {
+        let output = item.transform(config)?;
+        results.push(output);
+    }
+    Ok(results)
+}
+```
+
+**Redox Compact (19 tokens):**
+```
++f process_items(items: &[Item], config: &Config) -> R[[Output]~, Error] {
+    m results = [Output]~.new;
+    @ item : items {
+        v output = item.transform(config)?;
+        results.push(output);
+    }
+    Ok(results)
+}
+```
+
+**Rust (54 tokens):**
+```rust
+#[derive(Clone, Debug)]
+pub struct User {
+    pub name: String,
+    pub email: String,
+    pub age: u32,
+}
+
+impl User {
+    pub fn new(name: String, email: String, age: u32) -> Self {
+        Self { name, email, age }
+    }
+
+    pub fn is_adult(&self) -> bool {
+        self.age >= 18
+    }
+}
+```
+
+**Redox Compact (30 tokens):**
+```
+@d(Cl,Db)
++S User {
+    +name: s"",
+    +email: s"",
+    +age: u32,
+}
+
+I User {
+    +f new(name: s"", email: s"", age: u32) -> _T {
+        _T { name, email, age }
+    }
+
+    +f is_adult(&_) -> bool {
+        _.age >= 18
+    }
+}
+```
+
+#### 5.5.4 Common Pattern Abbreviations
+
+High-frequency Rust patterns get dedicated compact forms:
+
+| Pattern                                              | Rust Tokens | Redox Compact        | Redox Tokens |
+| ---------------------------------------------------- | :---------: | -------------------- | :----------: |
+| Error propagation: `fn f() -> Result<T, E>`          |      7      | `f f() -> R[T,E]`    |      5       |
+| Option handling: `if let Some(v) = x { ... }`        |      9      | `?x => v { ... }`    |      4       |
+| Iterator chain: `.iter().filter(f).map(g).collect()` |     13      | `.>fil(f).map(g).<<` |      6       |
+| Match arm: `Pattern => expression,`                  |      3      | `P => expr,`         |      3       |
+| Closure: `\|x, y\| x + y`                            |      5      | `fn(x,y) => x+y`     |      5       |
+| Trait bound: `T: Display + Clone + Send`             |      6      | `T: Disp+Cl+Send`    |      4       |
+| Lifetime annotation: `&'a str`                       |      2      | `&`a s`              |      2       |
+| Turbofish: `collect::<Vec<_>>()`                     |      6      | `.<<[_T]~`           |      2       |
+| Impl block: `impl<T: Clone> Foo<T> { ... }`          |      7      | `I[T:Cl] Foo[T] {}`  |      5       |
+
+#### 5.5.5 Token Economy Guarantees
+
+The Redox compiler enforces these token economy properties:
+
+1. **No construct requires more tokens than its Rust equivalent** — every Redox form is ≤ the token count of the corresponding Rust form
+2. **High-frequency constructs get the shortest forms** — token length is inversely proportional to usage frequency across all known Rust codebases
+3. **`redoxfmt --compact`** produces the minimum-token canonical form; **`redoxfmt --expand`** produces the human-readable expanded form
+4. **Token budget reporting**: `redox build --token-report` emits per-function and per-module token counts, enabling agents to track and optimize their token expenditure
+5. **Standard abbreviation registry**: all compact forms are deterministic, documented, and version-stable — agents never need to guess abbreviations
+
+#### 5.5.6 Trait and Type Abbreviation Registry
+
+The standard library's most common types and traits have registered abbreviations:
+
+```
+Type/Trait Abbreviations (standard library):
+─────────────────────────────────────────────
+String    → s""       Vec<T>     → [T]~      HashMap<K,V> → {K:V}
+Box<T>    → ^T        Arc<T>     → @T        Rc<T>        → $T
+Option<T> → ?T        Result<T,E>→ R[T,E]    Cow<T>       → &~T
+Pin<T>    → !T        Cell<T>    → %T        RefCell<T>   → %!T
+Mutex<T>  → #T        RwLock<T>  → #~T       PhantomData  → _PD
+
+Clone     → Cl        Debug      → Db        Display      → Disp
+Default   → Def       PartialEq  → PEq       Eq           → Eq
+PartialOrd→ POrd      Ord        → Ord       Hash         → H
+Send      → Send      Sync       → Sync      Copy         → Cp
+Serialize → Ser       Deserialize→ De        Iterator     → Iter
+From<T>   → Fr[T]     Into<T>    → In[T]     TryFrom<T>   → TFr[T]
+AsRef<T>  → AR[T]     Deref      → Dr        DerefMut     → DrM
+```
+
 ---
 
 ## 6. Compiler Architecture for Agents
@@ -1168,6 +1388,10 @@ RAP Server
 │   └── Proof certificate emission
 │
 ├── Format Service (replaces rustfmt)
+│   ├── `--compact` mode: minimum-token canonical form for agents
+│   ├── `--expand` mode: human-readable verbose form
+│   ├── Bidirectional lossless conversion (compact ↔ expanded)
+│   ├── Token budget reporting per function/module
 │   └── Style-aware formatting with semantic preservation
 │
 ├── Lint Service (replaces clippy)
@@ -1437,6 +1661,7 @@ production = { borrow-check = "error", lifetime-check = "error", bounds-check = 
 | **Iteration cycles to correct code**   | 3-8 roundtrips              | 1-2 roundtrips                  | 3-4x fewer           |
 | **Inter-agent communication overhead** | N/A (no agent support)      | Sub-microsecond per message     | New capability       |
 | **Multi-target compilation**           | Rebuild per target          | Single PPIR, N target lowerings | N-1 fewer recompiles |
+| **Tokens per equivalent program**      | N tokens (verbose keywords) | ≤N/2 tokens (compressed forms)  | 2x+ fewer tokens     |
 
 ### 9.6 Swarm Coordination Safety (Preserved)
 
@@ -1542,13 +1767,16 @@ let pipeline = compose![
 ### Phase 0: Foundation (Months 1–6)
 - [ ] Fork and rebrand compiler crates (`rustc_*` → `redox_*`)
 - [ ] Implement zero-ambiguity LL(1) canonical grammar and parser
-- [ ] Build dual-syntax transpiler (legacy Rust → canonical Redox)
+- [ ] Implement token-compressed keyword set and lexer (single-char keywords, sigil prefixes)
+- [ ] Build dual-syntax transpiler (legacy Rust → canonical Redox compact form)
+- [ ] Implement `redoxfmt --compact` (minimum-token canonical form) and `redoxfmt --expand` (human-readable form)
 - [ ] Stabilize `redox_public` API to cover all MIR, HIR, and type system constructs
 - [ ] Implement Portable Performance IR (PPIR) layer between MIR and codegen
 - [ ] Implement Structured Diagnostics Protocol (JSON diagnostic graphs)
 - [ ] Externalize core queries as stable API (`redox_query`)
 - [ ] Establish CI/CD pipeline for the Redox compiler
 - [ ] Implement semantic region decomposition in compiler query system
+- [ ] Define standard abbreviation registry v1 (core types, traits, derives)
 
 ### Phase 1: SKB + Swarm Primitives + Multi-Target (Months 4–12)
 - [ ] Build Safety Knowledge Base (SKB) with initial rule corpus (ownership, borrowing, lifetimes, types)
@@ -1558,7 +1786,9 @@ let pipeline = compose![
 - [ ] Implement capability inference pass in MIR pipeline
 - [ ] Extend `redox_metadata` with capability manifest serialization
 - [ ] Build prototype RAP server (merging rust-analyzer + compiler queries)
-- [ ] Implement agent discovery attributes (`#[agent::*]`)
+- [ ] Implement agent discovery attributes in compact form (`@as`, `@ac`, `@ax`, `@ao`, `@ae`)
+- [ ] Implement attribute compression system (full `#[...]` → compact `@...` mapping)
+- [ ] Implement token budget reporting (`redox build --token-report`)
 - [ ] Implement semantic lease manager (shared read / exclusive write on code regions)
 - [ ] Build CRDT-based semantic merge engine for concurrent AST/HIR modifications
 - [ ] Implement swarm message bus with zero-copy serialization (sub-µs latency)
@@ -1577,14 +1807,16 @@ let pipeline = compose![
 - [ ] Implement PPIR backend targets: RISC-V, SPIR-V (GPU), PTX (NVIDIA GPU)
 - [ ] Implement hardware-agnostic SIMD and parallelism abstractions
 
-### Phase 3: Language Evolution + Performance (Months 12–24)
+### Phase 3: Language Evolution + Token Optimization + Performance (Months 12–24)
 - [ ] Implement effect type system in `redox_hir_analysis`
 - [ ] Implement contract syntax and checking in `redox_contracts`
 - [ ] Implement refinement types in type checker
 - [ ] Implement capability blocks in HIR lowering
-- [ ] Implement performance annotation system (`#[perf::*]`)
+- [ ] Implement compact performance annotations (`@pi!`, `@pnb`, `@pv(N)`, `@pt(target)`)
 - [ ] Implement `#[repr(target_optimal)]` per-target layout optimization
-- [ ] Define `redox-2026` edition with all new features
+- [ ] Conduct corpus-wide token frequency analysis on crates.io ecosystem for abbreviation optimization
+- [ ] Finalize standard abbreviation registry v2 (full ecosystem coverage, frequency-weighted)
+- [ ] Define `redox-2026` edition with all new features including token-compact canonical form
 - [ ] Build verification certificate emission pipeline (opt-in for safety-critical)
 - [ ] Implement swarm-of-swarms hierarchical orchestration for million-LOC+ codebases
 - [ ] Implement PPIR backend targets: NPU, FPGA (via HLS)
@@ -1605,65 +1837,71 @@ let pipeline = compose![
 
 ### A. Language Features Ontology
 
-| Category              | Feature                           | Agent Queryable | Agent Discoverable |    Safety Relevant    |
-| --------------------- | --------------------------------- | :-------------: | :----------------: | :-------------------: |
-| **Types**             | Primitives (bool, i32, f64, ...)  |        ✓        |         ✓          |           —           |
-|                       | Structs                           |        ✓        |         ✓          |      ✓ (layout)       |
-|                       | Enums                             |        ✓        |         ✓          |  ✓ (exhaustiveness)   |
-|                       | Unions                            |        ✓        |         ✓          |   ✓ (unsafe access)   |
-|                       | Tuples                            |        ✓        |         ✓          |           —           |
-|                       | Arrays / Slices                   |        ✓        |         ✓          |      ✓ (bounds)       |
-|                       | References (&T, &mut T)           |        ✓        |         ✓          |     ✓ (borrowing)     |
-|                       | Raw Pointers (*const T, *mut T)   |        ✓        |         ✓          |      ✓ (unsafe)       |
-|                       | Function Pointers                 |        ✓        |         ✓          |      ✓ (effects)      |
-|                       | Trait Objects (dyn Trait)         |        ✓        |         ✓          |   ✓ (vtable safety)   |
-|                       | impl Trait                        |        ✓        |         ✓          |           —           |
-|                       | Never type (!)                    |        ✓        |         ✓          |    ✓ (unreachable)    |
-|                       | Refinement types [NEW]            |        ✓        |         ✓          |   ✓ (value bounds)    |
-| **Traits**            | Auto traits (Send, Sync, Unpin)   |        ✓        |         ✓          |   ✓ (thread safety)   |
-|                       | Marker traits (Copy, Sized)       |        ✓        |         ✓          |  ✓ (move semantics)   |
-|                       | Operator traits (Add, Deref, ...) |        ✓        |         ✓          |           —           |
-|                       | Fn traits (Fn, FnMut, FnOnce)     |        ✓        |         ✓          |  ✓ (closure capture)  |
-|                       | Custom traits                     |        ✓        |         ✓          |     ✓ (contracts)     |
-| **Lifetimes**         | Named lifetimes ('a)              |        ✓        |         ✓          |  ✓ (use-after-free)   |
-|                       | Elided lifetimes                  |        ✓        |         —          |           ✓           |
-|                       | 'static                           |        ✓        |         ✓          |           ✓           |
-|                       | Higher-ranked (for<'a>)           |        ✓        |         ✓          |           ✓           |
-| **Generics**          | Type parameters                   |        ✓        |         ✓          |           —           |
-|                       | Const generics                    |        ✓        |         ✓          |           —           |
-|                       | Where clauses                     |        ✓        |         ✓          |      ✓ (bounds)       |
-|                       | GATs                              |        ✓        |         ✓          |           —           |
-| **Effects** [NEW]     | const                             |        ✓        |         ✓          |           ✓           |
-|                       | async                             |        ✓        |         ✓          |           ✓           |
-|                       | unsafe                            |        ✓        |         ✓          |           ✓           |
-|                       | io                                |        ✓        |         ✓          |           ✓           |
-|                       | alloc                             |        ✓        |         ✓          |           ✓           |
-|                       | panic                             |        ✓        |         ✓          |           ✓           |
-|                       | custom effects                    |        ✓        |         ✓          |           ✓           |
-| **Contracts** [NEW]   | Preconditions                     |        ✓        |         ✓          |           ✓           |
-|                       | Postconditions                    |        ✓        |         ✓          |           ✓           |
-|                       | Invariants                        |        ✓        |         ✓          |           ✓           |
-| **Control Flow**      | if/else, loop, while, for         |        ✓        |         —          |           —           |
-|                       | match (exhaustive)                |        ✓        |         ✓          |           ✓           |
-|                       | ? operator                        |        ✓        |         ✓          | ✓ (error propagation) |
-|                       | return, break, continue           |        ✓        |         —          |           —           |
-|                       | async/await                       |        ✓        |         ✓          |           ✓           |
-| **Modules**           | mod, use, pub                     |        ✓        |         ✓          |    ✓ (visibility)     |
-|                       | Crate-level visibility            |        ✓        |         ✓          |           ✓           |
-| **Swarm** [NEW]       | Semantic regions                  |        ✓        |         ✓          | ✓ (write exclusivity) |
-|                       | Semantic leases                   |        ✓        |         ✓          | ✓ (concurrent safety) |
-|                       | Consensus points                  |        ✓        |         ✓          | ✓ (atomic interfaces) |
-|                       | Agent roles                       |        ✓        |         ✓          | ✓ (capability bound)  |
-|                       | Swarm messages (typed bus)        |        ✓        |         ✓          |     ✓ (isolation)     |
-| **Syntax** [NEW]      | Zero-ambiguity LL(1) grammar      |        ✓        |         ✓          |           —           |
-|                       | Canonical form enforcement        |        ✓        |         ✓          |           —           |
-|                       | Streaming partial parse           |        ✓        |         ✓          |           —           |
-| **Performance** [NEW] | Hardware-agnostic PPIR            |        ✓        |         ✓          |           —           |
-|                       | Portable SIMD                     |        ✓        |         ✓          |           —           |
-|                       | Multi-target compilation          |        ✓        |         ✓          |           —           |
-|                       | Performance annotations           |        ✓        |         ✓          |           —           |
-| **SKB** [NEW]         | Safety Knowledge Base             |        ✓        |         ✓          |  ✓ (queryable rules)  |
-|                       | Opt-in compile-time checks        |        ✓        |         ✓          |   ✓ (configurable)    |
+| Category              | Feature                              | Agent Queryable | Agent Discoverable |    Safety Relevant    |
+| --------------------- | ------------------------------------ | :-------------: | :----------------: | :-------------------: |
+| **Types**             | Primitives (bool, i32, f64, ...)     |        ✓        |         ✓          |           —           |
+|                       | Structs                              |        ✓        |         ✓          |      ✓ (layout)       |
+|                       | Enums                                |        ✓        |         ✓          |  ✓ (exhaustiveness)   |
+|                       | Unions                               |        ✓        |         ✓          |   ✓ (unsafe access)   |
+|                       | Tuples                               |        ✓        |         ✓          |           —           |
+|                       | Arrays / Slices                      |        ✓        |         ✓          |      ✓ (bounds)       |
+|                       | References (&T, &mut T)              |        ✓        |         ✓          |     ✓ (borrowing)     |
+|                       | Raw Pointers (*const T, *mut T)      |        ✓        |         ✓          |      ✓ (unsafe)       |
+|                       | Function Pointers                    |        ✓        |         ✓          |      ✓ (effects)      |
+|                       | Trait Objects (dyn Trait)            |        ✓        |         ✓          |   ✓ (vtable safety)   |
+|                       | impl Trait                           |        ✓        |         ✓          |           —           |
+|                       | Never type (!)                       |        ✓        |         ✓          |    ✓ (unreachable)    |
+|                       | Refinement types [NEW]               |        ✓        |         ✓          |   ✓ (value bounds)    |
+| **Traits**            | Auto traits (Send, Sync, Unpin)      |        ✓        |         ✓          |   ✓ (thread safety)   |
+|                       | Marker traits (Copy, Sized)          |        ✓        |         ✓          |  ✓ (move semantics)   |
+|                       | Operator traits (Add, Deref, ...)    |        ✓        |         ✓          |           —           |
+|                       | Fn traits (Fn, FnMut, FnOnce)        |        ✓        |         ✓          |  ✓ (closure capture)  |
+|                       | Custom traits                        |        ✓        |         ✓          |     ✓ (contracts)     |
+| **Lifetimes**         | Named lifetimes ('a)                 |        ✓        |         ✓          |  ✓ (use-after-free)   |
+|                       | Elided lifetimes                     |        ✓        |         —          |           ✓           |
+|                       | 'static                              |        ✓        |         ✓          |           ✓           |
+|                       | Higher-ranked (for<'a>)              |        ✓        |         ✓          |           ✓           |
+| **Generics**          | Type parameters                      |        ✓        |         ✓          |           —           |
+|                       | Const generics                       |        ✓        |         ✓          |           —           |
+|                       | Where clauses                        |        ✓        |         ✓          |      ✓ (bounds)       |
+|                       | GATs                                 |        ✓        |         ✓          |           —           |
+| **Effects** [NEW]     | const                                |        ✓        |         ✓          |           ✓           |
+|                       | async                                |        ✓        |         ✓          |           ✓           |
+|                       | unsafe                               |        ✓        |         ✓          |           ✓           |
+|                       | io                                   |        ✓        |         ✓          |           ✓           |
+|                       | alloc                                |        ✓        |         ✓          |           ✓           |
+|                       | panic                                |        ✓        |         ✓          |           ✓           |
+|                       | custom effects                       |        ✓        |         ✓          |           ✓           |
+| **Contracts** [NEW]   | Preconditions                        |        ✓        |         ✓          |           ✓           |
+|                       | Postconditions                       |        ✓        |         ✓          |           ✓           |
+|                       | Invariants                           |        ✓        |         ✓          |           ✓           |
+| **Control Flow**      | if/else, loop, while, for            |        ✓        |         —          |           —           |
+|                       | match (exhaustive)                   |        ✓        |         ✓          |           ✓           |
+|                       | ? operator                           |        ✓        |         ✓          | ✓ (error propagation) |
+|                       | return, break, continue              |        ✓        |         —          |           —           |
+|                       | async/await                          |        ✓        |         ✓          |           ✓           |
+| **Modules**           | mod, use, pub                        |        ✓        |         ✓          |    ✓ (visibility)     |
+|                       | Crate-level visibility               |        ✓        |         ✓          |           ✓           |
+| **Swarm** [NEW]       | Semantic regions                     |        ✓        |         ✓          | ✓ (write exclusivity) |
+|                       | Semantic leases                      |        ✓        |         ✓          | ✓ (concurrent safety) |
+|                       | Consensus points                     |        ✓        |         ✓          | ✓ (atomic interfaces) |
+|                       | Agent roles                          |        ✓        |         ✓          | ✓ (capability bound)  |
+|                       | Swarm messages (typed bus)           |        ✓        |         ✓          |     ✓ (isolation)     |
+| **Syntax** [NEW]      | Zero-ambiguity LL(1) grammar         |        ✓        |         ✓          |           —           |
+|                       | Canonical form enforcement           |        ✓        |         ✓          |           —           |
+|                       | Streaming partial parse              |        ✓        |         ✓          |           —           |
+| **Performance** [NEW] | Hardware-agnostic PPIR               |        ✓        |         ✓          |           —           |
+|                       | Portable SIMD                        |        ✓        |         ✓          |           —           |
+|                       | Multi-target compilation             |        ✓        |         ✓          |           —           |
+|                       | Performance annotations              |        ✓        |         ✓          |           —           |
+| **SKB** [NEW]         | Safety Knowledge Base                |        ✓        |         ✓          |  ✓ (queryable rules)  |
+|                       | Opt-in compile-time checks           |        ✓        |         ✓          |   ✓ (configurable)    |
+| **Token** [NEW]       | Compressed keywords (`+f`, `m`, `S`) |        ✓        |         ✓          |           —           |
+|                       | Attribute abbreviations (`@d`, `@r`) |        ✓        |         ✓          |           —           |
+|                       | Type abbreviations (`?T`, `R[T,E]`)  |        ✓        |         ✓          |           —           |
+|                       | Standard abbreviation registry       |        ✓        |         ✓          |           —           |
+|                       | Compact ↔ expanded conversion        |        ✓        |         ✓          |           —           |
+|                       | Token budget reporting               |        ✓        |         ✓          |           —           |
 
 ### B. Compiler Passes Ontology (Agent-Observable)
 
@@ -1695,6 +1933,9 @@ let pipeline = compose![
 | P24     | PPIR Lowering [NEW]        | Optimized MIR    | PPIR             |           —            | `ppir_of(func)`            |
 | P25     | Target Dispatch [NEW]      | PPIR             | Target code      |           —            | `target_code_of(func)`     |
 | P26     | SKB Validation [NEW]       | Source + SKB     | Rule violations  |   Opt-in enforcement   | `skb_check(func)`          |
+| P27     | Token Expansion [NEW]      | Compact AST      | Expanded AST     |           —            | `expand_tokens(file)`      |
+| P28     | Token Compression [NEW]    | Expanded AST     | Compact AST      |           —            | `compress_tokens(file)`    |
+| P29     | Token Budget [NEW]         | AST              | Token metrics    |           —            | `token_count(func)`        |
 
 ### C. Diagnostic Categories Ontology
 
@@ -1742,24 +1983,27 @@ let pipeline = compose![
 
 ## Summary
 
-Redox transforms Rust from a language *for human developers with CLI tools* into a language *for swarms of AI agents with maximum parsing speed, communication throughput, and hardware-agnostic performance*. The transformation **shifts safety from compile-time enforcement to a queryable Safety Knowledge Base**, eliminates every source of agent parsing ambiguity, and introduces a portable performance IR that targets any hardware:
+Redox transforms Rust from a language *for human developers with CLI tools* into a language *for swarms of AI agents with maximum parsing speed, communication throughput, hardware-agnostic performance, and minimum token cost*. The transformation **shifts safety from compile-time enforcement to a queryable Safety Knowledge Base**, eliminates every source of agent parsing ambiguity, introduces a portable performance IR that targets any hardware, and compresses every language construct to its **minimum token footprint**:
 
-1. **Zero-ambiguity syntax** — deterministic LL(1) grammar eliminates 100% of agent parsing errors caused by context-sensitive constructs
-2. **Safety Knowledge Base (SKB)** — safety rules in a queryable database, not slow compile-time passes; agents pre-validate before writing code
-3. **Hardware-agnostic performance** — Portable Performance IR (PPIR) compiles to CPU, GPU, NPU, FPGA, WASM from a single source
-4. **Sub-microsecond inter-agent communication** — zero-copy typed message bus optimized for swarm throughput over everything else
-5. **Performance annotations** — `#[perf::no_bounds_check]`, `#[perf::target(gpu)]`, `#[perf::vectorize]` — the compiler trusts agents, not polices them
-6. **Effect types** — agents know what functions *do* without reading them
-7. **Contracts** — agents verify correctness against formal specifications via SKB, not compiler passes
-8. **Capability manifests** — agents discover components by what they *can do*, not what they're named
-9. **Structured diagnostics** — machine-actionable fix graphs (opt-in, not blocking)
-10. **Semantic ownership for swarms** — concurrent agent access governed by Rust-inspired lease semantics
-11. **CRDT-based semantic merging** — concurrent modifications merge at the AST/HIR level, not text level
-12. **Consensus protocols** — shared interface changes require structured voting from all affected agents
-13. **Swarm-native task decomposition** — compiler dependency graph drives automatic parallelization of work
-14. **Semantic version control** — operation-log-based history replaces text diffs
-15. **Opt-in compile-time safety profiles** — `safety.mode = "full"` for humans/CI, `"skb-only"` for agents, `"none"` for raw performance
+1. **Token-minimal syntax** — every construct is compressed to ≤50% of its Rust token count: `pub fn` → `+f`, `#[derive(Clone, Debug)]` → `@d(Cl,Db)`, `let mut` → `m`, `Option<T>` → `?T`
+2. **Zero-ambiguity syntax** — deterministic LL(1) grammar eliminates 100% of agent parsing errors caused by context-sensitive constructs
+3. **Safety Knowledge Base (SKB)** — safety rules in a queryable database, not slow compile-time passes; agents pre-validate before writing code
+4. **Hardware-agnostic performance** — Portable Performance IR (PPIR) compiles to CPU, GPU, NPU, FPGA, WASM from a single source
+5. **Sub-microsecond inter-agent communication** — zero-copy typed message bus optimized for swarm throughput over everything else
+6. **Performance annotations** — `@pnb` (no bounds check), `@pt(gpu)` (target GPU), `@pv(8)` (vectorize) — compact and trusted
+7. **Effect types** — agents know what functions *do* without reading them
+8. **Contracts** — agents verify correctness against formal specifications via SKB, not compiler passes
+9. **Capability manifests** — agents discover components by what they *can do*, not what they're named
+10. **Structured diagnostics** — machine-actionable fix graphs (opt-in, not blocking)
+11. **Semantic ownership for swarms** — concurrent agent access governed by Rust-inspired lease semantics
+12. **CRDT-based semantic merging** — concurrent modifications merge at the AST/HIR level, not text level
+13. **Consensus protocols** — shared interface changes require structured voting from all affected agents
+14. **Swarm-native task decomposition** — compiler dependency graph drives automatic parallelization of work
+15. **Semantic version control** — operation-log-based history replaces text diffs
+16. **Opt-in compile-time safety profiles** — `safety.mode = "full"` for humans/CI, `"skb-only"` for agents, `"none"` for raw performance
+17. **Standard abbreviation registry** — deterministic, versioned compact forms for all std library types and traits
+18. **Token budget reporting** — `redox build --token-report` tracks per-function token expenditure for agent optimization
 
-The compiler becomes an **optimizing translator and swarm arbiter** — its primary job is *making code run fast on any hardware*, not blocking submissions with safety errors that agents already know how to avoid. Safety knowledge lives in a database. Performance lives in the compiler. Communication lives in the swarm bus. Parsing lives in a zero-ambiguity grammar.
+The compiler becomes an **optimizing translator and swarm arbiter** — its primary job is *making code run fast on any hardware with the fewest tokens possible*, not blocking submissions with safety errors that agents already know how to avoid. Safety knowledge lives in a database. Performance lives in the compiler. Communication lives in the swarm bus. Parsing lives in a zero-ambiguity grammar. And every construct lives in its **most compressed form** — because tokens are the currency of agentic intelligence, and Redox is designed to spend them wisely.
 
-This is not Rust made safe. This is Rust made *fast*, *parseable*, and *communicative* — for the age of agent swarms.
+This is not Rust made safe. This is Rust made *fast*, *parseable*, *communicative*, and *token-efficient* — for the age of agent swarms.
