@@ -1,0 +1,15 @@
+[workspace]
+
+[package]
+name = "redox-prototype"
+version = "0.1.0"
+edition = "2024"
+description = "Prototype lexer, parser, and RAP server for the Redox agentic language"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[[bin]]
+name = "redox-parse"
+path = "src/main.rs"

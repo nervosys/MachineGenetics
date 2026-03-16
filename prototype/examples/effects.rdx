@@ -1,0 +1,34 @@
+// effects.rdx — effect definitions, handlers, closures
+
+effect io {
+    f read(fd: i32) -> [u8]~;
+    f write(fd: i32, data: &[u8]) -> i32;
+}
+
+effect async {
+    f suspend() -> ();
+}
+
++f process_data(input: &[u8]) -> R[i32, Error] {
+    v result = 0;
+    @ byte : input {
+        ? byte > 127 {
+            ret R.Err(Error.new("invalid byte"));
+        }
+        result = result + byte;
+    }
+    R.Ok(result)
+}
+
+f transform[T, U](items: [T]~, mapper: f(T) -> U) -> [U]~ {
+    v out = [];
+    @ item : items {
+        out.push(mapper(item));
+    }
+    out
+}
+
+f example() {
+    v doubled = transform([1, 2, 3], fn(x) => x * 2);
+    v filtered = transform(doubled, fn(x) => x + 1);
+}

@@ -1,0 +1,6 @@
+// hello.rdx — minimal Redox example
+
++f main() {
+    v greeting: s = "Hello, Redox!";
+    io.println(greeting);
+}
