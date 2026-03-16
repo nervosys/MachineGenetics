@@ -1,0 +1,92 @@
+// Comprehensive Redox example — exercises name resolution, type checking, and effect inference.
+
+// ── Pure computation ─────────────────────────────────────────────────
+
++f add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+f double(x: i32) -> i32 {
+    x * 2
+}
+
+f quadruple(x: i32) -> i32 {
+    double(double(x))
+}
+
+// ── Struct and field access ──────────────────────────────────────────
+
++S Point {
+    +x: f64,
+    +y: f64,
+}
+
+f distance_sq(p: Point) -> f64 {
+    p.x * p.x + p.y * p.y
+}
+
+// ── Enum ─────────────────────────────────────────────────────────────
+
+E Shape {
+    Circle,
+    Square,
+    Triangle,
+}
+
+// ── Generics ─────────────────────────────────────────────────────────
+
+f identity[T](val: T) -> T {
+    val
+}
+
+// ── Option and Result types ──────────────────────────────────────────
+
+f safe_div(a: f64, b: f64) -> ?f64 {
+    a
+}
+
+f fallible(x: i32) -> R[i32, str] {
+    x
+}
+
+// ── Control flow ─────────────────────────────────────────────────────
+
+f abs(x: i32) -> i32 {
+    ? x > 0 { x } : { 0 - x }
+}
+
+f classify(n: i32) -> str {
+    ? n > 0 { "positive" } : { "non-positive" }
+}
+
+// ── Let bindings and closures ────────────────────────────────────────
+
+f compute() -> i32 {
+    v x: i32 = 10;
+    v y: i32 = 20;
+    v sum: i32 = add(x, y);
+    v doubled: i32 = double(sum);
+    doubled
+}
+
+f apply_twice() -> i32 {
+    v inc = f(x: i32) => x + 1;
+    inc(inc(0))
+}
+
+// ── Effectful functions ──────────────────────────────────────────────
+
+f greet(name: str) -> () {
+    println(name)
+}
+
+f write_data() -> () {
+    open();
+    println("done")
+}
+
+f main() -> () {
+    greet("world");
+    v result: i32 = compute();
+    println("calculated")
+}
