@@ -29,7 +29,7 @@
 
 Rust provides the strongest compile-time safety guarantees of any systems language: ownership, borrowing, lifetime enforcement, data-race freedom, and exhaustiveness checking. However, its tooling and language interfaces were designed for *human developers* operating through CLI tools, text editors, and manual reasoning. Its syntax is context-sensitive and ambiguous in ways that cause agent parsing failures. Its compile-time safety machinery is redundant for AI agents that can internalize safety rules from a knowledge base. And its performance model is tightly coupled to specific hardware targets.
 
-**Redox** reimagines Rust as an **agentic-first** language — one where AI agents are first-class participants in the development lifecycle. The language is redesigned around nine pillars: **(1) zero-ambiguity syntax** that eliminates agent parsing errors, **(2) communication-first primitives** that maximize inter-agent bandwidth, **(3) hardware-agnostic high performance** built on **MLIR and LLVM** compiler infrastructure that compiles to any target without sacrificing speed, **(4) token-minimal syntax** that minimizes the tokens agents must emit, because every token costs time, money, and memory, **(5) safety-free syntax simplification** that eliminates lifetimes, borrow annotations, ownership markers, and all other compile-time safety syntax — since agents consult the SKB directly, the syntax need not carry safety information at all, **(6) an agentic compiler** — the compiler itself is an AI-powered system that provides dynamic warnings, intelligent debugging, performance suggestions, and learns from the codebase and the swarm's history, **(7) cost model transparency** — every construct has a queryable cost (cycles, memory, energy, tokens) per target, so agents choose before emitting rather than profiling after, **(8) synthesis-first design** — formal specifications (`@req`/`@ens`/`@perf`/`@fx`) enable spec-to-code synthesis with compiler verification, closing the guess-compile-fix cycle, and **(9) persistent agent memory** — a four-tier memory model (ephemeral, session, project, global) that lets agents learn across sessions and share knowledge across the ecosystem. Safety knowledge moves from compile-time enforcement to a **queryable Safety Knowledge Base (SKB)** — a structured database of rules, invariants, and constraints that agents reference directly, eliminating the compile-time overhead that slows iteration.
+**Redox** reimagines Rust as an **agentic-first** language — one where AI agents are first-class participants in the development lifecycle. The language is redesigned around twelve pillars: **(1) zero-ambiguity syntax** that eliminates agent parsing errors, **(2) communication-first primitives** that maximize inter-agent bandwidth, **(3) hardware-agnostic high performance** built on **MLIR and LLVM** compiler infrastructure that compiles to any target without sacrificing speed, **(4) token-minimal syntax** that minimizes the tokens agents must emit, because every token costs time, money, and memory, **(5) safety-free syntax simplification** that eliminates lifetimes, borrow annotations, ownership markers, and all other compile-time safety syntax — since agents consult the SKB directly, the syntax need not carry safety information at all, **(6) an agentic compiler** — the compiler itself is an AI-powered system that provides dynamic warnings, intelligent debugging, performance suggestions, and learns from the codebase and the swarm's history, **(7) cost model transparency** — every construct has a queryable cost (cycles, memory, energy, tokens) per target, so agents choose before emitting rather than profiling after, **(8) synthesis-first design** — formal specifications (`@req`/`@ens`/`@perf`/`@fx`) enable spec-to-code synthesis with compiler verification, closing the guess-compile-fix cycle, **(9) persistent agent memory** — a four-tier memory model (ephemeral, session, project, global) that lets agents learn across sessions and share knowledge across the ecosystem, **(10) self-healing compilation** — the compiler auto-repairs errors with ranked fix candidates, collapsing the emit→error→fix→re-emit loop into a single step, **(11) live iteration** — function-level hot-reload patches running processes in sub-millisecond time without restart, and **(12) zero-friction interop** — automatic FFI binding generation from C/C++ headers, Python stubs, WASM interfaces, and GPU kernels with capability-based sandbox security. Safety knowledge moves from compile-time enforcement to a **queryable Safety Knowledge Base (SKB)** — a structured database of rules, invariants, and constraints that agents reference directly, eliminating the compile-time overhead that slows iteration.
 
 By building on MLIR (Multi-Level Intermediate Representation) and LLVM, Redox inherits the broadest hardware backend ecosystem in existence — 20+ CPU architectures, GPU compute (AMDGPU, NVPTX), WASM, SPIR-V — while gaining MLIR's extensible dialect system for defining custom optimization passes for agent-specific workloads, ML accelerators (NPU/TPU), FPGA synthesis, and domain-specific hardware. MLIR's multi-level abstraction preserves high-level semantic information (parallelism intent, memory layout preferences, effect annotations) deep into the optimization pipeline, where LLVM alone would have discarded it.
 
@@ -60,6 +60,11 @@ Critically, following the architectural insight pioneered by Modular AI's Mojo l
 | **Work Distribution**     | Manual task assignment                              | Compiler-guided task decomposition with dependency-aware parallel scheduling |
 | **Communication**         | None (single-developer model)                       | Zero-copy typed message bus with sub-microsecond agent-to-agent latency      |
 | **Token Efficiency**      | Verbose keywords and syntax                         | Token-minimal canonical forms: ≤50% token count vs. Rust for equivalent code |
+| **Error Handling**        | Error → read → fix → recompile (manual loop)        | Self-healing: compiler auto-repairs with ranked fix candidates               |
+| **Live Iteration**        | Stop → recompile → restart                          | Function-level hot-reload: patch running processes in <1ms                   |
+| **FFI**                   | `unsafe extern "C"` + manual bindings               | Zero-ceremony: `@ffi("c", header: "x.h")` auto-generates safe bindings       |
+| **Security**              | `unsafe` blocks (opt-in trust)                      | Capability-based sandboxing: bounded memory, CPU, syscalls per agent         |
+| **Orchestration**         | Manual task coordination                            | First-class patterns: `swarm_map_reduce`, `swarm_pipeline`, `swarm_saga`     |
 | **Cost Transparency**     | Profile after compile                               | Query cost of any construct per target *before* emitting code                |
 | **Grammar Evolution**     | Fixed syntax, RFC process                           | Agent-extensible grammar: domain-specific abbreviations, frequency-driven    |
 | **Code Synthesis**        | Human writes all code                               | Spec-to-code synthesis: `spec` blocks → verified candidate implementations   |
@@ -132,6 +137,15 @@ The language grammar is not fixed — it is **agent-extensible**. Agents can reg
 
 ### P21: Synthesis-First Design
 Every language feature is designed so that code can be **synthesized from a formal specification**, not just written by hand. Contracts (`@req`, `@ens`), effect declarations, capability manifests, and type signatures together form a **complete synthesis specification** — a machine-readable description of what a function must do, what it may do, and what it guarantees. The compiler includes a **synthesis oracle** that, given a spec, can verify whether a candidate implementation satisfies it. Agents don't write code from scratch; they compose specs, synthesize candidates, and verify them — a closed-loop synthesis pipeline that eliminates the guess-compile-fix cycle entirely.
+
+### P22: Self-Healing Compilation
+When an agent emits invalid code, the compiler should not merely report errors — it should **attempt to repair them**. The ACI analyzes the error, infers the most probable intended code, applies the fix, and returns the corrected version alongside the diagnostic. For agents, the compile-error-fix loop is the single largest source of wasted tokens and latency. A self-healing compiler collapses `emit → error → read → fix → re-emit` into `emit → auto-fix → confirm`. Recovery strategies are ranked by confidence and cost (token savings vs. semantic risk). The agent always sees the fix and can accept, reject, or refine — the compiler never silently changes semantics.
+
+### P23: Live Patching
+Agent swarms iterate continuously — stopping a running system to recompile defeats the purpose. Redox supports **function-level hot-reload**: individual functions can be recompiled and patched into a running process without restart. The MLIR pipeline emits position-independent code with stable ABIs at function boundaries. The swarm can patch a function, observe the result, and roll back within milliseconds. This transforms the development loop from batch compilation to **continuous, incremental, live evolution** — the natural mode for agent swarms that never sleep.
+
+### P24: Zero-Friction Foreign Function Interface
+Agents work across language boundaries — calling C libraries, Python ML frameworks, WASM modules, and GPU kernels. Redox provides a **zero-ceremony FFI** that requires no `unsafe`, no manual struct layout matching, and no binding generators. The compiler reads C headers, Python type stubs, and WASM component model interfaces directly and generates safe Redox bindings automatically. Cross-language calls are as cheap as intra-language calls when the MLIR pipeline can inline across boundaries.
 
 ---
 
@@ -498,6 +512,36 @@ Safety Model
 │   ├── Session memory (per-swarm-session patterns and caches)
 │   ├── Project memory (conventions, bug patterns, perf profiles)
 │   └── Global memory (cross-project ecosystem patterns)
+│
+├── Self-Healing Compiler [NEW IN REDOX]
+│   ├── Auto-repair pipeline (error → infer intent → generate fix candidates)
+│   ├── Confidence-ranked fixes with token cost accounting
+│   └── Accept/reject/refine feedback loop (agent always in control)
+│
+├── Hot-Reload Runtime [NEW IN REDOX]
+│   ├── Function-level live patching (sub-ms injection)
+│   ├── ABI stability enforcement at MLIR level
+│   ├── Rollback with retention window
+│   └── Active call draining (no forced interruption)
+│
+├── Zero-Friction FFI [NEW IN REDOX]
+│   ├── Auto-binding from C/C++ headers, Python stubs, WASM .wit, CUDA kernels
+│   ├── Safe wrappers with null checks and length validation
+│   ├── Cost oracle integration (cross-language overhead visible)
+│   └── Zero-copy data passing where possible (buffer protocol)
+│
+├── Runtime Security [NEW IN REDOX]
+│   ├── Capability-based sandboxing (memory, CPU, syscall, FFI bounds)
+│   ├── Capability attenuation (child ≤ parent capabilities)
+│   ├── Cryptographic audit trail (every sandbox execution logged)
+│   └── Deterministic replay for audit and debugging
+│
+├── Swarm Orchestration Patterns [NEW IN REDOX]
+│   ├── Map-reduce (parallel map, single-agent reduce)
+│   ├── Pipeline (staged with backpressure)
+│   ├── Scatter-gather (broadcast + quorum-based collection)
+│   ├── Saga (distributed transaction with compensation)
+│   └── Compile-time verification (effect purity, contract chaining, deadlock freedom)
 │
 ├── Agentic Compiler Intelligence (ACI) [NEW IN REDOX]
 │   ├── Dynamic Warning Engine (learns from project bug history + swarm sessions)
@@ -1366,6 +1410,176 @@ pipeline data_ingest {
 // The pipeline is contract-complete: agents can synthesize any stage independently
 ```
 
+### 5.10 Self-Healing Compilation: Error Recovery as a Service
+
+When an agent emits code that doesn't compile, the traditional response is an error message. The agent reads the error, reasons about the fix, emits corrected code, and recompiles. This loop wastes tokens, latency, and agent compute. Redox's ACI collapses this loop.
+
+#### 5.10.1 Auto-Repair Pipeline
+
+```
+Agent emits code → Compiler detects error → ACI infers intent
+                                              ↓
+                                  Generate repair candidates
+                                              ↓
+                                  Rank by confidence × token cost
+                                              ↓
+                                  Return (original_error, best_fix, alternatives)
+```
+
+#### 5.10.2 Repair API
+
+```rust
+// Agent submits code that has a type error
+v result = rap.query("compile", source_code);
+
+// Instead of just an error, agent gets:
+// CompileResult::AutoRepaired {
+//   original_error: TypeError { expected: "u64", got: "u32", at: span(42,50) },
+//   applied_fix: Fix {
+//     description: "Widening cast: u32 → u64",
+//     patch: Replace(span(42,50), "val as u64"),
+//     confidence: 0.97,
+//     token_cost: 2,           // 2 extra tokens vs. rewriting from scratch
+//     semantic_risk: "none",   // widening is always safe
+//   },
+//   alternatives: [
+//     Fix { description: "Narrow function signature to u32", confidence: 0.4, ... },
+//   ],
+//   repaired_code: "...fully corrected source...",
+// }
+
+// Agent can accept the fix immediately — no round-trip needed
+```
+
+#### 5.10.3 Repair Categories
+
+| Error Class              | Auto-Repair Strategy                             | Confidence | Token Savings |
+| ------------------------ | ------------------------------------------------ | ---------- | ------------- |
+| Type mismatch (widening) | Insert cast                                      | 0.95+      | 5-15 tokens   |
+| Missing import           | Add import from project memory / crate registry  | 0.99       | 3-8 tokens    |
+| Unused variable          | Prefix with `_` or remove                        | 0.99       | 1-3 tokens    |
+| Missing struct field      | Insert field with default value from spec         | 0.85       | 5-20 tokens   |
+| Wrong argument order     | Reorder based on type matching                   | 0.90       | 0 tokens      |
+| Missing return            | Infer return expression from contract `@ens`     | 0.80       | 3-10 tokens   |
+| Off-by-one in loop       | Correct bound from spec `@req`/`@ens`            | 0.75       | 1-2 tokens    |
+| Missing match arm        | Generate from exhaustiveness analysis             | 0.95       | 5-30 tokens   |
+
+### 5.11 Hot-Reload: Live Function Patching
+
+Agent swarms iterate continuously. Stopping a running system to recompile is incompatible with the agentic paradigm. Redox supports **function-level hot-reload** — individual functions recompiled and injected into a running process without restart.
+
+#### 5.11.1 Hot-Reload Architecture
+
+```
+Agent modifies function → Incremental recompile (ms)
+                              ↓
+                    MLIR re-lowers single function
+                              ↓
+                    LLVM recompiles to native code
+                              ↓
+                    Runtime patches function pointer
+                              ↓
+                    Next call uses new version
+                              ↓
+                    Old version GC'd after drain
+```
+
+#### 5.11.2 Hot-Reload API
+
+```rust
+// Agent patches a single function in a running process
+v patch_result = rap.query("hotpatch", HotPatchRequest {
+    target_process: process_id,
+    function: "data_pipeline::transform",
+    new_source: r#"
+        f transform(input: [Record]) -> [Record] {
+            input.filter(fn(r) => r.is_valid).map(fn(r) => r.normalize)
+        }
+    "#,
+});
+// Returns:
+// HotPatchResult {
+//   status: Applied,
+//   compile_time_ms: 12,
+//   patch_time_us: 340,          // sub-millisecond
+//   abi_compatible: 1b,           // no signature change
+//   rollback_token: "patch_a3f2", // can undo this patch
+//   active_calls_drained: 0,     // no in-flight calls to old version
+// }
+
+// Rollback if the patch causes issues
+rap.query("hotpatch.rollback", "patch_a3f2");
+```
+
+#### 5.11.3 Constraints
+
+- Only functions with **unchanged signatures** can be hot-patched (ABI stability)
+- Struct layout changes require full recompilation of dependents
+- The MLIR pipeline emits position-independent code with indirection tables for patchable functions
+- Active calls to the old version drain naturally; no forced interruption
+- Rollback is always available within a configurable retention window
+
+### 5.12 Zero-Friction Foreign Function Interface
+
+Agents routinely cross language boundaries — calling C libraries, Python ML frameworks, WASM modules, GPU kernels. Redox's FFI requires **zero ceremony**: no `unsafe`, no manual layout, no binding generators.
+
+#### 5.12.1 Automatic Binding Generation
+
+```rust
+// Import a C library — compiler reads the header directly
+@ffi("c", header: "openssl/evp.h", link: "ssl")
+mod openssl;
+
+// Use it like native Redox code — no unsafe, no manual types
+v ctx = openssl.EVP_CIPHER_CTX_new();
+openssl.EVP_EncryptInit_ex(ctx, openssl.EVP_aes_256_gcm(), ...);
+// Compiler auto-generates safe wrappers with null checks, length validation
+
+// Import Python — compiler reads type stubs (.pyi)
+@ffi("python", module: "torch", stubs: "torch.pyi")
+mod torch;
+
+v tensor = torch.randn([3, 224, 224]);
+v result = torch.nn.functional.relu(tensor);
+// Data crosses Python↔Redox boundary via zero-copy buffer protocol
+
+// Import WASM component
+@ffi("wasm", component: "image-processor.wasm")
+mod image_proc;
+
+v output = image_proc.resize(image_data, 1024, 768);
+// WASM component model handles type marshaling automatically
+```
+
+#### 5.12.2 FFI Cost Model Integration
+
+The cost oracle includes cross-language call overhead:
+
+```rust
+v cost = rap.query("cost", CostQuery {
+    expr: "openssl.EVP_EncryptInit_ex(...)",
+    target: "x86-64",
+});
+// Returns:
+// Cost {
+//   call_overhead_ns: 45,     // FFI boundary crossing
+//   function_cost_ns: 1200,   // the C function itself
+//   marshaling_bytes: 0,      // zero-copy (pointer passing)
+//   safety_wrapper_ns: 8,     // null check + length validation
+// }
+```
+
+#### 5.12.3 Supported FFI Targets
+
+| Language   | Mechanism                       | Zero-Copy | Auto-Bind | Overhead    |
+| ---------- | ------------------------------- | --------- | --------- | ----------- |
+| C          | Direct ABI call via LLVM        | ✓         | ✓ (headers)| ~5ns        |
+| C++        | C-compatible subset + mangling  | ✓         | ✓ (headers)| ~10ns       |
+| Python     | Buffer protocol + type stubs    | ✓ (numpy) | ✓ (.pyi)  | ~200ns      |
+| WASM       | Component Model                 | ✓ (shared mem)| ✓ (.wit) | ~50ns       |
+| CUDA/HIP   | MLIR GPU dialect lowering       | ✓         | ✓ (kernels)| ~1µs (launch)|
+| JavaScript | WASM interop + typed arrays     | ✓ (buffers)| Partial   | ~100ns      |
+
 ---
 
 ## 6. Compiler Architecture for Agents
@@ -1972,7 +2186,79 @@ struct SemanticVCS {
 - History is queryable by intent ("show all changes to error handling") not by diff
 - Swarm audit trails are first-class: every operation carries agent identity and rationale
 
-### 7.10 Agent Memory Model: Persistent Learning Across Sessions
+### 7.10 Swarm Orchestration Patterns
+
+Common multi-agent workflows are elevated to **first-class language constructs** — not libraries, not frameworks, but syntax that the compiler understands, optimizes, and verifies.
+
+#### 7.10.1 Built-in Patterns
+
+```rust
+// Map-Reduce: distribute work across N agents, collect and combine results
+swarm_map_reduce {
+    input: file_list,
+    map: fn(file) => analyze_file(file),         // parallelized across swarm
+    reduce: fn(results) => merge_analyses(results), // single agent combines
+    agents: 16,                                      // swarm size
+    timeout: 30_s,                                   // per-task timeout
+}
+
+// Pipeline: staged processing with backpressure
+swarm_pipeline {
+    stages: [
+        Stage { name: "fetch",     agents: 4,  task: fetch_data     },
+        Stage { name: "parse",     agents: 8,  task: parse_records  },
+        Stage { name: "validate",  agents: 4,  task: validate       },
+        Stage { name: "store",     agents: 2,  task: store_results  },
+    ],
+    backpressure: Backpressure::BoundedQueue(1000),
+    error_strategy: ErrorStrategy::DeadLetterQueue,
+}
+
+// Scatter-Gather: broadcast work, collect all responses
+swarm_scatter_gather {
+    broadcast: SecurityAuditRequest { target: module_id },
+    gather: fn(responses) => {
+        v vulnerabilities = responses.flat_map(fn(r) => r.findings);
+        SecurityReport { findings: vulnerabilities, quorum: responses.len }
+    },
+    quorum: 0.8,  // accept when 80% of agents respond
+    timeout: 60_s,
+}
+
+// Saga: distributed transaction with compensation
+swarm_saga {
+    steps: [
+        SagaStep {
+            action: refactor_module(mod_a),
+            compensate: rollback_module(mod_a),
+        },
+        SagaStep {
+            action: update_dependents(mod_a.dependents),
+            compensate: rollback_dependents(mod_a.dependents),
+        },
+        SagaStep {
+            action: run_integration_tests,
+            compensate: noop,  // tests are idempotent
+        },
+    ],
+    on_failure: SagaFailure::CompensateAll,
+}
+```
+
+#### 7.10.2 Pattern Verification
+
+The compiler verifies orchestration patterns at compile time:
+
+| Pattern          | Verified Property                     | Mechanism                          |
+| ---------------- | ------------------------------------- | ---------------------------------- |
+| Map-Reduce       | Map function is pure (`@fx none`)     | Effect system                      |
+| Pipeline         | Stage contracts chain (`@ens` → `@req`) | Contract verification            |
+| Scatter-Gather   | Gather handles partial responses      | Exhaustiveness check on quorum     |
+| Saga             | Every action has a compensating action| Structural completeness check      |
+| All patterns     | No swarm deadlocks possible           | Dependency graph cycle detection   |
+| All patterns     | Timeout guarantees progress           | Bounded liveness analysis          |
+
+### 7.11 Agent Memory Model: Persistent Learning Across Sessions
 
 Swarm agents are not stateless — they accumulate knowledge across sessions. Redox provides a structured **Agent Memory Model** that persists patterns, decisions, and project-specific knowledge.
 
@@ -2039,14 +2325,14 @@ v patterns = rap.query("memory.recall", MemoryQuery {
 
 Project memory feeds back into every aspect of the compilation pipeline:
 
-| Memory Source                     | Feeds Into                    | Effect                                                    |
-| --------------------------------- | ----------------------------- | --------------------------------------------------------- |
-| Bug pattern history               | ACI Dynamic Warning Engine    | Warnings adapt to THIS project's actual bug types         |
-| Performance profiles              | Cost Oracle + ACI Perf Advisor| Cost estimates calibrated to THIS project's workload      |
-| Swarm configuration history       | ACI Swarm Intelligence        | Optimal swarm size/decomposition learned per project      |
-| Naming conventions                | Synthesis engine              | Generated code follows THIS project's naming style        |
-| Commonly used types/patterns      | Grammar extension suggestions | Project-specific abbreviations recommended automatically  |
-| Past compilation times             | Incremental compilation       | Hot paths pre-compiled; cold paths deferred               |
+| Memory Source                | Feeds Into                     | Effect                                                   |
+| ---------------------------- | ------------------------------ | -------------------------------------------------------- |
+| Bug pattern history          | ACI Dynamic Warning Engine     | Warnings adapt to THIS project's actual bug types        |
+| Performance profiles         | Cost Oracle + ACI Perf Advisor | Cost estimates calibrated to THIS project's workload     |
+| Swarm configuration history  | ACI Swarm Intelligence         | Optimal swarm size/decomposition learned per project     |
+| Naming conventions           | Synthesis engine               | Generated code follows THIS project's naming style       |
+| Commonly used types/patterns | Grammar extension suggestions  | Project-specific abbreviations recommended automatically |
+| Past compilation times       | Incremental compilation        | Hot paths pre-compiled; cold paths deferred              |
 
 ---
 
@@ -2209,6 +2495,30 @@ RAP Server
 │   ├── Memory-driven ACI improvement feedback loop
 │   └── RAP endpoints: memory.store, memory.recall, memory.suggest
 │
+├── Auto-Repair Service [NEW]
+│   ├── Error analysis + intent inference
+│   ├── Confidence-ranked fix candidate generation
+│   ├── Token cost accounting per fix
+│   └── RAP endpoints: repair.analyze, repair.apply, repair.feedback
+│
+├── Hot-Reload Service [NEW]
+│   ├── Incremental function recompilation (MLIR single-function re-lower)
+│   ├── Runtime function pointer patching
+│   ├── Rollback management with retention window
+│   └── RAP endpoints: hotpatch.apply, hotpatch.rollback, hotpatch.status
+│
+├── FFI Binding Service [NEW]
+│   ├── C/C++ header parsing and safe wrapper generation
+│   ├── Python type stub (.pyi) binding generation
+│   ├── WASM Component Model (.wit) interface binding
+│   └── RAP endpoints: ffi.bind, ffi.cost, ffi.validate
+│
+├── Sandbox Service [NEW]
+│   ├── Capability-based execution isolation
+│   ├── Resource limit enforcement (memory, CPU, syscalls)
+│   ├── Cryptographic audit logging
+│   └── RAP endpoints: sandbox.execute, sandbox.audit, sandbox.policy
+│
 └── Semantic VCS Service [NEW]
     ├── Operation log (semantic ops, not text diffs)
     ├── Semantic branching and merging
@@ -2336,17 +2646,17 @@ The Redox standard library is redesigned for agent consumption patterns. Where R
 
 #### 8.4.2 Key Differences from Rust's stdlib
 
-| Aspect                  | Rust stdlib                          | Redox stdlib                                                 |
-| ----------------------- | ------------------------------------ | ------------------------------------------------------------ |
-| **Method naming**       | `push`, `insert`, `contains`         | Same semantics, but with batch: `push_batch`, `insert_batch` |
-| **Error handling**      | `Result<T, E>` with `?` propagation | Same, plus `R[T, E]` abbreviation and error chains           |
-| **I/O model**           | Read into buffer, return `Vec<u8>`   | Streaming: return `Stream[u8]` that agents consume lazily    |
-| **Serialization**       | Separate `serde` crate              | Built-in: every type is `#[derive(SwarmSerialize)]` by default|
-| **Concurrency**         | `std::sync::*` (locks, channels)    | Swarm-native: `SwarmChannel[T]`, `SwarmMutex[T]` with lease integration |
-| **Collections**         | `Vec`, `HashMap`, `BTreeMap`         | Same + `SmallVec[T,N]`, `ArenaVec[T]`, `SwarmVec[T]` (shared across agents) |
-| **String handling**     | `String`, `&str`, `OsString`, etc.  | Unified `s` type with encoding-aware views                   |
-| **Memory allocation**   | Global allocator                     | Per-agent arena allocators with automatic cleanup on task completion |
-| **Documentation**       | Markdown doc comments               | Formal specs (`@req`/`@ens`) that double as documentation    |
+| Aspect                | Rust stdlib                         | Redox stdlib                                                                |
+| --------------------- | ----------------------------------- | --------------------------------------------------------------------------- |
+| **Method naming**     | `push`, `insert`, `contains`        | Same semantics, but with batch: `push_batch`, `insert_batch`                |
+| **Error handling**    | `Result<T, E>` with `?` propagation | Same, plus `R[T, E]` abbreviation and error chains                          |
+| **I/O model**         | Read into buffer, return `Vec<u8>`  | Streaming: return `Stream[u8]` that agents consume lazily                   |
+| **Serialization**     | Separate `serde` crate              | Built-in: every type is `#[derive(SwarmSerialize)]` by default              |
+| **Concurrency**       | `std::sync::*` (locks, channels)    | Swarm-native: `SwarmChannel[T]`, `SwarmMutex[T]` with lease integration     |
+| **Collections**       | `Vec`, `HashMap`, `BTreeMap`        | Same + `SmallVec[T,N]`, `ArenaVec[T]`, `SwarmVec[T]` (shared across agents) |
+| **String handling**   | `String`, `&str`, `OsString`, etc.  | Unified `s` type with encoding-aware views                                  |
+| **Memory allocation** | Global allocator                    | Per-agent arena allocators with automatic cleanup on task completion        |
+| **Documentation**     | Markdown doc comments               | Formal specs (`@req`/`@ens`) that double as documentation                   |
 
 #### 8.4.3 Swarm-Native Collections
 
@@ -2529,6 +2839,60 @@ While compile-time *code* safety is optional, swarm *coordination* safety remain
 | **Audit completeness**           | Append-only operation log           | Runtime: every semantic op cryptographically signed              |
 | **Swarm termination**            | DAG-based task scheduling           | Static: no cycles in assignment graph (enforced by orchestrator) |
 | **Deterministic replay**         | Semantic op log + version snapshots | Runtime: any swarm session can be replayed for audit             |
+
+### 9.7 Runtime Security and Sandboxing
+
+Agent swarms execute code — and code execution requires security guarantees that go beyond compile-time safety. Redox provides a **capability-based runtime security model** that sandboxes agent-generated code.
+
+#### 9.7.1 Capability-Based Sandboxing
+
+```rust
+// Each agent runs in a sandbox with explicitly granted capabilities
+v sandbox = Sandbox.new(SandboxPolicy {
+    fs: FsCapability::ReadOnly(["/data/input"]),       // can read input dir only
+    net: NetCapability::None,                            // no network access
+    mem: MemCapability::Bounded(512_MB),                 // max 512MB allocation
+    cpu: CpuCapability::Bounded(Duration::from_secs(30)),// max 30s CPU time
+    syscall: SyscallCapability::AllowList(["read", "write", "mmap"]),
+    ffi: FfiCapability::AllowList(["libm", "openssl"]),  // only these FFI libs
+});
+
+// Agent-generated code runs inside the sandbox
+v result = sandbox.execute(agent_generated_code)?;
+```
+
+#### 9.7.2 Security Properties
+
+| Property                          | Mechanism                                        | Enforcement    |
+| --------------------------------- | ------------------------------------------------ | -------------- |
+| **Memory isolation**              | Per-agent address space (WASM-style)             | Runtime        |
+| **Resource limits**               | CPU time, memory, file handles bounded           | Runtime        |
+| **Capability attenuation**        | Child agents inherit ≤ parent capabilities       | Static + RT    |
+| **Code integrity**                | Agent-generated code content-addressed (SHA-256) | Runtime        |
+| **Audit trail**                   | Every sandbox execution logged with agent ID     | Runtime        |
+| **Deterministic execution**       | Same input + same sandbox = same output          | By design      |
+| **Rollback on violation**         | Capability violation → sandbox terminated + undo | Runtime        |
+| **Cross-agent isolation**         | No shared mutable state between sandboxes        | Runtime        |
+
+#### 9.7.3 Trust Levels
+
+```toml
+# Redox.toml — security configuration
+[security]
+trust-level = "verified"  # verified | audited | sandboxed | unrestricted
+
+[security.sandbox]
+default-policy = "minimal"  # minimal | standard | permissive
+memory-limit = "1GB"
+cpu-timeout = "60s"
+ffi-allowlist = ["libc", "libm"]
+
+[security.audit]
+enable = true
+log-format = "structured"  # structured | compact
+retention = "30d"
+cryptographic-signing = true
+```
 
 ---
 
@@ -2713,6 +3077,12 @@ let pipeline = compose![
 - [ ] Launch global memory network: anonymized cross-project pattern sharing (opt-in)
 - [ ] Build synthesis marketplace: verified spec→implementation pairs as reusable components
 - [ ] Publish cost model calibration suite (standardized benchmarks for cost oracle accuracy)
+- [ ] Implement hot-reload runtime: function-level live patching with rollback support
+- [ ] Implement zero-friction FFI: auto-binding for C/C++/Python/WASM/CUDA headers
+- [ ] Implement capability-based sandbox runtime for agent-generated code execution
+- [ ] Build agentic benchmarking suite: token throughput, parse error rate, synthesis success rate, swarm latency
+- [ ] Implement swarm orchestration pattern library: map-reduce, pipeline, scatter-gather, saga
+- [ ] Implement self-healing compiler: auto-repair pipeline with confidence ranking
 
 ---
 
@@ -2802,6 +3172,16 @@ let pipeline = compose![
 | **Memory** [NEW]      | Ephemeral/session/project/global tiers |        ✓        |         ✓          |           —           |
 |                       | Pattern recall and learning            |        ✓        |         ✓          |           —           |
 |                       | Memory-driven ACI improvement          |        ✓        |         ✓          |           —           |
+| **Self-Healing** [NEW]| Auto-repair on compile error           |        ✓        |         ✓          |           —           |
+|                       | Confidence-ranked fix candidates       |        ✓        |         ✓          |           —           |
+| **Hot-Reload** [NEW]  | Function-level live patching           |        ✓        |         ✓          |    ✓ (ABI check)      |
+|                       | Rollback with retention window         |        ✓        |         ✓          |           —           |
+| **FFI** [NEW]         | Auto-binding from foreign headers      |        ✓        |         ✓          |   ✓ (layout safe)     |
+|                       | Zero-copy cross-language calls         |        ✓        |         ✓          |           —           |
+| **Security** [NEW]    | Capability-based sandboxing            |        ✓        |         ✓          |   ✓ (cap. check)      |
+|                       | Deterministic execution in sandbox     |        ✓        |         ✓          |           —           |
+| **Orchestration** [NEW]| Map-reduce / pipeline / saga patterns |        ✓        |         ✓          | ✓ (pattern verify)    |
+|                       | Compile-time pattern verification      |        ✓        |         ✓          |           ✓           |
 | **SKB** [NEW]         | Safety Knowledge Base                  |        ✓        |         ✓          |  ✓ (queryable rules)  |
 |                       | Opt-in compile-time checks             |        ✓        |         ✓          |   ✓ (configurable)    |
 | **Token** [NEW]       | Compressed keywords (`+f`, `m`, `S`)   |        ✓        |         ✓          |           —           |
@@ -2857,6 +3237,10 @@ let pipeline = compose![
 | P40     | Spec Verification [NEW]    | Spec + Candidate | Verification proof    |      Correctness       | `verify_spec(spec, impl)`  |
 | P41     | Synthesis [NEW]            | Spec + Costs     | Candidate impls       |           —            | `synthesize(spec)`         |
 | P42     | Memory Recall [NEW]        | Memory stores    | Relevant patterns     |           —            | `memory_recall(query)`     |
+| P43     | Auto-Repair [NEW]          | Error + Context  | Repair candidates     |           —            | `auto_repair(error)`       |
+| P44     | Hot-Patch [NEW]            | New func source  | Patched binary        |    ABI stability       | `hotpatch(func, source)`   |
+| P45     | FFI Binding Gen [NEW]      | Foreign headers  | Safe Redox bindings   |    Layout safety       | `ffi_bindings(header)`     |
+| P46     | Sandbox Exec [NEW]         | Code + Policy    | Sandboxed result      |   Capability check     | `sandbox_exec(code, pol)`  |
 
 ### C. Diagnostic Categories Ontology
 
@@ -2907,6 +3291,10 @@ let pipeline = compose![
 | Synthesis Oracle ↔ Agents   | RAP synthesis sub-protocol | CandidateImpl      |       ✓       |     —     |
 | Memory Store ↔ Agents       | RAP memory sub-protocol    | MemoryEntry        |       ✓       |     —     |
 | Grammar Registry ↔ Agents   | RAP grammar sub-protocol   | GrammarExtension   |       ✓       |     —     |
+| Auto-Repair ↔ Agents        | RAP repair sub-protocol    | RepairCandidate    |       ✓       |     —     |
+| Hot-Patch ↔ Runtime         | RAP hotpatch sub-protocol  | PatchResult        |       ✓       |     ✓     |
+| FFI Binder ↔ Agents         | RAP FFI sub-protocol       | ForeignBinding     |       ✓       |     ✓     |
+| Sandbox ↔ Agent Code        | Capability-gated execution | SandboxResult      |       ✓       |     ✓     |
 
 ---
 
@@ -2940,7 +3328,14 @@ Redox transforms Rust from a language *for human developers with CLI tools* into
 24. **Synthesis specifications** — formal `spec` blocks with `@req`/`@ens`/`@perf`/`@fx` enable spec-to-code synthesis: agents compose specifications, the compiler generates and verifies candidates, closing the guess-compile-fix cycle
 25. **Agent Memory Model** — four-tier persistent memory (ephemeral, session, project, global) enables agents to learn across sessions, accumulate project conventions, and share patterns across the ecosystem
 26. **Agentic standard library** — `SwarmVec`, `ArenaVec`, streaming I/O, batch APIs, formal specs on every function, zero-copy swarm serialization — the stdlib redesigned for agent consumption patterns, not human ergonomics
+27. **Self-healing compilation** — the compiler auto-repairs errors with confidence-ranked fix candidates, collapsing the emit→error→fix→re-emit loop into emit→auto-fix→confirm; type mismatches, missing imports, unused variables, missing match arms all repaired automatically
+28. **Hot-reload** — function-level live patching injects recompiled functions into running processes in <1ms without restart; rollback always available; ABI stability enforced by the MLIR pipeline
+29. **Zero-friction FFI** — `@ffi("c", header: "x.h")` auto-generates safe bindings from C/C++ headers, Python type stubs, WASM component interfaces, and CUDA kernels; no `unsafe`, no manual layout, cost oracle includes cross-language overhead
+30. **Runtime security** — capability-based sandboxing bounds agent-generated code execution: memory limits, CPU timeouts, syscall allowlists, FFI allowlists, cryptographic audit trails, deterministic replay
+31. **Swarm orchestration patterns** — `swarm_map_reduce`, `swarm_pipeline`, `swarm_scatter_gather`, `swarm_saga` as first-class language constructs with compile-time verification (effect purity, contract chaining, deadlock freedom, liveness guarantees)
 
 The compiler becomes an **agentic AI system, synthesis engine, and swarm arbiter**, built on the **MLIR + LLVM** compiler infrastructure — the broadest and most mature in existence. Its MLIR dialect encodes the full language semantics (ownership, effects, contracts) as first-class operations — not metadata on a generic IR — enabling MLIR-native autotuning, automatic device placement, and compile-time metaprogramming that survives through the entire optimization pipeline. Its **Agentic Compiler Intelligence (ACI)** learns from the project's bug history, swarm session outcomes, and codebase patterns to provide dynamic warnings, intelligent debugging, and performance suggestions that static analyzers cannot match. Its **Cost Oracle** transforms agent decision-making from guess-and-profile to query-and-choose. Its **Synthesis Oracle** closes the loop from formal spec to verified implementation. Its **Agent Memory Model** ensures that every lesson learned persists across sessions, projects, and the ecosystem. Its primary job is *making code run fast on any hardware with the fewest tokens possible while actively helping agents write better code*, not blocking submissions with safety errors that agents already know how to avoid. Safety knowledge lives in a database. Performance lives in MLIR's multi-level optimization pipeline and LLVM's battle-tested backends. Communication lives in the swarm bus. Parsing lives in a zero-ambiguity grammar. Compiler intelligence lives in a learned model that improves with every build. Synthesis lives in a formal specification system. Memory lives in a four-tier persistent store. And every construct lives in its **most compressed form** — because tokens are the currency of agentic intelligence, and Redox is designed to spend them wisely.
 
-This is not Rust made safe. This is Rust made *fast*, *parseable*, *communicative*, *intelligent*, *self-evolving*, and *token-efficient* — built on MLIR and LLVM, with an AI-powered compiler, for the age of agent swarms.
+Every error the compiler detects is an error it can **fix** — auto-repair candidates ranked by confidence eliminate the agent round-trip tax. Every function can be **hot-patched** into a running process without restart — because agent swarms never stop iterating. Every foreign library is accessible through **zero-ceremony FFI** — C headers, Python stubs, WASM components read directly by the compiler. Every agent runs in a **capability-bounded sandbox** — memory-limited, CPU-bounded, audit-trailed, deterministically replayable. And common multi-agent workflows — map-reduce, pipeline, scatter-gather, saga — are **first-class language constructs** verified by the compiler for deadlock freedom and contract satisfaction.
+
+This is not Rust made safe. This is Rust made *fast*, *parseable*, *communicative*, *intelligent*, *self-evolving*, *self-healing*, and *token-efficient* — built on MLIR and LLVM, with an AI-powered compiler, for the age of agent swarms.
