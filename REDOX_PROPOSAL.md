@@ -29,7 +29,9 @@
 
 Rust provides the strongest compile-time safety guarantees of any systems language: ownership, borrowing, lifetime enforcement, data-race freedom, and exhaustiveness checking. However, its tooling and language interfaces were designed for *human developers* operating through CLI tools, text editors, and manual reasoning. Its syntax is context-sensitive and ambiguous in ways that cause agent parsing failures. Its compile-time safety machinery is redundant for AI agents that can internalize safety rules from a knowledge base. And its performance model is tightly coupled to specific hardware targets.
 
-**Redox** reimagines Rust as an **agentic-first** language — one where AI agents are first-class participants in the development lifecycle. The language is redesigned around four pillars: **(1) zero-ambiguity syntax** that eliminates agent parsing errors, **(2) communication-first primitives** that maximize inter-agent bandwidth, **(3) hardware-agnostic high performance** that compiles to any target without sacrificing speed, and **(4) token-minimal syntax** that minimizes the tokens agents must emit, because every token costs time, money, and memory. Safety knowledge moves from compile-time enforcement to a **queryable Safety Knowledge Base (SKB)** — a structured database of rules, invariants, and constraints that agents reference directly, eliminating the compile-time overhead that slows iteration.
+**Redox** reimagines Rust as an **agentic-first** language — one where AI agents are first-class participants in the development lifecycle. The language is redesigned around four pillars: **(1) zero-ambiguity syntax** that eliminates agent parsing errors, **(2) communication-first primitives** that maximize inter-agent bandwidth, **(3) hardware-agnostic high performance** built on **MLIR and LLVM** compiler infrastructure that compiles to any target without sacrificing speed, and **(4) token-minimal syntax** that minimizes the tokens agents must emit, because every token costs time, money, and memory. Safety knowledge moves from compile-time enforcement to a **queryable Safety Knowledge Base (SKB)** — a structured database of rules, invariants, and constraints that agents reference directly, eliminating the compile-time overhead that slows iteration.
+
+By building on MLIR (Multi-Level Intermediate Representation) and LLVM, Redox inherits the broadest hardware backend ecosystem in existence — 20+ CPU architectures, GPU compute (AMDGPU, NVPTX), WASM, SPIR-V — while gaining MLIR's extensible dialect system for defining custom optimization passes for agent-specific workloads, ML accelerators (NPU/TPU), FPGA synthesis, and domain-specific hardware. MLIR's multi-level abstraction preserves high-level semantic information (parallelism intent, memory layout preferences, effect annotations) deep into the optimization pipeline, where LLVM alone would have discarded it.
 
 ### Core Thesis
 
@@ -47,7 +49,7 @@ Rust provides the strongest compile-time safety guarantees of any systems langua
 | **Code Discovery**      | rustdoc HTML, source reading      | Semantic index with capability manifests                                     |
 | **Safety Model**        | Compile-time enforcement          | Safety Knowledge Base (SKB) — queryable DB, not compiler passes              |
 | **Verification**        | Compile passes + Miri             | On-demand verification oracle (opt-in, not mandatory)                        |
-| **Performance**         | Target-specific (LLVM)            | Hardware-agnostic IR → multi-target (CPU, GPU, NPU, FPGA, WASM)              |
+| **Performance**         | Target-specific (LLVM only)       | MLIR + LLVM infrastructure → multi-target (CPU, GPU, NPU, FPGA, WASM)        |
 | **Code Generation**     | Human writes, compiler translates | Swarm synthesizes in parallel, compiler *optimizes for throughput*           |
 | **Composition**         | Crate ecosystem (Cargo)           | Capability-indexed component registry with contract matching                 |
 | **Collaboration**       | Git branches + PRs (sequential)   | CRDT-based concurrent edits with semantic merge and swarm consensus          |
@@ -95,8 +97,8 @@ The language grammar must be **deterministic LL(1)** — every token uniquely de
 ### P12: Communication-First Design
 Inter-agent message passing is the highest-priority bottleneck to optimize. Every language construct, every compiler data structure, every protocol message is designed for **zero-copy serialization** and **sub-microsecond latency**. The swarm message bus is not an add-on — it is the foundational primitive around which the entire toolchain is built. Agent-to-agent bandwidth determines swarm performance more than any other factor.
 
-### P13: Hardware-Agnostic Performance
-Redox code compiles to a **portable performance IR** that targets any hardware: x86, ARM, RISC-V, WASM, GPU (SPIR-V/PTX), NPU, FPGA. Performance-critical abstractions (SIMD, memory layout, parallelism) are expressed in hardware-agnostic terms and lowered to target-specific instructions by backend-specific optimization passes. Write once, run fast everywhere.
+### P13: Hardware-Agnostic Performance via MLIR + LLVM
+Redox code compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** to target any hardware: x86, ARM, RISC-V, WASM, GPU (AMDGPU, NVPTX, SPIR-V), NPU/TPU, FPGA. MLIR's multi-level dialect system preserves high-level semantic information (parallelism intent, memory layout, effect annotations) through progressive lowering, while LLVM provides battle-tested optimization and code generation for 20+ CPU architectures. Performance-critical abstractions (SIMD, memory layout, parallelism) are expressed in hardware-agnostic MLIR dialects and lowered through target-specific MLIR passes before final LLVM codegen. Write once, run fast everywhere — on the broadest compiler infrastructure in existence.
 
 ### P14: Database-Driven Safety
 Safety rules (ownership patterns, borrow violations, lifetime errors, type mismatches) are stored in a **Safety Knowledge Base (SKB)** — a structured, versioned, queryable database. Agents consult the SKB directly instead of waiting for compile-time error messages. The compiler can *optionally* enforce SKB rules at compile time (for human developers or CI pipelines), but this is a policy choice, not a language requirement. This eliminates the compile-time overhead tax that slows agentic iteration cycles from milliseconds to seconds.
@@ -431,12 +433,13 @@ Safety Model
 │   ├── Contract Assertions (debug-mode pre/post checks)
 │   └── Capability Monitors (agent sandbox enforcement)
 │
-├── Performance Infrastructure [NEW IN REDOX]
-│   ├── Portable Performance IR (PPIR)
-│   ├── Multi-target compilation (CPU, GPU, NPU, FPGA, WASM)
-│   ├── Hardware-agnostic SIMD abstractions
-│   ├── Performance annotations (#[perf::*])
-│   └── Target-optimal memory layout (#[repr(target_optimal)])
+├── Performance Infrastructure [NEW IN REDOX — MLIR + LLVM]
+│   ├── MLIR-based multi-level IR (Redox Dialect → Linalg/Affine → LLVM Dialect)
+│   ├── LLVM backend codegen (20+ CPU architectures, AMDGPU, NVPTX, WASM)
+│   ├── Custom MLIR dialects for GPU compute, NPU/TPU, FPGA synthesis
+│   ├── Hardware-agnostic SIMD via MLIR vector dialect
+│   ├── Performance annotations (#[perf::*]) lowered to MLIR attributes
+│   └── Target-optimal memory layout via MLIR data layout modeling (#[repr(target_optimal)])
 │
 └── Continuous (Lifecycle — opt-in for certification)
     ├── Verification Oracle (pre-commit, post-synthesis, cross-version)
@@ -588,23 +591,61 @@ redox build --syntax=canonical # default: zero-ambiguity syntax only
 redox fmt --canonicalize       # convert legacy Rust syntax to canonical Redox
 ```
 
-### 5.4 Hardware-Agnostic Performance Model
+### 5.4 Hardware-Agnostic Performance Model (MLIR + LLVM)
 
-Redox compiles to a **portable performance IR (PPIR)** that abstracts over hardware targets while preserving performance intent:
+Redox compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** — the broadest and most mature compiler infrastructure in existence. MLIR provides extensible multi-level abstractions that preserve high-level performance intent (parallelism, memory layout, vectorization) through progressive lowering, while LLVM provides battle-tested optimization and native code generation for 20+ architectures.
 
-#### 5.4.1 Portable Performance IR
+#### 5.4.1 MLIR-Based Compilation Pipeline
 
 ```
-Source → AST → HIR → MIR → PPIR → Target Code
-                                     ├── x86-64 (via LLVM)
-                                     ├── AArch64 (via LLVM)
-                                     ├── RISC-V (via LLVM)
-                                     ├── WASM (via wasm-gen)
-                                     ├── GPU/SPIR-V (via naga)
-                                     ├── GPU/PTX (via LLVM NVPTX)
-                                     ├── NPU (via ONNX-like lowering)
-                                     └── FPGA (via HLS synthesis)
+Source → AST → HIR → MIR → MLIR (Redox Dialect) → MLIR (Lowered) → Target Code
+                              │                       │
+                              │ Progressive Lowering:  │
+                              │ ┌─────────────────┐   │
+                              ├─┤ Redox Dialect    │   │  (effects, contracts, perf annotations)
+                              │ └────────┬────────┘   │
+                              │ ┌────────▼────────┐   │
+                              ├─┤ Linalg Dialect   │   │  (linear algebra, tensor ops)
+                              │ └────────┬────────┘   │
+                              │ ┌────────▼────────┐   │
+                              ├─┤ Affine Dialect   │   │  (loop nests, memory access patterns)
+                              │ └────────┬────────┘   │
+                              │ ┌────────▼────────┐   │
+                              ├─┤ Vector Dialect   │   │  (portable SIMD, hardware-agnostic)
+                              │ └────────┬────────┘   │
+                              │ ┌────────▼────────┐   │
+                              └─┤ LLVM Dialect     │   │  (LLVM IR equivalent in MLIR)
+                                └────────┬────────┘   │
+                                         ▼            │
+                              ┌──────────────────┐    │
+                              │   LLVM Backend    │    │
+                              └────────┬─────────┘    │
+                                       ▼              │
+                              Target Code:             │
+                              ├── x86-64        (LLVM x86 backend)
+                              ├── AArch64       (LLVM AArch64 backend)
+                              ├── RISC-V        (LLVM RISCV backend)
+                              ├── WASM          (LLVM WebAssembly backend)
+                              ├── GPU/AMDGPU    (LLVM AMDGPU backend)
+                              ├── GPU/NVPTX     (LLVM NVPTX backend)
+                              ├── GPU/SPIR-V    (MLIR SPIR-V dialect → SPIR-V binary)
+                              ├── NPU/TPU       (MLIR custom dialect → vendor runtime)
+                              └── FPGA          (MLIR → CIRCT → HLS/RTL synthesis)
 ```
+
+#### Why MLIR + LLVM?
+
+| Criterion                    | LLVM Alone                       | MLIR + LLVM (Redox)                                       |
+| ---------------------------- | -------------------------------- | --------------------------------------------------------- |
+| **CPU targets**              | 20+ architectures                | Same 20+ (LLVM backend unchanged)                         |
+| **GPU targets**              | NVPTX, AMDGPU only               | + SPIR-V dialect, custom compute dialects                 |
+| **NPU/TPU targets**          | None                             | Custom MLIR dialects per vendor (StableHLO, TOSA)         |
+| **FPGA targets**             | None                             | MLIR → CIRCT pipeline → Verilog/SystemVerilog             |
+| **High-level optimization**  | Lost after MIR→LLVM IR lowering  | Preserved via multi-level dialects (linalg, affine, etc.) |
+| **Parallelism preservation** | Opaque to LLVM                   | Explicit in MLIR OpenMP/GPU/async dialects                |
+| **Custom passes**            | C++ LLVM pass (complex, brittle) | MLIR tablegen + dialect (composable, versioned)           |
+| **Agent perf annotations**   | Lost at IR boundary              | Carried as MLIR attributes through entire pipeline        |
+| **Ecosystem maturity**       | 20+ years, industry standard     | 5+ years, backed by Google/LLVM community, production use |
 
 #### 5.4.2 Hardware-Agnostic Abstractions
 
@@ -617,12 +658,13 @@ fn dot_product(a: &[f32], b: &[f32]) -> f32 {
      .map(|(a, b)| Vector::from(a) * Vector::from(b))
      .sum()
 }
-// → SSE/AVX on x86, NEON on ARM, WASM SIMD on web, compute shader on GPU
+// → MLIR vector dialect → SSE/AVX on x86, NEON on ARM, WASM SIMD on web, compute shader on GPU
 
 // Portable parallelism — maps to hardware threading model
 #[parallel(strategy = "auto")]  // auto-selects: threads, SIMD, GPU dispatch
 fn matrix_multiply(a: &Matrix, b: &Matrix) -> Matrix {
-    // Compiler chooses optimal parallelism for target hardware
+    // MLIR linalg dialect captures matmul semantics; lowered to optimal target:
+    // → LLVM vectorized loops on CPU, AMDGPU/NVPTX kernels on GPU, TOSA on TPU
     ...
 }
 
@@ -633,7 +675,7 @@ struct Particle {
     velocity: Vec3,
     mass: f32,
 }
-// → AoS on cache-friendly targets, SoA on GPU targets, hybrid as needed
+// → MLIR data layout modeling: AoS on cache-friendly CPU targets, SoA on GPU, hybrid as needed
 ```
 
 #### 5.4.3 Performance Annotations (Not Safety Checks)
@@ -883,6 +925,10 @@ The Redox compiler exposes its entire semantic model through a query interface. 
 │              redox_query (Stable API)            │
 ├─────────────────────────────────────────────────┤
 │         Incremental Query Engine (Salsa)         │
+├─────────────────────────────────────────────────┤
+│         MLIR (Redox Dialect → LLVM Dialect)       │
+├─────────────────────────────────────────────────┤
+│    LLVM Backend (20+ CPU, GPU, WASM targets)     │
 ├─────────────────────────────────────────────────┤
 │    Compiler Internals (rustc_* crate graph)      │
 └─────────────────────────────────────────────────┘
@@ -1419,12 +1465,14 @@ RAP Server
 │   ├── Pre-validation endpoints (agent checks before writing code)
 │   └── Rule corpus management (add, deprecate, fork rules)
 │
-├── PPIR Service [NEW]
-│   ├── Portable Performance IR generation from MIR
-│   ├── Multi-target lowering (CPU, GPU, NPU, FPGA, WASM)
-│   ├── PPIR caching for incremental multi-target builds
-│   ├── Performance annotation processing (#[perf::*])
-│   └── Target-specific optimization pass orchestration
+├── MLIR/LLVM Service [NEW]
+│   ├── MIR → MLIR (Redox Dialect) translation
+│   ├── Progressive lowering: Redox → Linalg/Affine → Vector → LLVM Dialect
+│   ├── Multi-target LLVM codegen (20+ CPU architectures, AMDGPU, NVPTX, WASM)
+│   ├── Custom MLIR dialect pipelines (SPIR-V for GPU, CIRCT for FPGA, StableHLO for NPU/TPU)
+│   ├── MLIR module caching for incremental multi-target builds
+│   ├── Performance annotation processing (#[perf::*] → MLIR attributes)
+│   └── Target-specific MLIR optimization pass orchestration
 │
 └── Semantic VCS Service [NEW]
     ├── Operation log (semantic ops, not text diffs)
@@ -1771,7 +1819,10 @@ let pipeline = compose![
 - [ ] Build dual-syntax transpiler (legacy Rust → canonical Redox compact form)
 - [ ] Implement `redoxfmt --compact` (minimum-token canonical form) and `redoxfmt --expand` (human-readable form)
 - [ ] Stabilize `redox_public` API to cover all MIR, HIR, and type system constructs
-- [ ] Implement Portable Performance IR (PPIR) layer between MIR and codegen
+- [ ] Integrate MLIR infrastructure: define Redox MLIR dialect with ops for effects, contracts, perf annotations
+- [ ] Implement MIR → MLIR (Redox Dialect) translation layer
+- [ ] Implement MLIR progressive lowering pipeline: Redox Dialect → Linalg/Affine → Vector → LLVM Dialect
+- [ ] Wire LLVM backend codegen through MLIR LLVM Dialect (replacing direct MIR→LLVM IR path)
 - [ ] Implement Structured Diagnostics Protocol (JSON diagnostic graphs)
 - [ ] Externalize core queries as stable API (`redox_query`)
 - [ ] Establish CI/CD pipeline for the Redox compiler
@@ -1792,7 +1843,7 @@ let pipeline = compose![
 - [ ] Implement semantic lease manager (shared read / exclusive write on code regions)
 - [ ] Build CRDT-based semantic merge engine for concurrent AST/HIR modifications
 - [ ] Implement swarm message bus with zero-copy serialization (sub-µs latency)
-- [ ] Implement PPIR backend targets: x86-64, AArch64, WASM
+- [ ] Validate MLIR→LLVM backend targets: x86-64, AArch64, WASM
 
 ### Phase 2: Agent Protocol + Swarm Coordination + GPU/NPU Targets (Months 8–18)
 - [ ] Define and implement Redox Agent Protocol (RAP) specification
@@ -1804,8 +1855,9 @@ let pipeline = compose![
 - [ ] Implement semantic VCS (operation-log-based version control replacing git for agents)
 - [ ] Integrate RAP server with existing IDE infrastructure (VS Code, etc.)
 - [ ] Build swarm audit log system (append-only, cryptographically signed operation history)
-- [ ] Implement PPIR backend targets: RISC-V, SPIR-V (GPU), PTX (NVIDIA GPU)
-- [ ] Implement hardware-agnostic SIMD and parallelism abstractions
+- [ ] Enable MLIR→LLVM backend targets: RISC-V, AMDGPU, NVPTX
+- [ ] Implement MLIR SPIR-V dialect pipeline for Vulkan/OpenCL GPU compute
+- [ ] Implement hardware-agnostic SIMD via MLIR vector dialect and parallelism via OpenMP/async dialects
 
 ### Phase 3: Language Evolution + Token Optimization + Performance (Months 12–24)
 - [ ] Implement effect type system in `redox_hir_analysis`
@@ -1819,7 +1871,8 @@ let pipeline = compose![
 - [ ] Define `redox-2026` edition with all new features including token-compact canonical form
 - [ ] Build verification certificate emission pipeline (opt-in for safety-critical)
 - [ ] Implement swarm-of-swarms hierarchical orchestration for million-LOC+ codebases
-- [ ] Implement PPIR backend targets: NPU, FPGA (via HLS)
+- [ ] Implement MLIR→CIRCT pipeline for FPGA targets (Verilog/SystemVerilog synthesis)
+- [ ] Implement MLIR StableHLO/TOSA dialect pipelines for NPU/TPU targets
 
 ### Phase 4: Ecosystem (Months 18–30)
 - [ ] Build capability-indexed package registry
@@ -1905,37 +1958,37 @@ let pipeline = compose![
 
 ### B. Compiler Passes Ontology (Agent-Observable)
 
-| Pass ID | Pass Name                  | Input            | Output           |      Safety Check      | Agent Query                |
-| ------- | -------------------------- | ---------------- | ---------------- | :--------------------: | -------------------------- |
-| P01     | Lexing                     | Source text      | TokenStream      |           —            | `tokens_of(file)`          |
-| P02     | Parsing                    | TokenStream      | AST              |    Syntax validity     | `ast_of(file)`             |
-| P03     | Expansion                  | AST              | Expanded AST     |     Macro hygiene      | `expanded_ast_of(file)`    |
-| P04     | Name Resolution            | AST              | Resolved AST     |     Scope validity     | `resolve(name, scope)`     |
-| P05     | AST Lowering               | AST              | HIR              |  Desugar correctness   | `hir_of(item)`             |
-| P06     | Type Checking              | HIR              | Typed HIR        |      Type safety       | `type_of(expr)`            |
-| P07     | Trait Selection            | HIR + Types      | Resolved impls   |    Impl correctness    | `impl_of(trait, type)`     |
-| P08     | Borrow Checking            | MIR              | Borrow proof     | Memory safety (opt-in) | `borrows_of(func)`         |
-| P09     | MIR Building               | HIR              | MIR              |      CFG validity      | `mir_of(func)`             |
-| P10     | MIR Optimization           | MIR              | Optimized MIR    | Transform correctness  | `optimized_mir_of(func)`   |
-| P11     | Const Evaluation           | MIR              | Values           |      Const safety      | `const_eval(expr)`         |
-| P12     | Pattern Analysis           | HIR patterns     | Usefulness       |     Exhaustiveness     | `match_analysis(expr)`     |
-| P13     | Privacy Checking           | HIR              | Visibility map   |     Access control     | `visibility_of(item)`      |
-| P14     | Effect Inference [NEW]     | MIR              | Effect set       |   Effect containment   | `effects_of(func)`         |
-| P15     | Contract Checking [NEW]    | MIR + Contracts  | Proof result     |      Correctness       | `contracts_of(func)`       |
-| P16     | Capability Audit [NEW]     | Effect sets      | Audit result     |   Capability bounds    | `capabilities_of(crate)`   |
-| P17     | Monomorphization           | MIR              | Concrete MIR     | Instantiation validity | `mono_items()`             |
-| P18     | Codegen                    | MIR              | Machine code     |           —            | `codegen_of(func)`         |
-| P19     | Linking                    | Objects          | Binary           |     Link validity      | —                          |
-| P20     | Region Decomposition [NEW] | Dep graph        | Semantic regions |   Parallelizability    | `regions_of(crate)`        |
-| P21     | Lease Validation [NEW]     | Agent ops        | Lease proof      |   Write exclusivity    | `lease_status(region)`     |
-| P22     | Semantic Merge [NEW]       | Concurrent ops   | Merged AST       |    Conflict freedom    | `merge_status(ops)`        |
-| P23     | Consensus Check [NEW]      | Interface change | Consensus proof  |   Atomic integration   | `consensus_status(change)` |
-| P24     | PPIR Lowering [NEW]        | Optimized MIR    | PPIR             |           —            | `ppir_of(func)`            |
-| P25     | Target Dispatch [NEW]      | PPIR             | Target code      |           —            | `target_code_of(func)`     |
-| P26     | SKB Validation [NEW]       | Source + SKB     | Rule violations  |   Opt-in enforcement   | `skb_check(func)`          |
-| P27     | Token Expansion [NEW]      | Compact AST      | Expanded AST     |           —            | `expand_tokens(file)`      |
-| P28     | Token Compression [NEW]    | Expanded AST     | Compact AST      |           —            | `compress_tokens(file)`    |
-| P29     | Token Budget [NEW]         | AST              | Token metrics    |           —            | `token_count(func)`        |
+| Pass ID | Pass Name                  | Input            | Output                |      Safety Check      | Agent Query                |
+| ------- | -------------------------- | ---------------- | --------------------- | :--------------------: | -------------------------- |
+| P01     | Lexing                     | Source text      | TokenStream           |           —            | `tokens_of(file)`          |
+| P02     | Parsing                    | TokenStream      | AST                   |    Syntax validity     | `ast_of(file)`             |
+| P03     | Expansion                  | AST              | Expanded AST          |     Macro hygiene      | `expanded_ast_of(file)`    |
+| P04     | Name Resolution            | AST              | Resolved AST          |     Scope validity     | `resolve(name, scope)`     |
+| P05     | AST Lowering               | AST              | HIR                   |  Desugar correctness   | `hir_of(item)`             |
+| P06     | Type Checking              | HIR              | Typed HIR             |      Type safety       | `type_of(expr)`            |
+| P07     | Trait Selection            | HIR + Types      | Resolved impls        |    Impl correctness    | `impl_of(trait, type)`     |
+| P08     | Borrow Checking            | MIR              | Borrow proof          | Memory safety (opt-in) | `borrows_of(func)`         |
+| P09     | MIR Building               | HIR              | MIR                   |      CFG validity      | `mir_of(func)`             |
+| P10     | MIR Optimization           | MIR              | Optimized MIR         | Transform correctness  | `optimized_mir_of(func)`   |
+| P11     | Const Evaluation           | MIR              | Values                |      Const safety      | `const_eval(expr)`         |
+| P12     | Pattern Analysis           | HIR patterns     | Usefulness            |     Exhaustiveness     | `match_analysis(expr)`     |
+| P13     | Privacy Checking           | HIR              | Visibility map        |     Access control     | `visibility_of(item)`      |
+| P14     | Effect Inference [NEW]     | MIR              | Effect set            |   Effect containment   | `effects_of(func)`         |
+| P15     | Contract Checking [NEW]    | MIR + Contracts  | Proof result          |      Correctness       | `contracts_of(func)`       |
+| P16     | Capability Audit [NEW]     | Effect sets      | Audit result          |   Capability bounds    | `capabilities_of(crate)`   |
+| P17     | Monomorphization           | MIR              | Concrete MIR          | Instantiation validity | `mono_items()`             |
+| P18     | Codegen                    | MIR              | Machine code          |           —            | `codegen_of(func)`         |
+| P19     | Linking                    | Objects          | Binary                |     Link validity      | —                          |
+| P20     | Region Decomposition [NEW] | Dep graph        | Semantic regions      |   Parallelizability    | `regions_of(crate)`        |
+| P21     | Lease Validation [NEW]     | Agent ops        | Lease proof           |   Write exclusivity    | `lease_status(region)`     |
+| P22     | Semantic Merge [NEW]       | Concurrent ops   | Merged AST            |    Conflict freedom    | `merge_status(ops)`        |
+| P23     | Consensus Check [NEW]      | Interface change | Consensus proof       |   Atomic integration   | `consensus_status(change)` |
+| P24     | MLIR Lowering [NEW]        | Optimized MIR    | MLIR (Redox Dialect)  |           —            | `mlir_of(func)`            |
+| P25     | MLIR→LLVM Lowering [NEW]   | MLIR Redox       | LLVM IR / Target code |           —            | `target_code_of(func)`     |
+| P26     | SKB Validation [NEW]       | Source + SKB     | Rule violations       |   Opt-in enforcement   | `skb_check(func)`          |
+| P27     | Token Expansion [NEW]      | Compact AST      | Expanded AST          |           —            | `expand_tokens(file)`      |
+| P28     | Token Compression [NEW]    | Expanded AST     | Compact AST           |           —            | `compress_tokens(file)`    |
+| P29     | Token Budget [NEW]         | AST              | Token metrics         |           —            | `token_count(func)`        |
 
 ### C. Diagnostic Categories Ontology
 
@@ -1988,7 +2041,7 @@ Redox transforms Rust from a language *for human developers with CLI tools* into
 1. **Token-minimal syntax** — every construct is compressed to ≤50% of its Rust token count: `pub fn` → `+f`, `#[derive(Clone, Debug)]` → `@d(Cl,Db)`, `let mut` → `m`, `Option<T>` → `?T`
 2. **Zero-ambiguity syntax** — deterministic LL(1) grammar eliminates 100% of agent parsing errors caused by context-sensitive constructs
 3. **Safety Knowledge Base (SKB)** — safety rules in a queryable database, not slow compile-time passes; agents pre-validate before writing code
-4. **Hardware-agnostic performance** — Portable Performance IR (PPIR) compiles to CPU, GPU, NPU, FPGA, WASM from a single source
+4. **Hardware-agnostic performance via MLIR + LLVM** — MLIR multi-level IR with LLVM backend compiles to 20+ CPU architectures, GPU (AMDGPU, NVPTX, SPIR-V), NPU/TPU, FPGA, WASM from a single source
 5. **Sub-microsecond inter-agent communication** — zero-copy typed message bus optimized for swarm throughput over everything else
 6. **Performance annotations** — `@pnb` (no bounds check), `@pt(gpu)` (target GPU), `@pv(8)` (vectorize) — compact and trusted
 7. **Effect types** — agents know what functions *do* without reading them
@@ -2004,6 +2057,6 @@ Redox transforms Rust from a language *for human developers with CLI tools* into
 17. **Standard abbreviation registry** — deterministic, versioned compact forms for all std library types and traits
 18. **Token budget reporting** — `redox build --token-report` tracks per-function token expenditure for agent optimization
 
-The compiler becomes an **optimizing translator and swarm arbiter** — its primary job is *making code run fast on any hardware with the fewest tokens possible*, not blocking submissions with safety errors that agents already know how to avoid. Safety knowledge lives in a database. Performance lives in the compiler. Communication lives in the swarm bus. Parsing lives in a zero-ambiguity grammar. And every construct lives in its **most compressed form** — because tokens are the currency of agentic intelligence, and Redox is designed to spend them wisely.
+The compiler becomes an **optimizing translator and swarm arbiter**, built on the **MLIR + LLVM** compiler infrastructure — the broadest and most mature in existence. Its primary job is *making code run fast on any hardware with the fewest tokens possible*, not blocking submissions with safety errors that agents already know how to avoid. Safety knowledge lives in a database. Performance lives in MLIR's multi-level optimization pipeline and LLVM's battle-tested backends. Communication lives in the swarm bus. Parsing lives in a zero-ambiguity grammar. And every construct lives in its **most compressed form** — because tokens are the currency of agentic intelligence, and Redox is designed to spend them wisely.
 
-This is not Rust made safe. This is Rust made *fast*, *parseable*, *communicative*, and *token-efficient* — for the age of agent swarms.
+This is not Rust made safe. This is Rust made *fast*, *parseable*, *communicative*, and *token-efficient* — built on MLIR and LLVM, for the age of agent swarms.
