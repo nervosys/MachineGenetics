@@ -1,0 +1,193 @@
+[
+  {
+    "id": "agent-001",
+    "category": "agent-orchestration",
+    "difficulty": "very-hard",
+    "task": "Write an agent loop that takes a task description, generates a plan, executes steps, and reports results using effects",
+    "solution": {
+      "rdx_source": "effect llm {\n    f complete(prompt: &s) -> s;\n}\n\neffect tools {\n    f run_code(code: &s) -> R[s, s];\n    f read_file(path: &s) -> R[s, s];\n    f write_file(path: &s, content: &s) -> R[(), s];\n}\n\nS AgentResult {\n    plan: [s]~,\n    outputs: [s]~,\n    errors: [s]~,\n}\n\n+f agent_loop(task: &s) -> AgentResult / llm, tools, io {\n    v plan_prompt = f\"Break this task into steps:\\n{task}\";\n    v plan_text = llm.complete(&plan_prompt);\n    v steps = plan_text.lines().to_vec();\n    m outputs: [s]~ = [];\n    m errors: [s]~ = [];\n    @ step : &steps {\n        v code_prompt = f\"Write Redox code for: {step}\";\n        v code = llm.complete(&code_prompt);\n        ? tools.run_code(&code) {\n            R.Ok(out) => outputs.push(out),\n            R.Err(err) => errors.push(f\"Step failed: {err}\"),\n        }\n    }\n    @AgentResult { plan: steps, outputs: outputs, errors: errors }\n}",
+      "token_count": 190,
+      "effects": ["llm", "tools", "io"],
+      "skb_rules_used": ["type_safety:result-matching", "borrow:shared-ref", "concurrency:effect-tracking"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct AgentResult { plan: Vec<String>, outputs: Vec<String>, errors: Vec<String> }\n\ntrait LlmClient { fn complete(&self, prompt: &str) -> String; }\ntrait ToolRunner {\n    fn run_code(&self, code: &str) -> Result<String, String>;\n    fn read_file(&self, path: &str) -> Result<String, String>;\n    fn write_file(&self, path: &str, content: &str) -> Result<(), String>;\n}\n\npub fn agent_loop(task: &str, llm: &dyn LlmClient, tools: &dyn ToolRunner) -> AgentResult {\n    let plan_prompt = format!(\"Break this task into steps:\\n{}\", task);\n    let plan_text = llm.complete(&plan_prompt);\n    let steps: Vec<String> = plan_text.lines().map(|s| s.to_string()).collect();\n    let mut outputs = Vec::new();\n    let mut errors = Vec::new();\n    for step in &steps {\n        let code_prompt = format!(\"Write Rust code for: {}\", step);\n        let code = llm.complete(&code_prompt);\n        match tools.run_code(&code) {\n            Ok(out) => outputs.push(out),\n            Err(err) => errors.push(format!(\"Step failed: {}\", err)),\n        }\n    }\n    AgentResult { plan: steps, outputs, errors }\n}",
+      "token_count": 320
+    },
+    "tests": [
+      { "input": "agent_loop(\"Create a hello world program\")", "expected": "AgentResult with non-empty plan" }
+    ]
+  },
+  {
+    "id": "agent-002",
+    "category": "agent-orchestration",
+    "difficulty": "very-hard",
+    "task": "Write a multi-agent pipeline where a planner agent delegates subtasks to specialist worker agents and aggregates results",
+    "solution": {
+      "rdx_source": "E AgentRole { Planner, Coder, Reviewer, Tester }\n\nS SubTask {\n    id: u32,\n    description: s,\n    assigned_to: AgentRole,\n    result: ?s,\n}\n\nS Pipeline {\n    tasks: [SubTask]~,\n}\n\nI Pipeline {\n    +f new() -> Pipeline { @Pipeline { tasks: [] } }\n    +f plan(&!self, goal: &s) / llm {\n        v plan = llm.complete(&f\"Plan subtasks for: {goal}\");\n        v lines = plan.lines();\n        m id: u32 = 0;\n        @ line : lines {\n            self.tasks.push(@SubTask {\n                id: id, description: line.to_string(),\n                assigned_to: AgentRole.Coder, result: ?None,\n            });\n            id = id + 1;\n        }\n    }\n    +f execute(&!self) / llm, tools {\n        m i: usize = 0;\n        loop {\n            ? i >= self.tasks.len() { break; }\n            v prompt = f\"As a {self.tasks[i].assigned_to}, do: {self.tasks[i].description}\";\n            v output = llm.complete(&prompt);\n            self.tasks[i].result = ?Some(output);\n            i = i + 1;\n        }\n    }\n    +f report(&self) -> s {\n        m lines: [s]~ = [];\n        @ task : &self.tasks {\n            v status = ? task.result { ?Some(_) => \"done\", ?None => \"pending\" };\n            lines.push(f\"[{task.id}] {status}: {task.description}\");\n        }\n        lines.join(\"\\n\")\n    }\n}",
+      "token_count": 260,
+      "effects": ["llm", "tools"],
+      "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref", "type_safety:option-matching"]
+    },
+    "rust_equivalent": {
+      "rs_source": "enum AgentRole { Planner, Coder, Reviewer, Tester }\nstruct SubTask { id: u32, description: String, assigned_to: AgentRole, result: Option<String> }\nstruct Pipeline { tasks: Vec<SubTask> }\n\nimpl Pipeline {\n    pub fn new() -> Self { Self { tasks: Vec::new() } }\n    pub fn plan(&mut self, goal: &str, llm: &dyn LlmClient) {\n        let plan = llm.complete(&format!(\"Plan subtasks for: {}\", goal));\n        for (id, line) in plan.lines().enumerate() {\n            self.tasks.push(SubTask { id: id as u32, description: line.to_string(), assigned_to: AgentRole::Coder, result: None });\n        }\n    }\n    pub fn execute(&mut self, llm: &dyn LlmClient) {\n        for task in &mut self.tasks {\n            let prompt = format!(\"As a {:?}, do: {}\", task.assigned_to, task.description);\n            task.result = Some(llm.complete(&prompt));\n        }\n    }\n    pub fn report(&self) -> String {\n        self.tasks.iter().map(|t| {\n            let status = if t.result.is_some() { \"done\" } else { \"pending\" };\n            format!(\"[{}] {}: {}\", t.id, status, t.description)\n        }).collect::<Vec<_>>().join(\"\\n\")\n    }\n}",
+      "token_count": 400
+    },
+    "tests": [
+      { "input": "v p = Pipeline.new(); p.plan(\"build a web app\"); p.execute(); p.report()", "expected": "formatted report string" }
+    ]
+  },
+  {
+    "id": "agent-003",
+    "category": "agent-orchestration",
+    "difficulty": "very-hard",
+    "task": "Write a self-correcting code generation loop: generate, compile, fix errors, repeat until success or max retries",
+    "solution": {
+      "rdx_source": "S CompileResult {\n    success: bool,\n    output: s,\n    errors: [s]~,\n}\n\n+f self_correct(\n    task: &s,\n    max_retries: u32,\n) -> R[s, s] / llm, tools {\n    m code = llm.complete(&f\"Write Redox code: {task}\");\n    m attempt: u32 = 0;\n    loop {\n        v result = tools.compile(&code);\n        ? result.success { ret R.Ok(code); }\n        attempt = attempt + 1;\n        ? attempt >= max_retries {\n            ret R.Err(f\"Failed after {max_retries} attempts\");\n        }\n        v error_context = result.errors.join(\"\\n\");\n        code = llm.complete(&f\"Fix these errors in the code:\\nErrors:\\n{error_context}\\nCode:\\n{code}\");\n    }\n}",
+      "token_count": 130,
+      "effects": ["llm", "tools"],
+      "skb_rules_used": ["type_safety:result-return"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct CompileResult { success: bool, output: String, errors: Vec<String> }\n\npub fn self_correct(\n    task: &str, max_retries: u32,\n    llm: &dyn LlmClient, compiler: &dyn Compiler,\n) -> Result<String, String> {\n    let mut code = llm.complete(&format!(\"Write Rust code: {}\", task));\n    let mut attempt = 0;\n    loop {\n        let result = compiler.compile(&code);\n        if result.success { return Ok(code); }\n        attempt += 1;\n        if attempt >= max_retries { return Err(format!(\"Failed after {} attempts\", max_retries)); }\n        let error_context = result.errors.join(\"\\n\");\n        code = llm.complete(&format!(\"Fix these errors:\\nErrors:\\n{}\\nCode:\\n{}\", error_context, code));\n    }\n}",
+      "token_count": 200
+    },
+    "tests": [
+      { "input": "self_correct(\"write hello world\", 3)", "expected": "R.Ok(<valid code>)" }
+    ]
+  },
+  {
+    "id": "agent-004",
+    "category": "agent-orchestration",
+    "difficulty": "very-hard",
+    "task": "Write a tool registry that lets agents dynamically discover and invoke tools by name with JSON arguments",
+    "solution": {
+      "rdx_source": "S ToolDef {\n    name: s,\n    description: s,\n    handler: f(s) -> R[s, s],\n}\n\nS ToolRegistry { tools: {s: ToolDef} }\n\nI ToolRegistry {\n    +f new() -> ToolRegistry { @ToolRegistry { tools: {} } }\n    +f register(&!self, tool: ToolDef) {\n        self.tools.insert(tool.name.clone(), tool);\n    }\n    +f list(&self) -> [s]~ {\n        self.tools.keys().to_vec()\n    }\n    +f invoke(&self, name: &s, args: s) -> R[s, s] {\n        ? self.tools.get(name) {\n            ?Some(tool) => (tool.handler)(args),\n            ?None => R.Err(f\"unknown tool: {name}\"),\n        }\n    }\n    +f describe(&self) -> s {\n        m lines: [s]~ = [];\n        @ (name, tool) : &self.tools {\n            lines.push(f\"{name}: {tool.description}\");\n        }\n        lines.join(\"\\n\")\n    }\n}",
+      "token_count": 160,
+      "effects": [],
+      "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref", "type_safety:result-return"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::collections::HashMap;\n\nstruct ToolDef { name: String, description: String, handler: fn(String) -> Result<String, String> }\nstruct ToolRegistry { tools: HashMap<String, ToolDef> }\n\nimpl ToolRegistry {\n    pub fn new() -> Self { Self { tools: HashMap::new() } }\n    pub fn register(&mut self, tool: ToolDef) { self.tools.insert(tool.name.clone(), tool); }\n    pub fn list(&self) -> Vec<String> { self.tools.keys().cloned().collect() }\n    pub fn invoke(&self, name: &str, args: String) -> Result<String, String> {\n        match self.tools.get(name) {\n            Some(tool) => (tool.handler)(args),\n            None => Err(format!(\"unknown tool: {}\", name)),\n        }\n    }\n    pub fn describe(&self) -> String {\n        self.tools.iter().map(|(name, tool)| format!(\"{}: {}\", name, tool.description))\n            .collect::<Vec<_>>().join(\"\\n\")\n    }\n}",
+      "token_count": 260
+    },
+    "tests": [
+      { "input": "v r = ToolRegistry.new(); r.register(ToolDef{name:\"echo\",description:\"echoes\",handler:fn(s)=>R.Ok(s)}); r.invoke(\"echo\", \"hi\")", "expected": "R.Ok(\"hi\")" }
+    ]
+  },
+  {
+    "id": "agent-005",
+    "category": "agent-orchestration",
+    "difficulty": "very-hard",
+    "task": "Write a conversation memory manager that stores, retrieves, and summarizes past interactions",
+    "solution": {
+      "rdx_source": "E Role { User, Assistant, System }\n\nS Message {\n    role: Role,\n    content: s,\n    timestamp: u64,\n}\n\nS Memory {\n    messages: [Message]~,\n    max_messages: usize,\n}\n\nI Memory {\n    +f new(max: usize) -> Memory { @Memory { messages: [], max_messages: max } }\n    +f add(&!self, role: Role, content: s, ts: u64) {\n        self.messages.push(@Message { role: role, content: content, timestamp: ts });\n        ? self.messages.len() > self.max_messages {\n            self.messages.remove(0);\n        }\n    }\n    +f context_window(&self, n: usize) -> [&Message]~ {\n        v start = ? self.messages.len() > n { self.messages.len() - n } : { 0 };\n        self.messages[start..].to_vec()\n    }\n    +f summarize(&self) -> s / llm {\n        v transcript = self.messages.iter()\n            .map(fn(msg) => f\"{msg.role}: {msg.content}\")\n            .join(\"\\n\");\n        llm.complete(&f\"Summarize this conversation:\\n{transcript}\")\n    }\n    +f search(&self, keyword: &s) -> [&Message]~ {\n        self.messages.iter()\n            .filter(fn(msg) => msg.content.contains(keyword))\n            .to_vec()\n    }\n}",
+      "token_count": 210,
+      "effects": ["llm"],
+      "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref", "lifetime:returned-refs"]
+    },
+    "rust_equivalent": {
+      "rs_source": "enum Role { User, Assistant, System }\nstruct Message { role: Role, content: String, timestamp: u64 }\nstruct Memory { messages: Vec<Message>, max_messages: usize }\n\nimpl Memory {\n    pub fn new(max: usize) -> Self { Self { messages: Vec::new(), max_messages: max } }\n    pub fn add(&mut self, role: Role, content: String, ts: u64) {\n        self.messages.push(Message { role, content, timestamp: ts });\n        if self.messages.len() > self.max_messages { self.messages.remove(0); }\n    }\n    pub fn context_window(&self, n: usize) -> &[Message] {\n        let start = self.messages.len().saturating_sub(n);\n        &self.messages[start..]\n    }\n    pub fn summarize(&self, llm: &dyn LlmClient) -> String {\n        let transcript: String = self.messages.iter()\n            .map(|m| format!(\"{:?}: {}\", m.role, m.content)).collect::<Vec<_>>().join(\"\\n\");\n        llm.complete(&format!(\"Summarize this conversation:\\n{}\", transcript))\n    }\n    pub fn search(&self, keyword: &str) -> Vec<&Message> {\n        self.messages.iter().filter(|m| m.content.contains(keyword)).collect()\n    }\n}",
+      "token_count": 340
+    },
+    "tests": [
+      { "input": "v m = Memory.new(100); m.add(Role.User, \"hello\", 1); m.context_window(1).len()", "expected": "1" }
+    ]
+  },
+  {
+    "id": "agent-006",
+    "category": "agent-orchestration",
+    "difficulty": "very-hard",
+    "task": "Write a prompt template engine that supports variable substitution and conditional sections",
+    "solution": {
+      "rdx_source": "S Template {\n    raw: s,\n}\n\nI Template {\n    +f new(raw: s) -> Template { @Template { raw: raw } }\n    +f render(&self, vars: &{s: s}) -> s {\n        m result = self.raw.clone();\n        @ (key, val) : vars {\n            result = result.replace(&f\"{{{key}}}\", val);\n        }\n        // Handle {{#if key}}...{{/if}} blocks\n        m pos: usize = 0;\n        loop {\n            v start_tag = result[pos..].find(\"{{#if \");\n            ? start_tag {\n                ?None => break,\n                ?Some(si) => {\n                    v abs_start = pos + si;\n                    v end_tag_start = result[abs_start..].find(\"}}\").unwrap() + abs_start;\n                    v var_name = result[abs_start + 6..end_tag_start];\n                    v block_end = result[end_tag_start..].find(\"{{/if}}\").unwrap() + end_tag_start;\n                    v block_content = result[end_tag_start + 2..block_end];\n                    v has_val = vars.contains_key(&var_name.to_string());\n                    v replacement = ? has_val { block_content } : { \"\" };\n                    result = f\"{result[..abs_start]}{replacement}{result[block_end + 7..]}\";\n                    pos = abs_start;\n                },\n            }\n        }\n        result\n    }\n}",
+      "token_count": 210,
+      "effects": [],
+      "skb_rules_used": ["borrow:shared-ref", "ownership:move-semantics"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::collections::HashMap;\n\nstruct Template { raw: String }\n\nimpl Template {\n    pub fn new(raw: String) -> Self { Self { raw } }\n    pub fn render(&self, vars: &HashMap<String, String>) -> String {\n        let mut result = self.raw.clone();\n        for (key, val) in vars {\n            result = result.replace(&format!(\"{{{}}}\", key), val);\n        }\n        // Process conditionals (simplified)\n        loop {\n            if let Some(si) = result.find(\"{{#if \") {\n                let end_tag = result[si..].find(\"}}\").unwrap() + si;\n                let var_name = &result[si+6..end_tag];\n                let block_end = result[end_tag..].find(\"{{/if}}\").unwrap() + end_tag;\n                let block_content = &result[end_tag+2..block_end];\n                let replacement = if vars.contains_key(var_name) { block_content.to_string() } else { String::new() };\n                result = format!(\"{}{}{}\", &result[..si], replacement, &result[block_end+7..]);\n            } else { break; }\n        }\n        result\n    }\n}",
+      "token_count": 310
+    },
+    "tests": [
+      { "input": "Template.new(\"Hello {name}!\").render(&{\"name\": \"Agent\"})", "expected": "\"Hello Agent!\"" }
+    ]
+  },
+  {
+    "id": "agent-007",
+    "category": "agent-orchestration",
+    "difficulty": "very-hard",
+    "task": "Write a structured output parser that extracts typed fields from an LLM response using a schema definition",
+    "solution": {
+      "rdx_source": "E FieldType { Str, Int, Bool, List }\n\nS FieldDef { name: s, field_type: FieldType, required: bool }\n\nS Schema { fields: [FieldDef]~ }\n\nS ParsedOutput { values: {s: s} }\n\n+f parse_output(text: &s, schema: &Schema) -> R[ParsedOutput, s] {\n    m values: {s: s} = {};\n    @ field : &schema.fields {\n        v pattern = f\"{field.name}:\";\n        v idx = text.find(&pattern);\n        ? idx {\n            ?Some(i) => {\n                v start = i + pattern.len();\n                v rest = text[start..].trim();\n                v end = rest.find('\\n').unwrap_or(rest.len());\n                values.insert(field.name.clone(), rest[..end].trim().to_string());\n            },\n            ?None => {\n                ? field.required {\n                    ret R.Err(f\"missing required field: {field.name}\");\n                }\n            },\n        }\n    }\n    R.Ok(@ParsedOutput { values: values })\n}",
+      "token_count": 160,
+      "effects": [],
+      "skb_rules_used": ["type_safety:result-return", "borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::collections::HashMap;\n\nenum FieldType { Str, Int, Bool, List }\nstruct FieldDef { name: String, field_type: FieldType, required: bool }\nstruct Schema { fields: Vec<FieldDef> }\nstruct ParsedOutput { values: HashMap<String, String> }\n\npub fn parse_output(text: &str, schema: &Schema) -> Result<ParsedOutput, String> {\n    let mut values = HashMap::new();\n    for field in &schema.fields {\n        let pattern = format!(\"{}:\", field.name);\n        if let Some(i) = text.find(&pattern) {\n            let start = i + pattern.len();\n            let rest = text[start..].trim();\n            let end = rest.find('\\n').unwrap_or(rest.len());\n            values.insert(field.name.clone(), rest[..end].trim().to_string());\n        } else if field.required {\n            return Err(format!(\"missing required field: {}\", field.name));\n        }\n    }\n    Ok(ParsedOutput { values })\n}",
+      "token_count": 260
+    },
+    "tests": [
+      { "input": "parse_output(\"name: test\\ncount: 5\", schema)", "expected": "R.Ok(ParsedOutput{values:{\"name\":\"test\",\"count\":\"5\"}})" }
+    ]
+  },
+  {
+    "id": "agent-008",
+    "category": "agent-orchestration",
+    "difficulty": "very-hard",
+    "task": "Write a capability-based sandbox that restricts which effects an agent can use at runtime",
+    "solution": {
+      "rdx_source": "E Capability { FileRead, FileWrite, NetAccess, CodeExec, LlmCall }\n\nS Sandbox {\n    allowed: [Capability]~,\n    denied_log: [s]~,\n}\n\nI Sandbox {\n    +f new(caps: [Capability]~) -> Sandbox {\n        @Sandbox { allowed: caps, denied_log: [] }\n    }\n    +f check(&!self, cap: Capability) -> bool {\n        v allowed = self.allowed.iter().any(fn(c) => c == &cap);\n        ? !allowed {\n            self.denied_log.push(f\"denied: {cap}\");\n        }\n        allowed\n    }\n    +f guarded_read(&!self, path: &s) -> R[s, s] / fs {\n        ? self.check(Capability.FileRead) {\n            fs.read_bytes(path).map(fn(b) => s.from_utf8(b).unwrap())\n        } : {\n            R.Err(\"file read not permitted\")\n        }\n    }\n    +f guarded_net(&!self, url: &s) -> R[s, s] / net {\n        ? self.check(Capability.NetAccess) {\n            net.get(url)\n        } : {\n            R.Err(\"network access not permitted\")\n        }\n    }\n    +f audit_log(&self) -> &[s]~ { &self.denied_log }\n}",
+      "token_count": 200,
+      "effects": ["fs", "net"],
+      "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref", "type_safety:result-return"]
+    },
+    "rust_equivalent": {
+      "rs_source": "#[derive(PartialEq)]\nenum Capability { FileRead, FileWrite, NetAccess, CodeExec, LlmCall }\n\nstruct Sandbox { allowed: Vec<Capability>, denied_log: Vec<String> }\n\nimpl Sandbox {\n    pub fn new(caps: Vec<Capability>) -> Self { Self { allowed: caps, denied_log: Vec::new() } }\n    pub fn check(&mut self, cap: Capability) -> bool {\n        let allowed = self.allowed.contains(&cap);\n        if !allowed { self.denied_log.push(format!(\"denied: {:?}\", cap)); }\n        allowed\n    }\n    pub fn guarded_read(&mut self, path: &str) -> Result<String, String> {\n        if self.check(Capability::FileRead) {\n            std::fs::read_to_string(path).map_err(|e| e.to_string())\n        } else { Err(\"file read not permitted\".into()) }\n    }\n    pub fn audit_log(&self) -> &[String] { &self.denied_log }\n}",
+      "token_count": 280
+    },
+    "tests": [
+      { "input": "v s = Sandbox.new([Capability.FileRead]); s.check(Capability.FileRead)", "expected": "true" },
+      { "input": "v s = Sandbox.new([]); s.check(Capability.NetAccess)", "expected": "false" }
+    ]
+  },
+  {
+    "id": "agent-009",
+    "category": "agent-orchestration",
+    "difficulty": "very-hard",
+    "task": "Write a reward/scoring function that evaluates generated code on correctness, efficiency, and style metrics",
+    "solution": {
+      "rdx_source": "S CodeMetrics {\n    compiles: bool,\n    tests_passed: u32,\n    tests_total: u32,\n    token_count: u32,\n    reference_tokens: u32,\n    effects_correct: bool,\n}\n\nS Score {\n    correctness: f64,\n    efficiency: f64,\n    style: f64,\n    total: f64,\n}\n\n+f evaluate(metrics: &CodeMetrics) -> Score {\n    v correctness: f64 = ? metrics.compiles {\n        ? metrics.tests_total > 0 {\n            metrics.tests_passed as f64 / metrics.tests_total as f64\n        } : { 1.0 }\n    } : { 0.0 };\n    v efficiency: f64 = ? metrics.token_count > 0 {\n        v ratio = metrics.reference_tokens as f64 / metrics.token_count as f64;\n        ? ratio > 1.0 { 1.0 } : { ratio }\n    } : { 0.0 };\n    v style: f64 = ? metrics.effects_correct { 1.0 } : { 0.5 };\n    v total = correctness * 0.6 + efficiency * 0.3 + style * 0.1;\n    @Score { correctness: correctness, efficiency: efficiency, style: style, total: total }\n}",
+      "token_count": 180,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "struct CodeMetrics { compiles: bool, tests_passed: u32, tests_total: u32, token_count: u32, reference_tokens: u32, effects_correct: bool }\nstruct Score { correctness: f64, efficiency: f64, style: f64, total: f64 }\n\npub fn evaluate(metrics: &CodeMetrics) -> Score {\n    let correctness = if metrics.compiles {\n        if metrics.tests_total > 0 { metrics.tests_passed as f64 / metrics.tests_total as f64 } else { 1.0 }\n    } else { 0.0 };\n    let efficiency = if metrics.token_count > 0 {\n        let ratio = metrics.reference_tokens as f64 / metrics.token_count as f64;\n        ratio.min(1.0)\n    } else { 0.0 };\n    let style = if metrics.effects_correct { 1.0 } else { 0.5 };\n    let total = correctness * 0.6 + efficiency * 0.3 + style * 0.1;\n    Score { correctness, efficiency, style, total }\n}",
+      "token_count": 260
+    },
+    "tests": [
+      { "input": "evaluate(&CodeMetrics{compiles:true,tests_passed:10,tests_total:10,token_count:50,reference_tokens:50,effects_correct:true})", "expected": "Score{correctness:1.0,efficiency:1.0,style:1.0,total:1.0}" }
+    ]
+  },
+  {
+    "id": "agent-010",
+    "category": "agent-orchestration",
+    "difficulty": "very-hard",
+    "task": "Write an SKB rule lookup engine that finds applicable rules given a code context and returns fix suggestions",
+    "solution": {
+      "rdx_source": "S Rule {\n    id: s,\n    category: s,\n    pattern: s,\n    description: s,\n    fix_template: s,\n}\n\nS RuleMatch {\n    rule_id: s,\n    location: s,\n    suggestion: s,\n}\n\nS SkbEngine {\n    rules: [Rule]~,\n}\n\nI SkbEngine {\n    +f new() -> SkbEngine { @SkbEngine { rules: [] } }\n    +f load(&!self, rule: Rule) { self.rules.push(rule); }\n    +f query(&self, code: &s, context: &s) -> [RuleMatch]~ {\n        m matches: [RuleMatch]~ = [];\n        @ rule : &self.rules {\n            ? code.contains(&rule.pattern) {\n                v suggestion = rule.fix_template\n                    .replace(\"{pattern}\", &rule.pattern)\n                    .replace(\"{context}\", context);\n                matches.push(@RuleMatch {\n                    rule_id: rule.id.clone(),\n                    location: rule.pattern.clone(),\n                    suggestion: suggestion,\n                });\n            }\n        }\n        matches\n    }\n    +f categories(&self) -> [s]~ {\n        m cats: [s]~ = [];\n        @ rule : &self.rules {\n            ? !cats.contains(&rule.category) {\n                cats.push(rule.category.clone());\n            }\n        }\n        cats\n    }\n}",
+      "token_count": 220,
+      "effects": [],
+      "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct Rule { id: String, category: String, pattern: String, description: String, fix_template: String }\nstruct RuleMatch { rule_id: String, location: String, suggestion: String }\nstruct SkbEngine { rules: Vec<Rule> }\n\nimpl SkbEngine {\n    pub fn new() -> Self { Self { rules: Vec::new() } }\n    pub fn load(&mut self, rule: Rule) { self.rules.push(rule); }\n    pub fn query(&self, code: &str, context: &str) -> Vec<RuleMatch> {\n        self.rules.iter().filter_map(|rule| {\n            if code.contains(&rule.pattern) {\n                let suggestion = rule.fix_template.replace(\"{pattern}\", &rule.pattern).replace(\"{context}\", context);\n                Some(RuleMatch { rule_id: rule.id.clone(), location: rule.pattern.clone(), suggestion })\n            } else { None }\n        }).collect()\n    }\n    pub fn categories(&self) -> Vec<String> {\n        let mut cats = Vec::new();\n        for rule in &self.rules {\n            if !cats.contains(&rule.category) { cats.push(rule.category.clone()); }\n        }\n        cats\n    }\n}",
+      "token_count": 320
+    },
+    "tests": [
+      { "input": "v e = SkbEngine.new(); e.load(Rule{id:\"r1\",category:\"borrow\",pattern:\"&!\",description:\"exclusive ref\",fix_template:\"use {pattern}\"}); e.query(\"v x: &!i32\", \"fn\").len()", "expected": "1" }
+    ]
+  }
+]

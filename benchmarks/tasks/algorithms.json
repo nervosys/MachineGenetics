@@ -1,0 +1,311 @@
+[
+  {
+    "id": "algo-001",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that computes the factorial of a non-negative integer using recursion",
+    "solution": {
+      "rdx_source": "+f factorial(n: i64) -> i64 {\n    ? n <= 1 { 1 } : { n * factorial(n - 1) }\n}",
+      "token_count": 24,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn factorial(n: i64) -> i64 {\n    if n <= 1 { 1 } else { n * factorial(n - 1) }\n}",
+      "token_count": 28
+    },
+    "tests": [
+      { "input": "factorial(0)", "expected": "1" },
+      { "input": "factorial(5)", "expected": "120" },
+      { "input": "factorial(10)", "expected": "3628800" }
+    ]
+  },
+  {
+    "id": "algo-002",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that computes the nth Fibonacci number iteratively",
+    "solution": {
+      "rdx_source": "+f fib(n: i32) -> i64 {\n    ? n <= 0 { 0 } : { ? n == 1 { 1 } : {\n        m a: i64 = 0;\n        m b: i64 = 1;\n        m i: i32 = 2;\n        loop {\n            ? i > n { break; }\n            v tmp: i64 = a + b;\n            a = b;\n            b = tmp;\n            i = i + 1;\n        }\n        b\n    }}\n}",
+      "token_count": 68,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn fib(n: i32) -> i64 {\n    if n <= 0 { return 0; }\n    if n == 1 { return 1; }\n    let (mut a, mut b) = (0i64, 1i64);\n    for _ in 2..=n {\n        let tmp = a + b;\n        a = b;\n        b = tmp;\n    }\n    b\n}",
+      "token_count": 82
+    },
+    "tests": [
+      { "input": "fib(0)", "expected": "0" },
+      { "input": "fib(1)", "expected": "1" },
+      { "input": "fib(10)", "expected": "55" }
+    ]
+  },
+  {
+    "id": "algo-003",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that performs binary search on a sorted slice of i32, returning the index as Option",
+    "solution": {
+      "rdx_source": "+f binary_search(arr: &[i32], target: i32) -> ?usize {\n    m lo: usize = 0;\n    m hi: usize = arr.len();\n    loop {\n        ? lo >= hi { ret ?None; }\n        v mid: usize = lo + (hi - lo) / 2;\n        ? arr[mid] == target { ret ?Some(mid); }\n        : { ? arr[mid] < target { lo = mid + 1; }\n        : { hi = mid; } }\n    }\n}",
+      "token_count": 72,
+      "effects": [],
+      "skb_rules_used": ["borrow:shared-slice"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn binary_search(arr: &[i32], target: i32) -> Option<usize> {\n    let (mut lo, mut hi) = (0, arr.len());\n    loop {\n        if lo >= hi { return None; }\n        let mid = lo + (hi - lo) / 2;\n        if arr[mid] == target { return Some(mid); }\n        else if arr[mid] < target { lo = mid + 1; }\n        else { hi = mid; }\n    }\n}",
+      "token_count": 96
+    },
+    "tests": [
+      { "input": "binary_search(&[1,3,5,7,9], 5)", "expected": "?Some(2)" },
+      { "input": "binary_search(&[1,3,5,7,9], 4)", "expected": "?None" }
+    ]
+  },
+  {
+    "id": "algo-004",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that checks whether a string is a palindrome",
+    "solution": {
+      "rdx_source": "+f is_palindrome(text: &s) -> bool {\n    v bytes: &[u8] = text.as_bytes();\n    m i: usize = 0;\n    m j: usize = bytes.len() - 1;\n    loop {\n        ? i >= j { ret 1b; }\n        ? bytes[i] != bytes[j] { ret 0b; }\n        i = i + 1;\n        j = j - 1;\n    }\n}",
+      "token_count": 60,
+      "effects": [],
+      "skb_rules_used": ["borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn is_palindrome(text: &str) -> bool {\n    let bytes = text.as_bytes();\n    let (mut i, mut j) = (0, bytes.len().saturating_sub(1));\n    loop {\n        if i >= j { return true; }\n        if bytes[i] != bytes[j] { return false; }\n        i += 1;\n        j -= 1;\n    }\n}",
+      "token_count": 78
+    },
+    "tests": [
+      { "input": "is_palindrome(\"racecar\")", "expected": "true" },
+      { "input": "is_palindrome(\"hello\")", "expected": "false" },
+      { "input": "is_palindrome(\"a\")", "expected": "true" }
+    ]
+  },
+  {
+    "id": "algo-005",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that computes the GCD of two positive integers using Euclid's algorithm",
+    "solution": {
+      "rdx_source": "+f gcd(a: i64, b: i64) -> i64 {\n    ? b == 0 { a } : { gcd(b, a % b) }\n}",
+      "token_count": 24,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn gcd(a: i64, b: i64) -> i64 {\n    if b == 0 { a } else { gcd(b, a % b) }\n}",
+      "token_count": 28
+    },
+    "tests": [
+      { "input": "gcd(12, 8)", "expected": "4" },
+      { "input": "gcd(17, 13)", "expected": "1" },
+      { "input": "gcd(100, 25)", "expected": "25" }
+    ]
+  },
+  {
+    "id": "algo-006",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that performs insertion sort on a mutable Vec of i32",
+    "solution": {
+      "rdx_source": "+f insertion_sort(arr: &![i32]~) {\n    m i: usize = 1;\n    loop {\n        ? i >= arr.len() { break; }\n        v key: i32 = arr[i];\n        m j: i64 = i as i64 - 1;\n        loop {\n            ? j < 0 { break; }\n            ? arr[j as usize] <= key { break; }\n            arr[(j + 1) as usize] = arr[j as usize];\n            j = j - 1;\n        }\n        arr[(j + 1) as usize] = key;\n        i = i + 1;\n    }\n}",
+      "token_count": 98,
+      "effects": [],
+      "skb_rules_used": ["ownership:exclusive-ref", "borrow:in-place-mutation"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn insertion_sort(arr: &mut Vec<i32>) {\n    for i in 1..arr.len() {\n        let key = arr[i];\n        let mut j = i as i64 - 1;\n        while j >= 0 && arr[j as usize] > key {\n            arr[(j + 1) as usize] = arr[j as usize];\n            j -= 1;\n        }\n        arr[(j + 1) as usize] = key;\n    }\n}",
+      "token_count": 118
+    },
+    "tests": [
+      { "input": "m v = [3,1,4,1,5]; insertion_sort(&!v); v", "expected": "[1,1,3,4,5]" },
+      { "input": "m v = [1]; insertion_sort(&!v); v", "expected": "[1]" }
+    ]
+  },
+  {
+    "id": "algo-007",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that computes the power of a base to an exponent (integer exponentiation) using repeated squaring",
+    "solution": {
+      "rdx_source": "+f power(base: i64, exp: i32) -> i64 {\n    ? exp == 0 { 1 } : {\n        v half: i64 = power(base, exp / 2);\n        ? exp % 2 == 0 { half * half } : { half * half * base }\n    }\n}",
+      "token_count": 44,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn power(base: i64, exp: i32) -> i64 {\n    if exp == 0 { return 1; }\n    let half = power(base, exp / 2);\n    if exp % 2 == 0 { half * half } else { half * half * base }\n}",
+      "token_count": 54
+    },
+    "tests": [
+      { "input": "power(2, 10)", "expected": "1024" },
+      { "input": "power(3, 0)", "expected": "1" },
+      { "input": "power(5, 3)", "expected": "125" }
+    ]
+  },
+  {
+    "id": "algo-008",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that counts the number of set bits (1s) in a u32",
+    "solution": {
+      "rdx_source": "+f popcount(n: u32) -> i32 {\n    m count: i32 = 0;\n    m val: u32 = n;\n    loop {\n        ? val == 0 { break; }\n        count = count + (val & 1) as i32;\n        val = val >> 1;\n    }\n    count\n}",
+      "token_count": 48,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn popcount(n: u32) -> i32 {\n    let mut count = 0i32;\n    let mut val = n;\n    while val != 0 {\n        count += (val & 1) as i32;\n        val >>= 1;\n    }\n    count\n}",
+      "token_count": 56
+    },
+    "tests": [
+      { "input": "popcount(0)", "expected": "0" },
+      { "input": "popcount(7)", "expected": "3" },
+      { "input": "popcount(255)", "expected": "8" }
+    ]
+  },
+  {
+    "id": "algo-009",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that computes the sum of digits of a non-negative integer",
+    "solution": {
+      "rdx_source": "+f digit_sum(n: i64) -> i64 {\n    ? n < 10 { n } : { n % 10 + digit_sum(n / 10) }\n}",
+      "token_count": 24,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn digit_sum(n: i64) -> i64 {\n    if n < 10 { n } else { n % 10 + digit_sum(n / 10) }\n}",
+      "token_count": 28
+    },
+    "tests": [
+      { "input": "digit_sum(123)", "expected": "6" },
+      { "input": "digit_sum(0)", "expected": "0" },
+      { "input": "digit_sum(9999)", "expected": "36" }
+    ]
+  },
+  {
+    "id": "algo-010",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that rotates a Vec of i32 left by k positions",
+    "solution": {
+      "rdx_source": "+f rotate_left(arr: [i32]~, k: usize) -> [i32]~ {\n    v n: usize = arr.len();\n    ? n == 0 { ret arr; }\n    v shift: usize = k % n;\n    m result: [i32]~ = [];\n    m i: usize = shift;\n    loop {\n        ? i >= n { break; }\n        result.push(arr[i]);\n        i = i + 1;\n    }\n    m j: usize = 0;\n    loop {\n        ? j >= shift { break; }\n        result.push(arr[j]);\n        j = j + 1;\n    }\n    result\n}",
+      "token_count": 90,
+      "effects": [],
+      "skb_rules_used": ["ownership:move-semantics"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn rotate_left(arr: Vec<i32>, k: usize) -> Vec<i32> {\n    let n = arr.len();\n    if n == 0 { return arr; }\n    let shift = k % n;\n    let mut result = Vec::new();\n    for i in shift..n {\n        result.push(arr[i]);\n    }\n    for j in 0..shift {\n        result.push(arr[j]);\n    }\n    result\n}",
+      "token_count": 108
+    },
+    "tests": [
+      { "input": "rotate_left([1,2,3,4,5], 2)", "expected": "[3,4,5,1,2]" },
+      { "input": "rotate_left([1,2,3], 0)", "expected": "[1,2,3]" }
+    ]
+  },
+  {
+    "id": "algo-011",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that checks if a number is prime",
+    "solution": {
+      "rdx_source": "+f is_prime(n: i64) -> bool {\n    ? n < 2 { ret 0b; }\n    m i: i64 = 2;\n    loop {\n        ? i * i > n { break; }\n        ? n % i == 0 { ret 0b; }\n        i = i + 1;\n    }\n    1b\n}",
+      "token_count": 46,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn is_prime(n: i64) -> bool {\n    if n < 2 { return false; }\n    let mut i = 2;\n    while i * i <= n {\n        if n % i == 0 { return false; }\n        i += 1;\n    }\n    true\n}",
+      "token_count": 54
+    },
+    "tests": [
+      { "input": "is_prime(2)", "expected": "true" },
+      { "input": "is_prime(4)", "expected": "false" },
+      { "input": "is_prime(17)", "expected": "true" },
+      { "input": "is_prime(1)", "expected": "false" }
+    ]
+  },
+  {
+    "id": "algo-012",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that finds the minimum value in a non-empty slice of i32",
+    "solution": {
+      "rdx_source": "+f find_min(arr: &[i32]) -> i32 {\n    m result: i32 = arr[0];\n    m i: usize = 1;\n    loop {\n        ? i >= arr.len() { break; }\n        ? arr[i] < result { result = arr[i]; }\n        i = i + 1;\n    }\n    result\n}",
+      "token_count": 50,
+      "effects": [],
+      "skb_rules_used": ["borrow:shared-slice"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn find_min(arr: &[i32]) -> i32 {\n    let mut result = arr[0];\n    for i in 1..arr.len() {\n        if arr[i] < result { result = arr[i]; }\n    }\n    result\n}",
+      "token_count": 56
+    },
+    "tests": [
+      { "input": "find_min(&[3,1,4,1,5,9])", "expected": "1" },
+      { "input": "find_min(&[42])", "expected": "42" }
+    ]
+  },
+  {
+    "id": "algo-013",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that computes the dot product of two equal-length slices of f64",
+    "solution": {
+      "rdx_source": "+f dot(a: &[f64], b: &[f64]) -> f64 {\n    m sum: f64 = 0.0;\n    m i: usize = 0;\n    loop {\n        ? i >= a.len() { break; }\n        sum = sum + a[i] * b[i];\n        i = i + 1;\n    }\n    sum\n}",
+      "token_count": 50,
+      "effects": [],
+      "skb_rules_used": ["borrow:shared-slice"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn dot(a: &[f64], b: &[f64]) -> f64 {\n    let mut sum = 0.0;\n    for i in 0..a.len() {\n        sum += a[i] * b[i];\n    }\n    sum\n}",
+      "token_count": 54
+    },
+    "tests": [
+      { "input": "dot(&[1.0,2.0,3.0], &[4.0,5.0,6.0])", "expected": "32.0" },
+      { "input": "dot(&[1.0], &[1.0])", "expected": "1.0" }
+    ]
+  },
+  {
+    "id": "algo-014",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that generates the first n prime numbers into a Vec",
+    "solution": {
+      "rdx_source": "+f first_primes(n: usize) -> [i64]~ {\n    m primes: [i64]~ = [];\n    m candidate: i64 = 2;\n    loop {\n        ? primes.len() >= n { break; }\n        m is_p: bool = 1b;\n        m i: usize = 0;\n        loop {\n            ? i >= primes.len() { break; }\n            ? primes[i] * primes[i] > candidate { break; }\n            ? candidate % primes[i] == 0 { is_p = 0b; break; }\n            i = i + 1;\n        }\n        ? is_p { primes.push(candidate); }\n        candidate = candidate + 1;\n    }\n    primes\n}",
+      "token_count": 110,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn first_primes(n: usize) -> Vec<i64> {\n    let mut primes = Vec::new();\n    let mut candidate = 2i64;\n    while primes.len() < n {\n        let mut is_p = true;\n        for i in 0..primes.len() {\n            if primes[i] * primes[i] > candidate { break; }\n            if candidate % primes[i] == 0 { is_p = false; break; }\n        }\n        if is_p { primes.push(candidate); }\n        candidate += 1;\n    }\n    primes\n}",
+      "token_count": 136
+    },
+    "tests": [
+      { "input": "first_primes(5)", "expected": "[2,3,5,7,11]" },
+      { "input": "first_primes(1)", "expected": "[2]" }
+    ]
+  },
+  {
+    "id": "algo-015",
+    "category": "algorithms",
+    "difficulty": "medium",
+    "task": "Write a function that transposes a 2D matrix represented as Vec<Vec<i32>>",
+    "solution": {
+      "rdx_source": "+f transpose(matrix: [[i32]~]~) -> [[i32]~]~ {\n    ? matrix.len() == 0 { ret []; }\n    v rows: usize = matrix.len();\n    v cols: usize = matrix[0].len();\n    m result: [[i32]~]~ = [];\n    m c: usize = 0;\n    loop {\n        ? c >= cols { break; }\n        m row: [i32]~ = [];\n        m r: usize = 0;\n        loop {\n            ? r >= rows { break; }\n            row.push(matrix[r][c]);\n            r = r + 1;\n        }\n        result.push(row);\n        c = c + 1;\n    }\n    result\n}",
+      "token_count": 106,
+      "effects": [],
+      "skb_rules_used": ["ownership:move-semantics"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn transpose(matrix: Vec<Vec<i32>>) -> Vec<Vec<i32>> {\n    if matrix.is_empty() { return vec![]; }\n    let rows = matrix.len();\n    let cols = matrix[0].len();\n    let mut result = Vec::new();\n    for c in 0..cols {\n        let mut row = Vec::new();\n        for r in 0..rows {\n            row.push(matrix[r][c]);\n        }\n        result.push(row);\n    }\n    result\n}",
+      "token_count": 128
+    },
+    "tests": [
+      { "input": "transpose([[1,2,3],[4,5,6]])", "expected": "[[1,4],[2,5],[3,6]]" },
+      { "input": "transpose([[1]])", "expected": "[[1]]" }
+    ]
+  }
+]

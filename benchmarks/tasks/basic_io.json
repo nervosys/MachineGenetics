@@ -1,0 +1,209 @@
+[
+  {
+    "id": "basic-001",
+    "category": "basic-io",
+    "difficulty": "simple",
+    "task": "Write a function that returns the string 'Hello, World!'",
+    "solution": {
+      "rdx_source": "+f hello() -> s { \"Hello, World!\" }",
+      "token_count": 10,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn hello() -> String { String::from(\"Hello, World!\") }",
+      "token_count": 16
+    },
+    "tests": [
+      { "input": "hello()", "expected": "\"Hello, World!\"" }
+    ]
+  },
+  {
+    "id": "basic-002",
+    "category": "basic-io",
+    "difficulty": "simple",
+    "task": "Write a function that takes two i32 arguments and returns their sum",
+    "solution": {
+      "rdx_source": "+f add(a: i32, b: i32) -> i32 { a + b }",
+      "token_count": 16,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn add(a: i32, b: i32) -> i32 { a + b }",
+      "token_count": 18
+    },
+    "tests": [
+      { "input": "add(3, 4)", "expected": "7" },
+      { "input": "add(-1, 1)", "expected": "0" },
+      { "input": "add(0, 0)", "expected": "0" }
+    ]
+  },
+  {
+    "id": "basic-003",
+    "category": "basic-io",
+    "difficulty": "simple",
+    "task": "Write a function that takes a name string and returns a greeting 'Hello, <name>!'",
+    "solution": {
+      "rdx_source": "+f greet(name: s) -> s { f\"Hello, {name}!\" }",
+      "token_count": 14,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn greet(name: &str) -> String { format!(\"Hello, {}!\", name) }",
+      "token_count": 20
+    },
+    "tests": [
+      { "input": "greet(\"Redox\")", "expected": "\"Hello, Redox!\"" },
+      { "input": "greet(\"World\")", "expected": "\"Hello, World!\"" }
+    ]
+  },
+  {
+    "id": "basic-004",
+    "category": "basic-io",
+    "difficulty": "simple",
+    "task": "Write a function that returns the absolute value of an i32",
+    "solution": {
+      "rdx_source": "+f abs(x: i32) -> i32 { ? x > 0 { x } : { 0 - x } }",
+      "token_count": 22,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn abs(x: i32) -> i32 { if x > 0 { x } else { 0 - x } }",
+      "token_count": 24
+    },
+    "tests": [
+      { "input": "abs(5)", "expected": "5" },
+      { "input": "abs(-3)", "expected": "3" },
+      { "input": "abs(0)", "expected": "0" }
+    ]
+  },
+  {
+    "id": "basic-005",
+    "category": "basic-io",
+    "difficulty": "simple",
+    "task": "Write a function that doubles an integer",
+    "solution": {
+      "rdx_source": "+f double(x: i32) -> i32 { x * 2 }",
+      "token_count": 12,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn double(x: i32) -> i32 { x * 2 }",
+      "token_count": 14
+    },
+    "tests": [
+      { "input": "double(5)", "expected": "10" },
+      { "input": "double(0)", "expected": "0" },
+      { "input": "double(-3)", "expected": "-6" }
+    ]
+  },
+  {
+    "id": "basic-006",
+    "category": "basic-io",
+    "difficulty": "simple",
+    "task": "Write a function that returns the maximum of two i32 values",
+    "solution": {
+      "rdx_source": "+f max_val(a: i32, b: i32) -> i32 { ? a > b { a } : { b } }",
+      "token_count": 22,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn max_val(a: i32, b: i32) -> i32 { if a > b { a } else { b } }",
+      "token_count": 26
+    },
+    "tests": [
+      { "input": "max_val(10, 20)", "expected": "20" },
+      { "input": "max_val(5, 5)", "expected": "5" },
+      { "input": "max_val(-1, -10)", "expected": "-1" }
+    ]
+  },
+  {
+    "id": "basic-007",
+    "category": "basic-io",
+    "difficulty": "simple",
+    "task": "Write a function that checks if an integer is positive (returns bool equivalent as i32: 1 for true, 0 for false)",
+    "solution": {
+      "rdx_source": "+f is_positive(x: i32) -> i32 { ? x > 0 { 1 } : { 0 } }",
+      "token_count": 20,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn is_positive(x: i32) -> i32 { if x > 0 { 1 } else { 0 } }",
+      "token_count": 22
+    },
+    "tests": [
+      { "input": "is_positive(5)", "expected": "1" },
+      { "input": "is_positive(-3)", "expected": "0" },
+      { "input": "is_positive(0)", "expected": "0" }
+    ]
+  },
+  {
+    "id": "basic-008",
+    "category": "basic-io",
+    "difficulty": "simple",
+    "task": "Write a function that computes the square of an f64 value",
+    "solution": {
+      "rdx_source": "+f square(x: f64) -> f64 { x * x }",
+      "token_count": 12,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn square(x: f64) -> f64 { x * x }",
+      "token_count": 14
+    },
+    "tests": [
+      { "input": "square(3.0)", "expected": "9.0" },
+      { "input": "square(-2.0)", "expected": "4.0" },
+      { "input": "square(0.0)", "expected": "0.0" }
+    ]
+  },
+  {
+    "id": "basic-009",
+    "category": "basic-io",
+    "difficulty": "simple",
+    "task": "Write a function that takes three i32 values and returns the middle value (median of three)",
+    "solution": {
+      "rdx_source": "+f median3(a: i32, b: i32, c: i32) -> i32 {\n    ? a > b {\n        ? b > c { b } : { ? a > c { c } : { a } }\n    } : {\n        ? a > c { a } : { ? b > c { c } : { b } }\n    }\n}",
+      "token_count": 48,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn median3(a: i32, b: i32, c: i32) -> i32 {\n    if a > b {\n        if b > c { b } else if a > c { c } else { a }\n    } else {\n        if a > c { a } else if b > c { c } else { b }\n    }\n}",
+      "token_count": 56
+    },
+    "tests": [
+      { "input": "median3(1, 2, 3)", "expected": "2" },
+      { "input": "median3(3, 1, 2)", "expected": "2" },
+      { "input": "median3(5, 5, 5)", "expected": "5" }
+    ]
+  },
+  {
+    "id": "basic-010",
+    "category": "basic-io",
+    "difficulty": "simple",
+    "task": "Write a function that clamps an i32 value between a minimum and maximum",
+    "solution": {
+      "rdx_source": "+f clamp(x: i32, lo: i32, hi: i32) -> i32 {\n    ? x < lo { lo } : { ? x > hi { hi } : { x } }\n}",
+      "token_count": 32,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn clamp(x: i32, lo: i32, hi: i32) -> i32 {\n    if x < lo { lo } else if x > hi { hi } else { x }\n}",
+      "token_count": 36
+    },
+    "tests": [
+      { "input": "clamp(5, 0, 10)", "expected": "5" },
+      { "input": "clamp(-5, 0, 10)", "expected": "0" },
+      { "input": "clamp(15, 0, 10)", "expected": "10" }
+    ]
+  }
+]

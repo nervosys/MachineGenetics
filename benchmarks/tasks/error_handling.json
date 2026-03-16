@@ -1,0 +1,103 @@
+[
+  {
+    "id": "err-001",
+    "category": "error-handling",
+    "difficulty": "medium",
+    "task": "Write a function that safely divides two numbers, returning a Result with an error message for division by zero",
+    "solution": {
+      "rdx_source": "+f safe_div(a: f64, b: f64) -> R[f64, s] {\n    ? b == 0.0 {\n        R.Err(\"division by zero\")\n    } : {\n        R.Ok(a / b)\n    }\n}",
+      "token_count": 40,
+      "effects": [],
+      "skb_rules_used": ["type_safety:result-return"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn safe_div(a: f64, b: f64) -> Result<f64, String> {\n    if b == 0.0 { Err(\"division by zero\".into()) }\n    else { Ok(a / b) }\n}",
+      "token_count": 55
+    },
+    "tests": [
+      { "input": "safe_div(10.0, 2.0)", "expected": "R.Ok(5.0)" },
+      { "input": "safe_div(1.0, 0.0)", "expected": "R.Err(\"division by zero\")" }
+    ]
+  },
+  {
+    "id": "err-002",
+    "category": "error-handling",
+    "difficulty": "medium",
+    "task": "Write a function that parses a config string 'key=value' and returns an error for malformed input",
+    "solution": {
+      "rdx_source": "S Config { key: s, value: s }\n\n+f parse_config(line: &s) -> R[Config, s] {\n    v parts = line.splitn(2, '=').to_vec();\n    ? parts.len() != 2 {\n        ret R.Err(f\"malformed config: '{line}'\");\n    }\n    v key = parts[0].trim().to_string();\n    v value = parts[1].trim().to_string();\n    ? key.is_empty() {\n        R.Err(\"empty key\")\n    } : {\n        R.Ok(@Config { key: key, value: value })\n    }\n}",
+      "token_count": 80,
+      "effects": [],
+      "skb_rules_used": ["type_safety:result-return"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct Config { key: String, value: String }\n\npub fn parse_config(line: &str) -> Result<Config, String> {\n    let parts: Vec<&str> = line.splitn(2, '=').collect();\n    if parts.len() != 2 { return Err(format!(\"malformed config: '{}'\", line)); }\n    let key = parts[0].trim().to_string();\n    let value = parts[1].trim().to_string();\n    if key.is_empty() { Err(\"empty key\".into()) }\n    else { Ok(Config { key, value }) }\n}",
+      "token_count": 120
+    },
+    "tests": [
+      { "input": "parse_config(\"host=localhost\")", "expected": "R.Ok(Config{key:\"host\",value:\"localhost\"})" },
+      { "input": "parse_config(\"badline\")", "expected": "R.Err(\"malformed config: 'badline'\")" }
+    ]
+  },
+  {
+    "id": "err-003",
+    "category": "error-handling",
+    "difficulty": "medium",
+    "task": "Write a custom error enum with Display formatting and a function that chains multiple fallible operations using the ? operator",
+    "solution": {
+      "rdx_source": "E AppError {\n    NotFound(s),\n    ParseFailed(s),\n    InvalidInput(s),\n}\n\nI AppError {\n    +f message(&self) -> &s {\n        ? self {\n            AppError.NotFound(msg) => msg,\n            AppError.ParseFailed(msg) => msg,\n            AppError.InvalidInput(msg) => msg,\n        }\n    }\n}\n\n+f process_record(raw: &s) -> R[u64, AppError] {\n    v trimmed = raw.trim();\n    ? trimmed.is_empty() {\n        ret R.Err(AppError.InvalidInput(\"empty input\".to_string()));\n    }\n    v parts = trimmed.split(':').to_vec();\n    ? parts.len() < 2 {\n        ret R.Err(AppError.ParseFailed(\"expected key:value\".to_string()));\n    }\n    v value_str = parts[1].trim();\n    v value = value_str.parse::<u64>()\n        .map_err(fn(e) => AppError.ParseFailed(f\"bad number: {e}\"))?;\n    ? value == 0 {\n        R.Err(AppError.NotFound(\"zero value\".to_string()))\n    } : {\n        R.Ok(value)\n    }\n}",
+      "token_count": 140,
+      "effects": [],
+      "skb_rules_used": ["type_safety:result-propagation", "type_safety:result-return"]
+    },
+    "rust_equivalent": {
+      "rs_source": "enum AppError { NotFound(String), ParseFailed(String), InvalidInput(String) }\n\nimpl AppError {\n    pub fn message(&self) -> &str {\n        match self { AppError::NotFound(m) | AppError::ParseFailed(m) | AppError::InvalidInput(m) => m }\n    }\n}\n\npub fn process_record(raw: &str) -> Result<u64, AppError> {\n    let trimmed = raw.trim();\n    if trimmed.is_empty() { return Err(AppError::InvalidInput(\"empty input\".into())); }\n    let parts: Vec<&str> = trimmed.split(':').collect();\n    if parts.len() < 2 { return Err(AppError::ParseFailed(\"expected key:value\".into())); }\n    let value: u64 = parts[1].trim().parse()\n        .map_err(|e| AppError::ParseFailed(format!(\"bad number: {}\", e)))?;\n    if value == 0 { Err(AppError::NotFound(\"zero value\".into())) }\n    else { Ok(value) }\n}",
+      "token_count": 210
+    },
+    "tests": [
+      { "input": "process_record(\"count: 42\")", "expected": "R.Ok(42)" },
+      { "input": "process_record(\"\")", "expected": "R.Err(AppError.InvalidInput(...))" },
+      { "input": "process_record(\"x:abc\")", "expected": "R.Err(AppError.ParseFailed(...))" }
+    ]
+  },
+  {
+    "id": "err-004",
+    "category": "error-handling",
+    "difficulty": "medium",
+    "task": "Write a function that collects results from a list of fallible operations, returning all successes if all pass or the first error",
+    "solution": {
+      "rdx_source": "+f collect_results(items: &[R[i32, s]]~) -> R[[i32]~, s] {\n    m collected: [i32]~ = [];\n    @ item : items {\n        ? item {\n            R.Ok(val) => collected.push(*val),\n            R.Err(err) => ret R.Err(err.clone()),\n        }\n    }\n    R.Ok(collected)\n}\n\n+f try_parse_all(strings: &[s]~) -> R[[i32]~, s] {\n    v results: [R[i32, s]]~ = strings.iter()\n        .map(fn(s) => s.parse::<i32>().map_err(fn(e) => f\"parse error: {e}\"))\n        .to_vec();\n    collect_results(&results)\n}",
+      "token_count": 100,
+      "effects": [],
+      "skb_rules_used": ["type_safety:result-matching", "type_safety:result-return"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn collect_results(items: &[Result<i32, String>]) -> Result<Vec<i32>, String> {\n    let mut collected = Vec::new();\n    for item in items {\n        match item {\n            Ok(val) => collected.push(*val),\n            Err(err) => return Err(err.clone()),\n        }\n    }\n    Ok(collected)\n}\n\npub fn try_parse_all(strings: &[String]) -> Result<Vec<i32>, String> {\n    let results: Vec<Result<i32, String>> = strings.iter()\n        .map(|s| s.parse::<i32>().map_err(|e| format!(\"parse error: {}\", e)))\n        .collect();\n    collect_results(&results)\n}",
+      "token_count": 150
+    },
+    "tests": [
+      { "input": "try_parse_all(&[\"1\", \"2\", \"3\"])", "expected": "R.Ok([1, 2, 3])" },
+      { "input": "try_parse_all(&[\"1\", \"abc\", \"3\"])", "expected": "R.Err(\"parse error: ...\")" }
+    ]
+  },
+  {
+    "id": "err-005",
+    "category": "error-handling",
+    "difficulty": "medium",
+    "task": "Write Option helper functions: unwrap_or, map, and_then, and a function that chains Option operations",
+    "solution": {
+      "rdx_source": "+f find_user(id: u32, db: &{u32: s}) -> ?&s {\n    db.get(&id)\n}\n\n+f find_email(name: &s, emails: &{s: s}) -> ?&s {\n    emails.get(name)\n}\n\n+f lookup_email(\n    id: u32,\n    users: &{u32: s},\n    emails: &{s: s},\n) -> s {\n    v result = find_user(id, users)\n        .and_then(fn(name) => find_email(name, emails))\n        .map(fn(email) => email.clone())\n        .unwrap_or(\"not found\".to_string());\n    result\n}\n\n+f first_positive(values: &[i32]~) -> ?i32 {\n    @ val : values {\n        ? *val > 0 { ret ?Some(*val); }\n    }\n    ?None\n}",
+      "token_count": 100,
+      "effects": [],
+      "skb_rules_used": ["type_safety:option-matching", "borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::collections::HashMap;\n\npub fn find_user<'a>(id: u32, db: &'a HashMap<u32, String>) -> Option<&'a String> { db.get(&id) }\npub fn find_email<'a>(name: &str, emails: &'a HashMap<String, String>) -> Option<&'a String> { emails.get(name) }\n\npub fn lookup_email(id: u32, users: &HashMap<u32, String>, emails: &HashMap<String, String>) -> String {\n    find_user(id, users)\n        .and_then(|name| find_email(name, emails))\n        .map(|email| email.clone())\n        .unwrap_or_else(|| \"not found\".to_string())\n}\n\npub fn first_positive(values: &[i32]) -> Option<i32> {\n    for val in values { if *val > 0 { return Some(*val); } }\n    None\n}",
+      "token_count": 170
+    },
+    "tests": [
+      { "input": "first_positive(&[-1, -2, 3, 4])", "expected": "?Some(3)" },
+      { "input": "first_positive(&[-1, -2])", "expected": "?None" }
+    ]
+  }
+]

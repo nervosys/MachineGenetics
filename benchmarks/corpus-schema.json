@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://redox-lang.org/schemas/benchmark-task-v1.json",
+  "title": "Redox Agent Training Benchmark Task",
+  "description": "Schema for a single benchmark task in the Redox agent training corpus",
+  "type": "object",
+  "required": ["id", "category", "difficulty", "task", "solution", "rust_equivalent", "tests"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z]+-[0-9]{3}$",
+      "description": "Unique task identifier: category-NNN"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "basic-io",
+        "data-structures",
+        "algorithms",
+        "concurrency",
+        "web-network",
+        "systems",
+        "agent-orchestration",
+        "full-applications",
+        "error-handling",
+        "generics-traits"
+      ]
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["simple", "medium", "hard", "very-hard"]
+    },
+    "task": {
+      "type": "string",
+      "description": "Natural language description of the programming task"
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "imports": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "existing_code": {
+          "type": "string"
+        },
+        "constraints": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "solution": {
+      "type": "object",
+      "required": ["rdx_source", "token_count", "effects"],
+      "properties": {
+        "rdx_source": {
+          "type": "string",
+          "description": "Reference Redox solution"
+        },
+        "token_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "effects": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "skb_rules_used": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "rust_equivalent": {
+      "type": "object",
+      "required": ["rs_source", "token_count"],
+      "properties": {
+        "rs_source": {
+          "type": "string",
+          "description": "Equivalent Rust solution (baseline)"
+        },
+        "token_count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "tests": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["input", "expected"],
+        "properties": {
+          "input": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

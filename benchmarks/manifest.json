@@ -1,0 +1,99 @@
+{
+  "name": "Redox Agent Training Benchmark Corpus",
+  "version": "0.1.0",
+  "format": "redox-training-v1",
+  "description": "100 programming tasks across 10 categories for evaluating AI agent performance on the Redox language",
+  "schema": "corpus-schema.json",
+  "categories": [
+    {
+      "id": "basic-io",
+      "name": "Basic I/O",
+      "file": "tasks/basic_io.json",
+      "count": 10,
+      "token_range": "20–50",
+      "difficulty": "simple"
+    },
+    {
+      "id": "data-structures",
+      "name": "Data Structures",
+      "file": "tasks/data_structures.json",
+      "count": 15,
+      "token_range": "50–150",
+      "difficulty": "medium"
+    },
+    {
+      "id": "algorithms",
+      "name": "Algorithms",
+      "file": "tasks/algorithms.json",
+      "count": 15,
+      "token_range": "80–200",
+      "difficulty": "medium"
+    },
+    {
+      "id": "concurrency",
+      "name": "Concurrency",
+      "file": "tasks/concurrency.json",
+      "count": 10,
+      "token_range": "100–300",
+      "difficulty": "hard"
+    },
+    {
+      "id": "web-network",
+      "name": "Web/Network",
+      "file": "tasks/web_network.json",
+      "count": 10,
+      "token_range": "150–400",
+      "difficulty": "hard"
+    },
+    {
+      "id": "systems",
+      "name": "Systems Programming",
+      "file": "tasks/systems.json",
+      "count": 10,
+      "token_range": "200–500",
+      "difficulty": "hard"
+    },
+    {
+      "id": "agent-orchestration",
+      "name": "Agent Orchestration",
+      "file": "tasks/agent_orchestration.json",
+      "count": 10,
+      "token_range": "300–800",
+      "difficulty": "very-hard"
+    },
+    {
+      "id": "full-applications",
+      "name": "Full Applications",
+      "file": "tasks/full_applications.json",
+      "count": 10,
+      "token_range": "500–2000",
+      "difficulty": "very-hard"
+    },
+    {
+      "id": "error-handling",
+      "name": "Error Handling Patterns",
+      "file": "tasks/error_handling.json",
+      "count": 5,
+      "token_range": "50–150",
+      "difficulty": "medium"
+    },
+    {
+      "id": "generics-traits",
+      "name": "Generic/Trait Design",
+      "file": "tasks/generics_traits.json",
+      "count": 5,
+      "token_range": "100–300",
+      "difficulty": "hard"
+    }
+  ],
+  "total_tasks": 100,
+  "evaluation_metrics": {
+    "first_pass_success_rate": "> 95%",
+    "token_efficiency": "< 1.1",
+    "effect_correctness": "> 99%",
+    "spec_compliance": "> 98%",
+    "migration_accuracy": "> 99%",
+    "iteration_count": "< 1.5",
+    "cost_per_task": "< $0.05"
+  }
+}

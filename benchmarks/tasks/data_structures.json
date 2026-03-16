@@ -1,0 +1,300 @@
+[
+  {
+    "id": "ds-001",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Define a Point struct with x and y as f64 fields, and write a function that creates a Point at the origin",
+    "solution": {
+      "rdx_source": "S Point { x: f64, y: f64 }\n\n+f origin() -> Point {\n    @Point { x: 0.0, y: 0.0 }\n}",
+      "token_count": 24,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "struct Point { x: f64, y: f64 }\n\npub fn origin() -> Point {\n    Point { x: 0.0, y: 0.0 }\n}",
+      "token_count": 30
+    },
+    "tests": [
+      { "input": "origin()", "expected": "Point { x: 0.0, y: 0.0 }" }
+    ]
+  },
+  {
+    "id": "ds-002",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Define a Color enum with Red, Green, Blue variants and a function that returns the name as a string",
+    "solution": {
+      "rdx_source": "E Color { Red, Green, Blue }\n\n+f color_name(c: Color) -> s {\n    ? c { Color.Red => \"red\", Color.Green => \"green\", Color.Blue => \"blue\" }\n}",
+      "token_count": 36,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "enum Color { Red, Green, Blue }\n\npub fn color_name(c: Color) -> &'static str {\n    match c {\n        Color::Red => \"red\",\n        Color::Green => \"green\",\n        Color::Blue => \"blue\",\n    }\n}",
+      "token_count": 50
+    },
+    "tests": [
+      { "input": "color_name(Color.Red)", "expected": "\"red\"" },
+      { "input": "color_name(Color.Blue)", "expected": "\"blue\"" }
+    ]
+  },
+  {
+    "id": "ds-003",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Define a Stack struct backed by a Vec of i32, with push, pop, and is_empty methods",
+    "solution": {
+      "rdx_source": "S Stack { items: [i32]~ }\n\nI Stack {\n    +f new() -> Stack { @Stack { items: [] } }\n    +f push(&!self, val: i32) { self.items.push(val); }\n    +f pop(&!self) -> ?i32 { self.items.pop() }\n    +f is_empty(&self) -> bool { self.items.len() == 0 }\n}",
+      "token_count": 62,
+      "effects": [],
+      "skb_rules_used": ["ownership:exclusive-ref", "type_safety:option-return"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct Stack { items: Vec<i32> }\n\nimpl Stack {\n    pub fn new() -> Stack { Stack { items: Vec::new() } }\n    pub fn push(&mut self, val: i32) { self.items.push(val); }\n    pub fn pop(&mut self) -> Option<i32> { self.items.pop() }\n    pub fn is_empty(&self) -> bool { self.items.is_empty() }\n}",
+      "token_count": 86
+    },
+    "tests": [
+      { "input": "v s = Stack.new(); s.push(1); s.push(2); s.pop()", "expected": "?Some(2)" },
+      { "input": "Stack.new().is_empty()", "expected": "true" }
+    ]
+  },
+  {
+    "id": "ds-004",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Define a Pair generic struct with two fields of the same type, and a swap function that returns a new Pair with swapped elements",
+    "solution": {
+      "rdx_source": "S Pair[T] { first: T, second: T }\n\n+f swap[T](p: Pair[T]) -> Pair[T] {\n    @Pair { first: p.second, second: p.first }\n}",
+      "token_count": 32,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "struct Pair<T> { first: T, second: T }\n\npub fn swap<T>(p: Pair<T>) -> Pair<T> {\n    Pair { first: p.second, second: p.first }\n}",
+      "token_count": 40
+    },
+    "tests": [
+      { "input": "swap(Pair { first: 1, second: 2 })", "expected": "Pair { first: 2, second: 1 }" }
+    ]
+  },
+  {
+    "id": "ds-005",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Write a function that computes the distance squared between two Point structs",
+    "context": {
+      "existing_code": "S Point { x: f64, y: f64 }"
+    },
+    "solution": {
+      "rdx_source": "+f dist_sq(a: Point, b: Point) -> f64 {\n    v dx: f64 = b.x - a.x;\n    v dy: f64 = b.y - a.y;\n    dx * dx + dy * dy\n}",
+      "token_count": 38,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn dist_sq(a: Point, b: Point) -> f64 {\n    let dx = b.x - a.x;\n    let dy = b.y - a.y;\n    dx * dx + dy * dy\n}",
+      "token_count": 42
+    },
+    "tests": [
+      { "input": "dist_sq(Point{x:0.0,y:0.0}, Point{x:3.0,y:4.0})", "expected": "25.0" }
+    ]
+  },
+  {
+    "id": "ds-006",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Define a LinkedList node as an enum with Nil and Cons(i32, Box) variants, and a length function",
+    "solution": {
+      "rdx_source": "E List { Nil, Cons(i32, ^List) }\n\n+f length(list: &List) -> i32 {\n    ? list { List.Nil => 0, List.Cons(_, tail) => 1 + length(tail) }\n}",
+      "token_count": 38,
+      "effects": [],
+      "skb_rules_used": ["ownership:box-recursion"]
+    },
+    "rust_equivalent": {
+      "rs_source": "enum List { Nil, Cons(i32, Box<List>) }\n\npub fn length(list: &List) -> i32 {\n    match list {\n        List::Nil => 0,\n        List::Cons(_, tail) => 1 + length(tail),\n    }\n}",
+      "token_count": 52
+    },
+    "tests": [
+      { "input": "length(&List.Nil)", "expected": "0" },
+      { "input": "length(&List.Cons(1, ^List.Cons(2, ^List.Nil)))", "expected": "2" }
+    ]
+  },
+  {
+    "id": "ds-007",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Define a Counter struct using a HashMap that counts occurrences of strings",
+    "solution": {
+      "rdx_source": "S Counter { counts: {s: i32} }\n\nI Counter {\n    +f new() -> Counter { @Counter { counts: {} } }\n    +f add(&!self, key: s) {\n        v current: i32 = self.counts.get(&key).unwrap_or(0);\n        self.counts.insert(key, current + 1);\n    }\n    +f get(&self, key: &s) -> i32 { self.counts.get(key).unwrap_or(0) }\n}",
+      "token_count": 72,
+      "effects": [],
+      "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::collections::HashMap;\n\nstruct Counter { counts: HashMap<String, i32> }\n\nimpl Counter {\n    pub fn new() -> Counter { Counter { counts: HashMap::new() } }\n    pub fn add(&mut self, key: String) {\n        let current = self.counts.get(&key).copied().unwrap_or(0);\n        self.counts.insert(key, current + 1);\n    }\n    pub fn get(&self, key: &str) -> i32 { *self.counts.get(key).unwrap_or(&0) }\n}",
+      "token_count": 108
+    },
+    "tests": [
+      { "input": "v c = Counter.new(); c.add(\"a\"); c.add(\"a\"); c.get(\"a\")", "expected": "2" },
+      { "input": "Counter.new().get(\"missing\")", "expected": "0" }
+    ]
+  },
+  {
+    "id": "ds-008",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Define a Matrix struct for 2x2 matrices of f64, with an add method",
+    "solution": {
+      "rdx_source": "S Mat2 { a: f64, b: f64, c: f64, d: f64 }\n\nI Mat2 {\n    +f add(&self, other: &Mat2) -> Mat2 {\n        @Mat2 {\n            a: self.a + other.a,\n            b: self.b + other.b,\n            c: self.c + other.c,\n            d: self.d + other.d,\n        }\n    }\n}",
+      "token_count": 56,
+      "effects": [],
+      "skb_rules_used": ["borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct Mat2 { a: f64, b: f64, c: f64, d: f64 }\n\nimpl Mat2 {\n    pub fn add(&self, other: &Mat2) -> Mat2 {\n        Mat2 {\n            a: self.a + other.a,\n            b: self.b + other.b,\n            c: self.c + other.c,\n            d: self.d + other.d,\n        }\n    }\n}",
+      "token_count": 74
+    },
+    "tests": [
+      { "input": "Mat2{a:1.0,b:2.0,c:3.0,d:4.0}.add(&Mat2{a:5.0,b:6.0,c:7.0,d:8.0})", "expected": "Mat2{a:6.0,b:8.0,c:10.0,d:12.0}" }
+    ]
+  },
+  {
+    "id": "ds-009",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Write a function that merges two sorted Vec<i32> into a single sorted Vec<i32>",
+    "solution": {
+      "rdx_source": "+f merge(a: [i32]~, b: [i32]~) -> [i32]~ {\n    m result: [i32]~ = [];\n    m i: usize = 0;\n    m j: usize = 0;\n    loop {\n        ? i >= a.len() && j >= b.len() { break; }\n        ? i >= a.len() { result.push(b[j]); j = j + 1; }\n        : { ? j >= b.len() { result.push(a[i]); i = i + 1; }\n        : { ? a[i] <= b[j] { result.push(a[i]); i = i + 1; }\n        : { result.push(b[j]); j = j + 1; } } }\n    }\n    result\n}",
+      "token_count": 110,
+      "effects": [],
+      "skb_rules_used": ["ownership:move-semantics"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn merge(a: Vec<i32>, b: Vec<i32>) -> Vec<i32> {\n    let mut result = Vec::new();\n    let (mut i, mut j) = (0, 0);\n    loop {\n        if i >= a.len() && j >= b.len() { break; }\n        if i >= a.len() { result.push(b[j]); j += 1; }\n        else if j >= b.len() { result.push(a[i]); i += 1; }\n        else if a[i] <= b[j] { result.push(a[i]); i += 1; }\n        else { result.push(b[j]); j += 1; }\n    }\n    result\n}",
+      "token_count": 142
+    },
+    "tests": [
+      { "input": "merge([1,3,5], [2,4,6])", "expected": "[1,2,3,4,5,6]" },
+      { "input": "merge([], [1,2])", "expected": "[1,2]" }
+    ]
+  },
+  {
+    "id": "ds-010",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Define a BinaryTree enum with Leaf and Node(i32, left, right) variants, and a sum function that totals all node values",
+    "solution": {
+      "rdx_source": "E Tree { Leaf, Node(i32, ^Tree, ^Tree) }\n\n+f tree_sum(t: &Tree) -> i32 {\n    ? t {\n        Tree.Leaf => 0,\n        Tree.Node(val, left, right) => val + tree_sum(left) + tree_sum(right),\n    }\n}",
+      "token_count": 44,
+      "effects": [],
+      "skb_rules_used": ["ownership:box-recursion"]
+    },
+    "rust_equivalent": {
+      "rs_source": "enum Tree { Leaf, Node(i32, Box<Tree>, Box<Tree>) }\n\npub fn tree_sum(t: &Tree) -> i32 {\n    match t {\n        Tree::Leaf => 0,\n        Tree::Node(val, left, right) => val + tree_sum(left) + tree_sum(right),\n    }\n}",
+      "token_count": 58
+    },
+    "tests": [
+      { "input": "tree_sum(&Tree.Leaf)", "expected": "0" },
+      { "input": "tree_sum(&Tree.Node(1, ^Tree.Node(2, ^Tree.Leaf, ^Tree.Leaf), ^Tree.Node(3, ^Tree.Leaf, ^Tree.Leaf)))", "expected": "6" }
+    ]
+  },
+  {
+    "id": "ds-011",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Define a Range struct with start and end i32 fields, and a contains method",
+    "solution": {
+      "rdx_source": "S Range { start: i32, end: i32 }\n\nI Range {\n    +f contains(&self, val: i32) -> bool {\n        val >= self.start && val < self.end\n    }\n}",
+      "token_count": 30,
+      "effects": [],
+      "skb_rules_used": ["borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct Range { start: i32, end: i32 }\n\nimpl Range {\n    pub fn contains(&self, val: i32) -> bool {\n        val >= self.start && val < self.end\n    }\n}",
+      "token_count": 38
+    },
+    "tests": [
+      { "input": "Range{start:0,end:10}.contains(5)", "expected": "true" },
+      { "input": "Range{start:0,end:10}.contains(10)", "expected": "false" }
+    ]
+  },
+  {
+    "id": "ds-012",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Write a function that reverses a Vec of i32 in-place using exclusive reference",
+    "solution": {
+      "rdx_source": "+f reverse(items: &![i32]~) {\n    m i: usize = 0;\n    m j: usize = items.len() - 1;\n    loop {\n        ? i >= j { break; }\n        items.swap(i, j);\n        i = i + 1;\n        j = j - 1;\n    }\n}",
+      "token_count": 48,
+      "effects": [],
+      "skb_rules_used": ["ownership:exclusive-ref", "borrow:in-place-mutation"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn reverse(items: &mut Vec<i32>) {\n    let (mut i, mut j) = (0, items.len() - 1);\n    loop {\n        if i >= j { break; }\n        items.swap(i, j);\n        i += 1;\n        j -= 1;\n    }\n}",
+      "token_count": 62
+    },
+    "tests": [
+      { "input": "m v = [1,2,3]; reverse(&!v); v", "expected": "[3,2,1]" },
+      { "input": "m v = [1]; reverse(&!v); v", "expected": "[1]" }
+    ]
+  },
+  {
+    "id": "ds-013",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Define a KeyValue generic struct with key: s and value: T, and a map_value method that transforms the value",
+    "solution": {
+      "rdx_source": "S KeyValue[T] { key: s, value: T }\n\nI KeyValue[T] {\n    +f map_value[U](self, func: f(T) -> U) -> KeyValue[U] {\n        @KeyValue { key: self.key, value: func(self.value) }\n    }\n}",
+      "token_count": 42,
+      "effects": [],
+      "skb_rules_used": ["ownership:move-semantics"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct KeyValue<T> { key: String, value: T }\n\nimpl<T> KeyValue<T> {\n    pub fn map_value<U>(self, func: impl Fn(T) -> U) -> KeyValue<U> {\n        KeyValue { key: self.key, value: func(self.value) }\n    }\n}",
+      "token_count": 56
+    },
+    "tests": [
+      { "input": "KeyValue{key:\"a\", value:5}.map_value(fn(x) => x * 2)", "expected": "KeyValue{key:\"a\", value:10}" }
+    ]
+  },
+  {
+    "id": "ds-014",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Write a function that flattens a Vec of Vec of i32 into a single Vec of i32",
+    "solution": {
+      "rdx_source": "+f flatten(nested: [[i32]~]~) -> [i32]~ {\n    m result: [i32]~ = [];\n    @ inner : nested {\n        @ val : inner {\n            result.push(val);\n        }\n    }\n    result\n}",
+      "token_count": 40,
+      "effects": [],
+      "skb_rules_used": ["ownership:move-semantics"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn flatten(nested: Vec<Vec<i32>>) -> Vec<i32> {\n    let mut result = Vec::new();\n    for inner in nested {\n        for val in inner {\n            result.push(val);\n        }\n    }\n    result\n}",
+      "token_count": 52
+    },
+    "tests": [
+      { "input": "flatten([[1,2],[3],[4,5,6]])", "expected": "[1,2,3,4,5,6]" },
+      { "input": "flatten([])", "expected": "[]" }
+    ]
+  },
+  {
+    "id": "ds-015",
+    "category": "data-structures",
+    "difficulty": "medium",
+    "task": "Define a CircularBuffer struct of fixed capacity using a Vec, head index, and count, with push and peek methods",
+    "solution": {
+      "rdx_source": "S CircBuf {\n    data: [i32]~,\n    head: usize,\n    count: usize,\n    cap: usize,\n}\n\nI CircBuf {\n    +f new(cap: usize) -> CircBuf {\n        @CircBuf { data: [], head: 0, count: 0, cap: cap }\n    }\n    +f push(&!self, val: i32) {\n        v idx: usize = (self.head + self.count) % self.cap;\n        ? self.count < self.cap {\n            self.data.push(val);\n            self.count = self.count + 1;\n        } : {\n            self.data[idx] = val;\n            self.head = (self.head + 1) % self.cap;\n        }\n    }\n    +f peek(&self) -> ?i32 {\n        ? self.count == 0 { ?None } : { ?Some(self.data[self.head]) }\n    }\n}",
+      "token_count": 130,
+      "effects": [],
+      "skb_rules_used": ["ownership:exclusive-ref", "type_safety:option-return"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct CircBuf {\n    data: Vec<i32>,\n    head: usize,\n    count: usize,\n    cap: usize,\n}\n\nimpl CircBuf {\n    pub fn new(cap: usize) -> CircBuf {\n        CircBuf { data: Vec::new(), head: 0, count: 0, cap }\n    }\n    pub fn push(&mut self, val: i32) {\n        let idx = (self.head + self.count) % self.cap;\n        if self.count < self.cap {\n            self.data.push(val);\n            self.count += 1;\n        } else {\n            self.data[idx] = val;\n            self.head = (self.head + 1) % self.cap;\n        }\n    }\n    pub fn peek(&self) -> Option<i32> {\n        if self.count == 0 { None } else { Some(self.data[self.head]) }\n    }\n}",
+      "token_count": 180
+    },
+    "tests": [
+      { "input": "v b = CircBuf.new(2); b.push(1); b.push(2); b.peek()", "expected": "?Some(1)" },
+      { "input": "v b = CircBuf.new(2); b.push(1); b.push(2); b.push(3); b.peek()", "expected": "?Some(2)" }
+    ]
+  }
+]

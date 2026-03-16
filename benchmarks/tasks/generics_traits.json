@@ -1,0 +1,102 @@
+[
+  {
+    "id": "gt-001",
+    "category": "generics-traits",
+    "difficulty": "hard",
+    "task": "Write a generic min function that works on any type implementing the Ord trait",
+    "solution": {
+      "rdx_source": "+f min_of<T: Ord>(a: T, b: T) -> T {\n    ? a <= b { a } : { b }\n}",
+      "token_count": 30,
+      "effects": [],
+      "skb_rules_used": ["type_safety:generic-bounds"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn min_of<T: Ord>(a: T, b: T) -> T {\n    if a <= b { a } else { b }\n}",
+      "token_count": 40
+    },
+    "tests": [
+      { "input": "min_of(3, 7)", "expected": "3" },
+      { "input": "min_of(\"b\", \"a\")", "expected": "\"a\"" }
+    ]
+  },
+  {
+    "id": "gt-002",
+    "category": "generics-traits",
+    "difficulty": "hard",
+    "task": "Write a Summable trait with a sum method and implement it for Vec<i32> and Vec<f64>",
+    "solution": {
+      "rdx_source": "T Summable {\n    type Output;\n    f sum(&self) -> Self.Output;\n}\n\nI Summable for [i32]~ {\n    type Output = i32;\n    f sum(&self) -> i32 {\n        m total: i32 = 0;\n        @ val : self { total = total + val; }\n        total\n    }\n}\n\nI Summable for [f64]~ {\n    type Output = f64;\n    f sum(&self) -> f64 {\n        m total: f64 = 0.0;\n        @ val : self { total = total + val; }\n        total\n    }\n}",
+      "token_count": 100,
+      "effects": [],
+      "skb_rules_used": ["type_safety:trait-impl", "type_safety:associated-types"]
+    },
+    "rust_equivalent": {
+      "rs_source": "trait Summable {\n    type Output;\n    fn sum(&self) -> Self::Output;\n}\n\nimpl Summable for Vec<i32> {\n    type Output = i32;\n    fn sum(&self) -> i32 {\n        let mut total = 0;\n        for val in self { total += val; }\n        total\n    }\n}\n\nimpl Summable for Vec<f64> {\n    type Output = f64;\n    fn sum(&self) -> f64 {\n        let mut total = 0.0;\n        for val in self { total += val; }\n        total\n    }\n}",
+      "token_count": 140
+    },
+    "tests": [
+      { "input": "[1, 2, 3].sum()", "expected": "6" },
+      { "input": "[1.0, 2.5, 3.5].sum()", "expected": "7.0" }
+    ]
+  },
+  {
+    "id": "gt-003",
+    "category": "generics-traits",
+    "difficulty": "hard",
+    "task": "Write a generic Cache<K, V> struct with get, insert, and evict_oldest, using trait bounds for key hashing",
+    "solution": {
+      "rdx_source": "S Cache<K: Hash + Eq, V> {\n    data: {K: V},\n    order: [K]~,\n    capacity: usize,\n}\n\nI<K: Hash + Eq + Clone, V> Cache<K, V> {\n    +f new(capacity: usize) -> Cache<K, V> {\n        @Cache { data: {}, order: [], capacity: capacity }\n    }\n    +f get(&self, key: &K) -> ?&V {\n        self.data.get(key)\n    }\n    +f insert(&!self, key: K, value: V) {\n        ? self.data.contains_key(&key) {\n            self.data.insert(key.clone(), value);\n        } : {\n            ? self.order.len() >= self.capacity {\n                v oldest = self.order.remove(0);\n                self.data.remove(&oldest);\n            }\n            self.order.push(key.clone());\n            self.data.insert(key, value);\n        }\n    }\n    +f evict_oldest(&!self) -> ?V {\n        ? self.order.is_empty() {\n            ?None\n        } : {\n            v key = self.order.remove(0);\n            self.data.remove(&key)\n        }\n    }\n    +f len(&self) -> usize { self.data.len() }\n}",
+      "token_count": 170,
+      "effects": [],
+      "skb_rules_used": ["type_safety:generic-bounds", "ownership:exclusive-ref", "borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::collections::HashMap;\nuse std::hash::Hash;\n\nstruct Cache<K: Hash + Eq, V> { data: HashMap<K, V>, order: Vec<K>, capacity: usize }\n\nimpl<K: Hash + Eq + Clone, V> Cache<K, V> {\n    pub fn new(capacity: usize) -> Self { Self { data: HashMap::new(), order: Vec::new(), capacity } }\n    pub fn get(&self, key: &K) -> Option<&V> { self.data.get(key) }\n    pub fn insert(&mut self, key: K, value: V) {\n        if self.data.contains_key(&key) {\n            self.data.insert(key, value);\n        } else {\n            if self.order.len() >= self.capacity {\n                let oldest = self.order.remove(0);\n                self.data.remove(&oldest);\n            }\n            self.order.push(key.clone());\n            self.data.insert(key, value);\n        }\n    }\n    pub fn evict_oldest(&mut self) -> Option<V> {\n        if self.order.is_empty() { None }\n        else { let k = self.order.remove(0); self.data.remove(&k) }\n    }\n    pub fn len(&self) -> usize { self.data.len() }\n}",
+      "token_count": 280
+    },
+    "tests": [
+      { "input": "v c = Cache.new(2); c.insert(\"a\", 1); c.insert(\"b\", 2); c.insert(\"c\", 3); c.get(\"a\")", "expected": "?None" },
+      { "input": "v c = Cache.new(2); c.insert(\"a\", 1); c.len()", "expected": "1" }
+    ]
+  },
+  {
+    "id": "gt-004",
+    "category": "generics-traits",
+    "difficulty": "hard",
+    "task": "Write a generic Iterator trait and implement it for a Range struct that yields consecutive integers",
+    "solution": {
+      "rdx_source": "T Iterator {\n    type Item;\n    f next(&!self) -> ?Self.Item;\n}\n\nS Range {\n    current: i32,\n    end: i32,\n}\n\nI Range {\n    +f new(start: i32, end: i32) -> Range {\n        @Range { current: start, end: end }\n    }\n}\n\nI Iterator for Range {\n    type Item = i32;\n    f next(&!self) -> ?i32 {\n        ? self.current < self.end {\n            v val = self.current;\n            self.current = self.current + 1;\n            ?Some(val)\n        } : {\n            ?None\n        }\n    }\n}\n\n+f collect_range(start: i32, end: i32) -> [i32]~ {\n    m range = Range.new(start, end);\n    m result: [i32]~ = [];\n    loop {\n        ? range.next() {\n            ?Some(val) => result.push(val),\n            ?None => break,\n        }\n    }\n    result\n}",
+      "token_count": 140,
+      "effects": [],
+      "skb_rules_used": ["type_safety:trait-impl", "type_safety:associated-types", "ownership:exclusive-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct Range { current: i32, end: i32 }\n\nimpl Range {\n    pub fn new(start: i32, end: i32) -> Self { Self { current: start, end } }\n}\n\nimpl Iterator for Range {\n    type Item = i32;\n    fn next(&mut self) -> Option<i32> {\n        if self.current < self.end {\n            let val = self.current;\n            self.current += 1;\n            Some(val)\n        } else { None }\n    }\n}\n\npub fn collect_range(start: i32, end: i32) -> Vec<i32> {\n    let mut range = Range::new(start, end);\n    let mut result = Vec::new();\n    while let Some(val) = range.next() { result.push(val); }\n    result\n}",
+      "token_count": 180
+    },
+    "tests": [
+      { "input": "collect_range(0, 5)", "expected": "[0, 1, 2, 3, 4]" },
+      { "input": "collect_range(3, 3)", "expected": "[]" }
+    ]
+  },
+  {
+    "id": "gt-005",
+    "category": "generics-traits",
+    "difficulty": "hard",
+    "task": "Write a generic Builder pattern with chained method calls that constructs a Config struct",
+    "solution": {
+      "rdx_source": "S Config {\n    host: s,\n    port: u16,\n    max_connections: u32,\n    tls: bool,\n}\n\nS ConfigBuilder {\n    host: ?s,\n    port: ?u16,\n    max_connections: ?u32,\n    tls: ?bool,\n}\n\nI ConfigBuilder {\n    +f new() -> ConfigBuilder {\n        @ConfigBuilder {\n            host: ?None, port: ?None,\n            max_connections: ?None, tls: ?None,\n        }\n    }\n    +f host(!self, host: s) -> ConfigBuilder {\n        self.host = ?Some(host);\n        self\n    }\n    +f port(!self, port: u16) -> ConfigBuilder {\n        self.port = ?Some(port);\n        self\n    }\n    +f max_connections(!self, max: u32) -> ConfigBuilder {\n        self.max_connections = ?Some(max);\n        self\n    }\n    +f tls(!self, enabled: bool) -> ConfigBuilder {\n        self.tls = ?Some(enabled);\n        self\n    }\n    +f build(self) -> R[Config, s] {\n        v host = self.host.ok_or(\"host is required\")?;\n        v port = self.port.unwrap_or(8080);\n        v max_conn = self.max_connections.unwrap_or(100);\n        v tls = self.tls.unwrap_or(0b);\n        R.Ok(@Config {\n            host: host, port: port,\n            max_connections: max_conn, tls: tls,\n        })\n    }\n}",
+      "token_count": 200,
+      "effects": [],
+      "skb_rules_used": ["ownership:move-semantics", "type_safety:result-propagation", "type_safety:option-unwrap"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct Config { host: String, port: u16, max_connections: u32, tls: bool }\n\nstruct ConfigBuilder { host: Option<String>, port: Option<u16>, max_connections: Option<u32>, tls: Option<bool> }\n\nimpl ConfigBuilder {\n    pub fn new() -> Self { Self { host: None, port: None, max_connections: None, tls: None } }\n    pub fn host(mut self, host: String) -> Self { self.host = Some(host); self }\n    pub fn port(mut self, port: u16) -> Self { self.port = Some(port); self }\n    pub fn max_connections(mut self, max: u32) -> Self { self.max_connections = Some(max); self }\n    pub fn tls(mut self, enabled: bool) -> Self { self.tls = Some(enabled); self }\n    pub fn build(self) -> Result<Config, String> {\n        let host = self.host.ok_or(\"host is required\")?;\n        Ok(Config {\n            host, port: self.port.unwrap_or(8080),\n            max_connections: self.max_connections.unwrap_or(100),\n            tls: self.tls.unwrap_or(false),\n        })\n    }\n}",
+      "token_count": 290
+    },
+    "tests": [
+      { "input": "ConfigBuilder.new().host(\"localhost\").port(3000).build()", "expected": "R.Ok(Config{host:\"localhost\",port:3000,max_connections:100,tls:false})" },
+      { "input": "ConfigBuilder.new().build()", "expected": "R.Err(\"host is required\")" }
+    ]
+  }
+]

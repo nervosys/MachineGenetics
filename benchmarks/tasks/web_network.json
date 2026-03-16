@@ -1,0 +1,195 @@
+[
+  {
+    "id": "web-001",
+    "category": "web-network",
+    "difficulty": "hard",
+    "task": "Write an HTTP GET handler that returns a JSON response with a greeting message",
+    "solution": {
+      "rdx_source": "u http.{Request, Response, Status}\nu json\n\nS Greeting { message: s }\n\n+f handle_greet(req: &Request) -> Response / io, net {\n    v name = req.query(\"name\").unwrap_or(\"World\");\n    v body = json.to_string(&@Greeting { message: f\"Hello, {name}!\" });\n    Response.new(Status.Ok, body)\n        .header(\"Content-Type\", \"application/json\")\n}",
+      "token_count": 72,
+      "effects": ["io", "net"],
+      "skb_rules_used": ["borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use serde::Serialize;\nuse serde_json;\n\n#[derive(Serialize)]\nstruct Greeting { message: String }\n\npub fn handle_greet(name: Option<&str>) -> (u16, String) {\n    let name = name.unwrap_or(\"World\");\n    let body = serde_json::to_string(&Greeting { message: format!(\"Hello, {}!\", name) }).unwrap();\n    (200, body)\n}",
+      "token_count": 108
+    },
+    "tests": [
+      { "input": "handle_greet(Request.with_query(\"name=Redox\"))", "expected": "Response(200, {\"message\":\"Hello, Redox!\"})" }
+    ]
+  },
+  {
+    "id": "web-002",
+    "category": "web-network",
+    "difficulty": "hard",
+    "task": "Write a URL parser that extracts scheme, host, port, and path from a URL string",
+    "solution": {
+      "rdx_source": "S Url {\n    scheme: s,\n    host: s,\n    port: ?u16,\n    path: s,\n}\n\n+f parse_url(raw: &s) -> R[Url, s] {\n    v parts = raw.split(\"://\");\n    ? parts.len() < 2 { ret R.Err(\"missing scheme\"); }\n    v scheme = parts[0];\n    v rest = parts[1];\n    v slash_idx = rest.find('/').unwrap_or(rest.len());\n    v authority = rest[0..slash_idx];\n    v path = rest[slash_idx..];\n    v colon_idx = authority.find(':');\n    ? colon_idx {\n        ?Some(ci) => {\n            v host = authority[0..ci];\n            v port = authority[ci+1..].parse_u16();\n            R.Ok(@Url { scheme: scheme, host: host, port: ?Some(port), path: path })\n        },\n        ?None => R.Ok(@Url { scheme: scheme, host: authority, port: ?None, path: path }),\n    }\n}",
+      "token_count": 148,
+      "effects": [],
+      "skb_rules_used": ["type_safety:result-return", "borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct Url { scheme: String, host: String, port: Option<u16>, path: String }\n\npub fn parse_url(raw: &str) -> Result<Url, String> {\n    let parts: Vec<&str> = raw.splitn(2, \"://\").collect();\n    if parts.len() < 2 { return Err(\"missing scheme\".into()); }\n    let scheme = parts[0].to_string();\n    let rest = parts[1];\n    let slash_idx = rest.find('/').unwrap_or(rest.len());\n    let authority = &rest[..slash_idx];\n    let path = &rest[slash_idx..];\n    if let Some(ci) = authority.find(':') {\n        let host = authority[..ci].to_string();\n        let port = authority[ci+1..].parse::<u16>().map_err(|e| e.to_string())?;\n        Ok(Url { scheme, host, port: Some(port), path: path.to_string() })\n    } else {\n        Ok(Url { scheme, host: authority.to_string(), port: None, path: path.to_string() })\n    }\n}",
+      "token_count": 220
+    },
+    "tests": [
+      { "input": "parse_url(\"https://example.com:443/api\")", "expected": "R.Ok(Url{scheme:\"https\",host:\"example.com\",port:?Some(443),path:\"/api\"})" },
+      { "input": "parse_url(\"http://localhost/\")", "expected": "R.Ok(Url{scheme:\"http\",host:\"localhost\",port:?None,path:\"/\"})" }
+    ]
+  },
+  {
+    "id": "web-003",
+    "category": "web-network",
+    "difficulty": "hard",
+    "task": "Write a simple router that maps HTTP method + path pairs to handler functions",
+    "solution": {
+      "rdx_source": "E Method { Get, Post, Put, Delete }\n\nS Route {\n    method: Method,\n    path: s,\n    handler: f(&Request) -> Response,\n}\n\nS Router { routes: [Route]~ }\n\nI Router {\n    +f new() -> Router { @Router { routes: [] } }\n    +f add(&!self, method: Method, path: s, handler: f(&Request) -> Response) {\n        self.routes.push(@Route { method: method, path: path, handler: handler });\n    }\n    +f dispatch(&self, req: &Request) -> Response / io, net {\n        @ route : &self.routes {\n            ? route.method == req.method && route.path == req.path {\n                ret (route.handler)(req);\n            }\n        }\n        Response.new(Status.NotFound, \"Not Found\")\n    }\n}",
+      "token_count": 140,
+      "effects": ["io", "net"],
+      "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "enum Method { Get, Post, Put, Delete }\n\nstruct Route { method: Method, path: String, handler: fn(&str) -> (u16, String) }\n\nstruct Router { routes: Vec<Route> }\n\nimpl Router {\n    pub fn new() -> Self { Self { routes: Vec::new() } }\n    pub fn add(&mut self, method: Method, path: String, handler: fn(&str) -> (u16, String)) {\n        self.routes.push(Route { method, path, handler });\n    }\n    pub fn dispatch(&self, method: &Method, path: &str, body: &str) -> (u16, String) {\n        for route in &self.routes {\n            if std::mem::discriminant(&route.method) == std::mem::discriminant(method) && route.path == path {\n                return (route.handler)(body);\n            }\n        }\n        (404, \"Not Found\".to_string())\n    }\n}",
+      "token_count": 210
+    },
+    "tests": [
+      { "input": "v r = Router.new(); r.add(Method.Get, \"/hello\", fn(req) => Response.new(Status.Ok, \"hi\")); r.dispatch(Request.get(\"/hello\"))", "expected": "Response(200, \"hi\")" }
+    ]
+  },
+  {
+    "id": "web-004",
+    "category": "web-network",
+    "difficulty": "hard",
+    "task": "Write a JSON serializer for a Config struct with name, version, and features fields",
+    "solution": {
+      "rdx_source": "S Config {\n    name: s,\n    version: s,\n    features: [s]~,\n}\n\n+f to_json(config: &Config) -> s {\n    m parts: [s]~ = [];\n    parts.push(f\"\\\"name\\\":\\\"{config.name}\\\"\");\n    parts.push(f\"\\\"version\\\":\\\"{config.version}\\\"\");\n    m feat_strs: [s]~ = [];\n    @ feat : &config.features {\n        feat_strs.push(f\"\\\"{feat}\\\"\");\n    }\n    parts.push(f\"\\\"features\\\":[{feat_strs.join(\",\")}]\");\n    f\"{{{parts.join(\",\")}}}\"\n}",
+      "token_count": 96,
+      "effects": [],
+      "skb_rules_used": ["borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct Config { name: String, version: String, features: Vec<String> }\n\npub fn to_json(config: &Config) -> String {\n    let feats: Vec<String> = config.features.iter()\n        .map(|f| format!(\"\\\"{}\\\"\" , f)).collect();\n    format!(\n        \"{{\\\"name\\\":\\\"{}\\\",\\\"version\\\":\\\"{}\\\",\\\"features\\\":[{}]}}\",\n        config.name, config.version, feats.join(\",\")\n    )\n}",
+      "token_count": 120
+    },
+    "tests": [
+      { "input": "to_json(&Config{name:\"app\",version:\"1.0\",features:[\"fast\"]})", "expected": "{\"name\":\"app\",\"version\":\"1.0\",\"features\":[\"fast\"]}" }
+    ]
+  },
+  {
+    "id": "web-005",
+    "category": "web-network",
+    "difficulty": "hard",
+    "task": "Write a middleware function that logs request method and path, then calls the next handler",
+    "solution": {
+      "rdx_source": "+f logging_middleware(\n    req: &Request,\n    next: f(&Request) -> Response,\n) -> Response / io, net {\n    io.write_line(f\"[LOG] {req.method} {req.path}\");\n    v response = next(req);\n    io.write_line(f\"[LOG] -> {response.status}\");\n    response\n}",
+      "token_count": 58,
+      "effects": ["io", "net"],
+      "skb_rules_used": ["borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn logging_middleware(\n    method: &str,\n    path: &str,\n    body: &str,\n    next: fn(&str, &str, &str) -> (u16, String),\n) -> (u16, String) {\n    eprintln!(\"[LOG] {} {}\", method, path);\n    let response = next(method, path, body);\n    eprintln!(\"[LOG] -> {}\", response.0);\n    response\n}",
+      "token_count": 100
+    },
+    "tests": [
+      { "input": "logging_middleware(Request.get(\"/api\"), fn(r) => Response.new(Status.Ok, \"ok\"))", "expected": "Response(200, \"ok\")" }
+    ]
+  },
+  {
+    "id": "web-006",
+    "category": "web-network",
+    "difficulty": "hard",
+    "task": "Write a query string parser that converts 'key1=val1&key2=val2' into a HashMap",
+    "solution": {
+      "rdx_source": "+f parse_query(qs: &s) -> {s: s} {\n    m result: {s: s} = {};\n    ? qs.len() == 0 { ret result; }\n    v pairs = qs.split('&');\n    @ pair : pairs {\n        v kv = pair.split('=');\n        ? kv.len() == 2 {\n            result.insert(kv[0].to_string(), kv[1].to_string());\n        }\n    }\n    result\n}",
+      "token_count": 70,
+      "effects": [],
+      "skb_rules_used": []
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::collections::HashMap;\n\npub fn parse_query(qs: &str) -> HashMap<String, String> {\n    let mut result = HashMap::new();\n    if qs.is_empty() { return result; }\n    for pair in qs.split('&') {\n        let kv: Vec<&str> = pair.splitn(2, '=').collect();\n        if kv.len() == 2 {\n            result.insert(kv[0].to_string(), kv[1].to_string());\n        }\n    }\n    result\n}",
+      "token_count": 112
+    },
+    "tests": [
+      { "input": "parse_query(\"a=1&b=2\")", "expected": "{\"a\":\"1\",\"b\":\"2\"}" },
+      { "input": "parse_query(\"\")", "expected": "{}" }
+    ]
+  },
+  {
+    "id": "web-007",
+    "category": "web-network",
+    "difficulty": "hard",
+    "task": "Write an HTTP client function that performs a GET request and returns the response body",
+    "solution": {
+      "rdx_source": "u http.Client\n\n+f fetch(url: &s) -> R[s, s] / io, net {\n    v client = Client.new();\n    v resp = client.get(url).send()?;\n    ? resp.status == 200 {\n        R.Ok(resp.body())\n    } : {\n        R.Err(f\"HTTP {resp.status}\")\n    }\n}",
+      "token_count": 56,
+      "effects": ["io", "net"],
+      "skb_rules_used": ["type_safety:result-propagation"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn fetch(url: &str) -> Result<String, String> {\n    let resp = reqwest::blocking::get(url).map_err(|e| e.to_string())?;\n    if resp.status() == 200 {\n        resp.text().map_err(|e| e.to_string())\n    } else {\n        Err(format!(\"HTTP {}\", resp.status()))\n    }\n}",
+      "token_count": 88
+    },
+    "tests": [
+      { "input": "fetch(\"https://httpbin.org/get\")", "expected": "R.Ok(<body>)" }
+    ]
+  },
+  {
+    "id": "web-008",
+    "category": "web-network",
+    "difficulty": "hard",
+    "task": "Write a WebSocket message handler that echoes messages back with a prefix",
+    "solution": {
+      "rdx_source": "E WsMessage { Text(s), Binary([u8]~), Close }\n\n+f echo_handler(msg: WsMessage) -> ?WsMessage / io, net {\n    ? msg {\n        WsMessage.Text(text) => ?Some(WsMessage.Text(f\"echo: {text}\")),\n        WsMessage.Binary(data) => ?Some(WsMessage.Binary(data)),\n        WsMessage.Close => ?None,\n    }\n}",
+      "token_count": 62,
+      "effects": ["io", "net"],
+      "skb_rules_used": ["ownership:move-semantics"]
+    },
+    "rust_equivalent": {
+      "rs_source": "enum WsMessage { Text(String), Binary(Vec<u8>), Close }\n\npub fn echo_handler(msg: WsMessage) -> Option<WsMessage> {\n    match msg {\n        WsMessage::Text(text) => Some(WsMessage::Text(format!(\"echo: {}\", text))),\n        WsMessage::Binary(data) => Some(WsMessage::Binary(data)),\n        WsMessage::Close => None,\n    }\n}",
+      "token_count": 84
+    },
+    "tests": [
+      { "input": "echo_handler(WsMessage.Text(\"hello\"))", "expected": "?Some(WsMessage.Text(\"echo: hello\"))" },
+      { "input": "echo_handler(WsMessage.Close)", "expected": "?None" }
+    ]
+  },
+  {
+    "id": "web-009",
+    "category": "web-network",
+    "difficulty": "hard",
+    "task": "Write a CORS configuration struct and a function that adds CORS headers to a response",
+    "solution": {
+      "rdx_source": "S CorsConfig {\n    allowed_origins: [s]~,\n    allowed_methods: [s]~,\n    max_age: u32,\n}\n\n+f apply_cors(resp: Response, config: &CorsConfig) -> Response / net {\n    v origins = config.allowed_origins.join(\", \");\n    v methods = config.allowed_methods.join(\", \");\n    resp.header(\"Access-Control-Allow-Origin\", &origins)\n        .header(\"Access-Control-Allow-Methods\", &methods)\n        .header(\"Access-Control-Max-Age\", &config.max_age.to_string())\n}",
+      "token_count": 82,
+      "effects": ["net"],
+      "skb_rules_used": ["borrow:shared-ref", "ownership:move-semantics"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct CorsConfig { allowed_origins: Vec<String>, allowed_methods: Vec<String>, max_age: u32 }\n\npub fn apply_cors(resp: &mut http::Response<String>, config: &CorsConfig) {\n    let origins = config.allowed_origins.join(\", \");\n    let methods = config.allowed_methods.join(\", \");\n    resp.headers_mut().insert(\"Access-Control-Allow-Origin\", origins.parse().unwrap());\n    resp.headers_mut().insert(\"Access-Control-Allow-Methods\", methods.parse().unwrap());\n    resp.headers_mut().insert(\"Access-Control-Max-Age\", config.max_age.to_string().parse().unwrap());\n}",
+      "token_count": 148
+    },
+    "tests": [
+      { "input": "apply_cors(Response.new(200,\"\"), &CorsConfig{allowed_origins:[\"*\"],allowed_methods:[\"GET\"],max_age:3600})", "expected": "Response with CORS headers" }
+    ]
+  },
+  {
+    "id": "web-010",
+    "category": "web-network",
+    "difficulty": "hard",
+    "task": "Write a retry wrapper that retries a fallible network operation up to N times with exponential backoff",
+    "solution": {
+      "rdx_source": "+f retry[T](\n    max_attempts: u32,\n    base_delay_ms: u64,\n    operation: f() -> R[T, s],\n) -> R[T, s] / io, async {\n    m attempt: u32 = 0;\n    loop {\n        v result = operation();\n        ? result {\n            R.Ok(val) => { ret R.Ok(val); },\n            R.Err(err) => {\n                attempt = attempt + 1;\n                ? attempt >= max_attempts { ret R.Err(err); }\n                v delay = base_delay_ms * (1 << attempt);\n                async.sleep(delay);\n            },\n        }\n    }\n}",
+      "token_count": 110,
+      "effects": ["io", "async"],
+      "skb_rules_used": ["type_safety:result-return", "concurrency:effect-tracking"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::thread;\nuse std::time::Duration;\n\npub fn retry<T>(\n    max_attempts: u32,\n    base_delay_ms: u64,\n    operation: impl Fn() -> Result<T, String>,\n) -> Result<T, String> {\n    let mut attempt = 0;\n    loop {\n        match operation() {\n            Ok(val) => return Ok(val),\n            Err(err) => {\n                attempt += 1;\n                if attempt >= max_attempts { return Err(err); }\n                let delay = base_delay_ms * (1 << attempt);\n                thread::sleep(Duration::from_millis(delay));\n            }\n        }\n    }\n}",
+      "token_count": 160
+    },
+    "tests": [
+      { "input": "retry(3, 100, fn() => R.Ok(42))", "expected": "R.Ok(42)" }
+    ]
+  }
+]

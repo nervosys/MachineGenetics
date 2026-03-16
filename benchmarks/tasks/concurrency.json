@@ -1,0 +1,193 @@
+[
+  {
+    "id": "conc-001",
+    "category": "concurrency",
+    "difficulty": "hard",
+    "task": "Define an async effect and write a function that spawns two concurrent tasks and joins their results",
+    "solution": {
+      "rdx_source": "effect async {\n    f spawn[T](task: f() -> T) -> Handle[T];\n    f join[T](handle: Handle[T]) -> T;\n}\n\n+f parallel_sum(a: i32, b: i32) -> i32 / async {\n    v h1 = async.spawn(fn() => a * a);\n    v h2 = async.spawn(fn() => b * b);\n    async.join(h1) + async.join(h2)\n}",
+      "token_count": 72,
+      "effects": ["async"],
+      "skb_rules_used": ["concurrency:spawn-join", "concurrency:effect-tracking"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use tokio::task;\n\npub async fn parallel_sum(a: i32, b: i32) -> i32 {\n    let h1 = task::spawn(async move { a * a });\n    let h2 = task::spawn(async move { b * b });\n    h1.await.unwrap() + h2.await.unwrap()\n}",
+      "token_count": 68
+    },
+    "tests": [
+      { "input": "parallel_sum(3, 4)", "expected": "25" }
+    ]
+  },
+  {
+    "id": "conc-002",
+    "category": "concurrency",
+    "difficulty": "hard",
+    "task": "Write a thread-safe counter using Arc and atomic operations",
+    "solution": {
+      "rdx_source": "S AtomicCounter { value: @AtomicI64 }\n\nI AtomicCounter {\n    +f new() -> AtomicCounter {\n        @AtomicCounter { value: @AtomicI64.new(0) }\n    }\n    +f increment(&self) { self.value.fetch_add(1); }\n    +f get(&self) -> i64 { self.value.load() }\n}",
+      "token_count": 52,
+      "effects": [],
+      "skb_rules_used": ["concurrency:atomic-ops", "concurrency:arc-sharing"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::sync::Arc;\nuse std::sync::atomic::{AtomicI64, Ordering};\n\nstruct AtomicCounter { value: Arc<AtomicI64> }\n\nimpl AtomicCounter {\n    pub fn new() -> Self { Self { value: Arc::new(AtomicI64::new(0)) } }\n    pub fn increment(&self) { self.value.fetch_add(1, Ordering::SeqCst); }\n    pub fn get(&self) -> i64 { self.value.load(Ordering::SeqCst) }\n}",
+      "token_count": 100
+    },
+    "tests": [
+      { "input": "v c = AtomicCounter.new(); c.increment(); c.increment(); c.get()", "expected": "2" }
+    ]
+  },
+  {
+    "id": "conc-003",
+    "category": "concurrency",
+    "difficulty": "hard",
+    "task": "Write a producer-consumer pattern using a channel effect",
+    "solution": {
+      "rdx_source": "effect channel[T] {\n    f send(val: T);\n    f recv() -> ?T;\n}\n\n+f produce_consume() -> [i32]~ / async, channel[i32] {\n    v producer = async.spawn(fn() {\n        m i: i32 = 0;\n        loop {\n            ? i >= 5 { break; }\n            channel.send(i);\n            i = i + 1;\n        }\n    });\n    m results: [i32]~ = [];\n    loop {\n        v val = channel.recv();\n        ? val { ?Some(v) => results.push(v), ?None => break }\n    }\n    async.join(producer);\n    results\n}",
+      "token_count": 110,
+      "effects": ["async", "channel"],
+      "skb_rules_used": ["concurrency:channel-comm", "concurrency:spawn-join"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::sync::mpsc;\nuse std::thread;\n\npub fn produce_consume() -> Vec<i32> {\n    let (tx, rx) = mpsc::channel();\n    let producer = thread::spawn(move || {\n        for i in 0..5 {\n            tx.send(i).unwrap();\n        }\n    });\n    let mut results = Vec::new();\n    for val in rx {\n        results.push(val);\n    }\n    producer.join().unwrap();\n    results\n}",
+      "token_count": 128
+    },
+    "tests": [
+      { "input": "produce_consume()", "expected": "[0,1,2,3,4]" }
+    ]
+  },
+  {
+    "id": "conc-004",
+    "category": "concurrency",
+    "difficulty": "hard",
+    "task": "Write a function that applies a mapper in parallel to each element of a Vec and collects results",
+    "solution": {
+      "rdx_source": "+f par_map[T, U](items: [T]~, func: f(T) -> U) -> [U]~ / async {\n    m handles: [Handle[U]]~ = [];\n    @ item : items {\n        handles.push(async.spawn(fn() => func(item)));\n    }\n    m results: [U]~ = [];\n    @ handle : handles {\n        results.push(async.join(handle));\n    }\n    results\n}",
+      "token_count": 72,
+      "effects": ["async"],
+      "skb_rules_used": ["concurrency:spawn-join", "ownership:move-semantics"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::thread;\n\npub fn par_map<T: Send + 'static, U: Send + 'static>(\n    items: Vec<T>,\n    func: fn(T) -> U,\n) -> Vec<U> {\n    let handles: Vec<_> = items\n        .into_iter()\n        .map(|item| thread::spawn(move || func(item)))\n        .collect();\n    handles.into_iter().map(|h| h.join().unwrap()).collect()\n}",
+      "token_count": 120
+    },
+    "tests": [
+      { "input": "par_map([1,2,3], fn(x) => x * 2)", "expected": "[2,4,6]" }
+    ]
+  },
+  {
+    "id": "conc-005",
+    "category": "concurrency",
+    "difficulty": "hard",
+    "task": "Write a function that uses a Mutex-like exclusive lock to safely accumulate values from multiple tasks",
+    "solution": {
+      "rdx_source": "S Locked[T] { inner: @Mutex[T] }\n\nI Locked[T] {\n    +f new(val: T) -> Locked[T] { @Locked { inner: @Mutex.new(val) } }\n    +f with(&self, func: f(&!T)) { v guard = self.inner.lock(); func(&!guard); }\n}\n\n+f accumulate(vals: [i32]~) -> i32 / async {\n    v acc = Locked.new(0);\n    m handles: [Handle[()]]~ = [];\n    @ val : vals {\n        v ref_acc = acc.clone();\n        handles.push(async.spawn(fn() {\n            ref_acc.with(fn(total: &!i32) { *total = *total + val; });\n        }));\n    }\n    @ h : handles { async.join(h); }\n    v result: i32 = 0;\n    acc.with(fn(total: &!i32) { result = *total; });\n    result\n}",
+      "token_count": 150,
+      "effects": ["async"],
+      "skb_rules_used": ["concurrency:mutex-guard", "concurrency:arc-sharing", "ownership:exclusive-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::sync::{Arc, Mutex};\nuse std::thread;\n\npub fn accumulate(vals: Vec<i32>) -> i32 {\n    let acc = Arc::new(Mutex::new(0));\n    let handles: Vec<_> = vals.into_iter().map(|val| {\n        let acc = Arc::clone(&acc);\n        thread::spawn(move || {\n            let mut guard = acc.lock().unwrap();\n            *guard += val;\n        })\n    }).collect();\n    for h in handles { h.join().unwrap(); }\n    *acc.lock().unwrap()\n}",
+      "token_count": 160
+    },
+    "tests": [
+      { "input": "accumulate([1,2,3,4,5])", "expected": "15" }
+    ]
+  },
+  {
+    "id": "conc-006",
+    "category": "concurrency",
+    "difficulty": "hard",
+    "task": "Write a timeout wrapper that cancels a computation after a deadline",
+    "solution": {
+      "rdx_source": "effect timer {\n    f sleep(ms: u64);\n    f deadline(ms: u64) -> Handle[()];\n}\n\n+f with_timeout[T](ms: u64, task: f() -> T) -> ?T / async, timer {\n    v cancel = timer.deadline(ms);\n    v work = async.spawn(task);\n    ? async.select(work, cancel) {\n        Left(result) => ?Some(result),\n        Right(_) => ?None,\n    }\n}",
+      "token_count": 78,
+      "effects": ["async", "timer"],
+      "skb_rules_used": ["concurrency:timeout-pattern", "concurrency:effect-tracking"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use tokio::time::{timeout, Duration};\n\npub async fn with_timeout<T: Send + 'static>(\n    ms: u64,\n    task: impl std::future::Future<Output = T> + Send + 'static,\n) -> Option<T> {\n    match timeout(Duration::from_millis(ms), task).await {\n        Ok(result) => Some(result),\n        Err(_) => None,\n    }\n}",
+      "token_count": 108
+    },
+    "tests": [
+      { "input": "with_timeout(1000, fn() => 42)", "expected": "?Some(42)" }
+    ]
+  },
+  {
+    "id": "conc-007",
+    "category": "concurrency",
+    "difficulty": "hard",
+    "task": "Write a rate limiter that allows at most N operations per second using a token bucket",
+    "solution": {
+      "rdx_source": "S RateLimiter {\n    tokens: @AtomicI64,\n    max_tokens: i64,\n    refill_rate: i64,\n}\n\nI RateLimiter {\n    +f new(max: i64, rate: i64) -> RateLimiter {\n        @RateLimiter {\n            tokens: @AtomicI64.new(max),\n            max_tokens: max,\n            refill_rate: rate,\n        }\n    }\n    +f try_acquire(&self) -> bool {\n        v current = self.tokens.load();\n        ? current > 0 {\n            self.tokens.fetch_sub(1);\n            1b\n        } : { 0b }\n    }\n    +f refill(&self) {\n        v current = self.tokens.load();\n        ? current < self.max_tokens {\n            self.tokens.fetch_add(self.refill_rate);\n        }\n    }\n}",
+      "token_count": 120,
+      "effects": [],
+      "skb_rules_used": ["concurrency:atomic-ops", "concurrency:arc-sharing"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::sync::atomic::{AtomicI64, Ordering};\nuse std::sync::Arc;\n\nstruct RateLimiter {\n    tokens: Arc<AtomicI64>,\n    max_tokens: i64,\n    refill_rate: i64,\n}\n\nimpl RateLimiter {\n    pub fn new(max: i64, rate: i64) -> Self {\n        Self { tokens: Arc::new(AtomicI64::new(max)), max_tokens: max, refill_rate: rate }\n    }\n    pub fn try_acquire(&self) -> bool {\n        let current = self.tokens.load(Ordering::SeqCst);\n        if current > 0 { self.tokens.fetch_sub(1, Ordering::SeqCst); true } else { false }\n    }\n    pub fn refill(&self) {\n        let current = self.tokens.load(Ordering::SeqCst);\n        if current < self.max_tokens { self.tokens.fetch_add(self.refill_rate, Ordering::SeqCst); }\n    }\n}",
+      "token_count": 196
+    },
+    "tests": [
+      { "input": "v rl = RateLimiter.new(2, 1); rl.try_acquire() && rl.try_acquire()", "expected": "true" },
+      { "input": "v rl = RateLimiter.new(1, 1); rl.try_acquire(); rl.try_acquire()", "expected": "false" }
+    ]
+  },
+  {
+    "id": "conc-008",
+    "category": "concurrency",
+    "difficulty": "hard",
+    "task": "Write a barrier that blocks until N tasks have arrived, then releases all of them",
+    "solution": {
+      "rdx_source": "S Barrier {\n    count: @AtomicI64,\n    target: i64,\n}\n\nI Barrier {\n    +f new(n: i64) -> Barrier {\n        @Barrier { count: @AtomicI64.new(0), target: n }\n    }\n    +f arrive_and_wait(&self) / async {\n        v arrived = self.count.fetch_add(1) + 1;\n        ? arrived >= self.target {\n            // last arrival — all proceed\n        } : {\n            loop {\n                ? self.count.load() >= self.target { break; }\n                async.yield();\n            }\n        }\n    }\n}",
+      "token_count": 90,
+      "effects": ["async"],
+      "skb_rules_used": ["concurrency:barrier-sync", "concurrency:atomic-ops"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::sync::{Arc, Barrier as StdBarrier};\n\nstruct Barrier { inner: Arc<StdBarrier> }\n\nimpl Barrier {\n    pub fn new(n: usize) -> Self {\n        Self { inner: Arc::new(StdBarrier::new(n)) }\n    }\n    pub fn arrive_and_wait(&self) {\n        self.inner.wait();\n    }\n}",
+      "token_count": 84
+    },
+    "tests": [
+      { "input": "v b = Barrier.new(1); b.arrive_and_wait()", "expected": "()" }
+    ]
+  },
+  {
+    "id": "conc-009",
+    "category": "concurrency",
+    "difficulty": "hard",
+    "task": "Write a concurrent map-reduce: split data, process chunks in parallel, merge results",
+    "solution": {
+      "rdx_source": "+f map_reduce(\n    data: [i32]~,\n    chunk_size: usize,\n    mapper: f(i32) -> i64,\n    reducer: f(i64, i64) -> i64,\n    init: i64,\n) -> i64 / async {\n    m handles: [Handle[i64]]~ = [];\n    m start: usize = 0;\n    loop {\n        ? start >= data.len() { break; }\n        v end: usize = ? start + chunk_size > data.len() { data.len() } : { start + chunk_size };\n        v chunk = data[start..end].to_vec();\n        handles.push(async.spawn(fn() {\n            m acc: i64 = init;\n            @ val : chunk { acc = reducer(acc, mapper(val)); }\n            acc\n        }));\n        start = start + chunk_size;\n    }\n    m result: i64 = init;\n    @ h : handles { result = reducer(result, async.join(h)); }\n    result\n}",
+      "token_count": 160,
+      "effects": ["async"],
+      "skb_rules_used": ["concurrency:spawn-join", "ownership:move-semantics"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::thread;\n\npub fn map_reduce(\n    data: Vec<i32>,\n    chunk_size: usize,\n    mapper: fn(i32) -> i64,\n    reducer: fn(i64, i64) -> i64,\n    init: i64,\n) -> i64 {\n    let handles: Vec<_> = data.chunks(chunk_size).map(|chunk| {\n        let chunk = chunk.to_vec();\n        thread::spawn(move || {\n            chunk.into_iter().fold(init, |acc, val| reducer(acc, mapper(val)))\n        })\n    }).collect();\n    handles.into_iter().fold(init, |acc, h| reducer(acc, h.join().unwrap()))\n}",
+      "token_count": 190
+    },
+    "tests": [
+      { "input": "map_reduce([1,2,3,4], 2, fn(x) => x as i64, fn(a,b) => a + b, 0)", "expected": "10" }
+    ]
+  },
+  {
+    "id": "conc-010",
+    "category": "concurrency",
+    "difficulty": "hard",
+    "task": "Write an async semaphore that limits concurrent access to a resource to N permits",
+    "solution": {
+      "rdx_source": "S Semaphore {\n    permits: @AtomicI64,\n    max_permits: i64,\n}\n\nI Semaphore {\n    +f new(n: i64) -> Semaphore {\n        @Semaphore { permits: @AtomicI64.new(n), max_permits: n }\n    }\n    +f acquire(&self) / async {\n        loop {\n            v current = self.permits.load();\n            ? current > 0 {\n                self.permits.fetch_sub(1);\n                ret;\n            }\n            async.yield();\n        }\n    }\n    +f release(&self) {\n        v current = self.permits.load();\n        ? current < self.max_permits {\n            self.permits.fetch_add(1);\n        }\n    }\n}",
+      "token_count": 110,
+      "effects": ["async"],
+      "skb_rules_used": ["concurrency:semaphore", "concurrency:atomic-ops"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use tokio::sync::Semaphore as TokioSemaphore;\nuse std::sync::Arc;\n\nstruct Semaphore { inner: Arc<TokioSemaphore> }\n\nimpl Semaphore {\n    pub fn new(n: usize) -> Self {\n        Self { inner: Arc::new(TokioSemaphore::new(n)) }\n    }\n    pub async fn acquire(&self) {\n        self.inner.acquire().await.unwrap().forget();\n    }\n    pub fn release(&self) {\n        self.inner.add_permits(1);\n    }\n}",
+      "token_count": 128
+    },
+    "tests": [
+      { "input": "v s = Semaphore.new(2); s.acquire(); s.acquire(); s.release()", "expected": "()" }
+    ]
+  }
+]

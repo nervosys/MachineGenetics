@@ -1,0 +1,198 @@
+[
+  {
+    "id": "sys-001",
+    "category": "systems",
+    "difficulty": "hard",
+    "task": "Write a ring buffer allocator that manages a fixed-size byte array with alloc and free operations",
+    "solution": {
+      "rdx_source": "S RingAlloc {\n    buf: [u8]~,\n    head: usize,\n    size: usize,\n    cap: usize,\n}\n\nI RingAlloc {\n    +f new(cap: usize) -> RingAlloc {\n        m buf: [u8]~ = [];\n        m i: usize = 0;\n        loop { ? i >= cap { break; } buf.push(0); i = i + 1; }\n        @RingAlloc { buf: buf, head: 0, size: 0, cap: cap }\n    }\n    +f alloc(&!self, n: usize) -> ?usize {\n        ? self.size + n > self.cap { ret ?None; }\n        v offset = (self.head + self.size) % self.cap;\n        self.size = self.size + n;\n        ?Some(offset)\n    }\n    +f free(&!self, n: usize) {\n        v actual = ? n > self.size { self.size } : { n };\n        self.head = (self.head + actual) % self.cap;\n        self.size = self.size - actual;\n    }\n    +f available(&self) -> usize { self.cap - self.size }\n}",
+      "token_count": 170,
+      "effects": [],
+      "skb_rules_used": ["ownership:exclusive-ref", "type_safety:option-return"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct RingAlloc { buf: Vec<u8>, head: usize, size: usize, cap: usize }\n\nimpl RingAlloc {\n    pub fn new(cap: usize) -> Self { Self { buf: vec![0; cap], head: 0, size: 0, cap } }\n    pub fn alloc(&mut self, n: usize) -> Option<usize> {\n        if self.size + n > self.cap { return None; }\n        let offset = (self.head + self.size) % self.cap;\n        self.size += n;\n        Some(offset)\n    }\n    pub fn free(&mut self, n: usize) {\n        let actual = n.min(self.size);\n        self.head = (self.head + actual) % self.cap;\n        self.size -= actual;\n    }\n    pub fn available(&self) -> usize { self.cap - self.size }\n}",
+      "token_count": 210
+    },
+    "tests": [
+      { "input": "v a = RingAlloc.new(16); a.alloc(8)", "expected": "?Some(0)" },
+      { "input": "v a = RingAlloc.new(4); a.alloc(4); a.alloc(1)", "expected": "?None" }
+    ]
+  },
+  {
+    "id": "sys-002",
+    "category": "systems",
+    "difficulty": "hard",
+    "task": "Write a bit-vector struct that supports set, clear, get, and count operations on individual bits",
+    "solution": {
+      "rdx_source": "S BitVec { data: [u64]~, len: usize }\n\nI BitVec {\n    +f new(n: usize) -> BitVec {\n        v words = (n + 63) / 64;\n        m data: [u64]~ = [];\n        m i: usize = 0;\n        loop { ? i >= words { break; } data.push(0); i = i + 1; }\n        @BitVec { data: data, len: n }\n    }\n    +f set(&!self, idx: usize) {\n        self.data[idx / 64] = self.data[idx / 64] | (1 << (idx % 64));\n    }\n    +f clear(&!self, idx: usize) {\n        self.data[idx / 64] = self.data[idx / 64] & !(1 << (idx % 64));\n    }\n    +f get(&self, idx: usize) -> bool {\n        (self.data[idx / 64] >> (idx % 64)) & 1 == 1\n    }\n    +f count_ones(&self) -> usize {\n        m total: usize = 0;\n        @ word : &self.data { total = total + word.count_ones() as usize; }\n        total\n    }\n}",
+      "token_count": 170,
+      "effects": [],
+      "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct BitVec { data: Vec<u64>, len: usize }\n\nimpl BitVec {\n    pub fn new(n: usize) -> Self { Self { data: vec![0; (n + 63) / 64], len: n } }\n    pub fn set(&mut self, idx: usize) { self.data[idx / 64] |= 1u64 << (idx % 64); }\n    pub fn clear(&mut self, idx: usize) { self.data[idx / 64] &= !(1u64 << (idx % 64)); }\n    pub fn get(&self, idx: usize) -> bool { (self.data[idx / 64] >> (idx % 64)) & 1 == 1 }\n    pub fn count_ones(&self) -> usize { self.data.iter().map(|w| w.count_ones() as usize).sum() }\n}",
+      "token_count": 210
+    },
+    "tests": [
+      { "input": "v bv = BitVec.new(128); bv.set(5); bv.get(5)", "expected": "true" },
+      { "input": "v bv = BitVec.new(64); bv.set(10); bv.clear(10); bv.get(10)", "expected": "false" }
+    ]
+  },
+  {
+    "id": "sys-003",
+    "category": "systems",
+    "difficulty": "hard",
+    "task": "Write a simple arena allocator that allocates objects from a contiguous byte slab",
+    "solution": {
+      "rdx_source": "S Arena {\n    buf: [u8]~,\n    offset: usize,\n    cap: usize,\n}\n\nI Arena {\n    +f new(cap: usize) -> Arena {\n        m buf: [u8]~ = [];\n        m i: usize = 0;\n        loop { ? i >= cap { break; } buf.push(0); i = i + 1; }\n        @Arena { buf: buf, offset: 0, cap: cap }\n    }\n    +f alloc(&!self, size: usize, align: usize) -> ?usize {\n        v aligned = (self.offset + align - 1) & !(align - 1);\n        ? aligned + size > self.cap { ret ?None; }\n        self.offset = aligned + size;\n        ?Some(aligned)\n    }\n    +f reset(&!self) { self.offset = 0; }\n    +f used(&self) -> usize { self.offset }\n}",
+      "token_count": 140,
+      "effects": [],
+      "skb_rules_used": ["ownership:exclusive-ref", "type_safety:option-return"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct Arena { buf: Vec<u8>, offset: usize, cap: usize }\n\nimpl Arena {\n    pub fn new(cap: usize) -> Self { Self { buf: vec![0; cap], offset: 0, cap } }\n    pub fn alloc(&mut self, size: usize, align: usize) -> Option<usize> {\n        let aligned = (self.offset + align - 1) & !(align - 1);\n        if aligned + size > self.cap { return None; }\n        self.offset = aligned + size;\n        Some(aligned)\n    }\n    pub fn reset(&mut self) { self.offset = 0; }\n    pub fn used(&self) -> usize { self.offset }\n}",
+      "token_count": 180
+    },
+    "tests": [
+      { "input": "v a = Arena.new(1024); a.alloc(64, 8)", "expected": "?Some(0)" },
+      { "input": "v a = Arena.new(16); a.alloc(16, 1); a.alloc(1, 1)", "expected": "?None" }
+    ]
+  },
+  {
+    "id": "sys-004",
+    "category": "systems",
+    "difficulty": "hard",
+    "task": "Write a byte buffer with read and write cursors for network packet assembly",
+    "solution": {
+      "rdx_source": "S ByteBuf {\n    data: [u8]~,\n    read_pos: usize,\n    write_pos: usize,\n}\n\nI ByteBuf {\n    +f new() -> ByteBuf { @ByteBuf { data: [], read_pos: 0, write_pos: 0 } }\n    +f write_u8(&!self, val: u8) { self.data.push(val); self.write_pos = self.write_pos + 1; }\n    +f write_u32_be(&!self, val: u32) {\n        self.write_u8((val >> 24) as u8);\n        self.write_u8((val >> 16) as u8);\n        self.write_u8((val >> 8) as u8);\n        self.write_u8(val as u8);\n    }\n    +f read_u8(&!self) -> ?u8 {\n        ? self.read_pos >= self.write_pos { ret ?None; }\n        v val = self.data[self.read_pos];\n        self.read_pos = self.read_pos + 1;\n        ?Some(val)\n    }\n    +f remaining(&self) -> usize { self.write_pos - self.read_pos }\n}",
+      "token_count": 160,
+      "effects": [],
+      "skb_rules_used": ["ownership:exclusive-ref", "type_safety:option-return"]
+    },
+    "rust_equivalent": {
+      "rs_source": "struct ByteBuf { data: Vec<u8>, read_pos: usize, write_pos: usize }\n\nimpl ByteBuf {\n    pub fn new() -> Self { Self { data: Vec::new(), read_pos: 0, write_pos: 0 } }\n    pub fn write_u8(&mut self, val: u8) { self.data.push(val); self.write_pos += 1; }\n    pub fn write_u32_be(&mut self, val: u32) {\n        self.write_u8((val >> 24) as u8);\n        self.write_u8((val >> 16) as u8);\n        self.write_u8((val >> 8) as u8);\n        self.write_u8(val as u8);\n    }\n    pub fn read_u8(&mut self) -> Option<u8> {\n        if self.read_pos >= self.write_pos { return None; }\n        let val = self.data[self.read_pos];\n        self.read_pos += 1;\n        Some(val)\n    }\n    pub fn remaining(&self) -> usize { self.write_pos - self.read_pos }\n}",
+      "token_count": 230
+    },
+    "tests": [
+      { "input": "v b = ByteBuf.new(); b.write_u8(42); b.read_u8()", "expected": "?Some(42)" },
+      { "input": "v b = ByteBuf.new(); b.write_u32_be(256); b.remaining()", "expected": "4" }
+    ]
+  },
+  {
+    "id": "sys-005",
+    "category": "systems",
+    "difficulty": "hard",
+    "task": "Write a file-like reader effect and a function that reads a file into a string",
+    "solution": {
+      "rdx_source": "effect fs {\n    f read_bytes(path: &s) -> R[[u8]~, s];\n    f write_bytes(path: &s, data: &[u8]) -> R[(), s];\n}\n\n+f read_to_string(path: &s) -> R[s, s] / fs {\n    v bytes = fs.read_bytes(path)?;\n    s.from_utf8(bytes).map_err(fn(e) => f\"invalid UTF-8: {e}\")\n}",
+      "token_count": 68,
+      "effects": ["fs"],
+      "skb_rules_used": ["type_safety:result-propagation", "borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::fs;\n\npub fn read_to_string(path: &str) -> Result<String, String> {\n    let bytes = fs::read(path).map_err(|e| e.to_string())?;\n    String::from_utf8(bytes).map_err(|e| e.to_string())\n}",
+      "token_count": 60
+    },
+    "tests": [
+      { "input": "read_to_string(\"/tmp/test.txt\")", "expected": "R.Ok(<contents>)" }
+    ]
+  },
+  {
+    "id": "sys-006",
+    "category": "systems",
+    "difficulty": "hard",
+    "task": "Write an LRU cache with get and put operations using a HashMap and a doubly-linked list concept",
+    "solution": {
+      "rdx_source": "S LruCache[V] {\n    map: {s: V},\n    order: [s]~,\n    cap: usize,\n}\n\nI LruCache[V] {\n    +f new(cap: usize) -> LruCache[V] {\n        @LruCache { map: {}, order: [], cap: cap }\n    }\n    +f get(&!self, key: &s) -> ?&V {\n        ? self.map.contains_key(key) {\n            self.touch(key);\n            self.map.get(key)\n        } : { ?None }\n    }\n    +f put(&!self, key: s, val: V) {\n        ? self.map.contains_key(&key) {\n            self.touch(&key);\n            self.map.insert(key, val);\n        } : {\n            ? self.order.len() >= self.cap {\n                v evict = self.order.remove(0);\n                self.map.remove(&evict);\n            }\n            self.order.push(key.clone());\n            self.map.insert(key, val);\n        }\n    }\n    f touch(&!self, key: &s) {\n        v idx = self.order.iter().position(fn(k) => k == key);\n        ? idx { ?Some(i) => { self.order.remove(i); self.order.push(key.clone()); }, ?None => {} }\n    }\n}",
+      "token_count": 200,
+      "effects": [],
+      "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref", "type_safety:option-return"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::collections::HashMap;\n\nstruct LruCache<V> { map: HashMap<String, V>, order: Vec<String>, cap: usize }\n\nimpl<V> LruCache<V> {\n    pub fn new(cap: usize) -> Self { Self { map: HashMap::new(), order: Vec::new(), cap } }\n    pub fn get(&mut self, key: &str) -> Option<&V> {\n        if self.map.contains_key(key) {\n            self.touch(key);\n            self.map.get(key)\n        } else { None }\n    }\n    pub fn put(&mut self, key: String, val: V) {\n        if self.map.contains_key(&key) {\n            self.touch(&key);\n            self.map.insert(key, val);\n        } else {\n            if self.order.len() >= self.cap {\n                let evict = self.order.remove(0);\n                self.map.remove(&evict);\n            }\n            self.order.push(key.clone());\n            self.map.insert(key, val);\n        }\n    }\n    fn touch(&mut self, key: &str) {\n        if let Some(i) = self.order.iter().position(|k| k == key) {\n            self.order.remove(i);\n            self.order.push(key.to_string());\n        }\n    }\n}",
+      "token_count": 300
+    },
+    "tests": [
+      { "input": "v c = LruCache.new(2); c.put(\"a\", 1); c.put(\"b\", 2); c.put(\"c\", 3); c.get(\"a\")", "expected": "?None" },
+      { "input": "v c = LruCache.new(2); c.put(\"a\", 1); c.put(\"b\", 2); c.get(\"a\"); c.put(\"c\", 3); c.get(\"a\")", "expected": "?Some(1)" }
+    ]
+  },
+  {
+    "id": "sys-007",
+    "category": "systems",
+    "difficulty": "hard",
+    "task": "Write a process environment wrapper that provides typed access to environment variables",
+    "solution": {
+      "rdx_source": "effect env {\n    f get_var(name: &s) -> ?s;\n    f set_var(name: &s, value: &s);\n}\n\nS EnvConfig {\n    port: u16,\n    host: s,\n    debug: bool,\n}\n\n+f load_config() -> R[EnvConfig, s] / env {\n    v port_str = env.get_var(\"PORT\").unwrap_or(\"8080\");\n    v port = port_str.parse_u16().map_err(fn(e) => f\"bad PORT: {e}\")?;\n    v host = env.get_var(\"HOST\").unwrap_or(\"localhost\");\n    v debug = env.get_var(\"DEBUG\").unwrap_or(\"false\") == \"true\";\n    R.Ok(@EnvConfig { port: port, host: host, debug: debug })\n}",
+      "token_count": 110,
+      "effects": ["env"],
+      "skb_rules_used": ["type_safety:result-propagation"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::env;\n\nstruct EnvConfig { port: u16, host: String, debug: bool }\n\npub fn load_config() -> Result<EnvConfig, String> {\n    let port: u16 = env::var(\"PORT\").unwrap_or_else(|_| \"8080\".into())\n        .parse().map_err(|e: std::num::ParseIntError| format!(\"bad PORT: {}\", e))?;\n    let host = env::var(\"HOST\").unwrap_or_else(|_| \"localhost\".into());\n    let debug = env::var(\"DEBUG\").unwrap_or_else(|_| \"false\".into()) == \"true\";\n    Ok(EnvConfig { port, host, debug })\n}",
+      "token_count": 150
+    },
+    "tests": [
+      { "input": "load_config()  // with PORT=3000", "expected": "R.Ok(EnvConfig{port:3000,host:\"localhost\",debug:false})" }
+    ]
+  },
+  {
+    "id": "sys-008",
+    "category": "systems",
+    "difficulty": "hard",
+    "task": "Write a command-line argument parser that extracts flags and key-value pairs from args",
+    "solution": {
+      "rdx_source": "S CliArgs {\n    flags: [s]~,\n    opts: {s: s},\n    positional: [s]~,\n}\n\n+f parse_args(args: [s]~) -> CliArgs {\n    m flags: [s]~ = [];\n    m opts: {s: s} = {};\n    m positional: [s]~ = [];\n    m i: usize = 0;\n    loop {\n        ? i >= args.len() { break; }\n        v arg = &args[i];\n        ? arg.starts_with(\"--\") {\n            v key = arg[2..];\n            ? i + 1 < args.len() && !args[i+1].starts_with(\"-\") {\n                opts.insert(key.to_string(), args[i+1].clone());\n                i = i + 2;\n            } : {\n                flags.push(key.to_string());\n                i = i + 1;\n            }\n        } : {\n            positional.push(arg.clone());\n            i = i + 1;\n        }\n    }\n    @CliArgs { flags: flags, opts: opts, positional: positional }\n}",
+      "token_count": 160,
+      "effects": [],
+      "skb_rules_used": ["ownership:move-semantics", "borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "use std::collections::HashMap;\n\nstruct CliArgs { flags: Vec<String>, opts: HashMap<String, String>, positional: Vec<String> }\n\npub fn parse_args(args: Vec<String>) -> CliArgs {\n    let mut flags = Vec::new();\n    let mut opts = HashMap::new();\n    let mut positional = Vec::new();\n    let mut i = 0;\n    while i < args.len() {\n        if args[i].starts_with(\"--\") {\n            let key = args[i][2..].to_string();\n            if i + 1 < args.len() && !args[i+1].starts_with(\"-\") {\n                opts.insert(key, args[i+1].clone());\n                i += 2;\n            } else {\n                flags.push(key);\n                i += 1;\n            }\n        } else {\n            positional.push(args[i].clone());\n            i += 1;\n        }\n    }\n    CliArgs { flags, opts, positional }\n}",
+      "token_count": 226
+    },
+    "tests": [
+      { "input": "parse_args([\"--verbose\", \"--port\", \"8080\", \"file.txt\"])", "expected": "CliArgs{flags:[\"verbose\"],opts:{\"port\":\"8080\"},positional:[\"file.txt\"]}" }
+    ]
+  },
+  {
+    "id": "sys-009",
+    "category": "systems",
+    "difficulty": "hard",
+    "task": "Write a hash function (FNV-1a) that computes a u64 hash from a byte slice",
+    "solution": {
+      "rdx_source": "+f fnv1a(data: &[u8]) -> u64 {\n    v offset_basis: u64 = 14695981039346656037;\n    v prime: u64 = 1099511628211;\n    m hash: u64 = offset_basis;\n    @ byte : data {\n        hash = hash ^ (byte as u64);\n        hash = hash.wrapping_mul(prime);\n    }\n    hash\n}",
+      "token_count": 60,
+      "effects": [],
+      "skb_rules_used": ["borrow:shared-slice"]
+    },
+    "rust_equivalent": {
+      "rs_source": "pub fn fnv1a(data: &[u8]) -> u64 {\n    const OFFSET_BASIS: u64 = 14695981039346656037;\n    const PRIME: u64 = 1099511628211;\n    let mut hash = OFFSET_BASIS;\n    for &byte in data {\n        hash ^= byte as u64;\n        hash = hash.wrapping_mul(PRIME);\n    }\n    hash\n}",
+      "token_count": 72
+    },
+    "tests": [
+      { "input": "fnv1a(b\"hello\")", "expected": "11831194018420276491" },
+      { "input": "fnv1a(b\"\")", "expected": "14695981039346656037" }
+    ]
+  },
+  {
+    "id": "sys-010",
+    "category": "systems",
+    "difficulty": "hard",
+    "task": "Write a simple logging framework with log levels and a configurable output sink",
+    "solution": {
+      "rdx_source": "E LogLevel { Trace, Debug, Info, Warn, Error }\n\nS Logger {\n    min_level: LogLevel,\n    prefix: s,\n}\n\nI Logger {\n    +f new(level: LogLevel, prefix: s) -> Logger {\n        @Logger { min_level: level, prefix: prefix }\n    }\n    +f log(&self, level: LogLevel, msg: &s) / io {\n        ? level >= self.min_level {\n            v level_str = ? level {\n                LogLevel.Trace => \"TRACE\",\n                LogLevel.Debug => \"DEBUG\",\n                LogLevel.Info => \"INFO\",\n                LogLevel.Warn => \"WARN\",\n                LogLevel.Error => \"ERROR\",\n            };\n            io.write_line(f\"[{self.prefix}] [{level_str}] {msg}\");\n        }\n    }\n    +f info(&self, msg: &s) / io { self.log(LogLevel.Info, msg); }\n    +f error(&self, msg: &s) / io { self.log(LogLevel.Error, msg); }\n}",
+      "token_count": 160,
+      "effects": ["io"],
+      "skb_rules_used": ["borrow:shared-ref"]
+    },
+    "rust_equivalent": {
+      "rs_source": "#[derive(PartialEq, PartialOrd)]\nenum LogLevel { Trace, Debug, Info, Warn, Error }\n\nstruct Logger { min_level: LogLevel, prefix: String }\n\nimpl Logger {\n    pub fn new(level: LogLevel, prefix: String) -> Self { Self { min_level: level, prefix } }\n    pub fn log(&self, level: LogLevel, msg: &str) {\n        if level >= self.min_level {\n            let level_str = match level {\n                LogLevel::Trace => \"TRACE\", LogLevel::Debug => \"DEBUG\",\n                LogLevel::Info => \"INFO\", LogLevel::Warn => \"WARN\",\n                LogLevel::Error => \"ERROR\",\n            };\n            eprintln!(\"[{}] [{}] {}\", self.prefix, level_str, msg);\n        }\n    }\n    pub fn info(&self, msg: &str) { self.log(LogLevel::Info, msg); }\n    pub fn error(&self, msg: &str) { self.log(LogLevel::Error, msg); }\n}",
+      "token_count": 250
+    },
+    "tests": [
+      { "input": "v l = Logger.new(LogLevel.Info, \"app\"); l.info(\"started\")", "expected": "[app] [INFO] started" }
+    ]
+  }
+]
