@@ -773,17 +773,17 @@ InferEffects(fn):
 
 ### 5.5 Standard Effects
 
-| Effect  | Operations               | Description                        |
-| ------- | ------------------------ | ---------------------------------- |
-| `IO`    | read, write, seek, close | File and stream I/O                |
-| `Net`   | connect, listen, send    | Network I/O                        |
-| `FS`    | open, stat, mkdir, rm    | Filesystem operations              |
-| `Async` | spawn, join, select      | Asynchronous task management       |
-| `Alloc` | alloc, dealloc, realloc  | Heap memory allocation             |
-| `Panic` | panic, catch_panic       | Unwinding / structured panics      |
-| `FFI`   | call_foreign             | Foreign function invocation        |
-| `Env`   | get_var, set_var         | Environment variable access        |
-| `Time`  | now, sleep, timeout      | Clock and timer access             |
+| Effect  | Operations               | Description                   |
+| ------- | ------------------------ | ----------------------------- |
+| `IO`    | read, write, seek, close | File and stream I/O           |
+| `Net`   | connect, listen, send    | Network I/O                   |
+| `FS`    | open, stat, mkdir, rm    | Filesystem operations         |
+| `Async` | spawn, join, select      | Asynchronous task management  |
+| `Alloc` | alloc, dealloc, realloc  | Heap memory allocation        |
+| `Panic` | panic, catch_panic       | Unwinding / structured panics |
+| `FFI`   | call_foreign             | Foreign function invocation   |
+| `Env`   | get_var, set_var         | Environment variable access   |
+| `Time`  | now, sleep, timeout      | Clock and timer access        |
 
 ---
 
@@ -954,13 +954,13 @@ f resolve(host: s) -> R[Addr, Error] { ... }  // private
 
 ### 8.2 Visibility Rules
 
-| Redox    | Rust Equivalent  | Meaning                     |
-| -------- | ---------------- | --------------------------- |
-| `+f`     | `pub fn`         | Public function             |
-| `f`      | `fn`             | Private function            |
-| `+S`     | `pub struct`     | Public struct               |
-| `+T`     | `pub trait`      | Public trait                |
-| `+M`     | `pub mod`        | Public module               |
+| Redox | Rust Equivalent | Meaning          |
+| ----- | --------------- | ---------------- |
+| `+f`  | `pub fn`        | Public function  |
+| `f`   | `fn`            | Private function |
+| `+S`  | `pub struct`    | Public struct    |
+| `+T`  | `pub trait`     | Public trait     |
+| `+M`  | `pub mod`       | Public module    |
 
 No `pub(crate)` or `pub(super)` — these are rarely used by agents and add parsing complexity. If needed, they can be added via grammar extension.
 
@@ -1137,76 +1137,76 @@ For tooling interoperability, here is the complete grammar in pure BNF (no EBNF 
 
 ### B.1 Declaration Keywords
 
-| Keyword | Meaning          | Rust Equivalent  |
-| ------- | ---------------- | ---------------- |
-| `f`     | Function         | `fn`             |
-| `m`     | Mutable binding  | `let mut`        |
-| `v`     | Immutable binding| `let`            |
-| `c`     | Constant         | `const`          |
-| `S`     | Struct           | `struct`         |
-| `E`     | Enum             | `enum`           |
-| `T`     | Trait            | `trait`          |
-| `I`     | Impl block       | `impl`           |
-| `M`     | Module           | `mod`            |
-| `U`     | Union            | `union`          |
-| `u`     | Use import       | `use`            |
-| `+`     | Public (prefix)  | `pub`            |
+| Keyword | Meaning           | Rust Equivalent |
+| ------- | ----------------- | --------------- |
+| `f`     | Function          | `fn`            |
+| `m`     | Mutable binding   | `let mut`       |
+| `v`     | Immutable binding | `let`           |
+| `c`     | Constant          | `const`         |
+| `S`     | Struct            | `struct`        |
+| `E`     | Enum              | `enum`          |
+| `T`     | Trait             | `trait`         |
+| `I`     | Impl block        | `impl`          |
+| `M`     | Module            | `mod`           |
+| `U`     | Union             | `union`         |
+| `u`     | Use import        | `use`           |
+| `+`     | Public (prefix)   | `pub`           |
 
 ### B.2 Control Flow Keywords
 
-| Keyword    | Meaning             | Rust Equivalent    |
-| ---------- | ------------------- | ------------------ |
-| `?`        | If / match          | `if` / `match`     |
-| `:`        | Else (after block)  | `else`             |
-| `:?`       | Else-if             | `else if`          |
-| `@`        | For loop            | `for`              |
-| `loop`     | Infinite loop       | `loop`             |
-| `break`    | Break               | `break`            |
-| `continue` | Continue            | `continue`         |
-| `ret`      | Return              | `return`           |
-| `yield`    | Yield (generators)  | `yield`            |
+| Keyword    | Meaning            | Rust Equivalent |
+| ---------- | ------------------ | --------------- |
+| `?`        | If / match         | `if` / `match`  |
+| `:`        | Else (after block) | `else`          |
+| `:?`       | Else-if            | `else if`       |
+| `@`        | For loop           | `for`           |
+| `loop`     | Infinite loop      | `loop`          |
+| `break`    | Break              | `break`         |
+| `continue` | Continue           | `continue`      |
+| `ret`      | Return             | `return`        |
+| `yield`    | Yield (generators) | `yield`         |
 
 ### B.3 Type Sigils
 
-| Sigil  | Meaning                | Rust Equivalent |
-| ------ | ---------------------- | --------------- |
-| `&`    | Reference (shared)     | `&T`            |
-| `&!`   | Reference (exclusive)  | `&mut T`        |
-| `^`    | Heap pointer           | `Box<T>`        |
-| `$`    | Reference counted      | `Rc<T>`         |
-| `@`    | Atomic ref counted     | `Arc<T>`        |
-| `?`    | Optional               | `Option<T>`     |
-| `~`    | Growable (suffix)      | `Vec<T>` suffix |
-| `!`    | Never type             | `!`             |
-| `_`    | Inferred               | `_`             |
+| Sigil | Meaning               | Rust Equivalent |
+| ----- | --------------------- | --------------- |
+| `&`   | Reference (shared)    | `&T`            |
+| `&!`  | Reference (exclusive) | `&mut T`        |
+| `^`   | Heap pointer          | `Box<T>`        |
+| `$`   | Reference counted     | `Rc<T>`         |
+| `@`   | Atomic ref counted    | `Arc<T>`        |
+| `?`   | Optional              | `Option<T>`     |
+| `~`   | Growable (suffix)     | `Vec<T>` suffix |
+| `!`   | Never type            | `!`             |
+| `_`   | Inferred              | `_`             |
 
 ### B.4 Attribute Abbreviations
 
-| Abbreviation | Expansion                 |
-| ------------ | ------------------------- |
-| `@d(...)`    | `derive(...)`             |
-| `@r(...)`    | `repr(...)`               |
-| `@t`         | `test`                    |
-| `@b`         | `bench`                   |
-| `@i!`        | `inline(always)`          |
-| `@mu`        | `must_use`                |
-| `@cfg(...)`  | `cfg(...)`                |
-| `@a(...)`    | `allow(...)`              |
-| `@x(...)`    | `deny(...)`               |
-| `@pt(...)`   | `perf::target(...)`       |
-| `@pv(...)`   | `perf::vectorize(...)`    |
-| `@pa(...)`   | `perf::autotune(...)`     |
-| `@pnb`       | `perf::no_bounds_check`   |
-| `@pp`        | `perf::parameter`         |
-| `@as(...)`   | `agent::summary(...)`     |
-| `@ac(...)`   | `agent::category(...)`    |
-| `@ffi(...)`  | FFI binding directive     |
-| `@req(...)`  | Contract precondition     |
-| `@ens(...)`  | Contract postcondition    |
-| `@inv(...)`  | Contract invariant        |
-| `@perf(...)` | Performance bound         |
-| `@fx(...)`   | Effect constraint         |
-| `@spec(...)` | Spec block reference      |
+| Abbreviation | Expansion               |
+| ------------ | ----------------------- |
+| `@d(...)`    | `derive(...)`           |
+| `@r(...)`    | `repr(...)`             |
+| `@t`         | `test`                  |
+| `@b`         | `bench`                 |
+| `@i!`        | `inline(always)`        |
+| `@mu`        | `must_use`              |
+| `@cfg(...)`  | `cfg(...)`              |
+| `@a(...)`    | `allow(...)`            |
+| `@x(...)`    | `deny(...)`             |
+| `@pt(...)`   | `perf::target(...)`     |
+| `@pv(...)`   | `perf::vectorize(...)`  |
+| `@pa(...)`   | `perf::autotune(...)`   |
+| `@pnb`       | `perf::no_bounds_check` |
+| `@pp`        | `perf::parameter`       |
+| `@as(...)`   | `agent::summary(...)`   |
+| `@ac(...)`   | `agent::category(...)`  |
+| `@ffi(...)`  | FFI binding directive   |
+| `@req(...)`  | Contract precondition   |
+| `@ens(...)`  | Contract postcondition  |
+| `@inv(...)`  | Contract invariant      |
+| `@perf(...)` | Performance bound       |
+| `@fx(...)`   | Effect constraint       |
+| `@spec(...)` | Spec block reference    |
 
 ---
 
@@ -1214,24 +1214,24 @@ For tooling interoperability, here is the complete grammar in pure BNF (no EBNF 
 
 Operators are listed from highest to lowest precedence. All operators are left-associative unless noted.
 
-| Prec | Operator(s)                 | Description               | Associativity |
-| ---- | --------------------------- | ------------------------- | ------------- |
-| 15   | `.` field, `[i]` index      | Field access, indexing    | Left          |
-| 14   | `f()` call, `.m()` method   | Function/method call      | Left          |
-| 13   | `?`                         | Try / unwrap              | Postfix       |
-| 12   | `-` `!` `&` `&!` `*`       | Unary prefix              | Right (unary) |
-| 11   | `@cast(e, T)`               | Type cast                 | —             |
-| 10   | `*` `/` `%`                 | Multiplication            | Left          |
-| 9    | `+` `-`                     | Addition                  | Left          |
-| 8    | `<<` `>>`                   | Bit shift                 | Left          |
-| 7    | `&`                         | Bitwise AND               | Left          |
-| 6    | `^`                         | Bitwise XOR               | Left          |
-| 5    | `\|`                        | Bitwise OR                | Left          |
-| 4    | `==` `!=` `<` `>` `<=` `>=`| Comparison                | Left (no chain)|
-| 3    | `&&`                        | Logical AND               | Left          |
-| 2    | `\|\|`                      | Logical OR                | Left          |
-| 1    | `=` `+=` `-=` `*=` etc.    | Assignment                | Right         |
-| 0    | `ret` `break` `yield`       | Control flow              | —             |
+| Prec | Operator(s)                 | Description            | Associativity   |
+| ---- | --------------------------- | ---------------------- | --------------- |
+| 15   | `.` field, `[i]` index      | Field access, indexing | Left            |
+| 14   | `f()` call, `.m()` method   | Function/method call   | Left            |
+| 13   | `?`                         | Try / unwrap           | Postfix         |
+| 12   | `-` `!` `&` `&!` `*`        | Unary prefix           | Right (unary)   |
+| 11   | `@cast(e, T)`               | Type cast              | —               |
+| 10   | `*` `/` `%`                 | Multiplication         | Left            |
+| 9    | `+` `-`                     | Addition               | Left            |
+| 8    | `<<` `>>`                   | Bit shift              | Left            |
+| 7    | `&`                         | Bitwise AND            | Left            |
+| 6    | `^`                         | Bitwise XOR            | Left            |
+| 5    | `\|`                        | Bitwise OR             | Left            |
+| 4    | `==` `!=` `<` `>` `<=` `>=` | Comparison             | Left (no chain) |
+| 3    | `&&`                        | Logical AND            | Left            |
+| 2    | `\|\|`                      | Logical OR             | Left            |
+| 1    | `=` `+=` `-=` `*=` etc.     | Assignment             | Right           |
+| 0    | `ret` `break` `yield`       | Control flow           | —               |
 
 **Note**: Comparison operators do not chain. `a < b < c` is a syntax error; use `a < b && b < c`.
 

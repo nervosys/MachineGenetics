@@ -53,30 +53,30 @@ Module
 
 ### 1.3 Registry API
 
-| Endpoint | Method | Description |
-|----------|:------:|-------------|
-| `/api/v1/modules` | GET | Search/list modules |
-| `/api/v1/modules/{name}` | GET | Module metadata |
-| `/api/v1/modules/{name}/{version}` | GET | Specific version |
-| `/api/v1/modules/{name}/{version}/download` | GET | Download tarball |
-| `/api/v1/modules/{name}/{version}/mlir` | GET | Pre-cached MLIR artifacts |
-| `/api/v1/modules/{name}/{version}/skb` | GET | SKB rules for this module |
-| `/api/v1/modules/{name}/{version}/specs` | GET | Published API contracts |
-| `/api/v1/modules/new` | PUT | Publish new module |
-| `/api/v1/modules/{name}/owners` | GET/PUT | Ownership management |
-| `/api/v1/audit/{name}/{version}` | GET | Security audit report |
+| Endpoint                                    | Method  | Description               |
+| ------------------------------------------- | :-----: | ------------------------- |
+| `/api/v1/modules`                           |   GET   | Search/list modules       |
+| `/api/v1/modules/{name}`                    |   GET   | Module metadata           |
+| `/api/v1/modules/{name}/{version}`          |   GET   | Specific version          |
+| `/api/v1/modules/{name}/{version}/download` |   GET   | Download tarball          |
+| `/api/v1/modules/{name}/{version}/mlir`     |   GET   | Pre-cached MLIR artifacts |
+| `/api/v1/modules/{name}/{version}/skb`      |   GET   | SKB rules for this module |
+| `/api/v1/modules/{name}/{version}/specs`    |   GET   | Published API contracts   |
+| `/api/v1/modules/new`                       |   PUT   | Publish new module        |
+| `/api/v1/modules/{name}/owners`             | GET/PUT | Ownership management      |
+| `/api/v1/audit/{name}/{version}`            |   GET   | Security audit report     |
 
 ### 1.4 Compatibility with crates.io
 
 Forge maintains a compatibility layer with crates.io:
 
-| Feature | Mechanism |
-|---------|-----------|
-| **Import Rust crates** | Auto-transpile on first use via `rust2rdx` |
-| **Publish to both** | `forge publish --also-crates-io` generates `.rs` wrapper |
-| **Dependency resolution** | Unified resolver handles Rust + Redox deps |
-| **Version mapping** | Redox `u http.Client` resolves to crates.io `reqwest` via alias table |
-| **FFI bridge** | Rust crates used as-is through FFI binding generation (P45) |
+| Feature                   | Mechanism                                                             |
+| ------------------------- | --------------------------------------------------------------------- |
+| **Import Rust crates**    | Auto-transpile on first use via `rust2rdx`                            |
+| **Publish to both**       | `forge publish --also-crates-io` generates `.rs` wrapper              |
+| **Dependency resolution** | Unified resolver handles Rust + Redox deps                            |
+| **Version mapping**       | Redox `u http.Client` resolves to crates.io `reqwest` via alias table |
+| **FFI bridge**            | Rust crates used as-is through FFI binding generation (P45)           |
 
 ### 1.5 MLIR Artifact Caching
 
@@ -121,35 +121,35 @@ Rust source (.rs)
 
 #### 2.1.2 Translation Rules
 
-| Rust Construct | Redox Output | Confidence |
-|---------------|:-------------|:----------:|
-| `pub fn name(...)` | `+f name(...)` | 100% |
-| `fn name(...)` | `f name(...)` | 100% |
-| `let x = ...` | `v x = ...` | 100% |
-| `let mut x = ...` | `m x = ...` | 100% |
-| `struct Name { ... }` | `S Name { ... }` | 100% |
-| `enum Name { ... }` | `E Name { ... }` | 100% |
-| `trait Name { ... }` | `T Name { ... }` | 100% |
-| `impl Name { ... }` | `I Name { ... }` | 100% |
-| `use path::to::Item` | `u path.to.Item` | 100% |
-| `Vec<T>` | `[T]~` | 100% |
-| `Option<T>` | `?T` | 100% |
-| `Result<T, E>` | `R[T, E]` | 100% |
-| `Box<T>` | `^T` | 100% |
-| `Rc<T>` | `$T` | 100% |
-| `Arc<T>` | `@T` | 100% |
-| `HashMap<K, V>` | `{K: V}` | 100% |
-| `&str`, `String` | `s` | 98% |
-| `'a` lifetime annotations | (removed, SKB rule generated) | 95% |
-| `unsafe { ... }` | (removed, capability attached) | 90% |
-| `where T: Bound` | (removed or simplified) | 92% |
-| `#[derive(...)]` | `@d(...)` | 100% |
-| `#[inline]` | `@i` | 100% |
-| `println!()` | `p"..."` | 100% |
-| `format!()` | `f"..."` | 100% |
-| `async fn` | `af` | 100% |
-| `if let Some(x) = val` | `?val => x` | 95% |
-| Complex pattern matching | Context-dependent | 85% |
+| Rust Construct            | Redox Output                   | Confidence |
+| ------------------------- | :----------------------------- | :--------: |
+| `pub fn name(...)`        | `+f name(...)`                 |    100%    |
+| `fn name(...)`            | `f name(...)`                  |    100%    |
+| `let x = ...`             | `v x = ...`                    |    100%    |
+| `let mut x = ...`         | `m x = ...`                    |    100%    |
+| `struct Name { ... }`     | `S Name { ... }`               |    100%    |
+| `enum Name { ... }`       | `E Name { ... }`               |    100%    |
+| `trait Name { ... }`      | `T Name { ... }`               |    100%    |
+| `impl Name { ... }`       | `I Name { ... }`               |    100%    |
+| `use path::to::Item`      | `u path.to.Item`               |    100%    |
+| `Vec<T>`                  | `[T]~`                         |    100%    |
+| `Option<T>`               | `?T`                           |    100%    |
+| `Result<T, E>`            | `R[T, E]`                      |    100%    |
+| `Box<T>`                  | `^T`                           |    100%    |
+| `Rc<T>`                   | `$T`                           |    100%    |
+| `Arc<T>`                  | `@T`                           |    100%    |
+| `HashMap<K, V>`           | `{K: V}`                       |    100%    |
+| `&str`, `String`          | `s`                            |    98%     |
+| `'a` lifetime annotations | (removed, SKB rule generated)  |    95%     |
+| `unsafe { ... }`          | (removed, capability attached) |    90%     |
+| `where T: Bound`          | (removed or simplified)        |    92%     |
+| `#[derive(...)]`          | `@d(...)`                      |    100%    |
+| `#[inline]`               | `@i`                           |    100%    |
+| `println!()`              | `p"..."`                       |    100%    |
+| `format!()`               | `f"..."`                       |    100%    |
+| `async fn`                | `af`                           |    100%    |
+| `if let Some(x) = val`    | `?val => x`                    |    95%     |
+| Complex pattern matching  | Context-dependent              |    85%     |
 
 #### 2.1.3 CLI Interface
 
@@ -174,16 +174,16 @@ Options:
 
 For interoperability, Redox code can be transpiled back to Rust:
 
-| Redox Construct | Rust Output | Notes |
-|----------------|:-----------|-------|
-| `+f name(...)` | `pub fn name(...)` | Direct |
-| `v x = ...` | `let x = ...` | Direct |
-| `[T]~` | `Vec<T>` | Direct |
-| `?T` | `Option<T>` | Direct |
-| `R[T, E]` | `Result<T, E>` | Direct |
-| SKB-inferred lifetimes | Explicit `'a` annotations | Reconstructed from SKB |
-| Effect declarations | `// effect: io` comment | No Rust equivalent |
-| Spec blocks | `// spec: ...` comment | Optional debug assertions |
+| Redox Construct        | Rust Output               | Notes                     |
+| ---------------------- | :------------------------ | ------------------------- |
+| `+f name(...)`         | `pub fn name(...)`        | Direct                    |
+| `v x = ...`            | `let x = ...`             | Direct                    |
+| `[T]~`                 | `Vec<T>`                  | Direct                    |
+| `?T`                   | `Option<T>`               | Direct                    |
+| `R[T, E]`              | `Result<T, E>`            | Direct                    |
+| SKB-inferred lifetimes | Explicit `'a` annotations | Reconstructed from SKB    |
+| Effect declarations    | `// effect: io` comment   | No Rust equivalent        |
+| Spec blocks            | `// spec: ...` comment    | Optional debug assertions |
 
 ### 2.3 Migration Workflow
 
@@ -219,23 +219,23 @@ Phase 4: Test
 
 The RAP server provides IDE features over JSON-RPC (see prototype/src/rap.rs):
 
-| Feature | RAP Method | Response |
-|---------|-----------|----------|
-| Parse | `language/parse` | AST (JSON) |
-| Tokenize | `language/tokens` | Token stream with spans |
-| Check | `build/check` | Diagnostic list |
-| Hover | `language/hover` | Type info, doc, cost estimate |
-| Completion | `language/completion` | Context-aware completions |
-| Go to Definition | `language/definition` | Source location |
-| Find References | `language/references` | Location list |
-| Rename | `language/rename` | Workspace edit |
-| Format | `language/format` | Formatted source |
-| Inlay Hints | `language/inlayHints` | Inferred types, costs, effects |
-| Code Actions | `language/codeActions` | Quick fixes, refactorings |
-| SKB Query | `skb/query` | Applicable safety rules |
-| Effect View | `language/effects` | Effect tree for function |
-| Cost View | `language/cost` | Cost oracle data for scope |
-| Swarm Status | `swarm/status` | Agent activity view |
+| Feature          | RAP Method             | Response                       |
+| ---------------- | ---------------------- | ------------------------------ |
+| Parse            | `language/parse`       | AST (JSON)                     |
+| Tokenize         | `language/tokens`      | Token stream with spans        |
+| Check            | `build/check`          | Diagnostic list                |
+| Hover            | `language/hover`       | Type info, doc, cost estimate  |
+| Completion       | `language/completion`  | Context-aware completions      |
+| Go to Definition | `language/definition`  | Source location                |
+| Find References  | `language/references`  | Location list                  |
+| Rename           | `language/rename`      | Workspace edit                 |
+| Format           | `language/format`      | Formatted source               |
+| Inlay Hints      | `language/inlayHints`  | Inferred types, costs, effects |
+| Code Actions     | `language/codeActions` | Quick fixes, refactorings      |
+| SKB Query        | `skb/query`            | Applicable safety rules        |
+| Effect View      | `language/effects`     | Effect tree for function       |
+| Cost View        | `language/cost`        | Cost oracle data for scope     |
+| Swarm Status     | `swarm/status`         | Agent activity view            |
 
 ### 3.2 VS Code Extension
 
@@ -266,36 +266,36 @@ redox-vscode/
 
 ### 3.3 Other Editor Support
 
-| Editor | Mechanism | Priority |
-|--------|-----------|:--------:|
-| VS Code | Native extension (RAP client) | P0 |
-| Neovim | RAP via nvim-lspconfig | P0 |
-| Helix | RAP via native LSP | P1 |
-| Zed | RAP via extension API | P1 |
-| IntelliJ | RAP plugin | P2 |
-| Emacs | RAP via lsp-mode / eglot | P2 |
+| Editor   | Mechanism                     | Priority |
+| -------- | ----------------------------- | :------: |
+| VS Code  | Native extension (RAP client) |    P0    |
+| Neovim   | RAP via nvim-lspconfig        |    P0    |
+| Helix    | RAP via native LSP            |    P1    |
+| Zed      | RAP via extension API         |    P1    |
+| IntelliJ | RAP plugin                    |    P2    |
+| Emacs    | RAP via lsp-mode / eglot      |    P2    |
 
 ### 3.4 Syntax Highlighting
 
 TextMate grammar scopes for Redox:
 
-| Scope | Constructs |
-|-------|-----------|
-| `keyword.declaration.redox` | `f`, `m`, `v`, `c`, `S`, `E`, `T`, `I`, `M`, `u` |
-| `keyword.control.redox` | `loop`, `break`, `continue`, `ret`, `yield` |
-| `keyword.operator.redox` | `?` (if/match), `@` (for/attr/struct), `:` (else) |
-| `keyword.other.redox` | `effect`, `handle`, `spec`, `type`, `static` |
-| `entity.name.function.redox` | Function names after `f`/`+f`/`~f` |
-| `entity.name.type.redox` | Type names after `S`/`E`/`T` |
-| `storage.modifier.redox` | `+` (pub), `~` (crate), `-` (private) |
-| `string.quoted.double.redox` | `"..."` |
-| `string.interpolated.redox` | `f"...{expr}..."` |
-| `string.print.redox` | `p"...{expr}..."` |
-| `comment.line.redox` | `// ...` |
-| `comment.block.redox` | `/* ... */` |
-| `variable.parameter.redox` | Function parameter names |
-| `support.type.redox` | `s`, `i32`, `f64`, `u8`, `bool` |
-| `punctuation.sigil.redox` | `^`, `$`, `@`, `?`, `~`, `&!` |
+| Scope                        | Constructs                                        |
+| ---------------------------- | ------------------------------------------------- |
+| `keyword.declaration.redox`  | `f`, `m`, `v`, `c`, `S`, `E`, `T`, `I`, `M`, `u`  |
+| `keyword.control.redox`      | `loop`, `break`, `continue`, `ret`, `yield`       |
+| `keyword.operator.redox`     | `?` (if/match), `@` (for/attr/struct), `:` (else) |
+| `keyword.other.redox`        | `effect`, `handle`, `spec`, `type`, `static`      |
+| `entity.name.function.redox` | Function names after `f`/`+f`/`~f`                |
+| `entity.name.type.redox`     | Type names after `S`/`E`/`T`                      |
+| `storage.modifier.redox`     | `+` (pub), `~` (crate), `-` (private)             |
+| `string.quoted.double.redox` | `"..."`                                           |
+| `string.interpolated.redox`  | `f"...{expr}..."`                                 |
+| `string.print.redox`         | `p"...{expr}..."`                                 |
+| `comment.line.redox`         | `// ...`                                          |
+| `comment.block.redox`        | `/* ... */`                                       |
+| `variable.parameter.redox`   | Function parameter names                          |
+| `support.type.redox`         | `s`, `i32`, `f64`, `u8`, `bool`                   |
+| `punctuation.sigil.redox`    | `^`, `$`, `@`, `?`, `~`, `&!`                     |
 
 ---
 
@@ -379,19 +379,19 @@ style:
 
 A standardized set of 100 programming tasks for evaluating Redox agent performance:
 
-| Category | Tasks | Token Range | Complexity |
-|----------|:-----:|:-----------:|:----------:|
-| Basic I/O | 10 | 20–50 | Simple |
-| Data structures | 15 | 50–150 | Medium |
-| Algorithms | 15 | 80–200 | Medium |
-| Concurrency | 10 | 100–300 | Hard |
-| Web/Network | 10 | 150–400 | Hard |
-| Systems programming | 10 | 200–500 | Hard |
-| Agent orchestration | 10 | 300–800 | Very Hard |
-| Full applications | 10 | 500–2000 | Very Hard |
-| Error handling patterns | 5 | 50–150 | Medium |
-| Generic/trait design | 5 | 100–300 | Hard |
-| **Total** | **100** | — | — |
+| Category                |  Tasks  | Token Range | Complexity |
+| ----------------------- | :-----: | :---------: | :--------: |
+| Basic I/O               |   10    |    20–50    |   Simple   |
+| Data structures         |   15    |   50–150    |   Medium   |
+| Algorithms              |   15    |   80–200    |   Medium   |
+| Concurrency             |   10    |   100–300   |    Hard    |
+| Web/Network             |   10    |   150–400   |    Hard    |
+| Systems programming     |   10    |   200–500   |    Hard    |
+| Agent orchestration     |   10    |   300–800   | Very Hard  |
+| Full applications       |   10    |  500–2000   | Very Hard  |
+| Error handling patterns |    5    |   50–150    |   Medium   |
+| Generic/trait design    |    5    |   100–300   |    Hard    |
+| **Total**               | **100** |      —      |     —      |
 
 Each task includes:
 - Natural language description
@@ -403,15 +403,15 @@ Each task includes:
 
 ### 4.4 Agent Evaluation Metrics
 
-| Metric | Definition | Target |
-|--------|-----------|:------:|
-| **First-Pass Success Rate** | % of tasks correct on first generation | > 95% |
-| **Token Efficiency** | Agent tokens / reference tokens | < 1.1 |
-| **Effect Correctness** | % of correctly declared effects | > 99% |
-| **Spec Compliance** | % of generated code satisfying specs | > 98% |
-| **Migration Accuracy** | % of Rust→Redox translations that parse | > 99% |
-| **Iteration Count** | Average roundtrips to correct code | < 1.5 |
-| **Cost/Task** | API tokens consumed per benchmark task | < $0.05 |
+| Metric                      | Definition                              | Target  |
+| --------------------------- | --------------------------------------- | :-----: |
+| **First-Pass Success Rate** | % of tasks correct on first generation  |  > 95%  |
+| **Token Efficiency**        | Agent tokens / reference tokens         |  < 1.1  |
+| **Effect Correctness**      | % of correctly declared effects         |  > 99%  |
+| **Spec Compliance**         | % of generated code satisfying specs    |  > 98%  |
+| **Migration Accuracy**      | % of Rust→Redox translations that parse |  > 99%  |
+| **Iteration Count**         | Average roundtrips to correct code      |  < 1.5  |
+| **Cost/Task**               | API tokens consumed per benchmark task  | < $0.05 |
 
 ---
 
@@ -506,28 +506,28 @@ std
 
 ### 5.2 Key Design Decisions
 
-| Decision | Rationale |
-|----------|-----------|
-| **JSON as first-class** (`std.json`) | AI agents communicate via JSON; eliminate external dependency |
-| **HTTP in stdlib** (`std.net.http`) | ~80% of agent tasks involve HTTP; reduce boilerplate |
-| **Regex in stdlib** (`std.str.regex`) | Common enough to include; avoid version fragmentation |
-| **Agent primitives** (`std.agent`) | Core language feature; must be in stdlib |
-| **Property testing** (`std.test.prop`) | Encourages high-quality testing by default |
-| **No `std::marker`** | Send/Sync are auto-derived via SKB; no manual markers needed |
-| **No `std::borrow`** | Borrowing is compiler-managed; no `Cow` or `ToOwned` needed |
-| **No `std::mem`** | Memory management is compiler-managed; no `std::mem::swap` etc. |
+| Decision                               | Rationale                                                       |
+| -------------------------------------- | --------------------------------------------------------------- |
+| **JSON as first-class** (`std.json`)   | AI agents communicate via JSON; eliminate external dependency   |
+| **HTTP in stdlib** (`std.net.http`)    | ~80% of agent tasks involve HTTP; reduce boilerplate            |
+| **Regex in stdlib** (`std.str.regex`)  | Common enough to include; avoid version fragmentation           |
+| **Agent primitives** (`std.agent`)     | Core language feature; must be in stdlib                        |
+| **Property testing** (`std.test.prop`) | Encourages high-quality testing by default                      |
+| **No `std::marker`**                   | Send/Sync are auto-derived via SKB; no manual markers needed    |
+| **No `std::borrow`**                   | Borrowing is compiler-managed; no `Cow` or `ToOwned` needed     |
+| **No `std::mem`**                      | Memory management is compiler-managed; no `std::mem::swap` etc. |
 
 ### 5.3 Naming Conventions
 
-| Rust | Redox | Rationale |
-|------|-------|-----------|
-| `std::collections::HashMap` | `std.col.Map` | Shorter path, simpler name |
-| `std::sync::Arc` | `@T` (sigil) | Built into type syntax |
-| `std::option::Option` | `?T` (sigil) | Built into type syntax |
-| `std::result::Result` | `R[T, E]` | Built into type syntax |
-| `std::vec::Vec` | `[T]~` (sigil) | Built into type syntax |
-| `std::string::String` | `s` (keyword) | First-class type |
-| `std::io::Read` | `std.io.Read` | Dot-separated paths |
+| Rust                        | Redox          | Rationale                  |
+| --------------------------- | -------------- | -------------------------- |
+| `std::collections::HashMap` | `std.col.Map`  | Shorter path, simpler name |
+| `std::sync::Arc`            | `@T` (sigil)   | Built into type syntax     |
+| `std::option::Option`       | `?T` (sigil)   | Built into type syntax     |
+| `std::result::Result`       | `R[T, E]`      | Built into type syntax     |
+| `std::vec::Vec`             | `[T]~` (sigil) | Built into type syntax     |
+| `std::string::String`       | `s` (keyword)  | First-class type           |
+| `std::io::Read`             | `std.io.Read`  | Dot-separated paths        |
 
 ---
 
@@ -605,13 +605,13 @@ Global Options:
 
 Forge uses a SAT-based dependency resolver (like Cargo) with extensions:
 
-| Feature | Description |
-|---------|-------------|
-| **Dual-source resolution** | Resolve Redox modules and Rust crates together |
-| **MLIR artifact matching** | Prefer cached MLIR artifacts over source builds |
-| **Effect compatibility** | Reject dependencies with incompatible effect sets |
-| **SKB rule merging** | Merge package-level SKB rules into project SKB |
-| **Spec verification** | Verify dependency API contracts at resolve time |
+| Feature                    | Description                                       |
+| -------------------------- | ------------------------------------------------- |
+| **Dual-source resolution** | Resolve Redox modules and Rust crates together    |
+| **MLIR artifact matching** | Prefer cached MLIR artifacts over source builds   |
+| **Effect compatibility**   | Reject dependencies with incompatible effect sets |
+| **SKB rule merging**       | Merge package-level SKB rules into project SKB    |
+| **Spec verification**      | Verify dependency API contracts at resolve time   |
 
 ---
 
@@ -619,16 +619,16 @@ Forge uses a SAT-based dependency resolver (like Cargo) with extensions:
 
 ### 7.1 Documentation Tiers
 
-| Tier | Content | Format | Audience |
-|------|---------|--------|----------|
-| **Quick Start** | 10-min tutorial | Interactive web | New users |
-| **Book** | Comprehensive guide | mdBook site | All users |
-| **Reference** | Formal language spec | REDOX_SPEC.md | Language lawyers |
-| **API Docs** | Standard library docs | Generated from source | Developers |
-| **Cookbook** | Recipe-style examples | Searchable web | Practitioners |
-| **Agent Guide** | Agent-specific patterns | Structured prompts | AI agents |
-| **Migration Guide** | Rust → Redox | Step-by-step | Rust developers |
-| **Internals** | Compiler architecture | Technical docs | Contributors |
+| Tier                | Content                 | Format                | Audience         |
+| ------------------- | ----------------------- | --------------------- | ---------------- |
+| **Quick Start**     | 10-min tutorial         | Interactive web       | New users        |
+| **Book**            | Comprehensive guide     | mdBook site           | All users        |
+| **Reference**       | Formal language spec    | REDOX_SPEC.md         | Language lawyers |
+| **API Docs**        | Standard library docs   | Generated from source | Developers       |
+| **Cookbook**        | Recipe-style examples   | Searchable web        | Practitioners    |
+| **Agent Guide**     | Agent-specific patterns | Structured prompts    | AI agents        |
+| **Migration Guide** | Rust → Redox            | Step-by-step          | Rust developers  |
+| **Internals**       | Compiler architecture   | Technical docs        | Contributors     |
 
 ### 7.2 Auto-Generated Documentation
 
@@ -671,13 +671,13 @@ Sorts a vector in place using an adaptive merge sort.
 
 ### 8.1 Governance
 
-| Role | Responsibility |
-|------|---------------|
-| **Core Team** | Language design, compiler development |
-| **SKB Curators** | Safety Knowledge Base rule curation |
-| **Forge Moderators** | Package registry quality control |
-| **RFC Authors** | Design proposals (Redox RFC process) |
-| **ACI Trainers** | AI Coding Intelligence model training |
+| Role                 | Responsibility                        |
+| -------------------- | ------------------------------------- |
+| **Core Team**        | Language design, compiler development |
+| **SKB Curators**     | Safety Knowledge Base rule curation   |
+| **Forge Moderators** | Package registry quality control      |
+| **RFC Authors**      | Design proposals (Redox RFC process)  |
+| **ACI Trainers**     | AI Coding Intelligence model training |
 
 ### 8.2 Contribution Workflow
 
@@ -692,17 +692,17 @@ Sorts a vector in place using an adaptive merge sort.
 
 ### 8.3 CI/CD Pipeline
 
-| Stage | Action | Duration Target |
-|-------|--------|:---------------:|
-| Lint | `rdx lint` | < 5s |
-| Format Check | `rdx fmt --check` | < 2s |
-| Type Check | `rdx check` | < 30s |
-| Test | `rdx test` | < 60s |
-| Spec Verify | `rdx spec --verify` | < 30s |
-| SKB Validate | `rdx skb --validate` | < 10s |
-| Benchmark | `rdx bench --compare` | < 120s |
-| Multi-target Build | `rdx build --all-targets` | < 180s |
-| Publish | `rdx publish` (on tag) | < 30s |
+| Stage              | Action                    | Duration Target |
+| ------------------ | ------------------------- | :-------------: |
+| Lint               | `rdx lint`                |      < 5s       |
+| Format Check       | `rdx fmt --check`         |      < 2s       |
+| Type Check         | `rdx check`               |      < 30s      |
+| Test               | `rdx test`                |      < 60s      |
+| Spec Verify        | `rdx spec --verify`       |      < 30s      |
+| SKB Validate       | `rdx skb --validate`      |      < 10s      |
+| Benchmark          | `rdx bench --compare`     |     < 120s      |
+| Multi-target Build | `rdx build --all-targets` |     < 180s      |
+| Publish            | `rdx publish` (on tag)    |      < 30s      |
 
 ### 8.4 Interoperability Ecosystem
 
@@ -738,12 +738,12 @@ Sorts a vector in place using an adaptive merge sort.
 
 ### 8.5 Versioning & Editions
 
-| Edition | Year | Key Features |
-|---------|:----:|-------------|
-| 2025 | 2025 | Core language, basic SKB, LL(1) parser |
-| 2026 | 2026 | Full MLIR pipeline, effect system, agent primitives |
-| 2027 | 2027 | Full ACI, Cost Oracle, hot-reload, swarm orchestration |
-| 2028+ | 2028+ | Self-hosting compiler, advanced synthesis, formal verification |
+| Edition | Year  | Key Features                                                   |
+| ------- | :---: | -------------------------------------------------------------- |
+| 2025    | 2025  | Core language, basic SKB, LL(1) parser                         |
+| 2026    | 2026  | Full MLIR pipeline, effect system, agent primitives            |
+| 2027    | 2027  | Full ACI, Cost Oracle, hot-reload, swarm orchestration         |
+| 2028+   | 2028+ | Self-hosting compiler, advanced synthesis, formal verification |
 
 Edition migration is automated via `rdx migrate --edition 2026`, which applies
 syntax and semantic changes with full backward compatibility guarantees.

@@ -22,15 +22,15 @@ skb/
 
 ## Rule Categories
 
-| Database       | Rules | ID Prefix | Covers                                      |
-|----------------|-------|-----------|---------------------------------------------|
-| Ownership      | 2,847 | `OWN-`   | Move semantics, Copy, Clone, Drop           |
-| Borrow         | 1,203 | `BR-`    | Aliasing XOR mutability, iterator invalidation |
-| Lifetime       |   894 | `LT-`    | Dangling references, elision, struct lifetimes |
-| Type Safety    | 3,412 | `TS-`    | Type mismatch, overflow, Option/Result, effects |
-| Concurrency    |   567 | `CC-`    | Data races, deadlocks, Send/Sync, async     |
-| FFI            |   234 | `FFI-`   | Null pointers, ABI, strings, repr(C)        |
-| **Total**      | **9,157** |       |                                              |
+| Database    | Rules     | ID Prefix | Covers                                          |
+| ----------- | --------- | --------- | ----------------------------------------------- |
+| Ownership   | 2,847     | `OWN-`    | Move semantics, Copy, Clone, Drop               |
+| Borrow      | 1,203     | `BR-`     | Aliasing XOR mutability, iterator invalidation  |
+| Lifetime    | 894       | `LT-`     | Dangling references, elision, struct lifetimes  |
+| Type Safety | 3,412     | `TS-`     | Type mismatch, overflow, Option/Result, effects |
+| Concurrency | 567       | `CC-`     | Data races, deadlocks, Send/Sync, async         |
+| FFI         | 234       | `FFI-`    | Null pointers, ABI, strings, repr(C)            |
+| **Total**   | **9,157** |           |                                                 |
 
 ## Rule Lifecycle
 

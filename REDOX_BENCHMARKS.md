@@ -47,22 +47,22 @@ Claude, Codex) and measured over public benchmark suites.
 
 ### 2.2 Keyword/Construct-Level Savings
 
-| Construct | Rust | Redox | Tokens Saved | Savings % |
-|-----------|:----:|:-----:|:------------:|:---------:|
-| `pub fn` | 2 | 1 (`+f`) | 1 | 50% |
-| `pub(crate) fn` | 5 | 1 (`~f`) | 4 | 80% |
-| `let mut` | 2 | 1 (`m`) | 1 | 50% |
-| `async fn` | 2 | 1 (`af`) | 1 | 50% |
-| `pub async fn` | 3 | 1 (`+af`) | 2 | 67% |
-| `#[inline(always)]` | 4 | 1 (`@i!`) | 3 | 75% |
-| `println!("x = {}", x)` | 6 | 2 (`p"x = {x}"`) | 4 | 67% |
-| `.clone()` | 3 | 1 (`.cl`) | 2 | 67% |
-| `.unwrap()` | 3 | 1 (`.!`) | 2 | 67% |
-| `.iter().map(f).collect()` | 9 | 4 (`.>map(f).<<`) | 5 | 56% |
-| `#[derive(Clone, Debug)]` | 5 | 2 (`@d(Cl,Db)`) | 3 | 60% |
-| `use std::collections::HashMap` | 5 | 2 (`u std.col.HM`) | 3 | 60% |
-| `if let Some(x) = opt` | 7 | 3 (`?opt => x`) | 4 | 57% |
-| **Weighted average** | — | — | — | **62%** |
+| Construct                       | Rust  |       Redox        | Tokens Saved | Savings % |
+| ------------------------------- | :---: | :----------------: | :----------: | :-------: |
+| `pub fn`                        |   2   |      1 (`+f`)      |      1       |    50%    |
+| `pub(crate) fn`                 |   5   |      1 (`~f`)      |      4       |    80%    |
+| `let mut`                       |   2   |      1 (`m`)       |      1       |    50%    |
+| `async fn`                      |   2   |      1 (`af`)      |      1       |    50%    |
+| `pub async fn`                  |   3   |     1 (`+af`)      |      2       |    67%    |
+| `#[inline(always)]`             |   4   |     1 (`@i!`)      |      3       |    75%    |
+| `println!("x = {}", x)`         |   6   |  2 (`p"x = {x}"`)  |      4       |    67%    |
+| `.clone()`                      |   3   |     1 (`.cl`)      |      2       |    67%    |
+| `.unwrap()`                     |   3   |      1 (`.!`)      |      2       |    67%    |
+| `.iter().map(f).collect()`      |   9   | 4 (`.>map(f).<<`)  |      5       |    56%    |
+| `#[derive(Clone, Debug)]`       |   5   |  2 (`@d(Cl,Db)`)   |      3       |    60%    |
+| `use std::collections::HashMap` |   5   | 2 (`u std.col.HM`) |      3       |    60%    |
+| `if let Some(x) = opt`          |   7   |  3 (`?opt => x`)   |      4       |    57%    |
+| **Weighted average**            |   —   |         —          |      —       |  **62%**  |
 
 ### 2.3 Full-Program Comparisons
 
@@ -94,11 +94,11 @@ pub fn process(data: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
 }
 ```
 
-| Metric | Rust | Redox | Ratio |
-|--------|:----:|:-----:|:-----:|
-| Tokens | 37 | 19 | **0.51** |
-| Characters | 193 | 154 | 0.80 |
-| Lines | 10 | 9 | 0.90 |
+| Metric     | Rust  | Redox |  Ratio   |
+| ---------- | :---: | :---: | :------: |
+| Tokens     |  37   |  19   | **0.51** |
+| Characters |  193  |  154  |   0.80   |
+| Lines      |  10   |   9   |   0.90   |
 
 #### Example 2: Generic function with trait bounds
 
@@ -123,19 +123,19 @@ pub async fn fetch_and_parse<T: DeserializeOwned + Send + 'static>(
 }
 ```
 
-| Metric | Rust | Redox | Ratio |
-|--------|:----:|:-----:|:-----:|
-| Tokens | 54 | 30 | **0.56** |
-| Eliminated lifetime annotations | 2 (`'static`, implied `'_`) | 0 | 100% |
-| Eliminated trait bounds | `Send + 'static`, `Send + Sync` | 0 | 100% |
+| Metric                          |              Rust               | Redox |  Ratio   |
+| ------------------------------- | :-----------------------------: | :---: | :------: |
+| Tokens                          |               54                |  30   | **0.56** |
+| Eliminated lifetime annotations |   2 (`'static`, implied `'_`)   |   0   |   100%   |
+| Eliminated trait bounds         | `Send + 'static`, `Send + Sync` |   0   |   100%   |
 
 #### Example 3: Function signatures (worst-case Rust verbosity)
 
-| Signature Pattern | Rust Tokens | Redox Tokens | Ratio |
-|-------------------|:-----------:|:------------:|:-----:|
-| Simple public method | 21 | 8 | **0.38** |
-| Generic with lifetime | 18 | 8 | **0.44** |
-| Complex trait bounds + where clause | 31 | 8 | **0.26** |
+| Signature Pattern                   | Rust Tokens | Redox Tokens |  Ratio   |
+| ----------------------------------- | :---------: | :----------: | :------: |
+| Simple public method                |     21      |      8       | **0.38** |
+| Generic with lifetime               |     18      |      8       | **0.44** |
+| Complex trait bounds + where clause |     31      |      8       | **0.26** |
 
 #### Example 4: Struct with derives and impl
 
@@ -159,9 +159,9 @@ pub struct Config {
 }
 ```
 
-| Metric | Rust | Redox | Ratio |
-|--------|:----:|:-----:|:-----:|
-| Tokens | 42 | 20 | **0.48** |
+| Metric | Rust  | Redox |  Ratio   |
+| ------ | :---: | :---: | :------: |
+| Tokens |  42   |  20   | **0.48** |
 
 ### 2.4 Statistical Token Reduction Model
 
@@ -169,19 +169,19 @@ Sampling 10 representative programs across domains (CLI, web server, data proces
 ML pipeline, game loop, parser, allocator, network protocol, database query, agent
 orchestrator):
 
-| Program Category | Rust Tokens | Redox Tokens | Reduction |
-|------------------|:-----------:|:------------:|:---------:|
-| CLI tool | 340 | 165 | 51.5% |
-| Web handler | 520 | 240 | 53.8% |
-| Data pipeline | 280 | 128 | 54.3% |
-| ML inference | 450 | 195 | 56.7% |
-| Game loop | 380 | 190 | 50.0% |
-| Parser combinator | 600 | 310 | 48.3% |
-| Memory allocator | 420 | 215 | 48.8% |
-| Network protocol | 510 | 235 | 53.9% |
-| Database layer | 470 | 210 | 55.3% |
-| Agent orchestrator | 680 | 280 | 58.8% |
-| **Geometric mean** | — | — | **53.1%** |
+| Program Category   | Rust Tokens | Redox Tokens | Reduction |
+| ------------------ | :---------: | :----------: | :-------: |
+| CLI tool           |     340     |     165      |   51.5%   |
+| Web handler        |     520     |     240      |   53.8%   |
+| Data pipeline      |     280     |     128      |   54.3%   |
+| ML inference       |     450     |     195      |   56.7%   |
+| Game loop          |     380     |     190      |   50.0%   |
+| Parser combinator  |     600     |     310      |   48.3%   |
+| Memory allocator   |     420     |     215      |   48.8%   |
+| Network protocol   |     510     |     235      |   53.9%   |
+| Database layer     |     470     |     210      |   55.3%   |
+| Agent orchestrator |     680     |     280      |   58.8%   |
+| **Geometric mean** |      —      |      —       | **53.1%** |
 
 **Finding**: The **≤ 50% claim holds** for 8 out of 10 categories. The parser
 combinator and memory allocator categories are slightly above 50% due to inherent
@@ -195,10 +195,10 @@ Modern LLMs operate with context windows of 8K–128K tokens. Redox's token redu
 directly translates to:
 
 | Context Window | Rust LOC Capacity | Redox LOC Capacity | Ratio |
-|:--------------:|:-----------------:|:------------------:|:-----:|
-| 8K tokens | ~160 LOC | ~340 LOC | 2.1× |
-| 32K tokens | ~640 LOC | ~1,360 LOC | 2.1× |
-| 128K tokens | ~2,560 LOC | ~5,440 LOC | 2.1× |
+| :------------: | :---------------: | :----------------: | :---: |
+|   8K tokens    |     ~160 LOC      |      ~340 LOC      | 2.1×  |
+|   32K tokens   |     ~640 LOC      |     ~1,360 LOC     | 2.1×  |
+|  128K tokens   |    ~2,560 LOC     |     ~5,440 LOC     | 2.1×  |
 
 This means an AI agent can reason about **2.1× more code** per inference call,
 directly reducing the number of roundtrips needed for multi-file tasks.
@@ -212,13 +212,13 @@ directly reducing the number of roundtrips needed for multi-file tasks.
 The Redox grammar is **LL(1) with zero backtracking** — every parsing decision is
 determined by a single token of lookahead. This has theoretical implications:
 
-| Property | Rust (LR/recursive descent) | Redox (LL(1)) |
-|----------|:---------------------------:|:-------------:|
-| Parse complexity | O(n) with backtracking | O(n) strict |
-| Lookahead | Unbounded (context-dependent) | 1 token |
-| Ambiguity | Requires resolution rules | None by design |
-| Error recovery | Heuristic-based | Deterministic |
-| Parse speed (projected) | ~500K tokens/s | ~2M tokens/s |
+| Property                |  Rust (LR/recursive descent)  | Redox (LL(1))  |
+| ----------------------- | :---------------------------: | :------------: |
+| Parse complexity        |    O(n) with backtracking     |  O(n) strict   |
+| Lookahead               | Unbounded (context-dependent) |    1 token     |
+| Ambiguity               |   Requires resolution rules   | None by design |
+| Error recovery          |        Heuristic-based        | Deterministic  |
+| Parse speed (projected) |        ~500K tokens/s         |  ~2M tokens/s  |
 
 The LL(1) property means the parser never needs to tentatively parse and backtrack,
 yielding a constant-factor speedup of ~4× over Rust's parser.
@@ -227,23 +227,23 @@ yielding a constant-factor speedup of ~4× over Rust's parser.
 
 Redox targets **50–500 ms code-to-compile latency** vs. Rust's 2–30 seconds:
 
-| Optimization | Expected Speedup | Rationale |
-|-------------|:----------------:|-----------|
-| Fewer tokens to parse | 2.1× | 53% fewer tokens on average |
-| LL(1) parse (no backtracking) | 2–4× | Constant-factor parse improvement |
-| MLIR progressive lowering | 1.5–3× | Incremental compilation via dialect layers |
-| SKB-guided elision (skip safety checks) | 2–5× | Skip borrow/lifetime analysis for known patterns |
-| Hot-reload (function-level) | 10–100× | Only recompile changed functions |
-| **Combined (incremental build)** | **10–60×** | Multiplicative for incremental builds |
+| Optimization                            | Expected Speedup | Rationale                                        |
+| --------------------------------------- | :--------------: | ------------------------------------------------ |
+| Fewer tokens to parse                   |       2.1×       | 53% fewer tokens on average                      |
+| LL(1) parse (no backtracking)           |       2–4×       | Constant-factor parse improvement                |
+| MLIR progressive lowering               |      1.5–3×      | Incremental compilation via dialect layers       |
+| SKB-guided elision (skip safety checks) |       2–5×       | Skip borrow/lifetime analysis for known patterns |
+| Hot-reload (function-level)             |     10–100×      | Only recompile changed functions                 |
+| **Combined (incremental build)**        |    **10–60×**    | Multiplicative for incremental builds            |
 
 ### 3.3 Hot-Reload Performance
 
-| Metric | Value |
-|--------|-------|
-| Hot-patch compile time | 12 ms |
-| Hot-patch injection time | 340 µs |
-| Function-level hot-reload | < 1 ms |
-| Full recompile avoidance | Per-function granularity |
+| Metric                    | Value                    |
+| ------------------------- | ------------------------ |
+| Hot-patch compile time    | 12 ms                    |
+| Hot-patch injection time  | 340 µs                   |
+| Function-level hot-reload | < 1 ms                   |
+| Full recompile avoidance  | Per-function granularity |
 
 These numbers assume MLIR-based function-level compilation with pre-computed
 dependency graphs. The 12 ms compile time covers: lexing + parsing (< 1 ms),
@@ -255,36 +255,36 @@ MLIR lowering (3 ms), LLVM codegen (5 ms), linking (3 ms).
 
 ### 4.1 Safety Annotation Elimination
 
-| Annotation Category | Rust (per 1K LOC) | Redox (per 1K LOC) | Elimination |
-|---------------------|:-----------------:|:------------------:|:-----------:|
-| Lifetime annotations | 15–50 | 0 | **100%** |
-| `unsafe` blocks | 5–20 | 0 | **100%** |
-| Trait bounds per generic | 3–6 | 0–2 | **50–100%** |
-| Where clauses | 10–30 | 0–5 | **80–100%** |
-| **Total safety tokens** | **33–106** | **0–7** | **93–100%** |
+| Annotation Category      | Rust (per 1K LOC) | Redox (per 1K LOC) | Elimination |
+| ------------------------ | :---------------: | :----------------: | :---------: |
+| Lifetime annotations     |       15–50       |         0          |  **100%**   |
+| `unsafe` blocks          |       5–20        |         0          |  **100%**   |
+| Trait bounds per generic |        3–6        |        0–2         | **50–100%** |
+| Where clauses            |       10–30       |        0–5         | **80–100%** |
+| **Total safety tokens**  |    **33–106**     |      **0–7**       | **93–100%** |
 
 ### 4.2 SKB-Backed Safety Validation
 
 The SKB provides machine-verifiable safety guarantees without source-level annotations:
 
-| SKB Database | Rules | Coverage |
-|-------------|:-----:|----------|
-| Ownership Rules | 2,847 | Move vs. copy semantics, drop ordering |
-| Borrow Patterns | 1,203 | Shared/exclusive borrowing, reborrow chains |
-| Lifetime Constraints | 894 | Scope analysis, NLL region inference |
-| Type Safety Patterns | 3,412 | Null safety, exhaustiveness, variance |
-| Concurrency Rules | 567 | Send/Sync inference, data-race prevention |
-| FFI Safety Rules | 234 | Boundary validation, foreign type mapping |
-| **Total** | **9,157** | All categories of Rust's safety model |
+| SKB Database         |   Rules   | Coverage                                    |
+| -------------------- | :-------: | ------------------------------------------- |
+| Ownership Rules      |   2,847   | Move vs. copy semantics, drop ordering      |
+| Borrow Patterns      |   1,203   | Shared/exclusive borrowing, reborrow chains |
+| Lifetime Constraints |    894    | Scope analysis, NLL region inference        |
+| Type Safety Patterns |   3,412   | Null safety, exhaustiveness, variance       |
+| Concurrency Rules    |    567    | Send/Sync inference, data-race prevention   |
+| FFI Safety Rules     |    234    | Boundary validation, foreign type mapping   |
+| **Total**            | **9,157** | All categories of Rust's safety model       |
 
 ### 4.3 Safety vs. Token Trade-off
 
-| Safety Mode | Token Overhead | Safety Guarantee |
-|-------------|:--------------:|:----------------:|
-| `none` | 0% | None (developer responsibility) |
-| `skb-only` | 0% | SKB rule matching (93%+ patterns) |
-| `warnings` | 0% | SKB + ACI warnings (non-blocking) |
-| `full` | +5–15% | Explicit annotations where SKB uncertain |
+| Safety Mode | Token Overhead |             Safety Guarantee             |
+| ----------- | :------------: | :--------------------------------------: |
+| `none`      |       0%       |     None (developer responsibility)      |
+| `skb-only`  |       0%       |    SKB rule matching (93%+ patterns)     |
+| `warnings`  |       0%       |    SKB + ACI warnings (non-blocking)     |
+| `full`      |     +5–15%     | Explicit annotations where SKB uncertain |
 
 The key insight: **93%+ of Rust safety patterns** are covered by the 9,157 SKB
 rules, meaning they never require source-level tokens. The remaining 7% can be
@@ -298,11 +298,11 @@ handled via optional explicit annotations in `full` mode.
 
 The `redox-parse` prototype (prototype/src/) passes all 16 unit tests:
 
-| Test Suite | Tests | Passed | Coverage |
-|-----------|:-----:|:------:|----------|
-| Lexer | 8 | 8 | Tokens, keywords, operators, literals, strings |
-| Parser | 8 | 8 | Functions, structs, enums, generics, types, use, effects |
-| **Total** | **16** | **16** | — |
+| Test Suite | Tests  | Passed | Coverage                                                 |
+| ---------- | :----: | :----: | -------------------------------------------------------- |
+| Lexer      |   8    |   8    | Tokens, keywords, operators, literals, strings           |
+| Parser     |   8    |   8    | Functions, structs, enums, generics, types, use, effects |
+| **Total**  | **16** | **16** | —                                                        |
 
 ### 5.2 Constructs Successfully Parsed
 
@@ -334,24 +334,24 @@ The prototype demonstrates that the LL(1) grammar handles:
 All syntactic productions in REDOX_SPEC.md §3 have corresponding parser functions
 in the prototype:
 
-| Production | Spec Section | Parser Function | Status |
-|-----------|:----------:|:---------------:|:------:|
-| CompilationUnit | §3.1 | `parse_module` | ✓ |
-| FunctionDef | §3.2 | `parse_function_def` | ✓ |
-| StructDef | §3.4 | `parse_struct_def` | ✓ |
-| EnumDef | §3.5 | `parse_enum_def` | ✓ |
-| TraitDef | §3.6 | `parse_trait_def` | ✓ |
-| ImplBlock | §3.7 | `parse_impl_block` | ✓ |
-| ModuleDef | §3.8 | `parse_module_def` | ✓ |
-| UseDecl | §3.9 | `parse_use_decl` | ✓ |
-| TypeExpr | §3.10 | `parse_type` | ✓ |
-| Expr | §3.11 | `parse_expr` | ✓ |
-| Stmt | §3.12 | `parse_let_stmt` | ✓ |
-| Pattern | §3.13 | `parse_pattern` | ✓ |
-| Block | §3.14 | `parse_block` | ✓ |
-| Attribute | §3.15 | `parse_attribute` | ✓ |
-| EffectDecl | §3.16 | `parse_effect_def` | ✓ |
-| SpecDecl | §3.17 | `parse_spec_def` | ✓ |
+| Production      | Spec Section |   Parser Function    | Status |
+| --------------- | :----------: | :------------------: | :----: |
+| CompilationUnit |     §3.1     |    `parse_module`    |   ✓    |
+| FunctionDef     |     §3.2     | `parse_function_def` |   ✓    |
+| StructDef       |     §3.4     |  `parse_struct_def`  |   ✓    |
+| EnumDef         |     §3.5     |   `parse_enum_def`   |   ✓    |
+| TraitDef        |     §3.6     |  `parse_trait_def`   |   ✓    |
+| ImplBlock       |     §3.7     |  `parse_impl_block`  |   ✓    |
+| ModuleDef       |     §3.8     |  `parse_module_def`  |   ✓    |
+| UseDecl         |     §3.9     |   `parse_use_decl`   |   ✓    |
+| TypeExpr        |    §3.10     |     `parse_type`     |   ✓    |
+| Expr            |    §3.11     |     `parse_expr`     |   ✓    |
+| Stmt            |    §3.12     |   `parse_let_stmt`   |   ✓    |
+| Pattern         |    §3.13     |   `parse_pattern`    |   ✓    |
+| Block           |    §3.14     |    `parse_block`     |   ✓    |
+| Attribute       |    §3.15     |  `parse_attribute`   |   ✓    |
+| EffectDecl      |    §3.16     |  `parse_effect_def`  |   ✓    |
+| SpecDecl        |    §3.17     |   `parse_spec_def`   |   ✓    |
 
 ---
 
@@ -373,13 +373,13 @@ The Redox grammar achieves LL(1) by design through:
 
 ### 6.2 Grammar Size Comparison
 
-| Metric | Rust | Redox | Reduction |
-|--------|:----:|:-----:|:---------:|
-| Grammar productions | ~350 | ~120 | 66% |
-| Keywords | 52 | 25 | 52% |
-| Operator precedence levels | 18 | 16 | 11% |
-| Ambiguity resolution rules | ~15 | 0 | 100% |
-| Lookahead requirement | Unbounded | 1 | — |
+| Metric                     |   Rust    | Redox | Reduction |
+| -------------------------- | :-------: | :---: | :-------: |
+| Grammar productions        |   ~350    | ~120  |    66%    |
+| Keywords                   |    52     |  25   |    52%    |
+| Operator precedence levels |    18     |  16   |    11%    |
+| Ambiguity resolution rules |    ~15    |   0   |   100%    |
+| Lookahead requirement      | Unbounded |   1   |     —     |
 
 ### 6.3 Error Recovery Quality
 
@@ -401,23 +401,23 @@ current error messages for common syntax errors.
 
 The 9,157 SKB rules cover the following categories of Rust's borrow checker logic:
 
-| Pattern Category | Example | SKB Rules | Estimated Coverage |
-|-----------------|---------|:---------:|:------------------:|
-| Simple ownership transfer | `let y = x;` (move) | 412 | 99.5% |
-| Shared borrowing | `let r = &x;` | 318 | 99.2% |
-| Mutable borrowing | `let r = &mut x;` | 287 | 98.8% |
-| Reborrowing | `&*r` | 198 | 97.5% |
-| Drop ordering | Struct field drop order | 342 | 98.1% |
-| Lifetime elision | `fn foo(x: &T) -> &T` | 894 | 99.9% |
-| Iterator borrowing | `for x in &vec` | 456 | 99.0% |
-| Closure captures | `move \|\|`, `&\|\|` | 389 | 96.5% |
-| Async lifetime | `async fn` references | 234 | 94.2% |
-| Unsafe FFI | `extern "C"` patterns | 234 | 92.0% |
-| Send/Sync derivation | Auto-trait inference | 567 | 97.8% |
-| Interior mutability | `Cell`, `RefCell`, `Mutex` | 312 | 95.5% |
-| Pin/Unpin | Self-referential types | 156 | 91.0% |
-| GAT patterns | Generic associated types | 178 | 89.5% |
-| **Weighted average** | — | — | **97.2%** |
+| Pattern Category          | Example                    | SKB Rules | Estimated Coverage |
+| ------------------------- | -------------------------- | :-------: | :----------------: |
+| Simple ownership transfer | `let y = x;` (move)        |    412    |       99.5%        |
+| Shared borrowing          | `let r = &x;`              |    318    |       99.2%        |
+| Mutable borrowing         | `let r = &mut x;`          |    287    |       98.8%        |
+| Reborrowing               | `&*r`                      |    198    |       97.5%        |
+| Drop ordering             | Struct field drop order    |    342    |       98.1%        |
+| Lifetime elision          | `fn foo(x: &T) -> &T`      |    894    |       99.9%        |
+| Iterator borrowing        | `for x in &vec`            |    456    |       99.0%        |
+| Closure captures          | `move \|\|`, `&\|\|`       |    389    |       96.5%        |
+| Async lifetime            | `async fn` references      |    234    |       94.2%        |
+| Unsafe FFI                | `extern "C"` patterns      |    234    |       92.0%        |
+| Send/Sync derivation      | Auto-trait inference       |    567    |       97.8%        |
+| Interior mutability       | `Cell`, `RefCell`, `Mutex` |    312    |       95.5%        |
+| Pin/Unpin                 | Self-referential types     |    156    |       91.0%        |
+| GAT patterns              | Generic associated types   |    178    |       89.5%        |
+| **Weighted average**      | —                          |     —     |     **97.2%**      |
 
 ### 7.2 Uncovered Patterns (Requiring Explicit Annotations)
 
@@ -439,28 +439,28 @@ Rust codebases (measured across crates.io's top 500 crates).
 
 Based on published data on LLM-generated Rust code error rates:
 
-| Metric | Rust (Observed) | Redox (Projected) | Improvement |
-|--------|:---------------:|:-----------------:|:-----------:|
-| Parse error rate | 5–15% of submissions | < 0.1% | **50–150×** |
-| Safety error rate | 20–40% of submissions | < 1% | **20–40×** |
-| Iteration cycles to correct code | 3–8 roundtrips | 1–2 roundtrips | **3–4×** |
-| Tokens per roundtrip | 2,000–8,000 | 800–3,200 | **2.5×** |
-| Total tokens per task | 8,000–64,000 | 1,600–6,400 | **5–10×** |
+| Metric                           |    Rust (Observed)    | Redox (Projected) | Improvement |
+| -------------------------------- | :-------------------: | :---------------: | :---------: |
+| Parse error rate                 | 5–15% of submissions  |      < 0.1%       | **50–150×** |
+| Safety error rate                | 20–40% of submissions |       < 1%        | **20–40×**  |
+| Iteration cycles to correct code |    3–8 roundtrips     |  1–2 roundtrips   |  **3–4×**   |
+| Tokens per roundtrip             |      2,000–8,000      |     800–3,200     |  **2.5×**   |
+| Total tokens per task            |     8,000–64,000      |    1,600–6,400    |  **5–10×**  |
 
 ### 8.2 Parse Error Rate Derivation
 
 Rust's parse error rate for LLM-generated code stems from:
 
-| Error Source | Rust Frequency | Redox Mitigation |
-|-------------|:--------------:|------------------|
-| Lifetime annotation errors | 8–12% | Eliminated (SKB inference) |
-| Borrow checker failures | 15–25% | Eliminated (SKB rules) |
-| Missing `unsafe` blocks | 3–5% | No `unsafe` keyword |
-| Trait bound mismatches | 5–10% | Reduced to 0–2 bounds |
-| `<>` generic ambiguity | 2–4% | `[]` brackets (no ambiguity) |
-| Missing semicolons | 1–3% | Same (retained) |
-| Type inference failures | 1–2% | Enhanced (5-phase inference) |
-| **Total error rate** | **35–61%** | **< 2%** |
+| Error Source               | Rust Frequency | Redox Mitigation             |
+| -------------------------- | :------------: | ---------------------------- |
+| Lifetime annotation errors |     8–12%      | Eliminated (SKB inference)   |
+| Borrow checker failures    |     15–25%     | Eliminated (SKB rules)       |
+| Missing `unsafe` blocks    |      3–5%      | No `unsafe` keyword          |
+| Trait bound mismatches     |     5–10%      | Reduced to 0–2 bounds        |
+| `<>` generic ambiguity     |      2–4%      | `[]` brackets (no ambiguity) |
+| Missing semicolons         |      1–3%      | Same (retained)              |
+| Type inference failures    |      1–2%      | Enhanced (5-phase inference) |
+| **Total error rate**       |   **35–61%**   | **< 2%**                     |
 
 The overwhelming majority of LLM code-generation failures in Rust are caused by
 the safety system (lifetimes, borrowing, trait bounds), which Redox eliminates
@@ -470,12 +470,12 @@ from the source syntax entirely.
 
 Assuming $0.01 per 1K tokens (GPT-4 pricing):
 
-| Task Size | Rust Cost | Redox Cost | Savings |
-|-----------|:---------:|:----------:|:-------:|
-| Small function (100 LOC) | $0.16 | $0.03 | 81% |
-| Module (500 LOC) | $0.80 | $0.13 | 84% |
-| Crate (5,000 LOC) | $6.40 | $1.00 | 84% |
-| Large project (50,000 LOC) | $64.00 | $10.00 | 84% |
+| Task Size                  | Rust Cost | Redox Cost | Savings |
+| -------------------------- | :-------: | :--------: | :-----: |
+| Small function (100 LOC)   |   $0.16   |   $0.03    |   81%   |
+| Module (500 LOC)           |   $0.80   |   $0.13    |   84%   |
+| Crate (5,000 LOC)          |   $6.40   |   $1.00    |   84%   |
+| Large project (50,000 LOC) |  $64.00   |   $10.00   |   84%   |
 
 ---
 
@@ -483,22 +483,22 @@ Assuming $0.01 per 1K tokens (GPT-4 pricing):
 
 ### 9.1 Per-Call Overhead
 
-| Target Language | Overhead | Mechanism |
-|----------------|:--------:|-----------|
-| C | ~5 ns | Direct ABI via LLVM, no wrapper |
-| C++ | ~10 ns | C-compatible ABI + name mangling |
-| Python | ~200 ns | Buffer protocol, zero-copy when possible |
-| WASM | ~50 ns | Component Model with canonical ABI |
-| CUDA/HIP | ~1 µs | Kernel launch overhead (amortized over batch) |
-| JavaScript | ~100 ns | WASM interop layer |
+| Target Language | Overhead | Mechanism                                     |
+| --------------- | :------: | --------------------------------------------- |
+| C               |  ~5 ns   | Direct ABI via LLVM, no wrapper               |
+| C++             |  ~10 ns  | C-compatible ABI + name mangling              |
+| Python          | ~200 ns  | Buffer protocol, zero-copy when possible      |
+| WASM            |  ~50 ns  | Component Model with canonical ABI            |
+| CUDA/HIP        |  ~1 µs   | Kernel launch overhead (amortized over batch) |
+| JavaScript      | ~100 ns  | WASM interop layer                            |
 
 ### 9.2 Comparison with Existing FFI Solutions
 
-| Solution | Overhead | Developer Effort |
-|----------|:--------:|:----------------:|
-| Rust `extern "C"` (manual) | ~3 ns | High (manual `unsafe`) |
-| Rust + `cxx` bridge | ~8 ns | Medium (code generation) |
-| PyO3 (Rust → Python) | ~500 ns | Medium |
+| Solution                   | Overhead  |       Developer Effort        |
+| -------------------------- | :-------: | :---------------------------: |
+| Rust `extern "C"` (manual) |   ~3 ns   |    High (manual `unsafe`)     |
+| Rust + `cxx` bridge        |   ~8 ns   |   Medium (code generation)    |
+| PyO3 (Rust → Python)       |  ~500 ns  |            Medium             |
 | Redox FFI (auto-generated) | ~5–200 ns | **Zero** (compiler-generated) |
 
 Redox's FFI binding generation (compiler pass P45) produces bindings at compile time,
@@ -513,38 +513,38 @@ eliminating developer effort while maintaining overhead within 2× of hand-writt
 
 The Cost Oracle (P38) maintains a database of operation costs across targets:
 
-| Operation | Latency | Worst Case | Notes |
-|-----------|:-------:|:----------:|-------|
-| `Vec.push(item)` (amortized) | 12 ns | 4,500 ns | Worst case on realloc |
-| `SmallVec[T,8].push(item)` | 3 ns | 4,500 ns | Worst case on heap spill |
-| `HashMap.insert(k, v)` | 80 ns | 2,000 ns | Worst case on resize |
-| `Arc.clone()` | 8 ns | 8 ns | Atomic increment only |
-| `Mutex.lock()` | 25 ns | 10,000 ns | Contended case |
-| Stack allocation (< 4 KB) | 1 ns | 1 ns | No heap involvement |
-| Heap allocation (64 bytes) | 50 ns | 5,000 ns | Allocator-dependent |
-| Channel send (unbounded) | 30 ns | 500 ns | Contention-dependent |
-| Syscall (Linux read) | 200 ns | 50,000 ns | Kernel scheduling |
+| Operation                    | Latency | Worst Case | Notes                    |
+| ---------------------------- | :-----: | :--------: | ------------------------ |
+| `Vec.push(item)` (amortized) |  12 ns  |  4,500 ns  | Worst case on realloc    |
+| `SmallVec[T,8].push(item)`   |  3 ns   |  4,500 ns  | Worst case on heap spill |
+| `HashMap.insert(k, v)`       |  80 ns  |  2,000 ns  | Worst case on resize     |
+| `Arc.clone()`                |  8 ns   |    8 ns    | Atomic increment only    |
+| `Mutex.lock()`               |  25 ns  | 10,000 ns  | Contended case           |
+| Stack allocation (< 4 KB)    |  1 ns   |    1 ns    | No heap involvement      |
+| Heap allocation (64 bytes)   |  50 ns  |  5,000 ns  | Allocator-dependent      |
+| Channel send (unbounded)     |  30 ns  |   500 ns   | Contention-dependent     |
+| Syscall (Linux read)         | 200 ns  | 50,000 ns  | Kernel scheduling        |
 
 ### 10.2 Matrix Multiply Per-Target Cost Table
 
-| Target | Latency (1024³) | Throughput | Energy |
-|--------|:------------:|:----------:|:------:|
-| x86-64 (AVX-512) | 2,400 µs | 45 GFLOPS | 12 mJ |
-| AArch64 (NEON) | 3,100 µs | 35 GFLOPS | 8 mJ |
-| AMDGPU (gfx1100) | 180 µs | 620 GFLOPS | 45 mJ |
-| NVPTX (sm_90) | 150 µs | 750 GFLOPS | 40 mJ |
+| Target           | Latency (1024³) | Throughput | Energy |
+| ---------------- | :-------------: | :--------: | :----: |
+| x86-64 (AVX-512) |    2,400 µs     | 45 GFLOPS  | 12 mJ  |
+| AArch64 (NEON)   |    3,100 µs     | 35 GFLOPS  |  8 mJ  |
+| AMDGPU (gfx1100) |     180 µs      | 620 GFLOPS | 45 mJ  |
+| NVPTX (sm_90)    |     150 µs      | 750 GFLOPS | 40 mJ  |
 
 ### 10.3 ACI Performance Advisor Projections
 
 The ACI Performance Advisor (pass P36) uses Cost Oracle data to suggest optimizations:
 
-| Function Pattern | Suggested Optimization | Expected Speedup | Confidence |
-|-----------------|----------------------|:----------------:|:----------:|
-| Sequential map + filter | Fused iterator | 1.8× | 0.92 |
-| Repeated small allocations | Arena allocation | 3.2× | 0.81 |
-| CPU-bound batch (>256 items) | GPU dispatch | 8.7× | 0.94 |
-| String concatenation loop | Pre-allocated buffer | 2.5× | 0.88 |
-| Mutex-heavy concurrent access | Lock-free data structure | 4.1× | 0.76 |
+| Function Pattern              | Suggested Optimization   | Expected Speedup | Confidence |
+| ----------------------------- | ------------------------ | :--------------: | :--------: |
+| Sequential map + filter       | Fused iterator           |       1.8×       |    0.92    |
+| Repeated small allocations    | Arena allocation         |       3.2×       |    0.81    |
+| CPU-bound batch (>256 items)  | GPU dispatch             |       8.7×       |    0.94    |
+| String concatenation loop     | Pre-allocated buffer     |       2.5×       |    0.88    |
+| Mutex-heavy concurrent access | Lock-free data structure |       4.1×       |    0.76    |
 
 ---
 
@@ -552,30 +552,30 @@ The ACI Performance Advisor (pass P36) uses Cost Oracle data to suggest optimiza
 
 ### 11.1 Claims Validated
 
-| # | Claim | Status | Evidence |
-|:-:|-------|:------:|----------|
-| 1 | ≤ 50% token count vs. Rust | **VALIDATED** | §2.4: geometric mean 53.1% reduction |
-| 2 | ≤ N/3 tokens with safety elision | **VALIDATED** | §2.1 + §4.1: 67%+ with safety |
-| 3 | 60–70% fewer tokens per signature | **VALIDATED** | §2.3: 38–74% by example |
-| 4 | 100% lifetime annotation elimination | **VALIDATED** | §4.1: SKB covers 99.9% |
-| 5 | < 0.1% parse error rate | **PLAUSIBLE** | §8.2: LL(1) eliminates all ambiguity sources |
-| 6 | 10–60× faster incremental compile | **PLAUSIBLE** | §3.2: multiplicative speedup factors |
-| 7 | 3–4× fewer iteration cycles | **PROJECTED** | §8.1: follows from error rate reduction |
-| 8 | 9,157 SKB rules cover 97%+ patterns | **MODELED** | §7.1: weighted coverage 97.2% |
-| 9 | LL(1) with zero ambiguity | **VALIDATED** | §6.1: prototype parser proves LL(1) |
-| 10 | 5–10× total token savings per task | **VALIDATED** | §8.3: 84% cost reduction |
+|   #   | Claim                                |    Status     | Evidence                                     |
+| :---: | ------------------------------------ | :-----------: | -------------------------------------------- |
+|   1   | ≤ 50% token count vs. Rust           | **VALIDATED** | §2.4: geometric mean 53.1% reduction         |
+|   2   | ≤ N/3 tokens with safety elision     | **VALIDATED** | §2.1 + §4.1: 67%+ with safety                |
+|   3   | 60–70% fewer tokens per signature    | **VALIDATED** | §2.3: 38–74% by example                      |
+|   4   | 100% lifetime annotation elimination | **VALIDATED** | §4.1: SKB covers 99.9%                       |
+|   5   | < 0.1% parse error rate              | **PLAUSIBLE** | §8.2: LL(1) eliminates all ambiguity sources |
+|   6   | 10–60× faster incremental compile    | **PLAUSIBLE** | §3.2: multiplicative speedup factors         |
+|   7   | 3–4× fewer iteration cycles          | **PROJECTED** | §8.1: follows from error rate reduction      |
+|   8   | 9,157 SKB rules cover 97%+ patterns  |  **MODELED**  | §7.1: weighted coverage 97.2%                |
+|   9   | LL(1) with zero ambiguity            | **VALIDATED** | §6.1: prototype parser proves LL(1)          |
+|  10   | 5–10× total token savings per task   | **VALIDATED** | §8.3: 84% cost reduction                     |
 
 ### 11.2 Risk Assessment
 
-| Claim | Risk Level | Mitigation |
-|-------|:----------:|------------|
-| Token reduction ≤ 50% | **Low** | Validated across 10 program categories |
-| Safety elision correctness | **Medium** | Requires comprehensive SKB testing |
-| Compilation speed 10–60× | **Medium** | Depends on MLIR incremental compilation maturity |
-| Parse error rate < 0.1% | **Low** | LL(1) grammar is provably unambiguous |
-| SKB coverage 97%+ | **Medium** | Requires validation against crates.io corpus |
-| FFI overhead < 2× hand-written | **Low** | LLVM ABI compatibility is well-understood |
-| Hot-reload < 1 ms | **Medium** | Requires function-level MLIR compilation |
+| Claim                          | Risk Level | Mitigation                                       |
+| ------------------------------ | :--------: | ------------------------------------------------ |
+| Token reduction ≤ 50%          |  **Low**   | Validated across 10 program categories           |
+| Safety elision correctness     | **Medium** | Requires comprehensive SKB testing               |
+| Compilation speed 10–60×       | **Medium** | Depends on MLIR incremental compilation maturity |
+| Parse error rate < 0.1%        |  **Low**   | LL(1) grammar is provably unambiguous            |
+| SKB coverage 97%+              | **Medium** | Requires validation against crates.io corpus     |
+| FFI overhead < 2× hand-written |  **Low**   | LLVM ABI compatibility is well-understood        |
+| Hot-reload < 1 ms              | **Medium** | Requires function-level MLIR compilation         |
 
 ### 11.3 Validation Roadmap
 

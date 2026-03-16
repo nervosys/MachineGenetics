@@ -9,7 +9,6 @@
 ///     5. Violation → emit structured diagnostic
 ///
 /// Effects are inferred bottom-up: leaf functions first, callers accumulate.
-
 use crate::ast;
 use crate::hir::{Diagnostic, Effect, EffectSet, pure};
 use std::collections::HashMap;
@@ -59,9 +58,8 @@ impl EffectInfer {
         for (name, declared) in &self.declared {
             if let Some(inferred) = self.inferred.get(name) {
                 // Check that inferred effects are a subset of declared effects.
-                let undeclared: Vec<&Effect> = inferred.iter()
-                    .filter(|e| !declared.contains(e))
-                    .collect();
+                let undeclared: Vec<&Effect> =
+                    inferred.iter().filter(|e| !declared.contains(e)).collect();
 
                 if !undeclared.is_empty() {
                     let effects: Vec<String> = undeclared.iter().map(|e| e.to_string()).collect();
@@ -77,9 +75,7 @@ impl EffectInfer {
     fn collect_function(&mut self, fd: &ast::FunctionDef) {
         // Record declared effects from annotations.
         if !fd.effects.is_empty() {
-            let effects: EffectSet = fd.effects.iter()
-                .map(|e| Effect::from_name(e))
-                .collect();
+            let effects: EffectSet = fd.effects.iter().map(|e| Effect::from_name(e)).collect();
             self.declared.insert(fd.name.clone(), effects);
         }
 
@@ -367,8 +363,11 @@ mod tests {
             }
         "#;
         let ei = infer_source(src);
-        assert!(ei.effects_of("greet").contains(&Effect::IO),
-            "expected IO effect, got {:?}", ei.effects_of("greet"));
+        assert!(
+            ei.effects_of("greet").contains(&Effect::IO),
+            "expected IO effect, got {:?}",
+            ei.effects_of("greet")
+        );
     }
 
     #[test]

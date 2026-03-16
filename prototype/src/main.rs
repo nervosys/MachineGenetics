@@ -2,6 +2,7 @@ mod ast;
 mod effects;
 mod hir;
 mod lexer;
+mod mlir;
 mod parser;
 mod rap;
 mod resolve;
@@ -28,6 +29,18 @@ fn main() {
                 std::process::exit(1);
             });
             run_check(&source, path);
+        }
+        Some("--pipeline") => {
+            // End-to-end demo pipeline: lex → parse → resolve → typecheck → effects → MLIR.
+            let path = args.get(2).unwrap_or_else(|| {
+                eprintln!("Usage: redox-parse --pipeline <file>");
+                std::process::exit(1);
+            });
+            let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            run_pipeline(&source, path);
         }
         Some(path) => {
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -150,4 +163,109 @@ fn run_check(source: &str, filename: &str) {
     } else {
         eprintln!("  Status: OK");
     }
+}
+
+fn run_pipeline(source: &str, filename: &str) {
+    eprintln!("╔══════════════════════════════════════════════════════════════╗");
+    eprintln!("║  Redox End-to-End Pipeline                                  ║");
+    eprintln!("╚══════════════════════════════════════════════════════════════╝");
+    eprintln!();
+
+    let mut total_errors = 0;
+
+    // ── Phase 1: Lex ─────────────────────────────────────────────────
+    eprintln!("▸ Phase 1/6: Lexical analysis");
+    let tokens = lexer::lex(source);
+    let mut lex_errors = 0;
+    for tok in &tokens {
+        if tok.kind == lexer::TokenKind::Error {
+            eprintln!("  {filename}:{}:{}: lexer error", tok.span.line, tok.span.col);
+            lex_errors += 1;
+        }
+    }
+    let token_count = tokens.len();
+    eprintln!("  ✓ {token_count} tokens, {lex_errors} errors");
+    total_errors += lex_errors;
+
+    // ── Phase 2: Parse ───────────────────────────────────────────────
+    eprintln!("▸ Phase 2/6: Parsing");
+    let module = match parser::parse(&tokens) {
+        Ok(m) => {
+            eprintln!("  ✓ {} top-level items", m.items.len());
+            m
+        }
+        Err(e) => {
+            eprintln!("  ✗ parse error at {}:{}: {}", e.line, e.col, e.message);
+            std::process::exit(1);
+        }
+    };
+
+    // ── Phase 3: Name resolution ─────────────────────────────────────
+    eprintln!("▸ Phase 3/6: Name resolution");
+    let resolver = resolve::resolve(&module);
+    for diag in &resolver.diagnostics {
+        eprintln!("  {filename}: {diag}");
+        if diag.severity == hir::Severity::Error {
+            total_errors += 1;
+        }
+    }
+    eprintln!("  ✓ {} symbols resolved", resolver.symbols.len());
+
+    // ── Phase 4: Type checking ───────────────────────────────────────
+    eprintln!("▸ Phase 4/6: Type checking");
+    let checker = types::check(&module);
+    for diag in &checker.diagnostics {
+        eprintln!("  {filename}: {diag}");
+        if diag.severity == hir::Severity::Error {
+            total_errors += 1;
+        }
+    }
+    eprintln!("  ✓ {} type diagnostics", checker.diagnostics.len());
+
+    // ── Phase 5: Effect inference ────────────────────────────────────
+    eprintln!("▸ Phase 5/6: Effect inference");
+    let effect_infer = effects::infer_effects(&module);
+    for diag in &effect_infer.diagnostics {
+        eprintln!("  {filename}: {diag}");
+        if diag.severity == hir::Severity::Error {
+            total_errors += 1;
+        }
+    }
+    for (name, fx) in &effect_infer.inferred {
+        if fx.is_empty() {
+            eprintln!("  f {name}: pure");
+        } else {
+            let effects: Vec<String> = fx.iter().map(|e| e.to_string()).collect();
+            eprintln!("  f {name}: {{ {} }}", effects.join(", "));
+        }
+    }
+
+    // ── Phase 6: MLIR lowering ───────────────────────────────────────
+    eprintln!("▸ Phase 6/6: MLIR lowering");
+    let mlir_output = mlir::emit(&module, &effect_infer);
+    let mlir_lines = mlir_output.lines().count();
+    eprintln!("  ✓ {mlir_lines} lines of MLIR generated");
+
+    // ── Summary ──────────────────────────────────────────────────────
+    eprintln!();
+    eprintln!("═══ Pipeline Summary ═══════════════════════════════════════════");
+    eprintln!("  Source:          {filename}");
+    eprintln!("  Tokens:          {token_count}");
+    eprintln!("  Items:           {}", module.items.len());
+    eprintln!("  Symbols:         {}", resolver.symbols.len());
+    eprintln!("  Functions:       {}", effect_infer.inferred.len());
+    eprintln!("  MLIR lines:      {mlir_lines}");
+    eprintln!("  Errors:          {total_errors}");
+
+    if total_errors > 0 {
+        eprintln!("  Status:          FAIL");
+        eprintln!("════════════════════════════════════════════════════════════════");
+        std::process::exit(1);
+    } else {
+        eprintln!("  Status:          OK");
+        eprintln!("════════════════════════════════════════════════════════════════");
+    }
+
+    // Print MLIR to stdout.
+    println!("{mlir_output}");
 }

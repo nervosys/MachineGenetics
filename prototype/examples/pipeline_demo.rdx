@@ -1,0 +1,85 @@
+// ─────────────────────────────────────────────────────────────
+// Redox End-to-End Pipeline Demo
+//
+// This file exercises every stage of the Redox compiler pipeline:
+//   1. Lexer    – tokens for keywords, sigils, literals, operators
+//   2. Parser   – structs, enums, functions, traits, impls
+//   3. Resolver – name binding across nested scopes
+//   4. Types    – bidirectional type inference, unification
+//   5. Effects  – bottom-up effect inference and verification
+//   6. MLIR     – lowering to redox dialect operations
+//
+// Run:  cargo run -- --pipeline examples/pipeline_demo.rdx
+// ─────────────────────────────────────────────────────────────
+
+// ── Struct definitions ───────────────────────────────────────
+
+S Point {
+    x: f64,
+    y: f64
+}
+
+S Rect {
+    origin: Point,
+    width: f64,
+    height: f64
+}
+
+// ── Enum definitions ─────────────────────────────────────────
+
+E Shape {
+    Circle,
+    Square,
+    Triangle
+}
+
+// ── Pure functions ───────────────────────────────────────────
+
++f add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
++f multiply(x: i32, y: i32) -> i32 {
+    x * y
+}
+
++f distance(p1: Point, p2: Point) -> f64 {
+    v dx: f64 = p2.x - p1.x;
+    v dy: f64 = p2.y - p1.y;
+    dx * dx + dy * dy
+}
+
+// ── Functions with effects ───────────────────────────────────
+
++f greet(name: s) -> s {
+    name
+}
+
++f read_config(path: s) -> s {
+    path
+}
+
+// ── Nested scopes & shadowing ────────────────────────────────
+
++f scopes() -> i32 {
+    v x: i32 = 10;
+    v y: i32 = 20;
+    v result: i32 = x + y;
+    result
+}
+
+// ── Control flow ─────────────────────────────────────────────
+
++f max_val(a: i32, b: i32) -> i32 {
+    ? a > b { a } : { b }
+}
+
+// ── Entry point ──────────────────────────────────────────────
+
++f main() -> i32 {
+    v sum: i32 = add(3, 4);
+    v prod: i32 = multiply(sum, 2);
+    greet("Redox Pipeline Demo");
+    v best: i32 = max_val(sum, prod);
+    best
+}

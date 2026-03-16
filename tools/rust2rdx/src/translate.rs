@@ -519,7 +519,10 @@ mod tests {
 
     #[test]
     fn test_pub_fn() {
-        assert_eq!(translate_line("pub fn add(a: i32, b: i32) -> i32 {"), "+f add(a: i32, b: i32) -> i32 {");
+        assert_eq!(
+            translate_line("pub fn add(a: i32, b: i32) -> i32 {"),
+            "+f add(a: i32, b: i32) -> i32 {"
+        );
     }
 
     #[test]
@@ -574,7 +577,10 @@ mod tests {
 
     #[test]
     fn test_result_type() {
-        assert_eq!(translate_line("fn foo() -> Result<i32, Error> {"), "f foo() -> R[i32, Error] {");
+        assert_eq!(
+            translate_line("fn foo() -> Result<i32, Error> {"),
+            "f foo() -> R[i32, Error] {"
+        );
     }
 
     #[test]
@@ -594,10 +600,7 @@ mod tests {
 
     #[test]
     fn test_hashmap_type() {
-        assert_eq!(
-            translate_line("    map: HashMap<String, i32>,"),
-            "    map: {String: i32},"
-        );
+        assert_eq!(translate_line("    map: HashMap<String, i32>,"), "    map: {String: i32},");
     }
 
     #[test]

@@ -6,9 +6,8 @@
 /// - Constraint generation: walk the AST, emit τ₁ ≡ τ₂ constraints
 /// - Unification: Robinson's algorithm extended for Redox types
 /// - Substitution: apply solved constraints to resolve all type variables
-
 use crate::ast;
-use crate::hir::{Diagnostic, Ty, TyVar, IntTy, UintTy, FloatTy, pure};
+use crate::hir::{Diagnostic, FloatTy, IntTy, Ty, TyVar, UintTy, pure};
 use std::collections::HashMap;
 
 // ── Type variable supply ─────────────────────────────────────────────
@@ -60,14 +59,8 @@ impl Subst {
             Ty::Vec(inner) => Ty::Vec(Box::new(self.apply(inner))),
             Ty::Option(inner) => Ty::Option(Box::new(self.apply(inner))),
             Ty::Ptr(inner) => Ty::Ptr(Box::new(self.apply(inner))),
-            Ty::Result(ok, err) => Ty::Result(
-                Box::new(self.apply(ok)),
-                Box::new(self.apply(err)),
-            ),
-            Ty::Map(k, v) => Ty::Map(
-                Box::new(self.apply(k)),
-                Box::new(self.apply(v)),
-            ),
+            Ty::Result(ok, err) => Ty::Result(Box::new(self.apply(ok)), Box::new(self.apply(err))),
+            Ty::Map(k, v) => Ty::Map(Box::new(self.apply(k)), Box::new(self.apply(v))),
             Ty::Simd(inner, w) => Ty::Simd(Box::new(self.apply(inner)), *w),
             Ty::Tuple(elems) => Ty::Tuple(elems.iter().map(|t| self.apply(t)).collect()),
             Ty::Fn(params, ret, fx) => Ty::Fn(
@@ -75,10 +68,7 @@ impl Subst {
                 Box::new(self.apply(ret)),
                 fx.clone(),
             ),
-            Ty::Named(sym, args) => Ty::Named(
-                *sym,
-                args.iter().map(|t| self.apply(t)).collect(),
-            ),
+            Ty::Named(sym, args) => Ty::Named(*sym, args.iter().map(|t| self.apply(t)).collect()),
             // Primitives are unchanged.
             _ => ty.clone(),
         }
@@ -94,14 +84,18 @@ impl Subst {
 fn occurs_in(var: TyVar, ty: &Ty) -> bool {
     match ty {
         Ty::Var(v) => *v == var,
-        Ty::Ref(_, t) | Ty::OwnedPtr(t) | Ty::Rc(t) | Ty::Arc(t)
-        | Ty::Slice(t) | Ty::Vec(t) | Ty::Option(t) | Ty::Ptr(t) => occurs_in(var, t),
+        Ty::Ref(_, t)
+        | Ty::OwnedPtr(t)
+        | Ty::Rc(t)
+        | Ty::Arc(t)
+        | Ty::Slice(t)
+        | Ty::Vec(t)
+        | Ty::Option(t)
+        | Ty::Ptr(t) => occurs_in(var, t),
         Ty::Array(t, _) | Ty::Simd(t, _) => occurs_in(var, t),
         Ty::Result(a, b) | Ty::Map(a, b) => occurs_in(var, a) || occurs_in(var, b),
         Ty::Tuple(ts) => ts.iter().any(|t| occurs_in(var, t)),
-        Ty::Fn(params, ret, _) => {
-            params.iter().any(|t| occurs_in(var, t)) || occurs_in(var, ret)
-        }
+        Ty::Fn(params, ret, _) => params.iter().any(|t| occurs_in(var, t)) || occurs_in(var, ret),
         Ty::Named(_, args) => args.iter().any(|t| occurs_in(var, t)),
         _ => false,
     }
@@ -141,8 +135,11 @@ fn unify(subst: &mut Subst, a: &Ty, b: &Ty) -> Result<(), String> {
         // Structural rules.
         (Ty::Ref(m1, t1), Ty::Ref(m2, t2)) => {
             if m1 != m2 {
-                return Err(format!("borrow mode mismatch: &{} vs &{}", 
-                    if *m1 { "!" } else { "" }, if *m2 { "!" } else { "" }));
+                return Err(format!(
+                    "borrow mode mismatch: &{} vs &{}",
+                    if *m1 { "!" } else { "" },
+                    if *m2 { "!" } else { "" }
+                ));
             }
             unify(subst, t1, t2)
         }
@@ -301,14 +298,12 @@ impl TypeChecker {
                 Ty::Tuple(elements.iter().map(|t| self.lower_type(t)).collect())
             }
             ast::Type::Option { inner } => Ty::Option(Box::new(self.lower_type(inner))),
-            ast::Type::Result { ok, err } => Ty::Result(
-                Box::new(self.lower_type(ok)),
-                Box::new(self.lower_type(err)),
-            ),
-            ast::Type::Map { key, value } => Ty::Map(
-                Box::new(self.lower_type(key)),
-                Box::new(self.lower_type(value)),
-            ),
+            ast::Type::Result { ok, err } => {
+                Ty::Result(Box::new(self.lower_type(ok)), Box::new(self.lower_type(err)))
+            }
+            ast::Type::Map { key, value } => {
+                Ty::Map(Box::new(self.lower_type(key)), Box::new(self.lower_type(value)))
+            }
             ast::Type::Ptr { inner } => Ty::Ptr(Box::new(self.lower_type(inner))),
             ast::Type::Simd { inner, width } => Ty::Simd(Box::new(self.lower_type(inner)), *width),
             ast::Type::Fn { params, ret } => {
@@ -373,19 +368,13 @@ impl TypeChecker {
         match &item.kind {
             ast::ItemKind::Function(fd) => {
                 let params: Vec<Ty> = fd.params.iter().map(|p| self.lower_type(&p.ty)).collect();
-                let ret = fd.return_type.as_ref()
-                    .map(|t| self.lower_type(t))
-                    .unwrap_or(Ty::Unit);
-                self.fn_sigs.insert(
-                    fd.name.clone(),
-                    (params, ret, fd.effects.clone()),
-                );
+                let ret = fd.return_type.as_ref().map(|t| self.lower_type(t)).unwrap_or(Ty::Unit);
+                self.fn_sigs.insert(fd.name.clone(), (params, ret, fd.effects.clone()));
             }
             ast::ItemKind::Struct(sd) => {
                 let generics: Vec<String> = sd.generics.iter().map(|g| g.name.clone()).collect();
-                let fields: Vec<(String, Ty)> = sd.fields.iter()
-                    .map(|f| (f.name.clone(), self.lower_type(&f.ty)))
-                    .collect();
+                let fields: Vec<(String, Ty)> =
+                    sd.fields.iter().map(|f| (f.name.clone(), self.lower_type(&f.ty))).collect();
                 self.struct_defs.insert(sd.name.clone(), (generics, fields));
             }
             _ => {}
@@ -399,9 +388,7 @@ impl TypeChecker {
                 let declared = self.lower_type(&cd.ty);
                 let inferred = self.infer_expr(&cd.value);
                 if let Err(e) = unify(&mut self.subst, &declared, &inferred) {
-                    self.emit_error(format!(
-                        "const `{}`: {e}", cd.name
-                    ));
+                    self.emit_error(format!("const `{}`: {e}", cd.name));
                 }
             }
             _ => {}
@@ -427,14 +414,10 @@ impl TypeChecker {
         let body_ty = self.infer_block(&fd.body);
 
         // Unify body type with declared return type.
-        let ret_ty = fd.return_type.as_ref()
-            .map(|t| self.lower_type(t))
-            .unwrap_or(Ty::Unit);
+        let ret_ty = fd.return_type.as_ref().map(|t| self.lower_type(t)).unwrap_or(Ty::Unit);
 
         if let Err(e) = unify(&mut self.subst, &ret_ty, &body_ty) {
-            self.emit_error(format!(
-                "function `{}`: return type mismatch: {e}", fd.name
-            ));
+            self.emit_error(format!("function `{}`: return type mismatch: {e}", fd.name));
         }
 
         self.env.pop();
@@ -449,11 +432,7 @@ impl TypeChecker {
             self.check_stmt(stmt);
         }
 
-        let ty = if let Some(tail) = &block.tail_expr {
-            self.infer_expr(tail)
-        } else {
-            Ty::Unit
-        };
+        let ty = if let Some(tail) = &block.tail_expr { self.infer_expr(tail) } else { Ty::Unit };
 
         self.env.pop();
         ty
@@ -616,7 +595,11 @@ impl TypeChecker {
                             Ty::Arc(inner) => *inner.clone(),
                             _ => {
                                 let inner = self.fresh();
-                                if let Err(e) = unify(&mut self.subst, &t, &Ty::Ref(false, Box::new(inner.clone()))) {
+                                if let Err(e) = unify(
+                                    &mut self.subst,
+                                    &t,
+                                    &Ty::Ref(false, Box::new(inner.clone())),
+                                ) {
                                     self.emit_error(format!("dereference: {e}"));
                                 }
                                 inner
@@ -715,11 +698,14 @@ impl TypeChecker {
 
             ast::Expr::Closure { params, body } => {
                 self.env.push();
-                let param_tys: Vec<Ty> = params.iter().map(|p| {
-                    let ty = self.lower_type(&p.ty);
-                    self.env.insert(p.name.clone(), ty.clone());
-                    ty
-                }).collect();
+                let param_tys: Vec<Ty> = params
+                    .iter()
+                    .map(|p| {
+                        let ty = self.lower_type(&p.ty);
+                        self.env.insert(p.name.clone(), ty.clone());
+                        ty
+                    })
+                    .collect();
                 let ret = self.infer_expr(body);
                 self.env.pop();
                 Ty::Fn(param_tys, Box::new(ret), pure())
@@ -803,7 +789,11 @@ impl TypeChecker {
                     _ => {
                         let ok = self.fresh();
                         let err = self.fresh();
-                        if let Err(e) = unify(&mut self.subst, &t, &Ty::Result(Box::new(ok.clone()), Box::new(err))) {
+                        if let Err(e) = unify(
+                            &mut self.subst,
+                            &t,
+                            &Ty::Result(Box::new(ok.clone()), Box::new(err)),
+                        ) {
                             self.emit_error(format!("try `?` operator: {e}"));
                         }
                         ok
@@ -848,26 +838,41 @@ impl TypeChecker {
         match kind {
             ast::LiteralKind::Int => {
                 // Check for type suffix.
-                if value.ends_with("i8") { Ty::Int(IntTy::I8) }
-                else if value.ends_with("i16") { Ty::Int(IntTy::I16) }
-                else if value.ends_with("i32") { Ty::Int(IntTy::I32) }
-                else if value.ends_with("i64") { Ty::Int(IntTy::I64) }
-                else if value.ends_with("i128") { Ty::Int(IntTy::I128) }
-                else if value.ends_with("u8") { Ty::Uint(UintTy::U8) }
-                else if value.ends_with("u16") { Ty::Uint(UintTy::U16) }
-                else if value.ends_with("u32") { Ty::Uint(UintTy::U32) }
-                else if value.ends_with("u64") { Ty::Uint(UintTy::U64) }
-                else if value.ends_with("u128") { Ty::Uint(UintTy::U128) }
-                else if value.ends_with("usize") { Ty::Uint(UintTy::Usize) }
-                else if value.ends_with("isize") { Ty::Int(IntTy::Isize) }
-                else {
+                if value.ends_with("i8") {
+                    Ty::Int(IntTy::I8)
+                } else if value.ends_with("i16") {
+                    Ty::Int(IntTy::I16)
+                } else if value.ends_with("i32") {
+                    Ty::Int(IntTy::I32)
+                } else if value.ends_with("i64") {
+                    Ty::Int(IntTy::I64)
+                } else if value.ends_with("i128") {
+                    Ty::Int(IntTy::I128)
+                } else if value.ends_with("u8") {
+                    Ty::Uint(UintTy::U8)
+                } else if value.ends_with("u16") {
+                    Ty::Uint(UintTy::U16)
+                } else if value.ends_with("u32") {
+                    Ty::Uint(UintTy::U32)
+                } else if value.ends_with("u64") {
+                    Ty::Uint(UintTy::U64)
+                } else if value.ends_with("u128") {
+                    Ty::Uint(UintTy::U128)
+                } else if value.ends_with("usize") {
+                    Ty::Uint(UintTy::Usize)
+                } else if value.ends_with("isize") {
+                    Ty::Int(IntTy::Isize)
+                } else {
                     // Default integer: i32 (Redox default).
                     Ty::Int(IntTy::I32)
                 }
             }
             ast::LiteralKind::Float => {
-                if value.ends_with("f32") { Ty::Float(FloatTy::F32) }
-                else { Ty::Float(FloatTy::F64) }
+                if value.ends_with("f32") {
+                    Ty::Float(FloatTy::F32)
+                } else {
+                    Ty::Float(FloatTy::F64)
+                }
             }
             ast::LiteralKind::String | ast::LiteralKind::FormatString => Ty::Str,
             ast::LiteralKind::Char => Ty::Char,

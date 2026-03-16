@@ -1,6 +1,6 @@
 # Redox: An Agentic-First Programming Language for the 21st Century
 
-## Transforming Rust into a Language for Humans and AI Agents Alike
+> Transforming Rust into a Language for Humans and AI Agents Alike
 
 **Version:** 0.1.0-draft  
 **Date:** 2026-03-15  
@@ -3661,16 +3661,16 @@ v w = MyStruct { ... };     // compiler decides (default)
 
 ### 13.7 Inference Guarantees
 
-| Property                    | Guarantee                                                                 |
-| --------------------------- | ------------------------------------------------------------------------- |
-| **Determinism**             | Same source always produces same inference result                         |
-| **Soundness**               | Inferred modes are at least as restrictive as manual annotations would be |
-| **Completeness**            | Every well-typed Rust program has a valid Redox inference                  |
-| **Monotonicity**            | Adding code never invalidates previously inferred ownership               |
-| **Performance**             | Inference is $O(n \log n)$ in function size for 95% of functions          |
-| **Worst-case complexity**   | $O(n^2 \cdot R)$ for pathological alias sets ($R$ = region variables)     |
-| **SKB compatibility**       | All inferred decisions are verifiable against the SKB                     |
-| **Override transparency**   | Agent annotations are always respected; conflicts emit structured errors  |
+| Property                  | Guarantee                                                                 |
+| ------------------------- | ------------------------------------------------------------------------- |
+| **Determinism**           | Same source always produces same inference result                         |
+| **Soundness**             | Inferred modes are at least as restrictive as manual annotations would be |
+| **Completeness**          | Every well-typed Rust program has a valid Redox inference                 |
+| **Monotonicity**          | Adding code never invalidates previously inferred ownership               |
+| **Performance**           | Inference is $O(n \log n)$ in function size for 95% of functions          |
+| **Worst-case complexity** | $O(n^2 \cdot R)$ for pathological alias sets ($R$ = region variables)     |
+| **SKB compatibility**     | All inferred decisions are verifiable against the SKB                     |
+| **Override transparency** | Agent annotations are always respected; conflicts emit structured errors  |
 
 ---
 
@@ -3993,23 +3993,23 @@ def Redox_SKBValidateOp : Redox_Op<"skb.validate", []> {
 
 The Redox dialect lowers progressively through MLIR's dialect hierarchy:
 
-| Redox Operation          | Lowers To                            | Phase           |
-| ------------------------ | ------------------------------------ | --------------- |
-| `redox.move`             | SSA value copy + source invalidation | Redox → Std     |
-| `redox.copy`             | `memref.copy` or SSA value copy      | Redox → MemRef  |
-| `redox.borrow`           | `memref.view` or SSA alias           | Redox → MemRef  |
-| `redox.drop`             | Destructor call sequence             | Redox → Func    |
-| `redox.effect.decl`      | No-op (metadata preserved)           | Redox → Redox   |
-| `redox.effect.perform`   | `func.call` to effect handler        | Redox → Func    |
-| `redox.contract.require` | `cf.assert` (debug) or removed (opt) | Redox → CF      |
-| `redox.contract.ensure`  | `cf.assert` (debug) or removed (opt) | Redox → CF      |
-| `redox.perf.place "gpu"` | `gpu.launch_func`                    | Redox → GPU     |
-| `redox.perf.vectorize`   | `vector.transfer_read/write` + ops   | Redox → Vector  |
-| `redox.perf.autotune`    | N clones of body with different opts  | Redox → Redox   |
-| `redox.perf.cost_query`  | Compile-time eval → constant         | Redox → Arith   |
-| `redox.capability.gate`  | `scf.if` on runtime capability check | Redox → SCF     |
-| `redox.skb.query`        | Compile-time eval → diagnostics      | Erased          |
-| `redox.skb.validate`     | Compile-time eval → diagnostics      | Erased          |
+| Redox Operation          | Lowers To                            | Phase          |
+| ------------------------ | ------------------------------------ | -------------- |
+| `redox.move`             | SSA value copy + source invalidation | Redox → Std    |
+| `redox.copy`             | `memref.copy` or SSA value copy      | Redox → MemRef |
+| `redox.borrow`           | `memref.view` or SSA alias           | Redox → MemRef |
+| `redox.drop`             | Destructor call sequence             | Redox → Func   |
+| `redox.effect.decl`      | No-op (metadata preserved)           | Redox → Redox  |
+| `redox.effect.perform`   | `func.call` to effect handler        | Redox → Func   |
+| `redox.contract.require` | `cf.assert` (debug) or removed (opt) | Redox → CF     |
+| `redox.contract.ensure`  | `cf.assert` (debug) or removed (opt) | Redox → CF     |
+| `redox.perf.place "gpu"` | `gpu.launch_func`                    | Redox → GPU    |
+| `redox.perf.vectorize`   | `vector.transfer_read/write` + ops   | Redox → Vector |
+| `redox.perf.autotune`    | N clones of body with different opts | Redox → Redox  |
+| `redox.perf.cost_query`  | Compile-time eval → constant         | Redox → Arith  |
+| `redox.capability.gate`  | `scf.if` on runtime capability check | Redox → SCF    |
+| `redox.skb.query`        | Compile-time eval → diagnostics      | Erased         |
+| `redox.skb.validate`     | Compile-time eval → diagnostics      | Erased         |
 
 Full lowering sequence:
 
@@ -4267,15 +4267,15 @@ Major version bumps require all dependent rules to be re-validated.
 
 ### 15.6 Database Statistics and Performance Targets
 
-| Database     | Rules | Avg Query Time | P99 Query Time | Index Size | Update Freq |
-| ------------ | ----- | -------------- | -------------- | ---------- | ----------- |
-| Ownership    | 2,847 | 0.02 ms        | 0.15 ms        | 4.2 MB     | Monthly     |
-| Borrow       | 1,203 | 0.01 ms        | 0.08 ms        | 1.8 MB     | Monthly     |
-| Lifetime     | 894   | 0.01 ms        | 0.06 ms        | 1.3 MB     | Quarterly   |
-| Type Safety  | 3,412 | 0.03 ms        | 0.20 ms        | 5.1 MB     | Monthly     |
-| Concurrency  | 567   | 0.008 ms       | 0.05 ms        | 0.9 MB     | Quarterly   |
-| FFI          | 234   | 0.005 ms       | 0.03 ms        | 0.4 MB     | As needed   |
-| **Total**    | **9,157** | **0.02 ms** | **0.20 ms**    | **13.7 MB** |             |
+| Database    | Rules     | Avg Query Time | P99 Query Time | Index Size  | Update Freq |
+| ----------- | --------- | -------------- | -------------- | ----------- | ----------- |
+| Ownership   | 2,847     | 0.02 ms        | 0.15 ms        | 4.2 MB      | Monthly     |
+| Borrow      | 1,203     | 0.01 ms        | 0.08 ms        | 1.8 MB      | Monthly     |
+| Lifetime    | 894       | 0.01 ms        | 0.06 ms        | 1.3 MB      | Quarterly   |
+| Type Safety | 3,412     | 0.03 ms        | 0.20 ms        | 5.1 MB      | Monthly     |
+| Concurrency | 567       | 0.008 ms       | 0.05 ms        | 0.9 MB      | Quarterly   |
+| FFI         | 234       | 0.005 ms       | 0.03 ms        | 0.4 MB      | As needed   |
+| **Total**   | **9,157** | **0.02 ms**    | **0.20 ms**    | **13.7 MB** |             |
 
 ### 15.7 SKB Distribution Protocol
 
@@ -4550,18 +4550,18 @@ High-priority messages (flag bit 3) bypass flow control entirely.
 
 ### 16.9 Error Handling
 
-| Error Code | Name                  | Recovery                          |
-| ---------- | --------------------- | --------------------------------- |
-| 0x01       | InvalidMagic          | Close connection                  |
-| 0x02       | VersionMismatch       | Negotiate down or close           |
-| 0x03       | PayloadTooLarge       | Reject with Nack, suggest fragment|
-| 0x04       | ChecksumMismatch      | Request retransmit                |
-| 0x05       | UnknownMessageType    | Skip with Nack(unsupported)       |
-| 0x06       | SequenceGap           | Request retransmit of missing seq |
-| 0x07       | DecryptionFailed      | Close connection (security)       |
-| 0x08       | DecompressionFailed   | Request retransmit uncompressed   |
-| 0x09       | CapabilityDenied      | Nack with required capabilities   |
-| 0x0A       | CreditExhausted       | Wait for FlowControl replenish    |
+| Error Code | Name                | Recovery                           |
+| ---------- | ------------------- | ---------------------------------- |
+| 0x01       | InvalidMagic        | Close connection                   |
+| 0x02       | VersionMismatch     | Negotiate down or close            |
+| 0x03       | PayloadTooLarge     | Reject with Nack, suggest fragment |
+| 0x04       | ChecksumMismatch    | Request retransmit                 |
+| 0x05       | UnknownMessageType  | Skip with Nack(unsupported)        |
+| 0x06       | SequenceGap         | Request retransmit of missing seq  |
+| 0x07       | DecryptionFailed    | Close connection (security)        |
+| 0x08       | DecompressionFailed | Request retransmit uncompressed    |
+| 0x09       | CapabilityDenied    | Nack with required capabilities    |
+| 0x0A       | CreditExhausted     | Wait for FlowControl replenish     |
 
 ### 16.10 Checksum
 
