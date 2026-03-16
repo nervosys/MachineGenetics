@@ -1,0 +1,82 @@
+{
+  "name": "redox-language",
+  "displayName": "Redox Language",
+  "description": "Syntax highlighting and RAP integration for the Redox programming language",
+  "version": "0.1.0",
+  "publisher": "nervosys",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nervosys/Redox.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages"],
+  "activationEvents": ["onLanguage:redox"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "redox",
+        "aliases": ["Redox", "rdx"],
+        "extensions": [".rdx"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "redox",
+        "scopeName": "source.redox",
+        "path": "./syntaxes/redox.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "redox.startRap",
+        "title": "Redox: Start RAP Server"
+      },
+      {
+        "command": "redox.stopRap",
+        "title": "Redox: Stop RAP Server"
+      },
+      {
+        "command": "redox.convertToRedox",
+        "title": "Convert to Redox (.rdx)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "when": "resourceExtname == .rs",
+          "command": "redox.convertToRedox",
+          "group": "redox"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Redox",
+      "properties": {
+        "redox.rapAddress": {
+          "type": "string",
+          "default": "127.0.0.1:9876",
+          "description": "Address of the RAP (Redox Agent Protocol) server"
+        },
+        "redox.rapAutoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically start the RAP server when opening .rdx files"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}
