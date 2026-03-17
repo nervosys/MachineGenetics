@@ -6,26 +6,26 @@ for all Redox programs. Every module is designed with **algebraic effects**,
 
 ## Module Hierarchy
 
-| Module | Description | Key Types / Functions |
-|--------|-------------|----------------------|
-| `std.io` | Buffered I/O with effect tracking | `Read`, `Write`, `File`, `BufReader`, `BufWriter` |
-| `std.net` | Networking with first-class HTTP | `TcpStream`, `UdpSocket`, `Request`, `Response` |
-| `std.fs` | File system operations | `read`, `write`, `create_dir`, `walk`, `Metadata` |
-| `std.col` | Collections beyond Vec/Map | `Map`, `Set`, `BTree`, `VecDeque`, `LinkedList` |
-| `std.sync` | Synchronization primitives | `Mutex`, `RwLock`, `Channel`, `Barrier`, `Semaphore` |
-| `std.async` | Async runtime and streams | `spawn`, `join`, `select`, `Future`, `Stream` |
-| `std.fmt` | Formatting and display | `Display`, `Debug`, `Formatter`, `print`, `println` |
-| `std.str` | String utilities and regex | `split`, `join`, `Regex`, `encode`, `decode` |
-| `std.math` | Mathematics, RNG, and SIMD | `sin`, `cos`, `sqrt`, `Rng`, `f32x4`, `f64x4` |
-| `std.time` | Time measurement and formatting | `Duration`, `Instant`, `SystemTime`, `format` |
-| `std.json` | First-class JSON support | `Value`, `parse`, `stringify`, `Serialize`, `Deserialize` |
-| `std.env` | Environment and directories | `args`, `var`, `current_dir`, `home_dir` |
-| `std.process` | Process management and signals | `Command`, `Child`, `exit`, `Signal` |
-| `std.agent` | Agent primitives (Redox-unique) | `Agent`, `Swarm`, `Message`, `Capability`, `Lease` |
-| `std.skb` | Safety Knowledge Base queries | `Rule`, `Query`, `validate`, `define_rule` |
-| `std.effect` | Algebraic effect system | `Effect`, `perform`, `handle`, `discharge` |
-| `std.spec` | Design-by-contract verification | `require`, `ensure`, `invariant`, `verify` |
-| `std.test` | Testing and property checking | `assert_eq`, `Bencher`, `prop`, `Arbitrary` |
+| Module        | Description                       | Key Types / Functions                                     |
+| ------------- | --------------------------------- | --------------------------------------------------------- |
+| `std.io`      | Buffered I/O with effect tracking | `Read`, `Write`, `File`, `BufReader`, `BufWriter`         |
+| `std.net`     | Networking with first-class HTTP  | `TcpStream`, `UdpSocket`, `Request`, `Response`           |
+| `std.fs`      | File system operations            | `read`, `write`, `create_dir`, `walk`, `Metadata`         |
+| `std.col`     | Collections beyond Vec/Map        | `Map`, `Set`, `BTree`, `VecDeque`, `LinkedList`           |
+| `std.sync`    | Synchronization primitives        | `Mutex`, `RwLock`, `Channel`, `Barrier`, `Semaphore`      |
+| `std.async`   | Async runtime and streams         | `spawn`, `join`, `select`, `Future`, `Stream`             |
+| `std.fmt`     | Formatting and display            | `Display`, `Debug`, `Formatter`, `print`, `println`       |
+| `std.str`     | String utilities and regex        | `split`, `join`, `Regex`, `encode`, `decode`              |
+| `std.math`    | Mathematics, RNG, and SIMD        | `sin`, `cos`, `sqrt`, `Rng`, `f32x4`, `f64x4`             |
+| `std.time`    | Time measurement and formatting   | `Duration`, `Instant`, `SystemTime`, `format`             |
+| `std.json`    | First-class JSON support          | `Value`, `parse`, `stringify`, `Serialize`, `Deserialize` |
+| `std.env`     | Environment and directories       | `args`, `var`, `current_dir`, `home_dir`                  |
+| `std.process` | Process management and signals    | `Command`, `Child`, `exit`, `Signal`                      |
+| `std.agent`   | Agent primitives (Redox-unique)   | `Agent`, `Swarm`, `Message`, `Capability`, `Lease`        |
+| `std.skb`     | Safety Knowledge Base queries     | `Rule`, `Query`, `validate`, `define_rule`                |
+| `std.effect`  | Algebraic effect system           | `Effect`, `perform`, `handle`, `discharge`                |
+| `std.spec`    | Design-by-contract verification   | `require`, `ensure`, `invariant`, `verify`                |
+| `std.test`    | Testing and property checking     | `assert_eq`, `Bencher`, `prop`, `Arbitrary`               |
 
 ## Design Principles
 

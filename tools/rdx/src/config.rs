@@ -66,10 +66,7 @@ pub struct SafetyConfig {
 
 impl Default for SafetyConfig {
     fn default() -> Self {
-        Self {
-            mode: default_safety_mode(),
-            profile: default_safety_profile(),
-        }
+        Self { mode: default_safety_mode(), profile: default_safety_profile() }
     }
 }
 

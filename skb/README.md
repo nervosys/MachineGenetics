@@ -6,18 +6,18 @@ diagnostics.
 
 ## Structure
 
-```
+```shell
 skb/
-├── manifest.json         # Version, database sizes, hashes
-├── rule-schema.json      # JSON Schema for rule validation
-├── README.md             # This file
-└── rules/
-    ├── ownership.json    # OWN-xxx  (2,847 rules in full corpus)
-    ├── borrow.json       # BR-xxx   (1,203 rules in full corpus)
-    ├── lifetime.json     # LT-xxx   (894 rules in full corpus)
-    ├── type_safety.json  # TS-xxx   (3,412 rules in full corpus)
-    ├── concurrency.json  # CC-xxx   (567 rules in full corpus)
-    └── ffi.json          # FFI-xxx  (234 rules in full corpus)
+├── manifest.json           # Version, database sizes, hashes
+├── rule-schema.json        # JSON Schema for rule validation
+├── README.md               # This file
+└── rule s/
+    ├──  ownership.json     # OWN-xxx  (2,847 rules in full corpus)
+    ├──  borrow.json        # BR-xxx   (1,203 rules in full corpus)
+    ├──  lifetime.json      # LT-xxx   (894 rules in full corpus)
+    ├──  type_safety.json   # TS-xxx   (3,412 rules in full corpus)
+    ├── concurrency.json    # CC-xxx   (567 rules in full corpus)
+    └── ffi.json            # FFI-xxx  (234 rules in full corpus)
 ```
 
 ## Rule Categories

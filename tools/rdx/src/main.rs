@@ -112,7 +112,9 @@ fn main() {
         Command::Test { filter } => commands::test(filter.as_deref(), cli.verbose),
         Command::Fmt { check } => commands::fmt(check, cli.verbose),
         Command::Run { args } => commands::run(&args, cli.verbose),
-        Command::Migrate { path, diff, stats } => commands::migrate(&path, diff, stats, cli.verbose),
+        Command::Migrate { path, diff, stats } => {
+            commands::migrate(&path, diff, stats, cli.verbose)
+        }
         Command::Rap { addr } => commands::rap(&addr, cli.verbose),
         Command::Skb { query, validate } => commands::skb(query.as_deref(), validate, cli.verbose),
         Command::Cost { function } => commands::cost(&function, cli.verbose),
