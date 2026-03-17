@@ -1,0 +1,41 @@
+# Forge Registry Configuration
+# =============================
+
+[server]
+host = "0.0.0.0"
+port = 8080
+workers = 4
+
+[storage]
+# Where module tarballs and metadata are stored
+data_dir = "/var/lib/forge/data"
+# Maximum upload size (bytes) — 50 MiB
+max_upload_bytes = 52_428_800
+
+[cache]
+# MLIR artifact cache directory
+mlir_dir = "/var/lib/forge/mlir-cache"
+# Target cache hit rate (for monitoring/alerting)
+target_hit_rate = 0.95
+# Auto-cache common targets on publish
+auto_targets = ["x86_64", "aarch64", "wasm32"]
+
+[crates_io]
+# Enable the crates.io compatibility layer
+enabled = true
+# crates.io API endpoint
+api_url = "https://crates.io/api/v1"
+# Auto-transpile Rust crates on first import
+auto_transpile = true
+
+[auth]
+# Token-based authentication for publish operations
+token_header = "Authorization"
+# Maximum number of owners per module
+max_owners = 10
+
+[skb]
+# Global SKB rules applied to all modules
+global_rules_path = "/etc/forge/global-skb-rules.toml"
+# Enforce SKB checks on publish
+enforce_on_publish = true
