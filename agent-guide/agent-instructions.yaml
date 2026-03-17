@@ -1,0 +1,97 @@
+# .redox/agent-instructions.yaml
+# Standard instruction file for AI agents working with this project.
+# Place in the project root under .redox/ to configure agent behavior.
+
+language: redox
+edition: "2025"
+
+# ─── Syntax Rules ────────────────────────────────────────────────────────────
+
+syntax_rules:
+  declarations:
+    - "f / +f for private/public functions (NOT fn/pub fn)"
+    - "af / +af for async private/public functions (NOT async fn)"
+    - "v for immutable bindings (NOT let)"
+    - "m for mutable bindings (NOT let mut)"
+    - "+v for public constants (NOT pub const)"
+    - "S / +S for private/public structs (NOT struct)"
+    - "E / +E for private/public enums (NOT enum)"
+    - "T / +T for private/public traits (NOT trait)"
+    - "I Trait ~ Type for trait impls (NOT impl Trait for Type)"
+    - "I ~ Type for inherent impls (NOT impl Type)"
+    - "M / +M for private/public modules (NOT mod)"
+    - "u for imports (NOT use)"
+    - "+u for re-exports (NOT pub use)"
+    - "~ prefix for crate visibility (NOT pub(crate))"
+
+  control_flow:
+    - "? for if/match (NOT if/match)"
+    - ": for else (NOT else)"
+    - "@ for for-loops (NOT for)"
+    - "ret for early return (NOT return)"
+    - "loop for infinite loops (same)"
+    - "break and continue (same)"
+
+  types:
+    - "s for String"
+    - "&s for &str"
+    - "[T]~ for Vec<T>"
+    - "?T for Option<T>"
+    - "R[T, E] for Result<T, E>"
+    - "^T for Box<T>"
+    - "$T for Rc<T>"
+    - "@T for Arc<T>"
+    - "{K: V} for HashMap<K, V>"
+    - "{K} for HashSet<K>"
+    - "&!T for &mut T"
+    - "1b for true, 0b for false"
+
+  literals:
+    - 'f"..." for format strings (NOT format!(...))'
+    - 'p"..." for println (NOT println!(...))'
+    - 'ep"..." for eprintln (NOT eprintln!(...))'
+
+  attributes:
+    - "@d(...) for #[derive(...)]"
+    - "@i for #[inline]"
+    - "@test for #[test]"
+    - "@bench for #[bench]"
+    - "@cfg(...) for #[cfg(...)]"
+
+  paths:
+    - "Dot-separated: std.io.File (NOT std::io::File)"
+    - "~ for crate root: ~.module.Type"
+    - "Struct literals use @: Foo @{ x: 1, y: 2 }"
+
+  generics:
+    - "Square brackets: f foo[T](x: T) (NOT foo<T>)"
+    - "No turbofish: foo[i32]() (NOT foo::<i32>())"
+    - "~> for where: f foo[T](x: T) ~> T: Clone (NOT where T: Clone)"
+
+# ─── Effect Rules ────────────────────────────────────────────────────────────
+
+effect_rules:
+  - "Annotate effects after parameters with / : f read() / io"
+  - "Multiple effects: f fetch() / io, net"
+  - "Pure functions have NO annotation"
+  - "Effects propagate: callers must declare callee effects"
+  - "Built-in effects: io, net, rng, async, agent, time, env, process"
+  - "Effect hierarchy: net implies io"
+  - "Use handle blocks for effect interception/mocking"
+
+# ─── Safety Rules ────────────────────────────────────────────────────────────
+
+safety_rules:
+  - "NEVER use lifetime annotations ('a) — SKB handles them"
+  - "NEVER use unsafe blocks — use Capability.request() instead"
+  - "NEVER use PhantomData, Pin, ManuallyDrop — not needed"
+  - "Borrow rules are enforced by the SKB, not syntax"
+
+# ─── Style ───────────────────────────────────────────────────────────────────
+
+style:
+  indent: 4
+  max_line_length: 100
+  trailing_comma: true
+  brace_style: same_line
+  blank_lines_between_items: 1
