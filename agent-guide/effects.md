@@ -19,16 +19,16 @@ f read() -> R[s, Error] / io { fs.read_to_string("data.txt") }
 
 ## Built-In Effects
 
-| Effect | Meaning | Typical Operations |
-|--------|---------|--------------------|
-| `io` | File / console I/O | `fs.read`, `fs.write`, `p"..."`, stdin/stdout |
-| `net` | Network access | `http.get`, `TcpStream.connect`, DNS lookup |
-| `rng` | Randomness | `rng.gen()`, `rng.shuffle()` |
-| `async` | Async execution | `.await`, `spawn`, `select` |
-| `agent` | Agent operations | `Agent.execute`, `Swarm.spawn`, `Capability.request` |
-| `time` | Clock access | `Instant.now()`, `sleep`, `SystemTime` |
-| `env` | Environment access | `env.var()`, `env.args()`, `env.current_dir()` |
-| `process` | Process control | `Command.new()`, `exit()`, `spawn_process()` |
+| Effect    | Meaning            | Typical Operations                                   |
+| --------- | ------------------ | ---------------------------------------------------- |
+| `io`      | File / console I/O | `fs.read`, `fs.write`, `p"..."`, stdin/stdout        |
+| `net`     | Network access     | `http.get`, `TcpStream.connect`, DNS lookup          |
+| `rng`     | Randomness         | `rng.gen()`, `rng.shuffle()`                         |
+| `async`   | Async execution    | `.await`, `spawn`, `select`                          |
+| `agent`   | Agent operations   | `Agent.execute`, `Swarm.spawn`, `Capability.request` |
+| `time`    | Clock access       | `Instant.now()`, `sleep`, `SystemTime`               |
+| `env`     | Environment access | `env.var()`, `env.args()`, `env.current_dir()`       |
+| `process` | Process control    | `Command.new()`, `exit()`, `spawn_process()`         |
 
 ## Effect Hierarchy
 
@@ -191,18 +191,18 @@ I DataSource ~ FileSource {
 
 ## Common Effect Combinations
 
-| Scenario | Effect Annotation |
-|----------|-------------------|
-| CLI tool reading files | `/ io, env` |
-| HTTP API handler | `/ net, io` (simplified to `/ net`) |
-| Agent executing a task | `/ agent` |
-| Swarm with network I/O | `/ net, agent` |
-| Random data generator | `/ rng` |
-| Timed benchmark | `/ time, io` |
-| Process launcher | `/ process, io` |
-| Pure computation | *(none)* |
-| Async-only (no I/O) | `/ async` |
-| Full-stack agent | `/ net, agent, time, env` |
+| Scenario               | Effect Annotation                   |
+| ---------------------- | ----------------------------------- |
+| CLI tool reading files | `/ io, env`                         |
+| HTTP API handler       | `/ net, io` (simplified to `/ net`) |
+| Agent executing a task | `/ agent`                           |
+| Swarm with network I/O | `/ net, agent`                      |
+| Random data generator  | `/ rng`                             |
+| Timed benchmark        | `/ time, io`                        |
+| Process launcher       | `/ process, io`                     |
+| Pure computation       | *(none)*                            |
+| Async-only (no I/O)    | `/ async`                           |
+| Full-stack agent       | `/ net, agent, time, env`           |
 
 ## Summary Rules
 

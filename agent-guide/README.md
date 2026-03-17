@@ -6,15 +6,15 @@ the Redox programming language.
 
 ## Contents
 
-| File | Purpose | Audience |
-|------|---------|----------|
-| [system-prompt.md](system-prompt.md) | Drop-in system prompt for AI agents | All AI models |
-| [syntax-quick-ref.md](syntax-quick-ref.md) | Condensed syntax lookup table | Fast reference |
-| [patterns.md](patterns.md) | Idiomatic Redox patterns and conventions | Code generation |
-| [anti-patterns.md](anti-patterns.md) | Common mistakes and how to avoid them | Error prevention |
-| [effects.md](effects.md) | Effect annotation rules and decision tree | Effect system |
-| [migration.md](migration.md) | Rust → Redox translation rules for agents | Migration tasks |
-| [examples/](examples/) | Worked prompt → response examples | Training / eval |
+| File                                       | Purpose                                   | Audience         |
+| ------------------------------------------ | ----------------------------------------- | ---------------- |
+| [system-prompt.md](system-prompt.md)       | Drop-in system prompt for AI agents       | All AI models    |
+| [syntax-quick-ref.md](syntax-quick-ref.md) | Condensed syntax lookup table             | Fast reference   |
+| [patterns.md](patterns.md)                 | Idiomatic Redox patterns and conventions  | Code generation  |
+| [anti-patterns.md](anti-patterns.md)       | Common mistakes and how to avoid them     | Error prevention |
+| [effects.md](effects.md)                   | Effect annotation rules and decision tree | Effect system    |
+| [migration.md](migration.md)               | Rust → Redox translation rules for agents | Migration tasks  |
+| [examples/](examples/)                     | Worked prompt → response examples         | Training / eval  |
 
 ## Quick Start for Agent Developers
 

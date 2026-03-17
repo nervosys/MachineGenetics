@@ -12,83 +12,83 @@ and safety proofs.
 
 ## Core Syntax — Declaration Keywords
 
-| Redox | Rust equivalent | Notes |
-|-------|----------------|-------|
-| `f name()` | `fn name()` | Private function |
-| `+f name()` | `pub fn name()` | Public function |
-| `af name()` | `async fn name()` | Private async function |
-| `+af name()` | `pub async fn name()` | Public async function |
-| `~f name()` | `pub(crate) fn name()` | Crate-visible function |
-| `v x = 1` | `let x = 1` | Immutable binding |
-| `m x = 1` | `let mut x = 1` | Mutable binding |
-| `+v X: i32 = 1` | `pub const X: i32 = 1` | Public constant |
-| `c f name()` | `const fn name()` | Const function |
-| `S Foo { }` | `struct Foo { }` | Private struct |
-| `+S Foo { }` | `pub struct Foo { }` | Public struct |
-| `E Bar { }` | `enum Bar { }` | Private enum |
-| `+E Bar { }` | `pub enum Bar { }` | Public enum |
-| `T MyTrait { }` | `trait MyTrait { }` | Private trait |
-| `+T MyTrait { }` | `pub trait MyTrait { }` | Public trait |
-| `I Display ~ Foo` | `impl Display for Foo` | Trait implementation |
-| `I ~ Foo` | `impl Foo` | Inherent implementation |
-| `M utils` | `mod utils` | Private module |
-| `+M utils` | `pub mod utils` | Public module |
-| `u std.io.File` | `use std::io::File` | Import |
-| `+u crate.utils.helper` | `pub use crate::utils::helper` | Re-export |
+| Redox                   | Rust equivalent                | Notes                   |
+| ----------------------- | ------------------------------ | ----------------------- |
+| `f name()`              | `fn name()`                    | Private function        |
+| `+f name()`             | `pub fn name()`                | Public function         |
+| `af name()`             | `async fn name()`              | Private async function  |
+| `+af name()`            | `pub async fn name()`          | Public async function   |
+| `~f name()`             | `pub(crate) fn name()`         | Crate-visible function  |
+| `v x = 1`               | `let x = 1`                    | Immutable binding       |
+| `m x = 1`               | `let mut x = 1`                | Mutable binding         |
+| `+v X: i32 = 1`         | `pub const X: i32 = 1`         | Public constant         |
+| `c f name()`            | `const fn name()`              | Const function          |
+| `S Foo { }`             | `struct Foo { }`               | Private struct          |
+| `+S Foo { }`            | `pub struct Foo { }`           | Public struct           |
+| `E Bar { }`             | `enum Bar { }`                 | Private enum            |
+| `+E Bar { }`            | `pub enum Bar { }`             | Public enum             |
+| `T MyTrait { }`         | `trait MyTrait { }`            | Private trait           |
+| `+T MyTrait { }`        | `pub trait MyTrait { }`        | Public trait            |
+| `I Display ~ Foo`       | `impl Display for Foo`         | Trait implementation    |
+| `I ~ Foo`               | `impl Foo`                     | Inherent implementation |
+| `M utils`               | `mod utils`                    | Private module          |
+| `+M utils`              | `pub mod utils`                | Public module           |
+| `u std.io.File`         | `use std::io::File`            | Import                  |
+| `+u crate.utils.helper` | `pub use crate::utils::helper` | Re-export               |
 
 ## Core Syntax — Control Flow
 
-| Redox | Rust equivalent |
-|-------|----------------|
-| `? condition { }` | `if condition { }` |
-| `? condition { } : { }` | `if condition { } else { }` |
+| Redox                     | Rust equivalent               |
+| ------------------------- | ----------------------------- |
+| `? condition { }`         | `if condition { }`            |
+| `? condition { } : { }`   | `if condition { } else { }`   |
 | `? value { pat => expr }` | `match value { pat => expr }` |
-| `@ item ~ collection { }` | `for item in collection { }` |
-| `loop { }` | `loop { }` |
-| `ret value` | `return value` |
-| `break` | `break` |
-| `continue` | `continue` |
+| `@ item ~ collection { }` | `for item in collection { }`  |
+| `loop { }`                | `loop { }`                    |
+| `ret value`               | `return value`                |
+| `break`                   | `break`                       |
+| `continue`                | `continue`                    |
 
 ## Core Syntax — Type Sugar
 
-| Redox | Rust equivalent |
-|-------|----------------|
-| `s` | `String` |
-| `&s` | `&str` |
-| `[T]~` | `Vec<T>` |
-| `?T` | `Option<T>` |
-| `R[T, E]` | `Result<T, E>` |
-| `^T` | `Box<T>` |
-| `$T` | `Rc<T>` |
-| `@T` | `Arc<T>` |
-| `{K: V}` | `HashMap<K, V>` |
-| `{K}` | `HashSet<K>` |
-| `&!T` | `&mut T` |
-| `1b` | `true` |
-| `0b` | `false` |
+| Redox     | Rust equivalent |
+| --------- | --------------- |
+| `s`       | `String`        |
+| `&s`      | `&str`          |
+| `[T]~`    | `Vec<T>`        |
+| `?T`      | `Option<T>`     |
+| `R[T, E]` | `Result<T, E>`  |
+| `^T`      | `Box<T>`        |
+| `$T`      | `Rc<T>`         |
+| `@T`      | `Arc<T>`        |
+| `{K: V}`  | `HashMap<K, V>` |
+| `{K}`     | `HashSet<K>`    |
+| `&!T`     | `&mut T`        |
+| `1b`      | `true`          |
+| `0b`      | `false`         |
 
 ## Core Syntax — Macros / Attributes / Literals
 
-| Redox | Rust equivalent |
-|-------|----------------|
-| `p"hello {x}"` | `println!("hello {x}")` |
-| `f"hello {x}"` | `format!("hello {x}")` |
-| `ep"error: {e}"` | `eprintln!("error: {e}")` |
+| Redox              | Rust equivalent           |
+| ------------------ | ------------------------- |
+| `p"hello {x}"`     | `println!("hello {x}")`   |
+| `f"hello {x}"`     | `format!("hello {x}")`    |
+| `ep"error: {e}"`   | `eprintln!("error: {e}")` |
 | `@d(Debug, Clone)` | `#[derive(Debug, Clone)]` |
-| `@i` | `#[inline]` |
-| `@test` | `#[test]` |
-| `@bench` | `#[bench]` |
-| `@cfg(test)` | `#[cfg(test)]` |
+| `@i`               | `#[inline]`               |
+| `@test`            | `#[test]`                 |
+| `@bench`           | `#[bench]`                |
+| `@cfg(test)`       | `#[cfg(test)]`            |
 
 ## Core Syntax — Generics and Paths
 
-| Redox | Rust equivalent |
-|-------|----------------|
-| `f foo[T](x: T)` | `fn foo<T>(x: T)` |
-| `~> T: Clone` | `where T: Clone` |
-| `foo[i32]()` | `foo::<i32>()` |
-| `std.io.File` | `std::io::File` |
-| `Foo @{ x: 1 }` | `Foo { x: 1 }` (struct literal) |
+| Redox            | Rust equivalent                 |
+| ---------------- | ------------------------------- |
+| `f foo[T](x: T)` | `fn foo<T>(x: T)`               |
+| `~> T: Clone`    | `where T: Clone`                |
+| `foo[i32]()`     | `foo::<i32>()`                  |
+| `std.io.File`    | `std::io::File`                 |
+| `Foo @{ x: 1 }`  | `Foo { x: 1 }` (struct literal) |
 
 ## Effect System
 

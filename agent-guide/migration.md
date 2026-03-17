@@ -6,71 +6,71 @@
 
 ## Rule Table: Keyword Substitutions
 
-| Rust | Redox | Example |
-|------|-------|---------|
-| `fn name()` | `f name()` | `f greet()` |
-| `pub fn name()` | `+f name()` | `+f greet()` |
-| `pub(crate) fn name()` | `~f name()` | `~f helper()` |
-| `async fn name()` | `af name()` | `af fetch()` |
-| `pub async fn name()` | `+af name()` | `+af fetch()` |
-| `const fn name()` | `c f name()` | `c f max()` |
-| `let x = ...` | `v x = ...` | `v count = 0` |
-| `let mut x = ...` | `m x = ...` | `m total = 0` |
-| `pub const X` | `+v X` | `+v MAX: i32 = 100` |
-| `struct Foo` | `S Foo` | `S Point { x: f64 }` |
-| `pub struct Foo` | `+S Foo` | `+S Point { x: f64 }` |
-| `enum Bar` | `E Bar` | `E Color { Red, Blue }` |
-| `pub enum Bar` | `+E Bar` | `+E Color { Red, Blue }` |
-| `trait Tr` | `T Tr` | `T Display { }` |
-| `pub trait Tr` | `+T Tr` | `+T Display { }` |
-| `impl Trait for Type` | `I Trait ~ Type` | `I Display ~ Foo` |
-| `impl Type` | `I ~ Type` | `I ~ Foo` |
-| `mod name` | `M name` | `M utils` |
-| `pub mod name` | `+M name` | `+M utils` |
-| `use path::Item` | `u path.Item` | `u std.io.File` |
-| `pub use path::Item` | `+u path.Item` | `+u ~.models.User` |
-| `return expr` | `ret expr` | `ret 42` |
-| `if cond { }` | `? cond { }` | `? x > 0 { }` |
-| `else { }` | `: { }` | `: { default() }` |
-| `else if cond { }` | `: ? cond { }` | `: ? x == 0 { }` |
-| `match expr { }` | `? expr { }` | `? color { Red => 1 }` |
-| `for x in iter { }` | `@ x ~ iter { }` | `@ n ~ 0..10 { }` |
-| `true` | `1b` | `v flag = 1b` |
-| `false` | `0b` | `v done = 0b` |
+| Rust                   | Redox            | Example                  |
+| ---------------------- | ---------------- | ------------------------ |
+| `fn name()`            | `f name()`       | `f greet()`              |
+| `pub fn name()`        | `+f name()`      | `+f greet()`             |
+| `pub(crate) fn name()` | `~f name()`      | `~f helper()`            |
+| `async fn name()`      | `af name()`      | `af fetch()`             |
+| `pub async fn name()`  | `+af name()`     | `+af fetch()`            |
+| `const fn name()`      | `c f name()`     | `c f max()`              |
+| `let x = ...`          | `v x = ...`      | `v count = 0`            |
+| `let mut x = ...`      | `m x = ...`      | `m total = 0`            |
+| `pub const X`          | `+v X`           | `+v MAX: i32 = 100`      |
+| `struct Foo`           | `S Foo`          | `S Point { x: f64 }`     |
+| `pub struct Foo`       | `+S Foo`         | `+S Point { x: f64 }`    |
+| `enum Bar`             | `E Bar`          | `E Color { Red, Blue }`  |
+| `pub enum Bar`         | `+E Bar`         | `+E Color { Red, Blue }` |
+| `trait Tr`             | `T Tr`           | `T Display { }`          |
+| `pub trait Tr`         | `+T Tr`          | `+T Display { }`         |
+| `impl Trait for Type`  | `I Trait ~ Type` | `I Display ~ Foo`        |
+| `impl Type`            | `I ~ Type`       | `I ~ Foo`                |
+| `mod name`             | `M name`         | `M utils`                |
+| `pub mod name`         | `+M name`        | `+M utils`               |
+| `use path::Item`       | `u path.Item`    | `u std.io.File`          |
+| `pub use path::Item`   | `+u path.Item`   | `+u ~.models.User`       |
+| `return expr`          | `ret expr`       | `ret 42`                 |
+| `if cond { }`          | `? cond { }`     | `? x > 0 { }`            |
+| `else { }`             | `: { }`          | `: { default() }`        |
+| `else if cond { }`     | `: ? cond { }`   | `: ? x == 0 { }`         |
+| `match expr { }`       | `? expr { }`     | `? color { Red => 1 }`   |
+| `for x in iter { }`    | `@ x ~ iter { }` | `@ n ~ 0..10 { }`        |
+| `true`                 | `1b`             | `v flag = 1b`            |
+| `false`                | `0b`             | `v done = 0b`            |
 
 ## Rule Table: Type Substitutions
 
-| Rust | Redox |
-|------|-------|
-| `String` | `s` |
-| `&str` | `&s` |
-| `Vec<T>` | `[T]~` |
-| `Option<T>` | `?T` |
-| `Result<T, E>` | `R[T, E]` |
-| `Box<T>` | `^T` |
-| `Rc<T>` | `$T` |
-| `Arc<T>` | `@T` |
-| `HashMap<K, V>` | `{K: V}` |
-| `HashSet<K>` | `{K}` |
-| `&mut T` | `&!T` |
+| Rust            | Redox     |
+| --------------- | --------- |
+| `String`        | `s`       |
+| `&str`          | `&s`      |
+| `Vec<T>`        | `[T]~`    |
+| `Option<T>`     | `?T`      |
+| `Result<T, E>`  | `R[T, E]` |
+| `Box<T>`        | `^T`      |
+| `Rc<T>`         | `$T`      |
+| `Arc<T>`        | `@T`      |
+| `HashMap<K, V>` | `{K: V}`  |
+| `HashSet<K>`    | `{K}`     |
+| `&mut T`        | `&!T`     |
 
 ## Rule Table: Syntax Substitutions
 
-| Rust | Redox |
-|------|-------|
-| `std::io::File` | `std.io.File` |
-| `crate::module::Item` | `~.module.Item` |
-| `foo::<i32>()` | `foo[i32]()` |
-| `fn foo<T>(x: T)` | `f foo[T](x: T)` |
-| `where T: Clone` | `~> T: Clone` |
-| `Foo { x: 1, y: 2 }` | `Foo @{ x: 1, y: 2 }` |
-| `#[derive(Debug)]` | `@d(Debug)` |
-| `#[inline]` | `@i` |
-| `#[test]` | `@test` |
-| `#[cfg(test)]` | `@cfg(test)` |
-| `println!("hi {x}")` | `p"hi {x}"` |
-| `format!("hi {x}")` | `f"hi {x}"` |
-| `eprintln!("err {e}")` | `ep"err {e}"` |
+| Rust                   | Redox                 |
+| ---------------------- | --------------------- |
+| `std::io::File`        | `std.io.File`         |
+| `crate::module::Item`  | `~.module.Item`       |
+| `foo::<i32>()`         | `foo[i32]()`          |
+| `fn foo<T>(x: T)`      | `f foo[T](x: T)`      |
+| `where T: Clone`       | `~> T: Clone`         |
+| `Foo { x: 1, y: 2 }`   | `Foo @{ x: 1, y: 2 }` |
+| `#[derive(Debug)]`     | `@d(Debug)`           |
+| `#[inline]`            | `@i`                  |
+| `#[test]`              | `@test`               |
+| `#[cfg(test)]`         | `@cfg(test)`          |
+| `println!("hi {x}")`   | `p"hi {x}"`           |
+| `format!("hi {x}")`    | `f"hi {x}"`           |
+| `eprintln!("err {e}")` | `ep"err {e}"`         |
 
 ---
 
