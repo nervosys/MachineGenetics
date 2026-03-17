@@ -15,8 +15,8 @@
 
 | Step | Title                              | Status | Description                                                                                                                       |
 | ---- | ---------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| 23   | Complete the lexer                 | 🔧      | Cover all 60+ keyword/attribute/type mappings from §5.5 (ep"...", `@@`, `?=`, `~>`, `af`, `uf`, `Y`, `Z`, `R`, `Ok`, `Err`, etc.) |
-| 24   | Complete the parser                | ⬚      | Proper LL(1) with all Redox syntax forms: contracts, specs, effects decl, capability blocks, swarm patterns, perf annotations     |
+| 23   | Complete the lexer                 | ✅      | Cover all 60+ keyword/attribute/type mappings from §5.5 (ep"...", `@@`, `?=`, `~>`, `af`, `uf`, `Y`, `Z`, `R`, `Ok`, `Err`, etc.) |
+| 24   | Complete the parser                | ✅      | Proper LL(1) with all Redox syntax forms: contracts, specs, effects decl, capability blocks, swarm patterns, perf annotations     |
 | 25   | Structured Diagnostic Graph        | ⬚      | Replace flat error strings with DiagnosticGraph (§6.2): fix candidates, confidence, causal chains, related errors                 |
 | 26   | Safety elision pass                | ⬚      | Strip lifetimes, `unsafe`, `&mut`, `move`, `ref`, `Pin`, `PhantomData`, `Send`/`Sync` from AST in agentic mode                    |
 | 27   | Dual-syntax transpiler integration | ⬚      | `--syntax=legacy` flag: accept Rust syntax via rust2rdx, feed canonical form to compiler                                          |

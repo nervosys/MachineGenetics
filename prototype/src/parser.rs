@@ -123,15 +123,18 @@ impl<'a> Parser<'a> {
 
     fn parse_item_kind(&mut self) -> Result<ItemKind, ParseError> {
         match self.peek() {
-            TokenKind::KwF => self.parse_function_def().map(ItemKind::Function),
+            TokenKind::KwF => self.parse_function_def(false, false).map(ItemKind::Function),
+            TokenKind::KwAf => self.parse_function_def(true, false).map(ItemKind::Function),
+            TokenKind::KwUf => self.parse_function_def(false, true).map(ItemKind::Function),
             TokenKind::KwS => self.parse_struct_def().map(ItemKind::Struct),
             TokenKind::KwE => self.parse_enum_def().map(ItemKind::Enum),
             TokenKind::KwT => self.parse_trait_def().map(ItemKind::Trait),
             TokenKind::KwI => self.parse_impl_block().map(ItemKind::Impl),
             TokenKind::KwMod => self.parse_module_def().map(ItemKind::Module),
             TokenKind::KwUse => self.parse_use_decl().map(ItemKind::Use),
-            TokenKind::KwType => self.parse_type_alias().map(ItemKind::TypeAlias),
+            TokenKind::KwType | TokenKind::KwY => self.parse_type_alias().map(ItemKind::TypeAlias),
             TokenKind::KwC => self.parse_const_def().map(ItemKind::Const),
+            TokenKind::KwZ => self.parse_static_def().map(ItemKind::Static),
             TokenKind::KwEffect => self.parse_effect_def().map(ItemKind::Effect),
             TokenKind::KwSpec => self.parse_spec_def().map(ItemKind::Spec),
             _ => Err(self.error(&format!("expected item, found {:?}", self.peek()))),
@@ -167,8 +170,9 @@ impl<'a> Parser<'a> {
 
     // ── Function ────────────────────────────────────────────
 
-    fn parse_function_def(&mut self) -> Result<FunctionDef, ParseError> {
-        self.expect(TokenKind::KwF)?;
+    fn parse_function_def(&mut self, is_async: bool, is_unsafe: bool) -> Result<FunctionDef, ParseError> {
+        // Consume the function keyword (f, af, or uf)
+        self.advance();
         let name = self.expect_ident()?;
 
         let generics = if self.peek() == TokenKind::LBrack {
@@ -188,9 +192,15 @@ impl<'a> Parser<'a> {
             None
         };
 
+        let where_clause = if self.peek() == TokenKind::TildeArrow {
+            self.parse_where_clause()?
+        } else {
+            Vec::new()
+        };
+
         let body = self.parse_block()?;
 
-        Ok(FunctionDef { name, generics, params, return_type, effects: Vec::new(), body })
+        Ok(FunctionDef { name, is_async, is_unsafe, generics, params, return_type, where_clause, effects: Vec::new(), body })
     }
 
     // ── Struct ──────────────────────────────────────────────
@@ -417,7 +427,8 @@ impl<'a> Parser<'a> {
     // ── Type Alias ──────────────────────────────────────────
 
     fn parse_type_alias(&mut self) -> Result<TypeAlias, ParseError> {
-        self.expect(TokenKind::KwType)?;
+        // Accept both KwType ("type") and KwY ("Y")
+        self.advance();
         let name = self.expect_ident()?;
 
         let generics = if self.peek() == TokenKind::LBrack {
@@ -445,6 +456,53 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::Semi)?;
 
         Ok(ConstDef { name, ty, value })
+    }
+
+    // ── Static ──────────────────────────────────────────────
+
+    fn parse_static_def(&mut self) -> Result<StaticDef, ParseError> {
+        self.expect(TokenKind::KwZ)?;
+        let mutable = if self.peek() == TokenKind::KwM {
+            self.advance();
+            true
+        } else {
+            false
+        };
+        let name = self.expect_ident()?;
+        self.expect(TokenKind::Colon)?;
+        let ty = self.parse_type()?;
+        self.expect(TokenKind::Assign)?;
+        let value = self.parse_expr()?;
+        self.expect(TokenKind::Semi)?;
+
+        Ok(StaticDef { name, mutable, ty, value })
+    }
+
+    // ── Where Clause ────────────────────────────────────────
+
+    fn parse_where_clause(&mut self) -> Result<Vec<WherePredicate>, ParseError> {
+        self.expect(TokenKind::TildeArrow)?;
+        let mut predicates = Vec::new();
+        loop {
+            let type_param = self.expect_ident()?;
+            self.expect(TokenKind::Colon)?;
+            let mut bounds = Vec::new();
+            loop {
+                bounds.push(self.expect_ident()?);
+                if self.peek() == TokenKind::Plus {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+            predicates.push(WherePredicate { type_param, bounds });
+            if self.peek() == TokenKind::Comma {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        Ok(predicates)
     }
 
     // ── Effect ──────────────────────────────────────────────
@@ -591,6 +649,37 @@ impl<'a> Parser<'a> {
                 Ok(Type::Rc { inner: Box::new(inner) })
             }
 
+            // &~T (Cow)
+            TokenKind::AndTilde => {
+                self.advance();
+                let inner = self.parse_type()?;
+                Ok(Type::Cow { inner: Box::new(inner) })
+            }
+
+            // %T (Cell) / %!T (RefCell)
+            TokenKind::Percent => {
+                self.advance();
+                let inner = self.parse_type()?;
+                Ok(Type::Cell { inner: Box::new(inner) })
+            }
+            TokenKind::PercentNot => {
+                self.advance();
+                let inner = self.parse_type()?;
+                Ok(Type::RefCell { inner: Box::new(inner) })
+            }
+
+            // #T (Mutex) / #~T (RwLock)
+            TokenKind::Hash => {
+                self.advance();
+                let inner = self.parse_type()?;
+                Ok(Type::Mutex { inner: Box::new(inner) })
+            }
+            TokenKind::HashTilde => {
+                self.advance();
+                let inner = self.parse_type()?;
+                Ok(Type::RwLock { inner: Box::new(inner) })
+            }
+
             // ?T (Option)
             TokenKind::Question => {
                 self.advance();
@@ -638,14 +727,19 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            // {K: V} (map)
+            // {K: V} (map) or {K} (set)
             TokenKind::LBrace => {
                 self.advance();
                 let key = self.parse_type()?;
-                self.expect(TokenKind::Colon)?;
-                let value = self.parse_type()?;
-                self.expect(TokenKind::RBrace)?;
-                Ok(Type::Map { key: Box::new(key), value: Box::new(value) })
+                if self.peek() == TokenKind::Colon {
+                    self.advance();
+                    let value = self.parse_type()?;
+                    self.expect(TokenKind::RBrace)?;
+                    Ok(Type::Map { key: Box::new(key), value: Box::new(value) })
+                } else {
+                    self.expect(TokenKind::RBrace)?;
+                    Ok(Type::Set { inner: Box::new(key) })
+                }
             }
 
             // (T, T, ...) tuple
@@ -963,7 +1057,8 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            // Break
+            // Break (KwBreak keyword — note: `!` as break is handled via
+            // context in statement parsing; in expr prefix position `!` is unary-not)
             TokenKind::KwBreak => {
                 self.advance();
                 if self.peek() == TokenKind::Semi || self.peek() == TokenKind::RBrace {
@@ -974,10 +1069,39 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            // Continue
-            TokenKind::KwContinue => {
+            // Continue (also via >> token which lexes as Shr)
+            TokenKind::KwContinue | TokenKind::Shr => {
                 self.advance();
                 Ok(Expr::Continue)
+            }
+
+            // Todo (??) and Unimplemented (???)
+            TokenKind::Todo => {
+                self.advance();
+                Ok(Expr::Todo)
+            }
+            TokenKind::Unimplemented => {
+                self.advance();
+                Ok(Expr::Unimplemented)
+            }
+
+            // Match with scrutinee: ?= expr { pat => expr, ... }
+            TokenKind::QuestionEq => {
+                self.advance();
+                let scrutinee = self.parse_expr()?;
+                self.expect(TokenKind::LBrace)?;
+                let mut arms = Vec::new();
+                while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
+                    let pattern = self.parse_pattern()?;
+                    self.expect(TokenKind::FatArrow)?;
+                    let body = self.parse_expr()?;
+                    if self.peek() == TokenKind::Comma {
+                        self.advance();
+                    }
+                    arms.push(MatchArm { pattern, body });
+                }
+                self.expect(TokenKind::RBrace)?;
+                Ok(Expr::Match { scrutinee: Some(Box::new(scrutinee)), arms })
             }
 
             // If: ? expr { ... } : { ... } or ? { match_arm, ... }
@@ -997,7 +1121,7 @@ impl<'a> Parser<'a> {
                         arms.push(MatchArm { pattern, body });
                     }
                     self.expect(TokenKind::RBrace)?;
-                    Ok(Expr::Match { arms })
+                    Ok(Expr::Match { scrutinee: None, arms })
                 } else {
                     // If expression: ? cond { ... } : { ... }
                     let cond = self.parse_expr()?;
@@ -1015,8 +1139,6 @@ impl<'a> Parser<'a> {
             // For loop: @ pattern : iter { ... }
             TokenKind::At => {
                 self.advance();
-                // Check if this is a struct literal (@Type { ... }) or for loop
-                // For loop has pattern : iterable { body }
                 let pattern = self.parse_pattern()?;
                 self.expect(TokenKind::Colon)?;
                 let iter = self.parse_expr()?;
@@ -1024,8 +1146,16 @@ impl<'a> Parser<'a> {
                 Ok(Expr::For { pattern, iter: Box::new(iter), body })
             }
 
-            // Loop
-            TokenKind::KwLoop => {
+            // While loop: @w cond { ... }
+            TokenKind::AtW => {
+                self.advance();
+                let cond = self.parse_expr()?;
+                let body = self.parse_block()?;
+                Ok(Expr::While { cond: Box::new(cond), body })
+            }
+
+            // Infinite loop: @@ { ... } (also legacy "loop" keyword)
+            TokenKind::AtAt | TokenKind::KwLoop => {
                 self.advance();
                 let body = self.parse_block()?;
                 Ok(Expr::Loop { body })
@@ -1119,7 +1249,7 @@ impl<'a> Parser<'a> {
                 };
                 Ok(Expr::Literal { value: tok.text.clone(), kind })
             }
-            TokenKind::StringLiteral | TokenKind::FormatString | TokenKind::PrintString => {
+            TokenKind::StringLiteral | TokenKind::FormatString | TokenKind::PrintString | TokenKind::EprintString => {
                 let tok = self.advance();
                 let kind = match tok.kind {
                     TokenKind::FormatString => LiteralKind::FormatString,
@@ -1286,6 +1416,113 @@ mod tests {
             assert_eq!(e.operations.len(), 1);
         } else {
             panic!("expected effect");
+        }
+    }
+
+    #[test]
+    fn test_async_function() {
+        let module = parse_source("af fetch(url: s) -> s { url }");
+        if let ItemKind::Function(ref f) = module.items[0].kind {
+            assert_eq!(f.name, "fetch");
+            assert!(f.is_async);
+            assert!(!f.is_unsafe);
+        } else {
+            panic!("expected async function");
+        }
+    }
+
+    #[test]
+    fn test_unsafe_function() {
+        let module = parse_source("uf deref(ptr: ^i32) -> i32 { 0 }");
+        if let ItemKind::Function(ref f) = module.items[0].kind {
+            assert_eq!(f.name, "deref");
+            assert!(!f.is_async);
+            assert!(f.is_unsafe);
+        } else {
+            panic!("expected unsafe function");
+        }
+    }
+
+    #[test]
+    fn test_static_def() {
+        let module = parse_source("Z COUNT: i32 = 0;");
+        if let ItemKind::Static(ref s) = module.items[0].kind {
+            assert_eq!(s.name, "COUNT");
+            assert!(!s.mutable);
+        } else {
+            panic!("expected static");
+        }
+    }
+
+    #[test]
+    fn test_static_mutable() {
+        let module = parse_source("Z m COUNTER: i32 = 0;");
+        if let ItemKind::Static(ref s) = module.items[0].kind {
+            assert_eq!(s.name, "COUNTER");
+            assert!(s.mutable);
+        } else {
+            panic!("expected mutable static");
+        }
+    }
+
+    #[test]
+    fn test_type_alias_y() {
+        let module = parse_source("Y Num = i32;");
+        if let ItemKind::TypeAlias(ref ta) = module.items[0].kind {
+            assert_eq!(ta.name, "Num");
+        } else {
+            panic!("expected type alias");
+        }
+    }
+
+    #[test]
+    fn test_while_loop() {
+        let module = parse_source("f run() { @w true { 0 } }");
+        if let ItemKind::Function(ref f) = module.items[0].kind {
+            // while loop is the tail expression of the function body
+            assert!(f.body.tail_expr.is_some() || !f.body.stmts.is_empty());
+        } else {
+            panic!("expected function");
+        }
+    }
+
+    #[test]
+    fn test_infinite_loop() {
+        let module = parse_source("f run() { @@ { 0 } }");
+        if let ItemKind::Function(ref f) = module.items[0].kind {
+            assert!(f.body.tail_expr.is_some() || !f.body.stmts.is_empty());
+        } else {
+            panic!("expected function");
+        }
+    }
+
+    #[test]
+    fn test_todo_expr() {
+        let module = parse_source("f placeholder() -> i32 { ?? }");
+        if let ItemKind::Function(ref f) = module.items[0].kind {
+            assert!(f.body.tail_expr.is_some());
+        } else {
+            panic!("expected function");
+        }
+    }
+
+    #[test]
+    fn test_unimplemented_expr() {
+        let module = parse_source("f stub() -> i32 { ??? }");
+        if let ItemKind::Function(ref f) = module.items[0].kind {
+            assert!(f.body.tail_expr.is_some());
+        } else {
+            panic!("expected function");
+        }
+    }
+
+    #[test]
+    fn test_continue_expr() {
+        let module = parse_source("f run() { @@ { >> } }");
+        if let ItemKind::Function(ref f) = module.items[0].kind {
+            assert!(f.body.tail_expr.is_some() || !f.body.stmts.is_empty());
+        } else {
+            panic!("expected function with continue");
         }
     }
 }

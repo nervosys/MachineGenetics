@@ -82,6 +82,10 @@ impl<'a> EmitCtx<'a> {
             ast::ItemKind::Spec(sp) => {
                 self.line(&format!("// spec {}", sp.name));
             }
+            ast::ItemKind::Static(sd) => {
+                let ty = self.mlir_type(&sd.ty);
+                self.line(&format!("redox.static @{} : {ty}", sd.name));
+            }
         }
     }
 
@@ -361,10 +365,11 @@ impl<'a> EmitCtx<'a> {
                 let cond = self.fresh();
                 format!("redox.if {cond} then(...) else(...)")
             }
-            ast::Expr::Match { arms } => {
+            ast::Expr::Match { arms, .. } => {
                 format!("redox.match({} arms)", arms.len())
             }
             ast::Expr::Loop { .. } => format!("redox.loop {{ ... }}"),
+            ast::Expr::While { .. } => format!("redox.while {{ ... }}"),
             ast::Expr::For { .. } => format!("redox.for {{ ... }}"),
             ast::Expr::Block { block } => {
                 format!("redox.block({} stmts)", block.stmts.len())
@@ -401,6 +406,11 @@ impl<'a> EmitCtx<'a> {
                 let lo = self.fresh();
                 let hi = self.fresh();
                 format!("redox.range {lo}..{hi} (inclusive={inclusive})")
+            }
+            ast::Expr::Todo => format!("redox.todo"),
+            ast::Expr::Unimplemented => format!("redox.unimplemented"),
+            ast::Expr::UnsafeBlock { block } => {
+                format!("redox.unsafe({} stmts)", block.stmts.len())
             }
             ast::Expr::Error { message } => format!("redox.error \"{message}\""),
         }
@@ -492,6 +502,24 @@ impl<'a> EmitCtx<'a> {
             ast::Type::Inferred => "!redox.inferred".into(),
             ast::Type::SelfType => "!redox.self".into(),
             ast::Type::StringType => "!redox.str".into(),
+            ast::Type::Cow { inner } => {
+                format!("!redox.cow<{}>", self.mlir_type(inner))
+            }
+            ast::Type::Cell { inner } => {
+                format!("!redox.cell<{}>", self.mlir_type(inner))
+            }
+            ast::Type::RefCell { inner } => {
+                format!("!redox.refcell<{}>", self.mlir_type(inner))
+            }
+            ast::Type::Mutex { inner } => {
+                format!("!redox.mutex<{}>", self.mlir_type(inner))
+            }
+            ast::Type::RwLock { inner } => {
+                format!("!redox.rwlock<{}>", self.mlir_type(inner))
+            }
+            ast::Type::Set { inner } => {
+                format!("!redox.set<{}>", self.mlir_type(inner))
+            }
         }
     }
 }

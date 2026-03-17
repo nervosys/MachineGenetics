@@ -39,6 +39,7 @@ pub enum ItemKind {
     Use(UseDef),
     TypeAlias(TypeAlias),
     Const(ConstDef),
+    Static(StaticDef),
     Effect(EffectDef),
     Spec(SpecDef),
 }
@@ -46,9 +47,12 @@ pub enum ItemKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionDef {
     pub name: String,
+    pub is_async: bool,
+    pub is_unsafe: bool,
     pub generics: Vec<GenericParam>,
     pub params: Vec<Param>,
     pub return_type: Option<Type>,
+    pub where_clause: Vec<WherePredicate>,
     pub effects: Vec<String>,
     pub body: Block,
 }
@@ -74,9 +78,15 @@ pub enum Type {
     OwnedPtr { inner: Box<Type> },        // ^T
     Rc { inner: Box<Type> },              // $T
     Arc { inner: Box<Type> },             // @T
+    Cow { inner: Box<Type> },             // &~T
+    Cell { inner: Box<Type> },            // %T
+    RefCell { inner: Box<Type> },         // %!T
+    Mutex { inner: Box<Type> },           // #T
+    RwLock { inner: Box<Type> },          // #~T
     Slice { inner: Box<Type> },           // [T]
     Array { inner: Box<Type>, size: Box<Expr> }, // [T; N]
     Vec { inner: Box<Type> },             // [T]~
+    Set { inner: Box<Type> },             // {T}
     Tuple { elements: Vec<Type> },
     Option { inner: Box<Type> },          // ?T
     Result { ok: Box<Type>, err: Box<Type> }, // R[T, E]
@@ -121,8 +131,9 @@ pub enum Expr {
     ArrayRepeat { value: Box<Expr>, count: Box<Expr> },
     Closure { params: Vec<Param>, body: Box<Expr> },
     If { cond: Box<Expr>, then_block: Block, else_block: Option<Block> },
-    Match { arms: Vec<MatchArm> },
+    Match { scrutinee: Option<Box<Expr>>, arms: Vec<MatchArm> },
     Loop { body: Block },
+    While { cond: Box<Expr>, body: Block },
     For { pattern: Pattern, iter: Box<Expr>, body: Block },
     Block { block: Block },
     Return { value: Option<Box<Expr>> },
@@ -133,6 +144,9 @@ pub enum Expr {
     Cast { expr: Box<Expr>, ty: Type },
     Assign { target: Box<Expr>, value: Box<Expr> },
     Range { start: Box<Expr>, end: Box<Expr>, inclusive: bool },
+    Todo,
+    Unimplemented,
+    UnsafeBlock { block: Block },
     Error { message: String },
 }
 
@@ -284,4 +298,18 @@ pub enum SpecItem {
     Performance(String, String),
     Effect(Vec<String>),
     Invariant(String),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaticDef {
+    pub name: String,
+    pub mutable: bool,
+    pub ty: Type,
+    pub value: Expr,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WherePredicate {
+    pub type_param: String,
+    pub bounds: Vec<String>,
 }

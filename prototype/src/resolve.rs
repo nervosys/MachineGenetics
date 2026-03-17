@@ -224,6 +224,9 @@ impl Resolver {
             ast::ItemKind::Spec(sd) => {
                 self.define_type(&sd.name, SymbolKind::Spec);
             }
+            ast::ItemKind::Static(sd) => {
+                self.define_value(&sd.name, SymbolKind::Const);
+            }
             ast::ItemKind::Impl(_) | ast::ItemKind::Use(_) => {
                 // Impl blocks and use decls don't introduce a single name
             }
@@ -245,6 +248,10 @@ impl Resolver {
             ast::ItemKind::Const(cd) => self.resolve_const(cd),
             ast::ItemKind::Effect(ed) => self.resolve_effect(ed),
             ast::ItemKind::Spec(_) => { /* spec bodies are declarative, skip for now */ }
+            ast::ItemKind::Static(sd) => {
+                self.resolve_ast_type(&sd.ty);
+                self.resolve_expr(&sd.value);
+            }
         }
     }
 
@@ -399,8 +406,14 @@ impl Resolver {
             | ast::Type::OwnedPtr { inner }
             | ast::Type::Rc { inner }
             | ast::Type::Arc { inner }
+            | ast::Type::Cow { inner }
+            | ast::Type::Cell { inner }
+            | ast::Type::RefCell { inner }
+            | ast::Type::Mutex { inner }
+            | ast::Type::RwLock { inner }
             | ast::Type::Slice { inner }
             | ast::Type::Vec { inner }
+            | ast::Type::Set { inner }
             | ast::Type::Option { inner }
             | ast::Type::Ptr { inner } => {
                 self.resolve_ast_type(inner);
@@ -612,7 +625,7 @@ impl Resolver {
                     self.resolve_block(eb);
                 }
             }
-            ast::Expr::Match { arms } => {
+            ast::Expr::Match { arms, .. } => {
                 for arm in arms {
                     self.push_scope();
                     self.resolve_pattern(&arm.pattern, false);
@@ -621,6 +634,10 @@ impl Resolver {
                 }
             }
             ast::Expr::Loop { body } => {
+                self.resolve_block(body);
+            }
+            ast::Expr::While { cond, body } => {
+                self.resolve_expr(cond);
                 self.resolve_block(body);
             }
             ast::Expr::For { pattern, iter, body } => {
@@ -639,6 +656,10 @@ impl Resolver {
                 }
             }
             ast::Expr::Continue => {}
+            ast::Expr::Todo | ast::Expr::Unimplemented => {}
+            ast::Expr::UnsafeBlock { block } => {
+                self.resolve_block(block);
+            }
             ast::Expr::Try { expr } | ast::Expr::Await { expr } => {
                 self.resolve_expr(expr);
             }

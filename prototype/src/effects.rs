@@ -181,12 +181,16 @@ impl EffectInfer {
                     self.collect_calls_in_block(eb, callees, local_effects);
                 }
             }
-            ast::Expr::Match { arms } => {
+            ast::Expr::Match { arms, .. } => {
                 for arm in arms {
                     self.collect_calls_in_expr(&arm.body, callees, local_effects);
                 }
             }
             ast::Expr::Loop { body } => {
+                self.collect_calls_in_block(body, callees, local_effects);
+            }
+            ast::Expr::While { cond, body } => {
+                self.collect_calls_in_expr(cond, callees, local_effects);
                 self.collect_calls_in_block(body, callees, local_effects);
             }
             ast::Expr::For { iter, body, .. } => {
@@ -198,6 +202,9 @@ impl EffectInfer {
             }
             ast::Expr::Closure { body, .. } => {
                 self.collect_calls_in_expr(body, callees, local_effects);
+            }
+            ast::Expr::UnsafeBlock { block } => {
+                self.collect_calls_in_block(block, callees, local_effects);
             }
             ast::Expr::Return { value } | ast::Expr::Break { value } => {
                 if let Some(v) = value {
@@ -249,6 +256,8 @@ impl EffectInfer {
             ast::Expr::Literal { .. }
             | ast::Expr::Ident { .. }
             | ast::Expr::Continue
+            | ast::Expr::Todo
+            | ast::Expr::Unimplemented
             | ast::Expr::Error { .. } => {}
         }
     }

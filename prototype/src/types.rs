@@ -318,6 +318,30 @@ impl TypeChecker {
                 self.fresh()
             }
             ast::Type::StringType => Ty::Str,
+            ast::Type::Cow { inner } => {
+                let inner_ty = self.lower_type(inner);
+                Ty::Named(crate::hir::SymbolId(u32::MAX), vec![inner_ty])
+            }
+            ast::Type::Cell { inner } => {
+                let inner_ty = self.lower_type(inner);
+                Ty::Named(crate::hir::SymbolId(u32::MAX), vec![inner_ty])
+            }
+            ast::Type::RefCell { inner } => {
+                let inner_ty = self.lower_type(inner);
+                Ty::Named(crate::hir::SymbolId(u32::MAX), vec![inner_ty])
+            }
+            ast::Type::Mutex { inner } => {
+                let inner_ty = self.lower_type(inner);
+                Ty::Named(crate::hir::SymbolId(u32::MAX), vec![inner_ty])
+            }
+            ast::Type::RwLock { inner } => {
+                let inner_ty = self.lower_type(inner);
+                Ty::Named(crate::hir::SymbolId(u32::MAX), vec![inner_ty])
+            }
+            ast::Type::Set { inner } => {
+                let inner_ty = self.lower_type(inner);
+                Ty::Named(crate::hir::SymbolId(u32::MAX), vec![inner_ty])
+            }
         }
     }
 
@@ -731,7 +755,7 @@ impl TypeChecker {
                 }
             }
 
-            ast::Expr::Match { arms } => {
+            ast::Expr::Match { arms, .. } => {
                 if arms.is_empty() {
                     return Ty::Never;
                 }
@@ -749,6 +773,15 @@ impl TypeChecker {
                 self.infer_block(body);
                 // Loop type is determined by break expressions.
                 self.fresh()
+            }
+
+            ast::Expr::While { cond, body } => {
+                let cond_ty = self.infer_expr(cond);
+                if let Err(e) = unify(&mut self.subst, &cond_ty, &Ty::Bool) {
+                    self.emit_error(format!("while condition must be bool: {e}"));
+                }
+                self.infer_block(body);
+                Ty::Unit
             }
 
             ast::Expr::For { pattern, iter, body } => {
@@ -779,6 +812,10 @@ impl TypeChecker {
             }
 
             ast::Expr::Continue => Ty::Never,
+
+            ast::Expr::Todo | ast::Expr::Unimplemented => Ty::Never,
+
+            ast::Expr::UnsafeBlock { block } => self.infer_block(block),
 
             ast::Expr::Try { expr } => {
                 let t = self.infer_expr(expr);
