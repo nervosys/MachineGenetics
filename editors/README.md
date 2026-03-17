@@ -4,12 +4,12 @@ Configuration files for using Redox with various editors.
 
 ## Editors
 
-| Editor | Directory | Status |
-|--------|-----------|--------|
-| [VS Code](../redox-vscode/) | `redox-vscode/` | Full extension (TextMate + RAP) |
-| [Neovim](neovim/) | `editors/neovim/` | LSP + tree-sitter + ftdetect |
-| [Helix](helix/) | `editors/helix/` | Language config + queries |
-| [Zed](zed/) | `editors/zed/` | Extension manifest + highlights |
+| Editor                      | Directory         | Status                          |
+| --------------------------- | ----------------- | ------------------------------- |
+| [VS Code](../redox-vscode/) | `redox-vscode/`   | Full extension (TextMate + RAP) |
+| [Neovim](neovim/)           | `editors/neovim/` | LSP + tree-sitter + ftdetect    |
+| [Helix](helix/)             | `editors/helix/`  | Language config + queries       |
+| [Zed](zed/)                 | `editors/zed/`    | Extension manifest + highlights |
 
 ## Quick Setup
 
