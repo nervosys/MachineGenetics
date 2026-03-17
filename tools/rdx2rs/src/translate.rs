@@ -175,12 +175,7 @@ fn translate_effects(s: &str) -> String {
         let end = rest.find('{').unwrap_or(rest.len());
         let effects = rest[2..end].trim(); // skip "/ "
         let comment = format!("/* effect: {effects} */ ");
-        result = format!(
-            "{}{}{}",
-            &result[..slash_pos],
-            comment,
-            &result[slash_pos + end..]
-        );
+        result = format!("{}{}{}", &result[..slash_pos], comment, &result[slash_pos + end..]);
     }
 
     result
@@ -198,18 +193,11 @@ fn find_effect_annotation(s: &str) -> Option<usize> {
             if before.ends_with(')')
                 || before.ends_with(']')
                 || before.ends_with('}')
-                || before
-                    .bytes()
-                    .last()
-                    .is_some_and(|b| b.is_ascii_alphanumeric() || b == b'_')
+                || before.bytes().last().is_some_and(|b| b.is_ascii_alphanumeric() || b == b'_')
             {
                 // Check that what follows looks like an effect name, not a number
                 let after = s[i + 2..].trim_start();
-                if after
-                    .bytes()
-                    .next()
-                    .is_some_and(|b| b.is_ascii_alphabetic())
-                {
+                if after.bytes().next().is_some_and(|b| b.is_ascii_alphabetic()) {
                     return Some(i);
                 }
             }
@@ -346,11 +334,7 @@ fn contains_comparison(s: &str) -> bool {
 }
 
 fn is_boolean_expr(s: &str) -> bool {
-    s.starts_with('!')
-        || s == "1b"
-        || s == "0b"
-        || s == "true"
-        || s == "false"
+    s.starts_with('!') || s == "1b" || s == "0b" || s == "true" || s == "false"
 }
 
 // ── Type transforms ──────────────────────────────────────────────────
@@ -400,12 +384,7 @@ fn translate_vec_type(s: &str) -> String {
             if result.get(end + 1..end + 2) == Some("~") {
                 let inner = &result[start + 1..end];
                 let replacement = format!("Vec<{inner}>");
-                result = format!(
-                    "{}{}{}",
-                    &result[..start],
-                    replacement,
-                    &result[end + 2..]
-                );
+                result = format!("{}{}{}", &result[..start], replacement, &result[end + 2..]);
                 continue;
             }
         }
@@ -427,16 +406,8 @@ fn translate_option_type(s: &str) -> String {
             let after = pos + prefix.len();
             if let Some(end) = find_type_end(&result, after) {
                 let inner = &result[after..end];
-                let replacement = format!(
-                    "{}Option<{inner}>",
-                    &prefix[..prefix.len() - 1]
-                );
-                result = format!(
-                    "{}{}{}",
-                    &result[..pos],
-                    replacement,
-                    &result[end..]
-                );
+                let replacement = format!("{}Option<{inner}>", &prefix[..prefix.len() - 1]);
+                result = format!("{}{}{}", &result[..pos], replacement, &result[end..]);
             } else {
                 break;
             }
@@ -462,12 +433,7 @@ fn translate_result_type(s: &str) -> String {
         if let Some(end) = find_matching_bracket(&result, bracket_start) {
             let inner = &result[bracket_start + 1..end];
             let replacement = format!("Result<{inner}>");
-            result = format!(
-                "{}{}{}",
-                &result[..start],
-                replacement,
-                &result[end + 1..]
-            );
+            result = format!("{}{}{}", &result[..start], replacement, &result[end + 1..]);
         } else {
             break;
         }
@@ -495,12 +461,7 @@ fn translate_ptr_type(s: &str, sigil: char, name: &str) -> String {
                 let inner = &result[after..end];
                 let ctx = &prefix[..prefix.len() - 1];
                 let replacement = format!("{ctx}{name}<{inner}>");
-                result = format!(
-                    "{}{}{}",
-                    &result[..pos],
-                    replacement,
-                    &result[end..]
-                );
+                result = format!("{}{}{}", &result[..pos], replacement, &result[end..]);
             } else {
                 break;
             }
@@ -548,12 +509,7 @@ fn translate_arc_type(s: &str) -> String {
                 let inner = &result[after..end];
                 let ctx = &prefix[..prefix.len() - 1];
                 let replacement = format!("{ctx}Arc<{inner}>");
-                result = format!(
-                    "{}{}{}",
-                    &result[..pos],
-                    replacement,
-                    &result[end..]
-                );
+                result = format!("{}{}{}", &result[..pos], replacement, &result[end..]);
             } else {
                 break;
             }
@@ -579,12 +535,7 @@ fn translate_map_type(s: &str) -> String {
                     let val = inner[colon + 2..].trim();
                     let ctx = &prefix[..prefix.len() - 1];
                     let replacement = format!("{ctx}HashMap<{key}, {val}>");
-                    result = format!(
-                        "{}{}{}",
-                        &result[..pos],
-                        replacement,
-                        &result[end + 1..]
-                    );
+                    result = format!("{}{}{}", &result[..pos], replacement, &result[end + 1..]);
                     continue;
                 }
             }
@@ -610,12 +561,7 @@ fn translate_set_type(s: &str) -> String {
                 if !inner.contains(": ") {
                     let ctx = &prefix[..prefix.len() - 1];
                     let replacement = format!("{ctx}HashSet<{inner}>");
-                    result = format!(
-                        "{}{}{}",
-                        &result[..pos],
-                        replacement,
-                        &result[end + 1..]
-                    );
+                    result = format!("{}{}{}", &result[..pos], replacement, &result[end + 1..]);
                     continue;
                 }
             }
@@ -651,8 +597,8 @@ fn replace_type_s(s: &str, from: &str, to: &str) -> String {
     while let Some(pos) = result[search_from..].find(from) {
         let abs = search_from + pos;
         let after = abs + from.len();
-        let followed_ok = after >= result.len()
-            || !result.as_bytes()[after].is_ascii_alphanumeric();
+        let followed_ok =
+            after >= result.len() || !result.as_bytes()[after].is_ascii_alphanumeric();
         if followed_ok {
             result = format!("{}{to}{}", &result[..abs], &result[after..]);
             search_from = abs + to.len();
@@ -690,12 +636,7 @@ fn translate_print_macro(s: &str, prefix: &str, rust_start: &str, rust_end: &str
         if let Some(end) = find_closing_quote(&result, after) {
             let content = &result[after..end];
             let replacement = format!("{rust_start}{content}{rust_end}");
-            result = format!(
-                "{}{}{}",
-                &result[..start],
-                replacement,
-                &result[end + 1..]
-            );
+            result = format!("{}{}{}", &result[..start], replacement, &result[end + 1..]);
         } else {
             break;
         }
@@ -715,12 +656,7 @@ fn translate_format_macro(s: &str) -> String {
         if let Some(end) = find_closing_quote(&result, after) {
             let content = &result[after..end];
             let replacement = format!("format!(\"{content}\")");
-            result = format!(
-                "{}{}{}",
-                &result[..pos],
-                replacement,
-                &result[end + 1..]
-            );
+            result = format!("{}{}{}", &result[..pos], replacement, &result[end + 1..]);
         } else {
             break;
         }
@@ -796,10 +732,9 @@ fn replace_boolean(s: &str, from: &str, to: &str) -> String {
         let after = abs_pos + from.len();
 
         // Check not part of a larger token
-        let preceded_ok = abs_pos == 0
-            || !result.as_bytes()[abs_pos - 1].is_ascii_alphanumeric();
-        let followed_ok = after >= result.len()
-            || !result.as_bytes()[after].is_ascii_alphanumeric();
+        let preceded_ok = abs_pos == 0 || !result.as_bytes()[abs_pos - 1].is_ascii_alphanumeric();
+        let followed_ok =
+            after >= result.len() || !result.as_bytes()[after].is_ascii_alphanumeric();
 
         // For 0b, make sure it's not a binary literal (0b1010)
         if bytes == b"0b" && after < result.len() && result.as_bytes()[after].is_ascii_digit() {
@@ -830,12 +765,7 @@ fn translate_generics_to_angle(s: &str) -> String {
             if let Some(end) = find_matching_bracket(&result, pos) {
                 let inner = &result[pos + 1..end];
                 let replacement = format!("<{inner}>");
-                result = format!(
-                    "{}{}{}",
-                    &result[..pos],
-                    replacement,
-                    &result[end + 1..]
-                );
+                result = format!("{}{}{}", &result[..pos], replacement, &result[end + 1..]);
                 changed = true;
             }
         }
@@ -944,9 +874,7 @@ fn find_type_end(s: &str, start: usize) -> Option<usize> {
                     return Some(i);
                 }
             }
-            b',' | b'{' | b';'
-                if depth_angle == 0 && depth_bracket == 0 && depth_paren == 0 =>
-            {
+            b',' | b'{' | b';' if depth_angle == 0 && depth_bracket == 0 && depth_paren == 0 => {
                 return Some(i);
             }
             b' ' if depth_angle == 0 && depth_bracket == 0 && depth_paren == 0 => {
@@ -957,11 +885,7 @@ fn find_type_end(s: &str, start: usize) -> Option<usize> {
         i += 1;
     }
 
-    if i > start {
-        Some(i)
-    } else {
-        None
-    }
+    if i > start { Some(i) } else { None }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -972,11 +896,7 @@ fn leading_whitespace(s: &str) -> &str {
 }
 
 fn replace_keyword_at_start(s: &str, from: &str, to: &str) -> String {
-    if s.starts_with(from) {
-        format!("{to}{}", &s[from.len()..])
-    } else {
-        s.to_string()
-    }
+    if s.starts_with(from) { format!("{to}{}", &s[from.len()..]) } else { s.to_string() }
 }
 
 fn replace_keyword_at_boundary(s: &str, from: &str, to: &str) -> String {
@@ -1051,10 +971,7 @@ mod tests {
 
     #[test]
     fn test_impl_trait() {
-        assert_eq!(
-            translate_line("I Display ~ Point {"),
-            "impl Display for Point {"
-        );
+        assert_eq!(translate_line("I Display ~ Point {"), "impl Display for Point {");
     }
 
     #[test]
@@ -1064,26 +981,17 @@ mod tests {
 
     #[test]
     fn test_pub_use() {
-        assert_eq!(
-            translate_line("+u std.fmt.Display;"),
-            "pub use std::fmt::Display;"
-        );
+        assert_eq!(translate_line("+u std.fmt.Display;"), "pub use std::fmt::Display;");
     }
 
     #[test]
     fn test_vec_type() {
-        assert_eq!(
-            translate_line("    items: [i32]~,"),
-            "    items: Vec<i32>,"
-        );
+        assert_eq!(translate_line("    items: [i32]~,"), "    items: Vec<i32>,");
     }
 
     #[test]
     fn test_option_type() {
-        assert_eq!(
-            translate_line("fn foo(x: ?i32) {"),
-            "fn foo(x: Option<i32>) {"
-        );
+        assert_eq!(translate_line("fn foo(x: ?i32) {"), "fn foo(x: Option<i32>) {");
     }
 
     #[test]
@@ -1106,26 +1014,17 @@ mod tests {
 
     #[test]
     fn test_arc_type() {
-        assert_eq!(
-            translate_line("    atomic: @Data,"),
-            "    atomic: Arc<Data>,"
-        );
+        assert_eq!(translate_line("    atomic: @Data,"), "    atomic: Arc<Data>,");
     }
 
     #[test]
     fn test_map_type() {
-        assert_eq!(
-            translate_line("    map: {String: i32},"),
-            "    map: HashMap<String, i32>,"
-        );
+        assert_eq!(translate_line("    map: {String: i32},"), "    map: HashMap<String, i32>,");
     }
 
     #[test]
     fn test_derive() {
-        assert_eq!(
-            translate_line("@d(Debug, Clone)"),
-            "#[derive(Debug, Clone)]"
-        );
+        assert_eq!(translate_line("@d(Debug, Clone)"), "#[derive(Debug, Clone)]");
     }
 
     #[test]
@@ -1140,10 +1039,7 @@ mod tests {
 
     #[test]
     fn test_println() {
-        assert_eq!(
-            translate_line("    p\"hello\";"),
-            "    println!(\"hello\");"
-        );
+        assert_eq!(translate_line("    p\"hello\";"), "    println!(\"hello\");");
     }
 
     #[test]
@@ -1158,10 +1054,7 @@ mod tests {
 
     #[test]
     fn test_for_loop() {
-        assert_eq!(
-            translate_line("@ item ~ items {"),
-            "for item in items {"
-        );
+        assert_eq!(translate_line("@ item ~ items {"), "for item in items {");
     }
 
     #[test]
@@ -1191,10 +1084,7 @@ mod tests {
 
     #[test]
     fn test_async_fn() {
-        assert_eq!(
-            translate_line("+af fetch(url: &str) {"),
-            "pub async fn fetch(url: &str) {"
-        );
+        assert_eq!(translate_line("+af fetch(url: &str) {"), "pub async fn fetch(url: &str) {");
     }
 
     #[test]
@@ -1212,26 +1102,17 @@ mod tests {
 
     #[test]
     fn test_mut_ref() {
-        assert_eq!(
-            translate_line("fn foo(x: &!i32) {"),
-            "fn foo(x: &mut i32) {"
-        );
+        assert_eq!(translate_line("fn foo(x: &!i32) {"), "fn foo(x: &mut i32) {");
     }
 
     #[test]
     fn test_where_clause() {
-        assert_eq!(
-            translate_line("fn foo() ~> T: Display {"),
-            "fn foo() where T: Display {"
-        );
+        assert_eq!(translate_line("fn foo() ~> T: Display {"), "fn foo() where T: Display {");
     }
 
     #[test]
     fn test_struct_literal() {
-        assert_eq!(
-            translate_line("Point @{ x: 1, y: 2 }"),
-            "Point { x: 1, y: 2 }"
-        );
+        assert_eq!(translate_line("Point @{ x: 1, y: 2 }"), "Point { x: 1, y: 2 }");
     }
 
     #[test]
@@ -1255,9 +1136,6 @@ mod tests {
 
     #[test]
     fn test_pub_const() {
-        assert_eq!(
-            translate_line("+v MAX: usize = 100;"),
-            "pub const MAX: usize = 100;"
-        );
+        assert_eq!(translate_line("+v MAX: usize = 100;"), "pub const MAX: usize = 100;");
     }
 }
