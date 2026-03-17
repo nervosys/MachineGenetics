@@ -4,6 +4,7 @@ mod effects;
 mod elision;
 mod heal;
 mod hir;
+mod legacy;
 mod lexer;
 mod mlir;
 mod parser;
@@ -18,9 +19,16 @@ use std::io::Read;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let no_elision = args.iter().any(|a| a == "--no-elision");
-    // Collect positional-ish args (skip --no-elision)
-    let filtered: Vec<&str> =
-        args.iter().skip(1).filter(|a| a.as_str() != "--no-elision").map(|s| s.as_str()).collect();
+    let syntax_legacy = args.iter().any(|a| a == "--syntax=legacy");
+    // Collect positional-ish args (skip flag-style args)
+    let filtered: Vec<&str> = args
+        .iter()
+        .skip(1)
+        .filter(|a| {
+            !matches!(a.as_str(), "--no-elision" | "--syntax=legacy" | "--syntax=canonical")
+        })
+        .map(|s| s.as_str())
+        .collect();
 
     match filtered.first().copied() {
         Some("--rap") => {
@@ -36,36 +44,37 @@ fn main() {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_check(&source, path, !no_elision);
+            run_check(&source, path, !no_elision, syntax_legacy);
         }
         Some("--pipeline") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: redox-parse --pipeline <file> [--no-elision]");
+                eprintln!("Usage: redox-parse --pipeline <file> [--no-elision] [--syntax=legacy]");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_pipeline(&source, path, !no_elision);
+            run_pipeline(&source, path, !no_elision, syntax_legacy);
         }
         Some(path) => {
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_parse(&source, path, !no_elision);
+            run_parse(&source, path, !no_elision, syntax_legacy);
         }
         None => {
             let mut source = String::new();
             std::io::stdin().read_to_string(&mut source).unwrap();
-            run_parse(&source, "<stdin>", !no_elision);
+            run_parse(&source, "<stdin>", !no_elision, syntax_legacy);
         }
     }
 }
 
-fn run_parse(source: &str, filename: &str, do_elision: bool) {
-    let tokens = lexer::lex(source);
+fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool) {
+    let source = if legacy { legacy::translate(source) } else { source.to_string() };
+    let tokens = lexer::lex(&source);
 
     let mut error_count = 0;
     for tok in &tokens {
@@ -94,9 +103,12 @@ fn run_parse(source: &str, filename: &str, do_elision: bool) {
     }
 }
 
-fn run_check(source: &str, filename: &str, do_elision: bool) {
+fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool) {
+    // Phase 0: Legacy syntax translation (if active).
+    let source = if legacy { legacy::translate(source) } else { source.to_string() };
+
     // Phase 1: Lex.
-    let tokens = lexer::lex(source);
+    let tokens = lexer::lex(&source);
     let mut total_errors = 0;
 
     for tok in &tokens {
@@ -197,7 +209,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool) {
     }
 }
 
-fn run_pipeline(source: &str, filename: &str, do_elision: bool) {
+fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool) {
     eprintln!("╔══════════════════════════════════════════════════════════════╗");
     eprintln!("║  Redox End-to-End Pipeline                                  ║");
     eprintln!("╚══════════════════════════════════════════════════════════════╝");
@@ -205,9 +217,19 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool) {
 
     let mut total_errors = 0;
 
+    // ── Phase 0: Legacy syntax translation ───────────────────────────
+    let source = if legacy {
+        eprintln!("▸ Phase 0: Legacy syntax translation (Rust → Redox)");
+        let translated = legacy::translate(source);
+        eprintln!("  ✓ translated to canonical syntax");
+        translated
+    } else {
+        source.to_string()
+    };
+
     // ── Phase 1: Lex ─────────────────────────────────────────────────
     eprintln!("▸ Phase 1/7: Lexical analysis");
-    let tokens = lexer::lex(source);
+    let tokens = lexer::lex(&source);
     let mut lex_errors = 0;
     for tok in &tokens {
         if tok.kind == lexer::TokenKind::Error {
