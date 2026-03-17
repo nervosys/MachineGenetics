@@ -1,6 +1,7 @@
 mod ast;
 mod cost;
 mod effects;
+mod elision;
 mod heal;
 mod hir;
 mod lexer;
@@ -16,52 +17,54 @@ use std::io::Read;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    let no_elision = args.iter().any(|a| a == "--no-elision");
+    // Collect positional-ish args (skip --no-elision)
+    let filtered: Vec<&str> =
+        args.iter().skip(1).filter(|a| a.as_str() != "--no-elision").map(|s| s.as_str()).collect();
 
-    match args.get(1).map(|s| s.as_str()) {
+    match filtered.first().copied() {
         Some("--rap") => {
-            let addr = args.get(2).map(|s| s.as_str()).unwrap_or("127.0.0.1:9876");
+            let addr = filtered.get(1).copied().unwrap_or("127.0.0.1:9876");
             rap::serve(addr);
         }
         Some("--check") => {
-            // Full analysis pipeline: parse → resolve → typecheck → effects.
-            let path = args.get(2).unwrap_or_else(|| {
-                eprintln!("Usage: redox-parse --check <file>");
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: redox-parse --check <file> [--no-elision]");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_check(&source, path);
+            run_check(&source, path, !no_elision);
         }
         Some("--pipeline") => {
-            // End-to-end demo pipeline: lex → parse → resolve → typecheck → effects → MLIR.
-            let path = args.get(2).unwrap_or_else(|| {
-                eprintln!("Usage: redox-parse --pipeline <file>");
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: redox-parse --pipeline <file> [--no-elision]");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_pipeline(&source, path);
+            run_pipeline(&source, path, !no_elision);
         }
         Some(path) => {
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_parse(&source, path);
+            run_parse(&source, path, !no_elision);
         }
         None => {
             let mut source = String::new();
             std::io::stdin().read_to_string(&mut source).unwrap();
-            run_parse(&source, "<stdin>");
+            run_parse(&source, "<stdin>", !no_elision);
         }
     }
 }
 
-fn run_parse(source: &str, filename: &str) {
+fn run_parse(source: &str, filename: &str, do_elision: bool) {
     let tokens = lexer::lex(source);
 
     let mut error_count = 0;
@@ -77,6 +80,7 @@ fn run_parse(source: &str, filename: &str) {
 
     match parser::parse(&tokens) {
         Ok(module) => {
+            let module = if do_elision { elision::elide(&module) } else { module };
             println!("{}", serde_json::to_string_pretty(&module).unwrap());
         }
         Err(e) => {
@@ -90,7 +94,7 @@ fn run_parse(source: &str, filename: &str) {
     }
 }
 
-fn run_check(source: &str, filename: &str) {
+fn run_check(source: &str, filename: &str, do_elision: bool) {
     // Phase 1: Lex.
     let tokens = lexer::lex(source);
     let mut total_errors = 0;
@@ -113,6 +117,9 @@ fn run_check(source: &str, filename: &str) {
             std::process::exit(1);
         }
     };
+
+    // Phase 2.5: Safety elision (agentic mode default).
+    let module = if do_elision { elision::elide(&module) } else { module };
 
     // Phase 3: Name resolution.
     let resolver = resolve::resolve(&module);
@@ -190,7 +197,7 @@ fn run_check(source: &str, filename: &str) {
     }
 }
 
-fn run_pipeline(source: &str, filename: &str) {
+fn run_pipeline(source: &str, filename: &str, do_elision: bool) {
     eprintln!("╔══════════════════════════════════════════════════════════════╗");
     eprintln!("║  Redox End-to-End Pipeline                                  ║");
     eprintln!("╚══════════════════════════════════════════════════════════════╝");
@@ -223,6 +230,17 @@ fn run_pipeline(source: &str, filename: &str) {
             eprintln!("  ✗ parse error at {}:{}: {}", e.line, e.col, e.message);
             std::process::exit(1);
         }
+    };
+
+    // ── Phase 2.5: Safety elision ────────────────────────────────────
+    let module = if do_elision {
+        eprintln!("▸ Phase 2.5: Safety elision (agentic mode)");
+        let elided = elision::elide(&module);
+        eprintln!("  ✓ safety annotations stripped");
+        elided
+    } else {
+        eprintln!("▸ Phase 2.5: Safety elision — SKIPPED (--no-elision)");
+        module
     };
 
     // ── Phase 3: Name resolution ─────────────────────────────────────
