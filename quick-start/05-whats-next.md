@@ -7,20 +7,20 @@ and know how to build, run, and test. Here's where to go from here.
 
 ## Learn More
 
-| Resource | Description | Link |
-|----------|-------------|------|
-| **The Redox Book** | Comprehensive language guide covering every feature in depth | [book/](../book/README.md) |
-| **Cookbook** | 65+ copy-paste recipes for common tasks | [cookbook/](../cookbook/README.md) |
-| **Language Specification** | Formal syntax and semantics reference | [REDOX_SPEC.md](../REDOX_SPEC.md) |
-| **Standard Library** | Module reference for `std.*` | [stdlib/](../stdlib/std/) |
+| Resource                   | Description                                                  | Link                               |
+| -------------------------- | ------------------------------------------------------------ | ---------------------------------- |
+| **The Redox Book**         | Comprehensive language guide covering every feature in depth | [book/](../book/README.md)         |
+| **Cookbook**               | 65+ copy-paste recipes for common tasks                      | [cookbook/](../cookbook/README.md) |
+| **Language Specification** | Formal syntax and semantics reference                        | [REDOX_SPEC.md](../REDOX_SPEC.md)  |
+| **Standard Library**       | Module reference for `std.*`                                 | [stdlib/](../stdlib/std/)          |
 
 ## For Specific Audiences
 
-| You are... | Read this |
-|-----------|-----------|
-| An **AI agent** developer | [Agent Guide](../agent-guide/README.md) — patterns for agents writing Redox |
-| Coming from **Rust** | [Migration Guide](../migration-guide/README.md) — Rust → Redox translation |
-| A **compiler contributor** | [Internals Guide](../internals/README.md) — compiler architecture |
+| You are...                 | Read this                                                                   |
+| -------------------------- | --------------------------------------------------------------------------- |
+| An **AI agent** developer  | [Agent Guide](../agent-guide/README.md) — patterns for agents writing Redox |
+| Coming from **Rust**       | [Migration Guide](../migration-guide/README.md) — Rust → Redox translation  |
+| A **compiler contributor** | [Internals Guide](../internals/README.md) — compiler architecture           |
 
 ## Try These Next
 
