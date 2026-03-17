@@ -72,14 +72,14 @@ Every rule conforms to the schema in `skb/rule-schema.json`:
 
 Key fields:
 
-| Field | Purpose |
-|-------|---------|
-| `id` | Unique identifier, pattern `[A-Z]{2,4}-[0-9]{3,4}` |
-| `database` | Category: ownership, borrow, lifetime, type_safety, concurrency, ffi |
-| `severity` | error, warning, info, hint |
-| `scope` | Matching scope: function, module, crate, global |
-| `pattern` | Structural pattern to match against HIR |
-| `fix_template` | Automated fix that an agent can apply |
+| Field          | Purpose                                                              |
+| -------------- | -------------------------------------------------------------------- |
+| `id`           | Unique identifier, pattern `[A-Z]{2,4}-[0-9]{3,4}`                   |
+| `database`     | Category: ownership, borrow, lifetime, type_safety, concurrency, ffi |
+| `severity`     | error, warning, info, hint                                           |
+| `scope`        | Matching scope: function, module, crate, global                      |
+| `pattern`      | Structural pattern to match against HIR                              |
+| `fix_template` | Automated fix that an agent can apply                                |
 
 ### Rule Matching
 
@@ -123,13 +123,13 @@ In Rust, the programmer must annotate lifetimes, borrow modes, and
 ownership transfers explicitly. In Redox, the SKB engine applies these
 same rules silently:
 
-| Rust Syntax | SKB Rule |
-|-------------|----------|
-| `fn foo<'a>(x: &'a str) -> &'a str` | LT-0001: Return reference must live as long as input |
-| `fn bar(x: &mut Vec<i32>)` | BR-0012: Mutable borrow implies exclusive access |
-| `let y = x; /* x moved */` | OWN-0042: Use after move is forbidden |
-| `Arc::new(data)` | CON-0008: Arc provides thread-safe shared ownership |
-| `unsafe { ptr::read(p) }` | FFI-0023: Raw pointer dereference requires validation |
+| Rust Syntax                         | SKB Rule                                              |
+| ----------------------------------- | ----------------------------------------------------- |
+| `fn foo<'a>(x: &'a str) -> &'a str` | LT-0001: Return reference must live as long as input  |
+| `fn bar(x: &mut Vec<i32>)`          | BR-0012: Mutable borrow implies exclusive access      |
+| `let y = x; /* x moved */`          | OWN-0042: Use after move is forbidden                 |
+| `Arc::new(data)`                    | CON-0008: Arc provides thread-safe shared ownership   |
+| `unsafe { ptr::read(p) }`           | FFI-0023: Raw pointer dereference requires validation |
 
 The agent never writes `<'a>` or `&mut` annotations. Instead, the
 compiler applies SKB rules during the type-check/effect-check phase,
@@ -329,14 +329,14 @@ Source → Lex → Parse → Resolve → TypeCheck → EffectCheck
 
 ### RAP Query Routing
 
-| Query Prefix | Target |
-|-------------|--------|
-| `skb.*` | SKB engine (rule matching, explanation, rule listing) |
-| `aci.warnings` | Dynamic Warning Engine |
-| `aci.debug` | Intelligent Debugging Engine |
-| `aci.perf` | Performance Advisor Engine |
-| `aci.swarm` | Swarm Coordination Intelligence |
-| `aci.model` | Codebase Model (direct embedding queries) |
+| Query Prefix   | Target                                                |
+| -------------- | ----------------------------------------------------- |
+| `skb.*`        | SKB engine (rule matching, explanation, rule listing) |
+| `aci.warnings` | Dynamic Warning Engine                                |
+| `aci.debug`    | Intelligent Debugging Engine                          |
+| `aci.perf`     | Performance Advisor Engine                            |
+| `aci.swarm`    | Swarm Coordination Intelligence                       |
+| `aci.model`    | Codebase Model (direct embedding queries)             |
 
 ## 8.6 Creating Custom SKB Rules
 
