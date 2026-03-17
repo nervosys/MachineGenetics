@@ -5,13 +5,13 @@ language project.
 
 ## Roles
 
-| Role               | Responsibility                              | Current Members     |
-| ------------------ | ------------------------------------------- | ------------------- |
-| **Core Team**      | Language design, compiler development       | nervosys maintainers |
-| **SKB Curators**   | Safety Knowledge Base rule curation         | TBD                 |
-| **Forge Moderators** | Package registry quality control          | TBD                 |
-| **RFC Authors**    | Design proposals (Redox RFC process)        | Open to all         |
-| **ACI Trainers**   | AI Coding Intelligence model training       | TBD                 |
+| Role                 | Responsibility                        | Current Members      |
+| -------------------- | ------------------------------------- | -------------------- |
+| **Core Team**        | Language design, compiler development | nervosys maintainers |
+| **SKB Curators**     | Safety Knowledge Base rule curation   | TBD                  |
+| **Forge Moderators** | Package registry quality control      | TBD                  |
+| **RFC Authors**      | Design proposals (Redox RFC process)  | Open to all          |
+| **ACI Trainers**     | AI Coding Intelligence model training | TBD                  |
 
 ## Decision Making
 
@@ -47,12 +47,12 @@ Safety Knowledge Base rule changes follow a stricter process:
 
 Redox uses an edition system for backward-compatible evolution:
 
-| Edition | Year | Key Features                                                |
-| ------- | :--: | ----------------------------------------------------------- |
-| 2025    | 2025 | Core language, basic SKB, LL(1) parser                      |
-| 2026    | 2026 | Full MLIR pipeline, effect system, agent primitives         |
-| 2027    | 2027 | Full ACI, Cost Oracle, hot-reload, swarm orchestration      |
-| 2028+   | 2028 | Self-hosting compiler, advanced synthesis, formal verification |
+| Edition | Year  | Key Features                                                   |
+| ------- | :---: | -------------------------------------------------------------- |
+| 2025    | 2025  | Core language, basic SKB, LL(1) parser                         |
+| 2026    | 2026  | Full MLIR pipeline, effect system, agent primitives            |
+| 2027    | 2027  | Full ACI, Cost Oracle, hot-reload, swarm orchestration         |
+| 2028+   | 2028  | Self-hosting compiler, advanced synthesis, formal verification |
 
 Edition migration is automated via `rdx migrate --edition <year>`.
 
@@ -65,12 +65,12 @@ violate it.
 
 ## Communication Channels
 
-| Channel              | Purpose                           |
-| -------------------- | --------------------------------- |
-| GitHub Issues        | Bug reports, feature requests     |
-| GitHub Discussions   | Questions, design discussions     |
-| GitHub PRs           | Code review, RFC discussion       |
-| Discord (planned)    | Real-time chat, community support |
+| Channel            | Purpose                           |
+| ------------------ | --------------------------------- |
+| GitHub Issues      | Bug reports, feature requests     |
+| GitHub Discussions | Questions, design discussions     |
+| GitHub PRs         | Code review, RFC discussion       |
+| Discord (planned)  | Real-time chat, community support |
 
 ## Becoming a Contributor
 

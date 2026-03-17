@@ -15,17 +15,17 @@ get involved, from reporting bugs to proposing new language features.
 
 ## Ways to Contribute
 
-| Area                | Description                                   | Good First? |
-| ------------------- | --------------------------------------------- | :---------: |
-| Bug reports         | File issues with reproduction steps           |     Yes     |
-| Documentation       | Fix typos, improve examples, add cookbook entries |  Yes     |
-| Training data       | Add JSONL samples to `training/samples/`      |     Yes     |
-| Standard library    | Implement stubs in `stdlib/`                  |     Yes     |
-| Transpiler rules    | Add patterns to `rust2rdx` or `rdx2rs`        |   Medium    |
-| SKB rules           | Propose new Safety Knowledge Base rules       |   Medium    |
-| Editor support      | Improve VS Code, Neovim, Helix, or Zed configs |  Medium   |
-| Compiler internals  | Work on parsing, lowering, or MLIR pipeline   |  Advanced   |
-| Language design     | Propose RFCs for new syntax or semantics      |  Advanced   |
+| Area               | Description                                       | Good First? |
+| ------------------ | ------------------------------------------------- | :---------: |
+| Bug reports        | File issues with reproduction steps               |     Yes     |
+| Documentation      | Fix typos, improve examples, add cookbook entries |     Yes     |
+| Training data      | Add JSONL samples to `training/samples/`          |     Yes     |
+| Standard library   | Implement stubs in `stdlib/`                      |     Yes     |
+| Transpiler rules   | Add patterns to `rust2rdx` or `rdx2rs`            |   Medium    |
+| SKB rules          | Propose new Safety Knowledge Base rules           |   Medium    |
+| Editor support     | Improve VS Code, Neovim, Helix, or Zed configs    |   Medium    |
+| Compiler internals | Work on parsing, lowering, or MLIR pipeline       |  Advanced   |
+| Language design    | Propose RFCs for new syntax or semantics          |  Advanced   |
 
 ## Contribution Workflow
 

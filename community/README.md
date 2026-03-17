@@ -24,13 +24,13 @@ community/
 
 ## Quick Links
 
-| Resource                 | Description                                   |
-| ------------------------ | --------------------------------------------- |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute to Redox             |
-| [GOVERNANCE.md](GOVERNANCE.md) | Roles, decision-making, editions          |
-| [rfc-template.md](rfc-template.md) | Template for proposing language changes |
-| [Issue Templates](issue-templates/) | GitHub issue form templates          |
-| [PR Template](pull-request-template.md) | Pull request checklist            |
+| Resource                                | Description                             |
+| --------------------------------------- | --------------------------------------- |
+| [CONTRIBUTING.md](CONTRIBUTING.md)      | How to contribute to Redox              |
+| [GOVERNANCE.md](GOVERNANCE.md)          | Roles, decision-making, editions        |
+| [rfc-template.md](rfc-template.md)      | Template for proposing language changes |
+| [Issue Templates](issue-templates/)     | GitHub issue form templates             |
+| [PR Template](pull-request-template.md) | Pull request checklist                  |
 
 ## Contributing
 
