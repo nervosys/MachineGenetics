@@ -11,6 +11,7 @@ mod parser;
 mod rap;
 mod resolve;
 mod skb;
+mod token_budget;
 mod types;
 mod verify;
 
@@ -20,12 +21,16 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let no_elision = args.iter().any(|a| a == "--no-elision");
     let syntax_legacy = args.iter().any(|a| a == "--syntax=legacy");
+    let token_report = args.iter().any(|a| a == "--token-report");
     // Collect positional-ish args (skip flag-style args)
     let filtered: Vec<&str> = args
         .iter()
         .skip(1)
         .filter(|a| {
-            !matches!(a.as_str(), "--no-elision" | "--syntax=legacy" | "--syntax=canonical")
+            !matches!(
+                a.as_str(),
+                "--no-elision" | "--syntax=legacy" | "--syntax=canonical" | "--token-report"
+            )
         })
         .map(|s| s.as_str())
         .collect();
@@ -37,42 +42,42 @@ fn main() {
         }
         Some("--check") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: redox-parse --check <file> [--no-elision]");
+                eprintln!("Usage: redox-parse --check <file> [--no-elision] [--token-report]");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_check(&source, path, !no_elision, syntax_legacy);
+            run_check(&source, path, !no_elision, syntax_legacy, token_report);
         }
         Some("--pipeline") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: redox-parse --pipeline <file> [--no-elision] [--syntax=legacy]");
+                eprintln!("Usage: redox-parse --pipeline <file> [--no-elision] [--syntax=legacy] [--token-report]");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_pipeline(&source, path, !no_elision, syntax_legacy);
+            run_pipeline(&source, path, !no_elision, syntax_legacy, token_report);
         }
         Some(path) => {
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_parse(&source, path, !no_elision, syntax_legacy);
+            run_parse(&source, path, !no_elision, syntax_legacy, token_report);
         }
         None => {
             let mut source = String::new();
             std::io::stdin().read_to_string(&mut source).unwrap();
-            run_parse(&source, "<stdin>", !no_elision, syntax_legacy);
+            run_parse(&source, "<stdin>", !no_elision, syntax_legacy, token_report);
         }
     }
 }
 
-fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool) {
+fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token_report: bool) {
     let source = if legacy { legacy::translate(source) } else { source.to_string() };
     let tokens = lexer::lex(&source);
 
@@ -90,7 +95,13 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool) {
     match parser::parse(&tokens) {
         Ok(module) => {
             let module = if do_elision { elision::elide(&module) } else { module };
-            println!("{}", serde_json::to_string_pretty(&module).unwrap());
+            if token_report {
+                let report = token_budget::report(&module);
+                eprintln!("{}", report.display());
+                println!("{}", serde_json::to_string_pretty(&report).unwrap());
+            } else {
+                println!("{}", serde_json::to_string_pretty(&module).unwrap());
+            }
         }
         Err(e) => {
             eprintln!("{filename}:{}:{}: parse error: {}", e.line, e.col, e.message);
@@ -103,7 +114,7 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool) {
     }
 }
 
-fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool) {
+fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token_report: bool) {
     // Phase 0: Legacy syntax translation (if active).
     let source = if legacy { legacy::translate(source) } else { source.to_string() };
 
@@ -202,6 +213,13 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool) {
         }
     }
 
+    // Token budget report.
+    if token_report {
+        let report = token_budget::report(&module);
+        eprintln!("{}", report.display());
+        println!("{}", serde_json::to_string_pretty(&report).unwrap());
+    }
+
     if total_errors > 0 {
         std::process::exit(1);
     } else {
@@ -209,7 +227,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool) {
     }
 }
 
-fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool) {
+fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, token_report: bool) {
     eprintln!("╔══════════════════════════════════════════════════════════════╗");
     eprintln!("║  Redox End-to-End Pipeline                                  ║");
     eprintln!("╚══════════════════════════════════════════════════════════════╝");
@@ -330,6 +348,13 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool) {
         }
     }
 
+    // ── Token Budget Report ────────────────────────────────────────
+    if token_report {
+        eprintln!("▸ Token Budget Report:");
+        let budget_report = token_budget::report(&module);
+        eprintln!("{}", budget_report.display());
+    }
+
     // ── Summary ──────────────────────────────────────────────────────
     eprintln!();
     eprintln!("═══ Pipeline Summary ═══════════════════════════════════════════");
@@ -351,6 +376,11 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool) {
         eprintln!("════════════════════════════════════════════════════════════════");
     }
 
-    // Print MLIR to stdout.
-    println!("{mlir_output}");
+    // Print output to stdout.
+    if token_report {
+        let budget_report = token_budget::report(&module);
+        println!("{}", serde_json::to_string_pretty(&budget_report).unwrap());
+    } else {
+        println!("{mlir_output}");
+    }
 }
