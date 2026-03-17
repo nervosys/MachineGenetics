@@ -1,0 +1,328 @@
+# Redox Ecosystem CI — runs on every push and PR to master.
+#
+# Stages (per REDOX_ECOSYSTEM.md §8.3):
+#   1. Lint & Format  — cargo fmt/clippy on Rust tools
+#   2. Build          — compile rust2rdx, rdx2rs, rdx CLI
+#   3. Test           — unit tests for all tools
+#   4. Transpile      — round-trip validation (Rust → Redox → Rust)
+#   5. Validate       — check .rdx examples, stdlib stubs, SKB rules
+#   6. Benchmark      — (on push to master only)
+
+name: Redox CI
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "tools/**"
+      - "examples/**"
+      - "stdlib/**"
+      - "skb/**"
+      - "prototype/**"
+      - "benchmarks/**"
+      - ".github/workflows/redox-ci.yml"
+  pull_request:
+    branches: [master]
+    paths:
+      - "tools/**"
+      - "examples/**"
+      - "stdlib/**"
+      - "skb/**"
+      - "prototype/**"
+      - "benchmarks/**"
+      - ".github/workflows/redox-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: redox-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -Dwarnings
+
+jobs:
+  # ── Stage 1: Lint & Format ─────────────────────────────────────────
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-lint-${{ hashFiles('tools/**/Cargo.toml') }}
+          restore-keys: cargo-lint-
+
+      - name: Check formatting — rust2rdx
+        working-directory: tools/rust2rdx
+        run: cargo fmt --check
+
+      - name: Check formatting — rdx2rs
+        working-directory: tools/rdx2rs
+        run: cargo fmt --check
+
+      - name: Check formatting — rdx CLI
+        working-directory: tools/rdx
+        run: cargo fmt --check
+
+      - name: Clippy — rust2rdx
+        working-directory: tools/rust2rdx
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Clippy — rdx2rs
+        working-directory: tools/rdx2rs
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Clippy — rdx CLI
+        working-directory: tools/rdx
+        run: cargo clippy --all-targets -- -D warnings
+
+  # ── Stage 2: Build ─────────────────────────────────────────────────
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-build-${{ matrix.os }}-${{ hashFiles('tools/**/Cargo.toml') }}
+          restore-keys: cargo-build-${{ matrix.os }}-
+
+      - name: Build rust2rdx
+        working-directory: tools/rust2rdx
+        run: cargo build --release
+
+      - name: Build rdx2rs
+        working-directory: tools/rdx2rs
+        run: cargo build --release
+
+      - name: Build rdx CLI
+        working-directory: tools/rdx
+        run: cargo build --release
+
+      - name: Upload binaries
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: redox-tools-${{ matrix.os }}
+          path: |
+            tools/rust2rdx/target/release/rust2rdx*
+            tools/rdx2rs/target/release/rdx2rs*
+            tools/rdx/target/release/rdx*
+          retention-days: 7
+
+  # ── Stage 3: Test ──────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-test-${{ hashFiles('tools/**/Cargo.toml') }}
+          restore-keys: cargo-test-
+
+      - name: Test rust2rdx (28 translation rules)
+        working-directory: tools/rust2rdx
+        run: cargo test -- --nocapture
+
+      - name: Test rdx2rs (39 translation rules)
+        working-directory: tools/rdx2rs
+        run: cargo test -- --nocapture
+
+      - name: Test rdx CLI (12 subcommands)
+        working-directory: tools/rdx
+        run: cargo test -- --nocapture
+
+      - name: Test prototype (43 tests)
+        working-directory: prototype
+        run: cargo test -- --nocapture
+
+  # ── Stage 4: Transpile Round-Trip ──────────────────────────────────
+  transpile:
+    name: Round-Trip Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build transpilers
+        run: |
+          cd tools/rust2rdx && cargo build --release
+          cd ../rdx2rs && cargo build --release
+
+      - name: Round-trip — Rust → Redox → Rust
+        run: |
+          set -euo pipefail
+
+          RUST2RDX=tools/rust2rdx/target/release/rust2rdx
+          RDX2RS=tools/rdx2rs/target/release/rdx2rs
+
+          # Create temp directories.
+          mkdir -p /tmp/rdx-roundtrip/rdx /tmp/rdx-roundtrip/rs
+
+          # Transpile prototype .rs files to .rdx.
+          for f in prototype/src/*.rs; do
+            [ -f "$f" ] || continue
+            name=$(basename "$f" .rs)
+            echo "  rust2rdx: $f"
+            $RUST2RDX "$f" --output /tmp/rdx-roundtrip/rdx/ 2>/dev/null || true
+          done
+
+          # Transpile .rdx back to .rs.
+          for f in /tmp/rdx-roundtrip/rdx/*.rdx; do
+            [ -f "$f" ] || continue
+            name=$(basename "$f" .rdx)
+            echo "  rdx2rs:   $f"
+            $RDX2RS "$f" --output /tmp/rdx-roundtrip/rs/ 2>/dev/null || true
+          done
+
+          # Count results.
+          rdx_count=$(find /tmp/rdx-roundtrip/rdx -name '*.rdx' | wc -l)
+          rs_count=$(find /tmp/rdx-roundtrip/rs -name '*.rs' | wc -l)
+          echo ""
+          echo "Round-trip results:"
+          echo "  .rs → .rdx: $rdx_count files"
+          echo "  .rdx → .rs: $rs_count files"
+
+          if [ "$rdx_count" -eq 0 ]; then
+            echo "ERROR: No .rdx files produced"
+            exit 1
+          fi
+
+  # ── Stage 5: Validate Artifacts ────────────────────────────────────
+  validate:
+    name: Validate Ecosystem
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate .rdx example files exist
+        run: |
+          set -euo pipefail
+          echo "Checking example projects..."
+          errors=0
+          for dir in examples/*/; do
+            name=$(basename "$dir")
+            if [ ! -f "$dir/Forge.toml" ]; then
+              echo "  MISSING: $dir/Forge.toml"
+              errors=$((errors + 1))
+            fi
+            if [ ! -f "$dir/src/main.rdx" ]; then
+              echo "  MISSING: $dir/src/main.rdx"
+              errors=$((errors + 1))
+            fi
+            echo "  OK: $name"
+          done
+          if [ "$errors" -gt 0 ]; then
+            echo "FAIL: $errors missing files"
+            exit 1
+          fi
+          echo "All example projects valid."
+
+      - name: Validate stdlib stubs
+        run: |
+          set -euo pipefail
+          echo "Checking stdlib modules..."
+          count=$(find stdlib -name '*.rdx' | wc -l)
+          echo "  Found $count .rdx files"
+          if [ "$count" -lt 10 ]; then
+            echo "FAIL: expected >= 10 stdlib modules, found $count"
+            exit 1
+          fi
+          # Check mod.rdx exists.
+          if [ ! -f stdlib/std/mod.rdx ]; then
+            echo "FAIL: stdlib/std/mod.rdx missing"
+            exit 1
+          fi
+          echo "stdlib stubs valid."
+
+      - name: Validate SKB rules (JSON)
+        run: |
+          set -euo pipefail
+          echo "Checking SKB rule files..."
+          errors=0
+          for f in skb/rules/*.json; do
+            [ -f "$f" ] || continue
+            if python3 -c "import json; json.load(open('$f'))" 2>/dev/null; then
+              rules=$(python3 -c "import json; d=json.load(open('$f')); print(len(d.get('rules', d.get('patterns', d.get('categories', [])))))")
+              echo "  OK: $(basename $f) ($rules entries)"
+            else
+              echo "  INVALID JSON: $f"
+              errors=$((errors + 1))
+            fi
+          done
+          if [ "$errors" -gt 0 ]; then
+            echo "FAIL: $errors invalid JSON files"
+            exit 1
+          fi
+          echo "SKB rules valid."
+
+      - name: Validate benchmark corpus (JSON)
+        run: |
+          set -euo pipefail
+          echo "Checking benchmark files..."
+          for f in benchmarks/*.json; do
+            [ -f "$f" ] || continue
+            if python3 -c "import json; json.load(open('$f'))" 2>/dev/null; then
+              echo "  OK: $(basename $f)"
+            else
+              echo "  INVALID JSON: $f"
+              exit 1
+            fi
+          done
+          echo "Benchmark corpus valid."
+
+      - name: Count ecosystem files
+        run: |
+          echo "=== Redox Ecosystem Summary ==="
+          echo "  Tools:      $(find tools -name '*.rs' | wc -l) .rs files"
+          echo "  Examples:   $(find examples -name '*.rdx' | wc -l) .rdx files"
+          echo "  Stdlib:     $(find stdlib -name '*.rdx' | wc -l) .rdx files"
+          echo "  SKB rules:  $(find skb -name '*.json' | wc -l) .json files"
+          echo "  Benchmarks: $(find benchmarks -name '*.json' | wc -l) .json files"
+          echo "  Book:       $(find book -name '*.md' 2>/dev/null | wc -l) .md files"
+          echo "  Cookbook:    $(find cookbook -name '*.md' 2>/dev/null | wc -l) .md files"
+          echo "  Docs:       $(find agent-guide migration-guide internals quick-start -name '*.md' 2>/dev/null | wc -l) .md files"

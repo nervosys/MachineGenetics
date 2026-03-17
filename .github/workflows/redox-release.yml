@@ -1,0 +1,191 @@
+# Redox Release — triggered by version tags (v*).
+#
+# Builds release binaries for all platforms, creates a GitHub release,
+# and publishes artifacts.
+
+name: Redox Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ── Build release binaries ─────────────────────────────────────────
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            suffix: ""
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            suffix: ""
+            cross: true
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            suffix: ""
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            suffix: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            suffix: ".exe"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross (for cross-compilation)
+        if: matrix.cross
+        run: cargo install cross --locked
+
+      - name: Build rust2rdx
+        working-directory: tools/rust2rdx
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+        shell: bash
+
+      - name: Build rdx2rs
+        working-directory: tools/rdx2rs
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+        shell: bash
+
+      - name: Build rdx CLI
+        working-directory: tools/rdx
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+        shell: bash
+
+      - name: Package binaries
+        shell: bash
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          dir="redox-tools-${tag}-${{ matrix.target }}"
+          mkdir -p "$dir"
+          cp "tools/rust2rdx/target/${{ matrix.target }}/release/rust2rdx${{ matrix.suffix }}" "$dir/"
+          cp "tools/rdx2rs/target/${{ matrix.target }}/release/rdx2rs${{ matrix.suffix }}" "$dir/"
+          cp "tools/rdx/target/${{ matrix.target }}/release/rdx${{ matrix.suffix }}" "$dir/"
+          cp LICENSE-MIT LICENSE-APACHE "$dir/"
+          tar czf "${dir}.tar.gz" "$dir"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: redox-tools-${{ matrix.target }}
+          path: redox-tools-*.tar.gz
+          retention-days: 5
+
+  # ── Run tests before releasing ─────────────────────────────────────
+  test:
+    name: Test before release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Test rust2rdx
+        working-directory: tools/rust2rdx
+        run: cargo test
+
+      - name: Test rdx2rs
+        working-directory: tools/rdx2rs
+        run: cargo test
+
+      - name: Test rdx CLI
+        working-directory: tools/rdx
+        run: cargo test
+
+      - name: Test prototype
+        working-directory: prototype
+        run: cargo test
+
+  # ── Create GitHub release ──────────────────────────────────────────
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Collect tarballs
+        run: |
+          mkdir -p release-assets
+          find artifacts -name '*.tar.gz' -exec cp {} release-assets/ \;
+          ls -la release-assets/
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          cat <<'EOF' > release-notes.md
+          ## Redox Tools ${{ github.ref_name }}
+
+          ### Included Tools
+
+          | Tool | Description |
+          |------|-------------|
+          | `rust2rdx` | Rust → Redox transpiler (28 translation rules) |
+          | `rdx2rs` | Redox → Rust back-transpiler (39 translation rules) |
+          | `rdx` | Redox CLI (build, test, run, fmt, migrate, etc.) |
+
+          ### Installation
+
+          Download the archive for your platform, extract, and add to `PATH`:
+
+          ```bash
+          tar xzf redox-tools-${tag}-x86_64-unknown-linux-gnu.tar.gz
+          export PATH="$PWD/redox-tools-${tag}-x86_64-unknown-linux-gnu:$PATH"
+          ```
+
+          ### Checksums
+
+          See checksums.txt attached to this release.
+          EOF
+
+      - name: Generate checksums
+        working-directory: release-assets
+        run: sha256sum *.tar.gz > checksums.txt
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          files: |
+            release-assets/*.tar.gz
+            release-assets/checksums.txt
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
