@@ -43,13 +43,13 @@ Each line is a self-contained JSON object. All sample files share a common envel
 
 **Types:**
 
-| Type               | Description                              | File                      |
-| ------------------ | ---------------------------------------- | ------------------------- |
-| `code-generation`  | Generate Redox code from a natural language prompt | `code-generation.jsonl`  |
-| `code-completion`  | Fill in missing code given surrounding context      | `code-completion.jsonl`  |
-| `translation`      | Translate between Rust and Redox                    | `translation.jsonl`      |
-| `error-repair`     | Diagnose and fix errors in Redox code               | `error-repair.jsonl`     |
-| `refactoring`      | Improve or optimize existing Redox code             | `refactoring.jsonl`      |
+| Type              | Description                                        | File                    |
+| ----------------- | -------------------------------------------------- | ----------------------- |
+| `code-generation` | Generate Redox code from a natural language prompt | `code-generation.jsonl` |
+| `code-completion` | Fill in missing code given surrounding context     | `code-completion.jsonl` |
+| `translation`     | Translate between Rust and Redox                   | `translation.jsonl`     |
+| `error-repair`    | Diagnose and fix errors in Redox code              | `error-repair.jsonl`    |
+| `refactoring`     | Improve or optimize existing Redox code            | `refactoring.jsonl`     |
 
 ### Agent Instructions (YAML)
 
@@ -98,14 +98,14 @@ cat training/evaluation/held-out-tasks.jsonl | \
 
 ## Sample Counts
 
-| File                    | Samples | Difficulty Spread                  |
-| ----------------------- | :-----: | ---------------------------------- |
+| File                    | Samples | Difficulty Spread                        |
+| ----------------------- | :-----: | ---------------------------------------- |
 | `code-generation.jsonl` |   30    | 8 simple, 10 medium, 8 hard, 4 very-hard |
 | `code-completion.jsonl` |   20    | 5 simple, 8 medium, 5 hard, 2 very-hard  |
 | `translation.jsonl`     |   25    | 8 simple, 9 medium, 5 hard, 3 very-hard  |
 | `error-repair.jsonl`    |   15    | 4 simple, 5 medium, 4 hard, 2 very-hard  |
 | `refactoring.jsonl`     |   10    | 2 simple, 3 medium, 3 hard, 2 very-hard  |
-| **Total**               | **100** |                                    |
+| **Total**               | **100** |                                          |
 
 ## Relationship to Benchmarks
 

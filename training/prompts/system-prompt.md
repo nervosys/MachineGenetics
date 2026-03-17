@@ -17,55 +17,55 @@ refactor Redox code.
 
 ## Syntax Quick Reference
 
-| Redox       | Rust Equivalent        | Notes                        |
-|-------------|------------------------|------------------------------|
-| `f`         | `fn`                   | Private function             |
-| `+f`        | `pub fn`               | Public function              |
-| `~f`        | `pub(crate) fn`        | Crate-visible function       |
-| `af`        | `async fn`             | Async function               |
-| `+af`       | `pub async fn`         | Public async function        |
-| `c f`       | `const fn`             | Const function               |
-| `v`         | `let`                  | Immutable binding            |
-| `m`         | `let mut`              | Mutable binding              |
-| `+v`        | `pub const`            | Public constant              |
-| `S`         | `struct`               | Private struct               |
-| `+S`        | `pub struct`           | Public struct                |
-| `E`         | `enum`                 | Private enum                 |
-| `+E`        | `pub enum`             | Public enum                  |
-| `T`         | `trait`                | Private trait                |
-| `+T`        | `pub trait`            | Public trait                 |
-| `I T ~ S`   | `impl T for S`         | Trait impl                   |
-| `I ~ S`     | `impl S`               | Inherent impl                |
-| `M`         | `mod`                  | Private module               |
-| `+M`        | `pub mod`              | Public module                |
-| `u`         | `use`                  | Import                       |
-| `+u`        | `pub use`              | Re-export                    |
-| `?`         | `if` / `match`         | Conditional / pattern match  |
-| `:`         | `else`                 | Else branch                  |
-| `@`         | `for` / attribute      | Loop / struct literal / attr |
-| `~`         | `in` / `for`           | Range iteration target       |
-| `~>`        | `where`                | Where clause                 |
-| `ret`       | `return`               | Early return                 |
-| `1b` / `0b` | `true` / `false`      | Boolean literals             |
-| `s`         | `String`               | Owned string                 |
-| `&s`        | `&str`                 | String slice                 |
-| `[T]~`      | `Vec<T>`               | Dynamic array                |
-| `?T`        | `Option<T>`            | Optional value               |
-| `R[T,E]`    | `Result<T,E>`          | Result type                  |
-| `^T`        | `Box<T>`               | Heap pointer                 |
-| `$T`        | `Rc<T>`                | Reference counted            |
-| `@T`        | `Arc<T>`               | Atomic reference counted     |
-| `&!T`       | `&mut T`               | Mutable reference            |
-| `{K:V}`     | `HashMap<K,V>`         | Hash map                     |
-| `{K}`       | `HashSet<K>`           | Hash set                     |
-| `[T]`       | `<T>`                  | Generic parameter            |
-| `.`         | `::`                   | Path separator               |
-| `p"..."`    | `println!("...")`      | Print macro                  |
-| `f"..."`    | `format!("...")`       | Format macro                 |
-| `ep"..."`   | `eprintln!("...")`     | Error print macro            |
-| `@d(...)`   | `#[derive(...)]`       | Derive attribute             |
-| `@test`     | `#[test]`              | Test attribute               |
-| `@cfg(...)` | `#[cfg(...)]`          | Conditional compilation      |
+| Redox       | Rust Equivalent    | Notes                        |
+| ----------- | ------------------ | ---------------------------- |
+| `f`         | `fn`               | Private function             |
+| `+f`        | `pub fn`           | Public function              |
+| `~f`        | `pub(crate) fn`    | Crate-visible function       |
+| `af`        | `async fn`         | Async function               |
+| `+af`       | `pub async fn`     | Public async function        |
+| `c f`       | `const fn`         | Const function               |
+| `v`         | `let`              | Immutable binding            |
+| `m`         | `let mut`          | Mutable binding              |
+| `+v`        | `pub const`        | Public constant              |
+| `S`         | `struct`           | Private struct               |
+| `+S`        | `pub struct`       | Public struct                |
+| `E`         | `enum`             | Private enum                 |
+| `+E`        | `pub enum`         | Public enum                  |
+| `T`         | `trait`            | Private trait                |
+| `+T`        | `pub trait`        | Public trait                 |
+| `I T ~ S`   | `impl T for S`     | Trait impl                   |
+| `I ~ S`     | `impl S`           | Inherent impl                |
+| `M`         | `mod`              | Private module               |
+| `+M`        | `pub mod`          | Public module                |
+| `u`         | `use`              | Import                       |
+| `+u`        | `pub use`          | Re-export                    |
+| `?`         | `if` / `match`     | Conditional / pattern match  |
+| `:`         | `else`             | Else branch                  |
+| `@`         | `for` / attribute  | Loop / struct literal / attr |
+| `~`         | `in` / `for`       | Range iteration target       |
+| `~>`        | `where`            | Where clause                 |
+| `ret`       | `return`           | Early return                 |
+| `1b` / `0b` | `true` / `false`   | Boolean literals             |
+| `s`         | `String`           | Owned string                 |
+| `&s`        | `&str`             | String slice                 |
+| `[T]~`      | `Vec<T>`           | Dynamic array                |
+| `?T`        | `Option<T>`        | Optional value               |
+| `R[T,E]`    | `Result<T,E>`      | Result type                  |
+| `^T`        | `Box<T>`           | Heap pointer                 |
+| `$T`        | `Rc<T>`            | Reference counted            |
+| `@T`        | `Arc<T>`           | Atomic reference counted     |
+| `&!T`       | `&mut T`           | Mutable reference            |
+| `{K:V}`     | `HashMap<K,V>`     | Hash map                     |
+| `{K}`       | `HashSet<K>`       | Hash set                     |
+| `[T]`       | `<T>`              | Generic parameter            |
+| `.`         | `::`               | Path separator               |
+| `p"..."`    | `println!("...")`  | Print macro                  |
+| `f"..."`    | `format!("...")`   | Format macro                 |
+| `ep"..."`   | `eprintln!("...")` | Error print macro            |
+| `@d(...)`   | `#[derive(...)]`   | Derive attribute             |
+| `@test`     | `#[test]`          | Test attribute               |
+| `@cfg(...)` | `#[cfg(...)]`      | Conditional compilation      |
 
 ## Effect System
 
