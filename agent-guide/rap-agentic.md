@@ -5,14 +5,14 @@ Beyond the base `language/*` and `build/check` methods, RAP provides:
 
 ## Method Reference
 
-| Method              | Purpose                                | Key Params                                         |
-| ------------------- | -------------------------------------- | -------------------------------------------------- |
-| `build/heal`        | Parse + generate fix candidates (P22)  | `source`                                           |
-| `cost/query`        | Per-construct cost estimate (P19)      | `construct`, `target`, `opt`                       |
-| `cost/compare`      | Compare two constructs                 | `a`, `b`, `target`                                 |
-| `skb/query`         | Query structured knowledge base (P14)  | `by` (fqn/effect/capability/tag/rust_alias/module), `value` |
-| `skb/spec`          | Lookup spec block                      | `fqn`                                              |
-| `verify/contracts`  | Verify function contracts (P21)        | `fqn`, `requires`, `ensures`, `declared_effects`, `used_effects` |
+| Method             | Purpose                               | Key Params                                                       |
+| ------------------ | ------------------------------------- | ---------------------------------------------------------------- |
+| `build/heal`       | Parse + generate fix candidates (P22) | `source`                                                         |
+| `cost/query`       | Per-construct cost estimate (P19)     | `construct`, `target`, `opt`                                     |
+| `cost/compare`     | Compare two constructs                | `a`, `b`, `target`                                               |
+| `skb/query`        | Query structured knowledge base (P14) | `by` (fqn/effect/capability/tag/rust_alias/module), `value`      |
+| `skb/spec`         | Lookup spec block                     | `fqn`                                                            |
+| `verify/contracts` | Verify function contracts (P21)       | `fqn`, `requires`, `ensures`, `declared_effects`, `used_effects` |
 
 ## `build/heal`
 
@@ -74,14 +74,14 @@ Compare two constructs side-by-side with a recommendation.
 
 Query the structured knowledge base. The `by` parameter selects the index:
 
-| `by` value     | Searches                              | Example `value`  |
-| -------------- | ------------------------------------- | ---------------- |
-| `fqn`          | Fully qualified name (exact/prefix)   | `std.io.read_file` |
-| `effect`       | Symbols declaring a given effect      | `io`             |
-| `capability`   | Symbols requiring a capability        | `network`        |
-| `tag`          | Semantic tags                         | `agent`          |
-| `rust_alias`   | Rust equivalent symbol name           | `HashMap`        |
-| `module`       | All symbols in a module (prefix)      | `std.io`         |
+| `by` value   | Searches                            | Example `value`    |
+| ------------ | ----------------------------------- | ------------------ |
+| `fqn`        | Fully qualified name (exact/prefix) | `std.io.read_file` |
+| `effect`     | Symbols declaring a given effect    | `io`               |
+| `capability` | Symbols requiring a capability      | `network`          |
+| `tag`        | Semantic tags                       | `agent`            |
+| `rust_alias` | Rust equivalent symbol name         | `HashMap`          |
+| `module`     | All symbols in a module (prefix)    | `std.io`           |
 
 ```json
 {"jsonrpc":"2.0","id":4,"method":"skb/query","params":{"by":"rust_alias","value":"HashMap"}}
@@ -120,12 +120,12 @@ Returns `status` (Verified/Partial/Failed/Trivial), individual `checks`, and
 
 The `std.agent.Memory` type provides 4-tier persistent memory:
 
-| Tier       | Lifetime                 | Use Case                           |
-| ---------- | ------------------------ | ---------------------------------- |
-| Ephemeral  | Single request           | Scratch state, intermediate results |
-| Session    | Current conversation     | Context, conversation history       |
-| Project    | Per-project, persistent  | Learned patterns, project rules     |
-| Global     | Cross-project, shared    | Ecosystem knowledge, shared models  |
+| Tier      | Lifetime                | Use Case                            |
+| --------- | ----------------------- | ----------------------------------- |
+| Ephemeral | Single request          | Scratch state, intermediate results |
+| Session   | Current conversation    | Context, conversation history       |
+| Project   | Per-project, persistent | Learned patterns, project rules     |
+| Global    | Cross-project, shared   | Ecosystem knowledge, shared models  |
 
 ```rdx
 v mem = Memory.new(ephemeral_store, session_store, project_store, global_store);
@@ -136,13 +136,13 @@ mem.promote("convention", MemoryTier.Session, MemoryTier.Project);
 
 ## Swarm Orchestration Patterns
 
-| Pattern              | Description                              | Function           |
-| -------------------- | ---------------------------------------- | ------------------ |
-| Map-Reduce           | Distribute work, collect, merge          | `swarm_map_reduce` |
-| Pipeline             | Chain agents sequentially                | `swarm_pipeline`   |
-| Saga                 | Multi-step with compensating rollbacks   | `swarm_saga`       |
-| Fan-Out              | Same task to N agents, collect all       | `swarm_fan_out`    |
-| Race                 | First successful result wins             | `swarm_race`       |
+| Pattern    | Description                            | Function           |
+| ---------- | -------------------------------------- | ------------------ |
+| Map-Reduce | Distribute work, collect, merge        | `swarm_map_reduce` |
+| Pipeline   | Chain agents sequentially              | `swarm_pipeline`   |
+| Saga       | Multi-step with compensating rollbacks | `swarm_saga`       |
+| Fan-Out    | Same task to N agents, collect all     | `swarm_fan_out`    |
+| Race       | First successful result wins           | `swarm_race`       |
 
 ```rdx
 // Map-reduce: distribute items across swarm agents, then merge

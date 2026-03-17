@@ -145,7 +145,7 @@ impl<'a> Parser<'a> {
         let name = self.expect_ident()?;
 
         let mut bang = false;
-        if self.peek() == TokenKind::Not {
+        if self.peek() == TokenKind::Bang {
             self.advance();
             bang = true;
         }
@@ -599,7 +599,7 @@ impl<'a> Parser<'a> {
             }
 
             // ! (never)
-            TokenKind::Not => {
+            TokenKind::Bang => {
                 self.advance();
                 Ok(Type::Never)
             }
@@ -939,7 +939,7 @@ impl<'a> Parser<'a> {
     fn parse_prefix_expr(&mut self) -> Result<Expr, ParseError> {
         match self.peek() {
             // Unary operators
-            TokenKind::Minus | TokenKind::Not | TokenKind::Star => {
+            TokenKind::Minus | TokenKind::Bang | TokenKind::Star => {
                 let tok = self.advance();
                 let op = tok.text.clone();
                 let operand = self.parse_prefix_expr()?;

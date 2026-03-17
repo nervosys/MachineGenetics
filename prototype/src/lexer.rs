@@ -2,75 +2,108 @@
 ///
 /// Design: single-pass, no backtracking, every token is unambiguous from
 /// its first character. Optimized for streaming (agent consumption).
+///
+/// Covers all keyword/attribute/type mappings from REDOX_PROPOSAL.md §5.5.
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TokenKind {
-    // Declaration keywords
+    // ── Declaration keywords ──────────────────────────────────────
     KwF,   // f (function)
-    KwM,   // m (mutable binding / method)
+    KwAf,  // af (async fn)
+    KwUf,  // uf (unsafe fn)
+    KwM,   // m (mutable binding)
     KwV,   // v (immutable binding)
-    KwC,   // c (const)
+    KwC,   // C (const)
     KwS,   // S (struct)
     KwE,   // E (enum)
     KwT,   // T (trait)
     KwI,   // I (impl)
     KwMod, // M (module)
-    KwU,   // U (union) — context disambiguated from 'u' (use)
+    KwU,   // U (union)
     KwUse, // u (use)
+    KwY,   // Y (type alias)
+    KwZ,   // Z (static)
 
-    // Visibility
-    Plus, // + (pub prefix, also arithmetic)
+    // ── Visibility ────────────────────────────────────────────────
+    Plus,       // + (pub prefix, also arithmetic)
+    TildePre,   // ~ prefix on keyword (pub(crate) — e.g., ~f, ~S)
 
-    // Control flow
-    Question,   // ? (if / match / option type / try)
-    At,         // @ (for loop / attribute / struct literal / arc type)
-    KwLoop,     // loop
-    KwBreak,    // break
-    KwContinue, // continue
-    KwRet,      // ret
-    KwYield,    // yield
+    // ── Control flow ──────────────────────────────────────────────
+    Question,      // ? (if / option type / try operator)
+    QuestionEq,    // ?= (match)
+    At,            // @ (for loop / attribute / struct literal / arc type)
+    AtAt,          // @@ (loop — infinite)
+    AtW,           // @w (while)
+    KwRet,         // ret (return) — also `^` in expression context
+    KwYield,       // yield
+    DoubleArrowR,  // >> (continue)
+    Bang,          // ! (break, also logical NOT / assert)
 
-    // Boolean
+    // ── Boolean ───────────────────────────────────────────────────
     True,  // 1b
     False, // 0b
 
-    // Special identifiers
-    Underscore,  // _
+    // ── Special identifiers ───────────────────────────────────────
+    Underscore,  // _ (self)
     UnderscoreT, // _T (Self)
 
-    // Effect/contract/spec
+    // ── Effect / contract / spec ──────────────────────────────────
     KwEffect, // effect
     KwHandle, // handle
     KwSpec,   // spec
     KwExtern, // extern
+    KwReq,    // @req (precondition — parsed as @ + req ident)
+    KwEns,    // @ens (postcondition)
+    KwInv,    // @inv (invariant)
+    KwFx,     // @fx (effects)
+    KwPerf,   // @perf (performance contract)
 
-    // Safety (legacy mode)
+    // ── Safety (legacy mode) ──────────────────────────────────────
     KwUnsafe, // unsafe
 
-    // Other keywords
-    KwType,   // type
-    KwStatic, // static
-    KwFor,    // for (in trait bounds)
+    // ── Placeholder/todo ──────────────────────────────────────────
+    Todo,          // ?? (todo!())
+    Unimplemented, // ??? (unimplemented!())
 
-    // Literals
+    // ── Other keywords ────────────────────────────────────────────
+    KwType,     // type
+    KwStatic,   // static
+    KwFor,      // for (in trait bounds)
+    KwLoop,     // loop (legacy — canonical is @@)
+    KwBreak,    // break (legacy — canonical is !)
+    KwContinue, // continue (legacy — canonical is >>)
+    KwOk,       // Ok
+    KwErr,      // Err
+    KwSome,     // Some
+    KwNone,     // None
+    KwSwarmMapReduce,  // swarm_map_reduce
+    KwSwarmPipeline,   // swarm_pipeline
+    KwSwarmSaga,       // swarm_saga
+    KwSwarmFanOut,     // swarm_fan_out
+    KwSwarmRace,       // swarm_race
+    KwPipeline,        // pipeline
+    KwGrammarExt,      // grammar_extension
+
+    // ── Literals ──────────────────────────────────────────────────
     IntLiteral,
     FloatLiteral,
     StringLiteral,
-    FormatString, // f"..."
-    PrintString,  // p"..."
+    FormatString,      // f"..."
+    PrintString,       // p"..."
+    EprintString,      // ep"..."
     CharLiteral,
     ByteLiteral,
     ByteStringLiteral,
 
-    // Identifiers
+    // ── Identifiers ───────────────────────────────────────────────
     Ident,
 
-    // Operators
+    // ── Operators ─────────────────────────────────────────────────
     Minus,     // -
     Star,      // *
     Slash,     // /
-    Percent,   // %
+    Percent,   // % (also Cell type prefix)
     Eq,        // ==
     Neq,       // !=
     Lt,        // <
@@ -79,10 +112,10 @@ pub enum TokenKind {
     Ge,        // >=
     And,       // &&
     Or,        // ||
-    Not,       // !
+    Not,       // ! (same as Bang — aliased for clarity)
     BitAnd,    // & (also reference)
     BitOr,     // |
-    BitXor,    // ^  (also owned ptr)
+    BitXor,    // ^  (also Box type prefix)
     Shl,       // <<
     Shr,       // >>
     Assign,    // =
@@ -96,9 +129,15 @@ pub enum TokenKind {
     BitXorEq,  // ^=
     ShlEq,     // <<=
     ShrEq,     // >>=
-    AndNot,    // &! (exclusive reference)
+    AndNot,    // &! (&mut T — exclusive reference)
+    AndTilde,  // &~ (Cow<T>)
+    PercentNot,// %! (RefCell<T>)
+    HashTilde, // #~ (RwLock<T>)
 
-    // Delimiters
+    // ── Where clause ──────────────────────────────────────────────
+    TildeArrow, // ~> (where)
+
+    // ── Delimiters ────────────────────────────────────────────────
     LParen, // (
     RParen, // )
     LBrace, // {
@@ -106,7 +145,7 @@ pub enum TokenKind {
     LBrack, // [
     RBrack, // ]
 
-    // Punctuation
+    // ── Punctuation ───────────────────────────────────────────────
     Semi,          // ;
     Comma,         // ,
     Dot,           // .
@@ -114,13 +153,13 @@ pub enum TokenKind {
     ColonQuestion, // :? (else-if)
     Arrow,         // ->
     FatArrow,      // =>
-    Hash,          // #
+    Hash,          // # (also Mutex type prefix)
     DotDot,        // ..
     DotDotEq,      // ..=
-    Tilde,         // ~ (vec suffix)
-    Dollar,        // $ (Rc type)
+    Tilde,         // ~ (vec suffix, also in ~>, &~, #~)
+    Dollar,        // $ (Rc type prefix)
 
-    // Special
+    // ── Special ───────────────────────────────────────────────────
     Eof,
     Error,
     Whitespace,
@@ -316,6 +355,10 @@ impl<'a> Lexer<'a> {
             }
             b'/' => self.make_token(TokenKind::Slash, start, start_line, start_col),
 
+            b'%' if self.peek() == Some(b'!') => {
+                self.advance();
+                self.make_token(TokenKind::PercentNot, start, start_line, start_col)
+            }
             b'%' if self.peek() == Some(b'=') => {
                 self.advance();
                 self.make_token(TokenKind::PercentEq, start, start_line, start_col)
@@ -332,11 +375,16 @@ impl<'a> Lexer<'a> {
             }
             b'=' => self.make_token(TokenKind::Assign, start, start_line, start_col),
 
+            b'!' if self.peek() == Some(b'=') && self.peek2() == Some(b'=') => {
+                // !== (assert_eq — lexed as != followed by = in parser, but we emit Neq + Assign)
+                self.advance();
+                self.make_token(TokenKind::Neq, start, start_line, start_col)
+            }
             b'!' if self.peek() == Some(b'=') => {
                 self.advance();
                 self.make_token(TokenKind::Neq, start, start_line, start_col)
             }
-            b'!' => self.make_token(TokenKind::Not, start, start_line, start_col),
+            b'!' => self.make_token(TokenKind::Bang, start, start_line, start_col),
 
             b'<' if self.peek() == Some(b'<') && self.peek2() == Some(b'=') => {
                 self.advance();
@@ -375,6 +423,10 @@ impl<'a> Lexer<'a> {
             b'&' if self.peek() == Some(b'!') => {
                 self.advance();
                 self.make_token(TokenKind::AndNot, start, start_line, start_col)
+            }
+            b'&' if self.peek() == Some(b'~') => {
+                self.advance();
+                self.make_token(TokenKind::AndTilde, start, start_line, start_col)
             }
             b'&' if self.peek() == Some(b'=') => {
                 self.advance();
@@ -426,9 +478,38 @@ impl<'a> Lexer<'a> {
             }
             b':' => self.make_token(TokenKind::Colon, start, start_line, start_col),
 
+            b'?' if self.peek() == Some(b'?') && self.peek2() == Some(b'?') => {
+                self.advance();
+                self.advance();
+                self.make_token(TokenKind::Unimplemented, start, start_line, start_col)
+            }
+            b'?' if self.peek() == Some(b'?') => {
+                self.advance();
+                self.make_token(TokenKind::Todo, start, start_line, start_col)
+            }
+            b'?' if self.peek() == Some(b'=') => {
+                self.advance();
+                self.make_token(TokenKind::QuestionEq, start, start_line, start_col)
+            }
             b'?' => self.make_token(TokenKind::Question, start, start_line, start_col),
+            b'@' if self.peek() == Some(b'@') => {
+                self.advance();
+                self.make_token(TokenKind::AtAt, start, start_line, start_col)
+            }
+            b'@' if self.peek() == Some(b'w') && !self.bytes.get(self.pos + 1).is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_') => {
+                self.advance();
+                self.make_token(TokenKind::AtW, start, start_line, start_col)
+            }
             b'@' => self.make_token(TokenKind::At, start, start_line, start_col),
+            b'#' if self.peek() == Some(b'~') => {
+                self.advance();
+                self.make_token(TokenKind::HashTilde, start, start_line, start_col)
+            }
             b'#' => self.make_token(TokenKind::Hash, start, start_line, start_col),
+            b'~' if self.peek() == Some(b'>') => {
+                self.advance();
+                self.make_token(TokenKind::TildeArrow, start, start_line, start_col)
+            }
             b'~' => self.make_token(TokenKind::Tilde, start, start_line, start_col),
             b'$' => self.make_token(TokenKind::Dollar, start, start_line, start_col),
 
@@ -620,7 +701,11 @@ impl<'a> Lexer<'a> {
 
         let text = &self.source[start..self.pos];
 
-        // Check for format/print strings: f"..." and p"..."
+        // Check for format/print strings: f"...", p"...", ep"..."
+        if text == "ep" && self.peek() == Some(b'"') {
+            self.advance(); // consume opening quote
+            return self.lex_string(start, start_line, start_col, TokenKind::EprintString);
+        }
         if (text == "f" || text == "p") && self.peek() == Some(b'"') {
             self.advance(); // consume opening quote
             let kind = if text == "f" { TokenKind::FormatString } else { TokenKind::PrintString };
@@ -630,9 +715,11 @@ impl<'a> Lexer<'a> {
         let kind = match text {
             // Single-char declaration keywords
             "f" => TokenKind::KwF,
+            "af" => TokenKind::KwAf,
+            "uf" => TokenKind::KwUf,
             "m" => TokenKind::KwM,
             "v" => TokenKind::KwV,
-            "c" => TokenKind::KwC,
+            "C" => TokenKind::KwC,
             "S" => TokenKind::KwS,
             "E" => TokenKind::KwE,
             "T" => TokenKind::KwT,
@@ -640,6 +727,8 @@ impl<'a> Lexer<'a> {
             "M" => TokenKind::KwMod,
             "U" => TokenKind::KwU,
             "u" => TokenKind::KwUse,
+            "Y" => TokenKind::KwY,
+            "Z" => TokenKind::KwZ,
             "s" => TokenKind::Ident, // 's' is a type, not a keyword; parser handles
 
             // Multi-char keywords
@@ -656,6 +745,21 @@ impl<'a> Lexer<'a> {
             "type" => TokenKind::KwType,
             "static" => TokenKind::KwStatic,
             "for" => TokenKind::KwFor,
+
+            // Built-in result/option variants
+            "Ok" => TokenKind::KwOk,
+            "Err" => TokenKind::KwErr,
+            "Some" => TokenKind::KwSome,
+            "None" => TokenKind::KwNone,
+
+            // Swarm orchestration pattern keywords
+            "swarm_map_reduce" => TokenKind::KwSwarmMapReduce,
+            "swarm_pipeline" => TokenKind::KwSwarmPipeline,
+            "swarm_saga" => TokenKind::KwSwarmSaga,
+            "swarm_fan_out" => TokenKind::KwSwarmFanOut,
+            "swarm_race" => TokenKind::KwSwarmRace,
+            "pipeline" => TokenKind::KwPipeline,
+            "grammar_extension" => TokenKind::KwGrammarExt,
 
             // Special identifiers
             "_" => TokenKind::Underscore,
@@ -711,6 +815,76 @@ mod tests {
         assert_eq!(kinds[6], TokenKind::Shr);
         assert_eq!(kinds[7], TokenKind::FatArrow);
         assert_eq!(kinds[8], TokenKind::Arrow);
+    }
+
+    #[test]
+    fn test_match_token() {
+        let tokens = lex("?= x { 1 => a, _ => b, }");
+        assert_eq!(tokens[0].kind, TokenKind::QuestionEq);
+    }
+
+    #[test]
+    fn test_loop_token() {
+        let tokens = lex("@@ { ! }");
+        assert_eq!(tokens[0].kind, TokenKind::AtAt);
+        assert_eq!(tokens[2].kind, TokenKind::Bang);
+    }
+
+    #[test]
+    fn test_todo_unimplemented() {
+        let tokens = lex("?? ???");
+        assert_eq!(tokens[0].kind, TokenKind::Todo);
+        assert_eq!(tokens[1].kind, TokenKind::Unimplemented);
+    }
+
+    #[test]
+    fn test_async_unsafe_fn() {
+        let tokens = lex("+af handle() -> R[(), Error]");
+        assert_eq!(tokens[0].kind, TokenKind::Plus);
+        assert_eq!(tokens[1].kind, TokenKind::KwAf);
+    }
+
+    #[test]
+    fn test_where_clause() {
+        let tokens = lex("~> T: Cl");
+        assert_eq!(tokens[0].kind, TokenKind::TildeArrow);
+    }
+
+    #[test]
+    fn test_type_alias_static() {
+        let tokens = lex("Y Alias = i32; Z GLOBAL: u8 = 0;");
+        assert_eq!(tokens[0].kind, TokenKind::KwY);
+        assert_eq!(tokens[5].kind, TokenKind::KwZ);
+    }
+
+    #[test]
+    fn test_eprint_string() {
+        let tokens = lex(r#"ep"error: {msg}""#);
+        assert_eq!(tokens[0].kind, TokenKind::EprintString);
+    }
+
+    #[test]
+    fn test_smart_pointer_types() {
+        // &~ (Cow), %! (RefCell), #~ (RwLock)
+        let tokens = lex("&~T %!T #~T");
+        assert_eq!(tokens[0].kind, TokenKind::AndTilde);
+        assert_eq!(tokens[2].kind, TokenKind::PercentNot);
+        assert_eq!(tokens[4].kind, TokenKind::HashTilde);
+    }
+
+    #[test]
+    fn test_swarm_keywords() {
+        let tokens = lex("swarm_map_reduce { }");
+        assert_eq!(tokens[0].kind, TokenKind::KwSwarmMapReduce);
+    }
+
+    #[test]
+    fn test_result_option_variants() {
+        let tokens = lex("Ok(x) Err(e) Some(v) None");
+        assert_eq!(tokens[0].kind, TokenKind::KwOk);
+        assert_eq!(tokens[4].kind, TokenKind::KwErr);
+        assert_eq!(tokens[8].kind, TokenKind::KwSome);
+        assert_eq!(tokens[12].kind, TokenKind::KwNone);
     }
 
     #[test]

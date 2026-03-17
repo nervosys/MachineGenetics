@@ -159,7 +159,10 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                     diagnostics.push(hir::Diagnostic {
                         severity: hir::Severity::Error,
                         message: format!("unexpected character: {}", tok.text),
-                        span: Some(hir::Span { line: tok.span.line as u32, col: tok.span.col as u32 }),
+                        span: Some(hir::Span {
+                            line: tok.span.line as u32,
+                            col: tok.span.col as u32,
+                        }),
                     });
                 }
             }
@@ -259,19 +262,23 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         "verify/contracts" => {
             // Verify function contracts (P21).
             let fqn = params.get("fqn").and_then(|v| v.as_str()).unwrap_or("");
-            let requires: Vec<String> = params.get("requires")
+            let requires: Vec<String> = params
+                .get("requires")
                 .and_then(|v| v.as_array())
                 .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
                 .unwrap_or_default();
-            let ensures: Vec<String> = params.get("ensures")
+            let ensures: Vec<String> = params
+                .get("ensures")
                 .and_then(|v| v.as_array())
                 .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
                 .unwrap_or_default();
-            let declared_effects: Vec<String> = params.get("declared_effects")
+            let declared_effects: Vec<String> = params
+                .get("declared_effects")
                 .and_then(|v| v.as_array())
                 .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
                 .unwrap_or_default();
-            let used_effects: Vec<String> = params.get("used_effects")
+            let used_effects: Vec<String> = params
+                .get("used_effects")
                 .and_then(|v| v.as_array())
                 .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
                 .unwrap_or_default();
