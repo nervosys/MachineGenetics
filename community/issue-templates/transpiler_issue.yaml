@@ -1,0 +1,74 @@
+name: Transpiler Issue
+description: Report an incorrect or missing transpilation rule
+title: "[Transpiler]: "
+labels: ["transpiler", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to report issues with `rust2rdx` or `rdx2rs`
+        translation rules.
+
+  - type: dropdown
+    id: tool
+    attributes:
+      label: Transpiler
+      description: Which transpiler is affected?
+      options:
+        - rust2rdx (Rust → Redox)
+        - rdx2rs (Redox → Rust)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue Type
+      description: What kind of transpiler issue?
+      options:
+        - Incorrect translation (produces wrong output)
+        - Missing rule (pattern not supported)
+        - Crash / panic during translation
+        - Performance (translation too slow)
+    validations:
+      required: true
+
+  - type: textarea
+    id: input
+    attributes:
+      label: Input Code
+      description: The source code being translated
+      value: |
+        ```rust
+        // paste input code here
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_output
+    attributes:
+      label: Expected Output
+      description: What the transpiler should produce
+      value: |
+        ```redox
+        // paste expected output here
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_output
+    attributes:
+      label: Actual Output
+      description: What the transpiler actually produced (or error message)
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information
+    validations:
+      required: false

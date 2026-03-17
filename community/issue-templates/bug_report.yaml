@@ -1,0 +1,95 @@
+name: Bug Report
+description: Report a bug in the Redox language, compiler, or tools
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for filing a bug report! Please fill in the details below
+        to help us diagnose and fix the issue.
+
+  - type: input
+    id: version
+    attributes:
+      label: Redox Version
+      description: Output of `rdx --version`
+      placeholder: rdx 0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of Redox is affected?
+      options:
+        - Compiler / Parser
+        - rust2rdx Transpiler
+        - rdx2rs Back-Transpiler
+        - rdx CLI
+        - Standard Library
+        - VS Code Extension
+        - Editor Integration (Neovim/Helix/Zed)
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of the bug
+      placeholder: Describe what happened...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction Steps
+      description: Minimal code and steps to reproduce the bug
+      value: |
+        **Redox code:**
+        ```redox
+        // paste your .rdx code here
+        ```
+
+        **Steps:**
+        1. Run `rdx build`
+        2. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened (include error messages)
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: Windows 11, macOS 14, Ubuntu 24.04
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information (backtraces, screenshots, etc.)
+    validations:
+      required: false

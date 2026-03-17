@@ -1,0 +1,80 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for Redox
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! For significant language changes,
+        consider opening an RFC instead (see `community/rfc-template.md`).
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: What area does this feature relate to?
+      options:
+        - Language Syntax
+        - Effect System
+        - SKB (Safety Knowledge Base)
+        - Standard Library
+        - Compiler / Parser
+        - Transpiler (rust2rdx / rdx2rs)
+        - Build System (rdx CLI / Forge.toml)
+        - Editor / IDE Support
+        - Agent Training / ACI
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? What's the motivation?
+      placeholder: I frequently need to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How would this feature work? Show example Redox code if applicable.
+      value: |
+        **Example usage:**
+        ```redox
+        // show how the feature would be used
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches did you consider?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      description: How big is this change?
+      options:
+        - Small (bug fix, minor tweak)
+        - Medium (new API, new transpiler rule)
+        - Large (new syntax, new subsystem) — consider RFC
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Links, references, or other relevant information
+    validations:
+      required: false
