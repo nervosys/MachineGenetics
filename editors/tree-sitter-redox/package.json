@@ -1,0 +1,35 @@
+{
+  "name": "tree-sitter-redox",
+  "version": "0.1.0",
+  "description": "Tree-sitter grammar for the Redox programming language.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nervosys/tree-sitter-redox"
+  },
+  "license": "MIT",
+  "main": "bindings/node",
+  "keywords": [
+    "tree-sitter",
+    "parser",
+    "redox",
+    "syntax"
+  ],
+  "dependencies": {
+    "nan": "^2.18.0"
+  },
+  "devDependencies": {
+    "tree-sitter-cli": "^0.22.0"
+  },
+  "scripts": {
+    "generate": "tree-sitter generate",
+    "test": "tree-sitter test",
+    "parse": "tree-sitter parse"
+  },
+  "tree-sitter": [
+    {
+      "scope": "source.redox",
+      "file-types": ["rdx"],
+      "injection-regex": "^redox$"
+    }
+  ]
+}

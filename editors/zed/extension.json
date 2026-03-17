@@ -1,0 +1,35 @@
+{
+  "id": "redox",
+  "name": "Redox",
+  "version": "0.1.0",
+  "description": "Redox language support — syntax highlighting and RAP LSP integration.",
+  "repository": "https://github.com/nervosys/Redox",
+  "authors": ["nervosys"],
+  "lib": {
+    "kind": "grammar",
+    "grammar": "redox"
+  },
+  "grammars": {
+    "redox": {
+      "repository": "https://github.com/nervosys/tree-sitter-redox",
+      "rev": "main"
+    }
+  },
+  "languages": {
+    "redox": {
+      "config": {
+        "tab_size": 4,
+        "hard_tabs": false,
+        "line_comment": "// ",
+        "block_comment": ["/* ", " */"],
+        "brackets": [
+          { "start": "{", "end": "}", "close": true, "newline": true },
+          { "start": "[", "end": "]", "close": true, "newline": false },
+          { "start": "(", "end": ")", "close": true, "newline": false }
+        ],
+        "autoclose_before": ";:.,=}])>",
+        "word_characters": ["_"]
+      }
+    }
+  }
+}

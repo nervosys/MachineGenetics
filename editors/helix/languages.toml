@@ -1,0 +1,37 @@
+# Helix editor configuration for Redox.
+#
+# Installation:
+#   cp languages.toml ~/.config/helix/languages.toml
+#   cp -r queries/redox ~/.config/helix/runtime/queries/redox
+
+# ── Language definition ──────────────────────────────────────────────
+
+[[language]]
+name = "redox"
+scope = "source.redox"
+injection-regex = "redox|rdx"
+file-types = ["rdx"]
+roots = ["Forge.toml"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "    " }
+auto-format = true
+language-servers = ["rap"]
+
+# ── Language server ──────────────────────────────────────────────────
+
+[language-server.rap]
+command = "rap"
+args = []
+
+[language-server.rap.config]
+checkOnSave = true
+diagnostics = { enable = true, skb = true, effects = true }
+completion = { autoimport = true }
+inlayHints = { enable = true, typeHints = true, effectHints = true }
+
+# ── Forge.toml uses TOML highlighting ────────────────────────────────
+
+[[language]]
+name = "toml"
+file-types = ["toml", { glob = "Forge.toml" }]
