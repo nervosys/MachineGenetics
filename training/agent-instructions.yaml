@@ -1,0 +1,163 @@
+# Redox Agent Instructions
+# Standard configuration for AI agents working with Redox source code.
+# Place this file at .redox/agent-instructions.yaml in your project root,
+# or load it from the training/ directory as a reference.
+
+language: redox
+edition: "2025"
+version: "1.0"
+
+# ─── Syntax Rules ───────────────────────────────────────────────────
+
+syntax_rules:
+  declarations:
+    - "Use `f` for private functions, `+f` for public, `~f` for pub(crate)"
+    - "Use `af` / `+af` for async functions"
+    - "Use `c f` for const functions"
+    - "Use `v` for immutable bindings (not `let`)"
+    - "Use `m` for mutable bindings (not `let mut`)"
+    - "Use `+v` for public constants"
+    - "Use `S` / `+S` for struct, `E` / `+E` for enum"
+    - "Use `T` / `+T` for trait"
+    - "Use `I Trait ~ Type` for trait impl, `I ~ Type` for inherent impl"
+    - "Use `M` / `+M` for mod"
+    - "Use `u` / `+u` for use / pub use"
+
+  control_flow:
+    - "Use `?` for if, match, and Option unwrapping"
+    - "Use `:` for else"
+    - "Use `@` for for-loops"
+    - "Use `ret` for return (not `return`)"
+    - "Pattern: `? condition { ... } : { ... }`"
+    - "Match: `? value { pattern => expr, _ => expr }`"
+
+  types:
+    - "Use `s` for String, `&s` for &str"
+    - "Use `[T]~` for Vec<T>, `[T]` for slices"
+    - "Use `?T` for Option<T>"
+    - "Use `R[T, E]` for Result<T, E>"
+    - "Use `^T` for Box<T>, `$T` for Rc<T>, `@T` for Arc<T>"
+    - "Use `{K: V}` for HashMap<K, V>, `{K}` for HashSet<K>"
+    - "Use `&T` for shared ref, `&!T` for exclusive ref (not &mut T)"
+
+  generics:
+    - "Use square brackets [T] for generics (not angle brackets <T>)"
+    - "Write `f max[T: Ord](a: T, b: T) -> T`"
+    - "Where clauses use `~>`: `f foo[T](x: T) ~> T: Display`"
+
+  paths:
+    - "Use dots for path separators: `std.collections.HashMap`"
+    - "Crate root: no `crate::` prefix"
+
+  macros:
+    - "Use `p\"...\"` for println!, `f\"...\"` for format!, `ep\"...\"` for eprintln!"
+    - "String interpolation: `p\"Hello, {name}!\"`"
+
+  literals:
+    - "Use `1b` for true, `0b` for false"
+    - "Struct literals: `Point @{ x: 1, y: 2 }`"
+
+  attributes:
+    - "Use `@d(...)` for derive: `@d(Debug, Clone)`"
+    - "Use `@test` for test functions"
+    - "Use `@bench` for benchmark functions"
+    - "Use `@cfg(...)` for conditional compilation"
+    - "Use `@i` for inline"
+
+# ─── Effect System ──────────────────────────────────────────────────
+
+effect_rules:
+  - "Declare effects with the `effect` keyword"
+  - "Annotate effectful functions: `f read_file(path: &s) -> s / io`"
+  - "Pure functions need no effect annotation"
+  - "Compose effects with `+`: `f fetch(url: &s) -> s / io + net`"
+  - "Use `handle` blocks to handle effects at call sites"
+  - "Effect annotations appear after return type, separated by `/`"
+  - "Standard effects: io, net, async, unsafe, panic, alloc"
+
+# ─── Contract System ────────────────────────────────────────────────
+
+contract_rules:
+  - "Use `spec` blocks for formal specifications"
+  - "Use `@req` for preconditions"
+  - "Use `@ens` for postconditions"
+  - "Use `@inv` for invariants"
+  - "Contracts are checked at compile time when possible"
+  - "Example: `spec { @req x > 0, @ens ret > 0 }`"
+
+# ─── SKB (Semantic Knowledge Base) ──────────────────────────────────
+
+skb_rules:
+  - "Omit lifetime annotations — the SKB infers them"
+  - "Omit unsafe blocks — use the capability system instead"
+  - "Reference SKB rules by category:rule-name, e.g. borrow:shared-iter"
+  - "Trust the SKB for ownership, borrowing, and lifetime decisions"
+  - "When in doubt, write the simplest code; the SKB will verify safety"
+
+# ─── Style Conventions ──────────────────────────────────────────────
+
+style:
+  indent: 4
+  max_line_length: 100
+  trailing_comma: true
+  brace_style: same_line
+  blank_lines_between_items: 1
+  group_imports: true
+  import_order:
+    - std
+    - external
+    - crate
+
+# ─── Common Patterns ────────────────────────────────────────────────
+
+patterns:
+  error_handling:
+    - "Prefer `R[T, E]` over panicking"
+    - "Use `?` operator for error propagation"
+    - "Define domain-specific error enums with `+E`"
+
+  iteration:
+    - "Use `@` for loops: `@ item ~ collection { ... }`"
+    - "Prefer iterator chains: `items.iter().map(...).collect()`"
+    - "Use `@ i ~ 0..n { ... }` for range loops"
+
+  concurrency:
+    - "Use `af` for async functions"
+    - "Use `@T` (Arc) for shared state across tasks"
+    - "Use `Mutex` / `RwLock` for interior mutability"
+
+  agent_orchestration:
+    - "Use swarm primitives for multi-agent coordination"
+    - "Annotate agent functions with capability requirements"
+    - "Use SemanticRegion / SemanticLease for resource management"
+
+# ─── Translation Reference ──────────────────────────────────────────
+
+# Quick reference table: Redox → Rust
+translation_table:
+  "f / +f":            "fn / pub fn"
+  "af / +af":          "async fn / pub async fn"
+  "v":                 "let"
+  "m":                 "let mut"
+  "S / +S":            "struct / pub struct"
+  "E / +E":            "enum / pub enum"
+  "T / +T":            "trait / pub trait"
+  "I Trait ~ Type":    "impl Trait for Type"
+  "I ~ Type":          "impl Type"
+  "? / :":             "if / else"
+  "@ item ~ coll":     "for item in coll"
+  "s / &s":            "String / &str"
+  "[T]~":              "Vec<T>"
+  "?T":                "Option<T>"
+  "R[T, E]":           "Result<T, E>"
+  "^T":                "Box<T>"
+  "$T":                "Rc<T>"
+  "@T":                "Arc<T>"
+  "{K: V}":            "HashMap<K, V>"
+  "1b / 0b":           "true / false"
+  "ret":               "return"
+  "p\"...\"":          "println!(\"...\")"
+  "f\"...\"":          "format!(\"...\")"
+  "@d(...)":           "#[derive(...)]"
+  "~>":                "where"
+  "[T]":               "<T>"
