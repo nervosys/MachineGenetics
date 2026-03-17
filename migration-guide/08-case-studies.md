@@ -12,13 +12,13 @@ dependencies. An ideal first migration target.
 
 ### 8.1.1 Assessment
 
-| Metric | Value |
-|--------|-------|
-| Lines of Rust | 620 |
-| Unsafe blocks | 0 |
-| Async code | none |
-| Dependencies | clap, csv, serde |
-| Estimated effort | 0.5 days |
+| Metric           | Value            |
+| ---------------- | ---------------- |
+| Lines of Rust    | 620              |
+| Unsafe blocks    | 0                |
+| Async code       | none             |
+| Dependencies     | clap, csv, serde |
+| Estimated effort | 0.5 days         |
 
 ### 8.1.2 Rust Source (Before)
 
@@ -271,16 +271,16 @@ M tests {
 
 ### 8.1.5 Key Observations
 
-| Aspect | Rust → Redox |
-|--------|-------------|
-| Lines | 95 → 82 (14% reduction) |
-| Keywords | `fn`, `let`, `pub`, `match` → `f`, `v`, `+`, `?` |
-| Paths | `std::path::PathBuf` → `std.path.PathBuf` |
-| Generics | `Vec<Record>` → `Vec[Record]` |
-| Type sugar | `HashMap<String,String>` → `{s: s}` |
-| Match | `match cli.command { }` → `? cli.command { }` |
-| Tests | tempfile crate → effect mocking |
-| Effects | implicit I/O → explicit `/ io` |
+| Aspect     | Rust → Redox                                     |
+| ---------- | ------------------------------------------------ |
+| Lines      | 95 → 82 (14% reduction)                          |
+| Keywords   | `fn`, `let`, `pub`, `match` → `f`, `v`, `+`, `?` |
+| Paths      | `std::path::PathBuf` → `std.path.PathBuf`        |
+| Generics   | `Vec<Record>` → `Vec[Record]`                    |
+| Type sugar | `HashMap<String,String>` → `{s: s}`              |
+| Match      | `match cli.command { }` → `? cli.command { }`    |
+| Tests      | tempfile crate → effect mocking                  |
+| Effects    | implicit I/O → explicit `/ io`                   |
 
 ---
 
@@ -291,13 +291,13 @@ database access, and middleware.
 
 ### 8.2.1 Assessment
 
-| Metric | Value |
-|--------|-------|
-| Lines of Rust | 1,450 |
-| Unsafe blocks | 1 (FFI for argon2 binding) |
-| Async code | heavy (axum + tokio + sqlx) |
-| Dependencies | axum, tokio, sqlx, serde, tower, tracing |
-| Estimated effort | 3 days |
+| Metric           | Value                                    |
+| ---------------- | ---------------------------------------- |
+| Lines of Rust    | 1,450                                    |
+| Unsafe blocks    | 1 (FFI for argon2 binding)               |
+| Async code       | heavy (axum + tokio + sqlx)              |
+| Dependencies     | axum, tokio, sqlx, serde, tower, tracing |
+| Estimated effort | 3 days                                   |
 
 ### 8.2.2 Rust Source (Key Excerpts)
 
@@ -449,15 +449,15 @@ M tests {
 
 ### 8.2.5 Key Observations
 
-| Aspect | Change |
-|--------|--------|
-| Runtime | tokio removed — built-in async |
-| Effects | All handlers annotated `/ db`, `/ net` |
-| Paths | `sqlx::query_as!` → `db.query_as!` |
-| Generics | `Arc<AppState>` → `@AppState` |
-| Types | `Vec<User>` → `[User]~` |
-| Main | `#[tokio::main]` → `+af main() / net, db, log` |
-| Testing | wiremock/mockall → `handle / db` blocks |
+| Aspect   | Change                                         |
+| -------- | ---------------------------------------------- |
+| Runtime  | tokio removed — built-in async                 |
+| Effects  | All handlers annotated `/ db`, `/ net`         |
+| Paths    | `sqlx::query_as!` → `db.query_as!`             |
+| Generics | `Arc<AppState>` → `@AppState`                  |
+| Types    | `Vec<User>` → `[User]~`                        |
+| Main     | `#[tokio::main]` → `+af main() / net, db, log` |
+| Testing  | wiremock/mockall → `handle / db` blocks        |
 
 ---
 
@@ -468,13 +468,13 @@ Uses threads for parallelism and unsafe for performance-critical SIMD.
 
 ### 8.3.1 Assessment
 
-| Metric | Value |
-|--------|-------|
-| Lines of Rust | 2,100 |
-| Unsafe blocks | 3 (SIMD intrinsics) |
-| Async code | none (threaded) |
-| Dependencies | csv, parquet, rayon, serde |
-| Estimated effort | 4 days |
+| Metric           | Value                      |
+| ---------------- | -------------------------- |
+| Lines of Rust    | 2,100                      |
+| Unsafe blocks    | 3 (SIMD intrinsics)        |
+| Async code       | none (threaded)            |
+| Dependencies     | csv, parquet, rayon, serde |
+| Estimated effort | 4 days                     |
 
 ### 8.3.2 Rust Source (Key Excerpts)
 
@@ -665,24 +665,24 @@ allow-agent = ["src/pipeline.rdx"]
 
 ### 8.3.6 Key Observations
 
-| Aspect | Change |
-|--------|--------|
-| Parallelism | rayon `par_iter` → Agent + Swarm |
-| Unsafe | Raw SIMD → `/ unsafe` effect annotation |
-| Capability | Unsafe scoped to `transform.rdx` only |
-| Dependencies | rayon removed |
+| Aspect       | Change                                   |
+| ------------ | ---------------------------------------- |
+| Parallelism  | rayon `par_iter` → Agent + Swarm         |
+| Unsafe       | Raw SIMD → `/ unsafe` effect annotation  |
+| Capability   | Unsafe scoped to `transform.rdx` only    |
+| Dependencies | rayon removed                            |
 | Backpressure | rayon auto-tuning → `Swarm.with_limit()` |
-| Testing | Direct calls → `handle / io` mocking |
+| Testing      | Direct calls → `handle / io` mocking     |
 
 ---
 
 ## 8.4 Migration Metrics Summary
 
-| Crate | Rust LOC | Redox LOC | Reduction | Effort | Hardest Part |
-|-------|----------|-----------|-----------|--------|-------------|
-| csvtool | 620 | 530 | 15% | 0.5 days | Effect annotation |
-| user-api | 1,450 | 1,210 | 17% | 3 days | Async runtime swap |
-| etl-pipeline | 2,100 | 1,780 | 15% | 4 days | SIMD unsafe scoping |
+| Crate        | Rust LOC | Redox LOC | Reduction | Effort   | Hardest Part        |
+| ------------ | -------- | --------- | --------- | -------- | ------------------- |
+| csvtool      | 620      | 530       | 15%       | 0.5 days | Effect annotation   |
+| user-api     | 1,450    | 1,210     | 17%       | 3 days   | Async runtime swap  |
+| etl-pipeline | 2,100    | 1,780     | 15%       | 4 days   | SIMD unsafe scoping |
 
 ### Patterns Observed
 
