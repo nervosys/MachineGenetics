@@ -6,7 +6,7 @@
 /// 3. Resolve every identifier reference to a SymbolId
 /// 4. Report unresolved names and duplicate definitions
 use crate::ast;
-use crate::hir::{Diagnostic, SymbolId, Ty};
+use crate::hir::{Diagnostic, DiagnosticCategory, Severity, SymbolId, Ty};
 use std::collections::HashMap;
 
 // ── Symbol Table ─────────────────────────────────────────────────────
@@ -122,7 +122,12 @@ impl Resolver {
         let id = self.symbols.alloc(name.to_string(), kind);
         if let Some(scope) = self.scopes.last_mut() {
             if scope.names.contains_key(name) {
-                self.diagnostics.push(Diagnostic::error(format!("duplicate definition: `{name}`")));
+                self.diagnostics.push(Diagnostic::categorized(
+                    Severity::Error,
+                    format!("duplicate definition: `{name}`"),
+                    DiagnosticCategory::DuplicateDefinition,
+                    None,
+                ));
             }
             scope.names.insert(name.to_string(), id);
         }
@@ -133,8 +138,12 @@ impl Resolver {
         let id = self.symbols.alloc(name.to_string(), kind);
         if let Some(scope) = self.scopes.last_mut() {
             if scope.types.contains_key(name) {
-                self.diagnostics
-                    .push(Diagnostic::error(format!("duplicate type definition: `{name}`")));
+                self.diagnostics.push(Diagnostic::categorized(
+                    Severity::Error,
+                    format!("duplicate type definition: `{name}`"),
+                    DiagnosticCategory::DuplicateDefinition,
+                    None,
+                ));
             }
             scope.types.insert(name.to_string(), id);
             // Also make it available in value namespace (for enum constructors, etc.)
@@ -387,10 +396,12 @@ impl Resolver {
             ast::Type::Path { segments, type_args } => {
                 if let Some(name) = segments.first() {
                     if self.lookup_type(name).is_none() && self.lookup_value(name).is_none() {
-                        self.diagnostics.push(Diagnostic::error(format!(
-                            "unresolved type: `{}`",
-                            segments.join(".")
-                        )));
+                        self.diagnostics.push(Diagnostic::categorized(
+                            Severity::Error,
+                            format!("unresolved type: `{}`", segments.join(".")),
+                            DiagnosticCategory::UnresolvedType,
+                            None,
+                        ));
                     } else {
                         // Record resolution.
                         if let Some(id) = self.lookup_type(name) {
@@ -500,10 +511,12 @@ impl Resolver {
             ast::Pattern::Struct { path, fields } => {
                 if let Some(name) = path.first() {
                     if self.lookup_type(name).is_none() {
-                        self.diagnostics.push(Diagnostic::error(format!(
-                            "unresolved type in pattern: `{}`",
-                            path.join(".")
-                        )));
+                        self.diagnostics.push(Diagnostic::categorized(
+                            Severity::Error,
+                            format!("unresolved type in pattern: `{}`", path.join(".")),
+                            DiagnosticCategory::UnresolvedType,
+                            None,
+                        ));
                     }
                 }
                 for fp in fields {
@@ -518,10 +531,12 @@ impl Resolver {
             ast::Pattern::Enum { path, elements } => {
                 if let Some(name) = path.first() {
                     if self.lookup_value(name).is_none() && self.lookup_type(name).is_none() {
-                        self.diagnostics.push(Diagnostic::error(format!(
-                            "unresolved variant in pattern: `{}`",
-                            path.join(".")
-                        )));
+                        self.diagnostics.push(Diagnostic::categorized(
+                            Severity::Error,
+                            format!("unresolved variant in pattern: `{}`", path.join(".")),
+                            DiagnosticCategory::UnresolvedName,
+                            None,
+                        ));
                     }
                 }
                 for el in elements {
@@ -552,7 +567,12 @@ impl Resolver {
                 if let Some(id) = self.lookup_value(name) {
                     self.resolved.insert(name.clone(), id);
                 } else {
-                    self.diagnostics.push(Diagnostic::error(format!("unresolved name: `{name}`")));
+                    self.diagnostics.push(Diagnostic::categorized(
+                        Severity::Error,
+                        format!("unresolved name: `{name}`"),
+                        DiagnosticCategory::UnresolvedName,
+                        None,
+                    ));
                 }
             }
             ast::Expr::Literal { .. } => {}
@@ -588,10 +608,12 @@ impl Resolver {
             ast::Expr::StructLit { path, fields } => {
                 if let Some(name) = path.first() {
                     if self.lookup_type(name).is_none() {
-                        self.diagnostics.push(Diagnostic::error(format!(
-                            "unresolved struct: `{}`",
-                            path.join(".")
-                        )));
+                        self.diagnostics.push(Diagnostic::categorized(
+                            Severity::Error,
+                            format!("unresolved struct: `{}`", path.join(".")),
+                            DiagnosticCategory::UnresolvedType,
+                            None,
+                        ));
                     }
                 }
                 for fi in fields {

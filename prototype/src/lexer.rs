@@ -26,19 +26,19 @@ pub enum TokenKind {
     KwZ,   // Z (static)
 
     // ── Visibility ────────────────────────────────────────────────
-    Plus,       // + (pub prefix, also arithmetic)
-    TildePre,   // ~ prefix on keyword (pub(crate) — e.g., ~f, ~S)
+    Plus,     // + (pub prefix, also arithmetic)
+    TildePre, // ~ prefix on keyword (pub(crate) — e.g., ~f, ~S)
 
     // ── Control flow ──────────────────────────────────────────────
-    Question,      // ? (if / option type / try operator)
-    QuestionEq,    // ?= (match)
-    At,            // @ (for loop / attribute / struct literal / arc type)
-    AtAt,          // @@ (loop — infinite)
-    AtW,           // @w (while)
-    KwRet,         // ret (return) — also `^` in expression context
-    KwYield,       // yield
-    DoubleArrowR,  // >> (continue)
-    Bang,          // ! (break, also logical NOT / assert)
+    Question,     // ? (if / option type / try operator)
+    QuestionEq,   // ?= (match)
+    At,           // @ (for loop / attribute / struct literal / arc type)
+    AtAt,         // @@ (loop — infinite)
+    AtW,          // @w (while)
+    KwRet,        // ret (return) — also `^` in expression context
+    KwYield,      // yield
+    DoubleArrowR, // >> (continue)
+    Bang,         // ! (break, also logical NOT / assert)
 
     // ── Boolean ───────────────────────────────────────────────────
     True,  // 1b
@@ -67,31 +67,31 @@ pub enum TokenKind {
     Unimplemented, // ??? (unimplemented!())
 
     // ── Other keywords ────────────────────────────────────────────
-    KwType,     // type
-    KwStatic,   // static
-    KwFor,      // for (in trait bounds)
-    KwLoop,     // loop (legacy — canonical is @@)
-    KwBreak,    // break (legacy — canonical is !)
-    KwContinue, // continue (legacy — canonical is >>)
-    KwOk,       // Ok
-    KwErr,      // Err
-    KwSome,     // Some
-    KwNone,     // None
-    KwSwarmMapReduce,  // swarm_map_reduce
-    KwSwarmPipeline,   // swarm_pipeline
-    KwSwarmSaga,       // swarm_saga
-    KwSwarmFanOut,     // swarm_fan_out
-    KwSwarmRace,       // swarm_race
-    KwPipeline,        // pipeline
-    KwGrammarExt,      // grammar_extension
+    KwType,           // type
+    KwStatic,         // static
+    KwFor,            // for (in trait bounds)
+    KwLoop,           // loop (legacy — canonical is @@)
+    KwBreak,          // break (legacy — canonical is !)
+    KwContinue,       // continue (legacy — canonical is >>)
+    KwOk,             // Ok
+    KwErr,            // Err
+    KwSome,           // Some
+    KwNone,           // None
+    KwSwarmMapReduce, // swarm_map_reduce
+    KwSwarmPipeline,  // swarm_pipeline
+    KwSwarmSaga,      // swarm_saga
+    KwSwarmFanOut,    // swarm_fan_out
+    KwSwarmRace,      // swarm_race
+    KwPipeline,       // pipeline
+    KwGrammarExt,     // grammar_extension
 
     // ── Literals ──────────────────────────────────────────────────
     IntLiteral,
     FloatLiteral,
     StringLiteral,
-    FormatString,      // f"..."
-    PrintString,       // p"..."
-    EprintString,      // ep"..."
+    FormatString, // f"..."
+    PrintString,  // p"..."
+    EprintString, // ep"..."
     CharLiteral,
     ByteLiteral,
     ByteStringLiteral,
@@ -100,39 +100,39 @@ pub enum TokenKind {
     Ident,
 
     // ── Operators ─────────────────────────────────────────────────
-    Minus,     // -
-    Star,      // *
-    Slash,     // /
-    Percent,   // % (also Cell type prefix)
-    Eq,        // ==
-    Neq,       // !=
-    Lt,        // <
-    Gt,        // >
-    Le,        // <=
-    Ge,        // >=
-    And,       // &&
-    Or,        // ||
-    Not,       // ! (same as Bang — aliased for clarity)
-    BitAnd,    // & (also reference)
-    BitOr,     // |
-    BitXor,    // ^  (also Box type prefix)
-    Shl,       // <<
-    Shr,       // >>
-    Assign,    // =
-    PlusEq,    // +=
-    MinusEq,   // -=
-    StarEq,    // *=
-    SlashEq,   // /=
-    PercentEq, // %=
-    BitAndEq,  // &=
-    BitOrEq,   // |=
-    BitXorEq,  // ^=
-    ShlEq,     // <<=
-    ShrEq,     // >>=
-    AndNot,    // &! (&mut T — exclusive reference)
-    AndTilde,  // &~ (Cow<T>)
-    PercentNot,// %! (RefCell<T>)
-    HashTilde, // #~ (RwLock<T>)
+    Minus,      // -
+    Star,       // *
+    Slash,      // /
+    Percent,    // % (also Cell type prefix)
+    Eq,         // ==
+    Neq,        // !=
+    Lt,         // <
+    Gt,         // >
+    Le,         // <=
+    Ge,         // >=
+    And,        // &&
+    Or,         // ||
+    Not,        // ! (same as Bang — aliased for clarity)
+    BitAnd,     // & (also reference)
+    BitOr,      // |
+    BitXor,     // ^  (also Box type prefix)
+    Shl,        // <<
+    Shr,        // >>
+    Assign,     // =
+    PlusEq,     // +=
+    MinusEq,    // -=
+    StarEq,     // *=
+    SlashEq,    // /=
+    PercentEq,  // %=
+    BitAndEq,   // &=
+    BitOrEq,    // |=
+    BitXorEq,   // ^=
+    ShlEq,      // <<=
+    ShrEq,      // >>=
+    AndNot,     // &! (&mut T — exclusive reference)
+    AndTilde,   // &~ (Cow<T>)
+    PercentNot, // %! (RefCell<T>)
+    HashTilde,  // #~ (RwLock<T>)
 
     // ── Where clause ──────────────────────────────────────────────
     TildeArrow, // ~> (where)
@@ -496,7 +496,12 @@ impl<'a> Lexer<'a> {
                 self.advance();
                 self.make_token(TokenKind::AtAt, start, start_line, start_col)
             }
-            b'@' if self.peek() == Some(b'w') && !self.bytes.get(self.pos + 1).is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_') => {
+            b'@' if self.peek() == Some(b'w')
+                && !self
+                    .bytes
+                    .get(self.pos + 1)
+                    .is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_') =>
+            {
                 self.advance();
                 self.make_token(TokenKind::AtW, start, start_line, start_col)
             }

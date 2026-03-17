@@ -251,6 +251,102 @@ pub struct Diagnostic {
     pub severity: Severity,
     pub message: String,
     pub span: Option<Span>,
+    /// Unique error code (e.g. "E0502"). None for ad-hoc diagnostics.
+    pub id: Option<String>,
+    /// Semantic category for the error.
+    pub category: Option<DiagnosticCategory>,
+}
+
+/// The complete structured diagnostic graph for a single root error.
+///
+/// This is the primary type for agent-consumable diagnostics as specified
+/// in §6.2 of the proposal. Every error includes context, machine-actionable
+/// fix candidates with confidence, and links to related errors.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiagnosticGraph {
+    /// The root diagnostic (the primary error/warning).
+    pub root: Diagnostic,
+    /// Contextual notes, help messages, and causal chain nodes.
+    pub context: Vec<DiagnosticNode>,
+    /// Ranked fix candidates (best first by confidence).
+    pub fixes: Vec<Fix>,
+    /// Related error codes (e.g. ["E0499", "E0503"]).
+    pub related: Vec<String>,
+    /// Link to documentation for this error.
+    pub documentation_url: Option<String>,
+}
+
+/// A contextual note attached to a DiagnosticGraph.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiagnosticNode {
+    pub kind: DiagnosticNodeKind,
+    pub message: String,
+    pub span: Option<Span>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DiagnosticNodeKind {
+    /// Explanatory note (e.g. "immutable borrow occurs here").
+    Note,
+    /// A help/hint message.
+    Help,
+    /// Part of a causal chain leading to the root error.
+    CausalChain,
+}
+
+/// A machine-actionable fix candidate within a DiagnosticGraph.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Fix {
+    /// Human-/agent-readable description.
+    pub description: String,
+    /// How applicable this fix is.
+    pub applicability: Applicability,
+    /// Conditions that must hold for this fix to be valid.
+    pub preconditions: Vec<String>,
+    /// Guarantees after applying this fix.
+    pub postconditions: Vec<String>,
+    /// Potential negative consequences.
+    pub side_effects: Vec<String>,
+    /// Confidence: 0.0 (wild guess) to 1.0 (certain).
+    pub confidence: f64,
+}
+
+/// How applicable a suggested fix is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Applicability {
+    /// Fix is machine-applicable with high confidence.
+    MachineApplicable,
+    /// Fix may not be correct in all contexts.
+    MaybeIncorrect,
+    /// Fix contains placeholders that need human/agent input.
+    HasPlaceholders,
+    /// Fix is only informational (cannot be auto-applied).
+    Unspecified,
+}
+
+/// Semantic category for a diagnostic.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DiagnosticCategory {
+    /// Borrow conflict (E0502, E0499, E0503).
+    BorrowConflict,
+    /// Use after move.
+    UseAfterMove,
+    /// Type mismatch.
+    TypeMismatch,
+    /// Unresolved name.
+    UnresolvedName,
+    /// Unresolved type.
+    UnresolvedType,
+    /// Undeclared effect.
+    UndeclaredEffect,
+    /// Missing syntax element.
+    SyntaxError,
+    /// Duplicate definition.
+    DuplicateDefinition,
+    /// Contract/spec violation.
+    SpecViolation,
+    /// Other.
+    Other,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -269,10 +365,92 @@ pub struct Span {
 
 impl Diagnostic {
     pub fn error(msg: impl Into<String>) -> Self {
-        Diagnostic { severity: Severity::Error, message: msg.into(), span: None }
+        Diagnostic {
+            severity: Severity::Error,
+            message: msg.into(),
+            span: None,
+            id: None,
+            category: None,
+        }
     }
     pub fn warning(msg: impl Into<String>) -> Self {
-        Diagnostic { severity: Severity::Warning, message: msg.into(), span: None }
+        Diagnostic {
+            severity: Severity::Warning,
+            message: msg.into(),
+            span: None,
+            id: None,
+            category: None,
+        }
+    }
+    /// Create an error with a category and optional error code.
+    pub fn categorized(
+        severity: Severity,
+        msg: impl Into<String>,
+        category: DiagnosticCategory,
+        id: Option<&str>,
+    ) -> Self {
+        Diagnostic {
+            severity,
+            message: msg.into(),
+            span: None,
+            id: id.map(|s| s.to_string()),
+            category: Some(category),
+        }
+    }
+}
+
+impl DiagnosticGraph {
+    /// Create a DiagnosticGraph from a root diagnostic with no fixes or context.
+    pub fn from_root(root: Diagnostic) -> Self {
+        DiagnosticGraph {
+            root,
+            context: Vec::new(),
+            fixes: Vec::new(),
+            related: Vec::new(),
+            documentation_url: None,
+        }
+    }
+
+    /// Add a contextual note.
+    pub fn with_note(mut self, msg: impl Into<String>) -> Self {
+        self.context.push(DiagnosticNode {
+            kind: DiagnosticNodeKind::Note,
+            message: msg.into(),
+            span: None,
+        });
+        self
+    }
+
+    /// Add a help message.
+    pub fn with_help(mut self, msg: impl Into<String>) -> Self {
+        self.context.push(DiagnosticNode {
+            kind: DiagnosticNodeKind::Help,
+            message: msg.into(),
+            span: None,
+        });
+        self
+    }
+
+    /// Add a causal chain entry.
+    pub fn with_cause(mut self, msg: impl Into<String>) -> Self {
+        self.context.push(DiagnosticNode {
+            kind: DiagnosticNodeKind::CausalChain,
+            message: msg.into(),
+            span: None,
+        });
+        self
+    }
+
+    /// Add a fix candidate.
+    pub fn with_fix(mut self, fix: Fix) -> Self {
+        self.fixes.push(fix);
+        self
+    }
+
+    /// Add related error codes.
+    pub fn with_related(mut self, codes: &[&str]) -> Self {
+        self.related.extend(codes.iter().map(|s| s.to_string()));
+        self
     }
 }
 
@@ -283,10 +461,46 @@ impl fmt::Display for Diagnostic {
             Severity::Warning => "warning",
             Severity::Info => "info",
         };
+        if let Some(code) = &self.id {
+            write!(f, "[{code}] ")?;
+        }
         if let Some(sp) = &self.span {
             write!(f, "{}:{}:{}: {}", sp.line, sp.col, sev, self.message)
         } else {
             write!(f, "{sev}: {}", self.message)
         }
+    }
+}
+
+impl fmt::Display for DiagnosticGraph {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.root)?;
+        for node in &self.context {
+            let prefix = match node.kind {
+                DiagnosticNodeKind::Note => "note",
+                DiagnosticNodeKind::Help => "help",
+                DiagnosticNodeKind::CausalChain => "cause",
+            };
+            write!(f, "\n  {prefix}: {}", node.message)?;
+        }
+        for (i, fix) in self.fixes.iter().enumerate() {
+            write!(
+                f,
+                "\n  fix[{}] (conf={:.0}%, {}): {}",
+                i,
+                fix.confidence * 100.0,
+                match fix.applicability {
+                    Applicability::MachineApplicable => "auto",
+                    Applicability::MaybeIncorrect => "maybe",
+                    Applicability::HasPlaceholders => "placeholder",
+                    Applicability::Unspecified => "info",
+                },
+                fix.description
+            )?;
+        }
+        if !self.related.is_empty() {
+            write!(f, "\n  related: {}", self.related.join(", "))?;
+        }
+        Ok(())
     }
 }

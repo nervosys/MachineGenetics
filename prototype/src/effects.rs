@@ -10,6 +10,7 @@
 ///
 /// Effects are inferred bottom-up: leaf functions first, callers accumulate.
 use crate::ast;
+use crate::hir::DiagnosticCategory;
 use crate::hir::{Diagnostic, Effect, EffectSet, pure};
 use std::collections::HashMap;
 
@@ -63,10 +64,15 @@ impl EffectInfer {
 
                 if !undeclared.is_empty() {
                     let effects: Vec<String> = undeclared.iter().map(|e| e.to_string()).collect();
-                    self.diagnostics.push(Diagnostic::error(format!(
-                        "function `{name}` performs undeclared effects: [{}]",
-                        effects.join(", ")
-                    )));
+                    self.diagnostics.push(Diagnostic::categorized(
+                        crate::hir::Severity::Error,
+                        format!(
+                            "function `{name}` performs undeclared effects: [{}]",
+                            effects.join(", ")
+                        ),
+                        DiagnosticCategory::UndeclaredEffect,
+                        None,
+                    ));
                 }
             }
         }

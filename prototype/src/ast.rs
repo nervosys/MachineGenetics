@@ -1,5 +1,4 @@
 /// Redox AST — Abstract Syntax Tree for the Redox canonical syntax.
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,29 +74,29 @@ pub struct Param {
 pub enum Type {
     Path { segments: Vec<String>, type_args: Vec<Type> },
     Reference { mutable: bool, inner: Box<Type> },
-    OwnedPtr { inner: Box<Type> },        // ^T
-    Rc { inner: Box<Type> },              // $T
-    Arc { inner: Box<Type> },             // @T
-    Cow { inner: Box<Type> },             // &~T
-    Cell { inner: Box<Type> },            // %T
-    RefCell { inner: Box<Type> },         // %!T
-    Mutex { inner: Box<Type> },           // #T
-    RwLock { inner: Box<Type> },          // #~T
-    Slice { inner: Box<Type> },           // [T]
+    OwnedPtr { inner: Box<Type> },               // ^T
+    Rc { inner: Box<Type> },                     // $T
+    Arc { inner: Box<Type> },                    // @T
+    Cow { inner: Box<Type> },                    // &~T
+    Cell { inner: Box<Type> },                   // %T
+    RefCell { inner: Box<Type> },                // %!T
+    Mutex { inner: Box<Type> },                  // #T
+    RwLock { inner: Box<Type> },                 // #~T
+    Slice { inner: Box<Type> },                  // [T]
     Array { inner: Box<Type>, size: Box<Expr> }, // [T; N]
-    Vec { inner: Box<Type> },             // [T]~
-    Set { inner: Box<Type> },             // {T}
+    Vec { inner: Box<Type> },                    // [T]~
+    Set { inner: Box<Type> },                    // {T}
     Tuple { elements: Vec<Type> },
-    Option { inner: Box<Type> },          // ?T
+    Option { inner: Box<Type> },              // ?T
     Result { ok: Box<Type>, err: Box<Type> }, // R[T, E]
     Map { key: Box<Type>, value: Box<Type> }, // {K: V}
-    Ptr { inner: Box<Type> },             // Ptr[T]
-    Simd { inner: Box<Type>, width: u64 }, // Simd[T, N]
+    Ptr { inner: Box<Type> },                 // Ptr[T]
+    Simd { inner: Box<Type>, width: u64 },    // Simd[T, N]
     Fn { params: Vec<Type>, ret: Option<Box<Type>> },
-    Never,                                // !
-    Inferred,                             // _
-    SelfType,                             // _T
-    StringType,                           // s
+    Never,      // !
+    Inferred,   // _
+    SelfType,   // _T
+    StringType, // s
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

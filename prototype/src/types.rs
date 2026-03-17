@@ -7,7 +7,9 @@
 /// - Unification: Robinson's algorithm extended for Redox types
 /// - Substitution: apply solved constraints to resolve all type variables
 use crate::ast;
-use crate::hir::{Diagnostic, FloatTy, IntTy, Ty, TyVar, UintTy, pure};
+use crate::hir::{
+    Diagnostic, DiagnosticCategory, FloatTy, IntTy, Severity, Ty, TyVar, UintTy, pure,
+};
 use std::collections::HashMap;
 
 // ── Type variable supply ─────────────────────────────────────────────
@@ -270,7 +272,12 @@ impl TypeChecker {
     }
 
     fn emit_error(&mut self, msg: impl Into<String>) {
-        self.diagnostics.push(Diagnostic::error(msg));
+        self.diagnostics.push(Diagnostic::categorized(
+            Severity::Error,
+            msg,
+            DiagnosticCategory::TypeMismatch,
+            None,
+        ));
     }
 
     // ── AST type → HIR type conversion ───────────────────────────────

@@ -163,6 +163,8 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                             line: tok.span.line as u32,
                             col: tok.span.col as u32,
                         }),
+                        id: None,
+                        category: Some(hir::DiagnosticCategory::SyntaxError),
                     });
                 }
             }
@@ -172,6 +174,8 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                     severity: hir::Severity::Error,
                     message: e.message.clone(),
                     span: Some(hir::Span { line: e.line as u32, col: e.col as u32 }),
+                    id: None,
+                    category: Some(hir::DiagnosticCategory::SyntaxError),
                 });
             }
 
