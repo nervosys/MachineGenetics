@@ -1,0 +1,15 @@
+{"input": "Query cost of Vec::push on x86_64", "output": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"cost/query\",\"params\":{\"construct\":\"Vec::push\",\"target\":\"x86_64\",\"opt\":\"release\"}}"}
+{"input": "Compare Box alloc vs Rc clone cost", "output": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"cost/compare\",\"params\":{\"a\":\"Box alloc\",\"b\":\"Rc clone\",\"target\":\"x86_64\"}}"}
+{"input": "What effects does std.io.read_file have?", "output": "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"skb/query\",\"params\":{\"by\":\"fqn\",\"value\":\"std.io.read_file\"}}"}
+{"input": "Find all symbols requiring network capability", "output": "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"skb/query\",\"params\":{\"by\":\"capability\",\"value\":\"network\"}}"}
+{"input": "What is the Redox equivalent of HashMap?", "output": "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"skb/query\",\"params\":{\"by\":\"rust_alias\",\"value\":\"HashMap\"}}"}
+{"input": "Get the spec for std.io.read_file", "output": "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"skb/spec\",\"params\":{\"fqn\":\"std.io.read_file\"}}"}
+{"input": "Verify contracts for my_module.process with io effect", "output": "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"verify/contracts\",\"params\":{\"fqn\":\"my_module.process\",\"requires\":[\"input.len() > 0\"],\"ensures\":[\"ret.is_ok()\"],\"declared_effects\":[\"io\"],\"used_effects\":[\"io\"]}}"}
+{"input": "Heal this source code that has errors", "output": "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"build/heal\",\"params\":{\"source\":\"+f add(a: i32, b: i32) { a + b }\"}}"}
+{"input": "Find all agent-related symbols in the SKB", "output": "{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"skb/query\",\"params\":{\"by\":\"tag\",\"value\":\"agent\"}}"}
+{"input": "List all symbols in std.io module", "output": "{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"skb/query\",\"params\":{\"by\":\"module\",\"value\":\"std.io\"}}"}
+{"input": "What is the cost of Swarm.broadcast?", "output": "{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"cost/query\",\"params\":{\"construct\":\"Swarm.broadcast\",\"target\":\"x86_64\",\"opt\":\"release\"}}"}
+{"input": "Check if async fn is cheaper than spawning a thread", "output": "{\"jsonrpc\":\"2.0\",\"id\":12,\"method\":\"cost/compare\",\"params\":{\"a\":\"async fn\",\"b\":\"Mutex.lock\",\"target\":\"x86_64\"}}"}
+{"input": "Verify a pure function with no effects", "output": "{\"jsonrpc\":\"2.0\",\"id\":13,\"method\":\"verify/contracts\",\"params\":{\"fqn\":\"math.add\",\"requires\":[],\"ensures\":[],\"declared_effects\":[],\"used_effects\":[]}}"}
+{"input": "Query cost of Memory.persist for agent state", "output": "{\"jsonrpc\":\"2.0\",\"id\":14,\"method\":\"cost/query\",\"params\":{\"construct\":\"Memory.persist\",\"target\":\"x86_64\",\"opt\":\"release\"}}"}
+{"input": "Find all symbols with concurrency effects", "output": "{\"jsonrpc\":\"2.0\",\"id\":15,\"method\":\"skb/query\",\"params\":{\"by\":\"effect\",\"value\":\"concurrency\"}}"}

@@ -14,6 +14,7 @@ the Redox programming language.
 | [anti-patterns.md](anti-patterns.md)       | Common mistakes and how to avoid them     | Error prevention |
 | [effects.md](effects.md)                   | Effect annotation rules and decision tree | Effect system    |
 | [migration.md](migration.md)               | Rust → Redox translation rules for agents | Migration tasks  |
+| [rap-agentic.md](rap-agentic.md)           | RAP agentic methods: heal, cost, SKB, verify | RAP clients |
 | [examples/](examples/)                     | Worked prompt → response examples         | Training / eval  |
 
 ## Quick Start for Agent Developers

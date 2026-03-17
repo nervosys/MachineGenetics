@@ -1,12 +1,16 @@
 mod ast;
+mod cost;
 mod effects;
+mod heal;
 mod hir;
 mod lexer;
 mod mlir;
 mod parser;
 mod rap;
 mod resolve;
+mod skb;
 mod types;
+mod verify;
 
 use std::io::Read;
 
@@ -141,6 +145,15 @@ fn run_check(source: &str, filename: &str) {
     let sym_count = resolver.symbols.len();
     let fn_count = effect_infer.inferred.len();
 
+    // Phase 6: Self-healing — generate fix candidates for all diagnostics.
+    let mut all_diagnostics: Vec<hir::Diagnostic> = Vec::new();
+    all_diagnostics.extend(resolver.diagnostics.iter().cloned());
+    all_diagnostics.extend(checker.diagnostics.iter().cloned());
+    all_diagnostics.extend(effect_infer.diagnostics.iter().cloned());
+
+    let healed = heal::heal(&all_diagnostics);
+    let fix_count: usize = healed.iter().map(|h| h.fixes.len()).sum();
+
     eprintln!();
     eprintln!("=== Analysis Summary ===");
     eprintln!("  Symbols resolved: {sym_count}");
@@ -158,6 +171,18 @@ fn run_check(source: &str, filename: &str) {
 
     eprintln!("  Errors: {total_errors}");
 
+    if fix_count > 0 {
+        eprintln!("  Fix candidates: {fix_count}");
+        for h in &healed {
+            if !h.fixes.is_empty() {
+                eprintln!("    ▸ {}: {} fix(es)", h.diagnostic.message, h.fixes.len());
+                for fix in &h.fixes {
+                    eprintln!("      - [conf={:.0}%] {}", fix.confidence * 100.0, fix.description);
+                }
+            }
+        }
+    }
+
     if total_errors > 0 {
         std::process::exit(1);
     } else {
@@ -174,7 +199,7 @@ fn run_pipeline(source: &str, filename: &str) {
     let mut total_errors = 0;
 
     // ── Phase 1: Lex ─────────────────────────────────────────────────
-    eprintln!("▸ Phase 1/6: Lexical analysis");
+    eprintln!("▸ Phase 1/7: Lexical analysis");
     let tokens = lexer::lex(source);
     let mut lex_errors = 0;
     for tok in &tokens {
@@ -188,7 +213,7 @@ fn run_pipeline(source: &str, filename: &str) {
     total_errors += lex_errors;
 
     // ── Phase 2: Parse ───────────────────────────────────────────────
-    eprintln!("▸ Phase 2/6: Parsing");
+    eprintln!("▸ Phase 2/7: Parsing");
     let module = match parser::parse(&tokens) {
         Ok(m) => {
             eprintln!("  ✓ {} top-level items", m.items.len());
@@ -201,7 +226,7 @@ fn run_pipeline(source: &str, filename: &str) {
     };
 
     // ── Phase 3: Name resolution ─────────────────────────────────────
-    eprintln!("▸ Phase 3/6: Name resolution");
+    eprintln!("▸ Phase 3/7: Name resolution");
     let resolver = resolve::resolve(&module);
     for diag in &resolver.diagnostics {
         eprintln!("  {filename}: {diag}");
@@ -212,7 +237,7 @@ fn run_pipeline(source: &str, filename: &str) {
     eprintln!("  ✓ {} symbols resolved", resolver.symbols.len());
 
     // ── Phase 4: Type checking ───────────────────────────────────────
-    eprintln!("▸ Phase 4/6: Type checking");
+    eprintln!("▸ Phase 4/7: Type checking");
     let checker = types::check(&module);
     for diag in &checker.diagnostics {
         eprintln!("  {filename}: {diag}");
@@ -223,7 +248,7 @@ fn run_pipeline(source: &str, filename: &str) {
     eprintln!("  ✓ {} type diagnostics", checker.diagnostics.len());
 
     // ── Phase 5: Effect inference ────────────────────────────────────
-    eprintln!("▸ Phase 5/6: Effect inference");
+    eprintln!("▸ Phase 5/7: Effect inference");
     let effect_infer = effects::infer_effects(&module);
     for diag in &effect_infer.diagnostics {
         eprintln!("  {filename}: {diag}");
@@ -241,10 +266,29 @@ fn run_pipeline(source: &str, filename: &str) {
     }
 
     // ── Phase 6: MLIR lowering ───────────────────────────────────────
-    eprintln!("▸ Phase 6/6: MLIR lowering");
+    eprintln!("▸ Phase 6/7: MLIR lowering");
     let mlir_output = mlir::emit(&module, &effect_infer);
     let mlir_lines = mlir_output.lines().count();
     eprintln!("  ✓ {mlir_lines} lines of MLIR generated");
+
+    // ── Phase 7: Self-healing ─────────────────────────────────────────
+    eprintln!("▸ Phase 7/7: Self-healing analysis");
+    let mut all_diags: Vec<hir::Diagnostic> = Vec::new();
+    all_diags.extend(resolver.diagnostics.iter().cloned());
+    all_diags.extend(checker.diagnostics.iter().cloned());
+    all_diags.extend(effect_infer.diagnostics.iter().cloned());
+
+    let healed = heal::heal(&all_diags);
+    let fix_count: usize = healed.iter().map(|h| h.fixes.len()).sum();
+    eprintln!("  ✓ {} diagnostics analyzed, {} fix candidates", all_diags.len(), fix_count);
+
+    if fix_count > 0 {
+        for h in &healed {
+            for fix in &h.fixes {
+                eprintln!("    ▸ [conf={:.0}%] {}", fix.confidence * 100.0, fix.description);
+            }
+        }
+    }
 
     // ── Summary ──────────────────────────────────────────────────────
     eprintln!();
@@ -255,6 +299,7 @@ fn run_pipeline(source: &str, filename: &str) {
     eprintln!("  Symbols:         {}", resolver.symbols.len());
     eprintln!("  Functions:       {}", effect_infer.inferred.len());
     eprintln!("  MLIR lines:      {mlir_lines}");
+    eprintln!("  Fix candidates:  {fix_count}");
     eprintln!("  Errors:          {total_errors}");
 
     if total_errors > 0 {

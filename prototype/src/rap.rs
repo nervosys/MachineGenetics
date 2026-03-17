@@ -4,11 +4,22 @@
 ///   language/parse    — parse source to AST (JSON)
 ///   language/tokens   — tokenize source
 ///   build/check       — check syntax (parse + report errors)
+///   build/heal        — check + generate fix candidates (P22)
+///   cost/query        — query per-construct cost estimates (P19)
+///   cost/compare      — compare costs of two constructs
+///   skb/query         — query structured knowledge base (P14)
+///   skb/spec          — lookup spec block for a symbol
+///   verify/contracts  — verify function contracts (P21)
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 
+use crate::cost;
+use crate::heal;
+use crate::hir;
 use crate::lexer;
 use crate::parser;
+use crate::skb;
+use crate::verify;
 
 /// Start the RAP server on `addr` (e.g. "127.0.0.1:9876").
 pub fn serve(addr: &str) {
@@ -135,6 +146,148 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             serde_json::json!({
                 "ok": errors.is_empty(),
                 "errors": errors
+            })
+        }
+
+        "build/heal" => {
+            // Parse + generate fix candidates for all diagnostics (P22).
+            let tokens = lexer::lex(source);
+            let mut diagnostics: Vec<hir::Diagnostic> = Vec::new();
+
+            for tok in &tokens {
+                if tok.kind == lexer::TokenKind::Error {
+                    diagnostics.push(hir::Diagnostic {
+                        severity: hir::Severity::Error,
+                        message: format!("unexpected character: {}", tok.text),
+                        span: Some(hir::Span { line: tok.span.line as u32, col: tok.span.col as u32 }),
+                    });
+                }
+            }
+
+            if let Err(e) = parser::parse(&tokens) {
+                diagnostics.push(hir::Diagnostic {
+                    severity: hir::Severity::Error,
+                    message: e.message.clone(),
+                    span: Some(hir::Span { line: e.line as u32, col: e.col as u32 }),
+                });
+            }
+
+            let healed = heal::heal(&diagnostics);
+            serde_json::json!({
+                "ok": diagnostics.is_empty(),
+                "diagnostics": serde_json::to_value(&healed).unwrap_or_default()
+            })
+        }
+
+        "cost/query" => {
+            // Query per-construct cost estimate (P19).
+            let construct = params.get("construct").and_then(|v| v.as_str()).unwrap_or("");
+            let target = params.get("target").and_then(|v| v.as_str()).unwrap_or("x86_64");
+            let opt = match params.get("opt").and_then(|v| v.as_str()).unwrap_or("release") {
+                "debug" => cost::OptLevel::Debug,
+                "release_lto" => cost::OptLevel::ReleaseLto,
+                _ => cost::OptLevel::Release,
+            };
+
+            match cost::query_cost(construct, target, opt) {
+                Some(est) => serde_json::json!({
+                    "ok": true,
+                    "estimate": serde_json::to_value(&est).unwrap_or_default()
+                }),
+                None => serde_json::json!({
+                    "ok": false,
+                    "error": format!("no cost data for `{construct}` on `{target}`")
+                }),
+            }
+        }
+
+        "cost/compare" => {
+            let a = params.get("a").and_then(|v| v.as_str()).unwrap_or("");
+            let b = params.get("b").and_then(|v| v.as_str()).unwrap_or("");
+            let target = params.get("target").and_then(|v| v.as_str()).unwrap_or("x86_64");
+            let opt = cost::OptLevel::Release;
+
+            match cost::compare(a, b, target, opt) {
+                Some(cmp) => serde_json::json!({
+                    "ok": true,
+                    "comparison": serde_json::to_value(&cmp).unwrap_or_default()
+                }),
+                None => serde_json::json!({
+                    "ok": false,
+                    "error": "one or both constructs not found in cost database"
+                }),
+            }
+        }
+
+        "skb/query" => {
+            // Query the structured knowledge base (P14).
+            let by = params.get("by").and_then(|v| v.as_str()).unwrap_or("fqn");
+            let value = params.get("value").and_then(|v| v.as_str()).unwrap_or("");
+
+            let result = match by {
+                "fqn" => skb::query_by_fqn(value),
+                "effect" => skb::query_by_effect(value),
+                "capability" => skb::query_by_capability(value),
+                "tag" => skb::query_by_tag(value),
+                "rust_alias" => skb::query_by_rust_alias(value),
+                "module" => skb::query_module(value),
+                _ => skb::query_by_fqn(value),
+            };
+
+            serde_json::json!({
+                "ok": true,
+                "query": result.query_text,
+                "matches": serde_json::to_value(&result.matches).unwrap_or_default()
+            })
+        }
+
+        "skb/spec" => {
+            // Lookup function spec block.
+            let fqn = params.get("fqn").and_then(|v| v.as_str()).unwrap_or("");
+            match skb::query_spec(fqn) {
+                Some(spec) => serde_json::json!({
+                    "ok": true,
+                    "spec": serde_json::to_value(&spec).unwrap_or_default()
+                }),
+                None => serde_json::json!({
+                    "ok": false,
+                    "error": format!("no spec found for `{fqn}`")
+                }),
+            }
+        }
+
+        "verify/contracts" => {
+            // Verify function contracts (P21).
+            let fqn = params.get("fqn").and_then(|v| v.as_str()).unwrap_or("");
+            let requires: Vec<String> = params.get("requires")
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .unwrap_or_default();
+            let ensures: Vec<String> = params.get("ensures")
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .unwrap_or_default();
+            let declared_effects: Vec<String> = params.get("declared_effects")
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .unwrap_or_default();
+            let used_effects: Vec<String> = params.get("used_effects")
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .unwrap_or_default();
+
+            let spec_input = if requires.is_empty() && ensures.is_empty() {
+                None
+            } else {
+                Some(verify::SpecInput { requires, ensures })
+            };
+
+            let effects = verify::EffectAnalysis { declared: declared_effects, used: used_effects };
+            let result = verify::verify_contracts(fqn, spec_input.as_ref(), &effects);
+
+            serde_json::json!({
+                "ok": result.status == verify::VerifyStatus::Verified || result.status == verify::VerifyStatus::Trivial,
+                "result": serde_json::to_value(&result).unwrap_or_default()
             })
         }
 

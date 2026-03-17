@@ -227,6 +227,139 @@ I Bus {
 }
 
 // ---------------------------------------------------------------------------
+// Agent Persistent Memory (P9 — 4-tier model)
+// ---------------------------------------------------------------------------
+
+/// Tier of agent memory persistence.
++E MemoryTier {
+    /// Ephemeral: lives within a single request/invocation.
+    Ephemeral,
+    /// Session: persists for the duration of a conversation/session.
+    Session,
+    /// Project: persisted per-project, survives across sessions.
+    Project,
+    /// Global: shared across all projects and agents in the ecosystem.
+    Global,
+}
+
+/// A single entry in agent memory.
++S MemoryEntry {
+    key: s,
+    value: s,
+    tier: MemoryTier,
+    created_at: std.time.Instant,
+    updated_at: std.time.Instant,
+    ttl: ?std.time.Duration,
+    tags: [s]~,
+}
+
+/// Trait for agent memory stores. Implement per-tier backends.
++T MemoryStore {
+    /// Retrieve an entry by key.
+    +f get(&self, key: &s) -> ?MemoryEntry / agent;
+
+    /// Store or update an entry.
+    +f set(&!self, key: &s, value: &s, tags: &[s]) -> R[(), AgentError] / agent;
+
+    /// Remove an entry.
+    +f remove(&!self, key: &s) -> R[(), AgentError] / agent;
+
+    /// Query entries by tag.
+    +f query_by_tag(&self, tag: &s) -> [MemoryEntry]~ / agent;
+
+    /// List all keys (bounded by limit).
+    +f keys(&self, limit: usize) -> [s]~ / agent;
+
+    /// Clear all entries.
+    +f clear(&!self) -> R[(), AgentError] / agent;
+}
+
+/// Unified 4-tier memory manager for agents.
++S Memory {
+    ephemeral: ^MemoryStore,
+    session: ^MemoryStore,
+    project: ^MemoryStore,
+    global: ^MemoryStore,
+}
+
+I Memory {
+    /// Create a new Memory with the given per-tier backends.
+    +f new(
+        ephemeral: ^MemoryStore,
+        session: ^MemoryStore,
+        project: ^MemoryStore,
+        global: ^MemoryStore,
+    ) -> Memory / agent;
+
+    /// Get a value, searching tiers in order: ephemeral → session → project → global.
+    +f get(&self, key: &s) -> ?MemoryEntry / agent;
+
+    /// Set a value at a specific tier.
+    +f set(&!self, tier: MemoryTier, key: &s, value: &s, tags: &[s]) -> R[(), AgentError] / agent;
+
+    /// Remove from a specific tier.
+    +f remove(&!self, tier: MemoryTier, key: &s) -> R[(), AgentError] / agent;
+
+    /// Query across all tiers by tag.
+    +f query_by_tag(&self, tag: &s) -> [MemoryEntry]~ / agent;
+
+    /// Promote an entry from one tier to a higher-persistence tier.
+    +f promote(&!self, key: &s, from: MemoryTier, to: MemoryTier) -> R[(), AgentError] / agent;
+
+    /// Flush ephemeral and session tiers (e.g., on session end).
+    +f flush_transient(&!self) -> R[(), AgentError] / agent;
+}
+
+// ---------------------------------------------------------------------------
+// Swarm Orchestration Patterns (P8, P10)
+// ---------------------------------------------------------------------------
+
+/// Map-reduce over a swarm: distribute work, collect, and merge.
+///
+/// ```rdx
+/// v results = swarm_map_reduce(&swarm, items, map_fn, reduce_fn);
+/// ```
++f swarm_map_reduce[A: Agent, T, R](
+    swarm: &Swarm[A],
+    items: &[T],
+    map_fn: f(&A, &T) -> R,
+    reduce_fn: f(&[R]) -> R,
+) -> R[R, AgentError] / agent;
+
+/// Pipeline: chain agents sequentially, output of one feeds input of next.
+///
+/// ```rdx
+/// v result = swarm_pipeline(&stages, input);
+/// ```
++f swarm_pipeline[T](
+    stages: &[^Agent[Msg = T, Action = T]],
+    input: T,
+) -> R[T, AgentError] / agent;
+
+/// Saga: multi-step workflow with compensating rollbacks on failure.
+///
+/// Each step is a (forward_fn, rollback_fn) pair. If any step fails,
+/// all completed steps are rolled back in reverse order.
++f swarm_saga[A: Agent, T](
+    swarm: &Swarm[A],
+    steps: &[(f(&A, &T) -> R[T, AgentError], f(&A, &T) -> R[(), AgentError])],
+    input: T,
+) -> R[T, AgentError] / agent;
+
+/// Fan-out: send the same task to N agents, collect all results.
++f swarm_fan_out[A: Agent, T, R](
+    swarm: &Swarm[A],
+    task: &T,
+) -> R[[R]~, AgentError] / agent;
+
+/// Race: send task to all agents, return the first successful result.
++f swarm_race[A: Agent, T, R](
+    swarm: &Swarm[A],
+    task: &T,
+    timeout: std.time.Duration,
+) -> R[R, AgentError] / agent;
+
+// ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
 
@@ -242,5 +375,7 @@ I Bus {
     ConsensusFailure,
     Timeout,
     BusError,
+    MemoryError,
+    SagaRollbackFailed,
     Other,
 }
