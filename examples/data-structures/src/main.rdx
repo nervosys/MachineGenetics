@@ -1,0 +1,275 @@
+// data-structures — Structs, enums, generics, traits, pattern matching.
+//
+// Demonstrates:
+//   - Struct definitions (+S, S)
+//   - Enum definitions (+E, E)
+//   - Generic types [T]
+//   - Trait definitions (+T)
+//   - Impl blocks (I ~ Type, I Trait ~ Type)
+//   - Derive attributes (@d)
+//   - Pattern matching (? value { ... })
+//   - Vec ([T]~), Option (?T), Result (R[T, E])
+//   - Box (^T), Rc ($T), Arc (@T)
+//   - HashMap ({K: V})
+//   - Mutable references (&!T)
+
+// ── Structs ──────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S Point[T] {
+    +x: T,
+    +y: T,
+}
+
+@d(Debug)
++S Person {
+    name: s,
+    age: u32,
+    email: ?s,
+}
+
+// ── Enums ────────────────────────────────────────────────────────────
+
+@d(Debug)
++E Color {
+    Red,
+    Green,
+    Blue,
+    Custom(u8, u8, u8),
+}
+
+@d(Debug)
++E Shape {
+    Circle { radius: f64 },
+    Rectangle { width: f64, height: f64 },
+    Triangle { base: f64, height: f64 },
+}
+
+// ── Traits ───────────────────────────────────────────────────────────
+
++T Area {
+    f area(&self) -> f64;
+}
+
++T Describe {
+    f describe(&self) -> s;
+
+    // Default method.
+    f summary(&self) -> s {
+        f"Object: {self.describe()}"
+    }
+}
+
+// ── Impl blocks ──────────────────────────────────────────────────────
+
+I ~ Point[f64] {
+    +f origin() -> Point[f64] {
+        Point @{ x: 0.0, y: 0.0 }
+    }
+
+    +f distance(&self, other: &Point[f64]) -> f64 {
+        v dx = self.x - other.x;
+        v dy = self.y - other.y;
+        (dx * dx + dy * dy).sqrt()
+    }
+
+    +f translate(&!self, dx: f64, dy: f64) {
+        self.x = self.x + dx;
+        self.y = self.y + dy;
+    }
+}
+
+I Area ~ Shape {
+    f area(&self) -> f64 {
+        ? self {
+            Shape.Circle { radius } => std.f64.consts.PI * radius * radius,
+            Shape.Rectangle { width, height } => width * height,
+            Shape.Triangle { base, height } => 0.5 * base * height,
+        }
+    }
+}
+
+I Describe ~ Shape {
+    f describe(&self) -> s {
+        ? self {
+            Shape.Circle { radius } => f"Circle with radius {radius}",
+            Shape.Rectangle { width, height } => f"Rectangle {width}x{height}",
+            Shape.Triangle { base, height } => f"Triangle base={base} h={height}",
+        }
+    }
+}
+
+I Describe ~ Color {
+    f describe(&self) -> s {
+        ? self {
+            Color.Red => "Red".to_string(),
+            Color.Green => "Green".to_string(),
+            Color.Blue => "Blue".to_string(),
+            Color.Custom(r, g, b) => f"RGB({r}, {g}, {b})",
+        }
+    }
+}
+
+// ── Generic container ────────────────────────────────────────────────
+
+@d(Debug)
++S Stack[T] {
+    items: [T]~,
+}
+
+I ~ Stack[T] {
+    +f new() -> Stack[T] {
+        Stack @{ items: []~ }
+    }
+
+    +f push(&!self, item: T) {
+        self.items.push(item);
+    }
+
+    +f pop(&!self) -> ?T {
+        self.items.pop()
+    }
+
+    +f peek(&self) -> ?&T {
+        self.items.last()
+    }
+
+    +f len(&self) -> usize {
+        self.items.len()
+    }
+
+    +f is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+}
+
+// ── Smart pointer examples ───────────────────────────────────────────
+
+@d(Debug)
+S TreeNode {
+    value: i32,
+    left: ?^TreeNode,
+    right: ?^TreeNode,
+}
+
+I ~ TreeNode {
+    f leaf(value: i32) -> TreeNode {
+        TreeNode @{ value: value, left: None, right: None }
+    }
+
+    f branch(value: i32, left: TreeNode, right: TreeNode) -> TreeNode {
+        TreeNode @{
+            value: value,
+            left: Some(Box.new(left)),
+            right: Some(Box.new(right)),
+        }
+    }
+
+    f sum(&self) -> i32 {
+        v left_sum = ? &self.left {
+            Some(node) => node.sum(),
+            None => 0,
+        };
+        v right_sum = ? &self.right {
+            Some(node) => node.sum(),
+            None => 0,
+        };
+        self.value + left_sum + right_sum
+    }
+}
+
+// ── Collection examples ──────────────────────────────────────────────
+
++f word_count(text: &s) -> {s: usize} {
+    m counts: {s: usize} = HashMap.new();
+    @ word ~ text.split_whitespace() {
+        v counter = counts.entry(word.to_string()).or_insert(0);
+        *counter = *counter + 1;
+    }
+    counts
+}
+
++f unique_words(text: &s) -> {s} {
+    m set: {s} = HashSet.new();
+    @ word ~ text.split_whitespace() {
+        set.insert(word.to_string());
+    }
+    set
+}
+
+// ── Error handling ───────────────────────────────────────────────────
+
+@d(Debug)
++E AppError {
+    NotFound(s),
+    InvalidInput(s),
+    IoError(s),
+}
+
++f parse_age(input: &s) -> R[u32, AppError] {
+    ? input.parse.[u32]() {
+        Ok(age) => {
+            ? age > 150 {
+                Err(AppError.InvalidInput(f"age {age} is unrealistic"))
+            } : {
+                Ok(age)
+            }
+        },
+        Err(_) => Err(AppError.InvalidInput(f"'{input}' is not a number")),
+    }
+}
+
+// ── Main ─────────────────────────────────────────────────────────────
+
++f main() {
+    // Struct construction.
+    m p = Point @{ x: 3.0, y: 4.0 };
+    v origin = Point.[f64].origin();
+    p"Distance from origin: {p.distance(&origin)}";
+
+    // Mutation via mutable reference.
+    p.translate(1.0, -1.0);
+    p"After translate: ({p.x}, {p.y})";
+
+    // Enum + pattern matching.
+    v shapes: [Shape]~ = [
+        Shape.Circle @{ radius: 5.0 },
+        Shape.Rectangle @{ width: 10.0, height: 3.0 },
+        Shape.Triangle @{ base: 6.0, height: 4.0 },
+    ]~;
+
+    @ shape ~ &shapes {
+        p"{shape.describe()}: area = {shape.area()}";
+    }
+
+    // Generic stack.
+    m stack = Stack.[i32].new();
+    stack.push(1);
+    stack.push(2);
+    stack.push(3);
+    p"Stack top: {stack.peek():?}";
+    p"Popped: {stack.pop():?}";
+
+    // Binary tree.
+    v tree = TreeNode.branch(
+        1,
+        TreeNode.branch(2, TreeNode.leaf(4), TreeNode.leaf(5)),
+        TreeNode.leaf(3),
+    );
+    p"Tree sum: {tree.sum()}";
+
+    // HashMap.
+    v text = "the quick brown fox jumps over the lazy fox";
+    v counts = word_count(text);
+    p"Word counts: {counts:?}";
+
+    // Error handling.
+    ? parse_age("25") {
+        Ok(age) => p"Parsed age: {age}",
+        Err(e) => p"Error: {e:?}",
+    }
+    ? parse_age("xyz") {
+        Ok(age) => p"Parsed age: {age}",
+        Err(e) => p"Error: {e:?}",
+    }
+}

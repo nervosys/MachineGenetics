@@ -1,0 +1,18 @@
+[module]
+name = "agent-swarm"
+version = "0.1.0"
+edition = "2025"
+description = "Multi-agent task coordination with swarm primitives"
+license = "MIT"
+
+[dependencies]
+async-rt = { version = "0.5", features = ["multi-thread"] }
+
+[agent]
+swarm-size = 4
+consensus = "majority"
+lease-timeout = "5m"
+
+[safety]
+mode = "skb-only"
+profile = "agent-dev"

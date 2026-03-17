@@ -1,0 +1,366 @@
+// effects-showcase — Algebraic effect system in Redox.
+//
+// Demonstrates:
+//   - Effect declarations (effect keyword)
+//   - Effect annotations on functions (/ io, / net, etc.)
+//   - Effect composition (/ io + net)
+//   - Effect polymorphism (generic over effects)
+//   - Pure functions (no effect annotation)
+//   - Effect handlers (handle keyword)
+//   - Effect constraints in specs (@fx)
+//   - Practical patterns: logging, database, async I/O
+
+u std.io;
+u std.fmt;
+u std.col;
+
+// ─────────────────────────────────────────────────────────────────────
+// §1 — Declaring custom effects
+// ─────────────────────────────────────────────────────────────────────
+//
+// An `effect` block declares a set of operations that a function may
+// perform.  The compiler tracks which effects each function uses —
+// if a function has no annotation, it is proven pure.
+
+// Standard I/O effect (provided by std, shown here for illustration).
+effect io {
+    f read(fd: i32, buf: &![u8]) -> isize;
+    f write(fd: i32, buf: &[u8]) -> isize;
+}
+
+// Logging effect — separates "what to log" from "how to log".
+effect log {
+    f info(msg: &s);
+    f warn(msg: &s);
+    f error(msg: &s);
+}
+
+// Database effect — abstract over storage backend.
+effect db {
+    f get(key: &s) -> ?s;
+    f put(key: &s, value: &s);
+    f delete(key: &s) -> bool;
+}
+
+// Random number generation effect.
+effect rng {
+    f next_u64() -> u64;
+    f next_f64() -> f64;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §2 — Pure functions (no effects)
+// ─────────────────────────────────────────────────────────────────────
+//
+// Functions without an effect annotation are guaranteed pure by the
+// compiler — no I/O, no mutation of global state, no randomness.
+
+f add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+f fibonacci(n: u64) -> u64 {
+    ? n <= 1 {
+        ret n;
+    }
+    fibonacci(n - 1) + fibonacci(n - 2)
+}
+
+f reverse[T: Clone](items: &[T]~) -> [T]~ {
+    m result: [T]~ = []~;
+    m i = items.len();
+    @ _ ~ 0..items.len() {
+        i = i - 1;
+        result.push(items[i].clone());
+    }
+    result
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §3 — Annotating effects on functions
+// ─────────────────────────────────────────────────────────────────────
+//
+// The `/ effect` annotation declares what effects a function performs.
+// The compiler verifies that the function body only uses operations
+// from its declared effect set.
+
+// Single effect — this function does I/O.
+f greet(name: &s) / io {
+    p"Hello, {name}!";
+}
+
+// Single effect — logging only.
+f log_startup() / log {
+    log.info("Application starting");
+    log.info("Loading configuration");
+}
+
+// Database access.
+f lookup_user(id: &s) / db -> ?s {
+    db.get(id)
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §4 — Effect composition
+// ─────────────────────────────────────────────────────────────────────
+//
+// Functions that use multiple effects compose them with `+`.
+
+f initialize_db(entries: &[(&s, &s)]~) / db + log {
+    log.info("Seeding database");
+    @ (key, value) ~ entries {
+        db.put(key, value);
+        log.info(&f"  stored: {key}");
+    }
+    log.info(&f"Seeded {entries.len()} entries");
+}
+
+f process_request(user_id: &s) / io + db + log -> R[s, s] {
+    log.info(&f"Processing request for user {user_id}");
+
+    v user = db.get(user_id);
+    ? user {
+        Some(name) => {
+            p"Found user: {name}";
+            log.info(&f"User {user_id} found");
+            Ok(name)
+        },
+        None => {
+            log.warn(&f"User {user_id} not found");
+            Err(f"unknown user: {user_id}")
+        },
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §5 — Effect polymorphism
+// ─────────────────────────────────────────────────────────────────────
+//
+// Generic functions can be polymorphic over an effect variable `E`,
+// so they work with any effect set determined by their arguments.
+
+f transform[T, U, E](items: &[T]~, func: f(&T) -> E U) -> E [U]~ {
+    m results: [U]~ = []~;
+    @ item ~ items {
+        results.push(func(item));
+    }
+    results
+}
+
+// When called with a pure closure, `transform` is pure.
+// When called with an effectful closure, `transform` inherits that
+// effect.
+
+f demo_polymorphism() / io {
+    v numbers = [1, 2, 3, 4, 5]~;
+
+    // Pure usage — transform inherits no effects.
+    v doubled = transform(&numbers, |n| n * 2);
+    p"Doubled: {doubled:?}";
+
+    // Effectful usage — transform inherits / io from the closure.
+    v printed = transform(&numbers, |n| {
+        p"  processing {n}";
+        n * 10
+    });
+    p"Processed: {printed:?}";
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §6 — Effect handlers
+// ─────────────────────────────────────────────────────────────────────
+//
+// Handlers intercept effect operations and provide concrete
+// implementations.  This separates policy from mechanism.
+
+// A console-based log handler.
+S ConsoleLogger;
+
+I ~ ConsoleLogger {
+    f new() -> ConsoleLogger {
+        ConsoleLogger
+    }
+}
+
+handle log ~ ConsoleLogger {
+    f info(msg: &s) {
+        p"[INFO]  {msg}";
+    }
+    f warn(msg: &s) {
+        p"[WARN]  {msg}";
+    }
+    f error(msg: &s) {
+        ep"[ERROR] {msg}";
+    }
+}
+
+// An in-memory database handler (useful for testing).
+S MemoryDb {
+    store: {s: s},
+}
+
+I ~ MemoryDb {
+    f new() -> MemoryDb {
+        MemoryDb @{ store: HashMap.new() }
+    }
+}
+
+handle db ~ MemoryDb {
+    f get(key: &s) -> ?s {
+        self.store.get(key).cloned()
+    }
+    f put(key: &s, value: &s) {
+        self.store.insert(key.clone(), value.clone());
+    }
+    f delete(key: &s) -> bool {
+        self.store.remove(key).is_some()
+    }
+}
+
+// A deterministic RNG handler (repeatable tests).
+S FixedRng {
+    value: u64,
+}
+
+handle rng ~ FixedRng {
+    f next_u64() -> u64 {
+        self.value
+    }
+    f next_f64() -> f64 {
+        (self.value % 1000) as f64 / 1000.0
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §7 — Effect constraints in specs
+// ─────────────────────────────────────────────────────────────────────
+//
+// Specs can use @fx to constrain which effects a conforming
+// implementation may use.
+
+spec PureSort[T: Ord] {
+    @fx();                          // must be pure — no effects allowed
+    @req(items.len() > 0);
+    @ens(|result| result.len() == items.len());
+}
+
+spec DatabaseService {
+    @fx(db, log);                   // may only use db and log effects
+    @ens(|result| result.is_ok());
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §8 — Practical example: layered architecture
+// ─────────────────────────────────────────────────────────────────────
+//
+// Effects naturally enforce architectural layering:
+//   - Domain logic is pure (no effects)
+//   - Application layer uses db + log
+//   - Presentation layer adds io
+
+// Domain layer — pure business rules.
+S Order {
+    id: u64,
+    item: s,
+    quantity: u32,
+    price_cents: u64,
+}
+
+f calculate_total(order: &Order) -> u64 {
+    order.quantity as u64 * order.price_cents
+}
+
+f apply_discount(total: u64, percent: u32) -> u64 {
+    total - (total * percent as u64 / 100)
+}
+
+f validate_order(order: &Order) -> R[(), s] {
+    ? order.quantity == 0 {
+        ret Err("quantity must be > 0".to_string());
+    }
+    ? order.price_cents == 0 {
+        ret Err("price must be > 0".to_string());
+    }
+    Ok(())
+}
+
+// Application layer — orchestrated with db + log effects.
+f save_order(order: &Order) / db + log -> R[(), s] {
+    validate_order(order)?;
+    v total = calculate_total(order);
+    v discounted = apply_discount(total, 10);
+
+    db.put(
+        &f"{order.id}",
+        &f"{order.item}|{order.quantity}|{discounted}",
+    );
+    log.info(&f"Order {order.id} saved — total: {discounted} cents");
+    Ok(())
+}
+
+// Presentation layer — adds io for user interaction.
+f print_receipt(order: &Order) / io + db + log {
+    v total = calculate_total(order);
+    v discounted = apply_discount(total, 10);
+
+    p"╔══════════════════════════╗";
+    p"║       RECEIPT            ║";
+    p"╠══════════════════════════╣";
+    p"║ Order:    {order.id:<15}║";
+    p"║ Item:     {order.item:<15}║";
+    p"║ Qty:      {order.quantity:<15}║";
+    p"║ Subtotal: {total:<15}║";
+    p"║ Discount: 10%            ║";
+    p"║ Total:    {discounted:<15}║";
+    p"╚══════════════════════════╝";
+
+    log.info(&f"Receipt printed for order {order.id}");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §9 — Entry point — wiring handlers to effects
+// ─────────────────────────────────────────────────────────────────────
+
++f main() / io {
+    p"=== Redox Effects Showcase ===";
+    p"";
+
+    // §2 — Pure functions.
+    p"-- Pure functions --";
+    p"add(3, 4) = {add(3, 4)}";
+    p"fibonacci(10) = {fibonacci(10)}";
+    v items = [1, 2, 3]~;
+    p"reverse([1,2,3]) = {reverse(&items):?}";
+    p"";
+
+    // §3 — Single effect annotation.
+    p"-- Single effect (/ io) --";
+    greet("Redox");
+    p"";
+
+    // §5 — Effect polymorphism.
+    p"-- Effect polymorphism --";
+    demo_polymorphism();
+    p"";
+
+    // §6 + §8 — Handlers + layered architecture.
+    p"-- Layered architecture with handlers --";
+    m db_handler = MemoryDb.new();
+    v logger = ConsoleLogger.new();
+
+    v order = Order @{
+        id: 1001,
+        item: "Widget".to_string(),
+        quantity: 3,
+        price_cents: 1500,
+    };
+
+    // Install handlers and run effectful code.
+    handle log = logger, db = db_handler {
+        save_order(&order).unwrap();
+        print_receipt(&order);
+    }
+
+    p"";
+    p"=== Done ===";
+}

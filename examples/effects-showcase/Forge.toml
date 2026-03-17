@@ -1,0 +1,7 @@
+[forge]
+name = "effects-showcase"
+version = "0.1.0"
+edition = "2025"
+description = "Showcase of the Redox algebraic effect system."
+
+[dependencies]

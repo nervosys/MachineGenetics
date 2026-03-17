@@ -1,0 +1,31 @@
+// hello-world — Minimal Redox program.
+//
+// Demonstrates:
+//   - Entry point (+f main)
+//   - Variable binding (v)
+//   - String type (s)
+//   - Print macro (p"...")
+//   - Format strings (f"...")
+
++f main() {
+    // Simple print.
+    p"Hello, Redox!";
+
+    // Variable binding and format string.
+    v name: s = "World";
+    v greeting: s = f"Hello, {name}!";
+    p"{greeting}";
+
+    // Mutable variable.
+    m counter: i32 = 0;
+    counter = counter + 1;
+    p"Counter: {counter}";
+
+    // Boolean literals.
+    v is_redox: bool = 1b;
+    v is_legacy: bool = 0b;
+    p"is_redox={is_redox}, is_legacy={is_legacy}";
+
+    // Return value (implicit — last expression).
+    p"Goodbye!";
+}

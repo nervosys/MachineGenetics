@@ -1,0 +1,235 @@
+// cli-tool — A simple grep-like utility.
+//
+// Demonstrates:
+//   - Command-line argument parsing
+//   - File I/O with effects (/ io)
+//   - Iterators and for loops (@ line ~ lines)
+//   - Error handling with Result (R[T, E])
+//   - String manipulation
+//   - Process exit codes
+//   - Constants (+v)
+//   - If/else (? / :)
+//   - Mutable variables (m)
+
+u std.env;
+u std.fs;
+u std.io;
+u std.process;
+
+// ── Configuration ────────────────────────────────────────────────────
+
++v VERSION: &s = "0.1.0";
+
+@d(Debug)
+S Config {
+    pattern: s,
+    files: [s]~,
+    ignore_case: bool,
+    line_numbers: bool,
+    count_only: bool,
+    invert: bool,
+}
+
+@d(Debug)
+S Match {
+    file: s,
+    line_num: usize,
+    line: s,
+}
+
+// ── Argument parsing ─────────────────────────────────────────────────
+
+f parse_args(args: [s]~) -> R[Config, s] / io {
+    m pattern: ?s = None;
+    m files: [s]~ = []~;
+    m ignore_case = 0b;
+    m line_numbers = 0b;
+    m count_only = 0b;
+    m invert = 0b;
+
+    m i: usize = 1; // skip program name
+    @ _ ~ 0..args.len() {
+        ? i >= args.len() {
+            // Done.
+            ret Ok(());
+        }
+
+        v arg = &args[i];
+        ? arg.as_str() {
+            "--help" | "-h" => {
+                print_usage();
+                process.exit(0);
+            },
+            "--version" | "-V" => {
+                p"rdx-grep {VERSION}";
+                process.exit(0);
+            },
+            "-i" | "--ignore-case" => ignore_case = 1b,
+            "-n" | "--line-numbers" => line_numbers = 1b,
+            "-c" | "--count" => count_only = 1b,
+            "-v" | "--invert" => invert = 1b,
+            other => {
+                ? other.starts_with('-') {
+                    ret Err(f"unknown option: {other}");
+                }
+                ? pattern.is_none() {
+                    pattern = Some(other.clone());
+                } : {
+                    files.push(other.clone());
+                }
+            },
+        }
+        i = i + 1;
+    }
+
+    v pat = pattern.ok_or("no search pattern specified".to_string())?;
+    ? files.is_empty() {
+        ret Err("no files specified".to_string());
+    }
+
+    Ok(Config @{
+        pattern: pat,
+        files: files,
+        ignore_case: ignore_case,
+        line_numbers: line_numbers,
+        count_only: count_only,
+        invert: invert,
+    })
+}
+
+f print_usage() / io {
+    ep"rdx-grep — search for patterns in files";
+    ep"";
+    ep"Usage: rdx-grep [OPTIONS] <PATTERN> <FILE...>";
+    ep"";
+    ep"Options:";
+    ep"  -i, --ignore-case    Case-insensitive matching";
+    ep"  -n, --line-numbers   Show line numbers";
+    ep"  -c, --count          Only print match count";
+    ep"  -v, --invert         Invert match (show non-matching lines)";
+    ep"  -h, --help           Show this help";
+    ep"  -V, --version        Show version";
+}
+
+// ── Search logic ─────────────────────────────────────────────────────
+
+f search_file(path: &s, config: &Config) -> R[[Match]~, s] / io {
+    v content = fs.read_to_string(path)
+        .map_err(|e| f"cannot read {path}: {e}")?;
+
+    m matches: [Match]~ = []~;
+
+    v search_pattern = ? config.ignore_case {
+        config.pattern.to_lowercase()
+    } : {
+        config.pattern.clone()
+    };
+
+    @ (line_num, line) ~ content.lines().enumerate() {
+        v hay = ? config.ignore_case {
+            line.to_lowercase()
+        } : {
+            line.to_string()
+        };
+
+        v found = hay.contains(&search_pattern);
+        v include = ? config.invert { !found } : { found };
+
+        ? include {
+            matches.push(Match @{
+                file: path.to_string(),
+                line_num: line_num + 1,
+                line: line.to_string(),
+            });
+        }
+    }
+
+    Ok(matches)
+}
+
+// ── Output ───────────────────────────────────────────────────────────
+
+f print_matches(matches: &[Match]~, config: &Config, multi_file: bool) / io {
+    ? config.count_only {
+        ? multi_file {
+            // Group by file.
+            m current_file: s = "".to_string();
+            m count: usize = 0;
+            @ m ~ matches {
+                ? m.file != current_file {
+                    ? !current_file.is_empty() {
+                        p"{current_file}:{count}";
+                    }
+                    current_file = m.file.clone();
+                    count = 0;
+                }
+                count = count + 1;
+            }
+            ? !current_file.is_empty() {
+                p"{current_file}:{count}";
+            }
+        } : {
+            p"{matches.len()}";
+        }
+        ret;
+    }
+
+    @ m ~ matches {
+        v prefix = ? multi_file {
+            ? config.line_numbers {
+                f"{m.file}:{m.line_num}:"
+            } : {
+                f"{m.file}:"
+            }
+        } : {
+            ? config.line_numbers {
+                f"{m.line_num}:"
+            } : {
+                "".to_string()
+            }
+        };
+        p"{prefix}{m.line}";
+    }
+}
+
+// ── Entry point ──────────────────────────────────────────────────────
+
++f main() / io {
+    v args: [s]~ = env.args().collect();
+
+    v config = ? parse_args(args) {
+        Ok(c) => c,
+        Err(e) => {
+            ep"error: {e}";
+            print_usage();
+            process.exit(1);
+        },
+    };
+
+    v multi_file = config.files.len() > 1;
+    m all_matches: [Match]~ = []~;
+    m had_error = 0b;
+
+    @ file ~ &config.files {
+        ? search_file(file, &config) {
+            Ok(matches) => {
+                @ m ~ matches {
+                    all_matches.push(m);
+                }
+            },
+            Err(e) => {
+                ep"{e}";
+                had_error = 1b;
+            },
+        }
+    }
+
+    print_matches(&all_matches, &config, multi_file);
+
+    ? had_error {
+        process.exit(2);
+    }
+    ? all_matches.is_empty() {
+        process.exit(1);
+    }
+}

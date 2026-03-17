@@ -1,0 +1,6 @@
+[module]
+name = "hello-world"
+version = "0.1.0"
+edition = "2025"
+description = "Minimal Redox example — hello world"
+license = "MIT"

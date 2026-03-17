@@ -1,0 +1,11 @@
+[module]
+name = "http-client"
+version = "0.1.0"
+edition = "2025"
+description = "Async HTTP client with JSON parsing and effect tracking"
+license = "MIT"
+
+[dependencies]
+http = "1.0"
+json = "1.0"
+async-rt = { version = "0.5", features = ["multi-thread"] }

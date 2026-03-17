@@ -1,0 +1,341 @@
+// agent-swarm — Multi-agent task coordination.
+//
+// Demonstrates:
+//   - Agent primitives (AgentId, SwarmConfig, Task)
+//   - Semantic leases and region ownership
+//   - Swarm orchestration patterns (map-reduce, pipeline)
+//   - Consensus protocols
+//   - Async coordination (+af)
+//   - Effect annotations (/ io, / net)
+//   - Enums for agent roles and task states
+//   - Trait-based agent dispatch
+
+u std.agent;
+u std.sync;
+u std.col;
+u std.fmt;
+u std.io;
+
+// ── Agent roles ──────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++E Role {
+    Orchestrator,
+    Architect,
+    Synthesizer,
+    Reviewer,
+    Integrator,
+    Verifier,
+}
+
+I fmt.Display ~ Role {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            Role.Orchestrator => write!(f, "Orchestrator"),
+            Role.Architect => write!(f, "Architect"),
+            Role.Synthesizer => write!(f, "Synthesizer"),
+            Role.Reviewer => write!(f, "Reviewer"),
+            Role.Integrator => write!(f, "Integrator"),
+            Role.Verifier => write!(f, "Verifier"),
+        }
+    }
+}
+
+// ── Semantic regions ─────────────────────────────────────────────────
+
+@d(Debug, Clone, Hash, Eq, PartialEq)
++E SemanticRegion {
+    Function(s),
+    Module(s),
+    TraitDef(s),
+    ImplBlock(s),
+    TypeDef(s),
+}
+
+I fmt.Display ~ SemanticRegion {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            SemanticRegion.Function(name) => write!(f, "fn {name}"),
+            SemanticRegion.Module(name) => write!(f, "mod {name}"),
+            SemanticRegion.TraitDef(name) => write!(f, "trait {name}"),
+            SemanticRegion.ImplBlock(name) => write!(f, "impl {name}"),
+            SemanticRegion.TypeDef(name) => write!(f, "type {name}"),
+        }
+    }
+}
+
+// ── Semantic leases ──────────────────────────────────────────────────
+
+@d(Debug, Clone)
++E LeaseKind {
+    SharedRead,
+    ExclusiveWrite,
+    Restructuring,
+}
+
+@d(Debug, Clone)
++S Lease {
+    region: SemanticRegion,
+    kind: LeaseKind,
+    holder: u64,
+    version: u64,
+}
+
+I ~ Lease {
+    +f new(region: SemanticRegion, kind: LeaseKind, holder: u64) -> Lease {
+        Lease @{ region: region, kind: kind, holder: holder, version: 0 }
+    }
+
+    +f is_write(&self) -> bool {
+        ? self.kind {
+            LeaseKind.ExclusiveWrite | LeaseKind.Restructuring => 1b,
+            _ => 0b,
+        }
+    }
+}
+
+// ── Task definitions ─────────────────────────────────────────────────
+
+@d(Debug, Clone)]
++E TaskStatus {
+    Pending,
+    InProgress,
+    Review,
+    Complete,
+    Failed(s),
+}
+
+@d(Debug, Clone)
++S Task {
+    id: u64,
+    description: s,
+    region: SemanticRegion,
+    assigned_to: ?u64,
+    status: TaskStatus,
+    dependencies: [u64]~,
+}
+
+I ~ Task {
+    +f new(id: u64, description: s, region: SemanticRegion) -> Task {
+        Task @{
+            id: id,
+            description: description,
+            region: region,
+            assigned_to: None,
+            status: TaskStatus.Pending,
+            dependencies: []~,
+        }
+    }
+
+    +f with_deps(id: u64, description: s, region: SemanticRegion, deps: [u64]~) -> Task {
+        Task @{
+            id: id,
+            description: description,
+            region: region,
+            assigned_to: None,
+            status: TaskStatus.Pending,
+            dependencies: deps,
+        }
+    }
+
+    +f is_ready(&self, completed: &{u64}) -> bool {
+        self.dependencies.iter().all(|d| completed.contains(d))
+    }
+}
+
+// ── Agent definition ─────────────────────────────────────────────────
+
+@d(Debug)
++S Agent {
+    id: u64,
+    role: Role,
+    active_lease: ?Lease,
+    tasks_completed: u64,
+}
+
+I ~ Agent {
+    +f new(id: u64, role: Role) -> Agent {
+        Agent @{ id: id, role: role, active_lease: None, tasks_completed: 0 }
+    }
+
+    +f acquire_lease(&!self, region: SemanticRegion, kind: LeaseKind) -> Lease {
+        v lease = Lease.new(region, kind, self.id);
+        self.active_lease = Some(lease.clone());
+        p"  Agent {self.id} ({self.role}) acquired {lease.kind:?} on {lease.region}";
+        lease
+    }
+
+    +f release_lease(&!self) {
+        ? &self.active_lease {
+            Some(lease) => p"  Agent {self.id} ({self.role}) released lease on {lease.region}",
+            None => {},
+        }
+        self.active_lease = None;
+    }
+
+    +af execute_task(&!self, task: &!Task) -> R[(), s] {
+        p"  Agent {self.id} ({self.role}) working on: {task.description}";
+        task.assigned_to = Some(self.id);
+        task.status = TaskStatus.InProgress;
+
+        // Simulate work.
+        async_rt.sleep(100).await;
+
+        task.status = TaskStatus.Complete;
+        self.tasks_completed = self.tasks_completed + 1;
+        p"  Agent {self.id} ({self.role}) completed: {task.description}";
+        Ok(())
+    }
+}
+
+// ── Swarm ────────────────────────────────────────────────────────────
+
+@d(Debug)
++S Swarm {
+    agents: [Agent]~,
+    tasks: [Task]~,
+    completed_ids: {u64},
+}
+
+I ~ Swarm {
+    +f new() -> Swarm {
+        Swarm @{
+            agents: []~,
+            tasks: []~,
+            completed_ids: HashSet.new(),
+        }
+    }
+
+    +f add_agent(&!self, agent: Agent) {
+        p"Swarm: added agent {agent.id} ({agent.role})";
+        self.agents.push(agent);
+    }
+
+    +f add_task(&!self, task: Task) {
+        p"Swarm: queued task {task.id} — {task.description}";
+        self.tasks.push(task);
+    }
+
+    /// Run all tasks respecting dependency ordering.
+    +af run(&!self) -> R[(), s] {
+        p"";
+        p"=== Swarm Execution ===";
+        p"  Agents: {self.agents.len()}";
+        p"  Tasks:  {self.tasks.len()}";
+        p"";
+
+        m remaining: usize = self.tasks.len();
+
+        @ _ ~ 0..self.tasks.len() * 2 {
+            ? remaining == 0 {
+                ret Ok(());
+            }
+
+            // Find ready tasks.
+            m ready_indices: [usize]~ = []~;
+            @ (i, task) ~ self.tasks.iter().enumerate() {
+                ? task.is_ready(&self.completed_ids) {
+                    ? task.status {
+                        TaskStatus.Pending => ready_indices.push(i),
+                        _ => {},
+                    }
+                }
+            }
+
+            // Assign ready tasks to available agents.
+            m agent_idx: usize = 0;
+            @ task_idx ~ &ready_indices {
+                ? agent_idx >= self.agents.len() {
+                    ret Ok(());  // No more agents available this round.
+                }
+
+                v agent = &!self.agents[agent_idx];
+                v task = &!self.tasks[*task_idx];
+
+                // Acquire lease.
+                agent.acquire_lease(task.region.clone(), LeaseKind.ExclusiveWrite);
+
+                // Execute.
+                agent.execute_task(task).await?;
+
+                // Release lease.
+                agent.release_lease();
+
+                self.completed_ids.insert(task.id);
+                remaining = remaining - 1;
+                agent_idx = agent_idx + 1;
+            }
+        }
+
+        ? remaining > 0 {
+            Err(f"deadlock: {remaining} tasks could not be scheduled")
+        } : {
+            Ok(())
+        }
+    }
+
+    +f summary(&self) {
+        p"";
+        p"=== Swarm Summary ===";
+        @ agent ~ &self.agents {
+            p"  Agent {agent.id} ({agent.role}): {agent.tasks_completed} tasks completed";
+        }
+        p"  Total tasks: {self.completed_ids.len()}";
+    }
+}
+
+// ── Entry point ──────────────────────────────────────────────────────
+
++af main() -> R[(), s] {
+    // Create a swarm with specialized agents.
+    m swarm = Swarm.new();
+
+    swarm.add_agent(Agent.new(1, Role.Architect));
+    swarm.add_agent(Agent.new(2, Role.Synthesizer));
+    swarm.add_agent(Agent.new(3, Role.Synthesizer));
+    swarm.add_agent(Agent.new(4, Role.Verifier));
+
+    // Define tasks with dependencies.
+    // Task 1: Design the API (no deps — Architect does this).
+    swarm.add_task(Task.new(
+        1,
+        "Design user module API".to_string(),
+        SemanticRegion.Module("user".to_string()),
+    ));
+
+    // Tasks 2-3: Implement functions (depend on task 1).
+    swarm.add_task(Task.with_deps(
+        2,
+        "Implement create_user".to_string(),
+        SemanticRegion.Function("create_user".to_string()),
+        [1]~,
+    ));
+    swarm.add_task(Task.with_deps(
+        3,
+        "Implement validate_email".to_string(),
+        SemanticRegion.Function("validate_email".to_string()),
+        [1]~,
+    ));
+
+    // Task 4: Verify all implementations (depends on 2 and 3).
+    swarm.add_task(Task.with_deps(
+        4,
+        "Verify user module contracts".to_string(),
+        SemanticRegion.Module("user".to_string()),
+        [2, 3]~,
+    ));
+
+    // Task 5: Integration test (depends on 4).
+    swarm.add_task(Task.with_deps(
+        5,
+        "Run integration tests".to_string(),
+        SemanticRegion.Module("user".to_string()),
+        [4]~,
+    ));
+
+    // Execute the swarm.
+    swarm.run().await?;
+    swarm.summary();
+
+    Ok(())
+}

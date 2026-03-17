@@ -1,0 +1,169 @@
+// http-client — Async HTTP client with JSON parsing.
+//
+// Demonstrates:
+//   - Async functions (+af, af)
+//   - Effect annotations (/ io, / net)
+//   - Error handling with Result (R[T, E])
+//   - JSON deserialization
+//   - Struct + derive (@d)
+//   - For loops (@ item ~ iter)
+//   - String formatting (f"...")
+//   - Print macros (p"...", ep"...")
+
+u std.io;
+u std.net;
+u std.json;
+u std.fmt;
+
+// ── Data types ───────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S User {
+    id: u64,
+    name: s,
+    email: s,
+    active: bool,
+}
+
+@d(Debug, Clone)
++S Post {
+    id: u64,
+    user_id: u64,
+    title: s,
+    body: s,
+}
+
+@d(Debug)
++E ApiError {
+    NetworkError(s),
+    ParseError(s),
+    NotFound,
+    RateLimited { retry_after: u64 },
+}
+
+I fmt.Display ~ ApiError {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            ApiError.NetworkError(msg) => write!(f, "network error: {msg}"),
+            ApiError.ParseError(msg) => write!(f, "parse error: {msg}"),
+            ApiError.NotFound => write!(f, "resource not found"),
+            ApiError.RateLimited { retry_after } =>
+                write!(f, "rate limited, retry after {retry_after}s"),
+        }
+    }
+}
+
+// ── HTTP client wrapper ──────────────────────────────────────────────
+
++S ApiClient {
+    base_url: s,
+    timeout_ms: u64,
+}
+
+I ~ ApiClient {
+    +f new(base_url: s) -> ApiClient {
+        ApiClient @{ base_url: base_url, timeout_ms: 5000 }
+    }
+
+    +f with_timeout(base_url: s, timeout_ms: u64) -> ApiClient {
+        ApiClient @{ base_url: base_url, timeout_ms: timeout_ms }
+    }
+
+    /// Fetch a single resource by path.
+    +af get[T: json.Deserialize](&self, path: &s) -> R[T, ApiError] / net, io {
+        v url = f"{self.base_url}{path}";
+        v response = net.get(&url)
+            .timeout(self.timeout_ms)
+            .send()
+            .await
+            .map_err(|e| ApiError.NetworkError(f"{e}"))?;
+
+        ? response.status() != 200 {
+            ? response.status() == 404 {
+                ret Err(ApiError.NotFound);
+            }
+            ? response.status() == 429 {
+                v retry = response.header("Retry-After")
+                    .and_then(|v| v.parse.[u64]().ok())
+                    .unwrap_or(60);
+                ret Err(ApiError.RateLimited @{ retry_after: retry });
+            }
+            ret Err(ApiError.NetworkError(f"HTTP {response.status()}"));
+        }
+
+        v body = response.text().await
+            .map_err(|e| ApiError.NetworkError(f"{e}"))?;
+
+        json.from_str(&body)
+            .map_err(|e| ApiError.ParseError(f"{e}"))
+    }
+
+    /// Fetch a list of resources.
+    +af list[T: json.Deserialize](&self, path: &s) -> R[[T]~, ApiError] / net, io {
+        self.get(path).await
+    }
+}
+
+// ── Application logic ────────────────────────────────────────────────
+
+af fetch_user_posts(client: &ApiClient, user_id: u64)
+    -> R[[Post]~, ApiError] / net, io
+{
+    v path = f"/users/{user_id}/posts";
+    client.list.[Post](&path).await
+}
+
+af display_user_summary(client: &ApiClient, user_id: u64)
+    -> R[(), ApiError] / net, io
+{
+    // Fetch user and posts concurrently.
+    v user_future = client.get.[User](&f"/users/{user_id}");
+    v posts_future = fetch_user_posts(client, user_id);
+
+    v user = user_future.await?;
+    v posts = posts_future.await?;
+
+    p"";
+    p"=== User: {user.name} ===";
+    p"  Email:  {user.email}";
+    p"  Active: {user.active}";
+    p"  Posts:  {posts.len()}";
+    p"";
+
+    @ post ~ &posts {
+        p"  [{post.id}] {post.title}";
+    }
+
+    Ok(())
+}
+
+// ── Entry point ──────────────────────────────────────────────────────
+
++af main() -> R[(), ApiError] / net, io {
+    v client = ApiClient.new("https://api.example.com".to_string());
+
+    p"Fetching users...";
+
+    // Fetch and display multiple users.
+    v user_ids: [u64]~ = [1, 2, 3]~;
+
+    @ id ~ &user_ids {
+        ? display_user_summary(&client, *id).await {
+            Ok(()) => {},
+            Err(ApiError.NotFound) => ep"User {id} not found, skipping.",
+            Err(ApiError.RateLimited { retry_after }) => {
+                ep"Rate limited. Waiting {retry_after}s...";
+                async_rt.sleep(retry_after * 1000).await;
+                // Retry once.
+                ? display_user_summary(&client, *id).await {
+                    Ok(()) => {},
+                    Err(e) => ep"Retry failed for user {id}: {e}",
+                }
+            },
+            Err(e) => ep"Error fetching user {id}: {e}",
+        }
+    }
+
+    p"Done.";
+    Ok(())
+}
