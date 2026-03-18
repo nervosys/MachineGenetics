@@ -3,6 +3,7 @@ mod cost;
 mod effects;
 mod elision;
 mod fmt;
+mod grammar;
 mod heal;
 mod hir;
 mod legacy;

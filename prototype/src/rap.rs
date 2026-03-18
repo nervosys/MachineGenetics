@@ -409,10 +409,12 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                     let inferred: Vec<serde_json::Value> = engine
                         .inferred
                         .iter()
-                        .map(|(name, eset)| serde_json::json!({
-                            "function": name,
-                            "effects": eset.iter().map(|e| e.to_string()).collect::<Vec<_>>()
-                        }))
+                        .map(|(name, eset)| {
+                            serde_json::json!({
+                                "function": name,
+                                "effects": eset.iter().map(|e| e.to_string()).collect::<Vec<_>>()
+                            })
+                        })
                         .collect();
                     serde_json::json!({
                         "ok": true,
@@ -600,36 +602,11 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         }
 
         "grammar/list" => {
-            // List known Redox keyword/sigil extensions.
-            let extensions = serde_json::json!([
-                { "sigil": "+f",  "rust": "pub fn" },
-                { "sigil": "f",   "rust": "fn" },
-                { "sigil": "af",  "rust": "async fn" },
-                { "sigil": "uf",  "rust": "unsafe fn" },
-                { "sigil": "S",   "rust": "struct" },
-                { "sigil": "E",   "rust": "enum" },
-                { "sigil": "T",   "rust": "trait" },
-                { "sigil": "I",   "rust": "impl" },
-                { "sigil": "M",   "rust": "mod" },
-                { "sigil": "u",   "rust": "use" },
-                { "sigil": "Y",   "rust": "type" },
-                { "sigil": "C",   "rust": "const" },
-                { "sigil": "Z",   "rust": "static" },
-                { "sigil": "v",   "rust": "let" },
-                { "sigil": "m",   "rust": "let mut" },
-                { "sigil": "?",   "rust": "if" },
-                { "sigil": "?=",  "rust": "match" },
-                { "sigil": ":",   "rust": "else" },
-                { "sigil": "@@",  "rust": "loop" },
-                { "sigil": "@w",  "rust": "while" },
-                { "sigil": "@",   "rust": "for" },
-                { "sigil": "!",   "rust": "break" },
-                { "sigil": ">>",  "rust": "continue" },
-                { "sigil": "~>",  "rust": "where" },
-            ]);
+            // List all registered grammar extensions via the registry.
+            let reg = crate::grammar::ExtensionRegistry::new();
             serde_json::json!({
                 "ok": true,
-                "extensions": extensions
+                "extensions": reg.to_json()
             })
         }
 
@@ -687,28 +664,37 @@ mod tests {
 
     #[test]
     fn test_cost_query() {
-        let r = call("cost/query", serde_json::json!({
-            "construct": "vec_push",
-            "target": "x86_64",
-            "opt": "release"
-        }));
+        let r = call(
+            "cost/query",
+            serde_json::json!({
+                "construct": "vec_push",
+                "target": "x86_64",
+                "opt": "release"
+            }),
+        );
         // May not find cost data — just check it doesn't panic
         assert!(r.get("ok").is_some());
     }
 
     #[test]
     fn test_cost_compare() {
-        let r = call("cost/compare", serde_json::json!({
-            "a": "vec_push", "b": "vec_push", "target": "x86_64"
-        }));
+        let r = call(
+            "cost/compare",
+            serde_json::json!({
+                "a": "vec_push", "b": "vec_push", "target": "x86_64"
+            }),
+        );
         assert!(r.get("ok").is_some());
     }
 
     #[test]
     fn test_skb_query() {
-        let r = call("skb/query", serde_json::json!({
-            "by": "fqn", "value": "Vec"
-        }));
+        let r = call(
+            "skb/query",
+            serde_json::json!({
+                "by": "fqn", "value": "Vec"
+            }),
+        );
         assert_eq!(r["ok"], true);
     }
 
@@ -720,11 +706,14 @@ mod tests {
 
     #[test]
     fn test_verify_contracts() {
-        let r = call("verify/contracts", serde_json::json!({
-            "fqn": "test_fn",
-            "requires": ["x > 0"],
-            "ensures": ["result > 0"]
-        }));
+        let r = call(
+            "verify/contracts",
+            serde_json::json!({
+                "fqn": "test_fn",
+                "requires": ["x > 0"],
+                "ensures": ["result > 0"]
+            }),
+        );
         assert!(r.get("ok").is_some());
     }
 
@@ -823,20 +812,26 @@ mod tests {
     #[test]
     fn test_sandbox_policy() {
         let src = "agent CodeBot { capabilities: [read_source] requires_approval: [write_source] }";
-        let r = call("sandbox/policy", serde_json::json!({
-            "source": src,
-            "agent": "CodeBot"
-        }));
+        let r = call(
+            "sandbox/policy",
+            serde_json::json!({
+                "source": src,
+                "agent": "CodeBot"
+            }),
+        );
         assert_eq!(r["ok"], true);
         assert_eq!(r["agent"], "CodeBot");
     }
 
     #[test]
     fn test_sandbox_policy_not_found() {
-        let r = call("sandbox/policy", serde_json::json!({
-            "source": "f main() {}",
-            "agent": "Ghost"
-        }));
+        let r = call(
+            "sandbox/policy",
+            serde_json::json!({
+                "source": "f main() {}",
+                "agent": "Ghost"
+            }),
+        );
         assert_eq!(r["ok"], false);
     }
 

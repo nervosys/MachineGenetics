@@ -284,10 +284,9 @@ fn elide_type(ty: &Type) -> Type {
         Type::Never | Type::Inferred | Type::SelfType | Type::StringType => ty.clone(),
 
         // Refinement types: recurse into base type, preserve predicate
-        Type::Refined { base, predicate } => Type::Refined {
-            base: Box::new(elide_type(base)),
-            predicate: predicate.clone(),
-        },
+        Type::Refined { base, predicate } => {
+            Type::Refined { base: Box::new(elide_type(base)), predicate: predicate.clone() }
+        }
     }
 }
 
@@ -481,37 +480,37 @@ fn elide_pattern(pat: &Pattern) -> Pattern {
 /// Returns `None` if the name is already full-form or unknown.
 pub fn expand_attribute_name(name: &str) -> Option<&'static str> {
     match name {
-        "d"   => Some("derive"),
-        "r"   => Some("repr"),
-        "mu"  => Some("must_use"),
-        "a"   => Some("allow"),
-        "x"   => Some("deny"),
-        "cfg" => Some("cfg"),   // already full, included for completeness
-        "t"   => Some("test"),
-        "b"   => Some("bench"),
-        "se"  => Some("serde"),
-        "pi"  => Some("proc_macro"),
+        "d" => Some("derive"),
+        "r" => Some("repr"),
+        "mu" => Some("must_use"),
+        "a" => Some("allow"),
+        "x" => Some("deny"),
+        "cfg" => Some("cfg"), // already full, included for completeness
+        "t" => Some("test"),
+        "b" => Some("bench"),
+        "se" => Some("serde"),
+        "pi" => Some("proc_macro"),
         "pnb" => Some("non_blocking"),
-        "pv"  => Some("visibility"),
-        "pt"  => Some("target_feature"),
-        "pa"  => Some("align"),
-        "pp"  => Some("packed"),
-        "at"  => Some("async_trait"),
-        "co"  => Some("cold"),
-        "il"  => Some("inline"),
+        "pv" => Some("visibility"),
+        "pt" => Some("target_feature"),
+        "pa" => Some("align"),
+        "pp" => Some("packed"),
+        "at" => Some("async_trait"),
+        "co" => Some("cold"),
+        "il" => Some("inline"),
         "ila" => Some("inline_always"),
-        "na"  => Some("no_alloc"),
-        "nm"  => Some("no_mangle"),
-        "dp"  => Some("deprecated"),
-        "dc"  => Some("doc"),
-        "gl"  => Some("global_allocator"),
+        "na" => Some("no_alloc"),
+        "nm" => Some("no_mangle"),
+        "dp" => Some("deprecated"),
+        "dc" => Some("doc"),
+        "gl" => Some("global_allocator"),
         // Agent discovery attributes
-        "as"  => Some("agent_skill"),
-        "ac"  => Some("agent_capability"),
-        "ax"  => Some("agent_export"),
-        "ao"  => Some("agent_observable"),
-        "ae"  => Some("agent_effect"),
-        _     => None,
+        "as" => Some("agent_skill"),
+        "ac" => Some("agent_capability"),
+        "ax" => Some("agent_export"),
+        "ao" => Some("agent_observable"),
+        "ae" => Some("agent_effect"),
+        _ => None,
     }
 }
 
@@ -520,11 +519,7 @@ pub fn expand_attribute(attr: &Attribute) -> Attribute {
     let expanded_name = expand_attribute_name(&attr.name)
         .map(|s| s.to_string())
         .unwrap_or_else(|| attr.name.clone());
-    Attribute {
-        name: expanded_name,
-        args: attr.args.clone(),
-        bang: attr.bang,
-    }
+    Attribute { name: expanded_name, args: attr.args.clone(), bang: attr.bang }
 }
 
 /// Expand all compressed attributes in an item.
@@ -535,37 +530,37 @@ pub fn expand_attributes(attrs: &[Attribute]) -> Vec<Attribute> {
 /// Return the compressed form for a Rust attribute name, if one exists.
 pub fn compress_attribute_name(rust_name: &str) -> Option<&'static str> {
     match rust_name {
-        "derive"           => Some("d"),
-        "repr"             => Some("r"),
-        "must_use"         => Some("mu"),
-        "allow"            => Some("a"),
-        "deny"             => Some("x"),
-        "cfg"              => Some("cfg"),
-        "test"             => Some("t"),
-        "bench"            => Some("b"),
-        "serde"            => Some("se"),
-        "proc_macro"       => Some("pi"),
-        "non_blocking"     => Some("pnb"),
-        "visibility"       => Some("pv"),
-        "target_feature"   => Some("pt"),
-        "align"            => Some("pa"),
-        "packed"           => Some("pp"),
-        "async_trait"        => Some("at"),
-        "cold"               => Some("co"),
-        "inline"             => Some("il"),
-        "inline_always"      => Some("ila"),
-        "no_alloc"           => Some("na"),
-        "no_mangle"          => Some("nm"),
-        "deprecated"         => Some("dp"),
-        "doc"                => Some("dc"),
-        "global_allocator"   => Some("gl"),
+        "derive" => Some("d"),
+        "repr" => Some("r"),
+        "must_use" => Some("mu"),
+        "allow" => Some("a"),
+        "deny" => Some("x"),
+        "cfg" => Some("cfg"),
+        "test" => Some("t"),
+        "bench" => Some("b"),
+        "serde" => Some("se"),
+        "proc_macro" => Some("pi"),
+        "non_blocking" => Some("pnb"),
+        "visibility" => Some("pv"),
+        "target_feature" => Some("pt"),
+        "align" => Some("pa"),
+        "packed" => Some("pp"),
+        "async_trait" => Some("at"),
+        "cold" => Some("co"),
+        "inline" => Some("il"),
+        "inline_always" => Some("ila"),
+        "no_alloc" => Some("na"),
+        "no_mangle" => Some("nm"),
+        "deprecated" => Some("dp"),
+        "doc" => Some("dc"),
+        "global_allocator" => Some("gl"),
         // Agent discovery attributes
-        "agent_skill"        => Some("as"),
-        "agent_capability"   => Some("ac"),
-        "agent_export"       => Some("ax"),
-        "agent_observable"   => Some("ao"),
-        "agent_effect"       => Some("ae"),
-        _                    => None,
+        "agent_skill" => Some("as"),
+        "agent_capability" => Some("ac"),
+        "agent_export" => Some("ax"),
+        "agent_observable" => Some("ao"),
+        "agent_effect" => Some("ae"),
+        _ => None,
     }
 }
 
@@ -764,7 +759,8 @@ mod tests {
 
     #[test]
     fn expand_attribute_struct() {
-        let attr = Attribute { name: "d".into(), args: vec!["Eq".into(), "Hash".into()], bang: false };
+        let attr =
+            Attribute { name: "d".into(), args: vec!["Eq".into(), "Hash".into()], bang: false };
         let expanded = expand_attribute(&attr);
         assert_eq!(expanded.name, "derive");
         assert_eq!(expanded.args, vec!["Eq", "Hash"]);
@@ -782,23 +778,48 @@ mod tests {
     #[test]
     fn expand_all_known_attributes() {
         let known = vec![
-            ("d", "derive"), ("r", "repr"), ("mu", "must_use"),
-            ("a", "allow"), ("x", "deny"), ("cfg", "cfg"),
-            ("t", "test"), ("b", "bench"), ("se", "serde"),
-            ("pi", "proc_macro"), ("pnb", "non_blocking"),
-            ("pv", "visibility"), ("pt", "target_feature"),
-            ("pa", "align"), ("pp", "packed"), ("at", "async_trait"),
-            ("co", "cold"), ("il", "inline"), ("ila", "inline_always"),
-            ("na", "no_alloc"), ("nm", "no_mangle"),
-            ("dp", "deprecated"), ("dc", "doc"), ("gl", "global_allocator"),
+            ("d", "derive"),
+            ("r", "repr"),
+            ("mu", "must_use"),
+            ("a", "allow"),
+            ("x", "deny"),
+            ("cfg", "cfg"),
+            ("t", "test"),
+            ("b", "bench"),
+            ("se", "serde"),
+            ("pi", "proc_macro"),
+            ("pnb", "non_blocking"),
+            ("pv", "visibility"),
+            ("pt", "target_feature"),
+            ("pa", "align"),
+            ("pp", "packed"),
+            ("at", "async_trait"),
+            ("co", "cold"),
+            ("il", "inline"),
+            ("ila", "inline_always"),
+            ("na", "no_alloc"),
+            ("nm", "no_mangle"),
+            ("dp", "deprecated"),
+            ("dc", "doc"),
+            ("gl", "global_allocator"),
             // Agent discovery attributes
-            ("as", "agent_skill"), ("ac", "agent_capability"),
-            ("ax", "agent_export"), ("ao", "agent_observable"),
+            ("as", "agent_skill"),
+            ("ac", "agent_capability"),
+            ("ax", "agent_export"),
+            ("ao", "agent_observable"),
             ("ae", "agent_effect"),
         ];
         for (short, full) in &known {
-            assert_eq!(expand_attribute_name(short), Some(*full), "expand({short}) should be {full}");
-            assert_eq!(compress_attribute_name(full), Some(*short), "compress({full}) should be {short}");
+            assert_eq!(
+                expand_attribute_name(short),
+                Some(*full),
+                "expand({short}) should be {full}"
+            );
+            assert_eq!(
+                compress_attribute_name(full),
+                Some(*short),
+                "compress({full}) should be {short}"
+            );
         }
     }
 
