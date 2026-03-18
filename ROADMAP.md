@@ -62,7 +62,7 @@
 | Step | Title                     | Status | Description                                                                                                                 |
 | ---- | ------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------- |
 | 49   | Synthesis oracle          | ✅      | Spec→candidate generation, candidate ranking by cost, verification of candidates against specs                              |
-| 50   | ACI subsystem             | ⬚      | Dynamic Warning Engine, Intelligent Debugging Engine, Performance Advisor, Swarm Coordination Intelligence, 8 RAP endpoints |
+| 50   | ACI subsystem             | ✅      | Dynamic Warning Engine, Intelligent Debugging Engine, Performance Advisor, Swarm Coordination Intelligence, 8 RAP endpoints |
 | 51   | Verification certificates | ⬚      | Machine-checkable proofs: memory safety, data-race freedom, contract satisfaction, effect containment                       |
 | 52   | FFI binding generator     | ⬚      | Auto-bind from C headers (parse .h), Python stubs (.pyi), WASM (.wit); safe wrapper generation                              |
 | 53   | Hot-reload runtime        | ⬚      | Function-level live patching, MLIR single-function re-lowering stubs, rollback management                                   |

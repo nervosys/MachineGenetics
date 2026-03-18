@@ -1,3 +1,4 @@
+mod aci;
 mod ast;
 mod consensus;
 mod cost;
