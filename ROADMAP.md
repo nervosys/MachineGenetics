@@ -49,7 +49,7 @@
 
 | Step | Title                     | Status | Description                                                                                               |
 | ---- | ------------------------- | ------ | --------------------------------------------------------------------------------------------------------- |
-| 42   | Semantic lease manager    | ⬚      | SharedRead / ExclusiveWrite / Restructuring leases on semantic regions, lease timeout, deadlock detection |
+| 42   | Semantic lease manager    | ✅      | SharedRead/ExclusiveWrite/Restructuring leases, region overlap, timeout expiry, wait-for deadlock detection; 24 tests (337 total) |
 | 43   | CRDT merge engine         | ⬚      | Semantic CRDTs on AST/HIR: InsertItem, ModifyBody, ModifySignature, AddImpl, Rename with merge semantics  |
 | 44   | Consensus protocol        | ⬚      | 5-phase: Propose → Impact Analysis → Vote → Resolve → Integrate for shared interface changes              |
 | 45   | Task decomposition engine | ⬚      | Dependency-aware parallel work splitting, critical path computation, agent assignment                     |

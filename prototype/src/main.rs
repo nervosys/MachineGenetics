@@ -6,6 +6,7 @@ mod fmt;
 mod grammar;
 mod heal;
 mod hir;
+mod lease;
 mod legacy;
 mod lexer;
 mod manifest;
