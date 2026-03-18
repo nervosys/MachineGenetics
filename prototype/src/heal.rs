@@ -236,6 +236,224 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
                 }]
             },
         },
+        // ── New patterns (Step 34) ──────────────────────────────
+        ErrorPattern {
+            name: "missing-closing-paren",
+            matches: |msg| msg.contains("expected `)`") || msg.contains("unclosed `(`"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "insert-closing-paren".into(),
+                    description: "Insert missing `)`".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        new_text: ")".into(),
+                    }],
+                    confidence: 0.85,
+                    semantics_preserving: true,
+                    token_cost: 1,
+                }]
+            },
+        },
+        ErrorPattern {
+            name: "missing-closing-bracket",
+            matches: |msg| msg.contains("expected `]`") || msg.contains("unclosed `[`"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "insert-closing-bracket".into(),
+                    description: "Insert missing `]`".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        new_text: "]".into(),
+                    }],
+                    confidence: 0.85,
+                    semantics_preserving: true,
+                    token_cost: 1,
+                }]
+            },
+        },
+        ErrorPattern {
+            name: "borrow-conflict",
+            matches: |msg| {
+                msg.contains("cannot borrow") || msg.contains("already borrowed")
+            },
+            generate: |diag| {
+                let mut fixes = Vec::new();
+                if diag.message.contains("mutable") {
+                    fixes.push(FixCandidate {
+                        id: "clone-to-avoid-borrow".into(),
+                        description: "Clone the value to avoid simultaneous borrow".into(),
+                        edits: vec![],
+                        confidence: 0.45,
+                        semantics_preserving: false,
+                        token_cost: 3,
+                    });
+                    fixes.push(FixCandidate {
+                        id: "scope-borrow".into(),
+                        description: "Limit borrow scope with an inner block".into(),
+                        edits: vec![],
+                        confidence: 0.5,
+                        semantics_preserving: true,
+                        token_cost: 4,
+                    });
+                }
+                fixes
+            },
+        },
+        ErrorPattern {
+            name: "move-after-use",
+            matches: |msg| {
+                msg.contains("use of moved value") || msg.contains("value used after move")
+            },
+            generate: |_diag| {
+                vec![
+                    FixCandidate {
+                        id: "clone-before-move".into(),
+                        description: "Clone the value before the move".into(),
+                        edits: vec![],
+                        confidence: 0.55,
+                        semantics_preserving: false,
+                        token_cost: 3,
+                    },
+                    FixCandidate {
+                        id: "borrow-instead-of-move".into(),
+                        description: "Pass by reference instead of moving".into(),
+                        edits: vec![],
+                        confidence: 0.6,
+                        semantics_preserving: false,
+                        token_cost: 2,
+                    },
+                ]
+            },
+        },
+        ErrorPattern {
+            name: "unused-variable",
+            matches: |msg| msg.contains("unused variable"),
+            generate: |diag| {
+                let name = extract_quoted(&diag.message).unwrap_or_default();
+                let prefixed = format!("_{name}");
+                vec![FixCandidate {
+                    id: "prefix-underscore".into(),
+                    description: format!("Rename to `{prefixed}` to suppress warning"),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col + name.len() as u32).unwrap_or(1),
+                        new_text: prefixed,
+                    }],
+                    confidence: 0.9,
+                    semantics_preserving: true,
+                    token_cost: 1,
+                }]
+            },
+        },
+        ErrorPattern {
+            name: "missing-field",
+            matches: |msg| msg.contains("missing field") || msg.contains("field not found"),
+            generate: |diag| {
+                let field = extract_quoted(&diag.message).unwrap_or_default();
+                vec![FixCandidate {
+                    id: "add-missing-field".into(),
+                    description: format!("Add missing field `{field}` with default value"),
+                    edits: vec![],
+                    confidence: 0.5,
+                    semantics_preserving: false,
+                    token_cost: 4,
+                }]
+            },
+        },
+        ErrorPattern {
+            name: "contract-precondition-fail",
+            matches: |msg| {
+                msg.contains("precondition") || (msg.contains("@req") && msg.contains("violated"))
+            },
+            generate: |diag| {
+                let cond = extract_quoted(&diag.message).unwrap_or("condition".into());
+                vec![FixCandidate {
+                    id: "add-guard-for-precondition".into(),
+                    description: format!("Add `? {cond}` guard before call to satisfy @req"),
+                    edits: vec![],
+                    confidence: 0.55,
+                    semantics_preserving: false,
+                    token_cost: 5,
+                }]
+            },
+        },
+        ErrorPattern {
+            name: "contract-postcondition-fail",
+            matches: |msg| {
+                msg.contains("postcondition")
+                    || (msg.contains("@ens") && msg.contains("violated"))
+            },
+            generate: |_diag| {
+                vec![FixCandidate {
+                    id: "adjust-return-for-postcondition".into(),
+                    description: "Adjust return expression to satisfy @ens contract".into(),
+                    edits: vec![],
+                    confidence: 0.4,
+                    semantics_preserving: false,
+                    token_cost: 6,
+                }]
+            },
+        },
+        ErrorPattern {
+            name: "invariant-violation",
+            matches: |msg| {
+                msg.contains("invariant")
+                    || (msg.contains("@inv") && msg.contains("violated"))
+            },
+            generate: |diag| {
+                let inv = extract_quoted(&diag.message).unwrap_or("invariant".into());
+                vec![FixCandidate {
+                    id: "restore-invariant".into(),
+                    description: format!("Add assertion to restore invariant: {inv}"),
+                    edits: vec![],
+                    confidence: 0.35,
+                    semantics_preserving: false,
+                    token_cost: 5,
+                }]
+            },
+        },
+        ErrorPattern {
+            name: "capability-denied",
+            matches: |msg| {
+                msg.contains("capability") && (msg.contains("denied") || msg.contains("not granted"))
+            },
+            generate: |diag| {
+                let cap = extract_quoted(&diag.message).unwrap_or("unknown".into());
+                vec![FixCandidate {
+                    id: "add-capability".into(),
+                    description: format!("Add `{cap}` to agent capabilities list"),
+                    edits: vec![],
+                    confidence: 0.65,
+                    semantics_preserving: false,
+                    token_cost: 3,
+                }]
+            },
+        },
+        ErrorPattern {
+            name: "performance-budget-exceeded",
+            matches: |msg| {
+                msg.contains("performance") && msg.contains("exceeded")
+                    || msg.contains("@perf") && msg.contains("violated")
+            },
+            generate: |_diag| {
+                vec![FixCandidate {
+                    id: "optimize-algorithm".into(),
+                    description: "Consider a more efficient algorithm to meet @perf bound".into(),
+                    edits: vec![],
+                    confidence: 0.3,
+                    semantics_preserving: false,
+                    token_cost: 10,
+                }]
+            },
+        },
     ]
 }
 
@@ -296,7 +514,7 @@ fn infer_category(msg: &str) -> DiagnosticCategory {
         DiagnosticCategory::BorrowConflict
     } else if msg.contains("type mismatch") || msg.contains("mismatched types") {
         DiagnosticCategory::TypeMismatch
-    } else if msg.contains("unresolved name") || msg.contains("not found") {
+    } else if msg.contains("unresolved name") || msg.contains("not found") || msg.contains("cannot find") {
         DiagnosticCategory::UnresolvedName
     } else if msg.contains("unresolved type") {
         DiagnosticCategory::UnresolvedType
@@ -304,8 +522,16 @@ fn infer_category(msg: &str) -> DiagnosticCategory {
         DiagnosticCategory::UndeclaredEffect
     } else if msg.contains("duplicate") {
         DiagnosticCategory::DuplicateDefinition
+    } else if msg.contains("precondition") || msg.contains("postcondition") || msg.contains("invariant") {
+        DiagnosticCategory::SpecViolation
     } else if msg.contains("spec") {
         DiagnosticCategory::SpecViolation
+    } else if msg.contains("capability") {
+        DiagnosticCategory::Other
+    } else if msg.contains("performance") || msg.contains("@perf") {
+        DiagnosticCategory::Other
+    } else if msg.contains("unused") {
+        DiagnosticCategory::Other
     } else if msg.contains("expected") || msg.contains("unexpected") {
         DiagnosticCategory::SyntaxError
     } else {
@@ -482,5 +708,103 @@ mod tests {
         assert!(display.contains("note: a note"));
         assert!(display.contains("fix[0]"));
         assert!(display.contains("70%"));
+    }
+
+    // ── New pattern tests (Step 34) ───────────────────────────
+
+    #[test]
+    fn heals_missing_closing_paren() {
+        let diag = error_with_span("expected `)` after argument list", 3, 10);
+        let healed = heal_one(&diag);
+        assert!(!healed.fixes.is_empty());
+        assert_eq!(healed.fixes[0].id, "insert-closing-paren");
+    }
+
+    #[test]
+    fn heals_missing_closing_bracket() {
+        let diag = error_with_span("expected `]` after generic parameters", 2, 5);
+        let healed = heal_one(&diag);
+        assert!(!healed.fixes.is_empty());
+        assert_eq!(healed.fixes[0].id, "insert-closing-bracket");
+    }
+
+    #[test]
+    fn heals_borrow_conflict() {
+        let diag = error_with_span(
+            "cannot borrow `x` as mutable because it is also borrowed as immutable",
+            4, 1,
+        );
+        let healed = heal_one(&diag);
+        assert!(healed.fixes.len() >= 2);
+        let ids: Vec<_> = healed.fixes.iter().map(|f| f.id.as_str()).collect();
+        assert!(ids.contains(&"scope-borrow"));
+        assert!(ids.contains(&"clone-to-avoid-borrow"));
+    }
+
+    #[test]
+    fn heals_move_after_use() {
+        let diag = error_with_span("use of moved value `buf`", 8, 5);
+        let healed = heal_one(&diag);
+        assert!(healed.fixes.len() >= 2);
+        let ids: Vec<_> = healed.fixes.iter().map(|f| f.id.as_str()).collect();
+        assert!(ids.contains(&"clone-before-move"));
+        assert!(ids.contains(&"borrow-instead-of-move"));
+    }
+
+    #[test]
+    fn heals_unused_variable() {
+        let diag = error_with_span("unused variable `count`", 1, 5);
+        let healed = heal_one(&diag);
+        assert!(!healed.fixes.is_empty());
+        assert_eq!(healed.fixes[0].id, "prefix-underscore");
+        assert!(healed.fixes[0].description.contains("_count"));
+    }
+
+    #[test]
+    fn heals_missing_field() {
+        let diag = error_with_span("missing field `name` in initializer of `User`", 5, 1);
+        let healed = heal_one(&diag);
+        assert!(!healed.fixes.is_empty());
+        assert_eq!(healed.fixes[0].id, "add-missing-field");
+    }
+
+    #[test]
+    fn heals_contract_precondition_fail() {
+        let diag = error_with_span("precondition `n > 0` violated at call site", 10, 1);
+        let healed = heal_one(&diag);
+        assert!(!healed.fixes.is_empty());
+        assert_eq!(healed.fixes[0].id, "add-guard-for-precondition");
+    }
+
+    #[test]
+    fn heals_contract_postcondition_fail() {
+        let diag = error_with_span("postcondition `result >= 0` violated", 12, 1);
+        let healed = heal_one(&diag);
+        assert!(!healed.fixes.is_empty());
+        assert_eq!(healed.fixes[0].id, "adjust-return-for-postcondition");
+    }
+
+    #[test]
+    fn heals_invariant_violation() {
+        let diag = error_with_span("invariant `len <= cap` violated after mutation", 7, 1);
+        let healed = heal_one(&diag);
+        assert!(!healed.fixes.is_empty());
+        assert_eq!(healed.fixes[0].id, "restore-invariant");
+    }
+
+    #[test]
+    fn heals_capability_denied() {
+        let diag = error_with_span("capability `net` not granted to agent Reviewer", 1, 1);
+        let healed = heal_one(&diag);
+        assert!(!healed.fixes.is_empty());
+        assert_eq!(healed.fixes[0].id, "add-capability");
+    }
+
+    #[test]
+    fn heals_performance_budget_exceeded() {
+        let diag = error_with_span("performance budget exceeded, @perf violated", 15, 1);
+        let healed = heal_one(&diag);
+        assert!(!healed.fixes.is_empty());
+        assert_eq!(healed.fixes[0].id, "optimize-algorithm");
     }
 }
