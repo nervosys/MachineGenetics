@@ -7,6 +7,7 @@ mod crdt;
 mod decompose;
 mod effects;
 mod elision;
+mod ffi_gen;
 mod fmt;
 mod grammar;
 mod heal;
