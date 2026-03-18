@@ -1,5 +1,6 @@
 mod ast;
 mod cost;
+mod crdt;
 mod effects;
 mod elision;
 mod fmt;
