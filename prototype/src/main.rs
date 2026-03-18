@@ -19,6 +19,7 @@ mod lexer;
 mod manifest;
 mod mlir;
 mod parser;
+mod perf_annot;
 mod rap;
 mod resolve;
 mod sandbox;

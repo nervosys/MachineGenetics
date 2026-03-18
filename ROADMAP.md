@@ -67,7 +67,7 @@
 | 52   | FFI binding generator     | ✅      | Auto-bind from C headers (parse .h), Python stubs (.pyi), WASM (.wit); safe wrapper generation                              |
 | 53   | Hot-reload runtime        | ✅      | Function-level live patching, MLIR single-function re-lowering stubs, rollback management                                   |
 | 54   | Capability-based sandbox  | ✅      | Per-agent isolation, resource limits (mem/CPU/syscalls), capability attenuation, audit logging                              |
-| 55   | Performance annotations   | ⬚      | `@pi!`, `@pnb`, `@pv(N)`, `@pt(target)`, `@pa(N)`, `@pp`, `#[repr(target_optimal)]` processing                              |
+| 55   | Performance annotations   | ✅      | `@pi!`, `@pnb`, `@pv(N)`, `@pt(target)`, `@pa(N)`, `@pp`, `#[repr(target_optimal)]` processing                              |
 
 ## Phase F: Stdlib & Ecosystem (Steps 56–60)
 
