@@ -86,6 +86,9 @@ impl<'a> EmitCtx<'a> {
                 let ty = self.mlir_type(&sd.ty);
                 self.line(&format!("redox.static @{} : {ty}", sd.name));
             }
+            ast::ItemKind::Agent(ad) => {
+                self.line(&format!("// agent {} capabilities=[{}]", ad.name, ad.capabilities.join(", ")));
+            }
         }
     }
 

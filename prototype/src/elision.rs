@@ -46,6 +46,7 @@ fn elide_item_kind(kind: &ItemKind) -> ItemKind {
         ItemKind::Static(s) => ItemKind::Static(elide_static(s)),
         ItemKind::Effect(e) => ItemKind::Effect(e.clone()),
         ItemKind::Spec(s) => ItemKind::Spec(s.clone()),
+        ItemKind::Agent(a) => ItemKind::Agent(a.clone()),
     }
 }
 

@@ -24,6 +24,7 @@ pub enum SymbolKind {
     Const,
     Effect,
     Spec,
+    Agent,
     Variable { mutable: bool },
     Param,
     GenericParam,
@@ -236,6 +237,9 @@ impl Resolver {
             ast::ItemKind::Static(sd) => {
                 self.define_value(&sd.name, SymbolKind::Const);
             }
+            ast::ItemKind::Agent(ad) => {
+                self.define_value(&ad.name, SymbolKind::Agent);
+            }
             ast::ItemKind::Impl(_) | ast::ItemKind::Use(_) => {
                 // Impl blocks and use decls don't introduce a single name
             }
@@ -257,6 +261,7 @@ impl Resolver {
             ast::ItemKind::Const(cd) => self.resolve_const(cd),
             ast::ItemKind::Effect(ed) => self.resolve_effect(ed),
             ast::ItemKind::Spec(_) => { /* spec bodies are declarative, skip for now */ }
+            ast::ItemKind::Agent(_) => { /* agent bodies are declarative, skip for now */ }
             ast::ItemKind::Static(sd) => {
                 self.resolve_ast_type(&sd.ty);
                 self.resolve_expr(&sd.value);

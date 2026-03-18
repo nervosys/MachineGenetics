@@ -52,6 +52,7 @@ pub enum TokenKind {
     KwEffect, // effect
     KwHandle, // handle
     KwSpec,   // spec
+    KwAgent,  // agent
     KwExtern, // extern
     KwReq,    // @req (precondition — parsed as @ + req ident)
     KwEns,    // @ens (postcondition)
@@ -787,6 +788,7 @@ impl<'a> Lexer<'a> {
             "effect" => TokenKind::KwEffect,
             "handle" => TokenKind::KwHandle,
             "spec" => TokenKind::KwSpec,
+            "agent" => TokenKind::KwAgent,
             "extern" => TokenKind::KwExtern,
             "unsafe" => TokenKind::KwUnsafe,
             "type" => TokenKind::KwType,
@@ -1000,5 +1002,12 @@ mod tests {
         assert_eq!(tokens[0].kind, TokenKind::At);
         assert_eq!(tokens[1].kind, TokenKind::Ident);
         assert_eq!(tokens[1].text, "require");
+    }
+
+    #[test]
+    fn test_agent_keyword() {
+        let tokens = lex("agent");
+        assert_eq!(tokens[0].kind, TokenKind::KwAgent);
+        assert_eq!(tokens[0].text, "agent");
     }
 }

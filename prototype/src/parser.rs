@@ -130,9 +130,15 @@ impl<'a> Parser<'a> {
 
     fn parse_item_kind(&mut self, contracts: Vec<ContractClause>) -> Result<ItemKind, ParseError> {
         match self.peek() {
-            TokenKind::KwF => self.parse_function_def(false, false, contracts).map(ItemKind::Function),
-            TokenKind::KwAf => self.parse_function_def(true, false, contracts).map(ItemKind::Function),
-            TokenKind::KwUf => self.parse_function_def(false, true, contracts).map(ItemKind::Function),
+            TokenKind::KwF => {
+                self.parse_function_def(false, false, contracts).map(ItemKind::Function)
+            }
+            TokenKind::KwAf => {
+                self.parse_function_def(true, false, contracts).map(ItemKind::Function)
+            }
+            TokenKind::KwUf => {
+                self.parse_function_def(false, true, contracts).map(ItemKind::Function)
+            }
             TokenKind::KwS => self.parse_struct_def(contracts).map(ItemKind::Struct),
             TokenKind::KwE => self.parse_enum_def().map(ItemKind::Enum),
             TokenKind::KwT => self.parse_trait_def().map(ItemKind::Trait),
@@ -144,6 +150,7 @@ impl<'a> Parser<'a> {
             TokenKind::KwZ => self.parse_static_def().map(ItemKind::Static),
             TokenKind::KwEffect => self.parse_effect_def().map(ItemKind::Effect),
             TokenKind::KwSpec => self.parse_spec_def().map(ItemKind::Spec),
+            TokenKind::KwAgent => self.parse_agent_def().map(ItemKind::Agent),
             _ => Err(self.error(&format!("expected item, found {:?}", self.peek()))),
         }
     }
@@ -152,9 +159,18 @@ impl<'a> Parser<'a> {
 
     fn parse_contract_clause(&mut self) -> Result<ContractClause, ParseError> {
         let kind = match self.peek() {
-            TokenKind::KwReq => { self.advance(); ContractClauseKind::Requires }
-            TokenKind::KwEns => { self.advance(); ContractClauseKind::Ensures }
-            TokenKind::KwInv => { self.advance(); ContractClauseKind::Invariant }
+            TokenKind::KwReq => {
+                self.advance();
+                ContractClauseKind::Requires
+            }
+            TokenKind::KwEns => {
+                self.advance();
+                ContractClauseKind::Ensures
+            }
+            TokenKind::KwInv => {
+                self.advance();
+                ContractClauseKind::Invariant
+            }
             _ => return Err(self.error("expected @req, @ens, or @inv")),
         };
 
@@ -228,7 +244,12 @@ impl<'a> Parser<'a> {
 
     // ── Function ────────────────────────────────────────────
 
-    fn parse_function_def(&mut self, is_async: bool, is_unsafe: bool, contracts: Vec<ContractClause>) -> Result<FunctionDef, ParseError> {
+    fn parse_function_def(
+        &mut self,
+        is_async: bool,
+        is_unsafe: bool,
+        contracts: Vec<ContractClause>,
+    ) -> Result<FunctionDef, ParseError> {
         // Consume the function keyword (f, af, or uf)
         self.advance();
         let name = self.expect_ident()?;
@@ -258,12 +279,26 @@ impl<'a> Parser<'a> {
 
         let body = self.parse_block()?;
 
-        Ok(FunctionDef { name, is_async, is_unsafe, generics, params, return_type, where_clause, effects: Vec::new(), contracts, body })
+        Ok(FunctionDef {
+            name,
+            is_async,
+            is_unsafe,
+            generics,
+            params,
+            return_type,
+            where_clause,
+            effects: Vec::new(),
+            contracts,
+            body,
+        })
     }
 
     // ── Struct ──────────────────────────────────────────────
 
-    fn parse_struct_def(&mut self, contracts: Vec<ContractClause>) -> Result<StructDef, ParseError> {
+    fn parse_struct_def(
+        &mut self,
+        contracts: Vec<ContractClause>,
+    ) -> Result<StructDef, ParseError> {
         self.expect(TokenKind::KwS)?;
         let name = self.expect_ident()?;
 
@@ -686,8 +721,12 @@ impl<'a> Parser<'a> {
                         while (self.peek() != TokenKind::RParen || depth > 0)
                             && self.peek() != TokenKind::Eof
                         {
-                            if self.peek() == TokenKind::LParen { depth += 1; }
-                            if self.peek() == TokenKind::RParen && depth > 0 { depth -= 1; }
+                            if self.peek() == TokenKind::LParen {
+                                depth += 1;
+                            }
+                            if self.peek() == TokenKind::RParen && depth > 0 {
+                                depth -= 1;
+                            }
                             parts.push(self.advance().text.clone());
                         }
                         bound = parts.join("");
@@ -695,8 +734,12 @@ impl<'a> Parser<'a> {
                     self.expect(TokenKind::RParen)?;
                     items.push(SpecItem::Performance(metric, bound));
                 }
-                TokenKind::Semi => { self.advance(); }
-                _ => { self.advance(); }
+                TokenKind::Semi => {
+                    self.advance();
+                }
+                _ => {
+                    self.advance();
+                }
             }
         }
         self.expect(TokenKind::RBrace)?;
@@ -713,13 +756,75 @@ impl<'a> Parser<'a> {
             if self.peek() == TokenKind::Eof {
                 return Err(self.error("unterminated parenthesized expression"));
             }
-            if self.peek() == TokenKind::LParen { depth += 1; }
-            if self.peek() == TokenKind::RParen && depth > 0 { depth -= 1; }
+            if self.peek() == TokenKind::LParen {
+                depth += 1;
+            }
+            if self.peek() == TokenKind::RParen && depth > 0 {
+                depth -= 1;
+            }
             let tok = self.advance();
             parts.push(tok.text.clone());
         }
         self.expect(TokenKind::RParen)?;
         Ok(parts.join(" "))
+    }
+
+    // ── Agent Definitions ───────────────────────────────────
+
+    /// Parse: `agent Name { capabilities: [cap1, cap2] requires_approval: [op1, op2] }`
+    fn parse_agent_def(&mut self) -> Result<AgentDef, ParseError> {
+        self.expect(TokenKind::KwAgent)?;
+        let name = self.expect_ident()?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut capabilities = Vec::new();
+        let mut requires_approval = Vec::new();
+
+        while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
+            match self.peek() {
+                TokenKind::Ident => {
+                    let label = self.advance();
+                    let label_text = label.text.clone();
+                    match label_text.as_str() {
+                        "capabilities" => {
+                            self.expect(TokenKind::Colon)?;
+                            capabilities = self.parse_bracket_string_list()?;
+                        }
+                        "requires_approval" => {
+                            self.expect(TokenKind::Colon)?;
+                            requires_approval = self.parse_bracket_string_list()?;
+                        }
+                        other => {
+                            return Err(self.error(&format!("unknown agent field `{}`", other)));
+                        }
+                    }
+                }
+                TokenKind::Comma | TokenKind::Semi => {
+                    self.advance();
+                }
+                _ => {
+                    return Err(self
+                        .error(&format!("expected agent field or `}}`, found {:?}", self.peek())));
+                }
+            }
+        }
+        self.expect(TokenKind::RBrace)?;
+        Ok(AgentDef { name, capabilities, requires_approval })
+    }
+
+    /// Parse `[ident1, ident2, ...]` → Vec<String>
+    fn parse_bracket_string_list(&mut self) -> Result<Vec<String>, ParseError> {
+        self.expect(TokenKind::LBrack)?;
+        let mut items = Vec::new();
+        while self.peek() != TokenKind::RBrack && self.peek() != TokenKind::Eof {
+            let tok = self.expect_ident()?;
+            items.push(tok);
+            if self.peek() == TokenKind::Comma {
+                self.advance();
+            }
+        }
+        self.expect(TokenKind::RBrack)?;
+        Ok(items)
     }
 
     // ── Generic Params ──────────────────────────────────────
@@ -1411,7 +1516,10 @@ impl<'a> Parser<'a> {
                 };
                 Ok(Expr::Literal { value: tok.text.clone(), kind })
             }
-            TokenKind::StringLiteral | TokenKind::FormatString | TokenKind::PrintString | TokenKind::EprintString => {
+            TokenKind::StringLiteral
+            | TokenKind::FormatString
+            | TokenKind::PrintString
+            | TokenKind::EprintString => {
                 let tok = self.advance();
                 let kind = match tok.kind {
                     TokenKind::FormatString => LiteralKind::FormatString,
@@ -1892,6 +2000,46 @@ mod tests {
             assert!(ta.refinement.is_some());
         } else {
             panic!("expected type alias");
+        }
+    }
+
+    // ── Agent definition tests ──────────────────────────────
+
+    #[test]
+    fn test_agent_def_basic() {
+        let src = "agent Reviewer { capabilities: [read_source, query_types] }";
+        let module = parse_source(src);
+        if let ItemKind::Agent(ref ad) = module.items[0].kind {
+            assert_eq!(ad.name, "Reviewer");
+            assert_eq!(ad.capabilities, vec!["read_source", "query_types"]);
+            assert!(ad.requires_approval.is_empty());
+        } else {
+            panic!("expected agent def");
+        }
+    }
+
+    #[test]
+    fn test_agent_def_with_approval() {
+        let src = "agent Deployer { capabilities: [io_write, net] requires_approval: [exec, ffi] }";
+        let module = parse_source(src);
+        if let ItemKind::Agent(ref ad) = module.items[0].kind {
+            assert_eq!(ad.name, "Deployer");
+            assert_eq!(ad.capabilities, vec!["io_write", "net"]);
+            assert_eq!(ad.requires_approval, vec!["exec", "ffi"]);
+        } else {
+            panic!("expected agent def");
+        }
+    }
+
+    #[test]
+    fn test_agent_def_empty_capabilities() {
+        let src = "agent Minimal { capabilities: [] }";
+        let module = parse_source(src);
+        if let ItemKind::Agent(ref ad) = module.items[0].kind {
+            assert_eq!(ad.name, "Minimal");
+            assert!(ad.capabilities.is_empty());
+        } else {
+            panic!("expected agent def");
         }
     }
 }

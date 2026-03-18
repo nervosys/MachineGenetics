@@ -30,7 +30,7 @@
 | 30   | Contract syntax & checking   | ✅      | `@req`/`@ens`/`@inv` in parser + AST + verification oracle integration                                                                             |
 | 31   | Formal specification syntax  | ✅      | `spec` blocks with `@req`/`@ens`/`@perf`/`@fx`, parsed and stored in AST                                                                           |
 | 32   | Refinement types             | ✅      | Value-level type constraints (`NonZero[u32]`, `Range[0..100]`) in type checker                                                                     |
-| 33   | Capability system            | ⬚      | Capability declarations in Redox.toml, inference pass, enforcement layer                                                                           |
+| 33   | Capability system            | ✅      | `agent` keyword + `AgentDef` AST, capability declarations, bracket-list parser, verification oracle, known-cap taxonomy |
 | 34   | Deepen self-healing          | ⬚      | Expand from 6 to 15+ error patterns, integrate contract/spec context for intent inference                                                          |
 | 35   | Attribute compression system | ⬚      | Full `#[...]` → `@...` mapping: `@d`, `@r`, `@mu`, `@a`, `@x`, `@cfg`, `@t`, `@b`, `@se`, `@pi!`, `@pnb`, `@pv`, `@pt`, `@pa`, `@pp`, `@as`, `@ac` |
 

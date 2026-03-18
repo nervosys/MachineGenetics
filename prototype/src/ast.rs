@@ -41,6 +41,7 @@ pub enum ItemKind {
     Static(StaticDef),
     Effect(EffectDef),
     Spec(SpecDef),
+    Agent(AgentDef),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -73,33 +74,85 @@ pub struct Param {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Type {
-    Path { segments: Vec<String>, type_args: Vec<Type> },
-    Reference { mutable: bool, inner: Box<Type> },
-    OwnedPtr { inner: Box<Type> },               // ^T
-    Rc { inner: Box<Type> },                     // $T
-    Arc { inner: Box<Type> },                    // @T
-    Cow { inner: Box<Type> },                    // &~T
-    Cell { inner: Box<Type> },                   // %T
-    RefCell { inner: Box<Type> },                // %!T
-    Mutex { inner: Box<Type> },                  // #T
-    RwLock { inner: Box<Type> },                 // #~T
-    Slice { inner: Box<Type> },                  // [T]
-    Array { inner: Box<Type>, size: Box<Expr> }, // [T; N]
-    Vec { inner: Box<Type> },                    // [T]~
-    Set { inner: Box<Type> },                    // {T}
-    Tuple { elements: Vec<Type> },
-    Option { inner: Box<Type> },              // ?T
-    Result { ok: Box<Type>, err: Box<Type> }, // R[T, E]
-    Map { key: Box<Type>, value: Box<Type> }, // {K: V}
-    Ptr { inner: Box<Type> },                 // Ptr[T]
-    Simd { inner: Box<Type>, width: u64 },    // Simd[T, N]
-    Fn { params: Vec<Type>, ret: Option<Box<Type>> },
+    Path {
+        segments: Vec<String>,
+        type_args: Vec<Type>,
+    },
+    Reference {
+        mutable: bool,
+        inner: Box<Type>,
+    },
+    OwnedPtr {
+        inner: Box<Type>,
+    }, // ^T
+    Rc {
+        inner: Box<Type>,
+    }, // $T
+    Arc {
+        inner: Box<Type>,
+    }, // @T
+    Cow {
+        inner: Box<Type>,
+    }, // &~T
+    Cell {
+        inner: Box<Type>,
+    }, // %T
+    RefCell {
+        inner: Box<Type>,
+    }, // %!T
+    Mutex {
+        inner: Box<Type>,
+    }, // #T
+    RwLock {
+        inner: Box<Type>,
+    }, // #~T
+    Slice {
+        inner: Box<Type>,
+    }, // [T]
+    Array {
+        inner: Box<Type>,
+        size: Box<Expr>,
+    }, // [T; N]
+    Vec {
+        inner: Box<Type>,
+    }, // [T]~
+    Set {
+        inner: Box<Type>,
+    }, // {T}
+    Tuple {
+        elements: Vec<Type>,
+    },
+    Option {
+        inner: Box<Type>,
+    }, // ?T
+    Result {
+        ok: Box<Type>,
+        err: Box<Type>,
+    }, // R[T, E]
+    Map {
+        key: Box<Type>,
+        value: Box<Type>,
+    }, // {K: V}
+    Ptr {
+        inner: Box<Type>,
+    }, // Ptr[T]
+    Simd {
+        inner: Box<Type>,
+        width: u64,
+    }, // Simd[T, N]
+    Fn {
+        params: Vec<Type>,
+        ret: Option<Box<Type>>,
+    },
     Never,      // !
     Inferred,   // _
     SelfType,   // _T
     StringType, // s
     /// A refinement type: base type with a value-level predicate.
-    Refined { base: Box<Type>, predicate: String },
+    Refined {
+        base: Box<Type>,
+        predicate: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -307,6 +360,16 @@ pub enum SpecItem {
     Performance(String, String),
     Effect(Vec<String>),
     Invariant(String),
+}
+
+/// An agent capability definition: `agent Name { capabilities: [...], ... }`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentDef {
+    pub name: String,
+    /// Capabilities this agent has (e.g. "read_source", "query_types").
+    pub capabilities: Vec<String>,
+    /// Operations requiring explicit approval.
+    pub requires_approval: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

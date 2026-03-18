@@ -976,6 +976,7 @@ fn item_name(kind: &ItemKind) -> String {
         ItemKind::Static(s) => s.name.clone(),
         ItemKind::Effect(e) => e.name.clone(),
         ItemKind::Spec(s) => s.name.clone(),
+        ItemKind::Agent(a) => a.name.clone(),
         _ => "<item>".to_string(),
     }
 }

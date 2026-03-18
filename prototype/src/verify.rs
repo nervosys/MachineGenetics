@@ -385,6 +385,47 @@ fn verify_item(kind: &ast::ItemKind, prefix: &str, results: &mut Vec<Verificatio
                 });
             }
         }
+        ast::ItemKind::Agent(ad) => {
+            let fqn = if prefix.is_empty() {
+                format!("agent.{}", ad.name)
+            } else {
+                format!("{prefix}.agent.{}", ad.name)
+            };
+            let known_caps = [
+                "read_source", "write_source", "query_types", "emit_diagnostics",
+                "io_read", "io_write", "net", "alloc_heap", "ffi",
+                "exec", "env", "fs", "crypto",
+            ];
+            let mut checks = Vec::new();
+            for cap in &ad.capabilities {
+                let result = if known_caps.contains(&cap.as_str()) {
+                    CheckResult::Verified
+                } else {
+                    CheckResult::Unknown
+                };
+                checks.push(ContractCheck {
+                    kind: ContractKind::Requires,
+                    condition: format!("capability:{}", cap),
+                    result,
+                    explanation: None,
+                });
+            }
+            if !checks.is_empty() {
+                let status = if checks.iter().all(|c| c.result == CheckResult::Verified) {
+                    VerifyStatus::Verified
+                } else if checks.iter().any(|c| c.result == CheckResult::Unknown) {
+                    VerifyStatus::Partial
+                } else {
+                    VerifyStatus::Failed
+                };
+                results.push(VerificationResult {
+                    fqn,
+                    status,
+                    checks,
+                    effect_checks: vec![],
+                });
+            }
+        }
         _ => {}
     }
 }
@@ -548,6 +589,36 @@ mod tests {
         let src = "Y Meters = f64;";
         let module = parse_source(src);
         let results = super::verify_module(&module);
+        assert!(results.is_empty());
+    }
+
+    // ── Agent capability verification tests (Step 33) ──────
+
+    #[test]
+    fn verify_agent_known_capabilities() {
+        let src = "agent Reviewer { capabilities: [read_source, query_types] }";
+        let module = parse_source(src);
+        let results = super::verify_module(&module);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].status, VerifyStatus::Verified);
+        assert_eq!(results[0].checks.len(), 2);
+    }
+
+    #[test]
+    fn verify_agent_unknown_capability() {
+        let src = "agent Hacker { capabilities: [read_source, teleport] }";
+        let module = parse_source(src);
+        let results = super::verify_module(&module);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].status, VerifyStatus::Partial);
+    }
+
+    #[test]
+    fn verify_agent_empty_capabilities() {
+        let src = "agent Passive { capabilities: [] }";
+        let module = parse_source(src);
+        let results = super::verify_module(&module);
+        // No capabilities = no checks, no result
         assert!(results.is_empty());
     }
 }
