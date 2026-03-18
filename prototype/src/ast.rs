@@ -289,6 +289,10 @@ pub struct EffectOp {
 pub struct SpecDef {
     pub name: String,
     pub generics: Vec<GenericParam>,
+    /// Optional function-style parameters (for synthesis specs).
+    pub params: Vec<Param>,
+    /// Optional return type (for synthesis specs).
+    pub return_type: Option<Type>,
     pub items: Vec<SpecItem>,
 }
 

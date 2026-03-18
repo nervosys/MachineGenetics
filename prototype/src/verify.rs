@@ -316,6 +316,52 @@ fn verify_item(kind: &ast::ItemKind, prefix: &str, results: &mut Vec<Verificatio
                 verify_item(&item.kind, &trait_prefix, results);
             }
         }
+        ast::ItemKind::Spec(spec) => {
+            if spec.items.is_empty() {
+                return;
+            }
+            let fqn = if prefix.is_empty() {
+                format!("spec.{}", spec.name)
+            } else {
+                format!("{prefix}.spec.{}", spec.name)
+            };
+
+            let requires: Vec<String> = spec
+                .items
+                .iter()
+                .filter_map(|item| match item {
+                    ast::SpecItem::Require(s) => Some(s.clone()),
+                    _ => None,
+                })
+                .collect();
+            let ensures: Vec<String> = spec
+                .items
+                .iter()
+                .filter_map(|item| match item {
+                    ast::SpecItem::Ensure(s) => Some(s.clone()),
+                    _ => None,
+                })
+                .collect();
+
+            let spec_input = if requires.is_empty() && ensures.is_empty() {
+                None
+            } else {
+                Some(SpecInput { requires, ensures })
+            };
+
+            let declared_effects: Vec<String> = spec
+                .items
+                .iter()
+                .filter_map(|item| match item {
+                    ast::SpecItem::Effect(effs) => Some(effs.clone()),
+                    _ => None,
+                })
+                .flatten()
+                .collect();
+
+            let effects = EffectAnalysis { declared: declared_effects, used: vec![] };
+            results.push(verify_contracts(&fqn, spec_input.as_ref(), &effects));
+        }
         _ => {}
     }
 }
@@ -432,6 +478,34 @@ mod tests {
         let module = parse_source(src);
         let results = super::verify_module(&module);
         // foo has contracts, bar doesn't, Baz has an invariant
+        assert_eq!(results.len(), 2);
+    }
+
+    // ── Spec verification tests (Step 31) ──────────────────
+
+    #[test]
+    fn verify_module_spec_with_req_ens() {
+        let src = "spec sort(s: [i32]) -> [i32] { @req(s.len > 0) @ens(result.is_sorted) }";
+        let module = parse_source(src);
+        let results = super::verify_module(&module);
+        assert_eq!(results.len(), 1);
+        assert!(results[0].fqn.contains("sort"));
+        assert!(!results[0].checks.is_empty());
+    }
+
+    #[test]
+    fn verify_module_spec_empty() {
+        let module = parse_source("spec Empty { }");
+        let results = super::verify_module(&module);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn verify_module_spec_and_function() {
+        let src = "spec abs_spec(x: i32) -> i32 { @req(true) } @req(x >= 0) f abs(x: i32) -> i32 { x }";
+        let module = parse_source(src);
+        let results = super::verify_module(&module);
+        // Both spec and function should produce results
         assert_eq!(results.len(), 2);
     }
 }

@@ -603,6 +603,23 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
 
+        // Optional parameters: spec name[T](param: Type, ...) -> ReturnType
+        let params = if self.peek() == TokenKind::LParen {
+            self.expect(TokenKind::LParen)?;
+            let p = self.parse_param_list()?;
+            self.expect(TokenKind::RParen)?;
+            p
+        } else {
+            Vec::new()
+        };
+
+        let return_type = if self.peek() == TokenKind::Arrow {
+            self.advance();
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
+
         self.expect(TokenKind::LBrace)?;
         let mut items = Vec::new();
         while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
@@ -638,17 +655,29 @@ impl<'a> Parser<'a> {
                 TokenKind::KwPerf => {
                     self.advance();
                     self.expect(TokenKind::LParen)?;
-                    let metric = if self.peek() != TokenKind::RParen {
-                        self.advance().text.clone()
-                    } else {
-                        String::new()
-                    };
+                    // Collect metric (tokens up to first comma)
+                    let mut metric_parts = Vec::new();
+                    while self.peek() != TokenKind::Comma
+                        && self.peek() != TokenKind::RParen
+                        && self.peek() != TokenKind::Eof
+                    {
+                        metric_parts.push(self.advance().text.clone());
+                    }
+                    let metric = metric_parts.join(" ");
+                    // Collect bound (tokens after comma, handling nested parens)
                     let mut bound = String::new();
                     if self.peek() == TokenKind::Comma {
                         self.advance();
-                        if self.peek() != TokenKind::RParen {
-                            bound = self.advance().text.clone();
+                        let mut parts = Vec::new();
+                        let mut depth: usize = 0;
+                        while (self.peek() != TokenKind::RParen || depth > 0)
+                            && self.peek() != TokenKind::Eof
+                        {
+                            if self.peek() == TokenKind::LParen { depth += 1; }
+                            if self.peek() == TokenKind::RParen && depth > 0 { depth -= 1; }
+                            parts.push(self.advance().text.clone());
                         }
+                        bound = parts.join("");
                     }
                     self.expect(TokenKind::RParen)?;
                     items.push(SpecItem::Performance(metric, bound));
@@ -659,7 +688,7 @@ impl<'a> Parser<'a> {
         }
         self.expect(TokenKind::RBrace)?;
 
-        Ok(SpecDef { name, generics, items })
+        Ok(SpecDef { name, generics, params, return_type, items })
     }
 
     /// Helper: consume `(...)` and return all tokens as a single string.
@@ -1741,6 +1770,73 @@ mod tests {
         if let ItemKind::Spec(ref s) = module.items[0].kind {
             assert_eq!(s.name, "Sortable");
             assert_eq!(s.items.len(), 2);
+        } else {
+            panic!("expected spec");
+        }
+    }
+
+    // ── Spec definition (Step 31) tests ─────────────────────
+
+    #[test]
+    fn test_spec_with_params_and_return_type() {
+        let src = "spec sort_unstable[T](slice: [T]) -> [T] { @req(slice.len > 0) @ens(result.is_sorted) }";
+        let module = parse_source(src);
+        if let ItemKind::Spec(ref s) = module.items[0].kind {
+            assert_eq!(s.name, "sort_unstable");
+            assert_eq!(s.generics.len(), 1);
+            assert_eq!(s.params.len(), 1);
+            assert!(s.return_type.is_some());
+            assert_eq!(s.items.len(), 2);
+        } else {
+            panic!("expected spec");
+        }
+    }
+
+    #[test]
+    fn test_spec_no_params() {
+        let src = "spec Invariants { @inv(_.len <= _.cap) }";
+        let module = parse_source(src);
+        if let ItemKind::Spec(ref s) = module.items[0].kind {
+            assert_eq!(s.name, "Invariants");
+            assert!(s.params.is_empty());
+            assert!(s.return_type.is_none());
+            assert_eq!(s.items.len(), 1);
+        } else {
+            panic!("expected spec");
+        }
+    }
+
+    #[test]
+    fn test_spec_with_fx_and_perf() {
+        let src = "spec pure_sort[T](s: [T]) -> [T] { @req(s.len > 0) @fx(none) @perf(time, O(n*log(n))) }";
+        let module = parse_source(src);
+        if let ItemKind::Spec(ref s) = module.items[0].kind {
+            assert_eq!(s.name, "pure_sort");
+            assert_eq!(s.items.len(), 3);
+            match &s.items[1] {
+                SpecItem::Effect(effs) => assert!(effs.contains(&"none".to_string())),
+                other => panic!("expected Effect, got {:?}", other),
+            }
+            match &s.items[2] {
+                SpecItem::Performance(metric, bound) => {
+                    assert_eq!(metric, "time");
+                    assert!(!bound.is_empty());
+                }
+                other => panic!("expected Performance, got {:?}", other),
+            }
+        } else {
+            panic!("expected spec");
+        }
+    }
+
+    #[test]
+    fn test_spec_multiple_requires() {
+        let src = "spec bounded(x: i32) { @req(x >= 0) @req(x < 100) @ens(result > 0) }";
+        let module = parse_source(src);
+        if let ItemKind::Spec(ref s) = module.items[0].kind {
+            assert_eq!(s.items.len(), 3);
+            let req_count = s.items.iter().filter(|i| matches!(i, SpecItem::Require(_))).count();
+            assert_eq!(req_count, 2);
         } else {
             panic!("expected spec");
         }
