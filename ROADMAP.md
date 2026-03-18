@@ -32,7 +32,7 @@
 | 32   | Refinement types             | ✅      | Value-level type constraints (`NonZero[u32]`, `Range[0..100]`) in type checker                                                                     |
 | 33   | Capability system            | ✅      | `agent` keyword + `AgentDef` AST, capability declarations, bracket-list parser, verification oracle, known-cap taxonomy |
 | 34   | Deepen self-healing          | ✅      | 17 error patterns (was 6): borrow/move, unused-var, missing-field, contract @req/@ens/@inv, capability-denied, perf-budget |
-| 35   | Attribute compression system | ⬚      | Full `#[...]` → `@...` mapping: `@d`, `@r`, `@mu`, `@a`, `@x`, `@cfg`, `@t`, `@b`, `@se`, `@pi!`, `@pnb`, `@pv`, `@pt`, `@pa`, `@pp`, `@as`, `@ac` |
+| 35   | Attribute compression system | ✅      | 24-entry `@shorthand` → Rust attr bidirectional map, `expand_attribute`/`compress_attribute_name`, full roundtrip tests |
 
 ## Phase C: Agent Protocol & Services (Steps 36–41)
 

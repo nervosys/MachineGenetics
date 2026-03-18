@@ -472,6 +472,91 @@ fn elide_pattern(pat: &Pattern) -> Pattern {
     }
 }
 
+// ── Attribute Compression System (Step 35) ──────────────────────────
+//
+// Maps compressed Redox attribute shorthands (`@d`, `@r`, …) to their
+// full Rust equivalents (`derive`, `repr`, …).
+
+/// Expand a compressed Redox attribute name to its full Rust equivalent.
+/// Returns `None` if the name is already full-form or unknown.
+pub fn expand_attribute_name(name: &str) -> Option<&'static str> {
+    match name {
+        "d"   => Some("derive"),
+        "r"   => Some("repr"),
+        "mu"  => Some("must_use"),
+        "a"   => Some("allow"),
+        "x"   => Some("deny"),
+        "cfg" => Some("cfg"),   // already full, included for completeness
+        "t"   => Some("test"),
+        "b"   => Some("bench"),
+        "se"  => Some("serde"),
+        "pi"  => Some("proc_macro"),
+        "pnb" => Some("non_blocking"),
+        "pv"  => Some("visibility"),
+        "pt"  => Some("target_feature"),
+        "pa"  => Some("align"),
+        "pp"  => Some("packed"),
+        "as"  => Some("async_trait"),
+        "ac"  => Some("cold"),
+        "il"  => Some("inline"),
+        "ila" => Some("inline_always"),
+        "na"  => Some("no_alloc"),
+        "nm"  => Some("no_mangle"),
+        "dp"  => Some("deprecated"),
+        "dc"  => Some("doc"),
+        "gl"  => Some("global_allocator"),
+        _     => None,
+    }
+}
+
+/// Expand a single compressed attribute to its full-form equivalent.
+pub fn expand_attribute(attr: &Attribute) -> Attribute {
+    let expanded_name = expand_attribute_name(&attr.name)
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| attr.name.clone());
+    Attribute {
+        name: expanded_name,
+        args: attr.args.clone(),
+        bang: attr.bang,
+    }
+}
+
+/// Expand all compressed attributes in an item.
+pub fn expand_attributes(attrs: &[Attribute]) -> Vec<Attribute> {
+    attrs.iter().map(expand_attribute).collect()
+}
+
+/// Return the compressed form for a Rust attribute name, if one exists.
+pub fn compress_attribute_name(rust_name: &str) -> Option<&'static str> {
+    match rust_name {
+        "derive"           => Some("d"),
+        "repr"             => Some("r"),
+        "must_use"         => Some("mu"),
+        "allow"            => Some("a"),
+        "deny"             => Some("x"),
+        "cfg"              => Some("cfg"),
+        "test"             => Some("t"),
+        "bench"            => Some("b"),
+        "serde"            => Some("se"),
+        "proc_macro"       => Some("pi"),
+        "non_blocking"     => Some("pnb"),
+        "visibility"       => Some("pv"),
+        "target_feature"   => Some("pt"),
+        "align"            => Some("pa"),
+        "packed"           => Some("pp"),
+        "async_trait"      => Some("as"),
+        "cold"             => Some("ac"),
+        "inline"           => Some("il"),
+        "inline_always"    => Some("ila"),
+        "no_alloc"         => Some("na"),
+        "no_mangle"        => Some("nm"),
+        "deprecated"       => Some("dp"),
+        "doc"              => Some("dc"),
+        "global_allocator" => Some("gl"),
+        _                  => None,
+    }
+}
+
 // ── Tests ────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -621,5 +706,83 @@ mod tests {
         let json1 = serde_json::to_string(&m).unwrap();
         let json2 = serde_json::to_string(&m2).unwrap();
         assert_eq!(json1, json2, "elision should be idempotent");
+    }
+
+    // ── Attribute compression tests (Step 35) ──────────────
+
+    #[test]
+    fn expand_derive_shorthand() {
+        assert_eq!(expand_attribute_name("d"), Some("derive"));
+    }
+
+    #[test]
+    fn expand_repr_shorthand() {
+        assert_eq!(expand_attribute_name("r"), Some("repr"));
+    }
+
+    #[test]
+    fn expand_must_use_shorthand() {
+        assert_eq!(expand_attribute_name("mu"), Some("must_use"));
+    }
+
+    #[test]
+    fn expand_test_shorthand() {
+        assert_eq!(expand_attribute_name("t"), Some("test"));
+    }
+
+    #[test]
+    fn expand_inline_shorthand() {
+        assert_eq!(expand_attribute_name("il"), Some("inline"));
+    }
+
+    #[test]
+    fn expand_unknown_returns_none() {
+        assert_eq!(expand_attribute_name("zzz"), None);
+    }
+
+    #[test]
+    fn compress_derive_roundtrip() {
+        assert_eq!(compress_attribute_name("derive"), Some("d"));
+    }
+
+    #[test]
+    fn compress_must_use_roundtrip() {
+        assert_eq!(compress_attribute_name("must_use"), Some("mu"));
+    }
+
+    #[test]
+    fn expand_attribute_struct() {
+        let attr = Attribute { name: "d".into(), args: vec!["Eq".into(), "Hash".into()], bang: false };
+        let expanded = expand_attribute(&attr);
+        assert_eq!(expanded.name, "derive");
+        assert_eq!(expanded.args, vec!["Eq", "Hash"]);
+        assert!(!expanded.bang);
+    }
+
+    #[test]
+    fn expand_attribute_with_bang() {
+        let attr = Attribute { name: "pi".into(), args: vec![], bang: true };
+        let expanded = expand_attribute(&attr);
+        assert_eq!(expanded.name, "proc_macro");
+        assert!(expanded.bang);
+    }
+
+    #[test]
+    fn expand_all_known_attributes() {
+        let known = vec![
+            ("d", "derive"), ("r", "repr"), ("mu", "must_use"),
+            ("a", "allow"), ("x", "deny"), ("cfg", "cfg"),
+            ("t", "test"), ("b", "bench"), ("se", "serde"),
+            ("pi", "proc_macro"), ("pnb", "non_blocking"),
+            ("pv", "visibility"), ("pt", "target_feature"),
+            ("pa", "align"), ("pp", "packed"), ("as", "async_trait"),
+            ("ac", "cold"), ("il", "inline"), ("ila", "inline_always"),
+            ("na", "no_alloc"), ("nm", "no_mangle"),
+            ("dp", "deprecated"), ("dc", "doc"), ("gl", "global_allocator"),
+        ];
+        for (short, full) in &known {
+            assert_eq!(expand_attribute_name(short), Some(*full), "expand({short}) should be {full}");
+            assert_eq!(compress_attribute_name(full), Some(*short), "compress({full}) should be {short}");
+        }
     }
 }
