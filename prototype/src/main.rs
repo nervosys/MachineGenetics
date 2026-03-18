@@ -21,6 +21,7 @@ mod mlir;
 mod parser;
 mod rap;
 mod resolve;
+mod sandbox;
 mod semantic_vcs;
 mod skb;
 mod swarm_bus;
