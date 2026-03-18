@@ -520,6 +520,10 @@ impl<'a> EmitCtx<'a> {
             ast::Type::Set { inner } => {
                 format!("!redox.set<{}>", self.mlir_type(inner))
             }
+            ast::Type::Refined { base, .. } => {
+                // Refinement types lower to their base type in MLIR
+                self.mlir_type(base)
+            }
         }
     }
 }

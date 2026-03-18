@@ -349,6 +349,10 @@ impl TypeChecker {
                 let inner_ty = self.lower_type(inner);
                 Ty::Named(crate::hir::SymbolId(u32::MAX), vec![inner_ty])
             }
+            ast::Type::Refined { base, .. } => {
+                // Lower to the base type; predicate is checked separately by verify
+                self.lower_type(base)
+            }
         }
     }
 

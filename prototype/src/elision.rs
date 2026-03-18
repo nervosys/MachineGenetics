@@ -142,6 +142,7 @@ fn elide_type_alias(ta: &TypeAlias) -> TypeAlias {
         name: ta.name.clone(),
         generics: elide_generics(&ta.generics),
         ty: elide_type(&ta.ty),
+        refinement: ta.refinement.clone(),
     }
 }
 
@@ -280,6 +281,12 @@ fn elide_type(ty: &Type) -> Type {
 
         // Leaf types pass through unchanged
         Type::Never | Type::Inferred | Type::SelfType | Type::StringType => ty.clone(),
+
+        // Refinement types: recurse into base type, preserve predicate
+        Type::Refined { base, predicate } => Type::Refined {
+            base: Box::new(elide_type(base)),
+            predicate: predicate.clone(),
+        },
     }
 }
 

@@ -497,9 +497,22 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::Assign)?;
         let ty = self.parse_type()?;
+
+        // Optional refinement predicate: ~> condition ;
+        let refinement = if self.peek() == TokenKind::TildeArrow {
+            self.advance();
+            let mut parts = Vec::new();
+            while self.peek() != TokenKind::Semi && self.peek() != TokenKind::Eof {
+                parts.push(self.advance().text.clone());
+            }
+            Some(parts.join(" "))
+        } else {
+            None
+        };
+
         self.expect(TokenKind::Semi)?;
 
-        Ok(TypeAlias { name, generics, ty })
+        Ok(TypeAlias { name, generics, ty, refinement })
     }
 
     // ── Const ───────────────────────────────────────────────
@@ -1839,6 +1852,46 @@ mod tests {
             assert_eq!(req_count, 2);
         } else {
             panic!("expected spec");
+        }
+    }
+
+    // ── Refinement types (Step 32) tests ────────────────────
+
+    #[test]
+    fn test_type_alias_with_refinement() {
+        let src = "Y NonZeroPort = u16 ~> _.value > 0 && _.value <= 65535;";
+        let module = parse_source(src);
+        if let ItemKind::TypeAlias(ref ta) = module.items[0].kind {
+            assert_eq!(ta.name, "NonZeroPort");
+            assert!(ta.refinement.is_some());
+            assert!(ta.refinement.as_deref().unwrap().contains("> 0"));
+        } else {
+            panic!("expected type alias");
+        }
+    }
+
+    #[test]
+    fn test_type_alias_no_refinement() {
+        let src = "Y Meters = f64;";
+        let module = parse_source(src);
+        if let ItemKind::TypeAlias(ref ta) = module.items[0].kind {
+            assert_eq!(ta.name, "Meters");
+            assert!(ta.refinement.is_none());
+        } else {
+            panic!("expected type alias");
+        }
+    }
+
+    #[test]
+    fn test_type_alias_generic_with_refinement() {
+        let src = "Y ValidIndex[N] = usize ~> _.value < N;";
+        let module = parse_source(src);
+        if let ItemKind::TypeAlias(ref ta) = module.items[0].kind {
+            assert_eq!(ta.name, "ValidIndex");
+            assert_eq!(ta.generics.len(), 1);
+            assert!(ta.refinement.is_some());
+        } else {
+            panic!("expected type alias");
         }
     }
 }

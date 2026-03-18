@@ -98,6 +98,8 @@ pub enum Type {
     Inferred,   // _
     SelfType,   // _T
     StringType, // s
+    /// A refinement type: base type with a value-level predicate.
+    Refined { base: Box<Type>, predicate: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -263,6 +265,8 @@ pub struct TypeAlias {
     pub name: String,
     pub generics: Vec<GenericParam>,
     pub ty: Type,
+    /// Optional refinement predicate (`~> condition`).
+    pub refinement: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

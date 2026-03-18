@@ -362,6 +362,29 @@ fn verify_item(kind: &ast::ItemKind, prefix: &str, results: &mut Vec<Verificatio
             let effects = EffectAnalysis { declared: declared_effects, used: vec![] };
             results.push(verify_contracts(&fqn, spec_input.as_ref(), &effects));
         }
+        ast::ItemKind::TypeAlias(ta) => {
+            if let Some(ref predicate) = ta.refinement {
+                let fqn = if prefix.is_empty() {
+                    format!("type.{}", ta.name)
+                } else {
+                    format!("{prefix}.type.{}", ta.name)
+                };
+
+                let check = check_condition(predicate, ContractKind::Requires);
+                let status = match check.result {
+                    CheckResult::Verified => VerifyStatus::Verified,
+                    CheckResult::Violated => VerifyStatus::Failed,
+                    CheckResult::Unknown => VerifyStatus::Partial,
+                };
+
+                results.push(VerificationResult {
+                    fqn,
+                    status,
+                    checks: vec![check],
+                    effect_checks: vec![],
+                });
+            }
+        }
         _ => {}
     }
 }
@@ -507,5 +530,24 @@ mod tests {
         let results = super::verify_module(&module);
         // Both spec and function should produce results
         assert_eq!(results.len(), 2);
+    }
+
+    // ── Refinement type verification tests (Step 32) ───────
+
+    #[test]
+    fn verify_module_refinement_type() {
+        let src = "Y NonZeroPort = u16 ~> _.value > 0;";
+        let module = parse_source(src);
+        let results = super::verify_module(&module);
+        assert_eq!(results.len(), 1);
+        assert!(results[0].fqn.contains("NonZeroPort"));
+    }
+
+    #[test]
+    fn verify_module_type_alias_no_refinement() {
+        let src = "Y Meters = f64;";
+        let module = parse_source(src);
+        let results = super::verify_module(&module);
+        assert!(results.is_empty());
     }
 }

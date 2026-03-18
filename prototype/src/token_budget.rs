@@ -387,6 +387,7 @@ fn count_type_compact(ty: &Type) -> u32 {
             n
         }
         Type::Never | Type::Inferred | Type::SelfType | Type::StringType => 1,
+        Type::Refined { base, .. } => count_type_compact(base) + 4,
     }
 }
 
@@ -800,6 +801,7 @@ fn count_type_expanded(ty: &Type) -> u32 {
             n
         }
         Type::Never | Type::Inferred | Type::SelfType | Type::StringType => 1,
+        Type::Refined { base, .. } => count_type_expanded(base) + 6,
     }
 }
 

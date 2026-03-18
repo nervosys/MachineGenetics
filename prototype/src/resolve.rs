@@ -461,6 +461,9 @@ impl Resolver {
             | ast::Type::Inferred
             | ast::Type::SelfType
             | ast::Type::StringType => {}
+            ast::Type::Refined { base, .. } => {
+                self.resolve_ast_type(base);
+            }
         }
     }
 
