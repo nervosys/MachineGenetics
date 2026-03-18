@@ -2,6 +2,7 @@ mod ast;
 mod cost;
 mod effects;
 mod elision;
+mod fmt;
 mod heal;
 mod hir;
 mod legacy;
@@ -39,6 +40,50 @@ fn main() {
         Some("--rap") => {
             let addr = filtered.get(1).copied().unwrap_or("127.0.0.1:9876");
             rap::serve(addr);
+        }
+        Some("--fmt-compact") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: redox-parse --fmt-compact <file>");
+                std::process::exit(1);
+            });
+            let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            let source = if syntax_legacy { legacy::translate(&source) } else { source };
+            let tokens = lexer::lex(&source);
+            match parser::parse(&tokens) {
+                Ok(module) => {
+                    let module = if !no_elision { elision::elide(&module) } else { module };
+                    println!("{}", fmt::format_compact(&module));
+                }
+                Err(e) => {
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("--fmt-expand") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: redox-parse --fmt-expand <file>");
+                std::process::exit(1);
+            });
+            let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            let source = if syntax_legacy { legacy::translate(&source) } else { source };
+            let tokens = lexer::lex(&source);
+            match parser::parse(&tokens) {
+                Ok(module) => {
+                    let module = if !no_elision { elision::elide(&module) } else { module };
+                    println!("{}", fmt::format_expand(&module));
+                }
+                Err(e) => {
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    std::process::exit(1);
+                }
+            }
         }
         Some("--check") => {
             let path = filtered.get(1).unwrap_or_else(|| {
