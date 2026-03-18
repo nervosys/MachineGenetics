@@ -878,8 +878,12 @@ mod tests {
 
     #[test]
     fn test_manifest_generate() {
-        let src = "agent Bot { capabilities: [read_source, net] }\n+f check(x: i32) -> bool { x > 0 }";
-        let r = call("manifest/generate", serde_json::json!({ "source": src, "crate_name": "test_crate", "version": "1.0.0" }));
+        let src =
+            "agent Bot { capabilities: [read_source, net] }\n+f check(x: i32) -> bool { x > 0 }";
+        let r = call(
+            "manifest/generate",
+            serde_json::json!({ "source": src, "crate_name": "test_crate", "version": "1.0.0" }),
+        );
         assert_eq!(r["ok"], true);
         let m = &r["manifest"];
         assert_eq!(m["name"], "test_crate");

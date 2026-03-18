@@ -43,7 +43,7 @@
 | 38   | Agent discovery attributes | ✅      | `@as("...")`, `@ac("...")`, `@ax("...")`, `@ao("...")`, `@ae("...")` in lexer/parser/AST                                                                                                  |
 | 39   | Grammar extension system   | ✅      | `grammar_extension!` macro, Redox.toml registration, namespace-scoped discovery, frequency promotion                                                                                      |
 | 40   | Capability manifests       | ✅      | JSON manifest generation per crate, capability-indexed search in Forge                                                                                                                    |
-| 41   | MLIR dialect definition    | ⬚      | Define Redox MLIR dialect ops: ownership, effects, contracts, perf annotations as first-class MLIR operations (textual spec)                                                              |
+| 41   | MLIR dialect definition    | ✅      | First-class MLIR dialect ops: `redox.contract.*`, `redox.perf`, `redox.agent`, `redox.spec`, `redox.ownership.*`; 7 new tests (313 total)                                                 |
 
 ## Phase D: Swarm Runtime (Steps 42–48)
 

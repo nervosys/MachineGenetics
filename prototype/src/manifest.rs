@@ -1,3 +1,4 @@
+use crate::ast::{self, ContractClauseKind, ItemKind, Module, Visibility};
 /// Capability Manifest — JSON manifest generation per crate for Forge discovery.
 ///
 /// Scans a parsed module and emits a structured manifest describing:
@@ -8,7 +9,6 @@
 ///
 /// The manifest enables capability-indexed search in the Forge package registry.
 use serde::{Deserialize, Serialize};
-use crate::ast::{self, Module, ItemKind, Visibility, ContractClauseKind};
 
 // ── Manifest types ───────────────────────────────────────────────────
 
@@ -133,13 +133,11 @@ pub fn generate(module: &Module, crate_name: &str, version: &str) -> CrateManife
                 });
             }
             ItemKind::Spec(sp) => {
-                let num_requires = sp.items.iter().filter(|i| matches!(i, ast::SpecItem::Require(_))).count();
-                let num_ensures = sp.items.iter().filter(|i| matches!(i, ast::SpecItem::Ensure(_))).count();
-                manifest.specs.push(SpecEntry {
-                    name: sp.name.clone(),
-                    num_requires,
-                    num_ensures,
-                });
+                let num_requires =
+                    sp.items.iter().filter(|i| matches!(i, ast::SpecItem::Require(_))).count();
+                let num_ensures =
+                    sp.items.iter().filter(|i| matches!(i, ast::SpecItem::Ensure(_))).count();
+                manifest.specs.push(SpecEntry { name: sp.name.clone(), num_requires, num_ensures });
             }
             _ => {}
         }
@@ -162,12 +160,18 @@ pub fn to_json_value(manifest: &CrateManifest) -> serde_json::Value {
 // ── Capability-indexed search (Forge integration) ────────────────────
 
 /// Search a collection of manifests by required capability.
-pub fn search_by_capability<'a>(manifests: &'a [CrateManifest], cap: &str) -> Vec<&'a CrateManifest> {
+pub fn search_by_capability<'a>(
+    manifests: &'a [CrateManifest],
+    cap: &str,
+) -> Vec<&'a CrateManifest> {
     manifests.iter().filter(|m| m.capability_index.contains(&cap.into())).collect()
 }
 
 /// Search manifests for any that expose a given effect.
-pub fn search_by_effect<'a>(manifests: &'a [CrateManifest], effect: &str) -> Vec<&'a CrateManifest> {
+pub fn search_by_effect<'a>(
+    manifests: &'a [CrateManifest],
+    effect: &str,
+) -> Vec<&'a CrateManifest> {
     manifests.iter().filter(|m| m.effects.iter().any(|e| e.name == effect)).collect()
 }
 
@@ -203,9 +207,7 @@ mod tests {
                     kind: ItemKind::Function(FunctionDef {
                         name: "check".into(),
                         generics: vec![],
-                        params: vec![
-                            Param { name: "x".into(), ty: path_type("i32") },
-                        ],
+                        params: vec![Param { name: "x".into(), ty: path_type("i32") }],
                         return_type: Some(path_type("bool")),
                         where_clause: vec![],
                         effects: vec![],
@@ -248,8 +250,19 @@ mod tests {
                     kind: ItemKind::Effect(EffectDef {
                         name: "IO".into(),
                         operations: vec![
-                            EffectOp { name: "read".into(), params: vec![], return_type: Some(path_type("String")) },
-                            EffectOp { name: "write".into(), params: vec![Param { name: "data".into(), ty: path_type("String") }], return_type: None },
+                            EffectOp {
+                                name: "read".into(),
+                                params: vec![],
+                                return_type: Some(path_type("String")),
+                            },
+                            EffectOp {
+                                name: "write".into(),
+                                params: vec![Param {
+                                    name: "data".into(),
+                                    ty: path_type("String"),
+                                }],
+                                return_type: None,
+                            },
                         ],
                     }),
                     visibility: Visibility::Private,

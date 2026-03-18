@@ -79,20 +79,12 @@ impl<'a> EmitCtx<'a> {
                 self.line(&format!("// use {}", u.path.join(".")));
             }
             ast::ItemKind::Effect(ef) => self.emit_effect_decl(ef),
-            ast::ItemKind::Spec(sp) => {
-                self.line(&format!("// spec {}", sp.name));
-            }
+            ast::ItemKind::Spec(sp) => self.emit_spec(sp),
             ast::ItemKind::Static(sd) => {
                 let ty = self.mlir_type(&sd.ty);
                 self.line(&format!("redox.static @{} : {ty}", sd.name));
             }
-            ast::ItemKind::Agent(ad) => {
-                self.line(&format!(
-                    "// agent {} capabilities=[{}]",
-                    ad.name,
-                    ad.capabilities.join(", ")
-                ));
-            }
+            ast::ItemKind::Agent(ad) => self.emit_agent(ad),
         }
     }
 
@@ -139,6 +131,26 @@ impl<'a> EmitCtx<'a> {
         self.line(&format!("{entry}:  // entry"));
         self.indent += 1;
 
+        // Emit contract ops (requires/ensures) as first-class MLIR ops.
+        for contract in &f.contracts {
+            let kind = match contract.kind {
+                ast::ContractClauseKind::Requires => "requires",
+                ast::ContractClauseKind::Ensures => "ensures",
+                ast::ContractClauseKind::Invariant => "invariant",
+            };
+            self.line(&format!("redox.contract.{kind} \"{}\"", contract.condition));
+        }
+
+        // Emit performance annotations from custom effects with "perf:" prefix.
+        if let Some(fx) = self.effects.get(name) {
+            for e in fx.iter() {
+                let label = e.to_string();
+                if label.starts_with("perf:") {
+                    self.line(&format!("redox.perf \"{}\"", &label[5..]));
+                }
+            }
+        }
+
         self.emit_block(&f.body);
 
         let ret_val = self.fresh();
@@ -156,6 +168,14 @@ impl<'a> EmitCtx<'a> {
         for field in &s.fields {
             let ty = self.mlir_type(&field.ty);
             self.line(&format!("redox.field \"{}\" : {ty}", field.name));
+        }
+        for c in &s.contracts {
+            let kind = match c.kind {
+                ast::ContractClauseKind::Invariant => "invariant",
+                ast::ContractClauseKind::Requires => "requires",
+                ast::ContractClauseKind::Ensures => "ensures",
+            };
+            self.line(&format!("redox.contract.{kind} \"{}\"", c.condition));
         }
         self.indent -= 1;
         self.line("}");
@@ -256,6 +276,79 @@ impl<'a> EmitCtx<'a> {
         self.indent -= 1;
         self.line("}");
         self.line("");
+    }
+
+    fn emit_spec(&mut self, sp: &ast::SpecDef) {
+        self.line(&format!("redox.spec @{} {{", sp.name));
+        self.indent += 1;
+        for item in &sp.items {
+            match item {
+                ast::SpecItem::Require(cond) => {
+                    self.line(&format!("redox.contract.requires \"{cond}\""));
+                }
+                ast::SpecItem::Ensure(cond) => {
+                    self.line(&format!("redox.contract.ensures \"{cond}\""));
+                }
+                ast::SpecItem::Invariant(cond) => {
+                    self.line(&format!("redox.contract.invariant \"{cond}\""));
+                }
+                ast::SpecItem::Performance(metric, bound) => {
+                    self.line(&format!("redox.perf \"{metric}\" bound=\"{bound}\""));
+                }
+                ast::SpecItem::Effect(effects) => {
+                    let fx: Vec<String> = effects.iter().map(|e| format!("\"{e}\"")).collect();
+                    self.line(&format!("redox.effect.set [{}]", fx.join(", ")));
+                }
+            }
+        }
+        self.indent -= 1;
+        self.line("}");
+        self.line("");
+    }
+
+    fn emit_agent(&mut self, ad: &ast::AgentDef) {
+        self.line(&format!("redox.agent @{} {{", ad.name));
+        self.indent += 1;
+        for cap in &ad.capabilities {
+            self.line(&format!("redox.capability \"{cap}\""));
+        }
+        for approval in &ad.requires_approval {
+            self.line(&format!("redox.requires_approval \"{approval}\""));
+        }
+        self.indent -= 1;
+        self.line("}");
+        self.line("");
+    }
+
+    // ── Ownership operations ─────────────────────────────────────────
+
+    /// Emit ownership-related MLIR ops for ownership transfer expressions.
+    fn emit_ownership_op(&mut self, expr: &ast::Expr) -> String {
+        match expr {
+            ast::Expr::Unary { op, .. } if op == "*" => {
+                let v = self.fresh();
+                let out = self.fresh();
+                self.line(&format!("{out} = redox.ownership.deref {v}"));
+                out
+            }
+            ast::Expr::Unary { op, .. } if op == "&" => {
+                let v = self.fresh();
+                let out = self.fresh();
+                self.line(&format!("{out} = redox.ownership.borrow {v}"));
+                out
+            }
+            ast::Expr::Unary { op, .. } if op == "&mut" => {
+                let v = self.fresh();
+                let out = self.fresh();
+                self.line(&format!("{out} = redox.ownership.borrow_mut {v}"));
+                out
+            }
+            _ => {
+                // For non-ownership expressions, emit a move (default ownership transfer).
+                let v = self.fresh();
+                format!("redox.ownership.move {v}")
+            }
+        }
     }
 
     // ── Blocks & statements ──────────────────────────────────────────
@@ -585,5 +678,63 @@ mod tests {
         let mlir = emit_source("+f foo() { v x: i32 = 42; }");
         assert!(mlir.contains("redox.let \"x\""));
         assert!(mlir.contains("i32"));
+    }
+
+    // ── Step 41: Dialect ops for contracts, agents, specs, effects ──
+
+    #[test]
+    fn function_with_contract() {
+        let mlir = emit_source("@req(a > 0) @ens(result > 0) +f add(a: i32, b: i32) -> i32 { a }");
+        assert!(mlir.contains("redox.contract.requires \"a > 0\""));
+        assert!(mlir.contains("redox.contract.ensures \"result > 0\""));
+    }
+
+    #[test]
+    fn struct_with_invariant() {
+        let mlir = emit_source("@inv(_.x >= 0) S Pos { x: f64 }");
+        // The struct should contain an invariant contract op
+        assert!(mlir.contains("redox.struct @Pos"));
+        assert!(mlir.contains("redox.contract.invariant"));
+        assert!(mlir.contains("x >= 0"));
+    }
+
+    #[test]
+    fn agent_as_mlir_op() {
+        let mlir = emit_source("agent Bot { capabilities: [read_source, net] }");
+        assert!(mlir.contains("redox.agent @Bot"));
+        assert!(mlir.contains("redox.capability \"read_source\""));
+        assert!(mlir.contains("redox.capability \"net\""));
+    }
+
+    #[test]
+    fn agent_with_approval() {
+        let mlir = emit_source("agent Admin { capabilities: [fs] requires_approval: [exec] }");
+        assert!(mlir.contains("redox.agent @Admin"));
+        assert!(mlir.contains("redox.capability \"fs\""));
+        assert!(mlir.contains("redox.requires_approval \"exec\""));
+    }
+
+    #[test]
+    fn spec_as_mlir_op() {
+        let mlir = emit_source("spec add_spec { @req(a > 0) @ens(result > a) }");
+        assert!(mlir.contains("redox.spec @add_spec"));
+        assert!(mlir.contains("redox.contract.requires \"a > 0\""));
+        assert!(mlir.contains("redox.contract.ensures \"result > a\""));
+    }
+
+    #[test]
+    fn effect_decl_as_mlir_op() {
+        let mlir = emit_source("effect IO { f read() -> s; f write(data: s); }");
+        assert!(mlir.contains("redox.effect @IO"));
+        assert!(mlir.contains("redox.op \"read\""));
+        assert!(mlir.contains("redox.op \"write\""));
+    }
+
+    #[test]
+    fn ownership_types_in_mlir() {
+        let mlir = emit_source("+f foo(a: ^i32, b: $i32, c: #i32) {}");
+        assert!(mlir.contains("!redox.owned<i32>"));
+        assert!(mlir.contains("!redox.rc<i32>"));
+        assert!(mlir.contains("!redox.mutex<i32>"));
     }
 }
