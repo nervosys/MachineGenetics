@@ -51,7 +51,7 @@
 | ---- | ------------------------- | ------ | --------------------------------------------------------------------------------------------------------- |
 | 42   | Semantic lease manager    | ✅      | SharedRead/ExclusiveWrite/Restructuring leases, region overlap, timeout expiry, wait-for deadlock detection; 24 tests (337 total) |
 | 43   | CRDT merge engine         | ✅      | Semantic CRDTs: InsertItem/RemoveItem/ModifyBody/ModifySignature/AddImpl/Rename, Lamport LWW, batch merge; 17 tests (354 total)    |
-| 44   | Consensus protocol        | ⬚      | 5-phase: Propose → Impact Analysis → Vote → Resolve → Integrate for shared interface changes              |
+| 44   | Consensus protocol        | ✅      | 5-phase Propose→ImpactAnalysis→Vote→Resolve→Integrate, quorum majority, phase enforcement; 13 tests (367 total)                   |
 | 45   | Task decomposition engine | ⬚      | Dependency-aware parallel work splitting, critical path computation, agent assignment                     |
 | 46   | Swarm message bus         | ⬚      | Typed SwarmMessage enum, zero-copy serialization, sub-µs latency target                                   |
 | 47   | Swarm SDK                 | ⬚      | `redox_swarm` crate: derive macros, role taxonomy, SwarmAgent trait, example orchestrator                 |

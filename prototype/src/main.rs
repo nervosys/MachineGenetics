@@ -1,4 +1,5 @@
 mod ast;
+mod consensus;
 mod cost;
 mod crdt;
 mod effects;
