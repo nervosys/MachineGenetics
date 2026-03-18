@@ -12,6 +12,7 @@ mod fmt;
 mod grammar;
 mod heal;
 mod hir;
+mod hot_reload;
 mod lease;
 mod legacy;
 mod lexer;
