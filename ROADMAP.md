@@ -24,21 +24,21 @@
 
 ## Phase B: Agentic Core Deepening (Steps 29–35)
 
-| Step | Title                        | Status | Description                                                                                                                                        |
-| ---- | ---------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 29   | Deepen the SKB               | ✅      | Expand from 16 to 200+ rules across 6 databases (ownership, borrow, lifetime, type, concurrency, FFI)                                              |
-| 30   | Contract syntax & checking   | ✅      | `@req`/`@ens`/`@inv` in parser + AST + verification oracle integration                                                                             |
-| 31   | Formal specification syntax  | ✅      | `spec` blocks with `@req`/`@ens`/`@perf`/`@fx`, parsed and stored in AST                                                                           |
-| 32   | Refinement types             | ✅      | Value-level type constraints (`NonZero[u32]`, `Range[0..100]`) in type checker                                                                     |
-| 33   | Capability system            | ✅      | `agent` keyword + `AgentDef` AST, capability declarations, bracket-list parser, verification oracle, known-cap taxonomy |
+| Step | Title                        | Status | Description                                                                                                                |
+| ---- | ---------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------- |
+| 29   | Deepen the SKB               | ✅      | Expand from 16 to 200+ rules across 6 databases (ownership, borrow, lifetime, type, concurrency, FFI)                      |
+| 30   | Contract syntax & checking   | ✅      | `@req`/`@ens`/`@inv` in parser + AST + verification oracle integration                                                     |
+| 31   | Formal specification syntax  | ✅      | `spec` blocks with `@req`/`@ens`/`@perf`/`@fx`, parsed and stored in AST                                                   |
+| 32   | Refinement types             | ✅      | Value-level type constraints (`NonZero[u32]`, `Range[0..100]`) in type checker                                             |
+| 33   | Capability system            | ✅      | `agent` keyword + `AgentDef` AST, capability declarations, bracket-list parser, verification oracle, known-cap taxonomy    |
 | 34   | Deepen self-healing          | ✅      | 17 error patterns (was 6): borrow/move, unused-var, missing-field, contract @req/@ens/@inv, capability-denied, perf-budget |
-| 35   | Attribute compression system | ✅      | 24-entry `@shorthand` → Rust attr bidirectional map, `expand_attribute`/`compress_attribute_name`, full roundtrip tests |
+| 35   | Attribute compression system | ✅      | 24-entry `@shorthand` → Rust attr bidirectional map, `expand_attribute`/`compress_attribute_name`, full roundtrip tests    |
 
 ## Phase C: Agent Protocol & Services (Steps 36–41)
 
 | Step | Title                      | Status | Description                                                                                                                                                                               |
 | ---- | -------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 36   | Expand RAP server          | ⬚      | From 9 to 25+ methods: format/compact, format/expand, lint/check, doc/query, token/report, grammar/extensions, grammar/expand, aci/*, sandbox/*, ffi/*, hotpatch/*, memory/*, synthesis/* |
+| 36   | Expand RAP server          | ✅      | From 9 to 25+ methods: format/compact, format/expand, lint/check, doc/query, token/report, grammar/extensions, grammar/expand, aci/*, sandbox/*, ffi/*, hotpatch/*, memory/*, synthesis/* |
 | 37   | redoxfmt service           | ⬚      | `--compact` (min tokens) and `--expand` (human-readable), bidirectional lossless AST conversion                                                                                           |
 | 38   | Agent discovery attributes | ⬚      | `@as("...")`, `@ac("...")`, `@ax("...")`, `@ao("...")`, `@ae("...")` in lexer/parser/AST                                                                                                  |
 | 39   | Grammar extension system   | ⬚      | `grammar_extension!` macro, Redox.toml registration, namespace-scoped discovery, frequency promotion                                                                                      |

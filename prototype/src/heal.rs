@@ -279,9 +279,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "borrow-conflict",
-            matches: |msg| {
-                msg.contains("cannot borrow") || msg.contains("already borrowed")
-            },
+            matches: |msg| msg.contains("cannot borrow") || msg.contains("already borrowed"),
             generate: |diag| {
                 let mut fixes = Vec::new();
                 if diag.message.contains("mutable") {
@@ -388,8 +386,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         ErrorPattern {
             name: "contract-postcondition-fail",
             matches: |msg| {
-                msg.contains("postcondition")
-                    || (msg.contains("@ens") && msg.contains("violated"))
+                msg.contains("postcondition") || (msg.contains("@ens") && msg.contains("violated"))
             },
             generate: |_diag| {
                 vec![FixCandidate {
@@ -405,8 +402,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         ErrorPattern {
             name: "invariant-violation",
             matches: |msg| {
-                msg.contains("invariant")
-                    || (msg.contains("@inv") && msg.contains("violated"))
+                msg.contains("invariant") || (msg.contains("@inv") && msg.contains("violated"))
             },
             generate: |diag| {
                 let inv = extract_quoted(&diag.message).unwrap_or("invariant".into());
@@ -423,7 +419,8 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         ErrorPattern {
             name: "capability-denied",
             matches: |msg| {
-                msg.contains("capability") && (msg.contains("denied") || msg.contains("not granted"))
+                msg.contains("capability")
+                    && (msg.contains("denied") || msg.contains("not granted"))
             },
             generate: |diag| {
                 let cap = extract_quoted(&diag.message).unwrap_or("unknown".into());
@@ -514,7 +511,10 @@ fn infer_category(msg: &str) -> DiagnosticCategory {
         DiagnosticCategory::BorrowConflict
     } else if msg.contains("type mismatch") || msg.contains("mismatched types") {
         DiagnosticCategory::TypeMismatch
-    } else if msg.contains("unresolved name") || msg.contains("not found") || msg.contains("cannot find") {
+    } else if msg.contains("unresolved name")
+        || msg.contains("not found")
+        || msg.contains("cannot find")
+    {
         DiagnosticCategory::UnresolvedName
     } else if msg.contains("unresolved type") {
         DiagnosticCategory::UnresolvedType
@@ -522,7 +522,10 @@ fn infer_category(msg: &str) -> DiagnosticCategory {
         DiagnosticCategory::UndeclaredEffect
     } else if msg.contains("duplicate") {
         DiagnosticCategory::DuplicateDefinition
-    } else if msg.contains("precondition") || msg.contains("postcondition") || msg.contains("invariant") {
+    } else if msg.contains("precondition")
+        || msg.contains("postcondition")
+        || msg.contains("invariant")
+    {
         DiagnosticCategory::SpecViolation
     } else if msg.contains("spec") {
         DiagnosticCategory::SpecViolation
@@ -732,7 +735,8 @@ mod tests {
     fn heals_borrow_conflict() {
         let diag = error_with_span(
             "cannot borrow `x` as mutable because it is also borrowed as immutable",
-            4, 1,
+            4,
+            1,
         );
         let healed = heal_one(&diag);
         assert!(healed.fixes.len() >= 2);

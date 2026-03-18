@@ -87,7 +87,11 @@ impl<'a> EmitCtx<'a> {
                 self.line(&format!("redox.static @{} : {ty}", sd.name));
             }
             ast::ItemKind::Agent(ad) => {
-                self.line(&format!("// agent {} capabilities=[{}]", ad.name, ad.capabilities.join(", ")));
+                self.line(&format!(
+                    "// agent {} capabilities=[{}]",
+                    ad.name,
+                    ad.capabilities.join(", ")
+                ));
             }
         }
     }
