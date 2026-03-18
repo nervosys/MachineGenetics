@@ -18,6 +18,7 @@ mod parser;
 mod rap;
 mod resolve;
 mod skb;
+mod swarm_bus;
 mod token_budget;
 mod types;
 mod verify;

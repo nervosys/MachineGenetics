@@ -53,7 +53,7 @@
 | 43   | CRDT merge engine         | ✅      | Semantic CRDTs: InsertItem/RemoveItem/ModifyBody/ModifySignature/AddImpl/Rename, Lamport LWW, batch merge; 17 tests (354 total)   |
 | 44   | Consensus protocol        | ✅      | 5-phase Propose→ImpactAnalysis→Vote→Resolve→Integrate, quorum majority, phase enforcement; 13 tests (367 total)                   |
 | 45   | Task decomposition engine | ✅      | Task DAG, topological sort, parallel waves, critical path, capability-based agent assignment; 15 tests (382 total)                 |
-| 46   | Swarm message bus         | ⬚      | Typed SwarmMessage enum, zero-copy serialization, sub-µs latency target                                                           |
+| 46   | Swarm message bus         | ✅      | Typed SwarmMessage, per-agent mailboxes, topic pub/sub, priority, depth limits, bus stats; 18 tests (400 total)                    |
 | 47   | Swarm SDK                 | ⬚      | `redox_swarm` crate: derive macros, role taxonomy, SwarmAgent trait, example orchestrator                                         |
 | 48   | Semantic VCS              | ⬚      | Operation-log-based version control, semantic branching/merging, intent-based history queries                                     |
 
