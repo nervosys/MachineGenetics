@@ -5,6 +5,7 @@
 /// consistent. Agents query the oracle to validate code before committing.
 ///
 /// RAP method: verify/contracts → { module, function } → VerificationResult
+use crate::ast;
 use serde::{Deserialize, Serialize};
 
 /// Result of verifying a function's contracts.
@@ -89,7 +90,11 @@ pub enum EffectCheckResult {
 // ── Verification Logic ───────────────────────────────────────────────
 
 /// Verify a function's contracts given its spec block and body analysis.
-pub fn verify_contracts(fqn: &str, spec: Option<&SpecInput>, effects: &EffectAnalysis) -> VerificationResult {
+pub fn verify_contracts(
+    fqn: &str,
+    spec: Option<&SpecInput>,
+    effects: &EffectAnalysis,
+) -> VerificationResult {
     let mut checks = Vec::new();
     let mut status = VerifyStatus::Trivial;
 
@@ -122,12 +127,7 @@ pub fn verify_contracts(fqn: &str, spec: Option<&SpecInput>, effects: &EffectAna
         }
     }
 
-    VerificationResult {
-        fqn: fqn.into(),
-        status,
-        checks,
-        effect_checks,
-    }
+    VerificationResult { fqn: fqn.into(), status, checks, effect_checks }
 }
 
 /// Input spec block for verification.
@@ -203,6 +203,123 @@ fn verify_effects(analysis: &EffectAnalysis) -> Vec<EffectCheck> {
     checks
 }
 
+// ── AST-driven module verification ───────────────────────────────────
+
+/// Verify all contract-annotated functions in a module.
+///
+/// Walks the module AST, extracts `@req`/`@ens`/`@inv` contract clauses
+/// from `FunctionDef` nodes, converts them to `SpecInput`, and runs the
+/// verification oracle on each function. Also checks struct invariants.
+pub fn verify_module(module: &ast::Module) -> Vec<VerificationResult> {
+    let mut results = Vec::new();
+    for item in &module.items {
+        verify_item(&item.kind, "", &mut results);
+    }
+    results
+}
+
+fn verify_item(kind: &ast::ItemKind, prefix: &str, results: &mut Vec<VerificationResult>) {
+    match kind {
+        ast::ItemKind::Function(func) => {
+            // Skip functions with no contracts and no declared effects
+            if func.contracts.is_empty() && func.effects.is_empty() {
+                return;
+            }
+
+            let fqn = if prefix.is_empty() {
+                func.name.clone()
+            } else {
+                format!("{prefix}.{}", func.name)
+            };
+
+            // Build SpecInput from contracts
+            let requires: Vec<String> = func
+                .contracts
+                .iter()
+                .filter(|c| c.kind == ast::ContractClauseKind::Requires)
+                .map(|c| c.condition.clone())
+                .collect();
+            let ensures: Vec<String> = func
+                .contracts
+                .iter()
+                .filter(|c| c.kind == ast::ContractClauseKind::Ensures)
+                .map(|c| c.condition.clone())
+                .collect();
+
+            let spec = if requires.is_empty() && ensures.is_empty() {
+                None
+            } else {
+                Some(SpecInput { requires, ensures })
+            };
+
+            // Effect analysis from the function's declared effects
+            let effects = EffectAnalysis {
+                declared: func.effects.clone(),
+                used: vec![], // body analysis would fill this in a full compiler
+            };
+
+            results.push(verify_contracts(&fqn, spec.as_ref(), &effects));
+        }
+        ast::ItemKind::Struct(st) => {
+            if !st.contracts.is_empty() {
+                let fqn = if prefix.is_empty() {
+                    st.name.clone()
+                } else {
+                    format!("{prefix}.{}", st.name)
+                };
+
+                let invariants: Vec<String> = st
+                    .contracts
+                    .iter()
+                    .filter(|c| c.kind == ast::ContractClauseKind::Invariant)
+                    .map(|c| c.condition.clone())
+                    .collect();
+
+                let checks: Vec<ContractCheck> = invariants
+                    .iter()
+                    .map(|inv| check_condition(inv, ContractKind::Requires))
+                    .collect();
+
+                let has_violation = checks.iter().any(|c| c.result == CheckResult::Violated);
+                let has_unknown = checks.iter().any(|c| c.result == CheckResult::Unknown);
+                let status = if has_violation {
+                    VerifyStatus::Failed
+                } else if has_unknown {
+                    VerifyStatus::Partial
+                } else if checks.is_empty() {
+                    VerifyStatus::Trivial
+                } else {
+                    VerifyStatus::Verified
+                };
+
+                results.push(VerificationResult { fqn, status, checks, effect_checks: vec![] });
+            }
+        }
+        ast::ItemKind::Module(m) => {
+            let mod_prefix =
+                if prefix.is_empty() { m.name.clone() } else { format!("{prefix}.{}", m.name) };
+            if let Some(items) = &m.items {
+                for item in items {
+                    verify_item(&item.kind, &mod_prefix, results);
+                }
+            }
+        }
+        ast::ItemKind::Impl(imp) => {
+            for item in &imp.items {
+                verify_item(&item.kind, prefix, results);
+            }
+        }
+        ast::ItemKind::Trait(tr) => {
+            let trait_prefix =
+                if prefix.is_empty() { tr.name.clone() } else { format!("{prefix}.{}", tr.name) };
+            for item in &tr.items {
+                verify_item(&item.kind, &trait_prefix, results);
+            }
+        }
+        _ => {}
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -228,10 +345,7 @@ mod tests {
 
     #[test]
     fn partial_runtime_dependent() {
-        let spec = SpecInput {
-            requires: vec!["path.exists()".into()],
-            ensures: vec![],
-        };
+        let spec = SpecInput { requires: vec!["path.exists()".into()], ensures: vec![] };
         let effects = EffectAnalysis { declared: vec![], used: vec![] };
         let result = verify_contracts("my.fn", Some(&spec), &effects);
         assert_eq!(result.status, VerifyStatus::Partial);
@@ -252,10 +366,8 @@ mod tests {
 
     #[test]
     fn effect_consistency() {
-        let effects = EffectAnalysis {
-            declared: vec!["io".into(), "net".into()],
-            used: vec!["io".into()],
-        };
+        let effects =
+            EffectAnalysis { declared: vec!["io".into(), "net".into()], used: vec!["io".into()] };
         let result = verify_contracts("my.fn", None, &effects);
         assert!(result.effect_checks.iter().any(|e| e.result == EffectCheckResult::Consistent));
         assert!(result.effect_checks.iter().any(|e| e.result == EffectCheckResult::Unused));
@@ -263,12 +375,63 @@ mod tests {
 
     #[test]
     fn mixed_effects() {
-        let effects = EffectAnalysis {
-            declared: vec!["io".into()],
-            used: vec!["io".into(), "fs".into()],
-        };
+        let effects =
+            EffectAnalysis { declared: vec!["io".into()], used: vec!["io".into(), "fs".into()] };
         let result = verify_contracts("my.fn", None, &effects);
-        let has_undeclared = result.effect_checks.iter().any(|e| e.result == EffectCheckResult::Undeclared);
+        let has_undeclared =
+            result.effect_checks.iter().any(|e| e.result == EffectCheckResult::Undeclared);
         assert!(has_undeclared);
+    }
+
+    // ── Module-level contract verification tests ──────────
+
+    use crate::lexer;
+    use crate::parser;
+
+    fn parse_source(src: &str) -> crate::ast::Module {
+        let tokens = lexer::lex(src);
+        parser::parse(&tokens).unwrap()
+    }
+
+    #[test]
+    fn verify_module_function_with_requires() {
+        let module = parse_source("@req(n > 0) f factorial(n: u64) -> u64 { n }");
+        let results = super::verify_module(&module);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].fqn, "factorial");
+        assert!(!results[0].checks.is_empty());
+    }
+
+    #[test]
+    fn verify_module_function_multiple_contracts() {
+        let module = parse_source("@req(x >= 0) @ens(result >= 0) f abs(x: i32) -> i32 { x }");
+        let results = super::verify_module(&module);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].fqn, "abs");
+        assert!(results[0].checks.len() >= 2);
+    }
+
+    #[test]
+    fn verify_module_struct_with_invariant() {
+        let module = parse_source("@inv(_.len <= _.cap) S Buffer { len: usize, cap: usize }");
+        let results = super::verify_module(&module);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].fqn, "Buffer");
+    }
+
+    #[test]
+    fn verify_module_no_contracts() {
+        let module = parse_source("f noop() { }");
+        let results = super::verify_module(&module);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn verify_module_mixed_items() {
+        let src = "@req(n > 0) f foo(n: i32) { } f bar() { } @inv(true) S Baz { }";
+        let module = parse_source(src);
+        let results = super::verify_module(&module);
+        // foo has contracts, bar doesn't, Baz has an invariant
+        assert_eq!(results.len(), 2);
     }
 }

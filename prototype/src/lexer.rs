@@ -233,6 +233,28 @@ impl<'a> Lexer<'a> {
         Some(b)
     }
 
+    fn advance_n(&mut self, n: usize) {
+        for _ in 0..n {
+            self.advance();
+        }
+    }
+
+    /// Check if the bytes after `@` form `keyword` and are NOT followed by
+    /// an alphanumeric or `_` (i.e. it's a complete keyword, not a prefix of
+    /// an identifier like `@require`).
+    fn match_keyword_after_at(&self, keyword: &[u8]) -> bool {
+        let start = self.pos; // self.pos is right after '@'
+        if start + keyword.len() > self.bytes.len() {
+            return false;
+        }
+        if &self.bytes[start..start + keyword.len()] != keyword {
+            return false;
+        }
+        // The character after the keyword must NOT be alphanumeric or '_'
+        let after = self.bytes.get(start + keyword.len());
+        !after.is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_')
+    }
+
     fn make_token(
         &self,
         kind: TokenKind,
@@ -504,6 +526,26 @@ impl<'a> Lexer<'a> {
             {
                 self.advance();
                 self.make_token(TokenKind::AtW, start, start_line, start_col)
+            }
+            b'@' if self.match_keyword_after_at(b"req") => {
+                self.advance_n(3);
+                self.make_token(TokenKind::KwReq, start, start_line, start_col)
+            }
+            b'@' if self.match_keyword_after_at(b"ens") => {
+                self.advance_n(3);
+                self.make_token(TokenKind::KwEns, start, start_line, start_col)
+            }
+            b'@' if self.match_keyword_after_at(b"inv") => {
+                self.advance_n(3);
+                self.make_token(TokenKind::KwInv, start, start_line, start_col)
+            }
+            b'@' if self.match_keyword_after_at(b"fx") => {
+                self.advance_n(2);
+                self.make_token(TokenKind::KwFx, start, start_line, start_col)
+            }
+            b'@' if self.match_keyword_after_at(b"perf") => {
+                self.advance_n(4);
+                self.make_token(TokenKind::KwPerf, start, start_line, start_col)
             }
             b'@' => self.make_token(TokenKind::At, start, start_line, start_col),
             b'#' if self.peek() == Some(b'~') => {
@@ -927,5 +969,36 @@ mod tests {
         let tokens = lex("0xFF_AB");
         assert_eq!(tokens[0].kind, TokenKind::IntLiteral);
         assert_eq!(tokens[0].text, "0xFF_AB");
+    }
+
+    #[test]
+    fn test_contract_tokens_req_ens_inv() {
+        let tokens = lex("@req(n > 0) @ens(result > 0) @inv(_.len <= _.cap)");
+        assert_eq!(tokens[0].kind, TokenKind::KwReq);
+        assert_eq!(tokens[0].text, "@req");
+        // @req(n > 0) = tokens 0..=5 (6 tokens), @ens at index 6
+        assert_eq!(tokens[6].kind, TokenKind::KwEns);
+        assert_eq!(tokens[6].text, "@ens");
+        // @ens(result > 0) = tokens 6..=11 (6 tokens), @inv at index 12
+        assert_eq!(tokens[12].kind, TokenKind::KwInv);
+        assert_eq!(tokens[12].text, "@inv");
+    }
+
+    #[test]
+    fn test_contract_tokens_fx_perf() {
+        let tokens = lex("@fx(io) @perf(O(1))");
+        assert_eq!(tokens[0].kind, TokenKind::KwFx);
+        assert_eq!(tokens[0].text, "@fx");
+        assert_eq!(tokens[4].kind, TokenKind::KwPerf);
+        assert_eq!(tokens[4].text, "@perf");
+    }
+
+    #[test]
+    fn test_at_ident_not_contract() {
+        // @require is NOT @req + "uire" — it's @ + Ident("require")
+        let tokens = lex("@require");
+        assert_eq!(tokens[0].kind, TokenKind::At);
+        assert_eq!(tokens[1].kind, TokenKind::Ident);
+        assert_eq!(tokens[1].text, "require");
     }
 }

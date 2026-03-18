@@ -175,6 +175,14 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     let sym_count = resolver.symbols.len();
     let fn_count = effect_infer.inferred.len();
 
+    // Phase 5.5: Contract verification.
+    let verifications = verify::verify_module(&module);
+    let contract_count = verifications.len();
+    let verified_count =
+        verifications.iter().filter(|v| v.status == verify::VerifyStatus::Verified).count();
+    let failed_count =
+        verifications.iter().filter(|v| v.status == verify::VerifyStatus::Failed).count();
+
     // Phase 6: Self-healing — generate fix candidates for all diagnostics.
     let mut all_diagnostics: Vec<hir::Diagnostic> = Vec::new();
     all_diagnostics.extend(resolver.diagnostics.iter().cloned());
@@ -200,6 +208,24 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     }
 
     eprintln!("  Errors: {total_errors}");
+
+    // Contract verification report.
+    if contract_count > 0 {
+        eprintln!(
+            "  Contracts checked: {contract_count} (verified: {verified_count}, failed: {failed_count})"
+        );
+        for v in &verifications {
+            let symbol = match v.status {
+                verify::VerifyStatus::Verified => "✓",
+                verify::VerifyStatus::Partial => "~",
+                verify::VerifyStatus::Failed => "✗",
+                verify::VerifyStatus::Trivial => "-",
+            };
+            if v.status != verify::VerifyStatus::Trivial {
+                eprintln!("    {symbol} {}: {:?}", v.fqn, v.status);
+            }
+        }
+    }
 
     if fix_count > 0 {
         eprintln!("  Fix candidates: {fix_count}");
@@ -323,6 +349,33 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
         }
     }
 
+    // ── Phase 5.5: Contract verification ────────────────────────────
+    eprintln!("▸ Phase 5.5: Contract verification");
+    let verifications = verify::verify_module(&module);
+    let contract_total = verifications.len();
+    let contract_verified =
+        verifications.iter().filter(|v| v.status == verify::VerifyStatus::Verified).count();
+    let contract_failed =
+        verifications.iter().filter(|v| v.status == verify::VerifyStatus::Failed).count();
+    if contract_total > 0 {
+        eprintln!(
+            "  ✓ {contract_total} symbols checked (verified: {contract_verified}, failed: {contract_failed})"
+        );
+        for v in &verifications {
+            if v.status != verify::VerifyStatus::Trivial {
+                let sym = match v.status {
+                    verify::VerifyStatus::Verified => "✓",
+                    verify::VerifyStatus::Partial => "~",
+                    verify::VerifyStatus::Failed => "✗",
+                    verify::VerifyStatus::Trivial => "-",
+                };
+                eprintln!("    {sym} {}: {:?}", v.fqn, v.status);
+            }
+        }
+    } else {
+        eprintln!("  - no contracts to verify");
+    }
+
     // ── Phase 6: MLIR lowering ───────────────────────────────────────
     eprintln!("▸ Phase 6/7: MLIR lowering");
     let mlir_output = mlir::emit(&module, &effect_infer);
@@ -363,6 +416,7 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     eprintln!("  Items:           {}", module.items.len());
     eprintln!("  Symbols:         {}", resolver.symbols.len());
     eprintln!("  Functions:       {}", effect_infer.inferred.len());
+    eprintln!("  Contracts:       {contract_total} (verified: {contract_verified})");
     eprintln!("  MLIR lines:      {mlir_lines}");
     eprintln!("  Fix candidates:  {fix_count}");
     eprintln!("  Errors:          {total_errors}");

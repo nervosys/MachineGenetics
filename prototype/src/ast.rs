@@ -53,6 +53,7 @@ pub struct FunctionDef {
     pub return_type: Option<Type>,
     pub where_clause: Vec<WherePredicate>,
     pub effects: Vec<String>,
+    pub contracts: Vec<ContractClause>,
     pub body: Block,
 }
 
@@ -196,6 +197,7 @@ pub struct FieldPattern {
 pub struct StructDef {
     pub name: String,
     pub generics: Vec<GenericParam>,
+    pub contracts: Vec<ContractClause>,
     pub fields: Vec<StructField>,
 }
 
@@ -311,4 +313,24 @@ pub struct StaticDef {
 pub struct WherePredicate {
     pub type_param: String,
     pub bounds: Vec<String>,
+}
+
+/// A contract clause attached to a function or type.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContractClause {
+    pub kind: ContractClauseKind,
+    /// The condition expression text (e.g. "n > 0").
+    pub condition: String,
+    /// Optional human-readable message.
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ContractClauseKind {
+    /// @req — precondition.
+    Requires,
+    /// @ens — postcondition.
+    Ensures,
+    /// @inv — invariant.
+    Invariant,
 }

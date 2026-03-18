@@ -106,27 +106,34 @@ impl<'a> Parser<'a> {
 
     fn parse_item(&mut self) -> Result<Item, ParseError> {
         let mut attributes = Vec::new();
-        while self.peek() == TokenKind::At {
-            attributes.push(self.parse_attribute()?);
+        let mut contracts = Vec::new();
+        loop {
+            match self.peek() {
+                TokenKind::At => attributes.push(self.parse_attribute()?),
+                TokenKind::KwReq | TokenKind::KwEns | TokenKind::KwInv => {
+                    contracts.push(self.parse_contract_clause()?);
+                }
+                _ => break,
+            }
         }
 
         let (visibility, kind) = match self.peek() {
             TokenKind::Plus => {
                 self.advance();
-                (Visibility::Public, self.parse_item_kind()?)
+                (Visibility::Public, self.parse_item_kind(contracts)?)
             }
-            _ => (Visibility::Private, self.parse_item_kind()?),
+            _ => (Visibility::Private, self.parse_item_kind(contracts)?),
         };
 
         Ok(Item { visibility, attributes, kind })
     }
 
-    fn parse_item_kind(&mut self) -> Result<ItemKind, ParseError> {
+    fn parse_item_kind(&mut self, contracts: Vec<ContractClause>) -> Result<ItemKind, ParseError> {
         match self.peek() {
-            TokenKind::KwF => self.parse_function_def(false, false).map(ItemKind::Function),
-            TokenKind::KwAf => self.parse_function_def(true, false).map(ItemKind::Function),
-            TokenKind::KwUf => self.parse_function_def(false, true).map(ItemKind::Function),
-            TokenKind::KwS => self.parse_struct_def().map(ItemKind::Struct),
+            TokenKind::KwF => self.parse_function_def(false, false, contracts).map(ItemKind::Function),
+            TokenKind::KwAf => self.parse_function_def(true, false, contracts).map(ItemKind::Function),
+            TokenKind::KwUf => self.parse_function_def(false, true, contracts).map(ItemKind::Function),
+            TokenKind::KwS => self.parse_struct_def(contracts).map(ItemKind::Struct),
             TokenKind::KwE => self.parse_enum_def().map(ItemKind::Enum),
             TokenKind::KwT => self.parse_trait_def().map(ItemKind::Trait),
             TokenKind::KwI => self.parse_impl_block().map(ItemKind::Impl),
@@ -139,6 +146,57 @@ impl<'a> Parser<'a> {
             TokenKind::KwSpec => self.parse_spec_def().map(ItemKind::Spec),
             _ => Err(self.error(&format!("expected item, found {:?}", self.peek()))),
         }
+    }
+
+    // ── Contracts ───────────────────────────────────────────
+
+    fn parse_contract_clause(&mut self) -> Result<ContractClause, ParseError> {
+        let kind = match self.peek() {
+            TokenKind::KwReq => { self.advance(); ContractClauseKind::Requires }
+            TokenKind::KwEns => { self.advance(); ContractClauseKind::Ensures }
+            TokenKind::KwInv => { self.advance(); ContractClauseKind::Invariant }
+            _ => return Err(self.error("expected @req, @ens, or @inv")),
+        };
+
+        self.expect(TokenKind::LParen)?;
+
+        // Collect condition tokens until we hit a comma-separated message or close paren.
+        // Format: @req(condition) or @req(condition, "message")
+        let mut condition_parts = Vec::new();
+        let mut message: Option<String> = None;
+        let mut depth: usize = 0;
+
+        while self.peek() != TokenKind::RParen || depth > 0 {
+            if self.peek() == TokenKind::Eof {
+                return Err(self.error("unterminated contract clause"));
+            }
+            // Track nested parens inside the condition
+            if self.peek() == TokenKind::LParen {
+                depth += 1;
+            }
+            if self.peek() == TokenKind::RParen && depth > 0 {
+                depth -= 1;
+            }
+            // A comma at depth 0 separates condition from message
+            if self.peek() == TokenKind::Comma && depth == 0 {
+                self.advance(); // consume comma
+                // Next token should be a string literal (the message)
+                if self.peek() == TokenKind::StringLiteral {
+                    let tok = self.advance();
+                    let text = tok.text.clone();
+                    // Strip surrounding quotes
+                    message = Some(text.trim_matches('"').to_string());
+                }
+                break;
+            }
+            let tok = self.advance();
+            condition_parts.push(tok.text.clone());
+        }
+
+        self.expect(TokenKind::RParen)?;
+
+        let condition = condition_parts.join(" ");
+        Ok(ContractClause { kind, condition, message })
     }
 
     // ── Attribute ───────────────────────────────────────────
@@ -170,7 +228,7 @@ impl<'a> Parser<'a> {
 
     // ── Function ────────────────────────────────────────────
 
-    fn parse_function_def(&mut self, is_async: bool, is_unsafe: bool) -> Result<FunctionDef, ParseError> {
+    fn parse_function_def(&mut self, is_async: bool, is_unsafe: bool, contracts: Vec<ContractClause>) -> Result<FunctionDef, ParseError> {
         // Consume the function keyword (f, af, or uf)
         self.advance();
         let name = self.expect_ident()?;
@@ -200,12 +258,12 @@ impl<'a> Parser<'a> {
 
         let body = self.parse_block()?;
 
-        Ok(FunctionDef { name, is_async, is_unsafe, generics, params, return_type, where_clause, effects: Vec::new(), body })
+        Ok(FunctionDef { name, is_async, is_unsafe, generics, params, return_type, where_clause, effects: Vec::new(), contracts, body })
     }
 
     // ── Struct ──────────────────────────────────────────────
 
-    fn parse_struct_def(&mut self) -> Result<StructDef, ParseError> {
+    fn parse_struct_def(&mut self, contracts: Vec<ContractClause>) -> Result<StructDef, ParseError> {
         self.expect(TokenKind::KwS)?;
         let name = self.expect_ident()?;
 
@@ -234,7 +292,7 @@ impl<'a> Parser<'a> {
         }
         self.expect(TokenKind::RBrace)?;
 
-        Ok(StructDef { name, generics, fields })
+        Ok(StructDef { name, generics, contracts, fields })
     }
 
     // ── Enum ────────────────────────────────────────────────
@@ -546,18 +604,80 @@ impl<'a> Parser<'a> {
         };
 
         self.expect(TokenKind::LBrace)?;
-        let items = Vec::new();
+        let mut items = Vec::new();
         while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
-            // For now, skip spec items — they require expression parsing in attributes
-            let tok = self.advance();
-            if tok.kind == TokenKind::Semi {
-                continue;
+            match self.peek() {
+                TokenKind::KwReq => {
+                    self.advance();
+                    let text = self.collect_paren_text()?;
+                    items.push(SpecItem::Require(text));
+                }
+                TokenKind::KwEns => {
+                    self.advance();
+                    let text = self.collect_paren_text()?;
+                    items.push(SpecItem::Ensure(text));
+                }
+                TokenKind::KwInv => {
+                    self.advance();
+                    let text = self.collect_paren_text()?;
+                    items.push(SpecItem::Invariant(text));
+                }
+                TokenKind::KwFx => {
+                    self.advance();
+                    self.expect(TokenKind::LParen)?;
+                    let mut effects = Vec::new();
+                    while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
+                        let tok = self.advance();
+                        if tok.kind != TokenKind::Comma {
+                            effects.push(tok.text.clone());
+                        }
+                    }
+                    self.expect(TokenKind::RParen)?;
+                    items.push(SpecItem::Effect(effects));
+                }
+                TokenKind::KwPerf => {
+                    self.advance();
+                    self.expect(TokenKind::LParen)?;
+                    let metric = if self.peek() != TokenKind::RParen {
+                        self.advance().text.clone()
+                    } else {
+                        String::new()
+                    };
+                    let mut bound = String::new();
+                    if self.peek() == TokenKind::Comma {
+                        self.advance();
+                        if self.peek() != TokenKind::RParen {
+                            bound = self.advance().text.clone();
+                        }
+                    }
+                    self.expect(TokenKind::RParen)?;
+                    items.push(SpecItem::Performance(metric, bound));
+                }
+                TokenKind::Semi => { self.advance(); }
+                _ => { self.advance(); }
             }
-            // Simplified: just collect text until semicolon
         }
         self.expect(TokenKind::RBrace)?;
 
         Ok(SpecDef { name, generics, items })
+    }
+
+    /// Helper: consume `(...)` and return all tokens as a single string.
+    fn collect_paren_text(&mut self) -> Result<String, ParseError> {
+        self.expect(TokenKind::LParen)?;
+        let mut parts = Vec::new();
+        let mut depth: usize = 0;
+        while self.peek() != TokenKind::RParen || depth > 0 {
+            if self.peek() == TokenKind::Eof {
+                return Err(self.error("unterminated parenthesized expression"));
+            }
+            if self.peek() == TokenKind::LParen { depth += 1; }
+            if self.peek() == TokenKind::RParen && depth > 0 { depth -= 1; }
+            let tok = self.advance();
+            parts.push(tok.text.clone());
+        }
+        self.expect(TokenKind::RParen)?;
+        Ok(parts.join(" "))
     }
 
     // ── Generic Params ──────────────────────────────────────
@@ -1523,6 +1643,106 @@ mod tests {
             assert!(f.body.tail_expr.is_some() || !f.body.stmts.is_empty());
         } else {
             panic!("expected function with continue");
+        }
+    }
+
+    // ── Contract parsing tests ──────────────────────────────
+
+    #[test]
+    fn test_function_with_requires() {
+        let module = parse_source("@req(n > 0) f factorial(n: u64) -> u64 { n }");
+        if let ItemKind::Function(ref f) = module.items[0].kind {
+            assert_eq!(f.name, "factorial");
+            assert_eq!(f.contracts.len(), 1);
+            assert_eq!(f.contracts[0].kind, ContractClauseKind::Requires);
+            assert_eq!(f.contracts[0].condition, "n > 0");
+        } else {
+            panic!("expected function");
+        }
+    }
+
+    #[test]
+    fn test_function_with_ensures() {
+        let module = parse_source("@ens(result > 0) f positive() -> i32 { 1 }");
+        if let ItemKind::Function(ref f) = module.items[0].kind {
+            assert_eq!(f.contracts.len(), 1);
+            assert_eq!(f.contracts[0].kind, ContractClauseKind::Ensures);
+            assert_eq!(f.contracts[0].condition, "result > 0");
+        } else {
+            panic!("expected function");
+        }
+    }
+
+    #[test]
+    fn test_function_with_multiple_contracts() {
+        let src = "@req(divisor != 0) @ens(result * divisor == dividend) f safe_div(dividend: i64, divisor: i64) -> i64 { dividend / divisor }";
+        let module = parse_source(src);
+        if let ItemKind::Function(ref f) = module.items[0].kind {
+            assert_eq!(f.name, "safe_div");
+            assert_eq!(f.contracts.len(), 2);
+            assert_eq!(f.contracts[0].kind, ContractClauseKind::Requires);
+            assert_eq!(f.contracts[1].kind, ContractClauseKind::Ensures);
+        } else {
+            panic!("expected function");
+        }
+    }
+
+    #[test]
+    fn test_function_with_contract_message() {
+        let src = r#"@req(n > 0, "n must be positive") f factorial(n: u64) -> u64 { n }"#;
+        let module = parse_source(src);
+        if let ItemKind::Function(ref f) = module.items[0].kind {
+            assert_eq!(f.contracts[0].message.as_deref(), Some("n must be positive"));
+        } else {
+            panic!("expected function");
+        }
+    }
+
+    #[test]
+    fn test_pub_function_with_contracts() {
+        let src = "@req(x >= 0) +f sqrt(x: f64) -> f64 { x }";
+        let module = parse_source(src);
+        assert_eq!(module.items[0].visibility, Visibility::Public);
+        if let ItemKind::Function(ref f) = module.items[0].kind {
+            assert_eq!(f.contracts.len(), 1);
+        } else {
+            panic!("expected function");
+        }
+    }
+
+    #[test]
+    fn test_struct_with_invariant() {
+        let src = "@inv(_.len <= _.cap) S Buffer { len: usize, cap: usize }";
+        let module = parse_source(src);
+        if let ItemKind::Struct(ref s) = module.items[0].kind {
+            assert_eq!(s.name, "Buffer");
+            assert_eq!(s.contracts.len(), 1);
+            assert_eq!(s.contracts[0].kind, ContractClauseKind::Invariant);
+            assert!(s.contracts[0].condition.contains("len"));
+        } else {
+            panic!("expected struct");
+        }
+    }
+
+    #[test]
+    fn test_function_no_contracts() {
+        let module = parse_source("f noop() { }");
+        if let ItemKind::Function(ref f) = module.items[0].kind {
+            assert!(f.contracts.is_empty());
+        } else {
+            panic!("expected function");
+        }
+    }
+
+    #[test]
+    fn test_spec_block_with_items() {
+        let src = "spec Sortable { @req(_.len > 0) @ens(is_sorted(result)) }";
+        let module = parse_source(src);
+        if let ItemKind::Spec(ref s) = module.items[0].kind {
+            assert_eq!(s.name, "Sortable");
+            assert_eq!(s.items.len(), 2);
+        } else {
+            panic!("expected spec");
         }
     }
 }

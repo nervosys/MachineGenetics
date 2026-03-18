@@ -59,6 +59,7 @@ fn elide_function(f: &FunctionDef) -> FunctionDef {
         return_type: f.return_type.as_ref().map(elide_type),
         where_clause: elide_where_clause(&f.where_clause),
         effects: f.effects.clone(),
+        contracts: f.contracts.clone(),
         body: elide_block(&f.body),
     }
 }
@@ -67,6 +68,7 @@ fn elide_struct(s: &StructDef) -> StructDef {
     StructDef {
         name: s.name.clone(),
         generics: elide_generics(&s.generics),
+        contracts: s.contracts.clone(),
         fields: s.fields.iter().map(elide_struct_field).collect(),
     }
 }

@@ -4,7 +4,6 @@
 /// per-module token counts in both compact (Redox) and expanded (Rust-
 /// equivalent) forms.  Agents use this to track and optimise their
 /// token expenditure.
-
 use crate::ast::*;
 use serde::{Deserialize, Serialize};
 
@@ -56,17 +55,9 @@ pub fn report(module: &Module) -> TokenReport {
     let items: Vec<TokenMetrics> = module.items.iter().map(count_item).collect();
     let total_compact: u32 = items.iter().map(|m| m.compact_tokens).sum();
     let total_expanded: u32 = items.iter().map(|m| m.expanded_tokens).sum();
-    let overall_ratio = if total_expanded > 0 {
-        total_compact as f64 / total_expanded as f64
-    } else {
-        1.0
-    };
-    TokenReport {
-        items,
-        total_compact,
-        total_expanded,
-        overall_ratio,
-    }
+    let overall_ratio =
+        if total_expanded > 0 { total_compact as f64 / total_expanded as f64 } else { 1.0 };
+    TokenReport { items, total_compact, total_expanded, overall_ratio }
 }
 
 /// Count tokens for a single item.
@@ -354,18 +345,18 @@ fn count_type_compact(ty: &Type) -> u32 {
             n
         }
         Type::Reference { inner, .. } => 1 + count_type_compact(inner), // & or &!
-        Type::OwnedPtr { inner } => 1 + count_type_compact(inner),       // ^
-        Type::Rc { inner } => 1 + count_type_compact(inner),             // $
-        Type::Arc { inner } => 1 + count_type_compact(inner),            // @
-        Type::Cow { inner } => 1 + count_type_compact(inner),            // &~
-        Type::Cell { inner } => 1 + count_type_compact(inner),           // %
-        Type::RefCell { inner } => 1 + count_type_compact(inner),        // %!
-        Type::Mutex { inner } => 1 + count_type_compact(inner),          // #
-        Type::RwLock { inner } => 1 + count_type_compact(inner),         // #~
-        Type::Slice { inner } => 2 + count_type_compact(inner),          // [ T ]
-        Type::Array { inner, .. } => 3 + count_type_compact(inner),      // [ T ; N ]
-        Type::Vec { inner } => 2 + count_type_compact(inner),            // [T]~
-        Type::Set { inner } => 2 + count_type_compact(inner),            // {T}
+        Type::OwnedPtr { inner } => 1 + count_type_compact(inner),      // ^
+        Type::Rc { inner } => 1 + count_type_compact(inner),            // $
+        Type::Arc { inner } => 1 + count_type_compact(inner),           // @
+        Type::Cow { inner } => 1 + count_type_compact(inner),           // &~
+        Type::Cell { inner } => 1 + count_type_compact(inner),          // %
+        Type::RefCell { inner } => 1 + count_type_compact(inner),       // %!
+        Type::Mutex { inner } => 1 + count_type_compact(inner),         // #
+        Type::RwLock { inner } => 1 + count_type_compact(inner),        // #~
+        Type::Slice { inner } => 2 + count_type_compact(inner),         // [ T ]
+        Type::Array { inner, .. } => 3 + count_type_compact(inner),     // [ T ; N ]
+        Type::Vec { inner } => 2 + count_type_compact(inner),           // [T]~
+        Type::Set { inner } => 2 + count_type_compact(inner),           // {T}
         Type::Tuple { elements } => {
             let mut n: u32 = 2; // ( )
             for e in elements {
@@ -374,15 +365,15 @@ fn count_type_compact(ty: &Type) -> u32 {
             }
             n
         }
-        Type::Option { inner } => 1 + count_type_compact(inner),  // ?T
+        Type::Option { inner } => 1 + count_type_compact(inner), // ?T
         Type::Result { ok, err } => {
             2 + count_type_compact(ok) + count_type_compact(err) // R[ , ]
         }
         Type::Map { key, value } => {
             2 + count_type_compact(key) + count_type_compact(value) // { K: V }
         }
-        Type::Ptr { inner } => 2 + count_type_compact(inner),          // Ptr[T]
-        Type::Simd { inner, .. } => 3 + count_type_compact(inner),     // Simd[T, N]
+        Type::Ptr { inner } => 2 + count_type_compact(inner), // Ptr[T]
+        Type::Simd { inner, .. } => 3 + count_type_compact(inner), // Simd[T, N]
         Type::Fn { params, ret } => {
             let mut n: u32 = 2; // f( )
             for p in params {
@@ -517,7 +508,7 @@ fn count_expr_compact(expr: &Expr) -> u32 {
             n += 1; // }
             n
         }
-        Expr::Loop { body } => 1 + count_block_compact(body),     // @@
+        Expr::Loop { body } => 1 + count_block_compact(body), // @@
         Expr::While { cond, body } => {
             1 + count_expr_compact(cond) + count_block_compact(body) // @w
         }
@@ -539,9 +530,9 @@ fn count_expr_compact(expr: &Expr) -> u32 {
             }
             n
         }
-        Expr::Continue => 1, // >>
-        Expr::Try { expr } => count_expr_compact(expr) + 1,     // ~
-        Expr::Await { expr } => count_expr_compact(expr) + 1,   // .await
+        Expr::Continue => 1,                                     // >>
+        Expr::Try { expr } => count_expr_compact(expr) + 1,      // ~
+        Expr::Await { expr } => count_expr_compact(expr) + 1,    // .await
         Expr::Cast { expr, .. } => count_expr_compact(expr) + 2, // as T
         Expr::Assign { target, value } => {
             count_expr_compact(target) + 1 + count_expr_compact(value) // =
@@ -549,8 +540,8 @@ fn count_expr_compact(expr: &Expr) -> u32 {
         Expr::Range { start, end, .. } => {
             count_expr_compact(start) + 1 + count_expr_compact(end) // ..
         }
-        Expr::Todo => 1,           // ??
-        Expr::Unimplemented => 1,  // ???
+        Expr::Todo => 1,          // ??
+        Expr::Unimplemented => 1, // ???
         Expr::UnsafeBlock { block } => 1 + count_block_compact(block),
         Expr::Error { .. } => 1,
     }
@@ -933,12 +924,8 @@ fn count_expr_expanded(expr: &Expr) -> u32 {
             n
         }
         Expr::Loop { body } => 1 + count_block_expanded(body),
-        Expr::While { cond, body } => {
-            1 + count_expr_expanded(cond) + count_block_expanded(body)
-        }
-        Expr::For { iter, body, .. } => {
-            3 + count_expr_expanded(iter) + count_block_expanded(body)
-        }
+        Expr::While { cond, body } => 1 + count_expr_expanded(cond) + count_block_expanded(body),
+        Expr::For { iter, body, .. } => 3 + count_expr_expanded(iter) + count_block_expanded(body),
         Expr::Block { block } => count_block_expanded(block),
         Expr::Return { value } => {
             let mut n: u32 = 1;
@@ -961,11 +948,9 @@ fn count_expr_expanded(expr: &Expr) -> u32 {
         Expr::Assign { target, value } => {
             count_expr_expanded(target) + 1 + count_expr_expanded(value)
         }
-        Expr::Range { start, end, .. } => {
-            count_expr_expanded(start) + 1 + count_expr_expanded(end)
-        }
-        Expr::Todo => 2,          // todo!()
-        Expr::Unimplemented => 2, // unimplemented!()
+        Expr::Range { start, end, .. } => count_expr_expanded(start) + 1 + count_expr_expanded(end),
+        Expr::Todo => 2,                                                // todo!()
+        Expr::Unimplemented => 2,                                       // unimplemented!()
         Expr::UnsafeBlock { block } => 1 + count_block_expanded(block), // unsafe
         Expr::Error { .. } => 1,
     }
@@ -1092,26 +1077,17 @@ mod tests {
         let m = parse_module("f foo() { 1 }\nf bar() { 2 }");
         let r = report(&m);
         assert_eq!(r.items.len(), 2);
-        assert_eq!(
-            r.total_compact,
-            r.items[0].compact_tokens + r.items[1].compact_tokens
-        );
+        assert_eq!(r.total_compact, r.items[0].compact_tokens + r.items[1].compact_tokens);
     }
 
     #[test]
     fn option_type_more_compact() {
         // ?i32 (1 token) vs Option<i32> (3 tokens)
         let compact = count_type_compact(&Type::Option {
-            inner: Box::new(Type::Path {
-                segments: vec!["i32".to_string()],
-                type_args: vec![],
-            }),
+            inner: Box::new(Type::Path { segments: vec!["i32".to_string()], type_args: vec![] }),
         });
         let expanded = count_type_expanded(&Type::Option {
-            inner: Box::new(Type::Path {
-                segments: vec!["i32".to_string()],
-                type_args: vec![],
-            }),
+            inner: Box::new(Type::Path { segments: vec!["i32".to_string()], type_args: vec![] }),
         });
         assert!(compact < expanded, "compact={compact} expanded={expanded}");
     }
