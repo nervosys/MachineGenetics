@@ -496,8 +496,8 @@ pub fn expand_attribute_name(name: &str) -> Option<&'static str> {
         "pt"  => Some("target_feature"),
         "pa"  => Some("align"),
         "pp"  => Some("packed"),
-        "as"  => Some("async_trait"),
-        "ac"  => Some("cold"),
+        "at"  => Some("async_trait"),
+        "co"  => Some("cold"),
         "il"  => Some("inline"),
         "ila" => Some("inline_always"),
         "na"  => Some("no_alloc"),
@@ -505,6 +505,12 @@ pub fn expand_attribute_name(name: &str) -> Option<&'static str> {
         "dp"  => Some("deprecated"),
         "dc"  => Some("doc"),
         "gl"  => Some("global_allocator"),
+        // Agent discovery attributes
+        "as"  => Some("agent_skill"),
+        "ac"  => Some("agent_capability"),
+        "ax"  => Some("agent_export"),
+        "ao"  => Some("agent_observable"),
+        "ae"  => Some("agent_effect"),
         _     => None,
     }
 }
@@ -544,16 +550,22 @@ pub fn compress_attribute_name(rust_name: &str) -> Option<&'static str> {
         "target_feature"   => Some("pt"),
         "align"            => Some("pa"),
         "packed"           => Some("pp"),
-        "async_trait"      => Some("as"),
-        "cold"             => Some("ac"),
-        "inline"           => Some("il"),
-        "inline_always"    => Some("ila"),
-        "no_alloc"         => Some("na"),
-        "no_mangle"        => Some("nm"),
-        "deprecated"       => Some("dp"),
-        "doc"              => Some("dc"),
-        "global_allocator" => Some("gl"),
-        _                  => None,
+        "async_trait"        => Some("at"),
+        "cold"               => Some("co"),
+        "inline"             => Some("il"),
+        "inline_always"      => Some("ila"),
+        "no_alloc"           => Some("na"),
+        "no_mangle"          => Some("nm"),
+        "deprecated"         => Some("dp"),
+        "doc"                => Some("dc"),
+        "global_allocator"   => Some("gl"),
+        // Agent discovery attributes
+        "agent_skill"        => Some("as"),
+        "agent_capability"   => Some("ac"),
+        "agent_export"       => Some("ax"),
+        "agent_observable"   => Some("ao"),
+        "agent_effect"       => Some("ae"),
+        _                    => None,
     }
 }
 
@@ -775,14 +787,110 @@ mod tests {
             ("t", "test"), ("b", "bench"), ("se", "serde"),
             ("pi", "proc_macro"), ("pnb", "non_blocking"),
             ("pv", "visibility"), ("pt", "target_feature"),
-            ("pa", "align"), ("pp", "packed"), ("as", "async_trait"),
-            ("ac", "cold"), ("il", "inline"), ("ila", "inline_always"),
+            ("pa", "align"), ("pp", "packed"), ("at", "async_trait"),
+            ("co", "cold"), ("il", "inline"), ("ila", "inline_always"),
             ("na", "no_alloc"), ("nm", "no_mangle"),
             ("dp", "deprecated"), ("dc", "doc"), ("gl", "global_allocator"),
+            // Agent discovery attributes
+            ("as", "agent_skill"), ("ac", "agent_capability"),
+            ("ax", "agent_export"), ("ao", "agent_observable"),
+            ("ae", "agent_effect"),
         ];
         for (short, full) in &known {
             assert_eq!(expand_attribute_name(short), Some(*full), "expand({short}) should be {full}");
             assert_eq!(compress_attribute_name(full), Some(*short), "compress({full}) should be {short}");
         }
+    }
+
+    // ── Agent Discovery Attribute Tests ──────────────────────────────
+
+    #[test]
+    fn expand_agent_skill() {
+        assert_eq!(expand_attribute_name("as"), Some("agent_skill"));
+    }
+
+    #[test]
+    fn expand_agent_capability() {
+        assert_eq!(expand_attribute_name("ac"), Some("agent_capability"));
+    }
+
+    #[test]
+    fn expand_agent_export() {
+        assert_eq!(expand_attribute_name("ax"), Some("agent_export"));
+    }
+
+    #[test]
+    fn expand_agent_observable() {
+        assert_eq!(expand_attribute_name("ao"), Some("agent_observable"));
+    }
+
+    #[test]
+    fn expand_agent_effect() {
+        assert_eq!(expand_attribute_name("ae"), Some("agent_effect"));
+    }
+
+    #[test]
+    fn compress_agent_skill() {
+        assert_eq!(compress_attribute_name("agent_skill"), Some("as"));
+    }
+
+    #[test]
+    fn compress_agent_capability() {
+        assert_eq!(compress_attribute_name("agent_capability"), Some("ac"));
+    }
+
+    #[test]
+    fn compress_agent_export() {
+        assert_eq!(compress_attribute_name("agent_export"), Some("ax"));
+    }
+
+    #[test]
+    fn compress_agent_observable() {
+        assert_eq!(compress_attribute_name("agent_observable"), Some("ao"));
+    }
+
+    #[test]
+    fn compress_agent_effect() {
+        assert_eq!(compress_attribute_name("agent_effect"), Some("ae"));
+    }
+
+    #[test]
+    fn parse_agent_skill_attribute() {
+        let m = parse_and_elide("@as(code_review)\nf review() {}");
+        let attr = &m.items[0].attributes[0];
+        assert_eq!(attr.name, "as");
+        assert_eq!(attr.args, vec!["code_review"]);
+    }
+
+    #[test]
+    fn parse_agent_capability_attribute() {
+        let m = parse_and_elide("@ac(read_source, write_source)\nf edit() {}");
+        let attr = &m.items[0].attributes[0];
+        assert_eq!(attr.name, "ac");
+        assert_eq!(attr.args, vec!["read_source", "write_source"]);
+    }
+
+    #[test]
+    fn parse_agent_export_attribute() {
+        let m = parse_and_elide("@ax(tool_api)\nf analyze() {}");
+        let attr = &m.items[0].attributes[0];
+        assert_eq!(attr.name, "ax");
+        assert_eq!(attr.args, vec!["tool_api"]);
+    }
+
+    #[test]
+    fn parse_agent_observable_attribute() {
+        let m = parse_and_elide("@ao(metrics)\nf compute() {}");
+        let attr = &m.items[0].attributes[0];
+        assert_eq!(attr.name, "ao");
+        assert_eq!(attr.args, vec!["metrics"]);
+    }
+
+    #[test]
+    fn parse_agent_effect_attribute() {
+        let m = parse_and_elide("@ae(io, network)\nf fetch() {}");
+        let attr = &m.items[0].attributes[0];
+        assert_eq!(attr.name, "ae");
+        assert_eq!(attr.args, vec!["io", "network"]);
     }
 }
