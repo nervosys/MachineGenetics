@@ -34,7 +34,8 @@ pub struct LamportClock {
 impl LamportClock {
     pub fn new(time: u64, agent: &str) -> Self {
         // Simple hash for deterministic ordering.
-        let agent_hash = agent.bytes().fold(0u64, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u64));
+        let agent_hash =
+            agent.bytes().fold(0u64, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u64));
         Self { time, agent_hash }
     }
 
@@ -43,10 +44,7 @@ impl LamportClock {
     }
 
     pub fn merge(a: LamportClock, b: LamportClock) -> LamportClock {
-        LamportClock {
-            time: a.time.max(b.time) + 1,
-            agent_hash: a.agent_hash,
-        }
+        LamportClock { time: a.time.max(b.time) + 1, agent_hash: a.agent_hash }
     }
 }
 
@@ -101,7 +99,9 @@ impl fmt::Display for CrdtOp {
             CrdtOp::InsertItem { name, .. } => write!(f, "InsertItem({name})"),
             CrdtOp::RemoveItem { name } => write!(f, "RemoveItem({name})"),
             CrdtOp::ModifyBody { function_name, .. } => write!(f, "ModifyBody({function_name})"),
-            CrdtOp::ModifySignature { function_name, .. } => write!(f, "ModifySignature({function_name})"),
+            CrdtOp::ModifySignature { function_name, .. } => {
+                write!(f, "ModifySignature({function_name})")
+            }
             CrdtOp::AddImpl { target_type, .. } => write!(f, "AddImpl({target_type})"),
             CrdtOp::Rename { old_name, new_name } => write!(f, "Rename({old_name} → {new_name})"),
         }
@@ -156,10 +156,7 @@ impl MergeLog {
     }
 
     pub fn push(&mut self, op: &CrdtOp, outcome: MergeOutcome) {
-        self.entries.push(MergeLogEntry {
-            op: op.to_string(),
-            outcome,
-        });
+        self.entries.push(MergeLogEntry { op: op.to_string(), outcome });
     }
 
     pub fn conflicts(&self) -> Vec<&MergeLogEntry> {
@@ -181,11 +178,7 @@ pub struct CrdtState {
 
 impl CrdtState {
     pub fn new() -> Self {
-        Self {
-            resolved: BTreeMap::new(),
-            history: Vec::new(),
-            log: MergeLog::new(),
-        }
+        Self { resolved: BTreeMap::new(), history: Vec::new(), log: MergeLog::new() }
     }
 
     /// Apply an operation. Returns the merge outcome.
@@ -197,14 +190,10 @@ impl CrdtState {
                 let loser = existing.agent.clone();
                 let winner = stamped.agent.clone();
                 let outcome = match &stamped.op {
-                    CrdtOp::InsertItem { name, .. } => MergeOutcome::DuplicateInsert {
-                        name: name.clone(),
-                        winner: winner.clone(),
-                    },
-                    _ => MergeOutcome::ResolvedLWW {
-                        winner: winner.clone(),
-                        loser,
-                    },
+                    CrdtOp::InsertItem { name, .. } => {
+                        MergeOutcome::DuplicateInsert { name: name.clone(), winner: winner.clone() }
+                    }
+                    _ => MergeOutcome::ResolvedLWW { winner: winner.clone(), loser },
                 };
                 self.resolved.insert(key, stamped.clone());
                 outcome
@@ -212,10 +201,9 @@ impl CrdtState {
                 let winner = existing.agent.clone();
                 let loser = stamped.agent.clone();
                 match &stamped.op {
-                    CrdtOp::InsertItem { name, .. } => MergeOutcome::DuplicateInsert {
-                        name: name.clone(),
-                        winner,
-                    },
+                    CrdtOp::InsertItem { name, .. } => {
+                        MergeOutcome::DuplicateInsert { name: name.clone(), winner }
+                    }
                     _ => MergeOutcome::ResolvedLWW { winner, loser },
                 }
             }
@@ -291,14 +279,16 @@ mod tests {
     #[test]
     fn non_conflicting_ops_merge_clean() {
         let mut state = CrdtState::new();
-        let o1 = StampedOp::new("a", 1, CrdtOp::InsertItem {
-            name: "Foo".into(),
-            source: "S Foo {}".into(),
-        });
-        let o2 = StampedOp::new("b", 1, CrdtOp::InsertItem {
-            name: "Bar".into(),
-            source: "S Bar {}".into(),
-        });
+        let o1 = StampedOp::new(
+            "a",
+            1,
+            CrdtOp::InsertItem { name: "Foo".into(), source: "S Foo {}".into() },
+        );
+        let o2 = StampedOp::new(
+            "b",
+            1,
+            CrdtOp::InsertItem { name: "Bar".into(), source: "S Bar {}".into() },
+        );
         assert_eq!(state.apply(o1), MergeOutcome::Clean);
         assert_eq!(state.apply(o2), MergeOutcome::Clean);
         assert_eq!(state.resolved_ops().len(), 2);
@@ -307,10 +297,11 @@ mod tests {
     #[test]
     fn modify_body_clean() {
         let mut state = CrdtState::new();
-        let op = StampedOp::new("a", 1, CrdtOp::ModifyBody {
-            function_name: "foo".into(),
-            new_body: "{ 42 }".into(),
-        });
+        let op = StampedOp::new(
+            "a",
+            1,
+            CrdtOp::ModifyBody { function_name: "foo".into(), new_body: "{ 42 }".into() },
+        );
         assert_eq!(state.apply(op), MergeOutcome::Clean);
     }
 
@@ -319,14 +310,16 @@ mod tests {
     #[test]
     fn conflicting_modify_body_lww() {
         let mut state = CrdtState::new();
-        let op1 = StampedOp::new("alice", 1, CrdtOp::ModifyBody {
-            function_name: "foo".into(),
-            new_body: "{ 1 }".into(),
-        });
-        let op2 = StampedOp::new("bob", 2, CrdtOp::ModifyBody {
-            function_name: "foo".into(),
-            new_body: "{ 2 }".into(),
-        });
+        let op1 = StampedOp::new(
+            "alice",
+            1,
+            CrdtOp::ModifyBody { function_name: "foo".into(), new_body: "{ 1 }".into() },
+        );
+        let op2 = StampedOp::new(
+            "bob",
+            2,
+            CrdtOp::ModifyBody { function_name: "foo".into(), new_body: "{ 2 }".into() },
+        );
         state.apply(op1);
         let outcome = state.apply(op2);
         assert!(matches!(outcome, MergeOutcome::ResolvedLWW { winner, .. } if winner == "bob"));
@@ -335,14 +328,16 @@ mod tests {
     #[test]
     fn earlier_timestamp_loses() {
         let mut state = CrdtState::new();
-        let op1 = StampedOp::new("bob", 5, CrdtOp::ModifyBody {
-            function_name: "foo".into(),
-            new_body: "{ 5 }".into(),
-        });
-        let op2 = StampedOp::new("alice", 2, CrdtOp::ModifyBody {
-            function_name: "foo".into(),
-            new_body: "{ 2 }".into(),
-        });
+        let op1 = StampedOp::new(
+            "bob",
+            5,
+            CrdtOp::ModifyBody { function_name: "foo".into(), new_body: "{ 5 }".into() },
+        );
+        let op2 = StampedOp::new(
+            "alice",
+            2,
+            CrdtOp::ModifyBody { function_name: "foo".into(), new_body: "{ 2 }".into() },
+        );
         state.apply(op1);
         let outcome = state.apply(op2);
         assert!(matches!(outcome, MergeOutcome::ResolvedLWW { winner, .. } if winner == "bob"));
@@ -353,17 +348,21 @@ mod tests {
     #[test]
     fn duplicate_insert_resolved() {
         let mut state = CrdtState::new();
-        let o1 = StampedOp::new("a", 1, CrdtOp::InsertItem {
-            name: "Foo".into(),
-            source: "S Foo { x: i32 }".into(),
-        });
-        let o2 = StampedOp::new("b", 2, CrdtOp::InsertItem {
-            name: "Foo".into(),
-            source: "S Foo { y: f64 }".into(),
-        });
+        let o1 = StampedOp::new(
+            "a",
+            1,
+            CrdtOp::InsertItem { name: "Foo".into(), source: "S Foo { x: i32 }".into() },
+        );
+        let o2 = StampedOp::new(
+            "b",
+            2,
+            CrdtOp::InsertItem { name: "Foo".into(), source: "S Foo { y: f64 }".into() },
+        );
         state.apply(o1);
         let outcome = state.apply(o2);
-        assert!(matches!(outcome, MergeOutcome::DuplicateInsert { name, winner } if name == "Foo" && winner == "b"));
+        assert!(
+            matches!(outcome, MergeOutcome::DuplicateInsert { name, winner } if name == "Foo" && winner == "b")
+        );
     }
 
     // ── Batch apply ───────────────────────────────────────────────
@@ -373,9 +372,21 @@ mod tests {
         let mut state = CrdtState::new();
         // Out-of-order batch.
         let ops = vec![
-            StampedOp::new("b", 3, CrdtOp::InsertItem { name: "Z".into(), source: "S Z {}".into() }),
-            StampedOp::new("a", 1, CrdtOp::InsertItem { name: "A".into(), source: "S A {}".into() }),
-            StampedOp::new("c", 2, CrdtOp::InsertItem { name: "M".into(), source: "S M {}".into() }),
+            StampedOp::new(
+                "b",
+                3,
+                CrdtOp::InsertItem { name: "Z".into(), source: "S Z {}".into() },
+            ),
+            StampedOp::new(
+                "a",
+                1,
+                CrdtOp::InsertItem { name: "A".into(), source: "S A {}".into() },
+            ),
+            StampedOp::new(
+                "c",
+                2,
+                CrdtOp::InsertItem { name: "M".into(), source: "S M {}".into() },
+            ),
         ];
         let outcomes = state.apply_batch(ops);
         assert!(outcomes.iter().all(|o| *o == MergeOutcome::Clean));
@@ -387,24 +398,27 @@ mod tests {
     #[test]
     fn rename_clean() {
         let mut state = CrdtState::new();
-        let op = StampedOp::new("a", 1, CrdtOp::Rename {
-            old_name: "Foo".into(),
-            new_name: "Bar".into(),
-        });
+        let op = StampedOp::new(
+            "a",
+            1,
+            CrdtOp::Rename { old_name: "Foo".into(), new_name: "Bar".into() },
+        );
         assert_eq!(state.apply(op), MergeOutcome::Clean);
     }
 
     #[test]
     fn conflicting_rename_lww() {
         let mut state = CrdtState::new();
-        let o1 = StampedOp::new("a", 1, CrdtOp::Rename {
-            old_name: "Foo".into(),
-            new_name: "Bar".into(),
-        });
-        let o2 = StampedOp::new("b", 2, CrdtOp::Rename {
-            old_name: "Foo".into(),
-            new_name: "Baz".into(),
-        });
+        let o1 = StampedOp::new(
+            "a",
+            1,
+            CrdtOp::Rename { old_name: "Foo".into(), new_name: "Bar".into() },
+        );
+        let o2 = StampedOp::new(
+            "b",
+            2,
+            CrdtOp::Rename { old_name: "Foo".into(), new_name: "Baz".into() },
+        );
         state.apply(o1);
         let outcome = state.apply(o2);
         assert!(matches!(outcome, MergeOutcome::ResolvedLWW { winner, .. } if winner == "b"));
@@ -415,10 +429,14 @@ mod tests {
     #[test]
     fn add_impl_clean() {
         let mut state = CrdtState::new();
-        let op = StampedOp::new("a", 1, CrdtOp::AddImpl {
-            target_type: "Vec".into(),
-            impl_source: "impl Vec { f push(&m self, item: T) {} }".into(),
-        });
+        let op = StampedOp::new(
+            "a",
+            1,
+            CrdtOp::AddImpl {
+                target_type: "Vec".into(),
+                impl_source: "impl Vec { f push(&m self, item: T) {} }".into(),
+            },
+        );
         assert_eq!(state.apply(op), MergeOutcome::Clean);
     }
 
@@ -427,11 +445,15 @@ mod tests {
     #[test]
     fn modify_signature_clean() {
         let mut state = CrdtState::new();
-        let op = StampedOp::new("a", 1, CrdtOp::ModifySignature {
-            function_name: "process".into(),
-            new_params: "(data: &[u8], len: usize)".into(),
-            new_return_type: Some("Result".into()),
-        });
+        let op = StampedOp::new(
+            "a",
+            1,
+            CrdtOp::ModifySignature {
+                function_name: "process".into(),
+                new_params: "(data: &[u8], len: usize)".into(),
+                new_return_type: Some("Result".into()),
+            },
+        );
         assert_eq!(state.apply(op), MergeOutcome::Clean);
     }
 
@@ -449,14 +471,16 @@ mod tests {
     #[test]
     fn merge_log_tracks_conflicts() {
         let mut state = CrdtState::new();
-        let o1 = StampedOp::new("a", 1, CrdtOp::ModifyBody {
-            function_name: "f".into(),
-            new_body: "{}".into(),
-        });
-        let o2 = StampedOp::new("b", 2, CrdtOp::ModifyBody {
-            function_name: "f".into(),
-            new_body: "{ 1 }".into(),
-        });
+        let o1 = StampedOp::new(
+            "a",
+            1,
+            CrdtOp::ModifyBody { function_name: "f".into(), new_body: "{}".into() },
+        );
+        let o2 = StampedOp::new(
+            "b",
+            2,
+            CrdtOp::ModifyBody { function_name: "f".into(), new_body: "{ 1 }".into() },
+        );
         state.apply(o1);
         state.apply(o2);
         assert_eq!(state.log.conflicts().len(), 1);
@@ -467,10 +491,11 @@ mod tests {
     #[test]
     fn to_json_contains_ops() {
         let mut state = CrdtState::new();
-        state.apply(StampedOp::new("a", 1, CrdtOp::InsertItem {
-            name: "Foo".into(),
-            source: "S Foo {}".into(),
-        }));
+        state.apply(StampedOp::new(
+            "a",
+            1,
+            CrdtOp::InsertItem { name: "Foo".into(), source: "S Foo {}".into() },
+        ));
         let json = state.to_json();
         assert!(json.contains("InsertItem(Foo)"));
         assert!(json.contains("\"agent\":\"a\""));

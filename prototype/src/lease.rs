@@ -191,20 +191,10 @@ impl LeaseManager {
         let id = self.next_id;
         self.next_id += 1;
 
-        let expires_at = if self.default_timeout > 0 {
-            Some(self.clock + self.default_timeout)
-        } else {
-            None
-        };
+        let expires_at =
+            if self.default_timeout > 0 { Some(self.clock + self.default_timeout) } else { None };
 
-        let lease = Lease {
-            id,
-            agent,
-            region,
-            mode,
-            acquired_at: self.clock,
-            expires_at,
-        };
+        let lease = Lease { id, agent, region, mode, acquired_at: self.clock, expires_at };
         self.active.insert(id, lease);
         Ok(id)
     }
@@ -412,7 +402,8 @@ mod tests {
     #[test]
     fn acquire_and_release() {
         let mut m = mgr();
-        let id = m.acquire("agent-a".into(), region("crate::foo"), LeaseMode::ExclusiveWrite).unwrap();
+        let id =
+            m.acquire("agent-a".into(), region("crate::foo"), LeaseMode::ExclusiveWrite).unwrap();
         assert_eq!(m.active_leases().len(), 1);
         m.release(id).unwrap();
         assert_eq!(m.active_leases().len(), 0);
@@ -439,7 +430,8 @@ mod tests {
     fn shared_blocks_exclusive() {
         let mut m = mgr();
         m.acquire("a".into(), region("crate::foo"), LeaseMode::SharedRead).unwrap();
-        let err = m.acquire("b".into(), region("crate::foo"), LeaseMode::ExclusiveWrite).unwrap_err();
+        let err =
+            m.acquire("b".into(), region("crate::foo"), LeaseMode::ExclusiveWrite).unwrap_err();
         assert!(matches!(err, LeaseError::Conflict { .. }));
     }
 
@@ -449,7 +441,9 @@ mod tests {
     fn parent_exclusive_blocks_child_write() {
         let mut m = mgr();
         m.acquire("a".into(), region("crate::foo"), LeaseMode::ExclusiveWrite).unwrap();
-        let err = m.acquire("b".into(), region("crate::foo::bar"), LeaseMode::ExclusiveWrite).unwrap_err();
+        let err = m
+            .acquire("b".into(), region("crate::foo::bar"), LeaseMode::ExclusiveWrite)
+            .unwrap_err();
         assert!(matches!(err, LeaseError::Conflict { .. }));
     }
 
@@ -457,7 +451,8 @@ mod tests {
     fn child_exclusive_blocks_parent_write() {
         let mut m = mgr();
         m.acquire("a".into(), region("crate::foo::bar"), LeaseMode::ExclusiveWrite).unwrap();
-        let err = m.acquire("b".into(), region("crate::foo"), LeaseMode::ExclusiveWrite).unwrap_err();
+        let err =
+            m.acquire("b".into(), region("crate::foo"), LeaseMode::ExclusiveWrite).unwrap_err();
         assert!(matches!(err, LeaseError::Conflict { .. }));
     }
 
@@ -485,7 +480,8 @@ mod tests {
     fn restructuring_blocks_all() {
         let mut m = mgr();
         m.acquire("a".into(), region("crate::mod"), LeaseMode::Restructuring).unwrap();
-        let err = m.acquire("b".into(), region("crate::mod::item"), LeaseMode::SharedRead).unwrap_err();
+        let err =
+            m.acquire("b".into(), region("crate::mod::item"), LeaseMode::SharedRead).unwrap_err();
         assert!(matches!(err, LeaseError::Conflict { holder, .. } if holder == "a"));
     }
 

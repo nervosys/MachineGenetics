@@ -2,6 +2,7 @@ mod ast;
 mod consensus;
 mod cost;
 mod crdt;
+mod decompose;
 mod effects;
 mod elision;
 mod fmt;
