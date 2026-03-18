@@ -52,8 +52,8 @@
 | 42   | Semantic lease manager    | ✅      | SharedRead/ExclusiveWrite/Restructuring leases, region overlap, timeout expiry, wait-for deadlock detection; 24 tests (337 total) |
 | 43   | CRDT merge engine         | ✅      | Semantic CRDTs: InsertItem/RemoveItem/ModifyBody/ModifySignature/AddImpl/Rename, Lamport LWW, batch merge; 17 tests (354 total)   |
 | 44   | Consensus protocol        | ✅      | 5-phase Propose→ImpactAnalysis→Vote→Resolve→Integrate, quorum majority, phase enforcement; 13 tests (367 total)                   |
-| 45   | Task decomposition engine | ✅      | Task DAG, topological sort, parallel waves, critical path, capability-based agent assignment; 15 tests (382 total)                 |
-| 46   | Swarm message bus         | ✅      | Typed SwarmMessage, per-agent mailboxes, topic pub/sub, priority, depth limits, bus stats; 18 tests (400 total)                    |
+| 45   | Task decomposition engine | ✅      | Task DAG, topological sort, parallel waves, critical path, capability-based agent assignment; 15 tests (382 total)                |
+| 46   | Swarm message bus         | ✅      | Typed SwarmMessage, per-agent mailboxes, topic pub/sub, priority, depth limits, bus stats; 18 tests (400 total)                   |
 | 47   | Swarm SDK                 | ✅      | `redox_swarm` crate: derive macros, role taxonomy, SwarmAgent trait, example orchestrator                                         |
 | 48   | Semantic VCS              | ✅      | Operation-log-based version control, semantic branching/merging, intent-based history queries                                     |
 
@@ -61,7 +61,7 @@
 
 | Step | Title                     | Status | Description                                                                                                                 |
 | ---- | ------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------- |
-| 49   | Synthesis oracle          | ⬚      | Spec→candidate generation, candidate ranking by cost, verification of candidates against specs                              |
+| 49   | Synthesis oracle          | ✅      | Spec→candidate generation, candidate ranking by cost, verification of candidates against specs                              |
 | 50   | ACI subsystem             | ⬚      | Dynamic Warning Engine, Intelligent Debugging Engine, Performance Advisor, Swarm Coordination Intelligence, 8 RAP endpoints |
 | 51   | Verification certificates | ⬚      | Machine-checkable proofs: memory safety, data-race freedom, contract satisfaction, effect containment                       |
 | 52   | FFI binding generator     | ⬚      | Auto-bind from C headers (parse .h), Python stubs (.pyi), WASM (.wit); safe wrapper generation                              |

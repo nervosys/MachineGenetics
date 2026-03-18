@@ -21,6 +21,7 @@ mod semantic_vcs;
 mod skb;
 mod swarm_bus;
 mod swarm_sdk;
+mod synthesis;
 mod token_budget;
 mod types;
 mod verify;

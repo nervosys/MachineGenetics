@@ -125,10 +125,7 @@ struct Mailbox {
 
 impl Mailbox {
     fn new() -> Self {
-        Self {
-            queue: VecDeque::new(),
-            subscriptions: Vec::new(),
-        }
+        Self { queue: VecDeque::new(), subscriptions: Vec::new() }
     }
 }
 
@@ -229,8 +226,12 @@ impl MessageBus {
                 }
             }
             Recipient::TopicSubscribers => {
-                let subscribers: Vec<AgentId> = self.mailboxes.iter()
-                    .filter(|(aid, mb)| *aid != &envelope.sender && mb.subscriptions.contains(&topic))
+                let subscribers: Vec<AgentId> = self
+                    .mailboxes
+                    .iter()
+                    .filter(|(aid, mb)| {
+                        *aid != &envelope.sender && mb.subscriptions.contains(&topic)
+                    })
                     .map(|(aid, _)| aid.clone())
                     .collect();
                 for agent_id in subscribers {
@@ -245,11 +246,7 @@ impl MessageBus {
 
     /// Receive the next message for an agent (FIFO, priority-ordered).
     pub fn recv(&mut self, agent: &str) -> Option<Envelope> {
-        if let Some(mb) = self.mailboxes.get_mut(agent) {
-            mb.queue.pop_front()
-        } else {
-            None
-        }
+        if let Some(mb) = self.mailboxes.get_mut(agent) { mb.queue.pop_front() } else { None }
     }
 
     /// Peek at the next message without consuming it.
@@ -290,8 +287,10 @@ impl MessageBus {
         format!(
             "{{\"agents\":[{}],\"stats\":{{\"sent\":{},\"delivered\":{},\"dropped\":{},\"bytes\":{}}}}}",
             agents.join(","),
-            self.stats.total_sent, self.stats.total_delivered,
-            self.stats.total_dropped, self.stats.bytes_transferred
+            self.stats.total_sent,
+            self.stats.total_delivered,
+            self.stats.total_dropped,
+            self.stats.bytes_transferred
         )
     }
 
@@ -335,7 +334,14 @@ mod tests {
     #[test]
     fn send_to_agent() {
         let mut b = bus();
-        let id = b.send("alice".into(), Recipient::Agent("bob".into()), Topic::Heartbeat, Payload::Empty, None, 0);
+        let id = b.send(
+            "alice".into(),
+            Recipient::Agent("bob".into()),
+            Topic::Heartbeat,
+            Payload::Empty,
+            None,
+            0,
+        );
         assert!(id > 0);
         let env = b.recv("bob").unwrap();
         assert_eq!(env.sender, "alice");
@@ -365,7 +371,14 @@ mod tests {
     fn topic_subscribers_only() {
         let mut b = bus();
         b.subscribe("bob", Topic::CrdtOp);
-        b.send("alice".into(), Recipient::TopicSubscribers, Topic::CrdtOp, Payload::text("op1"), None, 0);
+        b.send(
+            "alice".into(),
+            Recipient::TopicSubscribers,
+            Topic::CrdtOp,
+            Payload::text("op1"),
+            None,
+            0,
+        );
         assert_eq!(b.pending_count("bob"), 1);
         assert_eq!(b.pending_count("carol"), 0); // not subscribed
     }
@@ -384,8 +397,22 @@ mod tests {
     #[test]
     fn higher_priority_first() {
         let mut b = bus();
-        b.send("alice".into(), Recipient::Agent("bob".into()), Topic::Heartbeat, Payload::text("low"), None, 0);
-        b.send("alice".into(), Recipient::Agent("bob".into()), Topic::Diagnostic, Payload::text("high"), None, 10);
+        b.send(
+            "alice".into(),
+            Recipient::Agent("bob".into()),
+            Topic::Heartbeat,
+            Payload::text("low"),
+            None,
+            0,
+        );
+        b.send(
+            "alice".into(),
+            Recipient::Agent("bob".into()),
+            Topic::Diagnostic,
+            Payload::text("high"),
+            None,
+            10,
+        );
         let first = b.recv("bob").unwrap();
         assert_eq!(first.priority, 10);
         let second = b.recv("bob").unwrap();
@@ -398,9 +425,30 @@ mod tests {
     fn mailbox_depth_drops_excess() {
         let mut b = bus();
         b.max_mailbox_depth = 2;
-        b.send("alice".into(), Recipient::Agent("bob".into()), Topic::Heartbeat, Payload::Empty, None, 0);
-        b.send("alice".into(), Recipient::Agent("bob".into()), Topic::Heartbeat, Payload::Empty, None, 0);
-        b.send("alice".into(), Recipient::Agent("bob".into()), Topic::Heartbeat, Payload::Empty, None, 0);
+        b.send(
+            "alice".into(),
+            Recipient::Agent("bob".into()),
+            Topic::Heartbeat,
+            Payload::Empty,
+            None,
+            0,
+        );
+        b.send(
+            "alice".into(),
+            Recipient::Agent("bob".into()),
+            Topic::Heartbeat,
+            Payload::Empty,
+            None,
+            0,
+        );
+        b.send(
+            "alice".into(),
+            Recipient::Agent("bob".into()),
+            Topic::Heartbeat,
+            Payload::Empty,
+            None,
+            0,
+        );
         assert_eq!(b.pending_count("bob"), 2);
         assert_eq!(b.stats.total_dropped, 1);
     }
@@ -410,7 +458,14 @@ mod tests {
     #[test]
     fn correlation_id_preserved() {
         let mut b = bus();
-        b.send("alice".into(), Recipient::Agent("bob".into()), Topic::TaskAssign, Payload::Empty, Some(42), 0);
+        b.send(
+            "alice".into(),
+            Recipient::Agent("bob".into()),
+            Topic::TaskAssign,
+            Payload::Empty,
+            Some(42),
+            0,
+        );
         let env = b.recv("bob").unwrap();
         assert_eq!(env.correlation, Some(42));
     }
@@ -447,8 +502,22 @@ mod tests {
     #[test]
     fn drain_clears_mailbox() {
         let mut b = bus();
-        b.send("alice".into(), Recipient::Agent("bob".into()), Topic::Heartbeat, Payload::Empty, None, 0);
-        b.send("alice".into(), Recipient::Agent("bob".into()), Topic::Heartbeat, Payload::Empty, None, 0);
+        b.send(
+            "alice".into(),
+            Recipient::Agent("bob".into()),
+            Topic::Heartbeat,
+            Payload::Empty,
+            None,
+            0,
+        );
+        b.send(
+            "alice".into(),
+            Recipient::Agent("bob".into()),
+            Topic::Heartbeat,
+            Payload::Empty,
+            None,
+            0,
+        );
         let msgs = b.drain("bob");
         assert_eq!(msgs.len(), 2);
         assert_eq!(b.pending_count("bob"), 0);
@@ -459,7 +528,14 @@ mod tests {
     #[test]
     fn stats_tracking() {
         let mut b = bus();
-        b.send("alice".into(), Recipient::Agent("bob".into()), Topic::Heartbeat, Payload::text("hi"), None, 0);
+        b.send(
+            "alice".into(),
+            Recipient::Agent("bob".into()),
+            Topic::Heartbeat,
+            Payload::text("hi"),
+            None,
+            0,
+        );
         assert_eq!(b.stats.total_sent, 1);
         assert_eq!(b.stats.total_delivered, 1);
         assert_eq!(b.stats.bytes_transferred, 2);
@@ -470,7 +546,14 @@ mod tests {
     #[test]
     fn peek_does_not_consume() {
         let mut b = bus();
-        b.send("alice".into(), Recipient::Agent("bob".into()), Topic::Heartbeat, Payload::Empty, None, 0);
+        b.send(
+            "alice".into(),
+            Recipient::Agent("bob".into()),
+            Topic::Heartbeat,
+            Payload::Empty,
+            None,
+            0,
+        );
         assert!(b.peek("bob").is_some());
         assert_eq!(b.pending_count("bob"), 1); // still there
     }
@@ -492,7 +575,14 @@ mod tests {
     fn custom_topic() {
         let mut b = bus();
         b.subscribe("bob", Topic::Custom("my.event".into()));
-        b.send("alice".into(), Recipient::TopicSubscribers, Topic::Custom("my.event".into()), Payload::Empty, None, 0);
+        b.send(
+            "alice".into(),
+            Recipient::TopicSubscribers,
+            Topic::Custom("my.event".into()),
+            Payload::Empty,
+            None,
+            0,
+        );
         assert_eq!(b.pending_count("bob"), 1);
     }
 
@@ -501,7 +591,14 @@ mod tests {
     #[test]
     fn send_to_unregistered_drops() {
         let mut b = bus();
-        b.send("alice".into(), Recipient::Agent("unknown".into()), Topic::Heartbeat, Payload::Empty, None, 0);
+        b.send(
+            "alice".into(),
+            Recipient::Agent("unknown".into()),
+            Topic::Heartbeat,
+            Payload::Empty,
+            None,
+            0,
+        );
         assert_eq!(b.stats.total_dropped, 1);
     }
 }

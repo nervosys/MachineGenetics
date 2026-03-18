@@ -98,12 +98,7 @@ pub struct TaskDag {
 
 impl TaskDag {
     pub fn new() -> Self {
-        Self {
-            tasks: BTreeMap::new(),
-            deps: BTreeMap::new(),
-            rdeps: BTreeMap::new(),
-            next_id: 1,
-        }
+        Self { tasks: BTreeMap::new(), deps: BTreeMap::new(), rdeps: BTreeMap::new(), next_id: 1 }
     }
 
     /// Add a task. Returns its ID.
@@ -153,11 +148,8 @@ impl TaskDag {
             *in_degree.entry(*id).or_default() = deps.len();
         }
 
-        let mut queue: VecDeque<TaskId> = in_degree
-            .iter()
-            .filter(|(_, d)| **d == 0)
-            .map(|(id, _)| *id)
-            .collect();
+        let mut queue: VecDeque<TaskId> =
+            in_degree.iter().filter(|(_, d)| **d == 0).map(|(id, _)| *id).collect();
 
         let mut order = Vec::new();
         while let Some(id) = queue.pop_front() {
@@ -178,11 +170,8 @@ impl TaskDag {
             Ok(order)
         } else {
             // Find a node still with non-zero in-degree for the error.
-            let remaining: Vec<TaskId> = in_degree
-                .iter()
-                .filter(|(_, d)| **d > 0)
-                .map(|(id, _)| *id)
-                .collect();
+            let remaining: Vec<TaskId> =
+                in_degree.iter().filter(|(_, d)| **d > 0).map(|(id, _)| *id).collect();
             Err(DecompError::CyclicDependency(remaining))
         }
     }
@@ -199,11 +188,8 @@ impl TaskDag {
         let mut remaining = self.tasks.len();
 
         while remaining > 0 {
-            let wave: Vec<TaskId> = in_degree
-                .iter()
-                .filter(|(_, d)| **d == 0)
-                .map(|(id, _)| *id)
-                .collect();
+            let wave: Vec<TaskId> =
+                in_degree.iter().filter(|(_, d)| **d == 0).map(|(id, _)| *id).collect();
 
             if wave.is_empty() {
                 let stuck: Vec<TaskId> = in_degree.keys().copied().collect();
@@ -240,11 +226,8 @@ impl TaskDag {
             if deps.is_empty() {
                 dist.insert(*id, (task_cost, None));
             } else {
-                let (best_dep, best_cost) = deps
-                    .iter()
-                    .map(|d| (*d, dist[d].0))
-                    .max_by_key(|(_, c)| *c)
-                    .unwrap();
+                let (best_dep, best_cost) =
+                    deps.iter().map(|d| (*d, dist[d].0)).max_by_key(|(_, c)| *c).unwrap();
                 dist.insert(*id, (best_cost + task_cost, Some(best_dep)));
             }
         }
@@ -279,10 +262,8 @@ impl TaskDag {
         }
 
         let mut assignments = Vec::new();
-        let ready: Vec<TaskId> = self.tasks.values()
-            .filter(|t| t.state == TaskState::Ready)
-            .map(|t| t.id)
-            .collect();
+        let ready: Vec<TaskId> =
+            self.tasks.values().filter(|t| t.state == TaskState::Ready).map(|t| t.id).collect();
 
         for tid in ready {
             let task = &self.tasks[&tid];
@@ -348,13 +329,13 @@ impl TaskDag {
     // ── Internal ──────────────────────────────────────────────────
 
     fn update_readiness(&mut self) {
-        let completed: BTreeSet<TaskId> = self.tasks.values()
-            .filter(|t| t.state == TaskState::Completed)
-            .map(|t| t.id)
-            .collect();
+        let completed: BTreeSet<TaskId> =
+            self.tasks.values().filter(|t| t.state == TaskState::Completed).map(|t| t.id).collect();
 
         // Collect state updates to avoid borrow conflict.
-        let updates: Vec<(TaskId, TaskState)> = self.deps.iter()
+        let updates: Vec<(TaskId, TaskState)> = self
+            .deps
+            .iter()
             .filter_map(|(id, deps)| {
                 let task = &self.tasks[id];
                 if task.state == TaskState::Pending || task.state == TaskState::Blocked {
@@ -374,10 +355,8 @@ impl TaskDag {
         }
 
         // Tasks with no deps that are still Pending become Ready.
-        let no_dep_ids: Vec<TaskId> = self.deps.iter()
-            .filter(|(_, deps)| deps.is_empty())
-            .map(|(id, _)| *id)
-            .collect();
+        let no_dep_ids: Vec<TaskId> =
+            self.deps.iter().filter(|(_, deps)| deps.is_empty()).map(|(id, _)| *id).collect();
         for id in no_dep_ids {
             let task = self.tasks.get_mut(&id).unwrap();
             if task.state == TaskState::Pending {
@@ -528,10 +507,7 @@ mod tests {
         let mut d = dag();
         let a = d.add_task("parse", 5, &["read"]);
         let b = d.add_task("gen", 5, &["write"]);
-        let agents = vec![
-            agent("reader", &["read"], 2),
-            agent("writer", &["write", "read"], 2),
-        ];
+        let agents = vec![agent("reader", &["read"], 2), agent("writer", &["write", "read"], 2)];
         let assignments = d.assign_agents(&agents).unwrap();
         assert_eq!(assignments.len(), 2);
         // "parse" requires "read" → assigned to "reader" or "writer"
