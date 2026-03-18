@@ -55,7 +55,7 @@
 | 45   | Task decomposition engine | ✅      | Task DAG, topological sort, parallel waves, critical path, capability-based agent assignment; 15 tests (382 total)                 |
 | 46   | Swarm message bus         | ✅      | Typed SwarmMessage, per-agent mailboxes, topic pub/sub, priority, depth limits, bus stats; 18 tests (400 total)                    |
 | 47   | Swarm SDK                 | ✅      | `redox_swarm` crate: derive macros, role taxonomy, SwarmAgent trait, example orchestrator                                         |
-| 48   | Semantic VCS              | ⬚      | Operation-log-based version control, semantic branching/merging, intent-based history queries                                     |
+| 48   | Semantic VCS              | ✅      | Operation-log-based version control, semantic branching/merging, intent-based history queries                                     |
 
 ## Phase E: Advanced Subsystems (Steps 49–55)
 
