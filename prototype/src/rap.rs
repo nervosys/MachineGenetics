@@ -610,6 +610,26 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             })
         }
 
+        "manifest/generate" => {
+            // Generate a capability manifest for the parsed module.
+            let crate_name = params.get("crate_name").and_then(|v| v.as_str()).unwrap_or("unnamed");
+            let version = params.get("version").and_then(|v| v.as_str()).unwrap_or("0.0.0");
+            let tokens = lexer::lex(source);
+            match parser::parse(&tokens) {
+                Ok(module) => {
+                    let m = crate::manifest::generate(&module, crate_name, version);
+                    serde_json::json!({
+                        "ok": true,
+                        "manifest": crate::manifest::to_json_value(&m)
+                    })
+                }
+                Err(e) => serde_json::json!({
+                    "ok": false,
+                    "error": { "line": e.line, "col": e.col, "message": e.message }
+                }),
+            }
+        }
+
         _ => serde_json::json!({
             "error": format!("unknown method: {method}")
         }),
@@ -854,6 +874,27 @@ mod tests {
         assert_eq!(r["ok"], true);
         let exts = r["extensions"].as_array().unwrap();
         assert!(exts.len() > 20);
+    }
+
+    #[test]
+    fn test_manifest_generate() {
+        let src = "agent Bot { capabilities: [read_source, net] }\n+f check(x: i32) -> bool { x > 0 }";
+        let r = call("manifest/generate", serde_json::json!({ "source": src, "crate_name": "test_crate", "version": "1.0.0" }));
+        assert_eq!(r["ok"], true);
+        let m = &r["manifest"];
+        assert_eq!(m["name"], "test_crate");
+        assert_eq!(m["version"], "1.0.0");
+        assert_eq!(m["agents"].as_array().unwrap().len(), 1);
+        assert_eq!(m["agents"][0]["name"], "Bot");
+        assert!(m["capability_index"].as_array().unwrap().len() >= 2);
+    }
+
+    #[test]
+    fn test_manifest_generate_empty() {
+        let r = call("manifest/generate", src_params("f main() {}"));
+        assert_eq!(r["ok"], true);
+        let m = &r["manifest"];
+        assert!(m["agents"].as_array().unwrap().is_empty());
     }
 
     #[test]

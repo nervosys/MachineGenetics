@@ -42,7 +42,7 @@
 | 37   | redoxfmt service           | ✅      | `--compact` (min tokens) and `--expand` (human-readable), bidirectional lossless AST conversion                                                                                           |
 | 38   | Agent discovery attributes | ✅      | `@as("...")`, `@ac("...")`, `@ax("...")`, `@ao("...")`, `@ae("...")` in lexer/parser/AST                                                                                                  |
 | 39   | Grammar extension system   | ✅      | `grammar_extension!` macro, Redox.toml registration, namespace-scoped discovery, frequency promotion                                                                                      |
-| 40   | Capability manifests       | ⬚      | JSON manifest generation per crate, capability-indexed search in Forge                                                                                                                    |
+| 40   | Capability manifests       | ✅      | JSON manifest generation per crate, capability-indexed search in Forge                                                                                                                    |
 | 41   | MLIR dialect definition    | ⬚      | Define Redox MLIR dialect ops: ownership, effects, contracts, perf annotations as first-class MLIR operations (textual spec)                                                              |
 
 ## Phase D: Swarm Runtime (Steps 42–48)

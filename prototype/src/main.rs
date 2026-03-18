@@ -8,6 +8,7 @@ mod heal;
 mod hir;
 mod legacy;
 mod lexer;
+mod manifest;
 mod mlir;
 mod parser;
 mod rap;
