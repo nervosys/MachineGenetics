@@ -4,15 +4,15 @@
 
 use std::sync::Arc;
 
-use rustc_ast::{LitKind, StrStyle};
-use rustc_errors::Applicability;
-use rustc_hir::{BlockCheckMode, Expr, ExprKind, UnsafeSource};
-use rustc_lexer::{FrontmatterAllowed, LiteralKind, TokenKind, tokenize};
-use rustc_lint::{EarlyContext, LateContext};
-use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
-use rustc_span::source_map::{SourceMap, original_sp};
-use rustc_span::{
+use redox_ast::{LitKind, StrStyle};
+use redox_errors::Applicability;
+use redox_hir::{BlockCheckMode, Expr, ExprKind, UnsafeSource};
+use redox_lexer::{FrontmatterAllowed, LiteralKind, TokenKind, tokenize};
+use redox_lint::{EarlyContext, LateContext};
+use redox_middle::ty::TyCtxt;
+use redox_session::Session;
+use redox_span::source_map::{SourceMap, original_sp};
+use redox_span::{
     BytePos, DUMMY_SP, DesugaringKind, Pos, RelativeBytePos, SourceFile, SourceFileAndLine, Span, SpanData,
     SyntaxContext, hygiene,
 };
@@ -35,7 +35,7 @@ impl HasSession for TyCtxt<'_> {
 }
 impl HasSession for EarlyContext<'_> {
     fn sess(&self) -> &Session {
-        ::rustc_lint::LintContext::sess(self)
+        ::redox_lint::LintContext::sess(self)
     }
 }
 impl HasSession for LateContext<'_> {

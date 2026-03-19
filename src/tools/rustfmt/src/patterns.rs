@@ -1,5 +1,5 @@
-use rustc_ast::ast::{self, BindingMode, ByRef, Pat, PatField, PatKind, RangeEnd, RangeSyntax};
-use rustc_span::{BytePos, Span};
+use redox_ast::ast::{self, BindingMode, ByRef, Pat, PatField, PatKind, RangeEnd, RangeSyntax};
+use redox_span::{BytePos, Span};
 
 use crate::comment::{FindUncommented, combine_strs_with_missing_comments};
 use crate::config::StyleEdition;
@@ -361,7 +361,7 @@ pub(crate) fn rewrite_range_pat<T: Rewrite>(
     shape: Shape,
     lhs: &Option<Box<T>>,
     rhs: &Option<Box<T>>,
-    end_kind: &rustc_span::Spanned<RangeEnd>,
+    end_kind: &redox_span::Spanned<RangeEnd>,
     span: Span,
 ) -> RewriteResult {
     let infix = match end_kind.node {

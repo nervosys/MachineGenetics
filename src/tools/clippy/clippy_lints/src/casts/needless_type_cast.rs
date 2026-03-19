@@ -2,14 +2,14 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::{Descend, for_each_expr, for_each_expr_without_closures};
 use core::ops::ControlFlow;
-use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{BlockCheckMode, Body, Expr, ExprKind, HirId, LetStmt, PatKind, StmtKind, UnsafeSource};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{Ty, TypeVisitableExt};
-use rustc_span::Span;
+use redox_ast::ast::{LitFloatType, LitIntType, LitKind};
+use redox_data_structures::fx::FxHashMap;
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::{BlockCheckMode, Body, Expr, ExprKind, HirId, LetStmt, PatKind, StmtKind, UnsafeSource};
+use redox_lint::LateContext;
+use redox_middle::ty::{Ty, TypeVisitableExt};
+use redox_span::Span;
 
 use super::NEEDLESS_TYPE_CAST;
 
@@ -44,7 +44,7 @@ pub(super) fn check<'a>(cx: &LateContext<'a>, body: &Body<'a>) {
         ControlFlow::<()>::Continue(())
     });
 
-    #[allow(rustc::potential_query_instability)]
+    #[allow(redox::potential_query_instability)]
     let mut binding_vec: Vec<_> = bindings.into_iter().collect();
     binding_vec.sort_by_key(|(_, info)| info.ty_span.lo());
 
@@ -55,7 +55,7 @@ pub(super) fn check<'a>(cx: &LateContext<'a>, body: &Body<'a>) {
 
 fn collect_binding_from_let<'a>(
     cx: &LateContext<'a>,
-    let_expr: &rustc_hir::LetExpr<'a>,
+    let_expr: &redox_hir::LetExpr<'a>,
     bindings: &mut FxHashMap<HirId, BindingInfo<'a>>,
 ) {
     if let_expr.ty.is_none()
@@ -202,7 +202,7 @@ fn is_cast_in_generic_context<'a>(cx: &LateContext<'a>, cast_expr: &Expr<'a>) ->
         let parent = cx.tcx.hir_node(parent_id);
 
         match parent {
-            rustc_hir::Node::Expr(parent_expr) => {
+            redox_hir::Node::Expr(parent_expr) => {
                 match &parent_expr.kind {
                     ExprKind::Closure(_) => return false,
                     ExprKind::Call(callee, _) => {
@@ -240,7 +240,7 @@ fn can_coerce_to_target_type(expr: &Expr<'_>) -> bool {
             lit.node,
             LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed)
         ),
-        ExprKind::Unary(rustc_hir::UnOp::Neg, inner) => can_coerce_to_target_type(inner),
+        ExprKind::Unary(redox_hir::UnOp::Neg, inner) => can_coerce_to_target_type(inner),
         ExprKind::Binary(_, lhs, rhs) => can_coerce_to_target_type(lhs) && can_coerce_to_target_type(rhs),
         _ => false,
     }
@@ -258,7 +258,7 @@ fn check_binding_usages<'a>(cx: &LateContext<'a>, body: &Body<'a>, hir_id: HirId
             let parent_id = cx.tcx.parent_hir_id(expr.hir_id);
             let parent = cx.tcx.hir_node(parent_id);
 
-            let usage = if let rustc_hir::Node::Expr(parent_expr) = parent
+            let usage = if let redox_hir::Node::Expr(parent_expr) = parent
                 && let ExprKind::Cast(..) = parent_expr.kind
                 && !parent_expr.span.from_expansion()
             {

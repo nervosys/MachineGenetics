@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef;
-use rustc_ast::LitKind;
-use rustc_data_structures::packed::Pu128;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::LateContext;
-use rustc_span::{Span, Spanned, sym};
+use redox_ast::LitKind;
+use redox_data_structures::packed::Pu128;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::LateContext;
+use redox_span::{Span, Spanned, sym};
 
 use super::VEC_RESIZE_TO_ZERO;
 

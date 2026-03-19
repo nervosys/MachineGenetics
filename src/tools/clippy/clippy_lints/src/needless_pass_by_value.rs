@@ -4,23 +4,23 @@ use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env_from_iter, is_copy};
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use clippy_utils::{is_self, peel_hir_ty_options, strip_pat_refs, sym};
-use rustc_abi::ExternAbi;
-use rustc_errors::{Applicability, Diag};
-use rustc_hir::intravisit::FnKind;
-use rustc_hir::{
+use redox_abi::ExternAbi;
+use redox_errors::{Applicability, Diag};
+use redox_hir::intravisit::FnKind;
+use redox_hir::{
     Attribute, BindingMode, Body, ExprKind, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability,
     Node, PatKind, QPath, TyKind,
 };
-use rustc_hir_typeck::expr_use_visitor as euv;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
-use rustc_session::declare_lint_pass;
-use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::kw;
-use rustc_span::{Span, Symbol};
-use rustc_trait_selection::traits;
-use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
+use redox_hir_typeck::expr_use_visitor as euv;
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::mir::FakeReadCause;
+use redox_middle::ty::{self, Ty, TypeVisitableExt};
+use redox_session::declare_lint_pass;
+use redox_span::def_id::LocalDefId;
+use redox_span::symbol::kw;
+use redox_span::{Span, Symbol};
+use redox_trait_selection::traits;
+use redox_trait_selection::traits::misc::type_allowed_to_implement_copy;
 
 use std::borrow::Cow;
 use std::ops::ControlFlow;
@@ -211,7 +211,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             cx.param_env,
                             ty,
                             traits::ObligationCause::dummy_with_span(span),
-                            rustc_hir::Safety::Safe,
+                            redox_hir::Safety::Safe,
                         )
                         .is_ok()
                     {
@@ -336,7 +336,7 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
 
     fn mutate(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId) {}
 
-    fn fake_read(&mut self, _: &rustc_hir_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(&mut self, _: &redox_hir_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 fn get_spans<'tcx>(

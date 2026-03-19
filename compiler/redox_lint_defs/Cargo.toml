@@ -1,0 +1,16 @@
+[package]
+name = "redox_lint_defs"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+redox_ast = { path = "../redox_ast" }
+redox_data_structures = { path = "../redox_data_structures" }
+redox_error_messages = { path = "../redox_error_messages" }
+redox_hir_id = { path = "../redox_hir_id" }
+redox_macros = { path = "../redox_macros" }
+redox_serialize = { path = "../redox_serialize" }
+redox_span = { path = "../redox_span" }
+serde = { version = "1.0.125", features = ["derive"] }
+# tidy-alphabetical-end

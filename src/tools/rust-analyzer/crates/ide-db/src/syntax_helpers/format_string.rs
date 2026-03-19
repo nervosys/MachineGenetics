@@ -41,7 +41,7 @@ pub enum FormatSpecifier {
     Escape,
 }
 
-// FIXME: Remove this, we can use rustc_format_parse instead
+// FIXME: Remove this, we can use redox_format_parse instead
 pub fn lex_format_specifiers(
     string: &ast::String,
     mut callback: &mut dyn FnMut(TextRange, FormatSpecifier),

@@ -678,7 +678,7 @@ macro_rules! bar {
 fn infer_builtin_macros_line() {
     check_infer(
         r#"
-        #[rustc_builtin_macro]
+        #[redox_builtin_macro]
         macro_rules! line {() => {}}
 
         fn main() {
@@ -697,7 +697,7 @@ fn infer_builtin_macros_line() {
 fn infer_builtin_macros_file() {
     check_infer(
         r#"
-        #[rustc_builtin_macro]
+        #[redox_builtin_macro]
         macro_rules! file {() => {}}
 
         fn main() {
@@ -716,7 +716,7 @@ fn infer_builtin_macros_file() {
 fn infer_builtin_macros_column() {
     check_infer(
         r#"
-        #[rustc_builtin_macro]
+        #[redox_builtin_macro]
         macro_rules! column {() => {}}
 
         fn main() {
@@ -735,7 +735,7 @@ fn infer_builtin_macros_column() {
 fn infer_builtin_macros_concat() {
     check_infer(
         r#"
-        #[rustc_builtin_macro]
+        #[redox_builtin_macro]
         macro_rules! concat {() => {}}
 
         fn main() {
@@ -755,7 +755,7 @@ fn infer_builtin_macros_include() {
     check_types(
         r#"
 //- /main.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include {() => {}}
 
 include!("foo.rs");
@@ -775,7 +775,7 @@ fn infer_builtin_macros_include_expression() {
     check_types(
         r#"
 //- /main.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include {() => {}}
 fn main() {
     let i = include!("bla.rs");
@@ -793,7 +793,7 @@ fn infer_builtin_macros_include_child_mod() {
     check_types(
         r#"
 //- /main.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include {() => {}}
 
 include!("f/foo.rs");
@@ -816,7 +816,7 @@ fn infer_builtin_macros_include_str() {
     check_types(
         r#"
 //- /main.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include_str {() => {}}
 
 fn main() {
@@ -835,9 +835,9 @@ fn infer_builtin_macros_include_str_with_lazy_nested() {
     check_types(
         r#"
 //- /main.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat {() => {}}
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include_str {() => {}}
 
 macro_rules! m {
@@ -865,7 +865,7 @@ fn benchmark_include_macro() {
     let data = bench_fixture::big_struct();
     let fixture = r#"
 //- /main.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include {() => {}}
 
 include!("foo.rs");
@@ -888,10 +888,10 @@ fn infer_builtin_macros_include_concat() {
     check_types(
         r#"
 //- /main.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include {() => {}}
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat {() => {}}
 
 include!(concat!("f", "oo.rs"));
@@ -911,13 +911,13 @@ fn infer_builtin_macros_include_concat_with_bad_env_should_failed() {
     check_types(
         r#"
 //- /main.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include {() => {}}
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat {() => {}}
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! env {() => {}}
 
 include!(concat!(env!("OUT_DIR"), "/foo.rs"));
@@ -936,7 +936,7 @@ fn bar() -> u32 {0}
 fn infer_builtin_macros_include_itself_should_failed() {
     check_types(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include {() => {}}
 
 include!("main.rs");
@@ -954,7 +954,7 @@ fn infer_builtin_macros_concat_with_lazy() {
         r#"
         macro_rules! hello {() => {"hello"}}
 
-        #[rustc_builtin_macro]
+        #[redox_builtin_macro]
         macro_rules! concat {() => {}}
 
         fn main() {
@@ -974,7 +974,7 @@ fn infer_builtin_macros_env() {
     check_types(
         r#"
         //- /main.rs env:foo=bar
-        #[rustc_builtin_macro]
+        #[redox_builtin_macro]
         macro_rules! env {() => {}}
 
         fn main() {

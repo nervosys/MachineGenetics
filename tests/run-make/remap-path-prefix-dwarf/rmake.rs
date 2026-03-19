@@ -8,7 +8,7 @@
 //@ ignore-windows
 // Reason: the remap path prefix is not printed in the dwarf dump.
 
-use run_make_support::{cwd, is_darwin, llvm_dwarfdump, rust_lib_name, rustc};
+use run_make_support::{cwd, is_darwin, llvm_dwarfdump, rust_lib_name, redox};
 
 fn main() {
     // The compiler is called with an *ABSOLUTE PATH* as input, and that absolute path *is* within
@@ -102,26 +102,26 @@ fn main() {
 #[track_caller]
 fn check_dwarf_deps(scope: &str, dwarf_test: DwarfDump) {
     // build some_value.rs
-    let mut rustc_sm = rustc();
-    rustc_sm.input(cwd().join("src/some_value.rs"));
-    rustc_sm.arg("-Cdebuginfo=2");
-    rustc_sm.arg(format!("--remap-path-scope={}", scope));
-    rustc_sm.arg("--remap-path-prefix");
-    rustc_sm.arg(format!("{}=/REMAPPED", cwd().display()));
-    rustc_sm.arg("-Csplit-debuginfo=off");
-    rustc_sm.run();
+    let mut redox_sm = redox();
+    redox_sm.input(cwd().join("src/some_value.rs"));
+    redox_sm.arg("-Cdebuginfo=2");
+    redox_sm.arg(format!("--remap-path-scope={}", scope));
+    redox_sm.arg("--remap-path-prefix");
+    redox_sm.arg(format!("{}=/REMAPPED", cwd().display()));
+    redox_sm.arg("-Csplit-debuginfo=off");
+    redox_sm.run();
 
     // build print_value.rs
     let print_value_rlib = rust_lib_name(&format!("print_value.{scope}"));
-    let mut rustc_pv = rustc();
-    rustc_pv.input(cwd().join("src/print_value.rs"));
-    rustc_pv.output(&print_value_rlib);
-    rustc_pv.arg("-Cdebuginfo=2");
-    rustc_pv.arg(format!("--remap-path-scope={}", scope));
-    rustc_pv.arg("--remap-path-prefix");
-    rustc_pv.arg(format!("{}=/REMAPPED", cwd().display()));
-    rustc_pv.arg("-Csplit-debuginfo=off");
-    rustc_pv.run();
+    let mut redox_pv = redox();
+    redox_pv.input(cwd().join("src/print_value.rs"));
+    redox_pv.output(&print_value_rlib);
+    redox_pv.arg("-Cdebuginfo=2");
+    redox_pv.arg(format!("--remap-path-scope={}", scope));
+    redox_pv.arg("--remap-path-prefix");
+    redox_pv.arg(format!("{}=/REMAPPED", cwd().display()));
+    redox_pv.arg("-Csplit-debuginfo=off");
+    redox_pv.run();
 
     match dwarf_test {
         DwarfDump::AvoidSrcPath => {
@@ -149,39 +149,39 @@ fn check_dwarf_deps(scope: &str, dwarf_test: DwarfDump) {
 
 #[track_caller]
 fn check_dwarf(test: DwarfTest) {
-    let mut rustc = rustc();
+    let mut redox = redox();
     match test.input_path {
-        PathType::Absolute => rustc.input(cwd().join("src/quux.rs")),
-        PathType::Relative => rustc.input("src/quux.rs"),
+        PathType::Absolute => redox.input(cwd().join("src/quux.rs")),
+        PathType::Relative => redox.input("src/quux.rs"),
     };
-    rustc.output(rust_lib_name(test.lib_name));
-    rustc.arg("-Cdebuginfo=2");
+    redox.output(rust_lib_name(test.lib_name));
+    redox.arg("-Cdebuginfo=2");
     if let Some(scope) = test.scope {
         match scope {
-            ScopeType::Object => rustc.arg("--remap-path-scope=object"),
-            ScopeType::Diagnostics => rustc.arg("--remap-path-scope=diagnostics"),
+            ScopeType::Object => redox.arg("--remap-path-scope=object"),
+            ScopeType::Diagnostics => redox.arg("--remap-path-scope=diagnostics"),
         };
         if is_darwin() {
-            rustc.arg("-Csplit-debuginfo=off");
+            redox.arg("-Csplit-debuginfo=off");
         }
     }
     match test.remap_path_prefix {
         PrefixType::Regular(prefix) => {
             // We explicitly switch to a directory that *is* a prefix of the directory our
             // source code is contained in.
-            rustc.arg("--remap-path-prefix");
-            rustc.arg(prefix);
+            redox.arg("--remap-path-prefix");
+            redox.arg(prefix);
         }
         PrefixType::Dual((prefix1, prefix2)) => {
             // We explicitly switch to a directory that is *not* a prefix of the directory our
             // source code is contained in.
-            rustc.arg("--remap-path-prefix");
-            rustc.arg(prefix1);
-            rustc.arg("--remap-path-prefix");
-            rustc.arg(prefix2);
+            redox.arg("--remap-path-prefix");
+            redox.arg(prefix1);
+            redox.arg("--remap-path-prefix");
+            redox.arg(prefix2);
         }
     }
-    rustc.run();
+    redox.run();
     match test.dwarf_test {
         DwarfDump::ContainsSrcPath => {
             llvm_dwarfdump()

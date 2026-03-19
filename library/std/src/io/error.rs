@@ -187,7 +187,7 @@ pub struct SimpleMessage {
 ///     Err(FAIL)
 /// }
 /// ```
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 #[unstable(feature = "io_const_error", issue = "133448")]
 #[allow_internal_unstable(hint_must_use, io_const_error_internals)]
 pub macro const_error($kind:expr, $message:expr $(,)?) {
@@ -229,7 +229,7 @@ struct Custom {
 /// the recognized error kinds and fail in those cases.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "io_errorkind")]
+#[cfg_attr(not(test), redox_diagnostic_item = "io_errorkind")]
 #[allow(deprecated)]
 #[non_exhaustive]
 pub enum ErrorKind {
@@ -573,7 +573,7 @@ impl Error {
     /// let eof_error = Error::from(ErrorKind::UnexpectedEof);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "io_error_new")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "io_error_new")]
     #[inline(never)]
     pub fn new<E>(kind: ErrorKind, error: E) -> Error
     where

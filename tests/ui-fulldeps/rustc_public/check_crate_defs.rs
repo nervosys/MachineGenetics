@@ -5,17 +5,17 @@
 //@ ignore-cross-compile
 //@ ignore-remote
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_hir;
-extern crate rustc_middle;
+extern crate redox_hir;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
+extern crate redox_driver;
+extern crate redox_interface;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
-use rustc_public::CrateDef;
+use redox_public::CrateDef;
 use std::collections::HashSet;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -25,7 +25,7 @@ const CRATE_NAME: &str = "crate_defs";
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
     // Find items in the local crate.
-    let local = rustc_public::local_crate();
+    let local = redox_public::local_crate();
     check_items(
         &local.statics(),
         &["crate_defs::PRIVATE_STATIC", "crate_defs::dummy::PUBLIC_STATIC"],
@@ -46,7 +46,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     // Find items inside core crate.
     // FIXME: We are currently missing primitive type methods and trait implementations for external
     // crates.
-    let core = rustc_public::find_crates("core").pop().expect("Cannot find `core` crate");
+    let core = redox_public::find_crates("core").pop().expect("Cannot find `core` crate");
     contains(
         &core.fn_defs(),
         &[
@@ -87,7 +87,7 @@ fn main() {
     let path = "crate_definitions.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

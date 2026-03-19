@@ -15,7 +15,7 @@ use crate::{MacroCallStyle, ParseError};
 
 pub(crate) fn parse_rule_style(src: &mut TtIter<'_>) -> Result<MacroCallStyle, ParseError> {
     // Skip an optional `unsafe`. This is only actually allowed for `attr`
-    // rules, but we'll let rustc worry about that.
+    // rules, but we'll let redox worry about that.
     if let Some(TtElement::Leaf(tt::Leaf::Ident(ident))) = src.peek()
         && ident.sym == sym::unsafe_
     {

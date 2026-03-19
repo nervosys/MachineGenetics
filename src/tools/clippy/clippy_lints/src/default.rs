@@ -2,15 +2,15 @@ use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{has_drop, is_copy};
 use clippy_utils::{contains_name, get_parent_expr, in_automatically_derived, is_expr_default, is_from_proc_macro};
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind, StructTailExpr};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
-use rustc_middle::ty::print::with_forced_trimmed_paths;
-use rustc_session::impl_lint_pass;
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{Span, sym};
+use redox_data_structures::fx::FxHashSet;
+use redox_errors::Applicability;
+use redox_hir::{Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind, StructTailExpr};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty;
+use redox_middle::ty::print::with_forced_trimmed_paths;
+use redox_session::impl_lint_pass;
+use redox_span::symbol::{Ident, Symbol};
+use redox_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does

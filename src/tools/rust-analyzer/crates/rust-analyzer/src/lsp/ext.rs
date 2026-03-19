@@ -15,7 +15,7 @@ use lsp_types::{
     TextDocumentIdentifier, WorkDoneProgressParams, notification::Notification,
 };
 use paths::Utf8PathBuf;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 pub enum InternalTestingFetchConfig {}

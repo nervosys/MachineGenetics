@@ -2,14 +2,14 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::return_ty;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_with_applicability};
 use clippy_utils::sugg::DiagExt;
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{Attribute, HirIdSet};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::AssocKind;
-use rustc_session::impl_lint_pass;
-use rustc_span::sym;
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_hir::attrs::AttributeKind;
+use redox_hir::{Attribute, HirIdSet};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty::AssocKind;
+use redox_session::impl_lint_pass;
+use redox_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does

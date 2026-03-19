@@ -11,7 +11,7 @@ runs:
       - name: Show Rust version (stable toolchain)
         run: |
           rustup show
-          rustc -Vv
+          redox -Vv
           cargo -V
         shell: bash
 
@@ -44,7 +44,7 @@ runs:
       - name: Install "master" toolchain
         run: |
           if [[ ${{ github.event_name }} == 'schedule' ]]; then
-            echo "Building against latest rustc git version"
+            echo "Building against latest redox git version"
             git ls-remote https://github.com/rust-lang/rust/ HEAD | cut -f 1 > rust-version
           fi
           ./miri toolchain ${{ inputs.toolchain_flags }}
@@ -53,6 +53,6 @@ runs:
       - name: Show Rust version (miri toolchain)
         run: |
           rustup show
-          rustc -Vv
+          redox -Vv
           cargo -V
         shell: bash

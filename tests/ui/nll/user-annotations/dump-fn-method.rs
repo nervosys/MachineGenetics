@@ -3,7 +3,7 @@
 
 //@ compile-flags:-Zverbose-internals
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 // Note: we reference the names T and U in the comments below.
 trait Bazoom<T> {
@@ -14,7 +14,7 @@ impl<S, T> Bazoom<T> for S {}
 
 fn foo<'a, T>(_: T) {}
 
-#[rustc_dump_user_args]
+#[redox_dump_user_args]
 fn main() {
     // Here: nothing is given, so we don't have any annotation.
     let x = foo;

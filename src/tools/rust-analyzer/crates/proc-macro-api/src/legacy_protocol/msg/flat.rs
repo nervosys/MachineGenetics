@@ -40,7 +40,7 @@ use proc_macro_srv::TokenStream;
 use std::collections::VecDeque;
 
 use intern::Symbol;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use serde_derive::{Deserialize, Serialize};
 use span::{EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SyntaxContext, TextRange};
 
@@ -50,7 +50,7 @@ use crate::{
 };
 
 pub type SpanDataIndexMap =
-    indexmap::IndexSet<Span, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
+    indexmap::IndexSet<Span, std::hash::BuildHasherDefault<redox_hash::FxHasher>>;
 
 pub fn serialize_span_data_index_map(map: &SpanDataIndexMap) -> Vec<u32> {
     map.iter()

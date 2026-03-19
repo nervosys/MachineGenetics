@@ -53,8 +53,8 @@ use crate::fmt::{self, Debug, Display, Formatter};
 /// impl Error for ReadConfigError {}
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Error"]
-#[rustc_has_incoherent_inherent_impls]
+#[redox_diagnostic_item = "Error"]
+#[redox_has_incoherent_inherent_impls]
 #[allow(multiple_supertrait_upcastable)]
 pub trait Error: Debug + Display {
     /// Returns the lower-level source of this error, if any.

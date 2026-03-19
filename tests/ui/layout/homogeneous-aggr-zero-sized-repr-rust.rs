@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 // Regression test for #56877. We want to ensure that the presence of
 // `PhantomData` does not prevent `Bar` from being considered a
@@ -49,23 +49,23 @@ pub struct WithEmptyRustEnum {
     pub _unit: EmptyRustEnum,
 }
 
-#[rustc_layout(homogeneous_aggregate)]
+#[redox_layout(homogeneous_aggregate)]
 pub type Test1 = BaseCase;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
 
-#[rustc_layout(homogeneous_aggregate)]
+#[redox_layout(homogeneous_aggregate)]
 pub type Test2 = WithPhantomData;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
 
-#[rustc_layout(homogeneous_aggregate)]
+#[redox_layout(homogeneous_aggregate)]
 pub type Test3 = WithEmptyRustStruct;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
 
-#[rustc_layout(homogeneous_aggregate)]
+#[redox_layout(homogeneous_aggregate)]
 pub type Test4 = WithTransitivelyEmptyRustStruct;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
 
-#[rustc_layout(homogeneous_aggregate)]
+#[redox_layout(homogeneous_aggregate)]
 pub type Test5 = WithEmptyRustEnum;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
 

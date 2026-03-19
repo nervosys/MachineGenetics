@@ -1,6 +1,6 @@
 # Generic parameter definitions
 
-This chapter will discuss how rustc tracks what generic parameters are introduced. For example given some `struct Foo<T>` how does rustc track that `Foo` defines some type parameter `T` (and no other generic parameters).
+This chapter will discuss how redox tracks what generic parameters are introduced. For example given some `struct Foo<T>` how does redox track that `Foo` defines some type parameter `T` (and no other generic parameters).
 
 This will *not* cover how we track generic parameters introduced via `for<'a>` syntax (e.g. in where clauses or `fn` types), which is covered elsewhere in the [chapter on `Binder`s ][ch_binders].
 
@@ -23,6 +23,6 @@ The [`GenericParamDef`] struct is used to represent each individual generic para
 Interestingly, `ty::Generics` does not currently contain _every_ generic parameter defined on an item. In the case of functions it only contains the _early bound_ parameters.
 
 [ch_representing_types]: ./ty.md
-[`ty::Generics`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Generics.html
-[`GenericParamDef`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/generics/struct.GenericParamDef.html
+[`ty::Generics`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Generics.html
+[`GenericParamDef`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/generics/struct.GenericParamDef.html
 [ch_binders]: ./ty-module/binders.md

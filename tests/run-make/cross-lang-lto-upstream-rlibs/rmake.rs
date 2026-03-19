@@ -7,14 +7,14 @@
 // See https://github.com/rust-lang/rust/pull/53031
 
 use run_make_support::{
-    cwd, has_extension, has_prefix, has_suffix, llvm_ar, rfs, rustc, shallow_find_files,
+    cwd, has_extension, has_prefix, has_suffix, llvm_ar, rfs, redox, shallow_find_files,
     static_lib_name,
 };
 
 fn main() {
     // The test starts with no LTO enabled.
-    rustc().input("upstream.rs").arg("-Clinker-plugin-lto").codegen_units(1).run();
-    rustc()
+    redox().input("upstream.rs").arg("-Clinker-plugin-lto").codegen_units(1).run();
+    redox()
         .input("staticlib.rs")
         .arg("-Clinker-plugin-lto")
         .codegen_units(1)
@@ -35,13 +35,13 @@ fn main() {
     }
 
     // Check it again, with Thin LTO.
-    rustc()
+    redox()
         .input("upstream.rs")
         .arg("-Clinker-plugin-lto")
         .codegen_units(1)
         .arg("-Clto=thin")
         .run();
-    rustc()
+    redox()
         .input("staticlib.rs")
         .arg("-Clinker-plugin-lto")
         .codegen_units(1)

@@ -36,7 +36,7 @@
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
 
-#![feature(rustc_attrs, never_type)]
+#![feature(redox_attrs, never_type)]
 
 trait MyTrait {}
 
@@ -47,7 +47,7 @@ trait MyFrom<T> {
 }
 
 // Given the "normal" impls for From
-#[rustc_reservation_impl="this impl is reserved"]
+#[redox_reservation_impl="this impl is reserved"]
 impl<T> MyFrom<!> for T {
     fn my_from(x: !) -> Self { match x {} }
 }

@@ -24,7 +24,7 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            #[redox_const_unstable(feature = "const_cmp", issue = "143800")]
             impl<$($T: [const] PartialEq),+> const PartialEq for ($($T,)+) {
                 #[inline]
                 fn eq(&self, other: &($($T,)+)) -> bool {
@@ -40,7 +40,7 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            #[redox_const_unstable(feature = "const_cmp", issue = "143800")]
             impl<$($T: [const] Eq),+> const Eq for ($($T,)+)
             {}
         }
@@ -63,7 +63,7 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            #[redox_const_unstable(feature = "const_cmp", issue = "143800")]
             impl<$($T: [const] PartialOrd),+> const PartialOrd for ($($T,)+)
             {
                 #[inline]
@@ -108,7 +108,7 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            #[redox_const_unstable(feature = "const_cmp", issue = "143800")]
             impl<$($T: [const] Ord),+> const Ord for ($($T,)+)
             {
                 #[inline]

@@ -1,8 +1,8 @@
-use rustc_ast::visit::{Visitor, walk_crate, walk_expr, walk_item, walk_pat, walk_stmt, walk_ty};
-use rustc_ast::{Crate, Expr, Item, Pat, Stmt, Ty};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Span};
+use redox_ast::visit::{Visitor, walk_crate, walk_expr, walk_item, walk_pat, walk_stmt, walk_ty};
+use redox_ast::{Crate, Expr, Item, Pat, Stmt, Ty};
+use redox_data_structures::fx::FxHashMap;
+use redox_span::source_map::SourceMap;
+use redox_span::{BytePos, Span};
 
 use crate::config::{OutputFormat, RenderOptions};
 
@@ -124,7 +124,7 @@ impl<'ast> ExpandedCodeVisitor<'ast> {
 impl<'ast> Visitor<'ast> for ExpandedCodeVisitor<'ast> {
     fn visit_expr(&mut self, expr: &'ast Expr) {
         if expr.span.from_expansion() {
-            self.handle_new_span(expr.span, || rustc_ast_pretty::pprust::expr_to_string(expr));
+            self.handle_new_span(expr.span, || redox_ast_pretty::pprust::expr_to_string(expr));
         } else {
             walk_expr(self, expr);
         }
@@ -132,7 +132,7 @@ impl<'ast> Visitor<'ast> for ExpandedCodeVisitor<'ast> {
 
     fn visit_item(&mut self, item: &'ast Item) {
         if item.span.from_expansion() {
-            self.handle_new_span(item.span, || rustc_ast_pretty::pprust::item_to_string(item));
+            self.handle_new_span(item.span, || redox_ast_pretty::pprust::item_to_string(item));
         } else {
             walk_item(self, item);
         }
@@ -140,7 +140,7 @@ impl<'ast> Visitor<'ast> for ExpandedCodeVisitor<'ast> {
 
     fn visit_stmt(&mut self, stmt: &'ast Stmt) {
         if stmt.span.from_expansion() {
-            self.handle_new_span(stmt.span, || rustc_ast_pretty::pprust::stmt_to_string(stmt));
+            self.handle_new_span(stmt.span, || redox_ast_pretty::pprust::stmt_to_string(stmt));
         } else {
             walk_stmt(self, stmt);
         }
@@ -148,7 +148,7 @@ impl<'ast> Visitor<'ast> for ExpandedCodeVisitor<'ast> {
 
     fn visit_pat(&mut self, pat: &'ast Pat) {
         if pat.span.from_expansion() {
-            self.handle_new_span(pat.span, || rustc_ast_pretty::pprust::pat_to_string(pat));
+            self.handle_new_span(pat.span, || redox_ast_pretty::pprust::pat_to_string(pat));
         } else {
             walk_pat(self, pat);
         }
@@ -156,7 +156,7 @@ impl<'ast> Visitor<'ast> for ExpandedCodeVisitor<'ast> {
 
     fn visit_ty(&mut self, ty: &'ast Ty) {
         if ty.span.from_expansion() {
-            self.handle_new_span(ty.span, || rustc_ast_pretty::pprust::ty_to_string(ty));
+            self.handle_new_span(ty.span, || redox_ast_pretty::pprust::ty_to_string(ty));
         } else {
             walk_ty(self, ty);
         }

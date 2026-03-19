@@ -3,7 +3,7 @@
 //
 //@ check-pass
 //@ no-auto-check-cfg
-//@ rustc-env:CARGO_CRATE_NAME=build_script_build
+//@ redox-env:CARGO_CRATE_NAME=build_script_build
 //@ compile-flags:--crate-name=build_script_build
 //@ compile-flags:--check-cfg=cfg(has_bar)
 

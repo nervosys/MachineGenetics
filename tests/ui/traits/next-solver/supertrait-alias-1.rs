@@ -1,7 +1,7 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
-#![feature(rustc_attrs)]
-#![rustc_no_implicit_bounds]
+#![feature(redox_attrs)]
+#![redox_no_implicit_bounds]
 
 // Regression test for <https://github.com/rust-lang/trait-system-refactor-initiative/issues/171>.
 // Tests that we don't try to replace `<V as Super>::Output` when replacing projections in the

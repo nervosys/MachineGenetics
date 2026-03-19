@@ -3,10 +3,10 @@
 // Note, don't remove any public api from this. This API is consumed by external tools
 // to run rust-analyzer as a library.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
 use std::{any::Any, collections::hash_map::Entry, mem, path::Path, sync};
 
@@ -222,7 +222,7 @@ impl ProjectFolders {
 
         // Dedup source roots
         // Depending on the project setup, we can have duplicated source roots, or for example in
-        // the case of the rustc workspace, we can end up with two source roots that are almost the
+        // the case of the redox workspace, we can end up with two source roots that are almost the
         // same but not quite, like:
         // PackageRoot { is_local: false, include: [AbsPathBuf(".../rust/src/tools/miri/cargo-miri")], exclude: [] }
         // PackageRoot {
@@ -231,10 +231,10 @@ impl ProjectFolders {
         //     exclude: [AbsPathBuf(".../rust/src/tools/miri/cargo-miri/.git"), AbsPathBuf(".../rust/src/tools/miri/cargo-miri/target")]
         // }
         //
-        // The first one comes from the explicit rustc workspace which points to the rustc workspace itself
-        // The second comes from the rustc workspace that we load as the actual project workspace
+        // The first one comes from the explicit redox workspace which points to the redox workspace itself
+        // The second comes from the redox workspace that we load as the actual project workspace
         // These `is_local` differing in this kind of way gives us problems, especially when trying to filter diagnostics as we don't report diagnostics for external libraries.
-        // So we need to deduplicate these, usually it would be enough to deduplicate by `include`, but as the rustc example shows here that doesn't work,
+        // So we need to deduplicate these, usually it would be enough to deduplicate by `include`, but as the redox example shows here that doesn't work,
         // so we need to also coalesce the includes if they overlap.
 
         let mut roots: Vec<_> = workspaces

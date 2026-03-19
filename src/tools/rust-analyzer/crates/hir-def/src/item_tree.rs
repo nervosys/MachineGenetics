@@ -16,9 +16,9 @@
 //! The `ItemTree` for the currently open file can be displayed by using the VS Code command
 //! "rust-analyzer: Debug ItemTree".
 //!
-//! Compared to rustc's architecture, `ItemTree` has properties from both rustc's AST and HIR: many
+//! Compared to redox's architecture, `ItemTree` has properties from both redox's AST and HIR: many
 //! syntax-level Rust features are already desugared to simpler forms in the `ItemTree`, but name
-//! resolution has not yet been performed. `ItemTree`s are per-file, while rustc's AST and HIR are
+//! resolution has not yet been performed. `ItemTree`s are per-file, while redox's AST and HIR are
 //! per-crate, because we are interested in incrementally computing it.
 //!
 //! The representation of items in the `ItemTree` should generally mirror the surface syntax: it is
@@ -52,7 +52,7 @@ use hir_expand::{
 };
 use intern::Interned;
 use la_arena::{Idx, RawIdx};
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use span::{
     AstIdNode, Edition, FileAstId, NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER, Span, SpanAnchor,
     SyntaxContext,

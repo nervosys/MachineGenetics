@@ -8,24 +8,24 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{dynamic_lib_name, rfs, run, run_fail, rust_lib_name, rustc};
+use run_make_support::{dynamic_lib_name, rfs, run, run_fail, rust_lib_name, redox};
 
 fn main() {
-    rustc().input("bar.rs").crate_type("rlib").crate_type("dylib").arg("-Cprefer-dynamic").run();
+    redox().input("bar.rs").crate_type("rlib").crate_type("dylib").arg("-Cprefer-dynamic").run();
 
     // By default, the rlib has priority over the dylib.
-    rustc().input("foo.rs").arg("--extern").arg("bar").run();
+    redox().input("foo.rs").arg("--extern").arg("bar").run();
     rfs::rename(dynamic_lib_name("bar"), "bar.tmp");
     run("foo");
     rfs::rename("bar.tmp", dynamic_lib_name("bar"));
 
-    rustc().input("foo.rs").extern_("bar", rust_lib_name("bar")).arg("--extern").arg("bar").run();
+    redox().input("foo.rs").extern_("bar", rust_lib_name("bar")).arg("--extern").arg("bar").run();
     rfs::rename(dynamic_lib_name("bar"), "bar.tmp");
     run("foo");
     rfs::rename("bar.tmp", dynamic_lib_name("bar"));
 
     // The first explicit usage of extern overrides the second pathless --extern bar.
-    rustc()
+    redox()
         .input("foo.rs")
         .extern_("bar", dynamic_lib_name("bar"))
         .arg("--extern")
@@ -36,7 +36,7 @@ fn main() {
     rfs::rename("bar.tmp", dynamic_lib_name("bar"));
 
     // With prefer-dynamic, execution fails as it refuses to use the rlib.
-    rustc().input("foo.rs").arg("--extern").arg("bar").arg("-Cprefer-dynamic").run();
+    redox().input("foo.rs").arg("--extern").arg("bar").arg("-Cprefer-dynamic").run();
     rfs::rename(dynamic_lib_name("bar"), "bar.tmp");
     run_fail("foo");
     rfs::rename("bar.tmp", dynamic_lib_name("bar"));

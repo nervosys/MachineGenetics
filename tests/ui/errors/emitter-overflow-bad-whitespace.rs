@@ -5,7 +5,7 @@
 // issue #132918
 
 //@ check-fail
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 //@ compile-flags: --diagnostic-width=1
                                          fn main() {              return;              }
 //~^ ERROR unknown start of token: \u{a0}

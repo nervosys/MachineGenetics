@@ -5,7 +5,7 @@ extern crate run_make_support;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 struct CheckCfg {
     args: &'static [&'static str],
@@ -94,7 +94,7 @@ fn main() {
 
 fn check(CheckCfg { args, contains }: CheckCfg) {
     let output =
-        rustc().input("lib.rs").arg("-Zunstable-options").print("check-cfg").args(args).run();
+        redox().input("lib.rs").arg("-Zunstable-options").print("check-cfg").args(args).run();
 
     let stdout = output.stdout_utf8();
 

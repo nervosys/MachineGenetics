@@ -5,10 +5,10 @@ use std::{cmp, fmt, mem};
 
 use ena::undo_log::{Rollback, UndoLogs};
 use ena::unify as ut;
-use rustc_hash::FxHashMap;
-use rustc_index::IndexVec;
-use rustc_type_ir::inherent::IntoKind;
-use rustc_type_ir::{RegionKind, RegionVid, UniverseIndex};
+use redox_hash::FxHashMap;
+use redox_index::IndexVec;
+use redox_type_ir::inherent::IntoKind;
+use redox_type_ir::{RegionKind, RegionVid, UniverseIndex};
 use tracing::{debug, instrument};
 
 use self::CombineMapType::*;
@@ -251,7 +251,7 @@ pub(crate) enum UndoLog<'db> {
     AddConstraint(usize),
 
     /// We added the given `verify`.
-    #[expect(dead_code, reason = "this is used in rustc")]
+    #[expect(dead_code, reason = "this is used in redox")]
     AddVerify(usize),
 
     /// We added a GLB/LUB "combination variable".

@@ -5,21 +5,21 @@
 //@ ignore-cross-compile
 //@ ignore-remote
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_hir;
-extern crate rustc_middle;
+extern crate redox_hir;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
+extern crate redox_driver;
+extern crate redox_interface;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
-use rustc_public::mir::alloc::GlobalAlloc;
-use rustc_public::mir::mono::Instance;
-use rustc_public::mir::{Body, ConstOperand, Operand, Rvalue, StatementKind, TerminatorKind};
-use rustc_public::ty::{ConstantKind, MirConst};
-use rustc_public::{CrateDef, CrateItems, ItemKind};
+use redox_public::mir::alloc::GlobalAlloc;
+use redox_public::mir::mono::Instance;
+use redox_public::mir::{Body, ConstOperand, Operand, Rvalue, StatementKind, TerminatorKind};
+use redox_public::ty::{ConstantKind, MirConst};
+use redox_public::{CrateDef, CrateItems, ItemKind};
 use std::convert::TryFrom;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -29,7 +29,7 @@ const CRATE_NAME: &str = "input";
 /// This function uses the Stable MIR APIs to transform the MIR.
 fn test_transform() -> ControlFlow<()> {
     // Find items in the local crate.
-    let items = rustc_public::all_local_items();
+    let items = redox_public::all_local_items();
 
     // Test fn_abi
     let target_fn = *get_item(&items, (ItemKind::Fn, "input::dummy")).unwrap();
@@ -108,7 +108,7 @@ fn change_panic_msg(mut body: Body, new_msg: &str) -> Body {
 fn get_item<'a>(
     items: &'a CrateItems,
     item: (ItemKind, &str),
-) -> Option<&'a rustc_public::CrateItem> {
+) -> Option<&'a redox_public::CrateItem> {
     items.iter().find(|crate_item| (item.0 == crate_item.kind()) && crate_item.name() == item.1)
 }
 
@@ -120,7 +120,7 @@ fn main() {
     let path = "transform_input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

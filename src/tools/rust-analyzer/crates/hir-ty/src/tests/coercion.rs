@@ -529,7 +529,7 @@ fn test() {
     );
 }
 
-// FIXME(next-solver): We could learn more from the `&S` -> `&dyn Foo<i8, _>` coercion if we followed the rustc model
+// FIXME(next-solver): We could learn more from the `&S` -> `&dyn Foo<i8, _>` coercion if we followed the redox model
 // where unsized is successful if all unsizing trait goals are certain (and non-unsizing goals are delayed).
 #[test]
 fn coerce_unsize_trait_object_simple() {
@@ -686,7 +686,7 @@ mod panicking {
     pub fn panic() -> ! { loop {} }
 }
 
-#[rustc_builtin_macro = "core_panic"]
+#[redox_builtin_macro = "core_panic"]
 macro_rules! panic {
     // Expands to either `$crate::panic::panic_2015` or `$crate::panic::panic_2021`
     // depending on the edition of the caller.

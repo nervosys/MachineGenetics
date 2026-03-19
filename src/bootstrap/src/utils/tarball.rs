@@ -66,14 +66,14 @@ impl OverlayKind {
                 "src/tools/rust-analyzer/LICENSE-MIT",
             ],
             OverlayKind::RustcCodegenCranelift => &[
-                "compiler/rustc_codegen_cranelift/Readme.md",
-                "compiler/rustc_codegen_cranelift/LICENSE-APACHE",
-                "compiler/rustc_codegen_cranelift/LICENSE-MIT",
+                "compiler/redox_codegen_cranelift/Readme.md",
+                "compiler/redox_codegen_cranelift/LICENSE-APACHE",
+                "compiler/redox_codegen_cranelift/LICENSE-MIT",
             ],
             OverlayKind::RustcCodegenGcc => &[
-                "compiler/rustc_codegen_gcc/Readme.md",
-                "compiler/rustc_codegen_gcc/LICENSE-APACHE",
-                "compiler/rustc_codegen_gcc/LICENSE-MIT",
+                "compiler/redox_codegen_gcc/Readme.md",
+                "compiler/redox_codegen_gcc/LICENSE-APACHE",
+                "compiler/redox_codegen_gcc/LICENSE-MIT",
             ],
             OverlayKind::LlvmBitcodeLinker => &[
                 "COPYRIGHT",

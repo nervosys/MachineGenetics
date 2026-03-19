@@ -1,7 +1,7 @@
 // Motivated by rust-lang/rust#138961, this shows how invalid discriminants interact with
 // closure captures.
 //
-// Test case with only one inhabited variant, for which rustc used to not emit
+// Test case with only one inhabited variant, for which redox used to not emit
 // a discriminant read in the first place. See: rust-lang/miri#4778
 #![feature(never_type)]
 

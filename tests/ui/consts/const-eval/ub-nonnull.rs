@@ -4,7 +4,7 @@
 //@ dont-require-annotations: NOTE
 
 #![allow(invalid_value)] // make sure we cannot allow away the errors tested here
-#![feature(rustc_attrs, ptr_metadata)]
+#![feature(redox_attrs, ptr_metadata)]
 
 use std::mem;
 use std::ptr::NonNull;
@@ -36,16 +36,16 @@ union MaybeUninit<T: Copy> {
 const UNINIT: NonZero<u8> = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR uninitialized
 
-// Also test other uses of rustc_layout_scalar_valid_range_start
+// Also test other uses of redox_layout_scalar_valid_range_start
 
-#[rustc_layout_scalar_valid_range_start(10)]
-#[rustc_layout_scalar_valid_range_end(30)]
+#[redox_layout_scalar_valid_range_start(10)]
+#[redox_layout_scalar_valid_range_end(30)]
 struct RestrictedRange1(u32);
 const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
 //~^ ERROR invalid value
 
-#[rustc_layout_scalar_valid_range_start(30)]
-#[rustc_layout_scalar_valid_range_end(10)]
+#[redox_layout_scalar_valid_range_start(30)]
+#[redox_layout_scalar_valid_range_end(10)]
 struct RestrictedRange2(u32);
 const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
 //~^ ERROR invalid value

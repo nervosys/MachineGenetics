@@ -3,7 +3,7 @@
 // mishandling of attributes on associative expressions.
 
 #![feature(cfg_eval)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(stmt_expr_attributes)]
 #![allow(internal_features)]
 
@@ -13,7 +13,7 @@ fn main() {}
 struct Foo1(
     [ bool; {
         let _x = 30;
-        #[cfg_attr(unix, rustc_dummy(aa))] 1
+        #[cfg_attr(unix, redox_dummy(aa))] 1
     } ]
 );
 
@@ -21,7 +21,7 @@ struct Foo1(
 struct Foo12(
     [ bool; {
         let _x = 30;
-        #[cfg_attr(unix, rustc_dummy(bb))] 1 + 2
+        #[cfg_attr(unix, redox_dummy(bb))] 1 + 2
     } ]
 );
 
@@ -29,7 +29,7 @@ struct Foo12(
 struct Foox(
     [ bool; {
         let _x = 30;
-        #[cfg_attr(unix, rustc_dummy(cc))] _x
+        #[cfg_attr(unix, redox_dummy(cc))] _x
     } ]
 );
 
@@ -37,6 +37,6 @@ struct Foox(
 struct Foox2(
     [ bool; {
         let _x = 30;
-        #[cfg_attr(unix, rustc_dummy(dd))] _x + 2
+        #[cfg_attr(unix, redox_dummy(dd))] _x + 2
     } ]
 );

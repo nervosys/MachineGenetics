@@ -14,7 +14,7 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_abs_epi16(a: __m512i) -> __m512i {
     unsafe {
         let a = a.as_i16x32();
@@ -30,7 +30,7 @@ pub const fn _mm512_abs_epi16(a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_abs_epi16(src: __m512i, k: __mmask32, a: __m512i) -> __m512i {
     unsafe {
         let abs = _mm512_abs_epi16(a).as_i16x32();
@@ -45,7 +45,7 @@ pub const fn _mm512_mask_abs_epi16(src: __m512i, k: __mmask32, a: __m512i) -> __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_abs_epi16(k: __mmask32, a: __m512i) -> __m512i {
     unsafe {
         let abs = _mm512_abs_epi16(a).as_i16x32();
@@ -60,7 +60,7 @@ pub const fn _mm512_maskz_abs_epi16(k: __mmask32, a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_abs_epi16(src: __m256i, k: __mmask16, a: __m256i) -> __m256i {
     unsafe {
         let abs = _mm256_abs_epi16(a).as_i16x16();
@@ -75,7 +75,7 @@ pub const fn _mm256_mask_abs_epi16(src: __m256i, k: __mmask16, a: __m256i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_abs_epi16(k: __mmask16, a: __m256i) -> __m256i {
     unsafe {
         let abs = _mm256_abs_epi16(a).as_i16x16();
@@ -90,7 +90,7 @@ pub const fn _mm256_maskz_abs_epi16(k: __mmask16, a: __m256i) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_abs_epi16(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let abs = _mm_abs_epi16(a).as_i16x8();
@@ -105,7 +105,7 @@ pub const fn _mm_mask_abs_epi16(src: __m128i, k: __mmask8, a: __m128i) -> __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_abs_epi16(k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let abs = _mm_abs_epi16(a).as_i16x8();
@@ -120,7 +120,7 @@ pub const fn _mm_maskz_abs_epi16(k: __mmask8, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_abs_epi8(a: __m512i) -> __m512i {
     unsafe {
         let a = a.as_i8x64();
@@ -136,7 +136,7 @@ pub const fn _mm512_abs_epi8(a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_abs_epi8(src: __m512i, k: __mmask64, a: __m512i) -> __m512i {
     unsafe {
         let abs = _mm512_abs_epi8(a).as_i8x64();
@@ -151,7 +151,7 @@ pub const fn _mm512_mask_abs_epi8(src: __m512i, k: __mmask64, a: __m512i) -> __m
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_abs_epi8(k: __mmask64, a: __m512i) -> __m512i {
     unsafe {
         let abs = _mm512_abs_epi8(a).as_i8x64();
@@ -166,7 +166,7 @@ pub const fn _mm512_maskz_abs_epi8(k: __mmask64, a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_abs_epi8(src: __m256i, k: __mmask32, a: __m256i) -> __m256i {
     unsafe {
         let abs = _mm256_abs_epi8(a).as_i8x32();
@@ -181,7 +181,7 @@ pub const fn _mm256_mask_abs_epi8(src: __m256i, k: __mmask32, a: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_abs_epi8(k: __mmask32, a: __m256i) -> __m256i {
     unsafe {
         let abs = _mm256_abs_epi8(a).as_i8x32();
@@ -196,7 +196,7 @@ pub const fn _mm256_maskz_abs_epi8(k: __mmask32, a: __m256i) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_abs_epi8(src: __m128i, k: __mmask16, a: __m128i) -> __m128i {
     unsafe {
         let abs = _mm_abs_epi8(a).as_i8x16();
@@ -211,7 +211,7 @@ pub const fn _mm_mask_abs_epi8(src: __m128i, k: __mmask16, a: __m128i) -> __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpabsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_abs_epi8(k: __mmask16, a: __m128i) -> __m128i {
     unsafe {
         let abs = _mm_abs_epi8(a).as_i8x16();
@@ -226,7 +226,7 @@ pub const fn _mm_maskz_abs_epi8(k: __mmask16, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_add_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_add(a.as_i16x32(), b.as_i16x32())) }
 }
@@ -238,7 +238,7 @@ pub const fn _mm512_add_epi16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_add_epi16(src: __m512i, k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let add = _mm512_add_epi16(a, b).as_i16x32();
@@ -253,7 +253,7 @@ pub const fn _mm512_mask_add_epi16(src: __m512i, k: __mmask32, a: __m512i, b: __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_add_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let add = _mm512_add_epi16(a, b).as_i16x32();
@@ -268,7 +268,7 @@ pub const fn _mm512_maskz_add_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_add_epi16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let add = _mm256_add_epi16(a, b).as_i16x16();
@@ -283,7 +283,7 @@ pub const fn _mm256_mask_add_epi16(src: __m256i, k: __mmask16, a: __m256i, b: __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_add_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let add = _mm256_add_epi16(a, b).as_i16x16();
@@ -298,7 +298,7 @@ pub const fn _mm256_maskz_add_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_add_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let add = _mm_add_epi16(a, b).as_i16x8();
@@ -313,7 +313,7 @@ pub const fn _mm_mask_add_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_add_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let add = _mm_add_epi16(a, b).as_i16x8();
@@ -328,7 +328,7 @@ pub const fn _mm_maskz_add_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_add_epi8(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_add(a.as_i8x64(), b.as_i8x64())) }
 }
@@ -340,7 +340,7 @@ pub const fn _mm512_add_epi8(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_add_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let add = _mm512_add_epi8(a, b).as_i8x64();
@@ -355,7 +355,7 @@ pub const fn _mm512_mask_add_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __m
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_add_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let add = _mm512_add_epi8(a, b).as_i8x64();
@@ -370,7 +370,7 @@ pub const fn _mm512_maskz_add_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m5
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_add_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let add = _mm256_add_epi8(a, b).as_i8x32();
@@ -385,7 +385,7 @@ pub const fn _mm256_mask_add_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_add_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let add = _mm256_add_epi8(a, b).as_i8x32();
@@ -400,7 +400,7 @@ pub const fn _mm256_maskz_add_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m2
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_add_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let add = _mm_add_epi8(a, b).as_i8x16();
@@ -415,7 +415,7 @@ pub const fn _mm_mask_add_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_add_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let add = _mm_add_epi8(a, b).as_i8x16();
@@ -430,7 +430,7 @@ pub const fn _mm_maskz_add_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_adds_epu16(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_saturating_add(a.as_u16x32(), b.as_u16x32())) }
 }
@@ -442,7 +442,7 @@ pub const fn _mm512_adds_epu16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_adds_epu16(src: __m512i, k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let add = _mm512_adds_epu16(a, b).as_u16x32();
@@ -457,7 +457,7 @@ pub const fn _mm512_mask_adds_epu16(src: __m512i, k: __mmask32, a: __m512i, b: _
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_adds_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let add = _mm512_adds_epu16(a, b).as_u16x32();
@@ -472,7 +472,7 @@ pub const fn _mm512_maskz_adds_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_adds_epu16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let add = _mm256_adds_epu16(a, b).as_u16x16();
@@ -487,7 +487,7 @@ pub const fn _mm256_mask_adds_epu16(src: __m256i, k: __mmask16, a: __m256i, b: _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_adds_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let add = _mm256_adds_epu16(a, b).as_u16x16();
@@ -502,7 +502,7 @@ pub const fn _mm256_maskz_adds_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_adds_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let add = _mm_adds_epu16(a, b).as_u16x8();
@@ -517,7 +517,7 @@ pub const fn _mm_mask_adds_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m12
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_adds_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let add = _mm_adds_epu16(a, b).as_u16x8();
@@ -532,7 +532,7 @@ pub const fn _mm_maskz_adds_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_adds_epu8(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_saturating_add(a.as_u8x64(), b.as_u8x64())) }
 }
@@ -544,7 +544,7 @@ pub const fn _mm512_adds_epu8(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_adds_epu8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let add = _mm512_adds_epu8(a, b).as_u8x64();
@@ -559,7 +559,7 @@ pub const fn _mm512_mask_adds_epu8(src: __m512i, k: __mmask64, a: __m512i, b: __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_adds_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let add = _mm512_adds_epu8(a, b).as_u8x64();
@@ -574,7 +574,7 @@ pub const fn _mm512_maskz_adds_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_adds_epu8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let add = _mm256_adds_epu8(a, b).as_u8x32();
@@ -589,7 +589,7 @@ pub const fn _mm256_mask_adds_epu8(src: __m256i, k: __mmask32, a: __m256i, b: __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_adds_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let add = _mm256_adds_epu8(a, b).as_u8x32();
@@ -604,7 +604,7 @@ pub const fn _mm256_maskz_adds_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_adds_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let add = _mm_adds_epu8(a, b).as_u8x16();
@@ -619,7 +619,7 @@ pub const fn _mm_mask_adds_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m12
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_adds_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let add = _mm_adds_epu8(a, b).as_u8x16();
@@ -634,7 +634,7 @@ pub const fn _mm_maskz_adds_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_adds_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_saturating_add(a.as_i16x32(), b.as_i16x32())) }
 }
@@ -646,7 +646,7 @@ pub const fn _mm512_adds_epi16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_adds_epi16(src: __m512i, k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let add = _mm512_adds_epi16(a, b).as_i16x32();
@@ -661,7 +661,7 @@ pub const fn _mm512_mask_adds_epi16(src: __m512i, k: __mmask32, a: __m512i, b: _
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_adds_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let add = _mm512_adds_epi16(a, b).as_i16x32();
@@ -676,7 +676,7 @@ pub const fn _mm512_maskz_adds_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_adds_epi16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let add = _mm256_adds_epi16(a, b).as_i16x16();
@@ -691,7 +691,7 @@ pub const fn _mm256_mask_adds_epi16(src: __m256i, k: __mmask16, a: __m256i, b: _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_adds_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let add = _mm256_adds_epi16(a, b).as_i16x16();
@@ -706,7 +706,7 @@ pub const fn _mm256_maskz_adds_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_adds_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let add = _mm_adds_epi16(a, b).as_i16x8();
@@ -721,7 +721,7 @@ pub const fn _mm_mask_adds_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m12
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_adds_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let add = _mm_adds_epi16(a, b).as_i16x8();
@@ -736,7 +736,7 @@ pub const fn _mm_maskz_adds_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_adds_epi8(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_saturating_add(a.as_i8x64(), b.as_i8x64())) }
 }
@@ -748,7 +748,7 @@ pub const fn _mm512_adds_epi8(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_adds_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let add = _mm512_adds_epi8(a, b).as_i8x64();
@@ -763,7 +763,7 @@ pub const fn _mm512_mask_adds_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_adds_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let add = _mm512_adds_epi8(a, b).as_i8x64();
@@ -778,7 +778,7 @@ pub const fn _mm512_maskz_adds_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_adds_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let add = _mm256_adds_epi8(a, b).as_i8x32();
@@ -793,7 +793,7 @@ pub const fn _mm256_mask_adds_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_adds_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let add = _mm256_adds_epi8(a, b).as_i8x32();
@@ -808,7 +808,7 @@ pub const fn _mm256_maskz_adds_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_adds_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let add = _mm_adds_epi8(a, b).as_i8x16();
@@ -823,7 +823,7 @@ pub const fn _mm_mask_adds_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m12
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_adds_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let add = _mm_adds_epi8(a, b).as_i8x16();
@@ -838,7 +838,7 @@ pub const fn _mm_maskz_adds_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_sub_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_sub(a.as_i16x32(), b.as_i16x32())) }
 }
@@ -850,7 +850,7 @@ pub const fn _mm512_sub_epi16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_sub_epi16(src: __m512i, k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let sub = _mm512_sub_epi16(a, b).as_i16x32();
@@ -865,7 +865,7 @@ pub const fn _mm512_mask_sub_epi16(src: __m512i, k: __mmask32, a: __m512i, b: __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_sub_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let sub = _mm512_sub_epi16(a, b).as_i16x32();
@@ -880,7 +880,7 @@ pub const fn _mm512_maskz_sub_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_sub_epi16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let sub = _mm256_sub_epi16(a, b).as_i16x16();
@@ -895,7 +895,7 @@ pub const fn _mm256_mask_sub_epi16(src: __m256i, k: __mmask16, a: __m256i, b: __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_sub_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let sub = _mm256_sub_epi16(a, b).as_i16x16();
@@ -910,7 +910,7 @@ pub const fn _mm256_maskz_sub_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_sub_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let sub = _mm_sub_epi16(a, b).as_i16x8();
@@ -925,7 +925,7 @@ pub const fn _mm_mask_sub_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_sub_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let sub = _mm_sub_epi16(a, b).as_i16x8();
@@ -940,7 +940,7 @@ pub const fn _mm_maskz_sub_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_sub_epi8(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_sub(a.as_i8x64(), b.as_i8x64())) }
 }
@@ -952,7 +952,7 @@ pub const fn _mm512_sub_epi8(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_sub_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let sub = _mm512_sub_epi8(a, b).as_i8x64();
@@ -967,7 +967,7 @@ pub const fn _mm512_mask_sub_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __m
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_sub_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let sub = _mm512_sub_epi8(a, b).as_i8x64();
@@ -982,7 +982,7 @@ pub const fn _mm512_maskz_sub_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m5
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_sub_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let sub = _mm256_sub_epi8(a, b).as_i8x32();
@@ -997,7 +997,7 @@ pub const fn _mm256_mask_sub_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_sub_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let sub = _mm256_sub_epi8(a, b).as_i8x32();
@@ -1012,7 +1012,7 @@ pub const fn _mm256_maskz_sub_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m2
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_sub_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let sub = _mm_sub_epi8(a, b).as_i8x16();
@@ -1027,7 +1027,7 @@ pub const fn _mm_mask_sub_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_sub_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let sub = _mm_sub_epi8(a, b).as_i8x16();
@@ -1042,7 +1042,7 @@ pub const fn _mm_maskz_sub_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_subs_epu16(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_saturating_sub(a.as_u16x32(), b.as_u16x32())) }
 }
@@ -1054,7 +1054,7 @@ pub const fn _mm512_subs_epu16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_subs_epu16(src: __m512i, k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let sub = _mm512_subs_epu16(a, b).as_u16x32();
@@ -1069,7 +1069,7 @@ pub const fn _mm512_mask_subs_epu16(src: __m512i, k: __mmask32, a: __m512i, b: _
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_subs_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let sub = _mm512_subs_epu16(a, b).as_u16x32();
@@ -1084,7 +1084,7 @@ pub const fn _mm512_maskz_subs_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_subs_epu16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let sub = _mm256_subs_epu16(a, b).as_u16x16();
@@ -1099,7 +1099,7 @@ pub const fn _mm256_mask_subs_epu16(src: __m256i, k: __mmask16, a: __m256i, b: _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_subs_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let sub = _mm256_subs_epu16(a, b).as_u16x16();
@@ -1114,7 +1114,7 @@ pub const fn _mm256_maskz_subs_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_subs_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let sub = _mm_subs_epu16(a, b).as_u16x8();
@@ -1129,7 +1129,7 @@ pub const fn _mm_mask_subs_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m12
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_subs_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let sub = _mm_subs_epu16(a, b).as_u16x8();
@@ -1144,7 +1144,7 @@ pub const fn _mm_maskz_subs_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_subs_epu8(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_saturating_sub(a.as_u8x64(), b.as_u8x64())) }
 }
@@ -1156,7 +1156,7 @@ pub const fn _mm512_subs_epu8(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_subs_epu8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let sub = _mm512_subs_epu8(a, b).as_u8x64();
@@ -1171,7 +1171,7 @@ pub const fn _mm512_mask_subs_epu8(src: __m512i, k: __mmask64, a: __m512i, b: __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_subs_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let sub = _mm512_subs_epu8(a, b).as_u8x64();
@@ -1186,7 +1186,7 @@ pub const fn _mm512_maskz_subs_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_subs_epu8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let sub = _mm256_subs_epu8(a, b).as_u8x32();
@@ -1201,7 +1201,7 @@ pub const fn _mm256_mask_subs_epu8(src: __m256i, k: __mmask32, a: __m256i, b: __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_subs_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let sub = _mm256_subs_epu8(a, b).as_u8x32();
@@ -1216,7 +1216,7 @@ pub const fn _mm256_maskz_subs_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_subs_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let sub = _mm_subs_epu8(a, b).as_u8x16();
@@ -1231,7 +1231,7 @@ pub const fn _mm_mask_subs_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m12
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_subs_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let sub = _mm_subs_epu8(a, b).as_u8x16();
@@ -1246,7 +1246,7 @@ pub const fn _mm_maskz_subs_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_subs_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_saturating_sub(a.as_i16x32(), b.as_i16x32())) }
 }
@@ -1258,7 +1258,7 @@ pub const fn _mm512_subs_epi16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_subs_epi16(src: __m512i, k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let sub = _mm512_subs_epi16(a, b).as_i16x32();
@@ -1273,7 +1273,7 @@ pub const fn _mm512_mask_subs_epi16(src: __m512i, k: __mmask32, a: __m512i, b: _
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_subs_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let sub = _mm512_subs_epi16(a, b).as_i16x32();
@@ -1288,7 +1288,7 @@ pub const fn _mm512_maskz_subs_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_subs_epi16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let sub = _mm256_subs_epi16(a, b).as_i16x16();
@@ -1303,7 +1303,7 @@ pub const fn _mm256_mask_subs_epi16(src: __m256i, k: __mmask16, a: __m256i, b: _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_subs_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let sub = _mm256_subs_epi16(a, b).as_i16x16();
@@ -1318,7 +1318,7 @@ pub const fn _mm256_maskz_subs_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_subs_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let sub = _mm_subs_epi16(a, b).as_i16x8();
@@ -1333,7 +1333,7 @@ pub const fn _mm_mask_subs_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m12
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_subs_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let sub = _mm_subs_epi16(a, b).as_i16x8();
@@ -1348,7 +1348,7 @@ pub const fn _mm_maskz_subs_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_subs_epi8(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_saturating_sub(a.as_i8x64(), b.as_i8x64())) }
 }
@@ -1360,7 +1360,7 @@ pub const fn _mm512_subs_epi8(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_subs_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let sub = _mm512_subs_epi8(a, b).as_i8x64();
@@ -1375,7 +1375,7 @@ pub const fn _mm512_mask_subs_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_subs_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let sub = _mm512_subs_epi8(a, b).as_i8x64();
@@ -1390,7 +1390,7 @@ pub const fn _mm512_maskz_subs_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_subs_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let sub = _mm256_subs_epi8(a, b).as_i8x32();
@@ -1405,7 +1405,7 @@ pub const fn _mm256_mask_subs_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_subs_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let sub = _mm256_subs_epi8(a, b).as_i8x32();
@@ -1420,7 +1420,7 @@ pub const fn _mm256_maskz_subs_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_subs_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let sub = _mm_subs_epi8(a, b).as_i8x16();
@@ -1435,7 +1435,7 @@ pub const fn _mm_mask_subs_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m12
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_subs_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let sub = _mm_subs_epi8(a, b).as_i8x16();
@@ -1450,7 +1450,7 @@ pub const fn _mm_maskz_subs_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mulhi_epu16(a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let a = simd_cast::<_, u32x32>(a.as_u16x32());
@@ -1467,7 +1467,7 @@ pub const fn _mm512_mulhi_epu16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_mulhi_epu16(
     src: __m512i,
     k: __mmask32,
@@ -1487,7 +1487,7 @@ pub const fn _mm512_mask_mulhi_epu16(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_mulhi_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let mul = _mm512_mulhi_epu16(a, b).as_u16x32();
@@ -1502,7 +1502,7 @@ pub const fn _mm512_maskz_mulhi_epu16(k: __mmask32, a: __m512i, b: __m512i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_mulhi_epu16(
     src: __m256i,
     k: __mmask16,
@@ -1522,7 +1522,7 @@ pub const fn _mm256_mask_mulhi_epu16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_mulhi_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let mul = _mm256_mulhi_epu16(a, b).as_u16x16();
@@ -1537,7 +1537,7 @@ pub const fn _mm256_maskz_mulhi_epu16(k: __mmask16, a: __m256i, b: __m256i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_mulhi_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let mul = _mm_mulhi_epu16(a, b).as_u16x8();
@@ -1552,7 +1552,7 @@ pub const fn _mm_mask_mulhi_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m1
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_mulhi_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let mul = _mm_mulhi_epu16(a, b).as_u16x8();
@@ -1567,7 +1567,7 @@ pub const fn _mm_maskz_mulhi_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m12
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mulhi_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let a = simd_cast::<_, i32x32>(a.as_i16x32());
@@ -1584,7 +1584,7 @@ pub const fn _mm512_mulhi_epi16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_mulhi_epi16(
     src: __m512i,
     k: __mmask32,
@@ -1604,7 +1604,7 @@ pub const fn _mm512_mask_mulhi_epi16(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_mulhi_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let mul = _mm512_mulhi_epi16(a, b).as_i16x32();
@@ -1619,7 +1619,7 @@ pub const fn _mm512_maskz_mulhi_epi16(k: __mmask32, a: __m512i, b: __m512i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_mulhi_epi16(
     src: __m256i,
     k: __mmask16,
@@ -1639,7 +1639,7 @@ pub const fn _mm256_mask_mulhi_epi16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_mulhi_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let mul = _mm256_mulhi_epi16(a, b).as_i16x16();
@@ -1654,7 +1654,7 @@ pub const fn _mm256_maskz_mulhi_epi16(k: __mmask16, a: __m256i, b: __m256i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_mulhi_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let mul = _mm_mulhi_epi16(a, b).as_i16x8();
@@ -1669,7 +1669,7 @@ pub const fn _mm_mask_mulhi_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m1
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_mulhi_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let mul = _mm_mulhi_epi16(a, b).as_i16x8();
@@ -1779,7 +1779,7 @@ pub fn _mm_maskz_mulhrs_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmullw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mullo_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_mul(a.as_i16x32(), b.as_i16x32())) }
 }
@@ -1791,7 +1791,7 @@ pub const fn _mm512_mullo_epi16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmullw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_mullo_epi16(
     src: __m512i,
     k: __mmask32,
@@ -1811,7 +1811,7 @@ pub const fn _mm512_mask_mullo_epi16(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmullw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_mullo_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let mul = _mm512_mullo_epi16(a, b).as_i16x32();
@@ -1826,7 +1826,7 @@ pub const fn _mm512_maskz_mullo_epi16(k: __mmask32, a: __m512i, b: __m512i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmullw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_mullo_epi16(
     src: __m256i,
     k: __mmask16,
@@ -1846,7 +1846,7 @@ pub const fn _mm256_mask_mullo_epi16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmullw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_mullo_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let mul = _mm256_mullo_epi16(a, b).as_i16x16();
@@ -1861,7 +1861,7 @@ pub const fn _mm256_maskz_mullo_epi16(k: __mmask16, a: __m256i, b: __m256i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmullw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_mullo_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let mul = _mm_mullo_epi16(a, b).as_i16x8();
@@ -1876,7 +1876,7 @@ pub const fn _mm_mask_mullo_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m1
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmullw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_mullo_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let mul = _mm_mullo_epi16(a, b).as_i16x8();
@@ -1891,7 +1891,7 @@ pub const fn _mm_maskz_mullo_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m12
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_max_epu16(a: __m512i, b: __m512i) -> __m512i {
     unsafe { simd_imax(a.as_u16x32(), b.as_u16x32()).as_m512i() }
 }
@@ -1903,7 +1903,7 @@ pub const fn _mm512_max_epu16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_max_epu16(src: __m512i, k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let max = _mm512_max_epu16(a, b).as_u16x32();
@@ -1918,7 +1918,7 @@ pub const fn _mm512_mask_max_epu16(src: __m512i, k: __mmask32, a: __m512i, b: __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_max_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let max = _mm512_max_epu16(a, b).as_u16x32();
@@ -1933,7 +1933,7 @@ pub const fn _mm512_maskz_max_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_max_epu16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let max = _mm256_max_epu16(a, b).as_u16x16();
@@ -1948,7 +1948,7 @@ pub const fn _mm256_mask_max_epu16(src: __m256i, k: __mmask16, a: __m256i, b: __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_max_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let max = _mm256_max_epu16(a, b).as_u16x16();
@@ -1963,7 +1963,7 @@ pub const fn _mm256_maskz_max_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_max_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let max = _mm_max_epu16(a, b).as_u16x8();
@@ -1978,7 +1978,7 @@ pub const fn _mm_mask_max_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_max_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let max = _mm_max_epu16(a, b).as_u16x8();
@@ -1993,7 +1993,7 @@ pub const fn _mm_maskz_max_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_max_epu8(a: __m512i, b: __m512i) -> __m512i {
     unsafe { simd_imax(a.as_u8x64(), b.as_u8x64()).as_m512i() }
 }
@@ -2005,7 +2005,7 @@ pub const fn _mm512_max_epu8(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_max_epu8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let max = _mm512_max_epu8(a, b).as_u8x64();
@@ -2020,7 +2020,7 @@ pub const fn _mm512_mask_max_epu8(src: __m512i, k: __mmask64, a: __m512i, b: __m
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_max_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let max = _mm512_max_epu8(a, b).as_u8x64();
@@ -2035,7 +2035,7 @@ pub const fn _mm512_maskz_max_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __m5
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_max_epu8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let max = _mm256_max_epu8(a, b).as_u8x32();
@@ -2050,7 +2050,7 @@ pub const fn _mm256_mask_max_epu8(src: __m256i, k: __mmask32, a: __m256i, b: __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_max_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let max = _mm256_max_epu8(a, b).as_u8x32();
@@ -2065,7 +2065,7 @@ pub const fn _mm256_maskz_max_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __m2
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_max_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let max = _mm_max_epu8(a, b).as_u8x16();
@@ -2080,7 +2080,7 @@ pub const fn _mm_mask_max_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_max_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let max = _mm_max_epu8(a, b).as_u8x16();
@@ -2095,7 +2095,7 @@ pub const fn _mm_maskz_max_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_max_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe { simd_imax(a.as_i16x32(), b.as_i16x32()).as_m512i() }
 }
@@ -2107,7 +2107,7 @@ pub const fn _mm512_max_epi16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_max_epi16(src: __m512i, k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let max = _mm512_max_epi16(a, b).as_i16x32();
@@ -2122,7 +2122,7 @@ pub const fn _mm512_mask_max_epi16(src: __m512i, k: __mmask32, a: __m512i, b: __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_max_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let max = _mm512_max_epi16(a, b).as_i16x32();
@@ -2137,7 +2137,7 @@ pub const fn _mm512_maskz_max_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_max_epi16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let max = _mm256_max_epi16(a, b).as_i16x16();
@@ -2152,7 +2152,7 @@ pub const fn _mm256_mask_max_epi16(src: __m256i, k: __mmask16, a: __m256i, b: __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_max_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let max = _mm256_max_epi16(a, b).as_i16x16();
@@ -2167,7 +2167,7 @@ pub const fn _mm256_maskz_max_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_max_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let max = _mm_max_epi16(a, b).as_i16x8();
@@ -2182,7 +2182,7 @@ pub const fn _mm_mask_max_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_max_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let max = _mm_max_epi16(a, b).as_i16x8();
@@ -2197,7 +2197,7 @@ pub const fn _mm_maskz_max_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_max_epi8(a: __m512i, b: __m512i) -> __m512i {
     unsafe { simd_imax(a.as_i8x64(), b.as_i8x64()).as_m512i() }
 }
@@ -2209,7 +2209,7 @@ pub const fn _mm512_max_epi8(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_max_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let max = _mm512_max_epi8(a, b).as_i8x64();
@@ -2224,7 +2224,7 @@ pub const fn _mm512_mask_max_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __m
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_max_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let max = _mm512_max_epi8(a, b).as_i8x64();
@@ -2239,7 +2239,7 @@ pub const fn _mm512_maskz_max_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m5
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_max_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let max = _mm256_max_epi8(a, b).as_i8x32();
@@ -2254,7 +2254,7 @@ pub const fn _mm256_mask_max_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_max_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let max = _mm256_max_epi8(a, b).as_i8x32();
@@ -2269,7 +2269,7 @@ pub const fn _mm256_maskz_max_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m2
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_max_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let max = _mm_max_epi8(a, b).as_i8x16();
@@ -2284,7 +2284,7 @@ pub const fn _mm_mask_max_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_max_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let max = _mm_max_epi8(a, b).as_i8x16();
@@ -2299,7 +2299,7 @@ pub const fn _mm_maskz_max_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_min_epu16(a: __m512i, b: __m512i) -> __m512i {
     unsafe { simd_imin(a.as_u16x32(), b.as_u16x32()).as_m512i() }
 }
@@ -2311,7 +2311,7 @@ pub const fn _mm512_min_epu16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_min_epu16(src: __m512i, k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let min = _mm512_min_epu16(a, b).as_u16x32();
@@ -2326,7 +2326,7 @@ pub const fn _mm512_mask_min_epu16(src: __m512i, k: __mmask32, a: __m512i, b: __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_min_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let min = _mm512_min_epu16(a, b).as_u16x32();
@@ -2341,7 +2341,7 @@ pub const fn _mm512_maskz_min_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_min_epu16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let min = _mm256_min_epu16(a, b).as_u16x16();
@@ -2356,7 +2356,7 @@ pub const fn _mm256_mask_min_epu16(src: __m256i, k: __mmask16, a: __m256i, b: __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_min_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let min = _mm256_min_epu16(a, b).as_u16x16();
@@ -2371,7 +2371,7 @@ pub const fn _mm256_maskz_min_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_min_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let min = _mm_min_epu16(a, b).as_u16x8();
@@ -2386,7 +2386,7 @@ pub const fn _mm_mask_min_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminuw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_min_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let min = _mm_min_epu16(a, b).as_u16x8();
@@ -2401,7 +2401,7 @@ pub const fn _mm_maskz_min_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_min_epu8(a: __m512i, b: __m512i) -> __m512i {
     unsafe { simd_imin(a.as_u8x64(), b.as_u8x64()).as_m512i() }
 }
@@ -2413,7 +2413,7 @@ pub const fn _mm512_min_epu8(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_min_epu8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let min = _mm512_min_epu8(a, b).as_u8x64();
@@ -2428,7 +2428,7 @@ pub const fn _mm512_mask_min_epu8(src: __m512i, k: __mmask64, a: __m512i, b: __m
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_min_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let min = _mm512_min_epu8(a, b).as_u8x64();
@@ -2443,7 +2443,7 @@ pub const fn _mm512_maskz_min_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __m5
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_min_epu8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let min = _mm256_min_epu8(a, b).as_u8x32();
@@ -2458,7 +2458,7 @@ pub const fn _mm256_mask_min_epu8(src: __m256i, k: __mmask32, a: __m256i, b: __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_min_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let min = _mm256_min_epu8(a, b).as_u8x32();
@@ -2473,7 +2473,7 @@ pub const fn _mm256_maskz_min_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __m2
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_min_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let min = _mm_min_epu8(a, b).as_u8x16();
@@ -2488,7 +2488,7 @@ pub const fn _mm_mask_min_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminub))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_min_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let min = _mm_min_epu8(a, b).as_u8x16();
@@ -2503,7 +2503,7 @@ pub const fn _mm_maskz_min_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_min_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe { simd_imin(a.as_i16x32(), b.as_i16x32()).as_m512i() }
 }
@@ -2515,7 +2515,7 @@ pub const fn _mm512_min_epi16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_min_epi16(src: __m512i, k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let min = _mm512_min_epi16(a, b).as_i16x32();
@@ -2530,7 +2530,7 @@ pub const fn _mm512_mask_min_epi16(src: __m512i, k: __mmask32, a: __m512i, b: __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_min_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let min = _mm512_min_epi16(a, b).as_i16x32();
@@ -2545,7 +2545,7 @@ pub const fn _mm512_maskz_min_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_min_epi16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let min = _mm256_min_epi16(a, b).as_i16x16();
@@ -2560,7 +2560,7 @@ pub const fn _mm256_mask_min_epi16(src: __m256i, k: __mmask16, a: __m256i, b: __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_min_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let min = _mm256_min_epi16(a, b).as_i16x16();
@@ -2575,7 +2575,7 @@ pub const fn _mm256_maskz_min_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_min_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let min = _mm_min_epi16(a, b).as_i16x8();
@@ -2590,7 +2590,7 @@ pub const fn _mm_mask_min_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_min_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let min = _mm_min_epi16(a, b).as_i16x8();
@@ -2605,7 +2605,7 @@ pub const fn _mm_maskz_min_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_min_epi8(a: __m512i, b: __m512i) -> __m512i {
     unsafe { simd_imin(a.as_i8x64(), b.as_i8x64()).as_m512i() }
 }
@@ -2617,7 +2617,7 @@ pub const fn _mm512_min_epi8(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_min_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let min = _mm512_min_epi8(a, b).as_i8x64();
@@ -2632,7 +2632,7 @@ pub const fn _mm512_mask_min_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __m
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_min_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let min = _mm512_min_epi8(a, b).as_i8x64();
@@ -2647,7 +2647,7 @@ pub const fn _mm512_maskz_min_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m5
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_min_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let min = _mm256_min_epi8(a, b).as_i8x32();
@@ -2662,7 +2662,7 @@ pub const fn _mm256_mask_min_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_min_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let min = _mm256_min_epi8(a, b).as_i8x32();
@@ -2677,7 +2677,7 @@ pub const fn _mm256_maskz_min_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m2
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_min_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let min = _mm_min_epi8(a, b).as_i8x16();
@@ -2692,7 +2692,7 @@ pub const fn _mm_mask_min_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_min_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let min = _mm_min_epi8(a, b).as_i8x16();
@@ -2707,7 +2707,7 @@ pub const fn _mm_maskz_min_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmplt_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe { simd_bitmask::<u16x32, _>(simd_lt(a.as_u16x32(), b.as_u16x32())) }
 }
@@ -2719,7 +2719,7 @@ pub const fn _mm512_cmplt_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmplt_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     _mm512_mask_cmp_epu16_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
@@ -2731,7 +2731,7 @@ pub const fn _mm512_mask_cmplt_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmplt_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe { simd_bitmask::<u16x16, _>(simd_lt(a.as_u16x16(), b.as_u16x16())) }
 }
@@ -2743,7 +2743,7 @@ pub const fn _mm256_cmplt_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmplt_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     _mm256_mask_cmp_epu16_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
@@ -2755,7 +2755,7 @@ pub const fn _mm256_mask_cmplt_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmplt_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe { simd_bitmask::<u16x8, _>(simd_lt(a.as_u16x8(), b.as_u16x8())) }
 }
@@ -2767,7 +2767,7 @@ pub const fn _mm_cmplt_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmplt_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     _mm_mask_cmp_epu16_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
@@ -2779,7 +2779,7 @@ pub const fn _mm_mask_cmplt_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmplt_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe { simd_bitmask::<u8x64, _>(simd_lt(a.as_u8x64(), b.as_u8x64())) }
 }
@@ -2791,7 +2791,7 @@ pub const fn _mm512_cmplt_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmplt_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     _mm512_mask_cmp_epu8_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
@@ -2803,7 +2803,7 @@ pub const fn _mm512_mask_cmplt_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmplt_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe { simd_bitmask::<u8x32, _>(simd_lt(a.as_u8x32(), b.as_u8x32())) }
 }
@@ -2815,7 +2815,7 @@ pub const fn _mm256_cmplt_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmplt_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     _mm256_mask_cmp_epu8_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
@@ -2827,7 +2827,7 @@ pub const fn _mm256_mask_cmplt_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmplt_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe { simd_bitmask::<u8x16, _>(simd_lt(a.as_u8x16(), b.as_u8x16())) }
 }
@@ -2839,7 +2839,7 @@ pub const fn _mm_cmplt_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmplt_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     _mm_mask_cmp_epu8_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
@@ -2851,7 +2851,7 @@ pub const fn _mm_mask_cmplt_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmplt_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe { simd_bitmask::<i16x32, _>(simd_lt(a.as_i16x32(), b.as_i16x32())) }
 }
@@ -2863,7 +2863,7 @@ pub const fn _mm512_cmplt_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmplt_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     _mm512_mask_cmp_epi16_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
@@ -2875,7 +2875,7 @@ pub const fn _mm512_mask_cmplt_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmplt_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe { simd_bitmask::<i16x16, _>(simd_lt(a.as_i16x16(), b.as_i16x16())) }
 }
@@ -2887,7 +2887,7 @@ pub const fn _mm256_cmplt_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmplt_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     _mm256_mask_cmp_epi16_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
@@ -2899,7 +2899,7 @@ pub const fn _mm256_mask_cmplt_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmplt_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe { simd_bitmask::<i16x8, _>(simd_lt(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -2911,7 +2911,7 @@ pub const fn _mm_cmplt_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmplt_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     _mm_mask_cmp_epi16_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
@@ -2923,7 +2923,7 @@ pub const fn _mm_mask_cmplt_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmplt_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe { simd_bitmask::<i8x64, _>(simd_lt(a.as_i8x64(), b.as_i8x64())) }
 }
@@ -2935,7 +2935,7 @@ pub const fn _mm512_cmplt_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmplt_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     _mm512_mask_cmp_epi8_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
@@ -2947,7 +2947,7 @@ pub const fn _mm512_mask_cmplt_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmplt_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe { simd_bitmask::<i8x32, _>(simd_lt(a.as_i8x32(), b.as_i8x32())) }
 }
@@ -2959,7 +2959,7 @@ pub const fn _mm256_cmplt_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmplt_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     _mm256_mask_cmp_epi8_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
@@ -2971,7 +2971,7 @@ pub const fn _mm256_mask_cmplt_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmplt_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe { simd_bitmask::<i8x16, _>(simd_lt(a.as_i8x16(), b.as_i8x16())) }
 }
@@ -2983,7 +2983,7 @@ pub const fn _mm_cmplt_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmplt_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     _mm_mask_cmp_epi8_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
@@ -2995,7 +2995,7 @@ pub const fn _mm_mask_cmplt_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpgt_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe { simd_bitmask::<u16x32, _>(simd_gt(a.as_u16x32(), b.as_u16x32())) }
 }
@@ -3007,7 +3007,7 @@ pub const fn _mm512_cmpgt_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpgt_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     _mm512_mask_cmp_epu16_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
@@ -3019,7 +3019,7 @@ pub const fn _mm512_mask_cmpgt_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpgt_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe { simd_bitmask::<u16x16, _>(simd_gt(a.as_u16x16(), b.as_u16x16())) }
 }
@@ -3031,7 +3031,7 @@ pub const fn _mm256_cmpgt_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpgt_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     _mm256_mask_cmp_epu16_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
@@ -3043,7 +3043,7 @@ pub const fn _mm256_mask_cmpgt_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpgt_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe { simd_bitmask::<u16x8, _>(simd_gt(a.as_u16x8(), b.as_u16x8())) }
 }
@@ -3055,7 +3055,7 @@ pub const fn _mm_cmpgt_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpgt_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     _mm_mask_cmp_epu16_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
@@ -3067,7 +3067,7 @@ pub const fn _mm_mask_cmpgt_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpgt_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe { simd_bitmask::<u8x64, _>(simd_gt(a.as_u8x64(), b.as_u8x64())) }
 }
@@ -3079,7 +3079,7 @@ pub const fn _mm512_cmpgt_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpgt_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     _mm512_mask_cmp_epu8_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
@@ -3091,7 +3091,7 @@ pub const fn _mm512_mask_cmpgt_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpgt_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe { simd_bitmask::<u8x32, _>(simd_gt(a.as_u8x32(), b.as_u8x32())) }
 }
@@ -3103,7 +3103,7 @@ pub const fn _mm256_cmpgt_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpgt_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     _mm256_mask_cmp_epu8_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
@@ -3115,7 +3115,7 @@ pub const fn _mm256_mask_cmpgt_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpgt_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe { simd_bitmask::<u8x16, _>(simd_gt(a.as_u8x16(), b.as_u8x16())) }
 }
@@ -3127,7 +3127,7 @@ pub const fn _mm_cmpgt_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpgt_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     _mm_mask_cmp_epu8_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
@@ -3139,7 +3139,7 @@ pub const fn _mm_mask_cmpgt_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpgt_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe { simd_bitmask::<i16x32, _>(simd_gt(a.as_i16x32(), b.as_i16x32())) }
 }
@@ -3151,7 +3151,7 @@ pub const fn _mm512_cmpgt_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpgt_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     _mm512_mask_cmp_epi16_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
@@ -3163,7 +3163,7 @@ pub const fn _mm512_mask_cmpgt_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpgt_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe { simd_bitmask::<i16x16, _>(simd_gt(a.as_i16x16(), b.as_i16x16())) }
 }
@@ -3175,7 +3175,7 @@ pub const fn _mm256_cmpgt_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpgt_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     _mm256_mask_cmp_epi16_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
@@ -3187,7 +3187,7 @@ pub const fn _mm256_mask_cmpgt_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpgt_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe { simd_bitmask::<i16x8, _>(simd_gt(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -3199,7 +3199,7 @@ pub const fn _mm_cmpgt_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpgt_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     _mm_mask_cmp_epi16_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
@@ -3211,7 +3211,7 @@ pub const fn _mm_mask_cmpgt_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpgt_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe { simd_bitmask::<i8x64, _>(simd_gt(a.as_i8x64(), b.as_i8x64())) }
 }
@@ -3223,7 +3223,7 @@ pub const fn _mm512_cmpgt_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpgt_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     _mm512_mask_cmp_epi8_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
@@ -3235,7 +3235,7 @@ pub const fn _mm512_mask_cmpgt_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpgt_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe { simd_bitmask::<i8x32, _>(simd_gt(a.as_i8x32(), b.as_i8x32())) }
 }
@@ -3247,7 +3247,7 @@ pub const fn _mm256_cmpgt_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpgt_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     _mm256_mask_cmp_epi8_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
@@ -3259,7 +3259,7 @@ pub const fn _mm256_mask_cmpgt_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpgt_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe { simd_bitmask::<i8x16, _>(simd_gt(a.as_i8x16(), b.as_i8x16())) }
 }
@@ -3271,7 +3271,7 @@ pub const fn _mm_cmpgt_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpgt_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     _mm_mask_cmp_epi8_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
@@ -3283,7 +3283,7 @@ pub const fn _mm_mask_cmpgt_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmple_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe { simd_bitmask::<u16x32, _>(simd_le(a.as_u16x32(), b.as_u16x32())) }
 }
@@ -3295,7 +3295,7 @@ pub const fn _mm512_cmple_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmple_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     _mm512_mask_cmp_epu16_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
@@ -3307,7 +3307,7 @@ pub const fn _mm512_mask_cmple_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmple_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe { simd_bitmask::<u16x16, _>(simd_le(a.as_u16x16(), b.as_u16x16())) }
 }
@@ -3319,7 +3319,7 @@ pub const fn _mm256_cmple_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmple_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     _mm256_mask_cmp_epu16_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
@@ -3331,7 +3331,7 @@ pub const fn _mm256_mask_cmple_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmple_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe { simd_bitmask::<u16x8, _>(simd_le(a.as_u16x8(), b.as_u16x8())) }
 }
@@ -3343,7 +3343,7 @@ pub const fn _mm_cmple_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmple_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     _mm_mask_cmp_epu16_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
@@ -3355,7 +3355,7 @@ pub const fn _mm_mask_cmple_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmple_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe { simd_bitmask::<u8x64, _>(simd_le(a.as_u8x64(), b.as_u8x64())) }
 }
@@ -3367,7 +3367,7 @@ pub const fn _mm512_cmple_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmple_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     _mm512_mask_cmp_epu8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
@@ -3379,7 +3379,7 @@ pub const fn _mm512_mask_cmple_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmple_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe { simd_bitmask::<u8x32, _>(simd_le(a.as_u8x32(), b.as_u8x32())) }
 }
@@ -3391,7 +3391,7 @@ pub const fn _mm256_cmple_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmple_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     _mm256_mask_cmp_epu8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
@@ -3403,7 +3403,7 @@ pub const fn _mm256_mask_cmple_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmple_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe { simd_bitmask::<u8x16, _>(simd_le(a.as_u8x16(), b.as_u8x16())) }
 }
@@ -3415,7 +3415,7 @@ pub const fn _mm_cmple_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmple_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     _mm_mask_cmp_epu8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
@@ -3427,7 +3427,7 @@ pub const fn _mm_mask_cmple_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmple_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe { simd_bitmask::<i16x32, _>(simd_le(a.as_i16x32(), b.as_i16x32())) }
 }
@@ -3439,7 +3439,7 @@ pub const fn _mm512_cmple_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmple_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     _mm512_mask_cmp_epi16_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
@@ -3451,7 +3451,7 @@ pub const fn _mm512_mask_cmple_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmple_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe { simd_bitmask::<i16x16, _>(simd_le(a.as_i16x16(), b.as_i16x16())) }
 }
@@ -3463,7 +3463,7 @@ pub const fn _mm256_cmple_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmple_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     _mm256_mask_cmp_epi16_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
@@ -3475,7 +3475,7 @@ pub const fn _mm256_mask_cmple_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmple_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe { simd_bitmask::<i16x8, _>(simd_le(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -3487,7 +3487,7 @@ pub const fn _mm_cmple_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmple_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     _mm_mask_cmp_epi16_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
@@ -3499,7 +3499,7 @@ pub const fn _mm_mask_cmple_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmple_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe { simd_bitmask::<i8x64, _>(simd_le(a.as_i8x64(), b.as_i8x64())) }
 }
@@ -3511,7 +3511,7 @@ pub const fn _mm512_cmple_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmple_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     _mm512_mask_cmp_epi8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
@@ -3523,7 +3523,7 @@ pub const fn _mm512_mask_cmple_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmple_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe { simd_bitmask::<i8x32, _>(simd_le(a.as_i8x32(), b.as_i8x32())) }
 }
@@ -3535,7 +3535,7 @@ pub const fn _mm256_cmple_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmple_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     _mm256_mask_cmp_epi8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
@@ -3547,7 +3547,7 @@ pub const fn _mm256_mask_cmple_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmple_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe { simd_bitmask::<i8x16, _>(simd_le(a.as_i8x16(), b.as_i8x16())) }
 }
@@ -3559,7 +3559,7 @@ pub const fn _mm_cmple_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmple_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     _mm_mask_cmp_epi8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
@@ -3571,7 +3571,7 @@ pub const fn _mm_mask_cmple_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpge_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe { simd_bitmask::<u16x32, _>(simd_ge(a.as_u16x32(), b.as_u16x32())) }
 }
@@ -3583,7 +3583,7 @@ pub const fn _mm512_cmpge_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpge_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     _mm512_mask_cmp_epu16_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
@@ -3595,7 +3595,7 @@ pub const fn _mm512_mask_cmpge_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpge_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe { simd_bitmask::<u16x16, _>(simd_ge(a.as_u16x16(), b.as_u16x16())) }
 }
@@ -3607,7 +3607,7 @@ pub const fn _mm256_cmpge_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpge_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     _mm256_mask_cmp_epu16_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
@@ -3619,7 +3619,7 @@ pub const fn _mm256_mask_cmpge_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpge_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe { simd_bitmask::<u16x8, _>(simd_ge(a.as_u16x8(), b.as_u16x8())) }
 }
@@ -3631,7 +3631,7 @@ pub const fn _mm_cmpge_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpge_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     _mm_mask_cmp_epu16_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
@@ -3643,7 +3643,7 @@ pub const fn _mm_mask_cmpge_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpge_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe { simd_bitmask::<u8x64, _>(simd_ge(a.as_u8x64(), b.as_u8x64())) }
 }
@@ -3655,7 +3655,7 @@ pub const fn _mm512_cmpge_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpge_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     _mm512_mask_cmp_epu8_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
@@ -3667,7 +3667,7 @@ pub const fn _mm512_mask_cmpge_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpge_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe { simd_bitmask::<u8x32, _>(simd_ge(a.as_u8x32(), b.as_u8x32())) }
 }
@@ -3679,7 +3679,7 @@ pub const fn _mm256_cmpge_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpge_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     _mm256_mask_cmp_epu8_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
@@ -3691,7 +3691,7 @@ pub const fn _mm256_mask_cmpge_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpge_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe { simd_bitmask::<u8x16, _>(simd_ge(a.as_u8x16(), b.as_u8x16())) }
 }
@@ -3703,7 +3703,7 @@ pub const fn _mm_cmpge_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpge_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     _mm_mask_cmp_epu8_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
@@ -3715,7 +3715,7 @@ pub const fn _mm_mask_cmpge_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpge_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe { simd_bitmask::<i16x32, _>(simd_ge(a.as_i16x32(), b.as_i16x32())) }
 }
@@ -3727,7 +3727,7 @@ pub const fn _mm512_cmpge_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpge_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     _mm512_mask_cmp_epi16_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
@@ -3739,7 +3739,7 @@ pub const fn _mm512_mask_cmpge_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpge_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe { simd_bitmask::<i16x16, _>(simd_ge(a.as_i16x16(), b.as_i16x16())) }
 }
@@ -3751,7 +3751,7 @@ pub const fn _mm256_cmpge_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpge_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     _mm256_mask_cmp_epi16_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
@@ -3763,7 +3763,7 @@ pub const fn _mm256_mask_cmpge_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpge_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe { simd_bitmask::<i16x8, _>(simd_ge(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -3775,7 +3775,7 @@ pub const fn _mm_cmpge_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpge_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     _mm_mask_cmp_epi16_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
@@ -3787,7 +3787,7 @@ pub const fn _mm_mask_cmpge_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpge_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe { simd_bitmask::<i8x64, _>(simd_ge(a.as_i8x64(), b.as_i8x64())) }
 }
@@ -3799,7 +3799,7 @@ pub const fn _mm512_cmpge_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpge_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     _mm512_mask_cmp_epi8_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
@@ -3811,7 +3811,7 @@ pub const fn _mm512_mask_cmpge_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpge_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe { simd_bitmask::<i8x32, _>(simd_ge(a.as_i8x32(), b.as_i8x32())) }
 }
@@ -3823,7 +3823,7 @@ pub const fn _mm256_cmpge_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpge_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     _mm256_mask_cmp_epi8_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
@@ -3835,7 +3835,7 @@ pub const fn _mm256_mask_cmpge_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpge_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe { simd_bitmask::<i8x16, _>(simd_ge(a.as_i8x16(), b.as_i8x16())) }
 }
@@ -3847,7 +3847,7 @@ pub const fn _mm_cmpge_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpge_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     _mm_mask_cmp_epi8_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
@@ -3859,7 +3859,7 @@ pub const fn _mm_mask_cmpge_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpeq_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe { simd_bitmask::<u16x32, _>(simd_eq(a.as_u16x32(), b.as_u16x32())) }
 }
@@ -3871,7 +3871,7 @@ pub const fn _mm512_cmpeq_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpeq_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     _mm512_mask_cmp_epu16_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
@@ -3883,7 +3883,7 @@ pub const fn _mm512_mask_cmpeq_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpeq_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe { simd_bitmask::<u16x16, _>(simd_eq(a.as_u16x16(), b.as_u16x16())) }
 }
@@ -3895,7 +3895,7 @@ pub const fn _mm256_cmpeq_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpeq_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     _mm256_mask_cmp_epu16_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
@@ -3907,7 +3907,7 @@ pub const fn _mm256_mask_cmpeq_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpeq_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe { simd_bitmask::<u16x8, _>(simd_eq(a.as_u16x8(), b.as_u16x8())) }
 }
@@ -3919,7 +3919,7 @@ pub const fn _mm_cmpeq_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpeq_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     _mm_mask_cmp_epu16_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
@@ -3931,7 +3931,7 @@ pub const fn _mm_mask_cmpeq_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpeq_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe { simd_bitmask::<u8x64, _>(simd_eq(a.as_u8x64(), b.as_u8x64())) }
 }
@@ -3943,7 +3943,7 @@ pub const fn _mm512_cmpeq_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpeq_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     _mm512_mask_cmp_epu8_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
@@ -3955,7 +3955,7 @@ pub const fn _mm512_mask_cmpeq_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpeq_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe { simd_bitmask::<u8x32, _>(simd_eq(a.as_u8x32(), b.as_u8x32())) }
 }
@@ -3967,7 +3967,7 @@ pub const fn _mm256_cmpeq_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpeq_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     _mm256_mask_cmp_epu8_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
@@ -3979,7 +3979,7 @@ pub const fn _mm256_mask_cmpeq_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpeq_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe { simd_bitmask::<u8x16, _>(simd_eq(a.as_u8x16(), b.as_u8x16())) }
 }
@@ -3991,7 +3991,7 @@ pub const fn _mm_cmpeq_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpeq_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     _mm_mask_cmp_epu8_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
@@ -4003,7 +4003,7 @@ pub const fn _mm_mask_cmpeq_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpeq_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe { simd_bitmask::<i16x32, _>(simd_eq(a.as_i16x32(), b.as_i16x32())) }
 }
@@ -4015,7 +4015,7 @@ pub const fn _mm512_cmpeq_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpeq_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     _mm512_mask_cmp_epi16_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
@@ -4027,7 +4027,7 @@ pub const fn _mm512_mask_cmpeq_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpeq_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe { simd_bitmask::<i16x16, _>(simd_eq(a.as_i16x16(), b.as_i16x16())) }
 }
@@ -4039,7 +4039,7 @@ pub const fn _mm256_cmpeq_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpeq_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     _mm256_mask_cmp_epi16_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
@@ -4051,7 +4051,7 @@ pub const fn _mm256_mask_cmpeq_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpeq_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe { simd_bitmask::<i16x8, _>(simd_eq(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -4063,7 +4063,7 @@ pub const fn _mm_cmpeq_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpeq_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     _mm_mask_cmp_epi16_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
@@ -4075,7 +4075,7 @@ pub const fn _mm_mask_cmpeq_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpeq_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe { simd_bitmask::<i8x64, _>(simd_eq(a.as_i8x64(), b.as_i8x64())) }
 }
@@ -4087,7 +4087,7 @@ pub const fn _mm512_cmpeq_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpeq_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     _mm512_mask_cmp_epi8_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
@@ -4099,7 +4099,7 @@ pub const fn _mm512_mask_cmpeq_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpeq_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe { simd_bitmask::<i8x32, _>(simd_eq(a.as_i8x32(), b.as_i8x32())) }
 }
@@ -4111,7 +4111,7 @@ pub const fn _mm256_cmpeq_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpeq_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     _mm256_mask_cmp_epi8_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
@@ -4123,7 +4123,7 @@ pub const fn _mm256_mask_cmpeq_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpeq_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe { simd_bitmask::<i8x16, _>(simd_eq(a.as_i8x16(), b.as_i8x16())) }
 }
@@ -4135,7 +4135,7 @@ pub const fn _mm_cmpeq_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpeq_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     _mm_mask_cmp_epi8_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
@@ -4147,7 +4147,7 @@ pub const fn _mm_mask_cmpeq_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpneq_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe { simd_bitmask::<u16x32, _>(simd_ne(a.as_u16x32(), b.as_u16x32())) }
 }
@@ -4159,7 +4159,7 @@ pub const fn _mm512_cmpneq_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpneq_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     _mm512_mask_cmp_epu16_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
@@ -4171,7 +4171,7 @@ pub const fn _mm512_mask_cmpneq_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpneq_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe { simd_bitmask::<u16x16, _>(simd_ne(a.as_u16x16(), b.as_u16x16())) }
 }
@@ -4183,7 +4183,7 @@ pub const fn _mm256_cmpneq_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpneq_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     _mm256_mask_cmp_epu16_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
@@ -4195,7 +4195,7 @@ pub const fn _mm256_mask_cmpneq_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpneq_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe { simd_bitmask::<u16x8, _>(simd_ne(a.as_u16x8(), b.as_u16x8())) }
 }
@@ -4207,7 +4207,7 @@ pub const fn _mm_cmpneq_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpneq_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     _mm_mask_cmp_epu16_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
@@ -4219,7 +4219,7 @@ pub const fn _mm_mask_cmpneq_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) ->
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpneq_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe { simd_bitmask::<u8x64, _>(simd_ne(a.as_u8x64(), b.as_u8x64())) }
 }
@@ -4231,7 +4231,7 @@ pub const fn _mm512_cmpneq_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpneq_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     _mm512_mask_cmp_epu8_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
@@ -4243,7 +4243,7 @@ pub const fn _mm512_mask_cmpneq_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpneq_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe { simd_bitmask::<u8x32, _>(simd_ne(a.as_u8x32(), b.as_u8x32())) }
 }
@@ -4255,7 +4255,7 @@ pub const fn _mm256_cmpneq_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpneq_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     _mm256_mask_cmp_epu8_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
@@ -4267,7 +4267,7 @@ pub const fn _mm256_mask_cmpneq_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpneq_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe { simd_bitmask::<u8x16, _>(simd_ne(a.as_u8x16(), b.as_u8x16())) }
 }
@@ -4279,7 +4279,7 @@ pub const fn _mm_cmpneq_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpneq_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     _mm_mask_cmp_epu8_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
@@ -4291,7 +4291,7 @@ pub const fn _mm_mask_cmpneq_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) ->
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpneq_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe { simd_bitmask::<i16x32, _>(simd_ne(a.as_i16x32(), b.as_i16x32())) }
 }
@@ -4303,7 +4303,7 @@ pub const fn _mm512_cmpneq_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpneq_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     _mm512_mask_cmp_epi16_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
@@ -4315,7 +4315,7 @@ pub const fn _mm512_mask_cmpneq_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpneq_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe { simd_bitmask::<i16x16, _>(simd_ne(a.as_i16x16(), b.as_i16x16())) }
 }
@@ -4327,7 +4327,7 @@ pub const fn _mm256_cmpneq_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpneq_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     _mm256_mask_cmp_epi16_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
@@ -4339,7 +4339,7 @@ pub const fn _mm256_mask_cmpneq_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpneq_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe { simd_bitmask::<i16x8, _>(simd_ne(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -4351,7 +4351,7 @@ pub const fn _mm_cmpneq_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpneq_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     _mm_mask_cmp_epi16_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
@@ -4363,7 +4363,7 @@ pub const fn _mm_mask_cmpneq_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) ->
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmpneq_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe { simd_bitmask::<i8x64, _>(simd_ne(a.as_i8x64(), b.as_i8x64())) }
 }
@@ -4375,7 +4375,7 @@ pub const fn _mm512_cmpneq_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmpneq_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     _mm512_mask_cmp_epi8_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
@@ -4387,7 +4387,7 @@ pub const fn _mm512_mask_cmpneq_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmpneq_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe { simd_bitmask::<i8x32, _>(simd_ne(a.as_i8x32(), b.as_i8x32())) }
 }
@@ -4399,7 +4399,7 @@ pub const fn _mm256_cmpneq_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmpneq_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     _mm256_mask_cmp_epi8_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
@@ -4411,7 +4411,7 @@ pub const fn _mm256_mask_cmpneq_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpneq_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe { simd_bitmask::<i8x16, _>(simd_ne(a.as_i8x16(), b.as_i8x16())) }
 }
@@ -4423,7 +4423,7 @@ pub const fn _mm_cmpneq_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpcmp))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmpneq_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     _mm_mask_cmp_epi8_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
@@ -4434,9 +4434,9 @@ pub const fn _mm_mask_cmpneq_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) ->
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmp_epu16_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 3);
@@ -4462,9 +4462,9 @@ pub const fn _mm512_cmp_epu16_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> _
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmp_epu16_mask<const IMM8: i32>(
     k1: __mmask32,
     a: __m512i,
@@ -4495,9 +4495,9 @@ pub const fn _mm512_mask_cmp_epu16_mask<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmp_epu16_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 3);
@@ -4523,9 +4523,9 @@ pub const fn _mm256_cmp_epu16_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> _
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmp_epu16_mask<const IMM8: i32>(
     k1: __mmask16,
     a: __m256i,
@@ -4556,9 +4556,9 @@ pub const fn _mm256_mask_cmp_epu16_mask<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmp_epu16_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 3);
@@ -4584,9 +4584,9 @@ pub const fn _mm_cmp_epu16_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __mm
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmp_epu16_mask<const IMM8: i32>(
     k1: __mmask8,
     a: __m128i,
@@ -4617,9 +4617,9 @@ pub const fn _mm_mask_cmp_epu16_mask<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmp_epu8_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 3);
@@ -4645,9 +4645,9 @@ pub const fn _mm512_cmp_epu8_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> __
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmp_epu8_mask<const IMM8: i32>(
     k1: __mmask64,
     a: __m512i,
@@ -4678,9 +4678,9 @@ pub const fn _mm512_mask_cmp_epu8_mask<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmp_epu8_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 3);
@@ -4706,9 +4706,9 @@ pub const fn _mm256_cmp_epu8_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> __
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmp_epu8_mask<const IMM8: i32>(
     k1: __mmask32,
     a: __m256i,
@@ -4739,9 +4739,9 @@ pub const fn _mm256_mask_cmp_epu8_mask<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmp_epu8_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 3);
@@ -4767,9 +4767,9 @@ pub const fn _mm_cmp_epu8_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __mma
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmp_epu8_mask<const IMM8: i32>(
     k1: __mmask16,
     a: __m128i,
@@ -4800,9 +4800,9 @@ pub const fn _mm_mask_cmp_epu8_mask<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmp_epi16_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> __mmask32 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 3);
@@ -4828,9 +4828,9 @@ pub const fn _mm512_cmp_epi16_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> _
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmp_epi16_mask<const IMM8: i32>(
     k1: __mmask32,
     a: __m512i,
@@ -4861,9 +4861,9 @@ pub const fn _mm512_mask_cmp_epi16_mask<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmp_epi16_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> __mmask16 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 3);
@@ -4889,9 +4889,9 @@ pub const fn _mm256_cmp_epi16_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> _
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmp_epi16_mask<const IMM8: i32>(
     k1: __mmask16,
     a: __m256i,
@@ -4922,9 +4922,9 @@ pub const fn _mm256_mask_cmp_epi16_mask<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmp_epi16_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __mmask8 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 3);
@@ -4950,9 +4950,9 @@ pub const fn _mm_cmp_epi16_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __mm
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmp_epi16_mask<const IMM8: i32>(
     k1: __mmask8,
     a: __m128i,
@@ -4983,9 +4983,9 @@ pub const fn _mm_mask_cmp_epi16_mask<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cmp_epi8_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> __mmask64 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 3);
@@ -5011,9 +5011,9 @@ pub const fn _mm512_cmp_epi8_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> __
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cmp_epi8_mask<const IMM8: i32>(
     k1: __mmask64,
     a: __m512i,
@@ -5044,9 +5044,9 @@ pub const fn _mm512_mask_cmp_epi8_mask<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cmp_epi8_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> __mmask32 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 3);
@@ -5072,9 +5072,9 @@ pub const fn _mm256_cmp_epi8_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> __
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cmp_epi8_mask<const IMM8: i32>(
     k1: __mmask32,
     a: __m256i,
@@ -5105,9 +5105,9 @@ pub const fn _mm256_mask_cmp_epi8_mask<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmp_epi8_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __mmask16 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 3);
@@ -5133,9 +5133,9 @@ pub const fn _mm_cmp_epi8_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __mma
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cmp_epi8_mask<const IMM8: i32>(
     k1: __mmask16,
     a: __m128i,
@@ -5166,7 +5166,7 @@ pub const fn _mm_mask_cmp_epi8_mask<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_add_epi16(a: __m256i) -> i16 {
     unsafe { simd_reduce_add_ordered(a.as_i16x16(), 0) }
 }
@@ -5177,7 +5177,7 @@ pub const fn _mm256_reduce_add_epi16(a: __m256i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_add_epi16(k: __mmask16, a: __m256i) -> i16 {
     unsafe { simd_reduce_add_ordered(simd_select_bitmask(k, a.as_i16x16(), i16x16::ZERO), 0) }
 }
@@ -5188,7 +5188,7 @@ pub const fn _mm256_mask_reduce_add_epi16(k: __mmask16, a: __m256i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_add_epi16(a: __m128i) -> i16 {
     unsafe { simd_reduce_add_ordered(a.as_i16x8(), 0) }
 }
@@ -5199,7 +5199,7 @@ pub const fn _mm_reduce_add_epi16(a: __m128i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_add_epi16(k: __mmask8, a: __m128i) -> i16 {
     unsafe { simd_reduce_add_ordered(simd_select_bitmask(k, a.as_i16x8(), i16x8::ZERO), 0) }
 }
@@ -5210,7 +5210,7 @@ pub const fn _mm_mask_reduce_add_epi16(k: __mmask8, a: __m128i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_add_epi8(a: __m256i) -> i8 {
     unsafe { simd_reduce_add_ordered(a.as_i8x32(), 0) }
 }
@@ -5221,7 +5221,7 @@ pub const fn _mm256_reduce_add_epi8(a: __m256i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_add_epi8(k: __mmask32, a: __m256i) -> i8 {
     unsafe { simd_reduce_add_ordered(simd_select_bitmask(k, a.as_i8x32(), i8x32::ZERO), 0) }
 }
@@ -5232,7 +5232,7 @@ pub const fn _mm256_mask_reduce_add_epi8(k: __mmask32, a: __m256i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_add_epi8(a: __m128i) -> i8 {
     unsafe { simd_reduce_add_ordered(a.as_i8x16(), 0) }
 }
@@ -5243,7 +5243,7 @@ pub const fn _mm_reduce_add_epi8(a: __m128i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_add_epi8(k: __mmask16, a: __m128i) -> i8 {
     unsafe { simd_reduce_add_ordered(simd_select_bitmask(k, a.as_i8x16(), i8x16::ZERO), 0) }
 }
@@ -5254,7 +5254,7 @@ pub const fn _mm_mask_reduce_add_epi8(k: __mmask16, a: __m128i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_and_epi16(a: __m256i) -> i16 {
     unsafe { simd_reduce_and(a.as_i16x16()) }
 }
@@ -5265,7 +5265,7 @@ pub const fn _mm256_reduce_and_epi16(a: __m256i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_and_epi16(k: __mmask16, a: __m256i) -> i16 {
     unsafe {
         simd_reduce_and(simd_select_bitmask(
@@ -5282,7 +5282,7 @@ pub const fn _mm256_mask_reduce_and_epi16(k: __mmask16, a: __m256i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_and_epi16(a: __m128i) -> i16 {
     unsafe { simd_reduce_and(a.as_i16x8()) }
 }
@@ -5293,7 +5293,7 @@ pub const fn _mm_reduce_and_epi16(a: __m128i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_and_epi16(k: __mmask8, a: __m128i) -> i16 {
     unsafe {
         simd_reduce_and(simd_select_bitmask(
@@ -5310,7 +5310,7 @@ pub const fn _mm_mask_reduce_and_epi16(k: __mmask8, a: __m128i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_and_epi8(a: __m256i) -> i8 {
     unsafe { simd_reduce_and(a.as_i8x32()) }
 }
@@ -5321,7 +5321,7 @@ pub const fn _mm256_reduce_and_epi8(a: __m256i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_and_epi8(k: __mmask32, a: __m256i) -> i8 {
     unsafe {
         simd_reduce_and(simd_select_bitmask(
@@ -5338,7 +5338,7 @@ pub const fn _mm256_mask_reduce_and_epi8(k: __mmask32, a: __m256i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_and_epi8(a: __m128i) -> i8 {
     unsafe { simd_reduce_and(a.as_i8x16()) }
 }
@@ -5349,7 +5349,7 @@ pub const fn _mm_reduce_and_epi8(a: __m128i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_and_epi8(k: __mmask16, a: __m128i) -> i8 {
     unsafe {
         simd_reduce_and(simd_select_bitmask(
@@ -5366,7 +5366,7 @@ pub const fn _mm_mask_reduce_and_epi8(k: __mmask16, a: __m128i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_max_epi16(a: __m256i) -> i16 {
     unsafe { simd_reduce_max(a.as_i16x16()) }
 }
@@ -5377,7 +5377,7 @@ pub const fn _mm256_reduce_max_epi16(a: __m256i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_max_epi16(k: __mmask16, a: __m256i) -> i16 {
     unsafe { simd_reduce_max(simd_select_bitmask(k, a.as_i16x16(), i16x16::splat(-32768))) }
 }
@@ -5388,7 +5388,7 @@ pub const fn _mm256_mask_reduce_max_epi16(k: __mmask16, a: __m256i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_max_epi16(a: __m128i) -> i16 {
     unsafe { simd_reduce_max(a.as_i16x8()) }
 }
@@ -5399,7 +5399,7 @@ pub const fn _mm_reduce_max_epi16(a: __m128i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_max_epi16(k: __mmask8, a: __m128i) -> i16 {
     unsafe { simd_reduce_max(simd_select_bitmask(k, a.as_i16x8(), i16x8::splat(-32768))) }
 }
@@ -5410,7 +5410,7 @@ pub const fn _mm_mask_reduce_max_epi16(k: __mmask8, a: __m128i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_max_epi8(a: __m256i) -> i8 {
     unsafe { simd_reduce_max(a.as_i8x32()) }
 }
@@ -5421,7 +5421,7 @@ pub const fn _mm256_reduce_max_epi8(a: __m256i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_max_epi8(k: __mmask32, a: __m256i) -> i8 {
     unsafe { simd_reduce_max(simd_select_bitmask(k, a.as_i8x32(), i8x32::splat(-128))) }
 }
@@ -5432,7 +5432,7 @@ pub const fn _mm256_mask_reduce_max_epi8(k: __mmask32, a: __m256i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_max_epi8(a: __m128i) -> i8 {
     unsafe { simd_reduce_max(a.as_i8x16()) }
 }
@@ -5443,7 +5443,7 @@ pub const fn _mm_reduce_max_epi8(a: __m128i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_max_epi8(k: __mmask16, a: __m128i) -> i8 {
     unsafe { simd_reduce_max(simd_select_bitmask(k, a.as_i8x16(), i8x16::splat(-128))) }
 }
@@ -5454,7 +5454,7 @@ pub const fn _mm_mask_reduce_max_epi8(k: __mmask16, a: __m128i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_max_epu16(a: __m256i) -> u16 {
     unsafe { simd_reduce_max(a.as_u16x16()) }
 }
@@ -5465,7 +5465,7 @@ pub const fn _mm256_reduce_max_epu16(a: __m256i) -> u16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_max_epu16(k: __mmask16, a: __m256i) -> u16 {
     unsafe { simd_reduce_max(simd_select_bitmask(k, a.as_u16x16(), u16x16::ZERO)) }
 }
@@ -5476,7 +5476,7 @@ pub const fn _mm256_mask_reduce_max_epu16(k: __mmask16, a: __m256i) -> u16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_max_epu16(a: __m128i) -> u16 {
     unsafe { simd_reduce_max(a.as_u16x8()) }
 }
@@ -5487,7 +5487,7 @@ pub const fn _mm_reduce_max_epu16(a: __m128i) -> u16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_max_epu16(k: __mmask8, a: __m128i) -> u16 {
     unsafe { simd_reduce_max(simd_select_bitmask(k, a.as_u16x8(), u16x8::ZERO)) }
 }
@@ -5498,7 +5498,7 @@ pub const fn _mm_mask_reduce_max_epu16(k: __mmask8, a: __m128i) -> u16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_max_epu8(a: __m256i) -> u8 {
     unsafe { simd_reduce_max(a.as_u8x32()) }
 }
@@ -5509,7 +5509,7 @@ pub const fn _mm256_reduce_max_epu8(a: __m256i) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_max_epu8(k: __mmask32, a: __m256i) -> u8 {
     unsafe { simd_reduce_max(simd_select_bitmask(k, a.as_u8x32(), u8x32::ZERO)) }
 }
@@ -5520,7 +5520,7 @@ pub const fn _mm256_mask_reduce_max_epu8(k: __mmask32, a: __m256i) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_max_epu8(a: __m128i) -> u8 {
     unsafe { simd_reduce_max(a.as_u8x16()) }
 }
@@ -5531,7 +5531,7 @@ pub const fn _mm_reduce_max_epu8(a: __m128i) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_max_epu8(k: __mmask16, a: __m128i) -> u8 {
     unsafe { simd_reduce_max(simd_select_bitmask(k, a.as_u8x16(), u8x16::ZERO)) }
 }
@@ -5542,7 +5542,7 @@ pub const fn _mm_mask_reduce_max_epu8(k: __mmask16, a: __m128i) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_min_epi16(a: __m256i) -> i16 {
     unsafe { simd_reduce_min(a.as_i16x16()) }
 }
@@ -5553,7 +5553,7 @@ pub const fn _mm256_reduce_min_epi16(a: __m256i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_min_epi16(k: __mmask16, a: __m256i) -> i16 {
     unsafe { simd_reduce_min(simd_select_bitmask(k, a.as_i16x16(), i16x16::splat(0x7fff))) }
 }
@@ -5564,7 +5564,7 @@ pub const fn _mm256_mask_reduce_min_epi16(k: __mmask16, a: __m256i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_min_epi16(a: __m128i) -> i16 {
     unsafe { simd_reduce_min(a.as_i16x8()) }
 }
@@ -5575,7 +5575,7 @@ pub const fn _mm_reduce_min_epi16(a: __m128i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_min_epi16(k: __mmask8, a: __m128i) -> i16 {
     unsafe { simd_reduce_min(simd_select_bitmask(k, a.as_i16x8(), i16x8::splat(0x7fff))) }
 }
@@ -5586,7 +5586,7 @@ pub const fn _mm_mask_reduce_min_epi16(k: __mmask8, a: __m128i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_min_epi8(a: __m256i) -> i8 {
     unsafe { simd_reduce_min(a.as_i8x32()) }
 }
@@ -5597,7 +5597,7 @@ pub const fn _mm256_reduce_min_epi8(a: __m256i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_min_epi8(k: __mmask32, a: __m256i) -> i8 {
     unsafe { simd_reduce_min(simd_select_bitmask(k, a.as_i8x32(), i8x32::splat(0x7f))) }
 }
@@ -5608,7 +5608,7 @@ pub const fn _mm256_mask_reduce_min_epi8(k: __mmask32, a: __m256i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_min_epi8(a: __m128i) -> i8 {
     unsafe { simd_reduce_min(a.as_i8x16()) }
 }
@@ -5619,7 +5619,7 @@ pub const fn _mm_reduce_min_epi8(a: __m128i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_min_epi8(k: __mmask16, a: __m128i) -> i8 {
     unsafe { simd_reduce_min(simd_select_bitmask(k, a.as_i8x16(), i8x16::splat(0x7f))) }
 }
@@ -5630,7 +5630,7 @@ pub const fn _mm_mask_reduce_min_epi8(k: __mmask16, a: __m128i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_min_epu16(a: __m256i) -> u16 {
     unsafe { simd_reduce_min(a.as_u16x16()) }
 }
@@ -5641,7 +5641,7 @@ pub const fn _mm256_reduce_min_epu16(a: __m256i) -> u16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_min_epu16(k: __mmask16, a: __m256i) -> u16 {
     unsafe { simd_reduce_min(simd_select_bitmask(k, a.as_u16x16(), u16x16::splat(0xffff))) }
 }
@@ -5652,7 +5652,7 @@ pub const fn _mm256_mask_reduce_min_epu16(k: __mmask16, a: __m256i) -> u16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_min_epu16(a: __m128i) -> u16 {
     unsafe { simd_reduce_min(a.as_u16x8()) }
 }
@@ -5663,7 +5663,7 @@ pub const fn _mm_reduce_min_epu16(a: __m128i) -> u16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_min_epu16(k: __mmask8, a: __m128i) -> u16 {
     unsafe { simd_reduce_min(simd_select_bitmask(k, a.as_u16x8(), u16x8::splat(0xffff))) }
 }
@@ -5674,7 +5674,7 @@ pub const fn _mm_mask_reduce_min_epu16(k: __mmask8, a: __m128i) -> u16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_min_epu8(a: __m256i) -> u8 {
     unsafe { simd_reduce_min(a.as_u8x32()) }
 }
@@ -5685,7 +5685,7 @@ pub const fn _mm256_reduce_min_epu8(a: __m256i) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_min_epu8(k: __mmask32, a: __m256i) -> u8 {
     unsafe { simd_reduce_min(simd_select_bitmask(k, a.as_u8x32(), u8x32::splat(0xff))) }
 }
@@ -5696,7 +5696,7 @@ pub const fn _mm256_mask_reduce_min_epu8(k: __mmask32, a: __m256i) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_min_epu8(a: __m128i) -> u8 {
     unsafe { simd_reduce_min(a.as_u8x16()) }
 }
@@ -5707,7 +5707,7 @@ pub const fn _mm_reduce_min_epu8(a: __m128i) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_min_epu8(k: __mmask16, a: __m128i) -> u8 {
     unsafe { simd_reduce_min(simd_select_bitmask(k, a.as_u8x16(), u8x16::splat(0xff))) }
 }
@@ -5718,7 +5718,7 @@ pub const fn _mm_mask_reduce_min_epu8(k: __mmask16, a: __m128i) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_mul_epi16(a: __m256i) -> i16 {
     unsafe { simd_reduce_mul_ordered(a.as_i16x16(), 1) }
 }
@@ -5729,7 +5729,7 @@ pub const fn _mm256_reduce_mul_epi16(a: __m256i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_mul_epi16(k: __mmask16, a: __m256i) -> i16 {
     unsafe { simd_reduce_mul_ordered(simd_select_bitmask(k, a.as_i16x16(), i16x16::splat(1)), 1) }
 }
@@ -5740,7 +5740,7 @@ pub const fn _mm256_mask_reduce_mul_epi16(k: __mmask16, a: __m256i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_mul_epi16(a: __m128i) -> i16 {
     unsafe { simd_reduce_mul_ordered(a.as_i16x8(), 1) }
 }
@@ -5751,7 +5751,7 @@ pub const fn _mm_reduce_mul_epi16(a: __m128i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_mul_epi16(k: __mmask8, a: __m128i) -> i16 {
     unsafe { simd_reduce_mul_ordered(simd_select_bitmask(k, a.as_i16x8(), i16x8::splat(1)), 1) }
 }
@@ -5762,7 +5762,7 @@ pub const fn _mm_mask_reduce_mul_epi16(k: __mmask8, a: __m128i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_mul_epi8(a: __m256i) -> i8 {
     unsafe { simd_reduce_mul_ordered(a.as_i8x32(), 1) }
 }
@@ -5773,7 +5773,7 @@ pub const fn _mm256_reduce_mul_epi8(a: __m256i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_mul_epi8(k: __mmask32, a: __m256i) -> i8 {
     unsafe { simd_reduce_mul_ordered(simd_select_bitmask(k, a.as_i8x32(), i8x32::splat(1)), 1) }
 }
@@ -5784,7 +5784,7 @@ pub const fn _mm256_mask_reduce_mul_epi8(k: __mmask32, a: __m256i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_mul_epi8(a: __m128i) -> i8 {
     unsafe { simd_reduce_mul_ordered(a.as_i8x16(), 1) }
 }
@@ -5795,7 +5795,7 @@ pub const fn _mm_reduce_mul_epi8(a: __m128i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_mul_epi8(k: __mmask16, a: __m128i) -> i8 {
     unsafe { simd_reduce_mul_ordered(simd_select_bitmask(k, a.as_i8x16(), i8x16::splat(1)), 1) }
 }
@@ -5806,7 +5806,7 @@ pub const fn _mm_mask_reduce_mul_epi8(k: __mmask16, a: __m128i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_or_epi16(a: __m256i) -> i16 {
     unsafe { simd_reduce_or(a.as_i16x16()) }
 }
@@ -5817,7 +5817,7 @@ pub const fn _mm256_reduce_or_epi16(a: __m256i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_or_epi16(k: __mmask16, a: __m256i) -> i16 {
     unsafe { simd_reduce_or(simd_select_bitmask(k, a.as_i16x16(), i16x16::ZERO)) }
 }
@@ -5828,7 +5828,7 @@ pub const fn _mm256_mask_reduce_or_epi16(k: __mmask16, a: __m256i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_or_epi16(a: __m128i) -> i16 {
     unsafe { simd_reduce_or(a.as_i16x8()) }
 }
@@ -5839,7 +5839,7 @@ pub const fn _mm_reduce_or_epi16(a: __m128i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_or_epi16(k: __mmask8, a: __m128i) -> i16 {
     unsafe { simd_reduce_or(simd_select_bitmask(k, a.as_i16x8(), i16x8::ZERO)) }
 }
@@ -5850,7 +5850,7 @@ pub const fn _mm_mask_reduce_or_epi16(k: __mmask8, a: __m128i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_or_epi8(a: __m256i) -> i8 {
     unsafe { simd_reduce_or(a.as_i8x32()) }
 }
@@ -5861,7 +5861,7 @@ pub const fn _mm256_reduce_or_epi8(a: __m256i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_reduce_or_epi8(k: __mmask32, a: __m256i) -> i8 {
     unsafe { simd_reduce_or(simd_select_bitmask(k, a.as_i8x32(), i8x32::ZERO)) }
 }
@@ -5872,7 +5872,7 @@ pub const fn _mm256_mask_reduce_or_epi8(k: __mmask32, a: __m256i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_or_epi8(a: __m128i) -> i8 {
     unsafe { simd_reduce_or(a.as_i8x16()) }
 }
@@ -5883,7 +5883,7 @@ pub const fn _mm_reduce_or_epi8(a: __m128i) -> i8 {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_reduce_or_epi8(k: __mmask16, a: __m128i) -> i8 {
     unsafe { simd_reduce_or(simd_select_bitmask(k, a.as_i8x16(), i8x16::ZERO)) }
 }
@@ -5895,7 +5895,7 @@ pub const fn _mm_mask_reduce_or_epi8(k: __mmask16, a: __m128i) -> i8 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu16
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_loadu_epi16(mem_addr: *const i16) -> __m512i {
     ptr::read_unaligned(mem_addr as *const __m512i)
 }
@@ -5907,7 +5907,7 @@ pub const unsafe fn _mm512_loadu_epi16(mem_addr: *const i16) -> __m512i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu16
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_loadu_epi16(mem_addr: *const i16) -> __m256i {
     ptr::read_unaligned(mem_addr as *const __m256i)
 }
@@ -5919,7 +5919,7 @@ pub const unsafe fn _mm256_loadu_epi16(mem_addr: *const i16) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu16
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadu_epi16(mem_addr: *const i16) -> __m128i {
     ptr::read_unaligned(mem_addr as *const __m128i)
 }
@@ -5931,7 +5931,7 @@ pub const unsafe fn _mm_loadu_epi16(mem_addr: *const i16) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu8
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_loadu_epi8(mem_addr: *const i8) -> __m512i {
     ptr::read_unaligned(mem_addr as *const __m512i)
 }
@@ -5943,7 +5943,7 @@ pub const unsafe fn _mm512_loadu_epi8(mem_addr: *const i8) -> __m512i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu8
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_loadu_epi8(mem_addr: *const i8) -> __m256i {
     ptr::read_unaligned(mem_addr as *const __m256i)
 }
@@ -5955,7 +5955,7 @@ pub const unsafe fn _mm256_loadu_epi8(mem_addr: *const i8) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu8
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadu_epi8(mem_addr: *const i8) -> __m128i {
     ptr::read_unaligned(mem_addr as *const __m128i)
 }
@@ -5967,7 +5967,7 @@ pub const unsafe fn _mm_loadu_epi8(mem_addr: *const i8) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu16
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_storeu_epi16(mem_addr: *mut i16, a: __m512i) {
     ptr::write_unaligned(mem_addr as *mut __m512i, a);
 }
@@ -5979,7 +5979,7 @@ pub const unsafe fn _mm512_storeu_epi16(mem_addr: *mut i16, a: __m512i) {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu16
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_storeu_epi16(mem_addr: *mut i16, a: __m256i) {
     ptr::write_unaligned(mem_addr as *mut __m256i, a);
 }
@@ -5991,7 +5991,7 @@ pub const unsafe fn _mm256_storeu_epi16(mem_addr: *mut i16, a: __m256i) {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu16
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storeu_epi16(mem_addr: *mut i16, a: __m128i) {
     ptr::write_unaligned(mem_addr as *mut __m128i, a);
 }
@@ -6003,7 +6003,7 @@ pub const unsafe fn _mm_storeu_epi16(mem_addr: *mut i16, a: __m128i) {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu8
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_storeu_epi8(mem_addr: *mut i8, a: __m512i) {
     ptr::write_unaligned(mem_addr as *mut __m512i, a);
 }
@@ -6015,7 +6015,7 @@ pub const unsafe fn _mm512_storeu_epi8(mem_addr: *mut i8, a: __m512i) {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu8
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_storeu_epi8(mem_addr: *mut i8, a: __m256i) {
     ptr::write_unaligned(mem_addr as *mut __m256i, a);
 }
@@ -6027,7 +6027,7 @@ pub const unsafe fn _mm256_storeu_epi8(mem_addr: *mut i8, a: __m256i) {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu8
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storeu_epi8(mem_addr: *mut i8, a: __m128i) {
     ptr::write_unaligned(mem_addr as *mut __m128i, a);
 }
@@ -6041,7 +6041,7 @@ pub const unsafe fn _mm_storeu_epi8(mem_addr: *mut i8, a: __m128i) {
 #[target_feature(enable = "avx512bw")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_mask_loadu_epi16(
     src: __m512i,
     k: __mmask32,
@@ -6060,7 +6060,7 @@ pub const unsafe fn _mm512_mask_loadu_epi16(
 #[target_feature(enable = "avx512bw")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_maskz_loadu_epi16(k: __mmask32, mem_addr: *const i16) -> __m512i {
     _mm512_mask_loadu_epi16(_mm512_setzero_si512(), k, mem_addr)
 }
@@ -6074,7 +6074,7 @@ pub const unsafe fn _mm512_maskz_loadu_epi16(k: __mmask32, mem_addr: *const i16)
 #[target_feature(enable = "avx512bw")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_mask_loadu_epi8(
     src: __m512i,
     k: __mmask64,
@@ -6093,7 +6093,7 @@ pub const unsafe fn _mm512_mask_loadu_epi8(
 #[target_feature(enable = "avx512bw")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_maskz_loadu_epi8(k: __mmask64, mem_addr: *const i8) -> __m512i {
     _mm512_mask_loadu_epi8(_mm512_setzero_si512(), k, mem_addr)
 }
@@ -6107,7 +6107,7 @@ pub const unsafe fn _mm512_maskz_loadu_epi8(k: __mmask64, mem_addr: *const i8) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_mask_loadu_epi16(
     src: __m256i,
     k: __mmask16,
@@ -6126,7 +6126,7 @@ pub const unsafe fn _mm256_mask_loadu_epi16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_maskz_loadu_epi16(k: __mmask16, mem_addr: *const i16) -> __m256i {
     _mm256_mask_loadu_epi16(_mm256_setzero_si256(), k, mem_addr)
 }
@@ -6140,7 +6140,7 @@ pub const unsafe fn _mm256_maskz_loadu_epi16(k: __mmask16, mem_addr: *const i16)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_mask_loadu_epi8(
     src: __m256i,
     k: __mmask32,
@@ -6159,7 +6159,7 @@ pub const unsafe fn _mm256_mask_loadu_epi8(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_maskz_loadu_epi8(k: __mmask32, mem_addr: *const i8) -> __m256i {
     _mm256_mask_loadu_epi8(_mm256_setzero_si256(), k, mem_addr)
 }
@@ -6173,7 +6173,7 @@ pub const unsafe fn _mm256_maskz_loadu_epi8(k: __mmask32, mem_addr: *const i8) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_mask_loadu_epi16(
     src: __m128i,
     k: __mmask8,
@@ -6192,7 +6192,7 @@ pub const unsafe fn _mm_mask_loadu_epi16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_maskz_loadu_epi16(k: __mmask8, mem_addr: *const i16) -> __m128i {
     _mm_mask_loadu_epi16(_mm_setzero_si128(), k, mem_addr)
 }
@@ -6206,7 +6206,7 @@ pub const unsafe fn _mm_maskz_loadu_epi16(k: __mmask8, mem_addr: *const i16) -> 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_mask_loadu_epi8(
     src: __m128i,
     k: __mmask16,
@@ -6225,7 +6225,7 @@ pub const unsafe fn _mm_mask_loadu_epi8(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_maskz_loadu_epi8(k: __mmask16, mem_addr: *const i8) -> __m128i {
     _mm_mask_loadu_epi8(_mm_setzero_si128(), k, mem_addr)
 }
@@ -6238,7 +6238,7 @@ pub const unsafe fn _mm_maskz_loadu_epi8(k: __mmask16, mem_addr: *const i8) -> _
 #[target_feature(enable = "avx512bw")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask32, a: __m512i) {
     let mask = simd_select_bitmask(mask, i16x32::splat(!0), i16x32::ZERO);
     simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i16x32());
@@ -6252,7 +6252,7 @@ pub const unsafe fn _mm512_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask32
 #[target_feature(enable = "avx512bw")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask64, a: __m512i) {
     let mask = simd_select_bitmask(mask, i8x64::splat(!0), i8x64::ZERO);
     simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i8x64());
@@ -6266,7 +6266,7 @@ pub const unsafe fn _mm512_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask64, 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask16, a: __m256i) {
     let mask = simd_select_bitmask(mask, i16x16::splat(!0), i16x16::ZERO);
     simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i16x16());
@@ -6280,7 +6280,7 @@ pub const unsafe fn _mm256_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask16
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask32, a: __m256i) {
     let mask = simd_select_bitmask(mask, i8x32::splat(!0), i8x32::ZERO);
     simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i8x32());
@@ -6294,7 +6294,7 @@ pub const unsafe fn _mm256_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask32, 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask8, a: __m128i) {
     let mask = simd_select_bitmask(mask, i16x8::splat(!0), i16x8::ZERO);
     simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i16x8());
@@ -6308,7 +6308,7 @@ pub const unsafe fn _mm_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask8, a:
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask16, a: __m128i) {
     let mask = simd_select_bitmask(mask, i8x16::splat(!0), i8x16::ZERO);
     simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i8x16());
@@ -6523,7 +6523,7 @@ pub fn _mm_maskz_maddubs_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackssdw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_packs_epi32(a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let max = simd_splat(i16::MAX as i32);
@@ -6560,7 +6560,7 @@ pub const fn _mm512_packs_epi32(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackssdw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_packs_epi32(
     src: __m512i,
     k: __mmask32,
@@ -6580,7 +6580,7 @@ pub const fn _mm512_mask_packs_epi32(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackssdw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_packs_epi32(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let pack = _mm512_packs_epi32(a, b).as_i16x32();
@@ -6595,7 +6595,7 @@ pub const fn _mm512_maskz_packs_epi32(k: __mmask32, a: __m512i, b: __m512i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackssdw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_packs_epi32(
     src: __m256i,
     k: __mmask16,
@@ -6629,7 +6629,7 @@ pub fn _mm256_maskz_packs_epi32(k: __mmask16, a: __m256i, b: __m256i) -> __m256i
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackssdw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_packs_epi32(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let pack = _mm_packs_epi32(a, b).as_i16x8();
@@ -6644,7 +6644,7 @@ pub const fn _mm_mask_packs_epi32(src: __m128i, k: __mmask8, a: __m128i, b: __m1
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackssdw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_packs_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let pack = _mm_packs_epi32(a, b).as_i16x8();
@@ -6659,7 +6659,7 @@ pub const fn _mm_maskz_packs_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m12
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpacksswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_packs_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let max = simd_splat(i8::MAX as i16);
@@ -6696,7 +6696,7 @@ pub const fn _mm512_packs_epi16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpacksswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_packs_epi16(
     src: __m512i,
     k: __mmask64,
@@ -6716,7 +6716,7 @@ pub const fn _mm512_mask_packs_epi16(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpacksswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_packs_epi16(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let pack = _mm512_packs_epi16(a, b).as_i8x64();
@@ -6731,7 +6731,7 @@ pub const fn _mm512_maskz_packs_epi16(k: __mmask64, a: __m512i, b: __m512i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpacksswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_packs_epi16(
     src: __m256i,
     k: __mmask32,
@@ -6751,7 +6751,7 @@ pub const fn _mm256_mask_packs_epi16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpacksswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_packs_epi16(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let pack = _mm256_packs_epi16(a, b).as_i8x32();
@@ -6766,7 +6766,7 @@ pub const fn _mm256_maskz_packs_epi16(k: __mmask32, a: __m256i, b: __m256i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpacksswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_packs_epi16(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let pack = _mm_packs_epi16(a, b).as_i8x16();
@@ -6781,7 +6781,7 @@ pub const fn _mm_mask_packs_epi16(src: __m128i, k: __mmask16, a: __m128i, b: __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpacksswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_packs_epi16(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let pack = _mm_packs_epi16(a, b).as_i8x16();
@@ -6796,7 +6796,7 @@ pub const fn _mm_maskz_packs_epi16(k: __mmask16, a: __m128i, b: __m128i) -> __m1
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackusdw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_packus_epi32(a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let max = simd_splat(u16::MAX as i32);
@@ -6833,7 +6833,7 @@ pub const fn _mm512_packus_epi32(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackusdw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_packus_epi32(
     src: __m512i,
     k: __mmask32,
@@ -6853,7 +6853,7 @@ pub const fn _mm512_mask_packus_epi32(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackusdw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_packus_epi32(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let pack = _mm512_packus_epi32(a, b).as_i16x32();
@@ -6868,7 +6868,7 @@ pub const fn _mm512_maskz_packus_epi32(k: __mmask32, a: __m512i, b: __m512i) -> 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackusdw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_packus_epi32(
     src: __m256i,
     k: __mmask16,
@@ -6888,7 +6888,7 @@ pub const fn _mm256_mask_packus_epi32(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackusdw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_packus_epi32(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let pack = _mm256_packus_epi32(a, b).as_i16x16();
@@ -6903,7 +6903,7 @@ pub const fn _mm256_maskz_packus_epi32(k: __mmask16, a: __m256i, b: __m256i) -> 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackusdw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_packus_epi32(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let pack = _mm_packus_epi32(a, b).as_i16x8();
@@ -6918,7 +6918,7 @@ pub const fn _mm_mask_packus_epi32(src: __m128i, k: __mmask8, a: __m128i, b: __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackusdw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_packus_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let pack = _mm_packus_epi32(a, b).as_i16x8();
@@ -6933,7 +6933,7 @@ pub const fn _mm_maskz_packus_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m1
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackuswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_packus_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let max = simd_splat(u8::MAX as i16);
@@ -6970,7 +6970,7 @@ pub const fn _mm512_packus_epi16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackuswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_packus_epi16(
     src: __m512i,
     k: __mmask64,
@@ -6990,7 +6990,7 @@ pub const fn _mm512_mask_packus_epi16(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackuswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_packus_epi16(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let pack = _mm512_packus_epi16(a, b).as_i8x64();
@@ -7005,7 +7005,7 @@ pub const fn _mm512_maskz_packus_epi16(k: __mmask64, a: __m512i, b: __m512i) -> 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackuswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_packus_epi16(
     src: __m256i,
     k: __mmask32,
@@ -7025,7 +7025,7 @@ pub const fn _mm256_mask_packus_epi16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackuswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_packus_epi16(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let pack = _mm256_packus_epi16(a, b).as_i8x32();
@@ -7040,7 +7040,7 @@ pub const fn _mm256_maskz_packus_epi16(k: __mmask32, a: __m256i, b: __m256i) -> 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackuswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_packus_epi16(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let pack = _mm_packus_epi16(a, b).as_i8x16();
@@ -7055,7 +7055,7 @@ pub const fn _mm_mask_packus_epi16(src: __m128i, k: __mmask16, a: __m128i, b: __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackuswb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_packus_epi16(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let pack = _mm_packus_epi16(a, b).as_i8x16();
@@ -7070,7 +7070,7 @@ pub const fn _mm_maskz_packus_epi16(k: __mmask16, a: __m128i, b: __m128i) -> __m
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_avg_epu16(a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let a = simd_cast::<_, u32x32>(a.as_u16x32());
@@ -7087,7 +7087,7 @@ pub const fn _mm512_avg_epu16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_avg_epu16(src: __m512i, k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let avg = _mm512_avg_epu16(a, b).as_u16x32();
@@ -7102,7 +7102,7 @@ pub const fn _mm512_mask_avg_epu16(src: __m512i, k: __mmask32, a: __m512i, b: __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_avg_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let avg = _mm512_avg_epu16(a, b).as_u16x32();
@@ -7117,7 +7117,7 @@ pub const fn _mm512_maskz_avg_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_avg_epu16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let avg = _mm256_avg_epu16(a, b).as_u16x16();
@@ -7132,7 +7132,7 @@ pub const fn _mm256_mask_avg_epu16(src: __m256i, k: __mmask16, a: __m256i, b: __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_avg_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let avg = _mm256_avg_epu16(a, b).as_u16x16();
@@ -7147,7 +7147,7 @@ pub const fn _mm256_maskz_avg_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_avg_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let avg = _mm_avg_epu16(a, b).as_u16x8();
@@ -7162,7 +7162,7 @@ pub const fn _mm_mask_avg_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_avg_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let avg = _mm_avg_epu16(a, b).as_u16x8();
@@ -7177,7 +7177,7 @@ pub const fn _mm_maskz_avg_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_avg_epu8(a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let a = simd_cast::<_, u16x64>(a.as_u8x64());
@@ -7194,7 +7194,7 @@ pub const fn _mm512_avg_epu8(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_avg_epu8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let avg = _mm512_avg_epu8(a, b).as_u8x64();
@@ -7209,7 +7209,7 @@ pub const fn _mm512_mask_avg_epu8(src: __m512i, k: __mmask64, a: __m512i, b: __m
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_avg_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let avg = _mm512_avg_epu8(a, b).as_u8x64();
@@ -7224,7 +7224,7 @@ pub const fn _mm512_maskz_avg_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __m5
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_avg_epu8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let avg = _mm256_avg_epu8(a, b).as_u8x32();
@@ -7239,7 +7239,7 @@ pub const fn _mm256_mask_avg_epu8(src: __m256i, k: __mmask32, a: __m256i, b: __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_avg_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let avg = _mm256_avg_epu8(a, b).as_u8x32();
@@ -7254,7 +7254,7 @@ pub const fn _mm256_maskz_avg_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __m2
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_avg_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let avg = _mm_avg_epu8(a, b).as_u8x16();
@@ -7269,7 +7269,7 @@ pub const fn _mm_mask_avg_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpavgb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_avg_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let avg = _mm_avg_epu8(a, b).as_u8x16();
@@ -7379,8 +7379,8 @@ pub fn _mm_maskz_sll_epi16(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllw, IMM8 = 5))]
-#[rustc_legacy_const_generics(1)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(1)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_slli_epi16<const IMM8: u32>(a: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -7399,8 +7399,8 @@ pub const fn _mm512_slli_epi16<const IMM8: u32>(a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllw, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_slli_epi16<const IMM8: u32>(
     src: __m512i,
     k: __mmask32,
@@ -7424,8 +7424,8 @@ pub const fn _mm512_mask_slli_epi16<const IMM8: u32>(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllw, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_slli_epi16<const IMM8: u32>(k: __mmask32, a: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -7445,8 +7445,8 @@ pub const fn _mm512_maskz_slli_epi16<const IMM8: u32>(k: __mmask32, a: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllw, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_slli_epi16<const IMM8: u32>(
     src: __m256i,
     k: __mmask16,
@@ -7470,8 +7470,8 @@ pub const fn _mm256_mask_slli_epi16<const IMM8: u32>(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllw, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_slli_epi16<const IMM8: u32>(k: __mmask16, a: __m256i) -> __m256i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -7491,8 +7491,8 @@ pub const fn _mm256_maskz_slli_epi16<const IMM8: u32>(k: __mmask16, a: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllw, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_slli_epi16<const IMM8: u32>(
     src: __m128i,
     k: __mmask8,
@@ -7516,8 +7516,8 @@ pub const fn _mm_mask_slli_epi16<const IMM8: u32>(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllw, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_slli_epi16<const IMM8: u32>(k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -7537,7 +7537,7 @@ pub const fn _mm_maskz_slli_epi16<const IMM8: u32>(k: __mmask8, a: __m128i) -> _
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_sllv_epi16(a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let count = count.as_u16x32();
@@ -7554,7 +7554,7 @@ pub const fn _mm512_sllv_epi16(a: __m512i, count: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_sllv_epi16(
     src: __m512i,
     k: __mmask32,
@@ -7574,7 +7574,7 @@ pub const fn _mm512_mask_sllv_epi16(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_sllv_epi16(k: __mmask32, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_sllv_epi16(a, count).as_i16x32();
@@ -7589,7 +7589,7 @@ pub const fn _mm512_maskz_sllv_epi16(k: __mmask32, a: __m512i, count: __m512i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_sllv_epi16(a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let count = count.as_u16x16();
@@ -7606,7 +7606,7 @@ pub const fn _mm256_sllv_epi16(a: __m256i, count: __m256i) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_sllv_epi16(
     src: __m256i,
     k: __mmask16,
@@ -7626,7 +7626,7 @@ pub const fn _mm256_mask_sllv_epi16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_sllv_epi16(k: __mmask16, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_sllv_epi16(a, count).as_i16x16();
@@ -7641,7 +7641,7 @@ pub const fn _mm256_maskz_sllv_epi16(k: __mmask16, a: __m256i, count: __m256i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_sllv_epi16(a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let count = count.as_u16x8();
@@ -7658,7 +7658,7 @@ pub const fn _mm_sllv_epi16(a: __m128i, count: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_sllv_epi16(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_sllv_epi16(a, count).as_i16x8();
@@ -7673,7 +7673,7 @@ pub const fn _mm_mask_sllv_epi16(src: __m128i, k: __mmask8, a: __m128i, count: _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_sllv_epi16(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_sllv_epi16(a, count).as_i16x8();
@@ -7783,8 +7783,8 @@ pub fn _mm_maskz_srl_epi16(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlw, IMM8 = 5))]
-#[rustc_legacy_const_generics(1)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(1)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_srli_epi16<const IMM8: u32>(a: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -7803,8 +7803,8 @@ pub const fn _mm512_srli_epi16<const IMM8: u32>(a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlw, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_srli_epi16<const IMM8: u32>(
     src: __m512i,
     k: __mmask32,
@@ -7828,8 +7828,8 @@ pub const fn _mm512_mask_srli_epi16<const IMM8: u32>(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlw, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_srli_epi16<const IMM8: i32>(k: __mmask32, a: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -7850,8 +7850,8 @@ pub const fn _mm512_maskz_srli_epi16<const IMM8: i32>(k: __mmask32, a: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlw, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_srli_epi16<const IMM8: i32>(
     src: __m256i,
     k: __mmask16,
@@ -7871,8 +7871,8 @@ pub const fn _mm256_mask_srli_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlw, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_srli_epi16<const IMM8: i32>(k: __mmask16, a: __m256i) -> __m256i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -7888,8 +7888,8 @@ pub const fn _mm256_maskz_srli_epi16<const IMM8: i32>(k: __mmask16, a: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlw, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_srli_epi16<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
@@ -7909,8 +7909,8 @@ pub const fn _mm_mask_srli_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlw, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_srli_epi16<const IMM8: i32>(k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -7926,7 +7926,7 @@ pub const fn _mm_maskz_srli_epi16<const IMM8: i32>(k: __mmask8, a: __m128i) -> _
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_srlv_epi16(a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let count = count.as_u16x32();
@@ -7943,7 +7943,7 @@ pub const fn _mm512_srlv_epi16(a: __m512i, count: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_srlv_epi16(
     src: __m512i,
     k: __mmask32,
@@ -7963,7 +7963,7 @@ pub const fn _mm512_mask_srlv_epi16(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_srlv_epi16(k: __mmask32, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_srlv_epi16(a, count).as_i16x32();
@@ -7978,7 +7978,7 @@ pub const fn _mm512_maskz_srlv_epi16(k: __mmask32, a: __m512i, count: __m512i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_srlv_epi16(a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let count = count.as_u16x16();
@@ -7995,7 +7995,7 @@ pub const fn _mm256_srlv_epi16(a: __m256i, count: __m256i) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_srlv_epi16(
     src: __m256i,
     k: __mmask16,
@@ -8015,7 +8015,7 @@ pub const fn _mm256_mask_srlv_epi16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_srlv_epi16(k: __mmask16, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_srlv_epi16(a, count).as_i16x16();
@@ -8030,7 +8030,7 @@ pub const fn _mm256_maskz_srlv_epi16(k: __mmask16, a: __m256i, count: __m256i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_srlv_epi16(a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let count = count.as_u16x8();
@@ -8047,7 +8047,7 @@ pub const fn _mm_srlv_epi16(a: __m128i, count: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_srlv_epi16(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_srlv_epi16(a, count).as_i16x8();
@@ -8062,7 +8062,7 @@ pub const fn _mm_mask_srlv_epi16(src: __m128i, k: __mmask8, a: __m128i, count: _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_srlv_epi16(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_srlv_epi16(a, count).as_i16x8();
@@ -8172,8 +8172,8 @@ pub fn _mm_maskz_sra_epi16(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsraw, IMM8 = 1))]
-#[rustc_legacy_const_generics(1)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(1)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_srai_epi16<const IMM8: u32>(a: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -8188,8 +8188,8 @@ pub const fn _mm512_srai_epi16<const IMM8: u32>(a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsraw, IMM8 = 1))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_srai_epi16<const IMM8: u32>(
     src: __m512i,
     k: __mmask32,
@@ -8209,8 +8209,8 @@ pub const fn _mm512_mask_srai_epi16<const IMM8: u32>(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsraw, IMM8 = 1))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_srai_epi16<const IMM8: u32>(k: __mmask32, a: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -8226,8 +8226,8 @@ pub const fn _mm512_maskz_srai_epi16<const IMM8: u32>(k: __mmask32, a: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsraw, IMM8 = 1))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_srai_epi16<const IMM8: u32>(
     src: __m256i,
     k: __mmask16,
@@ -8247,8 +8247,8 @@ pub const fn _mm256_mask_srai_epi16<const IMM8: u32>(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsraw, IMM8 = 1))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_srai_epi16<const IMM8: u32>(k: __mmask16, a: __m256i) -> __m256i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -8264,8 +8264,8 @@ pub const fn _mm256_maskz_srai_epi16<const IMM8: u32>(k: __mmask16, a: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsraw, IMM8 = 1))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_srai_epi16<const IMM8: u32>(
     src: __m128i,
     k: __mmask8,
@@ -8285,8 +8285,8 @@ pub const fn _mm_mask_srai_epi16<const IMM8: u32>(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsraw, IMM8 = 1))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_srai_epi16<const IMM8: u32>(k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -8302,7 +8302,7 @@ pub const fn _mm_maskz_srai_epi16<const IMM8: u32>(k: __mmask8, a: __m128i) -> _
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_srav_epi16(a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let count = count.as_u16x32();
@@ -8319,7 +8319,7 @@ pub const fn _mm512_srav_epi16(a: __m512i, count: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_srav_epi16(
     src: __m512i,
     k: __mmask32,
@@ -8339,7 +8339,7 @@ pub const fn _mm512_mask_srav_epi16(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_srav_epi16(k: __mmask32, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_srav_epi16(a, count).as_i16x32();
@@ -8354,7 +8354,7 @@ pub const fn _mm512_maskz_srav_epi16(k: __mmask32, a: __m512i, count: __m512i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_srav_epi16(a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let count = count.as_u16x16();
@@ -8371,7 +8371,7 @@ pub const fn _mm256_srav_epi16(a: __m256i, count: __m256i) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_srav_epi16(
     src: __m256i,
     k: __mmask16,
@@ -8391,7 +8391,7 @@ pub const fn _mm256_mask_srav_epi16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_srav_epi16(k: __mmask16, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_srav_epi16(a, count).as_i16x16();
@@ -8406,7 +8406,7 @@ pub const fn _mm256_maskz_srav_epi16(k: __mmask16, a: __m256i, count: __m256i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_srav_epi16(a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let count = count.as_u16x8();
@@ -8423,7 +8423,7 @@ pub const fn _mm_srav_epi16(a: __m128i, count: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_srav_epi16(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_srav_epi16(a, count).as_i16x8();
@@ -8438,7 +8438,7 @@ pub const fn _mm_mask_srav_epi16(src: __m128i, k: __mmask8, a: __m128i, count: _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_srav_epi16(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_srav_epi16(a, count).as_i16x8();
@@ -8769,7 +8769,7 @@ pub fn _mm_maskz_permutexvar_epi16(k: __mmask8, idx: __m128i, a: __m128i) -> __m
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu16))] //should be vpblendmw
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_blend_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_select_bitmask(k, b.as_i16x32(), a.as_i16x32())) }
 }
@@ -8781,7 +8781,7 @@ pub const fn _mm512_mask_blend_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu16))] //should be vpblendmw
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_blend_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe { transmute(simd_select_bitmask(k, b.as_i16x16(), a.as_i16x16())) }
 }
@@ -8793,7 +8793,7 @@ pub const fn _mm256_mask_blend_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu16))] //should be vpblendmw
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_blend_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_select_bitmask(k, b.as_i16x8(), a.as_i16x8())) }
 }
@@ -8805,7 +8805,7 @@ pub const fn _mm_mask_blend_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu8))] //should be vpblendmb
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_blend_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(simd_select_bitmask(k, b.as_i8x64(), a.as_i8x64())) }
 }
@@ -8817,7 +8817,7 @@ pub const fn _mm512_mask_blend_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu8))] //should be vpblendmb
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_blend_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe { transmute(simd_select_bitmask(k, b.as_i8x32(), a.as_i8x32())) }
 }
@@ -8829,7 +8829,7 @@ pub const fn _mm256_mask_blend_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu8))] //should be vpblendmb
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_blend_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_select_bitmask(k, b.as_i8x16(), a.as_i8x16())) }
 }
@@ -8841,7 +8841,7 @@ pub const fn _mm_mask_blend_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_broadcastw_epi16(a: __m128i) -> __m512i {
     unsafe {
         let a = _mm512_castsi128_si512(a).as_i16x32();
@@ -8864,7 +8864,7 @@ pub const fn _mm512_broadcastw_epi16(a: __m128i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_broadcastw_epi16(src: __m512i, k: __mmask32, a: __m128i) -> __m512i {
     unsafe {
         let broadcast = _mm512_broadcastw_epi16(a).as_i16x32();
@@ -8879,7 +8879,7 @@ pub const fn _mm512_mask_broadcastw_epi16(src: __m512i, k: __mmask32, a: __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_broadcastw_epi16(k: __mmask32, a: __m128i) -> __m512i {
     unsafe {
         let broadcast = _mm512_broadcastw_epi16(a).as_i16x32();
@@ -8894,7 +8894,7 @@ pub const fn _mm512_maskz_broadcastw_epi16(k: __mmask32, a: __m128i) -> __m512i 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_broadcastw_epi16(src: __m256i, k: __mmask16, a: __m128i) -> __m256i {
     unsafe {
         let broadcast = _mm256_broadcastw_epi16(a).as_i16x16();
@@ -8909,7 +8909,7 @@ pub const fn _mm256_mask_broadcastw_epi16(src: __m256i, k: __mmask16, a: __m128i
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_broadcastw_epi16(k: __mmask16, a: __m128i) -> __m256i {
     unsafe {
         let broadcast = _mm256_broadcastw_epi16(a).as_i16x16();
@@ -8924,7 +8924,7 @@ pub const fn _mm256_maskz_broadcastw_epi16(k: __mmask16, a: __m128i) -> __m256i 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_broadcastw_epi16(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let broadcast = _mm_broadcastw_epi16(a).as_i16x8();
@@ -8939,7 +8939,7 @@ pub const fn _mm_mask_broadcastw_epi16(src: __m128i, k: __mmask8, a: __m128i) ->
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_broadcastw_epi16(k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let broadcast = _mm_broadcastw_epi16(a).as_i16x8();
@@ -8954,7 +8954,7 @@ pub const fn _mm_maskz_broadcastw_epi16(k: __mmask8, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_broadcastb_epi8(a: __m128i) -> __m512i {
     unsafe {
         let a = _mm512_castsi128_si512(a).as_i8x64();
@@ -8978,7 +8978,7 @@ pub const fn _mm512_broadcastb_epi8(a: __m128i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_broadcastb_epi8(src: __m512i, k: __mmask64, a: __m128i) -> __m512i {
     unsafe {
         let broadcast = _mm512_broadcastb_epi8(a).as_i8x64();
@@ -8993,7 +8993,7 @@ pub const fn _mm512_mask_broadcastb_epi8(src: __m512i, k: __mmask64, a: __m128i)
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_broadcastb_epi8(k: __mmask64, a: __m128i) -> __m512i {
     unsafe {
         let broadcast = _mm512_broadcastb_epi8(a).as_i8x64();
@@ -9008,7 +9008,7 @@ pub const fn _mm512_maskz_broadcastb_epi8(k: __mmask64, a: __m128i) -> __m512i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_broadcastb_epi8(src: __m256i, k: __mmask32, a: __m128i) -> __m256i {
     unsafe {
         let broadcast = _mm256_broadcastb_epi8(a).as_i8x32();
@@ -9023,7 +9023,7 @@ pub const fn _mm256_mask_broadcastb_epi8(src: __m256i, k: __mmask32, a: __m128i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_broadcastb_epi8(k: __mmask32, a: __m128i) -> __m256i {
     unsafe {
         let broadcast = _mm256_broadcastb_epi8(a).as_i8x32();
@@ -9038,7 +9038,7 @@ pub const fn _mm256_maskz_broadcastb_epi8(k: __mmask32, a: __m128i) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_broadcastb_epi8(src: __m128i, k: __mmask16, a: __m128i) -> __m128i {
     unsafe {
         let broadcast = _mm_broadcastb_epi8(a).as_i8x16();
@@ -9053,7 +9053,7 @@ pub const fn _mm_mask_broadcastb_epi8(src: __m128i, k: __mmask16, a: __m128i) ->
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_broadcastb_epi8(k: __mmask16, a: __m128i) -> __m128i {
     unsafe {
         let broadcast = _mm_broadcastb_epi8(a).as_i8x16();
@@ -9068,7 +9068,7 @@ pub const fn _mm_maskz_broadcastb_epi8(k: __mmask16, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_unpackhi_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let a = a.as_i16x32();
@@ -9099,7 +9099,7 @@ pub const fn _mm512_unpackhi_epi16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_unpackhi_epi16(
     src: __m512i,
     k: __mmask32,
@@ -9119,7 +9119,7 @@ pub const fn _mm512_mask_unpackhi_epi16(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_unpackhi_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let unpackhi = _mm512_unpackhi_epi16(a, b).as_i16x32();
@@ -9134,7 +9134,7 @@ pub const fn _mm512_maskz_unpackhi_epi16(k: __mmask32, a: __m512i, b: __m512i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_unpackhi_epi16(
     src: __m256i,
     k: __mmask16,
@@ -9154,7 +9154,7 @@ pub const fn _mm256_mask_unpackhi_epi16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_unpackhi_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let unpackhi = _mm256_unpackhi_epi16(a, b).as_i16x16();
@@ -9169,7 +9169,7 @@ pub const fn _mm256_maskz_unpackhi_epi16(k: __mmask16, a: __m256i, b: __m256i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_unpackhi_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let unpackhi = _mm_unpackhi_epi16(a, b).as_i16x8();
@@ -9184,7 +9184,7 @@ pub const fn _mm_mask_unpackhi_epi16(src: __m128i, k: __mmask8, a: __m128i, b: _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_unpackhi_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let unpackhi = _mm_unpackhi_epi16(a, b).as_i16x8();
@@ -9199,7 +9199,7 @@ pub const fn _mm_maskz_unpackhi_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_unpackhi_epi8(a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let a = a.as_i8x64();
@@ -9238,7 +9238,7 @@ pub const fn _mm512_unpackhi_epi8(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_unpackhi_epi8(
     src: __m512i,
     k: __mmask64,
@@ -9258,7 +9258,7 @@ pub const fn _mm512_mask_unpackhi_epi8(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_unpackhi_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let unpackhi = _mm512_unpackhi_epi8(a, b).as_i8x64();
@@ -9273,7 +9273,7 @@ pub const fn _mm512_maskz_unpackhi_epi8(k: __mmask64, a: __m512i, b: __m512i) ->
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_unpackhi_epi8(
     src: __m256i,
     k: __mmask32,
@@ -9293,7 +9293,7 @@ pub const fn _mm256_mask_unpackhi_epi8(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_unpackhi_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let unpackhi = _mm256_unpackhi_epi8(a, b).as_i8x32();
@@ -9308,7 +9308,7 @@ pub const fn _mm256_maskz_unpackhi_epi8(k: __mmask32, a: __m256i, b: __m256i) ->
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_unpackhi_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let unpackhi = _mm_unpackhi_epi8(a, b).as_i8x16();
@@ -9323,7 +9323,7 @@ pub const fn _mm_mask_unpackhi_epi8(src: __m128i, k: __mmask16, a: __m128i, b: _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpckhbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_unpackhi_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let unpackhi = _mm_unpackhi_epi8(a, b).as_i8x16();
@@ -9338,7 +9338,7 @@ pub const fn _mm_maskz_unpackhi_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_unpacklo_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let a = a.as_i16x32();
@@ -9369,7 +9369,7 @@ pub const fn _mm512_unpacklo_epi16(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_unpacklo_epi16(
     src: __m512i,
     k: __mmask32,
@@ -9389,7 +9389,7 @@ pub const fn _mm512_mask_unpacklo_epi16(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_unpacklo_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let unpacklo = _mm512_unpacklo_epi16(a, b).as_i16x32();
@@ -9404,7 +9404,7 @@ pub const fn _mm512_maskz_unpacklo_epi16(k: __mmask32, a: __m512i, b: __m512i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_unpacklo_epi16(
     src: __m256i,
     k: __mmask16,
@@ -9424,7 +9424,7 @@ pub const fn _mm256_mask_unpacklo_epi16(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_unpacklo_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let unpacklo = _mm256_unpacklo_epi16(a, b).as_i16x16();
@@ -9439,7 +9439,7 @@ pub const fn _mm256_maskz_unpacklo_epi16(k: __mmask16, a: __m256i, b: __m256i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_unpacklo_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let unpacklo = _mm_unpacklo_epi16(a, b).as_i16x8();
@@ -9454,7 +9454,7 @@ pub const fn _mm_mask_unpacklo_epi16(src: __m128i, k: __mmask8, a: __m128i, b: _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklwd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_unpacklo_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let unpacklo = _mm_unpacklo_epi16(a, b).as_i16x8();
@@ -9469,7 +9469,7 @@ pub const fn _mm_maskz_unpacklo_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_unpacklo_epi8(a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let a = a.as_i8x64();
@@ -9508,7 +9508,7 @@ pub const fn _mm512_unpacklo_epi8(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_unpacklo_epi8(
     src: __m512i,
     k: __mmask64,
@@ -9528,7 +9528,7 @@ pub const fn _mm512_mask_unpacklo_epi8(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_unpacklo_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         let unpacklo = _mm512_unpacklo_epi8(a, b).as_i8x64();
@@ -9543,7 +9543,7 @@ pub const fn _mm512_maskz_unpacklo_epi8(k: __mmask64, a: __m512i, b: __m512i) ->
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_unpacklo_epi8(
     src: __m256i,
     k: __mmask32,
@@ -9563,7 +9563,7 @@ pub const fn _mm256_mask_unpacklo_epi8(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_unpacklo_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let unpacklo = _mm256_unpacklo_epi8(a, b).as_i8x32();
@@ -9578,7 +9578,7 @@ pub const fn _mm256_maskz_unpacklo_epi8(k: __mmask32, a: __m256i, b: __m256i) ->
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_unpacklo_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let unpacklo = _mm_unpacklo_epi8(a, b).as_i8x16();
@@ -9593,7 +9593,7 @@ pub const fn _mm_mask_unpacklo_epi8(src: __m128i, k: __mmask16, a: __m128i, b: _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpunpcklbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_unpacklo_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let unpacklo = _mm_unpacklo_epi8(a, b).as_i8x16();
@@ -9608,7 +9608,7 @@ pub const fn _mm_maskz_unpacklo_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_mov_epi16(src: __m512i, k: __mmask32, a: __m512i) -> __m512i {
     unsafe {
         let mov = a.as_i16x32();
@@ -9623,7 +9623,7 @@ pub const fn _mm512_mask_mov_epi16(src: __m512i, k: __mmask32, a: __m512i) -> __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_mov_epi16(k: __mmask32, a: __m512i) -> __m512i {
     unsafe {
         let mov = a.as_i16x32();
@@ -9638,7 +9638,7 @@ pub const fn _mm512_maskz_mov_epi16(k: __mmask32, a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_mov_epi16(src: __m256i, k: __mmask16, a: __m256i) -> __m256i {
     unsafe {
         let mov = a.as_i16x16();
@@ -9653,7 +9653,7 @@ pub const fn _mm256_mask_mov_epi16(src: __m256i, k: __mmask16, a: __m256i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_mov_epi16(k: __mmask16, a: __m256i) -> __m256i {
     unsafe {
         let mov = a.as_i16x16();
@@ -9668,7 +9668,7 @@ pub const fn _mm256_maskz_mov_epi16(k: __mmask16, a: __m256i) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_mov_epi16(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let mov = a.as_i16x8();
@@ -9683,7 +9683,7 @@ pub const fn _mm_mask_mov_epi16(src: __m128i, k: __mmask8, a: __m128i) -> __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu16))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_mov_epi16(k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let mov = a.as_i16x8();
@@ -9698,7 +9698,7 @@ pub const fn _mm_maskz_mov_epi16(k: __mmask8, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_mov_epi8(src: __m512i, k: __mmask64, a: __m512i) -> __m512i {
     unsafe {
         let mov = a.as_i8x64();
@@ -9713,7 +9713,7 @@ pub const fn _mm512_mask_mov_epi8(src: __m512i, k: __mmask64, a: __m512i) -> __m
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_mov_epi8(k: __mmask64, a: __m512i) -> __m512i {
     unsafe {
         let mov = a.as_i8x64();
@@ -9728,7 +9728,7 @@ pub const fn _mm512_maskz_mov_epi8(k: __mmask64, a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_mov_epi8(src: __m256i, k: __mmask32, a: __m256i) -> __m256i {
     unsafe {
         let mov = a.as_i8x32();
@@ -9743,7 +9743,7 @@ pub const fn _mm256_mask_mov_epi8(src: __m256i, k: __mmask32, a: __m256i) -> __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_mov_epi8(k: __mmask32, a: __m256i) -> __m256i {
     unsafe {
         let mov = a.as_i8x32();
@@ -9758,7 +9758,7 @@ pub const fn _mm256_maskz_mov_epi8(k: __mmask32, a: __m256i) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_mov_epi8(src: __m128i, k: __mmask16, a: __m128i) -> __m128i {
     unsafe {
         let mov = a.as_i8x16();
@@ -9773,7 +9773,7 @@ pub const fn _mm_mask_mov_epi8(src: __m128i, k: __mmask16, a: __m128i) -> __m128
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vmovdqu8))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_mov_epi8(k: __mmask16, a: __m128i) -> __m128i {
     unsafe {
         let mov = a.as_i8x16();
@@ -9788,7 +9788,7 @@ pub const fn _mm_maskz_mov_epi8(k: __mmask16, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_set1_epi16(src: __m512i, k: __mmask32, a: i16) -> __m512i {
     unsafe {
         let r = _mm512_set1_epi16(a).as_i16x32();
@@ -9803,7 +9803,7 @@ pub const fn _mm512_mask_set1_epi16(src: __m512i, k: __mmask32, a: i16) -> __m51
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_set1_epi16(k: __mmask32, a: i16) -> __m512i {
     unsafe {
         let r = _mm512_set1_epi16(a).as_i16x32();
@@ -9818,7 +9818,7 @@ pub const fn _mm512_maskz_set1_epi16(k: __mmask32, a: i16) -> __m512i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_set1_epi16(src: __m256i, k: __mmask16, a: i16) -> __m256i {
     unsafe {
         let r = _mm256_set1_epi16(a).as_i16x16();
@@ -9833,7 +9833,7 @@ pub const fn _mm256_mask_set1_epi16(src: __m256i, k: __mmask16, a: i16) -> __m25
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_set1_epi16(k: __mmask16, a: i16) -> __m256i {
     unsafe {
         let r = _mm256_set1_epi16(a).as_i16x16();
@@ -9848,7 +9848,7 @@ pub const fn _mm256_maskz_set1_epi16(k: __mmask16, a: i16) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_set1_epi16(src: __m128i, k: __mmask8, a: i16) -> __m128i {
     unsafe {
         let r = _mm_set1_epi16(a).as_i16x8();
@@ -9863,7 +9863,7 @@ pub const fn _mm_mask_set1_epi16(src: __m128i, k: __mmask8, a: i16) -> __m128i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_set1_epi16(k: __mmask8, a: i16) -> __m128i {
     unsafe {
         let r = _mm_set1_epi16(a).as_i16x8();
@@ -9878,7 +9878,7 @@ pub const fn _mm_maskz_set1_epi16(k: __mmask8, a: i16) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcast))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_set1_epi8(src: __m512i, k: __mmask64, a: i8) -> __m512i {
     unsafe {
         let r = _mm512_set1_epi8(a).as_i8x64();
@@ -9893,7 +9893,7 @@ pub const fn _mm512_mask_set1_epi8(src: __m512i, k: __mmask64, a: i8) -> __m512i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcast))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_set1_epi8(k: __mmask64, a: i8) -> __m512i {
     unsafe {
         let r = _mm512_set1_epi8(a).as_i8x64();
@@ -9908,7 +9908,7 @@ pub const fn _mm512_maskz_set1_epi8(k: __mmask64, a: i8) -> __m512i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcast))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_set1_epi8(src: __m256i, k: __mmask32, a: i8) -> __m256i {
     unsafe {
         let r = _mm256_set1_epi8(a).as_i8x32();
@@ -9923,7 +9923,7 @@ pub const fn _mm256_mask_set1_epi8(src: __m256i, k: __mmask32, a: i8) -> __m256i
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcast))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_set1_epi8(k: __mmask32, a: i8) -> __m256i {
     unsafe {
         let r = _mm256_set1_epi8(a).as_i8x32();
@@ -9938,7 +9938,7 @@ pub const fn _mm256_maskz_set1_epi8(k: __mmask32, a: i8) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcast))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_set1_epi8(src: __m128i, k: __mmask16, a: i8) -> __m128i {
     unsafe {
         let r = _mm_set1_epi8(a).as_i8x16();
@@ -9953,7 +9953,7 @@ pub const fn _mm_mask_set1_epi8(src: __m128i, k: __mmask16, a: i8) -> __m128i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcast))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_set1_epi8(k: __mmask16, a: i8) -> __m128i {
     unsafe {
         let r = _mm_set1_epi8(a).as_i8x16();
@@ -9968,8 +9968,8 @@ pub const fn _mm_maskz_set1_epi8(k: __mmask16, a: i8) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshuflw, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(1)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_shufflelo_epi16<const IMM8: i32>(a: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -10023,8 +10023,8 @@ pub const fn _mm512_shufflelo_epi16<const IMM8: i32>(a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshuflw, IMM8 = 0))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_shufflelo_epi16<const IMM8: i32>(
     src: __m512i,
     k: __mmask32,
@@ -10044,8 +10044,8 @@ pub const fn _mm512_mask_shufflelo_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshuflw, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_shufflelo_epi16<const IMM8: i32>(k: __mmask32, a: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -10061,8 +10061,8 @@ pub const fn _mm512_maskz_shufflelo_epi16<const IMM8: i32>(k: __mmask32, a: __m5
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshuflw, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_shufflelo_epi16<const IMM8: i32>(
     src: __m256i,
     k: __mmask16,
@@ -10082,8 +10082,8 @@ pub const fn _mm256_mask_shufflelo_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshuflw, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_shufflelo_epi16<const IMM8: i32>(k: __mmask16, a: __m256i) -> __m256i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -10099,8 +10099,8 @@ pub const fn _mm256_maskz_shufflelo_epi16<const IMM8: i32>(k: __mmask16, a: __m2
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshuflw, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_shufflelo_epi16<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
@@ -10120,8 +10120,8 @@ pub const fn _mm_mask_shufflelo_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshuflw, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_shufflelo_epi16<const IMM8: i32>(k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -10137,8 +10137,8 @@ pub const fn _mm_maskz_shufflelo_epi16<const IMM8: i32>(k: __mmask8, a: __m128i)
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufhw, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(1)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_shufflehi_epi16<const IMM8: i32>(a: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -10192,8 +10192,8 @@ pub const fn _mm512_shufflehi_epi16<const IMM8: i32>(a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufhw, IMM8 = 0))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_shufflehi_epi16<const IMM8: i32>(
     src: __m512i,
     k: __mmask32,
@@ -10213,8 +10213,8 @@ pub const fn _mm512_mask_shufflehi_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufhw, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_shufflehi_epi16<const IMM8: i32>(k: __mmask32, a: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -10230,8 +10230,8 @@ pub const fn _mm512_maskz_shufflehi_epi16<const IMM8: i32>(k: __mmask32, a: __m5
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufhw, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_shufflehi_epi16<const IMM8: i32>(
     src: __m256i,
     k: __mmask16,
@@ -10251,8 +10251,8 @@ pub const fn _mm256_mask_shufflehi_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufhw, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_shufflehi_epi16<const IMM8: i32>(k: __mmask16, a: __m256i) -> __m256i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -10268,8 +10268,8 @@ pub const fn _mm256_maskz_shufflehi_epi16<const IMM8: i32>(k: __mmask16, a: __m2
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufhw, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_shufflehi_epi16<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
@@ -10289,8 +10289,8 @@ pub const fn _mm_mask_shufflehi_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufhw, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_shufflehi_epi16<const IMM8: i32>(k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -10401,7 +10401,7 @@ pub fn _mm_maskz_shuffle_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestmw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_test_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     let and = _mm512_and_si512(a, b);
     let zero = _mm512_setzero_si512();
@@ -10415,7 +10415,7 @@ pub const fn _mm512_test_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestmw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_test_epi16_mask(k: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     let and = _mm512_and_si512(a, b);
     let zero = _mm512_setzero_si512();
@@ -10429,7 +10429,7 @@ pub const fn _mm512_mask_test_epi16_mask(k: __mmask32, a: __m512i, b: __m512i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestmw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_test_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     let and = _mm256_and_si256(a, b);
     let zero = _mm256_setzero_si256();
@@ -10443,7 +10443,7 @@ pub const fn _mm256_test_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestmw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_test_epi16_mask(k: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     let and = _mm256_and_si256(a, b);
     let zero = _mm256_setzero_si256();
@@ -10457,7 +10457,7 @@ pub const fn _mm256_mask_test_epi16_mask(k: __mmask16, a: __m256i, b: __m256i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestmw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_test_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     let and = _mm_and_si128(a, b);
     let zero = _mm_setzero_si128();
@@ -10471,7 +10471,7 @@ pub const fn _mm_test_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestmw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_test_epi16_mask(k: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     let and = _mm_and_si128(a, b);
     let zero = _mm_setzero_si128();
@@ -10485,7 +10485,7 @@ pub const fn _mm_mask_test_epi16_mask(k: __mmask8, a: __m128i, b: __m128i) -> __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestmb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_test_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     let and = _mm512_and_si512(a, b);
     let zero = _mm512_setzero_si512();
@@ -10499,7 +10499,7 @@ pub const fn _mm512_test_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestmb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_test_epi8_mask(k: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     let and = _mm512_and_si512(a, b);
     let zero = _mm512_setzero_si512();
@@ -10513,7 +10513,7 @@ pub const fn _mm512_mask_test_epi8_mask(k: __mmask64, a: __m512i, b: __m512i) ->
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestmb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_test_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     let and = _mm256_and_si256(a, b);
     let zero = _mm256_setzero_si256();
@@ -10527,7 +10527,7 @@ pub const fn _mm256_test_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestmb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_test_epi8_mask(k: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     let and = _mm256_and_si256(a, b);
     let zero = _mm256_setzero_si256();
@@ -10541,7 +10541,7 @@ pub const fn _mm256_mask_test_epi8_mask(k: __mmask32, a: __m256i, b: __m256i) ->
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestmb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_test_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     let and = _mm_and_si128(a, b);
     let zero = _mm_setzero_si128();
@@ -10555,7 +10555,7 @@ pub const fn _mm_test_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestmb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_test_epi8_mask(k: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     let and = _mm_and_si128(a, b);
     let zero = _mm_setzero_si128();
@@ -10569,7 +10569,7 @@ pub const fn _mm_mask_test_epi8_mask(k: __mmask16, a: __m128i, b: __m128i) -> __
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestnmw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_testn_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
     let and = _mm512_and_si512(a, b);
     let zero = _mm512_setzero_si512();
@@ -10583,7 +10583,7 @@ pub const fn _mm512_testn_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestnmw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_testn_epi16_mask(k: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
     let and = _mm512_and_si512(a, b);
     let zero = _mm512_setzero_si512();
@@ -10597,7 +10597,7 @@ pub const fn _mm512_mask_testn_epi16_mask(k: __mmask32, a: __m512i, b: __m512i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestnmw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_testn_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
     let and = _mm256_and_si256(a, b);
     let zero = _mm256_setzero_si256();
@@ -10611,7 +10611,7 @@ pub const fn _mm256_testn_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestnmw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_testn_epi16_mask(k: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
     let and = _mm256_and_si256(a, b);
     let zero = _mm256_setzero_si256();
@@ -10625,7 +10625,7 @@ pub const fn _mm256_mask_testn_epi16_mask(k: __mmask16, a: __m256i, b: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestnmw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_testn_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
     let and = _mm_and_si128(a, b);
     let zero = _mm_setzero_si128();
@@ -10639,7 +10639,7 @@ pub const fn _mm_testn_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestnmw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_testn_epi16_mask(k: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
     let and = _mm_and_si128(a, b);
     let zero = _mm_setzero_si128();
@@ -10653,7 +10653,7 @@ pub const fn _mm_mask_testn_epi16_mask(k: __mmask8, a: __m128i, b: __m128i) -> _
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestnmb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_testn_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
     let and = _mm512_and_si512(a, b);
     let zero = _mm512_setzero_si512();
@@ -10667,7 +10667,7 @@ pub const fn _mm512_testn_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestnmb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_testn_epi8_mask(k: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
     let and = _mm512_and_si512(a, b);
     let zero = _mm512_setzero_si512();
@@ -10681,7 +10681,7 @@ pub const fn _mm512_mask_testn_epi8_mask(k: __mmask64, a: __m512i, b: __m512i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestnmb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_testn_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
     let and = _mm256_and_si256(a, b);
     let zero = _mm256_setzero_si256();
@@ -10695,7 +10695,7 @@ pub const fn _mm256_testn_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestnmb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_testn_epi8_mask(k: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
     let and = _mm256_and_si256(a, b);
     let zero = _mm256_setzero_si256();
@@ -10709,7 +10709,7 @@ pub const fn _mm256_mask_testn_epi8_mask(k: __mmask32, a: __m256i, b: __m256i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestnmb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_testn_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
     let and = _mm_and_si128(a, b);
     let zero = _mm_setzero_si128();
@@ -10723,7 +10723,7 @@ pub const fn _mm_testn_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vptestnmb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_testn_epi8_mask(k: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
     let and = _mm_and_si128(a, b);
     let zero = _mm_setzero_si128();
@@ -10737,7 +10737,7 @@ pub const fn _mm_mask_testn_epi8_mask(k: __mmask16, a: __m128i, b: __m128i) -> _
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(mov))] //should be kmovq
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _store_mask64(mem_addr: *mut __mmask64, a: __mmask64) {
     ptr::write(mem_addr as *mut __mmask64, a);
 }
@@ -10749,7 +10749,7 @@ pub const unsafe fn _store_mask64(mem_addr: *mut __mmask64, a: __mmask64) {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(mov))] //should be kmovd
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _store_mask32(mem_addr: *mut __mmask32, a: __mmask32) {
     ptr::write(mem_addr as *mut __mmask32, a);
 }
@@ -10761,7 +10761,7 @@ pub const unsafe fn _store_mask32(mem_addr: *mut __mmask32, a: __mmask32) {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(mov))] //should be kmovq
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _load_mask64(mem_addr: *const __mmask64) -> __mmask64 {
     ptr::read(mem_addr as *const __mmask64)
 }
@@ -10773,7 +10773,7 @@ pub const unsafe fn _load_mask64(mem_addr: *const __mmask64) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(mov))] //should be kmovd
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _load_mask32(mem_addr: *const __mmask32) -> __mmask32 {
     ptr::read(mem_addr as *const __mmask32)
 }
@@ -10795,7 +10795,7 @@ pub fn _mm512_sad_epu8(a: __m512i, b: __m512i) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vdbpsadbw, IMM8 = 0))]
 pub fn _mm512_dbsad_epu8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
     unsafe {
@@ -10813,7 +10813,7 @@ pub fn _mm512_dbsad_epu8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[cfg_attr(test, assert_instr(vdbpsadbw, IMM8 = 0))]
 pub fn _mm512_mask_dbsad_epu8<const IMM8: i32>(
     src: __m512i,
@@ -10836,7 +10836,7 @@ pub fn _mm512_mask_dbsad_epu8<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vdbpsadbw, IMM8 = 0))]
 pub fn _mm512_maskz_dbsad_epu8<const IMM8: i32>(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
@@ -10854,7 +10854,7 @@ pub fn _mm512_maskz_dbsad_epu8<const IMM8: i32>(k: __mmask32, a: __m512i, b: __m
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vdbpsadbw, IMM8 = 0))]
 pub fn _mm256_dbsad_epu8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     unsafe {
@@ -10872,7 +10872,7 @@ pub fn _mm256_dbsad_epu8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[cfg_attr(test, assert_instr(vdbpsadbw, IMM8 = 0))]
 pub fn _mm256_mask_dbsad_epu8<const IMM8: i32>(
     src: __m256i,
@@ -10895,7 +10895,7 @@ pub fn _mm256_mask_dbsad_epu8<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vdbpsadbw, IMM8 = 0))]
 pub fn _mm256_maskz_dbsad_epu8<const IMM8: i32>(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
@@ -10913,7 +10913,7 @@ pub fn _mm256_maskz_dbsad_epu8<const IMM8: i32>(k: __mmask16, a: __m256i, b: __m
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vdbpsadbw, IMM8 = 0))]
 pub fn _mm_dbsad_epu8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
@@ -10931,7 +10931,7 @@ pub fn _mm_dbsad_epu8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[cfg_attr(test, assert_instr(vdbpsadbw, IMM8 = 0))]
 pub fn _mm_mask_dbsad_epu8<const IMM8: i32>(
     src: __m128i,
@@ -10954,7 +10954,7 @@ pub fn _mm_mask_dbsad_epu8<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vdbpsadbw, IMM8 = 0))]
 pub fn _mm_maskz_dbsad_epu8<const IMM8: i32>(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
@@ -10973,7 +10973,7 @@ pub fn _mm_maskz_dbsad_epu8<const IMM8: i32>(k: __mmask8, a: __m128i, b: __m128i
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovw2m))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_movepi16_mask(a: __m512i) -> __mmask32 {
     let filter = _mm512_set1_epi16(1 << 15);
     let a = _mm512_and_si512(a, filter);
@@ -10987,7 +10987,7 @@ pub const fn _mm512_movepi16_mask(a: __m512i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovw2m))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_movepi16_mask(a: __m256i) -> __mmask16 {
     let filter = _mm256_set1_epi16(1 << 15);
     let a = _mm256_and_si256(a, filter);
@@ -11001,7 +11001,7 @@ pub const fn _mm256_movepi16_mask(a: __m256i) -> __mmask16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovw2m))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_movepi16_mask(a: __m128i) -> __mmask8 {
     let filter = _mm_set1_epi16(1 << 15);
     let a = _mm_and_si128(a, filter);
@@ -11015,7 +11015,7 @@ pub const fn _mm_movepi16_mask(a: __m128i) -> __mmask8 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovb2m))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_movepi8_mask(a: __m512i) -> __mmask64 {
     let filter = _mm512_set1_epi8(1 << 7);
     let a = _mm512_and_si512(a, filter);
@@ -11031,7 +11031,7 @@ pub const fn _mm512_movepi8_mask(a: __m512i) -> __mmask64 {
 #[cfg_attr(test, assert_instr(vpmovmskb))]
 // should be vpmovb2m but compiled to vpmovmskb in the test shim because that takes less cycles than
 // using vpmovb2m plus converting the mask register to a standard register.
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_movepi8_mask(a: __m256i) -> __mmask32 {
     let filter = _mm256_set1_epi8(1 << 7);
     let a = _mm256_and_si256(a, filter);
@@ -11047,7 +11047,7 @@ pub const fn _mm256_movepi8_mask(a: __m256i) -> __mmask32 {
 #[cfg_attr(test, assert_instr(vpmovmskb))]
 // should be vpmovb2m but compiled to vpmovmskb in the test shim because that takes less cycles than
 // using vpmovb2m plus converting the mask register to a standard register.
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_movepi8_mask(a: __m128i) -> __mmask16 {
     let filter = _mm_set1_epi8(1 << 7);
     let a = _mm_and_si128(a, filter);
@@ -11061,7 +11061,7 @@ pub const fn _mm_movepi8_mask(a: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovm2w))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_movm_epi16(k: __mmask32) -> __m512i {
     unsafe {
         let one = _mm512_set1_epi16(
@@ -11094,7 +11094,7 @@ pub const fn _mm512_movm_epi16(k: __mmask32) -> __m512i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovm2w))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_movm_epi16(k: __mmask16) -> __m256i {
     unsafe {
         let one = _mm256_set1_epi16(
@@ -11127,7 +11127,7 @@ pub const fn _mm256_movm_epi16(k: __mmask16) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovm2w))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_movm_epi16(k: __mmask8) -> __m128i {
     unsafe {
         let one = _mm_set1_epi16(
@@ -11160,7 +11160,7 @@ pub const fn _mm_movm_epi16(k: __mmask8) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovm2b))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_movm_epi8(k: __mmask64) -> __m512i {
     unsafe {
         let one =
@@ -11177,7 +11177,7 @@ pub const fn _mm512_movm_epi8(k: __mmask64) -> __m512i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovm2b))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_movm_epi8(k: __mmask32) -> __m256i {
     unsafe {
         let one =
@@ -11194,7 +11194,7 @@ pub const fn _mm256_movm_epi8(k: __mmask32) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovm2b))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_movm_epi8(k: __mmask16) -> __m128i {
     unsafe {
         let one =
@@ -11210,7 +11210,7 @@ pub const fn _mm_movm_epi8(k: __mmask16) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _cvtmask32_u32(a: __mmask32) -> u32 {
     a
 }
@@ -11221,7 +11221,7 @@ pub const fn _cvtmask32_u32(a: __mmask32) -> u32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _cvtu32_mask32(a: u32) -> __mmask32 {
     a
 }
@@ -11232,7 +11232,7 @@ pub const fn _cvtu32_mask32(a: u32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kadd_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
     a.wrapping_add(b)
 }
@@ -11243,7 +11243,7 @@ pub const fn _kadd_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kadd_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     a.wrapping_add(b)
 }
@@ -11254,7 +11254,7 @@ pub const fn _kadd_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kand_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
     a & b
 }
@@ -11265,7 +11265,7 @@ pub const fn _kand_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kand_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     a & b
 }
@@ -11276,7 +11276,7 @@ pub const fn _kand_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _knot_mask32(a: __mmask32) -> __mmask32 {
     !a
 }
@@ -11287,7 +11287,7 @@ pub const fn _knot_mask32(a: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _knot_mask64(a: __mmask64) -> __mmask64 {
     !a
 }
@@ -11298,7 +11298,7 @@ pub const fn _knot_mask64(a: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kandn_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
     _knot_mask32(a) & b
 }
@@ -11309,7 +11309,7 @@ pub const fn _kandn_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kandn_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     _knot_mask64(a) & b
 }
@@ -11320,7 +11320,7 @@ pub const fn _kandn_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
     a | b
 }
@@ -11331,7 +11331,7 @@ pub const fn _kor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     a | b
 }
@@ -11342,7 +11342,7 @@ pub const fn _kor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kxor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
     a ^ b
 }
@@ -11353,7 +11353,7 @@ pub const fn _kxor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kxor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     a ^ b
 }
@@ -11364,7 +11364,7 @@ pub const fn _kxor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kxnor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
     _knot_mask32(a ^ b)
 }
@@ -11375,7 +11375,7 @@ pub const fn _kxnor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kxnor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     _knot_mask64(a ^ b)
 }
@@ -11387,7 +11387,7 @@ pub const fn _kxnor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _kortest_mask32_u8(a: __mmask32, b: __mmask32, all_ones: *mut u8) -> u8 {
     let tmp = _kor_mask32(a, b);
     *all_ones = (tmp == 0xffffffff) as u8;
@@ -11401,7 +11401,7 @@ pub const unsafe fn _kortest_mask32_u8(a: __mmask32, b: __mmask32, all_ones: *mu
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _kortest_mask64_u8(a: __mmask64, b: __mmask64, all_ones: *mut u8) -> u8 {
     let tmp = _kor_mask64(a, b);
     *all_ones = (tmp == 0xffffffff_ffffffff) as u8;
@@ -11415,7 +11415,7 @@ pub const unsafe fn _kortest_mask64_u8(a: __mmask64, b: __mmask64, all_ones: *mu
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kortestc_mask32_u8(a: __mmask32, b: __mmask32) -> u8 {
     (_kor_mask32(a, b) == 0xffffffff) as u8
 }
@@ -11427,7 +11427,7 @@ pub const fn _kortestc_mask32_u8(a: __mmask32, b: __mmask32) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kortestc_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
     (_kor_mask64(a, b) == 0xffffffff_ffffffff) as u8
 }
@@ -11439,7 +11439,7 @@ pub const fn _kortestc_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kortestz_mask32_u8(a: __mmask32, b: __mmask32) -> u8 {
     (_kor_mask32(a, b) == 0) as u8
 }
@@ -11451,7 +11451,7 @@ pub const fn _kortestz_mask32_u8(a: __mmask32, b: __mmask32) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kortestz_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
     (_kor_mask64(a, b) == 0) as u8
 }
@@ -11461,9 +11461,9 @@ pub const fn _kortestz_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftli_mask32)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kshiftli_mask32<const COUNT: u32>(a: __mmask32) -> __mmask32 {
     a.unbounded_shl(COUNT)
 }
@@ -11473,9 +11473,9 @@ pub const fn _kshiftli_mask32<const COUNT: u32>(a: __mmask32) -> __mmask32 {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftli_mask64)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kshiftli_mask64<const COUNT: u32>(a: __mmask64) -> __mmask64 {
     a.unbounded_shl(COUNT)
 }
@@ -11485,9 +11485,9 @@ pub const fn _kshiftli_mask64<const COUNT: u32>(a: __mmask64) -> __mmask64 {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftri_mask32)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kshiftri_mask32<const COUNT: u32>(a: __mmask32) -> __mmask32 {
     a.unbounded_shr(COUNT)
 }
@@ -11497,9 +11497,9 @@ pub const fn _kshiftri_mask32<const COUNT: u32>(a: __mmask32) -> __mmask32 {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftri_mask64)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _kshiftri_mask64<const COUNT: u32>(a: __mmask64) -> __mmask64 {
     a.unbounded_shr(COUNT)
 }
@@ -11512,7 +11512,7 @@ pub const fn _kshiftri_mask64<const COUNT: u32>(a: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _ktest_mask32_u8(a: __mmask32, b: __mmask32, and_not: *mut u8) -> u8 {
     *and_not = (_kandn_mask32(a, b) == 0) as u8;
     (_kand_mask32(a, b) == 0) as u8
@@ -11526,7 +11526,7 @@ pub const unsafe fn _ktest_mask32_u8(a: __mmask32, b: __mmask32, and_not: *mut u
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _ktest_mask64_u8(a: __mmask64, b: __mmask64, and_not: *mut u8) -> u8 {
     *and_not = (_kandn_mask64(a, b) == 0) as u8;
     (_kand_mask64(a, b) == 0) as u8
@@ -11539,7 +11539,7 @@ pub const unsafe fn _ktest_mask64_u8(a: __mmask64, b: __mmask64, and_not: *mut u
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _ktestc_mask32_u8(a: __mmask32, b: __mmask32) -> u8 {
     (_kandn_mask32(a, b) == 0) as u8
 }
@@ -11551,7 +11551,7 @@ pub const fn _ktestc_mask32_u8(a: __mmask32, b: __mmask32) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _ktestc_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
     (_kandn_mask64(a, b) == 0) as u8
 }
@@ -11563,7 +11563,7 @@ pub const fn _ktestc_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _ktestz_mask32_u8(a: __mmask32, b: __mmask32) -> u8 {
     (_kand_mask32(a, b) == 0) as u8
 }
@@ -11575,7 +11575,7 @@ pub const fn _ktestz_mask32_u8(a: __mmask32, b: __mmask32) -> u8 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _ktestz_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
     (_kand_mask64(a, b) == 0) as u8
 }
@@ -11587,7 +11587,7 @@ pub const fn _ktestz_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(mov))] // generate normal and code instead of kunpckwd
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_kunpackw(a: __mmask32, b: __mmask32) -> __mmask32 {
     ((a & 0xffff) << 16) | (b & 0xffff)
 }
@@ -11599,7 +11599,7 @@ pub const fn _mm512_kunpackw(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(mov))] // generate normal and code instead of kunpckdq
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_kunpackd(a: __mmask64, b: __mmask64) -> __mmask64 {
     ((a & 0xffffffff) << 32) | (b & 0xffffffff)
 }
@@ -11611,7 +11611,7 @@ pub const fn _mm512_kunpackd(a: __mmask64, b: __mmask64) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cvtepi16_epi8(a: __m512i) -> __m256i {
     unsafe {
         let a = a.as_i16x32();
@@ -11626,7 +11626,7 @@ pub const fn _mm512_cvtepi16_epi8(a: __m512i) -> __m256i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cvtepi16_epi8(src: __m256i, k: __mmask32, a: __m512i) -> __m256i {
     unsafe {
         let convert = _mm512_cvtepi16_epi8(a).as_i8x32();
@@ -11641,7 +11641,7 @@ pub const fn _mm512_mask_cvtepi16_epi8(src: __m256i, k: __mmask32, a: __m512i) -
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_cvtepi16_epi8(k: __mmask32, a: __m512i) -> __m256i {
     unsafe {
         let convert = _mm512_cvtepi16_epi8(a).as_i8x32();
@@ -11656,7 +11656,7 @@ pub const fn _mm512_maskz_cvtepi16_epi8(k: __mmask32, a: __m512i) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cvtepi16_epi8(a: __m256i) -> __m128i {
     unsafe {
         let a = a.as_i16x16();
@@ -11671,7 +11671,7 @@ pub const fn _mm256_cvtepi16_epi8(a: __m256i) -> __m128i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cvtepi16_epi8(src: __m128i, k: __mmask16, a: __m256i) -> __m128i {
     unsafe {
         let convert = _mm256_cvtepi16_epi8(a).as_i8x16();
@@ -11686,7 +11686,7 @@ pub const fn _mm256_mask_cvtepi16_epi8(src: __m128i, k: __mmask16, a: __m256i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_cvtepi16_epi8(k: __mmask16, a: __m256i) -> __m128i {
     unsafe {
         let convert = _mm256_cvtepi16_epi8(a).as_i8x16();
@@ -11701,7 +11701,7 @@ pub const fn _mm256_maskz_cvtepi16_epi8(k: __mmask16, a: __m256i) -> __m128i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtepi16_epi8(a: __m128i) -> __m128i {
     unsafe {
         let a = a.as_i16x8();
@@ -11721,7 +11721,7 @@ pub const fn _mm_cvtepi16_epi8(a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cvtepi16_epi8(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let a = _mm_cvtepi16_epi8(a).as_i8x16();
@@ -11741,7 +11741,7 @@ pub const fn _mm_mask_cvtepi16_epi8(src: __m128i, k: __mmask8, a: __m128i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_cvtepi16_epi8(k: __mmask8, a: __m128i) -> __m128i {
     _mm_mask_cvtepi16_epi8(_mm_setzero_si128(), k, a)
 }
@@ -11753,7 +11753,7 @@ pub const fn _mm_maskz_cvtepi16_epi8(k: __mmask8, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovswb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const fn _mm512_cvtsepi16_epi8(a: __m512i) -> __m256i {
     unsafe {
         simd_cast::<_, i8x32>(simd_imax(
@@ -11771,7 +11771,7 @@ pub const fn _mm512_cvtsepi16_epi8(a: __m512i) -> __m256i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovswb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const fn _mm512_mask_cvtsepi16_epi8(src: __m256i, k: __mmask32, a: __m512i) -> __m256i {
     unsafe {
         simd_select_bitmask(k, _mm512_cvtsepi16_epi8(a).as_i8x32(), src.as_i8x32()).as_m256i()
@@ -11785,7 +11785,7 @@ pub const fn _mm512_mask_cvtsepi16_epi8(src: __m256i, k: __mmask32, a: __m512i) 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovswb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const fn _mm512_maskz_cvtsepi16_epi8(k: __mmask32, a: __m512i) -> __m256i {
     unsafe { simd_select_bitmask(k, _mm512_cvtsepi16_epi8(a).as_i8x32(), i8x32::ZERO).as_m256i() }
 }
@@ -11797,7 +11797,7 @@ pub const fn _mm512_maskz_cvtsepi16_epi8(k: __mmask32, a: __m512i) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovswb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const fn _mm256_cvtsepi16_epi8(a: __m256i) -> __m128i {
     unsafe {
         simd_cast::<_, i8x16>(simd_imax(
@@ -11815,7 +11815,7 @@ pub const fn _mm256_cvtsepi16_epi8(a: __m256i) -> __m128i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovswb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const fn _mm256_mask_cvtsepi16_epi8(src: __m128i, k: __mmask16, a: __m256i) -> __m128i {
     unsafe {
         simd_select_bitmask(k, _mm256_cvtsepi16_epi8(a).as_i8x16(), src.as_i8x16()).as_m128i()
@@ -11829,7 +11829,7 @@ pub const fn _mm256_mask_cvtsepi16_epi8(src: __m128i, k: __mmask16, a: __m256i) 
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovswb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const fn _mm256_maskz_cvtsepi16_epi8(k: __mmask16, a: __m256i) -> __m128i {
     unsafe { simd_select_bitmask(k, _mm256_cvtsepi16_epi8(a).as_i8x16(), i8x16::ZERO).as_m128i() }
 }
@@ -11874,7 +11874,7 @@ pub fn _mm_maskz_cvtsepi16_epi8(k: __mmask8, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovuswb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const fn _mm512_cvtusepi16_epi8(a: __m512i) -> __m256i {
     unsafe {
         simd_cast::<_, u8x32>(simd_imin(a.as_u16x32(), u16x32::splat(u8::MAX as _))).as_m256i()
@@ -11888,7 +11888,7 @@ pub const fn _mm512_cvtusepi16_epi8(a: __m512i) -> __m256i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovuswb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const fn _mm512_mask_cvtusepi16_epi8(src: __m256i, k: __mmask32, a: __m512i) -> __m256i {
     unsafe {
         simd_select_bitmask(k, _mm512_cvtusepi16_epi8(a).as_u8x32(), src.as_u8x32()).as_m256i()
@@ -11902,7 +11902,7 @@ pub const fn _mm512_mask_cvtusepi16_epi8(src: __m256i, k: __mmask32, a: __m512i)
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovuswb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const fn _mm512_maskz_cvtusepi16_epi8(k: __mmask32, a: __m512i) -> __m256i {
     unsafe { simd_select_bitmask(k, _mm512_cvtusepi16_epi8(a).as_u8x32(), u8x32::ZERO).as_m256i() }
 }
@@ -11914,7 +11914,7 @@ pub const fn _mm512_maskz_cvtusepi16_epi8(k: __mmask32, a: __m512i) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovuswb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const fn _mm256_cvtusepi16_epi8(a: __m256i) -> __m128i {
     unsafe {
         simd_cast::<_, u8x16>(simd_imin(a.as_u16x16(), u16x16::splat(u8::MAX as _))).as_m128i()
@@ -11928,7 +11928,7 @@ pub const fn _mm256_cvtusepi16_epi8(a: __m256i) -> __m128i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovuswb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const fn _mm256_mask_cvtusepi16_epi8(src: __m128i, k: __mmask16, a: __m256i) -> __m128i {
     unsafe {
         simd_select_bitmask(k, _mm256_cvtusepi16_epi8(a).as_u8x16(), src.as_u8x16()).as_m128i()
@@ -11942,7 +11942,7 @@ pub const fn _mm256_mask_cvtusepi16_epi8(src: __m128i, k: __mmask16, a: __m256i)
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovuswb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const fn _mm256_maskz_cvtusepi16_epi8(k: __mmask16, a: __m256i) -> __m128i {
     unsafe { simd_select_bitmask(k, _mm256_cvtusepi16_epi8(a).as_u8x16(), u8x16::ZERO).as_m128i() }
 }
@@ -11987,7 +11987,7 @@ pub fn _mm_maskz_cvtusepi16_epi8(k: __mmask8, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovsxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cvtepi8_epi16(a: __m256i) -> __m512i {
     unsafe {
         let a = a.as_i8x32();
@@ -12002,7 +12002,7 @@ pub const fn _mm512_cvtepi8_epi16(a: __m256i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovsxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cvtepi8_epi16(src: __m512i, k: __mmask32, a: __m256i) -> __m512i {
     unsafe {
         let convert = _mm512_cvtepi8_epi16(a).as_i16x32();
@@ -12017,7 +12017,7 @@ pub const fn _mm512_mask_cvtepi8_epi16(src: __m512i, k: __mmask32, a: __m256i) -
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovsxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_cvtepi8_epi16(k: __mmask32, a: __m256i) -> __m512i {
     unsafe {
         let convert = _mm512_cvtepi8_epi16(a).as_i16x32();
@@ -12032,7 +12032,7 @@ pub const fn _mm512_maskz_cvtepi8_epi16(k: __mmask32, a: __m256i) -> __m512i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovsxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cvtepi8_epi16(src: __m256i, k: __mmask16, a: __m128i) -> __m256i {
     unsafe {
         let convert = _mm256_cvtepi8_epi16(a).as_i16x16();
@@ -12047,7 +12047,7 @@ pub const fn _mm256_mask_cvtepi8_epi16(src: __m256i, k: __mmask16, a: __m128i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovsxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_cvtepi8_epi16(k: __mmask16, a: __m128i) -> __m256i {
     unsafe {
         let convert = _mm256_cvtepi8_epi16(a).as_i16x16();
@@ -12062,7 +12062,7 @@ pub const fn _mm256_maskz_cvtepi8_epi16(k: __mmask16, a: __m128i) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovsxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cvtepi8_epi16(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let convert = _mm_cvtepi8_epi16(a).as_i16x8();
@@ -12077,7 +12077,7 @@ pub const fn _mm_mask_cvtepi8_epi16(src: __m128i, k: __mmask8, a: __m128i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovsxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_cvtepi8_epi16(k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let convert = _mm_cvtepi8_epi16(a).as_i16x8();
@@ -12092,7 +12092,7 @@ pub const fn _mm_maskz_cvtepi8_epi16(k: __mmask8, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovzxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cvtepu8_epi16(a: __m256i) -> __m512i {
     unsafe {
         let a = a.as_u8x32();
@@ -12107,7 +12107,7 @@ pub const fn _mm512_cvtepu8_epi16(a: __m256i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovzxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_cvtepu8_epi16(src: __m512i, k: __mmask32, a: __m256i) -> __m512i {
     unsafe {
         let convert = _mm512_cvtepu8_epi16(a).as_i16x32();
@@ -12122,7 +12122,7 @@ pub const fn _mm512_mask_cvtepu8_epi16(src: __m512i, k: __mmask32, a: __m256i) -
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovzxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_cvtepu8_epi16(k: __mmask32, a: __m256i) -> __m512i {
     unsafe {
         let convert = _mm512_cvtepu8_epi16(a).as_i16x32();
@@ -12137,7 +12137,7 @@ pub const fn _mm512_maskz_cvtepu8_epi16(k: __mmask32, a: __m256i) -> __m512i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovzxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cvtepu8_epi16(src: __m256i, k: __mmask16, a: __m128i) -> __m256i {
     unsafe {
         let convert = _mm256_cvtepu8_epi16(a).as_i16x16();
@@ -12152,7 +12152,7 @@ pub const fn _mm256_mask_cvtepu8_epi16(src: __m256i, k: __mmask16, a: __m128i) -
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovzxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_cvtepu8_epi16(k: __mmask16, a: __m128i) -> __m256i {
     unsafe {
         let convert = _mm256_cvtepu8_epi16(a).as_i16x16();
@@ -12167,7 +12167,7 @@ pub const fn _mm256_maskz_cvtepu8_epi16(k: __mmask16, a: __m128i) -> __m256i {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovzxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cvtepu8_epi16(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let convert = _mm_cvtepu8_epi16(a).as_i16x8();
@@ -12182,7 +12182,7 @@ pub const fn _mm_mask_cvtepu8_epi16(src: __m128i, k: __mmask8, a: __m128i) -> __
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovzxbw))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_cvtepu8_epi16(k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let convert = _mm_cvtepu8_epi16(a).as_i16x8();
@@ -12197,8 +12197,8 @@ pub const fn _mm_maskz_cvtepu8_epi16(k: __mmask8, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpslldq, IMM8 = 3))]
-#[rustc_legacy_const_generics(1)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(1)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_bslli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -12293,8 +12293,8 @@ pub const fn _mm512_bslli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrldq, IMM8 = 3))]
-#[rustc_legacy_const_generics(1)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(1)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -12391,8 +12391,8 @@ pub const fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpalignr, IMM8 = 1))]
-#[rustc_legacy_const_generics(2)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(2)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
     const fn mask(shift: u32, i: u32) -> u32 {
         let shift = shift % 16;
@@ -12502,8 +12502,8 @@ pub const fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m5
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpalignr, IMM8 = 1))]
-#[rustc_legacy_const_generics(4)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(4)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_alignr_epi8<const IMM8: i32>(
     src: __m512i,
     k: __mmask64,
@@ -12524,8 +12524,8 @@ pub const fn _mm512_mask_alignr_epi8<const IMM8: i32>(
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpalignr, IMM8 = 1))]
-#[rustc_legacy_const_generics(3)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_legacy_const_generics(3)]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_alignr_epi8<const IMM8: i32>(
     k: __mmask64,
     a: __m512i,
@@ -12544,9 +12544,9 @@ pub const fn _mm512_maskz_alignr_epi8<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[cfg_attr(test, assert_instr(vpalignr, IMM8 = 5))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_alignr_epi8<const IMM8: i32>(
     src: __m256i,
     k: __mmask32,
@@ -12566,9 +12566,9 @@ pub const fn _mm256_mask_alignr_epi8<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpalignr, IMM8 = 5))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_alignr_epi8<const IMM8: i32>(
     k: __mmask32,
     a: __m256i,
@@ -12587,9 +12587,9 @@ pub const fn _mm256_maskz_alignr_epi8<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[cfg_attr(test, assert_instr(vpalignr, IMM8 = 5))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_alignr_epi8<const IMM8: i32>(
     src: __m128i,
     k: __mmask16,
@@ -12609,9 +12609,9 @@ pub const fn _mm_mask_alignr_epi8<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vpalignr, IMM8 = 5))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_alignr_epi8<const IMM8: i32>(
     k: __mmask16,
     a: __m128i,
@@ -12678,7 +12678,7 @@ pub unsafe fn _mm_mask_cvtsepi16_storeu_epi8(mem_addr: *mut i8, k: __mmask8, a: 
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const unsafe fn _mm512_mask_cvtepi16_storeu_epi8(mem_addr: *mut i8, k: __mmask32, a: __m512i) {
     let result = _mm512_cvtepi16_epi8(a).as_i8x32();
     let mask = simd_select_bitmask(k, i8x32::splat(!0), i8x32::ZERO);
@@ -12692,7 +12692,7 @@ pub const unsafe fn _mm512_mask_cvtepi16_storeu_epi8(mem_addr: *mut i8, k: __mma
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const unsafe fn _mm256_mask_cvtepi16_storeu_epi8(mem_addr: *mut i8, k: __mmask16, a: __m256i) {
     let result = _mm256_cvtepi16_epi8(a).as_i8x16();
     let mask = simd_select_bitmask(k, i8x16::splat(!0), i8x16::ZERO);
@@ -12706,7 +12706,7 @@ pub const unsafe fn _mm256_mask_cvtepi16_storeu_epi8(mem_addr: *mut i8, k: __mma
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub const unsafe fn _mm_mask_cvtepi16_storeu_epi8(mem_addr: *mut i8, k: __mmask8, a: __m128i) {
     let result: i8x8 = simd_shuffle!(
         _mm_cvtepi16_epi8(a).as_i8x16(),

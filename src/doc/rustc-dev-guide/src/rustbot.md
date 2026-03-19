@@ -3,7 +3,7 @@
 `@rustbot` (also known as `triagebot`) is a utility robot that is mostly used to
 allow any contributor to achieve certain tasks that would normally require GitHub
 membership to the `rust-lang` organization. Its most interesting features for
-contributors to `rustc` are issue claiming and relabeling.
+contributors to `redox` are issue claiming and relabeling.
 
 ## Issue claiming
 

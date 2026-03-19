@@ -553,7 +553,7 @@ pub fn change_directory_to_path(dest: &Path) -> io::Result<()> {
 }
 
 pub fn get_dynamic_library_path(dir: &Path) -> Result<String, CheckDiffError> {
-    let Ok(command) = Command::new("rustc")
+    let Ok(command) = Command::new("redox")
         .current_dir(dir)
         .args(["--print", "sysroot"])
         .output()

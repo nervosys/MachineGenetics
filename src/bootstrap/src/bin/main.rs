@@ -1,6 +1,6 @@
 //! bootstrap, the Rust build system
 //!
-//! This is the entry point for the build system used to compile the `rustc`
+//! This is the entry point for the build system used to compile the `redox`
 //! compiler. Lots of documentation can be found in the `README.md` file in the
 //! parent directory, and otherwise documentation can be found throughout the `build`
 //! directory in each respective module.
@@ -170,7 +170,7 @@ fn main() {
             let file = t!(fs::File::open(entry.path()));
 
             // To ensure deterministic results we must sort the dump lines.
-            // This is necessary because the order of rustc invocations different
+            // This is necessary because the order of redox invocations different
             // almost all the time.
             let mut lines: Vec<String> = t!(BufReader::new(&file).lines().collect());
             lines.sort_by_key(|t| t.to_lowercase());

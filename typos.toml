@@ -4,9 +4,9 @@
 [files]
 extend-exclude = [
     # exclude git (sub)modules and generated content
-    "compiler/rustc_baked_icu_data",
-    "compiler/rustc_codegen_cranelift",
-    "compiler/rustc_codegen_gcc",
+    "compiler/redox_baked_icu_data",
+    "compiler/redox_codegen_cranelift",
+    "compiler/redox_codegen_gcc",
     "library/backtrace",
     "library/compiler-builtins",
     "library/stdarch",

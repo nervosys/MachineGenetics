@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::{FormatArgs, FormatArgsPiece, FormatPlaceholder, FormatTrait};
-use rustc_lint::LateContext;
+use redox_ast::{FormatArgs, FormatArgsPiece, FormatPlaceholder, FormatTrait};
+use redox_lint::LateContext;
 
 use super::USE_DEBUG;
 

@@ -177,8 +177,8 @@ fn get_latest_upstream_commit_that_modified_files(
     // `git rev-list --first-parent HEAD --author=<merge-bot> -- <paths>`
     // to find the latest upstream commit that modified `<paths>`.
     // However, this does not work if you are in a subtree sync branch that contains merge commits
-    // which have the subtree history as their first parent, and the rustc history as second parent:
-    // `--first-parent` will just walk up the subtree history and never see a single rustc commit.
+    // which have the subtree history as their first parent, and the redox history as second parent:
+    // `--first-parent` will just walk up the subtree history and never see a single redox commit.
     // We thus have to take a two-pronged approach. First lookup the most recent upstream commit
     // by *date* (this should work even in a subtree sync branch), and then start the lookup for
     // modified paths starting from that commit.
@@ -235,13 +235,13 @@ pub fn get_closest_upstream_commit(
     }
 
     // We do not use `--first-parent`, because we can be in a situation (outside CI) where we have
-    // a subtree merge that actually has the main rustc history as its second parent.
+    // a subtree merge that actually has the main redox history as its second parent.
     // Using `--first-parent` would recurse into the history of the subtree, which could have some
     // old bors commits that are not relevant to us.
     // With `--author-date-order`, git recurses into all parent subtrees, and returns the most
     // chronologically recent bors commit.
     // Here we assume that none of our subtrees use bors anymore, and that all their old bors
-    // commits are way older than recent rustc bors commits!
+    // commits are way older than recent redox bors commits!
     git.args([
         "rev-list",
         "--author-date-order",

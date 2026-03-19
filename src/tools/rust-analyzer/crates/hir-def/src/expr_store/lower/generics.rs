@@ -1,7 +1,7 @@
 //! Many kinds of items or constructs can have generic parameters: functions,
 //! structs, impls, traits, etc. This module provides a common HIR for these
 //! generic parameters. See also the `Generics` type and the `generics_of` query
-//! in rustc.
+//! in redox.
 
 use std::sync::LazyLock;
 

@@ -2,7 +2,7 @@
 //@ aux-build:llvm_pr32379.rs
 
 // LLVM PR #32379 (https://bugs.llvm.org/show_bug.cgi?id=32379), which
-// applies to upstream LLVM 3.9.1, is known to cause rustc itself to be
+// applies to upstream LLVM 3.9.1, is known to cause redox itself to be
 // miscompiled on ARM (Rust issue #40593). Because cross builds don't test
 // our *compiler* on ARM, have a test for the miscompilation directly.
 

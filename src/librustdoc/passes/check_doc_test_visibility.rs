@@ -5,10 +5,10 @@
 //! - MISSING_DOC_CODE_EXAMPLES: this lint is **UNSTABLE** and looks for public items missing doctests.
 //! - PRIVATE_DOC_TESTS: this lint is **STABLE** and looks for private items with doctests.
 
-use rustc_hir as hir;
-use rustc_macros::Diagnostic;
-use rustc_middle::lint::{LevelAndSource, LintLevelSource};
-use rustc_session::lint;
+use redox_hir as hir;
+use redox_macros::Diagnostic;
+use redox_middle::lint::{LevelAndSource, LintLevelSource};
+use redox_session::lint;
 use tracing::debug;
 
 use super::Pass;

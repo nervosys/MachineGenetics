@@ -1,27 +1,27 @@
 //! The type system. We currently use this to infer types for completion, hover
 //! information and various assists.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 // It's useful to refer to code that is private in doc comments.
 #![allow(rustdoc::private_intra_doc_links)]
 
-// FIXME: We used to import `rustc_*` deps from `rustc_private` with `feature = "in-rust-tree" but
-// temporarily switched to crates.io versions due to hardships that working on them from rustc
+// FIXME: We used to import `redox_*` deps from `redox_private` with `feature = "in-rust-tree" but
+// temporarily switched to crates.io versions due to hardships that working on them from redox
 // demands corresponding changes on rust-analyzer at the same time.
 // For details, see the zulip discussion below:
-// https://rust-lang.zulipchat.com/#narrow/channel/185405-t-compiler.2Frust-analyzer/topic/relying.20on.20in-tree.20.60rustc_type_ir.60.2F.60rustc_next_trait_solver.60/with/541055689
+// https://rust-lang.zulipchat.com/#narrow/channel/185405-t-compiler.2Frust-analyzer/topic/relying.20on.20in-tree.20.60redox_type_ir.60.2F.60redox_next_trait_solver.60/with/541055689
 
-extern crate ra_ap_rustc_index as rustc_index;
+extern crate ra_ap_redox_index as redox_index;
 
-extern crate ra_ap_rustc_abi as rustc_abi;
+extern crate ra_ap_redox_abi as redox_abi;
 
-extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
+extern crate ra_ap_redox_pattern_analysis as redox_pattern_analysis;
 
-extern crate ra_ap_rustc_ast_ir as rustc_ast_ir;
+extern crate ra_ap_redox_ast_ir as redox_ast_ir;
 
-extern crate ra_ap_rustc_type_ir as rustc_type_ir;
+extern crate ra_ap_redox_type_ir as redox_type_ir;
 
-extern crate ra_ap_rustc_next_trait_solver as rustc_next_trait_solver;
+extern crate ra_ap_redox_next_trait_solver as redox_next_trait_solver;
 
 extern crate self as hir_ty;
 
@@ -69,8 +69,8 @@ use indexmap::{IndexMap, map::Entry};
 use intern::{Symbol, sym};
 use macros::GenericTypeVisitable;
 use mir::{MirEvalError, VTableMap};
-use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
-use rustc_type_ir::{
+use redox_hash::{FxBuildHasher, FxHashMap, FxHashSet};
+use redox_type_ir::{
     BoundVarIndexKind, TypeSuperVisitable, TypeVisitableExt, UpcastFrom,
     inherent::{IntoKind, Ty as _},
 };
@@ -168,7 +168,7 @@ impl<'db> MemoryMap<'db> {
         match self {
             MemoryMap::Empty => Ok(Default::default()),
             MemoryMap::Simple(m) => transform((&0, m)).map(|(addr, val)| {
-                let mut map = FxHashMap::with_capacity_and_hasher(1, rustc_hash::FxBuildHasher);
+                let mut map = FxHashMap::with_capacity_and_hasher(1, redox_hash::FxBuildHasher);
                 map.insert(addr, val);
                 map
             }),
@@ -354,13 +354,13 @@ pub enum ImplTraitId {
 /// the `t`.
 pub fn replace_errors_with_variables<'db, T>(interner: DbInterner<'db>, t: &T) -> Canonical<'db, T>
 where
-    T: rustc_type_ir::TypeFoldable<DbInterner<'db>> + Clone,
+    T: redox_type_ir::TypeFoldable<DbInterner<'db>> + Clone,
 {
-    use rustc_type_ir::{FallibleTypeFolder, TypeSuperFoldable};
+    use redox_type_ir::{FallibleTypeFolder, TypeSuperFoldable};
     struct ErrorReplacer<'db> {
         interner: DbInterner<'db>,
         vars: Vec<CanonicalVarKind<'db>>,
-        binder: rustc_type_ir::DebruijnIndex,
+        binder: redox_type_ir::DebruijnIndex,
     }
     impl<'db> FallibleTypeFolder<DbInterner<'db>> for ErrorReplacer<'db> {
         #[cfg(debug_assertions)]
@@ -374,7 +374,7 @@ where
 
         fn try_fold_binder<T>(&mut self, t: Binder<'db, T>) -> Result<Binder<'db, T>, Self::Error>
         where
-            T: rustc_type_ir::TypeFoldable<DbInterner<'db>>,
+            T: redox_type_ir::TypeFoldable<DbInterner<'db>>,
         {
             self.binder.shift_in(1);
             let result = t.try_super_fold_with(self);
@@ -384,10 +384,10 @@ where
 
         fn try_fold_ty(&mut self, t: Ty<'db>) -> Result<Ty<'db>, Self::Error> {
             if !t.has_type_flags(
-                rustc_type_ir::TypeFlags::HAS_ERROR
-                    | rustc_type_ir::TypeFlags::HAS_TY_INFER
-                    | rustc_type_ir::TypeFlags::HAS_CT_INFER
-                    | rustc_type_ir::TypeFlags::HAS_RE_INFER,
+                redox_type_ir::TypeFlags::HAS_ERROR
+                    | redox_type_ir::TypeFlags::HAS_TY_INFER
+                    | redox_type_ir::TypeFlags::HAS_CT_INFER
+                    | redox_type_ir::TypeFlags::HAS_RE_INFER,
             ) {
                 return Ok(t);
             }
@@ -399,9 +399,9 @@ where
 
             match t.kind() {
                 TyKind::Error(_) => {
-                    let var = rustc_type_ir::BoundVar::from_usize(self.vars.len());
+                    let var = redox_type_ir::BoundVar::from_usize(self.vars.len());
                     self.vars.push(CanonicalVarKind::Ty {
-                        ui: rustc_type_ir::UniverseIndex::ZERO,
+                        ui: redox_type_ir::UniverseIndex::ZERO,
                         sub_root: var,
                     });
                     Ok(Ty::new_bound(
@@ -418,10 +418,10 @@ where
 
         fn try_fold_const(&mut self, ct: Const<'db>) -> Result<Const<'db>, Self::Error> {
             if !ct.has_type_flags(
-                rustc_type_ir::TypeFlags::HAS_ERROR
-                    | rustc_type_ir::TypeFlags::HAS_TY_INFER
-                    | rustc_type_ir::TypeFlags::HAS_CT_INFER
-                    | rustc_type_ir::TypeFlags::HAS_RE_INFER,
+                redox_type_ir::TypeFlags::HAS_ERROR
+                    | redox_type_ir::TypeFlags::HAS_TY_INFER
+                    | redox_type_ir::TypeFlags::HAS_CT_INFER
+                    | redox_type_ir::TypeFlags::HAS_RE_INFER,
             ) {
                 return Ok(ct);
             }
@@ -433,8 +433,8 @@ where
 
             match ct.kind() {
                 ConstKind::Error(_) => {
-                    let var = rustc_type_ir::BoundVar::from_usize(self.vars.len());
-                    self.vars.push(CanonicalVarKind::Const(rustc_type_ir::UniverseIndex::ZERO));
+                    let var = redox_type_ir::BoundVar::from_usize(self.vars.len());
+                    self.vars.push(CanonicalVarKind::Const(redox_type_ir::UniverseIndex::ZERO));
                     Ok(Const::new_bound(self.interner, self.binder, BoundConst { var }))
                 }
                 ConstKind::Infer(_) => error(),
@@ -453,8 +453,8 @@ where
 
             match region.kind() {
                 RegionKind::ReError(_) => {
-                    let var = rustc_type_ir::BoundVar::from_usize(self.vars.len());
-                    self.vars.push(CanonicalVarKind::Region(rustc_type_ir::UniverseIndex::ZERO));
+                    let var = redox_type_ir::BoundVar::from_usize(self.vars.len());
+                    self.vars.push(CanonicalVarKind::Region(redox_type_ir::UniverseIndex::ZERO));
                     Ok(Region::new_bound(
                         self.interner,
                         self.binder,
@@ -471,14 +471,14 @@ where
     }
 
     let mut error_replacer =
-        ErrorReplacer { vars: Vec::new(), binder: rustc_type_ir::DebruijnIndex::ZERO, interner };
+        ErrorReplacer { vars: Vec::new(), binder: redox_type_ir::DebruijnIndex::ZERO, interner };
     let value = match t.clone().try_fold_with(&mut error_replacer) {
         Ok(t) => t,
         Err(_) => panic!("Encountered unbound or inference vars in {t:?}"),
     };
     Canonical {
         value,
-        max_universe: rustc_type_ir::UniverseIndex::ZERO,
+        max_universe: redox_type_ir::UniverseIndex::ZERO,
         variables: CanonicalVars::new_from_slice(&error_replacer.vars),
     }
 }
@@ -554,7 +554,7 @@ pub fn callable_sig_from_fn_trait<'db>(
     let trait_ref = TraitRef::new_from_args(table.interner(), fn_once_trait.into(), args);
     let projection = Ty::new_alias(
         table.interner(),
-        rustc_type_ir::AliasTyKind::Projection,
+        redox_type_ir::AliasTyKind::Projection,
         AliasTy::new_from_args(table.interner(), output_assoc_type.into(), args),
     );
 
@@ -600,7 +600,7 @@ struct ParamCollector {
     params: FxHashSet<TypeOrConstParamId>,
 }
 
-impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for ParamCollector {
+impl<'db> redox_type_ir::TypeVisitor<DbInterner<'db>> for ParamCollector {
     type Result = ();
 
     fn visit_ty(&mut self, ty: Ty<'db>) -> Self::Result {
@@ -623,7 +623,7 @@ impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for ParamCollector {
 /// Returns unique params for types and consts contained in `value`.
 pub fn collect_params<'db, T>(value: &T) -> Vec<TypeOrConstParamId>
 where
-    T: ?Sized + rustc_type_ir::TypeVisitable<DbInterner<'db>>,
+    T: ?Sized + redox_type_ir::TypeVisitable<DbInterner<'db>>,
 {
     let mut collector = ParamCollector { params: FxHashSet::default() };
     value.visit_with(&mut collector);
@@ -634,14 +634,14 @@ struct TypeInferenceVarCollector<'db> {
     type_inference_vars: Vec<Ty<'db>>,
 }
 
-impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for TypeInferenceVarCollector<'db> {
+impl<'db> redox_type_ir::TypeVisitor<DbInterner<'db>> for TypeInferenceVarCollector<'db> {
     type Result = ();
 
     fn visit_ty(&mut self, ty: Ty<'db>) -> Self::Result {
-        use crate::rustc_type_ir::Flags;
+        use crate::redox_type_ir::Flags;
         if ty.is_ty_var() {
             self.type_inference_vars.push(ty);
-        } else if ty.flags().intersects(rustc_type_ir::TypeFlags::HAS_TY_INFER) {
+        } else if ty.flags().intersects(redox_type_ir::TypeFlags::HAS_TY_INFER) {
             ty.super_visit_with(self);
         } else {
             // Fast path: don't visit inner types (e.g. generic arguments) when `flags` indicate
@@ -652,7 +652,7 @@ impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for TypeInferenceVarCollec
 
 pub fn collect_type_inference_vars<'db, T>(value: &T) -> Vec<Ty<'db>>
 where
-    T: ?Sized + rustc_type_ir::TypeVisitable<DbInterner<'db>>,
+    T: ?Sized + redox_type_ir::TypeVisitable<DbInterner<'db>>,
 {
     let mut collector = TypeInferenceVarCollector { type_inference_vars: vec![] };
     value.visit_with(&mut collector);

@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 macro_rules! width(
     ($this:expr) => {
         $this.width.unwrap()

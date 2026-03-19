@@ -4,7 +4,7 @@
 //
 // Unfortunately, the maximum length of the string that you can use at the
 // command prompt (`cmd.exe`) is 8191 characters.
-// Anyone scripting rustc's linker
+// Anyone scripting redox's linker
 // is probably using a `*.bat` script and is likely to hit this limit.
 //
 // This test uses a `foo.bat` script as the linker which just simply
@@ -18,9 +18,9 @@
 //@ only-windows
 // Reason: this test is specific to Windows executables
 
-use run_make_support::{run, rustc};
+use run_make_support::{run, redox};
 
 fn main() {
-    rustc().input("foo.rs").arg("-g").run();
+    redox().input("foo.rs").arg("-g").run();
     run("foo");
 }

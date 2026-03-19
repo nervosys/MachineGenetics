@@ -30,7 +30,7 @@ pub fn device_function() {
 ```
 
 ``` text
-$ xargo rustc --target nvptx64-nvidia-cuda --release -- --emit=asm
+$ xargo redox --target nvptx64-nvidia-cuda --release -- --emit=asm
 
 $ cat $(find -name '*.s')
 //

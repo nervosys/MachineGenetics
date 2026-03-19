@@ -8,7 +8,7 @@
 //@ ignore-backends: gcc
 #![no_core]
 #![crate_type = "rlib"]
-#![feature(intrinsics, rustc_attrs, no_core, staged_api)]
+#![feature(intrinsics, redox_attrs, no_core, staged_api)]
 #![stable(feature = "test", since = "1.0.0")]
 
 // Tests vetting "feature hierarchies" in the cases where we impose them.
@@ -17,11 +17,11 @@ extern crate minicore;
 use minicore::*;
 
 #[stable(feature = "test", since = "1.0.0")]
-#[rustc_const_stable(feature = "test", since = "1.0.0")]
-#[rustc_intrinsic]
+#[redox_const_stable(feature = "test", since = "1.0.0")]
+#[redox_intrinsic]
 const unsafe fn unreachable() -> !;
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! cfg {
     ($($cfg:tt)*) => {};
 }

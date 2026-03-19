@@ -20,7 +20,7 @@ use std::{
 
 use dashmap::{DashMap, SharedValue};
 use hashbrown::raw::RawTable;
-use rustc_hash::FxBuildHasher;
+use redox_hash::FxBuildHasher;
 use triomphe::{HeaderSlice, HeaderWithLength, ThinArc};
 
 type InternMap<T> = DashMap<

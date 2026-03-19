@@ -1,7 +1,7 @@
 # The THIR
 
 The THIR ("Typed High-Level Intermediate Representation"), previously called HAIR for
-"High-Level Abstract IR", is another IR used by rustc that is generated after
+"High-Level Abstract IR", is another IR used by redox that is generated after
 [type checking]. It is (as of <!-- date-check --> January 2024) used for
 [MIR construction], [exhaustiveness checking], and [unsafety checking].
 
@@ -32,17 +32,17 @@ But it has some other interesting features that distinguish it from the HIR:
   array.
 
 [HIR]: ./hir.md
-[`ExprId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/thir/struct.ExprId.html
-[body owners]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.BodyOwnerKind.html
+[`ExprId`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/thir/struct.ExprId.html
+[body owners]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/enum.BodyOwnerKind.html
 
-The THIR lives in [`rustc_mir_build::thir`][thir-docs]. To construct a [`thir::Expr`],
+The THIR lives in [`redox_mir_build::thir`][thir-docs]. To construct a [`thir::Expr`],
 you can use the [`thir_body`] function, passing in the memory arena where the THIR
 will be allocated. Dropping this arena will result in the THIR being destroyed,
 which is useful to keep peak memory in check. Having a THIR representation of
 all bodies of a crate in memory at the same time would be very heavy.
 
 You can get a debug representation of the THIR by passing the `-Zunpretty=thir-tree` flag
-to `rustc`.
+to `redox`.
 
 To demonstrate, let's use the following example:
 
@@ -262,6 +262,6 @@ Thir {
 }
 ```
 
-[thir-docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/index.html
-[`thir::Expr`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/thir/struct.Expr.html
-[`thir_body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.thir_body
+[thir-docs]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_build/thir/index.html
+[`thir::Expr`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/thir/struct.Expr.html
+[`thir_body`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.thir_body

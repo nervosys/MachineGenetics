@@ -249,7 +249,7 @@ fn f10b<T>(mut a: Box<T>, b: Box<T>) { //~ ERROR variable `a` is assigned to, bu
 }
 
 // unused params warnings are not needed for intrinsic functions without bodies
-#[rustc_intrinsic]
+#[redox_intrinsic]
 unsafe fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
 
 fn main() {

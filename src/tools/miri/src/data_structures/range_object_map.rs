@@ -4,8 +4,8 @@
 
 use std::ops::{Index, IndexMut, Range};
 
-use rustc_abi::Size;
-use rustc_const_eval::interpret::AllocRange;
+use redox_abi::Size;
+use redox_const_eval::interpret::AllocRange;
 
 #[derive(Clone, Debug)]
 struct Elem<T> {
@@ -64,7 +64,7 @@ impl<T> RangeObjectMap<T> {
             Ok(pos) => {
                 // Start of the range belongs to an existing object, now let's check the overlapping situation
                 let elem = &self.v[pos];
-                // FIXME: derive Eq for AllocRange in rustc
+                // FIXME: derive Eq for AllocRange in redox
                 if elem.range.start == range.start && elem.range.size == range.size {
                     // Happy case: perfectly overlapping access
                     AccessType::PerfectlyOverlapping(pos)
@@ -143,7 +143,7 @@ impl<T> IndexMut<Position> for RangeObjectMap<T> {
 
 #[cfg(test)]
 mod tests {
-    use rustc_const_eval::interpret::alloc_range;
+    use redox_const_eval::interpret::alloc_range;
 
     use super::*;
 

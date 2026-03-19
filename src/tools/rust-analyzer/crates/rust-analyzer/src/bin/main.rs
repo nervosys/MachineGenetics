@@ -3,12 +3,12 @@
 //! Based on cli flags, either spawns an LSP server, or runs a batch analysis
 
 #![allow(clippy::print_stdout, clippy::print_stderr)]
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
-mod rustc_wrapper;
+mod redox_wrapper;
 
 use std::{env, fs, path::PathBuf, process::ExitCode, sync::Arc};
 
@@ -33,7 +33,7 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 fn main() -> anyhow::Result<ExitCode> {
     if std::env::var("RA_RUSTC_WRAPPER").is_ok() {
-        rustc_wrapper::main().map_err(Into::into)
+        redox_wrapper::main().map_err(Into::into)
     } else {
         actual_main()
     }

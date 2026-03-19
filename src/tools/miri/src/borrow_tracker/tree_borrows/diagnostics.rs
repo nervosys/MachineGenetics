@@ -1,8 +1,8 @@
 use std::fmt;
 use std::ops::Range;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_span::{Span, SpanData};
+use redox_data_structures::fx::FxHashMap;
+use redox_span::{Span, SpanData};
 
 use crate::borrow_tracker::tree_borrows::perms::{PermTransition, Permission};
 use crate::borrow_tracker::tree_borrows::tree::LocationState;

@@ -8,14 +8,14 @@ use clippy_utils::macros::{find_assert_eq_args, first_node_macro_backtrace, root
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{eq_expr_value, hash_expr};
-use rustc_ast::{BinOpKind, LitKind, RangeLimits};
-use rustc_data_structures::packed::Pu128;
-use rustc_data_structures::unhash::UnindexMap;
-use rustc_errors::{Applicability, Diag};
-use rustc_hir::{Block, Body, Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::{Span, Spanned, Symbol, sym};
+use redox_ast::{BinOpKind, LitKind, RangeLimits};
+use redox_data_structures::packed::Pu128;
+use redox_data_structures::unhash::UnindexMap;
+use redox_errors::{Applicability, Diag};
+use redox_hir::{Block, Body, Expr, ExprKind, UnOp};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::{Span, Spanned, Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does

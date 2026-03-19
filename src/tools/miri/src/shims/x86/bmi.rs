@@ -1,8 +1,8 @@
-use rustc_abi::CanonAbi;
-use rustc_middle::ty::Ty;
-use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
-use rustc_target::spec::Arch;
+use redox_abi::CanonAbi;
+use redox_middle::ty::Ty;
+use redox_span::Symbol;
+use redox_target::callconv::FnAbi;
+use redox_target::spec::Arch;
 
 use crate::*;
 

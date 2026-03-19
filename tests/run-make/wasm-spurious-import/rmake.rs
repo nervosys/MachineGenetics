@@ -2,10 +2,10 @@
 
 use std::collections::HashMap;
 
-use run_make_support::{rfs, rustc, wasmparser};
+use run_make_support::{rfs, redox, wasmparser};
 
 fn main() {
-    rustc()
+    redox()
         .input("main.rs")
         .target("wasm32-wasip1")
         .arg("-Coverflow-checks")

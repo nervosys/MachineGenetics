@@ -5,7 +5,7 @@
 // Note that this test does not check linking or binary execution.
 // See https://github.com/rust-lang/rust/pull/21233
 
-use run_make_support::{llvm_components_contain, rustc};
+use run_make_support::{llvm_components_contain, redox};
 
 fn main() {
     let mut targets = Vec::new();
@@ -55,7 +55,7 @@ fn main() {
         // enabled by-default for i686 and ARM; these features will be invalid
         // on some platforms, but LLVM just prints a warning so that's fine for
         // now.
-        let mut cmd = rustc();
+        let mut cmd = redox();
         cmd.target(&target).emit("llvm-ir,asm").input("simd.rs");
         let target_feature = if target.starts_with("i686") || target.starts_with("x86") {
             "+sse2"

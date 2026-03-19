@@ -1,5 +1,5 @@
 //@ known-bug: #139387
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 
 trait A {
     fn method() -> impl Sized;

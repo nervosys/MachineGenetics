@@ -4,7 +4,7 @@
 The Rust toolchain test runner for Fuchsia.
 
 For instructions on running the compiler test suite, see
-https://doc.rust-lang.org/stable/rustc/platform-support/fuchsia.html#aarch64-unknown-fuchsia-and-x86_64-unknown-fuchsia
+https://doc.rust-lang.org/stable/redox/platform-support/fuchsia.html#aarch64-unknown-fuchsia-and-x86_64-unknown-fuchsia
 """
 
 import argparse
@@ -1038,7 +1038,7 @@ class TestEnvironment:
         if args.rust_src is not None:
             # This matches the remapped prefix used by compiletest. There's no
             # clear way that we can determine this, so it's hard coded.
-            rust_src_map = f"/rustc/FAKE_PREFIX={args.rust_src}"
+            rust_src_map = f"/redox/FAKE_PREFIX={args.rust_src}"
 
         # Add fuchsia source if it's available
         fuchsia_src_map = None

@@ -35,7 +35,7 @@ pub unsafe fn _tile_storeconfig(mem_addr: *mut u8) {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_loadd&ig_expand=6877)
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[target_feature(enable = "amx-tile")]
 #[cfg_attr(test, assert_instr(tileloadd, DST = 0))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -59,7 +59,7 @@ pub unsafe fn _tile_release() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_stored&ig_expand=6881)
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[target_feature(enable = "amx-tile")]
 #[cfg_attr(test, assert_instr(tilestored, DST = 0))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -74,7 +74,7 @@ pub unsafe fn _tile_stored<const DST: i32>(base: *mut u8, stride: usize) {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_stream_loadd&ig_expand=6883)
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[target_feature(enable = "amx-tile")]
 #[cfg_attr(test, assert_instr(tileloaddt1, DST = 0))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -87,7 +87,7 @@ pub unsafe fn _tile_stream_loadd<const DST: i32>(base: *const u8, stride: usize)
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_zero&ig_expand=6885)
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[target_feature(enable = "amx-tile")]
 #[cfg_attr(test, assert_instr(tilezero, DST = 0))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -102,7 +102,7 @@ pub unsafe fn _tile_zero<const DST: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_dpbf16ps&ig_expand=6864)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[redox_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-bf16")]
 #[cfg_attr(test, assert_instr(tdpbf16ps, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -120,7 +120,7 @@ pub unsafe fn _tile_dpbf16ps<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_dpbssd&ig_expand=6866)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[redox_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-int8")]
 #[cfg_attr(test, assert_instr(tdpbssd, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -138,7 +138,7 @@ pub unsafe fn _tile_dpbssd<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_dpbsud&ig_expand=6868)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[redox_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-int8")]
 #[cfg_attr(test, assert_instr(tdpbsud, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -156,7 +156,7 @@ pub unsafe fn _tile_dpbsud<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_dpbusd&ig_expand=6870)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[redox_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-int8")]
 #[cfg_attr(test, assert_instr(tdpbusd, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -174,7 +174,7 @@ pub unsafe fn _tile_dpbusd<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_dpbuud&ig_expand=6872)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[redox_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-int8")]
 #[cfg_attr(test, assert_instr(tdpbuud, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -191,7 +191,7 @@ pub unsafe fn _tile_dpbuud<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_dpfp16ps&ig_expand=6874)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[redox_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-fp16")]
 #[cfg_attr(test, assert_instr(tdpfp16ps, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -212,7 +212,7 @@ pub unsafe fn _tile_dpfp16ps<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_cmmimfp16ps&ig_expand=6860)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[redox_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-complex")]
 #[cfg_attr(test, assert_instr(tcmmimfp16ps, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -233,7 +233,7 @@ pub unsafe fn _tile_cmmimfp16ps<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_cmmrlfp16ps&ig_expand=6862)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[redox_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-complex")]
 #[cfg_attr(test, assert_instr(tcmmrlfp16ps, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -249,7 +249,7 @@ pub unsafe fn _tile_cmmrlfp16ps<const DST: i32, const A: i32, const B: i32>() {
 /// (32-bit) floating-point elements with elements in dst, and store the 32-bit result
 /// back to tile dst.
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[redox_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-fp8")]
 #[cfg_attr(
     all(test, any(target_os = "linux", target_env = "msvc")),
@@ -268,7 +268,7 @@ pub unsafe fn _tile_dpbf8ps<const DST: i32, const A: i32, const B: i32>() {
 /// (32-bit) floating-point elements with elements in dst, and store the 32-bit result
 /// back to tile dst.
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[redox_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-fp8")]
 #[cfg_attr(
     all(test, any(target_os = "linux", target_env = "msvc")),
@@ -287,7 +287,7 @@ pub unsafe fn _tile_dpbhf8ps<const DST: i32, const A: i32, const B: i32>() {
 /// (32-bit) floating-point elements with elements in dst, and store the 32-bit result
 /// back to tile dst.
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[redox_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-fp8")]
 #[cfg_attr(
     all(test, any(target_os = "linux", target_env = "msvc")),
@@ -306,7 +306,7 @@ pub unsafe fn _tile_dphbf8ps<const DST: i32, const A: i32, const B: i32>() {
 /// (32-bit) floating-point elements with elements in dst, and store the 32-bit result
 /// back to tile dst.
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[redox_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-fp8")]
 #[cfg_attr(
     all(test, any(target_os = "linux", target_env = "msvc")),
@@ -326,7 +326,7 @@ pub unsafe fn _tile_dphf8ps<const DST: i32, const A: i32, const B: i32>() {
 /// read-shared by multiple processors, i.e., read in the future by at least one other processor
 /// before it is written, assuming it is ever written in the future.
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[target_feature(enable = "amx-movrs")]
 #[cfg_attr(
     all(test, any(target_os = "linux", target_env = "msvc")),
@@ -346,7 +346,7 @@ pub unsafe fn _tile_loaddrs<const DST: i32>(base: *const u8, stride: usize) {
 /// read-shared by multiple processors, i.e., read in the future by at least one other processor
 /// before it is written, assuming it is ever written in the future.
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[target_feature(enable = "amx-movrs")]
 #[cfg_attr(
     all(test, any(target_os = "linux", target_env = "msvc")),
@@ -369,7 +369,7 @@ pub unsafe fn _tile_stream_loaddrs<const DST: i32>(base: *const u8, stride: usiz
 /// Output FP32 denormals are always flushed to zero, input single precision denormals are always
 /// handled and *not* treated as zero.
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[redox_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-tf32")]
 #[cfg_attr(
     all(test, any(target_os = "linux", target_env = "msvc")),
@@ -386,7 +386,7 @@ pub unsafe fn _tile_mmultf32ps<const DST: i32, const A: i32, const B: i32>() {
 /// Moves a row from a tile register to a zmm register, converting the packed 32-bit signed integer
 /// elements to packed single-precision (32-bit) floating-point elements.
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[target_feature(enable = "amx-avx512,avx10.2")]
 #[cfg_attr(
     all(test, any(target_os = "linux", target_env = "msvc")),
@@ -402,7 +402,7 @@ pub unsafe fn _tile_cvtrowd2ps<const TILE: i32>(row: u32) -> __m512 {
 /// floating-point elements to packed half-precision (16-bit) floating-point elements. The resulting
 /// 16-bit elements are placed in the high 16-bits within each 32-bit element of the returned vector.
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[target_feature(enable = "amx-avx512,avx10.2")]
 #[cfg_attr(
     all(test, any(target_os = "linux", target_env = "msvc")),
@@ -418,7 +418,7 @@ pub unsafe fn _tile_cvtrowps2phh<const TILE: i32>(row: u32) -> __m512h {
 /// floating-point elements to packed half-precision (16-bit) floating-point elements. The resulting
 /// 16-bit elements are placed in the low 16-bits within each 32-bit element of the returned vector.
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[target_feature(enable = "amx-avx512,avx10.2")]
 #[cfg_attr(
     all(test, any(target_os = "linux", target_env = "msvc")),
@@ -432,7 +432,7 @@ pub unsafe fn _tile_cvtrowps2phl<const TILE: i32>(row: u32) -> __m512h {
 
 /// Moves one row of tile data into a zmm vector register
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[target_feature(enable = "amx-avx512,avx10.2")]
 #[cfg_attr(
     all(test, any(target_os = "linux", target_env = "msvc")),

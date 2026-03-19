@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::sym;
-use rustc_ast::ast::BinOpKind;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty};
-use rustc_session::declare_lint_pass;
+use redox_ast::ast::BinOpKind;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::{self, Ty};
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for NonZeroSuggestions {
         } else {
             // Check if the parent expression is a binary operation
             let parent_is_binary = cx.tcx.hir_parent_iter(expr.hir_id).any(|(_, node)| {
-                matches!(node, rustc_hir::Node::Expr(parent_expr) if matches!(parent_expr.kind, ExprKind::Binary(..)))
+                matches!(node, redox_hir::Node::Expr(parent_expr) if matches!(parent_expr.kind, ExprKind::Binary(..)))
             });
 
             if !parent_is_binary {
@@ -90,7 +90,7 @@ fn check_non_zero_conversion(cx: &LateContext<'_>, expr: &Expr<'_>, applicabilit
     }
 }
 
-fn get_arg_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, rcv_path: &rustc_hir::PathSegment<'_>) -> String {
+fn get_arg_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, rcv_path: &redox_hir::PathSegment<'_>) -> String {
     let arg_snippet = snippet(cx, arg.span, "..");
     if let Some(index) = arg_snippet.rfind(&format!(".{}", rcv_path.ident.name)) {
         arg_snippet[..index].trim().to_string()
@@ -102,7 +102,7 @@ fn get_arg_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, rcv_path: &rustc_hir::P
 fn suggest_non_zero_conversion(
     cx: &LateContext<'_>,
     expr: &Expr<'_>,
-    fn_name: rustc_span::Symbol,
+    fn_name: redox_span::Symbol,
     target_non_zero_type: &str,
     arg_snippet: &str,
     applicability: Applicability,

@@ -35,10 +35,10 @@ impl Copy for i16x8 {}
 impl Copy for i32x4 {}
 impl Copy for i64x2 {}
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 unsafe fn simd_ge<T, U>(x: T, y: T) -> U;
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 unsafe fn simd_select<M, V>(mask: M, a: V, b: V) -> V;
 
 #[inline(always)]

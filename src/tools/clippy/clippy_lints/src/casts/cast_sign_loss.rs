@@ -7,11 +7,11 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use clippy_utils::{method_chain_args, sext, sym};
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
-use rustc_span::Symbol;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind};
+use redox_lint::LateContext;
+use redox_middle::ty::{self, Ty};
+use redox_span::Symbol;
 
 use super::{CAST_SIGN_LOSS, utils};
 

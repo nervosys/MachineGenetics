@@ -1,7 +1,7 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/120337>.
 //
 // This checks that const eval doesn't cause an ICE when reading an uninhabited
-// variant. (N.B. this is UB, but not currently detected by rustc)
+// variant. (N.B. this is UB, but not currently detected by redox)
 //
 //@ check-pass
 #![feature(never_type)]

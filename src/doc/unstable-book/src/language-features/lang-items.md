@@ -4,7 +4,7 @@ The tracking issue for this feature is: None.
 
 ------------------------
 
-The `rustc` compiler has certain pluggable operations, that is,
+The `redox` compiler has certain pluggable operations, that is,
 functionality that isn't hard-coded into the language, but is
 implemented in libraries, with a special marker to tell the compiler
 it exists. The marker is the attribute `#[lang = "..."]` and there are
@@ -13,7 +13,7 @@ items'. Most of them can only be defined once.
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses `Box`
 then there is no need to define a function for `exchange_malloc`.
-`rustc` will emit an error when an item is needed but not found in the current
+`redox` will emit an error when an item is needed but not found in the current
 crate or any that it depends on.
 
 Some features provided by lang items:
@@ -46,7 +46,7 @@ allocation. A freestanding program that uses the `Box` sugar for dynamic
 allocations via `malloc` and `free`:
 
 ```rust,ignore (libc-is-finicky)
-#![feature(lang_items, core_intrinsics, rustc_private, panic_unwind, rustc_attrs)]
+#![feature(lang_items, core_intrinsics, redox_private, panic_unwind, redox_attrs)]
 #![allow(internal_features)]
 #![no_std]
 #![no_main]
@@ -67,7 +67,7 @@ pub struct Box<T, A = Global>(Unique<T>, A);
 
 impl<T> Box<T> {
     pub fn new(x: T) -> Self {
-        #[rustc_box]
+        #[redox_box]
         Box::new(x)
     }
 }
@@ -113,4 +113,4 @@ return a valid pointer, and so needs to do the check internally.
 
 An up-to-date list of all language items can be found [here] in the compiler code.
 
-[here]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_hir/src/lang_items.rs
+[here]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_hir/src/lang_items.rs

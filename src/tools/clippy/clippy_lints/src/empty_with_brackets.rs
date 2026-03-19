@@ -2,17 +2,17 @@ use clippy_utils::attrs::span_contains_cfg;
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::span_contains_non_whitespace;
-use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
-use rustc_errors::Applicability;
-use rustc_hir::def::DefKind::Ctor;
-use rustc_hir::def::Res::Def;
-use rustc_hir::def::{CtorOf, DefKind};
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node, Pat, PatKind, Path, QPath, Variant, VariantData};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::impl_lint_pass;
-use rustc_span::{BytePos, Span};
+use redox_data_structures::fx::{FxIndexMap, IndexEntry};
+use redox_errors::Applicability;
+use redox_hir::def::DefKind::Ctor;
+use redox_hir::def::Res::Def;
+use redox_hir::def::{CtorOf, DefKind};
+use redox_hir::def_id::LocalDefId;
+use redox_hir::{Expr, ExprKind, Item, ItemKind, Node, Pat, PatKind, Path, QPath, Variant, VariantData};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::{self, TyCtxt};
+use redox_session::impl_lint_pass;
+use redox_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does

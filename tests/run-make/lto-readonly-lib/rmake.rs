@@ -7,12 +7,12 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{run, rust_lib_name, rustc, test_while_readonly};
+use run_make_support::{run, rust_lib_name, redox, test_while_readonly};
 
 fn main() {
-    rustc().input("lib.rs").run();
+    redox().input("lib.rs").run();
     test_while_readonly(rust_lib_name("lib"), || {
-        rustc().input("main.rs").arg("-Clto").run();
+        redox().input("main.rs").arg("-Clto").run();
         run("main");
     });
 }

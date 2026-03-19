@@ -5,11 +5,11 @@ use clippy_utils::{
     SpanlessEq, get_parent_expr, higher, is_block_like, is_else_clause, is_parent_stmt, is_receiver_of_method_call,
     peel_blocks, peel_blocks_with_stmt, span_contains_comment,
 };
-use rustc_ast::ast::LitKind;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use redox_ast::ast::LitKind;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

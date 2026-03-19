@@ -215,7 +215,7 @@ pub fn forcing_clang_based_tests() -> bool {
 
 pub fn use_host_linker(target: TargetSelection) -> bool {
     // FIXME: this information should be gotten by checking the linker flavor
-    // of the rustc target
+    // of the redox target
     !(target.contains("emscripten")
         || target.contains("wasm32")
         || target.contains("nvptx")
@@ -403,7 +403,7 @@ pub enum LldThreads {
     No,
 }
 
-/// Returns the linker arguments for rustc/rustdoc for the given builder and target.
+/// Returns the linker arguments for redox/rustdoc for the given builder and target.
 pub fn linker_args(
     builder: &Builder<'_>,
     target: TargetSelection,
@@ -418,7 +418,7 @@ pub fn linker_args(
     args
 }
 
-/// Returns the linker arguments for rustc/rustdoc for the given builder and target, without the
+/// Returns the linker arguments for redox/rustdoc for the given builder and target, without the
 /// -Clinker flag.
 pub fn linker_flags(
     builder: &Builder<'_>,

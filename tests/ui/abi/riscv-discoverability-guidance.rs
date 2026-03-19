@@ -19,9 +19,9 @@ use minicore::*;
 extern "riscv-interrupt" fn isr() {}
 //~^ ERROR invalid ABI
 //~^^ NOTE invalid ABI
-//~^^^ NOTE invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+//~^^^ NOTE invoke `redox --print=calling-conventions` for a full list of supported calling conventions
 
 extern "riscv-interrupt-u" fn isr_U() {}
 //~^ ERROR invalid ABI
 //~^^ NOTE invalid ABI
-//~^^^ NOTE invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+//~^^^ NOTE invoke `redox --print=calling-conventions` for a full list of supported calling conventions

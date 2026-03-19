@@ -4,14 +4,14 @@ use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::{indent_of, reindent_multiline, snippet};
 use clippy_utils::{SpanlessEq, higher, peel_blocks, sym};
 use hir::{Body, HirId, MatchSource, Pat};
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::def::Res;
-use rustc_hir::{Closure, Expr, ExprKind, PatKind, PathSegment, QPath, UnOp};
-use rustc_lint::LateContext;
-use rustc_middle::ty::adjustment::Adjust;
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, Symbol};
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_hir::def::Res;
+use redox_hir::{Closure, Expr, ExprKind, PatKind, PathSegment, QPath, UnOp};
+use redox_lint::LateContext;
+use redox_middle::ty::adjustment::Adjust;
+use redox_span::Span;
+use redox_span::symbol::{Ident, Symbol};
 
 use super::{MANUAL_FILTER_MAP, MANUAL_FIND_MAP, OPTION_FILTER_MAP, RESULT_FILTER_MAP};
 

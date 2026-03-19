@@ -98,9 +98,9 @@ mod tests;
 /// [`extend`]: VecDeque::extend
 /// [`append`]: VecDeque::append
 /// [`make_contiguous`]: VecDeque::make_contiguous
-#[cfg_attr(not(test), rustc_diagnostic_item = "VecDeque")]
+#[cfg_attr(not(test), redox_diagnostic_item = "VecDeque")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_insignificant_dtor]
+#[redox_insignificant_dtor]
 pub struct VecDeque<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
@@ -776,7 +776,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_deque_new", since = "1.68.0")]
+    #[redox_const_stable(feature = "const_vec_deque_new", since = "1.68.0")]
     #[must_use]
     pub const fn new() -> VecDeque<T> {
         // FIXME(const-hack): This should just be `VecDeque::new_in(Global)` once that hits stable.
@@ -1044,7 +1044,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_reserve")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "vecdeque_reserve")]
     pub fn reserve(&mut self, additional: usize) {
         let new_cap = self.len.checked_add(additional).expect("capacity overflow");
         let old_cap = self.capacity();
@@ -1495,7 +1495,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(&c[..], b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_iter")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "vecdeque_iter")]
     pub fn iter(&self) -> Iter<'_, T> {
         let (a, b) = self.as_slices();
         Iter::new(a.iter(), b.iter())
@@ -1629,7 +1629,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("length", "size")]
+    #[redox_confusables("length", "size")]
     pub fn len(&self) -> usize {
         self.len
     }
@@ -1970,7 +1970,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&1));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("first")]
+    #[redox_confusables("first")]
     pub fn front(&self) -> Option<&T> {
         self.get(0)
     }
@@ -2015,7 +2015,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.back(), Some(&2));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("last")]
+    #[redox_confusables("last")]
     pub fn back(&self) -> Option<&T> {
         self.get(self.len.wrapping_sub(1))
     }
@@ -2201,7 +2201,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(3, *buf.back().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("push", "put", "append")]
+    #[redox_confusables("push", "put", "append")]
     pub fn push_back(&mut self, value: T) {
         let _ = self.push_back_mut(value);
     }
@@ -2478,7 +2478,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, ['a', 'c']);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("delete", "take")]
+    #[redox_confusables("delete", "take")]
     pub fn remove(&mut self, index: usize) -> Option<T> {
         if self.len <= index {
             return None;

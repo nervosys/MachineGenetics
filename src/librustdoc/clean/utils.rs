@@ -3,19 +3,19 @@ use std::fmt::{self, Display, Write as _};
 use std::sync::LazyLock as Lazy;
 use std::{ascii, mem};
 
-use rustc_ast as ast;
-use rustc_ast::join_path_idents;
-use rustc_ast::tokenstream::TokenTree;
-use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
-use rustc_hir as hir;
-use rustc_hir::attrs::DocAttribute;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::find_attr;
-use rustc_metadata::rendered_const;
-use rustc_middle::mir;
-use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
-use rustc_span::symbol::{Symbol, kw, sym};
+use redox_ast as ast;
+use redox_ast::join_path_idents;
+use redox_ast::tokenstream::TokenTree;
+use redox_data_structures::thin_vec::{ThinVec, thin_vec};
+use redox_hir as hir;
+use redox_hir::attrs::DocAttribute;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
+use redox_hir::find_attr;
+use redox_metadata::rendered_const;
+use redox_middle::mir;
+use redox_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
+use redox_span::symbol::{Symbol, kw, sym};
 use tracing::{debug, warn};
 
 use crate::clean::auto_trait::synthesize_auto_trait_impls;
@@ -37,7 +37,7 @@ mod tests;
 pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let module = crate::visit_ast::RustdocVisitor::new(cx).visit();
 
-    // Clean the crate, translating the entire librustc_ast AST to one that is
+    // Clean the crate, translating the entire libredox_ast AST to one that is
     // understood by rustdoc.
     let mut module = clean_doc_module(&module, cx);
 
@@ -294,7 +294,7 @@ pub(crate) fn build_deref_target_impls(
 }
 
 pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
-    use rustc_hir::*;
+    use redox_hir::*;
     debug!("trying to get a name from pattern: {p:?}");
 
     Symbol::intern(&match &p.kind {

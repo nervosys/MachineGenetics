@@ -1,8 +1,8 @@
-use rustc_abi::CanonAbi;
-use rustc_apfloat::ieee::{Double, Single};
-use rustc_middle::ty::Ty;
-use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
+use redox_abi::CanonAbi;
+use redox_apfloat::ieee::{Double, Single};
+use redox_middle::ty::Ty;
+use redox_span::Symbol;
+use redox_target::callconv::FnAbi;
 
 use super::{
     FloatBinOp, FloatUnaryOp, bin_op_simd_float_all, conditional_dot_product, convert_float_to_int,
@@ -61,7 +61,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [op, rounding] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                round_all::<rustc_apfloat::ieee::Single>(this, op, rounding, dest)?;
+                round_all::<redox_apfloat::ieee::Single>(this, op, rounding, dest)?;
             }
             // Used to implement the _mm256_round_pd function.
             // Rounds the elements of `op` according to `rounding`.
@@ -69,7 +69,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [op, rounding] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                round_all::<rustc_apfloat::ieee::Double>(this, op, rounding, dest)?;
+                round_all::<redox_apfloat::ieee::Double>(this, op, rounding, dest)?;
             }
             // Used to implement _mm256_{rcp,rsqrt}_ps functions.
             // Performs the operations on all components of `op`.
@@ -125,9 +125,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let rnd = match unprefixed_name {
                     // "current SSE rounding mode", assume nearest
-                    "cvt.ps2dq.256" | "cvt.pd2dq.256" => rustc_apfloat::Round::NearestTiesToEven,
+                    "cvt.ps2dq.256" | "cvt.pd2dq.256" => redox_apfloat::Round::NearestTiesToEven,
                     // always truncate
-                    "cvtt.ps2dq.256" | "cvtt.pd2dq.256" => rustc_apfloat::Round::TowardZero,
+                    "cvtt.ps2dq.256" | "cvtt.pd2dq.256" => redox_apfloat::Round::TowardZero,
                     _ => unreachable!(),
                 };
 

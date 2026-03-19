@@ -1,8 +1,8 @@
-//! Runs `rustc --print target-spec-json` to get the target_data_layout.
+//! Runs `redox --print target-spec-json` to get the target_data_layout.
 
 use anyhow::Context;
 use base_db::target;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use serde_derive::Deserialize;
 use toolchain::Tool;
 
@@ -34,7 +34,7 @@ pub struct TargetSpec {
     pub arch: Arch,
 }
 
-/// Uses `rustc --print target-spec-json`.
+/// Uses `redox --print target-spec-json`.
 pub fn get(
     config: QueryConfig<'_>,
     target: Option<&str>,
@@ -54,7 +54,7 @@ pub fn get(
         QueryConfig::Cargo(sysroot, cargo_toml, _) => {
             let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent(), extra_env);
             cmd.env("RUSTC_BOOTSTRAP", "1");
-            cmd.args(["rustc", "-Z", "unstable-options"]).args(RUSTC_ARGS);
+            cmd.args(["redox", "-Z", "unstable-options"]).args(RUSTC_ARGS);
             if let Some(target) = target {
                 cmd.args(["--target", target]);
             }
@@ -62,7 +62,7 @@ pub fn get(
             match utf8_stdout(&mut cmd) {
                 Ok(output) => return process(output),
                 Err(e) => {
-                    tracing::warn!(%e, "failed to run `{cmd:?}`, falling back to invoking rustc directly");
+                    tracing::warn!(%e, "failed to run `{cmd:?}`, falling back to invoking redox directly");
                     (sysroot, cargo_toml.parent().as_ref())
                 }
             }
@@ -99,7 +99,7 @@ mod tests {
     }
 
     #[test]
-    fn rustc() {
+    fn redox() {
         let sysroot = Sysroot::empty();
         let cfg = QueryConfig::Rustc(&sysroot, env!("CARGO_MANIFEST_DIR").as_ref());
         assert!(get(cfg, None, &FxHashMap::default()).is_ok());

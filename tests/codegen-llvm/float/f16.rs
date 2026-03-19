@@ -2,9 +2,9 @@
 // 32-bit systems will return 128bit values using a return area pointer.
 //@ revisions: x86-sse x86-nosse bit32 bit64
 //@[x86-sse] only-x86
-//@[x86-sse] only-rustc_abi-x86-sse2
+//@[x86-sse] only-redox_abi-x86-sse2
 //@[x86-nosse] only-x86
-//@[x86-nosse] ignore-rustc_abi-x86-sse2
+//@[x86-nosse] ignore-redox_abi-x86-sse2
 //@[bit32] ignore-x86
 //@[bit32] only-32bit
 //@[bit64] ignore-x86

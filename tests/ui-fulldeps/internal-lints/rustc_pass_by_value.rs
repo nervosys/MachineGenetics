@@ -1,13 +1,13 @@
 //@ compile-flags: -Z unstable-options
 //@ ignore-stage1 (this can be removed when nightly goes to 1.96)
-#![feature(rustc_attrs)]
-#![feature(rustc_private)]
-#![deny(rustc::disallowed_pass_by_ref)]
+#![feature(redox_attrs)]
+#![feature(redox_private)]
+#![deny(redox::disallowed_pass_by_ref)]
 #![allow(unused)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-use rustc_middle::ty::{Ty, TyCtxt};
+use redox_middle::ty::{Ty, TyCtxt};
 
 fn ty_by_ref(
     ty_val: Ty<'_>,
@@ -62,7 +62,7 @@ impl Foo {
     //~^^ ERROR passing `TyCtxt<'_>` by reference
 }
 
-#[rustc_pass_by_value]
+#[redox_pass_by_value]
 enum CustomEnum {
     A,
     B,
@@ -76,12 +76,12 @@ impl CustomEnum {
     }
 }
 
-#[rustc_pass_by_value]
+#[redox_pass_by_value]
 struct CustomStruct {
     s: u8,
 }
 
-#[rustc_pass_by_value]
+#[redox_pass_by_value]
 type CustomAlias<'a> = &'a CustomStruct; //~ ERROR passing `CustomStruct` by reference
 
 impl CustomStruct {
@@ -98,7 +98,7 @@ impl CustomStruct {
     }
 }
 
-#[rustc_pass_by_value]
+#[redox_pass_by_value]
 struct WithParameters<T, const N: usize, M = u32> {
     slice: [T; N],
     m: M,

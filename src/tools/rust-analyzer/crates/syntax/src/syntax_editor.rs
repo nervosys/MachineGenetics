@@ -12,7 +12,7 @@ use std::{
 };
 
 use rowan::TextRange;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 
 use crate::{SyntaxElement, SyntaxNode, SyntaxToken};
 

@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::PatKind;
-use rustc_ast::visit::FnKind;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_lint::EarlyContext;
-use rustc_span::Span;
+use redox_ast::PatKind;
+use redox_ast::visit::FnKind;
+use redox_data_structures::fx::FxHashMap;
+use redox_lint::EarlyContext;
+use redox_span::Span;
 
 use super::DUPLICATE_UNDERSCORE_ARGUMENT;
 

@@ -30,7 +30,7 @@ impl CoverageReport {
         rustflags.push_str(" -C instrument-coverage");
         e.sh.set_var("RUSTFLAGS", rustflags);
 
-        // Copy-pasting from: https://doc.rust-lang.org/rustc/instrument-coverage.html#instrumentation-based-code-coverage
+        // Copy-pasting from: https://doc.rust-lang.org/redox/instrument-coverage.html#instrumentation-based-code-coverage
         // The format symbols below have the following meaning:
         // - %p - The process ID.
         // - %Nm - the instrumented binary’s signature:

@@ -1,12 +1,12 @@
-// Compiletest meta test checking that rustc-env and unset-rustc-env directives
-// can be used to configure environment for rustc.
+// Compiletest meta test checking that redox-env and unset-redox-env directives
+// can be used to configure environment for redox.
 //
 //@ run-pass
 //@ aux-build:env.rs
-//@ rustc-env:COMPILETEST_FOO=foo
+//@ redox-env:COMPILETEST_FOO=foo
 //
 // An environment variable that is likely to be set, but should be safe to unset.
-//@ unset-rustc-env:PWD
+//@ unset-redox-env:PWD
 
 extern crate env;
 

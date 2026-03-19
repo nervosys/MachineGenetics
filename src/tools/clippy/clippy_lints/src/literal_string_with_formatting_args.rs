@@ -1,10 +1,10 @@
-use rustc_ast::{LitKind, StrStyle};
-use rustc_hir::{Expr, ExprKind};
-use rustc_lexer::is_ident;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_parse_format::{ParseMode, Parser, Piece};
-use rustc_session::declare_lint_pass;
-use rustc_span::{BytePos, Span};
+use redox_ast::{LitKind, StrStyle};
+use redox_hir::{Expr, ExprKind};
+use redox_lexer::is_ident;
+use redox_lint::{LateContext, LateLintPass};
+use redox_parse_format::{ParseMode, Parser, Piece};
+use redox_session::declare_lint_pass;
+use redox_span::{BytePos, Span};
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;

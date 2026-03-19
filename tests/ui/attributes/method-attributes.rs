@@ -1,26 +1,26 @@
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ pp-exact - Make sure we print all the attributes
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_dummy]
+#[redox_dummy]
 trait Frobable {
-    #[rustc_dummy]
+    #[redox_dummy]
     fn frob(&self);
-    #[rustc_dummy]
+    #[redox_dummy]
     fn defrob(&self);
 }
 
-#[rustc_dummy]
+#[redox_dummy]
 impl Frobable for isize {
-    #[rustc_dummy]
+    #[redox_dummy]
     fn frob(&self) {
-        #![rustc_dummy]
+        #![redox_dummy]
     }
 
-    #[rustc_dummy]
+    #[redox_dummy]
     fn defrob(&self) {
-        #![rustc_dummy]
+        #![redox_dummy]
     }
 }
 

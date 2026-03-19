@@ -211,8 +211,8 @@ we will record that fact in a unification table. You can then use
 versa). This is sometimes needed to ensure termination of fixed-point
 algorithms.
 
-[`region_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/region_constraints/index.html
-[`opportunistic_resolve_var`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/region_constraints/struct.RegionConstraintCollector.html#method.opportunistic_resolve_var
+[`region_constraints`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/region_constraints/index.html
+[`opportunistic_resolve_var`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/region_constraints/struct.RegionConstraintCollector.html#method.opportunistic_resolve_var
 
 ## Solving region constraints
 
@@ -242,10 +242,10 @@ as the NLL solver must not only know *what* regions outlive each other,
 but also *where*. Finally, the NLL solver invokes [`get_region_var_infos`],
 providing all region variables to the solver.
 
-[`resolve_regions_and_report_errors`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/struct.ObligationCtxt.html#method.resolve_regions_and_report_errors
-[`lexical_region_resolve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/lexical_region_resolve/index.html
-[`take_and_reset_region_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.take_and_reset_region_constraints
-[`get_region_var_infos`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.get_region_var_infos
+[`resolve_regions_and_report_errors`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/traits/struct.ObligationCtxt.html#method.resolve_regions_and_report_errors
+[`lexical_region_resolve`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/lexical_region_resolve/index.html
+[`take_and_reset_region_constraints`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/struct.InferCtxt.html#method.take_and_reset_region_constraints
+[`get_region_var_infos`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/struct.InferCtxt.html#method.get_region_var_infos
 
 ## Lexical region resolution
 

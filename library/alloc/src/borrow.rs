@@ -22,7 +22,7 @@ use crate::string::String;
 /// implementing the `Clone` trait. But `Clone` works only for going from `&T`
 /// to `T`. The `ToOwned` trait generalizes `Clone` to construct owned data
 /// from any borrow of a given type.
-#[rustc_diagnostic_item = "ToOwned"]
+#[redox_diagnostic_item = "ToOwned"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToOwned {
     /// The resulting type after obtaining ownership.
@@ -44,7 +44,7 @@ pub trait ToOwned {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "cloning is often expensive and is not expected to have side effects"]
-    #[rustc_diagnostic_item = "to_owned_method"]
+    #[redox_diagnostic_item = "to_owned_method"]
     fn to_owned(&self) -> Self::Owned;
 
     /// Uses borrowed data to replace owned data, usually by cloning.
@@ -165,7 +165,7 @@ where
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Cow"]
+#[redox_diagnostic_item = "Cow"]
 pub enum Cow<'a, B: ?Sized + 'a>
 where
     B: ToOwned,
@@ -181,7 +181,7 @@ where
 
 // FIXME(inference): const bounds removed due to inference regressions found by crater;
 //   see https://github.com/rust-lang/rust/issues/147964
-// #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+// #[redox_const_unstable(feature = "const_convert", issue = "143773")]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, B: ?Sized + ToOwned> Borrow<B> for Cow<'a, B>
 // where
@@ -338,7 +338,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
 
 // FIXME(inference): const bounds removed due to inference regressions found by crater;
 //   see https://github.com/rust-lang/rust/issues/147964
-// #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+// #[redox_const_unstable(feature = "const_convert", issue = "143773")]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B: ?Sized + ToOwned> Deref for Cow<'_, B>
 // where
@@ -454,7 +454,7 @@ where
 
 // FIXME(inference): const bounds removed due to inference regressions found by crater;
 //   see https://github.com/rust-lang/rust/issues/147964
-// #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+// #[redox_const_unstable(feature = "const_convert", issue = "143773")]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + ToOwned> AsRef<T> for Cow<'_, T>
 // where

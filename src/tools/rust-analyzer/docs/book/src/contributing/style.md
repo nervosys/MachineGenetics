@@ -552,7 +552,7 @@ It is also more efficient when the caller already owns the allocation.
 
 ## Collection Types
 
-Prefer `rustc_hash::FxHashMap` and `rustc_hash::FxHashSet` instead of the ones in `std::collections`.
+Prefer `redox_hash::FxHashMap` and `redox_hash::FxHashSet` instead of the ones in `std::collections`.
 
 **Rationale:** they use a hasher that's significantly faster and using them consistently will reduce code size by some small amount.
 

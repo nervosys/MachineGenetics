@@ -6,10 +6,10 @@
 //@ only-windows-msvc
 // Reason: pdb files are unique to this architecture
 
-use run_make_support::{llvm, rustc};
+use run_make_support::{llvm, redox};
 
 fn main() {
-    rustc().input("main.rs").arg("-g").crate_name("my_great_crate_name").crate_type("bin").run();
+    redox().input("main.rs").arg("-g").crate_name("my_great_crate_name").crate_type("bin").run();
 
     let pdbutil_result = llvm::llvm_pdbutil()
         .arg("dump")

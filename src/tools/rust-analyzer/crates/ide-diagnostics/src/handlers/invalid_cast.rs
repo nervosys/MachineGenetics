@@ -850,7 +850,7 @@ fn main() {
     }
 
     #[test]
-    fn rustc_issue_10991() {
+    fn redox_issue_10991() {
         check_diagnostics(
             r#"
 //- minicore: sized
@@ -864,7 +864,7 @@ fn main() {
     }
 
     #[test]
-    fn rustc_issue_17444() {
+    fn redox_issue_17444() {
         check_diagnostics(
             r#"
 //- minicore: sized
@@ -881,7 +881,7 @@ fn main() {
     }
 
     #[test]
-    fn rustc_issue_43825() {
+    fn redox_issue_43825() {
         check_diagnostics(
             r#"
 //- minicore: sized
@@ -897,7 +897,7 @@ fn main() {
     }
 
     #[test]
-    fn rustc_issue_84213() {
+    fn redox_issue_84213() {
         check_diagnostics(
             r#"
 //- minicore: sized
@@ -939,7 +939,7 @@ fn main() {
     }
 
     #[test]
-    fn rustc_issue_88621() {
+    fn redox_issue_88621() {
         check_diagnostics(
             r#"
 //- minicore: sized
@@ -959,7 +959,7 @@ fn main() {
     }
 
     #[test]
-    fn rustc_issue_89497() {
+    fn redox_issue_89497() {
         check_diagnostics(
             r#"
 //- minicore: sized
@@ -984,7 +984,7 @@ fn main() {
     }
 
     #[test]
-    fn rustc_issue_106883() {
+    fn redox_issue_106883() {
         check_diagnostics_with_disabled(
             r#"
 //- minicore: sized, deref

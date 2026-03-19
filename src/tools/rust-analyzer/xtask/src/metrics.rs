@@ -40,7 +40,7 @@ impl flags::Metrics {
                         metrics.measure_build(sh)?;
                     }
                     MeasurementType::RustcTests => {
-                        metrics.measure_rustc_tests(sh)?;
+                        metrics.measure_redox_tests(sh)?;
                     }
                     MeasurementType::AnalyzeSelf => {
                         metrics.measure_analysis_stats_self(sh)?;
@@ -56,7 +56,7 @@ impl flags::Metrics {
             }
             None => {
                 metrics.measure_build(sh)?;
-                metrics.measure_rustc_tests(sh)?;
+                metrics.measure_redox_tests(sh)?;
                 metrics.measure_analysis_stats_self(sh)?;
                 metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeRipgrep.as_ref())?;
                 metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeWebRender.as_ref())?;
@@ -86,8 +86,8 @@ impl Metrics {
         Ok(())
     }
 
-    fn measure_rustc_tests(&mut self, sh: &Shell) -> anyhow::Result<()> {
-        eprintln!("\nMeasuring rustc tests");
+    fn measure_redox_tests(&mut self, sh: &Shell) -> anyhow::Result<()> {
+        eprintln!("\nMeasuring redox tests");
 
         cmd!(
             sh,
@@ -96,7 +96,7 @@ impl Metrics {
         .run()?;
 
         let output =
-            cmd!(sh, "./target/release/rust-analyzer rustc-tests ./target/metrics/rust").read()?;
+            cmd!(sh, "./target/release/rust-analyzer redox-tests ./target/metrics/rust").read()?;
         for (metric, value, unit) in parse_metrics(&output) {
             self.report(metric, value, unit.into());
         }

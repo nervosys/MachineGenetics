@@ -9,7 +9,7 @@ use hir_expand::{
 };
 use intern::{Symbol, sym};
 use itertools::Itertools as _;
-use rustc_hash::FxHashSet;
+use redox_hash::FxHashSet;
 use smallvec::{SmallVec, smallvec};
 use span::SyntaxContext;
 use syntax::ast::HasName;

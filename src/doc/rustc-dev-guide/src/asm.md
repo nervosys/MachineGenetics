@@ -2,7 +2,7 @@
 
 ## Overview
 
-Inline assembly in rustc mostly revolves around taking an `asm!` macro invocation and plumbing it
+Inline assembly in redox mostly revolves around taking an `asm!` macro invocation and plumbing it
 through all of the compiler layers down to LLVM codegen. Throughout the various stages, an
 `InlineAsm` generally consists of 3 components:
 
@@ -31,7 +31,7 @@ that the output is discarded. This is used to allocate scratch registers for ass
 or a `fn`.
 
 - The options set at the end of the `asm!` macro. The only ones that are of particular interest to
-rustc are `NORETURN` which makes `asm!` return `!` instead of `()`, and `RAW` which disables format
+redox are `NORETURN` which makes `asm!` return `!` instead of `()`, and `RAW` which disables format
 string parsing. The remaining options are mostly passed through to LLVM with little processing.
 
   ```rust
@@ -54,12 +54,12 @@ string parsing. The remaining options are mostly passed through to LLVM with lit
 
 `InlineAsm` is represented as an expression in the AST with the [`ast::InlineAsm` type][inline_asm_ast].
 
-The `asm!` macro is implemented in `rustc_builtin_macros` and outputs an `InlineAsm` AST node. The
+The `asm!` macro is implemented in `redox_builtin_macros` and outputs an `InlineAsm` AST node. The
 template string is parsed using `fmt_macros`, positional and named operands are resolved to
 explicit operand indices. Since target information is not available to macro invocations,
 validation of the registers and register classes is deferred to AST lowering.
 
-[inline_asm_ast]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/struct.InlineAsm.html
+[inline_asm_ast]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/ast/struct.InlineAsm.html
 
 ## HIR
 
@@ -70,7 +70,7 @@ register class. If any modifiers are specified for a template string placeholder
 validated against the set allowed for that operand type. Finally, explicit registers for inputs and
 outputs are checked for conflicts (same register used for different operands).
 
-[inline_asm_hir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.InlineAsm.html
+[inline_asm_hir]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.InlineAsm.html
 
 ## Type checking
 
@@ -88,7 +88,7 @@ The only significant change compared to HIR is that `Sym` has been lowered to ei
 whose `expr` is a `Literal` ZST of the `fn`, or a `SymStatic` which points to the `DefId` of a
 `static`.
 
-[inline_asm_thir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/thir/struct.InlineAsmExpr.html
+[inline_asm_thir]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/thir/struct.InlineAsmExpr.html
 
 ## MIR
 
@@ -100,11 +100,11 @@ separate `in_value` and `out_place`.
 Semantically, the `InlineAsm` terminator is similar to the `Call` terminator except that it has
 multiple output places where a `Call` only has a single return place output.
 
-[inline_asm_mir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.TerminatorKind.html#variant.InlineAsm
+[inline_asm_mir]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/enum.TerminatorKind.html#variant.InlineAsm
 
 ## Codegen
 
-Operands are lowered one more time before being passed to LLVM codegen, this is represented by the [`InlineAsmOperandRef` type][inline_asm_codegen] from `rustc_codegen_ssa`.
+Operands are lowered one more time before being passed to LLVM codegen, this is represented by the [`InlineAsmOperandRef` type][inline_asm_codegen] from `redox_codegen_ssa`.
 
 The operands are lowered to LLVM operands and constraint codes as follows:
 - `out` and the output part of `inout` operands are added first, as required by LLVM. Late output
@@ -129,16 +129,16 @@ Note that LLVM is sometimes rather picky about what types it accepts for certain
 so we sometimes need to insert conversions to/from a supported type. See the target-specific
 ISelLowering.cpp files in LLVM for details of what types are supported for each register class.
 
-[inline_asm_codegen]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/enum.InlineAsmOperandRef.html
+[inline_asm_codegen]: https://doc.rust-lang.org/nightly/nightly-redox/redox_codegen_ssa/traits/enum.InlineAsmOperandRef.html
 
 ## Adding support for new architectures
 
 Adding inline assembly support to an architecture is mostly a matter of defining the registers and
 register classes for that architecture. All the definitions for register classes are located in
-`compiler/rustc_target/asm/`.
+`compiler/redox_target/asm/`.
 
 Additionally you will need to implement lowering of these register classes to LLVM constraint codes
-in `compiler/rustc_codegen_llvm/asm.rs`.
+in `compiler/redox_codegen_llvm/asm.rs`.
 
 When adding a new architecture, make sure to cross-reference with the LLVM source code:
 - LLVM has restrictions on which types can be used with a particular constraint code. Refer to the

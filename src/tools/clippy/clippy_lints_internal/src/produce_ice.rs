@@ -1,8 +1,8 @@
-use rustc_ast::ast::NodeId;
-use rustc_ast::visit::FnKind;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
+use redox_ast::ast::NodeId;
+use redox_ast::visit::FnKind;
+use redox_lint::{EarlyContext, EarlyLintPass, LintContext};
+use redox_session::{declare_lint_pass, declare_tool_lint};
+use redox_span::Span;
 
 declare_tool_lint! {
     /// ### What it does

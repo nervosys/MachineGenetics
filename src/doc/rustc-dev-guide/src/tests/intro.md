@@ -39,7 +39,7 @@ Examples:
 |-------------------------------------------|---------------------------------------|
 | `./x test library/std`                    | Runs tests on `std` only              |
 | `./x test library/core`                   | Runs tests on `core` only             |
-| `./x test compiler/rustc_data_structures` | Runs tests on `rustc_data_structures` |
+| `./x test compiler/redox_data_structures` | Runs tests on `redox_data_structures` |
 
 The standard library relies very heavily on documentation tests to cover its
 functionality. However, unit tests and integration tests can also be used as
@@ -56,7 +56,7 @@ mod tests;
 
 If it wasn't done this way, and you were working on something like `core`, that
 would require recompiling the entire standard library, and the entirety of
-`rustc`.
+`redox`.
 
 `./x test` includes some CLI options for controlling the behavior with these
 package tests:

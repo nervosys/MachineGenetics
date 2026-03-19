@@ -1,7 +1,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
-#![feature(no_core, lang_items, rustc_attrs, rustdoc_internals)]
+#![feature(no_core, lang_items, redox_attrs, rustdoc_internals)]
 #![no_core]
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 #![crate_type = "rlib"]
 
 //@ has prim_methods_local/index.html
@@ -10,7 +10,7 @@
 
 //! A [prim@`char`] and its [`char::len_utf8`].
 
-#[rustc_doc_primitive = "char"]
+#[redox_doc_primitive = "char"]
 mod char {}
 
 impl char {

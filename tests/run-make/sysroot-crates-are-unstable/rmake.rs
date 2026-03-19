@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 use std::str;
 
-use run_make_support::{rfs, rustc, target};
+use run_make_support::{rfs, redox, target};
 
 fn is_stable_crate(name: &str) -> bool {
     matches!(name, "std" | "alloc" | "core" | "proc_macro")
@@ -31,7 +31,7 @@ fn check_crate_is_unstable(cr: &Crate) {
     // Checking if rmeta path exists
     let rmeta_path = path.with_extension("rmeta");
 
-    let mut cmd = rustc();
+    let mut cmd = redox();
     cmd.crate_type("rlib").extern_(name, path); // Pass the rlib
 
     if rmeta_path.exists() {
@@ -49,7 +49,7 @@ fn check_crate_is_unstable(cr: &Crate) {
 
 fn get_unstable_sysroot_crates() -> Vec<Crate> {
     let sysroot_libs_dir =
-        PathBuf::from(rustc().print("target-libdir").target(target()).run().stdout_utf8().trim());
+        PathBuf::from(redox().print("target-libdir").target(target()).run().stdout_utf8().trim());
     println!("Sysroot libs dir: {sysroot_libs_dir:?}");
 
     // Generate a list of all library crates in the sysroot.

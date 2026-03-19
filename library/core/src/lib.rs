@@ -73,8 +73,8 @@
     target_has_atomic_load_store = "ptr",
 )))]
 #![no_core]
-#![rustc_coherence_is_core]
-#![rustc_preserve_ub_checks]
+#![redox_coherence_is_core]
+#![redox_preserve_ub_checks]
 //
 // Lints:
 #![deny(rust_2021_incompatible_or_patterns)]
@@ -158,7 +158,7 @@
 #![feature(pattern_types)]
 #![feature(prelude_import)]
 #![feature(repr_simd)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(simd_ffi)]
 #![feature(staged_api)]

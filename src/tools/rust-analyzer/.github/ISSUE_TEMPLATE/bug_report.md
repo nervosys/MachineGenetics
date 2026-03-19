@@ -20,7 +20,7 @@ Otherwise please try to provide information which will help us to fix the issue 
 
 **rust-analyzer version**: (eg. output of "rust-analyzer: Show RA Version" command, accessible in VSCode via <kbd>Ctrl/⌘</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>)
 
-**rustc version**: (eg. output of `rustc -V`)
+**redox version**: (eg. output of `redox -V`)
 
 **editor or extension**: (eg. VSCode, Vim, Emacs, etc. For VSCode users, specify your extension version; for users of other editors, provide the distribution if applicable)
 

@@ -10,11 +10,11 @@
 use std::collections::BTreeSet;
 
 use run_make_support::object::{self, Object};
-use run_make_support::{dynamic_lib_name, is_darwin, path, rfs, rustc};
+use run_make_support::{dynamic_lib_name, is_darwin, path, rfs, redox};
 
 fn main() {
     let dylib = dynamic_lib_name("dylib");
-    rustc().input("dylib.rs").output(&dylib).arg("-Cprefer-dynamic").run();
+    redox().input("dylib.rs").output(&dylib).arg("-Cprefer-dynamic").run();
 
     let expected_symbols = if is_darwin() {
         // Mach-O states that all exported symbols should have an underscore as prefix. At the

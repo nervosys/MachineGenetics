@@ -1,12 +1,12 @@
 #![deny(clippy::default_lint)]
 #![allow(clippy::missing_clippy_version_attribute)]
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 #[macro_use]
-extern crate rustc_middle;
+extern crate redox_middle;
 #[macro_use]
-extern crate rustc_session;
-extern crate rustc_lint;
+extern crate redox_session;
+extern crate redox_lint;
 
 declare_tool_lint! {
     pub clippy::TEST_LINT,

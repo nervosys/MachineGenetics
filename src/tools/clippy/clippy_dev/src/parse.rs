@@ -4,8 +4,8 @@ use self::cursor::{Capture, Cursor};
 use crate::utils::{ErrAction, File, Scoped, expect_action, slice_groups_mut, walk_dir_no_dot_or_target};
 use core::fmt::{self, Display, Write as _};
 use core::range::Range;
-use rustc_arena::DroplessArena;
-use rustc_data_structures::fx::FxHashMap;
+use redox_arena::DroplessArena;
+use redox_data_structures::fx::FxHashMap;
 use std::fs;
 use std::path::{self, Path, PathBuf};
 use std::str::pattern::Pattern;
@@ -119,7 +119,7 @@ pub struct LintName<'cx> {
     pub tool: LintTool,
 }
 impl<'cx> LintName<'cx> {
-    pub fn new_rustc(name: &'cx str) -> Self {
+    pub fn new_redox(name: &'cx str) -> Self {
         Self {
             name,
             tool: LintTool::Rustc,
@@ -474,7 +474,7 @@ impl<'cx> ParseCxImpl<'cx> {
             if s.is_empty() { "" } else { self.arena.alloc_str(s) }
         } else {
             self.str_buf.with(|buf| {
-                rustc_literal_escaper::unescape_str(s, &mut |_, ch| {
+                redox_literal_escaper::unescape_str(s, &mut |_, ch| {
                     if let Ok(ch) = ch {
                         buf.push(ch);
                     }

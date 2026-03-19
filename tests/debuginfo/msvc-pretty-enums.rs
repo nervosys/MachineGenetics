@@ -232,7 +232,7 @@
 
 //@ cdb-command: dx c_style_i128_d
 //@ cdb-check: c_style_i128_d   : D [Type: enum2$<msvc_pretty_enums::CStyleI128>]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::num::NonZero;
 
@@ -270,12 +270,12 @@ enum NicheLayoutWithFields3 {
     F,
 }
 
-#[rustc_layout_scalar_valid_range_start(340282366920938463463374607431768211454)]
-#[rustc_layout_scalar_valid_range_end(1)]
+#[redox_layout_scalar_valid_range_start(340282366920938463463374607431768211454)]
+#[redox_layout_scalar_valid_range_end(1)]
 #[repr(transparent)]
 struct Wrapping128(u128);
 
-// #[rustc_layout(debug)]
+// #[redox_layout(debug)]
 enum Wrapping128Niche {
     X(Wrapping128),
     Y,

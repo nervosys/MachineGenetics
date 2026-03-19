@@ -4,11 +4,11 @@
 //@ only-apple
 
 use run_make_support::serde_json::{self, Value};
-use run_make_support::{cargo, llvm_nm, rfs, rustc};
+use run_make_support::{cargo, llvm_nm, rfs, redox};
 
 fn main() {
     let output =
-        rustc().print("target-spec-json").args(["-Z", "unstable-options"]).run().stdout_utf8();
+        redox().print("target-spec-json").args(["-Z", "unstable-options"]).run().stdout_utf8();
 
     let mut target_json: Value = serde_json::from_str(&output).unwrap();
     let has_thread_local = &mut target_json["has-thread-local"];

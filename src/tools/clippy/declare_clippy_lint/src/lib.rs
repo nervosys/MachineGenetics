@@ -1,11 +1,11 @@
-#![feature(macro_metavar_expr_concat, rustc_private)]
+#![feature(macro_metavar_expr_concat, redox_private)]
 
-extern crate rustc_lint;
+extern crate redox_lint;
 
-use rustc_lint::{Lint, LintId, LintStore};
+use redox_lint::{Lint, LintId, LintStore};
 
 // Needed by `declare_clippy_lint!`.
-pub extern crate rustc_session;
+pub extern crate redox_session;
 
 #[derive(Default)]
 pub struct LintListBuilder {
@@ -129,7 +129,7 @@ macro_rules! declare_clippy_lint_inner {
         $desc:literal
         $(, @eval_always = $eval_always:literal)?
     ) => {
-        $crate::rustc_session::declare_tool_lint! {
+        $crate::redox_session::declare_tool_lint! {
             $(#[doc = $docs])*
             #[clippy::version = $version]
             $vis clippy::$lint_name,

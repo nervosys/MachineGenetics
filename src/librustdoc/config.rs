@@ -5,19 +5,19 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
 
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::DiagCtxtHandle;
-use rustc_session::config::{
+use redox_data_structures::fx::FxIndexMap;
+use redox_errors::DiagCtxtHandle;
+use redox_session::config::{
     self, CodegenOptions, CrateType, ErrorOutputType, Externs, Input, JsonUnusedExterns,
     OptionsTargetModifiers, OutFileName, Sysroot, UnstableOptions, get_cmd_lint_options,
     nightly_options, parse_crate_types_from_list, parse_externs, parse_target_triple,
 };
-use rustc_session::lint::Level;
-use rustc_session::search_paths::SearchPath;
-use rustc_session::{EarlyDiagCtxt, getopts};
-use rustc_span::FileName;
-use rustc_span::edition::Edition;
-use rustc_target::spec::TargetTuple;
+use redox_session::lint::Level;
+use redox_session::search_paths::SearchPath;
+use redox_session::{EarlyDiagCtxt, getopts};
+use redox_span::FileName;
+use redox_span::edition::Edition;
+use redox_target::spec::TargetTuple;
 
 use crate::core::new_dcx;
 use crate::externalfiles::ExternalHtml;
@@ -75,7 +75,7 @@ pub(crate) enum MergeDoctests {
 /// Configuration options for rustdoc.
 #[derive(Clone)]
 pub(crate) struct Options {
-    // Basic options / Options passed directly to rustc
+    // Basic options / Options passed directly to redox
     /// The name of the crate being documented.
     pub(crate) crate_name: Option<String>,
     /// Whether or not this is a bin crate
@@ -115,7 +115,7 @@ pub(crate) struct Options {
     pub(crate) sysroot: Sysroot,
     /// Lint information passed over the command-line.
     pub(crate) lint_opts: Vec<(String, Level)>,
-    /// Whether to ask rustc to describe the lints it knows.
+    /// Whether to ask redox to describe the lints it knows.
     pub(crate) describe_lints: bool,
     /// What level to cap lints at.
     pub(crate) lint_cap: Option<Level>,
@@ -141,11 +141,11 @@ pub(crate) struct Options {
     /// What sources are being mapped.
     pub(crate) remap_path_prefix: Vec<(PathBuf, PathBuf)>,
 
-    /// The path to a rustc-like binary to build tests with. If not set, we
-    /// default to loading from `$sysroot/bin/rustc`.
+    /// The path to a redox-like binary to build tests with. If not set, we
+    /// default to loading from `$sysroot/bin/redox`.
     pub(crate) test_builder: Option<PathBuf>,
 
-    /// Run these wrapper instead of rustc directly
+    /// Run these wrapper instead of redox directly
     pub(crate) test_builder_wrappers: Vec<PathBuf>,
 
     // Options that affect the documentation process
@@ -174,7 +174,7 @@ pub(crate) struct Options {
 
     /// Note: this field is duplicated in `RenderOptions` because it's useful
     /// to have it in both places.
-    pub(crate) unstable_features: rustc_feature::UnstableFeatures,
+    pub(crate) unstable_features: redox_feature::UnstableFeatures,
 
     /// Arguments to be used when compiling doctests.
     pub(crate) doctest_build_args: Vec<String>,
@@ -289,7 +289,7 @@ pub(crate) struct RenderOptions {
     pub(crate) show_type_layout: bool,
     /// Note: this field is duplicated in `Options` because it's useful to have
     /// it in both places.
-    pub(crate) unstable_features: rustc_feature::UnstableFeatures,
+    pub(crate) unstable_features: redox_feature::UnstableFeatures,
     pub(crate) emit: Vec<EmitType>,
     /// If `true`, HTML source pages will generate links for items to their definition.
     pub(crate) generate_link_to_definition: bool,
@@ -395,18 +395,18 @@ impl Options {
             crate::usage("rustdoc");
             return None;
         } else if matches.opt_present("version") {
-            rustc_driver::version!(&early_dcx, "rustdoc", matches);
+            redox_driver::version!(&early_dcx, "rustdoc", matches);
             return None;
         }
 
-        if rustc_driver::describe_flag_categories(early_dcx, matches) {
+        if redox_driver::describe_flag_categories(early_dcx, matches) {
             return None;
         }
 
         let color = config::parse_color(early_dcx, matches);
         let crate_name = matches.opt_str("crate-name");
         let unstable_features =
-            rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
+            redox_feature::UnstableFeatures::from_environment(crate_name.as_deref());
         let config::JsonConfig { json_rendered, json_unused_externs, json_color, .. } =
             config::parse_json(early_dcx, matches);
         let error_format =
@@ -475,7 +475,7 @@ impl Options {
                         // De-duplicate emit types and the last wins.
                         // Only one instance for each type is allowed
                         // regardless the actual data it carries.
-                        // This matches rustc's `--emit` behavior.
+                        // This matches redox's `--emit` behavior.
                         emit.insert(std::mem::discriminant(&kind), kind);
                     }
                     Err(()) => dcx.fatal(format!("unrecognized emission type: {kind}")),
@@ -762,7 +762,7 @@ impl Options {
                     &target,
                     early_dcx,
                     s,
-                    #[allow(rustc::bad_opt_access)] // we have no `Session` here
+                    #[allow(redox::bad_opt_access)] // we have no `Session` here
                     unstable_opts.unstable_options,
                 )
             })

@@ -1,6 +1,6 @@
 # Adding new tests
 
-**In general, we expect every PR that fixes a bug in rustc to come accompanied
+**In general, we expect every PR that fixes a bug in redox to come accompanied
 by a regression test of some kind.** This test should fail in `main` but pass
 after the PR. These tests are really useful for preventing us from repeating the
 mistakes of the past.
@@ -30,7 +30,7 @@ guidelines:
   - Need to inspect the resulting binary in some way? Or if all the other test
     suites are too limited for your purposes? Then use `run-make`.
     - Use `run-make-cargo` if you need to exercise in-tree `cargo` in conjunction
-      with in-tree `rustc`.
+      with in-tree `redox`.
   - Check out the [compiletest] chapter for more specialized test suites.
 
 After deciding on which kind of test to add, see [best
@@ -151,7 +151,7 @@ LL |     foo().await
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0728`.
+For more information about this error, try `redox --explain E0728`.
 ```
 
 You may notice some things look a little different than the regular compiler

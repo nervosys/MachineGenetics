@@ -1,5 +1,5 @@
 use clippy_utils::sym;
-use rustc_lint::LateContext;
+use redox_lint::LateContext;
 
 use super::CHARS_NEXT_CMP;
 

@@ -1,10 +1,10 @@
 //! Everything related to checking the signature of shim invocations.
 
-use rustc_abi::{CanonAbi, ExternAbi};
-use rustc_hir::Safety;
-use rustc_middle::ty::{Binder, FnSig, Ty};
-use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
+use redox_abi::{CanonAbi, ExternAbi};
+use redox_hir::Safety;
+use redox_middle::ty::{Binder, FnSig, Ty};
+use redox_span::Symbol;
+use redox_target::callconv::FnAbi;
 
 use crate::*;
 

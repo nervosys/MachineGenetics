@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sym;
-use rustc_errors::Applicability;
-use rustc_hir::Expr;
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, GenericArg, Ty};
-use rustc_span::Symbol;
-use rustc_span::def_id::DefId;
+use redox_errors::Applicability;
+use redox_hir::Expr;
+use redox_lint::LateContext;
+use redox_middle::ty::{self, GenericArg, Ty};
+use redox_span::Symbol;
+use redox_span::def_id::DefId;
 
 use super::CONFUSING_METHOD_TO_NUMERIC_CAST;
 

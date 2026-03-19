@@ -28,7 +28,7 @@ use std::{
 };
 
 use la_arena::{Arena, Idx, RawIdx};
-use rustc_hash::{FxBuildHasher, FxHashMap};
+use redox_hash::{FxBuildHasher, FxHashMap};
 use syntax::{
     AstNode, AstPtr, SyntaxKind, SyntaxNode, SyntaxNodePtr,
     ast::{self, HasName},

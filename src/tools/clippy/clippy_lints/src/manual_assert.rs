@@ -2,10 +2,10 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call};
 use clippy_utils::source::{indent_of, reindent_multiline};
 use clippy_utils::{higher, is_else_clause, is_parent_stmt, peel_blocks_with_stmt, span_extract_comment, sugg};
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::declare_lint_pass;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

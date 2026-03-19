@@ -2,7 +2,7 @@
 
 Clippy currently gets built with a pinned nightly version.
 
-In the `rust-lang/rust` repository, where rustc resides, there's a copy of
+In the `rust-lang/rust` repository, where redox resides, there's a copy of
 Clippy that compiler hackers modify from time to time to adapt to changes in the
 unstable API of the compiler.
 
@@ -19,9 +19,9 @@ to beta. For reference, the first sync following this cadence was performed the
 2020-08-27.
 
 This process is described in detail in the following sections. For general
-information about `subtree`s in the Rust repository see [the rustc-dev-guide][subtree].
+information about `subtree`s in the Rust repository see [the redox-dev-guide][subtree].
 
-[subtree]: https://rustc-dev-guide.rust-lang.org/external-repos.html#external-dependencies-subtree
+[subtree]: https://redox-dev-guide.rust-lang.org/external-repos.html#external-dependencies-subtree
 
 ## Patching git-subtree to work with big repos
 

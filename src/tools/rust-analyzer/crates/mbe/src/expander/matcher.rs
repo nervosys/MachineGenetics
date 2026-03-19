@@ -1,7 +1,7 @@
-//! An NFA-based parser, which is porting from rustc mbe parsing code
+//! An NFA-based parser, which is porting from redox mbe parsing code
 //!
-//! See <https://github.com/rust-lang/rust/blob/70b18bc2cbac4712020019f5bf57c00905373205/compiler/rustc_expand/src/mbe/macro_parser.rs>
-//! Here is a quick intro to how the parser works, copied from rustc:
+//! See <https://github.com/rust-lang/rust/blob/70b18bc2cbac4712020019f5bf57c00905373205/compiler/redox_expand/src/mbe/macro_parser.rs>
+//! Here is a quick intro to how the parser works, copied from redox:
 //!
 //! A 'position' is a dot in the middle of a matcher, usually represented as a
 //! dot. For example `· a $( a )* a b` is a position, as is `a $( · a )* a b`.
@@ -789,9 +789,9 @@ fn match_meta_var<'t>(
             // And `expr` also should not contain let expressions but may contain the other two
             // since `Edition2024`.
             // HACK: Macro expansion should not be done using "rollback and try another alternative".
-            // rustc [explicitly checks the next token][1].
+            // redox [explicitly checks the next token][1].
             // [0]: https://github.com/rust-lang/rust/issues/86730
-            // [1]: https://github.com/rust-lang/rust/blob/f0c4da499/compiler/rustc_expand/src/mbe/macro_parser.rs#L576
+            // [1]: https://github.com/rust-lang/rust/blob/f0c4da499/compiler/redox_expand/src/mbe/macro_parser.rs#L576
             match input.peek() {
                 Some(TtElement::Leaf(tt::Leaf::Ident(it))) => {
                     let is_err = if it.is_raw.no() && matches!(expr, ExprKind::Expr2021) {

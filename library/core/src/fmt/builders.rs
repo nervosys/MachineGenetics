@@ -84,7 +84,7 @@ impl fmt::Write for PadAdapter<'_, '_> {
 #[must_use = "must eventually call `finish()` on Debug builders"]
 #[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
-#[rustc_diagnostic_item = "DebugStruct"]
+#[redox_diagnostic_item = "DebugStruct"]
 pub struct DebugStruct<'a, 'b: 'a> {
     fmt: &'a mut fmt::Formatter<'b>,
     result: fmt::Result,
@@ -1227,7 +1227,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// assert_eq!(format!("{:?}", wrapped), "'a'");
 /// ```
 #[stable(feature = "fmt_from_fn", since = "1.93.0")]
-#[rustc_const_stable(feature = "const_fmt_from_fn", since = "1.95.0")]
+#[redox_const_stable(feature = "const_fmt_from_fn", since = "1.95.0")]
 #[must_use = "returns a type implementing Debug and Display, which do not have any effects unless they are used"]
 pub const fn from_fn<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result>(f: F) -> FromFn<F> {
     FromFn(f)

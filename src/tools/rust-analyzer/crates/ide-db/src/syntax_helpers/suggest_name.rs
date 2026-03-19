@@ -4,7 +4,7 @@ use std::{collections::hash_map::Entry, str::FromStr};
 
 use hir::{Semantics, SemanticsScope};
 use itertools::Itertools;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use stdx::to_lower_snake_case;
 use syntax::{
     AstNode, Edition, SmolStr, SmolStrBuilder, ToSmolStr,

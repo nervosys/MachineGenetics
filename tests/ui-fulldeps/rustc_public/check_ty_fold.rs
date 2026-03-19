@@ -7,20 +7,20 @@
 //@ ignore-remote
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
+extern crate redox_driver;
+extern crate redox_interface;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
-use rustc_public::mir::{
+use redox_public::mir::{
     Body, FieldIdx, MirVisitor, Place, ProjectionElem,
     visit::{Location, PlaceContext},
 };
-use rustc_public::ty::{RigidTy, Ty, TyKind};
+use redox_public::ty::{RigidTy, Ty, TyKind};
 use std::io::Write;
 use std::ops::ControlFlow;
 
@@ -28,7 +28,7 @@ const CRATE_NAME: &str = "input";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
-    let main_fn = rustc_public::entry_fn();
+    let main_fn = redox_public::entry_fn();
     let body = main_fn.unwrap().expect_body();
     let mut visitor = PlaceVisitor { body: &body, tested: false };
     visitor.visit_body(&body);
@@ -78,7 +78,7 @@ fn main() {
     let path = "ty_fold_input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

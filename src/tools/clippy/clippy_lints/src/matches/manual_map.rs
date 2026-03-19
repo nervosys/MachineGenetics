@@ -3,10 +3,10 @@ use super::manual_utils::{SomeExpr, check_with};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 
 use clippy_utils::res::{MaybeDef, MaybeQPath};
-use rustc_hir::LangItem::OptionSome;
-use rustc_hir::{Arm, Block, BlockCheckMode, Expr, ExprKind, Pat, UnsafeSource};
-use rustc_lint::LateContext;
-use rustc_span::SyntaxContext;
+use redox_hir::LangItem::OptionSome;
+use redox_hir::{Arm, Block, BlockCheckMode, Expr, ExprKind, Pat, UnsafeSource};
+use redox_lint::LateContext;
+use redox_span::SyntaxContext;
 
 pub(super) fn check_match<'tcx>(
     cx: &LateContext<'tcx>,

@@ -2,7 +2,7 @@
 
 // This is to test that static inners from an external
 // crate like this one, still preserves the alloc.
-// That is, the address from the standpoint of rustc+llvm
+// That is, the address from the standpoint of redox+llvm
 // is the same.
 // The need for this test originated from the GH issue
 // https://github.com/rust-lang/rust/issues/57349

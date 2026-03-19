@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
-use rustc_hir as hir;
-use rustc_lint::LateContext;
-use rustc_middle::ty;
+use redox_hir as hir;
+use redox_lint::LateContext;
+use redox_middle::ty;
 
 use super::ZST_OFFSET;
 

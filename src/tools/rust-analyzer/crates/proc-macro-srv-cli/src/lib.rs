@@ -2,10 +2,10 @@
 //!
 //! This module exposes the server main loop and protocol format for integration testing.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
 #[cfg(feature = "sysroot-abi")]
 pub mod main_loop;

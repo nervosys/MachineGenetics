@@ -2,13 +2,13 @@ use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{is_lint_allowed, iter_input_pats};
-use rustc_errors::Applicability;
-use rustc_hir::intravisit::FnKind;
-use rustc_hir::{BindingMode, Body, ByRef, FnDecl, Mutability, PatKind, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
-use rustc_span::def_id::LocalDefId;
+use redox_errors::Applicability;
+use redox_hir::intravisit::FnKind;
+use redox_hir::{BindingMode, Body, ByRef, FnDecl, Mutability, PatKind, Stmt, StmtKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::Span;
+use redox_span::def_id::LocalDefId;
 
 use crate::ref_patterns::REF_PATTERNS;
 

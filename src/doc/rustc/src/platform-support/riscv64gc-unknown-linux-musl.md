@@ -15,7 +15,7 @@ Building the target itself requires a RISC-V compiler that is supported by `cc-r
 
 ## Building the target
 
-The target can be built by enabling it for a `rustc` build.
+The target can be built by enabling it for a `redox` build.
 
 ```toml
 [build]

@@ -1,5 +1,5 @@
 //! Generates descriptor structures for unstable features from the unstable book
-//! and lints from rustc, rustdoc, and clippy.
+//! and lints from redox, rustdoc, and clippy.
 #![allow(clippy::disallowed_types)]
 
 use std::{
@@ -21,7 +21,7 @@ use crate::{
 
 const DESTINATION: &str = "crates/ide-db/src/generated/lints.rs";
 
-/// This clones rustc repo, and so is not worth to keep up-to-date on a constant basis.
+/// This clones redox repo, and so is not worth to keep up-to-date on a constant basis.
 pub(crate) fn generate(check: bool) {
     let sh = &Shell::new().unwrap();
 
@@ -144,17 +144,17 @@ struct Lint {
 
 /// Parses the output of `rustdoc -Whelp` and prints `Lint` and `LintGroup` constants into `buf`.
 ///
-/// As of writing, the output of `rustc -Whelp` (not rustdoc) has the following format:
+/// As of writing, the output of `redox -Whelp` (not rustdoc) has the following format:
 ///
 /// ```text
-/// Lint checks provided by rustc:
+/// Lint checks provided by redox:
 ///
 /// name  default  meaning
 /// ----  -------  -------
 ///
 /// ...
 ///
-/// Lint groups provided by rustc:
+/// Lint groups provided by redox:
 ///
 /// name  sub-lints
 /// ----  ---------
@@ -162,8 +162,8 @@ struct Lint {
 /// ...
 /// ```
 ///
-/// `rustdoc -Whelp` (and any other custom `rustc` driver) adds another two
-/// tables after the `rustc` ones, with a different title but the same format.
+/// `rustdoc -Whelp` (and any other custom `redox` driver) adds another two
+/// tables after the `redox` ones, with a different title but the same format.
 fn generate_lint_descriptor(sh: &Shell, buf: &mut String) {
     fn get_lints_as_text(
         stdout: &str,

@@ -167,7 +167,7 @@ impl SipHasher13 {
     /// Creates a new `SipHasher13` with the two initial keys set to 0.
     #[inline]
     #[unstable(feature = "hashmap_internals", issue = "none")]
-    #[rustc_const_unstable(feature = "const_default", issue = "143894")]
+    #[redox_const_unstable(feature = "const_default", issue = "143894")]
     pub const fn new() -> SipHasher13 {
         SipHasher13::new_with_keys(0, 0)
     }
@@ -175,7 +175,7 @@ impl SipHasher13 {
     /// Creates a `SipHasher13` that is keyed off the provided keys.
     #[inline]
     #[unstable(feature = "hashmap_internals", issue = "none")]
-    #[rustc_const_unstable(feature = "const_default", issue = "143894")]
+    #[redox_const_unstable(feature = "const_default", issue = "143894")]
     pub const fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
         SipHasher13 { hasher: Hasher::new_with_keys(key0, key1) }
     }
@@ -247,7 +247,7 @@ impl super::Hasher for SipHasher13 {
 impl<S: Sip> super::Hasher for Hasher<S> {
     // Note: no integer hashing methods (`write_u*`, `write_i*`) are defined
     // for this type. We could add them, copy the `short_write` implementation
-    // in librustc_data_structures/sip128.rs, and add `write_u*`/`write_i*`
+    // in libredox_data_structures/sip128.rs, and add `write_u*`/`write_i*`
     // methods to `SipHasher`, `SipHasher13`, and `DefaultHasher`. This would
     // greatly speed up integer hashing by those hashers, at the cost of
     // slightly slowing down compile speeds on some benchmarks. See #69152 for
@@ -339,7 +339,7 @@ impl<S: Sip> Clone for Hasher<S> {
     }
 }
 
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl<S: Sip> const Default for Hasher<S> {
     /// Creates a `Hasher<S>` with the two initial keys set to 0.
     #[inline]

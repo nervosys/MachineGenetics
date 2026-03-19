@@ -6,11 +6,11 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 fn main() {
-    rustc().input("foo.rs").run();
-    rustc().arg("-Zls=root").input("foo").run();
+    redox().input("foo.rs").run();
+    redox().arg("-Zls=root").input("foo").run();
     rfs::create_file("bar");
-    rustc().arg("-Zls=root").input("bar").run();
+    redox().arg("-Zls=root").input("bar").run();
 }

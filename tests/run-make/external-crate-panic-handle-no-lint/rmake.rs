@@ -4,9 +4,9 @@
 // and cause the test to fail.
 // See https://github.com/rust-lang/rust/issues/53964
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
-    rustc().input("panic.rs").run();
-    rustc().input("app.rs").panic("abort").emit("obj").run();
+    redox().input("panic.rs").run();
+    redox().input("app.rs").panic("abort").emit("obj").run();
 }

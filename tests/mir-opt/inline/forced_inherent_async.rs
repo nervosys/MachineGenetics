@@ -1,12 +1,12 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ compile-flags: -Copt-level=0 --crate-type=lib
 //@ edition: 2021
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 struct Foo {}
 
 impl Foo {
-    #[rustc_force_inline]
+    #[redox_force_inline]
     pub fn callee_forced() {}
 }
 

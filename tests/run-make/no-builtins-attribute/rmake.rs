@@ -5,11 +5,11 @@
 // being added to these function declarations.
 // See https://github.com/rust-lang/rust/pull/113716
 
-use run_make_support::{llvm_filecheck, rfs, rustc};
+use run_make_support::{llvm_filecheck, rfs, redox};
 
 fn main() {
-    rustc().input("no_builtins.rs").emit("link").run();
-    rustc().input("main.rs").emit("llvm-ir").run();
+    redox().input("no_builtins.rs").emit("link").run();
+    redox().input("main.rs").emit("llvm-ir").run();
 
     llvm_filecheck().patterns("filecheck.main.txt").stdin_buf(rfs::read("main.ll")).run();
 }

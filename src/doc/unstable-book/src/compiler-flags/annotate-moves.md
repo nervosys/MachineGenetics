@@ -18,7 +18,7 @@ visible in profilers and stack traces.
 ## Syntax
 
 ```bash
-rustc -Z annotate-moves[=<value>]
+redox -Z annotate-moves[=<value>]
 ```
 
 Where `<value>` can be:
@@ -36,16 +36,16 @@ Where `<value>` can be:
 
 ```bash
 # Enable annotation with default threshold (65 bytes)
-rustc -Z annotate-moves main.rs
+redox -Z annotate-moves main.rs
 
 # Enable with custom 128-byte threshold
-rustc -Z annotate-moves=128 main.rs
+redox -Z annotate-moves=128 main.rs
 
 # Only annotate very large moves (1KB+)
-rustc -Z annotate-moves=1024 main.rs
+redox -Z annotate-moves=1024 main.rs
 
 # Explicitly disable
-rustc -Z annotate-moves=false main.rs
+redox -Z annotate-moves=false main.rs
 ```
 
 ## Behavior
@@ -88,5 +88,5 @@ fn example() {
 ## Overhead
 
 This has no effect on generated code; it only adds debuginfo. The overhead is
-typically very small; on rustc itself, the default limit of 65 bytes adds about
+typically very small; on redox itself, the default limit of 65 bytes adds about
 0.055% to the binary size.

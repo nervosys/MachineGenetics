@@ -3,16 +3,16 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use rustc_data_structures::sync::Lock;
-use rustc_errors::emitter::Emitter;
-use rustc_errors::formatting::format_diag_message;
-use rustc_errors::{Applicability, Diag, DiagCtxt, DiagCtxtHandle, DiagInner, Diagnostic, Level};
-use rustc_parse::{source_str_to_stream, unwrap_or_emit_fatal};
-use rustc_resolve::rustdoc::source_span_for_markdown_range;
-use rustc_session::parse::ParseSess;
-use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, Transparency};
-use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{DUMMY_SP, FileName, InnerSpan, Span};
+use redox_data_structures::sync::Lock;
+use redox_errors::emitter::Emitter;
+use redox_errors::formatting::format_diag_message;
+use redox_errors::{Applicability, Diag, DiagCtxt, DiagCtxtHandle, DiagInner, Diagnostic, Level};
+use redox_parse::{source_str_to_stream, unwrap_or_emit_fatal};
+use redox_resolve::rustdoc::source_span_for_markdown_range;
+use redox_session::parse::ParseSess;
+use redox_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, Transparency};
+use redox_span::source_map::{FilePathMapping, SourceMap};
+use redox_span::{DUMMY_SP, FileName, InnerSpan, Span};
 
 use crate::clean;
 use crate::core::DocContext;
@@ -112,7 +112,7 @@ fn check_rust_syntax(
     let expn_id = cx.tcx.with_stable_hashing_context(|hcx| LocalExpnId::fresh(expn_data, hcx));
     let span = DUMMY_SP.apply_mark(expn_id.to_expn_id(), Transparency::Transparent);
 
-    let is_empty = rustc_driver::catch_fatal_errors(|| {
+    let is_empty = redox_driver::catch_fatal_errors(|| {
         unwrap_or_emit_fatal(source_str_to_stream(
             &psess,
             FileName::Custom(String::from("doctest")),
@@ -174,7 +174,7 @@ impl Emitter for BufferEmitter {
 
         let translated_main_message = format_diag_message(&diag.messages[0].0, &diag.args);
 
-        buffer.messages.push(format!("error from rustc: {translated_main_message}"));
+        buffer.messages.push(format!("error from redox: {translated_main_message}"));
         if diag.is_error() {
             buffer.has_errors = true;
         }

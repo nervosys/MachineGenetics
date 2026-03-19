@@ -1,4 +1,4 @@
-// Check that the compiler toolchain (rustc) that we distribute is not using newer glibc
+// Check that the compiler toolchain (redox) that we distribute is not using newer glibc
 // symbols than a specified minimum.
 // This test should only be executed on an extracted dist archive or in a dist-* CI job.
 
@@ -8,7 +8,7 @@
 
 use std::path::{Path, PathBuf};
 
-use run_make_support::{cmd, llvm_objdump, regex, rustc_path};
+use run_make_support::{cmd, llvm_objdump, regex, redox_path};
 
 fn main() {
     // This is the maximum glibc version that we are *permitted* to use for the
@@ -17,13 +17,13 @@ fn main() {
     // So that if a given machine only has glibc 2.17, it is able to run the compiler.
     let max_supported = (2, 17, 99);
 
-    let rustc = PathBuf::from(rustc_path());
-    // Check symbols directly in rustc
-    check_symbols(&rustc, max_supported);
+    let redox = PathBuf::from(redox_path());
+    // Check symbols directly in redox
+    check_symbols(&redox, max_supported);
 
-    // Find dynamic libraries referenced by rustc that come from our lib directory
-    let lib_path = rustc.parent().unwrap().parent().unwrap().join("lib");
-    let dynamic_libs = find_dynamic_libs(&rustc)
+    // Find dynamic libraries referenced by redox that come from our lib directory
+    let lib_path = redox.parent().unwrap().parent().unwrap().join("lib");
+    let dynamic_libs = find_dynamic_libs(&redox)
         .into_iter()
         .filter_map(|path| path.canonicalize().ok())
         .filter(|lib| lib.starts_with(&lib_path))
@@ -81,7 +81,7 @@ fn check_symbols(file: &Path, max_supported: (u32, u32, u32)) {
 fn get_glibc_symbols(file: &Path) -> Vec<GlibcSymbol> {
     let regex = regex::Regex::new(r#"GLIBC_(\d)+\.(\d+)(:?\.(\d+))?"#).unwrap();
 
-    // FIXME(kobzol): llvm-objdump currently chokes on the BOLTed librustc_driver.so file.
+    // FIXME(kobzol): llvm-objdump currently chokes on the BOLTed libredox_driver.so file.
     // Use objdump instead, since it seems to work, and we only run this test in a specific
     // CI environment anyway.
     cmd("objdump")

@@ -111,5 +111,5 @@ pub fn download_job_metrics(job_name: &str, sha: &str) -> anyhow::Result<JsonRoo
 
 fn get_metrics_url(job_name: &str, sha: &str) -> String {
     let suffix = if job_name.ends_with("-alt") { "-alt" } else { "" };
-    format!("https://ci-artifacts.rust-lang.org/rustc-builds{suffix}/{sha}/metrics-{job_name}.json")
+    format!("https://ci-artifacts.rust-lang.org/redox-builds{suffix}/{sha}/metrics-{job_name}.json")
 }

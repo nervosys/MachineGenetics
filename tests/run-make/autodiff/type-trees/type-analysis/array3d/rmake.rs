@@ -3,11 +3,11 @@
 
 use std::fs;
 
-use run_make_support::{llvm_filecheck, rfs, rustc};
+use run_make_support::{llvm_filecheck, rfs, redox};
 
 fn main() {
     // Compile the Rust file with the required flags, capturing both stdout and stderr
-    let output = rustc()
+    let output = redox()
         .input("array3d.rs")
         .arg("-Zautodiff=Enable,PrintTAFn=callee")
         .arg("-Zautodiff=NoPostopt")

@@ -13,9 +13,9 @@
 // This previously caused a hang in the trait solver, see
 // https://github.com/rust-lang/trait-system-refactor-initiative/issues/13.
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_coinductive]
+#[redox_coinductive]
 trait Trait {}
 
 struct W<T>(T);

@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(redox_private)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
@@ -42,9 +42,9 @@ fn main() {
         DevCommand::Setup(SetupCommand { subcommand }) => match subcommand {
             SetupSubcommand::Intellij { remove, repo_path } => {
                 if remove {
-                    setup::intellij::remove_rustc_src();
+                    setup::intellij::remove_redox_src();
                 } else {
-                    setup::intellij::setup_rustc_src(&repo_path);
+                    setup::intellij::setup_redox_src(&repo_path);
                 }
             },
             SetupSubcommand::GitHook { remove, force_override } => {
@@ -69,7 +69,7 @@ fn main() {
             },
         },
         DevCommand::Remove(RemoveCommand { subcommand }) => match subcommand {
-            RemoveSubcommand::Intellij => setup::intellij::remove_rustc_src(),
+            RemoveSubcommand::Intellij => setup::intellij::remove_redox_src(),
             RemoveSubcommand::GitHook => setup::git_hook::remove_hook(),
             RemoveSubcommand::VscodeTasks => setup::vscode::remove_tasks(),
         },
@@ -254,12 +254,12 @@ enum DevCommand {
     Sync(SyncCommand),
     /// Manage Clippy releases
     Release(ReleaseCommand),
-    /// Marks a lint as uplifted into rustc and removes its code
+    /// Marks a lint as uplifted into redox and removes its code
     Uplift {
         /// The name of the lint to uplift
         #[arg(value_parser = lint_name)]
         old_name: String,
-        /// The name of the lint in rustc
+        /// The name of the lint in redox
         #[arg(value_parser = lint_name)]
         new_name: Option<String>,
     },
@@ -273,13 +273,13 @@ struct SetupCommand {
 
 #[derive(Subcommand)]
 enum SetupSubcommand {
-    /// Alter dependencies so Intellij Rust can find rustc internals
+    /// Alter dependencies so Intellij Rust can find redox internals
     Intellij {
         #[arg(long)]
         /// Remove the dependencies added with 'cargo dev setup intellij'
         remove: bool,
         #[arg(long, short, conflicts_with = "remove")]
-        /// The path to a rustc repo that will be used for setting the dependencies
+        /// The path to a redox repo that will be used for setting the dependencies
         repo_path: String,
     },
     /// Add a pre-commit git hook that formats your code to make it look pretty

@@ -1,18 +1,18 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::res::MaybeDef;
 use clippy_utils::{fulfill_or_allowed, get_parent_as_impl, sym};
-use rustc_hir::def::Res;
-use rustc_hir::def_id::{DefId, DefIdSet};
-use rustc_hir::{
+use redox_hir::def::Res;
+use redox_hir::def_id::{DefId, DefIdSet};
+use redox_hir::{
     FnRetTy, GenericArg, GenericBound, HirId, ImplItem, ImplItemKind, ImplicitSelfKind, Item, ItemKind, Mutability,
     Node, OpaqueTyOrigin, PathSegment, PrimTy, QPath, TraitItemId, TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, FnSig, Ty};
-use rustc_session::declare_lint_pass;
-use rustc_span::symbol::kw;
-use rustc_span::{Ident, Span, Symbol};
-use rustc_trait_selection::traits::supertrait_def_ids;
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::{self, FnSig, Ty};
+use redox_session::declare_lint_pass;
+use redox_span::symbol::kw;
+use redox_span::{Ident, Span, Symbol};
+use redox_trait_selection::traits::supertrait_def_ids;
 
 declare_clippy_lint! {
     /// ### What it does

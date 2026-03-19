@@ -47,7 +47,7 @@ that has the potential to affect a program's correctness *is* being detected by 
 [bugs][I-misses-ub]), but you should consult [the Reference][reference-ub] for the official
 definition of Undefined Behavior. Miri will be updated with the Rust compiler to protect against UB
 as it is understood by the current compiler, but it makes no promises about future versions of
-rustc.
+redox.
 
 Further caveats that Miri users should be aware of:
 
@@ -156,12 +156,12 @@ endian-sensitive code.
 
 ### Controlling target features
 
-Controlling target features works similar to regular rustc invocations:
+Controlling target features works similar to regular redox invocations:
 `RUSTFLAGS="-Ctarget-features=+avx512f" cargo miri test` runs the tests with AVX512 enabled. (Miri
 only supports very few AVX512 intrinsics at the moment.) `-Ctarget-cpu` also works. If target
 features are also relevant for doctests, you have to also set `RUSTDOCFLAGS`.
 
-Unlike regular rustc, this flag has *two* effects: it builds the code with that target feature
+Unlike regular redox, this flag has *two* effects: it builds the code with that target feature
 available (which affects `cfg(target_feature)`), and it tells Miri to consider the "virtual CPU"
 that the interpreted program runs on as having the feature available (meaning the code is allowed to
 invoke the corresponding intrinsics).
@@ -222,7 +222,7 @@ using `--target`!
 The following targets are tested on CI and thus should always work (to the
 degree documented below):
 
-- All Rust [Tier 1 targets](https://doc.rust-lang.org/rustc/platform-support.html) are supported by
+- All Rust [Tier 1 targets](https://doc.rust-lang.org/redox/platform-support.html) are supported by
   Miri. They are all checked on Miri's CI, and some (at least one per OS) are even checked on every
   Rust PR, so the shipped Miri should always work on these targets.
 - `s390x-unknown-linux-gnu` is supported as our "big-endian target of choice".
@@ -263,7 +263,7 @@ Note: `cargo-nextest` does not support doctests, see https://github.com/nextest-
 The recommended way to invoke Miri is via `cargo miri`. Directly invoking the underlying `miri`
 driver is not supported, which is why that binary is not even installed into the PATH. However, if
 you need to run Miri on many small tests and want to invoke it directly like you would invoke
-`rustc`, that is still possible with a bit of extra effort:
+`redox`, that is still possible with a bit of extra effort:
 
 ```sh
 # one-time setup
@@ -291,7 +291,7 @@ To get a backtrace, you need to disable isolation
 RUST_BACKTRACE=1 MIRIFLAGS="-Zmiri-disable-isolation" cargo miri test
 ```
 
-#### "found crate `std` compiled by an incompatible version of rustc"
+#### "found crate `std` compiled by an incompatible version of redox"
 
 You may be running `cargo miri` with a different compiler version than the one
 used to build the custom libstd that Miri uses, and Miri failed to detect that.
@@ -519,12 +519,12 @@ to Miri failing to detect cases of undefined behavior in a program.
 
 [function ABI]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
 
-Some native rustc `-Z` flags are also very relevant for Miri:
+Some native redox `-Z` flags are also very relevant for Miri:
 
 * `-Zmir-opt-level` controls how many MIR optimizations are performed.  Miri
   overrides the default to be `0`; be advised that using any higher level can
   make Miri miss bugs in your program because they got optimized away.
-* `-Zalways-encode-mir` makes rustc dump MIR even for completely monomorphic
+* `-Zalways-encode-mir` makes redox dump MIR even for completely monomorphic
   functions.  This is needed so that Miri can execute such functions, so Miri
   sets this flag per default.
 * `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri

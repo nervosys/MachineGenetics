@@ -81,7 +81,7 @@ fn main() {
 
 #[test]
 fn stmt_boundaries() {
-    // FIXME: this actually works OK under rustc.
+    // FIXME: this actually works OK under redox.
     check(
         r#"
 macro_rules! m {

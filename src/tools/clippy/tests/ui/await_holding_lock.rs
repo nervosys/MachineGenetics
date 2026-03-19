@@ -179,7 +179,7 @@ async fn no_await(x: std::sync::Mutex<u32>) {
 }
 
 // FIXME: FP, because the `MutexGuard` is dropped before crossing the await point. This is
-// something the needs to be fixed in rustc. There's already drop-tracking, but this is currently
+// something the needs to be fixed in redox. There's already drop-tracking, but this is currently
 // disabled, see rust-lang/rust#93751. This case isn't picked up by drop-tracking though. If the
 // `*guard += 1` is removed it is picked up.
 async fn dropped_before_await(x: std::sync::Mutex<u32>) {

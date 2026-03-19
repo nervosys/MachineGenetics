@@ -6,12 +6,12 @@
 //! The tests for this functionality live in another crate:
 //! `hir_def::macro_expansion_tests::mbe`.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(not(feature = "in-rust-tree"))]
-extern crate ra_ap_rustc_lexer as rustc_lexer;
+extern crate ra_ap_redox_lexer as redox_lexer;
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_lexer;
+extern crate redox_lexer;
 
 mod expander;
 mod macro_call_style;
@@ -313,7 +313,7 @@ fn validate(pattern: &MetaTemplate) -> Result<(), ParseError> {
             Op::Subtree { tokens, .. } => validate(tokens)?,
             Op::Repeat { tokens: subtree, separator, .. } => {
                 // Checks that no repetition which could match an empty token
-                // https://github.com/rust-lang/rust/blob/a58b1ed44f5e06976de2bdc4d7dc81c36a96934f/src/librustc_expand/mbe/macro_rules.rs#L558
+                // https://github.com/rust-lang/rust/blob/a58b1ed44f5e06976de2bdc4d7dc81c36a96934f/src/libredox_expand/mbe/macro_rules.rs#L558
                 let lsh_is_empty_seq = separator.is_none() && subtree.iter().all(|child_op| {
                     match *child_op {
                         // vis is optional

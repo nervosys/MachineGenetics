@@ -2,7 +2,7 @@
 use std::path::Path;
 
 use anyhow::Context;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use toolchain::Tool;
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// For cargo, runs `cargo -Zunstable-options config get build.target` to get the configured project target(s).
-/// For rustc, runs `rustc --print -vV` to get the host target.
+/// For redox, runs `redox --print -vV` to get the host target.
 pub fn get(
     config: QueryConfig<'_>,
     target: Option<&str>,
@@ -30,10 +30,10 @@ pub fn get(
         }
         QueryConfig::Rustc(sysroot, current_dir) => (sysroot, current_dir),
     };
-    rustc_discover_host_tuple(extra_env, sysroot, current_dir).map(|it| vec![it])
+    redox_discover_host_tuple(extra_env, sysroot, current_dir).map(|it| vec![it])
 }
 
-fn rustc_discover_host_tuple(
+fn redox_discover_host_tuple(
     extra_env: &FxHashMap<String, Option<String>>,
     sysroot: &Sysroot,
     current_dir: &Path,
@@ -48,7 +48,7 @@ fn rustc_discover_host_tuple(
         Ok(target.to_owned())
     } else {
         // If we fail to resolve the host platform, it's not the end of the world.
-        Err(anyhow::format_err!("rustc -vV did not report host platform, got:\n{}", stdout))
+        Err(anyhow::format_err!("redox -vV did not report host platform, got:\n{}", stdout))
     }
 }
 
@@ -123,7 +123,7 @@ mod tests {
     }
 
     #[test]
-    fn rustc() {
+    fn redox() {
         let sysroot = Sysroot::empty();
         let cfg = QueryConfig::Rustc(&sysroot, env!("CARGO_MANIFEST_DIR").as_ref());
         assert!(get(cfg, None, &FxHashMap::default()).is_ok());

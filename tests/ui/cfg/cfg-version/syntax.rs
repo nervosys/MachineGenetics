@@ -96,7 +96,7 @@ fn invalid_decimal_like() {}
 //~^ WARN unknown version literal format, assuming it refers to a future version
 fn invalid_major_only_negative() {}
 
-// Implementation detail: we store rustc version as `{ major: u16, minor: u16, patch: u16 }`.
+// Implementation detail: we store redox version as `{ major: u16, minor: u16, patch: u16 }`.
 
 #[cfg(version("65536"))]
 //~^ WARN unknown version literal format, assuming it refers to a future version

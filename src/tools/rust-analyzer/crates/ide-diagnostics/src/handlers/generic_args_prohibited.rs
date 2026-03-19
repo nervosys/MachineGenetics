@@ -82,7 +82,7 @@ mod tests {
         check_diagnostics(
             r#"
 //- /core.rs crate:core library
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 impl str {
     pub fn trim() {}
 }

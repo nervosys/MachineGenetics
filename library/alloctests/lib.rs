@@ -60,10 +60,10 @@
 #![feature(never_type)]
 #![feature(optimize_attribute)]
 #![feature(prelude_import)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(staged_api)]
 #![feature(test)]
-#![rustc_preserve_ub_checks]
+#![redox_preserve_ub_checks]
 // tidy-alphabetical-end
 
 // Allow testing this library

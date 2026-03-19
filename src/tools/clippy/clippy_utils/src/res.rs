@@ -1,12 +1,12 @@
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{
+use redox_hir::def::{DefKind, Res};
+use redox_hir::def_id::DefId;
+use redox_hir::{
     self as hir, Expr, ExprKind, HirId, LangItem, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, TyKind,
 };
-use rustc_lint::LateContext;
-use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_middle::ty::{AdtDef, AdtKind, Binder, EarlyBinder, Ty, TypeckResults};
-use rustc_span::{Ident, Symbol};
+use redox_lint::LateContext;
+use redox_middle::ty::layout::HasTyCtxt;
+use redox_middle::ty::{AdtDef, AdtKind, Binder, EarlyBinder, Ty, TypeckResults};
+use redox_span::{Ident, Symbol};
 
 /// Either a `HirId` or a type which can be identified by one.
 pub trait HasHirId: Copy {

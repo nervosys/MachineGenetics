@@ -46,14 +46,14 @@ o("verbose-tests", "rust.verbose-tests", "enable verbose output when running tes
 o(
     "ccache",
     "build.ccache",
-    "invoke gcc/clang/rustc via ccache to reuse object files between builds",
+    "invoke gcc/clang/redox via ccache to reuse object files between builds",
 )
 o(
     "sccache",
     None,
-    "invoke gcc/clang/rustc via sccache to reuse object files between builds",
+    "invoke gcc/clang/redox via sccache to reuse object files between builds",
 )
-o("local-rust", None, "use an installed rustc rather than downloading a snapshot")
+o("local-rust", None, "use an installed redox rather than downloading a snapshot")
 v("local-rust-root", None, "set prefix for local rust binary")
 o(
     "local-rebuild",
@@ -70,7 +70,7 @@ o(
     "llvm.link-shared",
     "prefer shared linking to LLVM (llvm-config --link-shared)",
 )
-o("rpath", "rust.rpath", "build rpaths into rustc itself")
+o("rpath", "rust.rpath", "build rpaths into redox itself")
 o("codegen-tests", "rust.codegen-tests", "run the tests/codegen tests")
 o(
     "ninja",
@@ -145,8 +145,8 @@ o(
 )
 v("debuginfo-level", "rust.debuginfo-level", "debuginfo level for Rust code")
 v(
-    "debuginfo-level-rustc",
-    "rust.debuginfo-level-rustc",
+    "debuginfo-level-redox",
+    "rust.debuginfo-level-redox",
     "debuginfo level for the compiler",
 )
 v(
@@ -348,7 +348,7 @@ v("set", None, "set arbitrary key/value pairs in TOML configuration")
 v(
     "parallel-frontend-threads",
     "rust.parallel-frontend-threads",
-    "number of parallel threads for rustc compilation",
+    "number of parallel threads for redox compilation",
 )
 
 
@@ -538,15 +538,15 @@ def apply_args(known_args, option_checking, config):
             set("build.ccache", "sccache", config)
         elif option.name == "local-rust":
             for path in os.environ["PATH"].split(os.pathsep):
-                if os.path.exists(path + "/rustc"):
-                    set("build.rustc", path + "/rustc", config)
+                if os.path.exists(path + "/redox"):
+                    set("build.redox", path + "/redox", config)
                     break
             for path in os.environ["PATH"].split(os.pathsep):
                 if os.path.exists(path + "/cargo"):
                     set("build.cargo", path + "/cargo", config)
                     break
         elif option.name == "local-rust-root":
-            set("build.rustc", value + "/bin/rustc", config)
+            set("build.redox", value + "/bin/redox", config)
             set("build.cargo", value + "/bin/cargo", config)
         elif option.name == "llvm-root":
             set(

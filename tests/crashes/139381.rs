@@ -1,5 +1,5 @@
 //@ known-bug: #139381
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 trait A<'a> {
     type Assoc: ?Sized;
 }

@@ -254,8 +254,8 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
     let mut result = String::new();
 
     let (pass_type, pass_lifetimes, pass_import, context_import) = match lint.pass {
-        Pass::Early => ("EarlyLintPass", "", "use rustc_ast::ast::*;", "EarlyContext"),
-        Pass::Late => ("LateLintPass", "<'_>", "use rustc_hir::*;", "LateContext"),
+        Pass::Early => ("EarlyLintPass", "", "use redox_ast::ast::*;", "EarlyContext"),
+        Pass::Late => ("LateLintPass", "<'_>", "use redox_hir::*;", "LateContext"),
     };
     let (msrv_ty, msrv_ctor, extract_msrv) = match lint.pass {
         Pass::Early => (
@@ -278,8 +278,8 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
             use clippy_utils::msrvs::{{self, {msrv_ty}}};
             use clippy_config::Conf;
             {pass_import}
-            use rustc_lint::{{{context_import}, {pass_type}}};
-            use rustc_session::impl_lint_pass;
+            use redox_lint::{{{context_import}, {pass_type}}};
+            use redox_session::impl_lint_pass;
 
         "
         );
@@ -288,8 +288,8 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
             result,
             r"
             {pass_import}
-            use rustc_lint::{{{context_import}, {pass_type}}};
-            use rustc_session::declare_lint_pass;
+            use redox_lint::{{{context_import}, {pass_type}}};
+            use redox_session::declare_lint_pass;
 
         "
         );
@@ -406,7 +406,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
             lint_file_contents,
             r#"
                 use clippy_utils::msrvs::{{self, {msrv_ty}}};
-                use rustc_lint::{{{context_import}, LintContext}};
+                use redox_lint::{{{context_import}, LintContext}};
 
                 use super::{name_upper};
 
@@ -423,7 +423,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
         let _: fmt::Result = writedoc!(
             lint_file_contents,
             r"
-                use rustc_lint::{{{context_import}, LintContext}};
+                use redox_lint::{{{context_import}, LintContext}};
 
                 use super::{name_upper};
 

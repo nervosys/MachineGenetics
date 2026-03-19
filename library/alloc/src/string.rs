@@ -430,8 +430,8 @@ impl String {
     /// let s = String::new();
     /// ```
     #[inline]
-    #[rustc_const_stable(feature = "const_string_new", since = "1.39.0")]
-    #[rustc_diagnostic_item = "string_new"]
+    #[redox_const_stable(feature = "const_string_new", since = "1.39.0")]
+    #[redox_diagnostic_item = "string_new"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> String {
@@ -556,7 +556,7 @@ impl String {
     /// [`into_bytes`]: String::into_bytes
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "string_from_utf8"]
+    #[redox_diagnostic_item = "string_from_utf8"]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
         match str::from_utf8(&vec) {
             Ok(..) => Ok(String { vec }),
@@ -1029,8 +1029,8 @@ impl String {
     #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
-    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_bytes(self) -> Vec<u8> {
         self.vec
     }
@@ -1047,8 +1047,8 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
-    #[rustc_diagnostic_item = "string_as_str"]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_diagnostic_item = "string_as_str"]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn as_str(&self) -> &str {
         // SAFETY: String contents are stipulated to be valid UTF-8, invalid contents are an error
         // at construction.
@@ -1070,8 +1070,8 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
-    #[rustc_diagnostic_item = "string_as_mut_str"]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_diagnostic_item = "string_as_mut_str"]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn as_mut_str(&mut self) -> &mut str {
         // SAFETY: String contents are stipulated to be valid UTF-8, invalid contents are an error
         // at construction.
@@ -1096,8 +1096,8 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("append", "push")]
-    #[rustc_diagnostic_item = "string_push_str"]
+    #[redox_confusables("append", "push")]
+    #[redox_diagnostic_item = "string_push_str"]
     pub fn push_str(&mut self, string: &str) {
         self.vec.extend_from_slice(string.as_bytes())
     }
@@ -1168,7 +1168,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn capacity(&self) -> usize {
         self.vec.capacity()
     }
@@ -1441,7 +1441,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn as_bytes(&self) -> &[u8] {
         self.vec.as_slice()
     }
@@ -1526,7 +1526,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
-    #[rustc_confusables("delete", "take")]
+    #[redox_confusables("delete", "take")]
     pub fn remove(&mut self, idx: usize) -> char {
         let ch = match self[idx..].chars().next() {
             Some(ch) => ch,
@@ -1722,7 +1722,7 @@ impl String {
     #[inline]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("set")]
+    #[redox_confusables("set")]
     pub fn insert(&mut self, idx: usize, ch: char) {
         assert!(self.is_char_boundary(idx));
 
@@ -1779,7 +1779,7 @@ impl String {
     #[inline]
     #[track_caller]
     #[stable(feature = "insert_str", since = "1.16.0")]
-    #[rustc_diagnostic_item = "string_insert_str"]
+    #[redox_diagnostic_item = "string_insert_str"]
     pub fn insert_str(&mut self, idx: usize, string: &str) {
         assert!(self.is_char_boundary(idx));
 
@@ -1832,7 +1832,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {
         &mut self.vec
     }
@@ -1854,9 +1854,9 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
-    #[rustc_confusables("length", "size")]
-    #[rustc_no_implicit_autorefs]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_confusables("length", "size")]
+    #[redox_no_implicit_autorefs]
     pub const fn len(&self) -> usize {
         self.vec.len()
     }
@@ -1875,8 +1875,8 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
-    #[rustc_no_implicit_autorefs]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_no_implicit_autorefs]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -2696,7 +2696,7 @@ impl_eq! { Cow<'_, str>, &'_ str }
 impl_eq! { Cow<'_, str>, String }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl const Default for String {
     /// Creates an empty `String`.
     #[inline]
@@ -2861,7 +2861,7 @@ impl FromStr for String {
 /// implementation for free.
 ///
 /// [`Display`]: fmt::Display
-#[rustc_diagnostic_item = "ToString"]
+#[redox_diagnostic_item = "ToString"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToString {
     /// Converts the given value to a `String`.
@@ -2874,9 +2874,9 @@ pub trait ToString {
     ///
     /// assert_eq!(five, i.to_string());
     /// ```
-    #[rustc_conversion_suggestion]
+    #[redox_conversion_suggestion]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "to_string_method"]
+    #[redox_diagnostic_item = "to_string_method"]
     fn to_string(&self) -> String;
 }
 

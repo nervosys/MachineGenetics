@@ -8,12 +8,12 @@
 //! Ensure ELF raw-dylib is able to link against the verbatim versioned library
 //! without it being present, and then be executed against this library.
 
-use run_make_support::{build_native_dynamic_lib, cwd, diff, rfs, run, rustc};
+use run_make_support::{build_native_dynamic_lib, cwd, diff, rfs, run, redox};
 
 fn main() {
     // We compile the binary without having the library present.
     // We also set the rpath to the current directory so we can pick up the library at runtime.
-    rustc()
+    redox()
         .crate_type("bin")
         .input("main.rs")
         .arg(&format!("-Wl,-rpath={}", cwd().display()))

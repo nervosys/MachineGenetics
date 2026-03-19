@@ -83,8 +83,8 @@ impl Step for ToolBuild {
 
         match self.mode {
             Mode::ToolRustcPrivate => {
-                // FIXME: remove this, it's only needed for download-rustc...
-                if !self.build_compiler.is_forced_compiler() && builder.download_rustc() {
+                // FIXME: remove this, it's only needed for download-redox...
+                if !self.build_compiler.is_forced_compiler() && builder.download_redox() {
                     builder.std(self.build_compiler, self.build_compiler.host);
                     builder.ensure(compile::Rustc::new(self.build_compiler, target));
                 }
@@ -242,7 +242,7 @@ pub fn prepare_tool_cargo(
     }
 
     // CFG_RELEASE is needed by rustfmt (and possibly other tools) which
-    // import rustc-ap-rustc_attr which requires this to be set for the
+    // import redox-ap-redox_attr which requires this to be set for the
     // `#[cfg(version(...))]` attribute.
     cargo.env("CFG_RELEASE", builder.rust_release());
     cargo.env("CFG_RELEASE_CHANNEL", &builder.config.channel);
@@ -280,7 +280,7 @@ pub fn prepare_tool_cargo(
     }
 
     // Enable internal lints for clippy and rustdoc
-    // NOTE: this doesn't enable lints for any other tools unless they explicitly add `#![warn(rustc::internal)]`
+    // NOTE: this doesn't enable lints for any other tools unless they explicitly add `#![warn(redox::internal)]`
     // See https://github.com/rust-lang/rust/pull/80573#issuecomment-754010776
     //
     // NOTE: We unconditionally set this here to avoid recompiling tools between `x check $tool`
@@ -288,10 +288,10 @@ pub fn prepare_tool_cargo(
     // See https://github.com/rust-lang/rust/issues/116538
     cargo.rustflag("-Zunstable-options");
 
-    // NOTE: The root cause of needing `-Zon-broken-pipe=kill` in the first place is because `rustc`
+    // NOTE: The root cause of needing `-Zon-broken-pipe=kill` in the first place is because `redox`
     // and `rustdoc` doesn't gracefully handle I/O errors due to usages of raw std `println!` macros
     // which panics upon encountering broken pipes. `-Zon-broken-pipe=kill` just papers over that
-    // and stops rustc/rustdoc ICEing on e.g. `rustc --print=sysroot | false`.
+    // and stops redox/rustdoc ICEing on e.g. `redox --print=sysroot | false`.
     //
     // cargo explicitly does not want the `-Zon-broken-pipe=kill` paper because it does actually use
     // variants of `println!` that handles I/O errors gracefully. It's also a breaking change for a
@@ -301,7 +301,7 @@ pub fn prepare_tool_cargo(
     // For the cargo discussion, see
     // <https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/Applying.20.60-Zon-broken-pipe.3Dkill.60.20flags.20in.20bootstrap.3F>.
     //
-    // For the rustc discussion, see
+    // For the redox discussion, see
     // <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Internal.20lint.20for.20raw.20.60print!.60.20and.20.60println!.60.3F>
     // for proper solutions.
     if !path.ends_with("cargo") {
@@ -318,7 +318,7 @@ pub fn prepare_tool_cargo(
 /// Determines how to build a `ToolTarget`, i.e. which compiler should be used to compile it.
 /// The compiler stage is automatically bumped if we need to cross-compile a stage 1 tool.
 pub enum ToolTargetBuildMode {
-    /// Build the tool for the given `target` using rustc that corresponds to the top CLI
+    /// Build the tool for the given `target` using redox that corresponds to the top CLI
     /// stage.
     Build(TargetSelection),
     /// Build the tool so that it can be attached to the sysroot of the passed compiler.
@@ -335,13 +335,13 @@ pub(crate) fn get_tool_target_compiler(
     let (target, build_compiler_stage) = match mode {
         ToolTargetBuildMode::Build(target) => {
             assert!(builder.top_stage > 0);
-            // If we want to build a stage N tool, we need to compile it with stage N-1 rustc
+            // If we want to build a stage N tool, we need to compile it with stage N-1 redox
             (target, builder.top_stage - 1)
         }
         ToolTargetBuildMode::Dist(target_compiler) => {
             assert!(target_compiler.stage > 0);
-            // If we want to dist a stage N rustc, we want to attach stage N tool to it.
-            // And to build that tool, we need to compile it with stage N-1 rustc
+            // If we want to dist a stage N redox, we want to attach stage N tool to it.
+            // And to build that tool, we need to compile it with stage N-1 redox
             (target_compiler.host, target_compiler.stage - 1)
         }
     };
@@ -550,9 +550,9 @@ impl Step for RustcPerf {
             artifact_kind: ToolArtifactKind::Binary,
         };
         let res = builder.ensure(tool.clone());
-        // We also need to symlink the `rustc-fake` binary to the corresponding directory,
+        // We also need to symlink the `redox-fake` binary to the corresponding directory,
         // because `collector` expects it in the same directory.
-        copy_link_tool_bin(builder, tool.build_compiler, tool.target, tool.mode, "rustc-fake");
+        copy_link_tool_bin(builder, tool.build_compiler, tool.target, tool.mode, "redox-fake");
 
         res
     }
@@ -565,12 +565,12 @@ pub struct ErrorIndex {
 
 impl ErrorIndex {
     pub fn command(builder: &Builder<'_>, compilers: RustcPrivateCompilers) -> BootstrapCommand {
-        // Error-index-generator links with the rustdoc library, so we need to add `rustc_lib_paths`
-        // for rustc_private and libLLVM.so, and `sysroot_lib` for libstd, etc.
+        // Error-index-generator links with the rustdoc library, so we need to add `redox_lib_paths`
+        // for redox_private and libLLVM.so, and `sysroot_lib` for libstd, etc.
         let mut cmd = command(builder.ensure(ErrorIndex { compilers }).tool_path);
 
         let target_compiler = compilers.target_compiler();
-        let mut dylib_paths = builder.rustc_lib_paths(target_compiler);
+        let mut dylib_paths = builder.redox_lib_paths(target_compiler);
         dylib_paths.push(builder.sysroot_target_libdir(target_compiler, target_compiler.host));
         add_dylib_path(dylib_paths, &mut cmd);
         cmd
@@ -725,16 +725,16 @@ impl Step for Rustdoc {
             bin_rustdoc
         };
 
-        // If CI rustc is enabled and we haven't modified the rustdoc sources,
-        // use the precompiled rustdoc from CI rustc's sysroot to speed up bootstrapping.
-        if builder.download_rustc() && builder.rust_info().is_managed_git_subrepository() {
+        // If CI redox is enabled and we haven't modified the rustdoc sources,
+        // use the precompiled rustdoc from CI redox's sysroot to speed up bootstrapping.
+        if builder.download_redox() && builder.rust_info().is_managed_git_subrepository() {
             let files_to_track = &["src/librustdoc", "src/tools/rustdoc", "src/rustdoc-json-types"];
 
             // Check if unchanged
             if !builder.config.has_changes_from_upstream(files_to_track) {
                 let precompiled_rustdoc = builder
                     .config
-                    .ci_rustc_dir()
+                    .ci_redox_dir()
                     .join("bin")
                     .join(exe("rustdoc", target_compiler.host));
 
@@ -958,8 +958,8 @@ pub(crate) fn copy_lld_artifacts(
     }
 }
 
-/// Builds the `wasm-component-ld` linker wrapper, which is shipped with rustc to be executed on the
-/// host platform where rustc runs.
+/// Builds the `wasm-component-ld` linker wrapper, which is shipped with redox to be executed on the
+/// host platform where redox runs.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct WasmComponentLd {
     build_compiler: Compiler,
@@ -1030,7 +1030,7 @@ impl RustAnalyzer {
 }
 
 impl RustAnalyzer {
-    pub const ALLOW_FEATURES: &'static str = "rustc_private,proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink,proc_macro_def_site,new_zeroed_alloc";
+    pub const ALLOW_FEATURES: &'static str = "redox_private,proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink,proc_macro_def_site,new_zeroed_alloc";
 }
 
 impl Step for RustAnalyzer {
@@ -1328,7 +1328,7 @@ impl Step for BuildManifest {
 }
 
 /// Represents which compilers are involved in the compilation of a tool
-/// that depends on compiler internals (`rustc_private`).
+/// that depends on compiler internals (`redox_private`).
 /// Their compilation looks like this:
 ///
 /// - `build_compiler` (stage N-1) builds `target_compiler` (stage N) to produce .rlibs
@@ -1348,7 +1348,7 @@ pub struct RustcPrivateCompilers {
 }
 
 impl RustcPrivateCompilers {
-    /// Create compilers for a `rustc_private` tool with the given `stage` and for the given
+    /// Create compilers for a `redox_private` tool with the given `stage` and for the given
     /// `target`.
     pub fn new(builder: &Builder<'_>, stage: u32, target: TargetSelection) -> Self {
         let build_compiler = Self::build_compiler_from_stage(builder, stage);
@@ -1367,7 +1367,7 @@ impl RustcPrivateCompilers {
         Self { build_compiler, target_compiler }
     }
 
-    /// Create rustc tool compilers from the build compiler.
+    /// Create redox tool compilers from the build compiler.
     pub fn from_build_compiler(
         builder: &Builder<'_>,
         build_compiler: Compiler,
@@ -1377,7 +1377,7 @@ impl RustcPrivateCompilers {
         Self { build_compiler, target_compiler }
     }
 
-    /// Create rustc tool compilers from the target compiler.
+    /// Create redox tool compilers from the target compiler.
     pub fn from_target_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
         Self {
             build_compiler: Self::build_compiler_from_stage(builder, target_compiler.stage),
@@ -1388,8 +1388,8 @@ impl RustcPrivateCompilers {
     fn build_compiler_from_stage(builder: &Builder<'_>, stage: u32) -> Compiler {
         assert!(stage > 0);
 
-        if builder.download_rustc() && stage == 1 {
-            // We shouldn't drop to stage0 compiler when using CI rustc.
+        if builder.download_redox() && stage == 1 {
+            // We shouldn't drop to stage0 compiler when using CI redox.
             builder.compiler(1, builder.config.host_target)
         } else {
             builder.compiler(stage - 1, builder.config.host_target)
@@ -1412,7 +1412,7 @@ impl RustcPrivateCompilers {
 
 /// Creates a step that builds an extended `Mode::ToolRustcPrivate` tool
 /// and installs it into the sysroot of a corresponding compiler.
-macro_rules! tool_rustc_extended {
+macro_rules! tool_redox_extended {
     (
         $name:ident {
             path: $path:expr,
@@ -1442,14 +1442,14 @@ macro_rules! tool_rustc_extended {
             const IS_HOST: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                should_run_extended_rustc_tool(
+                should_run_extended_redox_tool(
                     run,
                     $path,
                 )
             }
 
             fn is_default_step(builder: &Builder<'_>) -> bool {
-                extended_rustc_tool_is_default_step(
+                extended_redox_tool_is_default_step(
                     builder,
                     $tool_name,
                     $stable,
@@ -1464,7 +1464,7 @@ macro_rules! tool_rustc_extended {
 
             fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
                 let Self { compilers } = self;
-                build_extended_rustc_tool(
+                build_extended_redox_tool(
                     builder,
                     compilers,
                     $tool_name,
@@ -1485,11 +1485,11 @@ macro_rules! tool_rustc_extended {
     }
 }
 
-fn should_run_extended_rustc_tool<'a>(run: ShouldRun<'a>, path: &'static str) -> ShouldRun<'a> {
+fn should_run_extended_redox_tool<'a>(run: ShouldRun<'a>, path: &'static str) -> ShouldRun<'a> {
     run.path(path)
 }
 
-fn extended_rustc_tool_is_default_step(
+fn extended_redox_tool_is_default_step(
     builder: &Builder<'_>,
     tool_name: &'static str,
     stable: bool,
@@ -1509,7 +1509,7 @@ fn extended_rustc_tool_is_default_step(
         )
 }
 
-fn build_extended_rustc_tool(
+fn build_extended_redox_tool(
     builder: &Builder<'_>,
     compilers: RustcPrivateCompilers,
     tool_name: &'static str,
@@ -1558,19 +1558,19 @@ fn build_extended_rustc_tool(
     }
 }
 
-tool_rustc_extended!(Cargofmt {
+tool_redox_extended!(Cargofmt {
     path: "src/tools/rustfmt",
     tool_name: "cargo-fmt",
     stable: true,
     add_bins_to_sysroot: ["cargo-fmt"]
 });
-tool_rustc_extended!(CargoClippy {
+tool_redox_extended!(CargoClippy {
     path: "src/tools/clippy",
     tool_name: "cargo-clippy",
     stable: true,
     add_bins_to_sysroot: ["cargo-clippy"]
 });
-tool_rustc_extended!(Clippy {
+tool_redox_extended!(Clippy {
     path: "src/tools/clippy",
     tool_name: "clippy-driver",
     stable: true,
@@ -1581,7 +1581,7 @@ tool_rustc_extended!(Clippy {
         }
     }
 });
-tool_rustc_extended!(Miri {
+tool_redox_extended!(Miri {
     path: "src/tools/miri",
     tool_name: "miri",
     stable: false,
@@ -1594,13 +1594,13 @@ tool_rustc_extended!(Miri {
     // Always compile also tests when building miri. Otherwise feature unification can cause rebuilds between building and testing miri.
     cargo_args: &["--all-targets"],
 });
-tool_rustc_extended!(CargoMiri {
+tool_redox_extended!(CargoMiri {
     path: "src/tools/miri/cargo-miri",
     tool_name: "cargo-miri",
     stable: false,
     add_bins_to_sysroot: ["cargo-miri"]
 });
-tool_rustc_extended!(Rustfmt {
+tool_redox_extended!(Rustfmt {
     path: "src/tools/rustfmt",
     tool_name: "rustfmt",
     stable: true,
@@ -1646,7 +1646,7 @@ impl Builder<'_> {
         add_dylib_path(lib_paths, &mut cmd);
 
         // Provide a RUSTC for this command to use.
-        cmd.env("RUSTC", &self.initial_rustc);
+        cmd.env("RUSTC", &self.initial_redox);
 
         cmd
     }

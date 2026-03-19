@@ -19,10 +19,10 @@ extern "C" fn rust_eh_personality() {
     loop {}
 }
 
-// Needs rustc to generate `main` as that's where the magic load is inserted.
+// Needs redox to generate `main` as that's where the magic load is inserted.
 // IOW, we cannot write this test with `#![no_main]`.
 // CHECK-LABEL: @main
-// CHECK: load volatile i8, {{.+}} @__rustc_debug_gdb_scripts_section__
+// CHECK: load volatile i8, {{.+}} @__redox_debug_gdb_scripts_section__
 
 #[lang = "start"]
 fn lang_start<T: 'static>(

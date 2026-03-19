@@ -14,7 +14,7 @@
 //@ ignore-backends: gcc
 
 #![allow(warnings)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![crate_type="rlib"]
 
 // Add Arm ---------------------------------------------------------------------
@@ -29,10 +29,10 @@ pub fn add_arm(x: u32) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail6")]
 pub fn add_arm(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -55,10 +55,10 @@ pub fn change_order_of_arms(x: u32) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail6")]
 pub fn change_order_of_arms(x: u32) -> u32 {
     match x {
         1 => 1,
@@ -80,10 +80,10 @@ pub fn add_guard_clause(x: u32, y: bool) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail6")]
 pub fn add_guard_clause(x: u32, y: bool) -> u32 {
     match x {
         0 => 0,
@@ -105,10 +105,10 @@ pub fn change_guard_clause(x: u32, y: bool) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail6")]
 pub fn change_guard_clause(x: u32, y: bool) -> u32 {
     match x {
         0 => 0,
@@ -130,10 +130,10 @@ pub fn add_at_binding(x: u32) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail6")]
 pub fn add_at_binding(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -155,10 +155,10 @@ pub fn change_name_of_at_binding(x: u32) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail6")]
 pub fn change_name_of_at_binding(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -179,10 +179,10 @@ pub fn change_simple_name_to_pattern(x: u32) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail6")]
 pub fn change_simple_name_to_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (0, 0) => 0,
@@ -203,10 +203,10 @@ pub fn change_name_in_pattern(x: u32) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail6")]
 pub fn change_name_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (b, 0) => 0,
@@ -228,10 +228,10 @@ pub fn change_mutability_of_binding_in_pattern(x: u32) -> u32 {
 
 // Ignore optimized_mir in cfail2, the only change to optimized MIR is a span.
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail6")]
 pub fn change_mutability_of_binding_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (mut a, 0) => 0,
@@ -251,10 +251,10 @@ pub fn add_ref_to_binding_in_pattern(x: u32) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail6")]
 pub fn add_ref_to_binding_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (ref a, 0) => 0,
@@ -274,10 +274,10 @@ pub fn add_amp_to_binding_in_pattern(x: u32) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail6")]
 pub fn add_amp_to_binding_in_pattern(x: u32) -> u32 {
     match (&x, x & 1) {
         (&a, 0) => 0,
@@ -298,10 +298,10 @@ pub fn change_rhs_of_arm(x: u32) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail6")]
 pub fn change_rhs_of_arm(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -323,10 +323,10 @@ pub fn add_alternative_to_arm(x: u32) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail6")]
 pub fn add_alternative_to_arm(x: u32) -> u32 {
     match x {
         0 | 7 => 0,

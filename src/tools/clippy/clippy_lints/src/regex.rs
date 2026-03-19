@@ -6,12 +6,12 @@ use clippy_utils::paths;
 use clippy_utils::paths::PathLookup;
 use clippy_utils::res::MaybeQPath;
 use clippy_utils::source::SpanRangeExt;
-use rustc_ast::ast::{LitKind, StrStyle};
-use rustc_hir::def_id::DefIdMap;
-use rustc_hir::{BorrowKind, Expr, ExprKind, OwnerId};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
-use rustc_span::{BytePos, Span};
+use redox_ast::ast::{LitKind, StrStyle};
+use redox_hir::def_id::DefIdMap;
+use redox_hir::{BorrowKind, Expr, ExprKind, OwnerId};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
+use redox_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -192,7 +192,7 @@ fn lint_syntax_error(cx: &LateContext<'_>, error: &regex_syntax::Error, unescape
     if let Some((primary, auxiliary, kind)) = parts
         && let Some(literal_snippet) = base.get_source_text(cx)
         && let Some(inner) = literal_snippet.get(offset as usize..)
-        // Only convert to native rustc spans if the parsed regex matches the
+        // Only convert to native redox spans if the parsed regex matches the
         // source snippet exactly, to ensure the span offsets are correct
         && inner.get(..unescaped.len()) == Some(unescaped)
     {

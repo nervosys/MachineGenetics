@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{find_assert_eq_args, root_macro_call_first_node};
 use clippy_utils::{is_unit_expr, sym};
-use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::LateContext;
+use redox_hir::{BinOpKind, Expr, ExprKind};
+use redox_lint::LateContext;
 
 use super::UNIT_CMP;
 

@@ -486,7 +486,7 @@
                     "registry": null
                 },
                 {
-                    "name": "rustc-std-workspace-core",
+                    "name": "redox-std-workspace-core",
                     "source": "registry+https://github.com/rust-lang/crates.io-index",
                     "req": "^1.0.0",
                     "kind": null,
@@ -623,7 +623,7 @@
                 ],
                 "default": [],
                 "example_generated": [],
-                "rustc-dep-of-std": [
+                "redox-dep-of-std": [
                     "core",
                     "compiler_builtins"
                 ]
@@ -1258,7 +1258,7 @@
                     "registry": null
                 },
                 {
-                    "name": "rustc-std-workspace-core",
+                    "name": "redox-std-workspace-core",
                     "source": "registry+https://github.com/rust-lang/crates.io-index",
                     "req": "^1.0.0",
                     "kind": null,
@@ -1307,7 +1307,7 @@
                 "core": [
                     "dep:core"
                 ],
-                "rustc-dep-of-std": [
+                "redox-dep-of-std": [
                     "core",
                     "compiler_builtins"
                 ]
@@ -3741,7 +3741,7 @@
                     "registry": null
                 },
                 {
-                    "name": "rustc-std-workspace-core",
+                    "name": "redox-std-workspace-core",
                     "source": "registry+https://github.com/rust-lang/crates.io-index",
                     "req": "^1.0.0",
                     "kind": null,
@@ -3790,10 +3790,10 @@
                 ],
                 "default": [],
                 "docs": [],
-                "rustc-dep-of-std": [
+                "redox-dep-of-std": [
                     "core",
-                    "compiler_builtins/rustc-dep-of-std",
-                    "libc/rustc-dep-of-std"
+                    "compiler_builtins/redox-dep-of-std",
+                    "libc/redox-dep-of-std"
                 ]
             },
             "manifest_path": "$ROOT$.cargo/registry/src/index.crates.io-6f17d22bba15001f/hermit-abi-0.1.19/Cargo.toml",
@@ -4855,7 +4855,7 @@
             "source": "registry+https://github.com/rust-lang/crates.io-index",
             "dependencies": [
                 {
-                    "name": "rustc-std-workspace-core",
+                    "name": "redox-std-workspace-core",
                     "source": "registry+https://github.com/rust-lang/crates.io-index",
                     "req": "^1.0.0",
                     "kind": null,
@@ -4918,12 +4918,12 @@
                     "std"
                 ],
                 "extra_traits": [],
-                "rustc-dep-of-std": [
+                "redox-dep-of-std": [
                     "align",
-                    "rustc-std-workspace-core"
+                    "redox-std-workspace-core"
                 ],
-                "rustc-std-workspace-core": [
-                    "dep:rustc-std-workspace-core"
+                "redox-std-workspace-core": [
+                    "dep:redox-std-workspace-core"
                 ],
                 "std": [],
                 "use_std": [
@@ -5259,7 +5259,7 @@
                     "registry": null
                 },
                 {
-                    "name": "rustc-std-workspace-core",
+                    "name": "redox-std-workspace-core",
                     "source": "registry+https://github.com/rust-lang/crates.io-index",
                     "req": "^1.0.0",
                     "kind": null,
@@ -5338,7 +5338,7 @@
                 "libc": [
                     "dep:libc"
                 ],
-                "rustc-dep-of-std": [
+                "redox-dep-of-std": [
                     "core",
                     "compiler_builtins"
                 ],
@@ -6240,7 +6240,7 @@
             "metadata": {
                 "docs": {
                     "rs": {
-                        "rustc-args": [
+                        "redox-args": [
                             "--cfg",
                             "procmacro2_semver_exempt"
                         ],
@@ -9824,7 +9824,7 @@
                     "registry": null
                 },
                 {
-                    "name": "rustc-std-workspace-core",
+                    "name": "redox-std-workspace-core",
                     "source": "registry+https://github.com/rust-lang/crates.io-index",
                     "req": "^1.0",
                     "kind": null,
@@ -9836,7 +9836,7 @@
                     "registry": null
                 },
                 {
-                    "name": "rustc-std-workspace-std",
+                    "name": "redox-std-workspace-std",
                     "source": "registry+https://github.com/rust-lang/crates.io-index",
                     "req": "^1.0",
                     "kind": null,
@@ -9874,7 +9874,7 @@
                 ],
                 "default": [],
                 "no_std": [],
-                "rustc-dep-of-std": [
+                "redox-dep-of-std": [
                     "std",
                     "core",
                     "compiler_builtins"

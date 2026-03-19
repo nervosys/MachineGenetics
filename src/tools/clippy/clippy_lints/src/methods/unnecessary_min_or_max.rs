@@ -6,11 +6,11 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 
 use clippy_utils::sym;
-use rustc_errors::Applicability;
-use rustc_hir::Expr;
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_span::{Span, Symbol};
+use redox_errors::Applicability;
+use redox_hir::Expr;
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_span::{Span, Symbol};
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,

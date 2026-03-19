@@ -23,7 +23,7 @@ paths.workspace = true
 span = { path = "../span", version = "0.0.0", default-features = false}
 intern.workspace = true
 
-ra-ap-rustc_lexer.workspace = true
+ra-ap-redox_lexer.workspace = true
 
 
 [target.'cfg(unix)'.dependencies]

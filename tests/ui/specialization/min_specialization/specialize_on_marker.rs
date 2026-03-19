@@ -1,12 +1,12 @@
-// Test that specializing on a `rustc_unsafe_specialization_marker` trait is
+// Test that specializing on a `redox_unsafe_specialization_marker` trait is
 // allowed.
 
 //@ check-pass
 
 #![feature(min_specialization)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_unsafe_specialization_marker]
+#[redox_unsafe_specialization_marker]
 trait SpecMarker {}
 
 trait X {

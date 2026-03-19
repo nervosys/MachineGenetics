@@ -45,7 +45,7 @@ pub extern "cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
 ```
 
 ``` text
-$ rustc --emit obj --crate-type lib --target thumbv8m.main-none-eabi function.rs
+$ redox --emit obj --crate-type lib --target thumbv8m.main-none-eabi function.rs
 $ arm-none-eabi-objdump -D function.o
 
 00000000 <entry_function>:

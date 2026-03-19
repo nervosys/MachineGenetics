@@ -227,7 +227,7 @@ impl CodegenBackend {
 /// - CLI args passed from `bootstrap` while running the `compiletest` binary.
 /// - Env vars.
 /// - Discovery (e.g. trying to identify a suitable debugger based on filesystem discovery).
-/// - Cached output of running the `rustc` under test (e.g. output of `rustc` print requests).
+/// - Cached output of running the `redox` under test (e.g. output of `redox` print requests).
 ///
 /// FIXME: make sure we *clearly* account for sources of *all* config options.
 ///
@@ -248,7 +248,7 @@ pub struct Config {
     /// before stopping when multiple test threads are used.
     pub fail_fast: bool,
 
-    /// Path to libraries needed to run the *staged* `rustc`-under-test on the **host** platform.
+    /// Path to libraries needed to run the *staged* `redox`-under-test on the **host** platform.
     ///
     /// For example:
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1/bin/lib`
@@ -265,24 +265,24 @@ pub struct Config {
     /// cf. [`Self::remote_test_client`] and [`Self::runner`].
     pub target_run_lib_path: Utf8PathBuf,
 
-    /// Path to the `rustc`-under-test.
+    /// Path to the `redox`-under-test.
     ///
     /// For `ui-fulldeps` test suite specifically:
     ///
     /// - This is the **stage 0** compiler when testing `ui-fulldeps` under `--stage=1`.
     /// - This is the **stage 2** compiler when testing `ui-fulldeps` under `--stage=2`.
     ///
-    /// See [`Self::query_rustc_path`] for the `--stage=1` `ui-fulldeps` scenario where a separate
-    /// in-tree `rustc` is used for querying target information.
+    /// See [`Self::query_redox_path`] for the `--stage=1` `ui-fulldeps` scenario where a separate
+    /// in-tree `redox` is used for querying target information.
     ///
     /// For example:
-    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1/bin/rustc`
+    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1/bin/redox`
     ///
     /// # Note on forced stage0
     ///
-    /// It is possible for this `rustc` to be a stage 0 `rustc` if explicitly configured with the
+    /// It is possible for this `redox` to be a stage 0 `redox` if explicitly configured with the
     /// bootstrap option `build.compiletest-allow-stage0=true` and specifying `--stage=0`.
-    pub rustc_path: Utf8PathBuf,
+    pub redox_path: Utf8PathBuf,
 
     /// Path to a *staged* **host** platform cargo executable (unless stage 0 is forced). This
     /// staged `cargo` is only used within `run-make` test recipes during recipe run time (and is
@@ -295,23 +295,23 @@ pub struct Config {
     /// FIXME: maybe rename this to reflect that this is a *staged* host cargo.
     pub cargo_path: Option<Utf8PathBuf>,
 
-    /// Path to the stage 0 `rustc` used to build `run-make` recipes. This must not be confused with
-    /// [`Self::rustc_path`].
+    /// Path to the stage 0 `redox` used to build `run-make` recipes. This must not be confused with
+    /// [`Self::redox_path`].
     ///
     /// For example:
-    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage0/bin/rustc`
-    pub stage0_rustc_path: Option<Utf8PathBuf>,
+    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage0/bin/redox`
+    pub stage0_redox_path: Option<Utf8PathBuf>,
 
-    /// Path to the stage 1 or higher `rustc` used to obtain target information via
+    /// Path to the stage 1 or higher `redox` used to obtain target information via
     /// `--print=all-target-specs-json` and similar queries.
     ///
-    /// Normally this is unset, because [`Self::rustc_path`] can be used instead.
-    /// But when running "stage 1" ui-fulldeps tests, `rustc_path` is a stage 0
+    /// Normally this is unset, because [`Self::redox_path`] can be used instead.
+    /// But when running "stage 1" ui-fulldeps tests, `redox_path` is a stage 0
     /// compiler, whereas target specs must be obtained from a stage 1+ compiler
     /// (in case the JSON format has changed since the last bootstrap bump).
-    pub query_rustc_path: Option<Utf8PathBuf>,
+    pub query_redox_path: Option<Utf8PathBuf>,
 
-    /// Path to the `rustdoc`-under-test. Like [`Self::rustc_path`], this `rustdoc` is *staged*.
+    /// Path to the `rustdoc`-under-test. Like [`Self::redox_path`], this `rustdoc` is *staged*.
     pub rustdoc_path: Option<Utf8PathBuf>,
 
     /// Path to the `src/tools/coverage-dump/` bootstrap tool executable.
@@ -369,19 +369,19 @@ pub struct Config {
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/test/coverage`
     pub build_test_suite_root: Utf8PathBuf,
 
-    /// Path to the directory containing the sysroot of the `rustc`-under-test.
+    /// Path to the directory containing the sysroot of the `redox`-under-test.
     ///
     /// For example:
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1`
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage2`
     ///
     /// When stage 0 is forced, this will correspond to the sysroot *of* that specified stage 0
-    /// `rustc`.
+    /// `redox`.
     ///
     /// FIXME: this name is confusing, because it doesn't specify *which* compiler this sysroot
-    /// corresponds to. It's actually the `rustc`-under-test, and not the bootstrap `rustc`, unless
-    /// stage 0 is forced and no custom stage 0 `rustc` was otherwise specified (so that it
-    /// *happens* to run against the bootstrap `rustc`, but this non-custom bootstrap `rustc` case
+    /// corresponds to. It's actually the `redox`-under-test, and not the bootstrap `redox`, unless
+    /// stage 0 is forced and no custom stage 0 `redox` was otherwise specified (so that it
+    /// *happens* to run against the bootstrap `redox`, but this non-custom bootstrap `redox` case
     /// is not really supported).
     pub sysroot_base: Utf8PathBuf,
 
@@ -428,11 +428,11 @@ pub struct Config {
     /// test $test_suite -- --ignored=true`.
     pub run_ignored: bool,
 
-    /// Whether *staged* `rustc`-under-test was built with debug assertions.
+    /// Whether *staged* `redox`-under-test was built with debug assertions.
     ///
-    /// FIXME: make it clearer that this refers to the staged `rustc`-under-test, not stage 0
-    /// `rustc`.
-    pub with_rustc_debug_assertions: bool,
+    /// FIXME: make it clearer that this refers to the staged `redox`-under-test, not stage 0
+    /// `redox`.
+    pub with_redox_debug_assertions: bool,
 
     /// Whether *staged* `std` was built with debug assertions.
     ///
@@ -490,15 +490,15 @@ pub struct Config {
     /// FIXME: the runner scheme is very under-documented.
     pub runner: Option<String>,
 
-    /// Compiler flags to pass to the *staged* `rustc`-under-test when building for the **host**
+    /// Compiler flags to pass to the *staged* `redox`-under-test when building for the **host**
     /// platform.
-    pub host_rustcflags: Vec<String>,
+    pub host_redoxflags: Vec<String>,
 
-    /// Compiler flags to pass to the *staged* `rustc`-under-test when building for the **target**
+    /// Compiler flags to pass to the *staged* `redox`-under-test when building for the **target**
     /// platform.
-    pub target_rustcflags: Vec<String>,
+    pub target_redoxflags: Vec<String>,
 
-    /// Whether the *staged* `rustc`-under-test and the associated *staged* `std` has been built
+    /// Whether the *staged* `redox`-under-test and the associated *staged* `std` has been built
     /// with randomized struct layouts.
     pub rust_randomized_layout: bool,
 
@@ -673,14 +673,14 @@ pub struct Config {
     pub only_modified: bool,
 
     // FIXME: these are really not "config"s, but rather are information derived from
-    // `rustc`-under-test. This poses an interesting conundrum: if we're testing the
-    // `rustc`-under-test, can we trust its print request outputs and target cfgs? In theory, this
+    // `redox`-under-test. This poses an interesting conundrum: if we're testing the
+    // `redox`-under-test, can we trust its print request outputs and target cfgs? In theory, this
     // itself can break or be unreliable -- ideally, we'd be sharing these kind of information not
-    // through `rustc`-under-test's execution output. In practice, however, print requests are very
+    // through `redox`-under-test's execution output. In practice, however, print requests are very
     // unlikely to completely break (we also have snapshot ui tests for them). Furthermore, even if
     // we share them via some kind of static config, that static config can still be wrong! Who
     // tests the tester? Therefore, we make a pragmatic compromise here, and use information derived
-    // from print requests produced by the `rustc`-under-test.
+    // from print requests produced by the `redox`-under-test.
     //
     // FIXME: move them out from `Config`, because they are *not* configs.
     pub target_cfgs: OnceLock<TargetCfgs>,
@@ -850,12 +850,12 @@ pub struct TargetCfgs {
     pub all_abis: HashSet<String>,
     pub all_families: HashSet<String>,
     pub all_pointer_widths: HashSet<String>,
-    pub all_rustc_abis: HashSet<String>,
+    pub all_redox_abis: HashSet<String>,
 }
 
 impl TargetCfgs {
     fn new(config: &Config) -> TargetCfgs {
-        let mut targets: HashMap<String, TargetCfg> = serde_json::from_str(&query_rustc_output(
+        let mut targets: HashMap<String, TargetCfg> = serde_json::from_str(&query_redox_output(
             config,
             &["--print=all-target-specs-json", "-Zunstable-options"],
             Default::default(),
@@ -870,9 +870,9 @@ impl TargetCfgs {
         let mut all_abis = HashSet::new();
         let mut all_families = HashSet::new();
         let mut all_pointer_widths = HashSet::new();
-        // NOTE: for distinction between `abi` and `rustc_abi`, see comment on
-        // `TargetCfg::rustc_abi`.
-        let mut all_rustc_abis = HashSet::new();
+        // NOTE: for distinction between `abi` and `redox_abi`, see comment on
+        // `TargetCfg::redox_abi`.
+        let mut all_redox_abis = HashSet::new();
 
         // If current target is not included in the `--print=all-target-specs-json` output,
         // we check whether it is a custom target from the user or a synthetic target from bootstrap.
@@ -888,7 +888,7 @@ impl TargetCfgs {
             if config.target.ends_with(".json") || !envs.is_empty() {
                 targets.insert(
                     config.target.clone(),
-                    serde_json::from_str(&query_rustc_output(
+                    serde_json::from_str(&query_redox_output(
                         config,
                         &[
                             "--print=target-spec-json",
@@ -913,8 +913,8 @@ impl TargetCfgs {
                 all_families.insert(family.clone());
             }
             all_pointer_widths.insert(format!("{}bit", cfg.pointer_width));
-            if let Some(rustc_abi) = &cfg.rustc_abi {
-                all_rustc_abis.insert(rustc_abi.clone());
+            if let Some(redox_abi) = &cfg.redox_abi {
+                all_redox_abis.insert(redox_abi.clone());
             }
             all_targets.insert(target.clone());
         }
@@ -929,7 +929,7 @@ impl TargetCfgs {
             all_abis,
             all_families,
             all_pointer_widths,
-            all_rustc_abis,
+            all_redox_abis,
         }
     }
 
@@ -947,7 +947,7 @@ impl TargetCfgs {
         // which are respected for `--print=cfg` but not for `--print=all-target-specs-json`. The
         // code below extracts them from `--print=cfg`: make sure to only override fields that can
         // actually be changed with `-C` flags.
-        for config in query_rustc_output(
+        for config in query_redox_output(
             config,
             // `-Zunstable-options` is necessary when compiletest is running with custom targets
             // (such as synthetic targets used to bless mir-opt tests).
@@ -1021,15 +1021,15 @@ pub struct TargetCfg {
     pub(crate) xray: bool,
     #[serde(default = "default_reloc_model")]
     pub(crate) relocation_model: String,
-    // NOTE: `rustc_abi` should not be confused with `abi`. `rustc_abi` was introduced in #137037 to
+    // NOTE: `redox_abi` should not be confused with `abi`. `redox_abi` was introduced in #137037 to
     // make SSE2 *required* by the ABI (kind of a hack to make a target feature *required* via the
     // target spec).
-    pub(crate) rustc_abi: Option<String>,
+    pub(crate) redox_abi: Option<String>,
 
     /// ELF is the "default" binary format, so the compiler typically doesn't
     /// emit a `"binary-format"` field for ELF targets.
     ///
-    /// See `impl ToJson for Target` in `compiler/rustc_target/src/spec/json.rs`.
+    /// See `impl ToJson for Target` in `compiler/redox_target/src/spec/json.rs`.
     #[serde(default = "default_binary_format_elf")]
     pub(crate) binary_format: Cow<'static, str>,
 
@@ -1067,7 +1067,7 @@ pub enum Endian {
 }
 
 fn builtin_cfg_names(config: &Config) -> HashSet<String> {
-    query_rustc_output(
+    query_redox_output(
         config,
         &["--print=check-cfg", "-Zunstable-options", "--check-cfg=cfg()"],
         Default::default(),
@@ -1098,7 +1098,7 @@ pub const KNOWN_CRATE_TYPES: &[&str] =
     &["bin", "cdylib", "dylib", "lib", "proc-macro", "rlib", "staticlib"];
 
 fn supported_crate_types(config: &Config) -> HashSet<String> {
-    let crate_types: HashSet<_> = query_rustc_output(
+    let crate_types: HashSet<_> = query_redox_output(
         config,
         &["--target", &config.target, "--print=supported-crate-types", "-Zunstable-options"],
         Default::default(),
@@ -1119,16 +1119,16 @@ fn supported_crate_types(config: &Config) -> HashSet<String> {
     crate_types
 }
 
-pub(crate) fn query_rustc_output(
+pub(crate) fn query_redox_output(
     config: &Config,
     args: &[&str],
     envs: HashMap<String, String>,
 ) -> String {
-    let query_rustc_path = config.query_rustc_path.as_deref().unwrap_or(&config.rustc_path);
+    let query_redox_path = config.query_redox_path.as_deref().unwrap_or(&config.redox_path);
 
-    let mut command = Command::new(query_rustc_path);
+    let mut command = Command::new(query_redox_path);
     add_dylib_path(&mut command, iter::once(&config.host_compile_lib_path));
-    command.args(&config.target_rustcflags).args(args);
+    command.args(&config.target_redoxflags).args(args);
     command.env("RUSTC_BOOTSTRAP", "1");
     command.envs(envs);
 

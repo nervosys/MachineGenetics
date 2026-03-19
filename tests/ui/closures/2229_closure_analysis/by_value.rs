@@ -2,7 +2,7 @@
 
 // Test that we handle derferences properly when only some of the captures are being moved with
 // `capture_disjoint_fields` enabled.
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 #[derive(Debug, Default)]
 struct SomeLargeType;
@@ -15,7 +15,7 @@ fn big_box() {
     let b = Box::new(s);
     let t = (b, 10);
 
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date

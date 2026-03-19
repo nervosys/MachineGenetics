@@ -47,14 +47,14 @@ genmc-sys = { path = "./genmc-sys/", version = "0.1.0", optional = true }
 [dev-dependencies]
 ui_test = "0.30.2"
 colored = "3"
-rustc_version = "0.4"
+redox_version = "0.4"
 regex = "1.5.5"
 tempfile = "3"
 
 [package.metadata.rust-analyzer]
-# This crate uses #[feature(rustc_private)].
+# This crate uses #[feature(redox_private)].
 # See https://github.com/rust-analyzer/rust-analyzer/pull/7891
-rustc_private = true
+redox_private = true
 
 [[test]]
 name = "ui"
@@ -75,5 +75,5 @@ level = "warn"
 check-cfg = ['cfg(bootstrap)']
 
 # Be aware that this file is inside a workspace when used via the
-# submodule in the rustc repo. That means there are many cargo features
+# submodule in the redox repo. That means there are many cargo features
 # we cannot use, such as profiles.

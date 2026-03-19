@@ -1,5 +1,5 @@
 //@ compile-flags: -Zsanitizer=cfi -Cunsafe-allow-abi-mismatch=sanitizer -Ccodegen-units=1 -Clto
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 //@ needs-sanitizer-cfi
 //@ build-pass
 //@ no-prefer-dynamic

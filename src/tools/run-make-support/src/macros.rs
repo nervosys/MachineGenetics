@@ -34,7 +34,7 @@ macro_rules! impl_common_helpers {
     };
     ($wrapper: ident, $before_exec: expr) => {
         impl $wrapper {
-            /// In very rare circumstances, you may need a e.g. `bare_rustc()` or `bare_rustdoc()`
+            /// In very rare circumstances, you may need a e.g. `bare_redox()` or `bare_rustdoc()`
             /// with host runtime libs configured, but want the underlying raw
             /// [`std::process::Command`] (e.g. for manipulating pipes or whatever). This function
             /// will consume the command wrapper and extract the underlying

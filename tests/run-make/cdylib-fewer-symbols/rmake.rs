@@ -7,11 +7,11 @@
 //@ ignore-cross-compile
 // Reason: The __rust_ symbol appears during cross-compilation.
 
-use run_make_support::{dynamic_lib_name, llvm_readobj, rustc};
+use run_make_support::{dynamic_lib_name, llvm_readobj, redox};
 
 fn main() {
     // Compile a cdylib
-    rustc().input("foo.rs").run();
+    redox().input("foo.rs").run();
     let out =
         llvm_readobj().arg("--dyn-symbols").input(dynamic_lib_name("foo")).run().stdout_utf8();
     assert!(!&out.contains("__rdl_"), "{out}");

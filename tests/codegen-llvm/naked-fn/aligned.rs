@@ -5,14 +5,14 @@
 
 #![crate_type = "lib"]
 // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(fn_align)]
 
 use std::arch::naked_asm;
 
 // CHECK: .balign 16
 // CHECK-LABEL: naked_empty:
-#[rustc_align(16)]
+#[redox_align(16)]
 #[no_mangle]
 #[unsafe(naked)]
 pub extern "C" fn naked_empty() {

@@ -3,11 +3,11 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::ty::{deref_chain, get_adt_inherent_method};
 use clippy_utils::{higher, is_from_proc_macro, is_in_test, sym};
-use rustc_ast::ast::RangeLimits;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty};
-use rustc_session::impl_lint_pass;
+use redox_ast::ast::RangeLimits;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::{self, Ty};
+use redox_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -194,7 +194,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                     // Index is a constant uint.
                     if let Some(constant) = ConstEvalCtxt::new(cx).eval(index) {
                         // only `usize` index is legal in rust array index
-                        // leave other type to rustc
+                        // leave other type to redox
                         if let Constant::Int(off) = constant
                             && off <= usize::MAX as u128
                             && let ty::Uint(utype) = cx.typeck_results().expr_ty(index).kind()
@@ -210,7 +210,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                                 span_lint(cx, OUT_OF_BOUNDS_INDEXING, expr.span, "index is out of bounds");
                             }
                         }
-                        // Let rustc's `const_err` lint handle constant `usize` indexing on arrays.
+                        // Let redox's `const_err` lint handle constant `usize` indexing on arrays.
                         return;
                     }
                 }

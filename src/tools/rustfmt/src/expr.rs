@@ -2,9 +2,9 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use itertools::Itertools;
-use rustc_ast::token::{Delimiter, Lit, LitKind};
-use rustc_ast::{ForLoopKind, MatchKind, ast, token};
-use rustc_span::{BytePos, Span};
+use redox_ast::token::{Delimiter, Lit, LitKind};
+use redox_ast::{ForLoopKind, MatchKind, ast, token};
+use redox_span::{BytePos, Span};
 use tracing::debug;
 
 use crate::chains::rewrite_chain;

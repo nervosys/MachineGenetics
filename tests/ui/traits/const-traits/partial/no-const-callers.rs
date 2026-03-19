@@ -1,8 +1,8 @@
-#![feature(const_trait_impl, rustc_attrs)]
+#![feature(const_trait_impl, redox_attrs)]
 
 const trait A {
     fn a();
-    #[rustc_non_const_trait_method]
+    #[redox_non_const_trait_method]
     fn b() { println!("hi"); }
 }
 

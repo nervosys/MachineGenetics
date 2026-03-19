@@ -2,9 +2,9 @@ use super::FORMAT_COLLECT;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{is_format_macro, root_macro_call_first_node};
 use clippy_utils::res::MaybeDef;
-use rustc_hir::{Expr, ExprKind, LangItem};
-use rustc_lint::LateContext;
-use rustc_span::Span;
+use redox_hir::{Expr, ExprKind, LangItem};
+use redox_lint::LateContext;
+use redox_span::Span;
 
 /// Same as `peel_blocks` but only actually considers blocks that are not from an expansion.
 /// This is needed because always calling `peel_blocks` would otherwise remove parts of the

@@ -289,7 +289,7 @@ fn baz() {}
     // and that's why are good to test two things:
     // * no cycles are allowed in mod declarations
     // * no modules from the parent directory are proposed
-    // Unfortunately, binary modules support is in cargo not rustc,
+    // Unfortunately, binary modules support is in cargo not redox,
     // hence the test does not work now
     //
     // #[test]

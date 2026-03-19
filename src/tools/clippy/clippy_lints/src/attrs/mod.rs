@@ -16,11 +16,11 @@ mod utils;
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv, MsrvStack};
-use rustc_ast::{self as ast, AttrArgs, AttrItemKind, AttrKind, Attribute, MetaItemInner, MetaItemKind};
-use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
-use rustc_span::sym;
+use redox_ast::{self as ast, AttrArgs, AttrItemKind, AttrKind, Attribute, MetaItemInner, MetaItemKind};
+use redox_hir::{ImplItem, Item, ItemKind, TraitItem};
+use redox_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
+use redox_span::sym;
 use utils::{is_lint_level, is_relevant_impl, is_relevant_item, is_relevant_trait};
 
 declare_clippy_lint! {

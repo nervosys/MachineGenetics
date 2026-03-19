@@ -1,13 +1,13 @@
 //@ compile-flags: -Z track-diagnostics
 //@ dont-require-annotations: NOTE
-//@ rustc-env:RUST_BACKTRACE=0
+//@ redox-env:RUST_BACKTRACE=0
 //@ failure-status: 101
 
 // Normalize the emitted location so this doesn't need
 // updating everytime someone adds or removes a line.
 //@ normalize-stderr: ".rs:\d+:\d+" -> ".rs:LL:CC"
-//@ normalize-stderr: "note: rustc .+ running on .+" -> "note: rustc $$VERSION running on $$TARGET"
-//@ normalize-stderr: "/rustc(?:-dev)?/[a-z0-9.]+/" -> ""
+//@ normalize-stderr: "note: redox .+ running on .+" -> "note: redox $$VERSION running on $$TARGET"
+//@ normalize-stderr: "/redox(?:-dev)?/[a-z0-9.]+/" -> ""
 
 // The test becomes too flaky if we care about exact args. If `-Z ui-testing`
 // from compiletest and `-Z track-diagnostics` from `// compile-flags` at the

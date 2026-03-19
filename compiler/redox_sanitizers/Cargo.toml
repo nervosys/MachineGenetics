@@ -1,0 +1,18 @@
+[package]
+name = "redox_sanitizers"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+bitflags = "2.5.0"
+redox_abi = { path = "../redox_abi" }
+redox_data_structures = { path = "../redox_data_structures" }
+redox_hir = { path = "../redox_hir" }
+redox_middle = { path = "../redox_middle" }
+redox_span = { path = "../redox_span" }
+redox_target = { path = "../redox_target" }
+redox_trait_selection = { path = "../redox_trait_selection" }
+tracing = "0.1"
+twox-hash = "1.6.3"
+# tidy-alphabetical-end

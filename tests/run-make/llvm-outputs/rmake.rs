@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use run_make_support::{cwd, run_in_tmpdir, rustc};
+use run_make_support::{cwd, run_in_tmpdir, redox};
 
 fn main() {
     let mut path_bc = PathBuf::new();
@@ -12,8 +12,8 @@ fn main() {
         let p = cwd();
         path_bc = p.join("nonexistent_dir_bc");
         path_ir = p.join("nonexistent_dir_ir");
-        rustc().input("-").stdin_buf("fn main() {}").out_dir(&path_bc).emit("llvm-bc").run();
-        rustc().input("-").stdin_buf("fn main() {}").out_dir(&path_ir).emit("llvm-ir").run();
+        redox().input("-").stdin_buf("fn main() {}").out_dir(&path_bc).emit("llvm-bc").run();
+        redox().input("-").stdin_buf("fn main() {}").out_dir(&path_ir).emit("llvm-ir").run();
         assert!(path_bc.exists());
         assert!(path_ir.exists());
     });

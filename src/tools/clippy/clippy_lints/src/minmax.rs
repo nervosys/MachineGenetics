@@ -2,10 +2,10 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::sym;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::SyntaxContext;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::SyntaxContext;
 use std::cmp::Ordering::{Equal, Greater, Less};
 
 declare_clippy_lint! {

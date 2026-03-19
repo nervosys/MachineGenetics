@@ -7,11 +7,11 @@
 
 //@ only-x86_64-pc-windows-msvc
 
-use run_make_support::{bin_name, invalid_utf8_contains, invalid_utf8_not_contains, run, rustc};
+use run_make_support::{bin_name, invalid_utf8_contains, invalid_utf8_not_contains, run, redox};
 
 fn main() {
     // Test that we don't have the full path to the PDB file in the binary
-    rustc()
+    redox()
         .input("main.rs")
         .arg("-g")
         .crate_name("my_crate_name")
@@ -26,7 +26,7 @@ fn main() {
     out.assert_stdout_contains("my_crate_name::fn_in_backtrace");
     out.assert_stdout_contains("main.rs:15");
     // Test that explicitly passed `-Clink-arg=/PDBALTPATH:...` is respected
-    rustc()
+    redox()
         .input("main.rs")
         .arg("-g")
         .crate_name("my_crate_name")

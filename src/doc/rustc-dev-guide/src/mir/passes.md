@@ -34,8 +34,8 @@ A `MirPass` is some bit of code that processes the MIR, typically transforming i
 somehow. But it may also do other things like linting (e.g., [`CheckPackedRef`][lint1],
 [`CheckConstItemMutation`][lint2], [`FunctionItemReferences`][lint3], which implement `MirLint`) or
 optimization (e.g., [`SimplifyCfg`][opt1], [`RemoveUnneededDrops`][opt2]). While most MIR passes
-are defined in the [`rustc_mir_transform`][mirtransform] crate, the `MirPass` trait itself is
-[found][mirpass] in the `rustc_middle` crate, and it basically consists of one primary method,
+are defined in the [`redox_mir_transform`][mirtransform] crate, the `MirPass` trait itself is
+[found][mirpass] in the `redox_middle` crate, and it basically consists of one primary method,
 `run_pass`, that simply gets an `&mut Body` (along with the `tcx`).
 The MIR is therefore modified in place (which helps to keep things efficient).
 
@@ -168,15 +168,15 @@ queries are called before it actually steals, thus ensuring that the reads have 
 simply loads from a cache the second time).
 
 [rust-lang/rust#41710]: https://github.com/rust-lang/rust/issues/41710
-[mirpass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/pass_manager/trait.MirPass.html
-[lint1]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/check_packed_ref/struct.CheckPackedRef.html
-[lint2]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/check_const_item_mutation/struct.CheckConstItemMutation.html
-[lint3]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/function_item_references/struct.FunctionItemReferences.html
-[opt1]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/simplify/enum.SimplifyCfg.html
-[opt2]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/remove_unneeded_drops/struct.RemoveUnneededDrops.html
-[mirtransform]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/
-[`RemoveStorageMarkers`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/remove_storage_markers/struct.RemoveStorageMarkers.html
-[cleanup-pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/cleanup_post_borrowck/struct.CleanupPostBorrowck.html
-[cleanup-source]: https://github.com/rust-lang/rust/blob/e2b52ff73edc8b0b7c74bc28760d618187731fe8/compiler/rustc_mir_transform/src/cleanup_post_borrowck.rs#L27
-[pass-register]: https://github.com/rust-lang/rust/blob/e2b52ff73edc8b0b7c74bc28760d618187731fe8/compiler/rustc_mir_transform/src/lib.rs#L413
+[mirpass]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/pass_manager/trait.MirPass.html
+[lint1]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/check_packed_ref/struct.CheckPackedRef.html
+[lint2]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/check_const_item_mutation/struct.CheckConstItemMutation.html
+[lint3]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/function_item_references/struct.FunctionItemReferences.html
+[opt1]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/simplify/enum.SimplifyCfg.html
+[opt2]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/remove_unneeded_drops/struct.RemoveUnneededDrops.html
+[mirtransform]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/
+[`RemoveStorageMarkers`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/remove_storage_markers/struct.RemoveStorageMarkers.html
+[cleanup-pass]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/cleanup_post_borrowck/struct.CleanupPostBorrowck.html
+[cleanup-source]: https://github.com/rust-lang/rust/blob/e2b52ff73edc8b0b7c74bc28760d618187731fe8/compiler/redox_mir_transform/src/cleanup_post_borrowck.rs#L27
+[pass-register]: https://github.com/rust-lang/rust/blob/e2b52ff73edc8b0b7c74bc28760d618187731fe8/compiler/redox_mir_transform/src/lib.rs#L413
 [MIR visitor]: ./visitor.html

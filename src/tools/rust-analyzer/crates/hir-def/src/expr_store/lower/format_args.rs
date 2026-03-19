@@ -385,7 +385,7 @@ impl<'db> ExprCollector<'db> {
         // We collect the unused expressions here so that we still infer them instead of
         // dropping them out of the expression tree. We cannot store them in the `Unsafe`
         // block because then unsafe blocks within them will get a false "unused unsafe"
-        // diagnostic (rustc has a notion of builtin unsafe blocks, but we don't).
+        // diagnostic (redox has a notion of builtin unsafe blocks, but we don't).
         statements
             .extend(fmt.orphans.into_iter().map(|expr| Statement::Expr { expr, has_semi: true }));
 
@@ -494,7 +494,7 @@ impl<'db> ExprCollector<'db> {
             })
         };
 
-        // Assume that rustc version >= 1.89.0 iff lang item `format_arguments` exists
+        // Assume that redox version >= 1.89.0 iff lang item `format_arguments` exists
         // but `format_unsafe_arg` does not
         let lang_items = self.lang_items();
         let fmt_args = lang_items.FormatArguments;
@@ -520,7 +520,7 @@ impl<'db> ExprCollector<'db> {
         }
     }
 
-    /// `format_args!` expansion implementation for rustc versions < `1.89.0`
+    /// `format_args!` expansion implementation for redox versions < `1.89.0`
     fn collect_format_args_before_1_89_0_impl(
         &mut self,
         syntax_ptr: AstPtr<ast::Expr>,
@@ -595,7 +595,7 @@ impl<'db> ExprCollector<'db> {
                 // We collect the unused expressions here so that we still infer them instead of
                 // dropping them out of the expression tree. We cannot store them in the `Unsafe`
                 // block because then unsafe blocks within them will get a false "unused unsafe"
-                // diagnostic (rustc has a notion of builtin unsafe blocks, but we don't).
+                // diagnostic (redox has a notion of builtin unsafe blocks, but we don't).
                 statements: fmt
                     .orphans
                     .into_iter()
@@ -615,7 +615,7 @@ impl<'db> ExprCollector<'db> {
         )
     }
 
-    /// `format_args!` expansion implementation for rustc versions >= `1.89.0`,
+    /// `format_args!` expansion implementation for redox versions >= `1.89.0`,
     /// especially since [this PR](https://github.com/rust-lang/rust/pull/140748)
     fn collect_format_args_after_1_89_0_impl(
         &mut self,

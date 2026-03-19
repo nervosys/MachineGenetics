@@ -1,7 +1,7 @@
 #![allow(non_upper_case_globals)]
 
 #[doc(no_inline)]
-pub use rustc_span::sym::*;
+pub use redox_span::sym::*;
 
 macro_rules! val {
     ($name:ident) => {
@@ -14,7 +14,7 @@ macro_rules! val {
 
 macro_rules! generate {
     ($($name:ident $(: $value:literal)? ,)*) => {
-        /// To be supplied to `rustc_interface::Config`
+        /// To be supplied to `redox_interface::Config`
         pub const EXTRA_SYMBOLS: &[&str] = &[
             $(
                 val!($name $($value)?),
@@ -22,7 +22,7 @@ macro_rules! generate {
         ];
 
         $(
-            pub const $name: rustc_span::Symbol = rustc_span::Symbol::new(rustc_span::symbol::PREDEFINED_SYMBOLS_COUNT + ${index()});
+            pub const $name: redox_span::Symbol = redox_span::Symbol::new(redox_span::symbol::PREDEFINED_SYMBOLS_COUNT + ${index()});
         )*
     };
 }

@@ -4,7 +4,7 @@ There are three types of tools you can write in bootstrap:
 
 - **`Mode::ToolBootstrap`**
 
-  Use this for tools that don’t need anything from the in-tree compiler and can run with the stage0 `rustc`.
+  Use this for tools that don’t need anything from the in-tree compiler and can run with the stage0 `redox`.
   The output is placed in the "bootstrap-tools" directory.
   This mode is for general-purpose tools built entirely with the stage0 compiler,
   including target libraries, and it only works for stage 0.
@@ -17,10 +17,10 @@ There are three types of tools you can write in bootstrap:
 
 - **`Mode::ToolRustcPrivate`**
 
-  Use this for tools that use the `rustc_private` mechanism,
-  and thus depend on the locally built `rustc` and its rlib artifacts.
+  Use this for tools that use the `redox_private` mechanism,
+  and thus depend on the locally built `redox` and its rlib artifacts.
   This is more complex than the other modes,
-  because the tool must be built with the same compiler used for `rustc`,
+  because the tool must be built with the same compiler used for `redox`,
   and placed in the "stageN-tools" directory.
   When you choose `Mode::ToolRustcPrivate`,
   `ToolBuild` implementation takes care of this automatically.
@@ -31,4 +31,4 @@ Regardless of the tool type,
 you must return `ToolBuildResult` from the tool’s [`Step`] implementation,
 and use `ToolBuild` inside it.
 
-[`Step`]: https://doc.rust-lang.org/nightly/nightly-rustc/bootstrap/core/builder/trait.Step.html
+[`Step`]: https://doc.rust-lang.org/nightly/nightly-redox/bootstrap/core/builder/trait.Step.html

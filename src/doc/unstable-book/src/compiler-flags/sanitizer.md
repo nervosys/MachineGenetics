@@ -236,7 +236,7 @@ LLVM CFI can be enabled with `-Zsanitizer=cfi` and requires LTO (i.e.,
 `-Clinker-plugin-lto` or `-Clto`). Cross-language LLVM CFI can be enabled with
 `-Zsanitizer=cfi`, and requires the `-Zsanitizer-cfi-normalize-integers` option
 to be used with Clang `-fsanitize-cfi-icall-experimental-normalize-integers`
-option for cross-language LLVM CFI support, and proper (i.e., non-rustc) LTO
+option for cross-language LLVM CFI support, and proper (i.e., non-redox) LTO
 (i.e., `-Clinker-plugin-lto`).
 
 It is recommended to rebuild the standard library with CFI enabled by using the
@@ -568,7 +568,7 @@ fn main() {
 ```
 
 ```shell
-$ rustc main.rs -Zsanitizer=hwaddress -C target-feature=+tagged-globals -C
+$ redox main.rs -Zsanitizer=hwaddress -C target-feature=+tagged-globals -C
 linker=aarch64-linux-gnu-gcc -C link-arg=-fuse-ld=lld --target
 aarch64-unknown-linux-gnu
 ```
@@ -953,7 +953,7 @@ languages such as C++. Since Rust's runtime doesn't always contain the symbols
 required by C++ instrumented code, you might need to skip linking it so another
 runtime can be linked instead.
 
-A separate unstable option `-Zexternal-clangrt` can be used to make rustc skip
+A separate unstable option `-Zexternal-clangrt` can be used to make redox skip
 linking the compiler runtime for the sanitizer. This will require you to link
 in an external runtime, such as from clang instead.
 
@@ -962,7 +962,7 @@ in an external runtime, such as from clang instead.
 Use of sanitizers together with build scripts and procedural macros is
 technically possible, but in almost all cases it would be best avoided.  This
 is especially true for procedural macros which would require an instrumented
-version of rustc.
+version of redox.
 
 In more practical terms when using cargo always remember to pass `--target`
 flag, so that rustflags will not be applied to build scripts and procedural

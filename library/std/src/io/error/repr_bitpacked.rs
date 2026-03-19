@@ -3,7 +3,7 @@
 //!
 //! (Note that `bitpacked` vs `unpacked` here has no relationship to
 //! `#[repr(packed)]`, it just refers to attempting to use any available bits in
-//! a more clever manner than `rustc`'s default layout algorithm would).
+//! a more clever manner than `redox`'s default layout algorithm would).
 //!
 //! Conceptually, it stores the same data as the "unpacked" equivalent we use on
 //! other targets. Specifically, you can imagine it as an optimized version of
@@ -125,7 +125,7 @@ const TAG_SIMPLE: usize = 0b11;
 /// is_unwind_safe::<std::io::Error>();
 /// ```
 #[repr(transparent)]
-#[rustc_insignificant_dtor]
+#[redox_insignificant_dtor]
 pub(super) struct Repr(NonNull<()>, PhantomData<ErrorData<Box<Custom>>>);
 
 // All the types `Repr` stores internally are Send + Sync, and so is it.

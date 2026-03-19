@@ -11,9 +11,9 @@
 
 //@ compile-flags:-Zverbose-internals
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_regions]
+#[redox_regions]
 fn test() {
     let x = 44;
     let mut p = &x;

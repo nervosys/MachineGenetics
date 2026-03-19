@@ -9,13 +9,13 @@ use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::{eq_expr_value, is_in_const_context, peel_blocks, peel_blocks_with_stmt, sym};
 use itertools::Itertools;
-use rustc_errors::{Applicability, Diag};
-use rustc_hir::def::Res;
-use rustc_hir::{Arm, BinOpKind, Block, Expr, ExprKind, HirId, PatKind, PathSegment, PrimTy, QPath, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::Ty;
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use redox_errors::{Applicability, Diag};
+use redox_hir::def::Res;
+use redox_hir::{Arm, BinOpKind, Block, Expr, ExprKind, HirId, PatKind, PathSegment, PrimTy, QPath, StmtKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::Ty;
+use redox_session::impl_lint_pass;
+use redox_span::Span;
 use std::cmp::Ordering;
 use std::ops::Deref;
 
@@ -420,7 +420,7 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
 /// # ;
 /// ```
 fn is_match_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<ClampSuggestion<'tcx>> {
-    if let ExprKind::Match(value, [first_arm, second_arm, last_arm], rustc_hir::MatchSource::Normal) = &expr.kind {
+    if let ExprKind::Match(value, [first_arm, second_arm, last_arm], redox_hir::MatchSource::Normal) = &expr.kind {
         // Find possible min/max branches
         let minmax_values = |a: &'tcx Arm<'tcx>| {
             if let PatKind::Binding(_, var_hir_id, _, None) = &a.pat.kind

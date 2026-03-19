@@ -1,9 +1,9 @@
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
-use rustc_errors::Applicability;
-use rustc_hir::{Closure, Expr, ExprKind, HirId, StmtKind, UnOp};
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_span::Span;
+use redox_errors::Applicability;
+use redox_hir::{Closure, Expr, ExprKind, HirId, StmtKind, UnOp};
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_span::Span;
 
 use super::NEEDLESS_CHARACTER_ITERATION;
 use super::utils::get_last_chain_binding_hir_id;

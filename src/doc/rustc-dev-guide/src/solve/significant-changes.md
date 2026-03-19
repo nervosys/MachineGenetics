@@ -32,8 +32,8 @@ forces the new implementation to use a fixpoint algorithm when encountering cycl
 during trait solving: [source][cycle-fixpoint].
 
 [canonicalization]: ./canonicalization.md
-[evaluate_stack]: https://github.com/rust-lang/rust/blob/47dd709bedda8127e8daec33327e0a9d0cdae845/compiler/rustc_trait_selection/src/traits/select/mod.rs#L1232-L1237
-[cycle-fixpoint]: https://github.com/rust-lang/rust/blob/df8ac8f1d74cffb96a93ae702d16e224f5b9ee8c/compiler/rustc_trait_selection/src/solve/search_graph.rs#L382-L387
+[evaluate_stack]: https://github.com/rust-lang/rust/blob/47dd709bedda8127e8daec33327e0a9d0cdae845/compiler/redox_trait_selection/src/traits/select/mod.rs#L1232-L1237
+[cycle-fixpoint]: https://github.com/rust-lang/rust/blob/df8ac8f1d74cffb96a93ae702d16e224f5b9ee8c/compiler/redox_trait_selection/src/solve/search_graph.rs#L382-L387
 
 ### Deferred alias equality
 
@@ -60,8 +60,8 @@ As the new implementation has to be able to eagerly handle nested goals for
 candidate selection, always doing so reduces complexity. It may also enable
 us to merge more candidates in the future.
 
-[eval-nested]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_trait_selection/src/traits/select/mod.rs#L1271-L1277
-[fulfill-nested]: https://github.com/rust-lang/rust/blob/df8ac8f1d74cffb96a93ae702d16e224f5b9ee8c/compiler/rustc_trait_selection/src/traits/fulfill.rs#L708-L712
+[eval-nested]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_trait_selection/src/traits/select/mod.rs#L1271-L1277
+[fulfill-nested]: https://github.com/rust-lang/rust/blob/df8ac8f1d74cffb96a93ae702d16e224f5b9ee8c/compiler/redox_trait_selection/src/traits/fulfill.rs#L708-L712
 
 ### Nested goals are evaluated until reaching a fixpoint
 
@@ -93,7 +93,7 @@ using an impl which is entirely covered by a `where`-bound,  matching the
 behavior of the old implementation and avoiding some weird errors,
 e.g. [trait-system-refactor-initiative#76].
 
-[discard-from-env]: https://github.com/rust-lang/rust/blob/03994e498df79aa1f97f7bbcfd52d57c8e865049/compiler/rustc_trait_selection/src/solve/assembly/mod.rs#L785-L789
+[discard-from-env]: https://github.com/rust-lang/rust/blob/03994e498df79aa1f97f7bbcfd52d57c8e865049/compiler/redox_trait_selection/src/solve/assembly/mod.rs#L785-L789
 [trait-system-refactor-initiative#76]: https://github.com/rust-lang/trait-system-refactor-initiative/issues/76
 
 ### `NormalizesTo` goals are a function

@@ -25,7 +25,7 @@ A platform-provided C compiler toolchain is required, though it can be substitut
 
 ## Building
 
-The target can be built by enabling it for a `rustc` build.
+The target can be built by enabling it for a `redox` build.
 
 ```toml
 [build]
@@ -45,16 +45,16 @@ This target can be cross-compiled from any hosts.
 
 ## Testing
 
-Currently there is no support to run the rustc test suite for this target.
+Currently there is no support to run the redox test suite for this target.
 
 ## Building Rust programs
 
 Building executables is not supported yet.
 
-If `rustc` has support for that target and the library artifacts are available, then Rust static libraries can be built for that target:
+If `redox` has support for that target and the library artifacts are available, then Rust static libraries can be built for that target:
 
 ```shell
-$ rustc --target aarch64-kmc-solid_asp3 your-code.rs --crate-type staticlib
+$ redox --target aarch64-kmc-solid_asp3 your-code.rs --crate-type staticlib
 $ ls libyour_code.a
 ```
 

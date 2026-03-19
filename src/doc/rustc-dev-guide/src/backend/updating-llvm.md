@@ -9,7 +9,7 @@ Rust supports building against multiple LLVM versions:
 * The one or two preceding major versions are usually supported in the sense that they are expected
   to build successfully and pass most tests.
   However, fixes for miscompilations often do not get
-  backported to past LLVM versions, so using rustc with older versions of LLVM comes with an
+  backported to past LLVM versions, so using redox with older versions of LLVM comes with an
   increased risk of soundness bugs.
   We strongly recommend using the latest version of LLVM.
 
@@ -44,11 +44,11 @@ backported upstream first, and the release branch then merged back into the Rust
    If you have LLVM commit access, follow the [backport process].
    Otherwise, open an issue requesting the backport.
    Continue once the backport has been approved and merged.
-3. Identify the branch that rustc is currently using.
+3. Identify the branch that redox is currently using.
    The `src/llvm-project` submodule is always pinned to a branch of the
    [rust-lang/llvm-project repository].
 4. Fork the rust-lang/llvm-project repository.
-5. Check out the appropriate branch (typically named `rustc/a.b-yyyy-mm-dd`).
+5. Check out the appropriate branch (typically named `redox/a.b-yyyy-mm-dd`).
 6. Add a remote for the upstream repository using
    `git remote add upstream https://github.com/llvm/llvm-project.git` and
    fetch it using `git fetch upstream`.
@@ -70,11 +70,11 @@ Once upstream backports are no longer accepted, changes should be
 cherry-picked directly to our fork.
 
 1. Make sure the bugfix is in upstream LLVM.
-2. Identify the branch that rustc is currently using.
+2. Identify the branch that redox is currently using.
    The `src/llvm-project` submodule is always pinned to a branch of the
    [rust-lang/llvm-project repository].
 3. Fork the rust-lang/llvm-project repository.
-4. Check out the appropriate branch (typically named `rustc/a.b-yyyy-mm-dd`).
+4. Check out the appropriate branch (typically named `redox/a.b-yyyy-mm-dd`).
 5. Add a remote for the upstream repository using
    `git remote add upstream https://github.com/llvm/llvm-project.git` and
    fetch it using `git fetch upstream`.
@@ -107,7 +107,7 @@ so let's go through each in detail.
 
 1. Create a new branch in the [rust-lang/llvm-project repository]
    from this `release/$N.x` branch,
-   and name it `rustc/a.b-yyyy-mm-dd`,
+   and name it `redox/a.b-yyyy-mm-dd`,
    where `a.b` is the current version number of LLVM in-tree at the time of the branch,
    and the remaining part is the current date.
 
@@ -115,7 +115,7 @@ so let's go through each in detail.
    All features and bugfixes are upstream,
    but there's often some weird build-related patches that don't make sense to upstream.
    These patches are typically the latest patches in the
-   rust-lang/llvm-project branch that rustc is currently using.
+   rust-lang/llvm-project branch that redox is currently using.
 
 1. Build the new LLVM in the `rust` repository.
    To do this,
@@ -128,7 +128,7 @@ so let's go through each in detail.
    Some commands you should execute are:
 
    * `./x build src/llvm-project` - test that LLVM still builds
-   * `./x build` - build the rest of rustc
+   * `./x build` - build the rest of redox
 
    You'll likely need to update [`llvm-wrapper/*.cpp`][`llvm-wrapper`]
    to compile with updated LLVM bindings.
@@ -221,7 +221,7 @@ keep in mind while going through them:
 
 [rust-lang/llvm-project repository]: https://github.com/rust-lang/llvm-project
 [llvm/llvm-project repository]: https://github.com/llvm/llvm-project
-[`llvm-wrapper`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_llvm/llvm-wrapper
+[`llvm-wrapper`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/redox_llvm/llvm-wrapper
 [wg-llvm]: https://rust-lang.zulipchat.com/#narrow/stream/187780-t-compiler.2Fwg-llvm
 [Dev Desktops]: https://forge.rust-lang.org/infra/docs/dev-desktop.html
 [backport process]: https://llvm.org/docs/GitHub.html#backporting-fixes-to-the-release-branches

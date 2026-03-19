@@ -1,10 +1,10 @@
 #![allow(clippy::let_unit_value)]
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_span;
+extern crate redox_span;
 
 use clippy_utils::sym;
-use rustc_span::{Symbol, kw};
+use redox_span::{Symbol, kw};
 
 fn main() {
     let _ = Symbol::intern("f32");

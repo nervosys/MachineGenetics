@@ -8,17 +8,17 @@ rust-analyzer in the `rust-project.json` format:
 interface ProjectJson {
     /// Path to the sysroot directory.
     ///
-    /// The sysroot is where rustc looks for the
+    /// The sysroot is where redox looks for the
     /// crates that are built-in to rust, such as
     /// std.
     ///
-    /// https://doc.rust-lang.org/rustc/command-line-arguments.html#--sysroot-override-the-system-root
+    /// https://doc.rust-lang.org/redox/command-line-arguments.html#--sysroot-override-the-system-root
     ///
     /// To see the current value of sysroot, you
-    /// can query rustc:
+    /// can query redox:
     ///
     /// ```
-    /// $ rustc --print sysroot
+    /// $ redox --print sysroot
     /// /Users/yourname/.rustup/toolchains/stable-x86_64-apple-darwin
     /// ```
     sysroot?: string;
@@ -138,7 +138,7 @@ interface Crate {
     cfg?: string[];
     /// Target tuple for this Crate.
     ///
-    /// Used when running `rustc --print cfg`
+    /// Used when running `redox --print cfg`
     /// to get target-specific cfgs.
     target?: string;
     /// Environment variables, used for
@@ -212,7 +212,7 @@ interface Runnable {
     /// - `run`: This runnable will be used when the user clicks the 'Run' CodeLens
     ///    above a main function or triggers a run command.
     /// - `flycheck`: This is run to provide check-on-save diagnostics when the user
-    ///    saves a file. It must emit rustc JSON diagnostics that rust-analyzer can
+    ///    saves a file. It must emit redox JSON diagnostics that rust-analyzer can
     ///    parse. If this runnable is not specified, we may try to use `cargo check -p`.
     ///    This is only run for a single crate that the user saved a file in. The
     ///    {label} syntax is replaced with `BuildInfo::label`.
@@ -310,7 +310,7 @@ be substituted.
 A flycheck command using a complex build orchestrator like `"bazel", "build", "{label}"`, even with
 a tweak to return JSON messages, is often insufficient. Such a command will typically succeed if
 there are warnings, but if there are errors, it might "fail to compile" the diagnostics and not
-produce any output. You must build a package in such a way that the build succeeds even if `rustc`
+produce any output. You must build a package in such a way that the build succeeds even if `redox`
 exits with an error, and prints the JSON build messages in every case.
 
 ##### Diagnostics for upstream crates
@@ -323,11 +323,11 @@ entirely when there is a build error in an upstream crate.
 
 ##### Compiler options
 
-`cargo check` invokes rustc differently from `cargo build`. It turns off codegen (with `rustc
+`cargo check` invokes redox differently from `cargo build`. It turns off codegen (with `redox
 --emit=metadata`), which results in lower latency to get to diagnostics. If your build system can
 configure this, it is recommended.
 
-If your build tool can configure rustc for incremental compiles, this is also recommended.
+If your build tool can configure redox for incremental compiles, this is also recommended.
 
 ##### Locking and pre-emption
 

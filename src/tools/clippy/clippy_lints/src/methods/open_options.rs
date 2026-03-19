@@ -1,14 +1,14 @@
 use clippy_utils::res::MaybeDef;
-use rustc_data_structures::fx::FxHashMap;
+use redox_data_structures::fx::FxHashMap;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::{paths, sym};
-use rustc_ast::ast::LitKind;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::Ty;
-use rustc_span::Span;
-use rustc_span::Spanned;
+use redox_ast::ast::LitKind;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::LateContext;
+use redox_middle::ty::Ty;
+use redox_span::Span;
+use redox_span::Spanned;
 
 use super::{NONSENSICAL_OPEN_OPTIONS, SUSPICIOUS_OPEN_OPTIONS};
 
@@ -190,7 +190,7 @@ fn check_open_options(cx: &LateContext<'_>, settings: &[(OpenOption, Argument, S
                     create_span.shrink_to_hi(),
                     "add",
                     ".truncate(true)".to_string(),
-                    rustc_errors::Applicability::MaybeIncorrect,
+                    redox_errors::Applicability::MaybeIncorrect,
                 )
                 .help("if you intend to overwrite an existing file entirely, call `.truncate(true)`")
                 .help(

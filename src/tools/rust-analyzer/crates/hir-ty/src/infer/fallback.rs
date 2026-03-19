@@ -5,8 +5,8 @@ use petgraph::{
     Graph,
     visit::{Dfs, Walker},
 };
-use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
-use rustc_type_ir::{
+use redox_hash::{FxBuildHasher, FxHashMap, FxHashSet};
+use redox_type_ir::{
     TyVid,
     inherent::{IntoKind, Ty as _},
 };
@@ -151,8 +151,8 @@ impl<'db> InferenceContext<'_, 'db> {
         // type, `?T` is not considered unsolved, but `?I` is. The
         // same is true for float variables.)
         let fallback = match ty.kind() {
-            TyKind::Infer(rustc_type_ir::IntVar(_)) => self.types.types.i32,
-            TyKind::Infer(rustc_type_ir::FloatVar(_)) => self.types.types.f64,
+            TyKind::Infer(redox_type_ir::IntVar(_)) => self.types.types.i32,
+            TyKind::Infer(redox_type_ir::FloatVar(_)) => self.types.types.f64,
             _ => match diverging_fallback.get(&ty) {
                 Some(&fallback_ty) => fallback_ty,
                 None => return false,
@@ -340,7 +340,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     fallback_to(self.types.types.unit);
                 }
                 DivergingFallbackBehavior::ContextDependent => {
-                    // FIXME: rustc does the following, but given this is only relevant when the unstable
+                    // FIXME: redox does the following, but given this is only relevant when the unstable
                     // `never_type_fallback` feature is active, I chose to not port this.
                     // if found_infer_var_info.self_in_trait && found_infer_var_info.output {
                     //     // This case falls back to () to ensure that the code pattern in
@@ -366,7 +366,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     //     //
                     //     // For details on the requirements for these relationships to be
                     //     // set, see the relationship finding module in
-                    //     // compiler/rustc_trait_selection/src/traits/relationships.rs.
+                    //     // compiler/redox_trait_selection/src/traits/relationships.rs.
                     //     debug!("fallback to () - found trait and projection: {:?}", diverging_vid);
                     //     fallback_to(self.types.types.unit);
                     // }
@@ -380,7 +380,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
                 DivergingFallbackBehavior::ToNever => {
                     debug!(
-                        "fallback to ! - `rustc_never_type_mode = \"fallback_to_never\")`: {:?}",
+                        "fallback to ! - `redox_never_type_mode = \"fallback_to_never\")`: {:?}",
                         diverging_vid
                     );
                     fallback_to(self.types.types.never);

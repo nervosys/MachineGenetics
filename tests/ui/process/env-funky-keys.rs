@@ -9,7 +9,7 @@
 //@ ignore-fuchsia no 'execve'
 //@ no-prefer-dynamic
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 extern crate libc;
 

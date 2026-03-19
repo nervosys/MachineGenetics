@@ -8,11 +8,11 @@ use clippy_utils::ty::{
     implements_trait, implements_trait_with_env, is_copy, make_normalized_projection,
     make_normalized_projection_with_regions, normalize_with_regions,
 };
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, Mutability};
-use rustc_lint::LateContext;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, EarlyBinder, Ty};
+use redox_errors::Applicability;
+use redox_hir::{Expr, Mutability};
+use redox_lint::LateContext;
+use redox_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use redox_middle::ty::{self, EarlyBinder, Ty};
 
 pub(super) fn check(
     cx: &LateContext<'_>,
@@ -128,7 +128,7 @@ fn is_ref_iterable<'tcx>(
         let self_ty = typeck.expr_ty(self_arg);
         let self_is_copy = is_copy(cx, self_ty);
 
-        if self_ty.peel_refs().is_lang_item(cx, rustc_hir::LangItem::OwnedBox) && !msrv.meets(cx, msrvs::BOX_INTO_ITER)
+        if self_ty.peel_refs().is_lang_item(cx, redox_hir::LangItem::OwnedBox) && !msrv.meets(cx, msrvs::BOX_INTO_ITER)
         {
             return None;
         }

@@ -10,10 +10,10 @@ use clippy_utils::{
     peel_blocks, sym,
 };
 use core::ops::ControlFlow;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

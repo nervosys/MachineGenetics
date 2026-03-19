@@ -212,7 +212,7 @@ const fn needs_realloc<SRC, DEST>(src_cap: usize, dst_cap: usize) -> bool {
 }
 
 /// This provides a shorthand for the source type since local type aliases aren't a thing.
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 trait InPlaceCollect: SourceIter<Source: AsVecIntoIter> + InPlaceIterable {
     type Src;
 }
@@ -422,7 +422,7 @@ where
 ///
 /// In-place iteration relies on implementation details of `vec::IntoIter`, most importantly that
 /// it does not create references to the whole allocation during iteration, only raw pointers
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 pub(crate) unsafe trait AsVecIntoIter {
     type Item;
     fn as_into_iter(&mut self) -> &mut super::IntoIter<Self::Item>;

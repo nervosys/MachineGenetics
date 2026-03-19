@@ -6,20 +6,20 @@
 //@ ignore-remote
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 
-extern crate rustc_driver;
-extern crate rustc_interface;
-extern crate rustc_middle;
+extern crate redox_driver;
+extern crate redox_interface;
+extern crate redox_middle;
 extern crate serde;
 extern crate serde_json;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
-use rustc_middle::ty::TyCtxt;
+use redox_middle::ty::TyCtxt;
 use serde_json::to_string;
-use rustc_public::mir::Body;
+use redox_public::mir::Body;
 use std::io::{BufWriter, Write};
 use std::ops::ControlFlow;
 
@@ -28,9 +28,9 @@ const CRATE_NAME: &str = "input";
 fn serialize_to_json(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let path = "output.json";
     let mut writer = BufWriter::new(std::fs::File::create(path).expect("Failed to create path"));
-    let local_crate = rustc_public::local_crate();
+    let local_crate = redox_public::local_crate();
     let items: Vec<Body> =
-        rustc_public::all_local_items().iter().map(|item| item.expect_body()).collect();
+        redox_public::all_local_items().iter().map(|item| item.expect_body()).collect();
     let crate_data = (local_crate.name, items);
     writer
         .write_all(to_string(&crate_data).expect("serde_json failed").as_bytes())
@@ -46,7 +46,7 @@ fn main() {
     let path = "internal_input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),
         path.to_string(),

@@ -3,7 +3,7 @@
 use either::Either;
 use hir_expand::name::Name;
 use intern::Symbol;
-use rustc_parse_format as parse;
+use redox_parse_format as parse;
 use span::SyntaxContext;
 use stdx::TupleExt;
 use syntax::{

@@ -6,13 +6,13 @@ use clippy_utils::ty::same_type_modulo_regions;
 use clippy_utils::{
     SpanlessEq, eq_expr_value, get_parent_expr_for_hir, higher, is_else_clause, over, peel_blocks_with_stmt,
 };
-use rustc_errors::Applicability;
-use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{
+use redox_errors::Applicability;
+use redox_hir::LangItem::OptionNone;
+use redox_hir::{
     Arm, BindingMode, ByRef, Expr, ExprKind, ItemKind, Node, Pat, PatExpr, PatExprKind, PatKind, Path, QPath,
 };
-use rustc_lint::LateContext;
-use rustc_span::sym;
+use redox_lint::LateContext;
+use redox_span::sym;
 
 pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if arms.len() > 1 && expr_ty_matches_p_ty(cx, ex, expr) && check_all_arms(cx, ex, arms) {

@@ -18,7 +18,7 @@
 extern crate minicore;
 use minicore::*;
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 pub unsafe fn nontemporal_store<T>(ptr: *mut T, val: T);
 
 #[no_mangle]

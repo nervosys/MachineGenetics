@@ -1,4 +1,4 @@
-// Check if rustc still displays the misleading hint to write `.` instead of `..`
+// Check if redox still displays the misleading hint to write `.` instead of `..`
 fn main() {
     let width = 10;
     // ...

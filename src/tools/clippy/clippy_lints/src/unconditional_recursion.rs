@@ -1,21 +1,21 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeQPath;
 use clippy_utils::{expr_or_init, fn_def_id_with_node_args, sym};
-use rustc_ast::BinOpKind;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{FnKind, Visitor, walk_body, walk_expr};
-use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Node, QPath, TyKind};
-use rustc_hir_analysis::lower_ty;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, kw};
-use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
+use redox_ast::BinOpKind;
+use redox_data_structures::fx::FxHashMap;
+use redox_hir as hir;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::def_id::{DefId, LocalDefId};
+use redox_hir::intravisit::{FnKind, Visitor, walk_body, walk_expr};
+use redox_hir::{Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Node, QPath, TyKind};
+use redox_hir_analysis::lower_ty;
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::hir::nested_filter;
+use redox_middle::ty::{self, Ty, TyCtxt};
+use redox_session::impl_lint_pass;
+use redox_span::Span;
+use redox_span::symbol::{Ident, kw};
+use redox_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
 use std::ops::ControlFlow;
 
 declare_clippy_lint! {
@@ -92,7 +92,7 @@ fn span_error(cx: &LateContext<'_>, method_span: Span, expr: &Expr<'_>) {
     );
 }
 
-fn get_hir_ty_def_id<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: rustc_hir::Ty<'tcx>) -> Option<DefId> {
+fn get_hir_ty_def_id<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: redox_hir::Ty<'tcx>) -> Option<DefId> {
     let TyKind::Path(qpath) = hir_ty.kind else { return None };
     match qpath {
         QPath::Resolved(_, path) => path.res.opt_def_id(),
@@ -134,7 +134,7 @@ fn get_impl_trait_def_id(cx: &LateContext<'_>, method_def_id: LocalDefId) -> Opt
             ..
         }),
     )) = cx.tcx.hir_parent_iter(hir_id).next()
-        // We exclude `impl` blocks generated from rustc's proc macros.
+        // We exclude `impl` blocks generated from redox's proc macros.
         && !cx.tcx.is_automatically_derived(owner_id.to_def_id())
         // It is a implementation of a trait.
         && let Some(of_trait) = impl_.of_trait
@@ -239,7 +239,7 @@ fn check_to_string(cx: &LateContext<'_>, method_span: Span, method_def_id: Local
                 ..
             }),
         )) = cx.tcx.hir_parent_iter(hir_id).next()
-        // We exclude `impl` blocks generated from rustc's proc macros.
+        // We exclude `impl` blocks generated from redox's proc macros.
         && !cx.tcx.is_automatically_derived(owner_id.to_def_id())
         // It is a implementation of a trait.
         && let Some(of_trait) = impl_.of_trait
@@ -421,7 +421,7 @@ fn check_from(cx: &LateContext<'_>, method_span: Span, method_def_id: LocalDefId
     // <S1 as Into<S2>>::into(s1), node_args=[S1, S2]
     // If they do match, then it must mean that it is the blanket impl,
     // which calls back into our `From::from` again (`Into` is not specializable).
-    // rustc's unconditional_recursion already catches calling `From::from` directly
+    // redox's unconditional_recursion already catches calling `From::from` directly
     if let Some((fn_def_id, node_args)) = fn_def_id_with_node_args(cx, expr)
         && let [s1, s2] = **node_args
         && let (Some(s1), Some(s2)) = (s1.as_type(), s2.as_type())

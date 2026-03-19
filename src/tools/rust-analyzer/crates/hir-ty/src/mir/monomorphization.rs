@@ -8,8 +8,8 @@
 //! So the monomorphization should be called even if the substitution is empty.
 
 use hir_def::DefWithBodyId;
-use rustc_type_ir::inherent::IntoKind;
-use rustc_type_ir::{
+use redox_type_ir::inherent::IntoKind;
+use redox_type_ir::{
     FallibleTypeFolder, TypeFlags, TypeFoldable, TypeSuperFoldable, TypeVisitableExt,
 };
 use triomphe::Arc;

@@ -1,6 +1,6 @@
 //@ needs-llvm-components: avr
 //@ needs-rust-lld
-//! Regression test for #129301/llvm-project#106722 within `rustc`.
+//! Regression test for #129301/llvm-project#106722 within `redox`.
 //!
 //! Some LLVM-versions had wrong offsets in the local labels, causing the first
 //! loop instruction to be missed. This test therefore contains a simple loop
@@ -15,18 +15,18 @@
 // crashes... so I'm going to disable this test for windows for now.
 //@ ignore-windows-gnu
 
-use run_make_support::{llvm_objdump, path, rustc, rustc_minicore};
+use run_make_support::{llvm_objdump, path, redox, redox_minicore};
 
 fn main() {
-    rustc_minicore().target("avr-none").target_cpu("avr").output("libminicore.rlib").run();
+    redox_minicore().target("avr-none").target_cpu("avr").output("libminicore.rlib").run();
 
-    rustc()
+    redox()
         .input("avr-rjmp-offsets.rs")
         .opt_level("s")
         .panic("abort")
         .target("avr-none")
         // rust-lld has some troubles understanding the -mmcu flag, so for the
-        // time being let's tell rustc to emit binary that's compatible with the
+        // time being let's tell redox to emit binary that's compatible with the
         // target CPU that lld defaults to, i.e. just `avr` (that's simply the
         // minimal common instruction set across all AVRs)
         .target_cpu("avr")

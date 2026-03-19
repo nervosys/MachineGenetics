@@ -6,27 +6,27 @@
 //@ ignore-remote
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
-extern crate rustc_public;
+extern crate redox_driver;
+extern crate redox_interface;
+extern crate redox_public;
 
 use std::io::Write;
 use std::ops::ControlFlow;
 
 use mir::mono::Instance;
 use mir::TerminatorKind::*;
-use rustc_public::ty::{RigidTy, TyKind};
-use rustc_public::*;
+use redox_public::ty::{RigidTy, TyKind};
+use redox_public::*;
 
 const CRATE_NAME: &str = "input";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
-    let items = rustc_public::all_local_items();
+    let items = redox_public::all_local_items();
 
     // Get all items and split generic vs monomorphic items.
     let (generic, mono): (Vec<_>, Vec<_>) =
@@ -86,7 +86,7 @@ fn main() {
     let path = "instance_input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),

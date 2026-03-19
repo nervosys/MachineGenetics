@@ -3,11 +3,11 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::sym;
-use rustc_ast::LitKind;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
+use redox_ast::LitKind;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind, LangItem};
+use redox_lint::LateContext;
+use redox_middle::ty::{self, Ty};
 use std::borrow::Cow;
 
 use super::MANUAL_STR_REPEAT;

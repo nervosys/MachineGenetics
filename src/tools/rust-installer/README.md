@@ -14,8 +14,8 @@ used by a future combined installer of Rust + Cargo.
                    --work-dir=./temp \
                    --output-dir=./dist \
                    --non-installed-overlay=./overlay \
-                   --package-name=rustc-nightly-i686-apple-darwin \
-                   --component-name=rustc \
+                   --package-name=redox-nightly-i686-apple-darwin \
+                   --component-name=redox \
                    --legacy-manifest-dirs=rustlib \
                    --bulk-dirs=share/doc
 ```
@@ -42,9 +42,9 @@ To combine installers.
                         --work-dir=./temp \
                         --output-dir=./dist \
                         --non-installed-overlay=./overlay \
-                        --package-name=rustc-nightly-i686-apple-darwin \
+                        --package-name=redox-nightly-i686-apple-darwin \
                         --legacy-manifest-dirs=rustlib \
-                        --input-tarballs=./rustc.tar.gz,cargo.tar.gz
+                        --input-tarballs=./redox.tar.gz,cargo.tar.gz
 ```
 
 # Future work

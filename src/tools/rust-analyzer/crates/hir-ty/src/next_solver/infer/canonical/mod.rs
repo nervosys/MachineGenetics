@@ -17,7 +17,7 @@
 //! `instantiate_query_result` method.
 //!
 //! For a more detailed look at what is happening here, check
-//! out the [chapter in the rustc dev guide][c].
+//! out the [chapter in the redox dev guide][c].
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
@@ -28,9 +28,9 @@ use crate::next_solver::{
 };
 use instantiate::CanonicalExt;
 use macros::{TypeFoldable, TypeVisitable};
-use rustc_index::IndexVec;
-use rustc_type_ir::inherent::IntoKind;
-use rustc_type_ir::{CanonicalVarKind, InferTy, TypeFoldable, UniverseIndex, inherent::Ty as _};
+use redox_index::IndexVec;
+use redox_type_ir::inherent::IntoKind;
+use redox_type_ir::{CanonicalVarKind, InferTy, TypeFoldable, UniverseIndex, inherent::Ty as _};
 
 pub mod canonicalizer;
 pub mod instantiate;

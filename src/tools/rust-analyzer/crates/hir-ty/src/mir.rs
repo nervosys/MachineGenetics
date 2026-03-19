@@ -10,9 +10,9 @@ use hir_def::{
     hir::{BindingAnnotation, BindingId, Expr, ExprId, Ordering, PatId},
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
-use rustc_ast_ir::Mutability;
-use rustc_hash::FxHashMap;
-use rustc_type_ir::inherent::{GenericArgs as _, IntoKind, Ty as _};
+use redox_ast_ir::Mutability;
+use redox_hash::FxHashMap;
+use redox_type_ir::inherent::{GenericArgs as _, IntoKind, Ty as _};
 use smallvec::{SmallVec, smallvec};
 use stdx::{impl_from, never};
 
@@ -710,10 +710,10 @@ impl BorrowKind {
         }
     }
 
-    fn from_rustc(m: rustc_ast_ir::Mutability) -> Self {
+    fn from_redox(m: redox_ast_ir::Mutability) -> Self {
         match m {
-            rustc_ast_ir::Mutability::Not => BorrowKind::Shared,
-            rustc_ast_ir::Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
+            redox_ast_ir::Mutability::Not => BorrowKind::Shared,
+            redox_ast_ir::Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         }
     }
 }
@@ -1004,7 +1004,7 @@ pub enum Rvalue {
 
     /// A CopyForDeref is equivalent to a read from a place at the
     /// codegen level, but is treated specially by drop elaboration. When such a read happens, it
-    /// is guaranteed (via nature of the mir_opt `Derefer` in rustc_mir_transform/src/deref_separator)
+    /// is guaranteed (via nature of the mir_opt `Derefer` in redox_mir_transform/src/deref_separator)
     /// that the only use of the returned value is a deref operation, immediately
     /// followed by one or more projections. Drop elaboration treats this rvalue as if the
     /// read never happened and just projects further. This allows simplifying various MIR

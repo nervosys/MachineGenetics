@@ -8,9 +8,9 @@ pub use self::atomic::AtomicRmwOp;
 
 #[rustfmt::skip] // prevent `use` reordering
 use rand::Rng;
-use rustc_abi::Size;
-use rustc_middle::{mir, ty};
-use rustc_span::Symbol;
+use redox_abi::Size;
+use redox_middle::{mir, ty};
+use redox_span::Symbol;
 
 use self::atomic::EvalContextExt as _;
 use self::math::EvalContextExt as _;

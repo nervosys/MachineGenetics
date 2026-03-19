@@ -2,10 +2,10 @@
 // same bound is present on the default impl and is `[const]` there.
 
 #![feature(const_trait_impl)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(min_specialization)]
 
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 trait Specialize {}
 
 const trait Foo {}

@@ -165,7 +165,7 @@ const fn min_non_zero_cap(size: usize) -> usize {
     }
 }
 
-#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[redox_const_unstable(feature = "const_heap", issue = "79597")]
 #[rustfmt::skip] // FIXME(fee1-dead): temporary measure before rustfmt is bumped
 const impl<T, A: [const] Allocator + [const] Destruct> RawVec<T, A> {
     /// Like `with_capacity`, but parameterized over the choice of
@@ -278,7 +278,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// See [`RawVec::from_raw_parts_in`].
     #[inline]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     pub(crate) const unsafe fn from_nonnull_in(ptr: NonNull<T>, capacity: usize, alloc: A) -> Self {
         // SAFETY: Precondition passed to the caller
         unsafe {
@@ -425,7 +425,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
     }
 }
 
-#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[redox_const_unstable(feature = "const_heap", issue = "79597")]
 #[rustfmt::skip] // FIXME(fee1-dead): temporary measure before rustfmt is bumped
 const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
     #[cfg(not(no_global_oom_handling))]
@@ -599,7 +599,7 @@ impl<A: Allocator> RawVecInner<A> {
     }
 
     #[inline]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     const unsafe fn from_nonnull_in(ptr: NonNull<u8>, cap: Cap, alloc: A) -> Self {
         Self { ptr: Unique::from(ptr), cap, alloc }
     }
@@ -629,7 +629,7 @@ impl<A: Allocator> RawVecInner<A> {
     ///   initially construct `self`
     /// - `elem_layout`'s size must be a multiple of its alignment
     #[inline]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     const unsafe fn current_memory(&self, elem_layout: Layout) -> Option<(NonNull<u8>, Layout)> {
         if elem_layout.size() == 0 || self.cap.as_inner() == 0 {
             None
@@ -768,7 +768,7 @@ impl<A: Allocator> RawVecInner<A> {
     }
 
     #[inline]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     const unsafe fn set_ptr_and_cap(&mut self, ptr: NonNull<[u8]>, cap: usize) {
         // Allocators currently return a `NonNull<[u8]>` whose length matches
         // the size requested. If that ever changes, the capacity here should
@@ -883,7 +883,7 @@ impl<A: Allocator> RawVecInner<A> {
 #[cfg(not(no_global_oom_handling))]
 #[cold]
 #[optimize(size)]
-#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[redox_const_unstable(feature = "const_heap", issue = "79597")]
 const fn handle_error(e: TryReserveError) -> ! {
     match e.kind() {
         CapacityOverflow => capacity_overflow(),
@@ -892,7 +892,7 @@ const fn handle_error(e: TryReserveError) -> ! {
 }
 
 #[inline]
-#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[redox_const_unstable(feature = "const_heap", issue = "79597")]
 const fn layout_array(cap: usize, elem_layout: Layout) -> Result<Layout, TryReserveError> {
     // This is only used with `elem_layout`s which are those of real rust types,
     // which lets us use the much-simpler `repeat_packed`.

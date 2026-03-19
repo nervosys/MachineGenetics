@@ -29,7 +29,7 @@ pub struct Finder {
 }
 
 /// During sanity checks, we search for target tuples to determine if they exist in the compiler's
-/// built-in target list (`rustc --print target-list`). While a target tuple may be present in the
+/// built-in target list (`redox --print target-list`). While a target tuple may be present in the
 /// in-tree compiler, the stage 0 compiler might not yet know about it (assuming not operating with
 /// local-rebuild). In such cases, we handle the targets missing from stage 0 in this list.
 ///
@@ -202,7 +202,7 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("reuse"));
 
-    let stage0_supported_target_list: HashSet<String> = command(&build.config.initial_rustc)
+    let stage0_supported_target_list: HashSet<String> = command(&build.config.initial_redox)
         .args(["--print", "target-list"])
         .run_in_dry_run()
         .run_capture_stdout(&build)

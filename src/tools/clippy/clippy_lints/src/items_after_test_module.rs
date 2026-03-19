@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::{fulfill_or_allowed, is_cfg_test, is_from_proc_macro};
-use rustc_errors::{Applicability, SuggestionStyle};
-use rustc_hir::{HirId, Item, ItemKind, Mod};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::hygiene::AstPass;
-use rustc_span::{ExpnKind, sym};
+use redox_errors::{Applicability, SuggestionStyle};
+use redox_hir::{HirId, Item, ItemKind, Mod};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::hygiene::AstPass;
+use redox_span::{ExpnKind, sym};
 
 declare_clippy_lint! {
     /// ### What it does

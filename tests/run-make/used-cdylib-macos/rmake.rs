@@ -4,10 +4,10 @@
 
 //@ only-apple
 
-use run_make_support::{dynamic_lib_name, llvm_readobj, rustc};
+use run_make_support::{dynamic_lib_name, llvm_readobj, redox};
 
 fn main() {
-    rustc().opt_level("3").input("dylib_used.rs").run();
+    redox().opt_level("3").input("dylib_used.rs").run();
     llvm_readobj()
         .input(dynamic_lib_name("dylib_used"))
         .arg("--all")

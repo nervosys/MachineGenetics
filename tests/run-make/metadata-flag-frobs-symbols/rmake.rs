@@ -6,12 +6,12 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{run, rust_lib_name, rustc};
+use run_make_support::{run, rust_lib_name, redox};
 
 fn main() {
-    rustc().input("foo.rs").metadata("a").extra_filename("-a").run();
-    rustc().input("foo.rs").metadata("b").extra_filename("-b").run();
-    rustc()
+    redox().input("foo.rs").metadata("a").extra_filename("-a").run();
+    redox().input("foo.rs").metadata("b").extra_filename("-b").run();
+    redox()
         .input("bar.rs")
         .extern_("foo1", rust_lib_name("foo-a"))
         .extern_("foo2", rust_lib_name("foo-b"))

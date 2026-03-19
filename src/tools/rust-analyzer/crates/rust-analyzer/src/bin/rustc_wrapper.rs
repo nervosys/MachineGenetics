@@ -13,12 +13,12 @@ use std::{
 pub(crate) fn main() -> io::Result<ExitCode> {
     let mut args = std::env::args_os();
     let _me = args.next().unwrap();
-    let rustc = args.next().unwrap();
-    run_rustc_skipping_cargo_checking(rustc, args.collect())
+    let redox = args.next().unwrap();
+    run_redox_skipping_cargo_checking(redox, args.collect())
 }
 
-fn run_rustc_skipping_cargo_checking(
-    rustc_executable: OsString,
+fn run_redox_skipping_cargo_checking(
+    redox_executable: OsString,
     args: Vec<OsString>,
 ) -> io::Result<ExitCode> {
     // `CARGO_CFG_TARGET_ARCH` is only set by cargo when executing build scripts
@@ -28,9 +28,9 @@ fn run_rustc_skipping_cargo_checking(
     let not_invoked_by_build_script = std::env::var_os("CARGO_CFG_TARGET_ARCH").is_none();
     let is_cargo_check = args.iter().any(|arg| {
         let arg = arg.to_string_lossy();
-        // `cargo check` invokes `rustc` with `--emit=metadata` argument.
+        // `cargo check` invokes `redox` with `--emit=metadata` argument.
         //
-        // https://doc.rust-lang.org/rustc/command-line-arguments.html#--emit-specifies-the-types-of-output-files-to-generate
+        // https://doc.rust-lang.org/redox/command-line-arguments.html#--emit-specifies-the-types-of-output-files-to-generate
         // link —     Generates the crates specified by --crate-type. The default
         //            output filenames depend on the crate type and platform. This
         //            is the default if --emit is not specified.
@@ -41,13 +41,13 @@ fn run_rustc_skipping_cargo_checking(
     if not_invoked_by_build_script && is_cargo_check {
         Ok(ExitCode::from(0))
     } else {
-        run_rustc(rustc_executable, args)
+        run_redox(redox_executable, args)
     }
 }
 
-fn run_rustc(rustc_executable: OsString, args: Vec<OsString>) -> io::Result<ExitCode> {
+fn run_redox(redox_executable: OsString, args: Vec<OsString>) -> io::Result<ExitCode> {
     #[allow(clippy::disallowed_methods)]
-    let mut child = Command::new(rustc_executable)
+    let mut child = Command::new(redox_executable)
         .args(args)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())

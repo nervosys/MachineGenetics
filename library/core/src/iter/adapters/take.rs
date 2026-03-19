@@ -114,7 +114,7 @@ where
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let min = self.n.min(n);
         let rem = match self.iter.advance_by(min) {
@@ -216,7 +216,7 @@ where
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         // The amount by which the inner iterator needs to be shortened for it to be
         // at most as long as the take() amount.
@@ -350,7 +350,7 @@ impl<T: Clone> DoubleEndedIterator for Take<crate::iter::Repeat<T>> {
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.advance_by(n)
     }

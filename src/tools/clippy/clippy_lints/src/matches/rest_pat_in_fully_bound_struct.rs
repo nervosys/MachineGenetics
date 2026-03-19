@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_hir::{Pat, PatKind, QPath};
-use rustc_lint::LateContext;
-use rustc_middle::ty;
+use redox_hir::{Pat, PatKind, QPath};
+use redox_lint::LateContext;
+use redox_middle::ty;
 
 use super::REST_PAT_IN_FULLY_BOUND_STRUCTS;
 
@@ -25,7 +25,7 @@ pub(crate) fn check(cx: &LateContext<'_>, pat: &Pat<'_>) {
                     dotdot,
                     "consider removing `..` from this binding",
                     "",
-                    rustc_errors::Applicability::MachineApplicable,
+                    redox_errors::Applicability::MachineApplicable,
                 );
             },
         );

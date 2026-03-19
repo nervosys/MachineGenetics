@@ -1,14 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_test_function;
 use clippy_utils::visitors::for_each_expr;
-use rustc_errors::Applicability;
-use rustc_hir::intravisit::FnKind;
-use rustc_hir::{self as hir, Body, ExprKind, FnDecl};
-use rustc_lexer::is_ident;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, Symbol, edition};
+use redox_errors::Applicability;
+use redox_hir::intravisit::FnKind;
+use redox_hir::{self as hir, Body, ExprKind, FnDecl};
+use redox_lexer::is_ident;
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::def_id::LocalDefId;
+use redox_span::{Span, Symbol, edition};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
 

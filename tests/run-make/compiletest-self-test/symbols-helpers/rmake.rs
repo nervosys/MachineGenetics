@@ -13,10 +13,10 @@ use run_make_support::symbols::{
     object_contains_all_symbol_substring, object_contains_all_symbols, object_contains_any_symbol,
     object_contains_any_symbol_substring,
 };
-use run_make_support::{object, rfs, rust_lib_name, rustc};
+use run_make_support::{object, rfs, rust_lib_name, redox};
 
 fn main() {
-    rustc().input("sample.rs").emit("obj").edition("2024").run();
+    redox().input("sample.rs").emit("obj").edition("2024").run();
 
     // `sample.rs` has two `no_mangle` functions, `eszett` and `beta`, in addition to `main`.
     //

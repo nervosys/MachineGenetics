@@ -1,9 +1,9 @@
 // Test non-power-of-two alignment.
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 extern "Rust" {
-    #[rustc_std_internal_symbol]
+    #[redox_std_internal_symbol]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
 }
 

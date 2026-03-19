@@ -61,7 +61,7 @@ Before the stabilization will be considered by the lang team, there must be a co
 
 ### Updating the feature-gate listing
 
-There is a central listing of unstable feature-gates in [`compiler/rustc_feature/src/unstable.rs`].
+There is a central listing of unstable feature-gates in [`compiler/redox_feature/src/unstable.rs`].
 Search for the `declare_features!`  macro.
 There should be an entry for the feature you are aiming to stabilize,
 something like the following (taken from [rust-lang/rust#32409]):
@@ -71,7 +71,7 @@ something like the following (taken from [rust-lang/rust#32409]):
 (unstable, pub_restricted, "CURRENT_RUSTC_VERSION", Some(32409)),
 ```
 
-The above line should be moved to [`compiler/rustc_feature/src/accepted.rs`].
+The above line should be moved to [`compiler/redox_feature/src/accepted.rs`].
 Entries in the `declare_features!` call are sorted, so find the correct place.
 When it is done, it should look like:
 
@@ -81,12 +81,12 @@ When it is done, it should look like:
 // note that we changed this
 ```
 
-(Even though you will encounter version numbers in the file of past changes, you should not put the rustc version you expect your stabilization to happen in, but instead use `CURRENT_RUSTC_VERSION`.)
+(Even though you will encounter version numbers in the file of past changes, you should not put the redox version you expect your stabilization to happen in, but instead use `CURRENT_RUSTC_VERSION`.)
 
 ### Removing existing uses of the feature-gate
 
 Next, search for the feature string (in this case, `pub_restricted`) in the codebase to find where it appears.
-Change uses of `#![feature(XXX)]` from the `std` and any rustc crates
+Change uses of `#![feature(XXX)]` from the `std` and any redox crates
 (which includes test folders under `library/` and `compiler/` but not the toplevel `tests/` one)
 to be `#![cfg_attr(bootstrap, feature(XXX))]`.
 This includes the feature-gate only for stage0, which is built using the current beta (this is needed because the feature is still unstable in the current beta).
@@ -96,7 +96,7 @@ Also, remove those strings from any tests (e.g. under `tests/`). If there are te
 ### Do not require the feature-gate to use the feature
 
 Most importantly, remove the code which flags an error if the feature-gate is not present (since the feature is now considered stable).
-If the feature can be detected because it employs some new syntax, then a common place for that code to be is in `compiler/rustc_ast_passes/src/feature_gate.rs`.
+If the feature can be detected because it employs some new syntax, then a common place for that code to be is in `compiler/redox_ast_passes/src/feature_gate.rs`.
 For example, you might see code like this:
 
 ```rust,ignore
@@ -131,9 +131,9 @@ if something { /* XXX */ }
 [src-version]: https://github.com/rust-lang/rust/blob/HEAD/src/version
 [forge-versions]: https://forge.rust-lang.org/#current-release-versions
 [forge-release-process]: https://forge.rust-lang.org/release/process.html
-[`compiler/rustc_feature`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_feature/index.html
-[`compiler/rustc_feature/src/accepted.rs`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_feature/src/accepted.rs
-[`compiler/rustc_feature/src/unstable.rs`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_feature/src/unstable.rs
+[`compiler/redox_feature`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_feature/index.html
+[`compiler/redox_feature/src/accepted.rs`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/redox_feature/src/accepted.rs
+[`compiler/redox_feature/src/unstable.rs`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/redox_feature/src/unstable.rs
 [The Reference]: https://github.com/rust-lang/reference
 [The Book]: https://github.com/rust-lang/book
 [Rust by Example]: https://github.com/rust-lang/rust-by-example

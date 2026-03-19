@@ -5,14 +5,14 @@ use clippy_utils::sugg::{Sugg, make_unop};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{any_temporaries_need_ordered_drop, for_each_expr_without_closures};
 use clippy_utils::{higher, is_expn_of, sym};
-use rustc_ast::ast::LitKind;
-use rustc_errors::Applicability;
-use rustc_hir::LangItem::{self, OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, UnOp};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, GenericArgKind, Ty};
-use rustc_span::{Span, Symbol};
+use redox_ast::ast::LitKind;
+use redox_errors::Applicability;
+use redox_hir::LangItem::{self, OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
+use redox_hir::def::{DefKind, Res};
+use redox_hir::{Arm, Expr, ExprKind, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, UnOp};
+use redox_lint::LateContext;
+use redox_middle::ty::{self, GenericArgKind, Ty};
+use redox_span::{Span, Symbol};
 use std::fmt::Write;
 use std::ops::ControlFlow;
 
@@ -405,7 +405,7 @@ fn found_good_method<'tcx>(
     }
 }
 
-fn get_ident(path: &QPath<'_>) -> Option<rustc_span::symbol::Ident> {
+fn get_ident(path: &QPath<'_>) -> Option<redox_span::symbol::Ident> {
     match path {
         QPath::Resolved(_, path) => {
             let name = path.segments[0].ident;

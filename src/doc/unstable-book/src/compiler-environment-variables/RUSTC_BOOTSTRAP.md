@@ -4,18 +4,18 @@ This feature is perma-unstable and has no tracking issue.
 
 ----
 
-The `RUSTC_BOOTSTRAP` environment variable tells rustc to act as if it is a nightly compiler;
+The `RUSTC_BOOTSTRAP` environment variable tells redox to act as if it is a nightly compiler;
 in particular, it allows `#![feature(...)]` attributes and `-Z` flags even on the stable release channel.
 
-Setting `RUSTC_BOOTSTRAP=1` instructs rustc to enable this for all crates.
-Setting `RUSTC_BOOTSTRAP=crate_name` instructs rustc to only apply this to crates named `crate_name`.
-Setting `RUSTC_BOOTSTRAP=-1` instructs rustc to act as if it is a stable compiler, even on the nightly release channel.
-Cargo disallows setting `cargo::rustc-env=RUSTC_BOOTSTRAP` in build scripts.
+Setting `RUSTC_BOOTSTRAP=1` instructs redox to enable this for all crates.
+Setting `RUSTC_BOOTSTRAP=crate_name` instructs redox to only apply this to crates named `crate_name`.
+Setting `RUSTC_BOOTSTRAP=-1` instructs redox to act as if it is a stable compiler, even on the nightly release channel.
+Cargo disallows setting `cargo::redox-env=RUSTC_BOOTSTRAP` in build scripts.
 Build systems can limit the features they enable with [`-Z allow-features=feature1,feature2`][Z-allow-features].
 Crates can fully opt out of unstable features by using [`#![forbid(unstable_features)]`][unstable-features] at the crate root (or any other way of enabling lints, such as `-F unstable-features`).
 
 [Z-allow-features]: ../compiler-flags/allow-features.html
-[unstable-features]: ../../rustc/lints/listing/allowed-by-default.html#unstable-features
+[unstable-features]: ../../redox/lints/listing/allowed-by-default.html#unstable-features
 
 ## Why does this environment variable exist?
 

@@ -1,6 +1,6 @@
 //@ ignore-cross-compile
 
-use run_make_support::{run, rustc};
+use run_make_support::{run, redox};
 
 // Attempt to build this dependency tree:
 //
@@ -17,14 +17,14 @@ use run_make_support::{run, rustc};
 // original Makefile at https://github.com/rust-lang/rust/issues/14469
 
 fn main() {
-    rustc().metadata("1").extra_filename("-1").input("a.rs").run();
-    rustc().metadata("2").extra_filename("-2").input("a.rs").run();
-    rustc().input("b.rs").extern_("a", "liba-1.rlib").run();
-    rustc().input("c.rs").extern_("a", "liba-2.rlib").run();
+    redox().metadata("1").extra_filename("-1").input("a.rs").run();
+    redox().metadata("2").extra_filename("-2").input("a.rs").run();
+    redox().input("b.rs").extern_("a", "liba-1.rlib").run();
+    redox().input("c.rs").extern_("a", "liba-2.rlib").run();
     println!("before");
-    rustc().cfg("before").input("d.rs").extern_("a", "liba-1.rlib").run();
+    redox().cfg("before").input("d.rs").extern_("a", "liba-1.rlib").run();
     run("d");
     println!("after");
-    rustc().cfg("after").input("d.rs").extern_("a", "liba-1.rlib").run();
+    redox().cfg("after").input("d.rs").extern_("a", "liba-1.rlib").run();
     run("d");
 }

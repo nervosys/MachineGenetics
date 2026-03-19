@@ -4,7 +4,7 @@ use hir_def::{
     ConstParamId, GenericDefId, GenericParamId, LifetimeParamId, TypeOrConstParamId, TypeParamId,
     hir::generics::{GenericParams, TypeOrConstParamData},
 };
-use rustc_type_ir::inherent::GenericsOf;
+use redox_type_ir::inherent::GenericsOf;
 
 use crate::generics::parent_generic_def;
 
@@ -110,7 +110,7 @@ impl GenericParamDef {
     }
 }
 
-impl<'db> rustc_type_ir::inherent::GenericsOf<DbInterner<'db>> for Generics {
+impl<'db> redox_type_ir::inherent::GenericsOf<DbInterner<'db>> for Generics {
     fn count(&self) -> usize {
         self.parent_count + self.own_params.len()
     }

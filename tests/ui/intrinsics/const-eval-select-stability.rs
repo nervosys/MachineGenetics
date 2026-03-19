@@ -12,7 +12,7 @@ fn log() {
 const fn nothing(){}
 
 #[stable(since = "1.0", feature = "hey")]
-#[rustc_const_stable(since = "1.0", feature = "const_hey")]
+#[redox_const_stable(since = "1.0", feature = "const_hey")]
 pub const fn hey() {
     const_eval_select((), nothing, log);
     //~^ ERROR cannot use `#[feature(const_eval_select)]`

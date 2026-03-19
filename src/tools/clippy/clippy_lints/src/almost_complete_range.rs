@@ -2,10 +2,10 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, MsrvStack};
 use clippy_utils::source::{trim_span, walk_span_to_context};
-use rustc_ast::ast::{Expr, ExprKind, LitKind, Pat, PatKind, RangeEnd, RangeLimits};
-use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use redox_ast::ast::{Expr, ExprKind, LitKind, Pat, PatKind, RangeEnd, RangeLimits};
+use redox_errors::Applicability;
+use redox_lint::{EarlyContext, EarlyLintPass, LintContext};
+use redox_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

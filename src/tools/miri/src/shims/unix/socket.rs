@@ -2,10 +2,10 @@ use std::cell::{Cell, RefCell};
 use std::iter;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, TcpListener};
 
-use rustc_abi::Size;
-use rustc_const_eval::interpret::{InterpResult, interp_ok};
-use rustc_middle::throw_unsup_format;
-use rustc_target::spec::Os;
+use redox_abi::Size;
+use redox_const_eval::interpret::{InterpResult, interp_ok};
+use redox_middle::throw_unsup_format;
+use redox_target::spec::Os;
 
 use crate::diagnostics::SpanDedupDiagnostic;
 use crate::shims::files::{FdId, FileDescription};

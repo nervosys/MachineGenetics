@@ -7,7 +7,7 @@ This chapter covers [formatting](#formatting), [coding for correctness](#cc),
 
 ## Formatting and the tidy script
 
-rustc is moving towards the [Rust standard coding style][fmt].
+redox is moving towards the [Rust standard coding style][fmt].
 
 However, for now we don't use stable `rustfmt`; we use a pinned version with a
 special config, so this may result in different style from normal [`rustfmt`].

@@ -8,16 +8,16 @@
 //@ edition: 2024
 // ignore-tidy-linelength
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
-extern crate rustc_public;
+extern crate redox_driver;
+extern crate redox_interface;
+extern crate redox_public;
 
-use rustc_public::ty::{RigidTy, TyKind};
-use rustc_public::*;
+use redox_public::ty::{RigidTy, TyKind};
+use redox_public::*;
 use std::fmt::Debug;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -44,8 +44,8 @@ fn test_stable_mir() -> ControlFlow<()> {
     let mut mystruct_ctor_ty = None;
 
     // Extract def-ids of various items
-    let krate = rustc_public::local_crate();
-    for it in rustc_public::all_local_items() {
+    let krate = redox_public::local_crate();
+    for it in redox_public::all_local_items() {
         match &*it.0.name() {
             "input::wrapper_mod::CONST_ITEM" => {
                 set_once(&mut const_item, it.0);
@@ -137,7 +137,7 @@ fn main() {
     let path = "def_parent_input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

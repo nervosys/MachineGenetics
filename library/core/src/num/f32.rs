@@ -31,7 +31,7 @@ use crate::{cfg_select, intrinsics, mem};
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `RADIX` associated constant on `f32`")]
-#[rustc_diagnostic_item = "f32_legacy_const_radix"]
+#[redox_diagnostic_item = "f32_legacy_const_radix"]
 pub const RADIX: u32 = f32::RADIX;
 
 /// Number of significant digits in base 2.
@@ -52,7 +52,7 @@ pub const RADIX: u32 = f32::RADIX;
     since = "TBD",
     note = "replaced by the `MANTISSA_DIGITS` associated constant on `f32`"
 )]
-#[rustc_diagnostic_item = "f32_legacy_const_mantissa_dig"]
+#[redox_diagnostic_item = "f32_legacy_const_mantissa_dig"]
 pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 
 /// Approximate number of significant digits in base 10.
@@ -70,7 +70,7 @@ pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `DIGITS` associated constant on `f32`")]
-#[rustc_diagnostic_item = "f32_legacy_const_digits"]
+#[redox_diagnostic_item = "f32_legacy_const_digits"]
 pub const DIGITS: u32 = f32::DIGITS;
 
 /// [Machine epsilon] value for `f32`.
@@ -92,7 +92,7 @@ pub const DIGITS: u32 = f32::DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `EPSILON` associated constant on `f32`")]
-#[rustc_diagnostic_item = "f32_legacy_const_epsilon"]
+#[redox_diagnostic_item = "f32_legacy_const_epsilon"]
 pub const EPSILON: f32 = f32::EPSILON;
 
 /// Smallest finite `f32` value.
@@ -110,7 +110,7 @@ pub const EPSILON: f32 = f32::EPSILON;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on `f32`")]
-#[rustc_diagnostic_item = "f32_legacy_const_min"]
+#[redox_diagnostic_item = "f32_legacy_const_min"]
 pub const MIN: f32 = f32::MIN;
 
 /// Smallest positive normal `f32` value.
@@ -128,7 +128,7 @@ pub const MIN: f32 = f32::MIN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MIN_POSITIVE` associated constant on `f32`")]
-#[rustc_diagnostic_item = "f32_legacy_const_min_positive"]
+#[redox_diagnostic_item = "f32_legacy_const_min_positive"]
 pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 
 /// Largest finite `f32` value.
@@ -146,7 +146,7 @@ pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on `f32`")]
-#[rustc_diagnostic_item = "f32_legacy_const_max"]
+#[redox_diagnostic_item = "f32_legacy_const_max"]
 pub const MAX: f32 = f32::MAX;
 
 /// One greater than the minimum possible normal power of 2 exponent.
@@ -164,7 +164,7 @@ pub const MAX: f32 = f32::MAX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MIN_EXP` associated constant on `f32`")]
-#[rustc_diagnostic_item = "f32_legacy_const_min_exp"]
+#[redox_diagnostic_item = "f32_legacy_const_min_exp"]
 pub const MIN_EXP: i32 = f32::MIN_EXP;
 
 /// Maximum possible power of 2 exponent.
@@ -182,7 +182,7 @@ pub const MIN_EXP: i32 = f32::MIN_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MAX_EXP` associated constant on `f32`")]
-#[rustc_diagnostic_item = "f32_legacy_const_max_exp"]
+#[redox_diagnostic_item = "f32_legacy_const_max_exp"]
 pub const MAX_EXP: i32 = f32::MAX_EXP;
 
 /// Minimum possible normal power of 10 exponent.
@@ -200,7 +200,7 @@ pub const MAX_EXP: i32 = f32::MAX_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MIN_10_EXP` associated constant on `f32`")]
-#[rustc_diagnostic_item = "f32_legacy_const_min_10_exp"]
+#[redox_diagnostic_item = "f32_legacy_const_min_10_exp"]
 pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 
 /// Maximum possible power of 10 exponent.
@@ -218,7 +218,7 @@ pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MAX_10_EXP` associated constant on `f32`")]
-#[rustc_diagnostic_item = "f32_legacy_const_max_10_exp"]
+#[redox_diagnostic_item = "f32_legacy_const_max_10_exp"]
 pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 
 /// Not a Number (NaN).
@@ -236,7 +236,7 @@ pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `NAN` associated constant on `f32`")]
-#[rustc_diagnostic_item = "f32_legacy_const_nan"]
+#[redox_diagnostic_item = "f32_legacy_const_nan"]
 pub const NAN: f32 = f32::NAN;
 
 /// Infinity (∞).
@@ -254,7 +254,7 @@ pub const NAN: f32 = f32::NAN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `INFINITY` associated constant on `f32`")]
-#[rustc_diagnostic_item = "f32_legacy_const_infinity"]
+#[redox_diagnostic_item = "f32_legacy_const_infinity"]
 pub const INFINITY: f32 = f32::INFINITY;
 
 /// Negative infinity (−∞).
@@ -272,12 +272,12 @@ pub const INFINITY: f32 = f32::INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `NEG_INFINITY` associated constant on `f32`")]
-#[rustc_diagnostic_item = "f32_legacy_const_neg_infinity"]
+#[redox_diagnostic_item = "f32_legacy_const_neg_infinity"]
 pub const NEG_INFINITY: f32 = f32::NEG_INFINITY;
 
 /// Basic mathematical constants.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "f32_consts_mod"]
+#[redox_diagnostic_item = "f32_consts_mod"]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
@@ -430,7 +430,7 @@ impl f32 {
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
     /// [`MANTISSA_DIGITS`]: f32::MANTISSA_DIGITS
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    #[rustc_diagnostic_item = "f32_epsilon"]
+    #[redox_diagnostic_item = "f32_epsilon"]
     pub const EPSILON: f32 = 1.19209290e-07_f32;
 
     /// Smallest finite `f32` value.
@@ -504,7 +504,7 @@ impl f32 {
     /// guaranteed about the specific bit pattern chosen here: both payload and sign are arbitrary.
     /// The concrete bit pattern may change across Rust versions and target platforms.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    #[rustc_diagnostic_item = "f32_nan"]
+    #[redox_diagnostic_item = "f32_nan"]
     #[allow(clippy::eq_op)]
     pub const NAN: f32 = 0.0_f32 / 0.0_f32;
     /// Infinity (∞).
@@ -598,7 +598,7 @@ impl f32 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     #[allow(clippy::eq_op)] // > if you intended to check if the operand is NaN, use `.is_nan()` instead :)
     pub const fn is_nan(self) -> bool {
@@ -622,7 +622,7 @@ impl f32 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_infinite(self) -> bool {
         // Getting clever with transmutation can result in incorrect answers on some FPUs
@@ -647,7 +647,7 @@ impl f32 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
@@ -675,7 +675,7 @@ impl f32 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[must_use]
     #[stable(feature = "is_subnormal", since = "1.53.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_subnormal(self) -> bool {
         matches!(self.classify(), FpCategory::Subnormal)
@@ -702,7 +702,7 @@ impl f32 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_normal(self) -> bool {
         matches!(self.classify(), FpCategory::Normal)
@@ -722,7 +722,7 @@ impl f32 {
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_classify", since = "1.83.0")]
     pub const fn classify(self) -> FpCategory {
         // We used to have complicated logic here that avoids the simple bit-based tests to work
         // around buggy codegen for x87 targets (see
@@ -758,7 +758,7 @@ impl f32 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_sign_positive(self) -> bool {
         !self.is_sign_negative()
@@ -783,7 +783,7 @@ impl f32 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
@@ -821,7 +821,7 @@ impl f32 {
     #[inline]
     #[doc(alias = "nextUp")]
     #[stable(feature = "float_next_up_down", since = "1.86.0")]
-    #[rustc_const_stable(feature = "float_next_up_down", since = "1.86.0")]
+    #[redox_const_stable(feature = "float_next_up_down", since = "1.86.0")]
     pub const fn next_up(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -872,7 +872,7 @@ impl f32 {
     #[inline]
     #[doc(alias = "nextDown")]
     #[stable(feature = "float_next_up_down", since = "1.86.0")]
-    #[rustc_const_stable(feature = "float_next_up_down", since = "1.86.0")]
+    #[redox_const_stable(feature = "float_next_up_down", since = "1.86.0")]
     pub const fn next_down(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -903,7 +903,7 @@ impl f32 {
     /// ```
     #[must_use = "this returns the result of the operation, without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn recip(self) -> f32 {
         1.0 / self
@@ -928,7 +928,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "f32_deg_rad_conversions", since = "1.7.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn to_degrees(self) -> f32 {
         // Use a literal to avoid double rounding, consts::PI is already rounded,
@@ -956,7 +956,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "f32_deg_rad_conversions", since = "1.7.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn to_radians(self) -> f32 {
         // The division here is correctly rounded with respect to the true value of π/180.
@@ -987,7 +987,7 @@ impl f32 {
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn max(self, other: f32) -> f32 {
         intrinsics::maximum_number_nsz_f32(self, other)
@@ -1014,7 +1014,7 @@ impl f32 {
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn min(self, other: f32) -> f32 {
         intrinsics::minimum_number_nsz_f32(self, other)
@@ -1088,7 +1088,7 @@ impl f32 {
     #[inline]
     #[doc(alias = "average")]
     #[stable(feature = "num_midpoint", since = "1.85.0")]
-    #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
+    #[redox_const_stable(feature = "num_midpoint", since = "1.85.0")]
     pub const fn midpoint(self, other: f32) -> f32 {
         cfg_select! {
             // Allow faster implementation that have known good 64-bit float
@@ -1176,7 +1176,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[inline]
     #[allow(unnecessary_transmutes)]
     pub const fn to_bits(self) -> u32 {
@@ -1221,7 +1221,7 @@ impl f32 {
     /// assert_eq!(v, 12.5);
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
     #[allow(unnecessary_transmutes)]
@@ -1246,7 +1246,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[inline]
     pub const fn to_be_bytes(self) -> [u8; 4] {
         self.to_bits().to_be_bytes()
@@ -1267,7 +1267,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[inline]
     pub const fn to_le_bytes(self) -> [u8; 4] {
         self.to_bits().to_le_bytes()
@@ -1301,7 +1301,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[inline]
     pub const fn to_ne_bytes(self) -> [u8; 4] {
         self.to_bits().to_ne_bytes()
@@ -1319,7 +1319,7 @@ impl f32 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
     pub const fn from_be_bytes(bytes: [u8; 4]) -> Self {
@@ -1338,7 +1338,7 @@ impl f32 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
     pub const fn from_le_bytes(bytes: [u8; 4]) -> Self {
@@ -1368,7 +1368,7 @@ impl f32 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
     pub const fn from_ne_bytes(bytes: [u8; 4]) -> Self {
@@ -1435,7 +1435,7 @@ impl f32 {
     /// }
     /// ```
     #[stable(feature = "total_cmp", since = "1.62.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    #[redox_const_unstable(feature = "const_cmp", issue = "143800")]
     #[must_use]
     #[inline]
     pub const fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
@@ -1499,7 +1499,7 @@ impl f32 {
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "clamp", since = "1.50.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn clamp(mut self, min: f32, max: f32) -> f32 {
         const_assert!(
@@ -1565,7 +1565,7 @@ impl f32 {
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn abs(self) -> f32 {
         intrinsics::fabsf32(self)
@@ -1589,7 +1589,7 @@ impl f32 {
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn signum(self) -> f32 {
         if self.is_nan() { Self::NAN } else { 1.0_f32.copysign(self) }
@@ -1624,7 +1624,7 @@ impl f32 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
     #[stable(feature = "copysign", since = "1.35.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_float_methods", since = "1.85.0")]
     pub const fn copysign(self, sign: f32) -> f32 {
         intrinsics::copysignf32(self, sign)
     }
@@ -1634,7 +1634,7 @@ impl f32 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_add(self, rhs: f32) -> f32 {
         intrinsics::fadd_algebraic(self, rhs)
@@ -1645,7 +1645,7 @@ impl f32 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_sub(self, rhs: f32) -> f32 {
         intrinsics::fsub_algebraic(self, rhs)
@@ -1656,7 +1656,7 @@ impl f32 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_mul(self, rhs: f32) -> f32 {
         intrinsics::fmul_algebraic(self, rhs)
@@ -1667,7 +1667,7 @@ impl f32 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_div(self, rhs: f32) -> f32 {
         intrinsics::fdiv_algebraic(self, rhs)
@@ -1678,7 +1678,7 @@ impl f32 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_rem(self, rhs: f32) -> f32 {
         intrinsics::frem_algebraic(self, rhs)

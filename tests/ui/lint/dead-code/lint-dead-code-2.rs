@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
 #![deny(dead_code)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 struct Foo;
 
@@ -23,7 +23,7 @@ fn dead_fn() {} //~ ERROR: function `dead_fn` is never used
 
 fn used_fn() {}
 
-#[rustc_main]
+#[redox_main]
 fn actual_main() {
     used_fn();
     let foo = Foo;

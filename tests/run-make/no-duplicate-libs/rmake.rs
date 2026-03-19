@@ -9,11 +9,11 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{build_native_static_lib, run, rustc};
+use run_make_support::{build_native_static_lib, run, redox};
 
 fn main() {
     build_native_static_lib("foo");
     build_native_static_lib("bar");
-    rustc().input("main.rs").run();
+    redox().input("main.rs").run();
     run("main");
 }

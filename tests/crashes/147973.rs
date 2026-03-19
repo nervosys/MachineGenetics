@@ -2,7 +2,7 @@
 // suggestions having overlapping parts under https://github.com/rust-lang/rust/pull/146121.
 // This is one MCVE from the beta crater run regressions from issue 147973.
 
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 //@ known-bug: #147973
 
 //@ aux-build: overlapping_spans_helper.rs

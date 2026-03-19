@@ -1,17 +1,17 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::paths;
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
-use rustc_ast::{AttrStyle, DelimArgs};
-use rustc_hir::def::Res;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{
+use redox_ast::tokenstream::{TokenStream, TokenTree};
+use redox_ast::{AttrStyle, DelimArgs};
+use redox_hir::def::Res;
+use redox_hir::def_id::LocalDefId;
+use redox_hir::{
     AttrArgs, AttrItem, AttrPath, Attribute, HirId, Impl, Item, ItemKind, Path, QPath, TraitImplHeader, TraitRef, Ty,
     TyKind, find_attr,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_lint_defs::declare_tool_lint;
-use rustc_middle::ty::TyCtxt;
-use rustc_session::declare_lint_pass;
+use redox_lint::{LateContext, LateLintPass};
+use redox_lint_defs::declare_tool_lint;
+use redox_middle::ty::TyCtxt;
+use redox_session::declare_lint_pass;
 
 declare_tool_lint! {
     /// ### What it does
@@ -129,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for DeriveDeserializeAllowingUnknown {
 fn has_variant_with_named_fields(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let ty = tcx.type_of(def_id).skip_binder();
 
-    let rustc_middle::ty::Adt(adt_def, _) = ty.kind() else {
+    let redox_middle::ty::Adt(adt_def, _) = ty.kind() else {
         return false;
     };
 

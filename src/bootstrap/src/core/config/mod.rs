@@ -400,7 +400,7 @@ pub enum DryRun {
     UserSelected,
 }
 
-/// LTO mode used for compiling rustc itself.
+/// LTO mode used for compiling redox itself.
 #[derive(Default, Clone, PartialEq, Debug)]
 pub enum RustcLto {
     Off,
@@ -419,7 +419,7 @@ impl std::str::FromStr for RustcLto {
             "thin" => Ok(RustcLto::Thin),
             "fat" => Ok(RustcLto::Fat),
             "off" => Ok(RustcLto::Off),
-            _ => Err(format!("Invalid value for rustc LTO: {s}")),
+            _ => Err(format!("Invalid value for redox LTO: {s}")),
         }
     }
 }

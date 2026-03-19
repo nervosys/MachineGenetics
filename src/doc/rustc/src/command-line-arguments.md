@@ -1,11 +1,11 @@
 # Command-line Arguments
 
-Here's a list of command-line arguments to `rustc` and what they do.
+Here's a list of command-line arguments to `redox` and what they do.
 
 <a id="option-help"></a>
 ## `-h`/`--help`: get help
 
-This flag will print out help information for `rustc`.
+This flag will print out help information for `redox`.
 
 <a id="option-cfg"></a>
 ## `--cfg`: configure the compilation environment
@@ -122,11 +122,11 @@ The default for this modifier is `+bundle`.
 
 This modifier is compatible with all linking kinds.
 
-`+verbatim` means that rustc itself won't add any target-specified library prefixes or suffixes
+`+verbatim` means that redox itself won't add any target-specified library prefixes or suffixes
 (like `lib` or `.a`) to the library name, and will try its best to ask for the same thing from the
 linker.
 
-For `ld`-like linkers supporting GNU extensions rustc will use the `-l:filename` syntax (note the
+For `ld`-like linkers supporting GNU extensions redox will use the `-l:filename` syntax (note the
 colon) when passing the library, so the linker won't add any prefixes or suffixes to it.
 See [`-l namespec`](https://sourceware.org/binutils/docs/ld/Options.html) in ld documentation for
 more details. \
@@ -134,7 +134,7 @@ For linkers not supporting any verbatim modifiers (e.g. `link.exe` or `ld64`) th
 be passed as is. So the most reliable cross-platform use scenarios for this option are when no
 linker is involved, for example bundling native libraries into rlibs.
 
-`-verbatim` means that rustc will either add a target-specific prefix and suffix to the library
+`-verbatim` means that redox will either add a target-specific prefix and suffix to the library
 name before passing it to linker, or won't prevent linker from implicitly adding it. \
 In case of `raw-dylib` kind in particular `.dll` will be added to the library name on Windows.
 
@@ -143,12 +143,12 @@ The default for this modifier is `-verbatim`.
 NOTE: Even with `+verbatim` and `-l:filename` syntax `ld`-like linkers do not typically support
 passing absolute paths to libraries. Usually such paths need to be passed as input files without
 using any options like `-l`, e.g. `ld /my/absolute/path`. \
-`-Clink-arg=/my/absolute/path` can be used for doing this from stable `rustc`.
+`-Clink-arg=/my/absolute/path` can be used for doing this from stable `redox`.
 
 <a id="option-crate-type"></a>
 ## `--crate-type`: a list of types of crates for the compiler to emit
 
-This instructs `rustc` on which crate type to build. This flag accepts a
+This instructs `redox` on which crate type to build. This flag accepts a
 comma-separated list of values, and may be specified multiple times. The valid
 crate types are:
 
@@ -174,7 +174,7 @@ More details may be found in the [linkage chapter] of the reference.
 <a id="option-crate-name"></a>
 ## `--crate-name`: specify the name of the crate being built
 
-This informs `rustc` of the name of your crate.
+This informs `redox` of the name of your crate.
 
 <a id="option-edition"></a>
 ## `--edition`: specify the edition to use
@@ -205,7 +205,7 @@ The valid emit kinds are:
   filename is `CRATE_NAME.ll`.
 - `metadata` — Generates a file containing metadata about the crate. The
   default output filename is `libCRATE_NAME.rmeta`.
-- `mir` — Generates a file containing rustc's mid-level intermediate
+- `mir` — Generates a file containing redox's mid-level intermediate
   representation. The default output filename is `CRATE_NAME.mir`.
 - `obj` — Generates a native object file. The default output filename is
   `CRATE_NAME.o`.
@@ -273,13 +273,13 @@ the [`-o` flag](#option-o-output) is used.
 <a id="option-explain"></a>
 ## `--explain`: provide a detailed explanation of an error message
 
-Each error of `rustc`'s comes with an error code; this will print
+Each error of `redox`'s comes with an error code; this will print
 out a longer explanation of a given error.
 
 <a id="option-test"></a>
 ## `--test`: build a test harness
 
-When compiling this crate, `rustc` will ignore your `main` function
+When compiling this crate, `redox` will ignore your `main` function
 and instead produce a test harness. See the [Tests chapter](tests/index.md)
 for more information about tests.
 
@@ -324,10 +324,10 @@ _Note:_ The order of these lint level arguments is taken into account, see [lint
 <a id="option-z-unstable"></a>
 ## `-Z`: set unstable options
 
-This flag will allow you to set unstable options of rustc. In order to set multiple options,
-the -Z flag can be used multiple times. For example: `rustc -Z verbose-internals -Z time-passes`.
+This flag will allow you to set unstable options of redox. In order to set multiple options,
+the -Z flag can be used multiple times. For example: `redox -Z verbose-internals -Z time-passes`.
 Specifying options with -Z is only available on nightly. To view all available options
-run: `rustc -Z help`, or see [The Unstable Book](../unstable-book/index.html).
+run: `redox -Z help`, or see [The Unstable Book](../unstable-book/index.html).
 
 <a id="option-cap-lints"></a>
 ## `--cap-lints`: set the most restrictive lint level
@@ -342,7 +342,7 @@ This flag will allow you to set [codegen options](codegen-options/index.md).
 <a id="option-version"></a>
 ## `-V`/`--version`: print a version
 
-This flag will print out `rustc`'s version.
+This flag will print out `redox`'s version.
 
 <a id="option-verbose"></a>
 ## `-v`/`--verbose`: use verbose output
@@ -388,7 +388,7 @@ path is used and the pathless flag has no effect.
 <a id="option-sysroot"></a>
 ## `--sysroot`: Override the system root
 
-The "sysroot" is where `rustc` looks for the crates that come with the Rust
+The "sysroot" is where `redox` looks for the crates that come with the Rust
 distribution; this flag allows that to be overridden.
 
 <a id="option-error-format"></a>
@@ -440,7 +440,7 @@ further details and explanation.
 ## `--json`: configure json messages printed by the compiler
 
 When the [`--error-format=json` option](#option-error-format) is passed to
-rustc then all of the compiler's diagnostic output will be emitted in the form
+redox then all of the compiler's diagnostic output will be emitted in the form
 of JSON blobs. The `--json` argument can be used in conjunction with
 `--error-format=json` to configure what the JSON blobs contain as well as
 which ones are emitted.
@@ -457,14 +457,14 @@ to customize the output:
 - `diagnostic-rendered-ansi` - by default JSON blobs in their `rendered` field
   will contain a plain text rendering of the diagnostic. This option instead
   indicates that the diagnostic should have embedded ANSI color codes intended
-  to be used to colorize the message in the manner rustc typically already does
+  to be used to colorize the message in the manner redox typically already does
   for terminal outputs. Note that this is usefully combined with crates like
   [`fwdansi`](https://crates.io/crates/fwdansi) to translate these ANSI codes
   on Windows to console commands or
   [`strip-ansi-escapes`](https://crates.io/crates/strip-ansi-escapes) if you'd
   like to optionally remove the ansi colors afterwards.
 
-- `artifacts` - this instructs rustc to emit a JSON blob for each artifact that
+- `artifacts` - this instructs redox to emit a JSON blob for each artifact that
   is emitted. An artifact corresponds to a request from the [`--emit` CLI
   argument](#option-emit), and as soon as the artifact is available on the
   filesystem a notification will be emitted.

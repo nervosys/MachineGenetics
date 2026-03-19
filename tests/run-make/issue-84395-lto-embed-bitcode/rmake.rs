@@ -9,10 +9,10 @@
 
 //@ needs-force-clang-based-tests
 
-use run_make_support::{env_var, llvm_dis, llvm_objcopy, rustc};
+use run_make_support::{env_var, llvm_dis, llvm_objcopy, redox};
 
 fn main() {
-    rustc()
+    redox()
         .input("test.rs")
         .arg("-Clink-arg=-fuse-ld=lld")
         .arg("-Clinker-plugin-lto")

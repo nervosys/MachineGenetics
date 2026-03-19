@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::{is_from_proc_macro, is_inside_let_else};
-use rustc_errors::Applicability;
-use rustc_hir::LangItem::ResultErr;
-use rustc_hir::{ExprKind, HirId, ItemKind, MatchSource, Node, OwnerNode, Stmt, StmtKind};
-use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty::adjustment::Adjust;
+use redox_errors::Applicability;
+use redox_hir::LangItem::ResultErr;
+use redox_hir::{ExprKind, HirId, ItemKind, MatchSource, Node, OwnerNode, Stmt, StmtKind};
+use redox_lint::{LateContext, LintContext};
+use redox_middle::ty::adjustment::Adjust;
 
 use super::NEEDLESS_RETURN_WITH_QUESTION_MARK;
 

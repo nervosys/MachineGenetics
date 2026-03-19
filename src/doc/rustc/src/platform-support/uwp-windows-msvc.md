@@ -17,7 +17,7 @@ and `aarch64-pc-windows-msvc`).
 
 ## Building the targets
 
-The targets can be built by enabling them for a `rustc` build, for example:
+The targets can be built by enabling them for a `redox` build, for example:
 
 ```toml
 [build]
@@ -40,7 +40,7 @@ cargo build -Z build-std=std,panic_abort --target x86_64-uwp-windows-msvc
 
 ## Testing
 
-Currently there is no support to run the rustc test suite for this target.
+Currently there is no support to run the redox test suite for this target.
 
 ## Cross-compilation toolchains and C code
 

@@ -33,7 +33,7 @@ use std::{
 
 use dashmap::{DashMap, SharedValue};
 use hashbrown::raw::RawTable;
-use rustc_hash::FxBuildHasher;
+use redox_hash::FxBuildHasher;
 use triomphe::{Arc, ArcBorrow};
 
 type InternMap<T> = DashMap<Arc<T>, (), FxBuildHasher>;

@@ -1,6 +1,6 @@
 //@ edition:2021
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 // Test to ensure that we can handle cases where
 // let statements create no bindings are initialized
@@ -19,7 +19,7 @@ struct Point {
 fn wild_struct() {
     let p = Point { x: 10, y: 20 };
 
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -38,7 +38,7 @@ fn wild_struct() {
 fn wild_tuple() {
     let t = (String::new(), 10);
 
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -57,7 +57,7 @@ fn wild_tuple() {
 fn wild_arr() {
     let arr = [String::new(), String::new()];
 
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date

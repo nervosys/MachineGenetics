@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, FileName};
+use redox_span::edition::Edition;
+use redox_span::{DUMMY_SP, FileName};
 
 use super::extracted::ExtractedDocTests;
 use super::{BuildDocTestBuilder, GlobalTestOptions, ScrapedDocTest};

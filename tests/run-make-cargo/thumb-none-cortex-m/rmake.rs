@@ -1,6 +1,6 @@
 //! Test building of the `cortex-m` crate, a foundational crate in the embedded ecosystem
 //! for a collection of thumb targets. This is a smoke test that verifies that both cargo
-//! and rustc work in this case.
+//! and redox work in this case.
 //!
 //! How to run this
 //! $ ./x.py clean

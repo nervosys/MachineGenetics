@@ -3,12 +3,12 @@
 
 //@ only-apple __builtin_available is (mostly) specific to Apple platforms.
 
-use run_make_support::{cc, rustc, target};
+use run_make_support::{cc, redox, target};
 
 fn main() {
     // Invoke the C compiler to generate an object file.
     cc().arg("-c").input("foo.c").output("foo.o").run();
 
     // Link the object file together with a Rust program.
-    rustc().target(target()).input("main.rs").link_arg("foo.o").run();
+    redox().target(target()).input("main.rs").link_arg("foo.o").run();
 }

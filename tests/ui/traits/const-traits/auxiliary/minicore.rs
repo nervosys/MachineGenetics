@@ -8,7 +8,7 @@
     unboxed_closures,
     auto_traits,
     intrinsics,
-    rustc_attrs,
+    redox_attrs,
     fundamental,
     marker_trait_attr,
     const_trait_impl,
@@ -81,19 +81,19 @@ enum ControlFlow<B, C = ()> {
 }
 
 #[lang = "fn"]
-#[rustc_paren_sugar]
+#[redox_paren_sugar]
 pub const trait Fn<Args: Tuple>: [const] FnMut<Args> {
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
 }
 
 #[lang = "fn_mut"]
-#[rustc_paren_sugar]
+#[redox_paren_sugar]
 pub const trait FnMut<Args: Tuple>: [const] FnOnce<Args> {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
 #[lang = "fn_once"]
-#[rustc_paren_sugar]
+#[redox_paren_sugar]
 pub const trait FnOnce<Args: Tuple> {
     #[lang = "fn_once_output"]
     type Output;
@@ -141,17 +141,17 @@ const fn size_of<T>() -> usize {
 }
 
 impl usize {
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     const fn repeat_u8(x: u8) -> usize {
         usize::from_ne_bytes([x; size_of::<usize>()])
     }
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     const fn from_ne_bytes(bytes: [u8; size_of::<Self>()]) -> Self {
         loop {}
     }
 }
 
-#[rustc_do_not_const_check] // hooked by const-eval
+#[redox_do_not_const_check] // hooked by const-eval
 const fn panic_display() {
     panic_fmt();
 }
@@ -445,7 +445,7 @@ impl<T: MetaSized> Deref for Ref<'_, T> {
 }
 
 #[lang = "clone"]
-#[rustc_trivial_field_reads]
+#[redox_trivial_field_reads]
 pub const trait Clone: Sized {
     fn clone(&self) -> Self;
     fn clone_from(&mut self, source: &Self)
@@ -461,7 +461,7 @@ pub trait StructuralPartialEq {}
 
 pub const fn drop<T: [const] Destruct>(_: T) {}
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 const fn const_eval_select<ARG: Tuple, F, G, RET>(
     arg: ARG,
     called_in_const: F,

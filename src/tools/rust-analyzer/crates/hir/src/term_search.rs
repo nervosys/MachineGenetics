@@ -3,7 +3,7 @@
 use hir_def::type_ref::Mutability;
 use hir_ty::db::HirDatabase;
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 
 use crate::{ModuleDef, ScopeDef, Semantics, SemanticsScope, Type};
 

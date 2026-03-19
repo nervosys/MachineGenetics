@@ -16,14 +16,14 @@ by T-lang.
 This doc is ordered mostly via the compilation pipeline:
 
 1. AST lowering (AST -> HIR)
-2. HIR ty lowering (HIR -> rustc_middle::ty data types)
+2. HIR ty lowering (HIR -> redox_middle::ty data types)
 3. typeck
 
 ### AST lowering
 
 AST lowering for RPITITs is almost the same as lowering RPITs. We
 still lower them as
-[`hir::ItemKind::OpaqueTy`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.OpaqueTy.html).
+[`hir::ItemKind::OpaqueTy`](https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.OpaqueTy.html).
 The two differences are that:
 
 We record `in_trait` for the opaque. This will signify that the opaque
@@ -46,7 +46,7 @@ or late-bound during AST lowering, we just do this for all lifetimes.
 The main addition for RPITITs is that during lowering we track the
 relationship between the captured lifetimes and the corresponding
 duplicated lifetimes in an additional field,
-[`OpaqueTy::lifetime_mapping`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.OpaqueTy.html#structfield.lifetime_mapping).
+[`OpaqueTy::lifetime_mapping`](https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.OpaqueTy.html#structfield.lifetime_mapping).
 We use this lifetime mapping later on in `predicates_of` to install
 bounds that enforce equality between these duplicated lifetimes and
 their source lifetimes in order to properly typecheck these GATs, which
@@ -104,10 +104,10 @@ the corresponding trait method.
 #### Synthesizing new associated types
 
 We use query feeding
-([`TyCtxtAt::create_def`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/query/plumbing/struct.TyCtxtAt.html#method.create_def))
+([`TyCtxtAt::create_def`](https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/query/plumbing/struct.TyCtxtAt.html#method.create_def))
 to synthesize a new def-id for the synthetic GATs for each RPITIT.
 
-Locally, most of rustc's queries match on the HIR of an item to compute
+Locally, most of redox's queries match on the HIR of an item to compute
 their values. Since the RPITIT doesn't really have HIR associated with
 it, or at least not HIR that corresponds to an associated type, we must
 compute many queries eagerly and
@@ -175,7 +175,7 @@ if we were to feed them eagerly, like `explicit_predicates_of`.
 Therefore we defer to the `predicates_of` provider to return the right
 value for our RPITIT's GAT. We do this by detecting early on in the
 query if the associated type is synthetic by using
-[`opt_rpitit_info`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.opt_rpitit_info),
+[`opt_rpitit_info`](https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.opt_rpitit_info),
 which returns `Some` if the associated type is synthetic.
 
 Then, during a query like `explicit_predicates_of`, we can detect if an
@@ -249,14 +249,14 @@ Because `assumed_wf_types` is only defined for local def ids, in order
 to properly implement `assumed_wf_types` for impls of foreign traits
 with RPITs, we need to encode the assumed wf types of RPITITs in an
 extern query
-[`assumed_wf_types_for_rpitit`](https://github.com/rust-lang/rust/blob/a17c7968b727d8413801961fc4e89869b6ab00d3/compiler/rustc_ty_utils/src/implied_bounds.rs#L14).
+[`assumed_wf_types_for_rpitit`](https://github.com/rust-lang/rust/blob/a17c7968b727d8413801961fc4e89869b6ab00d3/compiler/redox_ty_utils/src/implied_bounds.rs#L14).
 
 ### Typechecking
 
 #### The RPITIT inference algorithm
 
 The RPITIT inference algorithm is implemented in
-[`collect_return_position_impl_trait_in_trait_tys`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.collect_return_position_impl_trait_in_trait_tys.html).
+[`collect_return_position_impl_trait_in_trait_tys`](https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_analysis/check/compare_impl_item/fn.collect_return_position_impl_trait_in_trait_tys.html).
 
 **High-level:** Given a impl method and a trait method, we take the
 trait method and instantiate each RPITIT in the signature with an infer

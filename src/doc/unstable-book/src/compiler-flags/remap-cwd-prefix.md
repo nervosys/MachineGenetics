@@ -20,5 +20,5 @@ of build environment.
 ```sh
 # This would produce an absolute path to main.rs in build outputs of
 # "./main.rs".
-rustc -Z remap-cwd-prefix=. main.rs
+redox -Z remap-cwd-prefix=. main.rs
 ```

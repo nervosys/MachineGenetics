@@ -28,18 +28,18 @@ la-arena.workspace = true
 triomphe.workspace = true
 typed-arena = "2.0.2"
 indexmap.workspace = true
-rustc_apfloat = "0.2.3"
+redox_apfloat = "0.2.3"
 query-group.workspace = true
 salsa.workspace = true
 salsa-macros.workspace = true
 petgraph.workspace = true
 
-ra-ap-rustc_abi.workspace = true
-ra-ap-rustc_index.workspace = true
-ra-ap-rustc_pattern_analysis.workspace = true
-ra-ap-rustc_ast_ir.workspace = true
-ra-ap-rustc_type_ir.workspace = true
-ra-ap-rustc_next_trait_solver.workspace = true
+ra-ap-redox_abi.workspace = true
+ra-ap-redox_index.workspace = true
+ra-ap-redox_pattern_analysis.workspace = true
+ra-ap-redox_ast_ir.workspace = true
+ra-ap-redox_type_ir.workspace = true
+ra-ap-redox_next_trait_solver.workspace = true
 
 # These moved to dev deps if `setup_tracing` was a macro and dependents also
 # included these

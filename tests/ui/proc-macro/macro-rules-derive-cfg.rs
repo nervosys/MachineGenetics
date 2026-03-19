@@ -2,7 +2,7 @@
 //@ compile-flags: -Z span-debug --error-format human
 //@ proc-macro: test-macros.rs
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(stmt_expr_attributes)]
 
 #![no_std] // Don't load unnecessary hygiene information from std
@@ -15,14 +15,14 @@ macro_rules! produce_it {
     ($expr:expr) => {
         #[derive(Print)]
         struct Foo(
-            [bool; #[cfg_attr(not(FALSE), rustc_dummy(first))] $expr]
+            [bool; #[cfg_attr(not(FALSE), redox_dummy(first))] $expr]
         );
     }
 }
 
-produce_it!(#[cfg_attr(not(FALSE), rustc_dummy(second))] {
-    #![cfg_attr(not(FALSE), rustc_dummy(third))]
-    #[cfg_attr(not(FALSE), rustc_dummy(fourth))]
+produce_it!(#[cfg_attr(not(FALSE), redox_dummy(second))] {
+    #![cfg_attr(not(FALSE), redox_dummy(third))]
+    #[cfg_attr(not(FALSE), redox_dummy(fourth))]
     30
 });
 

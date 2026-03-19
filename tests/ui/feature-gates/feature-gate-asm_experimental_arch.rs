@@ -3,7 +3,7 @@
 //@ needs-llvm-components: mips
 //@ ignore-backends: gcc
 
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core, lang_items, redox_attrs)]
 #![crate_type = "rlib"]
 #![no_core]
 

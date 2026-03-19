@@ -1,4 +1,4 @@
-//! Unlike rustc, rust-analyzer's syntax tree are not "made of" token trees.
+//! Unlike redox, rust-analyzer's syntax tree are not "made of" token trees.
 //! Rather, token trees are an explicit bridge between the parser and
 //! (procedural or declarative) macros.
 //!

@@ -107,14 +107,14 @@ config("everybody_loops") {
     rustflags = [ "-Zeverybody-loops" ]
 }
 
-rustc_binary("example") {
+redox_binary("example") {
     crate_root = "src/bin.rs"
     # ...existing keys here...
     configs += [ ":everybody_loops" ]
 }
 ```
 
-This will add the flag `-Zeverybody-loops` to rustc when building the `example`
+This will add the flag `-Zeverybody-loops` to redox when building the `example`
 target. Note that you can also use [`public_configs`] for a config to be added
 to every target that depends on that target.
 
@@ -123,17 +123,17 @@ rustflags to the [`//build/config:compiler`] config or to the OS-specific
 configs referenced in that file. Note that `cflags` and `ldflags` are ignored on
 Rust targets.
 
-#### Running ninja and rustc commands directly
+#### Running ninja and redox commands directly
 
 Going down one layer, `fx build` invokes `ninja`, which in turn eventually
-invokes `rustc`. All build actions are run inside the out directory, which is
+invokes `redox`. All build actions are run inside the out directory, which is
 usually `out/default` inside the Fuchsia checkout.
 
 You can get ninja to print the actual command it invokes by forcing that command
 to fail, e.g. by adding a syntax error to one of the source files of the target.
 Once you have the command, you can run it from inside the output directory.
 
-After changing the toolchain itself, the build setting `rustc_version_string` in
+After changing the toolchain itself, the build setting `redox_version_string` in
 `out/default/args.gn` needs to be changed so that `fx build` or `ninja` will
 rebuild all the Rust targets. This can be done in a text editor and the contents
 of the string do not matter, as long as it changes from one build to the next.
@@ -154,13 +154,13 @@ initial build.
 ## Fuchsia target support
 
 To learn more about Fuchsia target support, see the Fuchsia chapter in [the
-rustc book][platform-support].
+redox book][platform-support].
 
 [regressions]: https://gist.github.com/tmandry/7103eba4bd6a6fb0c439b5a90ae355fa
 [build-toolchain]: https://fuchsia.dev/fuchsia-src/development/build/rust_toolchain
 [build-fuchsia.sh]: https://github.com/rust-lang/rust/blob/221e2741c39515a5de6da42d8c76ee1e132c2c74/src/ci/docker/host-x86_64/x86_64-fuchsia/build-fuchsia.sh
 [build_fuchsia_from_rust_ci.sh]: https://cs.opensource.google/fuchsia/fuchsia/+/main:scripts/rust/build_fuchsia_from_rust_ci.sh?q=build_fuchsia_from_rust_ci&ss=fuchsia
-[platform-support]: https://doc.rust-lang.org/nightly/rustc/platform-support/fuchsia.html
+[platform-support]: https://doc.rust-lang.org/nightly/redox/platform-support/fuchsia.html
 [GN]: https://gn.googlesource.com/gn/+/main#gn
 [Ninja]: https://ninja-build.org/
 [`public_configs`]: https://gn.googlesource.com/gn/+/main/docs/reference.md#var_public_configs

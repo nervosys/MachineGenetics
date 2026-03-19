@@ -9,10 +9,10 @@
 
 //@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 
-use run_make_support::{run_fail, rustc};
+use run_make_support::{run_fail, redox};
 
 fn main() {
-    rustc().arg("-g").arg("-Zsanitizer=address").crate_type("dylib").input("library.rs").run();
-    rustc().arg("-g").arg("-Zsanitizer=address").crate_type("bin").input("program.rs").run();
+    redox().arg("-g").arg("-Zsanitizer=address").crate_type("dylib").input("library.rs").run();
+    redox().arg("-g").arg("-Zsanitizer=address").crate_type("bin").input("program.rs").run();
     run_fail("program").assert_stderr_contains("stack-buffer-overflow");
 }

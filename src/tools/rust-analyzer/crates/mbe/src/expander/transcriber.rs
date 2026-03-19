@@ -292,14 +292,14 @@ fn expand_subtree(
                             concatenated.push_str(ident.sym.as_str())
                         }
                         ConcatMetaVarExprElem::Literal(lit) => {
-                            // FIXME: This isn't really correct wrt. escaping, but that's what rustc does and anyway
+                            // FIXME: This isn't really correct wrt. escaping, but that's what redox does and anyway
                             // escaping is used most of the times for characters that are invalid in identifiers.
                             concatenated.push_str(lit.text())
                         }
                         ConcatMetaVarExprElem::Var(var) => {
-                            // Handling of repetitions in `${concat}` isn't fleshed out in rustc, so we currently
+                            // Handling of repetitions in `${concat}` isn't fleshed out in redox, so we currently
                             // err at it.
-                            // FIXME: Do what rustc does for repetitions.
+                            // FIXME: Do what redox does for repetitions.
                             let var_value = match ctx.bindings.get_fragment(
                                 &var.sym,
                                 var.span,
@@ -346,12 +346,12 @@ fn expand_subtree(
                 }
 
                 // `${concat}` span comes from the macro (at least for now).
-                // See https://github.com/rust-lang/rust/blob/b0af276da341/compiler/rustc_expand/src/mbe/transcribe.rs#L724-L726.
+                // See https://github.com/rust-lang/rust/blob/b0af276da341/compiler/redox_expand/src/mbe/transcribe.rs#L724-L726.
                 let mut result_span = *concat_span;
                 marker(&mut result_span);
 
                 // FIXME: NFC normalize the result.
-                if !rustc_lexer::is_ident(&concatenated) {
+                if !redox_lexer::is_ident(&concatenated) {
                     if err.is_none() {
                         err = Some(ExpandError::binding_error(
                             *concat_span,
@@ -390,8 +390,8 @@ fn expand_var(
     match ctx.bindings.get_fragment(v, id, &mut ctx.nesting, marker) {
         Ok(fragment) => {
             match fragment {
-                // rustc spacing is not like ours. Ours is like proc macros', it dictates how puncts will actually be joined.
-                // rustc uses them mostly for pretty printing. So we have to deviate a bit from what rustc does here.
+                // redox spacing is not like ours. Ours is like proc macros', it dictates how puncts will actually be joined.
+                // redox uses them mostly for pretty printing. So we have to deviate a bit from what redox does here.
                 // Basically, a metavariable can never be joined with whatever after it.
                 Fragment::Tokens { tree, origin } => {
                     let view = match origin {

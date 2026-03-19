@@ -90,8 +90,8 @@ use crate::{fmt, ops, range, slice, str};
 /// [str]: prim@str "str"
 #[derive(PartialEq, Eq, Hash)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
-#[rustc_diagnostic_item = "cstr_type"]
-#[rustc_has_incoherent_inherent_impls]
+#[redox_diagnostic_item = "cstr_type"]
+#[redox_has_incoherent_inherent_impls]
 #[lang = "CStr"]
 // `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
 // on `CStr` being layout-compatible with `[u8]`.
@@ -249,7 +249,7 @@ impl CStr {
     #[inline] // inline is necessary for codegen to see strlen.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cstr_from_ptr", since = "1.81.0")]
+    #[redox_const_stable(feature = "const_cstr_from_ptr", since = "1.81.0")]
     pub const unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
         // SAFETY: The caller has provided a pointer that points to a valid C
         // string with a NUL terminator less than `isize::MAX` from `ptr`.
@@ -294,7 +294,7 @@ impl CStr {
     /// ```
     ///
     #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
-    #[rustc_const_stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
+    #[redox_const_stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
     pub const fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {
@@ -347,7 +347,7 @@ impl CStr {
     /// assert_eq!(cstr, Err(FromBytesWithNulError::InteriorNul { position: 2 }));
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
+    #[redox_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     pub const fn from_bytes_with_nul(bytes: &[u8]) -> Result<&Self, FromBytesWithNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {
@@ -383,8 +383,8 @@ impl CStr {
     #[inline]
     #[must_use]
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-    #[rustc_const_stable(feature = "const_cstr_unchecked", since = "1.59.0")]
-    #[rustc_allow_const_fn_unstable(const_eval_select)]
+    #[redox_const_stable(feature = "const_cstr_unchecked", since = "1.59.0")]
+    #[redox_allow_const_fn_unstable(const_eval_select)]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
         const_eval_select!(
             @capture { bytes: &[u8] } -> &CStr:
@@ -477,9 +477,9 @@ impl CStr {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_str_as_ptr", since = "1.32.0")]
-    #[rustc_as_ptr]
-    #[rustc_never_returns_null_ptr]
+    #[redox_const_stable(feature = "const_str_as_ptr", since = "1.32.0")]
+    #[redox_as_ptr]
+    #[redox_never_returns_null_ptr]
     pub const fn as_ptr(&self) -> *const c_char {
         self.inner.as_ptr()
     }
@@ -510,7 +510,7 @@ impl CStr {
     #[must_use]
     #[doc(alias("len", "strlen"))]
     #[stable(feature = "cstr_count_bytes", since = "1.79.0")]
-    #[rustc_const_stable(feature = "const_cstr_from_ptr", since = "1.81.0")]
+    #[redox_const_stable(feature = "const_cstr_from_ptr", since = "1.81.0")]
     pub const fn count_bytes(&self) -> usize {
         self.inner.len() - 1
     }
@@ -525,7 +525,7 @@ impl CStr {
     /// ```
     #[inline]
     #[stable(feature = "cstr_is_empty", since = "1.71.0")]
-    #[rustc_const_stable(feature = "cstr_is_empty", since = "1.71.0")]
+    #[redox_const_stable(feature = "cstr_is_empty", since = "1.71.0")]
     pub const fn is_empty(&self) -> bool {
         // SAFETY: We know there is at least one byte; for empty strings it
         // is the NUL terminator.
@@ -551,7 +551,7 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
+    #[redox_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     pub const fn to_bytes(&self) -> &[u8] {
         let bytes = self.to_bytes_with_nul();
         // FIXME(const-hack) replace with range index
@@ -577,7 +577,7 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
+    #[redox_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     pub const fn to_bytes_with_nul(&self) -> &[u8] {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
@@ -616,7 +616,7 @@ impl CStr {
     /// assert_eq!(c"foo".to_str(), Ok("foo"));
     /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
-    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
+    #[redox_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     pub const fn to_str(&self) -> Result<&str, str::Utf8Error> {
         // N.B., when `CStr` is changed to perform the length check in `.to_bytes()`
         // instead of in `from_ptr()`, it may be worth considering if this should
@@ -727,7 +727,7 @@ impl ops::Index<range::RangeFrom<usize>> for CStr {
 }
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const AsRef<CStr> for CStr {
     #[inline]
     fn as_ref(&self) -> &CStr {
@@ -743,7 +743,7 @@ impl const AsRef<CStr> for CStr {
 /// located within `isize::MAX` from `ptr`.
 #[inline]
 #[unstable(feature = "cstr_internals", issue = "none")]
-#[rustc_allow_const_fn_unstable(const_eval_select)]
+#[redox_allow_const_fn_unstable(const_eval_select)]
 const unsafe fn strlen(ptr: *const c_char) -> usize {
     const_eval_select!(
         @capture { s: *const c_char = ptr } -> usize:

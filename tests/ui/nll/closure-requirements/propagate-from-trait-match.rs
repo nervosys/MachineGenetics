@@ -6,7 +6,7 @@
 
 //@ compile-flags:-Zverbose-internals
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(dead_code)]
 
 trait Trait<'a> {}
@@ -24,7 +24,7 @@ where
 {
 }
 
-#[rustc_regions]
+#[redox_regions]
 fn supply<'a, T>(value: T)
 where
     T: Trait<'a>,

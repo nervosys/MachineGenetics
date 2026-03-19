@@ -5,11 +5,11 @@ use genmc_sys::{
     EstimationResult, GENMC_GLOBAL_ADDRESSES_MASK, GenmcScalar, MemOrdering, MiriGenmcShim,
     RMWBinOp, UniquePtr, create_genmc_driver_handle,
 };
-use rustc_abi::{Align, Size};
-use rustc_const_eval::interpret::{AllocId, InterpCx, InterpResult, interp_ok};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::{throw_ub_format, throw_unsup_format};
-// FIXME(genmc,tracing): Implement some work-around for enabling debug/trace level logging (currently disabled statically in rustc).
+use redox_abi::{Align, Size};
+use redox_const_eval::interpret::{AllocId, InterpCx, InterpResult, interp_ok};
+use redox_data_structures::fx::FxHashMap;
+use redox_middle::{throw_ub_format, throw_unsup_format};
+// FIXME(genmc,tracing): Implement some work-around for enabling debug/trace level logging (currently disabled statically in redox).
 use tracing::debug;
 
 use self::global_allocations::{EvalContextExt as _, GlobalAllocationHandler};

@@ -247,7 +247,7 @@ impl Copy for S where $0
 fn test_is_not_considered_macro() {
     check_with_base_items(
         r#"
-#[rustc_builtin]
+#[redox_builtin]
 pub macro test($item:item) {
     /* compiler built-in */
 }

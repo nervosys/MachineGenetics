@@ -8,7 +8,7 @@ macro_rules! contain { () => { c"str" } }
     //~| NOTE expected one of 8 possible tokens
     //~| NOTE you may be trying to write a c-string literal
     //~| NOTE c-string literals require Rust 2021 or later
-    //~| HELP pass `--edition 2024` to `rustc`
+    //~| HELP pass `--edition 2024` to `redox`
     //~| NOTE for more on editions, read https://doc.rust-lang.org/edition-guide
 
 fn check_macro_construct() {
@@ -30,7 +30,7 @@ fn check_basic() {
     //~| NOTE expected one of 8 possible tokens
     //~| NOTE you may be trying to write a c-string literal
     //~| NOTE c-string literals require Rust 2021 or later
-    //~| HELP pass `--edition 2024` to `rustc`
+    //~| HELP pass `--edition 2024` to `redox`
     //~| NOTE for more on editions, read https://doc.rust-lang.org/edition-guide
 }
 
@@ -40,7 +40,7 @@ fn check_craw() {
     //~| NOTE expected one of 8 possible tokens
     //~| NOTE you may be trying to write a c-string literal
     //~| NOTE c-string literals require Rust 2021 or later
-    //~| HELP pass `--edition 2024` to `rustc`
+    //~| HELP pass `--edition 2024` to `redox`
     //~| NOTE for more on editions, read https://doc.rust-lang.org/edition-guide
 }
 
@@ -50,7 +50,7 @@ fn check_craw_hash() {
     //~| NOTE expected one of 8 possible tokens
     //~| NOTE you may be trying to write a c-string literal
     //~| NOTE c-string literals require Rust 2021 or later
-    //~| HELP pass `--edition 2024` to `rustc`
+    //~| HELP pass `--edition 2024` to `redox`
     //~| NOTE for more on editions, read https://doc.rust-lang.org/edition-guide
 }
 

@@ -31,7 +31,7 @@ impl bool {
     /// assert_eq!(a, 2);
     /// ```
     #[stable(feature = "bool_to_option", since = "1.62.0")]
-    #[rustc_const_unstable(feature = "const_bool", issue = "151531")]
+    #[redox_const_unstable(feature = "const_bool", issue = "151531")]
     #[inline]
     pub const fn then_some<T: [const] Destruct>(self, t: T) -> Option<T> {
         if self { Some(t) } else { None }
@@ -59,8 +59,8 @@ impl bool {
     /// ```
     #[doc(alias = "then_with")]
     #[stable(feature = "lazy_bool_to_option", since = "1.50.0")]
-    #[rustc_diagnostic_item = "bool_then"]
-    #[rustc_const_unstable(feature = "const_bool", issue = "151531")]
+    #[redox_diagnostic_item = "bool_then"]
+    #[redox_const_unstable(feature = "const_bool", issue = "151531")]
     #[inline]
     pub const fn then<T, F: [const] FnOnce() -> T + [const] Destruct>(self, f: F) -> Option<T> {
         if self { Some(f()) } else { None }
@@ -98,7 +98,7 @@ impl bool {
     /// assert_eq!(a, 2);
     /// ```
     #[unstable(feature = "bool_to_result", issue = "142748")]
-    #[rustc_const_unstable(feature = "const_bool", issue = "151531")]
+    #[redox_const_unstable(feature = "const_bool", issue = "151531")]
     #[inline]
     pub const fn ok_or<E: [const] Destruct>(self, err: E) -> Result<(), E> {
         if self { Ok(()) } else { Err(err) }
@@ -129,7 +129,7 @@ impl bool {
     /// assert_eq!(a, 1);
     /// ```
     #[unstable(feature = "bool_to_result", issue = "142748")]
-    #[rustc_const_unstable(feature = "const_bool", issue = "151531")]
+    #[redox_const_unstable(feature = "const_bool", issue = "151531")]
     #[inline]
     pub const fn ok_or_else<E, F: [const] FnOnce() -> E + [const] Destruct>(
         self,

@@ -156,12 +156,12 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::{contains_return, iter_input_pats, peel_blocks, sym};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::{self as hir, Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::TraitRef;
-use rustc_session::impl_lint_pass;
-use rustc_span::{Span, Symbol};
+use redox_data_structures::fx::FxHashSet;
+use redox_hir::{self as hir, Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty::TraitRef;
+use redox_session::impl_lint_pass;
+use redox_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -2067,7 +2067,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// The code should use `try_fold` instead, which short-circuits on failure, thus opening the
-    /// door for additional optimizations not possible with `fold` as rustc can guarantee the
+    /// door for additional optimizations not possible with `fold` as redox can guarantee the
     /// function is never called on `None`, `Err`, etc., alleviating otherwise necessary checks. It's
     /// also slightly more idiomatic.
     ///
@@ -4917,8 +4917,8 @@ pub struct Methods {
     allowed_dotfiles: FxHashSet<&'static str>,
     format_args: FormatArgsStorage,
     allow_unwrap_types: Vec<String>,
-    unwrap_allowed_ids: FxHashSet<rustc_hir::def_id::DefId>,
-    unwrap_allowed_aliases: Vec<rustc_hir::def_id::DefId>,
+    unwrap_allowed_ids: FxHashSet<redox_hir::def_id::DefId>,
+    unwrap_allowed_aliases: Vec<redox_hir::def_id::DefId>,
 }
 
 impl Methods {
@@ -4961,7 +4961,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         for s in &self.allow_unwrap_types {
             let def_ids = clippy_utils::paths::lookup_path_str(cx.tcx, clippy_utils::paths::PathNS::Type, s);
             for def_id in def_ids {
-                if cx.tcx.def_kind(def_id) == rustc_hir::def::DefKind::TyAlias {
+                if cx.tcx.def_kind(def_id) == redox_hir::def::DefKind::TyAlias {
                     self.unwrap_allowed_aliases.push(def_id);
                 } else {
                     self.unwrap_allowed_ids.insert(def_id);

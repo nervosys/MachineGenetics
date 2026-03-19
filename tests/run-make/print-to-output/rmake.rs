@@ -9,7 +9,7 @@
 
 use std::path::PathBuf;
 
-use run_make_support::{rfs, rustc, target};
+use run_make_support::{rfs, redox, target};
 
 struct Option<'a> {
     target: &'a str,
@@ -18,17 +18,17 @@ struct Option<'a> {
 }
 
 fn main() {
-    // Printed from CodegenBackend trait impl in rustc_codegen_llvm/src/lib.rs
+    // Printed from CodegenBackend trait impl in redox_codegen_llvm/src/lib.rs
     check(Option { target: &target(), option: "relocation-models", includes: &["dynamic-no-pic"] });
 
-    // Printed by compiler/rustc_codegen_llvm/src/llvm_util.rs
+    // Printed by compiler/redox_codegen_llvm/src/llvm_util.rs
     check(Option {
         target: "wasm32-unknown-unknown",
         option: "target-features",
         includes: &["reference-types"],
     });
 
-    // Printed by C++ code in rustc_llvm/llvm-wrapper/PassWrapper.cpp
+    // Printed by C++ code in redox_llvm/llvm-wrapper/PassWrapper.cpp
     check(Option {
         target: "wasm32-unknown-unknown",
         option: "target-cpus",
@@ -44,13 +44,13 @@ fn check(args: Option) {
     }
 
     // --print={option}
-    let stdout = rustc().target(args.target).print(args.option).run().stdout_utf8();
+    let stdout = redox().target(args.target).print(args.option).run().stdout_utf8();
 
     // --print={option}=PATH
     let output = {
         let tmp_path = PathBuf::from(format!("{}.txt", args.option));
 
-        rustc().target(args.target).print(&format!("{}={}", args.option, tmp_path.display())).run();
+        redox().target(args.target).print(&format!("{}={}", args.option, tmp_path.display())).run();
 
         rfs::read_to_string(&tmp_path)
     };

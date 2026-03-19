@@ -5,16 +5,16 @@ use clippy_utils::ast_utils::{eq_field_pat, eq_id, eq_maybe_qself, eq_pat, eq_pa
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, MsrvStack};
 use clippy_utils::over;
-use rustc_ast::PatKind::*;
-use rustc_ast::mut_visit::*;
-use rustc_ast::{self as ast, DUMMY_NODE_ID, Mutability, Pat, PatKind, Pinnedness};
-use rustc_ast_pretty::pprust;
-use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
-use rustc_data_structures::thinvec::ExtractIf;
-use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::impl_lint_pass;
-use rustc_span::DUMMY_SP;
+use redox_ast::PatKind::*;
+use redox_ast::mut_visit::*;
+use redox_ast::{self as ast, DUMMY_NODE_ID, Mutability, Pat, PatKind, Pinnedness};
+use redox_ast_pretty::pprust;
+use redox_data_structures::thin_vec::{ThinVec, thin_vec};
+use redox_data_structures::thinvec::ExtractIf;
+use redox_errors::Applicability;
+use redox_lint::{EarlyContext, EarlyLintPass};
+use redox_session::impl_lint_pass;
+use redox_span::DUMMY_SP;
 // import needed to shadow `PatKind::Box` glob-imported above
 use std::boxed::Box;
 use std::cell::Cell;

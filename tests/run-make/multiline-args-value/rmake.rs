@@ -1,7 +1,7 @@
-use run_make_support::{cwd, diff, rustc};
+use run_make_support::{cwd, diff, redox};
 
 fn test_and_compare(test_name: &str, flag: &str, val: &str) {
-    let mut cmd = rustc();
+    let mut cmd = redox();
 
     let output = cmd.input("").arg("--crate-type=lib").arg(flag).arg(val).run_fail();
 

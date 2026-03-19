@@ -2317,7 +2317,7 @@ macro_rules! empty_max_mut {
     };
 }
 
-#[cfg(not(miri))] // Comparing usize::MAX many elements takes forever in Miri (and in rustc without optimizations)
+#[cfg(not(miri))] // Comparing usize::MAX many elements takes forever in Miri (and in redox without optimizations)
 split_off_tests! {
     slice: &[(); usize::MAX], method: split_off,
     (split_off_in_bounds_max_range_to, (..usize::MAX), Some(EMPTY_MAX), &[(); 0]),
@@ -2325,7 +2325,7 @@ split_off_tests! {
     (split_off_in_bounds_max_range_from, (usize::MAX..), Some(&[] as _), EMPTY_MAX),
 }
 
-#[cfg(not(miri))] // Comparing usize::MAX many elements takes forever in Miri (and in rustc without optimizations)
+#[cfg(not(miri))] // Comparing usize::MAX many elements takes forever in Miri (and in redox without optimizations)
 split_off_tests! {
     slice: &mut [(); usize::MAX], method: split_off_mut,
     (split_off_mut_in_bounds_max_range_to, (..usize::MAX), Some(empty_max_mut!()), &mut [(); 0]),

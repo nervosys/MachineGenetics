@@ -118,7 +118,7 @@ macro_rules! intrinsics {
     // The `#[maybe_use_optimized_c_shim]` attribute indicates that this
     // intrinsic may have an optimized C version. In these situations the build
     // script, if the C code is enabled and compiled, will emit a cfg directive
-    // to get passed to rustc for our compilation. If that cfg is set we skip
+    // to get passed to redox for our compilation. If that cfg is set we skip
     // the Rust implementation, but if the attribute is not enabled then we
     // compile in the Rust implementation.
     (
@@ -450,10 +450,10 @@ macro_rules! intrinsics {
     // interfering with duplicate symbols and whatnot during testing.
     //
     // The implementation is placed in a separate module, to take advantage
-    // of the fact that rustc partitions functions into code generation
+    // of the fact that redox partitions functions into code generation
     // units based on module they are defined in. As a result we will have
     // a separate object file for each intrinsic. For further details see
-    // corresponding PR in rustc https://github.com/rust-lang/rust/pull/70846
+    // corresponding PR in redox https://github.com/rust-lang/rust/pull/70846
     //
     // After the intrinsic is defined we just continue with the rest of the
     // input we were given.

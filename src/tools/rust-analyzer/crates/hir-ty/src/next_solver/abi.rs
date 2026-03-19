@@ -1,5 +1,5 @@
 //! ABI-related things in the next-trait-solver.
-use rustc_type_ir::{error::TypeError, relate::Relate};
+use redox_type_ir::{error::TypeError, relate::Relate};
 
 use crate::FnAbi;
 
@@ -12,20 +12,20 @@ pub enum Safety {
 }
 
 impl<'db> Relate<DbInterner<'db>> for Safety {
-    fn relate<R: rustc_type_ir::relate::TypeRelation<DbInterner<'db>>>(
+    fn relate<R: redox_type_ir::relate::TypeRelation<DbInterner<'db>>>(
         _relation: &mut R,
         a: Self,
         b: Self,
-    ) -> rustc_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
+    ) -> redox_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
         if a != b {
-            Err(TypeError::SafetyMismatch(rustc_type_ir::error::ExpectedFound::new(a, b)))
+            Err(TypeError::SafetyMismatch(redox_type_ir::error::ExpectedFound::new(a, b)))
         } else {
             Ok(a)
         }
     }
 }
 
-impl<'db> rustc_type_ir::inherent::Safety<DbInterner<'db>> for Safety {
+impl<'db> redox_type_ir::inherent::Safety<DbInterner<'db>> for Safety {
     fn safe() -> Self {
         Self::Safe
     }
@@ -43,20 +43,20 @@ impl<'db> rustc_type_ir::inherent::Safety<DbInterner<'db>> for Safety {
 }
 
 impl<'db> Relate<DbInterner<'db>> for FnAbi {
-    fn relate<R: rustc_type_ir::relate::TypeRelation<DbInterner<'db>>>(
+    fn relate<R: redox_type_ir::relate::TypeRelation<DbInterner<'db>>>(
         _relation: &mut R,
         a: Self,
         b: Self,
-    ) -> rustc_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
+    ) -> redox_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
         if a == b {
             Ok(a)
         } else {
-            Err(TypeError::AbiMismatch(rustc_type_ir::error::ExpectedFound::new(a, b)))
+            Err(TypeError::AbiMismatch(redox_type_ir::error::ExpectedFound::new(a, b)))
         }
     }
 }
 
-impl<'db> rustc_type_ir::inherent::Abi<DbInterner<'db>> for FnAbi {
+impl<'db> redox_type_ir::inherent::Abi<DbInterner<'db>> for FnAbi {
     fn rust() -> Self {
         FnAbi::Rust
     }

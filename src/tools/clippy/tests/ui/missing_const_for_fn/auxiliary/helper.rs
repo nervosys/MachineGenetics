@@ -4,5 +4,5 @@
 #![stable(feature = "clippytest", since = "1.0.0")]
 
 #[stable(feature = "clippytest", since = "1.0.0")]
-#[rustc_const_unstable(feature = "foo", issue = "none")]
+#[redox_const_unstable(feature = "foo", issue = "none")]
 pub const fn unstably_const_fn() {}

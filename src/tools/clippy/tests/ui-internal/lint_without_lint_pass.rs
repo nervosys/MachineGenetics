@@ -1,13 +1,13 @@
 #![deny(clippy::lint_without_lint_pass)]
 #![allow(clippy::missing_clippy_version_attribute)]
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 #[macro_use]
-extern crate rustc_middle;
+extern crate redox_middle;
 #[macro_use]
-extern crate rustc_session;
-extern crate rustc_lint;
-use rustc_lint::{LintPass, LintVec};
+extern crate redox_session;
+extern crate redox_lint;
+use redox_lint::{LintPass, LintVec};
 
 declare_tool_lint! {
 //~^ lint_without_lint_pass

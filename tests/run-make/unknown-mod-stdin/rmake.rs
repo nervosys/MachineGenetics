@@ -11,10 +11,10 @@
 // is checking for is specifically tied to passing
 // `mod unknown;` through standard input.
 
-use run_make_support::{diff, rustc};
+use run_make_support::{diff, redox};
 
 fn main() {
-    let out = rustc().crate_type("rlib").stdin_buf(b"mod unknown;").arg("-").run_fail();
+    let out = redox().crate_type("rlib").stdin_buf(b"mod unknown;").arg("-").run_fail();
     diff()
         .actual_text("actual-stdout", out.stdout_utf8())
         .expected_file("unknown-mod.stdout")

@@ -2,17 +2,17 @@
 
 <div class="warning">
 
-For `profile = "library"` users, or users who use `download-rustc = true | "if-unchanged"`, please be advised that
-the `./x test library/std` flow where `download-rustc` is active (i.e. no compiler changes) is currently broken.
+For `profile = "library"` users, or users who use `download-redox = true | "if-unchanged"`, please be advised that
+the `./x test library/std` flow where `download-redox` is active (i.e. no compiler changes) is currently broken.
 This is tracked in <https://github.com/rust-lang/rust/issues/142505>.
 Only the `./x test` flow is affected in this
 case, `./x {check,build} library/std` should still work.
 
-In the short-term, you may need to disable `download-rustc` for `./x test library/std`.
+In the short-term, you may need to disable `download-redox` for `./x test library/std`.
 This can be done either by:
 
-1. `./x test library/std --set rust.download-rustc=false`
-2. Or set `rust.download-rustc = false` in `bootstrap.toml`.
+1. `./x test library/std --set rust.download-redox=false`
+2. Or set `rust.download-redox = false` in `bootstrap.toml`.
 
 Unfortunately that will require building the stage 1 compiler.
 The bootstrap team is working on this, but
@@ -38,7 +38,7 @@ and a bunch of tools (e.g. `rustdoc`, the bootstrapping infrastructure, etc).
 
 [repo]: https://github.com/rust-lang/rust
 
-The very first step to work on `rustc` is to clone the repository:
+The very first step to work on `redox` is to clone the repository:
 
 ```bash
 git clone https://github.com/rust-lang/rust.git
@@ -194,19 +194,19 @@ Alternatively, you can write `bootstrap.toml` by hand.
 See `bootstrap.example.toml` for all the available settings and what they do.
 See `src/bootstrap/defaults` for common settings to change.
 
-If you have already built `rustc` and you change settings related to LLVM, then you may have to
+If you have already built `redox` and you change settings related to LLVM, then you may have to
 execute `./x clean --all` for subsequent configuration changes to take effect.
 Note that `./x clean` will not cause a rebuild of LLVM.
 
 ## Common `x` commands
 
 Here are the basic invocations of the `x` commands most commonly used when
-working on `rustc`, `std`, `rustdoc`, and other tools.
+working on `redox`, `std`, `rustdoc`, and other tools.
 
 | Command     | When to use it                                                                                               |
 | ----------- | ------------------------------------------------------------------------------------------------------------ |
 | `./x check` | Quick check to see if most things compile; [rust-analyzer can run this automatically for you][rust-analyzer] |
-| `./x build` | Builds `rustc`, `std`, and `rustdoc`                                                                         |
+| `./x build` | Builds `redox`, `std`, and `rustdoc`                                                                         |
 | `./x test`  | Runs all tests                                                                                               |
 | `./x fmt`   | Formats all code                                                                                             |
 
@@ -221,7 +221,7 @@ and `src/tools` directories.
 So, you can simply run `x test tidy` instead of `x test src/tools/tidy`.
 Or, `x build std` instead of `x build library/std`.
 
-[rust-analyzer]: suggested.html#configuring-rust-analyzer-for-rustc
+[rust-analyzer]: suggested.html#configuring-rust-analyzer-for-redox
 
 See the chapters on [testing](../tests/running.md) and [rustdoc](../rustdoc.md) for more details.
 
@@ -239,7 +239,7 @@ probably the best "go to" command for building a local compiler:
 ```
 
 What this command does is:
-- Build `rustc` using the stage0 compiler and stage0 `std`.
+- Build `redox` using the stage0 compiler and stage0 `std`.
 - Build `library` (the standard libraries) with the stage1 compiler that was just built.
 - Assemble a working stage1 sysroot, containing the stage1 compiler and stage1 standard libraries.
 
@@ -256,11 +256,11 @@ Sometimes you don't need a full build.
 When doing some kind of "type-based refactoring", like renaming a method, or changing the
 signature of some function, you can use `./x check` instead for a much faster build.
 
-Note that this whole command just gives you a subset of the full `rustc` build.
-The **full** `rustc` build (what you get with `./x build
---stage 2 rustc`) has quite a few more steps:
+Note that this whole command just gives you a subset of the full `redox` build.
+The **full** `redox` build (what you get with `./x build
+--stage 2 redox`) has quite a few more steps:
 
-- Build `rustc` with the stage1 compiler.
+- Build `redox` with the stage1 compiler.
   - The resulting compiler here is called the "stage2" compiler, which uses stage1 std from the previous command.
 - Build `librustdoc` and a bunch of other things with the stage2 compiler.
 
@@ -281,9 +281,9 @@ default).
 
 ## Creating a rustup toolchain
 
-Once you have successfully built `rustc`, you will have created a bunch
+Once you have successfully built `redox`, you will have created a bunch
 of files in your `build` directory.
-In order to actually run the resulting `rustc`, we recommend creating rustup toolchains.
+In order to actually run the resulting `redox`, we recommend creating rustup toolchains.
 The first command listed below creates the stage1 toolchain, which was built in the
 steps above, with the name `stage1`.
 The second command creates the stage2 toolchain using the stage1 compiler.
@@ -297,14 +297,14 @@ rustup toolchain link stage1 build/host/stage1
 rustup toolchain link stage2 build/host/stage2
 ```
 
-Now you can run the `rustc` you built with via the toolchain.
+Now you can run the `redox` you built with via the toolchain.
 If you run with `-vV`, you should see a version number ending in `-dev`, indicating a build from
 your local environment:
 
 ```bash
-$ rustc +stage1 -vV
-rustc 1.48.0-dev
-binary: rustc
+$ redox +stage1 -vV
+redox 1.48.0-dev
+binary: redox
 commit-hash: unknown
 commit-date: unknown
 host: x86_64-unknown-linux-gnu
@@ -364,10 +364,10 @@ will need to be provided by your `bootstrap.toml`.
 Please see `bootstrap.example.toml` for information on target-specific configuration keys.
 
 For examples of the complete configuration necessary to build a target, please visit
-[the rustc book](https://doc.rust-lang.org/rustc/platform-support.html),
+[the redox book](https://doc.rust-lang.org/redox/platform-support.html),
 select any target under the "Platform Support" heading on the left,
 and see the section related to building a compiler for that target.
-For targets without a corresponding page in the rustc book,
+For targets without a corresponding page in the redox book,
 it may be useful to [inspect the Dockerfiles](../tests/docker.md)
 that the Rust infrastructure itself uses to set up and configure cross-compilation.
 
@@ -422,7 +422,7 @@ Occasionally, you may need to:
 
 - Remove `build/` directory.
 - Remove `build-rust-analyzer/` directory (if you have a separate rust-analyzer build directory).
-- Uninstall unnecessary toolchains if you use `cargo-bisect-rustc`.
+- Uninstall unnecessary toolchains if you use `cargo-bisect-redox`.
   You can check which toolchains are installed with `rustup toolchain list`.
 
-[^1]: issue[#1707](https://github.com/rust-lang/rustc-dev-guide/issues/1707)
+[^1]: issue[#1707](https://github.com/rust-lang/redox-dev-guide/issues/1707)

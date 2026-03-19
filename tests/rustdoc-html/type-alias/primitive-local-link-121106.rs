@@ -1,10 +1,10 @@
 #![crate_name = "foo"]
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 //@ has foo/primitive.i32.html '//h1' 'Primitive Type i32'
 //@ has foo/index.html '//a/@href' '../foo/index.html'
-#[rustc_doc_primitive = "i32"]
+#[redox_doc_primitive = "i32"]
 mod i32 {}
 
 //@ has foo/struct.Node.html '//a/@href' 'primitive.i32.html'

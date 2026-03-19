@@ -2,7 +2,7 @@
 //@ compile-flags: -Zdump-mir-exclude-alloc-bytes
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
-#![feature(custom_mir, core_intrinsics, rustc_attrs)]
+#![feature(custom_mir, core_intrinsics, redox_attrs)]
 
 use std::intrinsics::mir::*;
 
@@ -88,8 +88,8 @@ fn statics() {
     };
 }
 
-#[rustc_layout_scalar_valid_range_start(1)]
-#[rustc_nonnull_optimization_guaranteed]
+#[redox_layout_scalar_valid_range_start(1)]
+#[redox_nonnull_optimization_guaranteed]
 struct NonZeroUsize(usize);
 
 // EMIT_MIR enum.mutate_discriminant.DataflowConstProp.diff

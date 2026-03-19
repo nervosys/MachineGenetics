@@ -1,11 +1,11 @@
 //@ needs-enzyme
 //@ ignore-cross-compile
 
-use run_make_support::{llvm_filecheck, rfs, rustc};
+use run_make_support::{llvm_filecheck, rfs, redox};
 
 fn main() {
     // Test with NoTT flag - should not generate TypeTree metadata
-    rustc()
+    redox()
         .input("test.rs")
         .arg("-Zautodiff=Enable,NoTT")
         .arg("-Clto=fat")
@@ -15,7 +15,7 @@ fn main() {
         .run();
 
     // Test without NoTT flag - should generate TypeTree metadata
-    rustc()
+    redox()
         .input("test.rs")
         .arg("-Zautodiff=Enable")
         .arg("-Clto=fat")

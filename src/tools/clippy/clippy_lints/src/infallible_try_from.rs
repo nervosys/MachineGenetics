@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::sym;
-use rustc_errors::MultiSpan;
-use rustc_hir::{Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::AssocTag;
-use rustc_session::declare_lint_pass;
+use redox_errors::MultiSpan;
+use redox_hir::{Item, ItemKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::AssocTag;
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

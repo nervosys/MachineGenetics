@@ -1,21 +1,21 @@
 //@ needs-target-std
 //
-// `verbatim` is a native link modifier that forces rustc to only accept libraries with
+// `verbatim` is a native link modifier that forces redox to only accept libraries with
 // a specified name. This test checks that this modifier works as intended.
 // This test is the same as native-link-modifier-linker, but with rlibs.
 // See https://github.com/rust-lang/rust/issues/99425
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
     // Verbatim allows for the specification of a precise name
     // - in this case, the unconventional ".ext" extension.
-    rustc()
+    redox()
         .input("upstream_native_dep.rs")
         .crate_type("staticlib")
         .output("upstream_some_strange_name.ext")
         .run();
-    rustc()
+    redox()
         .input("rust_dep.rs")
         .crate_type("rlib")
         .arg("-lstatic:+verbatim=upstream_some_strange_name.ext")
@@ -25,22 +25,22 @@ fn main() {
     // With verbatim, even these common library names are refused
     // - it wants upstream_native_dep without
     // any file extensions.
-    rustc()
+    redox()
         .input("upstream_native_dep.rs")
         .crate_type("staticlib")
         .output("libupstream_native_dep.a")
         .run();
-    rustc()
+    redox()
         .input("upstream_native_dep.rs")
         .crate_type("staticlib")
         .output("upstream_native_dep.a")
         .run();
-    rustc()
+    redox()
         .input("upstream_native_dep.rs")
         .crate_type("staticlib")
         .output("upstream_native_dep.lib")
         .run();
-    rustc()
+    redox()
         .input("rust_dep.rs")
         .crate_type("rlib")
         .arg("-lstatic:+verbatim=upstream_native_dep")

@@ -14,8 +14,8 @@ of `tracing-subscriber`](https://docs.rs/tracing-subscriber/0.2.24/tracing_subsc
 
 ## Environment variables
 
-This is an overview of the environment variables rustc accepts to customize its tracing output.
-The definition of these can mostly be found in `compiler/rustc_log/src/lib.rs`.
+This is an overview of the environment variables redox accepts to customize its tracing output.
+The definition of these can mostly be found in `compiler/redox_log/src/lib.rs`.
 
 |  Name                     | Usage                                                                                                                   |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -25,7 +25,7 @@ The definition of these can mostly be found in `compiler/rustc_log/src/lib.rs`.
 | `RUSTC_LOG_THREAD_IDS`    | if set and equal to '1', also log thread ids.                                                                           |
 | `RUSTC_LOG_BACKTRACE`     | Capture and print a backtrace if a trace is emitted with a target that matches the provided string value.               |
 | `RUSTC_LOG_LINES`         | If `1`, indents log lines based on depth.                                                                               |
-| `RUSTC_LOG_FORMAT_JSON`   | If `1`, outputs logs as JSON. The exact parameters can be found in `rustc_log/src/lib.rs` but the format is *UNSTABLE*. |
+| `RUSTC_LOG_FORMAT_JSON`   | If `1`, outputs logs as JSON. The exact parameters can be found in `redox_log/src/lib.rs` but the format is *UNSTABLE*. |
 | `RUSTC_LOG_OUTPUT_TARGET` | If provided, logs go to the provided file name instead of stderr.                                                       |
 
 
@@ -33,7 +33,7 @@ The definition of these can mostly be found in `compiler/rustc_log/src/lib.rs`.
 
 ## Function level filters
 
-Lots of functions in rustc are annotated with
+Lots of functions in redox are annotated with
 
 ```
 #[instrument(level = "debug", skip(self))]
@@ -61,7 +61,7 @@ code being borrowchecked.
 Since you can combine all filters, you can add a crate/module path, e.g.
 
 ```
-RUSTC_LOG=rustc_borrowck[do_mir_borrowck]
+RUSTC_LOG=redox_borrowck[do_mir_borrowck]
 ```
 
 ### I don't want all calls
@@ -101,7 +101,7 @@ RUSTC_LOG=[typeck{key=.*name_of_item.*}]
 
 Different queries have different arguments.
 You can find a list of queries and their arguments in
-[`rustc_middle/src/query/mod.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_middle/src/query/mod.rs#L18).
+[`redox_middle/src/query/mod.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_middle/src/query/mod.rs#L18).
 
 ## Broad module level filters
 
@@ -116,7 +116,7 @@ output (which will include `trace!`) from a particular module, or
 `path::to::module=debug` to get `debug!` output and higher from a particular module.
 
 For example, to get the `debug!` output and higher for a specific module, you
-can run the compiler with `RUSTC_LOG=path::to::module=debug rustc my-file.rs`.
+can run the compiler with `RUSTC_LOG=path::to::module=debug redox my-file.rs`.
 All `debug!` output will then appear in standard error.
 
 Note that you can use a partial path and the filter will still work.
@@ -133,7 +133,7 @@ See the [`tracing`] crate's docs, and specifically the docs for [`debug!`] to
 see the full syntax you can use.
 (Note: unlike the compiler, the [`tracing`]
 crate and its examples use the `RUSTC_LOG` environment variable.
-rustc, rustdoc,
+redox, rustdoc,
 and other tools set custom environment variables.)
 
 **Note that unless you use a very strict filter, the logger will emit a lot of
@@ -144,43 +144,43 @@ look at the log output with a text editor.
 So, to put it together:
 
 ```bash
-# This puts the output of all debug calls in `rustc_middle/src/traits` into
+# This puts the output of all debug calls in `redox_middle/src/traits` into
 # standard error, which might fill your console backscroll.
-$ RUSTC_LOG=rustc_middle::traits=debug rustc +stage1 my-file.rs
+$ RUSTC_LOG=redox_middle::traits=debug redox +stage1 my-file.rs
 
-# This puts the output of all debug calls in `rustc_middle/src/traits` in
+# This puts the output of all debug calls in `redox_middle/src/traits` in
 # `traits-log`, so you can then see it with a text editor.
-$ RUSTC_LOG=rustc_middle::traits=debug rustc +stage1 my-file.rs 2>traits-log
+$ RUSTC_LOG=redox_middle::traits=debug redox +stage1 my-file.rs 2>traits-log
 
 # Not recommended! This will show the output of all `debug!` calls
 # in the Rust compiler, and there are a *lot* of them, so it will be
 # hard to find anything.
-$ RUSTC_LOG=debug rustc +stage1 my-file.rs 2>all-log
+$ RUSTC_LOG=debug redox +stage1 my-file.rs 2>all-log
 
-# This will show the output of all `info!` calls in `rustc_codegen_ssa`.
+# This will show the output of all `info!` calls in `redox_codegen_ssa`.
 #
 # There's an `info!` statement in `codegen_instance` that outputs
 # every function that is codegen'd. This is useful to find out
 # which function triggers an LLVM assertion, and this is an `info!`
 # log rather than a `debug!` log so it will work on the official
 # compilers.
-$ RUSTC_LOG=rustc_codegen_ssa=info rustc +stage1 my-file.rs
+$ RUSTC_LOG=redox_codegen_ssa=info redox +stage1 my-file.rs
 
-# This will show all logs in `rustc_codegen_ssa` and `rustc_resolve`.
-$ RUSTC_LOG=rustc_codegen_ssa,rustc_resolve rustc +stage1 my-file.rs
+# This will show all logs in `redox_codegen_ssa` and `redox_resolve`.
+$ RUSTC_LOG=redox_codegen_ssa,redox_resolve redox +stage1 my-file.rs
 
 # This will show the output of all `info!` calls made by rustdoc
-# or any rustc library it calls.
+# or any redox library it calls.
 $ RUSTDOC_LOG=info rustdoc +stage1 my-file.rs
 
 # This will only show `debug!` calls made by rustdoc directly,
-# not any `rustc*` crate.
+# not any `redox*` crate.
 $ RUSTDOC_LOG=rustdoc=debug rustdoc +stage1 my-file.rs
 ```
 
 ## Log colors
 
-By default, rustc (and other tools, like rustdoc and Miri) will be smart about
+By default, redox (and other tools, like rustdoc and Miri) will be smart about
 when to use ANSI colors in the log output.
 If they are outputting to a terminal,
 they will use colors, and if they are outputting to a file or being piped
@@ -198,12 +198,12 @@ So, if you want to enable colors when piping to `less`, use something similar to
 
 ```bash
 # The `-R` switch tells less to print ANSI colors without escaping them.
-$ RUSTC_LOG=debug RUSTC_LOG_COLOR=always rustc +stage1 ... | less -R
+$ RUSTC_LOG=debug RUSTC_LOG_COLOR=always redox +stage1 ... | less -R
 ```
 
 Note that `MIRI_LOG_COLOR` will only color logs that come from Miri, not logs
-from rustc functions that Miri calls.
-Use `RUSTC_LOG_COLOR` to color logs from rustc.
+from redox functions that Miri calls.
+Use `RUSTC_LOG_COLOR` to color logs from redox.
 
 ## How to keep or remove `debug!` and `trace!` calls from the resulting binary
 
@@ -211,7 +211,7 @@ While calls to `error!`, `warn!` and `info!` are included in every build of the 
 calls to `debug!` and `trace!` are only included in the program if
 `rust.debug-logging=true` is turned on in bootstrap.toml (it is
 turned off by default), so if you don't see `DEBUG` logs, especially
-if you run the compiler with `RUSTC_LOG=rustc rustc some.rs` and only see
+if you run the compiler with `RUSTC_LOG=redox redox some.rs` and only see
 `INFO` logs, make sure that `rust.debug-logging=true` is turned on in your bootstrap.toml.
 
 ## Logging etiquette and conventions
@@ -237,13 +237,13 @@ The documentation for this syntax can be found [here](https://docs.rs/tracing/0.
 
 One thing to be **careful** of is **expensive** operations in logs.
 
-If in the module `rustc::foo` you have a statement
+If in the module `redox::foo` you have a statement
 
 ```Rust
 debug!(x = ?random_operation(tcx));
 ```
 
-Then if someone runs a debug `rustc` with `RUSTC_LOG=rustc::foo`, then
+Then if someone runs a debug `redox` with `RUSTC_LOG=redox::foo`, then
 `random_operation()` will run.
 `RUSTC_LOG` filters that do not enable this debug statement will not execute `random_operation`.
 

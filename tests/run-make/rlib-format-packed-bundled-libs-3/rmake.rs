@@ -1,4 +1,4 @@
-// `-Z packed_bundled_libs` is an unstable rustc flag that makes the compiler
+// `-Z packed_bundled_libs` is an unstable redox flag that makes the compiler
 // only require a native library and no supplementary object files to compile.
 // #105601 made it possible to have this behaviour without an unstable flag by
 // passing +bundle in modifiers, and this test checks that this feature successfully
@@ -6,12 +6,12 @@
 // See https://github.com/rust-lang/rust/pull/105601
 
 use run_make_support::{
-    build_native_static_lib, llvm_ar, regex, rfs, rust_lib_name, rustc, static_lib_name,
+    build_native_static_lib, llvm_ar, regex, rfs, rust_lib_name, redox, static_lib_name,
 };
 
 //@ ignore-cross-compile
 // Reason: Invalid library format (not ELF) causes compilation failure
-// in the final `rustc` call.
+// in the final `redox` call.
 
 //@ only-linux
 // Reason: differences in the native lib compilation process causes differences
@@ -23,8 +23,8 @@ fn main() {
     build_native_static_lib("native_dep_3");
     build_native_static_lib("native_dep_4");
     // Test cfg with packed bundle.
-    rustc().input("rust_dep_cfg.rs").crate_type("rlib").run();
-    rustc()
+    redox().input("rust_dep_cfg.rs").crate_type("rlib").run();
+    redox()
         .input("main.rs")
         .extern_("rust_dep", rust_lib_name("rust_dep_cfg"))
         .crate_type("staticlib")
@@ -49,7 +49,7 @@ fn main() {
         .assert_stdout_not_contains("native_dep_2.o");
 
     // Test bundle with whole archive.
-    rustc().input("rust_dep.rs").crate_type("rlib").run();
+    redox().input("rust_dep.rs").crate_type("rlib").run();
     // Only deps with `+bundle` should appear.
     llvm_ar().arg("t").arg(rust_lib_name("rust_dep")).run().assert_stdout_contains("native_dep_1");
     llvm_ar().arg("t").arg(rust_lib_name("rust_dep")).run().assert_stdout_contains("native_dep_3");
@@ -68,7 +68,7 @@ fn main() {
     rfs::remove_file(static_lib_name("native_dep_1"));
     rfs::remove_file(static_lib_name("native_dep_3"));
 
-    let out = rustc()
+    let out = redox()
         .input("main.rs")
         .extern_("rust_dep", rust_lib_name("rust_dep"))
         .print("link-args")

@@ -1,27 +1,27 @@
-// This code used to be a part of `rustc` but moved to Clippy as a result of
+// This code used to be a part of `redox` but moved to Clippy as a result of
 // https://github.com/rust-lang/rust/issues/76618. Because of that, it contains unused code and some
 // of terminologies might not be relevant in the context of Clippy. Note that its behavior might
-// differ from the time of `rustc` even if the name stays the same.
+// differ from the time of `redox` even if the name stays the same.
 
 use crate::msrvs::{self, Msrv};
 use hir::LangItem;
-use rustc_const_eval::check_consts::ConstCx;
-use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{RustcVersion, StableSince};
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::Obligation;
-use rustc_lint::LateContext;
-use rustc_middle::mir::{
+use redox_const_eval::check_consts::ConstCx;
+use redox_hir as hir;
+use redox_hir::def_id::DefId;
+use redox_hir::{RustcVersion, StableSince};
+use redox_infer::infer::TyCtxtInferExt;
+use redox_infer::traits::Obligation;
+use redox_lint::LateContext;
+use redox_middle::mir::{
     Body, CastKind, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
     Terminator, TerminatorKind,
 };
-use rustc_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
-use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::{self, GenericArgKind, Instance, TraitRef, Ty, TyCtxt};
-use rustc_span::Span;
-use rustc_span::symbol::sym;
-use rustc_trait_selection::traits::{ObligationCtxt, SelectionContext};
+use redox_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
+use redox_middle::ty::adjustment::PointerCoercion;
+use redox_middle::ty::{self, GenericArgKind, Instance, TraitRef, Ty, TyCtxt};
+use redox_span::Span;
+use redox_span::symbol::sym;
+use redox_trait_selection::traits::{ObligationCtxt, SelectionContext};
 use std::borrow::Cow;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
@@ -57,7 +57,7 @@ pub fn is_min_const_fn<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, msrv: Ms
 
     for bb in &*body.basic_blocks {
         // Cleanup blocks are ignored entirely by const eval, so we can too:
-        // https://github.com/rust-lang/rust/blob/1dea922ea6e74f99a0e97de5cdb8174e4dea0444/compiler/rustc_const_eval/src/transform/check_consts/check.rs#L382
+        // https://github.com/rust-lang/rust/blob/1dea922ea6e74f99a0e97de5cdb8174e4dea0444/compiler/redox_const_eval/src/transform/check_consts/check.rs#L382
         if !bb.is_cleanup {
             check_terminator(cx, body, bb.terminator(), msrv)?;
             for stmt in &bb.statements {
@@ -232,7 +232,7 @@ fn check_statement<'tcx>(
         StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(cx, op, span, body, msrv),
 
         StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
-            rustc_middle::mir::CopyNonOverlapping { dst, src, count },
+            redox_middle::mir::CopyNonOverlapping { dst, src, count },
         )) => {
             check_operand(cx, dst, span, body, msrv)?;
             check_operand(cx, src, span, body, msrv)?;
@@ -418,9 +418,9 @@ pub fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bo
                     .and_then(|trait_def_id| cx.tcx.lookup_const_stability(trait_def_id))
             })
             .is_none_or(|const_stab| {
-                if let rustc_hir::StabilityLevel::Stable { since, .. } = const_stab.level {
-                    // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
-                    // function could be removed if `rustc` provided a MSRV-aware version of `is_stable_const_fn`.
+                if let redox_hir::StabilityLevel::Stable { since, .. } = const_stab.level {
+                    // Checking MSRV is manually necessary because `redox` has no such concept. This entire
+                    // function could be removed if `redox` provided a MSRV-aware version of `is_stable_const_fn`.
                     // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
 
                     let const_stab_rust_version = match since {

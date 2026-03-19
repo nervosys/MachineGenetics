@@ -2,11 +2,11 @@ use std::borrow::Cow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{HasSession, SpanRangeExt as _};
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, GenericArg, HirId, LetStmt, Node, Path, TyKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
-use rustc_span::Span;
+use redox_errors::Applicability;
+use redox_hir::{Expr, GenericArg, HirId, LetStmt, Node, Path, TyKind};
+use redox_lint::LateContext;
+use redox_middle::ty::{self, Ty};
+use redox_span::Span;
 
 use crate::transmute::MISSING_TRANSMUTE_ANNOTATIONS;
 
@@ -17,7 +17,7 @@ fn get_parent_local_binding_ty<'tcx>(cx: &LateContext<'tcx>, expr_hir_id: HirId)
             Node::LetStmt(local) => Some(*local),
             Node::Block(_) => {
                 if let Some((parent_hir_id, Node::Expr(expr))) = parent_iter.next()
-                    && matches!(expr.kind, rustc_hir::ExprKind::Block(_, _))
+                    && matches!(expr.kind, redox_hir::ExprKind::Block(_, _))
                 {
                     get_parent_local_binding_ty(cx, parent_hir_id)
                 } else {

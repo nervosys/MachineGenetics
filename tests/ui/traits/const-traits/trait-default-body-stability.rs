@@ -15,7 +15,7 @@ use std::ops::{ControlFlow, FromResidual, Try};
 pub struct T;
 
 #[stable(feature = "foo", since = "1.0")]
-#[rustc_const_unstable(feature = "const_t_try", issue = "none")]
+#[redox_const_unstable(feature = "const_t_try", issue = "none")]
 impl const Try for T {
     type Output = T;
     type Residual = T;
@@ -30,7 +30,7 @@ impl const Try for T {
 }
 
 #[stable(feature = "foo", since = "1.0")]
-#[rustc_const_unstable(feature = "const_t_try", issue = "none")]
+#[redox_const_unstable(feature = "const_t_try", issue = "none")]
 impl const FromResidual for T {
     fn from_residual(t: T) -> T {
         t
@@ -38,7 +38,7 @@ impl const FromResidual for T {
 }
 
 #[stable(feature = "foo", since = "1.0")]
-#[rustc_const_unstable(feature = "const_tr", issue = "none")]
+#[redox_const_unstable(feature = "const_tr", issue = "none")]
 pub const trait Tr {
     #[stable(feature = "foo", since = "1.0")]
     fn bar() -> T {

@@ -123,7 +123,7 @@ pub fn clear_if_dirty(builder: &Builder<'_>, dir: &Path, input: &Path) -> bool {
     cleared
 }
 
-/// Cargo's output path for librustc_codegen_llvm in a given stage, compiled by a particular
+/// Cargo's output path for libredox_codegen_llvm in a given stage, compiled by a particular
 /// compiler for the specified target and backend.
 pub fn codegen_backend_stamp(
     builder: &Builder<'_>,
@@ -145,14 +145,14 @@ pub fn libstd_stamp(
     BuildStamp::new(&builder.cargo_out(build_compiler, Mode::Std, target)).with_prefix("libstd")
 }
 
-/// Cargo's output path for librustc in a given stage, compiled by a particular
+/// Cargo's output path for libredox in a given stage, compiled by a particular
 /// `build_compiler` for the specified target.
-pub fn librustc_stamp(
+pub fn libredox_stamp(
     builder: &Builder<'_>,
     build_compiler: Compiler,
     target: TargetSelection,
 ) -> BuildStamp {
-    BuildStamp::new(&builder.cargo_out(build_compiler, Mode::Rustc, target)).with_prefix("librustc")
+    BuildStamp::new(&builder.cargo_out(build_compiler, Mode::Rustc, target)).with_prefix("libredox")
 }
 
 /// Computes a hash representing the state of a repository/submodule and additional input.

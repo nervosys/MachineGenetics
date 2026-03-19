@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 // Test for <https://github.com/rust-lang/rust/issues/135315>.
 
@@ -25,11 +25,11 @@ impl<T> Middle<T> for () {}
 
 trait Trait: Middle<<() as Identity>::Selff> {}
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl Trait for () {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 type Virtual = dyn Middle<()>;
 //~^ ERROR vtable entries
 

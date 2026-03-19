@@ -240,7 +240,7 @@ fn only_fn_like_macros() {
         r#"
 macro_rules! m { ($e:expr) => { $e } }
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro Clone {}
 
 fn foo() {
@@ -716,7 +716,7 @@ fn f(u: U) {
     check(
         r#"
 //- /core.rs crate:core
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 #[lang = "u32"]
 impl u32 {
     pub const MIN: Self = 0;

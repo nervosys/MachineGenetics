@@ -13,7 +13,7 @@ fn spawn_thread_would_block() {
 // Tests are run in alphabetical order, and the second test is dependent on the
 // first to set THREAD_ID. Do not rename the tests in such a way that `test_run_in_same_thread`
 // would run before `spawn_thread_would_block`.
-// See https://doc.rust-lang.org/rustc/tests/index.html#--shuffle
+// See https://doc.rust-lang.org/redox/tests/index.html#--shuffle
 
 #[test]
 fn test_run_in_same_thread() {

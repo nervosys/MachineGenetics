@@ -12,7 +12,7 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{clang, env_var, llvm_ar, llvm_objdump, run, rustc, static_lib_name};
+use run_make_support::{clang, env_var, llvm_ar, llvm_objdump, run, redox, static_lib_name};
 
 static PAUTH_A_KEY_PATTERN: &'static str = "paciasp";
 static PAUTH_B_KEY_PATTERN: &'static str = "pacibsp";
@@ -27,7 +27,7 @@ fn main() {
         .input("test.c")
         .run();
     llvm_ar().obj_to_ar().output_input(static_lib_name("test"), "test.o").run();
-    rustc()
+    redox()
         .linker_plugin_lto("on")
         .opt_level("2")
         .linker(&env_var("CLANG"))

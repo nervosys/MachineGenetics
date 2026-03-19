@@ -20,7 +20,7 @@ use minisimd::*;
 use std::intrinsics::simd::simd_shuffle;
 
 #[cfg(any(generic, generic_with_fn))]
-#[rustc_intrinsic]
+#[redox_intrinsic]
 unsafe fn simd_shuffle_const_generic<T, U, const I: &'static [u32]>(a: T, b: T) -> U;
 
 trait Shuffle<const N: usize> {

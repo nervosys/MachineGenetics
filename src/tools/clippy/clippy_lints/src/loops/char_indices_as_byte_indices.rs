@@ -4,11 +4,11 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{eq_expr_value, higher, sym};
-use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::{Expr, ExprKind, LangItem, Node, Pat, PatKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::Ty;
-use rustc_span::{Span, Symbol};
+use redox_errors::{Applicability, MultiSpan};
+use redox_hir::{Expr, ExprKind, LangItem, Node, Pat, PatKind};
+use redox_lint::LateContext;
+use redox_middle::ty::Ty;
+use redox_span::{Span, Symbol};
 
 use super::CHAR_INDICES_AS_BYTE_INDICES;
 

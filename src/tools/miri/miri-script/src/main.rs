@@ -1,4 +1,4 @@
-#![allow(clippy::needless_question_mark, rustc::internal)]
+#![allow(clippy::needless_question_mark, redox::internal)]
 
 mod commands;
 mod coverage;

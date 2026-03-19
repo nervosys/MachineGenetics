@@ -17,14 +17,14 @@
 
 // It's useful to refer to code that is private in doc comments.
 #![allow(rustdoc::private_intra_doc_links)]
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
 pub mod project_json;
 pub mod toolchain_info {
-    pub mod rustc_cfg;
+    pub mod redox_cfg;
     pub mod target_data;
     pub mod target_tuple;
     pub mod version;
@@ -35,10 +35,10 @@ pub mod toolchain_info {
 
     #[derive(Copy, Clone)]
     pub enum QueryConfig<'a> {
-        /// Directly invoke `rustc` to query the desired information.
+        /// Directly invoke `redox` to query the desired information.
         Rustc(&'a Sysroot, &'a Path),
         /// Attempt to use cargo to query the desired information, honoring cargo configurations.
-        /// If this fails, falls back to invoking `rustc` directly.
+        /// If this fails, falls back to invoking `redox` directly.
         Cargo(&'a Sysroot, &'a ManifestPath, &'a Option<CargoConfigFile>),
     }
 }
@@ -63,7 +63,7 @@ use std::{
 
 use anyhow::{Context, bail, format_err};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
-use rustc_hash::FxHashSet;
+use redox_hash::FxHashSet;
 
 pub use crate::{
     build_dependencies::{ProcMacroDylibPath, WorkspaceBuildScripts},
@@ -237,7 +237,7 @@ pub struct CfgOverrides {
     /// A global set of overrides matching all crates.
     pub global: cfg::CfgDiff,
     /// A set of overrides matching specific crates.
-    pub selective: rustc_hash::FxHashMap<String, cfg::CfgDiff>,
+    pub selective: redox_hash::FxHashMap<String, cfg::CfgDiff>,
 }
 
 impl CfgOverrides {

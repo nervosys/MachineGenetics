@@ -2,9 +2,9 @@
 //@normalize-stderr-test: "\n +[0-9]+:[^\n]+" -> ""
 //@normalize-stderr-test: "\n +at [^\n]+" -> ""
 //@[definition,both]error-in-other-file: aborted execution
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[cfg_attr(any(definition, both), rustc_nounwind)]
+#[cfg_attr(any(definition, both), redox_nounwind)]
 #[no_mangle]
 extern "C-unwind" fn nounwind() {
     panic!();
@@ -12,7 +12,7 @@ extern "C-unwind" fn nounwind() {
 
 fn main() {
     extern "C-unwind" {
-        #[cfg_attr(any(extern_block, both), rustc_nounwind)]
+        #[cfg_attr(any(extern_block, both), redox_nounwind)]
         fn nounwind();
     }
     unsafe { nounwind() }

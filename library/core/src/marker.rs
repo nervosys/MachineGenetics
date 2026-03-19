@@ -87,7 +87,7 @@ macro marker_impls {
 /// [arc]: ../../std/sync/struct.Arc.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Send"]
+#[redox_diagnostic_item = "Send"]
 #[diagnostic::on_unimplemented(
     message = "`{Self}` cannot be sent between threads safely",
     label = "`{Self}` cannot be sent between threads safely"
@@ -151,13 +151,13 @@ unsafe impl<T: Sync + PointeeSized> Send for &T {}
     label = "doesn't have a size known at compile-time"
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
-#[rustc_specialization_trait]
-#[rustc_deny_explicit_impl]
-#[rustc_dyn_incompatible_trait]
+#[redox_specialization_trait]
+#[redox_deny_explicit_impl]
+#[redox_dyn_incompatible_trait]
 // `Sized` being coinductive, despite having supertraits, is okay as there are no user-written impls,
 // and we know that the supertraits are always implemented if the subtrait is just by looking at
 // the builtin impls.
-#[rustc_coinductive]
+#[redox_coinductive]
 pub trait Sized: MetaSized {
     // Empty.
 }
@@ -170,11 +170,11 @@ pub trait Sized: MetaSized {
     label = "doesn't have a known size"
 )]
 #[fundamental]
-#[rustc_specialization_trait]
-#[rustc_deny_explicit_impl]
+#[redox_specialization_trait]
+#[redox_deny_explicit_impl]
 // `MetaSized` being coinductive, despite having supertraits, is okay for the same reasons as
 // `Sized` above.
-#[rustc_coinductive]
+#[redox_coinductive]
 pub trait MetaSized: PointeeSized {
     // Empty
 }
@@ -187,9 +187,9 @@ pub trait MetaSized: PointeeSized {
     label = "may or may not have a known size"
 )]
 #[fundamental]
-#[rustc_specialization_trait]
-#[rustc_deny_explicit_impl]
-#[rustc_coinductive]
+#[redox_specialization_trait]
+#[redox_deny_explicit_impl]
+#[redox_coinductive]
 pub trait PointeeSized {
     // Empty
 }
@@ -233,8 +233,8 @@ pub trait PointeeSized {
 /// [^1]: Formerly known as *object safe*.
 #[unstable(feature = "unsize", issue = "18598")]
 #[lang = "unsize"]
-#[rustc_deny_explicit_impl]
-#[rustc_dyn_incompatible_trait]
+#[redox_deny_explicit_impl]
+#[redox_dyn_incompatible_trait]
 pub trait Unsize<T: PointeeSized>: PointeeSized {
     // Empty.
 }
@@ -453,13 +453,13 @@ marker_impls! {
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
-#[rustc_diagnostic_item = "Copy"]
+#[redox_diagnostic_item = "Copy"]
 pub trait Copy: Clone {
     // Empty.
 }
 
 /// Derive macro generating an impl of the trait `Copy`.
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics, derive_clone_copy_internals)]
 pub macro Copy($item:item) {
@@ -470,7 +470,7 @@ pub macro Copy($item:item) {
 //
 // Implementations that cannot be described in Rust
 // are implemented in `traits::SelectionContext::copy_clone_conditions()`
-// in `rustc_trait_selection`.
+// in `redox_trait_selection`.
 marker_impls! {
     #[stable(feature = "rust1", since = "1.0.0")]
     Copy for
@@ -506,8 +506,8 @@ impl<T: PointeeSized> Copy for &T {}
 /// set of types that are allowed within unions for field validity.
 #[unstable(feature = "bikeshed_guaranteed_no_drop", issue = "none")]
 #[lang = "bikeshed_guaranteed_no_drop"]
-#[rustc_deny_explicit_impl]
-#[rustc_dyn_incompatible_trait]
+#[redox_deny_explicit_impl]
+#[redox_dyn_incompatible_trait]
 #[doc(hidden)]
 pub trait BikeshedGuaranteedNoDrop {}
 
@@ -582,9 +582,9 @@ pub trait BikeshedGuaranteedNoDrop {}
 /// [transmute]: crate::mem::transmute
 /// [nomicon-send-and-sync]: ../../nomicon/send-and-sync.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Sync"]
+#[redox_diagnostic_item = "Sync"]
 #[lang = "sync"]
-#[rustc_on_unimplemented(
+#[redox_on_unimplemented(
     on(
         Self = "core::cell::once::OnceCell<T>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::OnceLock` instead"
@@ -658,7 +658,7 @@ pub trait BikeshedGuaranteedNoDrop {}
     label = "`{Self}` cannot be shared between threads safely"
 )]
 pub unsafe auto trait Sync {
-    // FIXME(estebank): once support to add notes in `rustc_on_unimplemented`
+    // FIXME(estebank): once support to add notes in `redox_on_unimplemented`
     // lands in beta, and it has been extended to check whether a closure is
     // anywhere in the requirement chain, extend it as such (#48534):
     // ```
@@ -858,7 +858,7 @@ impl<T: PointeeSized> Clone for PhantomData<T> {
 unsafe impl<T: PointeeSized> TrivialClone for PhantomData<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl<T: PointeeSized> const Default for PhantomData<T> {
     fn default() -> Self {
         Self
@@ -881,8 +881,8 @@ impl<T: PointeeSized> StructuralPartialEq for PhantomData<T> {}
     reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
 )]
 #[lang = "discriminant_kind"]
-#[rustc_deny_explicit_impl]
-#[rustc_dyn_incompatible_trait]
+#[redox_deny_explicit_impl]
+#[redox_dyn_incompatible_trait]
 pub trait DiscriminantKind {
     /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
@@ -902,7 +902,7 @@ pub trait DiscriminantKind {
 ///
 /// This trait is a core part of the language, it is just expressed as a trait in libcore for
 /// convenience. Do *not* implement it for other types.
-// FIXME: Eventually this trait should become `#[rustc_deny_explicit_impl]`.
+// FIXME: Eventually this trait should become `#[redox_deny_explicit_impl]`.
 // That requires porting the impls below to native internal impls.
 #[lang = "freeze"]
 #[unstable(feature = "freeze", issue = "121675")]
@@ -1055,11 +1055,11 @@ marker_impls! {
 /// This should be used for `[const]` bounds,
 /// as non-const bounds will always hold for every type.
 #[unstable(feature = "const_destruct", issue = "133214")]
-#[rustc_const_unstable(feature = "const_destruct", issue = "133214")]
+#[redox_const_unstable(feature = "const_destruct", issue = "133214")]
 #[lang = "destruct"]
-#[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
-#[rustc_deny_explicit_impl]
-#[rustc_dyn_incompatible_trait]
+#[redox_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
+#[redox_deny_explicit_impl]
+#[redox_dyn_incompatible_trait]
 pub const trait Destruct: PointeeSized {}
 
 /// A marker for tuple types.
@@ -1069,8 +1069,8 @@ pub const trait Destruct: PointeeSized {}
 #[unstable(feature = "tuple_trait", issue = "none")]
 #[lang = "tuple_trait"]
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
-#[rustc_deny_explicit_impl]
-#[rustc_dyn_incompatible_trait]
+#[redox_deny_explicit_impl]
+#[redox_dyn_incompatible_trait]
 pub trait Tuple {}
 
 /// A marker for types which can be used as types of `const` generic parameters.
@@ -1089,7 +1089,7 @@ pub trait Tuple {}
 pub trait ConstParamTy_: StructuralPartialEq + Eq {}
 
 /// Derive macro generating an impl of the trait `ConstParamTy`.
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[allow_internal_unstable(unsized_const_params)]
 #[unstable(feature = "adt_const_params", issue = "95174")]
 pub macro ConstParamTy($item:item) {
@@ -1127,8 +1127,8 @@ marker_impls! {
     reason = "internal trait for implementing various traits for all function pointers"
 )]
 #[lang = "fn_ptr_trait"]
-#[rustc_deny_explicit_impl]
-#[rustc_dyn_incompatible_trait]
+#[redox_deny_explicit_impl]
+#[redox_dyn_incompatible_trait]
 pub trait FnPtr: Copy + Clone {
     /// Returns the address of the function pointer.
     #[lang = "fn_ptr_addr"]
@@ -1324,9 +1324,9 @@ pub trait FnPtr: Copy + Clone {
 ///     }
 /// }
 /// ```
-#[rustc_builtin_macro(CoercePointee, attributes(pointee))]
+#[redox_builtin_macro(CoercePointee, attributes(pointee))]
 #[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize, coerce_pointee_validated)]
-#[rustc_diagnostic_item = "CoercePointee"]
+#[redox_diagnostic_item = "CoercePointee"]
 #[unstable(feature = "derive_coerce_pointee", issue = "123430")]
 pub macro CoercePointee($item:item) {
     /* compiler built-in */

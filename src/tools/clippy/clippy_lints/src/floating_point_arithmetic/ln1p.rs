@@ -1,10 +1,10 @@
 use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::consts::Constant::{F32, F64};
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::LateContext;
-use rustc_span::Spanned;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind};
+use redox_lint::LateContext;
+use redox_span::Spanned;
 
 use super::IMPRECISE_FLOPS;
 

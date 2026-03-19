@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{IntoSpan, SpanRangeExt};
-use rustc_ast::ast::{Expr, ExprKind};
-use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
+use redox_ast::ast::{Expr, ExprKind};
+use redox_errors::Applicability;
+use redox_lint::{EarlyContext, EarlyLintPass};
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

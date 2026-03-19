@@ -10,10 +10,10 @@ incremental = true
 lto = "off"
 # When building the standard library, you almost never want to build the compiler itself.
 #
-# If compiler-affecting directories are not modified, use precompiled rustc to speed up
+# If compiler-affecting directories are not modified, use precompiled redox to speed up
 # library development by skipping compiler builds.
-# FIXME: download-rustc is currently broken: https://github.com/rust-lang/rust/issues/142505
-download-rustc = false
+# FIXME: download-redox is currently broken: https://github.com/rust-lang/rust/issues/142505
+download-redox = false
 
 [llvm]
 # Will download LLVM from CI if available on your platform.

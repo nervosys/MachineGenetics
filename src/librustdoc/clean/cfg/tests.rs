@@ -1,6 +1,6 @@
-use rustc_data_structures::thin_vec::thin_vec;
-use rustc_hir::attrs::CfgEntry;
-use rustc_span::{DUMMY_SP, create_default_session_globals_then};
+use redox_data_structures::thin_vec::thin_vec;
+use redox_hir::attrs::CfgEntry;
+use redox_span::{DUMMY_SP, create_default_session_globals_then};
 
 use super::*;
 

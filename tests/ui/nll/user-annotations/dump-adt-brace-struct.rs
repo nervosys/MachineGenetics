@@ -4,13 +4,13 @@
 //@ compile-flags:-Zverbose-internals
 
 #![allow(warnings)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 struct SomeStruct<T> {
     t: T,
 }
 
-#[rustc_dump_user_args]
+#[redox_dump_user_args]
 fn main() {
     SomeStruct { t: 22 }; // Nothing given, no annotation.
 

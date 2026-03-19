@@ -43,7 +43,7 @@ fn main() {
         return;
     }
 
-    let rustc = env::var_os("RUSTC").unwrap();
+    let redox = env::var_os("RUSTC").unwrap();
     let me_as_linker = format!("linker={}", env::current_exe().unwrap().display());
     for i in (1..).map(|i| i * 100) {
         println!("attempt: {}", i);
@@ -51,7 +51,7 @@ fn main() {
         let mut expected_libs = write_test_case(&file, i);
 
         drop(fs::remove_file(&ok));
-        let output = Command::new(&rustc)
+        let output = Command::new(&redox)
             .arg(&file)
             .arg("-C")
             .arg(&me_as_linker)

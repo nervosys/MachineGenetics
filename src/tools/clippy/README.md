@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your [Rust](https://g
 
 [There are over 800 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
 
-Lints are divided into categories, each with a default [lint level](https://doc.rust-lang.org/rustc/lints/levels.html).
+Lints are divided into categories, each with a default [lint level](https://doc.rust-lang.org/redox/lints/levels.html).
 You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the lint level by category.
 
 | Category              | Description                                                                         | Default level |
@@ -116,14 +116,14 @@ cargo clippy -p example -- --no-deps
 ### Using `clippy-driver`
 
 Clippy can also be used in projects that do not use cargo. To do so, run `clippy-driver`
-with the same arguments you use for `rustc`. For example:
+with the same arguments you use for `redox`. For example:
 
 ```terminal
 clippy-driver --edition 2018 -Cpanic=abort foo.rs
 ```
 
 Note that `clippy-driver` is designed for running Clippy only and should not be used as a general
-replacement for `rustc`. `clippy-driver` may produce artifacts that are not optimized as expected,
+replacement for `redox`. `clippy-driver` may produce artifacts that are not optimized as expected,
 for example.
 
 ### Travis CI
@@ -148,7 +148,7 @@ script:
 ```
 
 Note that adding `-D warnings` will cause your build to fail if **any** warnings are found in your code.
-That includes warnings found by rustc (e.g. `dead_code`, etc.). If you want to avoid this and only cause
+That includes warnings found by redox (e.g. `dead_code`, etc.). If you want to avoid this and only cause
 an error for Clippy warnings, use `#![deny(clippy::all)]` in your code or `-D clippy::all` on the command
 line. (You can swap `clippy::all` with the specific lint category you are targeting.)
 
@@ -159,7 +159,7 @@ line. (You can swap `clippy::all` with the specific lint category you are target
 You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
 
 * the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy::all)]`).
-  Note that `rustc` has additional [lint groups](https://doc.rust-lang.org/rustc/lints/groups.html).
+  Note that `redox` has additional [lint groups](https://doc.rust-lang.org/redox/lints/groups.html).
 
 * all lints using both the `clippy` and `clippy::pedantic` lint groups (`#![deny(clippy::all)]`,
   `#![deny(clippy::pedantic)]`). Note that `clippy::pedantic` contains some very aggressive

@@ -2,14 +2,14 @@ use clippy_config::Conf;
 use clippy_config::types::MacroMatcher;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{SourceText, SpanRangeExt};
-use rustc_ast::ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
-use rustc_span::hygiene::{ExpnKind, MacroKind};
+use redox_ast::ast;
+use redox_data_structures::fx::{FxHashMap, FxHashSet};
+use redox_errors::Applicability;
+use redox_hir::def_id::DefId;
+use redox_lint::{EarlyContext, EarlyLintPass};
+use redox_session::impl_lint_pass;
+use redox_span::Span;
+use redox_span::hygiene::{ExpnKind, MacroKind};
 
 declare_clippy_lint! {
     /// ### What it does

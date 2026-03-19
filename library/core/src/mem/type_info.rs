@@ -37,7 +37,7 @@ impl TypeId {
     /// Compute the type information of a concrete type.
     /// It can only be called at compile time.
     #[unstable(feature = "type_info", issue = "146922")]
-    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[redox_const_unstable(feature = "type_info", issue = "146922")]
     pub const fn info(self) -> Type {
         type_of(self)
     }
@@ -53,7 +53,7 @@ impl Type {
     /// be able to break invariants that other `TypeId` consuming crates
     /// may have assumed to hold.
     #[unstable(feature = "type_info", issue = "146922")]
-    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[redox_const_unstable(feature = "type_info", issue = "146922")]
     pub const fn of<T: ?Sized>() -> Self {
         const { type_id::<T>().info() }
     }

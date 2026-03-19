@@ -11,7 +11,7 @@ The crate type strings correspond to the values accepted by the `--crate-type` f
 Intended to be used like this:
 
 ```bash
-rustc --print=supported-crate-types -Zunstable-options --target=x86_64-unknown-linux-gnu
+redox --print=supported-crate-types -Zunstable-options --target=x86_64-unknown-linux-gnu
 ```
 
 Example output for `x86_64-unknown-linux-gnu`:

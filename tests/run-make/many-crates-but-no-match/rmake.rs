@@ -6,18 +6,18 @@
 // what should be done to fix the issue.
 // See https://github.com/rust-lang/rust/issues/13266
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 fn main() {
     rfs::create_dir("a1");
     rfs::create_dir("a2");
     rfs::create_dir("a3");
-    rustc().crate_type("rlib").out_dir("a1").input("crateA1.rs").run();
-    rustc().crate_type("rlib").library_search_path("a1").input("crateB.rs").run();
-    rustc().crate_type("rlib").out_dir("a2").input("crateA2.rs").run();
-    rustc().crate_type("rlib").out_dir("a3").input("crateA3.rs").run();
+    redox().crate_type("rlib").out_dir("a1").input("crateA1.rs").run();
+    redox().crate_type("rlib").library_search_path("a1").input("crateB.rs").run();
+    redox().crate_type("rlib").out_dir("a2").input("crateA2.rs").run();
+    redox().crate_type("rlib").out_dir("a3").input("crateA3.rs").run();
     // Ensure crateC fails to compile since A1 is "missing" and A2/A3 hashes do not match
-    rustc()
+    redox()
         .crate_type("rlib")
         .library_search_path("a2")
         .library_search_path("a3")

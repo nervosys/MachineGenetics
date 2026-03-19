@@ -1,18 +1,18 @@
 use clippy_utils::res::MaybeQPath;
 use clippy_utils::{get_builtin_attr, higher, sym};
 use itertools::Itertools;
-use rustc_ast::LitIntType;
-use rustc_ast::ast::{LitFloatType, LitKind};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{
+use redox_ast::LitIntType;
+use redox_ast::ast::{LitFloatType, LitKind};
+use redox_data_structures::fx::FxHashMap;
+use redox_hir::def_id::DefId;
+use redox_hir::{
     self as hir, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind, ExprKind,
     FnRetTy, HirId, Lit, PatExprKind, PatKind, QPath, StmtKind, StructTailExpr,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{FloatTy, IntTy, UintTy};
-use rustc_session::declare_lint_pass;
-use rustc_span::symbol::{Ident, Symbol};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty::{FloatTy, IntTy, UintTy};
+use redox_session::declare_lint_pass;
+use redox_span::symbol::{Ident, Symbol};
 use std::cell::Cell;
 use std::fmt::{Display, Formatter};
 

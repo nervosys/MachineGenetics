@@ -1,7 +1,7 @@
-use rustc_abi::Size;
-use rustc_middle::mir::{Mutability, RetagKind};
-use rustc_middle::ty::layout::HasTypingEnv;
-use rustc_middle::ty::{self, Ty};
+use redox_abi::Size;
+use redox_middle::mir::{Mutability, RetagKind};
+use redox_middle::ty::layout::HasTypingEnv;
+use redox_middle::ty::{self, Ty};
 
 use self::foreign_access_skipping::IdempotentForeignAccess;
 use self::tree::LocationState;

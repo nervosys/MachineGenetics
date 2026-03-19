@@ -11,7 +11,7 @@
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 fn main() {
     a::foo();
@@ -35,8 +35,8 @@ mod a {
 }
 
 mod b {
-    #[rustc_clean(cfg="cfail2")]
-    #[rustc_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail2")]
+    #[redox_clean(cfg="cfail3")]
     pub fn bar() {
         let x = vec![1, 2, 3];
         let v = || ::std::mem::drop(x);

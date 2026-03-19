@@ -24,7 +24,7 @@ define_config! {
         target: Option<Vec<String>> = "target",
         build_dir: Option<String> = "build-dir",
         cargo: Option<PathBuf> = "cargo",
-        rustc: Option<PathBuf> = "rustc",
+        redox: Option<PathBuf> = "redox",
         rustdoc: Option<PathBuf> = "rustdoc",
         rustfmt: Option<PathBuf> = "rustfmt",
         cargo_clippy: Option<PathBuf> = "cargo-clippy",

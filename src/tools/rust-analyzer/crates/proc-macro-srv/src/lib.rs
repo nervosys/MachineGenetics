@@ -7,11 +7,11 @@
 //!
 //! * We use `tt` for proc-macro `TokenStream` server, it is easier to manipulate and interact with
 //!   RA than `proc-macro2` token stream.
-//! * By **copying** the whole rustc `lib_proc_macro` code, we are able to build this with `stable`
-//!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
+//! * By **copying** the whole redox `lib_proc_macro` code, we are able to build this with `stable`
+//!   redox rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
 #![cfg(feature = "sysroot-abi")]
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
 #![allow(
     unreachable_pub,
@@ -24,16 +24,16 @@
 #![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
 
 #[cfg(not(feature = "in-rust-tree"))]
-extern crate proc_macro as rustc_proc_macro;
+extern crate proc_macro as redox_proc_macro;
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_proc_macro;
+extern crate redox_proc_macro;
 
 #[cfg(not(feature = "in-rust-tree"))]
-extern crate ra_ap_rustc_lexer as rustc_lexer;
+extern crate ra_ap_redox_lexer as redox_lexer;
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_lexer;
+extern crate redox_lexer;
 
 mod bridge;
 mod dylib;
@@ -57,7 +57,7 @@ use temp_dir::TempDir;
 
 pub use crate::server_impl::token_id::SpanId;
 
-pub use rustc_proc_macro::Delimiter;
+pub use redox_proc_macro::Delimiter;
 pub use span;
 
 pub use crate::bridge::*;
@@ -236,7 +236,7 @@ impl ProcMacroSrv<'_> {
 }
 
 pub trait ProcMacroSrvSpan: Copy + Send + Sync {
-    type Server<'a>: rustc_proc_macro::bridge::server::Server<
+    type Server<'a>: redox_proc_macro::bridge::server::Server<
             TokenStream = crate::token_stream::TokenStream<Self>,
         >;
     fn make_server<'a>(

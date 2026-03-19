@@ -97,7 +97,7 @@ macro_rules! m2 { () => ( ${invalid()} ) }
 }
 
 #[test]
-fn test_rustc_issue_57597() {
+fn test_redox_issue_57597() {
     // <https://github.com/rust-lang/rust/blob/ec2cc76/tests/ui/macros/issue-57597.rs>
     check(
         r#"

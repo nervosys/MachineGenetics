@@ -1,5 +1,5 @@
 #![feature(staged_api)]
-#![unstable(feature = "rustc_private", issue = "none")]
+#![unstable(feature = "redox_private", issue = "none")]
 
 pub trait MaybeResult<T> {}
 

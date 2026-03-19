@@ -27,7 +27,7 @@ use hir_def::{
 };
 use hir_expand::{FileRange, InFile, db::ExpandDatabase};
 use itertools::Itertools;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use stdx::format_to;
 use syntax::{
     SyntaxNode,

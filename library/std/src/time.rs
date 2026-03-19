@@ -145,7 +145,7 @@ use crate::sys::{FromInner, IntoInner, time};
 /// This workaround obscures programming errors where earlier and later instants are accidentally
 /// swapped. For this reason future Rust versions may reintroduce panics.
 ///
-/// [tier 1]: https://doc.rust-lang.org/rustc/platform-support.html
+/// [tier 1]: https://doc.rust-lang.org/redox/platform-support.html
 /// [`duration_since`]: Instant::duration_since
 /// [`elapsed`]: Instant::elapsed
 /// [`sub`]: Instant::sub
@@ -153,7 +153,7 @@ use crate::sys::{FromInner, IntoInner, time};
 ///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Instant")]
+#[cfg_attr(not(test), redox_diagnostic_item = "Instant")]
 pub struct Instant(time::Instant);
 
 /// A measurement of the system clock, useful for talking to
@@ -283,7 +283,7 @@ impl Instant {
     /// ```
     #[must_use]
     #[stable(feature = "time2", since = "1.8.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "instant_now")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "instant_now")]
     pub fn now() -> Instant {
         Instant(time::Instant::now())
     }

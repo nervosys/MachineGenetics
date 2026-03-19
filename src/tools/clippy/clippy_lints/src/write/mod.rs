@@ -2,9 +2,9 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{FormatArgsStorage, root_macro_call_first_node};
 use clippy_utils::{is_in_test, sym};
-use rustc_hir::{Expr, Impl, Item, ItemKind, OwnerId};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use redox_hir::{Expr, Impl, Item, ItemKind, OwnerId};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::impl_lint_pass;
 
 mod empty_string;
 mod literal;

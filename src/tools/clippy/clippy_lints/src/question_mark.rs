@@ -14,17 +14,17 @@ use clippy_utils::{
     pat_and_expr_can_be_question_mark, peel_blocks, peel_blocks_with_stmt, span_contains_cfg, span_contains_comment,
     sym,
 };
-use rustc_errors::Applicability;
-use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
-use rustc_hir::def::Res;
-use rustc_hir::{
+use redox_errors::Applicability;
+use redox_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
+use redox_hir::def::Res;
+use redox_hir::{
     Arm, BindingMode, Block, Body, ByRef, Expr, ExprKind, FnRetTy, HirId, LetStmt, MatchSource, Mutability, Node, Pat,
     PatKind, PathSegment, QPath, Stmt, StmtKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty};
-use rustc_session::impl_lint_pass;
-use rustc_span::symbol::Symbol;
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::{self, Ty};
+use redox_session::impl_lint_pass;
+use redox_span::symbol::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does

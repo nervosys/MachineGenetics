@@ -3,8 +3,8 @@
 //! to the other test files as well.
 //!
 //! Expectations:
-//! * rustc: only rustc lint expectations are emitted
-//! * clippy: rustc and Clippy's expectations are emitted
+//! * redox: only redox lint expectations are emitted
+//! * clippy: redox and Clippy's expectations are emitted
 //! * rustdoc: only rustdoc lint expectations are emitted
 //!
 //! This test can't cover every lint from Clippy, rustdoc and potentially other
@@ -12,11 +12,11 @@
 #![expect(rustdoc::missing_crate_level_docs)]
 #![allow(clippy::needless_ifs)]
 
-mod rustc_ok {
-    //! See <https://doc.rust-lang.org/rustc/lints/index.html>
+mod redox_ok {
+    //! See <https://doc.rust-lang.org/redox/lints/index.html>
 
     #[expect(dead_code)]
-    pub fn rustc_lints() {
+    pub fn redox_lints() {
         let x = 42.0;
 
         #[expect(invalid_nan_comparisons)]
@@ -24,14 +24,14 @@ mod rustc_ok {
     }
 }
 
-mod rustc_warn {
-    //! See <https://doc.rust-lang.org/rustc/lints/index.html>
+mod redox_warn {
+    //! See <https://doc.rust-lang.org/redox/lints/index.html>
 
     #[expect(dead_code)]
     //~^ ERROR: this lint expectation is unfulfilled
     //~| NOTE: `-D unfulfilled-lint-expectations` implied by `-D warnings`
     //~| HELP: to override `-D warnings` add `#[allow(unfulfilled_lint_expectations)]`
-    pub fn rustc_lints() {
+    pub fn redox_lints() {
         let x = 42;
 
         #[expect(invalid_nan_comparisons)]
@@ -139,5 +139,5 @@ mod clippy_warn {
 }
 
 fn main() {
-    rustc_warn::rustc_lints();
+    redox_warn::redox_lints();
 }

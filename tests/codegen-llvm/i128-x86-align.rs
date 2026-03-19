@@ -2,7 +2,7 @@
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes --crate-type=lib
 
 // On LLVM 17 and earlier LLVM's own data layout specifies that i128 has 8 byte alignment,
-// while rustc wants it to have 16 byte alignment. This test checks that we handle this
+// while redox wants it to have 16 byte alignment. This test checks that we handle this
 // correctly.
 
 // CHECK: %ScalarPair = type { i32, [3 x i32], i128 }

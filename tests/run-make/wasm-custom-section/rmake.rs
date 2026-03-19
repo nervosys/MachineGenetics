@@ -2,11 +2,11 @@
 
 use std::collections::HashMap;
 
-use run_make_support::{rfs, rustc, wasmparser};
+use run_make_support::{rfs, redox, wasmparser};
 
 fn main() {
-    rustc().input("foo.rs").target("wasm32-wasip1").run();
-    rustc().input("bar.rs").target("wasm32-wasip1").arg("-Clto").opt().run();
+    redox().input("foo.rs").target("wasm32-wasip1").run();
+    redox().input("bar.rs").target("wasm32-wasip1").arg("-Clto").opt().run();
 
     let file = rfs::read("bar.wasm");
 

@@ -7,7 +7,7 @@ use core::any::Any;
 
 unsafe extern "Rust" {
     // This is defined in std::rt
-    #[rustc_std_internal_symbol]
+    #[redox_std_internal_symbol]
     safe fn __rust_abort() -> !;
 }
 

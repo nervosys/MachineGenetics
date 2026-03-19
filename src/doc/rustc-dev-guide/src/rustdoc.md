@@ -8,7 +8,7 @@ For more details about how rustdoc works, see the ["Rustdoc internals" chapter][
 
 [Rustdoc internals]: ./rustdoc-internals.md
 
-`rustdoc` uses `rustc` internals (and, of course, the standard library), so you
+`rustdoc` uses `redox` internals (and, of course, the standard library), so you
 will have to build the compiler and `std` once before you can build `rustdoc`.
 
 Rustdoc is implemented entirely within the crate [`librustdoc`][rd].
@@ -39,7 +39,7 @@ Note that literally all that does is call the `main()` that's in this crate's `l
 
 * Run `./x setup tools` before getting started.
   This will configure `x` with nice settings for developing rustdoc and other tools, including
-  downloading a copy of rustc rather than building it.
+  downloading a copy of redox rather than building it.
 * Use `./x check rustdoc` to quickly check for compile errors.
 * Use `./x build library rustdoc` to make a usable rustdoc you can run on other projects.
   * Add `library/test` to be able to use `rustdoc --test`.
@@ -77,7 +77,7 @@ All paths in this section are relative to `src/librustdoc/` in the rust-lang/rus
 * Most of the HTML printing code is in `html/format.rs` and `html/render/mod.rs`.
   It's in a bunch of functions returning `impl std::fmt::Display`.
 * The data types that get rendered by the functions mentioned above are defined in `clean/types.rs`.
-  The functions responsible for creating them from the `HIR` and the `rustc_middle::ty` IR
+  The functions responsible for creating them from the `HIR` and the `redox_middle::ty` IR
   live in `clean/mod.rs`.
 * The bits specific to using rustdoc as a test harness are in `doctest.rs`.
 * The Markdown renderer is loaded up in `html/markdown.rs`, including functions
@@ -121,8 +121,8 @@ For examples of code that breaks if this hack is removed, see
 
 [platform-specific docs]: https://doc.rust-lang.org/rustdoc/advanced-features.html#interactions-between-platform-specific-docs
 [override queries]: https://github.com/rust-lang/rust/blob/52bf0cf795dfecc8b929ebb1c1e2545c3f41d4c9/src/librustdoc/core.rs#L299-L323
-[silencing name resolution errors]: https://github.com/rust-lang/rust/blob/52bf0cf795dfecc8b929ebb1c1e2545c3f41d4c9/compiler/rustc_resolve/src/late.rs#L4517
-[not resolving opaque types]: https://github.com/rust-lang/rust/blob/52bf0cf795dfecc8b929ebb1c1e2545c3f41d4c9/compiler/rustc_hir_analysis/src/check/check.rs#L188-L194
+[silencing name resolution errors]: https://github.com/rust-lang/rust/blob/52bf0cf795dfecc8b929ebb1c1e2545c3f41d4c9/compiler/redox_resolve/src/late.rs#L4517
+[not resolving opaque types]: https://github.com/rust-lang/rust/blob/52bf0cf795dfecc8b929ebb1c1e2545c3f41d4c9/compiler/redox_hir_analysis/src/check/check.rs#L188-L194
 [async-std]: https://github.com/rust-lang/rust/issues/75100
 [rustdoc meeting 2024-07-08]: https://rust-lang.zulipchat.com/#narrow/channel/393423-t-rustdoc.2Fmeetings/topic/meeting.202024-07-08/near/449969836
 [compiler meeting 2023-01-26]: https://rust-lang.zulipchat.com/#narrow/channel/238009-t-compiler.2Fmeetings/topic/.5Bweekly.5D.202023-01-26/near/323755789

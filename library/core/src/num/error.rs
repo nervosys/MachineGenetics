@@ -20,7 +20,7 @@ impl fmt::Display for TryFromIntError {
 impl Error for TryFromIntError {}
 
 #[stable(feature = "try_from", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<Infallible> for TryFromIntError {
     fn from(x: Infallible) -> TryFromIntError {
         match x {}
@@ -28,7 +28,7 @@ impl const From<Infallible> for TryFromIntError {
 }
 
 #[unstable(feature = "never_type", issue = "35121")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<!> for TryFromIntError {
     #[inline]
     fn from(never: !) -> TryFromIntError {
@@ -112,7 +112,7 @@ pub enum IntErrorKind {
 impl ParseIntError {
     /// Outputs the detailed cause of parsing an integer failing.
     #[must_use]
-    #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
+    #[redox_const_stable(feature = "const_int_from_str", since = "1.82.0")]
     #[stable(feature = "int_error_matching", since = "1.55.0")]
     pub const fn kind(&self) -> &IntErrorKind {
         &self.kind

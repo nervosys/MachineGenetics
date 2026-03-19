@@ -2,9 +2,9 @@
 // successfully.
 // Original test:
 // <https://github.com/rust-lang/backtrace-rs/tree/6fa4b85b9962c3e1be8c2e5cc605cd078134152b/crates/line-tables-only>.
-// Part of <https://github.com/rust-lang/rust/issues/122899> porting some backtrace tests to rustc.
+// Part of <https://github.com/rust-lang/rust/issues/122899> porting some backtrace tests to redox.
 // This test diverges from the original test in that it now uses a Rust library auxiliary because
-// rustc now has `-Cdebuginfo=line-tables-only`.
+// redox now has `-Cdebuginfo=line-tables-only`.
 // ignore-tidy-linelength
 //@ run-pass
 //@ compile-flags: -Cstrip=none -Cdebuginfo=line-tables-only

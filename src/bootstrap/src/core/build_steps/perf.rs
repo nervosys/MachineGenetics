@@ -146,8 +146,8 @@ pub fn perf(builder: &Builder<'_>, args: &PerfArgs) {
         | PerfCommand::Cachegrind { .. } => true,
         PerfCommand::Benchmark { .. } | PerfCommand::Compare { .. } => false,
     };
-    if is_profiling && builder.build.config.rust_debuginfo_level_rustc == DebuginfoLevel::None {
-        builder.info(r#"WARNING: You are compiling rustc without debuginfo, this will make profiling less useful.
+    if is_profiling && builder.build.config.rust_debuginfo_level_redox == DebuginfoLevel::None {
+        builder.info(r#"WARNING: You are compiling redox without debuginfo, this will make profiling less useful.
 Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
     }
 
@@ -161,13 +161,13 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
     }
 
     let sysroot = builder.ensure(Sysroot::new(compiler));
-    let mut rustc = sysroot.clone();
-    rustc.push("bin");
-    rustc.push("rustc");
-    rustc.set_extension(EXE_EXTENSION);
+    let mut redox = sysroot.clone();
+    redox.push("bin");
+    redox.push("redox");
+    redox.set_extension(EXE_EXTENSION);
 
-    let rustc_perf_dir = builder.build.tempdir().join("rustc-perf");
-    let results_dir = rustc_perf_dir.join("results");
+    let redox_perf_dir = builder.build.tempdir().join("rustc-perf");
+    let results_dir = redox_perf_dir.join("results");
     builder.create_dir(&results_dir);
 
     let mut cmd = command(collector.tool_path);
@@ -191,7 +191,7 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
             });
 
             cmd.arg("--out-dir").arg(&results_dir);
-            cmd.arg(rustc);
+            cmd.arg(redox);
 
             apply_shared_opts(&mut cmd, opts);
             cmd.run(builder);
@@ -202,7 +202,7 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
             cmd.arg("bench_local");
             cmd.arg("--db").arg(&db_path);
             cmd.arg("--id").arg(id);
-            cmd.arg(rustc);
+            cmd.arg(redox);
 
             apply_shared_opts(&mut cmd, opts);
             cmd.run(builder);

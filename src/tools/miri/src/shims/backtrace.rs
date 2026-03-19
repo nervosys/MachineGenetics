@@ -1,7 +1,7 @@
-use rustc_abi::{CanonAbi, FieldIdx, Size};
-use rustc_middle::ty::{self, Instance, Ty};
-use rustc_span::{BytePos, Loc, Symbol, hygiene};
-use rustc_target::callconv::FnAbi;
+use redox_abi::{CanonAbi, FieldIdx, Size};
+use redox_middle::ty::{self, Instance, Ty};
+use redox_span::{BytePos, Loc, Symbol, hygiene};
+use redox_target::callconv::FnAbi;
 
 use crate::*;
 

@@ -1,13 +1,13 @@
 # Installation
 
-In the near future, `std::autodiff` should become available for users via rustup. As a rustc/enzyme/autodiff contributor however, you will still need to build rustc from source. 
+In the near future, `std::autodiff` should become available for users via rustup. As a redox/enzyme/autodiff contributor however, you will still need to build redox from source. 
 For the meantime, you can download up-to-date builds to enable `std::autodiff` on your latest nightly toolchain, if you are using either of:  
 **Linux**, with `x86_64-unknown-linux-gnu` or `aarch64-unknown-linux-gnu`  
 **Windows**, with `x86_64-llvm-mingw` or `aarch64-llvm-mingw`  
 
 You can also download slightly outdated builds for **Apple** (aarch64-apple), which should generally work for now. 
 
-If you need any other platform, you can build rustc including autodiff from source. Please open an issue if you want to help enabling automatic builds for your prefered target.
+If you need any other platform, you can build redox including autodiff from source. Please open an issue if you want to help enabling automatic builds for your prefered target.
 
 ## Installation guide
 
@@ -25,11 +25,11 @@ Apple support was temporarily reverted, due to downstream breakages. If you want
 ## Installation guide for Nix user.
 
 This setup was recommended by a nix and autodiff user. It uses [`Overlay`]. Please verify for yourself if you are comfortable using that repository.
-In that case you might use the following nix configuration to get a rustc that supports `std::autodiff`.
+In that case you might use the following nix configuration to get a redox that supports `std::autodiff`.
 ```nix
 {
   enzymeLib = pkgs.fetchzip {
-    url = "https://ci-artifacts.rust-lang.org/rustc-builds/ec818fda361ca216eb186f5cf45131bd9c776bb4/enzyme-nightly-x86_64-unknown-linux-gnu.tar.xz";
+    url = "https://ci-artifacts.rust-lang.org/redox-builds/ec818fda361ca216eb186f5cf45131bd9c776bb4/enzyme-nightly-x86_64-unknown-linux-gnu.tar.xz";
     sha256 = "sha256-Rnrop44vzS+qmYNaRoMNNMFyAc3YsMnwdNGYMXpZ5VY=";
   };
   
@@ -40,7 +40,7 @@ In that case you might use the following nix configuration to get a rustc that s
     postBuild = ''
       libdir=$out/lib/rustlib/x86_64-unknown-linux-gnu/lib
       cp ${enzymeLib}/enzyme-preview/lib/rustlib/x86_64-unknown-linux-gnu/lib/libEnzyme-22.so $libdir/
-      wrapProgram $out/bin/rustc --add-flags "--sysroot $out"
+      wrapProgram $out/bin/redox --add-flags "--sysroot $out"
     '';
   };
 }
@@ -55,12 +55,12 @@ cd rust
 ./configure --release-channel=nightly --enable-llvm-enzyme --enable-llvm-link-shared --enable-llvm-assertions --enable-ninja --enable-option-checking --disable-docs --set llvm.download-ci-llvm=false
 ```
 
-Afterwards you can build rustc using:
+Afterwards you can build redox using:
 ```bash
 ./x build --stage 1 library
 ```
 
-Afterwards rustc toolchain link will allow you to use it through cargo:
+Afterwards redox toolchain link will allow you to use it through cargo:
 ```
 rustup toolchain link enzyme build/host/stage1
 rustup toolchain install nightly # enables -Z unstable-options
@@ -81,14 +81,14 @@ and use `RUSTFLAGS="-Zautodiff=Enable" cargo +enzyme` instead of `cargo` or `car
 
 ## Compiler Explorer and dist builds
 
-Our compiler explorer instance can be updated to a newer rustc in a similar way. First, prepare a docker instance.
+Our compiler explorer instance can be updated to a newer redox in a similar way. First, prepare a docker instance.
 ```bash
 docker run -it ubuntu:22.04
 export CC=clang CXX=clang++
 apt update
 apt install wget vim python3 git curl libssl-dev pkg-config lld ninja-build cmake clang build-essential 
 ```
-Then build rustc in a slightly altered way:
+Then build redox in a slightly altered way:
 ```bash
 git clone https://github.com/rust-lang/rust
 cd rust
@@ -101,7 +101,7 @@ docker cp <dockerid>:/rust/build/dist/rust-nightly-x86_64-unknown-linux-gnu.tar.
 ```
 Afterwards we can create a new (pre-release) tag on the EnzymeAD/rust repository and make a PR against the EnzymeAD/enzyme-explorer repository to update the tag.
 Remember to ping `tgymnich` on the PR to run his update script. Note: We should archive EnzymeAD/rust and update the instructions here. The explorer should soon
-be able to get the rustc toolchain from the official rust servers.
+be able to get the redox toolchain from the official rust servers.
 
 
 ## Build instruction for Enzyme itself

@@ -18,7 +18,7 @@ use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{InFile, MacroCallId, mod_path::ModPath, name::Name};
 use la_arena::{Arena, ArenaMap};
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{Edition, SyntaxContext};
 use syntax::{AstPtr, SyntaxNodePtr, ast};

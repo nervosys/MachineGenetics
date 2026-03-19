@@ -1,13 +1,13 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::{is_from_proc_macro, is_in_test_function};
-use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{Expr, ExprKind, HirId, Node};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use redox_data_structures::fx::{FxIndexMap, IndexEntry};
+use redox_hir::def::DefKind;
+use redox_hir::def_id::LocalDefId;
+use redox_hir::{Expr, ExprKind, HirId, Node};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does

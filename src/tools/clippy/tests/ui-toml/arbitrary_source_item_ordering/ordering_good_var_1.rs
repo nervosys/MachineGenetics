@@ -1,6 +1,6 @@
 //@aux-build:../../ui/auxiliary/proc_macros.rs
 //@revisions: var_1
-//@[var_1] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/var_1
+//@[var_1] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/var_1
 //@check-pass
 
 #![allow(dead_code)]

@@ -3,7 +3,7 @@
 <!-- date-check: Mar 2023 -->
 
 For the purposes of this guide, *fuzzing* is any testing methodology that
-involves compiling a wide variety of programs in an attempt to uncover bugs in rustc.
+involves compiling a wide variety of programs in an attempt to uncover bugs in redox.
 Fuzzing is often used to find internal compiler errors (ICEs).
 Fuzzing can be beneficial, because it can find bugs before users run into them.
 It also provides small, self-contained programs that make the bug easier to track down.
@@ -18,7 +18,7 @@ project, please read this guide before reporting fuzzer-generated bugs!
 
 *Please do:*
 
-- Ensure the bug is still present on the latest nightly rustc
+- Ensure the bug is still present on the latest nightly redox
 - Include a reasonably minimal, standalone example along with any bug report
 - Include all of the information requested in the bug report template
 - Search for existing reports with the same message and query stack
@@ -28,8 +28,8 @@ project, please read this guide before reporting fuzzer-generated bugs!
 *Please don't:*
 
 - Don't report lots of bugs that use internal features, including but not
-  limited to `custom_mir`, `lang_items`, `no_core`, and `rustc_attrs`.
-- Don't seed your fuzzer with inputs that are known to crash rustc (details below).
+  limited to `custom_mir`, `lang_items`, `no_core`, and `redox_attrs`.
+- Don't seed your fuzzer with inputs that are known to crash redox (details below).
 
 ### Discussion
 
@@ -39,11 +39,11 @@ In general, ICEs on the same line but with different *query stacks* are usually 
 For example, [#109020] and [#109129] had similar error messages:
 
 ```
-error: internal compiler error: compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:195:90: Failed to normalize <[closure@src/main.rs:36:25: 36:28] as std::ops::FnOnce<(Emplacable<()>,)>>::Output, maybe try to call `try_normalize_erasing_regions` instead
+error: internal compiler error: compiler/redox_middle/src/ty/normalize_erasing_regions.rs:195:90: Failed to normalize <[closure@src/main.rs:36:25: 36:28] as std::ops::FnOnce<(Emplacable<()>,)>>::Output, maybe try to call `try_normalize_erasing_regions` instead
 ```
 
 ```
-error: internal compiler error: compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:195:90: Failed to normalize <() as Project>::Assoc, maybe try to call `try_normalize_erasing_regions` instead
+error: internal compiler error: compiler/redox_middle/src/ty/normalize_erasing_regions.rs:195:90: Failed to normalize <() as Project>::Assoc, maybe try to call `try_normalize_erasing_regions` instead
 ```
 
 However, they have different query stacks:
@@ -64,7 +64,7 @@ end of query stack
 
 ## Building a corpus
 
-When building a corpus, be sure to avoid collecting tests that are already known to crash rustc.
+When building a corpus, be sure to avoid collecting tests that are already known to crash redox.
 A fuzzer that is seeded with such tests is more likely to
 generate bugs with the same root cause.
 The simplest way to avoid this is to loop over each file in the corpus, see if it causes an
@@ -72,7 +72,7 @@ ICE, and remove it if so.
 
 To build a corpus, you may want to use:
 
-- The rustc/rust-analyzer/clippy test suites (or even source code) --- though avoid
+- The redox/rust-analyzer/clippy test suites (or even source code) --- though avoid
   tests that are already known to cause failures, which often begin with comments
   like `//@ failure-status: 101` or `//@ known-bug: #NNN`.
 - The already-fixed ICEs in the archived [Glacier] repository --- though
@@ -98,7 +98,7 @@ Here are a few things you can do to help the Rust project after filing an ICE:
 
 See also [applying and removing labels][labeling].
 
-[bisect]: https://rust-lang.github.io/cargo-bisect-rustc/
+[bisect]: https://rust-lang.github.io/cargo-bisect-redox/
 [crash test]: tests/compiletest.html#crash-tests
 [labeling]: https://forge.rust-lang.org/release/issue-triaging.html#applying-and-removing-labels
 
@@ -122,7 +122,7 @@ Generally,
 
 ## Effective fuzzing
 
-When fuzzing rustc, you may want to avoid generating machine code, since this
+When fuzzing redox, you may want to avoid generating machine code, since this
 is mostly done by LLVM.
 Try `--emit=mir` instead.
 
@@ -136,10 +136,10 @@ target-cpu=native` or even PGO/BOLT to squeeze out a few more executions per sec
 Of course, it's best to try multiple build configurations and see
 what actually results in superior throughput.
 
-You may want to build rustc from source with debug assertions to find
+You may want to build redox from source with debug assertions to find
 additional bugs, though this can slow down fuzzing by
 requiring extra work for every execution.
-To enable debug assertions, add this to `bootstrap.toml` when compiling rustc:
+To enable debug assertions, add this to `bootstrap.toml` when compiling redox:
 
 ```toml
 rust.debug-assertions = true
@@ -152,12 +152,12 @@ ICEs that require debug assertions to reproduce should be tagged
 
 ## Existing projects
 
-- [fuzz-rustc][fuzz-rustc] demonstrates how to fuzz rustc with libfuzzer
-- [icemaker][icemaker] runs rustc and other tools on a large number of source
+- [fuzz-redox][fuzz-redox] demonstrates how to fuzz redox with libfuzzer
+- [icemaker][icemaker] runs redox and other tools on a large number of source
   files with a variety of flags to catch ICEs
 - [tree-splicer][tree-splicer] generates new source files by combining existing
   ones while maintaining correct syntax
 
-[fuzz-rustc]: https://github.com/dwrensha/fuzz-rustc
+[fuzz-redox]: https://github.com/dwrensha/fuzz-redox
 [icemaker]: https://github.com/matthiaskrgr/icemaker/
 [tree-splicer]: https://github.com/langston-barrett/tree-splicer/

@@ -1,5 +1,5 @@
 use genmc_sys::AssumeType;
-use rustc_middle::ty;
+use redox_middle::ty;
 use tracing::debug;
 
 use crate::concurrency::genmc::MAX_ACCESS_SIZE;
@@ -187,8 +187,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Returns true if this `instance` should be skipped (i.e., no MIR should be executed for it).
     fn genmc_intercept_function(
         &mut self,
-        instance: rustc_middle::ty::Instance<'tcx>,
-        args: &[rustc_const_eval::interpret::FnArg<'tcx, crate::Provenance>],
+        instance: redox_middle::ty::Instance<'tcx>,
+        args: &[redox_const_eval::interpret::FnArg<'tcx, crate::Provenance>],
         dest: &crate::PlaceTy<'tcx>,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();

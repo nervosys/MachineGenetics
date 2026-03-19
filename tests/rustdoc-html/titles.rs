@@ -1,5 +1,5 @@
 #![crate_name = "foo"]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 //@ matches 'foo/index.html' '//h1' 'Crate foo'
 //@ matches 'foo/index.html' '//div[@class="sidebar-crate"]/h2/a' 'foo'
@@ -51,7 +51,7 @@ macro_rules! foo_macro {
 
 //@ matches 'foo/primitive.bool.html' '//h1' 'Primitive Type bool'
 //@ count - '//*[@class="rustdoc-breadcrumbs"]' 0
-#[rustc_doc_primitive = "bool"]
+#[redox_doc_primitive = "bool"]
 mod bool {}
 
 //@ matches 'foo/static.FOO_STATIC.html' '//h1' 'Static FOO_STATIC'

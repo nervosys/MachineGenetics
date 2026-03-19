@@ -80,7 +80,7 @@ are hard to implement with a guarantee of no/few false positives (FPs). One way
 to address this might be to introduce more lint groups to give users the ability
 to better manage lints, or improve the process of classifying lints, so that
 disabling lints due to FPs becomes rare. It is important to note, that Clippy
-lints are less conservative than `rustc` lints, which won't change in the
+lints are less conservative than `redox` lints, which won't change in the
 future.
 
 - [#5537](https://github.com/rust-lang/rust-clippy/issues/5537)
@@ -188,13 +188,13 @@ contribute to Clippy might be helpful for new and existing contributors. There's
 already the `doc` directory in the Clippy repo, this can be turned into a
 `mdbook`.
 
-#### `rustc` integration
+#### `redox` integration
 
 Recently Clippy was integrated with `git subtree` into the `rust-lang/rust`
 repository. This made syncing between the two repositories easier. A
 `#[non_exhaustive]` list of things that still can be improved is:
 
-1. Use the same `rustfmt` version and configuration as `rustc`.
+1. Use the same `rustfmt` version and configuration as `redox`.
 2. Make `cargo dev` work in the Rust repo, just as it works in the Clippy repo.
    E.g. `cargo dev bless` or `cargo dev update_lints`. And even add more things
    to it that might be useful for the Rust repo, e.g. `cargo dev deprecate`.

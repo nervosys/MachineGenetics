@@ -1,6 +1,6 @@
 //@ edition:2021
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(stmt_expr_attributes)]
 
 enum Info {
@@ -14,7 +14,7 @@ fn multi_variant_enum() {
     let vec = Vec::new();
     let meta = Info::Meta("meta".into(), vec);
 
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
@@ -45,7 +45,7 @@ enum SingleVariant {
 fn single_variant_enum() {
     let point = SingleVariant::Point(10, -10, "1".into());
 
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:

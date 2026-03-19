@@ -6,7 +6,7 @@ use std::ptr;
 // - Writes to the pointer after it has moved across the await point
 //
 // This is only meant to assert current behavior, not guarantee that this is
-// how it should work in the future. In fact, upcoming changes to rustc
+// how it should work in the future. In fact, upcoming changes to redox
 // *should* break these tests.
 // See: https://github.com/rust-lang/rust/issues/62958
 async fn data_moved_async() {

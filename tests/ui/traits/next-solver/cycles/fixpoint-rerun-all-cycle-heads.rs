@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver
-#![feature(rustc_attrs)]
-#![rustc_no_implicit_bounds]
+#![feature(redox_attrs)]
+#![redox_no_implicit_bounds]
 
 // Check that we correctly rerun the trait solver for heads of cycles,
 // even if they are not the root.
@@ -9,7 +9,7 @@ struct A<T>(*const T);
 struct B<T>(*const T);
 struct C<T>(*const T);
 
-#[rustc_coinductive]
+#[redox_coinductive]
 trait Trait<'a, 'b> {}
 trait NotImplemented {}
 

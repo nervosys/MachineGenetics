@@ -9,9 +9,9 @@
 //@ ignore-windows-gnu
 // Reason: The space is parsed as an empty linker argument on windows-gnu.
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
     // Notice the space at the end of -lc, which emulates the output of pkg-config.
-    rustc().arg("-Clink-args=-lc ").input("empty.rs").run();
+    redox().arg("-Clink-args=-lc ").input("empty.rs").run();
 }

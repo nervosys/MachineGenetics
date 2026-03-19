@@ -1,7 +1,7 @@
 //@ compile-flags: -Znext-solver=coherence
 //@ check-pass
-#![feature(rustc_attrs)]
-#![rustc_no_implicit_bounds]
+#![feature(redox_attrs)]
+#![redox_no_implicit_bounds]
 
 // A regression test for trait-system-refactor-initiative#70.
 

@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_enum_variant_ctor, is_expr_used_or_unified, sym};
-use rustc_ast::ast::{LitIntType, LitKind};
-use rustc_data_structures::packed::Pu128;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::LateContext;
-use rustc_span::Span;
+use redox_ast::ast::{LitIntType, LitKind};
+use redox_data_structures::packed::Pu128;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::LateContext;
+use redox_span::Span;
 
 use super::SEEK_TO_START_INSTEAD_OF_REWIND;
 

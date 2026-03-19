@@ -17,7 +17,7 @@
 use std::path::Path;
 
 use run_make_support::rfs::read_dir_entries;
-use run_make_support::{bare_rustc, path, rfs, run};
+use run_make_support::{bare_redox, path, rfs, run};
 
 #[derive(Debug, Copy, Clone)]
 struct Symlink<'a, 'b> {
@@ -51,7 +51,7 @@ fn recreate_dir(path: &Path) {
 }
 
 fn main() {
-    let sysroot = bare_rustc().print("sysroot").run().stdout_utf8();
+    let sysroot = bare_redox().print("sysroot").run().stdout_utf8();
     let sysroot = sysroot.trim();
     let sysroot = path(sysroot);
 
@@ -79,8 +79,8 @@ fn main() {
 
     rfs::recursive_remove(&fakeroot.join("lib").join("rustlib").join("src").join("rust"));
 
-    let run_incr_rustc = || {
-        bare_rustc()
+    let run_incr_redox = || {
+        bare_redox()
             .sysroot(&fakeroot)
             .arg("-C")
             .arg(format!("incremental={}", incr.to_str().unwrap()))
@@ -88,8 +88,8 @@ fn main() {
             .run();
     };
 
-    // Run rustc w/ incremental once...
-    run_incr_rustc();
+    // Run redox w/ incremental once...
+    run_incr_redox();
 
     // NOTE: the Makefile version of this used `$SYSROOT/lib/rustlib/src/rust/src/libstd/lib.rs`,
     // but that actually got moved around and reorganized over the years. As of Dec 2024, the
@@ -124,7 +124,7 @@ fn main() {
     );
 
     // ... and a second time.
-    run_incr_rustc();
+    run_incr_redox();
 
     // Basic sanity check that the compiled binary can run.
     run("main");

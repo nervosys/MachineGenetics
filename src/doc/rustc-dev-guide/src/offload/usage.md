@@ -5,7 +5,7 @@ We currently work on launching the following Rust kernel on the GPU. To follow a
 
 ```rust
 #![feature(abi_gpu_kernel)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(core_intrinsics)]
 #![no_std]
 
@@ -68,14 +68,14 @@ unsafe extern "C" {
 #[cfg(not(target_os = "linux"))]
 #[unsafe(no_mangle)]
 #[inline(never)]
-#[rustc_offload_kernel]
+#[redox_offload_kernel]
 pub extern "gpu-kernel" fn kernel_1(x: *mut [f64; 256]) {
     unsafe { (*x)[0] = 21.0 };
 }
 ```
 
 ## Compile instructions
-It is important to use a clang compiler build on the same llvm as rustc. Just calling clang without the full path will likely use your system clang, which probably will be incompatible. So either substitute clang/lld invocations below with absolute path, or set your `PATH` accordingly.
+It is important to use a clang compiler build on the same llvm as redox. Just calling clang without the full path will likely use your system clang, which probably will be incompatible. So either substitute clang/lld invocations below with absolute path, or set your `PATH` accordingly.
 
 First we generate the device (gpu) code. Replace the target-cpu with the right code for your gpu.
 ```
@@ -88,7 +88,7 @@ Now we generate the host (cpu) code.
 RUSTFLAGS="--emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=Host=/p/lustre1/drehwald1/prog/offload/r/target/amdgcn-amd-amdhsa/release/deps/host.out -Zunstable-options" cargo +offload build -r
 ```
 This call also does a lot of work and generates multiple intermediate files for llvm offload.
-While we integrated most offload steps into rustc by now, one binary invocation still remains for now:
+While we integrated most offload steps into redox by now, one binary invocation still remains for now:
 
 ```
 "clang-linker-wrapper" "--should-extract=gfx90a" "--device-compiler=amdgcn-amd-amdhsa=-g" "--device-compiler=amdgcn-amd-amdhsa=-save-temps=cwd" "--device-linker=amdgcn-amd-amdhsa=-lompdevice" "--host-triple=x86_64-unknown-linux-gnu" "--save-temps" "--linker-path=/ABSOlUTE_PATH_TO/rust/build/x86_64-unknown-linux-gnu/lld/bin/ld.lld" "--hash-style=gnu" "--eh-frame-hdr" "-m" "elf_x86_64" "-pie" "-dynamic-linker" "/lib64/ld-linux-x86-64.so.2" "-o" "bare" "/lib/../lib64/Scrt1.o" "/lib/../lib64/crti.o" "/ABSOLUTE_PATH_TO/crtbeginS.o" "-L/ABSOLUTE_PATH_TO/rust/build/x86_64-unknown-linux-gnu/llvm/bin/../lib/x86_64-unknown-linux-gnu" "-L/ABSOLUTE_PATH_TO/rust/build/x86_64-unknown-linux-gnu/llvm/lib/clang/21/lib/x86_64-unknown-linux-gnu" "-L/lib/../lib64" "-L/usr/lib64" "-L/lib" "-L/usr/lib" "target/<GPU_DIR>/release/host.o" "-lstdc++" "-lm" "-lomp" "-lomptarget" "-L/ABSOLUTE_PATH_TO/rust/build/x86_64-unknown-linux-gnu/llvm/lib" "-lgcc_s" "-lgcc" "-lpthread" "-lc" "-lgcc_s" "-lgcc" "/ABSOLUTE_PATH_TO/crtendS.o" "/lib/../lib64/crtn.o"

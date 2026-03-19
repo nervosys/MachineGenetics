@@ -271,7 +271,7 @@ We start a separate process  (`proc-macro-srv-cli`) which loads and runs the pro
 And the client (`proc-macro-api`) provides an interface to talk to that server separately.
 
 And then token trees are passed from client, and the server will load the corresponding dynamic library (which built by `cargo`).
-And due to the fact the api for getting result from proc macro are always unstable in `rustc`,
+And due to the fact the api for getting result from proc macro are always unstable in `redox`,
 we maintain our own copy (and paste) of that part of code to allow us to build the whole thing in stable rust.
 
  **Architecture Invariant:**
@@ -309,9 +309,9 @@ This crate contains infrastructure for globally interning things via `Arc`.
 This crate exposes several utilities for loading projects, used by the main `rust-analyzer` crate
 and other downstream consumers.
 
-### `crates/rustc-dependencies`
+### `crates/redox-dependencies`
 
-This crate wraps the `rustc_*` crates rust-analyzer relies on and conditionally points them to
+This crate wraps the `redox_*` crates rust-analyzer relies on and conditionally points them to
 mirrored crates-io releases such that rust-analyzer keeps building on stable.
 
 ### `crates/span`
@@ -335,7 +335,7 @@ Examples:
 * Rust language and Cargo are stable, and they are the primary inputs to rust-analyzer.
 * The `rowan` library is published to crates.io, but it is deliberately kept under `1.0` and always makes semver-incompatible upgrades
 
-Another important example is that rust-analyzer isn't run on CI, so, unlike `rustc` and `clippy`, it is actually ok for us to change runtime behavior.
+Another important example is that rust-analyzer isn't run on CI, so, unlike `redox` and `clippy`, it is actually ok for us to change runtime behavior.
 
 At some point we might consider opening up APIs or allowing crates.io libraries to include rust-analyzer specific annotations, but that's going to be a big commitment on our side.
 

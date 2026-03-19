@@ -108,8 +108,8 @@ Book][unstable-masked] and [its tracking issue][issue-masked].
 This is for Rust compiler internal use only.
 
 Since primitive types are defined in the compiler, there's no place to attach documentation
-attributes. The `#[rustc_doc_primitive = "..."]` attribute is used by the standard library to
-provide a way to generate documentation for primitive types, and requires `#![feature(rustc_attrs)]`
+attributes. The `#[redox_doc_primitive = "..."]` attribute is used by the standard library to
+provide a way to generate documentation for primitive types, and requires `#![feature(redox_attrs)]`
 to enable.
 
 ### Document keywords
@@ -325,7 +325,7 @@ $ rustdoc src/lib.rs -Z unstable-options --show-type-layout
 
 When this flag is passed, rustdoc will add a "Layout" section at the bottom of
 each type's docs page that includes a summary of the type's memory layout as
-computed by rustc. For example, rustdoc will show the size in bytes that a value
+computed by redox. For example, rustdoc will show the size in bytes that a value
 of that type will take in memory.
 
 Note that most layout information is **completely unstable** and may even differ
@@ -378,7 +378,7 @@ $ rustdoc src/lib.rs -Z force-unstable-if-unmarked
 This is an internal flag intended for the standard library and compiler that applies an
 `#[unstable]` attribute to any dependent crate that doesn't have another stability attribute. This
 allows `rustdoc` to be able to generate documentation for the compiler crates and the standard
-library, as an equivalent command-line argument is provided to `rustc` when building those crates.
+library, as an equivalent command-line argument is provided to `redox` when building those crates.
 
 ## `--index-page`: provide a top-level landing page for docs
 
@@ -520,7 +520,7 @@ use `-o -`.
  * Tracking Issue: [#76578](https://github.com/rust-lang/rust/issues/76578)
 
 `--output-format json` emits documentation in the experimental
-[JSON format](https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc_json_types/).
+[JSON format](https://doc.rust-lang.org/nightly/nightly-redox/rustdoc_json_types/).
 
 JSON Output for toolchain crates (`std`, `alloc`, `core`, `test`, and `proc_macro`)
 is available via the `rust-docs-json` rustup component.
@@ -653,17 +653,17 @@ add the `--scrape-tests` flag.
 This flag enables the generation of links in the source code pages which allow the reader
 to jump to a type definition.
 
-### `--test-builder`: `rustc`-like program to build tests
+### `--test-builder`: `redox`-like program to build tests
 
  * Tracking issue: [#102981](https://github.com/rust-lang/rust/issues/102981)
 
 Using this flag looks like this:
 
 ```bash
-$ rustdoc --test-builder /path/to/rustc src/lib.rs
+$ rustdoc --test-builder /path/to/redox src/lib.rs
 ```
 
-Rustdoc will use the provided program to compile tests instead of the default `rustc` program from
+Rustdoc will use the provided program to compile tests instead of the default `redox` program from
 the sysroot.
 
 ### `--test-builder-wrapper`: wrap calls to the test builder
@@ -673,20 +673,20 @@ the sysroot.
 Using this flag looks like this:
 
 ```bash
-$ rustdoc -Zunstable-options --test-builder-wrapper /path/to/rustc-wrapper src/lib.rs
+$ rustdoc -Zunstable-options --test-builder-wrapper /path/to/redox-wrapper src/lib.rs
 $ rustdoc -Zunstable-options \
-    --test-builder-wrapper rustc-wrapper1 \
-    --test-builder-wrapper rustc-wrapper2 \
-    --test-builder rustc \
+    --test-builder-wrapper redox-wrapper1 \
+    --test-builder-wrapper redox-wrapper2 \
+    --test-builder redox \
     src/lib.rs
 ```
 
-Similar to cargo `build.rustc-wrapper` option, this flag takes a `rustc` wrapper program.
+Similar to cargo `build.redox-wrapper` option, this flag takes a `redox` wrapper program.
 The first argument to the program will be the test builder program.
 
 This flag can be passed multiple times to nest wrappers.
 
-## Passing arguments to rustc when compiling doctests
+## Passing arguments to redox when compiling doctests
 
 You can use the `--doctest-build-arg` flag if you want to add options when compiling the
 doctest. For example if you have:
@@ -753,7 +753,7 @@ This flag enables the generation of toggles to expand macros in the HTML source 
 
 ## `--remap-path-prefix`: Remap source code paths in output
 
-This flag is the equivalent flag from `rustc` `--remap-path-prefix`.
+This flag is the equivalent flag from `redox` `--remap-path-prefix`.
 
 it permits remapping source path prefixes in all output, including compiler diagnostics,
 debug information, macro expansions, etc. It takes a value of the form `FROM=TO`
@@ -761,11 +761,11 @@ where a path prefix equal to `FROM` is rewritten to the value `TO`.
 
 ### `documentation` scope
 
-`rustdoc` (and by extension `rustc`) have a special `documentation` remapping scope, it
+`rustdoc` (and by extension `redox`) have a special `documentation` remapping scope, it
 permits remapping source paths that ends up in the generated documentation.
 
-Currently the scope can only be specified from `rustc`, due to the lack of an equivalent
-`--remap-path-scope` flag in `rustc`.
+Currently the scope can only be specified from `redox`, due to the lack of an equivalent
+`--remap-path-scope` flag in `redox`.
 
 ## `#[doc(cfg)]` and `#[doc(auto_cfg)]`
 

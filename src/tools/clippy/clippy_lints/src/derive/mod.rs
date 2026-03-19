@@ -1,8 +1,8 @@
 use clippy_utils::res::MaybeResPath;
-use rustc_hir::def::Res;
-use rustc_hir::{Impl, Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use redox_hir::def::Res;
+use redox_hir::{Impl, Item, ItemKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
 
 mod derive_ord_xor_partial_ord;
 mod derive_partial_eq_without_eq;

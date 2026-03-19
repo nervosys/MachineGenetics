@@ -6,7 +6,7 @@
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::mem;
 
@@ -14,7 +14,7 @@ trait MyTrait<S> {
     fn foo(&self, s: S) -> usize;
 }
 
-#[rustc_reservation_impl = "foo"]
+#[redox_reservation_impl = "foo"]
 impl<T> MyTrait<u64> for T {
     fn foo(&self, _x: u64) -> usize { 0 }
 }

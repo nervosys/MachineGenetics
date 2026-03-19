@@ -1,6 +1,6 @@
 //@revisions: default disabled
-//@[disabled] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/use_self/disabled
-//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/use_self/default
+//@[disabled] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/use_self/disabled
+//@[default] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/use_self/default
 
 #![warn(clippy::use_self)]
 

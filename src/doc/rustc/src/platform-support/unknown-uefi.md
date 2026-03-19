@@ -39,7 +39,7 @@ details are desired.
 
 MMX, SSE, and other FP-units are disabled by default, to allow for compilation
 of core UEFI code that runs before they are set up. This can be overridden for
-individual compilations via rustc command-line flags. Not all firmwares
+individual compilations via redox command-line flags. Not all firmwares
 correctly configure those units, though, so careful inspection is required.
 
 As native to PE32+, binaries are position-dependent, but can be relocated at
@@ -64,7 +64,7 @@ The UEFI specification is available online for free:
 
 ## Building rust for UEFI targets
 
-Rust can be built for the UEFI targets by enabling them in the `rustc` build
+Rust can be built for the UEFI targets by enabling them in the `redox` build
 configuration. Note that you can only build the standard libraries. The
 compiler and host tools currently cannot be compiled for UEFI targets. A sample
 configuration would be:
@@ -83,7 +83,7 @@ Starting with Rust 1.67, precompiled artifacts are provided via
 ```sh
 # install cross-compile toolchain
 rustup target add x86_64-unknown-uefi
-# target flag may be used with any cargo or rustc command
+# target flag may be used with any cargo or redox command
 cargo build --target x86_64-unknown-uefi
 ```
 
@@ -256,7 +256,7 @@ pub extern "C" fn main(_h: efi::Handle, st: *mut efi::SystemTable) -> efi::Statu
 This section contains information on how to use std on UEFI.
 
 ### Build std
-The building std part is pretty much the same as the official [docs](https://rustc-dev-guide.rust-lang.org/getting-started.html).
+The building std part is pretty much the same as the official [docs](https://redox-dev-guide.rust-lang.org/getting-started.html).
 The linker that should be used is `rust-lld`. Here is a sample `bootstrap.toml`:
 ```toml
 [rust]

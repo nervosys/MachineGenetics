@@ -5,12 +5,12 @@ use clippy_utils::source::snippet;
 use clippy_utils::ty::{ExprFnSig, expr_sig, ty_sig};
 use clippy_utils::{as_some_expr, get_expr_use_or_unification_node, is_none_expr, std_or_core, sym};
 
-use rustc_errors::Applicability;
-use rustc_hir::hir_id::HirId;
-use rustc_hir::{Expr, ExprKind, Node};
-use rustc_lint::LateContext;
-use rustc_middle::ty::Binder;
-use rustc_span::Symbol;
+use redox_errors::Applicability;
+use redox_hir::hir_id::HirId;
+use redox_hir::{Expr, ExprKind, Node};
+use redox_lint::LateContext;
+use redox_middle::ty::Binder;
+use redox_span::Symbol;
 
 use super::{ITER_ON_EMPTY_COLLECTIONS, ITER_ON_SINGLE_ITEMS};
 

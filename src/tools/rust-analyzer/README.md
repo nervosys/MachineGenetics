@@ -13,7 +13,7 @@ Code, Vim, Emacs, Zed, etc).
 rust-analyzer features include go-to-definition, find-all-references,
 refactorings and code completion. rust-analyzer also supports
 integrated formatting (with rustfmt) and integrated diagnostics (with
-rustc and clippy).
+redox and clippy).
 
 Internally, rust-analyzer is structured as a set of libraries for
 analyzing Rust code. See

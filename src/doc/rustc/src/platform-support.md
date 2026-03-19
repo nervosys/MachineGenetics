@@ -21,7 +21,7 @@ Tier 1 targets can be thought of as "guaranteed to work". The Rust project
 builds official binary releases for each tier 1 target, and automated testing
 ensures that each tier 1 target builds and passes tests after each change.
 
-Tier 1 targets with host tools additionally support running tools like `rustc`
+Tier 1 targets with host tools additionally support running tools like `redox`
 and `cargo` natively on the target, and automated testing ensures that tests
 pass for the host tools as well. This allows the target to be used as a
 development platform, not just a compilation target. For the full requirements,
@@ -74,7 +74,7 @@ control for these targets is likely to be lower. See [library team
 policy](https://std-dev-guide.rust-lang.org/policy/target-code.html) for
 details on the review practices for standard library code.
 
-Tier 2 targets with host tools additionally support running tools like `rustc`
+Tier 2 targets with host tools additionally support running tools like `redox`
 and `cargo` natively on the target, and automated builds ensure that the host
 tools build as well. This allows the target to be used as a development
 platform, not just a compilation target. For the full requirements, see [Tier 2

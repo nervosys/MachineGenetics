@@ -8,12 +8,12 @@
 // See <https://internals.rust-lang.org/t/easier-access-to-files-generated-by-emit-foo/20477>
 extern crate run_make_support;
 
-use run_make_support::{cwd, rustc};
+use run_make_support::{cwd, redox};
 
 fn main() {
     // With single codegen unit files are renamed to match the source file name
     for _ in 0..=1 {
-        let output = rustc()
+        let output = redox()
             .input("lib.rs")
             .emit("obj,asm,llvm-ir,llvm-bc,mir")
             .codegen_units(1)
@@ -29,7 +29,7 @@ fn main() {
 
     // with multiple codegen units files keep codegen unit id part.
     for _ in 0..=1 {
-        let output = rustc()
+        let output = redox()
             .input("lib.rs")
             .emit("obj,asm,llvm-ir,llvm-bc,mir")
             .codegen_units(2)

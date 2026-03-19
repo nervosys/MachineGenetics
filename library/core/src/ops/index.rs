@@ -55,11 +55,11 @@
 #[doc(alias = "]")]
 #[doc(alias = "[")]
 #[doc(alias = "[]")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 pub const trait Index<Idx: ?Sized> {
     /// The returned type after indexing.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "IndexOutput"]
+    #[redox_diagnostic_item = "IndexOutput"]
     type Output: ?Sized;
 
     /// Performs the indexing (`container[index]`) operation.
@@ -68,7 +68,7 @@ pub const trait Index<Idx: ?Sized> {
     ///
     /// May panic if the index is out of bounds.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_no_implicit_autorefs]
+    #[redox_no_implicit_autorefs]
     #[track_caller]
     fn index(&self, index: Idx) -> &Self::Output;
 }
@@ -143,7 +143,7 @@ pub const trait Index<Idx: ?Sized> {
 /// balance[Side::Left] = Weight::Kilogram(3.0);
 /// ```
 #[lang = "index_mut"]
-#[rustc_on_unimplemented(
+#[redox_on_unimplemented(
     on(
         Self = "&str",
         note = "you can use `.chars().nth()` or `.bytes().nth()`
@@ -166,7 +166,7 @@ see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#ind
 #[doc(alias = "[")]
 #[doc(alias = "]")]
 #[doc(alias = "[]")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 pub const trait IndexMut<Idx: ?Sized>: [const] Index<Idx> {
     /// Performs the mutable indexing (`container[index]`) operation.
     ///
@@ -174,7 +174,7 @@ pub const trait IndexMut<Idx: ?Sized>: [const] Index<Idx> {
     ///
     /// May panic if the index is out of bounds.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_no_implicit_autorefs]
+    #[redox_no_implicit_autorefs]
     #[track_caller]
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output;
 }

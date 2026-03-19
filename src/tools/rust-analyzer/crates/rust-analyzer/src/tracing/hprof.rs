@@ -39,7 +39,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rustc_hash::FxHashSet;
+use redox_hash::FxHashSet;
 use tracing::{
     Event, Id, Level, Subscriber,
     field::{Field, Visit},

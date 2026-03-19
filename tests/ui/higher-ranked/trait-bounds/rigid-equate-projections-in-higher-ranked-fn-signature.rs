@@ -7,7 +7,7 @@
 /// This triggers an ICE with (and without) `--emit metadata` using the old
 /// trait solver:
 /// ```
-/// rustc +nightly-2023-01-09 \
+/// redox +nightly-2023-01-09 \
 ///   tests/ui/higher-ranked/trait-bounds/rigid-equate-projections-in-higher-ranked-fn-signature.rs
 /// ```
 /// The ICE was unknowingly fixed by

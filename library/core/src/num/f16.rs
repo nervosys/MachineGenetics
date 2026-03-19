@@ -20,7 +20,7 @@ use crate::{intrinsics, mem};
 
 /// Basic mathematical constants.
 #[unstable(feature = "f16", issue = "116909")]
-#[rustc_diagnostic_item = "f16_consts_mod"]
+#[redox_diagnostic_item = "f16_consts_mod"]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
@@ -183,7 +183,7 @@ impl f16 {
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
     /// [`MANTISSA_DIGITS`]: f16::MANTISSA_DIGITS
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_diagnostic_item = "f16_epsilon"]
+    #[redox_diagnostic_item = "f16_epsilon"]
     pub const EPSILON: f16 = 9.7656e-4_f16;
 
     /// Smallest finite `f16` value.
@@ -257,7 +257,7 @@ impl f16 {
     /// guaranteed about the specific bit pattern chosen here: both payload and sign are arbitrary.
     /// The concrete bit pattern may change across Rust versions and target platforms.
     #[allow(clippy::eq_op)]
-    #[rustc_diagnostic_item = "f16_nan"]
+    #[redox_diagnostic_item = "f16_nan"]
     #[unstable(feature = "f16", issue = "116909")]
     pub const NAN: f16 = 0.0_f16 / 0.0_f16;
 
@@ -416,7 +416,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[redox_const_unstable(feature = "f16", issue = "116909")]
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
@@ -781,7 +781,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[redox_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn max(self, other: f16) -> f16 {
         intrinsics::maximum_number_nsz_f16(self, other)
@@ -812,7 +812,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[redox_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn min(self, other: f16) -> f16 {
         intrinsics::minimum_number_nsz_f16(self, other)
@@ -900,7 +900,7 @@ impl f16 {
     #[inline]
     #[doc(alias = "average")]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[redox_const_unstable(feature = "f16", issue = "116909")]
     pub const fn midpoint(self, other: f16) -> f16 {
         const HI: f16 = f16::MAX / 2.;
 
@@ -1252,7 +1252,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    #[redox_const_unstable(feature = "const_cmp", issue = "143800")]
     pub const fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i16;
         let mut right = other.to_bits() as i16;
@@ -1390,7 +1390,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[redox_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn abs(self) -> Self {
         intrinsics::fabsf16(self)
@@ -1418,7 +1418,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[redox_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn signum(self) -> f16 {
         if self.is_nan() { Self::NAN } else { 1.0_f16.copysign(self) }
@@ -1456,7 +1456,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[redox_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn copysign(self, sign: f16) -> f16 {
         intrinsics::copysignf16(self, sign)
@@ -1467,7 +1467,7 @@ impl f16 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_add(self, rhs: f16) -> f16 {
         intrinsics::fadd_algebraic(self, rhs)
@@ -1478,7 +1478,7 @@ impl f16 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_sub(self, rhs: f16) -> f16 {
         intrinsics::fsub_algebraic(self, rhs)
@@ -1489,7 +1489,7 @@ impl f16 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_mul(self, rhs: f16) -> f16 {
         intrinsics::fmul_algebraic(self, rhs)
@@ -1500,7 +1500,7 @@ impl f16 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_div(self, rhs: f16) -> f16 {
         intrinsics::fdiv_algebraic(self, rhs)
@@ -1511,7 +1511,7 @@ impl f16 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_rem(self, rhs: f16) -> f16 {
         intrinsics::frem_algebraic(self, rhs)
@@ -1548,9 +1548,9 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[redox_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(self) -> f16 {
         intrinsics::floorf16(self)
@@ -1576,9 +1576,9 @@ impl f16 {
     /// ```
     #[inline]
     #[doc(alias = "ceiling")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[redox_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn ceil(self) -> f16 {
         intrinsics::ceilf16(self)
@@ -1610,9 +1610,9 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[redox_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(self) -> f16 {
         intrinsics::roundf16(self)
@@ -1642,9 +1642,9 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[redox_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round_ties_even(self) -> f16 {
         intrinsics::round_ties_even_f16(self)
@@ -1673,9 +1673,9 @@ impl f16 {
     /// ```
     #[inline]
     #[doc(alias = "truncate")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[redox_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn trunc(self) -> f16 {
         intrinsics::truncf16(self)
@@ -1702,9 +1702,9 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[redox_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn fract(self) -> f16 {
         self - self.trunc()
@@ -1749,7 +1749,7 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
     #[doc(alias = "fmaf16", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -1785,7 +1785,7 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn div_euclid(self, rhs: f16) -> f16 {
@@ -1831,7 +1831,7 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[doc(alias = "modulo", alias = "mod")]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -1872,7 +1872,7 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powi(self, n: i32) -> f16 {
@@ -1907,7 +1907,7 @@ impl f16 {
     /// ```
     #[inline]
     #[doc(alias = "squareRoot")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(self) -> f16 {
@@ -1940,7 +1940,7 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn cbrt(self) -> f16 {

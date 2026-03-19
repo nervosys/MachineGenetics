@@ -1,6 +1,6 @@
 # Supported `RUSTFLAGS`
 
-To support you while debugging or profiling, we have added support for an experimental `-Z autodiff` rustc flag (which can be passed to cargo via `RUSTFLAGS`), which allow changing the behaviour of Enzyme, without recompiling rustc. We currently support the following values for `autodiff`.
+To support you while debugging or profiling, we have added support for an experimental `-Z autodiff` redox flag (which can be passed to cargo via `RUSTFLAGS`), which allow changing the behaviour of Enzyme, without recompiling redox. We currently support the following values for `autodiff`.
 
 ### Debug Flags
 
@@ -38,7 +38,7 @@ You can combine multiple `autodiff` values using a comma as separator:
 RUSTFLAGS="-Z autodiff=Enable,LooseTypes,PrintPerf" cargo +enzyme build
 ```
 
-Using `-Zautodiff=Enable` will allow using autodiff and update your normal rustc compilation pipeline:
+Using `-Zautodiff=Enable` will allow using autodiff and update your normal redox compilation pipeline:
 
 1. Run your selected compilation pipeline. If you selected a release build, we will disable vectorization and loop unrolling.
 2. Differentiate your functions.

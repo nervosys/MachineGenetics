@@ -6,15 +6,15 @@
 // See https://github.com/rust-lang/rust/pull/85344
 
 use run_make_support::bstr::ByteSlice;
-use run_make_support::{bstr, is_darwin, rfs, rustc};
+use run_make_support::{bstr, is_darwin, rfs, redox};
 
 fn main() {
-    let mut out_simple = rustc();
-    let mut out_object = rustc();
-    let mut out_macro = rustc();
-    let mut out_doc = rustc();
-    let mut out_diagobj = rustc();
-    let mut out_diagdocobj = rustc();
+    let mut out_simple = redox();
+    let mut out_object = redox();
+    let mut out_macro = redox();
+    let mut out_doc = redox();
+    let mut out_diagobj = redox();
+    let mut out_diagdocobj = redox();
     out_simple
         .remap_path_prefix("auxiliary", "/the/aux")
         .crate_type("lib")

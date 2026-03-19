@@ -1,7 +1,7 @@
 //! MIR lowering for patterns
 
 use hir_def::{hir::ExprId, signatures::VariantFields};
-use rustc_type_ir::inherent::{IntoKind, Ty as _};
+use redox_type_ir::inherent::{IntoKind, Ty as _};
 
 use crate::{
     BindingMode,
@@ -533,10 +533,10 @@ impl<'db> MirLowerCtx<'_, 'db> {
                 BindingMode::Move => {
                     Operand { kind: OperandKind::Copy(cond_place), span: None }.into()
                 }
-                BindingMode::Ref(rustc_ast_ir::Mutability::Not) => {
+                BindingMode::Ref(redox_ast_ir::Mutability::Not) => {
                     Rvalue::Ref(BorrowKind::Shared, cond_place)
                 }
-                BindingMode::Ref(rustc_ast_ir::Mutability::Mut) => {
+                BindingMode::Ref(redox_ast_ir::Mutability::Mut) => {
                     Rvalue::Ref(BorrowKind::Mut { kind: MutBorrowKind::Default }, cond_place)
                 }
             },

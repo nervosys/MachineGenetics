@@ -1,12 +1,12 @@
 //@ compile-flags: -Z unstable-options
 //@ ignore-stage1
 
-#![feature(rustc_private)]
-#![deny(rustc::bad_use_of_find_attr)]
+#![feature(redox_private)]
+#![deny(redox::bad_use_of_find_attr)]
 
-extern crate rustc_hir;
+extern crate redox_hir;
 
-use rustc_hir::{attrs::AttributeKind, find_attr};
+use redox_hir::{attrs::AttributeKind, find_attr};
 
 fn main() {
     let attrs = &[];

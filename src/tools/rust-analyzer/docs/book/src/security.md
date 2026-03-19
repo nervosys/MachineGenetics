@@ -6,9 +6,9 @@ code:
 
 -   proc macros and build scripts are executed by default
 
--   `.cargo/config` can override `rustc` with an arbitrary executable
+-   `.cargo/config` can override `redox` with an arbitrary executable
 
--   `rust-toolchain.toml` can override `rustc` with an arbitrary
+-   `rust-toolchain.toml` can override `redox` with an arbitrary
     executable
 
 -   VS Code plugin reads configuration from project directory, and that

@@ -6,16 +6,16 @@ use std::task::Poll;
 use std::time::{Duration, SystemTime};
 
 use rand::seq::IteratorRandom;
-use rustc_abi::ExternAbi;
-use rustc_const_eval::CTRL_C_RECEIVED;
-use rustc_data_structures::either::Either;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::DefId;
-use rustc_index::{Idx, IndexVec};
-use rustc_middle::mir::Mutability;
-use rustc_middle::ty::layout::TyAndLayout;
-use rustc_span::{DUMMY_SP, Span};
-use rustc_target::spec::Os;
+use redox_abi::ExternAbi;
+use redox_const_eval::CTRL_C_RECEIVED;
+use redox_data_structures::either::Either;
+use redox_data_structures::fx::FxHashMap;
+use redox_hir::def_id::DefId;
+use redox_index::{Idx, IndexVec};
+use redox_middle::mir::Mutability;
+use redox_middle::ty::layout::TyAndLayout;
+use redox_span::{DUMMY_SP, Span};
+use redox_target::spec::Os;
 
 use crate::concurrency::GlobalDataRaceHandler;
 use crate::shims::tls;
@@ -285,7 +285,7 @@ impl<'tcx> Thread<'tcx> {
         debug_assert_eq!(self.top_user_relevant_frame, self.compute_top_user_relevant_frame(0));
         self.top_user_relevant_frame()
             .map(|frame_idx| self.stack[frame_idx].current_span())
-            .unwrap_or(rustc_span::DUMMY_SP)
+            .unwrap_or(redox_span::DUMMY_SP)
     }
 }
 

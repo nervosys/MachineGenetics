@@ -1,7 +1,7 @@
 // This file contains a bunch of malformed attributes.
 // We enable a bunch of features to not get feature-gate errs in this test.
 #![deny(invalid_doc_attributes)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(allow_internal_unstable)]
 // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
 #![feature(fn_align)]
@@ -28,30 +28,30 @@
 
 #[unsafe(export_name)]
 //~^ ERROR malformed
-#[rustc_allow_const_fn_unstable]
-//~^ ERROR `rustc_allow_const_fn_unstable` expects a list of feature names
+#[redox_allow_const_fn_unstable]
+//~^ ERROR `redox_allow_const_fn_unstable` expects a list of feature names
 //~| ERROR attribute should be applied to `const fn`
 #[allow_internal_unstable]
 //~^ ERROR `allow_internal_unstable` expects a list of feature names
-#[rustc_confusables]
+#[redox_confusables]
 //~^ ERROR malformed
 //~| ERROR attribute cannot be used on
 #[deprecated = 5]
 //~^ ERROR malformed
 #[doc]
 //~^ ERROR
-#[rustc_macro_transparency]
+#[redox_macro_transparency]
 //~^ ERROR malformed
 //~| ERROR attribute cannot be used on
 #[repr]
 //~^ ERROR malformed
 //~| ERROR is not supported on functions
-#[rustc_as_ptr = 5]
+#[redox_as_ptr = 5]
 //~^ ERROR malformed
 #[inline = 5]
 //~^ ERROR valid forms for the attribute are
 //~| WARN this was previously accepted by the compiler
-#[rustc_align]
+#[redox_align]
 //~^ ERROR malformed
 #[optimize]
 //~^ ERROR malformed
@@ -129,9 +129,9 @@ fn test2() { }
 //~| ERROR the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
 pub fn test3() {}
 
-#[rustc_layout_scalar_valid_range_start]
+#[redox_layout_scalar_valid_range_start]
 //~^ ERROR malformed
-#[rustc_layout_scalar_valid_range_end]
+#[redox_layout_scalar_valid_range_end]
 //~^ ERROR malformed
 #[must_not_suspend()]
 //~^ ERROR malformed

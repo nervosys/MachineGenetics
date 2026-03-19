@@ -7,7 +7,7 @@
 //@ compile-flags:-C panic=abort
 //@ aux-build:helper.rs
 
-#![feature(rustc_private, lang_items, panic_unwind)]
+#![feature(redox_private, lang_items, panic_unwind)]
 #![no_std]
 #![no_main]
 

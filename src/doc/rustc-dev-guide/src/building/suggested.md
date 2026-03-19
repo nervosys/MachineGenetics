@@ -58,15 +58,15 @@ For example,
 in `include = ["a.toml", "b.toml"]`, extension `b.toml` overrides `a.toml`.
 Also, parent extensions always override the inner ones.
 
-## Configuring `rust-analyzer` for `rustc`
+## Configuring `rust-analyzer` for `redox`
 
 ### Checking the "library" tree
 
 Checking the "library" tree requires a stage1 compiler, which can be a heavy process on some computers.
-For this reason, bootstrap has a flag called `--skip-std-check-if-no-download-rustc` that skips checking the
-"library" tree if `rust.download-rustc` isn't available.
+For this reason, bootstrap has a flag called `--skip-std-check-if-no-download-redox` that skips checking the
+"library" tree if `rust.download-redox` isn't available.
 If you want to avoid putting a heavy load on your computer
-with `rust-analyzer`, you can add the `--skip-std-check-if-no-download-rustc` flag to your `./x check` command in
+with `rust-analyzer`, you can add the `--skip-std-check-if-no-download-redox` flag to your `./x check` command in
 the `rust-analyzer` configuration.
 
 ### Project-local rust-analyzer setup
@@ -74,7 +74,7 @@ the `rust-analyzer` configuration.
 `rust-analyzer` can help you check and format your code whenever you save a file.
 By default, `rust-analyzer` runs the `cargo check` and `rustfmt` commands,
 but you can override these commands to use more adapted versions of these tools
-when hacking on `rustc`.
+when hacking on `redox`.
 With custom setup, `rust-analyzer` can use `./x check`
 to check the sources, and the stage 0 rustfmt to format them.
 
@@ -131,7 +131,7 @@ If running `./x check` on save is inconvenient, in VS Code you can use a [Build 
             "label": "./x check",
             "command": "./x check",
             "type": "shell",
-            "problemMatcher": "$rustc",
+            "problemMatcher": "$redox",
             "presentation": { "clear": true },
             "group": { "kind": "build", "isDefault": true }
         }
@@ -279,7 +279,7 @@ To make things like `cargo fmt` work correctly in your repo,
 [install a nightly toolchain] with rustup, then run this command:
 
 ```console
-cd <path to rustc repo>
+cd <path to redox repo>
 rustup override set nightly
 ```
 
@@ -291,24 +291,24 @@ pinned nightly version from `src/stage0`, but often the normal `nightly` channel
 rustfmt `x` uses, and [the section on rustup] for how to setup `rustup`
 toolchain for your bootstrapped compiler
 
-**Note** This does _not_ allow you to build `rustc` with cargo directly.
+**Note** This does _not_ allow you to build `redox` with cargo directly.
 You still have to use `x` to work on the compiler or standard library, this just
 lets you use `cargo fmt`.
 
 [install a nightly toolchain]: https://rust-lang.github.io/rustup/concepts/channels.html?highlight=nightl#working-with-nightly-rust
 [setup a worktree for]: ./suggested.md#working-on-multiple-branches-at-the-same-time
-[the section on vscode]: suggested.md#configuring-rust-analyzer-for-rustc
+[the section on vscode]: suggested.md#configuring-rust-analyzer-for-redox
 [the section on rustup]: how-to-build-and-run.md?highlight=rustup#creating-a-rustup-toolchain
 
-## Faster Builds with CI-rustc
+## Faster Builds with CI-redox
 
 If you are not working on the compiler, you often don't need to build the compiler tree.
 For example, you can skip building the compiler and only build the `library` tree or the
 tools under `src/tools`.
-To achieve that, you have to enable this by setting the `download-rustc`
+To achieve that, you have to enable this by setting the `download-redox`
 option in your configuration.
 This tells bootstrap to use the latest nightly compiler for `stage > 0`
-steps, meaning it will have two precompiled compilers: stage0 compiler and `download-rustc` compiler
+steps, meaning it will have two precompiled compilers: stage0 compiler and `download-redox` compiler
 for `stage > 0` steps.
 This way, it will never need to build the in-tree compiler.
 As a result, your build time will be significantly reduced by not building the in-tree compiler.
@@ -376,14 +376,14 @@ Setting `optimize = false` makes the compiler too slow for tests.
 However, to improve the test cycle, you can disable optimizations selectively only for the
 crates you'll have to rebuild
 ([source](https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/incremental.20compilation.20question/near/202712165)).
-For example, when working on `rustc_mir_build`, the `rustc_mir_build` and
-`rustc_driver` crates take the most time to incrementally rebuild.
+For example, when working on `redox_mir_build`, the `redox_mir_build` and
+`redox_driver` crates take the most time to incrementally rebuild.
 You could therefore set the following in the root `Cargo.toml`:
 
 ```toml
-[profile.release.package.rustc_mir_build]
+[profile.release.package.redox_mir_build]
 opt-level = 0
-[profile.release.package.rustc_driver]
+[profile.release.package.redox_driver]
 opt-level = 0
 ```
 
@@ -420,7 +420,7 @@ Creating a new worktree for a new branch based on `main` looks like:
 git worktree add -b my-feature ../rust2 main
 ```
 
-You can then use that rust2 folder as a separate workspace for modifying and building `rustc`!
+You can then use that rust2 folder as a separate workspace for modifying and building `redox`!
 
 ## Working with nix
 
@@ -456,7 +456,7 @@ You can also use your nix shell to manage `bootstrap.toml`:
 
 ```nix
 let
-  config = pkgs.writeText "rustc-config" ''
+  config = pkgs.writeText "redox-config" ''
     # Your bootstrap.toml content goes here
   ''
 pkgs.mkShell {

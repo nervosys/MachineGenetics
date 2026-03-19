@@ -2,11 +2,11 @@
 
 use std::path::Path;
 
-use run_make_support::{cmd, env_var, rustc};
+use run_make_support::{cmd, env_var, redox};
 
 fn main() {
     // Add a few command line args to make exceptions work
-    rustc()
+    redox()
         .input(Path::new("src").join("lib.rs"))
         .target("wasm32-unknown-unknown")
         .panic("unwind")

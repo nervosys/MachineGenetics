@@ -49,9 +49,9 @@ impl RawWaker {
     /// from a `RawWaker`. For each operation on the `Waker`, the associated
     /// function in the `vtable` of the underlying `RawWaker` will be called.
     #[inline]
-    #[rustc_promotable]
+    #[redox_promotable]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_const_stable(feature = "futures_api", since = "1.36.0")]
+    #[redox_const_stable(feature = "futures_api", since = "1.36.0")]
     #[must_use]
     pub const fn new(data: *const (), vtable: &'static RawWakerVTable) -> RawWaker {
         RawWaker { data, vtable }
@@ -190,9 +190,9 @@ impl RawWakerVTable {
     /// The implementation of this function must make sure to release any
     /// resources that are associated with this instance of a [`RawWaker`] and
     /// associated task.
-    #[rustc_promotable]
+    #[redox_promotable]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_const_stable(feature = "futures_api", since = "1.36.0")]
+    #[redox_const_stable(feature = "futures_api", since = "1.36.0")]
     pub const fn new(
         clone: unsafe fn(*const ()) -> RawWaker,
         wake: unsafe fn(*const ()),
@@ -232,7 +232,7 @@ pub struct Context<'a> {
 impl<'a> Context<'a> {
     /// Creates a new `Context` from a [`&Waker`](Waker).
     #[stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
+    #[redox_const_stable(feature = "const_waker", since = "1.82.0")]
     #[must_use]
     #[inline]
     pub const fn from_waker(waker: &'a Waker) -> Self {
@@ -243,7 +243,7 @@ impl<'a> Context<'a> {
     #[inline]
     #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
+    #[redox_const_stable(feature = "const_waker", since = "1.82.0")]
     pub const fn waker(&self) -> &'a Waker {
         &self.waker
     }
@@ -403,7 +403,7 @@ impl<'a> ContextBuilder<'a> {
 /// [`Wake`]: ../../alloc/task/trait.Wake.html
 #[repr(transparent)]
 #[stable(feature = "futures_api", since = "1.36.0")]
-#[rustc_diagnostic_item = "Waker"]
+#[redox_diagnostic_item = "Waker"]
 pub struct Waker {
     waker: RawWaker,
 }
@@ -509,7 +509,7 @@ impl Waker {
     #[inline]
     #[must_use]
     #[stable(feature = "waker_getters", since = "1.83.0")]
-    #[rustc_const_stable(feature = "waker_getters", since = "1.83.0")]
+    #[redox_const_stable(feature = "waker_getters", since = "1.83.0")]
     pub const unsafe fn new(data: *const (), vtable: &'static RawWakerVTable) -> Self {
         Waker { waker: RawWaker { data, vtable } }
     }
@@ -528,7 +528,7 @@ impl Waker {
     #[inline]
     #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
+    #[redox_const_stable(feature = "const_waker", since = "1.82.0")]
     pub const unsafe fn from_raw(waker: RawWaker) -> Waker {
         Waker { waker }
     }
@@ -563,7 +563,7 @@ impl Waker {
     #[inline]
     #[must_use]
     #[stable(feature = "noop_waker", since = "1.85.0")]
-    #[rustc_const_stable(feature = "noop_waker", since = "1.85.0")]
+    #[redox_const_stable(feature = "noop_waker", since = "1.85.0")]
     pub const fn noop() -> &'static Waker {
         const WAKER: &Waker = &Waker { waker: RawWaker::NOOP };
         WAKER
@@ -945,7 +945,7 @@ impl Clone for LocalWaker {
 }
 
 #[unstable(feature = "local_waker", issue = "118959")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const AsRef<LocalWaker> for Waker {
     fn as_ref(&self) -> &LocalWaker {
         // SAFETY: LocalWaker is just Waker without thread safety

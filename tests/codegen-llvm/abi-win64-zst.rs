@@ -14,7 +14,7 @@
 //@[linux] compile-flags: --target x86_64-unknown-linux-gnu
 //@[linux] needs-llvm-components: x86
 
-#![feature(no_core, rustc_attrs, abi_vectorcall)]
+#![feature(no_core, redox_attrs, abi_vectorcall)]
 #![no_core]
 #![crate_type = "lib"]
 

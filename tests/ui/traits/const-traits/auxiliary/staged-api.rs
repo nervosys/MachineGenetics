@@ -3,7 +3,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "unstable", issue = "none")]
+#[redox_const_unstable(feature = "unstable", issue = "none")]
 pub const trait MyTrait {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn func();
@@ -13,14 +13,14 @@ pub const trait MyTrait {
 pub struct Unstable;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "unstable", issue = "none")]
+#[redox_const_unstable(feature = "unstable", issue = "none")]
 impl const MyTrait for Unstable {
     fn func() {}
 }
 
 // tested in inherent-impl-stability.rs instead to avoid clutter
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "unstable", issue = "none")]
+#[redox_const_unstable(feature = "unstable", issue = "none")]
 const impl Unstable {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn inherent_func() {}
@@ -30,7 +30,7 @@ const impl Unstable {
 pub struct Unstable2;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "unstable2", issue = "none")]
+#[redox_const_unstable(feature = "unstable2", issue = "none")]
 impl const MyTrait for Unstable2 {
     fn func() {}
 }

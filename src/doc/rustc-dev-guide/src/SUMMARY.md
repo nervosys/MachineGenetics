@@ -6,7 +6,7 @@
 
 ---
 
-# Building and debugging `rustc`
+# Building and debugging `redox`
 
 - [How to build and run the compiler](./building/how-to-build-and-run.md)
     - [Quickstart](./building/quickstart.md)
@@ -41,7 +41,7 @@
 - [Profiling the compiler](./profiling.md)
     - [with the linux perf tool](./profiling/with-perf.md)
     - [with Windows Performance Analyzer](./profiling/wpa-profiling.md)
-    - [with the Rust benchmark suite](./profiling/with-rustc-perf.md)
+    - [with the Rust benchmark suite](./profiling/with-redox-perf.md)
 - [crates.io dependencies](./crates-io.md)
 
 # Contributing to Rust
@@ -95,9 +95,9 @@
     - [Incremental compilation in detail](./queries/incremental-compilation-in-detail.md)
     - [Debugging and testing](./incrcomp-debugging.md)
     - [Salsa](./queries/salsa.md)
-- [Memory management in rustc](./memory.md)
-- [Serialization in rustc](./serialization.md)
-- [Parallel compilation](./parallel-rustc.md)
+- [Memory management in redox](./memory.md)
+- [Serialization in redox](./serialization.md)
+- [Parallel compilation](./parallel-redox.md)
 - [Rustdoc internals](./rustdoc-internals.md)
     - [Search](./rustdoc-internals/search.md)
 	- [The `rustdoc-html` test suite](./rustdoc-internals/rustdoc-html-test-suite.md)
@@ -140,10 +140,10 @@
 # Supporting Infrastructure
 
 - [Command-line arguments](./cli.md)
-- [rustc_driver and rustc_interface](./rustc-driver/intro.md)
-    - [External rustc_drivers](./rustc-driver/external-rustc-drivers.md)
-    - [Example: Type checking](./rustc-driver/interacting-with-the-ast.md)
-    - [Example: Getting diagnostics](./rustc-driver/getting-diagnostics.md)
+- [redox_driver and redox_interface](./redox-driver/intro.md)
+    - [External redox_drivers](./redox-driver/external-redox-drivers.md)
+    - [Example: Type checking](./redox-driver/interacting-with-the-ast.md)
+    - [Example: Getting diagnostics](./redox-driver/getting-diagnostics.md)
 - [Errors and lints](diagnostics.md)
     - [Diagnostic and subdiagnostic structs](./diagnostics/diagnostic-structs.md)
     - [Translation](./diagnostics/translation.md)
@@ -245,7 +245,7 @@
         - [GDB - Python Providers](./debuginfo/gdb-visualizers.md)
         - [CDB - Natvis](./debuginfo/natvis-visualizers.md)
     - [Testing](./debuginfo/testing.md)
-    - [(Lecture Notes) Debugging support in the Rust compiler](./debugging-support-in-rustc.md)
+    - [(Lecture Notes) Debugging support in the Rust compiler](./debugging-support-in-redox.md)
 - [Libraries and metadata](./backend/libs-and-metadata.md)
 - [Profile-guided optimization](./profile-guided-optimization.md)
 - [LLVM source-based code coverage](./llvm-coverage-instrumentation.md)

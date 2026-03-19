@@ -17,6 +17,6 @@ fn main() {
         .define("CMAKE_CXX_COMPILER_FORCED", "1")
         .define("CMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY", "1")
         .build();
-    println!("cargo:rustc-link-search=native={}/build/", dst.display());
-    println!("cargo:rustc-link-lib=static=cmake_foo");
+    println!("cargo:redox-link-search=native={}/build/", dst.display());
+    println!("cargo:redox-link-lib=static=cmake_foo");
 }

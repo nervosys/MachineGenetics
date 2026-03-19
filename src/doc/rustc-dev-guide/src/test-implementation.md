@@ -13,7 +13,7 @@ fn my_test() {
 }
 ```
 
-When this program is compiled using `rustc --test` or `cargo test`, it will
+When this program is compiled using `redox --test` or `cargo test`, it will
 produce an executable that can run this, and any other test function. This
 method of testing allows tests to live alongside code in an organic way. You
 can even put tests inside private modules:
@@ -33,17 +33,17 @@ Private items can thus be easily tested without worrying about how to expose
 them to any sort of external testing apparatus. This is key to the
 ergonomics of testing in Rust. Semantically, however, it's rather odd.
 How does any sort of `main` function invoke these tests if they're not visible?
-What exactly is `rustc --test` doing?
+What exactly is `redox --test` doing?
 
 `#[test]` is implemented as a syntactic transformation inside the compiler's
-[`rustc_ast`][rustc_ast]. Essentially, it's a fancy [`macro`] that
+[`redox_ast`][redox_ast]. Essentially, it's a fancy [`macro`] that
 rewrites the crate in 3 steps:
 
 ## Step 1: Re-Exporting
 
 As mentioned earlier, tests can exist inside private modules, so we need a
 way of exposing them to the main function, without breaking any existing
-code. To that end, [`rustc_ast`][rustc_ast] will create local modules called
+code. To that end, [`redox_ast`][redox_ast] will create local modules called
 `__test_reexports` that recursively reexport tests. This expansion translates
 the above example into:
 
@@ -84,7 +84,7 @@ of Rust's [`macro`] hygiene.
 ## Step 2: Harness generation
 
 Now that our tests are accessible from the root of our crate, we need to do
-something with them using [`rustc_ast`][ast] generates a module like so:
+something with them using [`redox_ast`][ast] generates a module like so:
 
 ```rust,ignore
 #[main]
@@ -122,7 +122,7 @@ fn foo() {
 This means our tests are more than just simple functions, they have
 configuration information as well. `test` encodes this configuration data into
 a `struct` called [`TestDesc`]. For each test function in a crate,
-[`rustc_ast`][rustc_ast] will parse its attributes and generate a [`TestDesc`]
+[`redox_ast`][redox_ast] will parse its attributes and generate a [`TestDesc`]
 instance. It then combines the [`TestDesc`] and test function into the
 predictably named [`TestDescAndFn`][tdaf] `struct`, that [`test_main_static`]
 operates on.
@@ -146,19 +146,19 @@ test runner via the harness generated in Step 2.
 
 ## Inspecting the generated code
 
-On `nightly` `rustc`, there's an unstable flag called `unpretty` that you can use
+On `nightly` `redox`, there's an unstable flag called `unpretty` that you can use
 to print out the module source after [`macro`] expansion:
 
 ```bash
-$ rustc my_mod.rs -Z unpretty=hir
+$ redox my_mod.rs -Z unpretty=hir
 ```
 
 [`macro`]: ./macro-expansion.md
 [`TestDesc`]: https://doc.rust-lang.org/test/struct.TestDesc.html
 [ast]: ./ast-validation.md
-[Ident]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html
-[rustc_ast]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_ast
-[Symbol]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html
+[Ident]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/symbol/struct.Ident.html
+[redox_ast]: https://github.com/rust-lang/rust/tree/HEAD/compiler/redox_ast
+[Symbol]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/symbol/struct.Symbol.html
 [test]: https://doc.rust-lang.org/test/index.html
 [tdaf]: https://doc.rust-lang.org/test/struct.TestDescAndFn.html
 [`test_main_static`]: https://doc.rust-lang.org/test/fn.test_main_static.html

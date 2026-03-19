@@ -4,8 +4,8 @@ fn foo() {}
 #[tests] //~ ERROR cannot find attribute `tests` in this scope
 fn bar() {}
 
-#[rustc_dumm]
-//~^ ERROR cannot find attribute `rustc_dumm` in this scope
-//~| ERROR attributes starting with `rustc` are reserved for use by the `rustc` compiler
+#[redox_dumm]
+//~^ ERROR cannot find attribute `redox_dumm` in this scope
+//~| ERROR attributes starting with `redox` are reserved for use by the `redox` compiler
 
 fn main() {}

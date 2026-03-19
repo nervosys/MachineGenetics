@@ -18,7 +18,7 @@ use crate::{intrinsics, mem};
 
 /// Basic mathematical constants.
 #[unstable(feature = "f128", issue = "116909")]
-#[rustc_diagnostic_item = "f128_consts_mod"]
+#[redox_diagnostic_item = "f128_consts_mod"]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
@@ -189,7 +189,7 @@ impl f128 {
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
     /// [`MANTISSA_DIGITS`]: f128::MANTISSA_DIGITS
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_diagnostic_item = "f128_epsilon"]
+    #[redox_diagnostic_item = "f128_epsilon"]
     pub const EPSILON: f128 = 1.92592994438723585305597794258492732e-34_f128;
 
     /// Smallest finite `f128` value.
@@ -263,7 +263,7 @@ impl f128 {
     /// guaranteed about the specific bit pattern chosen here: both payload and sign are arbitrary.
     /// The concrete bit pattern may change across Rust versions and target platforms.
     #[allow(clippy::eq_op)]
-    #[rustc_diagnostic_item = "f128_nan"]
+    #[redox_diagnostic_item = "f128_nan"]
     #[unstable(feature = "f128", issue = "116909")]
     pub const NAN: f128 = 0.0_f128 / 0.0_f128;
 
@@ -422,7 +422,7 @@ impl f128 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[redox_const_unstable(feature = "f128", issue = "116909")]
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
@@ -787,7 +787,7 @@ impl f128 {
     /// ```
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[redox_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn max(self, other: f128) -> f128 {
         intrinsics::maximum_number_nsz_f128(self, other)
@@ -818,7 +818,7 @@ impl f128 {
     /// ```
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[redox_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn min(self, other: f128) -> f128 {
         intrinsics::minimum_number_nsz_f128(self, other)
@@ -906,7 +906,7 @@ impl f128 {
     #[inline]
     #[doc(alias = "average")]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[redox_const_unstable(feature = "f128", issue = "116909")]
     pub const fn midpoint(self, other: f128) -> f128 {
         const HI: f128 = f128::MAX / 2.;
 
@@ -1268,7 +1268,7 @@ impl f128 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    #[redox_const_unstable(feature = "const_cmp", issue = "143800")]
     pub const fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i128;
         let mut right = other.to_bits() as i128;
@@ -1406,7 +1406,7 @@ impl f128 {
     /// ```
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[redox_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn abs(self) -> Self {
         intrinsics::fabsf128(self)
@@ -1434,7 +1434,7 @@ impl f128 {
     /// ```
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[redox_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn signum(self) -> f128 {
         if self.is_nan() { Self::NAN } else { 1.0_f128.copysign(self) }
@@ -1472,7 +1472,7 @@ impl f128 {
     /// ```
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[redox_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn copysign(self, sign: f128) -> f128 {
         intrinsics::copysignf128(self, sign)
@@ -1483,7 +1483,7 @@ impl f128 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_add(self, rhs: f128) -> f128 {
         intrinsics::fadd_algebraic(self, rhs)
@@ -1494,7 +1494,7 @@ impl f128 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_sub(self, rhs: f128) -> f128 {
         intrinsics::fsub_algebraic(self, rhs)
@@ -1505,7 +1505,7 @@ impl f128 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_mul(self, rhs: f128) -> f128 {
         intrinsics::fmul_algebraic(self, rhs)
@@ -1516,7 +1516,7 @@ impl f128 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_div(self, rhs: f128) -> f128 {
         intrinsics::fdiv_algebraic(self, rhs)
@@ -1527,7 +1527,7 @@ impl f128 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[redox_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub const fn algebraic_rem(self, rhs: f128) -> f128 {
         intrinsics::frem_algebraic(self, rhs)
@@ -1564,9 +1564,9 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[redox_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(self) -> f128 {
         intrinsics::floorf128(self)
@@ -1592,9 +1592,9 @@ impl f128 {
     /// ```
     #[inline]
     #[doc(alias = "ceiling")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[redox_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn ceil(self) -> f128 {
         intrinsics::ceilf128(self)
@@ -1626,9 +1626,9 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[redox_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(self) -> f128 {
         intrinsics::roundf128(self)
@@ -1658,9 +1658,9 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[redox_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round_ties_even(self) -> f128 {
         intrinsics::round_ties_even_f128(self)
@@ -1689,9 +1689,9 @@ impl f128 {
     /// ```
     #[inline]
     #[doc(alias = "truncate")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[redox_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn trunc(self) -> f128 {
         intrinsics::truncf128(self)
@@ -1718,9 +1718,9 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[redox_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn fract(self) -> f128 {
         self - self.trunc()
@@ -1765,7 +1765,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[doc(alias = "fmaf128", alias = "fusedMultiplyAdd")]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -1801,7 +1801,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn div_euclid(self, rhs: f128) -> f128 {
@@ -1847,7 +1847,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[doc(alias = "modulo", alias = "mod")]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -1888,7 +1888,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powi(self, n: i32) -> f128 {
@@ -1923,7 +1923,7 @@ impl f128 {
     /// ```
     #[inline]
     #[doc(alias = "squareRoot")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(self) -> f128 {

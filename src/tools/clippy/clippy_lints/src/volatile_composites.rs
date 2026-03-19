@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::sym;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
-use rustc_session::declare_lint_pass;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::layout::LayoutOf;
+use redox_middle::ty::{self, Ty, TypeVisitableExt};
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -20,7 +20,7 @@ declare_clippy_lint! {
     /// important because they can have side effects. This is well defined for
     /// primitive types like `u32`, but less well defined for structures and
     /// other composite types. In practice it's implementation defined, and the
-    /// behavior can be rustc-version dependent.
+    /// behavior can be redox-version dependent.
     ///
     /// As a result, code should only apply `write_volatile`/`read_volatile` to
     /// primitive types to be fully well-defined.

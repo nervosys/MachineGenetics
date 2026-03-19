@@ -1,6 +1,6 @@
-#![feature(rustc_attrs, const_trait_impl)]
+#![feature(redox_attrs, const_trait_impl)]
 #![allow(internal_features)]
-#![rustc_dump_variances_of_opaques]
+#![redox_dump_variances_of_opaques]
 
 const trait Foo {}
 

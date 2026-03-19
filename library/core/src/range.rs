@@ -130,7 +130,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// ```
     #[inline]
     #[unstable(feature = "new_range_api", issue = "125687")]
-    #[rustc_const_unstable(feature = "const_range", issue = "none")]
+    #[redox_const_unstable(feature = "const_range", issue = "none")]
     pub const fn contains<U>(&self, item: &U) -> bool
     where
         Idx: [const] PartialOrd<U>,
@@ -164,7 +164,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// ```
     #[inline]
     #[unstable(feature = "new_range_api", issue = "125687")]
-    #[rustc_const_unstable(feature = "const_range", issue = "none")]
+    #[redox_const_unstable(feature = "const_range", issue = "none")]
     pub const fn is_empty(&self) -> bool
     where
         Idx: [const] PartialOrd,
@@ -174,7 +174,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 }
 
 #[unstable(feature = "new_range_api", issue = "125687")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const RangeBounds<T> for Range<T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(&self.start)
@@ -191,7 +191,7 @@ impl<T> const RangeBounds<T> for Range<T> {
 /// consider using the `RangeBounds` impl for a 2-tuple of [`Bound<&T>`][Bound],
 /// i.e. replace `start..end` with `(Bound::Included(start), Bound::Excluded(end))`.
 #[unstable(feature = "new_range_api", issue = "125687")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const RangeBounds<T> for Range<&T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(self.start)
@@ -203,7 +203,7 @@ impl<T> const RangeBounds<T> for Range<&T> {
 
 // #[unstable(feature = "range_into_bounds", issue = "136903")]
 #[unstable(feature = "new_range_api", issue = "125687")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const IntoBounds<T> for Range<T> {
     fn into_bounds(self) -> (Bound<T>, Bound<T>) {
         (Included(self.start), Excluded(self.end))
@@ -211,7 +211,7 @@ impl<T> const IntoBounds<T> for Range<T> {
 }
 
 #[unstable(feature = "new_range_api", issue = "125687")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<Range<T>> for legacy::Range<T> {
     #[inline]
     fn from(value: Range<T>) -> Self {
@@ -220,7 +220,7 @@ impl<T> const From<Range<T>> for legacy::Range<T> {
 }
 
 #[unstable(feature = "new_range_api", issue = "125687")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<legacy::Range<T>> for Range<T> {
     #[inline]
     fn from(value: legacy::Range<T>) -> Self {
@@ -289,7 +289,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// ```
     #[inline]
     #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
-    #[rustc_const_unstable(feature = "const_range", issue = "none")]
+    #[redox_const_unstable(feature = "const_range", issue = "none")]
     pub const fn contains<U>(&self, item: &U) -> bool
     where
         Idx: [const] PartialOrd<U>,
@@ -321,7 +321,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// ```
     #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_range", issue = "none")]
+    #[redox_const_unstable(feature = "const_range", issue = "none")]
     pub const fn is_empty(&self) -> bool
     where
         Idx: [const] PartialOrd,
@@ -353,7 +353,7 @@ impl<Idx: Step> RangeInclusive<Idx> {
 }
 
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const RangeBounds<T> for RangeInclusive<T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(&self.start)
@@ -370,7 +370,7 @@ impl<T> const RangeBounds<T> for RangeInclusive<T> {
 /// consider using the `RangeBounds` impl for a 2-tuple of [`Bound<&T>`][Bound],
 /// i.e. replace `start..=end` with `(Bound::Included(start), Bound::Included(end))`.
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const RangeBounds<T> for RangeInclusive<&T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(self.start)
@@ -382,7 +382,7 @@ impl<T> const RangeBounds<T> for RangeInclusive<&T> {
 
 // #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 #[unstable(feature = "range_into_bounds", issue = "136903")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const IntoBounds<T> for RangeInclusive<T> {
     fn into_bounds(self) -> (Bound<T>, Bound<T>) {
         (Included(self.start), Included(self.last))
@@ -390,7 +390,7 @@ impl<T> const IntoBounds<T> for RangeInclusive<T> {
 }
 
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<RangeInclusive<T>> for legacy::RangeInclusive<T> {
     #[inline]
     fn from(value: RangeInclusive<T>) -> Self {
@@ -398,7 +398,7 @@ impl<T> const From<RangeInclusive<T>> for legacy::RangeInclusive<T> {
     }
 }
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
     #[inline]
     fn from(value: legacy::RangeInclusive<T>) -> Self {
@@ -499,7 +499,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// ```
     #[inline]
     #[unstable(feature = "new_range_api", issue = "125687")]
-    #[rustc_const_unstable(feature = "const_range", issue = "none")]
+    #[redox_const_unstable(feature = "const_range", issue = "none")]
     pub const fn contains<U>(&self, item: &U) -> bool
     where
         Idx: [const] PartialOrd<U>,
@@ -510,7 +510,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 }
 
 #[unstable(feature = "new_range_api", issue = "125687")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const RangeBounds<T> for RangeFrom<T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(&self.start)
@@ -527,7 +527,7 @@ impl<T> const RangeBounds<T> for RangeFrom<T> {
 /// consider using the `RangeBounds` impl for a 2-tuple of [`Bound<&T>`][Bound],
 /// i.e. replace `start..` with `(Bound::Included(start), Bound::Unbounded)`.
 #[unstable(feature = "new_range_api", issue = "125687")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const RangeBounds<T> for RangeFrom<&T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(self.start)
@@ -539,7 +539,7 @@ impl<T> const RangeBounds<T> for RangeFrom<&T> {
 
 // #[unstable(feature = "range_into_bounds", issue = "136903")]
 #[unstable(feature = "new_range_api", issue = "125687")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const IntoBounds<T> for RangeFrom<T> {
     fn into_bounds(self) -> (Bound<T>, Bound<T>) {
         (Included(self.start), Unbounded)
@@ -548,7 +548,7 @@ impl<T> const IntoBounds<T> for RangeFrom<T> {
 
 #[unstable(feature = "one_sided_range", issue = "69780")]
 // #[unstable(feature = "new_range_api", issue = "125687")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const OneSidedRange<T> for RangeFrom<T>
 where
     Self: RangeBounds<T>,
@@ -559,7 +559,7 @@ where
 }
 
 #[unstable(feature = "new_range_api", issue = "125687")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 impl<T> const From<RangeFrom<T>> for legacy::RangeFrom<T> {
     #[inline]
     fn from(value: RangeFrom<T>) -> Self {
@@ -567,7 +567,7 @@ impl<T> const From<RangeFrom<T>> for legacy::RangeFrom<T> {
     }
 }
 #[unstable(feature = "new_range_api", issue = "125687")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 impl<T> const From<legacy::RangeFrom<T>> for RangeFrom<T> {
     #[inline]
     fn from(value: legacy::RangeFrom<T>) -> Self {
@@ -649,7 +649,7 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     /// ```
     #[inline]
     #[stable(feature = "new_range_to_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_unstable(feature = "const_range", issue = "none")]
+    #[redox_const_unstable(feature = "const_range", issue = "none")]
     pub const fn contains<U>(&self, item: &U) -> bool
     where
         Idx: [const] PartialOrd<U>,
@@ -676,7 +676,7 @@ impl<T> From<RangeToInclusive<T>> for legacy::RangeToInclusive<T> {
 // because underflow would be possible with (..0).into()
 
 #[stable(feature = "new_range_to_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const RangeBounds<T> for RangeToInclusive<T> {
     fn start_bound(&self) -> Bound<&T> {
         Unbounded
@@ -687,7 +687,7 @@ impl<T> const RangeBounds<T> for RangeToInclusive<T> {
 }
 
 #[stable(feature = "new_range_to_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const RangeBounds<T> for RangeToInclusive<&T> {
     fn start_bound(&self) -> Bound<&T> {
         Unbounded
@@ -699,7 +699,7 @@ impl<T> const RangeBounds<T> for RangeToInclusive<&T> {
 
 // #[stable(feature = "new_range_to_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
 #[unstable(feature = "range_into_bounds", issue = "136903")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const IntoBounds<T> for RangeToInclusive<T> {
     fn into_bounds(self) -> (Bound<T>, Bound<T>) {
         (Unbounded, Included(self.last))
@@ -708,7 +708,7 @@ impl<T> const IntoBounds<T> for RangeToInclusive<T> {
 
 // #[stable(feature = "new_range_to_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
 #[unstable(feature = "one_sided_range", issue = "69780")]
-#[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[redox_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const OneSidedRange<T> for RangeToInclusive<T>
 where
     Self: RangeBounds<T>,

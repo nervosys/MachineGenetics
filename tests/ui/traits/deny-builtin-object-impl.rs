@@ -2,19 +2,19 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_deny_explicit_impl]
+#[redox_deny_explicit_impl]
 trait NotImplYesObject {}
 
-#[rustc_deny_explicit_impl]
-#[rustc_dyn_incompatible_trait]
+#[redox_deny_explicit_impl]
+#[redox_dyn_incompatible_trait]
 trait NotImplNotObject {}
 
-#[rustc_dyn_incompatible_trait]
+#[redox_dyn_incompatible_trait]
 trait YesImplNotObject {}
 
-#[rustc_dyn_incompatible_trait]
+#[redox_dyn_incompatible_trait]
 trait YesImplNotObject2 {}
 
 impl NotImplYesObject for () {}

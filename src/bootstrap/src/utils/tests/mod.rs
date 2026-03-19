@@ -48,7 +48,7 @@ impl TestCtx {
 }
 
 /// Used to configure an invocation of bootstrap.
-/// Currently runs in the rustc checkout, long-term it should be switched
+/// Currently runs in the redox checkout, long-term it should be switched
 /// to run in a (cache-primed) temporary directory instead.
 pub struct ConfigBuilder {
     args: Vec<String>,
@@ -153,7 +153,7 @@ impl ConfigBuilder {
             self = self.with_default_toml_config("");
         }
 
-        // Do not mess with the local rustc checkout build directory
+        // Do not mess with the local redox checkout build directory
         self.args.push("--build-dir".to_string());
         self.args.push(self.directory.join("build").display().to_string());
 

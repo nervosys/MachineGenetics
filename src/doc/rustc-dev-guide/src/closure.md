@@ -1,11 +1,11 @@
 # Closure Capture Inference
 
-This section describes how rustc handles closures. Closures in Rust are
+This section describes how redox handles closures. Closures in Rust are
 effectively "desugared" into structs that contain the values they use (or
-references to the values they use) from their creator's stack frame. rustc has
+references to the values they use) from their creator's stack frame. redox has
 the job of figuring out which values a closure uses and how, so it can decide
 whether to capture a given variable by shared reference, mutable reference, or
-by move. rustc also has to figure out which of the closure traits ([`Fn`][fn],
+by move. redox also has to figure out which of the closure traits ([`Fn`][fn],
 [`FnMut`][fn_mut], or [`FnOnce`][fn_once]) a closure is capable of
 implementing.
 
@@ -33,9 +33,9 @@ fn main() {
 
 Let's say the above is the content of a file called `immut.rs`. If we compile
 `immut.rs` using the following command. The [`-Z dump-mir=all`][dump-mir] flag will cause
-`rustc` to generate and dump the [MIR][mir] to a directory called `mir_dump`.
+`redox` to generate and dump the [MIR][mir] to a directory called `mir_dump`.
 ```console
-> rustc +stage1 immut.rs -Z dump-mir=all
+> redox +stage1 immut.rs -Z dump-mir=all
 ```
 
 [mir]: ./mir/index.md
@@ -43,7 +43,7 @@ Let's say the above is the content of a file called `immut.rs`. If we compile
 
 After we run this command, we will see a newly generated directory in our
 current working directory called `mir_dump`, which will contain several files.
-If we look at file `rustc.main.-------.mir_map.0.mir`, we will find, among
+If we look at file `redox.main.-------.mir_map.0.mir`, we will find, among
 other things, it also contains this line:
 
 ```rust,ignore
@@ -109,16 +109,16 @@ closure.
 
 ## Inferences in the compiler
 
-Now let's dive into rustc code and see how all these inferences are done by the compiler.
+Now let's dive into redox code and see how all these inferences are done by the compiler.
 
 Let's start with defining a term that we will be using quite a bit in the rest of the discussion -
 *upvar*. An **upvar** is a variable that is local to the function where the closure is defined. So,
 in the above examples, **x** will be an upvar to the closure. They are also sometimes referred to as
 the *free variables* meaning they are not bound to the context of the closure.
-[`compiler/rustc_passes/src/upvars.rs`][upvars] defines a query called *upvars_mentioned*
+[`compiler/redox_passes/src/upvars.rs`][upvars] defines a query called *upvars_mentioned*
 for this purpose.
 
-[upvars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_passes/upvars/index.html
+[upvars]: https://doc.rust-lang.org/nightly/nightly-redox/redox_passes/upvars/index.html
 
 Other than lazy invocation, one other thing that distinguishes a closure from a
 normal function is that it can use the upvars. It borrows these upvars from its surrounding
@@ -135,27 +135,27 @@ appropriate trait: `Fn` trait for immutable borrow, `FnMut` for mutable borrow,
 and `FnOnce` for move semantics.
 
 Most of the code related to the closure is in the
-[`compiler/rustc_hir_typeck/src/upvar.rs`][upvar] file and the data structures are
-declared in the file [`compiler/rustc_middle/src/ty/mod.rs`][ty].
+[`compiler/redox_hir_typeck/src/upvar.rs`][upvar] file and the data structures are
+declared in the file [`compiler/redox_middle/src/ty/mod.rs`][ty].
 
-[upvar]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/upvar/index.html
-[ty]:https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
+[upvar]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/upvar/index.html
+[ty]:https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/index.html
 
-Before we go any further, let's discuss how we can examine the flow of control through the rustc
+Before we go any further, let's discuss how we can examine the flow of control through the redox
 codebase. For closures specifically, set the `RUSTC_LOG` env variable as below and collect the
 output in a file:
 
 ```console
-> RUSTC_LOG=rustc_hir_typeck::upvar rustc +stage1 -Z dump-mir=all \
+> RUSTC_LOG=redox_hir_typeck::upvar redox +stage1 -Z dump-mir=all \
     <.rs file to compile> 2> <file where the output will be dumped>
 ```
 
 This uses the stage1 compiler and enables `debug!` logging for the
-`rustc_hir_typeck::upvar` module.
+`redox_hir_typeck::upvar` module.
 
 The other option is to step through the code using lldb or gdb.
 
-1. `rust-lldb build/host/stage1/bin/rustc test.rs`
+1. `rust-lldb build/host/stage1/bin/redox test.rs`
 2. In lldb:
     1. `b upvar.rs:134`  // Setting the breakpoint on a certain line in the upvar.rs file
     2. `r`  // Run the program until it hits the breakpoint
@@ -164,7 +164,7 @@ Let's start with [`upvar.rs`][upvar]. This file has something called
 the [`euv::ExprUseVisitor`] which walks the source of the closure and
 invokes a callback for each upvar that is borrowed, mutated, or moved.
 
-[`euv::ExprUseVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/expr_use_visitor/struct.ExprUseVisitor.html
+[`euv::ExprUseVisitor`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/expr_use_visitor/struct.ExprUseVisitor.html
 
 ```rust
 fn main() {
@@ -184,10 +184,10 @@ The callbacks are defined by implementing the [`Delegate`] trait. The
 records for each upvar which mode of capture was required. The modes of capture
 can be `ByValue` (moved) or `ByRef` (borrowed). For `ByRef` borrows, the possible
 [`BorrowKind`]s are `ImmBorrow`, `UniqueImmBorrow`, `MutBorrow` as defined in the
-[`compiler/rustc_middle/src/ty/mod.rs`][middle_ty].
+[`compiler/redox_middle/src/ty/mod.rs`][middle_ty].
 
-[`BorrowKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.BorrowKind.html
-[middle_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
+[`BorrowKind`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/enum.BorrowKind.html
+[middle_ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/index.html
 
 `Delegate` defines a few different methods (the different callbacks):
 **consume** for *move* of a variable, **borrow** for a *borrow* of some kind
@@ -195,7 +195,7 @@ can be `ByValue` (moved) or `ByRef` (borrowed). For `ByRef` borrows, the possibl
 
 All of these callbacks have a common argument *cmt* which stands for Category,
 Mutability and Type and is defined in
-[`compiler/rustc_hir_typeck/src/expr_use_visitor.rs`][cmt]. Borrowing from the code
+[`compiler/redox_hir_typeck/src/expr_use_visitor.rs`][cmt]. Borrowing from the code
 comments, "`cmt` is a complete categorization of a value indicating where it
 originated and how it is located, as well as the mutability of the memory in
 which the value is stored". Based on the callback (consume, borrow etc.), we
@@ -210,6 +210,6 @@ self.tables
     .extend(delegate.adjust_upvar_captures);
 ```
 
-[`Delegate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/expr_use_visitor/trait.Delegate.html
-[ibk]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/upvar/struct.InferBorrowKind.html
-[cmt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/expr_use_visitor/index.html
+[`Delegate`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/expr_use_visitor/trait.Delegate.html
+[ibk]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/upvar/struct.InferBorrowKind.html
+[cmt]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/expr_use_visitor/index.html

@@ -1,9 +1,9 @@
 //@ run-pass
 //@ compile-flags: --test
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 #![deny(dead_code)]
 
-#[rustc_main]
+#[redox_main]
 fn foo() { panic!(); }

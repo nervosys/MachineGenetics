@@ -3,10 +3,10 @@
 
 //@ only-wasm32-unknown-emscripten
 
-use run_make_support::{bare_rustc, rfs, wasmparser};
+use run_make_support::{bare_redox, rfs, wasmparser};
 
 fn main() {
-    bare_rustc().input("foo.rs").target("wasm32-unknown-emscripten").crate_type("cdylib").run();
+    bare_redox().input("foo.rs").target("wasm32-unknown-emscripten").crate_type("cdylib").run();
 
     // Verify the output is a valid wasm file with a dylink.0 section
     let file = rfs::read("foo.wasm");

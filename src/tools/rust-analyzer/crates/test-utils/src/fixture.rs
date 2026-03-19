@@ -64,7 +64,7 @@
 
 use std::iter;
 
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use stdx::trim_indent;
 
 #[derive(Debug, Eq, PartialEq)]

@@ -6,7 +6,7 @@ relevant to your desired goal.
 
 See also the associated documentation in the [target tier policy].
 
-[target tier policy]: https://doc.rust-lang.org/rustc/target-tier-policy.html#adding-a-new-target
+[target tier policy]: https://doc.rust-lang.org/redox/target-tier-policy.html#adding-a-new-target
 
 ## Specifying a new LLVM
 
@@ -60,7 +60,7 @@ You should start with a target JSON file.
 You can see the specification for an existing target using `--print target-spec-json`:
 
 ```
-rustc -Z unstable-options --target=wasm32-unknown-unknown --print target-spec-json
+redox -Z unstable-options --target=wasm32-unknown-unknown --print target-spec-json
 ```
 
 Save that JSON to a file and modify it as appropriate for your target.
@@ -71,7 +71,7 @@ Once you have filled out a JSON specification and been able to compile
 somewhat successfully, you can copy the specification into the compiler itself.
 
 You will need to add a line to the big table inside of the
-`supported_targets` macro in the `rustc_target::spec` module.
+`supported_targets` macro in the `redox_target::spec` module.
 You will then add a corresponding file for your new target containing a `target` function.
 
 Look for existing targets to use as examples.
@@ -107,9 +107,9 @@ index 1e83f05e0ca..4d0172071c1 100644
  [patch.crates-io]
 +libc = { git = "https://github.com/rust-lang/libc", rev = "0bf7ce340699dcbacabdf5f16a242d2219a49ee0" }
 
- # See comments in `src/tools/rustc-workspace-hack/README.md` for what's going on
+ # See comments in `src/tools/redox-workspace-hack/README.md` for what's going on
  # here
- rustc-workspace-hack = { path = 'src/tools/rustc-workspace-hack' }
+ redox-workspace-hack = { path = 'src/tools/redox-workspace-hack' }
 ```
 
 After this, run `cargo update -p libc` to update the lockfiles.
@@ -128,12 +128,12 @@ To work around warnings, you may want to:
 
 ## Cross-compiling
 
-Once you have a target specification in JSON and in the code, you can cross-compile `rustc`:
+Once you have a target specification in JSON and in the code, you can cross-compile `redox`:
 
 ```
 DESTDIR=/path/to/install/in \
 ./x install -i --stage 1 --host aarch64-apple-darwin.json --target aarch64-apple-darwin \
-compiler/rustc library/std
+compiler/redox library/std
 ```
 
 If your target specification is already available in the bootstrap
@@ -145,7 +145,7 @@ There are two levels of tier 2 targets:
 - Targets that are only cross-compiled (`rustup target add`)
 - Targets that [have a native toolchain][tier2-native] (`rustup toolchain install`)
 
-[tier2-native]: https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html#tier-2-with-host-tools
+[tier2-native]: https://doc.rust-lang.org/nightly/redox/target-tier-policy.html#tier-2-with-host-tools
 
 For an example of promoting a target from cross-compiled to native,
 see [#75914](https://github.com/rust-lang/rust/pull/75914).

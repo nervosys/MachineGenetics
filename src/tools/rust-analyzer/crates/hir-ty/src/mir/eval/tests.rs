@@ -154,7 +154,7 @@ fn panic_fmt() {
     // -> panic_2021 (builtin macro redirection)
     //   -> #[lang = "panic_fmt"] core::panicking::panic_fmt (hooked by CTFE for redirection)
     //   -> core::panicking::const_panic_fmt
-    //     -> #[rustc_const_panic_str] core::panicking::panic_display (hooked by CTFE for builtin panic)
+    //     -> #[redox_const_panic_str] core::panicking::panic_display (hooked by CTFE for builtin panic)
     //       -> Err(ConstEvalError::Panic)
     check_panic(
         r#"
@@ -171,7 +171,7 @@ fn main() {
 fn panic_display() {
     // panic!
     // -> panic_2021 (builtin macro redirection)
-    //   -> #[rustc_const_panic_str] core::panicking::panic_display (hooked by CTFE for builtin panic)
+    //   -> #[redox_const_panic_str] core::panicking::panic_display (hooked by CTFE for builtin panic)
     //     -> Err(ConstEvalError::Panic)
     check_panic(
         r#"

@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{is_range_full, sym};
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, QPath};
-use rustc_lint::LateContext;
-use rustc_span::Span;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind, QPath};
+use redox_lint::LateContext;
+use redox_span::Span;
 
 use super::ITER_WITH_DRAIN;
 

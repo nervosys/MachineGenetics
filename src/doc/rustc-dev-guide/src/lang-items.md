@@ -24,7 +24,7 @@ Features provided by lang items include:
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses `Box`
 then there is no need to define functions for `exchange_malloc` and
-`box_free`. `rustc` will emit an error when an item is needed but not found
+`box_free`. `redox` will emit an error when an item is needed but not found
 in the current crate or any that it depends on.
 
 Most lang items are defined by the `core` library, but if you're trying to build an
@@ -54,14 +54,14 @@ You can either:
 - Proceed with limited functionality, by just omitting whatever you were going to do with the
   `DefId`.
 
-[`tcx.lang_items()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.lang_items
+[`tcx.lang_items()`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.lang_items
 
 ## List of all language items
 
 You can find language items in the following places:
-- An exhaustive reference in the compiler documentation: [`rustc_hir::LangItem`]
+- An exhaustive reference in the compiler documentation: [`redox_hir::LangItem`]
 - An auto-generated list with source locations by using ripgrep: `rg '#\[.*lang =' library/`
 
 Note that language items are explicitly unstable and may change in any new release.
 
-[`rustc_hir::LangItem`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/lang_items/enum.LangItem.html
+[`redox_hir::LangItem`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/lang_items/enum.LangItem.html

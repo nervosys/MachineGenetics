@@ -12,29 +12,29 @@ of feature gating: where gates are defined, how they are enabled, and how usage 
 
 ## Feature Definitions
 
-All feature gate definitions are located in the `rustc_feature` crate:
+All feature gate definitions are located in the `redox_feature` crate:
 
-- **Unstable features** are declared in [`rustc_feature/src/unstable.rs`] via
+- **Unstable features** are declared in [`redox_feature/src/unstable.rs`] via
   the `declare_features!` macro.
   This associates features with issue numbers and tracking metadata.
-- **Accepted features** (stabilized) are listed in [`rustc_feature/src/accepted.rs`].
-- **Removed features** (explicitly disallowed) are listed in [`rustc_feature/src/removed.rs`].
-- **Gated built-in attributes and cfgs** are declared in [`rustc_feature/src/builtin_attrs.rs`].
+- **Accepted features** (stabilized) are listed in [`redox_feature/src/accepted.rs`].
+- **Removed features** (explicitly disallowed) are listed in [`redox_feature/src/removed.rs`].
+- **Gated built-in attributes and cfgs** are declared in [`redox_feature/src/builtin_attrs.rs`].
 
-The [`rustc_feature::Features`] type represents the **active feature set** for a crate.
+The [`redox_feature::Features`] type represents the **active feature set** for a crate.
 Helpers like `enabled`, `incomplete`, and `internal` are used during compilation to check status.
 
 ## Collecting Features
 
-Before AST validation or expansion, `rustc` collects crate-level
+Before AST validation or expansion, `redox` collects crate-level
 `#![feature(...)]` attributes to build the active `Features` set.
 
-- The collection happens in [`rustc_expand/src/config.rs`] in [`features`].
+- The collection happens in [`redox_expand/src/config.rs`] in [`features`].
 - Each `#![feature]` entry is classified against the `unstable`, `accepted`, and `removed` tables:
   - **Removed** features cause an immediate error.
   - **Accepted** features are recorded but do not require nightly.
     On stable/beta, `maybe_stage_features` in
-    [`rustc_ast_passes/src/feature_gate.rs`] emits the non-nightly
+    [`redox_ast_passes/src/feature_gate.rs`] emits the non-nightly
     diagnostic and lists stable features, which is where the "already
     stabilized" messaging comes from.
   - **Unstable** features are recorded as enabled.
@@ -51,13 +51,13 @@ Some syntax is detected and gated during parsing.
 The parser records spans for
 later checking to keep diagnostics consistent and deferred until after parsing.
 
-- [`rustc_session/src/parse.rs`] defines [`GatedSpans`] and the `gate` method.
-- The parser uses it in [`rustc_parse/src/parser/*`] when it encounters
+- [`redox_session/src/parse.rs`] defines [`GatedSpans`] and the `gate` method.
+- The parser uses it in [`redox_parse/src/parser/*`] when it encounters
   syntax that requires a gate (e.g., `async for`, `yield`, experimental patterns).
 
 ## Checking Pass
 
-The central logic lives in [`rustc_ast_passes/src/feature_gate.rs`], primarily
+The central logic lives in [`redox_ast_passes/src/feature_gate.rs`], primarily
 in `check_crate` and its AST visitor.
 
 ### `check_crate`
@@ -66,7 +66,7 @@ in `check_crate` and its AST visitor.
 
 - `maybe_stage_features`: Rejects `#![feature]` on stable/beta.
 - `check_incompatible_features`: Ensures incompatible feature combinations
-  (declared in `rustc_feature::INCOMPATIBLE_FEATURES`) are not used together.
+  (declared in `redox_feature::INCOMPATIBLE_FEATURES`) are not used together.
 - `check_new_solver_banned_features`: Bans features incompatible with
   compiler mode for the next trait solver.
 - **Parser-gated spans**: Processes the `GatedSpans` recorded during parsing
@@ -94,47 +94,47 @@ easier to validate after expansion.
 
 ## Attributes and `cfg`
 
-Beyond syntax, rustc also gates attributes and `cfg` options.
+Beyond syntax, redox also gates attributes and `cfg` options.
 
 ### Built-in attributes
 
-- [`rustc_ast_passes::check_attribute`] inspects attributes against `BUILTIN_ATTRIBUTE_MAP`.
+- [`redox_ast_passes::check_attribute`] inspects attributes against `BUILTIN_ATTRIBUTE_MAP`.
 - If the attribute is `AttributeGate::Gated` and the feature isn’t enabled,
   `feature_err` is emitted.
 
 ### `cfg` options
 
-- [`rustc_attr_parsing/src/attributes/cfg.rs`] defines `gate_cfg` and uses
-  [`rustc_feature::find_gated_cfg`] to reject gated `cfg`s.
+- [`redox_attr_parsing/src/attributes/cfg.rs`] defines `gate_cfg` and uses
+  [`redox_feature::find_gated_cfg`] to reject gated `cfg`s.
 - `gate_cfg` respects `Span::allows_unstable`, allowing internal compiler
   macros to bypass `cfg` gates when marked with `#[allow_internal_unstable]`.
-- The gated cfg list is defined in [`rustc_feature/src/builtin_attrs.rs`].
+- The gated cfg list is defined in [`redox_feature/src/builtin_attrs.rs`].
 
 ## Diagnostics
 
-Diagnostic helpers are located in [`rustc_session/src/parse.rs`].
+Diagnostic helpers are located in [`redox_session/src/parse.rs`].
 
 - `feature_err` and `feature_warn` emit standardized diagnostics, attaching the
   tracking issue number where possible.
-- `Span::allows_unstable` in [`rustc_span/src/lib.rs`] checks if a span originates
+- `Span::allows_unstable` in [`redox_span/src/lib.rs`] checks if a span originates
   from a macro marked with `#[allow_internal_unstable]`.
   This allows internal
   macros to use unstable features on stable channels while enforcing gates for user code.
 
-[`rustc_feature/src/unstable.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_feature/src/unstable.rs
-[`rustc_feature/src/removed.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_feature/src/removed.rs
-[`rustc_feature/src/accepted.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_feature/src/accepted.rs
-[`rustc_feature/src/builtin_attrs.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_feature/src/builtin_attrs.rs
-[`rustc_feature::Features`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_feature/struct.Features.html
-[`rustc_expand/src/config.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_expand/src/config.rs
-[`features`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/config/fn.features.html
+[`redox_feature/src/unstable.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_feature/src/unstable.rs
+[`redox_feature/src/removed.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_feature/src/removed.rs
+[`redox_feature/src/accepted.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_feature/src/accepted.rs
+[`redox_feature/src/builtin_attrs.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_feature/src/builtin_attrs.rs
+[`redox_feature::Features`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_feature/struct.Features.html
+[`redox_expand/src/config.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_expand/src/config.rs
+[`features`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/config/fn.features.html
 [`RUSTC_BOOTSTRAP`]: https://doc.rust-lang.org/beta/unstable-book/compiler-environment-variables/RUSTC_BOOTSTRAP.html
-[`rustc_session/src/parse.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_session/src/parse.rs
-[`GatedSpans`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/struct.GatedSpans.html
-[`rustc_ast_passes/src/feature_gate.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_ast_passes/src/feature_gate.rs
-[`rustc_parse/src/parser/*`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/index.html
-[`rustc_ast_passes::check_attribute`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_passes/feature_gate/fn.check_attribute.html
-[`rustc_attr_parsing/src/attributes/cfg.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_attr_parsing/src/attributes/cfg.rs
-[`rustc_feature::find_gated_cfg`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_feature/fn.find_gated_cfg.html
-[`rustc_span/src/lib.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_span/src/lib.rs
+[`redox_session/src/parse.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_session/src/parse.rs
+[`GatedSpans`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_session/parse/struct.GatedSpans.html
+[`redox_ast_passes/src/feature_gate.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_ast_passes/src/feature_gate.rs
+[`redox_parse/src/parser/*`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/parser/index.html
+[`redox_ast_passes::check_attribute`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast_passes/feature_gate/fn.check_attribute.html
+[`redox_attr_parsing/src/attributes/cfg.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_attr_parsing/src/attributes/cfg.rs
+[`redox_feature::find_gated_cfg`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_feature/fn.find_gated_cfg.html
+[`redox_span/src/lib.rs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_span/src/lib.rs
 [feature-gates]: ./feature-gates.md

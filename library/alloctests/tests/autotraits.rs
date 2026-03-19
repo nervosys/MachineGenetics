@@ -16,7 +16,7 @@ fn test_btree_map() {
     //
     // We test autotraits in this convoluted way, instead of a straightforward
     // `require_send_sync::<TypeIWantToTest>()`, because the interaction with
-    // coroutines exposes some current limitations in rustc's ability to prove a
+    // coroutines exposes some current limitations in redox's ability to prove a
     // lifetime bound on the erased coroutine witness types. See the above link.
     //
     // A typical way this would surface in real code is:

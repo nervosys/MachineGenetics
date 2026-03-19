@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![deny(rust_2018_idioms)]
 #![warn(unreachable_pub)]
 #![recursion_limit = "256"]
@@ -6,20 +6,20 @@
 #![allow(unreachable_pub)]
 
 // N.B. these crates are loaded from the sysroot, so they need extern crate.
-extern crate rustc_ast;
-extern crate rustc_ast_pretty;
-extern crate rustc_data_structures;
-extern crate rustc_errors;
-extern crate rustc_expand;
-extern crate rustc_parse;
-extern crate rustc_session;
-extern crate rustc_span;
+extern crate redox_ast;
+extern crate redox_ast_pretty;
+extern crate redox_data_structures;
+extern crate redox_errors;
+extern crate redox_expand;
+extern crate redox_parse;
+extern crate redox_session;
+extern crate redox_span;
 extern crate thin_vec;
 
-// Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
+// Necessary to pull in object code as the rest of the redox crates are shipped only as rmeta
 // files.
 #[allow(unused_extern_crates)]
-extern crate rustc_driver;
+extern crate redox_driver;
 
 use std::cell::RefCell;
 use std::cmp::min;
@@ -31,8 +31,8 @@ use std::panic;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use rustc_ast::ast;
-use rustc_span::symbol;
+use redox_ast::ast;
+use redox_span::symbol;
 use thiserror::Error;
 
 use crate::comment::LineClasses;

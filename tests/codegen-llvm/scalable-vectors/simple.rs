@@ -2,10 +2,10 @@
 //@ only-aarch64
 #![crate_type = "lib"]
 #![allow(incomplete_features, internal_features)]
-#![feature(simd_ffi, rustc_attrs, link_llvm_intrinsics)]
+#![feature(simd_ffi, redox_attrs, link_llvm_intrinsics)]
 
 #[derive(Copy, Clone)]
-#[rustc_scalable_vector(4)]
+#[redox_scalable_vector(4)]
 #[allow(non_camel_case_types)]
 pub struct svint32_t(i32);
 

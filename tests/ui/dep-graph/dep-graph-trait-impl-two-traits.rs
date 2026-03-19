@@ -4,7 +4,7 @@
 //@ incremental
 //@ compile-flags: -Z query-dep-graph
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(warnings)]
 
 fn main() { }
@@ -20,7 +20,7 @@ pub trait Bar: Sized {
 mod x {
     use crate::{Foo, Bar};
 
-    #[rustc_if_this_changed]
+    #[redox_if_this_changed]
     impl Foo for char { }
 
     impl Bar for char { }
@@ -29,7 +29,7 @@ mod x {
 mod y {
     use crate::{Foo, Bar};
 
-    #[rustc_then_this_would_need(typeck)] //~ ERROR no path
+    #[redox_then_this_would_need(typeck)] //~ ERROR no path
     pub fn call_bar() {
         char::bar('a');
     }
@@ -38,7 +38,7 @@ mod y {
 mod z {
     use crate::y;
 
-    #[rustc_then_this_would_need(typeck)] //~ ERROR no path
+    #[redox_then_this_would_need(typeck)] //~ ERROR no path
     pub fn z() {
         y::call_bar();
     }

@@ -20,7 +20,7 @@ fn main() {
 Prior to Rust 1.42, panics like this `unwrap()` printed a location in core:
 
 ```
-$ rustc +1.41.0 example.rs; example.exe
+$ redox +1.41.0 example.rs; example.exe
 thread 'main' panicked at 'called `Option::unwrap()` on a `None` value',...core\macros\mod.rs:15:40
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
 ```
@@ -28,7 +28,7 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
 As of 1.42, we get a much more helpful message:
 
 ```
-$ rustc +1.42.0 example.rs; example.exe
+$ redox +1.42.0 example.rs; example.exe
 thread 'main' panicked at 'called `Option::unwrap()` on a `None` value', example.rs:3:5
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 ```
@@ -46,7 +46,7 @@ hiding the actual source of error.
 
 Internally, `panic!()` now calls [`core::panic::Location::caller()`][wrapper] to find out where it
 was expanded. This function is itself annotated with `#[track_caller]` and wraps the
-[`caller_location`][intrinsic] compiler intrinsic implemented by rustc. This intrinsic is easiest
+[`caller_location`][intrinsic] compiler intrinsic implemented by redox. This intrinsic is easiest
 explained in terms of how it works in a `const` context.
 
 ## Caller location in `const`
@@ -264,16 +264,16 @@ to the author and reviewers.
 [non-viable alternatives]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md#non-viable-alternatives
 [rationale]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md#rationale
 [revised design]: https://github.com/rust-lang/rust/issues/47809#issuecomment-443538059
-[attrs-flags]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/middle/codegen_fn_attrs/struct.CodegenFnAttrFlags.html#associatedconstant.TRACK_CALLER
-[`ReifyShim`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.InstanceKind.html#variant.ReifyShim
+[attrs-flags]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/middle/codegen_fn_attrs/struct.CodegenFnAttrFlags.html#associatedconstant.TRACK_CALLER
+[`ReifyShim`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/enum.InstanceKind.html#variant.ReifyShim
 [`Location`]: https://doc.rust-lang.org/core/panic/struct.Location.html
-[const-find-closest]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/interpret/struct.InterpCx.html#method.find_closest_untracked_caller_location
-[requires-location]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/instance/enum.InstanceKind.html#method.requires_caller_location
-[alloc-location]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/interpret/struct.InterpCx.html#method.alloc_caller_location
-[fcx-location]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/struct.FunctionCx.html#structfield.caller_location
-[const-location-query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.const_caller_location
-[location-memory-kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/interpret/enum.MemoryKind.html#variant.CallerLocation
-[const-frame]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/interpret/struct.Frame.html
-[const-stack]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/interpret/struct.InterpCx.html#structfield.stack
-[fcx-get]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/struct.FunctionCx.html#method.get_caller_location
-[frame-instance]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/interpret/struct.Frame.html#structfield.instance
+[const-find-closest]: https://doc.rust-lang.org/nightly/nightly-redox/redox_const_eval/interpret/struct.InterpCx.html#method.find_closest_untracked_caller_location
+[requires-location]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/instance/enum.InstanceKind.html#method.requires_caller_location
+[alloc-location]: https://doc.rust-lang.org/nightly/nightly-redox/redox_const_eval/interpret/struct.InterpCx.html#method.alloc_caller_location
+[fcx-location]: https://doc.rust-lang.org/nightly/nightly-redox/redox_codegen_ssa/mir/struct.FunctionCx.html#structfield.caller_location
+[const-location-query]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.const_caller_location
+[location-memory-kind]: https://doc.rust-lang.org/nightly/nightly-redox/redox_const_eval/interpret/enum.MemoryKind.html#variant.CallerLocation
+[const-frame]: https://doc.rust-lang.org/nightly/nightly-redox/redox_const_eval/interpret/struct.Frame.html
+[const-stack]: https://doc.rust-lang.org/nightly/nightly-redox/redox_const_eval/interpret/struct.InterpCx.html#structfield.stack
+[fcx-get]: https://doc.rust-lang.org/nightly/nightly-redox/redox_codegen_ssa/mir/struct.FunctionCx.html#method.get_caller_location
+[frame-instance]: https://doc.rust-lang.org/nightly/nightly-redox/redox_const_eval/interpret/struct.Frame.html#structfield.instance

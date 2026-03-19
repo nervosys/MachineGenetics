@@ -1,9 +1,9 @@
 use super::LINT_GROUPS_PRIORITY;
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Applicability;
-use rustc_lint::{LateContext, unerased_lint_store};
-use rustc_span::{BytePos, Pos, SourceFile, Span, SyntaxContext};
+use redox_data_structures::fx::FxHashSet;
+use redox_errors::Applicability;
+use redox_lint::{LateContext, unerased_lint_store};
+use redox_span::{BytePos, Pos, SourceFile, Span, SyntaxContext};
 use std::ops::Range;
 use std::path::Path;
 use toml::Spanned;
@@ -133,12 +133,12 @@ pub fn check(cx: &LateContext<'_>) {
         && let Some(src) = file.src.as_deref()
         && let Ok(cargo_toml) = DeTable::parse(src)
     {
-        let mut rustc_groups = FxHashSet::default();
+        let mut redox_groups = FxHashSet::default();
         let mut clippy_groups = FxHashSet::default();
         for group in unerased_lint_store(cx.tcx.sess).get_all_group_names() {
             match group.split_once("::") {
                 None => {
-                    rustc_groups.insert(group);
+                    redox_groups.insert(group);
                 },
                 Some(("clippy", group)) => {
                     clippy_groups.insert(group);
@@ -149,7 +149,7 @@ pub fn check(cx: &LateContext<'_>) {
 
         let lints = get_lint_tbls(cargo_toml.get_ref());
         if let Some(lints) = lints.rust {
-            check_table(cx, lints, &rustc_groups, &file);
+            check_table(cx, lints, &redox_groups, &file);
         }
         if let Some(lints) = lints.clippy {
             check_table(cx, lints, &clippy_groups, &file);
@@ -159,7 +159,7 @@ pub fn check(cx: &LateContext<'_>) {
         {
             let lints = get_lint_tbls(tbl);
             if let Some(lints) = lints.rust {
-                check_table(cx, lints, &rustc_groups, &file);
+                check_table(cx, lints, &redox_groups, &file);
             }
             if let Some(lints) = lints.clippy {
                 check_table(cx, lints, &clippy_groups, &file);

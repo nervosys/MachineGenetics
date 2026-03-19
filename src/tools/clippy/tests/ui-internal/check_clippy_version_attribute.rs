@@ -1,11 +1,11 @@
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![deny(clippy::invalid_clippy_version_attribute, clippy::missing_clippy_version_attribute)]
 
 #[macro_use]
-extern crate rustc_middle;
+extern crate redox_middle;
 #[macro_use]
-extern crate rustc_session;
-extern crate rustc_lint;
+extern crate redox_session;
+extern crate redox_lint;
 
 ///////////////////////
 // Valid descriptions

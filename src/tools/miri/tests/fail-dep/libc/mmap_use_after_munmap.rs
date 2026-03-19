@@ -1,7 +1,7 @@
 //@compile-flags: -Zmiri-disable-isolation
 //@ignore-target: windows # No mmap on Windows
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 fn main() {
     unsafe {

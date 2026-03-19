@@ -112,7 +112,7 @@ use crate::{fmt, hash, ptr};
 // unsafe traits and unsafe methods (i.e., `type_id` would still be safe to call,
 // but we would likely want to indicate as such in documentation).
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Any"]
+#[redox_diagnostic_item = "Any"]
 pub trait Any: 'static {
     /// Gets the `TypeId` of `self`.
     ///
@@ -738,7 +738,7 @@ unsafe impl Send for TypeId {}
 unsafe impl Sync for TypeId {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl const PartialEq for TypeId {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -786,7 +786,7 @@ impl TypeId {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_type_id", since = "1.91.0")]
+    #[redox_const_stable(feature = "const_type_id", since = "1.91.0")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         const { intrinsics::type_id::<T>() }
     }
@@ -807,7 +807,7 @@ impl TypeId {
     /// assert!(const { TypeId::of::<u16>().trait_info_of::<dyn Blah>() }.is_none());
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
-    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[redox_const_unstable(feature = "type_info", issue = "146922")]
     pub const fn trait_info_of<
         T: ptr::Pointee<Metadata = ptr::DynMetadata<T>> + ?Sized + 'static,
     >(
@@ -834,7 +834,7 @@ impl TypeId {
     /// assert!(const { TypeId::of::<u16>().trait_info_of_trait_type_id(TypeId::of::<dyn Blah>()) }.is_none());
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
-    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[redox_const_unstable(feature = "type_info", issue = "146922")]
     pub const fn trait_info_of_trait_type_id(
         self,
         trait_represented_by_type_id: TypeId,
@@ -926,7 +926,7 @@ impl fmt::Debug for TypeId {
 /// ```
 #[must_use]
 #[stable(feature = "type_name", since = "1.38.0")]
-#[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
+#[redox_const_unstable(feature = "const_type_name", issue = "63084")]
 pub const fn type_name<T: ?Sized>() -> &'static str {
     const { intrinsics::type_name::<T>() }
 }
@@ -966,7 +966,7 @@ pub const fn type_name<T: ?Sized>() -> &'static str {
 /// ```
 #[must_use]
 #[stable(feature = "type_name_of_val", since = "1.76.0")]
-#[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
+#[redox_const_unstable(feature = "const_type_name", issue = "63084")]
 pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
     type_name::<T>()
 }

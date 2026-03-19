@@ -8,7 +8,7 @@ Depth](https://www.youtube.com/watch?v=i_IhACacPRY), also by Niko
 Matsakis.
 
 > As of <!-- date-check --> November 2022, although Salsa is inspired by (among
-> other things) rustc's query system, it is not used directly in rustc. It
+> other things) redox's query system, it is not used directly in redox. It
 > _is_ used in [chalk], an implementation of  Rust's trait system, and
 > extensively in [`rust-analyzer`], the official implementation of the language
 > server protocol for Rust, but there are no  medium or long-term concrete

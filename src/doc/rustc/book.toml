@@ -1,9 +1,9 @@
 [book]
-title = "The rustc book"
+title = "The redox book"
 
 [output.html]
-git-repository-url = "https://github.com/rust-lang/rust/tree/HEAD/src/doc/rustc"
-edit-url-template = "https://github.com/rust-lang/rust/edit/main/src/doc/rustc/{path}"
+git-repository-url = "https://github.com/rust-lang/rust/tree/HEAD/src/doc/redox"
+edit-url-template = "https://github.com/rust-lang/rust/edit/main/src/doc/redox/{path}"
 
 [output.html.search]
 use-boolean-and = true

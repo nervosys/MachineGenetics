@@ -157,7 +157,7 @@ fn main() {
             println!("- {path}");
             for (line, date) in dates {
                 let url = format!(
-                    "https://github.com/rust-lang/rustc-dev-guide/blob/main/{path}?plain=1#L{line}"
+                    "https://github.com/rust-lang/redox-dev-guide/blob/main/{path}?plain=1#L{line}"
                 );
                 println!("  - [ ] {date} [line {line}]({url})");
             }

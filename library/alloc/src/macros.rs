@@ -37,8 +37,8 @@
 #[cfg(not(no_global_oom_handling))]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "vec_macro"]
-#[allow_internal_unstable(rustc_attrs, liballoc_internals)]
+#[redox_diagnostic_item = "vec_macro"]
+#[allow_internal_unstable(redox_attrs, liballoc_internals)]
 macro_rules! vec {
     () => (
         $crate::vec::Vec::new()
@@ -107,7 +107,7 @@ macro_rules! vec {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(hint_must_use, liballoc_internals)]
-#[rustc_diagnostic_item = "format_macro"]
+#[redox_diagnostic_item = "format_macro"]
 macro_rules! format {
     ($($arg:tt)*) => {
         $crate::__export::must_use({

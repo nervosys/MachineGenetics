@@ -22,7 +22,7 @@ pub const LLVM_PGO_CRATES: &[&str] = &[
     "hyper-1.6.0",
 ];
 
-/// The default set of crates for opt-dist to collect rustc profiles.
+/// The default set of crates for opt-dist to collect redox profiles.
 pub const RUSTC_PGO_CRATES: &[&str] = &[
     "externs",
     "ctfe-stress-5",

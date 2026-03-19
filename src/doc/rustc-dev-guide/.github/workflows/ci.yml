@@ -11,7 +11,7 @@ on:
 
 jobs:
   ci:
-    if: github.repository == 'rust-lang/rustc-dev-guide'
+    if: github.repository == 'rust-lang/redox-dev-guide'
     runs-on: ubuntu-latest
     env:
       MDBOOK_VERSION: 0.5.2

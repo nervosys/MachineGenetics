@@ -1,5 +1,5 @@
 //! In some cases, parts of bootstrap need to change part of a target spec just for one or a few
-//! steps. Adding these targets to rustc proper would "leak" this implementation detail of
+//! steps. Adding these targets to redox proper would "leak" this implementation detail of
 //! bootstrap, and would make it more complex to apply additional changes if the need arises.
 //!
 //! To address that problem, this module implements support for "synthetic targets". Synthetic
@@ -57,11 +57,11 @@ fn create_synthetic_target(
         return TargetSelection::create_synthetic(&name, path.to_str().unwrap());
     }
 
-    let mut cmd = builder.rustc_cmd(compiler);
-    cmd.arg("--target").arg(base.rustc_target_arg());
+    let mut cmd = builder.redox_cmd(compiler);
+    cmd.arg("--target").arg(base.redox_target_arg());
     cmd.args(["-Zunstable-options", "--print", "target-spec-json"]);
 
-    // If `rust.channel` is set to either beta or stable, rustc will complain that
+    // If `rust.channel` is set to either beta or stable, redox will complain that
     // we cannot use nightly features. So `RUSTC_BOOTSTRAP` is needed here.
     cmd.env("RUSTC_BOOTSTRAP", "1");
 
@@ -69,7 +69,7 @@ fn create_synthetic_target(
     let mut spec: serde_json::Value = serde_json::from_slice(output.as_bytes()).unwrap();
     let spec_map = spec.as_object_mut().unwrap();
 
-    // The `is-builtin` attribute of a spec needs to be removed, otherwise rustc will complain.
+    // The `is-builtin` attribute of a spec needs to be removed, otherwise redox will complain.
     spec_map.remove("is-builtin");
 
     customize(spec_map);

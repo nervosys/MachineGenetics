@@ -1,9 +1,9 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use rustc_ast::ast;
-use rustc_ast::token::TokenKind;
-use rustc_parse::exp;
-use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
+use redox_ast::ast;
+use redox_ast::token::TokenKind;
+use redox_parse::exp;
+use redox_parse::parser::{AllowConstBlockItems, ForceCollect};
 
 use crate::parse::macros::build_stream_parser;
 use crate::parse::session::ParseSess;

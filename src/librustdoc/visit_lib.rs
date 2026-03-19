@@ -1,6 +1,6 @@
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, DefIdSet};
-use rustc_middle::ty::TyCtxt;
+use redox_hir::def::DefKind;
+use redox_hir::def_id::{DefId, DefIdSet};
+use redox_middle::ty::TyCtxt;
 
 use crate::core::DocContext;
 
@@ -40,7 +40,7 @@ pub(crate) fn lib_embargo_visit_item(cx: &mut DocContext<'_>, def_id: DefId) {
     .visit_item(def_id)
 }
 
-/// Similar to `librustc_privacy::EmbargoVisitor`, but also takes
+/// Similar to `libredox_privacy::EmbargoVisitor`, but also takes
 /// specific rustdoc annotations into account (i.e., `doc(hidden)`)
 struct LibEmbargoVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,

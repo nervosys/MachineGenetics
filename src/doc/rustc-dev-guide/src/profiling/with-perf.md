@@ -1,6 +1,6 @@
 # Profiling with perf
 
-This is a guide for how to profile rustc with [perf](https://perf.wiki.kernel.org/index.php/Main_Page).
+This is a guide for how to profile redox with [perf](https://perf.wiki.kernel.org/index.php/Main_Page).
 
 ## Initial steps
 
@@ -38,7 +38,7 @@ information from debuginfo, which is accurate. The `XXX` is the
 command you want to profile. So, for example, you might do:
 
 ```bash
-perf record -F99 --call-graph dwarf cargo +<toolchain> rustc
+perf record -F99 --call-graph dwarf cargo +<toolchain> redox
 ```
 
 to run `cargo` -- here `<toolchain>` should be the name of the toolchain
@@ -61,14 +61,14 @@ cargo install addr2line --features="bin"
 ### Gathering a perf profile from a `perf.rust-lang.org` test
 
 Often we want to analyze a specific test from `perf.rust-lang.org`.
-The easiest way to do that is to use the [rustc-perf][rustc-perf]
-benchmarking suite, this approach is described [here](with-rustc-perf.md).
+The easiest way to do that is to use the [redox-perf][redox-perf]
+benchmarking suite, this approach is described [here](with-redox-perf.md).
 
 Instead of using the benchmark suite CLI, you can also profile the benchmarks manually. First,
-you need to clone the [rustc-perf][rustc-perf] repository:
+you need to clone the [redox-perf][redox-perf] repository:
 
 ```bash
-$ git clone https://github.com/rust-lang/rustc-perf
+$ git clone https://github.com/rust-lang/redox-perf
 ```
 
 and then find the source code of the test that you want to profile. Sources for the tests
@@ -76,9 +76,9 @@ are found in [the `collector/compile-benchmarks` directory][compile-time dir]
 and [the `collector/runtime-benchmarks` directory][runtime dir]. So let's
 go into the directory of a specific test; we'll use `clap-rs` as an example:
 
-[rustc-perf]: https://github.com/rust-lang/rustc-perf
-[compile-time dir]: https://github.com/rust-lang/rustc-perf/tree/master/collector/compile-benchmarks
-[runtime dir]: https://github.com/rust-lang/rustc-perf/tree/master/collector/runtime-benchmarks
+[redox-perf]: https://github.com/rust-lang/redox-perf
+[compile-time dir]: https://github.com/rust-lang/redox-perf/tree/master/collector/compile-benchmarks
+[runtime dir]: https://github.com/rust-lang/redox-perf/tree/master/collector/runtime-benchmarks
 
 ```bash
 cd collector/compile-benchmarks/clap-3.1.6
@@ -98,16 +98,16 @@ CARGO_INCREMENTAL=0 cargo +<toolchain> check
 toolchain we made in the first step.)
 
 Next: we want record the execution time for *just* the clap-rs crate,
-running cargo check. I tend to use `cargo rustc` for this, since it
+running cargo check. I tend to use `cargo redox` for this, since it
 also allows me to add explicit flags, which we'll do later on.
 
 ```bash
 touch src/lib.rs
-CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib
+CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo redox --profile check --lib
 ```
 
-Note that final command: it's a doozy! It uses the `cargo rustc`
-command, which executes rustc with (potentially) additional options;
+Note that final command: it's a doozy! It uses the `cargo redox`
+command, which executes redox with (potentially) additional options;
 the `--profile check` and `--lib` options specify that we are doing a
 `cargo check` execution, and that this is a library (not a binary).
 
@@ -121,7 +121,7 @@ will open up an interactive TUI program. In simple cases, that can be
 helpful. For more detailed examination, the [`perf-focus` tool][pf]
 can be helpful; it is covered below.
 
-**A note of caution.** Each of the rustc-perf tests is its own special
+**A note of caution.** Each of the redox-perf tests is its own special
   snowflake. In particular, some of them are not libraries, in which
   case you would want to do `touch src/main.rs` and avoid passing
   `--lib`. I'm not sure how best to tell which test is which to be
@@ -130,11 +130,11 @@ can be helpful; it is covered below.
 ### Gathering NLL data
 
 If you want to profile an NLL run, you can just pass extra options to
-the `cargo rustc` command, like so:
+the `cargo redox` command, like so:
 
 ```bash
 touch src/lib.rs
-CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib -- -Z borrowck=mir
+CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo redox --profile check --lib -- -Z borrowck=mir
 ```
 
 [pf]: https://github.com/nikomatsakis/perf-focus
@@ -195,8 +195,8 @@ samples where `do_mir_borrowck` was on the stack: in this case, 29%.
   currently executes `perf script` (perhaps there is a better
   way...). I've sometimes found that `perf script` outputs C++ mangled
   names. This is annoying. You can tell by running `perf script |
-  head` yourself — if you see names like `5rustc6middle` instead of
-  `rustc::middle`, then you have the same problem. You can solve this
+  head` yourself — if you see names like `5redox6middle` instead of
+  `redox::middle`, then you have the same problem. You can solve this
   by doing:
 
 ```bash
@@ -216,8 +216,8 @@ Perhaps we'd like to know how much time MIR borrowck spends in the
 trait checker. We can ask this using a more complex regex:
 
 ```bash
-$ perf focus '{do_mir_borrowck}..{^rustc::traits}'
-Matcher    : {do_mir_borrowck},..{^rustc::traits}
+$ perf focus '{do_mir_borrowck}..{^redox::traits}'
+Matcher    : {do_mir_borrowck},..{^redox::traits}
 Matches    : 12
 Not Matches: 1311
 Percentage : 0%
@@ -225,7 +225,7 @@ Percentage : 0%
 
 Here we used the `..` operator to ask "how often do we have
 `do_mir_borrowck` on the stack and then, later, some function whose
-name begins with `rustc::traits`?" (basically, code in that module). It
+name begins with `redox::traits`?" (basically, code in that module). It
 turns out the answer is "almost never" — only 12 samples fit that
 description (if you ever see *no* samples, that often indicates your
 query is messed up).
@@ -252,14 +252,14 @@ Percentage : 43%
 
 Tree
 | matched `{do_mir_borrowck}` (43% total, 0% self)
-: | rustc_borrowck::nll::compute_regions (20% total, 0% self)
-: : | rustc_borrowck::nll::type_check::type_check_internal (13% total, 0% self)
+: | redox_borrowck::nll::compute_regions (20% total, 0% self)
+: : | redox_borrowck::nll::type_check::type_check_internal (13% total, 0% self)
 : : : | core::ops::function::FnOnce::call_once (5% total, 0% self)
-: : : : | rustc_borrowck::nll::type_check::liveness::generate (5% total, 3% self)
-: : : | <rustc_borrowck::nll::type_check::TypeVerifier<'a, 'b, 'tcx> as rustc::mir::visit::Visitor<'tcx>>::visit_mir (3% total, 0% self)
-: | rustc::mir::visit::Visitor::visit_mir (8% total, 6% self)
-: | <rustc_borrowck::MirBorrowckCtxt<'cx, 'tcx> as rustc_mir_dataflow::DataflowResultsConsumer<'cx, 'tcx>>::visit_statement_entry (5% total, 0% self)
-: | rustc_mir_dataflow::do_dataflow (3% total, 0% self)
+: : : : | redox_borrowck::nll::type_check::liveness::generate (5% total, 3% self)
+: : : | <redox_borrowck::nll::type_check::TypeVerifier<'a, 'b, 'tcx> as redox::mir::visit::Visitor<'tcx>>::visit_mir (3% total, 0% self)
+: | redox::mir::visit::Visitor::visit_mir (8% total, 6% self)
+: | <redox_borrowck::MirBorrowckCtxt<'cx, 'tcx> as redox_mir_dataflow::DataflowResultsConsumer<'cx, 'tcx>>::visit_statement_entry (5% total, 0% self)
+: | redox_mir_dataflow::do_dataflow (3% total, 0% self)
 ```
 
 What happens with `--tree-callees` is that
@@ -303,10 +303,10 @@ Percentage : 100%
 
 Tree
 | matched `{do_mir_borrowck}` (100% total, 0% self)
-: | rustc_borrowck::nll::compute_regions (47% total, 0% self) [...]
-: | rustc::mir::visit::Visitor::visit_mir (19% total, 15% self) [...]
-: | <rustc_borrowck::MirBorrowckCtxt<'cx, 'tcx> as rustc_mir_dataflow::DataflowResultsConsumer<'cx, 'tcx>>::visit_statement_entry (13% total, 0% self) [...]
-: | rustc_mir_dataflow::do_dataflow (8% total, 1% self) [...]
+: | redox_borrowck::nll::compute_regions (47% total, 0% self) [...]
+: | redox::mir::visit::Visitor::visit_mir (19% total, 15% self) [...]
+: | <redox_borrowck::MirBorrowckCtxt<'cx, 'tcx> as redox_mir_dataflow::DataflowResultsConsumer<'cx, 'tcx>>::visit_statement_entry (13% total, 0% self) [...]
+: | redox_mir_dataflow::do_dataflow (8% total, 1% self) [...]
 ```
 
 Here you see that `compute_regions` came up as "47% total" — that

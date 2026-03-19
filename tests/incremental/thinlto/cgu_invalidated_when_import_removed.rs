@@ -17,7 +17,7 @@
 //
 // The change between incremental builds was that the call `D <- C` was removed.
 //
-// That change, coupled with other decisions within `rustc`, made the compiler
+// That change, coupled with other decisions within `redox`, made the compiler
 // decide to make `D` an internal symbol (since it was no longer accessed from
 // other codegen units, this makes sense locally). And then the definition of
 // `D` was inlined into `B` and `D` itself was eliminated entirely.

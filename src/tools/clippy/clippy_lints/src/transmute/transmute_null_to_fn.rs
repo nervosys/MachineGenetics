@@ -2,10 +2,10 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_integer_literal;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::Ty;
-use rustc_span::symbol::sym;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::LateContext;
+use redox_middle::ty::Ty;
+use redox_span::symbol::sym;
 
 use super::TRANSMUTE_NULL_TO_FN;
 

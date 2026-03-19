@@ -51,7 +51,7 @@ pub struct Std {
     ///
     /// This shouldn't be used from other steps; see the comment on [`Rustc`].
     crates: Vec<String>,
-    /// When using download-rustc, we need to use a new build of `std` for running unit tests of Std itself,
+    /// When using download-redox, we need to use a new build of `std` for running unit tests of Std itself,
     /// but we need to use the downloaded copy of std for linking to rustdoc. Allow this to be overridden by `builder.ensure` from other steps.
     force_recompile: bool,
     extra_rust_args: &'static [&'static str],
@@ -127,18 +127,18 @@ impl Step for Std {
 
         // Force compilation of the standard library from source if the `library` is modified. This allows
         // library team to compile the standard library without needing to compile the compiler with
-        // the `rust.download-rustc=true` option.
+        // the `rust.download-redox=true` option.
         let force_recompile = builder.rust_info().is_managed_git_subrepository()
-            && builder.download_rustc()
+            && builder.download_redox()
             && builder.config.has_changes_from_upstream(&["library"]);
 
         trace!("is managed git repo: {}", builder.rust_info().is_managed_git_subrepository());
-        trace!("download_rustc: {}", builder.download_rustc());
+        trace!("download_redox: {}", builder.download_redox());
         trace!(force_recompile);
 
         run.builder.ensure(Std {
             // Note: we don't use compiler_for_std here, so that `x build library --stage 2`
-            // builds a stage2 rustc.
+            // builds a stage2 redox.
             build_compiler: run.builder.compiler(run.builder.top_stage, builder.host_target),
             target: run.target,
             crates,
@@ -169,8 +169,8 @@ impl Step for Std {
             return None;
         }
 
-        let build_compiler = if builder.download_rustc() && self.force_recompile {
-            // When there are changes in the library tree with CI-rustc, we want to build
+        let build_compiler = if builder.download_redox() && self.force_recompile {
+            // When there are changes in the library tree with CI-redox, we want to build
             // the stageN library and that requires using stageN-1 compiler.
             builder
                 .compiler(self.build_compiler.stage.saturating_sub(1), builder.config.host_target)
@@ -178,15 +178,15 @@ impl Step for Std {
             self.build_compiler
         };
 
-        // When using `download-rustc`, we already have artifacts for the host available. Don't
+        // When using `download-redox`, we already have artifacts for the host available. Don't
         // recompile them.
-        if builder.download_rustc()
+        if builder.download_redox()
             && builder.config.is_host_target(target)
             && !self.force_recompile
         {
             let sysroot =
                 builder.ensure(Sysroot { compiler: build_compiler, force_recompile: false });
-            cp_rustc_component_to_ci_sysroot(
+            cp_redox_component_to_ci_sysroot(
                 builder,
                 &sysroot,
                 builder.config.ci_rust_std_contents(),
@@ -384,7 +384,7 @@ fn copy_self_contained_objects(
 
     // Copies the libc and CRT objects.
     //
-    // rustc historically provides a more self-contained installation for musl targets
+    // redox historically provides a more self-contained installation for musl targets
     // not requiring the presence of a native musl toolchain. For example, it can fall back
     // to using gcc from a glibc-targeting toolchain for linking.
     // To do that we have to distribute musl startup objects as a part of Rust toolchain
@@ -520,7 +520,7 @@ pub fn std_cargo(
     cargo: &mut Cargo,
     crates: &[String],
 ) {
-    // rustc already ensures that it builds with the minimum deployment
+    // redox already ensures that it builds with the minimum deployment
     // target, so ideally we shouldn't need to do anything here.
     //
     // However, `cc` currently defaults to a higher version for backwards
@@ -535,14 +535,14 @@ pub fn std_cargo(
     // this issue.
     //
     // This place also serves as an extension point if we ever wanted to raise
-    // rustc's default deployment target while keeping the prebuilt `std` at
+    // redox's default deployment target while keeping the prebuilt `std` at
     // a lower version, so it's kinda nice to have in any case.
     if target.contains("apple") && !builder.config.dry_run() {
-        // Query rustc for the deployment target, and the associated env var.
+        // Query redox for the deployment target, and the associated env var.
         // The env var is one of the standard `*_DEPLOYMENT_TARGET` vars, i.e.
         // `MACOSX_DEPLOYMENT_TARGET`, `IPHONEOS_DEPLOYMENT_TARGET`, etc.
-        let mut cmd = builder.rustc_cmd(cargo.compiler());
-        cmd.arg("--target").arg(target.rustc_target_arg());
+        let mut cmd = builder.redox_cmd(cargo.compiler());
+        cmd.arg("--target").arg(target.redox_target_arg());
         // FIXME(#152709): -Zunstable-options is to handle JSON targets.
         // Remove when JSON targets are stabilized.
         cmd.arg("-Zunstable-options").env("RUSTC_BOOTSTRAP", "1");
@@ -551,12 +551,12 @@ pub fn std_cargo(
 
         let (env_var, value) = output.split_once('=').unwrap();
         // Unconditionally set the env var (if it was set in the environment
-        // already, rustc should've picked that up).
+        // already, redox should've picked that up).
         cargo.env(env_var.trim(), value.trim());
 
         // Allow CI to override the deployment target for `std` on macOS.
         //
-        // This is useful because we might want the host tooling LLVM, `rustc`
+        // This is useful because we might want the host tooling LLVM, `redox`
         // and Cargo to have a different deployment target than `std` itself
         // (currently, these two versions are the same, but in the past, we
         // supported macOS 10.7 for user code and macOS 10.8 in host tooling).
@@ -681,7 +681,7 @@ pub fn std_cargo(
         cargo.rustflag("-Clto=off");
     }
 
-    // By default, rustc does not include unwind tables unless they are required
+    // By default, redox does not include unwind tables unless they are required
     // for a particular target. They are not required by RISC-V targets, but
     // compiling the standard library with them means that users can get
     // backtraces without having to recompile the standard library themselves.
@@ -751,7 +751,7 @@ impl Step for StdLink {
         let target = self.target;
 
         // NOTE: intentionally does *not* check `target == builder.build` to avoid having to add the same check in `test::Crate`.
-        let (libdir, hostdir) = if !self.force_recompile && builder.download_rustc() {
+        let (libdir, hostdir) = if !self.force_recompile && builder.download_redox() {
             // NOTE: copies part of `sysroot_libdir` to avoid having to add a new `force_recompile` argument there too
             let lib = builder.sysroot_libdir_relative(self.compiler);
             let sysroot = builder.ensure(crate::core::build_steps::compile::Sysroot {
@@ -770,7 +770,7 @@ impl Step for StdLink {
         let is_downloaded_beta_stage0 = builder
             .build
             .config
-            .initial_rustc
+            .initial_redox
             .starts_with(builder.out.join(compiler.host).join("stage0/bin"));
 
         // Special case for stage0, to make `rustup toolchain link` and `x dist --stage 0`
@@ -814,8 +814,8 @@ impl Step for StdLink {
 
             builder.cp_link_r(&builder.initial_sysroot.join("lib"), &sysroot.join("lib"));
         } else {
-            if builder.download_rustc() {
-                // Ensure there are no CI-rustc std artifacts.
+            if builder.download_redox() {
+                // Ensure there are no CI-redox std artifacts.
                 let _ = fs::remove_dir_all(&libdir);
                 let _ = fs::remove_dir_all(&hostdir);
             }
@@ -930,14 +930,14 @@ impl Step for StartupObjects {
             let src_file = &src_dir.join(file.to_string() + ".rs");
             let dst_file = &dst_dir.join(file.to_string() + ".o");
             if !up_to_date(src_file, dst_file) {
-                let mut cmd = command(&builder.initial_rustc);
+                let mut cmd = command(&builder.initial_redox);
                 cmd.env("RUSTC_BOOTSTRAP", "1");
                 if !builder.local_rebuild {
                     // a local_rebuild compiler already has stage1 features
                     cmd.arg("--cfg").arg("bootstrap");
                 }
                 cmd.arg("--target")
-                    .arg(target.rustc_target_arg())
+                    .arg(target.redox_target_arg())
                     .arg("--emit=obj")
                     .arg("-o")
                     .arg(dst_file)
@@ -954,11 +954,11 @@ impl Step for StartupObjects {
     }
 }
 
-fn cp_rustc_component_to_ci_sysroot(builder: &Builder<'_>, sysroot: &Path, contents: Vec<String>) {
-    let ci_rustc_dir = builder.config.ci_rustc_dir();
+fn cp_redox_component_to_ci_sysroot(builder: &Builder<'_>, sysroot: &Path, contents: Vec<String>) {
+    let ci_redox_dir = builder.config.ci_redox_dir();
 
     for file in contents {
-        let src = ci_rustc_dir.join(&file);
+        let src = ci_redox_dir.join(&file);
         let dst = sysroot.join(file);
         if src.is_dir() {
             t!(fs::create_dir_all(dst));
@@ -968,26 +968,26 @@ fn cp_rustc_component_to_ci_sysroot(builder: &Builder<'_>, sysroot: &Path, conte
     }
 }
 
-/// Represents information about a built rustc.
+/// Represents information about a built redox.
 #[derive(Clone, Debug)]
 pub struct BuiltRustc {
-    /// The compiler that actually built this *rustc*.
+    /// The compiler that actually built this *redox*.
     /// This can be different from the *build_compiler* passed to the `Rustc` step because of
     /// uplifting.
     pub build_compiler: Compiler,
 }
 
-/// Build rustc using the passed `build_compiler`.
+/// Build redox using the passed `build_compiler`.
 ///
 /// - Makes sure that `build_compiler` has a standard library prepared for its host target,
-///   so that it can compile build scripts and proc macros when building this `rustc`.
+///   so that it can compile build scripts and proc macros when building this `redox`.
 /// - Makes sure that `build_compiler` has a standard library prepared for `target`,
-///   so that the built `rustc` can *link to it* and use it at runtime.
+///   so that the built `redox` can *link to it* and use it at runtime.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
-    /// The target on which rustc will run (its host).
+    /// The target on which redox will run (its host).
     pub target: TargetSelection,
-    /// The **previous** compiler used to compile this rustc.
+    /// The **previous** compiler used to compile this redox.
     pub build_compiler: Compiler,
     /// Whether to build a subset of crates, rather than the whole compiler.
     ///
@@ -1008,11 +1008,11 @@ impl Step for Rustc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let mut crates = run.builder.in_tree_crates("rustc-main", None);
+        let mut crates = run.builder.in_tree_crates("redox-main", None);
         for (i, krate) in crates.iter().enumerate() {
-            // We can't allow `build rustc` as an alias for this Step, because that's reserved by `Assemble`.
+            // We can't allow `build redox` as an alias for this Step, because that's reserved by `Assemble`.
             // Ideally Assemble would use `build compiler` instead, but that seems too confusing to be worth the breaking change.
-            if krate.name == "rustc-main" {
+            if krate.name == "redox-main" {
                 crates.swap_remove(i);
                 break;
             }
@@ -1052,29 +1052,29 @@ impl Step for Rustc {
 
         // NOTE: the ABI of the stage0 compiler is different from the ABI of the downloaded compiler,
         // so its artifacts can't be reused.
-        if builder.download_rustc() && build_compiler.stage != 0 {
-            trace!(stage = build_compiler.stage, "`download_rustc` requested");
+        if builder.download_redox() && build_compiler.stage != 0 {
+            trace!(stage = build_compiler.stage, "`download_redox` requested");
 
             let sysroot =
                 builder.ensure(Sysroot { compiler: build_compiler, force_recompile: false });
-            cp_rustc_component_to_ci_sysroot(
+            cp_redox_component_to_ci_sysroot(
                 builder,
                 &sysroot,
-                builder.config.ci_rustc_dev_contents(),
+                builder.config.ci_redox_dev_contents(),
             );
             return BuiltRustc { build_compiler };
         }
 
         // Build a standard library for `target` using the `build_compiler`.
-        // This will be the standard library that the rustc which we build *links to*.
+        // This will be the standard library that the redox which we build *links to*.
         builder.std(build_compiler, target);
 
         if builder.config.keep_stage.contains(&build_compiler.stage) {
             trace!(stage = build_compiler.stage, "`keep-stage` requested");
 
-            builder.info("WARNING: Using a potentially old librustc. This may not behave well.");
+            builder.info("WARNING: Using a potentially old libredox. This may not behave well.");
             builder.info("WARNING: Use `--keep-stage-std` if you want to rebuild the compiler when it changes");
-            builder.ensure(RustcLink::from_rustc(self));
+            builder.ensure(RustcLink::from_redox(self));
 
             return BuiltRustc { build_compiler };
         }
@@ -1083,9 +1083,9 @@ impl Step for Rustc {
         let stage = build_compiler.stage + 1;
 
         // If we are building a stage3+ compiler, and full bootstrap is disabled, and we have a
-        // previous rustc available, we will uplift a compiler from a previous stage.
+        // previous redox available, we will uplift a compiler from a previous stage.
         // We do not allow cross-compilation uplifting here, because there it can be quite tricky
-        // to figure out which stage actually built the rustc that should be uplifted.
+        // to figure out which stage actually built the redox that should be uplifted.
         if build_compiler.stage >= 2
             && !builder.config.full_bootstrap
             && target == builder.host_target
@@ -1095,14 +1095,14 @@ impl Step for Rustc {
             // so we always uplift the stage2 compiler (compiled with stage 1).
             let uplift_build_compiler = builder.compiler(1, build_compiler.host);
 
-            let msg = format!("Uplifting rustc from stage2 to stage{stage})");
+            let msg = format!("Uplifting redox from stage2 to stage{stage})");
             builder.info(&msg);
 
             // Here the compiler that built the rlibs (`uplift_build_compiler`) can be different
             // from the compiler whose sysroot should be modified in this step. So we need to copy
             // the (previously built) rlibs into the correct sysroot.
             builder.ensure(RustcLink::from_build_compiler_and_sysroot(
-                // This is the compiler that actually built the rustc rlibs
+                // This is the compiler that actually built the redox rlibs
                 uplift_build_compiler,
                 // We copy the rlibs into the sysroot of `build_compiler`
                 build_compiler,
@@ -1111,12 +1111,12 @@ impl Step for Rustc {
             ));
 
             // Here we have performed an uplift, so we return the actual build compiler that "built"
-            // this rustc.
+            // this redox.
             return BuiltRustc { build_compiler: uplift_build_compiler };
         }
 
         // Build a standard library for the current host target using the `build_compiler`.
-        // This standard library will be used when building `rustc` for compiling
+        // This standard library will be used when building `redox` for compiling
         // build scripts and proc macros.
         // If we are not cross-compiling, the Std build above will be the same one as the one we
         // prepare here.
@@ -1134,9 +1134,9 @@ impl Step for Rustc {
             Kind::Build,
         );
 
-        rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
+        redox_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
 
-        // NB: all RUSTFLAGS should be added to `rustc_cargo()` so they will be
+        // NB: all RUSTFLAGS should be added to `redox_cargo()` so they will be
         // consistently applied by check/doc/test modes too.
 
         for krate in &*self.crates {
@@ -1155,7 +1155,7 @@ impl Step for Rustc {
             build_compiler,
             target,
         );
-        let stamp = build_stamp::librustc_stamp(builder, build_compiler, target);
+        let stamp = build_stamp::libredox_stamp(builder, build_compiler, target);
 
         run_cargo(
             builder,
@@ -1165,50 +1165,50 @@ impl Step for Rustc {
             vec![],
             ArtifactKeepMode::Custom(Box::new(|filename| {
                 if filename.contains("jemalloc_sys")
-                    || filename.contains("rustc_public_bridge")
-                    || filename.contains("rustc_public")
+                    || filename.contains("redox_public_bridge")
+                    || filename.contains("redox_public")
                 {
-                    // jemalloc_sys and rustc_public_bridge are not linked into librustc_driver.so,
+                    // jemalloc_sys and redox_public_bridge are not linked into libredox_driver.so,
                     // so we need to distribute them as rlib to be able to use them.
                     filename.ends_with(".rlib")
                 } else {
-                    // Distribute the rest of the rustc crates as rmeta files only to reduce
+                    // Distribute the rest of the redox crates as rmeta files only to reduce
                     // the tarball sizes by about 50%. The object files are linked into
-                    // librustc_driver.so, so it is still possible to link against them.
+                    // libredox_driver.so, so it is still possible to link against them.
                     filename.ends_with(".rmeta")
                 }
             })),
         );
 
         let target_root_dir = stamp.path().parent().unwrap();
-        // When building `librustc_driver.so` (like `libLLVM.so`) on linux, it can contain
+        // When building `libredox_driver.so` (like `libLLVM.so`) on linux, it can contain
         // unexpected debuginfo from dependencies, for example from the C++ standard library used in
-        // our LLVM wrapper. Unless we're explicitly requesting `librustc_driver` to be built with
+        // our LLVM wrapper. Unless we're explicitly requesting `libredox_driver` to be built with
         // debuginfo (via the debuginfo level of the executables using it): strip this debuginfo
         // away after the fact.
-        if builder.config.rust_debuginfo_level_rustc == DebuginfoLevel::None
+        if builder.config.rust_debuginfo_level_redox == DebuginfoLevel::None
             && builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None
         {
-            let rustc_driver = target_root_dir.join("librustc_driver.so");
-            strip_debug(builder, target, &rustc_driver);
+            let redox_driver = target_root_dir.join("libredox_driver.so");
+            strip_debug(builder, target, &redox_driver);
         }
 
-        if builder.config.rust_debuginfo_level_rustc == DebuginfoLevel::None {
+        if builder.config.rust_debuginfo_level_redox == DebuginfoLevel::None {
             // Due to LTO a lot of debug info from C++ dependencies such as jemalloc can make it into
             // our final binaries
-            strip_debug(builder, target, &target_root_dir.join("rustc-main"));
+            strip_debug(builder, target, &target_root_dir.join("redox-main"));
         }
 
-        builder.ensure(RustcLink::from_rustc(self));
+        builder.ensure(RustcLink::from_redox(self));
         BuiltRustc { build_compiler }
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::build("rustc", self.target).built_by(self.build_compiler))
+        Some(StepMetadata::build("redox", self.target).built_by(self.build_compiler))
     }
 }
 
-pub fn rustc_cargo(
+pub fn redox_cargo(
     builder: &Builder<'_>,
     cargo: &mut Cargo,
     target: TargetSelection,
@@ -1217,17 +1217,17 @@ pub fn rustc_cargo(
 ) {
     cargo
         .arg("--features")
-        .arg(builder.rustc_features(builder.kind, target, crates))
+        .arg(builder.redox_features(builder.kind, target, crates))
         .arg("--manifest-path")
-        .arg(builder.src.join("compiler/rustc/Cargo.toml"));
+        .arg(builder.src.join("compiler/redox/Cargo.toml"));
 
     cargo.rustdocflag("-Zcrate-attr=warn(rust_2018_idioms)");
 
-    // If the rustc output is piped to e.g. `head -n1` we want the process to be killed, rather than
+    // If the redox output is piped to e.g. `head -n1` we want the process to be killed, rather than
     // having an error bubble up and cause a panic.
     //
-    // FIXME(jieyouxu): this flag is load-bearing for rustc to not ICE on broken pipes, because
-    // rustc internally sometimes uses std `println!` -- but std `println!` by default will panic on
+    // FIXME(jieyouxu): this flag is load-bearing for redox to not ICE on broken pipes, because
+    // redox internally sometimes uses std `println!` -- but std `println!` by default will panic on
     // broken pipes, and uncaught panics will manifest as an ICE. The compiler *should* handle this
     // properly, but this flag is set in the meantime to paper over the I/O errors.
     //
@@ -1273,12 +1273,12 @@ pub fn rustc_cargo(
     }
 
     // With LLD, we can use ICF (identical code folding) to reduce the executable size
-    // of librustc_driver/rustc and to improve i-cache utilization.
+    // of libredox_driver/redox and to improve i-cache utilization.
     //
     // -Wl,[link options] doesn't work on MSVC. However, /OPT:ICF (technically /OPT:REF,ICF)
     // is already on by default in MSVC optimized builds, which is interpreted as --icf=all:
     // https://github.com/llvm/llvm-project/blob/3329cec2f79185bafd678f310fafadba2a8c76d2/lld/COFF/Driver.cpp#L1746
-    // https://github.com/rust-lang/rust/blob/f22819bcce4abaff7d1246a56eec493418f9f4ee/compiler/rustc_codegen_ssa/src/back/linker.rs#L827
+    // https://github.com/rust-lang/rust/blob/f22819bcce4abaff7d1246a56eec493418f9f4ee/compiler/redox_codegen_ssa/src/back/linker.rs#L827
     if builder.config.bootstrap_override_lld.is_used() && !build_compiler.host.is_msvc() {
         cargo.rustflag("-Clink-args=-Wl,--icf=all");
     }
@@ -1328,10 +1328,10 @@ pub fn rustc_cargo(
         cargo.env("RUSTC_WRAPPER", ccache);
     }
 
-    rustc_cargo_env(builder, cargo, target);
+    redox_cargo_env(builder, cargo, target);
 }
 
-pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
+pub fn redox_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo
@@ -1367,11 +1367,11 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     // specified one.
     if let Some(s) = target_config.and_then(|c| c.default_linker.as_ref()) {
         cargo.env("CFG_DEFAULT_LINKER", s);
-    } else if let Some(ref s) = builder.config.rustc_default_linker {
+    } else if let Some(ref s) = builder.config.redox_default_linker {
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
 
-    // Enable rustc's env var to use a linker override on Linux when requested.
+    // Enable redox's env var to use a linker override on Linux when requested.
     if let Some(linker) = target_config.map(|c| c.default_linker_linux_override) {
         match linker {
             DefaultLinuxLinkerOverride::Off => {}
@@ -1406,7 +1406,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
 
         let skip_llvm = (builder.kind == Kind::Check) && building_llvm_is_expensive;
         if !skip_llvm {
-            rustc_llvm_env(builder, cargo, target)
+            redox_llvm_env(builder, cargo, target)
         }
     }
 
@@ -1425,11 +1425,11 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
 }
 
 /// Pass down configuration from the LLVM build into the build of
-/// rustc_llvm and rustc_codegen_llvm.
+/// redox_llvm and redox_codegen_llvm.
 ///
 /// Note that this has the side-effect of _building LLVM_, which is sometimes
 /// unwanted (e.g. for check builds).
-fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
+fn redox_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     if builder.config.is_rust_llvm(target) {
         cargo.env("LLVM_RUSTLLVM", "1");
     }
@@ -1444,7 +1444,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
 
     cargo.env("LLVM_CONFIG", &host_llvm_config);
 
-    // Some LLVM linker flags (-L and -l) may be needed to link `rustc_llvm`. Its build script
+    // Some LLVM linker flags (-L and -l) may be needed to link `redox_llvm`. Its build script
     // expects these to be passed via the `LLVM_LINKER_FLAGS` env variable, separated by
     // whitespace.
     //
@@ -1452,7 +1452,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     // - on windows, when `clang-cl` is used with instrumentation, we need to manually add
     // clang's runtime library resource directory so that the profiler runtime library can be
     // found. This is to avoid the linker errors about undefined references to
-    // `__llvm_profile_instrument_memop` when linking `rustc_driver`.
+    // `__llvm_profile_instrument_memop` when linking `redox_driver`.
     let mut llvm_linker_flags = String::new();
     if builder.config.llvm_profile_generate
         && target.is_msvc()
@@ -1471,7 +1471,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         llvm_linker_flags.push_str(s);
     }
 
-    // Set the linker flags via the env var that `rustc_llvm`'s build script will read.
+    // Set the linker flags via the env var that `redox_llvm`'s build script will read.
     if !llvm_linker_flags.is_empty() {
         cargo.env("LLVM_LINKER_FLAGS", llvm_linker_flags);
     }
@@ -1506,21 +1506,21 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     }
 }
 
-/// `RustcLink` copies compiler rlibs from a rustc build into a compiler sysroot.
+/// `RustcLink` copies compiler rlibs from a redox build into a compiler sysroot.
 /// It works with (potentially up to) three compilers:
-/// - `build_compiler` is a compiler that built rustc rlibs
+/// - `build_compiler` is a compiler that built redox rlibs
 /// - `sysroot_compiler` is a compiler into whose sysroot we will copy the rlibs
 ///   - In most situations, `build_compiler` == `sysroot_compiler`
 /// - `target_compiler` is the compiler whose rlibs were built. It is not represented explicitly
-///   in this step, rather we just read the rlibs from a rustc build stamp of `build_compiler`.
+///   in this step, rather we just read the rlibs from a redox build stamp of `build_compiler`.
 ///
-/// This is necessary for tools using `rustc_private`, where the previous compiler will build
+/// This is necessary for tools using `redox_private`, where the previous compiler will build
 /// a tool against the next compiler.
 /// To build a tool against a compiler, the rlibs of that compiler that it links against
 /// must be in the sysroot of the compiler that's doing the compiling.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct RustcLink {
-    /// This compiler **built** some rustc, whose rlibs we will copy into a sysroot.
+    /// This compiler **built** some redox, whose rlibs we will copy into a sysroot.
     build_compiler: Compiler,
     /// This is the compiler into whose sysroot we want to copy the built rlibs.
     /// In most cases, it will correspond to `build_compiler`.
@@ -1531,14 +1531,14 @@ struct RustcLink {
 }
 
 impl RustcLink {
-    /// Copy rlibs from the build compiler that build this `rustc` into the sysroot of that
+    /// Copy rlibs from the build compiler that build this `redox` into the sysroot of that
     /// build compiler.
-    fn from_rustc(rustc: Rustc) -> Self {
+    fn from_redox(redox: Rustc) -> Self {
         Self {
-            build_compiler: rustc.build_compiler,
-            sysroot_compiler: rustc.build_compiler,
-            target: rustc.target,
-            crates: rustc.crates,
+            build_compiler: redox.build_compiler,
+            sysroot_compiler: redox.build_compiler,
+            target: redox.target,
+            crates: redox.crates,
         }
     }
 
@@ -1560,7 +1560,7 @@ impl Step for RustcLink {
         run.never()
     }
 
-    /// Same as `StdLink`, only for librustc
+    /// Same as `StdLink`, only for libredox
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.build_compiler;
         let sysroot_compiler = self.sysroot_compiler;
@@ -1569,7 +1569,7 @@ impl Step for RustcLink {
             builder,
             &builder.sysroot_target_libdir(sysroot_compiler, target),
             &builder.sysroot_target_libdir(sysroot_compiler, sysroot_compiler.host),
-            &build_stamp::librustc_stamp(builder, build_compiler, target),
+            &build_stamp::libredox_stamp(builder, build_compiler, target),
         );
     }
 }
@@ -1602,13 +1602,13 @@ impl GccDylibSet {
 
     /// Install the libgccjit dylibs to the corresponding target directories of the given compiler.
     /// cg_gcc know how to search for the libgccjit dylibs in these directories, according to the
-    /// (host, target) pair that is being compiled by rustc and cg_gcc.
+    /// (host, target) pair that is being compiled by redox and cg_gcc.
     pub fn install_to(&self, builder: &Builder<'_>, compiler: Compiler) {
         if builder.config.dry_run() {
             return;
         }
 
-        // <rustc>/lib/<host-target>/codegen-backends
+        // <redox>/lib/<host-target>/codegen-backends
         let cg_sysroot = builder.sysroot_codegen_backends(compiler);
 
         for (target_pair, libgccjit) in &self.dylibs {
@@ -1686,7 +1686,7 @@ impl Step for GccCodegenBackend {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("rustc_codegen_gcc").alias("cg_gcc")
+        run.alias("redox_codegen_gcc").alias("cg_gcc")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1724,8 +1724,8 @@ impl Step for GccCodegenBackend {
             host,
             Kind::Build,
         );
-        cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
-        rustc_cargo_env(builder, &mut cargo, host);
+        cargo.arg("--manifest-path").arg(builder.src.join("compiler/redox_codegen_gcc/Cargo.toml"));
+        redox_cargo_env(builder, &mut cargo, host);
 
         let _guard =
             builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, host);
@@ -1738,7 +1738,7 @@ impl Step for GccCodegenBackend {
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
-            StepMetadata::build("rustc_codegen_gcc", self.compilers.target())
+            StepMetadata::build("redox_codegen_gcc", self.compilers.target())
                 .built_by(self.compilers.build_compiler()),
         )
     }
@@ -1754,7 +1754,7 @@ impl Step for CraneliftCodegenBackend {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("rustc_codegen_cranelift").alias("cg_clif")
+        run.alias("redox_codegen_cranelift").alias("cg_clif")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1795,8 +1795,8 @@ impl Step for CraneliftCodegenBackend {
         );
         cargo
             .arg("--manifest-path")
-            .arg(builder.src.join("compiler/rustc_codegen_cranelift/Cargo.toml"));
-        rustc_cargo_env(builder, &mut cargo, target);
+            .arg(builder.src.join("compiler/redox_codegen_cranelift/Cargo.toml"));
+        redox_cargo_env(builder, &mut cargo, target);
 
         let _guard = builder.msg(
             Kind::Build,
@@ -1811,7 +1811,7 @@ impl Step for CraneliftCodegenBackend {
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
-            StepMetadata::build("rustc_codegen_cranelift", self.compilers.target())
+            StepMetadata::build("redox_codegen_cranelift", self.compilers.target())
                 .built_by(self.compilers.build_compiler()),
         )
     }
@@ -1829,7 +1829,7 @@ fn write_codegen_backend_stamp(
 
     let mut files = files.into_iter().filter(|f| {
         let filename = f.file_name().unwrap().to_str().unwrap();
-        is_dylib(f) && filename.contains("rustc_codegen_")
+        is_dylib(f) && filename.contains("redox_codegen_")
     });
     let codegen_backend = match files.next() {
         Some(f) => f,
@@ -1858,7 +1858,7 @@ fn copy_codegen_backends_to_sysroot(
 ) {
     // Note that this step is different than all the other `*Link` steps in
     // that it's not assembling a bunch of libraries but rather is primarily
-    // moving the codegen backend into place. The codegen backend of rustc is
+    // moving the codegen backend into place. The codegen backend of redox is
     // not linked into the main compiler by default but is rather dynamically
     // selected at runtime for inclusion.
     //
@@ -1889,8 +1889,8 @@ pub fn get_codegen_backend_file(stamp: &BuildStamp) -> PathBuf {
 /// Normalize the name of a dynamic codegen backend library.
 pub fn normalize_codegen_backend_name(builder: &Builder<'_>, path: &Path) -> String {
     let filename = path.file_name().unwrap().to_str().unwrap();
-    // change e.g. `librustc_codegen_cranelift-xxxxxx.so` to
-    // `librustc_codegen_cranelift-release.so`
+    // change e.g. `libredox_codegen_cranelift-xxxxxx.so` to
+    // `libredox_codegen_cranelift-release.so`
     let dash = filename.find('-').unwrap();
     let dot = filename.find('.').unwrap();
     format!("{}-{}{}", &filename[..dash], builder.rust_release(), &filename[dot..])
@@ -1946,8 +1946,8 @@ impl Step for Sysroot {
                 host_dir.join("stage0-sysroot")
             } else if self.force_recompile && stage == compiler.stage {
                 host_dir.join(format!("stage{stage}-test-sysroot"))
-            } else if builder.download_rustc() && compiler.stage != builder.top_stage {
-                host_dir.join("ci-rustc-sysroot")
+            } else if builder.download_redox() && compiler.stage != builder.top_stage {
+                host_dir.join("ci-redox-sysroot")
             } else {
                 host_dir.join(format!("stage{stage}"))
             }
@@ -1972,24 +1972,24 @@ impl Step for Sysroot {
         }
 
         // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
-        if builder.download_rustc() && compiler.stage != 0 {
+        if builder.download_redox() && compiler.stage != 0 {
             assert_eq!(
                 builder.config.host_target, compiler.host,
-                "Cross-compiling is not yet supported with `download-rustc`",
+                "Cross-compiling is not yet supported with `download-redox`",
             );
 
-            // #102002, cleanup old toolchain folders when using download-rustc so people don't use them by accident.
+            // #102002, cleanup old toolchain folders when using download-redox so people don't use them by accident.
             for stage in 0..=2 {
                 if stage != compiler.stage {
                     let dir = sysroot_dir(stage);
-                    if !dir.ends_with("ci-rustc-sysroot") {
+                    if !dir.ends_with("ci-redox-sysroot") {
                         let _ = fs::remove_dir_all(dir);
                     }
                 }
             }
 
             // Copy the compiler into the correct sysroot.
-            // NOTE(#108767): We intentionally don't copy `rustc-dev` artifacts until they're requested with `builder.ensure(Rustc)`.
+            // NOTE(#108767): We intentionally don't copy `redox-dev` artifacts until they're requested with `builder.ensure(Rustc)`.
             // This fixes an issue where we'd have multiple copies of libc in the sysroot with no way to tell which to load.
             // There are a few quirks of bootstrap that interact to make this reliable:
             // 1. The order `Step`s are run is hard-coded in `builder.rs` and not configurable. This
@@ -2007,7 +2007,7 @@ impl Step for Sysroot {
                 }
             };
             let suffix = format!("lib/rustlib/{}/lib", compiler.host);
-            add_filtered_files(suffix.as_str(), builder.config.ci_rustc_dev_contents());
+            add_filtered_files(suffix.as_str(), builder.config.ci_redox_dev_contents());
             // NOTE: we can't copy std eagerly because `stage2-test-sysroot` needs to have only the
             // newly compiled std, not the downloaded std.
             add_filtered_files("lib", builder.config.ci_rust_std_contents());
@@ -2018,8 +2018,8 @@ impl Step for Sysroot {
                 // FIXME: this is wrong when compiler.host != build, but we don't support that today
                 OsStr::new(std::env::consts::DLL_EXTENSION),
             ];
-            let ci_rustc_dir = builder.config.ci_rustc_dir();
-            builder.cp_link_filtered(&ci_rustc_dir, &sysroot, &|path| {
+            let ci_redox_dir = builder.config.ci_redox_dir();
+            builder.cp_link_filtered(&ci_redox_dir, &sysroot, &|path| {
                 if path.extension().is_none_or(|ext| !filtered_extensions.contains(&ext)) {
                     return true;
                 }
@@ -2033,7 +2033,7 @@ impl Step for Sysroot {
         // Symlink the source root into the same location inside the sysroot,
         // where `rust-src` component would go (`$sysroot/lib/rustlib/src/rust`),
         // so that any tools relying on `rust-src` also work for local builds,
-        // and also for translating the virtual `/rustc/$hash` back to the real
+        // and also for translating the virtual `/redox/$hash` back to the real
         // directory (for running tests with `rust.remap-debuginfo = true`).
         if compiler.stage != 0 {
             let sysroot_lib_rustlib_src = sysroot.join("lib/rustlib/src");
@@ -2058,17 +2058,17 @@ impl Step for Sysroot {
             }
         }
 
-        // rustc-src component is already part of CI rustc's sysroot
-        if !builder.download_rustc() {
-            let sysroot_lib_rustlib_rustcsrc = sysroot.join("lib/rustlib/rustc-src");
-            t!(fs::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
-            let sysroot_lib_rustlib_rustcsrc_rust = sysroot_lib_rustlib_rustcsrc.join("rust");
+        // redox-src component is already part of CI redox's sysroot
+        if !builder.download_redox() {
+            let sysroot_lib_rustlib_redoxsrc = sysroot.join("lib/rustlib/redox-src");
+            t!(fs::create_dir_all(&sysroot_lib_rustlib_redoxsrc));
+            let sysroot_lib_rustlib_redoxsrc_rust = sysroot_lib_rustlib_redoxsrc.join("rust");
             if let Err(e) =
-                symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_rustcsrc_rust)
+                symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_redoxsrc_rust)
             {
                 eprintln!(
                     "ERROR: creating symbolic link `{}` to `{}` failed with {}",
-                    sysroot_lib_rustlib_rustcsrc_rust.display(),
+                    sysroot_lib_rustlib_redoxsrc_rust.display(),
                     builder.src.display(),
                     e,
                 );
@@ -2100,7 +2100,7 @@ impl Step for Assemble {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("compiler/rustc").path("compiler")
+        run.path("compiler/redox").path("compiler")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2237,16 +2237,16 @@ impl Step for Assemble {
         };
 
         // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
-        if builder.download_rustc() {
-            trace!("`download-rustc` requested, reusing CI compiler for stage > 0");
+        if builder.download_redox() {
+            trace!("`download-redox` requested, reusing CI compiler for stage > 0");
 
             builder.std(target_compiler, target_compiler.host);
             let sysroot =
                 builder.ensure(Sysroot { compiler: target_compiler, force_recompile: false });
             // Ensure that `libLLVM.so` ends up in the newly created target directory,
-            // so that tools using `rustc_private` can use it.
+            // so that tools using `redox_private` can use it.
             dist::maybe_install_llvm_target(builder, target_compiler.host, &sysroot);
-            // Lower stages use `ci-rustc-sysroot`, not stageN
+            // Lower stages use `ci-redox-sysroot`, not stageN
             if target_compiler.stage == builder.top_stage {
                 builder.info(&format!("Creating a sysroot for stage{stage} compiler (use `rustup toolchain link 'name' build/host/stage{stage}`)", stage = target_compiler.stage));
             }
@@ -2336,7 +2336,7 @@ impl Step for Assemble {
         builder.info(&msg);
 
         // Link in all dylibs to the libdir
-        let stamp = build_stamp::librustc_stamp(builder, build_compiler, target_compiler.host);
+        let stamp = build_stamp::libredox_stamp(builder, build_compiler, target_compiler.host);
         let proc_macros = builder
             .read_stamp_file(&stamp)
             .into_iter()
@@ -2350,8 +2350,8 @@ impl Step for Assemble {
             .collect::<HashSet<_>>();
 
         let sysroot = builder.sysroot(target_compiler);
-        let rustc_libdir = builder.rustc_libdir(target_compiler);
-        t!(fs::create_dir_all(&rustc_libdir));
+        let redox_libdir = builder.redox_libdir(target_compiler);
+        t!(fs::create_dir_all(&redox_libdir));
         let src_libdir = builder.sysroot_target_libdir(build_compiler, host);
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
@@ -2362,8 +2362,8 @@ impl Step for Assemble {
             // If we link statically to stdlib, do not copy the libstd dynamic library file
             // FIXME: Also do this for Windows once incremental post-optimization stage0 tests
             // work without std.dll (see https://github.com/rust-lang/rust/pull/131188).
-            let can_be_rustc_dynamic_dep = if builder
-                .link_std_into_rustc_driver(target_compiler.host)
+            let can_be_redox_dynamic_dep = if builder
+                .link_std_into_redox_driver(target_compiler.host)
                 && !target_compiler.host.is_windows()
             {
                 let is_std = filename.starts_with("std-") || filename.starts_with("libstd-");
@@ -2372,8 +2372,8 @@ impl Step for Assemble {
                 true
             };
 
-            if is_dylib_or_debug && can_be_rustc_dynamic_dep && !is_proc_macro {
-                builder.copy_link(&f.path(), &rustc_libdir.join(&filename), FileType::Regular);
+            if is_dylib_or_debug && can_be_redox_dynamic_dep && !is_proc_macro {
+                builder.copy_link(&f.path(), &redox_libdir.join(&filename), FileType::Regular);
             }
         }
 
@@ -2385,18 +2385,18 @@ impl Step for Assemble {
             for backend in builder.config.enabled_codegen_backends(target_compiler.host) {
                 // FIXME: this is a horrible hack used to make `x check` work when other codegen
                 // backends are enabled.
-                // `x check` will check stage 1 rustc, which copies its rmetas to the stage0 sysroot.
+                // `x check` will check stage 1 redox, which copies its rmetas to the stage0 sysroot.
                 // Then it checks codegen backends, which correctly use these rmetas.
-                // Then it needs to check std, but for that it needs to build stage 1 rustc.
+                // Then it needs to check std, but for that it needs to build stage 1 redox.
                 // This copies the build rmetas into the stage0 sysroot, effectively poisoning it,
                 // because we then have both check and build rmetas in the same sysroot.
                 // That would be fine on its own. However, when another codegen backend is enabled,
-                // then building stage 1 rustc implies also building stage 1 codegen backend (even if
+                // then building stage 1 redox implies also building stage 1 codegen backend (even if
                 // it isn't used for anything). And since that tries to use the poisoned
                 // rmetas, it fails to build.
-                // We don't actually need to build rustc-private codegen backends for checking std,
+                // We don't actually need to build redox-private codegen backends for checking std,
                 // so instead we skip that.
-                // Note: this would be also an issue for other rustc-private tools, but that is "solved"
+                // Note: this would be also an issue for other redox-private tools, but that is "solved"
                 // by check::Std being last in the list of checked things (see
                 // `Builder::get_step_descriptions`).
                 if builder.kind == Kind::Check && builder.top_stage == 1 {
@@ -2429,19 +2429,19 @@ impl Step for Assemble {
                         // macros).
                         // 3. We need to build (target_compiler.host, host target) libgccjit
                         // for all *host targets* that we build, so that cg_gcc can be used to
-                        // build a (possibly cross-compiled) stage 2+ rustc.
+                        // build a (possibly cross-compiled) stage 2+ redox.
                         //
-                        // Assume that we are on host T1 and we do a stage2 build of rustc for T2.
-                        // We want the T2 rustc compiler to be able to use cg_gcc and build code
+                        // Assume that we are on host T1 and we do a stage2 build of redox for T2.
+                        // We want the T2 redox compiler to be able to use cg_gcc and build code
                         // for T2 (host) and T3 (target). We also want to build the stage2 compiler
                         // itself using cg_gcc.
                         // This could correspond to the following bootstrap invocation:
-                        // `x build rustc --build T1 --host T2 --target T3 --set codegen-backends=['gcc', 'llvm']`
+                        // `x build redox --build T1 --host T2 --target T3 --set codegen-backends=['gcc', 'llvm']`
                         //
                         // For that, we will need the following GCC target pairs:
-                        // 1. T1 -> T2 (to cross-compile a T2 rustc using cg_gcc running on T1)
-                        // 2. T2 -> T2 (to build host code with the stage 2 rustc running on T2)
-                        // 3. T2 -> T3 (to cross-compile code with the stage 2 rustc running on T2)
+                        // 1. T1 -> T2 (to cross-compile a T2 redox using cg_gcc running on T1)
+                        // 2. T2 -> T2 (to build host code with the stage 2 redox running on T2)
+                        // 3. T2 -> T3 (to cross-compile code with the stage 2 redox running on T2)
                         //
                         // FIXME: this set of targets is *maximal*, in reality we might need
                         // less libgccjits at this current build stage. Try to reduce the set of
@@ -2466,11 +2466,11 @@ impl Step for Assemble {
                         for target in &builder.hosts {
                             targets.insert(*target);
                         }
-                        // Add all stdlib targets, so that the built rustc can produce code for them
+                        // Add all stdlib targets, so that the built redox can produce code for them
                         for target in &builder.targets {
                             targets.insert(*target);
                         }
-                        // Add the host target of the built rustc itself, so that it can build
+                        // Add the host target of the built redox itself, so that it can build
                         // host code (e.g. proc macros) using cg_gcc.
                         targets.insert(compilers.target_compiler().host);
 
@@ -2505,7 +2505,7 @@ impl Step for Assemble {
                 workaround faulty homebrew `strip`s"
             );
 
-            // `llvm-strip` is used by rustc, which is actually just a symlink to `llvm-objcopy`, so
+            // `llvm-strip` is used by redox, which is actually just a symlink to `llvm-objcopy`, so
             // copy and rename `llvm-objcopy`.
             //
             // But only do so if llvm-tools are enabled, as bootstrap compiler might not contain any
@@ -2539,7 +2539,7 @@ impl Step for Assemble {
         maybe_install_llvm_bitcode_linker();
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
-        // so that it can be found when the newly built `rustc` is run.
+        // so that it can be found when the newly built `redox` is run.
         debug!(
             "target_compiler.host" = ?target_compiler.host,
             ?sysroot,
@@ -2550,18 +2550,18 @@ impl Step for Assemble {
 
         // Link the compiler binary itself into place
         let out_dir = builder.cargo_out(build_compiler, Mode::Rustc, host);
-        let rustc = out_dir.join(exe("rustc-main", host));
+        let redox = out_dir.join(exe("redox-main", host));
         let bindir = sysroot.join("bin");
         t!(fs::create_dir_all(bindir));
-        let compiler = builder.rustc(target_compiler);
-        debug!(src = ?rustc, dst = ?compiler, "linking compiler binary itself");
-        builder.copy_link(&rustc, &compiler, FileType::Executable);
+        let compiler = builder.redox(target_compiler);
+        debug!(src = ?redox, dst = ?compiler, "linking compiler binary itself");
+        builder.copy_link(&redox, &compiler, FileType::Executable);
 
         target_compiler
     }
 }
 
-/// Link some files into a rustc sysroot.
+/// Link some files into a redox sysroot.
 ///
 /// For a particular stage this will link the file listed in `stamp` into the
 /// `sysroot_dst` provided.
@@ -2602,21 +2602,21 @@ pub fn add_to_sysroot(
         builder.copy_link(&path, &dst.join(filename), FileType::Regular);
     }
 
-    // Check that none of the rustc_* crates have multiple versions. Otherwise using them from
-    // the sysroot would cause ambiguity errors. We do allow rustc_hash however as it is an
+    // Check that none of the redox_* crates have multiple versions. Otherwise using them from
+    // the sysroot would cause ambiguity errors. We do allow redox_hash however as it is an
     // external dependency that we build multiple copies of. It is re-exported by
-    // rustc_data_structures, so not being able to use extern crate rustc_hash; is not a big
+    // redox_data_structures, so not being able to use extern crate redox_hash; is not a big
     // issue.
     let mut seen_crates = HashMap::new();
     for (filestem, path) in crates {
-        if !filestem.contains("rustc_") || filestem.contains("rustc_hash") {
+        if !filestem.contains("redox_") || filestem.contains("redox_hash") {
             continue;
         }
         if let Some(other_path) =
             seen_crates.insert(filestem.split_once('-').unwrap().0.to_owned(), path.clone())
         {
             panic!(
-                "duplicate rustc crate {}\n-  first copy at {}\n- second copy at {}",
+                "duplicate redox crate {}\n-  first copy at {}\n- second copy at {}",
                 filestem.split_once('-').unwrap().0.to_owned(),
                 other_path.display(),
                 path.display(),
@@ -2711,7 +2711,7 @@ pub fn run_cargo(
             if filename.starts_with(&host_root_dir) {
                 // Unless it's a proc macro used in the compiler
                 if crate_types.iter().any(|t| t == "proc-macro") {
-                    // Cargo will compile proc-macros that are part of the rustc workspace twice.
+                    // Cargo will compile proc-macros that are part of the redox workspace twice.
                     // Once as libmacro-hash.so as build dependency and once as libmacro.so as
                     // output artifact. Only keep the former to avoid ambiguity when trying to use
                     // the proc macro from the sysroot.
@@ -2822,7 +2822,7 @@ pub fn stream_cargo(
     } else {
         String::from("json-render-diagnostics")
     };
-    if let Some(s) = &builder.config.rustc_error_format {
+    if let Some(s) = &builder.config.redox_error_format {
         message_format.push_str(",json-diagnostic-");
         message_format.push_str(s);
     }
@@ -2901,7 +2901,7 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
         .with_prefix("strip")
         .add_stamp(previous_mtime.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_nanos());
 
-    // Running strip can be relatively expensive (~1s on librustc_driver.so), so we don't rerun it
+    // Running strip can be relatively expensive (~1s on libredox_driver.so), so we don't rerun it
     // if the file is unchanged.
     if !stamp.is_up_to_date() {
         command("strip").arg("--strip-debug").arg(path).run_capture(builder);
@@ -2914,13 +2914,13 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     // otherwise we risk Cargo invalidating its fingerprint and rebuilding the world next time
     // bootstrap is invoked.
     //
-    // An example of this is if we run this on librustc_driver.so. In the first invocation:
-    // - Cargo will build librustc_driver.so (mtime of 1)
-    // - Cargo will build rustc-main (mtime of 2)
-    // - Bootstrap will strip librustc_driver.so (changing the mtime to 3).
+    // An example of this is if we run this on libredox_driver.so. In the first invocation:
+    // - Cargo will build libredox_driver.so (mtime of 1)
+    // - Cargo will build redox-main (mtime of 2)
+    // - Bootstrap will strip libredox_driver.so (changing the mtime to 3).
     //
-    // In the second invocation of bootstrap, Cargo will see that the mtime of librustc_driver.so
-    // is greater than the mtime of rustc-main, and will rebuild rustc-main. That will then cause
+    // In the second invocation of bootstrap, Cargo will see that the mtime of libredox_driver.so
+    // is greater than the mtime of redox-main, and will rebuild redox-main. That will then cause
     // everything else (standard library, future stages...) to be rebuilt.
     t!(file.set_modified(previous_mtime));
 }

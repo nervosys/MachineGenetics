@@ -1,12 +1,12 @@
 use clippy_utils::macros::{is_panic, macro_backtrace};
-use rustc_ast::{AttrId, MetaItemInner};
-use rustc_hir::{
+use redox_ast::{AttrId, MetaItemInner};
+use redox_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
 };
-use rustc_lint::{LateContext, Level};
-use rustc_middle::ty;
-use rustc_span::sym;
-use rustc_span::symbol::Symbol;
+use redox_lint::{LateContext, Level};
+use redox_middle::ty;
+use redox_span::sym;
+use redox_span::symbol::Symbol;
 
 pub(super) fn is_word(nmi: &MetaItemInner, expected: Symbol) -> bool {
     if let MetaItemInner::MetaItem(mi) = &nmi {

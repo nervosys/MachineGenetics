@@ -1,0 +1,69 @@
+[package]
+name = "redox_driver_impl"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+anstyle = "1.0.13"
+jiff = { version = "0.2.5", default-features = false, features = ["std"] }
+redox_abi = { path = "../redox_abi" }
+redox_ast = { path = "../redox_ast" }
+redox_ast_pretty = { path = "../redox_ast_pretty" }
+redox_codegen_ssa = { path = "../redox_codegen_ssa" }
+redox_const_eval = { path = "../redox_const_eval" }
+redox_data_structures = { path = "../redox_data_structures" }
+redox_errors = { path = "../redox_errors" }
+redox_expand = { path = "../redox_expand" }
+redox_feature = { path = "../redox_feature" }
+redox_hir_analysis = { path = "../redox_hir_analysis" }
+redox_hir_pretty = { path = "../redox_hir_pretty" }
+redox_index = { path = "../redox_index" }
+redox_interface = { path = "../redox_interface" }
+redox_lexer = { path = "../redox_lexer" }
+redox_lint = { path = "../redox_lint" }
+redox_log = { path = "../redox_log" }
+redox_macros = { path = "../redox_macros" }
+redox_metadata = { path = "../redox_metadata" }
+redox_middle = { path = "../redox_middle" }
+redox_mir_build = { path = "../redox_mir_build" }
+redox_mir_transform = { path = "../redox_mir_transform" }
+redox_parse = { path = "../redox_parse" }
+redox_public = { path = "../redox_public", features = ["redox_internal"] }
+redox_resolve = { path = "../redox_resolve" }
+redox_session = { path = "../redox_session" }
+redox_span = { path = "../redox_span" }
+redox_target = { path = "../redox_target" }
+serde_json = "1.0.59"
+shlex = "1.0"
+tracing = { version = "0.1.35" }
+# tidy-alphabetical-end
+
+[target.'cfg(all(unix, any(target_env = "gnu", target_os = "macos")))'.dependencies]
+# tidy-alphabetical-start
+libc = "0.2"
+# tidy-alphabetical-end
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.61.0"
+features = [
+    "Win32_System_Diagnostics_Debug",
+]
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+# tidy-alphabetical-start
+ctrlc = "3.4.4"
+# tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+check_only = ['redox_interface/check_only']
+llvm = ['redox_interface/llvm']
+llvm_enzyme = ['redox_interface/llvm_enzyme']
+llvm_offload = ['redox_interface/llvm_offload']
+max_level_info = ['redox_log/max_level_info']
+redox_randomized_layouts = [
+    'redox_index/redox_randomized_layouts',
+    'redox_middle/redox_randomized_layouts'
+]
+# tidy-alphabetical-end

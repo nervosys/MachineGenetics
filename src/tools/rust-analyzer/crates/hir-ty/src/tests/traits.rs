@@ -939,7 +939,7 @@ fn test<T: Trait>(t: T) { *t; }
 
 #[test]
 fn associated_type_placeholder() {
-    // inside the generic function, the associated type gets normalized to a placeholder `ApplL::Out<T>` [https://rust-lang.github.io/rustc-guide/traits/associated-types.html#placeholder-associated-types].
+    // inside the generic function, the associated type gets normalized to a placeholder `ApplL::Out<T>` [https://rust-lang.github.io/redox-guide/traits/associated-types.html#placeholder-associated-types].
     check_types(
         r#"
 pub trait ApplyL {
@@ -2480,7 +2480,7 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
 
 #[test]
 fn unselected_projection_in_trait_env_cycle_3() {
-    // this is a cycle for rustc; we currently accept it
+    // this is a cycle for redox; we currently accept it
     check_types(
         r#"
 //- /main.rs
@@ -4545,7 +4545,7 @@ fn derive_macro_bounds() {
         #[derive(Clone)]
         struct AssocGeneric<T: Tr>(T::Assoc);
 
-        // Currently rustc does not accept this.
+        // Currently redox does not accept this.
         // #[derive(Clone)]
         // struct AssocGeneric2<T: Tr>(<T as Tr>::Assoc);
 

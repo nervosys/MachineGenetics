@@ -35,8 +35,8 @@ use hir_expand::{
 use intern::Symbol;
 use itertools::Itertools;
 use la_arena::ArenaMap;
-use rustc_abi::ReprOptions;
-use rustc_hash::FxHashSet;
+use redox_abi::ReprOptions;
+use redox_hash::FxHashSet;
 use smallvec::SmallVec;
 use syntax::{
     AstNode, AstToken, NodeOrToken, SmolStr, SourceFile, SyntaxNode, SyntaxToken, T,
@@ -113,7 +113,7 @@ fn extract_ra_macro_style(attr_flags: &mut AttrFlags, tt: ast::TokenTree) {
     }
 }
 
-fn extract_rustc_skip_during_method_dispatch(attr_flags: &mut AttrFlags, tt: ast::TokenTree) {
+fn extract_redox_skip_during_method_dispatch(attr_flags: &mut AttrFlags, tt: ast::TokenTree) {
     let iter = TokenTreeChildren::new(&tt);
     for kind in iter {
         if let NodeOrToken::Token(kind) = kind
@@ -157,20 +157,20 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: Meta) -> ControlFlow<Infal
                 "doc" => extract_doc_tt_attr(attr_flags, tt),
                 "repr" => attr_flags.insert(AttrFlags::HAS_REPR),
                 "target_feature" => attr_flags.insert(AttrFlags::HAS_TARGET_FEATURE),
-                "proc_macro_derive" | "rustc_builtin_macro" => {
+                "proc_macro_derive" | "redox_builtin_macro" => {
                     attr_flags.insert(AttrFlags::IS_DERIVE_OR_BUILTIN_MACRO)
                 }
                 "unstable" => attr_flags.insert(AttrFlags::IS_UNSTABLE),
-                "rustc_layout_scalar_valid_range_start" | "rustc_layout_scalar_valid_range_end" => {
+                "redox_layout_scalar_valid_range_start" | "redox_layout_scalar_valid_range_end" => {
                     attr_flags.insert(AttrFlags::RUSTC_LAYOUT_SCALAR_VALID_RANGE)
                 }
-                "rustc_legacy_const_generics" => {
+                "redox_legacy_const_generics" => {
                     attr_flags.insert(AttrFlags::HAS_LEGACY_CONST_GENERICS)
                 }
-                "rustc_skip_during_method_dispatch" => {
-                    extract_rustc_skip_during_method_dispatch(attr_flags, tt)
+                "redox_skip_during_method_dispatch" => {
+                    extract_redox_skip_during_method_dispatch(attr_flags, tt)
                 }
-                "rustc_deprecated_safe_2024" => {
+                "redox_deprecated_safe_2024" => {
                     attr_flags.insert(AttrFlags::RUSTC_DEPRECATED_SAFE_2024)
                 }
                 _ => {}
@@ -188,18 +188,18 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: Meta) -> ControlFlow<Infal
         Meta::Path { path } => {
             match path.segments.len() {
                 1 => match path.segments[0].text() {
-                    "rustc_has_incoherent_inherent_impls" => {
+                    "redox_has_incoherent_inherent_impls" => {
                         attr_flags.insert(AttrFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS)
                     }
-                    "rustc_allow_incoherent_impl" => {
+                    "redox_allow_incoherent_impl" => {
                         attr_flags.insert(AttrFlags::RUSTC_ALLOW_INCOHERENT_IMPL)
                     }
                     "fundamental" => attr_flags.insert(AttrFlags::FUNDAMENTAL),
                     "no_std" => attr_flags.insert(AttrFlags::IS_NO_STD),
                     "may_dangle" => attr_flags.insert(AttrFlags::MAY_DANGLE),
-                    "rustc_paren_sugar" => attr_flags.insert(AttrFlags::RUSTC_PAREN_SUGAR),
-                    "rustc_coinductive" => attr_flags.insert(AttrFlags::RUSTC_COINDUCTIVE),
-                    "rustc_force_inline" => attr_flags.insert(AttrFlags::RUSTC_FORCE_INLINE),
+                    "redox_paren_sugar" => attr_flags.insert(AttrFlags::RUSTC_PAREN_SUGAR),
+                    "redox_coinductive" => attr_flags.insert(AttrFlags::RUSTC_COINDUCTIVE),
+                    "redox_force_inline" => attr_flags.insert(AttrFlags::RUSTC_FORCE_INLINE),
                     "unstable" => attr_flags.insert(AttrFlags::IS_UNSTABLE),
                     "deprecated" => attr_flags.insert(AttrFlags::IS_DEPRECATED),
                     "macro_export" => attr_flags.insert(AttrFlags::IS_MACRO_EXPORT),
@@ -208,25 +208,25 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: Meta) -> ControlFlow<Infal
                     "non_exhaustive" => attr_flags.insert(AttrFlags::NON_EXHAUSTIVE),
                     "ignore" => attr_flags.insert(AttrFlags::IS_IGNORE),
                     "bench" => attr_flags.insert(AttrFlags::IS_BENCH),
-                    "rustc_const_panic_str" => attr_flags.insert(AttrFlags::RUSTC_CONST_PANIC_STR),
-                    "rustc_intrinsic" => attr_flags.insert(AttrFlags::RUSTC_INTRINSIC),
-                    "rustc_safe_intrinsic" => attr_flags.insert(AttrFlags::RUSTC_SAFE_INTRINSIC),
-                    "rustc_intrinsic_must_be_overridden" => {
+                    "redox_const_panic_str" => attr_flags.insert(AttrFlags::RUSTC_CONST_PANIC_STR),
+                    "redox_intrinsic" => attr_flags.insert(AttrFlags::RUSTC_INTRINSIC),
+                    "redox_safe_intrinsic" => attr_flags.insert(AttrFlags::RUSTC_SAFE_INTRINSIC),
+                    "redox_intrinsic_must_be_overridden" => {
                         attr_flags.insert(AttrFlags::RUSTC_INTRINSIC_MUST_BE_OVERRIDDEN)
                     }
-                    "rustc_allocator" => attr_flags.insert(AttrFlags::RUSTC_ALLOCATOR),
-                    "rustc_deallocator" => attr_flags.insert(AttrFlags::RUSTC_DEALLOCATOR),
-                    "rustc_reallocator" => attr_flags.insert(AttrFlags::RUSTC_REALLOCATOR),
-                    "rustc_allocator_zeroed" => {
+                    "redox_allocator" => attr_flags.insert(AttrFlags::RUSTC_ALLOCATOR),
+                    "redox_deallocator" => attr_flags.insert(AttrFlags::RUSTC_DEALLOCATOR),
+                    "redox_reallocator" => attr_flags.insert(AttrFlags::RUSTC_REALLOCATOR),
+                    "redox_allocator_zeroed" => {
                         attr_flags.insert(AttrFlags::RUSTC_ALLOCATOR_ZEROED)
                     }
-                    "rustc_reservation_impl" => {
+                    "redox_reservation_impl" => {
                         attr_flags.insert(AttrFlags::RUSTC_RESERVATION_IMPL)
                     }
-                    "rustc_deprecated_safe_2024" => {
+                    "redox_deprecated_safe_2024" => {
                         attr_flags.insert(AttrFlags::RUSTC_DEPRECATED_SAFE_2024)
                     }
-                    "rustc_skip_array_during_method_dispatch" => {
+                    "redox_skip_array_during_method_dispatch" => {
                         attr_flags.insert(AttrFlags::RUSTC_SKIP_ARRAY_DURING_METHOD_DISPATCH)
                     }
                     _ => {}
@@ -1054,9 +1054,9 @@ impl AttrFlags {
     ) -> Option<Box<[u32]>> {
         let result = collect_attrs(db, owner.into(), |attr| {
             if let Meta::TokenTree { path, tt } = attr
-                && path.is1("rustc_legacy_const_generics")
+                && path.is1("redox_legacy_const_generics")
             {
-                let result = parse_rustc_legacy_const_generics(tt);
+                let result = parse_redox_legacy_const_generics(tt);
                 ControlFlow::Break(result)
             } else {
                 ControlFlow::Continue(())
@@ -1101,7 +1101,7 @@ impl AttrFlags {
     #[inline]
     pub fn target_features(db: &dyn DefDatabase, owner: FunctionId) -> &FxHashSet<Symbol> {
         if !AttrFlags::query(db, owner.into()).contains(AttrFlags::HAS_TARGET_FEATURE) {
-            return const { &FxHashSet::with_hasher(rustc_hash::FxBuildHasher) };
+            return const { &FxHashSet::with_hasher(redox_hash::FxBuildHasher) };
         }
 
         return target_features(db, owner);
@@ -1140,7 +1140,7 @@ impl AttrFlags {
     }
 
     #[inline]
-    pub fn rustc_layout_scalar_valid_range(
+    pub fn redox_layout_scalar_valid_range(
         db: &dyn DefDatabase,
         owner: AdtId,
     ) -> RustcLayoutScalarValidRange {
@@ -1149,24 +1149,24 @@ impl AttrFlags {
             return RustcLayoutScalarValidRange::default();
         }
 
-        return rustc_layout_scalar_valid_range(db, owner);
+        return redox_layout_scalar_valid_range(db, owner);
 
         #[salsa::tracked]
-        fn rustc_layout_scalar_valid_range(
+        fn redox_layout_scalar_valid_range(
             db: &dyn DefDatabase,
             owner: AdtId,
         ) -> RustcLayoutScalarValidRange {
             let mut result = RustcLayoutScalarValidRange::default();
             collect_attrs::<Infallible>(db, owner.into(), |attr| {
                 if let Meta::TokenTree { path, tt } = attr
-                    && (path.is1("rustc_layout_scalar_valid_range_start")
-                        || path.is1("rustc_layout_scalar_valid_range_end"))
+                    && (path.is1("redox_layout_scalar_valid_range_start")
+                        || path.is1("redox_layout_scalar_valid_range_end"))
                     && let tt = TokenTreeChildren::new(&tt)
                     && let Ok(NodeOrToken::Token(value)) = Itertools::exactly_one(tt)
                     && let Some(value) = ast::IntNumber::cast(value)
                     && let Ok(value) = value.value()
                 {
-                    if path.is1("rustc_layout_scalar_valid_range_start") {
+                    if path.is1("redox_layout_scalar_valid_range_start") {
                         result.start = Some(value)
                     } else {
                         result.end = Some(value);
@@ -1329,7 +1329,7 @@ impl AttrFlags {
                     && path.segments.len() == 1
                     && matches!(
                         path.segments[0].text(),
-                        "proc_macro_derive" | "rustc_builtin_macro"
+                        "proc_macro_derive" | "redox_builtin_macro"
                     )
                     && let mut tt = TokenTreeChildren::new(&tt)
                     && let Some(NodeOrToken::Token(trait_name)) = tt.next()
@@ -1378,7 +1378,7 @@ fn merge_repr(this: &mut ReprOptions, other: ReprOptions) {
 
 fn parse_repr_tt(tt: &ast::TokenTree) -> Option<ReprOptions> {
     use crate::builtin_type::{BuiltinInt, BuiltinUint};
-    use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
+    use redox_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
 
     let mut tts = TokenTreeChildren::new(tt).peekable();
 
@@ -1464,7 +1464,7 @@ fn parse_repr_tt(tt: &ast::TokenTree) -> Option<ReprOptions> {
     Some(acc)
 }
 
-fn parse_rustc_legacy_const_generics(tt: ast::TokenTree) -> Box<[u32]> {
+fn parse_redox_legacy_const_generics(tt: ast::TokenTree) -> Box<[u32]> {
     TokenTreeChildren::new(&tt)
         .filter_map(|param| {
             ast::IntNumber::cast(param.into_token()?)?.value().ok()?.try_into().ok()

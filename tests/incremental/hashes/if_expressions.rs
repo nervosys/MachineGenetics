@@ -14,7 +14,7 @@
 //@ ignore-backends: gcc
 
 #![allow(warnings)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![crate_type="rlib"]
 
 // Change condition (if)
@@ -28,10 +28,10 @@ pub fn change_condition(x: bool) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail6")]
 pub fn change_condition(x: bool) -> u32 {
     if !x {
         return 1
@@ -51,10 +51,10 @@ pub fn change_then_branch(x: bool) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail6")]
 pub fn change_then_branch(x: bool) -> u32 {
     if x {
         return 2
@@ -76,10 +76,10 @@ pub fn change_else_branch(x: bool) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail6")]
 pub fn change_else_branch(x: bool) -> u32 {
     if x {
         1
@@ -104,10 +104,10 @@ pub fn add_else_branch(x: bool) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck")]
+#[redox_clean(cfg="cfail6")]
 pub fn add_else_branch(x: bool) -> u32 {
     let mut ret = 1;
 
@@ -132,10 +132,10 @@ pub fn change_condition_if_let(x: Option<u32>) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail6")]
 pub fn change_condition_if_let(x: Option<u32>) -> u32 {
     if let Some(_ ) = x {
         return 1
@@ -157,10 +157,10 @@ pub fn change_then_branch_if_let(x: Option<u32>) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+#[redox_clean(cfg="cfail6")]
 pub fn change_then_branch_if_let(x: Option<u32>) -> u32 {
     if let Some(x) = x {
         return x + 1
@@ -182,10 +182,10 @@ pub fn change_else_branch_if_let(x: Option<u32>) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
+#[redox_clean(cfg="cfail6")]
 pub fn change_else_branch_if_let(x: Option<u32>) -> u32 {
     if let Some(x) = x {
         x
@@ -210,10 +210,10 @@ pub fn add_else_branch_if_let(x: Option<u32>) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck,optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck,optimized_mir")]
+#[redox_clean(cfg="cfail6")]
 pub fn add_else_branch_if_let(x: Option<u32>) -> u32 {
     let mut ret = 1;
 

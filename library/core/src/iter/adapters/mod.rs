@@ -101,7 +101,7 @@ pub use self::{
 /// [`as_inner`]: SourceIter::as_inner
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 pub unsafe trait SourceIter {
     /// A source stage in an iterator pipeline.
     type Source;

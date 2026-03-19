@@ -1,8 +1,8 @@
 use clippy_utils::{get_builtin_attr, sym};
 use hir::TraitItem;
-use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::declare_lint_pass;
+use redox_hir as hir;
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::declare_lint_pass;
 
 declare_lint_pass!(
     /// ### What it does

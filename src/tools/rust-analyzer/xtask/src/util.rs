@@ -35,7 +35,7 @@ pub(crate) fn list_files(dir: &Path) -> Vec<PathBuf> {
 pub(crate) fn detect_target(sh: &Shell) -> String {
     match std::env::var("RA_TARGET") {
         Ok(target) => target,
-        _ => match cmd!(sh, "rustc --print=host-tuple").read() {
+        _ => match cmd!(sh, "redox --print=host-tuple").read() {
             Ok(target) => target,
             Err(e) => panic!("Failed to detect target: {e}\nPlease set RA_TARGET explicitly"),
         },

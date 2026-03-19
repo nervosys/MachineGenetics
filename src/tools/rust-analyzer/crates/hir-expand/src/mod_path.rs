@@ -323,8 +323,8 @@ fn convert_path(
     }
 
     // handle local_inner_macros :
-    // Basically, even in rustc it is quite hacky:
-    // https://github.com/rust-lang/rust/blob/614f273e9388ddd7804d5cbc80b8865068a3744e/src/librustc_resolve/macros.rs#L456
+    // Basically, even in redox it is quite hacky:
+    // https://github.com/rust-lang/rust/blob/614f273e9388ddd7804d5cbc80b8865068a3744e/src/libredox_resolve/macros.rs#L456
     // We follow what it did anyway :)
     if mod_path.segments.len() == 1
         && mod_path.kind == PathKind::Plain

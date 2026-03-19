@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 extern crate issue_76736_1;
 

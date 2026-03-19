@@ -16,7 +16,7 @@ of such structures include but are not limited to
     * Converted to a virtual `existential type` declaration
 
 Lowering needs to uphold several invariants in order to not trigger the
-sanity checks in `compiler/rustc_passes/src/hir_id_validator.rs`:
+sanity checks in `compiler/redox_passes/src/hir_id_validator.rs`:
 
 1. A `HirId` must be used if created. So if you use the `lower_node_id`,
   you *must* use the resulting `NodeId` or `HirId` (either is fine, since

@@ -18,7 +18,7 @@ Motor OS uses the ELF file format.
 ## Building the target toolchain
 
 Motor OS target toolchain can be
-[built using `x.py`](https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html):
+[built using `x.py`](https://redox-dev-guide.rust-lang.org/building/how-to-build-and-run.html):
 
 The bootstrap file:
 

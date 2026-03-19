@@ -4,12 +4,12 @@
 // _really_ test that we re-compile if the environment variable changes.
 
 //@ revisions: cfail1 rpass2 rpass3 cfail4
-//@ [cfail1]unset-rustc-env:EXAMPLE_ENV
-//@ [rpass2]rustc-env:EXAMPLE_ENV=one
+//@ [cfail1]unset-redox-env:EXAMPLE_ENV
+//@ [rpass2]redox-env:EXAMPLE_ENV=one
 //@ [rpass2]exec-env:EXAMPLE_ENV=one
-//@ [rpass3]rustc-env:EXAMPLE_ENV=two
+//@ [rpass3]redox-env:EXAMPLE_ENV=two
 //@ [rpass3]exec-env:EXAMPLE_ENV=two
-//@ [cfail4]unset-rustc-env:EXAMPLE_ENV
+//@ [cfail4]unset-redox-env:EXAMPLE_ENV
 //@ ignore-backends: gcc
 
 fn main() {

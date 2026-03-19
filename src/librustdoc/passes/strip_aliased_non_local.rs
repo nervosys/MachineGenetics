@@ -1,4 +1,4 @@
-use rustc_middle::ty::{TyCtxt, Visibility};
+use redox_middle::ty::{TyCtxt, Visibility};
 
 use crate::clean;
 use crate::clean::Item;

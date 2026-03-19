@@ -2,9 +2,9 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{method_chain_args, sym};
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_lint::LateContext;
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_lint::LateContext;
 
 use super::STRING_EXTEND_CHARS;
 

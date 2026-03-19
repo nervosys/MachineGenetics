@@ -1,0 +1,16 @@
+[package]
+name = "redox_public_bridge"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+redox_abi = { path = "../redox_abi" }
+redox_data_structures = { path = "../redox_data_structures" }
+redox_hir = { path = "../redox_hir" }
+redox_hir_pretty = { path = "../redox_hir_pretty" }
+redox_middle = { path = "../redox_middle" }
+redox_session = { path = "../redox_session" }
+redox_span = { path = "../redox_span" }
+redox_target = { path = "../redox_target" }
+# tidy-alphabetical-end

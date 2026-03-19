@@ -1,16 +1,16 @@
 use crate::internal_paths;
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_ast::LitKind;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Expr, ExprKind, Lit, Node, Pat, PatExprKind, PatKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::mir::ConstValue;
-use rustc_middle::ty;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::symbol::Symbol;
-use rustc_span::{Span, sym};
+use redox_ast::LitKind;
+use redox_data_structures::fx::FxHashMap;
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::{Expr, ExprKind, Lit, Node, Pat, PatExprKind, PatKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::mir::ConstValue;
+use redox_middle::ty;
+use redox_session::{declare_tool_lint, impl_lint_pass};
+use redox_span::symbol::Symbol;
+use redox_span::{Span, sym};
 
 declare_tool_lint! {
     /// ### What it does

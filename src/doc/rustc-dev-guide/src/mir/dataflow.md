@@ -1,7 +1,7 @@
 # Dataflow Analysis
 
 If you work on the MIR, you will frequently come across various flavors of
-[dataflow analysis][wiki]. `rustc` uses dataflow to find uninitialized
+[dataflow analysis][wiki]. `redox` uses dataflow to find uninitialized
 variables, determine what variables are live across a generator `yield`
 statement, and compute which `Place`s are borrowed at a given point in the
 control-flow graph. Dataflow analysis is a fundamental concept in modern
@@ -10,7 +10,7 @@ contributors.
 
 However, this documentation is not a general introduction to dataflow analysis.
 It is merely a description of the framework used to define these analyses in
-`rustc`. It assumes that the reader is familiar with the core ideas as well as
+`redox`. It assumes that the reader is familiar with the core ideas as well as
 some basic terminology, such as "transfer function", "fixpoint" and "lattice".
 If you're unfamiliar with these terms, or if you want a quick refresher,
 [*Static Program Analysis*] by Anders Møller and Michael I. Schwartzbach is an
@@ -32,7 +32,7 @@ trait, for more information.
 
 ### Transfer Functions and Effects
 
-The dataflow framework in `rustc` allows each statement (and terminator) inside
+The dataflow framework in `redox` allows each statement (and terminator) inside
 a basic block to define its own transfer function. For brevity, these
 individual transfer functions are known as "effects". Each effect is applied
 successively in dataflow order, and together they define the transfer function
@@ -177,16 +177,16 @@ the example below:
 ["gen-kill" problems]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
 [*Static Program Analysis*]: https://cs.au.dk/~amoeller/spa/
 [Debugging MIR]: ./debugging.md
-[`Analysis`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.Analysis.html
-[`GenKillAnalysis`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.GenKillAnalysis.html
-[`JoinSemiLattice`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/lattice/trait.JoinSemiLattice.html
-[`NAME`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.Analysis.html#associatedconstant.NAME
-[`ResultsCursor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/struct.ResultsCursor.html
-[`ResultsVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.ResultsVisitor.html
-[`apply_call_return_effect`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.Analysis.html#tymethod.apply_call_return_effect
-[`into_engine`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.Analysis.html#method.into_engine
-[`lattice`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/lattice/index.html
-[pr-1295]: https://github.com/rust-lang/rustc-dev-guide/pull/1295
-[pr-1295-comment]: https://github.com/rust-lang/rustc-dev-guide/pull/1295#issuecomment-1118131294
+[`Analysis`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_dataflow/trait.Analysis.html
+[`GenKillAnalysis`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_dataflow/trait.GenKillAnalysis.html
+[`JoinSemiLattice`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_dataflow/lattice/trait.JoinSemiLattice.html
+[`NAME`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_dataflow/trait.Analysis.html#associatedconstant.NAME
+[`ResultsCursor`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_dataflow/struct.ResultsCursor.html
+[`ResultsVisitor`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_dataflow/trait.ResultsVisitor.html
+[`apply_call_return_effect`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_dataflow/trait.Analysis.html#tymethod.apply_call_return_effect
+[`into_engine`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_dataflow/trait.Analysis.html#method.into_engine
+[`lattice`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_dataflow/lattice/index.html
+[pr-1295]: https://github.com/rust-lang/redox-dev-guide/pull/1295
+[pr-1295-comment]: https://github.com/rust-lang/redox-dev-guide/pull/1295#issuecomment-1118131294
 [lattice]: https://en.wikipedia.org/wiki/Lattice_(order)
 [wiki]: https://en.wikipedia.org/wiki/Data-flow_analysis#Basic_principles

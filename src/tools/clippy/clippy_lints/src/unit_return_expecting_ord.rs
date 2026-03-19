@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{Closure, Expr, ExprKind, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
-use rustc_middle::ty::{ClauseKind, GenericPredicates, ProjectionPredicate, TraitPredicate};
-use rustc_session::declare_lint_pass;
-use rustc_span::{BytePos, Span, Symbol, sym};
+use redox_hir::def_id::DefId;
+use redox_hir::{Closure, Expr, ExprKind, StmtKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty;
+use redox_middle::ty::{ClauseKind, GenericPredicates, ProjectionPredicate, TraitPredicate};
+use redox_session::declare_lint_pass;
+use redox_span::{BytePos, Span, Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -98,8 +98,8 @@ fn get_args_to_check<'tcx>(
         }
 
         // Trying to call instantiate_bound_regions_with_erased on fn_sig.inputs() gives the following error
-        // The trait `rustc::ty::TypeFoldable<'_>` is not implemented for
-        // `&[rustc_middle::ty::Ty<'_>]`
+        // The trait `redox::ty::TypeFoldable<'_>` is not implemented for
+        // `&[redox_middle::ty::Ty<'_>]`
         let inputs_output = cx.tcx.instantiate_bound_regions_with_erased(fn_sig.inputs_and_output());
         inputs_output
             .iter()

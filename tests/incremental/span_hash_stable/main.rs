@@ -7,7 +7,7 @@
 //@ compile-flags: -g -Z query-dep-graph
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 mod auxiliary;
 

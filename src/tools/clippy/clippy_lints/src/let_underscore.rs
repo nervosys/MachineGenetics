@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::{implements_trait, is_must_use_ty};
 use clippy_utils::{is_from_proc_macro, is_must_use_func_call, paths};
-use rustc_hir::{LetStmt, LocalSource, PatKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{GenericArgKind, IsSuggestable};
-use rustc_session::declare_lint_pass;
-use rustc_span::{BytePos, Span};
+use redox_hir::{LetStmt, LocalSource, PatKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::{GenericArgKind, IsSuggestable};
+use redox_session::declare_lint_pass;
+use redox_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -41,8 +41,8 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for `let _ = sync_lock`. This supports `mutex` and `rwlock` in
-    /// `parking_lot`. For `std` locks see the `rustc` lint
-    /// [`let_underscore_lock`](https://doc.rust-lang.org/nightly/rustc/lints/listing/deny-by-default.html#let-underscore-lock)
+    /// `parking_lot`. For `std` locks see the `redox` lint
+    /// [`let_underscore_lock`](https://doc.rust-lang.org/nightly/redox/lints/listing/deny-by-default.html#let-underscore-lock)
     ///
     /// ### Why is this bad?
     /// This statement immediately drops the lock instead of

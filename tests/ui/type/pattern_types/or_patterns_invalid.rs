@@ -3,7 +3,7 @@
 #![feature(
     pattern_type_macro,
     pattern_types,
-    rustc_attrs,
+    redox_attrs,
     const_trait_impl,
     pattern_type_range_trait
 )]

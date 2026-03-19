@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_ast::ast::{Crate, Inline, Item, ItemKind, ModKind};
-use rustc_errors::MultiSpan;
-use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
-use rustc_middle::lint::LevelAndSource;
-use rustc_session::impl_lint_pass;
-use rustc_span::{FileName, Span};
+use redox_ast::ast::{Crate, Inline, Item, ItemKind, ModKind};
+use redox_errors::MultiSpan;
+use redox_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
+use redox_middle::lint::LevelAndSource;
+use redox_session::impl_lint_pass;
+use redox_span::{FileName, Span};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 

@@ -3,11 +3,11 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{SpanlessEq, is_in_const_context, is_integer_literal, sym};
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, TyKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::Symbol;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind, QPath, TyKind};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does

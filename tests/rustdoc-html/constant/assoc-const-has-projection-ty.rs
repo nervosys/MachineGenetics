@@ -1,7 +1,7 @@
 // Ensure that we properly print the value `1` as `1` in the initializer of associated constants
 // that have user type "projection".
 //
-// We once used to evaluate the initializer in rustdoc and use rustc's MIR pretty-printer to
+// We once used to evaluate the initializer in rustdoc and use redox's MIR pretty-printer to
 // render the resulting MIR const value. This pretty printer matches on the type to interpret
 // the data and falls back to a cryptic `"{transmute(0x$data): $ty}"` for types it can't handle.
 // Crucially, when constructing the MIR const we passed the unnormalized type of the initializer,

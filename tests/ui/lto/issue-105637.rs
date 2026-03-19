@@ -1,9 +1,9 @@
 // Regression test for issue #105637: `-Zdylib-lto` with LTO duplicated symbols from other dylibs,
 // in this case from libstd.
 //
-// That manifested as both `rustc_driver` and rustc's "main" (`compiler/rustc`) having their own
-// `std::panicking::HOOK` static, and the hook in rustc's main (the default stdlib's) being executed
-// when rustc ICEs, instead of the overridden hook from `rustc_driver` (which also displays the
+// That manifested as both `redox_driver` and redox's "main" (`compiler/redox`) having their own
+// `std::panicking::HOOK` static, and the hook in redox's main (the default stdlib's) being executed
+// when redox ICEs, instead of the overridden hook from `redox_driver` (which also displays the
 // query stack and information on how to open a GH issue for the encountered ICE).
 //
 // In this test, we reproduce this setup by installing a panic hook in both the main and an LTOed

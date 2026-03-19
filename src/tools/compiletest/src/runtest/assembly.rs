@@ -34,7 +34,7 @@ impl TestCx<'_> {
             None => self.fatal("missing 'assembly-output' directive"),
         };
 
-        let rustc = self.make_compile_args(
+        let redox = self.make_compile_args(
             CompilerKind::Rustc,
             input_file,
             TargetLocation::ThisFile(output_path.clone()),
@@ -44,7 +44,7 @@ impl TestCx<'_> {
             Vec::new(),
         );
 
-        let proc_res = self.compose_and_run_compiler(rustc, None);
+        let proc_res = self.compose_and_run_compiler(redox, None);
         (proc_res, output_path)
     }
 }

@@ -2,14 +2,14 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::Msrv;
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{Block, Body, HirId, Path, PathSegment, StabilityLevel, StableSince};
-use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::symbol::kw;
-use rustc_span::{Span, sym};
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::def_id::DefId;
+use redox_hir::{Block, Body, HirId, Path, PathSegment, StabilityLevel, StableSince};
+use redox_lint::{LateContext, LateLintPass, Lint, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::symbol::kw;
+use redox_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does

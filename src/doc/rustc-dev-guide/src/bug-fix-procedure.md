@@ -3,7 +3,7 @@
 This page defines the best practices procedure for making bug fixes or soundness
 corrections in the compiler that can cause existing code to stop compiling. This
 text is based on
-[RFC 1589](https://github.com/rust-lang/rfcs/blob/master/text/1589-rustc-bug-fix-procedure.md).
+[RFC 1589](https://github.com/rust-lang/rfcs/blob/master/text/1589-redox-bug-fix-procedure.md).
 
 # Motivation
 
@@ -66,7 +66,7 @@ described in more detail below):
 4. Once the change has been in the wild for at least one cycle, we can
    **stabilize the change**, converting those warnings into errors.
 
-Finally, for changes to `rustc_ast` that will affect plugins, the general policy
+Finally, for changes to `redox_ast` that will affect plugins, the general policy
 is to batch these changes. That is discussed below in more detail.
 
 ### Tracking issue
@@ -91,7 +91,7 @@ future-compatibility warnings. These are a special category of lint warning.
 Adding a new future-compatibility warning can be done as follows.
 
 ```rust
-// 1. Define the lint in `compiler/rustc_lint/src/builtin.rs` and 
+// 1. Define the lint in `compiler/redox_lint/src/builtin.rs` and 
 //    add the metadata for the future incompatibility:
 declare_lint! {
     pub YOUR_LINT_HERE,
@@ -128,7 +128,7 @@ cx.emit_span_lint(
 
 ```
 
-Finally, register the lint in `compiler/rustc_lint/src/lib.rs`. 
+Finally, register the lint in `compiler/redox_lint/src/lib.rs`. 
 There are many examples in that file that already show how to do so.
 
 #### Helpful techniques
@@ -163,7 +163,7 @@ straight to an error. In such cases, we should still make the "breaking change"
 page as before, and we should ensure that the error directs users to this page.
 In other words, everything should be the same except that users are getting an
 error, and not a warning. Moreover, we should submit PRs to the affected
-projects (ideally before the PR implementing the change lands in rustc).
+projects (ideally before the PR implementing the change lands in redox).
 
 If the impact is not believed to be negligible (e.g., more than 10 crates are
 affected), then warnings are required (unless the compiler team agrees to grant
@@ -219,9 +219,9 @@ automatically generates the lower-case string; so searching for
 #### Remove the lint.
 
 The first reference you will likely find is the lint definition [in
-`rustc_session/src/lint/builtin.rs` that resembles this][defsource]:
+`redox_session/src/lint/builtin.rs` that resembles this][defsource]:
 
-[defsource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc/lint/builtin.rs#L171-L175
+[defsource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/libredox/lint/builtin.rs#L171-L175
 
 ```rust
 declare_lint! {
@@ -238,11 +238,11 @@ This `declare_lint!` macro creates the relevant data structures. Remove it. You
 will also find that there is a mention of `OVERLAPPING_INHERENT_IMPLS` later in
 the file as [part of a `lint_array!`][lintarraysource]; remove it too.
 
-[lintarraysource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc/lint/builtin.rs#L252-L290
+[lintarraysource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/libredox/lint/builtin.rs#L252-L290
 
 #### Add the lint to the list of removed lints.
 
-In `compiler/rustc_lint/src/lib.rs` there is a list of "renamed and removed lints".
+In `compiler/redox_lint/src/lib.rs` there is a list of "renamed and removed lints".
 You can add this lint to the list:
 
 ```rust
@@ -309,8 +309,8 @@ can just be removed.
 
 Open a PR. =)
 
-[addlintsource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc_typeck/coherence/inherent.rs#L300-L303
-[futuresource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc_lint/lib.rs#L202-L205
+[addlintsource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/libredox_typeck/coherence/inherent.rs#L300-L303
+[futuresource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/libredox_lint/lib.rs#L202-L205
 
 <!-- -Links--------------------------------------------------------------------- -->
 

@@ -7,11 +7,11 @@
 // name.
 // However, this test does not run at all as its name does not contain "clang".
 
-use run_make_support::{env_var, rustc, target};
+use run_make_support::{env_var, redox, target};
 
 fn main() {
     if matches!(target().as_str(), "wasm32-unknown-unknown" | "wasm64-unknown-unknown") {
-        rustc()
+        redox()
             .input("foo.rs")
             .crate_type("cdylib")
             .target(&target())

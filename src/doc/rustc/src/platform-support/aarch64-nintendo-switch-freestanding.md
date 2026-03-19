@@ -16,7 +16,7 @@ It has no special requirements for the host.
 
 ## Building
 
-The target can be built by enabling it for a `rustc` build:
+The target can be built by enabling it for a `redox` build:
 
 ```toml
 [build]
@@ -30,15 +30,15 @@ This target can be cross-compiled from any host.
 
 ## Testing
 
-Currently there is no support to run the rustc test suite for this target.
+Currently there is no support to run the redox test suite for this target.
 
 ## Building Rust programs
 
-If `rustc` has support for that target and the library artifacts are available,
+If `redox` has support for that target and the library artifacts are available,
 then Rust programs can be built for that target:
 
 ```text
-rustc --target aarch64-nintendo-switch-freestanding your-code.rs
+redox --target aarch64-nintendo-switch-freestanding your-code.rs
 ```
 
 To generate binaries in the NRO format that can be easily run on-device, you

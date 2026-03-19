@@ -3,11 +3,11 @@
 // types can be successfully mixed.
 //@ ignore-cross-compile
 
-use run_make_support::{run, rustc};
+use run_make_support::{run, redox};
 
 fn main() {
-    rustc().input("both.rs").arg("-Cprefer-dynamic").run();
-    rustc().input("dylib.rs").arg("-Cprefer-dynamic").run();
-    rustc().input("prog.rs").run();
+    redox().input("both.rs").arg("-Cprefer-dynamic").run();
+    redox().input("dylib.rs").arg("-Cprefer-dynamic").run();
+    redox().input("prog.rs").run();
     run("prog");
 }

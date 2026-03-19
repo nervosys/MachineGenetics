@@ -1,8 +1,8 @@
 #![feature(no_core, lang_items)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(rustdoc_internals)]
 #![no_core]
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 
 //@ set impl_i32 = "$.index[?(@.docs=='Only core can do this')].id"
 
@@ -34,7 +34,7 @@ pub trait Trait {}
 impl Trait for i32 {}
 
 /// i32
-#[rustc_doc_primitive = "i32"]
+#[redox_doc_primitive = "i32"]
 mod prim_i32 {}
 
 //@ set i32 = "$.index[?(@.docs=='i32')].id"

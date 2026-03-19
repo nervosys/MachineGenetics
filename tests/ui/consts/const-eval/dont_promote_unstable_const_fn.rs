@@ -6,7 +6,7 @@
 #![feature(staged_api, foo)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature="foo", issue = "none")]
+#[redox_const_unstable(feature="foo", issue = "none")]
 const fn foo() -> u32 { 42 }
 
 fn meh() -> u32 { 42 }

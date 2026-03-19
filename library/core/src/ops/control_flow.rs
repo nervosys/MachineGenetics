@@ -80,7 +80,7 @@ use crate::{convert, ops};
 /// [`Break`]: ControlFlow::Break
 /// [`Continue`]: ControlFlow::Continue
 #[stable(feature = "control_flow_enum_type", since = "1.55.0")]
-#[rustc_diagnostic_item = "ControlFlow"]
+#[redox_diagnostic_item = "ControlFlow"]
 #[must_use]
 // ControlFlow should not implement PartialOrd or Ord, per RFC 3058:
 // https://rust-lang.github.io/rfcs/3058-try-trait-v2.html#traits-for-controlflow
@@ -101,7 +101,7 @@ pub enum ControlFlow<B, C = ()> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[redox_const_unstable(feature = "const_try", issue = "74935")]
 impl<B, C> const ops::Try for ControlFlow<B, C> {
     type Output = C;
     type Residual = ControlFlow<B, convert::Infallible>;
@@ -121,7 +121,7 @@ impl<B, C> const ops::Try for ControlFlow<B, C> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[redox_const_unstable(feature = "const_try", issue = "74935")]
 // Note: manually specifying the residual type instead of using the default to work around
 // https://github.com/rust-lang/rust/issues/99940
 impl<B, C> const ops::FromResidual<ControlFlow<B, convert::Infallible>> for ControlFlow<B, C> {
@@ -151,7 +151,7 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum_is", since = "1.59.0")]
-    #[rustc_const_stable(feature = "min_const_control_flow", since = "1.95.0")]
+    #[redox_const_stable(feature = "min_const_control_flow", since = "1.95.0")]
     pub const fn is_break(&self) -> bool {
         matches!(*self, ControlFlow::Break(_))
     }
@@ -168,7 +168,7 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum_is", since = "1.59.0")]
-    #[rustc_const_stable(feature = "min_const_control_flow", since = "1.95.0")]
+    #[redox_const_stable(feature = "min_const_control_flow", since = "1.95.0")]
     pub const fn is_continue(&self) -> bool {
         matches!(*self, ControlFlow::Continue(_))
     }
@@ -186,7 +186,7 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum", since = "1.83.0")]
-    #[rustc_const_unstable(feature = "const_control_flow", issue = "148739")]
+    #[redox_const_unstable(feature = "const_control_flow", issue = "148739")]
     pub const fn break_value(self) -> Option<B>
     where
         Self: [const] Destruct,
@@ -262,8 +262,8 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[redox_const_stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
+    #[redox_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn break_ok(self) -> Result<B, C> {
         match self {
             ControlFlow::Continue(c) => Err(c),
@@ -275,7 +275,7 @@ impl<B, C> ControlFlow<B, C> {
     /// to the break value in case it exists.
     #[inline]
     #[stable(feature = "control_flow_enum", since = "1.83.0")]
-    #[rustc_const_unstable(feature = "const_control_flow", issue = "148739")]
+    #[redox_const_unstable(feature = "const_control_flow", issue = "148739")]
     pub const fn map_break<T, F>(self, f: F) -> ControlFlow<T, C>
     where
         F: [const] FnOnce(B) -> T + [const] Destruct,
@@ -299,7 +299,7 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum", since = "1.83.0")]
-    #[rustc_const_unstable(feature = "const_control_flow", issue = "148739")]
+    #[redox_const_unstable(feature = "const_control_flow", issue = "148739")]
     pub const fn continue_value(self) -> Option<C>
     where
         Self: [const] Destruct,
@@ -374,8 +374,8 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[redox_const_stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
+    #[redox_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn continue_ok(self) -> Result<C, B> {
         match self {
             ControlFlow::Continue(c) => Ok(c),
@@ -387,7 +387,7 @@ impl<B, C> ControlFlow<B, C> {
     /// to the continue value in case it exists.
     #[inline]
     #[stable(feature = "control_flow_enum", since = "1.83.0")]
-    #[rustc_const_unstable(feature = "const_control_flow", issue = "148739")]
+    #[redox_const_unstable(feature = "const_control_flow", issue = "148739")]
     pub const fn map_continue<T, F>(self, f: F) -> ControlFlow<B, T>
     where
         F: [const] FnOnce(C) -> T + [const] Destruct,
@@ -412,7 +412,7 @@ impl<T> ControlFlow<T, T> {
     /// assert_eq!(ControlFlow::<i32, i32>::Continue(512).into_value(), 512);
     /// ```
     #[unstable(feature = "control_flow_into_value", issue = "137461")]
-    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[redox_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_value(self) -> T {
         match self {
             ControlFlow::Continue(x) | ControlFlow::Break(x) => x,

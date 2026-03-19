@@ -58,7 +58,7 @@ target = ["x86_64-fortanix-unknown-sgx"]
 
 ## Building Rust programs
 
-Standard build flows using `cargo` or `rustc` should work.
+Standard build flows using `cargo` or `redox` should work.
 
 ## Testing
 

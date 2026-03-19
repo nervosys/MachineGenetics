@@ -199,19 +199,19 @@ produces output that contains the lint message we designed.
 The next step is to implement the logic properly, which is a detail that we will
 cover in the next chapters.
 
-[diagnostics]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/diagnostics/index.html
-[late_check_expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html#method.check_expr
-[late_check_fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html#method.check_fn
-[late_check_item]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html#method.check_item
-[late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html
+[diagnostics]: https://doc.rust-lang.org/nightly/nightly-redox/clippy_utils/diagnostics/index.html
+[late_check_expr]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/trait.LateLintPass.html#method.check_expr
+[late_check_fn]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/trait.LateLintPass.html#method.check_fn
+[late_check_item]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/trait.LateLintPass.html#method.check_item
+[late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/trait.LateLintPass.html
 [rust_expressions]: https://doc.rust-lang.org/reference/expressions.html
-[`span_lint`]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/diagnostics/fn.span_lint.html
-[`span_lint_and_note`]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_note.html
-[`span_lint_and_help`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_help.html
-[`span_lint_and_sugg`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_sugg.html
-[`span_lint_and_then`]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_then.html
+[`span_lint`]: https://doc.rust-lang.org/beta/nightly-redox/clippy_utils/diagnostics/fn.span_lint.html
+[`span_lint_and_note`]: https://doc.rust-lang.org/beta/nightly-redox/clippy_utils/diagnostics/fn.span_lint_and_note.html
+[`span_lint_and_help`]: https://doc.rust-lang.org/nightly/nightly-redox/clippy_utils/diagnostics/fn.span_lint_and_help.html
+[`span_lint_and_sugg`]: https://doc.rust-lang.org/nightly/nightly-redox/clippy_utils/diagnostics/fn.span_lint_and_sugg.html
+[`span_lint_and_then`]: https://doc.rust-lang.org/beta/nightly-redox/clippy_utils/diagnostics/fn.span_lint_and_then.html
 [range_plus_one]: https://rust-lang.github.io/rust-clippy/master/index.html#range_plus_one
 [inclusive_range]: https://doc.rust-lang.org/std/ops/struct.RangeInclusive.html
-[applicability]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_errors/enum.Applicability.html
-[snippet_fn]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/source/fn.snippet.html
+[applicability]: https://doc.rust-lang.org/beta/nightly-redox/redox_errors/enum.Applicability.html
+[snippet_fn]: https://doc.rust-lang.org/beta/nightly-redox/clippy_utils/source/fn.snippet.html
 [format_macro]: https://doc.rust-lang.org/std/macro.format.html

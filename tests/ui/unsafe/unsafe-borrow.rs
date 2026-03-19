@@ -1,8 +1,8 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(unused,dead_code)]
 
 fn tuple_struct() {
-    #[rustc_layout_scalar_valid_range_start(1)]
+    #[redox_layout_scalar_valid_range_start(1)]
     struct NonZero<T>(T);
 
     let mut foo = unsafe { NonZero((1,)) };
@@ -11,7 +11,7 @@ fn tuple_struct() {
 }
 
 fn slice() {
-    #[rustc_layout_scalar_valid_range_start(1)]
+    #[redox_layout_scalar_valid_range_start(1)]
     struct NonZero<'a, T>(&'a mut [T]);
 
     let mut nums = [1, 2, 3, 4];
@@ -21,7 +21,7 @@ fn slice() {
 }
 
 fn array() {
-    #[rustc_layout_scalar_valid_range_start(1)]
+    #[redox_layout_scalar_valid_range_start(1)]
     struct NonZero<T>([T; 4]);
 
     let nums = [1, 2, 3, 4];
@@ -31,7 +31,7 @@ fn array() {
 }
 
 fn block() {
-    #[rustc_layout_scalar_valid_range_start(1)]
+    #[redox_layout_scalar_valid_range_start(1)]
     struct NonZero<T>(T);
 
     let foo = unsafe { NonZero((1,)) };
@@ -40,7 +40,7 @@ fn block() {
 }
 
 fn mtch() {
-    #[rustc_layout_scalar_valid_range_start(1)]
+    #[redox_layout_scalar_valid_range_start(1)]
     struct NonZero<T>(T);
 
     let mut foo = unsafe { NonZero((1,)) };

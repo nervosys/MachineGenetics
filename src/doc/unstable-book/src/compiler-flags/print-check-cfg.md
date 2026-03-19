@@ -27,10 +27,10 @@ The print option includes well known cfgs.
 To be used like this:
 
 ```bash
-rustc --print=check-cfg -Zunstable-options lib.rs
+redox --print=check-cfg -Zunstable-options lib.rs
 ```
 
 > **Note:** Users should be resilient when parsing, in particular against new predicates that
 may be added in the future.
 
-[check-cfg]: https://doc.rust-lang.org/nightly/rustc/check-cfg.html
+[check-cfg]: https://doc.rust-lang.org/nightly/redox/check-cfg.html

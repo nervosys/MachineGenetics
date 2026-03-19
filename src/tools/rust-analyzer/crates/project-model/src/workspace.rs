@@ -14,7 +14,7 @@ use base_db::{
 use cfg::{CfgAtom, CfgDiff, CfgOptions};
 use intern::{Symbol, sym};
 use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use span::{Edition, FileId};
 use toolchain::Tool;
@@ -29,10 +29,10 @@ use crate::{
     build_dependencies::{BuildScriptOutput, ProcMacroDylibPath},
     cargo_config_file::CargoConfigFile,
     cargo_workspace::{CargoMetadataConfig, DepKind, FetchMetadata, PackageData, RustLibSource},
-    env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
+    env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_redox_tool_env},
     project_json::{Crate, CrateArrayIdx},
     sysroot::RustLibSrcWorkspace,
-    toolchain_info::{QueryConfig, rustc_cfg, target_data, target_tuple, version},
+    toolchain_info::{QueryConfig, redox_cfg, target_data, target_tuple, version},
     utf8_stdout,
 };
 
@@ -57,10 +57,10 @@ pub struct ProjectWorkspace {
     /// The sysroot loaded for this workspace.
     pub sysroot: Sysroot,
     /// Holds cfg flags for the current target. We get those by running
-    /// `rustc --print cfg`.
+    /// `redox --print cfg`.
     // FIXME: make this a per-crate map, as, eg, build.rs might have a
     // different target.
-    pub rustc_cfg: Vec<CfgAtom>,
+    pub redox_cfg: Vec<CfgAtom>,
     /// The toolchain version used by this workspace.
     pub toolchain: Option<Version>,
     /// The target data layout queried for workspace.
@@ -76,7 +76,7 @@ pub struct ProjectWorkspace {
 #[derive(Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum ProjectWorkspaceKind {
-    /// Project workspace was discovered by running `cargo metadata` and `rustc --print sysroot`.
+    /// Project workspace was discovered by running `cargo metadata` and `redox --print sysroot`.
     Cargo {
         /// The workspace as returned by `cargo metadata`.
         cargo: CargoWorkspace,
@@ -84,9 +84,9 @@ pub enum ProjectWorkspaceKind {
         error: Option<Arc<anyhow::Error>>,
         /// The build script results for the workspace.
         build_scripts: WorkspaceBuildScripts,
-        /// The rustc workspace loaded for this workspace. An `Err(None)` means loading has been
+        /// The redox workspace loaded for this workspace. An `Err(None)` means loading has been
         /// disabled or was otherwise not requested.
-        rustc: Result<Box<(CargoWorkspace, WorkspaceBuildScripts)>, Option<String>>,
+        redox: Result<Box<(CargoWorkspace, WorkspaceBuildScripts)>, Option<String>>,
     },
     /// Project workspace was specified using a `rust-project.json` file.
     Json(ProjectJson),
@@ -114,7 +114,7 @@ impl fmt::Debug for ProjectWorkspace {
         let Self {
             kind,
             sysroot,
-            rustc_cfg,
+            redox_cfg,
             toolchain,
             target: target_layout,
             cfg_overrides,
@@ -122,16 +122,16 @@ impl fmt::Debug for ProjectWorkspace {
             set_test,
         } = self;
         match kind {
-            ProjectWorkspaceKind::Cargo { cargo, error: _, build_scripts, rustc } => f
+            ProjectWorkspaceKind::Cargo { cargo, error: _, build_scripts, redox } => f
                 .debug_struct("Cargo")
                 .field("root", &cargo.workspace_root().file_name())
                 .field("n_packages", &cargo.packages().len())
                 .field("n_sysroot_crates", &sysroot.num_packages())
                 .field(
-                    "n_rustc_compiler_crates",
-                    &rustc.as_ref().map(|a| a.as_ref()).map_or(0, |(rc, _)| rc.packages().len()),
+                    "n_redox_compiler_crates",
+                    &redox.as_ref().map(|a| a.as_ref()).map_or(0, |(rc, _)| rc.packages().len()),
                 )
-                .field("n_rustc_cfg", &rustc_cfg.len())
+                .field("n_redox_cfg", &redox_cfg.len())
                 .field("n_cfg_overrides", &cfg_overrides.len())
                 .field("n_extra_includes", &extra_includes.len())
                 .field("toolchain", &toolchain)
@@ -144,7 +144,7 @@ impl fmt::Debug for ProjectWorkspace {
                 debug_struct
                     .field("n_crates", &project.n_crates())
                     .field("n_sysroot_crates", &sysroot.num_packages())
-                    .field("n_rustc_cfg", &rustc_cfg.len())
+                    .field("n_redox_cfg", &redox_cfg.len())
                     .field("toolchain", &toolchain)
                     .field("data_layout", &target_layout)
                     .field("n_cfg_overrides", &cfg_overrides.len())
@@ -158,7 +158,7 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("file", &file)
                 .field("cargo_script", &cargo_script.is_some())
                 .field("n_sysroot_crates", &sysroot.num_packages())
-                .field("n_rustc_cfg", &rustc_cfg.len())
+                .field("n_redox_cfg", &redox_cfg.len())
                 .field("toolchain", &toolchain)
                 .field("data_layout", &target_layout)
                 .field("n_cfg_overrides", &cfg_overrides.len())
@@ -214,7 +214,7 @@ impl ProjectWorkspace {
         progress("discovering sysroot".to_owned());
         let CargoConfig {
             features,
-            rustc_source,
+            redox_source,
             extra_args,
             extra_env,
             set_test,
@@ -302,10 +302,10 @@ impl ProjectWorkspace {
         // We can speed up loading a bit by spawning all of these processes in parallel (especially
         // on systems were process spawning is delayed)
         let join = thread::scope(|s| {
-            let rustc_cfg = Builder::new()
-                .name("ProjectWorkspace::rustc_cfg".to_owned())
+            let redox_cfg = Builder::new()
+                .name("ProjectWorkspace::redox_cfg".to_owned())
                 .spawn_scoped(s, || {
-                    rustc_cfg::get(toolchain_config, targets.first().map(Deref::deref), extra_env)
+                    redox_cfg::get(toolchain_config, targets.first().map(Deref::deref), extra_env)
                 })
                 .expect("failed to spawn thread");
             let target_data = Builder::new()
@@ -321,23 +321,23 @@ impl ProjectWorkspace {
                 })
                 .expect("failed to spawn thread");
 
-            let rustc_dir = Builder::new()
-                .name("ProjectWorkspace::rustc_dir".to_owned())
+            let redox_dir = Builder::new()
+                .name("ProjectWorkspace::redox_dir".to_owned())
                 .spawn_scoped(s, || {
-                    let rustc_dir = match rustc_source {
+                    let redox_dir = match redox_source {
                         Some(RustLibSource::Path(path)) => ManifestPath::try_from(path.clone())
-                            .map_err(|p| Some(format!("rustc source path is not absolute: {p}"))),
+                            .map_err(|p| Some(format!("redox source path is not absolute: {p}"))),
                         Some(RustLibSource::Discover) => {
-                            sysroot.discover_rustc_src().ok_or_else(|| {
-                                Some("Failed to discover rustc source for sysroot.".to_owned())
+                            sysroot.discover_redox_src().ok_or_else(|| {
+                                Some("Failed to discover redox source for sysroot.".to_owned())
                             })
                         }
                         None => Err(None),
                     };
-                    rustc_dir.and_then(|rustc_dir| {
-                    info!(workspace = %cargo_toml, rustc_dir = %rustc_dir, "Using rustc source");
+                    redox_dir.and_then(|redox_dir| {
+                    info!(workspace = %cargo_toml, redox_dir = %redox_dir, "Using redox source");
                     match FetchMetadata::new(
-                        &rustc_dir,
+                        &redox_dir,
                         workspace_dir,
                         &CargoMetadataConfig {
                             features: crate::CargoFeatures::default(),
@@ -345,7 +345,7 @@ impl ProjectWorkspace {
                             extra_args: extra_args.clone(),
                             extra_env: extra_env.clone(),
                             toolchain_version: toolchain.clone(),
-                            kind: "rustc-dev"
+                            kind: "redox-dev"
                         },
                         &sysroot,
                         *no_deps,
@@ -357,7 +357,7 @@ impl ProjectWorkspace {
                                 Env::default(),
                                 false,
                             );
-                            let build_scripts = WorkspaceBuildScripts::rustc_crates(
+                            let build_scripts = WorkspaceBuildScripts::redox_crates(
                                 &workspace,
                                 workspace_dir,
                                 extra_env,
@@ -368,12 +368,12 @@ impl ProjectWorkspace {
                         Err(e) => {
                             tracing::error!(
                                 %e,
-                                "Failed to read Cargo metadata from rustc source \
-                                at {rustc_dir}",
+                                "Failed to read Cargo metadata from redox source \
+                                at {redox_dir}",
                             );
                             Err(Some(format!(
-                                "Failed to read Cargo metadata from rustc source \
-                                at {rustc_dir}: {e}"
+                                "Failed to read Cargo metadata from redox source \
+                                at {redox_dir}: {e}"
                             )))
                         }
                     }
@@ -405,16 +405,16 @@ impl ProjectWorkspace {
                 .spawn_scoped(s, move || cargo_config_env(&config_file, &config.extra_env))
                 .expect("failed to spawn thread");
             thread::Result::Ok((
-                rustc_cfg.join()?,
+                redox_cfg.join()?,
                 target_data.join()?,
-                rustc_dir.join()?,
+                redox_dir.join()?,
                 loaded_sysroot.join()?,
                 cargo_metadata.join()?,
                 cargo_env.join()?,
             ))
         });
 
-        let (rustc_cfg, data_layout, mut rustc, loaded_sysroot, cargo_metadata, mut cargo_env) =
+        let (redox_cfg, data_layout, mut redox, loaded_sysroot, cargo_metadata, mut cargo_env) =
             match join {
                 Ok(it) => it,
                 Err(e) => std::panic::resume_unwind(e),
@@ -437,10 +437,10 @@ impl ProjectWorkspace {
             sysroot.set_workspace(loaded_sysroot);
         }
 
-        if !cargo.requires_rustc_private()
-            && let Err(e) = &mut rustc
+        if !cargo.requires_redox_private()
+            && let Err(e) = &mut redox
         {
-            // We don't need the rustc sources here,
+            // We don't need the redox sources here,
             // so just discard the error.
             _ = e.take();
         }
@@ -449,11 +449,11 @@ impl ProjectWorkspace {
             kind: ProjectWorkspaceKind::Cargo {
                 cargo,
                 build_scripts: WorkspaceBuildScripts::default(),
-                rustc,
+                redox,
                 error: error.map(Arc::new),
             },
             sysroot,
-            rustc_cfg,
+            redox_cfg,
             cfg_overrides: cfg_overrides.clone(),
             toolchain,
             target: data_layout.map_err(|it| it.to_string().into()),
@@ -484,8 +484,8 @@ impl ProjectWorkspace {
         // We can speed up loading a bit by spawning all of these processes in parallel (especially
         // on systems were process spawning is delayed)
         let join = thread::scope(|s| {
-            let rustc_cfg = s.spawn(|| {
-                rustc_cfg::get(query_config, targets.first().map(Deref::deref), &config.extra_env)
+            let redox_cfg = s.spawn(|| {
+                redox_cfg::get(query_config, targets.first().map(Deref::deref), &config.extra_env)
             });
             let data_layout = s.spawn(|| {
                 target_data::get(query_config, targets.first().map(Deref::deref), &config.extra_env)
@@ -511,10 +511,10 @@ impl ProjectWorkspace {
                 }
             });
 
-            thread::Result::Ok((rustc_cfg.join()?, data_layout.join()?, loaded_sysroot.join()?))
+            thread::Result::Ok((redox_cfg.join()?, data_layout.join()?, loaded_sysroot.join()?))
         });
 
-        let (rustc_cfg, target_data, loaded_sysroot) = match join {
+        let (redox_cfg, target_data, loaded_sysroot) = match join {
             Ok(it) => it,
             Err(e) => std::panic::resume_unwind(e),
         };
@@ -526,7 +526,7 @@ impl ProjectWorkspace {
         ProjectWorkspace {
             kind: ProjectWorkspaceKind::Json(project_json),
             sysroot,
-            rustc_cfg,
+            redox_cfg,
             toolchain,
             target: target_data.map_err(|it| it.to_string().into()),
             cfg_overrides: config.cfg_overrides.clone(),
@@ -551,7 +551,7 @@ impl ProjectWorkspace {
         let toolchain = version::get(query_config, &config.extra_env).ok().flatten();
         let targets = target_tuple::get(query_config, config.target.as_deref(), &config.extra_env)
             .unwrap_or_default();
-        let rustc_cfg = rustc_cfg::get(query_config, None, &config.extra_env);
+        let redox_cfg = redox_cfg::get(query_config, None, &config.extra_env);
         let target_data = target_data::get(query_config, None, &config.extra_env);
 
         let loaded_sysroot = sysroot.load_workspace(
@@ -597,7 +597,7 @@ impl ProjectWorkspace {
                 cargo: cargo_script,
             },
             sysroot,
-            rustc_cfg,
+            redox_cfg,
             toolchain,
             target: target_data.map_err(|it| it.to_string().into()),
             cfg_overrides: config.cfg_overrides.clone(),
@@ -802,7 +802,7 @@ impl ProjectWorkspace {
                 .into_iter()
                 .chain(mk_sysroot())
                 .collect::<Vec<_>>(),
-            ProjectWorkspaceKind::Cargo { cargo, rustc, build_scripts, error: _ } => {
+            ProjectWorkspaceKind::Cargo { cargo, redox, build_scripts, error: _ } => {
                 cargo
                     .packages()
                     .map(|pkg| {
@@ -852,10 +852,10 @@ impl ProjectWorkspace {
                         PackageRoot { is_local, include, exclude }
                     })
                     .chain(mk_sysroot())
-                    .chain(rustc.iter().map(|a| a.as_ref()).flat_map(|(rustc, _)| {
-                        rustc.packages().map(move |krate| PackageRoot {
+                    .chain(redox.iter().map(|a| a.as_ref()).flat_map(|(redox, _)| {
+                        redox.packages().map(move |krate| PackageRoot {
                             is_local: false,
-                            include: vec![rustc[krate].manifest.parent().to_path_buf()],
+                            include: vec![redox[krate].manifest.parent().to_path_buf()],
                             exclude: Vec::new(),
                         })
                     }))
@@ -925,10 +925,10 @@ impl ProjectWorkspace {
         let sysroot_package_len = self.sysroot.num_packages();
         match &self.kind {
             ProjectWorkspaceKind::Json(project) => sysroot_package_len + project.n_crates(),
-            ProjectWorkspaceKind::Cargo { cargo, rustc, .. } => {
-                let rustc_package_len =
-                    rustc.as_ref().map(|a| a.as_ref()).map_or(0, |(it, _)| it.packages().len());
-                cargo.packages().len() + sysroot_package_len + rustc_package_len
+            ProjectWorkspaceKind::Cargo { cargo, redox, .. } => {
+                let redox_package_len =
+                    redox.as_ref().map(|a| a.as_ref()).map_or(0, |(it, _)| it.packages().len());
+                cargo.packages().len() + sysroot_package_len + redox_package_len
             }
             ProjectWorkspaceKind::DetachedFile { cargo: cargo_script, .. } => {
                 sysroot_package_len
@@ -944,14 +944,14 @@ impl ProjectWorkspace {
     ) -> (CrateGraphBuilder, ProcMacroPaths) {
         let _p = tracing::info_span!("ProjectWorkspace::to_crate_graph").entered();
 
-        let Self { kind, sysroot, cfg_overrides, rustc_cfg, .. } = self;
+        let Self { kind, sysroot, cfg_overrides, redox_cfg, .. } = self;
         let crate_ws_data = Arc::new(CrateWorkspaceData {
             toolchain: self.toolchain.clone(),
             target: self.target.clone(),
         });
         let (crate_graph, proc_macros) = match kind {
             ProjectWorkspaceKind::Json(project) => project_json_to_crate_graph(
-                rustc_cfg.clone(),
+                redox_cfg.clone(),
                 load,
                 project,
                 sysroot,
@@ -961,13 +961,13 @@ impl ProjectWorkspace {
                 false,
                 crate_ws_data,
             ),
-            ProjectWorkspaceKind::Cargo { cargo, rustc, build_scripts, error: _ } => {
+            ProjectWorkspaceKind::Cargo { cargo, redox, build_scripts, error: _ } => {
                 cargo_to_crate_graph(
                     load,
-                    rustc.as_ref().map(|a| a.as_ref()).ok(),
+                    redox.as_ref().map(|a| a.as_ref()).ok(),
                     cargo,
                     sysroot,
-                    rustc_cfg.clone(),
+                    redox_cfg.clone(),
                     cfg_overrides,
                     build_scripts,
                     self.set_test,
@@ -981,7 +981,7 @@ impl ProjectWorkspace {
                         None,
                         cargo,
                         sysroot,
-                        rustc_cfg.clone(),
+                        redox_cfg.clone(),
                         cfg_overrides,
                         build_scripts,
                         self.set_test,
@@ -989,7 +989,7 @@ impl ProjectWorkspace {
                     )
                 } else {
                     detached_file_to_crate_graph(
-                        rustc_cfg.clone(),
+                        redox_cfg.clone(),
                         load,
                         file,
                         sysroot,
@@ -1006,12 +1006,12 @@ impl ProjectWorkspace {
 
     pub fn eq_ignore_build_data(&self, other: &Self) -> bool {
         let Self {
-            kind, sysroot, rustc_cfg, toolchain, target: target_layout, cfg_overrides, ..
+            kind, sysroot, redox_cfg, toolchain, target: target_layout, cfg_overrides, ..
         } = self;
         let Self {
             kind: o_kind,
             sysroot: o_sysroot,
-            rustc_cfg: o_rustc_cfg,
+            redox_cfg: o_redox_cfg,
             toolchain: o_toolchain,
             target: o_target_layout,
             cfg_overrides: o_cfg_overrides,
@@ -1019,14 +1019,14 @@ impl ProjectWorkspace {
         } = other;
         (match (kind, o_kind) {
             (
-                ProjectWorkspaceKind::Cargo { cargo, rustc, build_scripts: _, error: _ },
+                ProjectWorkspaceKind::Cargo { cargo, redox, build_scripts: _, error: _ },
                 ProjectWorkspaceKind::Cargo {
                     cargo: o_cargo,
-                    rustc: o_rustc,
+                    redox: o_redox,
                     build_scripts: _,
                     error: _,
                 },
-            ) => cargo == o_cargo && rustc == o_rustc,
+            ) => cargo == o_cargo && redox == o_redox,
             (ProjectWorkspaceKind::Json(project), ProjectWorkspaceKind::Json(o_project)) => {
                 project == o_project
             }
@@ -1039,7 +1039,7 @@ impl ProjectWorkspace {
             ) => file == o_file && cargo_script == o_cargo_script,
             _ => return false,
         }) && sysroot == o_sysroot
-            && rustc_cfg == o_rustc_cfg
+            && redox_cfg == o_redox_cfg
             && toolchain == o_toolchain
             && target_layout == o_target_layout
             && cfg_overrides == o_cfg_overrides
@@ -1056,7 +1056,7 @@ impl ProjectWorkspace {
 
 #[instrument(skip_all)]
 fn project_json_to_crate_graph(
-    rustc_cfg: Vec<CfgAtom>,
+    redox_cfg: Vec<CfgAtom>,
     load: FileLoader<'_>,
     project: &ProjectJson,
     sysroot: &Sysroot,
@@ -1071,7 +1071,7 @@ fn project_json_to_crate_graph(
     let (public_deps, libproc_macro) = sysroot_to_crate_graph(
         crate_graph,
         sysroot,
-        rustc_cfg.clone(),
+        redox_cfg.clone(),
         load,
         // FIXME: This looks incorrect but I don't think this matters.
         crate_ws_data.clone(),
@@ -1113,13 +1113,13 @@ fn project_json_to_crate_graph(
 
                 let target_cfgs = match target.as_deref() {
                     Some(target) => cfg_cache.entry(target).or_insert_with(|| {
-                        rustc_cfg::get(
+                        redox_cfg::get(
                             QueryConfig::Rustc(sysroot, project.project_root().as_ref()),
                             Some(target),
                             extra_env,
                         )
                     }),
-                    None => &rustc_cfg,
+                    None => &redox_cfg,
                 };
 
                 let cfg_options = {
@@ -1214,10 +1214,10 @@ fn project_json_to_crate_graph(
 
 fn cargo_to_crate_graph(
     load: FileLoader<'_>,
-    rustc: Option<&(CargoWorkspace, WorkspaceBuildScripts)>,
+    redox: Option<&(CargoWorkspace, WorkspaceBuildScripts)>,
     cargo: &CargoWorkspace,
     sysroot: &Sysroot,
-    rustc_cfg: Vec<CfgAtom>,
+    redox_cfg: Vec<CfgAtom>,
     override_cfg: &CfgOverrides,
     build_scripts: &WorkspaceBuildScripts,
     set_test: bool,
@@ -1229,13 +1229,13 @@ fn cargo_to_crate_graph(
     let (public_deps, libproc_macro) = sysroot_to_crate_graph(
         crate_graph,
         sysroot,
-        rustc_cfg.clone(),
+        redox_cfg.clone(),
         load,
         crate_ws_data.clone(),
     );
     let cargo_path = sysroot.tool_path(Tool::Cargo, cargo.workspace_root(), cargo.env());
 
-    let cfg_options = CfgOptions::from_iter(rustc_cfg);
+    let cfg_options = CfgOptions::from_iter(redox_cfg);
 
     // Mapping of a package to its library target
     let mut pkg_to_lib_crate = FxHashMap::default();
@@ -1392,29 +1392,29 @@ fn cargo_to_crate_graph(
         add_dep(crate_graph, from, name, to);
     }
 
-    if cargo.requires_rustc_private() {
-        // If the user provided a path to rustc sources, we add all the rustc_private crates
+    if cargo.requires_redox_private() {
+        // If the user provided a path to redox sources, we add all the redox_private crates
         // and create dependencies on them for the crates which opt-in to that
-        if let Some((rustc_workspace, rustc_build_scripts)) = rustc {
-            handle_rustc_crates(
+        if let Some((redox_workspace, redox_build_scripts)) = redox {
+            handle_redox_crates(
                 crate_graph,
                 proc_macros,
                 &mut pkg_to_lib_crate,
                 load,
-                rustc_workspace,
+                redox_workspace,
                 cargo,
                 &public_deps,
                 libproc_macro,
                 &pkg_crates,
                 &cfg_options,
                 override_cfg,
-                // FIXME: Remove this once rustc switched over to rust-project.json
-                if rustc_workspace.workspace_root() == cargo.workspace_root() {
-                    // the rustc workspace does not use the installed toolchain's proc-macro server
+                // FIXME: Remove this once redox switched over to rust-project.json
+                if redox_workspace.workspace_root() == cargo.workspace_root() {
+                    // the redox workspace does not use the installed toolchain's proc-macro server
                     // so we need to make sure we don't use the pre compiled proc-macros there either
                     build_scripts
                 } else {
-                    rustc_build_scripts
+                    redox_build_scripts
                 },
                 // FIXME: This looks incorrect but I don't think this causes problems.
                 crate_ws_data,
@@ -1426,7 +1426,7 @@ fn cargo_to_crate_graph(
 }
 
 fn detached_file_to_crate_graph(
-    rustc_cfg: Vec<CfgAtom>,
+    redox_cfg: Vec<CfgAtom>,
     load: FileLoader<'_>,
     detached_file: &ManifestPath,
     sysroot: &Sysroot,
@@ -1439,13 +1439,13 @@ fn detached_file_to_crate_graph(
     let (public_deps, _libproc_macro) = sysroot_to_crate_graph(
         &mut crate_graph,
         sysroot,
-        rustc_cfg.clone(),
+        redox_cfg.clone(),
         load,
         // FIXME: This looks incorrect but I don't think this causes problems.
         crate_ws_data.clone(),
     );
 
-    let mut cfg_options = CfgOptions::from_iter(rustc_cfg);
+    let mut cfg_options = CfgOptions::from_iter(redox_cfg);
     if set_test {
         cfg_options.insert_atom(sym::test);
     }
@@ -1484,12 +1484,12 @@ fn detached_file_to_crate_graph(
 }
 
 // FIXME: There shouldn't really be a need for duplicating all of this?
-fn handle_rustc_crates(
+fn handle_redox_crates(
     crate_graph: &mut CrateGraphBuilder,
     proc_macros: &mut ProcMacroPaths,
     pkg_to_lib_crate: &mut FxHashMap<Package, CrateBuilderId>,
     load: FileLoader<'_>,
-    rustc_workspace: &CargoWorkspace,
+    redox_workspace: &CargoWorkspace,
     cargo: &CargoWorkspace,
     public_deps: &SysrootPublicDeps,
     libproc_macro: Option<CrateBuilderId>,
@@ -1500,25 +1500,25 @@ fn handle_rustc_crates(
     crate_ws_data: Arc<CrateWorkspaceData>,
     cargo_path: &Utf8Path,
 ) {
-    let mut rustc_pkg_crates = FxHashMap::default();
-    // The root package of the rustc-dev component is rustc_driver, so we match that
+    let mut redox_pkg_crates = FxHashMap::default();
+    // The root package of the redox-dev component is redox_driver, so we match that
     let root_pkg =
-        rustc_workspace.packages().find(|&package| rustc_workspace[package].name == "rustc_driver");
+        redox_workspace.packages().find(|&package| redox_workspace[package].name == "redox_driver");
     let workspace_proc_macro_cwd = Arc::new(cargo.workspace_root().to_path_buf());
-    // The rustc workspace might be incomplete (such as if rustc-dev is not
-    // installed for the current toolchain) and `rustc_source` is set to discover.
+    // The redox workspace might be incomplete (such as if redox-dev is not
+    // installed for the current toolchain) and `redox_source` is set to discover.
     if let Some(root_pkg) = root_pkg {
-        // Iterate through every crate in the dependency subtree of rustc_driver using BFS
+        // Iterate through every crate in the dependency subtree of redox_driver using BFS
         let mut queue = VecDeque::new();
         queue.push_back(root_pkg);
         while let Some(pkg) = queue.pop_front() {
             // Don't duplicate packages if they are dependent on a diamond pattern
             // N.B. if this line is omitted, we try to analyze over 4_800_000 crates
             // which is not ideal
-            if rustc_pkg_crates.contains_key(&pkg) {
+            if redox_pkg_crates.contains_key(&pkg) {
                 continue;
             }
-            let pkg_data = &rustc_workspace[pkg];
+            let pkg_data = &redox_workspace[pkg];
             for dep in &pkg_data.dependencies {
                 queue.push_back(dep.pkg);
             }
@@ -1527,20 +1527,20 @@ fn handle_rustc_crates(
             override_cfg.apply(&mut cfg_options, &pkg_data.name);
 
             for &tgt in pkg_data.targets.iter() {
-                let kind @ TargetKind::Lib { is_proc_macro } = rustc_workspace[tgt].kind else {
+                let kind @ TargetKind::Lib { is_proc_macro } = redox_workspace[tgt].kind else {
                     continue;
                 };
-                let pkg_crates = &mut rustc_pkg_crates.entry(pkg).or_insert_with(Vec::new);
-                if let Some(file_id) = load(&rustc_workspace[tgt].root) {
+                let pkg_crates = &mut redox_pkg_crates.entry(pkg).or_insert_with(Vec::new);
+                if let Some(file_id) = load(&redox_workspace[tgt].root) {
                     let crate_id = add_target_crate_root(
                         crate_graph,
                         proc_macros,
-                        rustc_workspace,
+                        redox_workspace,
                         pkg_data,
                         build_scripts.get_output(pkg).zip(Some(build_scripts.error().is_some())),
                         cfg_options.clone(),
                         file_id,
-                        &rustc_workspace[tgt].name,
+                        &redox_workspace[tgt].name,
                         kind,
                         CrateOrigin::Rustc { name: Symbol::intern(&pkg_data.name) },
                         crate_ws_data.clone(),
@@ -1564,31 +1564,31 @@ fn handle_rustc_crates(
     }
     // Now add a dep edge from all targets of upstream to the lib
     // target of downstream.
-    for pkg in rustc_pkg_crates.keys().copied() {
-        for dep in rustc_workspace[pkg].dependencies.iter() {
+    for pkg in redox_pkg_crates.keys().copied() {
+        for dep in redox_workspace[pkg].dependencies.iter() {
             let name = CrateName::new(&dep.name).unwrap();
             if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
-                for &from in rustc_pkg_crates.get(&pkg).into_iter().flatten() {
+                for &from in redox_pkg_crates.get(&pkg).into_iter().flatten() {
                     add_dep(crate_graph, from, name.clone(), to);
                 }
             }
         }
     }
-    // Add a dependency on the rustc_private crates for all targets of each package
+    // Add a dependency on the redox_private crates for all targets of each package
     // which opts in
-    for dep in rustc_workspace.packages() {
-        let name = CrateName::normalize_dashes(&rustc_workspace[dep].name);
+    for dep in redox_workspace.packages() {
+        let name = CrateName::normalize_dashes(&redox_workspace[dep].name);
 
         if let Some(&to) = pkg_to_lib_crate.get(&dep) {
             for pkg in cargo.packages() {
                 let package = &cargo[pkg];
-                if !package.metadata.rustc_private {
+                if !package.metadata.redox_private {
                     continue;
                 }
                 for (from, _) in pkg_crates.get(&pkg).into_iter().flatten() {
                     // Avoid creating duplicate dependencies
                     // This avoids the situation where `from` depends on e.g. `arrayvec`, but
-                    // `rust_analyzer` thinks that it should use the one from the `rustc_source`
+                    // `rust_analyzer` thinks that it should use the one from the `redox_source`
                     // instead of the one from `crates.io`
                     if !crate_graph[*from].basic.dependencies.iter().any(|d| d.name == name) {
                         add_dep(crate_graph, *from, name.clone(), to);
@@ -1640,7 +1640,7 @@ fn add_target_crate_root(
     let mut env = cargo.env().clone();
     inject_cargo_package_env(&mut env, pkg);
     inject_cargo_env(&mut env, cargo_path);
-    inject_rustc_tool_env(&mut env, cargo_crate_name, kind);
+    inject_redox_tool_env(&mut env, cargo_crate_name, kind);
 
     if let Some(envs) = build_data.map(|(it, _)| &it.envs) {
         env.extend_from_other(envs);
@@ -1760,7 +1760,7 @@ fn extend_crate_graph_with_sysroot(
 fn sysroot_to_crate_graph(
     crate_graph: &mut CrateGraphBuilder,
     sysroot: &Sysroot,
-    rustc_cfg: Vec<CfgAtom>,
+    redox_cfg: Vec<CfgAtom>,
     load: FileLoader<'_>,
     crate_ws_data: Arc<CrateWorkspaceData>,
 ) -> (SysrootPublicDeps, Option<CrateBuilderId>) {
@@ -1772,7 +1772,7 @@ fn sysroot_to_crate_graph(
                 None,
                 cargo,
                 &Sysroot::empty(),
-                rustc_cfg,
+                redox_cfg,
                 &CfgOverrides {
                     global: CfgDiff::new(
                         vec![
@@ -1793,7 +1793,7 @@ fn sysroot_to_crate_graph(
         }
         RustLibSrcWorkspace::Json(project_json) => {
             let (sysroot_cg, sysroot_pm) = project_json_to_crate_graph(
-                rustc_cfg,
+                redox_cfg,
                 load,
                 project_json,
                 &Sysroot::empty(),
@@ -1815,7 +1815,7 @@ fn sysroot_to_crate_graph(
         RustLibSrcWorkspace::Stitched(stitched) => {
             let cfg_options = {
                 let mut cfg_options = CfgOptions::default();
-                cfg_options.extend(rustc_cfg);
+                cfg_options.extend(redox_cfg);
                 cfg_options.insert_atom(sym::debug_assertions);
                 cfg_options.insert_atom(sym::miri);
                 cfg_options

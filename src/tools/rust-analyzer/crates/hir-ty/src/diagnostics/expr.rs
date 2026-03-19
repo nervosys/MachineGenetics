@@ -13,9 +13,9 @@ use hir_def::{
 };
 use intern::sym;
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
-use rustc_pattern_analysis::constructor::Constructor;
-use rustc_type_ir::inherent::{AdtDef, IntoKind};
+use redox_hash::FxHashSet;
+use redox_pattern_analysis::constructor::Constructor;
+use redox_type_ir::inherent::{AdtDef, IntoKind};
 use syntax::{
     AstNode,
     ast::{self, UnaryOp},
@@ -230,7 +230,7 @@ impl<'db> ExprValidator<'db> {
             // diagnostic or similar we could raise that in an else
             // block here.
             //
-            // When comparing the types, we also have to consider that rustc
+            // When comparing the types, we also have to consider that redox
             // will automatically de-reference the scrutinee expression type if
             // necessary.
             //
@@ -269,7 +269,7 @@ impl<'db> ExprValidator<'db> {
             };
 
         // FIXME Report unreachable arms
-        // https://github.com/rust-lang/rust/blob/f31622a50/compiler/rustc_mir_build/src/thir/pattern/check_match.rs#L200
+        // https://github.com/rust-lang/rust/blob/f31622a50/compiler/redox_mir_build/src/thir/pattern/check_match.rs#L200
 
         let witnesses = report.non_exhaustiveness_witnesses;
         if !witnesses.is_empty() {
@@ -286,9 +286,9 @@ impl<'db> ExprValidator<'db> {
         }
     }
 
-    // [rustc's `is_known_valid_scrutinee`](https://github.com/rust-lang/rust/blob/c9bd03cb724e13cca96ad320733046cbdb16fbbe/compiler/rustc_mir_build/src/thir/pattern/check_match.rs#L288)
+    // [redox's `is_known_valid_scrutinee`](https://github.com/rust-lang/rust/blob/c9bd03cb724e13cca96ad320733046cbdb16fbbe/compiler/redox_mir_build/src/thir/pattern/check_match.rs#L288)
     //
-    // While the above function in rustc uses thir exprs, r-a doesn't have them.
+    // While the above function in redox uses thir exprs, r-a doesn't have them.
     // So, the logic here is getting same result as "hir lowering + match with lowered thir"
     // with "hir only"
     fn is_known_valid_scrutinee(&self, scrutinee_expr: ExprId) -> bool {
@@ -354,7 +354,7 @@ impl<'db> ExprValidator<'db> {
                 continue;
             }
 
-            let match_arm = rustc_pattern_analysis::MatchArm {
+            let match_arm = redox_pattern_analysis::MatchArm {
                 pat: pattern_arena.alloc(deconstructed_pat),
                 has_guard: false,
                 arm_data: (),

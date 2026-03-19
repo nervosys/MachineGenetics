@@ -7,7 +7,7 @@
 
 use object::elf;
 use object::read::elf as readelf;
-use run_make_support::{bin_name, clang, object, rfs, rustc};
+use run_make_support::{bin_name, clang, object, rfs, redox};
 
 fn check_target<H: readelf::FileHeader<Endian = object::Endianness>>(
     target: &str,
@@ -17,7 +17,7 @@ fn check_target<H: readelf::FileHeader<Endian = object::Endianness>>(
 ) {
     eprintln!("Checking target {target}");
     // Rust part
-    rustc()
+    redox()
         .input("riscv-xlto.rs")
         .crate_type("rlib")
         .target(target)

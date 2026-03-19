@@ -2,13 +2,13 @@ use super::SINGLE_ELEMENT_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, snippet, snippet_with_applicability};
 use clippy_utils::visitors::contains_break_or_continue;
-use rustc_ast::Mutability;
-use rustc_ast::util::parser::ExprPrecedence;
-use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, Pat, PatKind, is_range_literal};
-use rustc_lint::LateContext;
-use rustc_span::edition::Edition;
-use rustc_span::sym;
+use redox_ast::Mutability;
+use redox_ast::util::parser::ExprPrecedence;
+use redox_errors::Applicability;
+use redox_hir::{BorrowKind, Expr, ExprKind, Pat, PatKind, is_range_literal};
+use redox_lint::LateContext;
+use redox_span::edition::Edition;
+use redox_span::sym;
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,

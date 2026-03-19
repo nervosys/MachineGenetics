@@ -7,12 +7,12 @@
 // does not get an unexpected dep-info file.
 // See https://github.com/rust-lang/rust/issues/112898
 
-use run_make_support::{invalid_utf8_contains, path, rfs, rustc};
+use run_make_support::{invalid_utf8_contains, path, rfs, redox};
 
 fn main() {
-    rustc().emit("dep-info").arg("-Zunpretty=expanded").input("with-dep.rs").run();
+    redox().emit("dep-info").arg("-Zunpretty=expanded").input("with-dep.rs").run();
     invalid_utf8_contains("with-dep.d", "with-dep.rs");
     rfs::remove_file("with-dep.d");
-    rustc().emit("dep-info").arg("-Zunpretty=normal").input("with-dep.rs").run();
+    redox().emit("dep-info").arg("-Zunpretty=normal").input("with-dep.rs").run();
     assert!(!path("with-dep.d").exists());
 }

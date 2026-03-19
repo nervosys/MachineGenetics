@@ -75,10 +75,10 @@ fn run_fuzzer(sh: &Shell) -> anyhow::Result<()> {
         cmd!(sh, "cargo install cargo-fuzz").run()?;
     };
 
-    // Expecting nightly rustc
-    let out = cmd!(sh, "rustc --version").read()?;
+    // Expecting nightly redox
+    let out = cmd!(sh, "redox --version").read()?;
     if !out.contains("nightly") {
-        bail!("fuzz tests require nightly rustc")
+        bail!("fuzz tests require nightly redox")
     }
 
     cmd!(sh, "cargo fuzz run parser").run()?;

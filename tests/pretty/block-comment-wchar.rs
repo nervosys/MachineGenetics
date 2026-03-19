@@ -1,6 +1,6 @@
 // This is meant as a test case for Issue 3961.
 //
-// Test via: rustc -Zunpretty normal tests/pretty/block-comment-wchar.rs
+// Test via: redox -Zunpretty normal tests/pretty/block-comment-wchar.rs
 // ignore-tidy-cr
 // ignore-tidy-tab
 //@ pp-exact:block-comment-wchar.pp
@@ -16,7 +16,15 @@ fn f() {
 								  Tabbed8+2
         */
         /*
-  CR8+2
+
+
+
+
+
+
+
+
+  CR8+2
         */
     }
     /*
@@ -39,7 +47,11 @@ fn f() {
   FF4+2:                         (should align)
     */
     /*
-  CR4+2:                         (should align)
+
+
+
+
+  CR4+2:                         (should align)
     */
     /*
   NEL4+2:                        (should align)

@@ -7,7 +7,7 @@ use hir_def::{
     resolver::{HasResolver, Resolver, ValueNs},
 };
 use hir_expand::mod_path::PathKind;
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 
 use crate::db::HirDatabase;
 

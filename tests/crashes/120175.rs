@@ -1,5 +1,5 @@
 //@ known-bug: #120175
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 //@ ignore-apple (raw-dylib doesn't work on Apple targets yet)
 
 #![feature(extern_types)]

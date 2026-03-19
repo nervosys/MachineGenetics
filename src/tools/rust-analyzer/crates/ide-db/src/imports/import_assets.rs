@@ -8,7 +8,7 @@ use hir::{
     SemanticsScope, Trait, Type,
 };
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use smallvec::{SmallVec, smallvec};
 use syntax::{
     AstNode, SyntaxNode,
@@ -664,7 +664,7 @@ fn trait_applicable_items<'db>(
 
     let autoderef_method_receiver = {
         let mut deref_chain = trait_candidate.receiver_ty.autoderef(db).collect::<Vec<_>>();
-        // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
+        // As a last step, we can do array unsizing (that's the only unsizing that redox does for method receivers!)
         if let Some((ty, _len)) = deref_chain.last().and_then(|ty| ty.as_array(db)) {
             let slice = Type::new_slice(ty);
             deref_chain.push(slice);

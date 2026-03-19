@@ -1,7 +1,7 @@
 # The HIR
 
 The HIR – "High-Level Intermediate Representation" – is the primary IR used
-in most of rustc. It is a compiler-friendly representation of the abstract
+in most of redox. It is a compiler-friendly representation of the abstract
 syntax tree (AST) that is generated after parsing, macro expansion, and name
 resolution (see [Lowering](./hir/lowering.md) for how the HIR is created).
 Many parts of HIR resemble Rust surface syntax quite closely, with
@@ -12,10 +12,10 @@ the HIR. This makes HIR more amenable to analysis than a normal AST.
 This chapter covers the main concepts of the HIR.
 
 You can view the HIR representation of your code by passing the
-`-Z unpretty=hir-tree` flag to rustc:
+`-Z unpretty=hir-tree` flag to redox:
 
 ```bash
-cargo rustc -- -Z unpretty=hir-tree
+cargo redox -- -Z unpretty=hir-tree
 ```
 
 
@@ -23,7 +23,7 @@ You can also use the `-Z unpretty=hir` option to generate a HIR
 that is closer to the original source code expression:
 
 ```bash
-cargo rustc -- -Z unpretty=hir
+cargo redox -- -Z unpretty=hir
 ```
 
 ## Out-of-band storage and the `Crate` type
@@ -35,7 +35,7 @@ data structure basically just contains the root module, the HIR
 `Crate` structure contains a number of maps and other things that
 serve to organize the content of the crate for easier access.
 
-[`Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Crate.html
+[`Crate`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.Crate.html
 
 For example, the contents of individual items (e.g. modules,
 functions, traits, impls, etc) in the HIR are not immediately
@@ -53,7 +53,7 @@ struct) would only have the **`ItemId`** `I` of `bar()`. To get the
 details of the function `bar()`, we would lookup `I` in the
 `items` map.
 
-[`Mod`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Mod.html
+[`Mod`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.Mod.html
 
 One nice result from this representation is that one can iterate
 over all items in the crate by iterating over the key-value pairs
@@ -63,14 +63,14 @@ as well as "bodies" (explained below).
 
 The other reason to set up the representation this way is for better
 integration with incremental compilation. This way, if you gain access
-to an [`&rustc_hir::Item`] (e.g. for the mod `foo`), you do not immediately
+to an [`&redox_hir::Item`] (e.g. for the mod `foo`), you do not immediately
 gain access to the contents of the function `bar()`. Instead, you only
 gain access to the **id** for `bar()`, and you must invoke some
 function to lookup the contents of `bar()` given its id; this gives
 the compiler a chance to observe that you accessed the data for
 `bar()`, and then record the dependency.
 
-[`&rustc_hir::Item`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Item.html
+[`&redox_hir::Item`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.Item.html
 
 <a id="hir-id"></a>
 
@@ -100,14 +100,14 @@ The HIR uses a bunch of different identifiers that coexist and serve different p
 
 These identifiers can be converted into one another through the `TyCtxt`.
 
-[`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
-[`LocalDefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.LocalDefId.html
-[`HirId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.HirId.html
-[`BodyId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.BodyId.html
-[Node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.Node.html
-[`CrateNum`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.CrateNum.html
-[`DefIndex`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefIndex.html
-[`Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Body.html
+[`DefId`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/def_id/struct.DefId.html
+[`LocalDefId`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/def_id/struct.LocalDefId.html
+[`HirId`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/struct.HirId.html
+[`BodyId`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.BodyId.html
+[Node]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/enum.Node.html
+[`CrateNum`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/def_id/struct.CrateNum.html
+[`DefIndex`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/def_id/struct.DefIndex.html
+[`Body`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.Body.html
 [hir-bodies]: ./hir.md#hir-bodies
 
 ## HIR Operations
@@ -117,13 +117,13 @@ Most of the time when you are working with the HIR, you will do so via
 mostly prefixed with `hir_`, to convert between IDs of various kinds and to
 lookup data associated with a HIR node.
 
-[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
+[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html
 
 For example, if you have a [`LocalDefId`], and you would like to convert it
 to a [`HirId`], you can use [`tcx.local_def_id_to_hir_id(def_id)`][local_def_id_to_hir_id].
 You need a `LocalDefId`, rather than a `DefId`, since only local items have HIR nodes.
 
-[local_def_id_to_hir_id]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.local_def_id_to_hir_id
+[local_def_id_to_hir_id]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.local_def_id_to_hir_id
 
 Similarly, you can use [`tcx.hir_node(n)`][hir_node] to lookup the node for a
 [`HirId`]. This returns a `Option<Node<'hir>>`, where [`Node`] is an enum
@@ -134,20 +134,20 @@ that `n` must be some HIR expression, you can do
 [`tcx.hir_expect_expr(n)`][expect_expr], which will extract and return the
 [`&hir::Expr`][Expr], panicking if `n` is not in fact an expression.
 
-[hir_node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.hir_node
-[`Node`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.Node.html
-[expect_expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.expect_expr
-[Expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Expr.html
+[hir_node]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.hir_node
+[`Node`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/enum.Node.html
+[expect_expr]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.expect_expr
+[Expr]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.Expr.html
 
 Finally, you can find the parents of nodes, via
 calls like [`tcx.parent_hir_node(n)`][parent_hir_node].
 
-[parent_hir_node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.parent_hir_node
+[parent_hir_node]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.parent_hir_node
 
 
 ## HIR Bodies
 
-A [`rustc_hir::Body`] represents some kind of executable code, such as the body
+A [`redox_hir::Body`] represents some kind of executable code, such as the body
 of a function/closure or the definition of a constant. Bodies are
 associated with an **owner**, which is typically some kind of item
 (e.g. an `fn()` or `const`), but could also be a closure expression
@@ -155,6 +155,6 @@ associated with an **owner**, which is typically some kind of item
 associated with a given def-id ([`hir_maybe_body_owned_by`]) or to find
 the owner of a body ([`hir_body_owner_def_id`]).
 
-[`rustc_hir::Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Body.html
-[`hir_maybe_body_owned_by`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.hir_maybe_body_owned_by
-[`hir_body_owner_def_id`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.hir_body_owner_def_id
+[`redox_hir::Body`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.Body.html
+[`hir_maybe_body_owned_by`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.hir_maybe_body_owned_by
+[`hir_body_owner_def_id`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.hir_body_owner_def_id

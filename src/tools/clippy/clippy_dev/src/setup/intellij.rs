@@ -3,9 +3,9 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
-// This module takes an absolute path to a rustc repo and alters the dependencies to point towards
-// the respective rustc subcrates instead of using extern crate xyz.
-// This allows IntelliJ to analyze rustc internals and show proper information inside Clippy
+// This module takes an absolute path to a redox repo and alters the dependencies to point towards
+// the respective redox subcrates instead of using extern crate xyz.
+// This allows IntelliJ to analyze redox internals and show proper information inside Clippy
 // code. See https://github.com/rust-lang/rust-clippy/issues/5514 for details
 
 const RUSTC_PATH_SECTION: &str = "[target.'cfg(NOT_A_PLATFORM)'.dependencies]";
@@ -35,13 +35,13 @@ impl ClippyProjectInfo {
     }
 }
 
-pub fn setup_rustc_src(rustc_path: &str) {
-    let Ok(rustc_source_dir) = check_and_get_rustc_dir(rustc_path) else {
+pub fn setup_redox_src(redox_path: &str) {
+    let Ok(redox_source_dir) = check_and_get_redox_dir(redox_path) else {
         return;
     };
 
     for project in CLIPPY_PROJECTS {
-        if inject_deps_into_project(&rustc_source_dir, project).is_err() {
+        if inject_deps_into_project(&redox_source_dir, project).is_err() {
             return;
         }
     }
@@ -49,17 +49,17 @@ pub fn setup_rustc_src(rustc_path: &str) {
     println!("info: the source paths can be removed again with `cargo dev remove intellij`");
 }
 
-fn check_and_get_rustc_dir(rustc_path: &str) -> Result<PathBuf, ()> {
-    let mut path = PathBuf::from(rustc_path);
+fn check_and_get_redox_dir(redox_path: &str) -> Result<PathBuf, ()> {
+    let mut path = PathBuf::from(redox_path);
 
     if path.is_relative() {
         match path.canonicalize() {
             Ok(absolute_path) => {
-                println!("info: the rustc path was resolved to: `{}`", absolute_path.display());
+                println!("info: the redox path was resolved to: `{}`", absolute_path.display());
                 path = absolute_path;
             },
             Err(err) => {
-                eprintln!("error: unable to get the absolute path of rustc ({err})");
+                eprintln!("error: unable to get the absolute path of redox ({err})");
                 return Err(());
             },
         }
@@ -81,11 +81,11 @@ fn check_and_get_rustc_dir(rustc_path: &str) -> Result<PathBuf, ()> {
     Ok(path)
 }
 
-fn inject_deps_into_project(rustc_source_dir: &Path, project: &ClippyProjectInfo) -> Result<(), ()> {
+fn inject_deps_into_project(redox_source_dir: &Path, project: &ClippyProjectInfo) -> Result<(), ()> {
     let cargo_content = read_project_file(project.cargo_file)?;
     let lib_content = read_project_file(project.lib_rs_file)?;
 
-    if inject_deps_into_manifest(rustc_source_dir, project.cargo_file, &cargo_content, &lib_content).is_err() {
+    if inject_deps_into_manifest(redox_source_dir, project.cargo_file, &cargo_content, &lib_content).is_err() {
         eprintln!(
             "error: unable to inject dependencies into {} with the Cargo file {}",
             project.name, project.cargo_file
@@ -116,7 +116,7 @@ fn read_project_file(file_path: &str) -> Result<String, ()> {
 }
 
 fn inject_deps_into_manifest(
-    rustc_source_dir: &Path,
+    redox_source_dir: &Path,
     manifest_path: &str,
     cargo_toml: &str,
     lib_rs: &str,
@@ -129,16 +129,16 @@ fn inject_deps_into_manifest(
 
     let extern_crates = lib_rs
         .lines()
-        // only take dependencies starting with `rustc_`
-        .filter(|line| line.starts_with("extern crate rustc_"))
+        // only take dependencies starting with `redox_`
+        .filter(|line| line.starts_with("extern crate redox_"))
         // we have something like "extern crate foo;", we only care about the "foo"
-        // extern crate rustc_middle;
+        // extern crate redox_middle;
         //              ^^^^^^^^^^^^
         .map(|s| &s[13..(s.len() - 1)]);
 
     let new_deps = extern_crates.map(|dep| {
         // format the dependencies that are going to be put inside the Cargo.toml
-        format!("{dep} = {{ path = \"{}/{dep}\" }}\n", rustc_source_dir.display())
+        format!("{dep} = {{ path = \"{}/{dep}\" }}\n", redox_source_dir.display())
     });
 
     // format a new [dependencies]-block with the new deps we need to inject
@@ -164,13 +164,13 @@ fn inject_deps_into_manifest(
     Ok(())
 }
 
-pub fn remove_rustc_src() {
+pub fn remove_redox_src() {
     for project in CLIPPY_PROJECTS {
-        remove_rustc_src_from_project(project);
+        remove_redox_src_from_project(project);
     }
 }
 
-fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> bool {
+fn remove_redox_src_from_project(project: &ClippyProjectInfo) -> bool {
     let Ok(mut cargo_content) = read_project_file(project.cargo_file) else {
         return false;
     };
@@ -184,7 +184,7 @@ fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> bool {
 
     let Some(end_point) = cargo_content.find(DEPENDENCIES_SECTION) else {
         eprintln!(
-            "error: the end of the rustc dependencies section could not be found in `{}`",
+            "error: the end of the redox dependencies section could not be found in `{}`",
             project.cargo_file
         );
         return false;
@@ -200,7 +200,7 @@ fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> bool {
         },
         Err(err) => {
             eprintln!(
-                "error: unable to open file `{}` to remove rustc dependencies for {} ({err})",
+                "error: unable to open file `{}` to remove redox dependencies for {} ({err})",
                 project.cargo_file, project.name
             );
             false

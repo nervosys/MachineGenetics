@@ -1,9 +1,9 @@
 //@aux-build:../../ui/auxiliary/proc_macros.rs
 //@revisions: default allow_crates allow_long no_short
-//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/default
-//@[allow_crates] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/allow_crates
-//@[allow_long] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/allow_long
-//@[no_short] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/no_short
+//@[default] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/default
+//@[allow_crates] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/allow_crates
+//@[allow_long] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/allow_long
+//@[no_short] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/no_short
 #![deny(clippy::absolute_paths)]
 
 extern crate proc_macros;

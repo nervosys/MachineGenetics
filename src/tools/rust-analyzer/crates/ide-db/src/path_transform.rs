@@ -7,7 +7,7 @@ use hir::{
     prettify_macro_expansion,
 };
 use itertools::Itertools;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use span::Edition;
 use syntax::{
     NodeOrToken, SyntaxNode,

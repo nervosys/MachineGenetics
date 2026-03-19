@@ -5,17 +5,17 @@
 #![feature(decl_macro)]
 #![feature(lang_items)]
 #![feature(no_core)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 #![no_core]
 
 extern crate minicore;
 use minicore::*;
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro derive() {}
 
-#[rustc_builtin_macro(Default, attributes(default))]
+#[redox_builtin_macro(Default, attributes(default))]
 macro Default() {}
 
 mod default {

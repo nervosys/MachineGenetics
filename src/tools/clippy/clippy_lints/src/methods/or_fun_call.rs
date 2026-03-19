@@ -11,12 +11,12 @@ use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
     contains_return, is_default_equivalent, is_default_equivalent_call, last_path_segment, peel_blocks, sym,
 };
-use rustc_ast as ast;
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_span::{Span, Symbol};
+use redox_ast as ast;
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_span::{Span, Symbol};
 
 use super::{OR_FUN_CALL, UNWRAP_OR_DEFAULT};
 
@@ -292,7 +292,7 @@ fn closure_body_returns_empty_to_string(cx: &LateContext<'_>, e: &hir::Expr<'_>)
             && ident.name == sym::to_string
             && let hir::Expr { kind, .. } = self_arg
             && let hir::ExprKind::Lit(lit) = kind
-            && let ast::LitKind::Str(rustc_span::sym::empty, _) = lit.node
+            && let ast::LitKind::Str(redox_span::sym::empty, _) = lit.node
         {
             return true;
         }

@@ -1,8 +1,8 @@
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::{is_in_const_context, is_no_std_crate, sym};
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
 
 mod custom_abs;
 mod expm1;

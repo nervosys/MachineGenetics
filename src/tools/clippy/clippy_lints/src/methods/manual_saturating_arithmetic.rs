@@ -2,14 +2,14 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sym;
-use rustc_ast::ast;
-use rustc_errors::Applicability;
-use rustc_hir::def::Res;
-use rustc_hir::{self as hir, Expr};
-use rustc_lint::LateContext;
-use rustc_middle::ty::Ty;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_span::Symbol;
+use redox_ast::ast;
+use redox_errors::Applicability;
+use redox_hir::def::Res;
+use redox_hir::{self as hir, Expr};
+use redox_lint::LateContext;
+use redox_middle::ty::Ty;
+use redox_middle::ty::layout::LayoutOf;
+use redox_span::Symbol;
 
 pub fn check_unwrap_or(
     cx: &LateContext<'_>,

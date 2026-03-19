@@ -18,8 +18,8 @@ fn main() {
 
     println!("cargo:compiler-rt={}", cwd.join("compiler-rt").display());
 
-    println!("cargo::rustc-check-cfg=cfg(kernel_user_helpers)");
-    println!("cargo::rustc-check-cfg=cfg(feature, values(\"mem-unaligned\"))");
+    println!("cargo::redox-check-cfg=cfg(kernel_user_helpers)");
+    println!("cargo::redox-check-cfg=cfg(feature, values(\"mem-unaligned\"))");
 
     // Emscripten's runtime includes all the builtins
     if target.os == "emscripten" {
@@ -28,8 +28,8 @@ fn main() {
 
     // OpenBSD provides compiler_rt by default, use it instead of rebuilding it from source
     if target.os == "openbsd" {
-        println!("cargo:rustc-link-search=native=/usr/lib");
-        println!("cargo:rustc-link-lib=compiler_rt");
+        println!("cargo:redox-link-search=native=/usr/lib");
+        println!("cargo:redox-link-lib=compiler_rt");
         return;
     }
 
@@ -42,7 +42,7 @@ fn main() {
         || target.triple.contains("uefi")
         || target.triple.contains("xous")
     {
-        println!("cargo:rustc-cfg=feature=\"mem\"");
+        println!("cargo:redox-cfg=feature=\"mem\"");
     }
 
     // These targets have hardware unaligned access support.
@@ -51,7 +51,7 @@ fn main() {
         || target.arch.contains("aarch64")
         || target.arch.contains("bpf")
     {
-        println!("cargo:rustc-cfg=feature=\"mem-unaligned\"");
+        println!("cargo:redox-cfg=feature=\"mem-unaligned\"");
     }
 
     // NOTE we are going to assume that llvm-target, what determines our codegen option, matches the
@@ -75,12 +75,12 @@ fn main() {
 
     // Only emit the ARM Linux atomic emulation on pre-ARMv6 architectures. This
     // includes the old androideabi. It is deprecated but it is available as a
-    // rustc target (arm-linux-androideabi).
+    // redox target (arm-linux-androideabi).
     if llvm_target[0] == "armv4t"
         || llvm_target[0] == "armv5te"
         || target.triple == "arm-linux-androideabi"
     {
-        println!("cargo:rustc-cfg=kernel_user_helpers")
+        println!("cargo:redox-cfg=kernel_user_helpers")
     }
 }
 
@@ -88,33 +88,33 @@ fn main() {
 ///
 /// Much of this is copied from `libm/configure.rs`.
 fn configure_libm(target: &Target) {
-    println!("cargo:rustc-check-cfg=cfg(intrinsics_enabled)");
-    println!("cargo:rustc-check-cfg=cfg(arch_enabled)");
-    println!("cargo:rustc-check-cfg=cfg(optimizations_enabled)");
-    println!("cargo:rustc-check-cfg=cfg(feature, values(\"unstable-public-internals\"))");
+    println!("cargo:redox-check-cfg=cfg(intrinsics_enabled)");
+    println!("cargo:redox-check-cfg=cfg(arch_enabled)");
+    println!("cargo:redox-check-cfg=cfg(optimizations_enabled)");
+    println!("cargo:redox-check-cfg=cfg(feature, values(\"unstable-public-internals\"))");
 
     // Always use intrinsics
-    println!("cargo:rustc-cfg=intrinsics_enabled");
+    println!("cargo:redox-cfg=intrinsics_enabled");
 
     // The arch module may contain assembly.
     if !cfg!(feature = "no-asm") {
-        println!("cargo:rustc-cfg=arch_enabled");
+        println!("cargo:redox-cfg=arch_enabled");
     }
 
-    println!("cargo:rustc-check-cfg=cfg(optimizations_enabled)");
+    println!("cargo:redox-check-cfg=cfg(optimizations_enabled)");
     if !matches!(target.opt_level.as_str(), "0" | "1") {
-        println!("cargo:rustc-cfg=optimizations_enabled");
+        println!("cargo:redox-cfg=optimizations_enabled");
     }
 
     println!(
-        "cargo:rustc-env=CFG_CARGO_FEATURES={:?}",
+        "cargo:redox-env=CFG_CARGO_FEATURES={:?}",
         target.cargo_features
     );
-    println!("cargo:rustc-env=CFG_OPT_LEVEL={}", target.opt_level);
-    println!("cargo:rustc-env=CFG_TARGET_FEATURES={:?}", target.features);
+    println!("cargo:redox-env=CFG_OPT_LEVEL={}", target.opt_level);
+    println!("cargo:redox-env=CFG_TARGET_FEATURES={:?}", target.features);
 
     // Activate libm's unstable features to make full use of Nightly.
-    println!("cargo:rustc-cfg=feature=\"unstable-intrinsics\"");
+    println!("cargo:redox-cfg=feature=\"unstable-intrinsics\"");
 }
 
 /// Emit directives for features we expect to support that aren't in `Cargo.toml`.
@@ -170,16 +170,16 @@ fn configure_check_cfg() {
         .copied()
         .chain(aarch_atomic.iter().map(|s| s.as_str()))
     {
-        println!("cargo::rustc-check-cfg=cfg({fn_name}, values(\"optimized-c\"))",);
+        println!("cargo::redox-check-cfg=cfg({fn_name}, values(\"optimized-c\"))",);
     }
 
     // Rustc is unaware of sparc target features, but this does show up from
-    // `rustc --print target-features --target sparc64-unknown-linux-gnu`.
-    println!("cargo::rustc-check-cfg=cfg(target_feature, values(\"vis3\"))");
+    // `redox --print target-features --target sparc64-unknown-linux-gnu`.
+    println!("cargo::redox-check-cfg=cfg(target_feature, values(\"vis3\"))");
 
     // FIXME: these come from libm and should be changed there
-    println!("cargo::rustc-check-cfg=cfg(feature, values(\"checked\"))");
-    println!("cargo::rustc-check-cfg=cfg(assert_no_panic)");
+    println!("cargo::redox-check-cfg=cfg(feature, values(\"checked\"))");
+    println!("cargo::redox-check-cfg=cfg(assert_no_panic)");
 }
 
 #[cfg(feature = "c")]
@@ -595,7 +595,7 @@ mod c {
                 cfg.file(&src);
                 println!("cargo:rerun-if-changed={}", src.display());
             }
-            println!("cargo:rustc-cfg={}=\"optimized-c\"", sym);
+            println!("cargo:redox-cfg={}=\"optimized-c\"", sym);
         }
 
         if link_against_prebuilt_rt {
@@ -607,11 +607,11 @@ mod c {
                 );
             }
             if let Some(dir) = rt_builtins_ext.parent() {
-                println!("cargo::rustc-link-search=native={}", dir.display());
+                println!("cargo::redox-link-search=native={}", dir.display());
             }
             if let Some(lib) = rt_builtins_ext.file_name() {
                 println!(
-                    "cargo::rustc-link-lib=static:+verbatim={}",
+                    "cargo::redox-link-lib=static:+verbatim={}",
                     lib.to_str().unwrap()
                 );
             }
@@ -643,7 +643,7 @@ mod c {
                     &[(1, "relax"), (2, "acq"), (3, "rel"), (4, "acq_rel")]
                 {
                     let sym = format!("__aarch64_{}{}_{}", instruction_type, size, model_name);
-                    println!("cargo:rustc-cfg={}=\"optimized-c\"", sym);
+                    println!("cargo:redox-cfg={}=\"optimized-c\"", sym);
 
                     if link_against_prebuilt_rt {
                         continue;

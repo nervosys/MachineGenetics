@@ -1,4 +1,4 @@
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use span::Span;
 use syntax::{AstNode, ast};
 use test_utils::extract_annotations;

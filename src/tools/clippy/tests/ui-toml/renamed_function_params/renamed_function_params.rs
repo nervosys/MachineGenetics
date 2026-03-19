@@ -1,7 +1,7 @@
 //@no-rustfix
 //@revisions: default extend
-//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/renamed_function_params/default
-//@[extend] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/renamed_function_params/extend
+//@[default] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/renamed_function_params/default
+//@[extend] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/renamed_function_params/extend
 #![warn(clippy::renamed_function_params)]
 #![allow(clippy::partialeq_ne_impl, clippy::to_string_trait_impl)]
 #![allow(unused)]

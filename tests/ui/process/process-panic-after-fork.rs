@@ -7,7 +7,7 @@
 //@ ignore-watchos fork is prohibited
 //@ ignore-backends: gcc
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![feature(panic_always_abort)]
 
 #![allow(invalid_from_utf8)]

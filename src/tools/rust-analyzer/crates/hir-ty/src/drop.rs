@@ -1,8 +1,8 @@
 //! Utilities for computing drop info about types.
 
 use hir_def::{AdtId, signatures::StructFlags};
-use rustc_hash::FxHashSet;
-use rustc_type_ir::inherent::{AdtDef, IntoKind};
+use redox_hash::FxHashSet;
+use redox_type_ir::inherent::{AdtDef, IntoKind};
 use stdx::never;
 
 use crate::{

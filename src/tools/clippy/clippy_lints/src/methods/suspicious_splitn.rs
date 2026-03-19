@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_note;
-use rustc_ast::LitKind;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::LateContext;
-use rustc_span::Symbol;
-use rustc_span::Spanned;
+use redox_ast::LitKind;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::LateContext;
+use redox_span::Symbol;
+use redox_span::Spanned;
 
 use super::SUSPICIOUS_SPLITN;
 

@@ -5,24 +5,24 @@
 //@ ignore-cross-compile
 //@ ignore-remote
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_driver;
-extern crate rustc_hir;
-extern crate rustc_interface;
-extern crate rustc_middle;
+extern crate redox_driver;
+extern crate redox_hir;
+extern crate redox_interface;
+extern crate redox_middle;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
-use rustc_public::abi::{
+use redox_public::abi::{
     ArgAbi, CallConvention, FieldsShape, IntegerLength, PassMode, Primitive, Scalar, ValueAbi,
     VariantsShape,
 };
-use rustc_public::mir::MirVisitor;
-use rustc_public::mir::mono::Instance;
-use rustc_public::target::MachineInfo;
-use rustc_public::ty::{AdtDef, RigidTy, Ty, TyKind};
-use rustc_public::{CrateDef, CrateItem, CrateItems, ItemKind};
+use redox_public::mir::MirVisitor;
+use redox_public::mir::mono::Instance;
+use redox_public::target::MachineInfo;
+use redox_public::ty::{AdtDef, RigidTy, Ty, TyKind};
+use redox_public::{CrateDef, CrateItem, CrateItems, ItemKind};
 use std::assert_matches;
 use std::collections::HashSet;
 use std::convert::TryFrom;
@@ -34,7 +34,7 @@ const CRATE_NAME: &str = "input";
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
     // Find items in the local crate.
-    let items = rustc_public::all_local_items();
+    let items = redox_public::all_local_items();
 
     // Test fn_abi
     let target_fn = *get_item(&items, (ItemKind::Fn, "input::fn_abi")).unwrap();
@@ -67,7 +67,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     assert!(ptr_variadic_fn_abi.c_variadic);
     assert_eq!(ptr_variadic_fn_abi.args.len(), 1);
 
-    let entry = rustc_public::entry_fn().unwrap();
+    let entry = redox_public::entry_fn().unwrap();
     let main_fn = Instance::try_from(entry).unwrap();
     let mut visitor = AdtDefVisitor::default();
     visitor.visit_body(&main_fn.body().unwrap());
@@ -145,7 +145,7 @@ fn check_niche(abi: &ArgAbi) {
 fn get_item<'a>(
     items: &'a CrateItems,
     item: (ItemKind, &str),
-) -> Option<&'a rustc_public::CrateItem> {
+) -> Option<&'a redox_public::CrateItem> {
     items.iter().find(|crate_item| (item.0 == crate_item.kind()) && crate_item.name() == item.1)
 }
 
@@ -155,7 +155,7 @@ struct AdtDefVisitor {
 }
 
 impl MirVisitor for AdtDefVisitor {
-    fn visit_ty(&mut self, ty: &Ty, _location: rustc_public::mir::visit::Location) {
+    fn visit_ty(&mut self, ty: &Ty, _location: redox_public::mir::visit::Location) {
         if let TyKind::RigidTy(RigidTy::Adt(adt, _)) = ty.kind() {
             self.adt_defs.insert(adt);
         }
@@ -171,7 +171,7 @@ fn main() {
     let path = "alloc_input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

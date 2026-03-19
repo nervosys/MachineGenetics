@@ -20,7 +20,7 @@ fn main() {
         return;
     }
 
-    let rustc = env::var_os("RUSTC").unwrap_or("rustc".into());
+    let redox = env::var_os("RUSTC").unwrap_or("redox".into());
     let me = env::current_exe().unwrap();
     let bat = me.parent().unwrap().join("foo.bat");
     let bat_linker = format!("linker={}", bat.display());
@@ -41,7 +41,7 @@ fn main() {
 
         drop(fs::remove_file(&ok));
         drop(fs::remove_file(&not_ok));
-        let status = Command::new(&rustc)
+        let status = Command::new(&redox)
             .arg(&file)
             .arg("-C")
             .arg(&bat_linker)
@@ -51,7 +51,7 @@ fn main() {
             .unwrap();
 
         if !status.success() {
-            panic!("rustc didn't succeed: {}", status);
+            panic!("redox didn't succeed: {}", status);
         }
 
         if !ok.exists() {

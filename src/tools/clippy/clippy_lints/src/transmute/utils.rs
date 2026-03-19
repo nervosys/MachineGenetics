@@ -1,5 +1,5 @@
-use rustc_lint::LateContext;
-use rustc_middle::ty::Ty;
+use redox_lint::LateContext;
+use redox_middle::ty::Ty;
 
 // check if the component types of the transmuted collection and the result have different ABI,
 // size or alignment

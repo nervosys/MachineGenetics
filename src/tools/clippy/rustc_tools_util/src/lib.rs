@@ -35,16 +35,16 @@ macro_rules! setup_version_info {
     () => {{
         let _ = $crate::rerun_if_git_changes();
         println!(
-            "cargo:rustc-env=GIT_HASH={}",
+            "cargo:redox-env=GIT_HASH={}",
             $crate::get_commit_hash().unwrap_or_default()
         );
         println!(
-            "cargo:rustc-env=COMMIT_DATE={}",
+            "cargo:redox-env=COMMIT_DATE={}",
             $crate::get_commit_date().unwrap_or_default()
         );
         let compiler_version = $crate::get_compiler_version();
         println!(
-            "cargo:rustc-env=RUSTC_RELEASE_CHANNEL={}",
+            "cargo:redox-env=RUSTC_RELEASE_CHANNEL={}",
             $crate::get_channel(compiler_version)
         );
     }};
@@ -157,7 +157,7 @@ pub fn get_commit_date() -> Option<String> {
 
 #[must_use]
 pub fn get_compiler_version() -> Option<String> {
-    let compiler = std::option_env!("RUSTC").unwrap_or("rustc");
+    let compiler = std::option_env!("RUSTC").unwrap_or("redox");
     get_output(compiler, &["-V"])
 }
 
@@ -167,13 +167,13 @@ pub fn get_channel(compiler_version: Option<String>) -> String {
         return channel;
     }
 
-    // if that failed, try to ask rustc -V, do some parsing and find out
-    if let Some(rustc_output) = compiler_version {
-        if rustc_output.contains("beta") {
+    // if that failed, try to ask redox -V, do some parsing and find out
+    if let Some(redox_output) = compiler_version {
+        if redox_output.contains("beta") {
             return String::from("beta");
-        } else if rustc_output.contains("nightly") {
+        } else if redox_output.contains("nightly") {
             return String::from("nightly");
-        } else if rustc_output.contains("dev") {
+        } else if redox_output.contains("dev") {
             return String::from("dev");
         }
     }
@@ -192,7 +192,7 @@ mod test {
         assert_eq!(vi.major, 0);
         assert_eq!(vi.minor, 4);
         assert_eq!(vi.patch, 2);
-        assert_eq!(vi.crate_name, "rustc_tools_util");
+        assert_eq!(vi.crate_name, "redox_tools_util");
         // hard to make positive tests for these since they will always change
         assert!(vi.commit_hash.is_none());
         assert!(vi.commit_date.is_none());
@@ -203,7 +203,7 @@ mod test {
     #[test]
     fn test_display_local() {
         let vi = get_version_info!();
-        assert_eq!(vi.to_string(), "rustc_tools_util 0.4.2");
+        assert_eq!(vi.to_string(), "redox_tools_util 0.4.2");
     }
 
     #[test]
@@ -212,7 +212,7 @@ mod test {
         let s = format!("{vi:?}");
         assert_eq!(
             s,
-            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 4, patch: 2 }"
+            "VersionInfo { crate_name: \"redox_tools_util\", major: 0, minor: 4, patch: 2 }"
         );
     }
 }

@@ -3,16 +3,16 @@ use std::fmt::{self, Display, Write as _};
 use std::iter;
 
 use askama::Template;
-use rustc_abi::VariantIdx;
-use rustc_ast::join_path_syms;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
-use rustc_hir as hir;
-use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::DefId;
-use rustc_index::IndexVec;
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{Symbol, sym};
+use redox_abi::VariantIdx;
+use redox_ast::join_path_syms;
+use redox_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use redox_hir as hir;
+use redox_hir::def::CtorKind;
+use redox_hir::def_id::DefId;
+use redox_index::IndexVec;
+use redox_middle::ty::{self, TyCtxt};
+use redox_span::hygiene::MacroKind;
+use redox_span::symbol::{Symbol, sym};
 use tracing::{debug, info};
 
 use super::type_layout::document_type_layout;
@@ -512,11 +512,11 @@ fn print_extra_info_tags(
             write!(f, "{}", tag_html("deprecated", "", message))?;
         }
 
-        // The "rustc_private" crates are permanently unstable so it makes no sense
+        // The "redox_private" crates are permanently unstable so it makes no sense
         // to render "unstable" everywhere.
         let stability = import_def_id
             .map_or_else(|| item.stability(tcx), |import_did| tcx.lookup_stability(import_did));
-        if stability.is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private) {
+        if stability.is_some_and(|s| s.is_unstable() && s.feature != sym::redox_private) {
             write!(f, "{}", tag_html("unstable", "", "Experimental"))?;
         }
 
@@ -1126,7 +1126,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
         // Include implementors in crates that depend on the current crate.
         //
         // This is complicated by the way rustdoc is invoked, which is basically
-        // the same way rustc is invoked: it gets called, one at a time, for each
+        // the same way redox is invoked: it gets called, one at a time, for each
         // crate. When building the rustdocs for the current crate, rustdoc can
         // see crate metadata for its dependencies, but cannot see metadata for its
         // dependents.

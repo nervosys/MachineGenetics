@@ -4,7 +4,7 @@
 // This test ensures that such a runtime check is *not* emitted when debug-assertions are enabled,
 // but overflow-checks are explicitly disabled. It also ensures that even if a dependency is
 // compiled with overflow checks, `intrinsics::overflow_checks()` will be treated with the
-// overflow-checks setting of the current crate (when `#[rustc_inherit_overflow_checks]`) is used.
+// overflow-checks setting of the current crate (when `#[redox_inherit_overflow_checks]`) is used.
 
 //@ aux-build:overflow_checks_add.rs
 //@ revisions: DEBUG NOCHECKS

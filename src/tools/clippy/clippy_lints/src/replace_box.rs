@@ -3,17 +3,17 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_default_equivalent_call, local_is_initialized};
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::smallvec::SmallVec;
-use rustc_errors::Applicability;
-use rustc_hir::{Body, BodyId, Expr, ExprKind, HirId, LangItem, QPath};
-use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::place::ProjectionKind;
-use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
-use rustc_span::{Symbol, sym};
+use redox_data_structures::fx::FxHashSet;
+use redox_data_structures::smallvec::SmallVec;
+use redox_errors::Applicability;
+use redox_hir::{Body, BodyId, Expr, ExprKind, HirId, LangItem, QPath};
+use redox_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::hir::place::ProjectionKind;
+use redox_middle::mir::FakeReadCause;
+use redox_middle::ty;
+use redox_session::impl_lint_pass;
+use redox_span::{Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does

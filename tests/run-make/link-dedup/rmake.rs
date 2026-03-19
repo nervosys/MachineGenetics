@@ -9,17 +9,17 @@
 
 use std::fmt::Write;
 
-use run_make_support::{is_windows_msvc, rustc, target};
+use run_make_support::{is_windows_msvc, redox, target};
 
 fn main() {
-    rustc().input("depa.rs").run();
-    rustc().input("depb.rs").run();
-    rustc().input("depc.rs").run();
+    redox().input("depa.rs").run();
+    redox().input("depb.rs").run();
+    redox().input("depc.rs").run();
 
-    let output = rustc().input("empty.rs").cfg("bar").arg("--print=link-args").run_fail();
+    let output = redox().input("empty.rs").cfg("bar").arg("--print=link-args").run_fail();
     output.assert_stdout_contains(needle_from_libs(&["testa", "testb", "testa"]));
 
-    let output = rustc().input("empty.rs").arg("--print=link-args").run_fail();
+    let output = redox().input("empty.rs").arg("--print=link-args").run_fail();
     output.assert_stdout_contains(needle_from_libs(&["testa"]));
     output.assert_stdout_not_contains(needle_from_libs(&["testb"]));
     output.assert_stdout_not_contains(needle_from_libs(&["testa", "testa", "testa"]));

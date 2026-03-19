@@ -16,7 +16,7 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(pabsb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_abs_epi8(a: __m128i) -> __m128i {
     unsafe {
         let a = a.as_i8x16();
@@ -35,7 +35,7 @@ pub const fn _mm_abs_epi8(a: __m128i) -> __m128i {
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(pabsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_abs_epi16(a: __m128i) -> __m128i {
     unsafe {
         let a = a.as_i16x8();
@@ -54,7 +54,7 @@ pub const fn _mm_abs_epi16(a: __m128i) -> __m128i {
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(pabsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_abs_epi32(a: __m128i) -> __m128i {
     unsafe {
         let a = a.as_i32x4();
@@ -105,9 +105,9 @@ pub fn _mm_shuffle_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(palignr, IMM8 = 15))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_alignr_epi8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     // If palignr is shifting the pair of vectors more than the size of two
@@ -167,7 +167,7 @@ pub const fn _mm_alignr_epi8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phaddw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_hadd_epi16(a: __m128i, b: __m128i) -> __m128i {
     let a = a.as_i16x8();
     let b = b.as_i16x8();
@@ -205,7 +205,7 @@ pub fn _mm_hadds_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phaddd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_hadd_epi32(a: __m128i, b: __m128i) -> __m128i {
     let a = a.as_i32x4();
     let b = b.as_i32x4();
@@ -224,7 +224,7 @@ pub const fn _mm_hadd_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phsubw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_hsub_epi16(a: __m128i, b: __m128i) -> __m128i {
     let a = a.as_i16x8();
     let b = b.as_i16x8();
@@ -263,7 +263,7 @@ pub fn _mm_hsubs_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phsubd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_hsub_epi32(a: __m128i, b: __m128i) -> __m128i {
     let a = a.as_i32x4();
     let b = b.as_i32x4();

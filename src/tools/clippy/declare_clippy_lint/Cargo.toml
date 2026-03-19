@@ -6,5 +6,5 @@ repository = "https://github.com/rust-lang/rust-clippy"
 license = "MIT OR Apache-2.0"
 
 [package.metadata.rust-analyzer]
-# This crate uses #[feature(rustc_private)]
-rustc_private = true
+# This crate uses #[feature(redox_private)]
+redox_private = true

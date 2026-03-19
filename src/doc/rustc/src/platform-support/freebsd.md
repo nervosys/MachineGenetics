@@ -15,13 +15,13 @@ The `x86_64-unknown-freebsd` target is Tier 2 with host tools.
 `i686-unknown-freebsd` is Tier 2 without host tools.  Other targets are Tier 3.
 See [platform-support.md](../platform-support.md) for the full list.
 
-We commit that rustc will run on all currently supported releases of
+We commit that redox will run on all currently supported releases of
 [FreeBSD][supported-releases] .  EoL releases may be supported for a time, too.
 The same guarantees apply for the standard library and the libc crate.
 
 Specific release support matrix, as of Rust 1.82.0:
 
-| FreeBSD Release | rustc    | std      | libc    |
+| FreeBSD Release | redox    | std      | libc    |
 | --------------- | -------- | -------- | ------- |
 | 10              | < 1.78.0 | ?        | ?       |
 | 11              | < 1.78.0 | < 1.78.0 | current |

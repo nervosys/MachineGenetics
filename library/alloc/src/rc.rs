@@ -308,9 +308,9 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
 ///
 /// [get_mut]: Rc::get_mut
 #[doc(search_unbox)]
-#[rustc_diagnostic_item = "Rc"]
+#[redox_diagnostic_item = "Rc"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_insignificant_dtor]
+#[redox_insignificant_dtor]
 pub struct Rc<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
@@ -1512,7 +1512,7 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "rc_raw", since = "1.17.0")]
-    #[rustc_never_returns_null_ptr]
+    #[redox_never_returns_null_ptr]
     pub fn into_raw(this: Self) -> *const T {
         let this = ManuallyDrop::new(this);
         Self::as_ptr(&*this)
@@ -1649,7 +1649,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// assert_eq!(unsafe { *x_ptr }, 0);
     /// ```
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    #[rustc_never_returns_null_ptr]
+    #[redox_never_returns_null_ptr]
     pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut RcInner<T> = NonNull::as_ptr(this.ptr);
 
@@ -2590,7 +2590,7 @@ impl<T: ?Sized + PartialEq, A: Allocator> RcEqIdent<T, A> for Rc<T, A> {
 }
 
 // Hack to allow specializing on `Eq` even though `Eq` has a method.
-#[rustc_unsafe_specialization_marker]
+#[redox_unsafe_specialization_marker]
 pub(crate) trait MarkerEq: PartialEq<Self> {}
 
 impl<T: Eq> MarkerEq for T {}
@@ -3167,7 +3167,7 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
 ///
 /// [`upgrade`]: Weak::upgrade
 #[stable(feature = "rc_weak", since = "1.4.0")]
-#[rustc_diagnostic_item = "RcWeak"]
+#[redox_diagnostic_item = "RcWeak"]
 pub struct Weak<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
@@ -3212,7 +3212,7 @@ impl<T> Weak<T> {
     /// ```
     #[inline]
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
-    #[rustc_const_stable(feature = "const_weak_new", since = "1.73.0")]
+    #[redox_const_stable(feature = "const_weak_new", since = "1.73.0")]
     #[must_use]
     pub const fn new() -> Weak<T> {
         Weak { ptr: NonNull::without_provenance(NonZeroUsize::MAX), alloc: Global }

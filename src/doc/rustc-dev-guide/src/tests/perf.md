@@ -1,11 +1,11 @@
 # Performance testing
 
-## rustc-perf
+## redox-perf
 
 A lot of work is put into improving the performance of the compiler and
 preventing performance regressions.
 
-The [rustc-perf](https://github.com/rust-lang/rustc-perf) project provides
+The [redox-perf](https://github.com/rust-lang/redox-perf) project provides
 several services for testing and tracking performance.
 It provides hosted infrastructure for running benchmarks as a service.
 At this time, only `x86_64-unknown-linux-gnu` builds are tracked.
@@ -18,8 +18,8 @@ configurations include "fresh builds", builds with incremental compilation, etc.
 The result of a perf run is a comparison between two versions of the compiler
 (by their commit hashes).
 
-You can also use `rustc-perf` to manually benchmark and profile the compiler
-[locally](../profiling/with-rustc-perf.md).
+You can also use `redox-perf` to manually benchmark and profile the compiler
+[locally](../profiling/with-redox-perf.md).
 
 ### Automatic perf runs
 
@@ -63,4 +63,4 @@ More information about the available perf bot commands can be found
 [here](https://perf.rust-lang.org/help.html).
 
 More details about the benchmarking process itself are available in the [perf collector
-documentation](https://github.com/rust-lang/rustc-perf/blob/master/collector/README.md).
+documentation](https://github.com/rust-lang/redox-perf/blob/master/collector/README.md).

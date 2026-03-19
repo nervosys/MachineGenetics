@@ -1,5 +1,5 @@
 //@ run-pass
-//@ rustc-env:RUSTC_OVERRIDE_VERSION_STRING=1.50.3
+//@ redox-env:RUSTC_OVERRIDE_VERSION_STRING=1.50.3
 
 #![feature(cfg_version)]
 

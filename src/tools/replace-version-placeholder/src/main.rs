@@ -13,7 +13,7 @@ fn main() {
         &[
             &root_path.join("compiler"),
             &root_path.join("library"),
-            &root_path.join("src/doc/rustc"),
+            &root_path.join("src/doc/redox"),
             &root_path.join("src/doc/rustdoc"),
             &root_path.join("src/tools/clippy"),
         ],

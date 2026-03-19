@@ -13,7 +13,7 @@
 //
 // This is regression test for https://github.com/rust-lang/rust/issues/67276.
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
     compile("rlib", "instance_provider_a.rs");
@@ -25,7 +25,7 @@ fn main() {
 }
 
 fn compile(crate_type: &str, input: &str) {
-    rustc()
+    redox()
         .input(input)
         .crate_type(crate_type)
         .args(&["-Cprefer-dynamic", "-Zshare-generics=yes", "-Csymbol-mangling-version=v0"])

@@ -77,14 +77,14 @@ other distribution which has a basic m68k cross-toolchain available.
 
 ## Testing
 
-Currently there is no support to run the rustc test suite for this target.
+Currently there is no support to run the redox test suite for this target.
 
 ## Building Rust programs
 
 Rust programs can be built for that target:
 
 ```text
-rustc --target m68k-unknown-linux-gnu your-code.rs
+redox --target m68k-unknown-linux-gnu your-code.rs
 ```
 
 Very simple programs can be run using the `qemu-m68k-static` program:

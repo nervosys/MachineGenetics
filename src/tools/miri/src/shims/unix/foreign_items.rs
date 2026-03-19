@@ -1,11 +1,11 @@
 use std::ffi::OsStr;
 use std::str;
 
-use rustc_abi::{CanonAbi, Size};
-use rustc_middle::ty::Ty;
-use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
-use rustc_target::spec::Os;
+use redox_abi::{CanonAbi, Size};
+use redox_middle::ty::Ty;
+use redox_span::Symbol;
+use redox_target::callconv::FnAbi;
+use redox_target::spec::Os;
 
 use self::shims::unix::android::foreign_items as android;
 use self::shims::unix::freebsd::foreign_items as freebsd;

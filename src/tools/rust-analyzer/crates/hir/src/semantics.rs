@@ -40,8 +40,8 @@ use hir_ty::{
 };
 use intern::{Interned, Symbol, sym};
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_type_ir::inherent::Span as _;
+use redox_hash::{FxHashMap, FxHashSet};
+use redox_type_ir::inherent::Span as _;
 use smallvec::{SmallVec, smallvec};
 use span::{FileId, SyntaxContext};
 use stdx::{TupleExt, always};

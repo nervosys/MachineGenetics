@@ -11,7 +11,7 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "avx512cd")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmw2d
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_broadcastmw_epi32(k: __mmask16) -> __m512i {
     _mm512_set1_epi32(k as i32)
 }
@@ -23,7 +23,7 @@ pub const fn _mm512_broadcastmw_epi32(k: __mmask16) -> __m512i {
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmw2d
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_broadcastmw_epi32(k: __mmask16) -> __m256i {
     _mm256_set1_epi32(k as i32)
 }
@@ -35,7 +35,7 @@ pub const fn _mm256_broadcastmw_epi32(k: __mmask16) -> __m256i {
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmw2d
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_broadcastmw_epi32(k: __mmask16) -> __m128i {
     _mm_set1_epi32(k as i32)
 }
@@ -47,7 +47,7 @@ pub const fn _mm_broadcastmw_epi32(k: __mmask16) -> __m128i {
 #[target_feature(enable = "avx512cd")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmb2q
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_broadcastmb_epi64(k: __mmask8) -> __m512i {
     _mm512_set1_epi64(k as i64)
 }
@@ -59,7 +59,7 @@ pub const fn _mm512_broadcastmb_epi64(k: __mmask8) -> __m512i {
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmb2q
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_broadcastmb_epi64(k: __mmask8) -> __m256i {
     _mm256_set1_epi64x(k as i64)
 }
@@ -71,7 +71,7 @@ pub const fn _mm256_broadcastmb_epi64(k: __mmask8) -> __m256i {
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmb2q
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_broadcastmb_epi64(k: __mmask8) -> __m128i {
     _mm_set1_epi64x(k as i64)
 }
@@ -317,7 +317,7 @@ pub fn _mm_maskz_conflict_epi64(k: __mmask8, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512cd")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_lzcnt_epi32(a: __m512i) -> __m512i {
     unsafe { transmute(simd_ctlz(a.as_i32x16())) }
 }
@@ -329,7 +329,7 @@ pub const fn _mm512_lzcnt_epi32(a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512cd")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_lzcnt_epi32(src: __m512i, k: __mmask16, a: __m512i) -> __m512i {
     unsafe {
         let zerocount = _mm512_lzcnt_epi32(a).as_i32x16();
@@ -344,7 +344,7 @@ pub const fn _mm512_mask_lzcnt_epi32(src: __m512i, k: __mmask16, a: __m512i) -> 
 #[target_feature(enable = "avx512cd")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_lzcnt_epi32(k: __mmask16, a: __m512i) -> __m512i {
     unsafe {
         let zerocount = _mm512_lzcnt_epi32(a).as_i32x16();
@@ -359,7 +359,7 @@ pub const fn _mm512_maskz_lzcnt_epi32(k: __mmask16, a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_lzcnt_epi32(a: __m256i) -> __m256i {
     unsafe { transmute(simd_ctlz(a.as_i32x8())) }
 }
@@ -371,7 +371,7 @@ pub const fn _mm256_lzcnt_epi32(a: __m256i) -> __m256i {
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_lzcnt_epi32(src: __m256i, k: __mmask8, a: __m256i) -> __m256i {
     unsafe {
         let zerocount = _mm256_lzcnt_epi32(a).as_i32x8();
@@ -386,7 +386,7 @@ pub const fn _mm256_mask_lzcnt_epi32(src: __m256i, k: __mmask8, a: __m256i) -> _
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_lzcnt_epi32(k: __mmask8, a: __m256i) -> __m256i {
     unsafe {
         let zerocount = _mm256_lzcnt_epi32(a).as_i32x8();
@@ -401,7 +401,7 @@ pub const fn _mm256_maskz_lzcnt_epi32(k: __mmask8, a: __m256i) -> __m256i {
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_lzcnt_epi32(a: __m128i) -> __m128i {
     unsafe { transmute(simd_ctlz(a.as_i32x4())) }
 }
@@ -413,7 +413,7 @@ pub const fn _mm_lzcnt_epi32(a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_lzcnt_epi32(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let zerocount = _mm_lzcnt_epi32(a).as_i32x4();
@@ -428,7 +428,7 @@ pub const fn _mm_mask_lzcnt_epi32(src: __m128i, k: __mmask8, a: __m128i) -> __m1
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_lzcnt_epi32(k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let zerocount = _mm_lzcnt_epi32(a).as_i32x4();
@@ -443,7 +443,7 @@ pub const fn _mm_maskz_lzcnt_epi32(k: __mmask8, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512cd")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_lzcnt_epi64(a: __m512i) -> __m512i {
     unsafe { transmute(simd_ctlz(a.as_i64x8())) }
 }
@@ -455,7 +455,7 @@ pub const fn _mm512_lzcnt_epi64(a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512cd")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_lzcnt_epi64(src: __m512i, k: __mmask8, a: __m512i) -> __m512i {
     unsafe {
         let zerocount = _mm512_lzcnt_epi64(a).as_i64x8();
@@ -470,7 +470,7 @@ pub const fn _mm512_mask_lzcnt_epi64(src: __m512i, k: __mmask8, a: __m512i) -> _
 #[target_feature(enable = "avx512cd")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_lzcnt_epi64(k: __mmask8, a: __m512i) -> __m512i {
     unsafe {
         let zerocount = _mm512_lzcnt_epi64(a).as_i64x8();
@@ -485,7 +485,7 @@ pub const fn _mm512_maskz_lzcnt_epi64(k: __mmask8, a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_lzcnt_epi64(a: __m256i) -> __m256i {
     unsafe { transmute(simd_ctlz(a.as_i64x4())) }
 }
@@ -497,7 +497,7 @@ pub const fn _mm256_lzcnt_epi64(a: __m256i) -> __m256i {
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_lzcnt_epi64(src: __m256i, k: __mmask8, a: __m256i) -> __m256i {
     unsafe {
         let zerocount = _mm256_lzcnt_epi64(a).as_i64x4();
@@ -512,7 +512,7 @@ pub const fn _mm256_mask_lzcnt_epi64(src: __m256i, k: __mmask8, a: __m256i) -> _
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_lzcnt_epi64(k: __mmask8, a: __m256i) -> __m256i {
     unsafe {
         let zerocount = _mm256_lzcnt_epi64(a).as_i64x4();
@@ -527,7 +527,7 @@ pub const fn _mm256_maskz_lzcnt_epi64(k: __mmask8, a: __m256i) -> __m256i {
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_lzcnt_epi64(a: __m128i) -> __m128i {
     unsafe { transmute(simd_ctlz(a.as_i64x2())) }
 }
@@ -539,7 +539,7 @@ pub const fn _mm_lzcnt_epi64(a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_lzcnt_epi64(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let zerocount = _mm_lzcnt_epi64(a).as_i64x2();
@@ -554,7 +554,7 @@ pub const fn _mm_mask_lzcnt_epi64(src: __m128i, k: __mmask8, a: __m128i) -> __m1
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_lzcnt_epi64(k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
         let zerocount = _mm_lzcnt_epi64(a).as_i64x2();

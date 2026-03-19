@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_parent_expr;
 use clippy_utils::ty::implements_trait;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, QPath};
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_middle::ty::print::with_forced_trimmed_paths;
-use rustc_span::{Span, sym};
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind, QPath};
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_middle::ty::print::with_forced_trimmed_paths;
+use redox_span::{Span, sym};
 
 use super::UNNECESSARY_FALLIBLE_CONVERSIONS;
 

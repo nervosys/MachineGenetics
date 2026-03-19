@@ -4,7 +4,7 @@
 
 // Regression test for #87481: short backtrace formatting cut off the entire stack trace.
 
-// Codegen-units is specified here so that we can replicate a typical rustc invocation which
+// Codegen-units is specified here so that we can replicate a typical redox invocation which
 // is not normally limited to 1 CGU. This is important so that the `__rust_begin_short_backtrace`
 // and `__rust_end_short_backtrace` symbols are not marked internal to the CGU and thus will be
 // named in the symbol table.

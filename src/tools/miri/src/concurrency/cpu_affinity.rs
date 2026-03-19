@@ -1,5 +1,5 @@
-use rustc_abi::Endian;
-use rustc_middle::ty::layout::LayoutOf;
+use redox_abi::Endian;
+use redox_middle::ty::layout::LayoutOf;
 
 use crate::*;
 

@@ -11,8 +11,8 @@ the [`TypingEnv`][tenv] can be used to bundle all of the external context requir
 Once a context to perform type system operations in has been created (e.g. an [`ObligationCtxt`][ocx] or [`FnCtxt`][fnctxt]) a `TypingEnv` is typically not stored anywhere as only the `TypingMode` is a property of the whole environment,
 whereas different `ParamEnv`s can be used on a per-goal basis.
 
-[ocx]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/struct.ObligationCtxt.html
-[fnctxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html
+[ocx]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/traits/struct.ObligationCtxt.html
+[fnctxt]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/fn_ctxt/struct.FnCtxt.html
 
 ## Parameter Environments
 
@@ -75,9 +75,9 @@ fn foo2<T>(a: T) {
 }
 ```
 
-[predicates_of]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/collect/predicates_of/fn.predicates_of.html
-[method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
-[query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.param_env
+[predicates_of]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_analysis/collect/predicates_of/fn.predicates_of.html
+[method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
+[query]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.param_env
 [normalization]: normalization.md
 
 ### Acquiring a `ParamEnv`
@@ -113,20 +113,20 @@ or as part of some analysis that do not expect to ever encounter generic paramet
 
 Creating an env from an arbitrary set of where clauses is usually unnecessary and should only be done if the environment you need does not correspond to an actual item in the source code (e.g. [`compare_method_predicate_entailment`][method_pred_entailment]).
 
-[param_env_new]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html#method.new
-[normalize_env_or_error]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/fn.normalize_param_env_or_error.html
-[fnctxt_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html#structfield.param_env
-[latectxt_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/context/struct.LateContext.html#structfield.param_env
-[wfckctxt_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/wfcheck/struct.WfCheckingCtxt.html#structfield.param_env
-[goal_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/canonical/ir/solve/struct.Goal.html#structfield.param_env
-[typerelation_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/trait.PredicateEmittingRelation.html#tymethod.param_env
-[typerelation]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/relate/trait.TypeRelation.html
-[mirtypeck_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/type_check/struct.TypeChecker.html#structfield.param_env
-[env_empty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html#method.empty
-[param_env_query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html#structfield.param_env
-[method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
-[predicate_emitting_relation]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/relate/combine/trait.PredicateEmittingRelation.html
-[tenv_mono]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypingEnv.html#method.fully_monomorphized
+[param_env_new]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.ParamEnv.html#method.new
+[normalize_env_or_error]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/traits/fn.normalize_param_env_or_error.html
+[fnctxt_param_env]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/fn_ctxt/struct.FnCtxt.html#structfield.param_env
+[latectxt_param_env]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/context/struct.LateContext.html#structfield.param_env
+[wfckctxt_param_env]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_analysis/check/wfcheck/struct.WfCheckingCtxt.html#structfield.param_env
+[goal_param_env]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/canonical/ir/solve/struct.Goal.html#structfield.param_env
+[typerelation_param_env]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/trait.PredicateEmittingRelation.html#tymethod.param_env
+[typerelation]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/relate/trait.TypeRelation.html
+[mirtypeck_param_env]: https://doc.rust-lang.org/nightly/nightly-redox/redox_borrowck/type_check/struct.TypeChecker.html#structfield.param_env
+[env_empty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.ParamEnv.html#method.empty
+[param_env_query]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/fn_ctxt/struct.FnCtxt.html#structfield.param_env
+[method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
+[predicate_emitting_relation]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/relate/combine/trait.PredicateEmittingRelation.html
+[tenv_mono]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TypingEnv.html#method.fully_monomorphized
 [compiler_help]: https://rust-lang.zulipchat.com/#narrow/channel/182449-t-compiler.2Fhelp
 
 ### How are `ParamEnv`s constructed
@@ -175,7 +175,7 @@ fn foo<T: Trait + Trait>() {}
 
 The [next-gen trait solver][next-gen-solver] also requires this elaboration to take place.
 
-[elaborate]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/traits/util/fn.elaborate.html
+[elaborate]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/traits/util/fn.elaborate.html
 [next-gen-solver]: ./solve/trait-solving.md
 
 #### Normalizing all bounds
@@ -219,8 +219,8 @@ Currently we normalize the `ParamEnv` once using the unnormalized param env and 
 In the next-gen trait solver the requirement for all where clauses in the `ParamEnv` to be fully normalized is not present and so we do not normalize when constructing `ParamEnv`s.
 
 [example]: https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=e6933265ea3e84eaa47019465739992c
-[pe]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html
-[normalize_env_or_error]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/fn.normalize_param_env_or_error.html
+[pe]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.ParamEnv.html
+[normalize_env_or_error]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/traits/fn.normalize_param_env_or_error.html
 
 ## Typing Modes
 
@@ -231,6 +231,6 @@ For example during coherence there are stronger requirements about when we can c
 Tracking which "phase" of the compiler type system operations are being performed in is done by the [`TypingMode`][tmode] enum.
 The documentation on the `TypingMode` enum is quite good so instead of repeating it here verbatim we would recommend reading the API documentation directly.
 
-[penv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html
-[tenv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypingEnv.html
-[tmode]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.TypingMode.html
+[penv]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.ParamEnv.html
+[tenv]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TypingEnv.html
+[tmode]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.TypingMode.html

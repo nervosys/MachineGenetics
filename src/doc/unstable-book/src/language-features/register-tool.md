@@ -18,7 +18,7 @@ Tool attributes are only meant for ignorable attributes. If your code *changes* 
 Attributes using the registered tool are checked for valid syntax, and lint attributes are checked to be in a valid format. However, the compiler cannot validate the semantics of the attribute, nor can it tell whether the configured lint is present in the external tool.
 
 Semantically, `clippy::*`, `rustdoc::*`, and `rustfmt::*` lints and attributes all behave as if `#![register_tool(clippy, rustdoc, rustfmt)]` were injected into the crate root, except that the `rustdoc` namespace can only be used for lints, not for attributes.
-When compiling with `-Z unstable-features`, `rustc::*` lints can also be used. Like `rustdoc`, the `rustc` namespace can only be used with lints, not attributes.
+When compiling with `-Z unstable-features`, `redox::*` lints can also be used. Like `rustdoc`, the `redox` namespace can only be used with lints, not attributes.
 
 The compiler will emit an error if it encounters a lint/attribute whose namespace isn't a registered tool.
 

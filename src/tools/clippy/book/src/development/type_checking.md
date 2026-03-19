@@ -29,7 +29,7 @@ As a side note, besides `expr_ty`, [`TypeckResults`][TypeckResults] contains a
 ## `Ty`
 
 `Ty` struct contains the type information of an expression.
-Let's take a look at `rustc_middle`'s [`Ty`][Ty] struct to examine this struct:
+Let's take a look at `redox_middle`'s [`Ty`][Ty] struct to examine this struct:
 
 ```rust
 pub struct Ty<'tcx>(Interned<'tcx, WithStableHash<TyS<'tcx>>>);
@@ -131,7 +131,7 @@ A common usecase for creating types programmatically is when we want to check if
 Here's an example of how to create a `Ty` for a slice of `u8`, i.e. `[u8]`
 
 ```rust
-use rustc_middle::ty::Ty;
+use redox_middle::ty::Ty;
 // assume we have access to a LateContext
 let ty = Ty::new_slice(cx.tcx, Ty::new_u8());
 ```
@@ -144,24 +144,24 @@ type-system and trait-system use to define and understand the written code.
 Below are some useful links to further explore the concepts covered
 in this chapter:
 
-- [Stages of compilation](https://rustc-dev-guide.rust-lang.org/compiler-src.html#the-main-stages-of-compilation)
-- [Diagnostic items](https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html)
-- [Type checking](https://rustc-dev-guide.rust-lang.org/hir-typeck/summary.html)
-- [Ty module](https://rustc-dev-guide.rust-lang.org/ty.html)
+- [Stages of compilation](https://redox-dev-guide.rust-lang.org/compiler-src.html#the-main-stages-of-compilation)
+- [Diagnostic items](https://redox-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html)
+- [Type checking](https://redox-dev-guide.rust-lang.org/hir-typeck/summary.html)
+- [Ty module](https://redox-dev-guide.rust-lang.org/ty.html)
 
-[Adt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html#variant.Adt
-[AdtDef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/adt/struct.AdtDef.html
-[expr_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html#method.expr_ty
-[node_type]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html#method.node_type
-[is_char]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.is_char
-[is_char_source]: https://github.com/rust-lang/rust/blob/d34f1f931489618efffc4007e6b6bdb9e10f6467/compiler/rustc_middle/src/ty/sty.rs#L1429-L1432
-[kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.kind
-[LateContext]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LateContext.html
-[LateLintPass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html
-[pat_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/typeck_results/struct.TypeckResults.html#method.pat_ty
-[Ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
-[TyKind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html
-[TypeckResults]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html
-[middle_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
-[hir_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Ty.html
-[lower_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/fn.lower_ty.html
+[Adt]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html#variant.Adt
+[AdtDef]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/adt/struct.AdtDef.html
+[expr_ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TypeckResults.html#method.expr_ty
+[node_type]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TypeckResults.html#method.node_type
+[is_char]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html#method.is_char
+[is_char_source]: https://github.com/rust-lang/rust/blob/d34f1f931489618efffc4007e6b6bdb9e10f6467/compiler/redox_middle/src/ty/sty.rs#L1429-L1432
+[kind]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html#method.kind
+[LateContext]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/struct.LateContext.html
+[LateLintPass]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/trait.LateLintPass.html
+[pat_ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/typeck_results/struct.TypeckResults.html#method.pat_ty
+[Ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html
+[TyKind]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html
+[TypeckResults]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TypeckResults.html
+[middle_ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html
+[hir_ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.Ty.html
+[lower_ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_analysis/fn.lower_ty.html

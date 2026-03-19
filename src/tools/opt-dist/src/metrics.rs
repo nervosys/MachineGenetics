@@ -23,17 +23,17 @@ pub fn record_metrics(metrics: &BuildStep, timer: &mut TimerSection) {
     let llvm_steps = metrics.find_all_by_type("bootstrap::llvm::Llvm");
     let llvm_duration: Duration = llvm_steps.into_iter().map(|s| s.duration).sum();
 
-    let rustc_steps = metrics.find_all_by_type("bootstrap::compile::Rustc");
-    let rustc_duration: Duration = rustc_steps.into_iter().map(|s| s.duration).sum();
+    let redox_steps = metrics.find_all_by_type("bootstrap::compile::Rustc");
+    let redox_duration: Duration = redox_steps.into_iter().map(|s| s.duration).sum();
 
     // The LLVM step is part of the Rustc step
-    let rustc_duration = rustc_duration.saturating_sub(llvm_duration);
+    let redox_duration = redox_duration.saturating_sub(llvm_duration);
 
     if !llvm_duration.is_zero() {
         timer.add_duration("LLVM", llvm_duration);
     }
-    if !rustc_duration.is_zero() {
-        timer.add_duration("Rustc", rustc_duration);
+    if !redox_duration.is_zero() {
+        timer.add_duration("Rustc", redox_duration);
     }
 
     let output = format_build_steps(metrics);

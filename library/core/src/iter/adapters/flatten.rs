@@ -582,10 +582,10 @@ where
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     default fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[redox_inherit_overflow_checks]
         fn advance<U: Iterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
             match iter.advance_by(n) {
                 Ok(()) => ControlFlow::Break(()),
@@ -602,7 +602,7 @@ where
     #[inline]
     default fn count(self) -> usize {
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[redox_inherit_overflow_checks]
         fn count<U: Iterator>(acc: usize, iter: U) -> usize {
             acc + iter.count()
         }
@@ -673,10 +673,10 @@ where
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     default fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[redox_inherit_overflow_checks]
         fn advance<U: DoubleEndedIterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
             match iter.advance_back_by(n) {
                 Ok(()) => ControlFlow::Break(()),
@@ -761,7 +761,7 @@ fn and_then_or_clear<T, U>(opt: &mut Option<T>, f: impl FnOnce(&mut T) -> Option
 ///
 /// Note that we still have to deal with the possibility that the iterator was
 /// already exhausted before it came into our control.
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 trait OneShot {}
 
 // These all have exactly one item, if not already consumed.

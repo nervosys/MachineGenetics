@@ -1,12 +1,12 @@
 use std::fmt;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_ast::ast::{Expr, ExprKind, InlineAsmOptions};
-use rustc_ast::{InlineAsm, Item, ItemKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, Lint, LintContext};
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
-use rustc_target::asm::InlineAsmArch;
+use redox_ast::ast::{Expr, ExprKind, InlineAsmOptions};
+use redox_ast::{InlineAsm, Item, ItemKind};
+use redox_lint::{EarlyContext, EarlyLintPass, Lint, LintContext};
+use redox_session::declare_lint_pass;
+use redox_span::Span;
+use redox_target::asm::InlineAsmArch;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum AsmStyle {

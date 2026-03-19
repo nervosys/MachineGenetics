@@ -1,4 +1,4 @@
-// When rustc received 4 codegen-units, an output path and an emit flag all simultaneously,
+// When redox received 4 codegen-units, an output path and an emit flag all simultaneously,
 // this could cause an annoying recompilation issue, uselessly lengthening the build process.
 // A fix was delivered, which resets codegen-units to 1 when necessary,
 // but as it directly affected the way codegen-units are manipulated,
@@ -7,15 +7,15 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{bin_name, path, rustc};
+use run_make_support::{bin_name, path, redox};
 
 fn compile(output_file: &str, emit: Option<&str>) {
-    let mut rustc = rustc();
-    let rustc = rustc.codegen_units(4).output(output_file).input("foo.rs");
+    let mut redox = redox();
+    let redox = redox.codegen_units(4).output(output_file).input("foo.rs");
     if let Some(emit) = emit {
-        rustc.emit(emit);
+        redox.emit(emit);
     }
-    rustc.run();
+    redox.run();
 }
 
 fn main() {

@@ -1,7 +1,7 @@
 //! Convert macro-by-example tokens which are specific to macro expansion into a
 //! format that works for our parser.
 
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use span::{Edition, SyntaxContext};
 use syntax::{SyntaxKind, SyntaxKind::*, T};
 

@@ -1,6 +1,6 @@
-# Memory management in rustc
+# Memory management in redox
 
-Generally rustc tries to be pretty careful how it manages memory.
+Generally redox tries to be pretty careful how it manages memory.
 The compiler allocates _a lot_ of data structures throughout compilation,
 and if we are not careful, it will take a lot of time and space to do so.
 
@@ -21,8 +21,8 @@ for each interned type `X`, we implemented [`PartialEq` for X][peqimpl],
 so we can just compare pointers.
 The [`CtxtInterners`] type contains a bunch of maps of interned types and the arena itself.
 
-[`CtxtInterners`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.CtxtInterners.html#structfield.arena
-[peqimpl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#implementations
+[`CtxtInterners`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.CtxtInterners.html#structfield.arena
+[peqimpl]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html#implementations
 
 ### Example: `ty::TyKind`
 
@@ -56,15 +56,15 @@ represented as a slice `&'tcx [tcx.types.i32, tcx.types.u32]`).
 
 [`GenericArgs`]: ./ty-module/generic-arguments.md#the-genericargs-type
 [adtdefid]: ./ty-module/generic-arguments.md#adtdef-and-defid
-[`TraitRef`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.TraitRef.html
+[`TraitRef`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.TraitRef.html
 [`AdtDef` and `DefId`]: ./ty.md#adts-representation
-[`def-id`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
+[`def-id`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/def_id/struct.DefId.html
 [`GenericArgs`]: ./generic_arguments.html#GenericArgs
-[`mk_args`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.mk_args
+[`mk_args`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.mk_args
 [adtdefid]: ./ty-module/generic-arguments.md#adtdef-and-defid
-[`Predicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Predicate.html
-[`TraitRef`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.TraitRef.html
-[`ty::TyKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/sty/type.TyKind.html
+[`Predicate`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Predicate.html
+[`TraitRef`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.TraitRef.html
+[`ty::TyKind`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/sty/type.TyKind.html
 [traits]: ./traits/resolution.md
 
 ## The `tcx` and how it uses lifetimes
@@ -84,7 +84,7 @@ As you can see, the `TyCtxt` type takes a lifetime parameter. When you see a ref
 lifetime like `'tcx`, you know that it refers to arena-allocated data (or data that lives as long as
 the arenas, anyhow).
 
-[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
+[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html
 
 ### A Note On Lifetimes
 
@@ -93,14 +93,14 @@ structures (e.g. the [Abstract Syntax Tree (AST)][ast], [High-Level Intermediate
 Representation (`HIR`)][hir], and the type system) and as such, arenas and
 references are heavily relied upon to minimize unnecessary memory use. This
 manifests itself in the way people can plug into the compiler (i.e. the
-[driver](./rustc-driver/intro.md)), preferring a "push"-style API (callbacks) instead
+[driver](./redox-driver/intro.md)), preferring a "push"-style API (callbacks) instead
 of the more Rust-ic "pull" style (think the `Iterator` trait).
 
 Thread-local storage and interning are used a lot through the compiler to reduce
 duplication while also preventing a lot of the ergonomic issues due to many
-pervasive lifetimes. The [`rustc_middle::ty::tls`][tls] module is used to access these
+pervasive lifetimes. The [`redox_middle::ty::tls`][tls] module is used to access these
 thread-locals, although you should rarely need to touch it.
 
 [ast]: ./ast-validation.md
-[hir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html
-[tls]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/tls/index.html
+[hir]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/index.html
+[tls]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/tls/index.html

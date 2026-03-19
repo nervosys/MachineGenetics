@@ -16,7 +16,7 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [The Clippy book](#the-clippy-book)
   - [High level approach](#high-level-approach)
   - [Finding something to fix/improve](#finding-something-to-fiximprove)
-  - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
+  - [Getting code-completion for redox internals to work](#getting-code-completion-for-redox-internals-to-work)
     - [RustRover](#rustrover)
     - [Rust Analyzer](#rust-analyzer)
   - [How Clippy works](#how-clippy-works)
@@ -66,7 +66,7 @@ and resolved paths.
 
 [`T-AST`] issues will generally need you to match against a predefined syntax structure.
 To figure out how this syntax structure is encoded in the AST, it is recommended to run
-`rustc -Z unpretty=ast-tree` on an example of the structure and compare with the [nodes in the AST docs].
+`redox -Z unpretty=ast-tree` on an example of the structure and compare with the [nodes in the AST docs].
 Usually the lint will end up to be a nested series of matches and ifs, [like so][deep-nesting].
 But we can make it nest-less by using [let chains], [like this][nest-less].
 
@@ -84,36 +84,36 @@ an AST expression).
 [`T-AST`]: https://github.com/rust-lang/rust-clippy/labels/T-AST
 [`T-middle`]: https://github.com/rust-lang/rust-clippy/labels/T-middle
 [`E-medium`]: https://github.com/rust-lang/rust-clippy/labels/E-medium
-[`ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty
-[nodes in the AST docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/
+[`ty`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty
+[nodes in the AST docs]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/ast/
 [deep-nesting]: https://github.com/rust-lang/rust-clippy/blob/5e4f0922911536f80d9591180fa604229ac13939/clippy_lints/src/mem_forget.rs#L31-L45
 [let chains]: https://github.com/rust-lang/rust/pull/94927
 [nest-less]: https://github.com/rust-lang/rust-clippy/blob/5e4f0922911536f80d9591180fa604229ac13939/clippy_lints/src/bit_mask.rs#L133-L159
 
-## Getting code-completion for rustc internals to work
+## Getting code-completion for redox internals to work
 
 ### RustRover
 Unfortunately, [`RustRover`][RustRover_homepage] does not (yet?) understand how Clippy uses compiler-internals
-using `extern crate` and it also needs to be able to read the source files of the rustc-compiler which are not
+using `extern crate` and it also needs to be able to read the source files of the redox-compiler which are not
 available via a `rustup` component at the time of writing.
-To work around this, you need to have a copy of the [rustc-repo][rustc_repo] available which can be obtained via
+To work around this, you need to have a copy of the [redox-repo][redox_repo] available which can be obtained via
 `git clone https://github.com/rust-lang/rust/`.
-Then you can run a `cargo dev` command to automatically make Clippy use the rustc-repo via path-dependencies
+Then you can run a `cargo dev` command to automatically make Clippy use the redox-repo via path-dependencies
 which `RustRover` will be able to understand.
-Run `cargo dev setup intellij --repo-path <repo-path>` where `<repo-path>` is a path to the rustc repo
+Run `cargo dev setup intellij --repo-path <repo-path>` where `<repo-path>` is a path to the redox repo
 you just cloned.
-The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to
+The command will add path-dependencies pointing towards redox-crates inside the redox repo to
 Clippy's `Cargo.toml`s and should allow `RustRover` to understand most of the types that Clippy uses.
 Just make sure to remove the dependencies again before finally making a pull request!
 
-[rustc_repo]: https://github.com/rust-lang/rust/
+[redox_repo]: https://github.com/rust-lang/rust/
 [RustRover_homepage]: https://www.jetbrains.com/rust/
 
 ### Rust Analyzer
 For [`rust-analyzer`][ra_homepage] to work correctly make sure that in the `rust-analyzer` configuration you set
 
 ```json
-{ "rust-analyzer.rustc.source": "discover" }
+{ "rust-analyzer.redox.source": "discover" }
 ```
 
 You should be able to see information on things like `Expr` or `EarlyContext` now if you hover them, also
@@ -145,14 +145,14 @@ For example, the [`else_if_without_else`][else_if_without_else] lint is register
 pub mod else_if_without_else;
 // ...
 
-pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
+pub fn register_lints(store: &mut redox_lint::LintStore, conf: &'static Conf) {
     // ...
     store.register_early_pass(|| Box::new(else_if_without_else::ElseIfWithoutElse));
     // ...
 }
 ```
 
-The [`rustc_lint::LintStore`][`LintStore`] provides two methods to register lints:
+The [`redox_lint::LintStore`][`LintStore`] provides two methods to register lints:
 [register_early_pass][reg_early_pass] and [register_late_pass][reg_late_pass]. Both take an object
 that implements an [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass] respectively. This is done in
 every single lint. It's worth noting that the majority of `clippy_lints/src/lib.rs` is autogenerated by `cargo dev
@@ -161,7 +161,7 @@ update_lints`. When you are writing your own lint, you can use that script to sa
 ```rust
 // ./clippy_lints/src/else_if_without_else.rs
 
-use rustc_lint::{EarlyLintPass, EarlyContext};
+use redox_lint::{EarlyLintPass, EarlyContext};
 
 // ...
 
@@ -183,11 +183,11 @@ That's why the `else_if_without_else` example uses the `register_early_pass` fun
 
 [lint_crate_entry]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/lib.rs
 [else_if_without_else]: https://github.com/rust-lang/rust-clippy/blob/4253aa7137cb7378acc96133c787e49a345c2b3c/clippy_lints/src/else_if_without_else.rs
-[`LintStore`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html
-[reg_early_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_early_pass
-[reg_late_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_late_pass
-[early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html
-[late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html
+[`LintStore`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/struct.LintStore.html
+[reg_early_pass]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/struct.LintStore.html#method.register_early_pass
+[reg_late_pass]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/struct.LintStore.html#method.register_late_pass
+[early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/trait.EarlyLintPass.html
+[late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/trait.LateLintPass.html
 
 ## Issue and PR triage
 

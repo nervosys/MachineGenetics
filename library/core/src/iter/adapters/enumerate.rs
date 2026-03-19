@@ -14,7 +14,7 @@ use crate::ops::Try;
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Enumerate"]
+#[redox_diagnostic_item = "Enumerate"]
 pub struct Enumerate<I> {
     iter: I,
     count: usize,
@@ -75,7 +75,7 @@ where
     ///
     /// Might panic if the index of the element overflows a `usize`.
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     fn next(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
         let a = self.iter.next()?;
         let i = self.count;
@@ -89,7 +89,7 @@ where
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     fn nth(&mut self, n: usize) -> Option<(usize, I::Item)> {
         let a = self.iter.nth(n)?;
         let i = self.count + n;
@@ -114,7 +114,7 @@ where
             count: &'a mut usize,
             mut fold: impl FnMut(Acc, (usize, T)) -> R + 'a,
         ) -> impl FnMut(Acc, T) -> R + 'a {
-            #[rustc_inherit_overflow_checks]
+            #[redox_inherit_overflow_checks]
             move |acc, item| {
                 let acc = fold(acc, (*count, item));
                 *count += 1;
@@ -135,7 +135,7 @@ where
             mut count: usize,
             mut fold: impl FnMut(Acc, (usize, T)) -> Acc,
         ) -> impl FnMut(Acc, T) -> Acc {
-            #[rustc_inherit_overflow_checks]
+            #[redox_inherit_overflow_checks]
             move |acc, item| {
                 let acc = fold(acc, (count, item));
                 count += 1;
@@ -147,7 +147,7 @@ where
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let remaining = self.iter.advance_by(n);
         let advanced = match remaining {
@@ -158,7 +158,7 @@ where
         remaining
     }
 
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
     where

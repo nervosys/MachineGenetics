@@ -12,7 +12,7 @@ $ cat main.rs
 fn main() {
     let x = 5;
 }
-$ rustc main.rs
+$ redox main.rs
 warning: unused variable: `x`
  --> main.rs:2:9
   |
@@ -57,4 +57,4 @@ warning: borrow of packed field is unsafe and requires unsafe function or block 
 For more information about the process and policy of future-incompatible
 changes, see [RFC 1589].
 
-[RFC 1589]: https://github.com/rust-lang/rfcs/blob/master/text/1589-rustc-bug-fix-procedure.md
+[RFC 1589]: https://github.com/rust-lang/rfcs/blob/master/text/1589-redox-bug-fix-procedure.md

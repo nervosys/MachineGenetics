@@ -1,0 +1,17 @@
+[package]
+name = "redox_ast_pretty"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+itertools = "0.12"
+redox_ast = { path = "../redox_ast" }
+redox_lexer = { path = "../redox_lexer" }
+redox_span = { path = "../redox_span" }
+# tidy-alphabetical-end
+
+[dev-dependencies]
+# tidy-alphabetical-start
+thin-vec = "0.2.12"
+# tidy-alphabetical-end

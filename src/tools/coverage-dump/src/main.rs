@@ -9,7 +9,7 @@ fn main() -> anyhow::Result<()> {
 
     let args = std::env::args().collect::<Vec<_>>();
 
-    // The coverage-dump tool already needs `rustc_demangle` in order to read
+    // The coverage-dump tool already needs `redox_demangle` in order to read
     // coverage metadata, so it's very easy to also have a separate mode that
     // turns it into a command-line demangler for use by coverage-run tests.
     if &args[1..] == &["--demangle"] {
@@ -32,7 +32,7 @@ fn demangle() -> anyhow::Result<()> {
     let stdin = std::io::read_to_string(std::io::stdin())?;
     let mut output = String::with_capacity(stdin.len());
     for line in stdin.lines() {
-        writeln!(output, "{:#}", rustc_demangle::demangle(line))?;
+        writeln!(output, "{:#}", redox_demangle::demangle(line))?;
     }
     print!("{output}");
     Ok(())

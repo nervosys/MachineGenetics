@@ -1,29 +1,29 @@
 //@ run-pass
-// Testing that a librustc_ast can parse modules with canonicalized base path
+// Testing that a libredox_ast can parse modules with canonicalized base path
 //@ ignore-cross-compile
 //@ ignore-remote
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_ast;
-extern crate rustc_parse;
-extern crate rustc_session;
-extern crate rustc_span;
+extern crate redox_ast;
+extern crate redox_parse;
+extern crate redox_session;
+extern crate redox_span;
 
-// Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
+// Necessary to pull in object code as the rest of the redox crates are shipped only as rmeta
 // files.
 #[allow(unused_extern_crates)]
-extern crate rustc_driver;
+extern crate redox_driver;
 
-use rustc_parse::{lexer::StripTokens, new_parser_from_file, unwrap_or_emit_fatal};
-use rustc_session::parse::ParseSess;
+use redox_parse::{lexer::StripTokens, new_parser_from_file, unwrap_or_emit_fatal};
+use redox_session::parse::ParseSess;
 use std::path::Path;
 
 #[path = "mod_dir_simple/test.rs"]
 mod gravy;
 
 pub fn main() {
-    rustc_span::create_default_session_globals_then(|| parse());
+    redox_span::create_default_session_globals_then(|| parse());
 
     assert_eq!(gravy::foo(), 10);
 }

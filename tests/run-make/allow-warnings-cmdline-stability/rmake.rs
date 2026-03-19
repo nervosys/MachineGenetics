@@ -1,11 +1,11 @@
 //@ ignore-cross-compile
 // Test that `-Awarnings` suppresses warnings for unstable APIs.
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
-    rustc().input("bar.rs").run();
-    rustc()
+    redox().input("bar.rs").run();
+    redox()
         .input("foo.rs")
         .arg("-Awarnings")
         .run()

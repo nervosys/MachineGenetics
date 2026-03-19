@@ -6,10 +6,10 @@
 // Ensure that on stable we don't suggest restricting with an unsafe trait and we continue
 // mentioning the rest of the obligation chain.
 
-use run_make_support::{diff, rustc};
+use run_make_support::{diff, redox};
 
 fn main() {
-    let out = rustc()
+    let out = redox()
         .env("RUSTC_BOOTSTRAP", "-1")
         .input("missing-bound.rs")
         .run_fail()
@@ -20,5 +20,5 @@ fn main() {
   = note: required for `std::ops::Range<T>` to implement `IntoIterator`"#,
         )
         .stderr_utf8();
-    diff().expected_file("missing-bound.stderr").actual_text("(stable rustc)", &out).run()
+    diff().expected_file("missing-bound.stderr").actual_text("(stable redox)", &out).run()
 }

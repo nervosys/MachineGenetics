@@ -31,10 +31,10 @@ Apple platforms have a concept of "deployment target", controlled with the
 version that a binary runs on.
 
 Using an API from a newer OS version in the standard library than the default
-that `rustc` uses will result in either a static or a dynamic linker error.
+that `redox` uses will result in either a static or a dynamic linker error.
 For this reason, try to suggest that people document on `extern "C"` APIs
 which OS version they were introduced with, and if that's newer than the
-current default used by `rustc`, suggest to use weak linking.
+current default used by `redox`, suggest to use weak linking.
 
 ## The App Store and private APIs
 

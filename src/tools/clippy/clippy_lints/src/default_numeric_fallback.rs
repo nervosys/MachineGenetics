@@ -1,16 +1,16 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::numeric_literal;
 use clippy_utils::source::snippet_opt;
-use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
-use rustc_errors::Applicability;
-use rustc_hir::intravisit::{Visitor, walk_expr, walk_pat, walk_stmt};
-use rustc_hir::{
+use redox_ast::ast::{LitFloatType, LitIntType, LitKind};
+use redox_errors::Applicability;
+use redox_hir::intravisit::{Visitor, walk_expr, walk_pat, walk_stmt};
+use redox_hir::{
     Block, Body, ConstContext, Expr, ExprKind, FnRetTy, HirId, Lit, Pat, PatExpr, PatExprKind, PatKind, Stmt, StmtKind,
     StructTailExpr,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{self, FloatTy, IntTy, PolyFnSig, Ty};
-use rustc_session::declare_lint_pass;
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty::{self, FloatTy, IntTy, PolyFnSig, Ty};
+use redox_session::declare_lint_pass;
 use std::iter;
 
 declare_clippy_lint! {
@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// To ensure that every numeric type is chosen explicitly rather than implicitly.
     ///
     /// ### Known problems
-    /// This lint is implemented using a custom algorithm independent of rustc's inference,
+    /// This lint is implemented using a custom algorithm independent of redox's inference,
     /// which results in many false positives and false negatives.
     ///
     /// ### Example

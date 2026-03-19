@@ -8,10 +8,10 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{run, run_with_args, rustc};
+use run_make_support::{run, run_with_args, redox};
 
 fn main() {
-    rustc().arg("--test").input("test-ignore-cfg.rs").cfg("ignorecfg").run();
+    redox().arg("--test").input("test-ignore-cfg.rs").cfg("ignorecfg").run();
     // check that #[cfg_attr(..., ignore)] does the right thing.
     run("test-ignore-cfg")
         .assert_stdout_contains("shouldnotignore ... ok")

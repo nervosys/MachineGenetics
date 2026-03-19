@@ -6,11 +6,11 @@
 
 use std::path::Path;
 
-use run_make_support::{cwd, diff, python_command, rustc, rustdoc};
+use run_make_support::{cwd, diff, python_command, redox, rustdoc};
 
 fn main() {
     let rlib = cwd().join("libdoctest.rlib");
-    rustc().input("doctest.rs").crate_type("rlib").output(&rlib).run();
+    redox().input("doctest.rs").crate_type("rlib").output(&rlib).run();
 
     run_doctests(&rlib, "2021", "doctest-2021.xml");
     run_doctests(&rlib, "2024", "doctest-2024.xml");

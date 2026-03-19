@@ -1,6 +1,6 @@
 # Installation
 
-`std::offload` is partly available in nightly builds for users. For now, everyone however still needs to build rustc from source to use all features of it. 
+`std::offload` is partly available in nightly builds for users. For now, everyone however still needs to build redox from source to use all features of it. 
 
 ## Build instructions
 
@@ -11,12 +11,12 @@ cd rust
 ./configure --enable-llvm-link-shared --release-channel=nightly --enable-llvm-assertions --enable-llvm-offload --enable-llvm-enzyme --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
 ```
 
-Afterwards you can build rustc using:
+Afterwards you can build redox using:
 ```bash
 ./x build --stage 1 library
 ```
 
-Afterwards rustc toolchain link will allow you to use it through cargo:
+Afterwards redox toolchain link will allow you to use it through cargo:
 ```
 rustup toolchain link offload build/host/stage1
 rustup toolchain install nightly # enables -Z unstable-options

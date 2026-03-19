@@ -3,11 +3,11 @@
 // Tests whether it's not ok when the lifetimes are different between the decl and impl.
 #![feature(extern_item_impls)]
 #![feature(decl_macro)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(eii_internals)]
 
 #[eii_declaration(bar)]
-#[rustc_builtin_macro(eii_shared_macro)]
+#[redox_builtin_macro(eii_shared_macro)]
 macro foo() {}
 
 unsafe extern "Rust" {

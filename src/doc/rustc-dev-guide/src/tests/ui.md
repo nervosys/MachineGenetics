@@ -25,7 +25,7 @@ A test consists of a Rust source file located in the `tests/ui` directory.
 **Tests must be placed in the appropriate subdirectory** based on their purpose
 and testing category - placing tests directly in `tests/ui` is not permitted.
 
-Compiletest will use `rustc` to compile the test, and compare the output against
+Compiletest will use `redox` to compile the test, and compare the output against
 the expected output which is stored in a `.stdout` or `.stderr` file located next to the test.
 See [Output comparison](#output-comparison) for more.
 
@@ -96,7 +96,7 @@ will check for output files:
 - `dont-check-compiler-stdout` — Ignores stdout from the compiler.
 - `compare-output-by-lines` — Some tests have non-deterministic orders of output, so we need to compare by lines.
 
-UI tests run with `-Zdeduplicate-diagnostics=no` flag which disables rustc's
+UI tests run with `-Zdeduplicate-diagnostics=no` flag which disables redox's
 built-in diagnostic deduplication mechanism.
 This means you may see some duplicate messages in the output.
 This helps illuminate situations where duplicate diagnostics are being generated.
@@ -458,7 +458,7 @@ Just add one of the following [directives](directives.md):
   - `//@ check-fail` — compilation should fail (the codegen phase is skipped).
     This is the default for UI tests.
   - `//@ build-fail` — compilation should fail during the codegen phase.
-    This will run `rustc` twice:
+    This will run `redox` twice:
     - First time is to ensure that the compile succeeds without the codegen phase
     - Second time is to ensure that the full compile fails
   - `//@ run-fail` — compilation should succeed, but running the resulting
@@ -613,10 +613,10 @@ run something like the following to generate the alternate stderr file:
 
 Currently none of the compare modes are checked in CI for UI tests.
 
-## `rustc_*` TEST attributes
+## `redox_*` TEST attributes
 
-The compiler defines several perma-unstable `#[rustc_*]` attributes gated behind
-the internal feature `rustc_attrs` that dump extra compiler-internal information.
+The compiler defines several perma-unstable `#[redox_*]` attributes gated behind
+the internal feature `redox_attrs` that dump extra compiler-internal information.
 See the corresponding subsection in [compiler debugging] for more details.
 
 They can be used in tests to more precisely, legibly, and easily test internal
@@ -626,7 +626,7 @@ Indeed, one could say that this slightly abuses
 the term "UI" (*user* interface) and turns such UI tests from black-box tests into white-box ones.
 Use them carefully and sparingly.
 
-[compiler debugging]: ../compiler-debugging.md#rustc_-test-attributes
+[compiler debugging]: ../compiler-debugging.md#redox_-test-attributes
 
 ## UI test mode preset lint levels
 

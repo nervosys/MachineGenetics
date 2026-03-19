@@ -7,7 +7,7 @@
 // RUSTBUILD_FORCE_CLANG_BASED_TESTS and only runs tests which contain "clang" in their
 // name.
 
-use run_make_support::{clang, env_var, llvm_ar, llvm_objdump, rustc, static_lib_name};
+use run_make_support::{clang, env_var, llvm_ar, llvm_objdump, redox, static_lib_name};
 
 #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
 static RUST_ALWAYS_INLINED_PATTERN: &'static str = "bl.*<rust_always_inlined>";
@@ -37,7 +37,7 @@ fn test_lto(fat_lto: bool) {
     let clang_lto = if fat_lto { "full" } else { "thin" };
     println!("Running {lto} lto");
 
-    rustc()
+    redox()
         .lto(lto)
         .linker_plugin_lto("on")
         .output(static_lib_name("rustlib-xlto"))
@@ -74,7 +74,7 @@ fn test_lto(fat_lto: bool) {
 
     clang().input("clib.c").lto(clang_lto).arg("-c").out_exe("clib.o").arg("-O2").run();
     llvm_ar().obj_to_ar().output_input(static_lib_name("xyz"), "clib.o").run();
-    rustc()
+    redox()
         .lto(lto)
         .linker_plugin_lto("on")
         .opt_level("2")

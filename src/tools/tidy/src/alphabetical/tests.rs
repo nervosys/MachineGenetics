@@ -219,8 +219,8 @@ fn test_numeric_good() {
     good(
         "\
         # tidy-alphabetical-start
-        rustc_ast = { path = \"../rustc_ast\" }
-        rustc_ast_lowering = { path = \"../rustc_ast_lowering\" }
+        redox_ast = { path = \"../redox_ast\" }
+        redox_ast_lowering = { path = \"../redox_ast_lowering\" }
         # tidy-alphabetical-end
     ",
     );

@@ -95,7 +95,7 @@ fn main() {}
     .with_config(serde_json::json!({
         "checkOnSave": true,
         "check": {
-            "overrideCommand": ["rustc", "--error-format=json", "$saved_file"]
+            "overrideCommand": ["redox", "--error-format=json", "$saved_file"]
         }
     }))
     .server()

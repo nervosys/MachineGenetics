@@ -1,6 +1,6 @@
 //@ no-prefer-dynamic
 
-#![feature(lang_items, rustc_attrs)]
+#![feature(lang_items, redox_attrs)]
 #![crate_type = "rlib"]
 #![no_std]
 
@@ -16,7 +16,7 @@ impl core::ops::Deref for DerefsToF64 {
 mod inner {
     impl f64 {
         /// [f64::clone]
-        #[rustc_allow_incoherent_impl]
+        #[redox_allow_incoherent_impl]
         pub fn method() {}
     }
 }

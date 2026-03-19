@@ -1,10 +1,10 @@
 use super::{Attribute, NON_MINIMAL_CFG};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::SpanRangeExt;
-use rustc_ast::{MetaItemInner, MetaItemKind};
-use rustc_errors::Applicability;
-use rustc_lint::EarlyContext;
-use rustc_span::sym;
+use redox_ast::{MetaItemInner, MetaItemKind};
+use redox_errors::Applicability;
+use redox_lint::EarlyContext;
+use redox_span::sym;
 
 pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute) {
     if attr.has_name(sym::cfg)

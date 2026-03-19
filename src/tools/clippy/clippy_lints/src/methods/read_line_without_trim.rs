@@ -5,12 +5,12 @@ use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{get_parent_expr, sym};
-use rustc_ast::LitKind;
-use rustc_errors::Applicability;
-use rustc_hir::def::Res;
-use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
+use redox_ast::LitKind;
+use redox_errors::Applicability;
+use redox_hir::def::Res;
+use redox_hir::{BinOpKind, Expr, ExprKind, QPath};
+use redox_lint::LateContext;
+use redox_middle::ty::{self, Ty};
 
 use super::READ_LINE_WITHOUT_TRIM;
 

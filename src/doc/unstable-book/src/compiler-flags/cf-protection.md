@@ -38,7 +38,7 @@ $ readelf -a target/x86_64-unknown-linux-gnu/debug/example | grep feature:
 To display modules that are not CET enabled, examine the linker errors available when `cet-report` is enabled:
 
 ```sh
-$ RUSTC_LOG=rustc_codegen_ssa::back::link=info rustc-custom -v -Z cf-protection=full -C link-arg="-Wl,-z,cet-report=warning" -o example example.rs
+$ RUSTC_LOG=redox_codegen_ssa::back::link=info redox-custom -v -Z cf-protection=full -C link-arg="-Wl,-z,cet-report=warning" -o example example.rs
 ...
 /usr/bin/ld: /.../build/x86_64-unknown-linux-gnu/stage1/lib/rustlib/x86_64-unknown-linux-gnu/lib/libstd-d73f7266be14cb8b.rlib(std-d73f7266be14cb8b.std.f7443020-cgu.12.rcgu.o): warning: missing IBT and SHSTK properties
 ```

@@ -1,11 +1,11 @@
-use rustc_abi::{CanonAbi, FieldIdx, Size};
-use rustc_apfloat::Float;
-use rustc_apfloat::ieee::Single;
-use rustc_middle::ty::Ty;
-use rustc_middle::{mir, ty};
-use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
-use rustc_target::spec::Arch;
+use redox_abi::{CanonAbi, FieldIdx, Size};
+use redox_apfloat::Float;
+use redox_apfloat::ieee::Single;
+use redox_middle::ty::Ty;
+use redox_middle::{mir, ty};
+use redox_span::Symbol;
+use redox_target::callconv::FnAbi;
+use redox_target::spec::Arch;
 
 use self::helpers::bool_to_simd_element;
 use crate::*;
@@ -252,7 +252,7 @@ impl FloatBinOp {
 
 /// Performs `which` scalar operation on `left` and `right` and returns
 /// the result.
-fn bin_op_float<'tcx, F: rustc_apfloat::Float>(
+fn bin_op_float<'tcx, F: redox_apfloat::Float>(
     which: FloatBinOp,
     left: &ImmTy<'tcx>,
     right: &ImmTy<'tcx>,
@@ -309,7 +309,7 @@ fn bin_op_float<'tcx, F: rustc_apfloat::Float>(
 
 /// Performs `which` operation on the first component of `left` and `right`
 /// and copies the other components from `left`. The result is stored in `dest`.
-fn bin_op_simd_float_first<'tcx, F: rustc_apfloat::Float>(
+fn bin_op_simd_float_first<'tcx, F: redox_apfloat::Float>(
     ecx: &mut crate::MiriInterpCx<'tcx>,
     which: FloatBinOp,
     left: &OpTy<'tcx>,
@@ -339,7 +339,7 @@ fn bin_op_simd_float_first<'tcx, F: rustc_apfloat::Float>(
 
 /// Performs `which` operation on each component of `left` and
 /// `right`, storing the result is stored in `dest`.
-fn bin_op_simd_float_all<'tcx, F: rustc_apfloat::Float>(
+fn bin_op_simd_float_all<'tcx, F: redox_apfloat::Float>(
     ecx: &mut crate::MiriInterpCx<'tcx>,
     which: FloatBinOp,
     left: &OpTy<'tcx>,
@@ -534,7 +534,7 @@ fn extract_first_u64<'tcx>(
 
 // Rounds the first element of `right` according to `rounding`
 // and copies the remaining elements from `left`.
-fn round_first<'tcx, F: rustc_apfloat::Float>(
+fn round_first<'tcx, F: redox_apfloat::Float>(
     ecx: &mut crate::MiriInterpCx<'tcx>,
     left: &OpTy<'tcx>,
     right: &OpTy<'tcx>,
@@ -565,7 +565,7 @@ fn round_first<'tcx, F: rustc_apfloat::Float>(
 }
 
 // Rounds all elements of `op` according to `rounding`.
-fn round_all<'tcx, F: rustc_apfloat::Float>(
+fn round_all<'tcx, F: redox_apfloat::Float>(
     ecx: &mut crate::MiriInterpCx<'tcx>,
     op: &OpTy<'tcx>,
     rounding: &OpTy<'tcx>,
@@ -590,23 +590,23 @@ fn round_all<'tcx, F: rustc_apfloat::Float>(
     interp_ok(())
 }
 
-/// Gets equivalent `rustc_apfloat::Round` from rounding mode immediate of
+/// Gets equivalent `redox_apfloat::Round` from rounding mode immediate of
 /// `round.{ss,sd,ps,pd}` intrinsics.
-fn rounding_from_imm<'tcx>(rounding: i32) -> InterpResult<'tcx, rustc_apfloat::Round> {
+fn rounding_from_imm<'tcx>(rounding: i32) -> InterpResult<'tcx, redox_apfloat::Round> {
     // The fourth bit of `rounding` only affects the SSE status
     // register, which cannot be accessed from Miri (or from Rust,
     // for that matter), so we can ignore it.
     match rounding & !0b1000 {
         // When the third bit is 0, the rounding mode is determined by the
         // first two bits.
-        0b000 => interp_ok(rustc_apfloat::Round::NearestTiesToEven),
-        0b001 => interp_ok(rustc_apfloat::Round::TowardNegative),
-        0b010 => interp_ok(rustc_apfloat::Round::TowardPositive),
-        0b011 => interp_ok(rustc_apfloat::Round::TowardZero),
+        0b000 => interp_ok(redox_apfloat::Round::NearestTiesToEven),
+        0b001 => interp_ok(redox_apfloat::Round::TowardNegative),
+        0b010 => interp_ok(redox_apfloat::Round::TowardPositive),
+        0b011 => interp_ok(redox_apfloat::Round::TowardZero),
         // When the third bit is 1, the rounding mode is determined by the
         // SSE status register. Since we do not support modifying it from
         // Miri (or Rust), we assume it to be at its default mode (round-to-nearest).
-        0b100..=0b111 => interp_ok(rustc_apfloat::Round::NearestTiesToEven),
+        0b100..=0b111 => interp_ok(redox_apfloat::Round::NearestTiesToEven),
         rounding => panic!("invalid rounding mode 0x{rounding:02x}"),
     }
 }
@@ -620,7 +620,7 @@ fn rounding_from_imm<'tcx>(rounding: i32) -> InterpResult<'tcx, rustc_apfloat::R
 fn convert_float_to_int<'tcx>(
     ecx: &mut crate::MiriInterpCx<'tcx>,
     op: &OpTy<'tcx>,
-    rnd: rustc_apfloat::Round,
+    rnd: redox_apfloat::Round,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (op, op_len) = ecx.project_to_simd(op)?;

@@ -5,12 +5,12 @@ use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{sugg, sym};
-use rustc_ast::join_path_idents;
-use rustc_errors::Applicability;
-use rustc_hir::def::Res;
-use rustc_hir::{self as hir, Expr, ExprKind, GenericArg, QPath, TyKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::GenericParamDefKind;
+use redox_ast::join_path_idents;
+use redox_errors::Applicability;
+use redox_hir::def::Res;
+use redox_hir::{self as hir, Expr, ExprKind, GenericArg, QPath, TyKind};
+use redox_lint::LateContext;
+use redox_middle::ty::GenericParamDefKind;
 
 use super::FROM_ITER_INSTEAD_OF_COLLECT;
 

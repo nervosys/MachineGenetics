@@ -306,7 +306,7 @@ pub struct RangeFromIter<A> {
 impl<A: Step> RangeFromIter<A> {
     /// Returns the remainder of the range being iterated over.
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     #[unstable(feature = "new_range_api", issue = "125687")]
     pub fn remainder(self) -> RangeFrom<A> {
         if intrinsics::overflow_checks() {
@@ -324,7 +324,7 @@ impl<A: Step> Iterator for RangeFromIter<A> {
     type Item = A;
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     fn next(&mut self) -> Option<A> {
         if intrinsics::overflow_checks() {
             if self.first {
@@ -346,7 +346,7 @@ impl<A: Step> Iterator for RangeFromIter<A> {
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     fn nth(&mut self, n: usize) -> Option<A> {
         if intrinsics::overflow_checks() {
             if self.first {

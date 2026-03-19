@@ -1,12 +1,12 @@
 use std::borrow::Cow;
 
-use rustc_ast::YieldKind;
-use rustc_ast::ast::{
+use redox_ast::YieldKind;
+use redox_ast::ast::{
     self, Attribute, ImplRestriction, MetaItem, MetaItemInner, MetaItemKind, NodeId, Path,
     RestrictionKind, Visibility, VisibilityKind,
 };
-use rustc_ast_pretty::pprust;
-use rustc_span::{BytePos, LocalExpnId, Span, Symbol, SyntaxContext, sym, symbol};
+use redox_ast_pretty::pprust;
+use redox_span::{BytePos, LocalExpnId, Span, Symbol, SyntaxContext, sym, symbol};
 use unicode_width::UnicodeWidthStr;
 
 use crate::comment::{CharClasses, FullCodeCharKind, LineClasses, filter_normal_code};

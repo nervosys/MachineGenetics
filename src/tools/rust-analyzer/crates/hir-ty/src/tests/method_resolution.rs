@@ -10,7 +10,7 @@ fn infer_slice_method() {
         r#"
 //- /core.rs crate:core
 impl<T> [T] {
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     fn foo(&self) -> T {
         loop {}
     }
@@ -37,7 +37,7 @@ fn test() {
 //- /lib.rs crate:core
 mod foo {
     impl f32 {
-        #[rustc_allow_incoherent_impl]
+        #[redox_allow_incoherent_impl]
         pub fn foo(self) -> f32 { 0. }
     }
 }
@@ -51,7 +51,7 @@ fn infer_array_inherent_impl() {
         r#"
 //- /core.rs crate:core
 impl<T, const N: usize> [T; N] {
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     fn foo(&self) -> T {
         loop {}
     }
@@ -1507,7 +1507,7 @@ fn resolve_const_generic_array_methods() {
 //- /core.rs crate:core
 #[lang = "array"]
 impl<T, const N: usize> [T; N] {
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     pub fn map<F, U>(self, f: F) -> [U; N]
     where
         F: FnMut(T) -> U,
@@ -1516,7 +1516,7 @@ impl<T, const N: usize> [T; N] {
 
 #[lang = "slice"]
 impl<T> [T] {
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     pub fn map<F, U>(self, f: F) -> &[U]
     where
         F: FnMut(T) -> U,
@@ -1541,7 +1541,7 @@ struct Const<const N: usize>;
 
 #[lang = "array"]
 impl<T, const N: usize> [T; N] {
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     pub fn my_map<F, U, const X: usize>(self, f: F, c: Const<X>) -> [U; X]
     where
         F: FnMut(T) -> U,
@@ -1550,7 +1550,7 @@ impl<T, const N: usize> [T; N] {
 
 #[lang = "slice"]
 impl<T> [T] {
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     pub fn my_map<F, const X: usize, U>(self, f: F, c: Const<X>) -> &[U]
     where
         F: FnMut(T) -> U,
@@ -1628,7 +1628,7 @@ fn f() {
 }
 
 //- /core.rs crate:core
-#[rustc_skip_array_during_method_dispatch]
+#[redox_skip_array_during_method_dispatch]
 pub trait IntoIterator {
     type Out;
     fn into_iter(self) -> Self::Out;
@@ -1677,7 +1677,7 @@ fn f() {
 }
 
 //- /core.rs crate:core
-#[rustc_skip_during_method_dispatch(array, boxed_slice)]
+#[redox_skip_during_method_dispatch(array, boxed_slice)]
 pub trait IntoIterator {
     type Out;
     fn into_iter(self) -> Self::Out;
@@ -2043,13 +2043,13 @@ pub struct Box<T>(T);
 use core::error::Error;
 
 impl dyn Error {
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error>> {
         loop {}
     }
 }
 impl dyn Error + Send {
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     /// Attempts to downcast the box to a concrete type.
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error + Send>> {
         let err: Box<dyn Error> = self;

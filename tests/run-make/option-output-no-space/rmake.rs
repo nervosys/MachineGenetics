@@ -2,11 +2,11 @@
 // between `-o` and arg is applied, see issue #142812
 
 //@ ignore-cross-compile
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
     // test fake args
-    rustc()
+    redox()
         .input("main.rs")
         .arg("-optimize")
         .run()
@@ -16,7 +16,7 @@ fn main() {
         .assert_stderr_contains(
             "note: output filename `-o ptimize` is applied instead of a flag named `optimize`",
         );
-    rustc()
+    redox()
         .input("main.rs")
         .arg("-o0")
         .run()
@@ -26,9 +26,9 @@ fn main() {
         .assert_stderr_contains(
             "note: output filename `-o 0` is applied instead of a flag named `o0`",
         );
-    rustc().input("main.rs").arg("-o1").run();
+    redox().input("main.rs").arg("-o1").run();
     // test real args by iter optgroups
-    rustc()
+    redox()
         .input("main.rs")
         .arg("-out-dir")
         .run()
@@ -42,7 +42,7 @@ fn main() {
             "help: insert a space between `-o` and `ut-dir` if this is intentional: `-o ut-dir`",
         );
     // test real args by iter CG_OPTIONS
-    rustc()
+    redox()
         .input("main.rs")
         .arg("-opt_level")
         .run()
@@ -56,7 +56,7 @@ fn main() {
             "help: insert a space between `-o` and `pt_level` if this is intentional: `-o pt_level`"
         );
     // separater in-sensitive
-    rustc()
+    redox()
         .input("main.rs")
         .arg("-opt-level")
         .run()
@@ -69,7 +69,7 @@ fn main() {
         .assert_stderr_contains(
             "help: insert a space between `-o` and `pt-level` if this is intentional: `-o pt-level`"
         );
-    rustc()
+    redox()
         .input("main.rs")
         .arg("-overflow-checks")
         .run()
@@ -86,10 +86,10 @@ fn main() {
         );
 
     // No warning for Z_OPTIONS
-    rustc().input("main.rs").arg("-oom").run().assert_stderr_equals("");
+    redox().input("main.rs").arg("-oom").run().assert_stderr_equals("");
 
     // test no warning when there is space between `-o` and arg
-    rustc().input("main.rs").arg("-o").arg("ptimize").run().assert_stderr_equals("");
-    rustc().input("main.rs").arg("--out-dir").arg("xxx").run().assert_stderr_equals("");
-    rustc().input("main.rs").arg("-o").arg("out-dir").run().assert_stderr_equals("");
+    redox().input("main.rs").arg("-o").arg("ptimize").run().assert_stderr_equals("");
+    redox().input("main.rs").arg("--out-dir").arg("xxx").run().assert_stderr_equals("");
+    redox().input("main.rs").arg("-o").arg("out-dir").run().assert_stderr_equals("");
 }

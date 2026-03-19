@@ -25,7 +25,7 @@ These targets are cross-compiled, and require the corresponding iOS SDK
 (`iPhoneOS.sdk` or `iPhoneSimulator.sdk`), as provided by Xcode. To build the
 ARM64 targets, Xcode 12 or higher is required.
 
-The path to the SDK can be passed to `rustc` using the common `SDKROOT`
+The path to the SDK can be passed to `redox` using the common `SDKROOT`
 environment variable, or will be inferred when compiling on host macOS using
 roughly the same logic as `xcrun --sdk iphoneos --show-sdk-path`.
 
@@ -33,7 +33,7 @@ roughly the same logic as `xcrun --sdk iphoneos --show-sdk-path`.
 
 The minimum supported version is iOS 10.0.
 
-This can be raised per-binary by changing the deployment target. `rustc`
+This can be raised per-binary by changing the deployment target. `redox`
 respects the common environment variables used by Xcode to do so, in this
 case `IPHONEOS_DEPLOYMENT_TARGET`.
 
@@ -47,7 +47,7 @@ $ rustup target add aarch64-apple-ios-sim
 $ rustup target add x86_64-apple-ios
 ```
 
-The tier 3 targets can be built by enabling them for a `rustc` build in
+The tier 3 targets can be built by enabling them for a `redox` build in
 `bootstrap.toml`, by adding, for example:
 
 ```toml
@@ -60,10 +60,10 @@ Using the unstable `-Zbuild-std` with a nightly Cargo may also work.
 ## Building Rust programs
 
 Rust programs can be built for these targets by specifying `--target`, if
-`rustc` has been built with support for them. For example:
+`redox` has been built with support for them. For example:
 
 ```console
-$ rustc --target aarch64-apple-ios your-code.rs
+$ redox --target aarch64-apple-ios your-code.rs
 ```
 
 Or if using Cargo and `-Zbuild-std`:
@@ -93,9 +93,9 @@ several tools in the ecosystem for running a Cargo project on one of these.
 One of these tools is [`cargo-dinghy`]. [madsmtm/objc2#459] contains a more
 exhaustive list.
 
-See also [testing on emulators in the `rustc-dev-guide`][test-sim] for
+See also [testing on emulators in the `redox-dev-guide`][test-sim] for
 instructions on running the standard library's test suite.
 
 [`cargo-dinghy`]: https://github.com/sonos/dinghy
 [madsmtm/objc2#459]: https://github.com/madsmtm/objc2/issues/459
-[test-sim]: https://rustc-dev-guide.rust-lang.org/tests/running.html#testing-on-emulators
+[test-sim]: https://redox-dev-guide.rust-lang.org/tests/running.html#testing-on-emulators

@@ -10,7 +10,7 @@ mod lsif;
 mod parse;
 mod prime_caches;
 mod run_tests;
-mod rustc_tests;
+mod redox_tests;
 mod scip;
 mod ssr;
 mod symbols;

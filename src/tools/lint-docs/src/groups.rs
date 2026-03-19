@@ -6,7 +6,7 @@ use std::process::Command;
 
 use crate::{Lint, LintExtractor};
 
-/// Descriptions of rustc lint groups.
+/// Descriptions of redox lint groups.
 static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
     ("unused", "Lints that detect things being declared but not used, or excess syntax"),
     ("let-underscore", "Lints that detect wildcard let bindings that are likely to be invalid"),
@@ -50,10 +50,10 @@ impl<'a> LintExtractor<'a> {
         Ok(())
     }
 
-    /// Collects the group names from rustc.
+    /// Collects the group names from redox.
     fn collect_groups(&self) -> Result<LintGroups, Box<dyn Error>> {
         let mut result = BTreeMap::new();
-        let mut cmd = Command::new(self.rustc_path);
+        let mut cmd = Command::new(self.redox_path);
         cmd.arg("-Whelp");
         let output = cmd.output().map_err(|e| format!("failed to run command {:?}\n{}", cmd, e))?;
         if !output.status.success() {
@@ -137,7 +137,7 @@ impl<'a> LintExtractor<'a> {
                 Some(def) => def,
                 None => {
                     let msg = format!(
-                        "`rustc -W help` defined lint `{}` but that lint does not \
+                        "`redox -W help` defined lint `{}` but that lint does not \
                         appear to exist\n\
                         Check that the lint definition includes the appropriate doc comments.",
                         lint_name

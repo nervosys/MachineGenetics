@@ -1,4 +1,4 @@
-// Checks that rustc correctly errors when passed an invalid lint with
+// Checks that redox correctly errors when passed an invalid lint with
 // `--force-warn`. This is a regression test for issue #86958.
 
 //@ check-pass

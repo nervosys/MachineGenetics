@@ -24,15 +24,15 @@
 // Reason: `set_readonly` has no effect on directories
 // and does not prevent modification.
 
-use run_make_support::{rfs, rustc, test_while_readonly};
+use run_make_support::{rfs, redox, test_while_readonly};
 
 fn main() {
     // Create an inaccessible directory.
     rfs::create_dir("inaccessible");
     test_while_readonly("inaccessible", || {
-        // Run rustc with `-Z temps-dir` set to a directory *inside* the inaccessible one,
+        // Run redox with `-Z temps-dir` set to a directory *inside* the inaccessible one,
         // so that it can't create `tmp`.
-        rustc()
+        redox()
             .input("program.rs")
             .arg("-Ztemps-dir=inaccessible/tmp")
             .run_fail()

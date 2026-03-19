@@ -2,7 +2,7 @@
 // Tests all the kinds of errors when EII attributes are used with wrong syntax.
 #![feature(extern_item_impls)]
 #![feature(decl_macro)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(eii_internals)]
 
 #[eii_declaration(bar)] //~ ERROR `#[eii_declaration(...)]` is only valid on macros
@@ -18,7 +18,7 @@ fn hello() {
 #[eii_declaration(bar, hello, "unsafe")] //~ ERROR `#[eii_declaration(...)]` expects a list of one or two elements
 #[eii_declaration = "unsafe"] //~ ERROR `#[eii_declaration(...)]` expects a list of one or two elements
 #[eii_declaration(bar)]
-#[rustc_builtin_macro(eii_shared_macro)]
+#[redox_builtin_macro(eii_shared_macro)]
 macro foo() {}
 
 unsafe extern "Rust" {

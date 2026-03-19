@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_ast::{Item, ItemKind, UseTreeKind};
-use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::symbol::kw;
+use redox_ast::{Item, ItemKind, UseTreeKind};
+use redox_errors::Applicability;
+use redox_lint::{EarlyContext, EarlyLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::symbol::kw;
 
 declare_clippy_lint! {
     /// ### What it does

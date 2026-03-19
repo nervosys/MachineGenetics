@@ -9,5 +9,5 @@ For more details on the tests involved, see:
 - [Cranelift codegen backend tests](./cg_clif.md)
 - [GCC codegen backend tests](./cg_gcc.md)
 
-[cg_clif]: https://github.com/rust-lang/rustc_codegen_cranelift
-[cg_gcc]: https://github.com/rust-lang/rustc_codegen_gcc
+[cg_clif]: https://github.com/rust-lang/redox_codegen_cranelift
+[cg_gcc]: https://github.com/rust-lang/redox_codegen_gcc

@@ -8,7 +8,7 @@ Note that not all _historical_ (no longer emitted) error codes have explanations
 ## Error explanations
 
 The explanations are written in Markdown (see the [CommonMark Spec] for
-specifics around syntax), and all of them are linked in the [`rustc_error_codes`] crate.
+specifics around syntax), and all of them are linked in the [`redox_error_codes`] crate.
 Please read [RFC 1567] for details on how to format and write long error codes.
 As of <!-- date-check --> February 2023, there is an
 effort[^new-explanations] to replace this largely outdated RFC with a new more flexible standard.
@@ -24,24 +24,24 @@ written, as always: ask your reviewer or ask around on the Rust Zulip.
 
 [^new-explanations]: See the draft RFC [here][new-explanations-rfc].
 
-[`rustc_error_codes`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_error_codes/index.html
+[`redox_error_codes`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_error_codes/index.html
 [CommonMark Spec]: https://spec.commonmark.org/current/
 [RFC 1567]: https://github.com/rust-lang/rfcs/blob/master/text/1567-long-error-codes-explanation-normalization.md
 [new-explanations-rfc]: https://github.com/rust-lang/rfcs/pull/3370
 
 ## Allocating a fresh code
 
-Error codes are stored in `compiler/rustc_error_codes`.
+Error codes are stored in `compiler/redox_error_codes`.
 
 To create a new error, you first need to find the next available code.
-You can find it by opening `rustc_error_codes/src/lib.rs` and scrolling down 
+You can find it by opening `redox_error_codes/src/lib.rs` and scrolling down 
 to the end of the `error_codes!` macro declaration.
 
 Here we might see the highest error code in use is `E0805`, so we _probably_ want `E0806`.
 To be sure, run `rg E0806` and check, you should see no references.
 
 You will have to write an extended description for your error,
-which will go in `rustc_error_codes/src/error_codes/E0806.md`.
+which will go in `redox_error_codes/src/error_codes/E0806.md`.
 To register the error, add the code (in its proper numerical order) to 
 the `error_codes!` macro, like this:
 
@@ -77,7 +77,7 @@ For an example of a PR adding an error code, see [#76143].
 
 ## Running error code doctests
 
-To test the examples added in `rustc_error_codes/src/error_codes`, run the
+To test the examples added in `redox_error_codes/src/error_codes`, run the
 error index generator using:
 
 ```

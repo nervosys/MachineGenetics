@@ -5,10 +5,10 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use run_make_support::{cwd, env_var, rustc};
+use run_make_support::{cwd, env_var, redox};
 
 fn main() {
-    rustc().input("hello.rs").run();
+    redox().input("hello.rs").run();
 
     let windows_dir = env_var("SystemRoot");
     let system32: PathBuf = [&windows_dir, "System32"].iter().collect();

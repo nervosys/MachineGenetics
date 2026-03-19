@@ -6,10 +6,10 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{cc, extra_c_flags, extra_cxx_flags, run, rustc, static_lib_name};
+use run_make_support::{cc, extra_c_flags, extra_cxx_flags, run, redox, static_lib_name};
 
 fn main() {
-    rustc().input("foo.rs").arg("-Clto").run();
+    redox().input("foo.rs").arg("-Clto").run();
     cc().input("bar.c")
         .arg(static_lib_name("foo"))
         .out_exe("bar")

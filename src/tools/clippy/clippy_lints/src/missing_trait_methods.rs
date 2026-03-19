@@ -2,10 +2,10 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::macros::span_is_local;
 use clippy_utils::source::snippet_opt;
-use rustc_hir::def_id::DefIdSet;
-use rustc_hir::{Impl, Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use redox_hir::def_id::DefIdSet;
+use redox_hir::{Impl, Item, ItemKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

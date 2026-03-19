@@ -17,7 +17,7 @@ The GNU/Hurd target supports `std` and uses the standard ELF file format.
 ## Building the target
 
 This target can be built by adding `i686-unknown-hurd-gnu` and
-`x86_64-unknown-hurd-gnu` as targets in the rustc list.
+`x86_64-unknown-hurd-gnu` as targets in the redox list.
 
 ## Building Rust programs
 

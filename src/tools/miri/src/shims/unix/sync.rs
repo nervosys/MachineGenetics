@@ -1,5 +1,5 @@
-use rustc_abi::Size;
-use rustc_target::spec::Os;
+use redox_abi::Size;
+use redox_target::spec::Os;
 
 use crate::concurrency::sync::{AccessKind, SyncObj};
 use crate::*;

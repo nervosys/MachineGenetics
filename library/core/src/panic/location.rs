@@ -174,7 +174,7 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "track_caller", since = "1.46.0")]
-    #[rustc_const_stable(feature = "const_caller_location", since = "1.79.0")]
+    #[redox_const_stable(feature = "const_caller_location", since = "1.79.0")]
     #[track_caller]
     #[inline]
     pub const fn caller() -> &'static Location<'static> {
@@ -216,7 +216,7 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
-    #[rustc_const_stable(feature = "const_location_fields", since = "1.79.0")]
+    #[redox_const_stable(feature = "const_location_fields", since = "1.79.0")]
     pub const fn file(&self) -> &'a str {
         // SAFETY: The filename is valid.
         unsafe { self.filename.as_ref() }
@@ -229,7 +229,7 @@ impl<'a> Location<'a> {
     #[must_use]
     #[inline]
     #[stable(feature = "file_with_nul", since = "1.92.0")]
-    #[rustc_const_stable(feature = "file_with_nul", since = "1.92.0")]
+    #[redox_const_stable(feature = "file_with_nul", since = "1.92.0")]
     pub const fn file_as_c_str(&self) -> &'a CStr {
         let filename = self.filename.as_ptr();
 
@@ -263,7 +263,7 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
-    #[rustc_const_stable(feature = "const_location_fields", since = "1.79.0")]
+    #[redox_const_stable(feature = "const_location_fields", since = "1.79.0")]
     #[inline]
     pub const fn line(&self) -> u32 {
         self.line
@@ -288,7 +288,7 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_col", since = "1.25.0")]
-    #[rustc_const_stable(feature = "const_location_fields", since = "1.79.0")]
+    #[redox_const_stable(feature = "const_location_fields", since = "1.79.0")]
     #[inline]
     pub const fn column(&self) -> u32 {
         self.col

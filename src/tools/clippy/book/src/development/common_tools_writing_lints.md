@@ -11,10 +11,10 @@ You may need following tooltips to catch up with common operations.
   - [Dealing with macros](#dealing-with-macros-and-expansions)
 
 Useful Rustc dev guide links:
-- [Stages of compilation](https://rustc-dev-guide.rust-lang.org/compiler-src.html#the-main-stages-of-compilation)
-- [Diagnostic items](https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html)
-- [Type checking](https://rustc-dev-guide.rust-lang.org/type-checking.html)
-- [Ty module](https://rustc-dev-guide.rust-lang.org/ty.html)
+- [Stages of compilation](https://redox-dev-guide.rust-lang.org/compiler-src.html#the-main-stages-of-compilation)
+- [Diagnostic items](https://redox-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html)
+- [Type checking](https://redox-dev-guide.rust-lang.org/type-checking.html)
+- [Ty module](https://redox-dev-guide.rust-lang.org/ty.html)
 
 ## Retrieving the type of expression
 
@@ -87,7 +87,7 @@ arguments have to be checked separately.
 ```rust
 use clippy_utils::{paths, sym};
 use clippy_utils::res::MaybeDef;
-use rustc_hir::LangItem;
+use redox_hir::LangItem;
 
 impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
@@ -152,7 +152,7 @@ impl LateLintPass<'_> for MyStructLint {
 > Prefer using diagnostic and lang items, if the target trait has one.
 
 We access lang items through the type context `tcx`. `tcx` is of type
-[`TyCtxt`][TyCtxt] and is defined in the `rustc_middle` crate. A list of defined
+[`TyCtxt`][TyCtxt] and is defined in the `redox_middle` crate. A list of defined
 paths for Clippy can be found in [paths.rs][paths]
 
 ## Checking if a type defines a specific method
@@ -265,11 +265,11 @@ functions to deal with macros:
    assert_eq!(x_is_some_span.ctxt(), x_unwrap_span.ctxt());
    ```
 
-[Ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
-[TyKind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html
-[TypeckResults]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html
-[expr_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html#method.expr_ty
-[LateContext]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LateContext.html
-[TyCtxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
-[pat_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html#method.pat_ty
-[paths]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/paths/index.html
+[Ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html
+[TyKind]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html
+[TypeckResults]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TypeckResults.html
+[expr_ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TypeckResults.html#method.expr_ty
+[LateContext]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/struct.LateContext.html
+[TyCtxt]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html
+[pat_ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TypeckResults.html#method.pat_ty
+[paths]: https://doc.rust-lang.org/nightly/nightly-redox/clippy_utils/paths/index.html

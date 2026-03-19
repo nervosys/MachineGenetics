@@ -3,7 +3,7 @@
 #![allow(non_snake_case)]
 
 // ASCII art shape renderer.  Demonstrates traits, impls, operator overloading,
-// non-copyable struct, unit testing.  To run execute: rustc --test shapes.rs &&
+// non-copyable struct, unit testing.  To run execute: redox --test shapes.rs &&
 // ./shapes
 
 // Rust's std library is tightly bound to the language itself so it is

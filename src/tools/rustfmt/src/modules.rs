@@ -2,10 +2,10 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use rustc_ast::ast;
-use rustc_ast::visit::Visitor;
-use rustc_span::Span;
-use rustc_span::symbol::{self, Symbol, sym};
+use redox_ast::ast;
+use redox_ast::visit::Visitor;
+use redox_span::Span;
+use redox_span::symbol::{self, Symbol, sym};
 use thin_vec::ThinVec;
 use thiserror::Error;
 
@@ -72,7 +72,7 @@ pub struct ModuleResolutionError {
     pub(crate) kind: ModuleResolutionErrorKind,
 }
 
-/// Defines variants similar to those of [rustc_expand::module::ModError]
+/// Defines variants similar to those of [redox_expand::module::ModError]
 #[derive(Debug, Error)]
 pub(crate) enum ModuleResolutionErrorKind {
     /// Find a file that cannot be parsed.
@@ -585,7 +585,7 @@ fn path_value(attr: &ast::Attribute) -> Option<Symbol> {
 }
 
 // N.B., even when there are multiple `#[path = ...]` attributes, we just need to
-// examine the first one, since rustc ignores the second and the subsequent ones
+// examine the first one, since redox ignores the second and the subsequent ones
 // as unused attributes.
 fn find_path_value(attrs: &[ast::Attribute]) -> Option<Symbol> {
     attrs.iter().flat_map(path_value).next()

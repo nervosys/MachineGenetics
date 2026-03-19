@@ -5,10 +5,10 @@ use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sym;
 use clippy_utils::visitors::{is_local_used, local_used_once};
-use rustc_errors::Applicability;
-use rustc_hir::{BindingMode, ExprKind, LetStmt, Node, PatKind, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use redox_errors::Applicability;
+use redox_hir::{BindingMode, ExprKind, LetStmt, Node, PatKind, StmtKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

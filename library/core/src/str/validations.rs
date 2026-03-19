@@ -122,7 +122,7 @@ const fn contains_nonascii(x: usize) -> bool {
 /// Walks through `v` checking that it's a valid UTF-8 sequence,
 /// returning `Ok(())` in that case, or, if it is invalid, `Err(err)`.
 #[inline(always)]
-#[rustc_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
+#[redox_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
 pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     let mut index = 0;
     let len = v.len();

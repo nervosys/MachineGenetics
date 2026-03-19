@@ -1,4 +1,4 @@
-# rustc_tools_util
+# redox_tools_util
 
 A small tool to help you generate version information
 for packages installed from a git repo
@@ -10,20 +10,20 @@ Add a `build.rs` file to your repo and list it in `Cargo.toml`
 build = "build.rs"
 ````
 
-List rustc_tools_util as regular AND build dependency.
+List redox_tools_util as regular AND build dependency.
 ````toml
 [dependencies]
-rustc_tools_util = "0.4.2"
+redox_tools_util = "0.4.2"
 
 [build-dependencies]
-rustc_tools_util = "0.4.2"
+redox_tools_util = "0.4.2"
 ````
 
 In `build.rs`, generate the data in your `main()`
 
 ```rust
 fn main() {
-    rustc_tools_util::setup_version_info!();
+    redox_tools_util::setup_version_info!();
 }
 ```
 
@@ -31,7 +31,7 @@ Use the version information in your main.rs
 
 ```rust
 fn show_version() {
-    let version_info = rustc_tools_util::get_version_info!();
+    let version_info = redox_tools_util::get_version_info!();
     println!("{}", version_info);
 }
 ```
@@ -42,10 +42,10 @@ This gives the following output in clippy:
 ## Repository
 
 This project is part of the rust-lang/rust-clippy repository. The source code
-can be found under `./rustc_tools_util/`.
+can be found under `./redox_tools_util/`.
 
-The changelog for `rustc_tools_util` is available under:
-[`rustc_tools_util/CHANGELOG.md`](https://github.com/rust-lang/rust-clippy/blob/master/rustc_tools_util/CHANGELOG.md)
+The changelog for `redox_tools_util` is available under:
+[`redox_tools_util/CHANGELOG.md`](https://github.com/rust-lang/rust-clippy/blob/master/redox_tools_util/CHANGELOG.md)
 
 ## License
 

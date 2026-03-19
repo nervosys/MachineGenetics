@@ -19,5 +19,5 @@ arithmetic_overflow=deny
 To be used like this:
 
 ```bash
-rustc --print=crate-root-lint-levels -Zunstable-options lib.rs
+redox --print=crate-root-lint-levels -Zunstable-options lib.rs
 ```

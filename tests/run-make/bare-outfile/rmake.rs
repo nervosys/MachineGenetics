@@ -3,9 +3,9 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{run, rustc};
+use run_make_support::{run, redox};
 
 fn main() {
-    rustc().output("foo").input("foo.rs").run();
+    redox().output("foo").input("foo.rs").run();
     run("foo");
 }

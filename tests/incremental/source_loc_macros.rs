@@ -6,24 +6,24 @@
 //@ compile-flags: -Z query-dep-graph
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_clean(cfg="rpass2")]
+#[redox_clean(cfg="rpass2")]
 fn line_same() {
     let _ = line!();
 }
 
-#[rustc_clean(cfg="rpass2")]
+#[redox_clean(cfg="rpass2")]
 fn col_same() {
     let _ = column!();
 }
 
-#[rustc_clean(cfg="rpass2")]
+#[redox_clean(cfg="rpass2")]
 fn file_same() {
     let _ = file!();
 }
 
-#[rustc_clean(except="opt_hir_owner_nodes,optimized_mir", cfg="rpass2")]
+#[redox_clean(except="opt_hir_owner_nodes,optimized_mir", cfg="rpass2")]
 fn line_different() {
     #[cfg(rpass1)]
     {
@@ -35,7 +35,7 @@ fn line_different() {
     }
 }
 
-#[rustc_clean(except="opt_hir_owner_nodes,optimized_mir", cfg="rpass2")]
+#[redox_clean(except="opt_hir_owner_nodes,optimized_mir", cfg="rpass2")]
 fn col_different() {
     #[cfg(rpass1)]
     {

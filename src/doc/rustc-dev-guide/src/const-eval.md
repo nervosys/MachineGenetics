@@ -45,6 +45,6 @@ or [`EvalToConstValueResult`] with either the error, or a representation of the
 evaluated constant: a [valtree](mir/index.md#valtrees) or a [MIR constant
 value](mir/index.md#mir-constant-values), respectively.
 
-[`GlobalId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/struct.GlobalId.html
-[`EvalToConstValueResult`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/error/type.EvalToConstValueResult.html
-[`EvalToValTreeResult`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/error/type.EvalToValTreeResult.html
+[`GlobalId`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/interpret/struct.GlobalId.html
+[`EvalToConstValueResult`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/interpret/error/type.EvalToConstValueResult.html
+[`EvalToValTreeResult`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/interpret/error/type.EvalToValTreeResult.html

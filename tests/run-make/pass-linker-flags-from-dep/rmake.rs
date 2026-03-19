@@ -7,13 +7,13 @@
 // and in the correct order.
 // See https://github.com/rust-lang/rust/issues/99427
 
-use run_make_support::{regex, rust_lib_name, rustc};
+use run_make_support::{regex, rust_lib_name, redox};
 
 fn main() {
     // Build dependencies
-    rustc().input("native_dep_1.rs").crate_type("staticlib").run();
-    rustc().input("native_dep_2.rs").crate_type("staticlib").run();
-    rustc()
+    redox().input("native_dep_1.rs").crate_type("staticlib").run();
+    redox().input("native_dep_2.rs").crate_type("staticlib").run();
+    redox()
         .input("rust_dep_flag.rs")
         .arg("-lstatic:-bundle=native_dep_1")
         .arg("-llink-arg=some_flag")
@@ -21,17 +21,17 @@ fn main() {
         .crate_type("lib")
         .arg("-Zunstable-options")
         .run();
-    rustc().input("rust_dep_attr.rs").crate_type("lib").run();
+    redox().input("rust_dep_attr.rs").crate_type("lib").run();
 
     // Check sequence of linker arguments
-    let out_flag = rustc()
+    let out_flag = redox()
         .input("main.rs")
         .extern_("lib", rust_lib_name("rust_dep_flag"))
         .crate_type("bin")
         .print("link-args")
         .run_unchecked()
         .stdout_utf8();
-    let out_attr = rustc()
+    let out_attr = redox()
         .input("main.rs")
         .extern_("lib", rust_lib_name("rust_dep_attr"))
         .crate_type("bin")

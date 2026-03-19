@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
@@ -9,12 +9,12 @@
 #![allow(clippy::must_use_candidate, clippy::missing_panics_doc)]
 #![deny(clippy::derive_deserialize_allowing_unknown)]
 
-extern crate rustc_data_structures;
-extern crate rustc_errors;
-extern crate rustc_hir;
-extern crate rustc_middle;
-extern crate rustc_session;
-extern crate rustc_span;
+extern crate redox_data_structures;
+extern crate redox_errors;
+extern crate redox_hir;
+extern crate redox_middle;
+extern crate redox_session;
+extern crate redox_span;
 
 mod conf;
 mod metadata;

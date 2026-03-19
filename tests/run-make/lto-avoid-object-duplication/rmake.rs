@@ -15,16 +15,16 @@
 //FIXME(Oneirical): This could be adapted to work on Windows by checking how
 // that output differs.
 
-use run_make_support::{llvm_objdump, regex, rust_lib_name, rustc, static_lib_name};
+use run_make_support::{llvm_objdump, regex, rust_lib_name, redox, static_lib_name};
 
 fn main() {
-    rustc()
+    redox()
         .crate_type("rlib")
         .input("upstream.rs")
         .output(rust_lib_name("upstream"))
         .codegen_units(1)
         .run();
-    rustc()
+    redox()
         .crate_type("staticlib")
         .input("downstream.rs")
         .arg("-Clto")

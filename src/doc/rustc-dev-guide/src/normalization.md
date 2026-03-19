@@ -8,8 +8,8 @@ Normalization is the process of taking these alias types and replacing them with
 
 The concept of an alias is not unique to *types* and the concept also applies to constants/const generics. However, right now in the compiler we don't really treat const aliases as a "first class concept" so this chapter mostly discusses things in the context of types (even though the concepts transfer just fine).
 
-[tykind_alias]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/enum.TyKind.html#variant.Alias
-[aliaskind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/enum.AliasTyKind.html
+[tykind_alias]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/enum.TyKind.html#variant.Alias
+[aliaskind]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/enum.AliasTyKind.html
 
 ### Rigid, Ambiguous and Unnormalized Aliases
 
@@ -209,22 +209,22 @@ In practice `query_normalize` is used for normalization in the borrow checker, a
 
 [`normalize_erasing_regions`][norm_erasing_regions] is generally used by parts of the compiler that are not doing type system analysis. This normalization entry point does not handle inference variables, lifetimes, or any diagnostics. Lints and codegen make heavy use of this entry point as they typically are working with fully inferred aliases that can be assumed to be well formed (or at least, are not responsible for erroring on).
 
-[query_norm]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/at/struct.At.html#method.query_normalize
-[norm_erasing_regions]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.normalize_erasing_regions
-[normalize]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/at/struct.At.html#method.normalize
-[deeply_normalize]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/normalize/trait.NormalizeExt.html#tymethod.deeply_normalize
-[structurally_normalize]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/trait.StructurallyNormalizeExt.html#tymethod.structurally_normalize_ty
-[infcx]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/struct.InferCtxt.html
-[fcx]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html
-[ocx]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/struct.ObligationCtxt.html
-[structurally_resolve]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html#method.structurally_resolve_type
+[query_norm]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/infer/at/struct.At.html#method.query_normalize
+[norm_erasing_regions]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.normalize_erasing_regions
+[normalize]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/infer/at/struct.At.html#method.normalize
+[deeply_normalize]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/traits/normalize/trait.NormalizeExt.html#tymethod.deeply_normalize
+[structurally_normalize]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/traits/trait.StructurallyNormalizeExt.html#tymethod.structurally_normalize_ty
+[infcx]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/infer/struct.InferCtxt.html
+[fcx]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/fn_ctxt/struct.FnCtxt.html
+[ocx]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/traits/struct.ObligationCtxt.html
+[structurally_resolve]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/fn_ctxt/struct.FnCtxt.html#method.structurally_resolve_type
 
 ### Inside of the trait solver
 
 [`traits::normalize_with_depth(_to)`][norm_with_depth] and [`EvalCtxt::structurally_normalize`][eval_ctxt_structural_norm] are only used by the internals of the trait solvers (old and new respectively). It is effectively a raw entry point to the internals of how normalization is implemented by each trait solver. Other normalization entry points cannot be used from within the internals of trait solving as it wouldn't handle goal cycles and recursion depth correctly.
 
-[norm_with_depth]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/normalize/fn.normalize_with_depth.html
-[eval_ctxt_structural_norm]:  https://doc.rust-lang.org/nightly/nightly-rustc/rustc_next_trait_solver/solve/struct.EvalCtxt.html#method.structurally_normalize_term
+[norm_with_depth]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/traits/normalize/fn.normalize_with_depth.html
+[eval_ctxt_structural_norm]:  https://doc.rust-lang.org/nightly/nightly-redox/redox_next_trait_solver/solve/struct.EvalCtxt.html#method.structurally_normalize_term
 
 ## When/Where to normalize (Old vs New solver)
 
@@ -244,8 +244,8 @@ As a concrete example: equality of aliases is implemented by a custom goal kind 
 
 Despite this approach we still deeply normalize during [writeback][writeback] for performance/simplicity, so that types in the MIR can still be assumed to have been deeply normalized.
 
-[aliasrelate]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.PredicateKind.html#variant.AliasRelate
-[writeback]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/writeback/index.html
+[aliasrelate]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.PredicateKind.html#variant.AliasRelate
+[writeback]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/writeback/index.html
 
 ---
 
@@ -270,7 +270,7 @@ Leaving the alias unnormalized would also be wrong as the old solver expects all
 Ultimately this means that it is not always possible to ensure all aliases inside of a value are rigid.
 
 [universe]: borrow-check/region-inference/placeholders-and-universes.md#what-is-a-universe
-[deeply_normalize]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/normalize/trait.NormalizeExt.html#tymethod.deeply_normalize
+[deeply_normalize]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/traits/normalize/trait.NormalizeExt.html#tymethod.deeply_normalize
 
 ## Handling uses of diverging aliases
 
@@ -307,4 +307,4 @@ Const aliases differ from type aliases a bit here; well formedness of const alia
 
 [^5]: Const aliases certainly wouldn't be *less* sound than type aliases if we stopped doing this
 
-[const_evaluatable]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ClauseKind.html#variant.ConstEvaluatable
+[const_evaluatable]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.ClauseKind.html#variant.ConstEvaluatable

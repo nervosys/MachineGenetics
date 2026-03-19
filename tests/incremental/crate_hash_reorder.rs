@@ -4,13 +4,13 @@
 //@ compile-flags: -Z query-dep-graph
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 // Check that reordering otherwise identical items is not considered a
 // change at all.
-#[rustc_clean(cfg = "rpass2")]
+#[redox_clean(cfg = "rpass2")]
 // But removing an item, naturally, is.
-#[rustc_clean(except="hir_crate", cfg = "rpass3")]
+#[redox_clean(except="hir_crate", cfg = "rpass3")]
 #[cfg(rpass1)]
 pub struct X {
     pub x: u32,

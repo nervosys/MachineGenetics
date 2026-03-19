@@ -4,13 +4,13 @@
 //@ only-dist
 //@ only-x86_64-unknown-linux-gnu
 
-use run_make_support::linker::{assert_rustc_doesnt_use_lld, assert_rustc_uses_lld};
-use run_make_support::rustc;
+use run_make_support::linker::{assert_redox_doesnt_use_lld, assert_redox_uses_lld};
+use run_make_support::redox;
 
 fn main() {
     // A regular compilation should use rust-lld by default.
-    assert_rustc_uses_lld(rustc().input("main.rs"));
+    assert_redox_uses_lld(redox().input("main.rs"));
 
     // But it can still be disabled by turning the linker feature off.
-    assert_rustc_doesnt_use_lld(rustc().arg("-Clinker-features=-lld").input("main.rs"));
+    assert_redox_doesnt_use_lld(redox().arg("-Clinker-features=-lld").input("main.rs"));
 }

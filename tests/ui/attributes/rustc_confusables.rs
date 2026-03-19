@@ -1,13 +1,13 @@
-//@ aux-build: rustc_confusables_across_crate.rs
+//@ aux-build: redox_confusables_across_crate.rs
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-extern crate rustc_confusables_across_crate;
+extern crate redox_confusables_across_crate;
 
-use rustc_confusables_across_crate::BTreeSet;
+use redox_confusables_across_crate::BTreeSet;
 
 fn main() {
-    // Misspellings (similarly named methods) take precedence over `rustc_confusables`.
+    // Misspellings (similarly named methods) take precedence over `redox_confusables`.
     let x = BTreeSet {};
     x.inser();
     //~^ ERROR no method named
@@ -27,22 +27,22 @@ fn main() {
 struct Bar;
 
 impl Bar {
-    #[rustc_confusables()]
+    #[redox_confusables()]
     //~^ ERROR expected at least one confusable name
     fn baz() {}
 
-    #[rustc_confusables]
-    //~^ ERROR malformed `rustc_confusables` attribute input
+    #[redox_confusables]
+    //~^ ERROR malformed `redox_confusables` attribute input
     //~| HELP must be of the form
     fn qux() {}
 
-    #[rustc_confusables(invalid_meta_item)]
-    //~^ ERROR malformed `rustc_confusables` attribute input [E0539]
+    #[redox_confusables(invalid_meta_item)]
+    //~^ ERROR malformed `redox_confusables` attribute input [E0539]
     //~| HELP must be of the form
     fn quux() {}
 }
 
-#[rustc_confusables("blah")]
+#[redox_confusables("blah")]
 //~^ ERROR attribute cannot be used on
 //~| HELP can only be applied to
 //~| HELP remove the attribute

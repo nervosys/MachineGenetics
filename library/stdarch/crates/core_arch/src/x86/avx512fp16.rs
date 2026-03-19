@@ -9,7 +9,7 @@ use crate::ptr;
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set_ph(
     e7: f16,
     e6: f16,
@@ -29,7 +29,7 @@ pub const fn _mm_set_ph(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_set_ph(
     e15: f16,
     e14: f16,
@@ -59,7 +59,7 @@ pub const fn _mm256_set_ph(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_set_ph(
     e31: f16,
     e30: f16,
@@ -107,7 +107,7 @@ pub const fn _mm512_set_ph(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set_sh(a: f16) -> __m128h {
     __m128h([a, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 }
@@ -118,7 +118,7 @@ pub const fn _mm_set_sh(a: f16) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set1_ph(a: f16) -> __m128h {
     unsafe { transmute(f16x8::splat(a)) }
 }
@@ -129,7 +129,7 @@ pub const fn _mm_set1_ph(a: f16) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_set1_ph(a: f16) -> __m256h {
     unsafe { transmute(f16x16::splat(a)) }
 }
@@ -140,7 +140,7 @@ pub const fn _mm256_set1_ph(a: f16) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_set1_ph(a: f16) -> __m512h {
     unsafe { transmute(f16x32::splat(a)) }
 }
@@ -151,7 +151,7 @@ pub const fn _mm512_set1_ph(a: f16) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_setr_ph(
     e0: f16,
     e1: f16,
@@ -171,7 +171,7 @@ pub const fn _mm_setr_ph(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_setr_ph(
     e0: f16,
     e1: f16,
@@ -201,7 +201,7 @@ pub const fn _mm256_setr_ph(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_setr_ph(
     e0: f16,
     e1: f16,
@@ -248,7 +248,7 @@ pub const fn _mm512_setr_ph(
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_setzero_ph() -> __m128h {
     unsafe { transmute(f16x8::ZERO) }
 }
@@ -259,7 +259,7 @@ pub const fn _mm_setzero_ph() -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_setzero_ph() -> __m256h {
     f16x16::ZERO.as_m256h()
 }
@@ -270,7 +270,7 @@ pub const fn _mm256_setzero_ph() -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_setzero_ph() -> __m512h {
     f16x32::ZERO.as_m512h()
 }
@@ -284,7 +284,7 @@ pub const fn _mm512_setzero_ph() -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_undefined_ph() -> __m128h {
     f16x8::ZERO.as_m128h()
 }
@@ -298,7 +298,7 @@ pub const fn _mm_undefined_ph() -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_undefined_ph() -> __m256h {
     f16x16::ZERO.as_m256h()
 }
@@ -312,7 +312,7 @@ pub const fn _mm256_undefined_ph() -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_undefined_ph() -> __m512h {
     f16x32::ZERO.as_m512h()
 }
@@ -324,7 +324,7 @@ pub const fn _mm512_undefined_ph() -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_castpd_ph(a: __m128d) -> __m128h {
     unsafe { transmute(a) }
 }
@@ -336,7 +336,7 @@ pub const fn _mm_castpd_ph(a: __m128d) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_castpd_ph(a: __m256d) -> __m256h {
     unsafe { transmute(a) }
 }
@@ -348,7 +348,7 @@ pub const fn _mm256_castpd_ph(a: __m256d) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_castpd_ph(a: __m512d) -> __m512h {
     unsafe { transmute(a) }
 }
@@ -360,7 +360,7 @@ pub const fn _mm512_castpd_ph(a: __m512d) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_castph_pd(a: __m128h) -> __m128d {
     unsafe { transmute(a) }
 }
@@ -372,7 +372,7 @@ pub const fn _mm_castph_pd(a: __m128h) -> __m128d {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_castph_pd(a: __m256h) -> __m256d {
     unsafe { transmute(a) }
 }
@@ -384,7 +384,7 @@ pub const fn _mm256_castph_pd(a: __m256h) -> __m256d {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_castph_pd(a: __m512h) -> __m512d {
     unsafe { transmute(a) }
 }
@@ -396,7 +396,7 @@ pub const fn _mm512_castph_pd(a: __m512h) -> __m512d {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_castps_ph(a: __m128) -> __m128h {
     unsafe { transmute(a) }
 }
@@ -408,7 +408,7 @@ pub const fn _mm_castps_ph(a: __m128) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_castps_ph(a: __m256) -> __m256h {
     unsafe { transmute(a) }
 }
@@ -420,7 +420,7 @@ pub const fn _mm256_castps_ph(a: __m256) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_castps_ph(a: __m512) -> __m512h {
     unsafe { transmute(a) }
 }
@@ -432,7 +432,7 @@ pub const fn _mm512_castps_ph(a: __m512) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_castph_ps(a: __m128h) -> __m128 {
     unsafe { transmute(a) }
 }
@@ -444,7 +444,7 @@ pub const fn _mm_castph_ps(a: __m128h) -> __m128 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_castph_ps(a: __m256h) -> __m256 {
     unsafe { transmute(a) }
 }
@@ -456,7 +456,7 @@ pub const fn _mm256_castph_ps(a: __m256h) -> __m256 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_castph_ps(a: __m512h) -> __m512 {
     unsafe { transmute(a) }
 }
@@ -468,7 +468,7 @@ pub const fn _mm512_castph_ps(a: __m512h) -> __m512 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_castsi128_ph(a: __m128i) -> __m128h {
     unsafe { transmute(a) }
 }
@@ -480,7 +480,7 @@ pub const fn _mm_castsi128_ph(a: __m128i) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_castsi256_ph(a: __m256i) -> __m256h {
     unsafe { transmute(a) }
 }
@@ -492,7 +492,7 @@ pub const fn _mm256_castsi256_ph(a: __m256i) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_castsi512_ph(a: __m512i) -> __m512h {
     unsafe { transmute(a) }
 }
@@ -504,7 +504,7 @@ pub const fn _mm512_castsi512_ph(a: __m512i) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_castph_si128(a: __m128h) -> __m128i {
     unsafe { transmute(a) }
 }
@@ -516,7 +516,7 @@ pub const fn _mm_castph_si128(a: __m128h) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_castph_si256(a: __m256h) -> __m256i {
     unsafe { transmute(a) }
 }
@@ -528,7 +528,7 @@ pub const fn _mm256_castph_si256(a: __m256h) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_castph_si512(a: __m512h) -> __m512i {
     unsafe { transmute(a) }
 }
@@ -540,7 +540,7 @@ pub const fn _mm512_castph_si512(a: __m512h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_castph256_ph128(a: __m256h) -> __m128h {
     unsafe { simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]) }
 }
@@ -552,7 +552,7 @@ pub const fn _mm256_castph256_ph128(a: __m256h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_castph512_ph128(a: __m512h) -> __m128h {
     unsafe { simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]) }
 }
@@ -564,7 +564,7 @@ pub const fn _mm512_castph512_ph128(a: __m512h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_castph512_ph256(a: __m512h) -> __m256h {
     unsafe { simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]) }
 }
@@ -577,7 +577,7 @@ pub const fn _mm512_castph512_ph256(a: __m512h) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_castph128_ph256(a: __m128h) -> __m256h {
     unsafe {
         simd_shuffle!(
@@ -596,7 +596,7 @@ pub const fn _mm256_castph128_ph256(a: __m128h) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_castph128_ph512(a: __m128h) -> __m512h {
     unsafe {
         simd_shuffle!(
@@ -618,7 +618,7 @@ pub const fn _mm512_castph128_ph512(a: __m128h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_castph256_ph512(a: __m256h) -> __m512h {
     unsafe {
         simd_shuffle!(
@@ -640,7 +640,7 @@ pub const fn _mm512_castph256_ph512(a: __m256h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_zextph128_ph256(a: __m128h) -> __m256h {
     unsafe {
         simd_shuffle!(
@@ -659,7 +659,7 @@ pub const fn _mm256_zextph128_ph256(a: __m128h) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_zextph256_ph512(a: __m256h) -> __m512h {
     unsafe {
         simd_shuffle!(
@@ -681,7 +681,7 @@ pub const fn _mm512_zextph256_ph512(a: __m256h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_zextph128_ph512(a: __m128h) -> __m512h {
     unsafe {
         simd_shuffle!(
@@ -729,7 +729,7 @@ macro_rules! cmp_asm { // FIXME: use LLVM intrinsics
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmp_ph_mask)
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cmp_ph_mask<const IMM5: i32>(a: __m128h, b: __m128h) -> __mmask8 {
     unsafe {
@@ -745,7 +745,7 @@ pub fn _mm_cmp_ph_mask<const IMM5: i32>(a: __m128h, b: __m128h) -> __mmask8 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cmp_ph_mask)
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_cmp_ph_mask<const IMM5: i32>(k1: __mmask8, a: __m128h, b: __m128h) -> __mmask8 {
     unsafe {
@@ -760,7 +760,7 @@ pub fn _mm_mask_cmp_ph_mask<const IMM5: i32>(k1: __mmask8, a: __m128h, b: __m128
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cmp_ph_mask)
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_cmp_ph_mask<const IMM5: i32>(a: __m256h, b: __m256h) -> __mmask16 {
     unsafe {
@@ -776,7 +776,7 @@ pub fn _mm256_cmp_ph_mask<const IMM5: i32>(a: __m256h, b: __m256h) -> __mmask16 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_cmp_ph_mask)
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_mask_cmp_ph_mask<const IMM5: i32>(
     k1: __mmask16,
@@ -795,7 +795,7 @@ pub fn _mm256_mask_cmp_ph_mask<const IMM5: i32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cmp_ph_mask)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cmp_ph_mask<const IMM5: i32>(a: __m512h, b: __m512h) -> __mmask32 {
     unsafe {
@@ -811,7 +811,7 @@ pub fn _mm512_cmp_ph_mask<const IMM5: i32>(a: __m512h, b: __m512h) -> __mmask32 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cmp_ph_mask)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cmp_ph_mask<const IMM5: i32>(
     k1: __mmask32,
@@ -832,7 +832,7 @@ pub fn _mm512_mask_cmp_ph_mask<const IMM5: i32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cmp_round_ph_mask)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cmp_round_ph_mask<const IMM5: i32, const SAE: i32>(
     a: __m512h,
@@ -867,7 +867,7 @@ pub fn _mm512_cmp_round_ph_mask<const IMM5: i32, const SAE: i32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cmp_round_ph_mask)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[rustc_legacy_const_generics(3, 4)]
+#[redox_legacy_const_generics(3, 4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cmp_round_ph_mask<const IMM5: i32, const SAE: i32>(
     k1: __mmask32,
@@ -902,7 +902,7 @@ pub fn _mm512_mask_cmp_round_ph_mask<const IMM5: i32, const SAE: i32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmp_round_sh_mask)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cmp_round_sh_mask<const IMM5: i32, const SAE: i32>(a: __m128h, b: __m128h) -> __mmask8 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -917,7 +917,7 @@ pub fn _mm_cmp_round_sh_mask<const IMM5: i32, const SAE: i32>(a: __m128h, b: __m
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cmp_round_sh_mask)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[rustc_legacy_const_generics(3, 4)]
+#[redox_legacy_const_generics(3, 4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_cmp_round_sh_mask<const IMM5: i32, const SAE: i32>(
     k1: __mmask8,
@@ -937,7 +937,7 @@ pub fn _mm_mask_cmp_round_sh_mask<const IMM5: i32, const SAE: i32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmp_sh_mask)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cmp_sh_mask<const IMM5: i32>(a: __m128h, b: __m128h) -> __mmask8 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -950,7 +950,7 @@ pub fn _mm_cmp_sh_mask<const IMM5: i32>(a: __m128h, b: __m128h) -> __mmask8 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cmp_sh_mask)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_cmp_sh_mask<const IMM5: i32>(k1: __mmask8, a: __m128h, b: __m128h) -> __mmask8 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -964,7 +964,7 @@ pub fn _mm_mask_cmp_sh_mask<const IMM5: i32>(k1: __mmask8, a: __m128h, b: __m128
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_comi_round_sh)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_comi_round_sh<const IMM5: i32, const SAE: i32>(a: __m128h, b: __m128h) -> i32 {
     unsafe {
@@ -980,7 +980,7 @@ pub fn _mm_comi_round_sh<const IMM5: i32, const SAE: i32>(a: __m128h, b: __m128h
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_comi_sh)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_comi_sh<const IMM5: i32>(a: __m128h, b: __m128h) -> i32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -1126,7 +1126,7 @@ pub fn _mm_ucomineq_sh(a: __m128h, b: __m128h) -> i32 {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_load_ph(mem_addr: *const f16) -> __m128h {
     *mem_addr.cast()
 }
@@ -1138,7 +1138,7 @@ pub const unsafe fn _mm_load_ph(mem_addr: *const f16) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_load_ph(mem_addr: *const f16) -> __m256h {
     *mem_addr.cast()
 }
@@ -1150,7 +1150,7 @@ pub const unsafe fn _mm256_load_ph(mem_addr: *const f16) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_load_ph(mem_addr: *const f16) -> __m512h {
     *mem_addr.cast()
 }
@@ -1162,7 +1162,7 @@ pub const unsafe fn _mm512_load_ph(mem_addr: *const f16) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_load_sh(mem_addr: *const f16) -> __m128h {
     _mm_set_sh(*mem_addr)
 }
@@ -1212,7 +1212,7 @@ pub unsafe fn _mm_maskz_load_sh(k: __mmask8, mem_addr: *const f16) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadu_ph(mem_addr: *const f16) -> __m128h {
     ptr::read_unaligned(mem_addr.cast())
 }
@@ -1224,7 +1224,7 @@ pub const unsafe fn _mm_loadu_ph(mem_addr: *const f16) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_loadu_ph(mem_addr: *const f16) -> __m256h {
     ptr::read_unaligned(mem_addr.cast())
 }
@@ -1236,7 +1236,7 @@ pub const unsafe fn _mm256_loadu_ph(mem_addr: *const f16) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_loadu_ph(mem_addr: *const f16) -> __m512h {
     ptr::read_unaligned(mem_addr.cast())
 }
@@ -1249,7 +1249,7 @@ pub const unsafe fn _mm512_loadu_ph(mem_addr: *const f16) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_move_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let mut mov: f16 = simd_extract!(src, 0);
@@ -1268,7 +1268,7 @@ pub const fn _mm_mask_move_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_move_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let mut mov: f16 = 0.;
@@ -1286,7 +1286,7 @@ pub const fn _mm_maskz_move_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_move_sh(a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let mov: f16 = simd_extract!(b, 0);
@@ -1301,7 +1301,7 @@ pub const fn _mm_move_sh(a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_store_ph(mem_addr: *mut f16, a: __m128h) {
     *mem_addr.cast() = a;
 }
@@ -1313,7 +1313,7 @@ pub const unsafe fn _mm_store_ph(mem_addr: *mut f16, a: __m128h) {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_store_ph(mem_addr: *mut f16, a: __m256h) {
     *mem_addr.cast() = a;
 }
@@ -1325,7 +1325,7 @@ pub const unsafe fn _mm256_store_ph(mem_addr: *mut f16, a: __m256h) {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_store_ph(mem_addr: *mut f16, a: __m512h) {
     *mem_addr.cast() = a;
 }
@@ -1336,7 +1336,7 @@ pub const unsafe fn _mm512_store_ph(mem_addr: *mut f16, a: __m512h) {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_store_sh(mem_addr: *mut f16, a: __m128h) {
     *mem_addr = simd_extract!(a, 0);
 }
@@ -1364,7 +1364,7 @@ pub unsafe fn _mm_mask_store_sh(mem_addr: *mut f16, k: __mmask8, a: __m128h) {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storeu_ph(mem_addr: *mut f16, a: __m128h) {
     ptr::write_unaligned(mem_addr.cast(), a);
 }
@@ -1376,7 +1376,7 @@ pub const unsafe fn _mm_storeu_ph(mem_addr: *mut f16, a: __m128h) {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm256_storeu_ph(mem_addr: *mut f16, a: __m256h) {
     ptr::write_unaligned(mem_addr.cast(), a);
 }
@@ -1388,7 +1388,7 @@ pub const unsafe fn _mm256_storeu_ph(mem_addr: *mut f16, a: __m256h) {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm512_storeu_ph(mem_addr: *mut f16, a: __m512h) {
     ptr::write_unaligned(mem_addr.cast(), a);
 }
@@ -1400,7 +1400,7 @@ pub const unsafe fn _mm512_storeu_ph(mem_addr: *mut f16, a: __m512h) {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vaddph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_add_ph(a: __m128h, b: __m128h) -> __m128h {
     unsafe { simd_add(a, b) }
 }
@@ -1413,7 +1413,7 @@ pub const fn _mm_add_ph(a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vaddph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_add_ph(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let r = _mm_add_ph(a, b);
@@ -1429,7 +1429,7 @@ pub const fn _mm_mask_add_ph(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) 
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vaddph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_add_ph(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let r = _mm_add_ph(a, b);
@@ -1444,7 +1444,7 @@ pub const fn _mm_maskz_add_ph(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vaddph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_add_ph(a: __m256h, b: __m256h) -> __m256h {
     unsafe { simd_add(a, b) }
 }
@@ -1457,7 +1457,7 @@ pub const fn _mm256_add_ph(a: __m256h, b: __m256h) -> __m256h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vaddph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_add_ph(src: __m256h, k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
     unsafe {
         let r = _mm256_add_ph(a, b);
@@ -1473,7 +1473,7 @@ pub const fn _mm256_mask_add_ph(src: __m256h, k: __mmask16, a: __m256h, b: __m25
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vaddph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_add_ph(k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
     unsafe {
         let r = _mm256_add_ph(a, b);
@@ -1488,7 +1488,7 @@ pub const fn _mm256_maskz_add_ph(k: __mmask16, a: __m256h, b: __m256h) -> __m256
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vaddph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_add_ph(a: __m512h, b: __m512h) -> __m512h {
     unsafe { simd_add(a, b) }
 }
@@ -1501,7 +1501,7 @@ pub const fn _mm512_add_ph(a: __m512h, b: __m512h) -> __m512h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vaddph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_add_ph(src: __m512h, k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
     unsafe {
         let r = _mm512_add_ph(a, b);
@@ -1517,7 +1517,7 @@ pub const fn _mm512_mask_add_ph(src: __m512h, k: __mmask32, a: __m512h, b: __m51
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vaddph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_add_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
     unsafe {
         let r = _mm512_add_ph(a, b);
@@ -1538,7 +1538,7 @@ pub const fn _mm512_maskz_add_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vaddph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_add_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m512h {
     unsafe {
@@ -1561,7 +1561,7 @@ pub fn _mm512_add_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m51
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vaddph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_add_round_ph<const ROUNDING: i32>(
     src: __m512h,
@@ -1589,7 +1589,7 @@ pub fn _mm512_mask_add_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vaddph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_add_round_ph<const ROUNDING: i32>(
     k: __mmask32,
@@ -1617,7 +1617,7 @@ pub fn _mm512_maskz_add_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vaddsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_add_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -1639,7 +1639,7 @@ pub fn _mm_add_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h 
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vaddsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_add_round_sh<const ROUNDING: i32>(
     src: __m128h,
@@ -1668,7 +1668,7 @@ pub fn _mm_mask_add_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vaddsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_add_round_sh<const ROUNDING: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -1683,7 +1683,7 @@ pub fn _mm_maskz_add_round_sh<const ROUNDING: i32>(k: __mmask8, a: __m128h, b: _
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vaddsh))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_add_sh(a: __m128h, b: __m128h) -> __m128h {
     unsafe { simd_insert!(a, 0, _mm_cvtsh_h(a) + _mm_cvtsh_h(b)) }
 }
@@ -1697,7 +1697,7 @@ pub const fn _mm_add_sh(a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vaddsh))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_add_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let extractsrc: f16 = simd_extract!(src, 0);
@@ -1720,7 +1720,7 @@ pub const fn _mm_mask_add_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) 
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vaddsh))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_add_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let mut add: f16 = 0.;
@@ -1740,7 +1740,7 @@ pub const fn _mm_maskz_add_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vsubph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_sub_ph(a: __m128h, b: __m128h) -> __m128h {
     unsafe { simd_sub(a, b) }
 }
@@ -1753,7 +1753,7 @@ pub const fn _mm_sub_ph(a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vsubph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_sub_ph(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let r = _mm_sub_ph(a, b);
@@ -1769,7 +1769,7 @@ pub const fn _mm_mask_sub_ph(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) 
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vsubph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_sub_ph(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let r = _mm_sub_ph(a, b);
@@ -1784,7 +1784,7 @@ pub const fn _mm_maskz_sub_ph(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vsubph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_sub_ph(a: __m256h, b: __m256h) -> __m256h {
     unsafe { simd_sub(a, b) }
 }
@@ -1797,7 +1797,7 @@ pub const fn _mm256_sub_ph(a: __m256h, b: __m256h) -> __m256h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vsubph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_sub_ph(src: __m256h, k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
     unsafe {
         let r = _mm256_sub_ph(a, b);
@@ -1813,7 +1813,7 @@ pub const fn _mm256_mask_sub_ph(src: __m256h, k: __mmask16, a: __m256h, b: __m25
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vsubph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_sub_ph(k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
     unsafe {
         let r = _mm256_sub_ph(a, b);
@@ -1828,7 +1828,7 @@ pub const fn _mm256_maskz_sub_ph(k: __mmask16, a: __m256h, b: __m256h) -> __m256
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsubph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_sub_ph(a: __m512h, b: __m512h) -> __m512h {
     unsafe { simd_sub(a, b) }
 }
@@ -1841,7 +1841,7 @@ pub const fn _mm512_sub_ph(a: __m512h, b: __m512h) -> __m512h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsubph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_sub_ph(src: __m512h, k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
     unsafe {
         let r = _mm512_sub_ph(a, b);
@@ -1857,7 +1857,7 @@ pub const fn _mm512_mask_sub_ph(src: __m512h, k: __mmask32, a: __m512h, b: __m51
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsubph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_sub_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
     unsafe {
         let r = _mm512_sub_ph(a, b);
@@ -1878,7 +1878,7 @@ pub const fn _mm512_maskz_sub_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsubph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_sub_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m512h {
     unsafe {
@@ -1901,7 +1901,7 @@ pub fn _mm512_sub_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m51
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsubph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_sub_round_ph<const ROUNDING: i32>(
     src: __m512h,
@@ -1930,7 +1930,7 @@ pub fn _mm512_mask_sub_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsubph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_sub_round_ph<const ROUNDING: i32>(
     k: __mmask32,
@@ -1958,7 +1958,7 @@ pub fn _mm512_maskz_sub_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsubsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_sub_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -1980,7 +1980,7 @@ pub fn _mm_sub_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h 
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsubsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_sub_round_sh<const ROUNDING: i32>(
     src: __m128h,
@@ -2009,7 +2009,7 @@ pub fn _mm_mask_sub_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsubsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_sub_round_sh<const ROUNDING: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -2024,7 +2024,7 @@ pub fn _mm_maskz_sub_round_sh<const ROUNDING: i32>(k: __mmask8, a: __m128h, b: _
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsubsh))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_sub_sh(a: __m128h, b: __m128h) -> __m128h {
     unsafe { simd_insert!(a, 0, _mm_cvtsh_h(a) - _mm_cvtsh_h(b)) }
 }
@@ -2038,7 +2038,7 @@ pub const fn _mm_sub_sh(a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsubsh))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_sub_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let extractsrc: f16 = simd_extract!(src, 0);
@@ -2061,7 +2061,7 @@ pub const fn _mm_mask_sub_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) 
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsubsh))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_sub_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let mut add: f16 = 0.;
@@ -2081,7 +2081,7 @@ pub const fn _mm_maskz_sub_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vmulph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mul_ph(a: __m128h, b: __m128h) -> __m128h {
     unsafe { simd_mul(a, b) }
 }
@@ -2094,7 +2094,7 @@ pub const fn _mm_mul_ph(a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vmulph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_mul_ph(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let r = _mm_mul_ph(a, b);
@@ -2110,7 +2110,7 @@ pub const fn _mm_mask_mul_ph(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) 
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vmulph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_mul_ph(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let r = _mm_mul_ph(a, b);
@@ -2125,7 +2125,7 @@ pub const fn _mm_maskz_mul_ph(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vmulph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mul_ph(a: __m256h, b: __m256h) -> __m256h {
     unsafe { simd_mul(a, b) }
 }
@@ -2138,7 +2138,7 @@ pub const fn _mm256_mul_ph(a: __m256h, b: __m256h) -> __m256h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vmulph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_mul_ph(src: __m256h, k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
     unsafe {
         let r = _mm256_mul_ph(a, b);
@@ -2154,7 +2154,7 @@ pub const fn _mm256_mask_mul_ph(src: __m256h, k: __mmask16, a: __m256h, b: __m25
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vmulph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_mul_ph(k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
     unsafe {
         let r = _mm256_mul_ph(a, b);
@@ -2169,7 +2169,7 @@ pub const fn _mm256_maskz_mul_ph(k: __mmask16, a: __m256h, b: __m256h) -> __m256
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmulph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mul_ph(a: __m512h, b: __m512h) -> __m512h {
     unsafe { simd_mul(a, b) }
 }
@@ -2182,7 +2182,7 @@ pub const fn _mm512_mul_ph(a: __m512h, b: __m512h) -> __m512h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmulph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_mul_ph(src: __m512h, k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
     unsafe {
         let r = _mm512_mul_ph(a, b);
@@ -2198,7 +2198,7 @@ pub const fn _mm512_mask_mul_ph(src: __m512h, k: __mmask32, a: __m512h, b: __m51
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmulph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_mul_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
     unsafe {
         let r = _mm512_mul_ph(a, b);
@@ -2219,7 +2219,7 @@ pub const fn _mm512_maskz_mul_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmulph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mul_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m512h {
     unsafe {
@@ -2242,7 +2242,7 @@ pub fn _mm512_mul_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m51
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmulph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_mul_round_ph<const ROUNDING: i32>(
     src: __m512h,
@@ -2271,7 +2271,7 @@ pub fn _mm512_mask_mul_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmulph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_mul_round_ph<const ROUNDING: i32>(
     k: __mmask32,
@@ -2299,7 +2299,7 @@ pub fn _mm512_maskz_mul_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmulsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mul_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -2321,7 +2321,7 @@ pub fn _mm_mul_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h 
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmulsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_mul_round_sh<const ROUNDING: i32>(
     src: __m128h,
@@ -2350,7 +2350,7 @@ pub fn _mm_mask_mul_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmulsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_mul_round_sh<const ROUNDING: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -2365,7 +2365,7 @@ pub fn _mm_maskz_mul_round_sh<const ROUNDING: i32>(k: __mmask8, a: __m128h, b: _
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmulsh))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mul_sh(a: __m128h, b: __m128h) -> __m128h {
     unsafe { simd_insert!(a, 0, _mm_cvtsh_h(a) * _mm_cvtsh_h(b)) }
 }
@@ -2379,7 +2379,7 @@ pub const fn _mm_mul_sh(a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmulsh))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_mul_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let extractsrc: f16 = simd_extract!(src, 0);
@@ -2402,7 +2402,7 @@ pub const fn _mm_mask_mul_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) 
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmulsh))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_mul_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let mut add: f16 = 0.;
@@ -2422,7 +2422,7 @@ pub const fn _mm_maskz_mul_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vdivph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_div_ph(a: __m128h, b: __m128h) -> __m128h {
     unsafe { simd_div(a, b) }
 }
@@ -2435,7 +2435,7 @@ pub const fn _mm_div_ph(a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vdivph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_div_ph(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let r = _mm_div_ph(a, b);
@@ -2451,7 +2451,7 @@ pub const fn _mm_mask_div_ph(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) 
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vdivph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_div_ph(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let r = _mm_div_ph(a, b);
@@ -2466,7 +2466,7 @@ pub const fn _mm_maskz_div_ph(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vdivph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_div_ph(a: __m256h, b: __m256h) -> __m256h {
     unsafe { simd_div(a, b) }
 }
@@ -2479,7 +2479,7 @@ pub const fn _mm256_div_ph(a: __m256h, b: __m256h) -> __m256h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vdivph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_div_ph(src: __m256h, k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
     unsafe {
         let r = _mm256_div_ph(a, b);
@@ -2495,7 +2495,7 @@ pub const fn _mm256_mask_div_ph(src: __m256h, k: __mmask16, a: __m256h, b: __m25
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vdivph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_div_ph(k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
     unsafe {
         let r = _mm256_div_ph(a, b);
@@ -2510,7 +2510,7 @@ pub const fn _mm256_maskz_div_ph(k: __mmask16, a: __m256h, b: __m256h) -> __m256
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vdivph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_div_ph(a: __m512h, b: __m512h) -> __m512h {
     unsafe { simd_div(a, b) }
 }
@@ -2523,7 +2523,7 @@ pub const fn _mm512_div_ph(a: __m512h, b: __m512h) -> __m512h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vdivph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_div_ph(src: __m512h, k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
     unsafe {
         let r = _mm512_div_ph(a, b);
@@ -2539,7 +2539,7 @@ pub const fn _mm512_mask_div_ph(src: __m512h, k: __mmask32, a: __m512h, b: __m51
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vdivph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_div_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
     unsafe {
         let r = _mm512_div_ph(a, b);
@@ -2560,7 +2560,7 @@ pub const fn _mm512_maskz_div_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vdivph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_div_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m512h {
     unsafe {
@@ -2583,7 +2583,7 @@ pub fn _mm512_div_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m51
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vdivph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_div_round_ph<const ROUNDING: i32>(
     src: __m512h,
@@ -2612,7 +2612,7 @@ pub fn _mm512_mask_div_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vdivph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_div_round_ph<const ROUNDING: i32>(
     k: __mmask32,
@@ -2640,7 +2640,7 @@ pub fn _mm512_maskz_div_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vdivsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_div_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -2662,7 +2662,7 @@ pub fn _mm_div_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h 
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vdivsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_div_round_sh<const ROUNDING: i32>(
     src: __m128h,
@@ -2691,7 +2691,7 @@ pub fn _mm_mask_div_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vdivsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_div_round_sh<const ROUNDING: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -2706,7 +2706,7 @@ pub fn _mm_maskz_div_round_sh<const ROUNDING: i32>(k: __mmask8, a: __m128h, b: _
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vdivsh))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_div_sh(a: __m128h, b: __m128h) -> __m128h {
     unsafe { simd_insert!(a, 0, _mm_cvtsh_h(a) / _mm_cvtsh_h(b)) }
 }
@@ -2720,7 +2720,7 @@ pub const fn _mm_div_sh(a: __m128h, b: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vdivsh))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_div_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let extractsrc: f16 = simd_extract!(src, 0);
@@ -2743,7 +2743,7 @@ pub const fn _mm_mask_div_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) 
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vdivsh))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_div_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe {
         let mut add: f16 = 0.;
@@ -2889,7 +2889,7 @@ pub fn _mm512_maskz_mul_pch(k: __mmask16, a: __m512h, b: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmulcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mul_round_pch<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m512h {
     static_assert_rounding!(ROUNDING);
@@ -2912,7 +2912,7 @@ pub fn _mm512_mul_round_pch<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m5
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmulcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_mul_round_pch<const ROUNDING: i32>(
     src: __m512h,
@@ -2948,7 +2948,7 @@ pub fn _mm512_mask_mul_round_pch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmulcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_mul_round_pch<const ROUNDING: i32>(
     k: __mmask16,
@@ -3018,7 +3018,7 @@ pub fn _mm_maskz_mul_sch(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmulcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mul_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -3042,7 +3042,7 @@ pub fn _mm_mul_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmulcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_mul_round_sch<const ROUNDING: i32>(
     src: __m128h,
@@ -3079,7 +3079,7 @@ pub fn _mm_mask_mul_round_sch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmulcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_mul_round_sch<const ROUNDING: i32>(
     k: __mmask8,
@@ -3220,7 +3220,7 @@ pub fn _mm512_maskz_fmul_pch(k: __mmask16, a: __m512h, b: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmulcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_fmul_round_pch<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m512h {
     static_assert_rounding!(ROUNDING);
@@ -3242,7 +3242,7 @@ pub fn _mm512_fmul_round_pch<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmulcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_fmul_round_pch<const ROUNDING: i32>(
     src: __m512h,
@@ -3269,7 +3269,7 @@ pub fn _mm512_mask_fmul_round_pch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmulcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_fmul_round_pch<const ROUNDING: i32>(
     k: __mmask16,
@@ -3334,7 +3334,7 @@ pub fn _mm_maskz_fmul_sch(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmulcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_fmul_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -3357,7 +3357,7 @@ pub fn _mm_fmul_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmulcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_fmul_round_sch<const ROUNDING: i32>(
     src: __m128h,
@@ -3385,7 +3385,7 @@ pub fn _mm_mask_fmul_round_sch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmulcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_fmul_round_sch<const ROUNDING: i32>(
     k: __mmask8,
@@ -3539,7 +3539,7 @@ pub fn _mm512_maskz_cmul_pch(k: __mmask16, a: __m512h, b: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmulcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cmul_round_pch<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m512h {
     static_assert_rounding!(ROUNDING);
@@ -3563,7 +3563,7 @@ pub fn _mm512_cmul_round_pch<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmulcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cmul_round_pch<const ROUNDING: i32>(
     src: __m512h,
@@ -3600,7 +3600,7 @@ pub fn _mm512_mask_cmul_round_pch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmulcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cmul_round_pch<const ROUNDING: i32>(
     k: __mmask16,
@@ -3668,7 +3668,7 @@ pub fn _mm_maskz_cmul_sch(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmulcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cmul_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -3692,7 +3692,7 @@ pub fn _mm_cmul_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmulcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_cmul_round_sch<const ROUNDING: i32>(
     src: __m128h,
@@ -3729,7 +3729,7 @@ pub fn _mm_mask_cmul_round_sch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmulcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_cmul_round_sch<const ROUNDING: i32>(
     k: __mmask8,
@@ -3882,7 +3882,7 @@ pub fn _mm512_maskz_fcmul_pch(k: __mmask16, a: __m512h, b: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmulcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_fcmul_round_pch<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m512h {
     static_assert_rounding!(ROUNDING);
@@ -3906,7 +3906,7 @@ pub fn _mm512_fcmul_round_pch<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmulcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_fcmul_round_pch<const ROUNDING: i32>(
     src: __m512h,
@@ -3935,7 +3935,7 @@ pub fn _mm512_mask_fcmul_round_pch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmulcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_fcmul_round_pch<const ROUNDING: i32>(
     k: __mmask16,
@@ -4004,7 +4004,7 @@ pub fn _mm_maskz_fcmul_sch(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmulcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_fcmul_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -4028,7 +4028,7 @@ pub fn _mm_fcmul_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m12
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmulcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_fcmul_round_sch<const ROUNDING: i32>(
     src: __m128h,
@@ -4057,7 +4057,7 @@ pub fn _mm_mask_fcmul_round_sch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmulcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_fcmul_round_sch<const ROUNDING: i32>(
     k: __mmask8,
@@ -4075,7 +4075,7 @@ pub fn _mm_maskz_fcmul_round_sch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_abs_ph(v2: __m128h) -> __m128h {
     unsafe { transmute(_mm_and_si128(transmute(v2), _mm_set1_epi16(i16::MAX))) }
 }
@@ -4087,7 +4087,7 @@ pub const fn _mm_abs_ph(v2: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_abs_ph(v2: __m256h) -> __m256h {
     unsafe { transmute(_mm256_and_si256(transmute(v2), _mm256_set1_epi16(i16::MAX))) }
 }
@@ -4099,7 +4099,7 @@ pub const fn _mm256_abs_ph(v2: __m256h) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_abs_ph(v2: __m512h) -> __m512h {
     unsafe { transmute(_mm512_and_si512(transmute(v2), _mm512_set1_epi16(i16::MAX))) }
 }
@@ -4113,7 +4113,7 @@ pub const fn _mm512_abs_ph(v2: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_conj_pch(a: __m128h) -> __m128h {
     unsafe { transmute(_mm_xor_si128(transmute(a), _mm_set1_epi32(i32::MIN))) }
 }
@@ -4127,7 +4127,7 @@ pub const fn _mm_conj_pch(a: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_conj_pch(src: __m128h, k: __mmask8, a: __m128h) -> __m128h {
     unsafe {
         let r: __m128 = transmute(_mm_conj_pch(a));
@@ -4144,7 +4144,7 @@ pub const fn _mm_mask_conj_pch(src: __m128h, k: __mmask8, a: __m128h) -> __m128h
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_conj_pch(k: __mmask8, a: __m128h) -> __m128h {
     _mm_mask_conj_pch(_mm_setzero_ph(), k, a)
 }
@@ -4157,7 +4157,7 @@ pub const fn _mm_maskz_conj_pch(k: __mmask8, a: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_conj_pch(a: __m256h) -> __m256h {
     unsafe { transmute(_mm256_xor_si256(transmute(a), _mm256_set1_epi32(i32::MIN))) }
 }
@@ -4171,7 +4171,7 @@ pub const fn _mm256_conj_pch(a: __m256h) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_conj_pch(src: __m256h, k: __mmask8, a: __m256h) -> __m256h {
     unsafe {
         let r: __m256 = transmute(_mm256_conj_pch(a));
@@ -4188,7 +4188,7 @@ pub const fn _mm256_mask_conj_pch(src: __m256h, k: __mmask8, a: __m256h) -> __m2
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_conj_pch(k: __mmask8, a: __m256h) -> __m256h {
     _mm256_mask_conj_pch(_mm256_setzero_ph(), k, a)
 }
@@ -4201,7 +4201,7 @@ pub const fn _mm256_maskz_conj_pch(k: __mmask8, a: __m256h) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_conj_pch(a: __m512h) -> __m512h {
     unsafe { transmute(_mm512_xor_si512(transmute(a), _mm512_set1_epi32(i32::MIN))) }
 }
@@ -4215,7 +4215,7 @@ pub const fn _mm512_conj_pch(a: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_conj_pch(src: __m512h, k: __mmask16, a: __m512h) -> __m512h {
     unsafe {
         let r: __m512 = transmute(_mm512_conj_pch(a));
@@ -4232,7 +4232,7 @@ pub const fn _mm512_mask_conj_pch(src: __m512h, k: __mmask16, a: __m512h) -> __m
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_conj_pch(k: __mmask16, a: __m512h) -> __m512h {
     _mm512_mask_conj_pch(_mm512_setzero_ph(), k, a)
 }
@@ -4452,7 +4452,7 @@ pub fn _mm512_maskz_fmadd_pch(k: __mmask16, a: __m512h, b: __m512h, c: __m512h) 
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_fmadd_round_pch<const ROUNDING: i32>(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     static_assert_rounding!(ROUNDING);
@@ -4476,7 +4476,7 @@ pub fn _mm512_fmadd_round_pch<const ROUNDING: i32>(a: __m512h, b: __m512h, c: __
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_fmadd_round_pch<const ROUNDING: i32>(
     a: __m512h,
@@ -4508,7 +4508,7 @@ pub fn _mm512_mask_fmadd_round_pch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask3_fmadd_round_pch<const ROUNDING: i32>(
     a: __m512h,
@@ -4545,7 +4545,7 @@ pub fn _mm512_mask3_fmadd_round_pch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_fmadd_round_pch<const ROUNDING: i32>(
     k: __mmask16,
@@ -4640,7 +4640,7 @@ pub fn _mm_maskz_fmadd_sch(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> _
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_fmadd_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
@@ -4673,7 +4673,7 @@ pub fn _mm_fmadd_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m12
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_fmadd_round_sch<const ROUNDING: i32>(
     a: __m128h,
@@ -4707,7 +4707,7 @@ pub fn _mm_mask_fmadd_round_sch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask3_fmadd_round_sch<const ROUNDING: i32>(
     a: __m128h,
@@ -4741,7 +4741,7 @@ pub fn _mm_mask3_fmadd_round_sch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_fmadd_round_sch<const ROUNDING: i32>(
     k: __mmask8,
@@ -4989,7 +4989,7 @@ pub fn _mm512_maskz_fcmadd_pch(k: __mmask16, a: __m512h, b: __m512h, c: __m512h)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmaddcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_fcmadd_round_pch<const ROUNDING: i32>(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     static_assert_rounding!(ROUNDING);
@@ -5014,7 +5014,7 @@ pub fn _mm512_fcmadd_round_pch<const ROUNDING: i32>(a: __m512h, b: __m512h, c: _
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmaddcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_fcmadd_round_pch<const ROUNDING: i32>(
     a: __m512h,
@@ -5047,7 +5047,7 @@ pub fn _mm512_mask_fcmadd_round_pch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmaddcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask3_fcmadd_round_pch<const ROUNDING: i32>(
     a: __m512h,
@@ -5085,7 +5085,7 @@ pub fn _mm512_mask3_fcmadd_round_pch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmaddcph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_fcmadd_round_pch<const ROUNDING: i32>(
     k: __mmask16,
@@ -5186,7 +5186,7 @@ pub fn _mm_maskz_fcmadd_sch(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> 
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmaddcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_fcmadd_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
@@ -5220,7 +5220,7 @@ pub fn _mm_fcmadd_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m1
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmaddcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_fcmadd_round_sch<const ROUNDING: i32>(
     a: __m128h,
@@ -5255,7 +5255,7 @@ pub fn _mm_mask_fcmadd_round_sch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmaddcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask3_fcmadd_round_sch<const ROUNDING: i32>(
     a: __m128h,
@@ -5290,7 +5290,7 @@ pub fn _mm_mask3_fcmadd_round_sch<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfcmaddcsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_fcmadd_round_sch<const ROUNDING: i32>(
     k: __mmask8,
@@ -5318,7 +5318,7 @@ pub fn _mm_maskz_fcmadd_round_sch<const ROUNDING: i32>(
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_fmadd_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_fma(a, b, c) }
 }
@@ -5332,7 +5332,7 @@ pub const fn _mm_fmadd_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_fmadd_ph(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fmadd_ph(a, b, c), a) }
 }
@@ -5346,7 +5346,7 @@ pub const fn _mm_mask_fmadd_ph(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) 
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask3_fmadd_ph(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fmadd_ph(a, b, c), c) }
 }
@@ -5360,7 +5360,7 @@ pub const fn _mm_mask3_fmadd_ph(a: __m128h, b: __m128h, c: __m128h, k: __mmask8)
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_fmadd_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fmadd_ph(a, b, c), _mm_setzero_ph()) }
 }
@@ -5373,7 +5373,7 @@ pub const fn _mm_maskz_fmadd_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m128h)
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_fmadd_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_fma(a, b, c) }
 }
@@ -5387,7 +5387,7 @@ pub const fn _mm256_fmadd_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_fmadd_ph(a: __m256h, k: __mmask16, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fmadd_ph(a, b, c), a) }
 }
@@ -5401,7 +5401,7 @@ pub const fn _mm256_mask_fmadd_ph(a: __m256h, k: __mmask16, b: __m256h, c: __m25
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask3_fmadd_ph(a: __m256h, b: __m256h, c: __m256h, k: __mmask16) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fmadd_ph(a, b, c), c) }
 }
@@ -5415,7 +5415,7 @@ pub const fn _mm256_mask3_fmadd_ph(a: __m256h, b: __m256h, c: __m256h, k: __mmas
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_fmadd_ph(k: __mmask16, a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fmadd_ph(a, b, c), _mm256_setzero_ph()) }
 }
@@ -5428,7 +5428,7 @@ pub const fn _mm256_maskz_fmadd_ph(k: __mmask16, a: __m256h, b: __m256h, c: __m2
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_fmadd_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_fma(a, b, c) }
 }
@@ -5442,7 +5442,7 @@ pub const fn _mm512_fmadd_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_fmadd_ph(a: __m512h, k: __mmask32, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fmadd_ph(a, b, c), a) }
 }
@@ -5456,7 +5456,7 @@ pub const fn _mm512_mask_fmadd_ph(a: __m512h, k: __mmask32, b: __m512h, c: __m51
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask3_fmadd_ph(a: __m512h, b: __m512h, c: __m512h, k: __mmask32) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fmadd_ph(a, b, c), c) }
 }
@@ -5470,7 +5470,7 @@ pub const fn _mm512_mask3_fmadd_ph(a: __m512h, b: __m512h, c: __m512h, k: __mmas
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_fmadd_ph(k: __mmask32, a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fmadd_ph(a, b, c), _mm512_setzero_ph()) }
 }
@@ -5490,7 +5490,7 @@ pub const fn _mm512_maskz_fmadd_ph(k: __mmask32, a: __m512h, b: __m512h, c: __m5
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_fmadd_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe {
@@ -5515,7 +5515,7 @@ pub fn _mm512_fmadd_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h, c: __m
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_fmadd_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -5545,7 +5545,7 @@ pub fn _mm512_mask_fmadd_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask3_fmadd_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -5575,7 +5575,7 @@ pub fn _mm512_mask3_fmadd_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_fmadd_round_ph<const ROUNDING: i32>(
     k: __mmask32,
@@ -5602,7 +5602,7 @@ pub fn _mm512_maskz_fmadd_round_ph<const ROUNDING: i32>(
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_fmadd_sh(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let extracta: f16 = simd_extract!(a, 0);
@@ -5623,7 +5623,7 @@ pub const fn _mm_fmadd_sh(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_fmadd_sh(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let mut fmadd: f16 = simd_extract!(a, 0);
@@ -5646,7 +5646,7 @@ pub const fn _mm_mask_fmadd_sh(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) 
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask3_fmadd_sh(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> __m128h {
     unsafe {
         let mut fmadd: f16 = simd_extract!(c, 0);
@@ -5669,7 +5669,7 @@ pub const fn _mm_mask3_fmadd_sh(a: __m128h, b: __m128h, c: __m128h, k: __mmask8)
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_fmadd_sh(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let mut fmadd: f16 = 0.0;
@@ -5699,7 +5699,7 @@ pub const fn _mm_maskz_fmadd_sh(k: __mmask8, a: __m128h, b: __m128h, c: __m128h)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_fmadd_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
@@ -5729,7 +5729,7 @@ pub fn _mm_fmadd_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m128
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_fmadd_round_sh<const ROUNDING: i32>(
     a: __m128h,
@@ -5766,7 +5766,7 @@ pub fn _mm_mask_fmadd_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask3_fmadd_round_sh<const ROUNDING: i32>(
     a: __m128h,
@@ -5803,7 +5803,7 @@ pub fn _mm_mask3_fmadd_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_fmadd_round_sh<const ROUNDING: i32>(
     k: __mmask8,
@@ -5833,7 +5833,7 @@ pub fn _mm_maskz_fmadd_round_sh<const ROUNDING: i32>(
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_fmsub_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_fma(a, b, simd_neg(c)) }
 }
@@ -5847,7 +5847,7 @@ pub const fn _mm_fmsub_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_fmsub_ph(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fmsub_ph(a, b, c), a) }
 }
@@ -5861,7 +5861,7 @@ pub const fn _mm_mask_fmsub_ph(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) 
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask3_fmsub_ph(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fmsub_ph(a, b, c), c) }
 }
@@ -5875,7 +5875,7 @@ pub const fn _mm_mask3_fmsub_ph(a: __m128h, b: __m128h, c: __m128h, k: __mmask8)
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_fmsub_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fmsub_ph(a, b, c), _mm_setzero_ph()) }
 }
@@ -5888,7 +5888,7 @@ pub const fn _mm_maskz_fmsub_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m128h)
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_fmsub_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_fma(a, b, simd_neg(c)) }
 }
@@ -5902,7 +5902,7 @@ pub const fn _mm256_fmsub_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_fmsub_ph(a: __m256h, k: __mmask16, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fmsub_ph(a, b, c), a) }
 }
@@ -5916,7 +5916,7 @@ pub const fn _mm256_mask_fmsub_ph(a: __m256h, k: __mmask16, b: __m256h, c: __m25
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask3_fmsub_ph(a: __m256h, b: __m256h, c: __m256h, k: __mmask16) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fmsub_ph(a, b, c), c) }
 }
@@ -5930,7 +5930,7 @@ pub const fn _mm256_mask3_fmsub_ph(a: __m256h, b: __m256h, c: __m256h, k: __mmas
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_fmsub_ph(k: __mmask16, a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fmsub_ph(a, b, c), _mm256_setzero_ph()) }
 }
@@ -5943,7 +5943,7 @@ pub const fn _mm256_maskz_fmsub_ph(k: __mmask16, a: __m256h, b: __m256h, c: __m2
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_fmsub_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_fma(a, b, simd_neg(c)) }
 }
@@ -5957,7 +5957,7 @@ pub const fn _mm512_fmsub_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_fmsub_ph(a: __m512h, k: __mmask32, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fmsub_ph(a, b, c), a) }
 }
@@ -5971,7 +5971,7 @@ pub const fn _mm512_mask_fmsub_ph(a: __m512h, k: __mmask32, b: __m512h, c: __m51
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask3_fmsub_ph(a: __m512h, b: __m512h, c: __m512h, k: __mmask32) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fmsub_ph(a, b, c), c) }
 }
@@ -5985,7 +5985,7 @@ pub const fn _mm512_mask3_fmsub_ph(a: __m512h, b: __m512h, c: __m512h, k: __mmas
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_fmsub_ph(k: __mmask32, a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fmsub_ph(a, b, c), _mm512_setzero_ph()) }
 }
@@ -6005,7 +6005,7 @@ pub const fn _mm512_maskz_fmsub_ph(k: __mmask32, a: __m512h, b: __m512h, c: __m5
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_fmsub_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe {
@@ -6030,7 +6030,7 @@ pub fn _mm512_fmsub_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h, c: __m
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_fmsub_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -6060,7 +6060,7 @@ pub fn _mm512_mask_fmsub_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask3_fmsub_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -6090,7 +6090,7 @@ pub fn _mm512_mask3_fmsub_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_fmsub_round_ph<const ROUNDING: i32>(
     k: __mmask32,
@@ -6117,7 +6117,7 @@ pub fn _mm512_maskz_fmsub_round_ph<const ROUNDING: i32>(
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_fmsub_sh(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let extracta: f16 = simd_extract!(a, 0);
@@ -6138,7 +6138,7 @@ pub const fn _mm_fmsub_sh(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_fmsub_sh(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let mut fmsub: f16 = simd_extract!(a, 0);
@@ -6161,7 +6161,7 @@ pub const fn _mm_mask_fmsub_sh(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) 
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask3_fmsub_sh(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> __m128h {
     unsafe {
         let mut fmsub: f16 = simd_extract!(c, 0);
@@ -6184,7 +6184,7 @@ pub const fn _mm_mask3_fmsub_sh(a: __m128h, b: __m128h, c: __m128h, k: __mmask8)
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_fmsub_sh(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let mut fmsub: f16 = 0.0;
@@ -6214,7 +6214,7 @@ pub const fn _mm_maskz_fmsub_sh(k: __mmask8, a: __m128h, b: __m128h, c: __m128h)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_fmsub_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
@@ -6244,7 +6244,7 @@ pub fn _mm_fmsub_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m128
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_fmsub_round_sh<const ROUNDING: i32>(
     a: __m128h,
@@ -6281,7 +6281,7 @@ pub fn _mm_mask_fmsub_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask3_fmsub_round_sh<const ROUNDING: i32>(
     a: __m128h,
@@ -6310,7 +6310,7 @@ pub fn _mm_mask3_fmsub_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_fmsub_round_sh<const ROUNDING: i32>(
     k: __mmask8,
@@ -6339,7 +6339,7 @@ pub fn _mm_maskz_fmsub_round_sh<const ROUNDING: i32>(
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_fnmadd_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_fma(simd_neg(a), b, c) }
 }
@@ -6353,7 +6353,7 @@ pub const fn _mm_fnmadd_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_fnmadd_ph(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fnmadd_ph(a, b, c), a) }
 }
@@ -6367,7 +6367,7 @@ pub const fn _mm_mask_fnmadd_ph(a: __m128h, k: __mmask8, b: __m128h, c: __m128h)
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask3_fnmadd_ph(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fnmadd_ph(a, b, c), c) }
 }
@@ -6381,7 +6381,7 @@ pub const fn _mm_mask3_fnmadd_ph(a: __m128h, b: __m128h, c: __m128h, k: __mmask8
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_fnmadd_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fnmadd_ph(a, b, c), _mm_setzero_ph()) }
 }
@@ -6394,7 +6394,7 @@ pub const fn _mm_maskz_fnmadd_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m128h
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_fnmadd_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_fma(simd_neg(a), b, c) }
 }
@@ -6408,7 +6408,7 @@ pub const fn _mm256_fnmadd_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_fnmadd_ph(a: __m256h, k: __mmask16, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fnmadd_ph(a, b, c), a) }
 }
@@ -6422,7 +6422,7 @@ pub const fn _mm256_mask_fnmadd_ph(a: __m256h, k: __mmask16, b: __m256h, c: __m2
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask3_fnmadd_ph(a: __m256h, b: __m256h, c: __m256h, k: __mmask16) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fnmadd_ph(a, b, c), c) }
 }
@@ -6436,7 +6436,7 @@ pub const fn _mm256_mask3_fnmadd_ph(a: __m256h, b: __m256h, c: __m256h, k: __mma
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_fnmadd_ph(k: __mmask16, a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fnmadd_ph(a, b, c), _mm256_setzero_ph()) }
 }
@@ -6449,7 +6449,7 @@ pub const fn _mm256_maskz_fnmadd_ph(k: __mmask16, a: __m256h, b: __m256h, c: __m
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_fnmadd_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_fma(simd_neg(a), b, c) }
 }
@@ -6463,7 +6463,7 @@ pub const fn _mm512_fnmadd_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_fnmadd_ph(a: __m512h, k: __mmask32, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fnmadd_ph(a, b, c), a) }
 }
@@ -6477,7 +6477,7 @@ pub const fn _mm512_mask_fnmadd_ph(a: __m512h, k: __mmask32, b: __m512h, c: __m5
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask3_fnmadd_ph(a: __m512h, b: __m512h, c: __m512h, k: __mmask32) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fnmadd_ph(a, b, c), c) }
 }
@@ -6491,7 +6491,7 @@ pub const fn _mm512_mask3_fnmadd_ph(a: __m512h, b: __m512h, c: __m512h, k: __mma
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_fnmadd_ph(k: __mmask32, a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fnmadd_ph(a, b, c), _mm512_setzero_ph()) }
 }
@@ -6511,7 +6511,7 @@ pub const fn _mm512_maskz_fnmadd_ph(k: __mmask32, a: __m512h, b: __m512h, c: __m
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_fnmadd_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe {
@@ -6536,7 +6536,7 @@ pub fn _mm512_fnmadd_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h, c: __
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_fnmadd_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -6566,7 +6566,7 @@ pub fn _mm512_mask_fnmadd_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask3_fnmadd_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -6596,7 +6596,7 @@ pub fn _mm512_mask3_fnmadd_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_fnmadd_round_ph<const ROUNDING: i32>(
     k: __mmask32,
@@ -6623,7 +6623,7 @@ pub fn _mm512_maskz_fnmadd_round_ph<const ROUNDING: i32>(
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_fnmadd_sh(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let extracta: f16 = simd_extract!(a, 0);
@@ -6644,7 +6644,7 @@ pub const fn _mm_fnmadd_sh(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_fnmadd_sh(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let mut fnmadd: f16 = simd_extract!(a, 0);
@@ -6667,7 +6667,7 @@ pub const fn _mm_mask_fnmadd_sh(a: __m128h, k: __mmask8, b: __m128h, c: __m128h)
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask3_fnmadd_sh(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> __m128h {
     unsafe {
         let mut fnmadd: f16 = simd_extract!(c, 0);
@@ -6690,7 +6690,7 @@ pub const fn _mm_mask3_fnmadd_sh(a: __m128h, b: __m128h, c: __m128h, k: __mmask8
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_fnmadd_sh(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let mut fnmadd: f16 = 0.0;
@@ -6720,7 +6720,7 @@ pub const fn _mm_maskz_fnmadd_sh(k: __mmask8, a: __m128h, b: __m128h, c: __m128h
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_fnmadd_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
@@ -6750,7 +6750,7 @@ pub fn _mm_fnmadd_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m12
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_fnmadd_round_sh<const ROUNDING: i32>(
     a: __m128h,
@@ -6787,7 +6787,7 @@ pub fn _mm_mask_fnmadd_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask3_fnmadd_round_sh<const ROUNDING: i32>(
     a: __m128h,
@@ -6824,7 +6824,7 @@ pub fn _mm_mask3_fnmadd_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_fnmadd_round_sh<const ROUNDING: i32>(
     k: __mmask8,
@@ -6853,7 +6853,7 @@ pub fn _mm_maskz_fnmadd_round_sh<const ROUNDING: i32>(
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_fnmsub_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_fma(simd_neg(a), b, simd_neg(c)) }
 }
@@ -6867,7 +6867,7 @@ pub const fn _mm_fnmsub_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_fnmsub_ph(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fnmsub_ph(a, b, c), a) }
 }
@@ -6881,7 +6881,7 @@ pub const fn _mm_mask_fnmsub_ph(a: __m128h, k: __mmask8, b: __m128h, c: __m128h)
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask3_fnmsub_ph(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fnmsub_ph(a, b, c), c) }
 }
@@ -6895,7 +6895,7 @@ pub const fn _mm_mask3_fnmsub_ph(a: __m128h, b: __m128h, c: __m128h, k: __mmask8
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_fnmsub_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fnmsub_ph(a, b, c), _mm_setzero_ph()) }
 }
@@ -6908,7 +6908,7 @@ pub const fn _mm_maskz_fnmsub_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m128h
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_fnmsub_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_fma(simd_neg(a), b, simd_neg(c)) }
 }
@@ -6922,7 +6922,7 @@ pub const fn _mm256_fnmsub_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_fnmsub_ph(a: __m256h, k: __mmask16, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fnmsub_ph(a, b, c), a) }
 }
@@ -6936,7 +6936,7 @@ pub const fn _mm256_mask_fnmsub_ph(a: __m256h, k: __mmask16, b: __m256h, c: __m2
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask3_fnmsub_ph(a: __m256h, b: __m256h, c: __m256h, k: __mmask16) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fnmsub_ph(a, b, c), c) }
 }
@@ -6950,7 +6950,7 @@ pub const fn _mm256_mask3_fnmsub_ph(a: __m256h, b: __m256h, c: __m256h, k: __mma
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_fnmsub_ph(k: __mmask16, a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fnmsub_ph(a, b, c), _mm256_setzero_ph()) }
 }
@@ -6963,7 +6963,7 @@ pub const fn _mm256_maskz_fnmsub_ph(k: __mmask16, a: __m256h, b: __m256h, c: __m
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_fnmsub_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_fma(simd_neg(a), b, simd_neg(c)) }
 }
@@ -6977,7 +6977,7 @@ pub const fn _mm512_fnmsub_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_fnmsub_ph(a: __m512h, k: __mmask32, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fnmsub_ph(a, b, c), a) }
 }
@@ -6991,7 +6991,7 @@ pub const fn _mm512_mask_fnmsub_ph(a: __m512h, k: __mmask32, b: __m512h, c: __m5
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask3_fnmsub_ph(a: __m512h, b: __m512h, c: __m512h, k: __mmask32) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fnmsub_ph(a, b, c), c) }
 }
@@ -7005,7 +7005,7 @@ pub const fn _mm512_mask3_fnmsub_ph(a: __m512h, b: __m512h, c: __m512h, k: __mma
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_fnmsub_ph(k: __mmask32, a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fnmsub_ph(a, b, c), _mm512_setzero_ph()) }
 }
@@ -7025,7 +7025,7 @@ pub const fn _mm512_maskz_fnmsub_ph(k: __mmask32, a: __m512h, b: __m512h, c: __m
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_fnmsub_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe {
@@ -7050,7 +7050,7 @@ pub fn _mm512_fnmsub_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h, c: __
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_fnmsub_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -7080,7 +7080,7 @@ pub fn _mm512_mask_fnmsub_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask3_fnmsub_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -7110,7 +7110,7 @@ pub fn _mm512_mask3_fnmsub_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_fnmsub_round_ph<const ROUNDING: i32>(
     k: __mmask32,
@@ -7137,7 +7137,7 @@ pub fn _mm512_maskz_fnmsub_round_ph<const ROUNDING: i32>(
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_fnmsub_sh(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let extracta: f16 = simd_extract!(a, 0);
@@ -7158,7 +7158,7 @@ pub const fn _mm_fnmsub_sh(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_fnmsub_sh(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let mut fnmsub: f16 = simd_extract!(a, 0);
@@ -7181,7 +7181,7 @@ pub const fn _mm_mask_fnmsub_sh(a: __m128h, k: __mmask8, b: __m128h, c: __m128h)
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask3_fnmsub_sh(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> __m128h {
     unsafe {
         let mut fnmsub: f16 = simd_extract!(c, 0);
@@ -7204,7 +7204,7 @@ pub const fn _mm_mask3_fnmsub_sh(a: __m128h, b: __m128h, c: __m128h, k: __mmask8
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_fnmsub_sh(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let mut fnmsub: f16 = 0.0;
@@ -7234,7 +7234,7 @@ pub const fn _mm_maskz_fnmsub_sh(k: __mmask8, a: __m128h, b: __m128h, c: __m128h
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_fnmsub_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
@@ -7264,7 +7264,7 @@ pub fn _mm_fnmsub_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m12
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_fnmsub_round_sh<const ROUNDING: i32>(
     a: __m128h,
@@ -7301,7 +7301,7 @@ pub fn _mm_mask_fnmsub_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask3_fnmsub_round_sh<const ROUNDING: i32>(
     a: __m128h,
@@ -7338,7 +7338,7 @@ pub fn _mm_mask3_fnmsub_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_fnmsub_round_sh<const ROUNDING: i32>(
     k: __mmask8,
@@ -7367,7 +7367,7 @@ pub fn _mm_maskz_fnmsub_round_sh<const ROUNDING: i32>(
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_fmaddsub_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let add = simd_fma(a, b, c);
@@ -7385,7 +7385,7 @@ pub const fn _mm_fmaddsub_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_fmaddsub_ph(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fmaddsub_ph(a, b, c), a) }
 }
@@ -7399,7 +7399,7 @@ pub const fn _mm_mask_fmaddsub_ph(a: __m128h, k: __mmask8, b: __m128h, c: __m128
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask3_fmaddsub_ph(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fmaddsub_ph(a, b, c), c) }
 }
@@ -7413,7 +7413,7 @@ pub const fn _mm_mask3_fmaddsub_ph(a: __m128h, b: __m128h, c: __m128h, k: __mmas
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_fmaddsub_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fmaddsub_ph(a, b, c), _mm_setzero_ph()) }
 }
@@ -7426,7 +7426,7 @@ pub const fn _mm_maskz_fmaddsub_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m12
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_fmaddsub_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     unsafe {
         let add = simd_fma(a, b, c);
@@ -7448,7 +7448,7 @@ pub const fn _mm256_fmaddsub_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_fmaddsub_ph(a: __m256h, k: __mmask16, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fmaddsub_ph(a, b, c), a) }
 }
@@ -7462,7 +7462,7 @@ pub const fn _mm256_mask_fmaddsub_ph(a: __m256h, k: __mmask16, b: __m256h, c: __
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask3_fmaddsub_ph(a: __m256h, b: __m256h, c: __m256h, k: __mmask16) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fmaddsub_ph(a, b, c), c) }
 }
@@ -7476,7 +7476,7 @@ pub const fn _mm256_mask3_fmaddsub_ph(a: __m256h, b: __m256h, c: __m256h, k: __m
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_fmaddsub_ph(k: __mmask16, a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fmaddsub_ph(a, b, c), _mm256_setzero_ph()) }
 }
@@ -7489,7 +7489,7 @@ pub const fn _mm256_maskz_fmaddsub_ph(k: __mmask16, a: __m256h, b: __m256h, c: _
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_fmaddsub_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe {
         let add = simd_fma(a, b, c);
@@ -7514,7 +7514,7 @@ pub const fn _mm512_fmaddsub_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_fmaddsub_ph(a: __m512h, k: __mmask32, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fmaddsub_ph(a, b, c), a) }
 }
@@ -7528,7 +7528,7 @@ pub const fn _mm512_mask_fmaddsub_ph(a: __m512h, k: __mmask32, b: __m512h, c: __
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask3_fmaddsub_ph(a: __m512h, b: __m512h, c: __m512h, k: __mmask32) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fmaddsub_ph(a, b, c), c) }
 }
@@ -7542,7 +7542,7 @@ pub const fn _mm512_mask3_fmaddsub_ph(a: __m512h, b: __m512h, c: __m512h, k: __m
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_fmaddsub_ph(k: __mmask32, a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fmaddsub_ph(a, b, c), _mm512_setzero_ph()) }
 }
@@ -7562,7 +7562,7 @@ pub const fn _mm512_maskz_fmaddsub_ph(k: __mmask32, a: __m512h, b: __m512h, c: _
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_fmaddsub_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -7591,7 +7591,7 @@ pub fn _mm512_fmaddsub_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_fmaddsub_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -7621,7 +7621,7 @@ pub fn _mm512_mask_fmaddsub_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask3_fmaddsub_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -7651,7 +7651,7 @@ pub fn _mm512_mask3_fmaddsub_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_fmaddsub_round_ph<const ROUNDING: i32>(
     k: __mmask32,
@@ -7677,7 +7677,7 @@ pub fn _mm512_maskz_fmaddsub_round_ph<const ROUNDING: i32>(
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_fmsubadd_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     _mm_fmaddsub_ph(a, b, unsafe { simd_neg(c) })
 }
@@ -7691,7 +7691,7 @@ pub const fn _mm_fmsubadd_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_fmsubadd_ph(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fmsubadd_ph(a, b, c), a) }
 }
@@ -7705,7 +7705,7 @@ pub const fn _mm_mask_fmsubadd_ph(a: __m128h, k: __mmask8, b: __m128h, c: __m128
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask3_fmsubadd_ph(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fmsubadd_ph(a, b, c), c) }
 }
@@ -7719,7 +7719,7 @@ pub const fn _mm_mask3_fmsubadd_ph(a: __m128h, b: __m128h, c: __m128h, k: __mmas
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_fmsubadd_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe { simd_select_bitmask(k, _mm_fmsubadd_ph(a, b, c), _mm_setzero_ph()) }
 }
@@ -7732,7 +7732,7 @@ pub const fn _mm_maskz_fmsubadd_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m12
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_fmsubadd_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     _mm256_fmaddsub_ph(a, b, unsafe { simd_neg(c) })
 }
@@ -7746,7 +7746,7 @@ pub const fn _mm256_fmsubadd_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_fmsubadd_ph(a: __m256h, k: __mmask16, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fmsubadd_ph(a, b, c), a) }
 }
@@ -7760,7 +7760,7 @@ pub const fn _mm256_mask_fmsubadd_ph(a: __m256h, k: __mmask16, b: __m256h, c: __
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask3_fmsubadd_ph(a: __m256h, b: __m256h, c: __m256h, k: __mmask16) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fmsubadd_ph(a, b, c), c) }
 }
@@ -7774,7 +7774,7 @@ pub const fn _mm256_mask3_fmsubadd_ph(a: __m256h, b: __m256h, c: __m256h, k: __m
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_fmsubadd_ph(k: __mmask16, a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     unsafe { simd_select_bitmask(k, _mm256_fmsubadd_ph(a, b, c), _mm256_setzero_ph()) }
 }
@@ -7787,7 +7787,7 @@ pub const fn _mm256_maskz_fmsubadd_ph(k: __mmask16, a: __m256h, b: __m256h, c: _
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_fmsubadd_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     _mm512_fmaddsub_ph(a, b, unsafe { simd_neg(c) })
 }
@@ -7801,7 +7801,7 @@ pub const fn _mm512_fmsubadd_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_fmsubadd_ph(a: __m512h, k: __mmask32, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fmsubadd_ph(a, b, c), a) }
 }
@@ -7815,7 +7815,7 @@ pub const fn _mm512_mask_fmsubadd_ph(a: __m512h, k: __mmask32, b: __m512h, c: __
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask3_fmsubadd_ph(a: __m512h, b: __m512h, c: __m512h, k: __mmask32) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fmsubadd_ph(a, b, c), c) }
 }
@@ -7829,7 +7829,7 @@ pub const fn _mm512_mask3_fmsubadd_ph(a: __m512h, b: __m512h, c: __m512h, k: __m
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_maskz_fmsubadd_ph(k: __mmask32, a: __m512h, b: __m512h, c: __m512h) -> __m512h {
     unsafe { simd_select_bitmask(k, _mm512_fmsubadd_ph(a, b, c), _mm512_setzero_ph()) }
 }
@@ -7849,7 +7849,7 @@ pub const fn _mm512_maskz_fmsubadd_ph(k: __mmask32, a: __m512h, b: __m512h, c: _
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsubadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_fmsubadd_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -7878,7 +7878,7 @@ pub fn _mm512_fmsubadd_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsubadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_fmsubadd_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -7908,7 +7908,7 @@ pub fn _mm512_mask_fmsubadd_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsubadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask3_fmsubadd_round_ph<const ROUNDING: i32>(
     a: __m512h,
@@ -7938,7 +7938,7 @@ pub fn _mm512_mask3_fmsubadd_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfmsubadd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_fmsubadd_round_ph<const ROUNDING: i32>(
     k: __mmask32,
@@ -8399,7 +8399,7 @@ pub fn _mm512_maskz_sqrt_ph(k: __mmask32, a: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsqrtph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_sqrt_round_ph<const ROUNDING: i32>(a: __m512h) -> __m512h {
     unsafe {
@@ -8422,7 +8422,7 @@ pub fn _mm512_sqrt_round_ph<const ROUNDING: i32>(a: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsqrtph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_sqrt_round_ph<const ROUNDING: i32>(
     src: __m512h,
@@ -8449,7 +8449,7 @@ pub fn _mm512_mask_sqrt_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsqrtph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_sqrt_round_ph<const ROUNDING: i32>(k: __mmask32, a: __m512h) -> __m512h {
     unsafe {
@@ -8512,7 +8512,7 @@ pub fn _mm_maskz_sqrt_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsqrtsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_sqrt_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -8534,7 +8534,7 @@ pub fn _mm_sqrt_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsqrtsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_sqrt_round_sh<const ROUNDING: i32>(
     src: __m128h,
@@ -8563,7 +8563,7 @@ pub fn _mm_mask_sqrt_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vsqrtsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_sqrt_round_sh<const ROUNDING: i32>(
     k: __mmask8,
@@ -8706,7 +8706,7 @@ pub fn _mm512_maskz_max_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmaxph, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_max_round_ph<const SAE: i32>(a: __m512h, b: __m512h) -> __m512h {
     unsafe {
@@ -8724,7 +8724,7 @@ pub fn _mm512_max_round_ph<const SAE: i32>(a: __m512h, b: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmaxph, SAE = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_max_round_ph<const SAE: i32>(
     src: __m512h,
@@ -8747,7 +8747,7 @@ pub fn _mm512_mask_max_round_ph<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vmaxph, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_max_round_ph<const SAE: i32>(k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
     unsafe {
@@ -8807,7 +8807,7 @@ pub fn _mm_maskz_max_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vmaxsh, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_max_round_sh<const SAE: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_sae!(SAE);
@@ -8824,7 +8824,7 @@ pub fn _mm_max_round_sh<const SAE: i32>(a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vmaxsh, SAE = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_max_round_sh<const SAE: i32>(
     src: __m128h,
@@ -8848,7 +8848,7 @@ pub fn _mm_mask_max_round_sh<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vmaxsh, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_max_round_sh<const SAE: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_sae!(SAE);
@@ -8986,7 +8986,7 @@ pub fn _mm512_maskz_min_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vminph, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_min_round_ph<const SAE: i32>(a: __m512h, b: __m512h) -> __m512h {
     unsafe {
@@ -9004,7 +9004,7 @@ pub fn _mm512_min_round_ph<const SAE: i32>(a: __m512h, b: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vminph, SAE = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_min_round_ph<const SAE: i32>(
     src: __m512h,
@@ -9027,7 +9027,7 @@ pub fn _mm512_mask_min_round_ph<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vminph, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_min_round_ph<const SAE: i32>(k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
     unsafe {
@@ -9087,7 +9087,7 @@ pub fn _mm_maskz_min_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vminsh, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_min_round_sh<const SAE: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_sae!(SAE);
@@ -9104,7 +9104,7 @@ pub fn _mm_min_round_sh<const SAE: i32>(a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vminsh, SAE = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_min_round_sh<const SAE: i32>(
     src: __m128h,
@@ -9128,7 +9128,7 @@ pub fn _mm_mask_min_round_sh<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vminsh, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_min_round_sh<const SAE: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_sae!(SAE);
@@ -9267,7 +9267,7 @@ pub fn _mm512_maskz_getexp_ph(k: __mmask32, a: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetexpph, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_getexp_round_ph<const SAE: i32>(a: __m512h) -> __m512h {
     static_assert_sae!(SAE);
@@ -9283,7 +9283,7 @@ pub fn _mm512_getexp_round_ph<const SAE: i32>(a: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetexpph, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_getexp_round_ph<const SAE: i32>(
     src: __m512h,
@@ -9305,7 +9305,7 @@ pub fn _mm512_mask_getexp_round_ph<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetexpph, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_getexp_round_ph<const SAE: i32>(k: __mmask32, a: __m512h) -> __m512h {
     static_assert_sae!(SAE);
@@ -9366,7 +9366,7 @@ pub fn _mm_maskz_getexp_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetexpsh, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_getexp_round_sh<const SAE: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_sae!(SAE);
@@ -9383,7 +9383,7 @@ pub fn _mm_getexp_round_sh<const SAE: i32>(a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetexpsh, SAE = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_getexp_round_sh<const SAE: i32>(
     src: __m128h,
@@ -9407,7 +9407,7 @@ pub fn _mm_mask_getexp_round_sh<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetexpsh, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_getexp_round_sh<const SAE: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_sae!(SAE);
@@ -9435,7 +9435,7 @@ pub fn _mm_maskz_getexp_round_sh<const SAE: i32>(k: __mmask8, a: __m128h, b: __m
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vgetmantph, NORM = 0, SIGN = 0))]
-#[rustc_legacy_const_generics(1, 2)]
+#[redox_legacy_const_generics(1, 2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_getmant_ph<const NORM: _MM_MANTISSA_NORM_ENUM, const SIGN: _MM_MANTISSA_SIGN_ENUM>(
     a: __m128h,
@@ -9467,7 +9467,7 @@ pub fn _mm_getmant_ph<const NORM: _MM_MANTISSA_NORM_ENUM, const SIGN: _MM_MANTIS
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vgetmantph, NORM = 0, SIGN = 0))]
-#[rustc_legacy_const_generics(3, 4)]
+#[redox_legacy_const_generics(3, 4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_getmant_ph<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -9506,7 +9506,7 @@ pub fn _mm_mask_getmant_ph<
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vgetmantph, NORM = 0, SIGN = 0))]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_getmant_ph<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -9541,7 +9541,7 @@ pub fn _mm_maskz_getmant_ph<
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vgetmantph, NORM = 0, SIGN = 0))]
-#[rustc_legacy_const_generics(1, 2)]
+#[redox_legacy_const_generics(1, 2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_getmant_ph<const NORM: _MM_MANTISSA_NORM_ENUM, const SIGN: _MM_MANTISSA_SIGN_ENUM>(
     a: __m256h,
@@ -9573,7 +9573,7 @@ pub fn _mm256_getmant_ph<const NORM: _MM_MANTISSA_NORM_ENUM, const SIGN: _MM_MAN
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vgetmantph, NORM = 0, SIGN = 0))]
-#[rustc_legacy_const_generics(3, 4)]
+#[redox_legacy_const_generics(3, 4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_mask_getmant_ph<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -9612,7 +9612,7 @@ pub fn _mm256_mask_getmant_ph<
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vgetmantph, NORM = 0, SIGN = 0))]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_maskz_getmant_ph<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -9647,7 +9647,7 @@ pub fn _mm256_maskz_getmant_ph<
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetmantph, NORM = 0, SIGN = 0))]
-#[rustc_legacy_const_generics(1, 2)]
+#[redox_legacy_const_generics(1, 2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_getmant_ph<const NORM: _MM_MANTISSA_NORM_ENUM, const SIGN: _MM_MANTISSA_SIGN_ENUM>(
     a: __m512h,
@@ -9679,7 +9679,7 @@ pub fn _mm512_getmant_ph<const NORM: _MM_MANTISSA_NORM_ENUM, const SIGN: _MM_MAN
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetmantph, NORM = 0, SIGN = 0))]
-#[rustc_legacy_const_generics(3, 4)]
+#[redox_legacy_const_generics(3, 4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_getmant_ph<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -9716,7 +9716,7 @@ pub fn _mm512_mask_getmant_ph<
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetmantph, NORM = 0, SIGN = 0))]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_getmant_ph<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -9754,7 +9754,7 @@ pub fn _mm512_maskz_getmant_ph<
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetmantph, NORM = 0, SIGN = 0, SAE = 8))]
-#[rustc_legacy_const_generics(1, 2, 3)]
+#[redox_legacy_const_generics(1, 2, 3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_getmant_round_ph<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -9794,7 +9794,7 @@ pub fn _mm512_getmant_round_ph<
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetmantph, NORM = 0, SIGN = 0, SAE = 8))]
-#[rustc_legacy_const_generics(3, 4, 5)]
+#[redox_legacy_const_generics(3, 4, 5)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_getmant_round_ph<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -9838,7 +9838,7 @@ pub fn _mm512_mask_getmant_round_ph<
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetmantph, NORM = 0, SIGN = 0, SAE = 8))]
-#[rustc_legacy_const_generics(2, 3, 4)]
+#[redox_legacy_const_generics(2, 3, 4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_getmant_round_ph<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -9876,7 +9876,7 @@ pub fn _mm512_maskz_getmant_round_ph<
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetmantsh, NORM = 0, SIGN = 0))]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_getmant_sh<const NORM: _MM_MANTISSA_NORM_ENUM, const SIGN: _MM_MANTISSA_SIGN_ENUM>(
     a: __m128h,
@@ -9910,7 +9910,7 @@ pub fn _mm_getmant_sh<const NORM: _MM_MANTISSA_NORM_ENUM, const SIGN: _MM_MANTIS
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetmantsh, NORM = 0, SIGN = 0))]
-#[rustc_legacy_const_generics(4, 5)]
+#[redox_legacy_const_generics(4, 5)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_getmant_sh<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -9949,7 +9949,7 @@ pub fn _mm_mask_getmant_sh<
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetmantsh, NORM = 0, SIGN = 0))]
-#[rustc_legacy_const_generics(3, 4)]
+#[redox_legacy_const_generics(3, 4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_getmant_sh<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -9989,7 +9989,7 @@ pub fn _mm_maskz_getmant_sh<
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetmantsh, NORM = 0, SIGN = 0, SAE = 8))]
-#[rustc_legacy_const_generics(2, 3, 4)]
+#[redox_legacy_const_generics(2, 3, 4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_getmant_round_sh<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -10030,7 +10030,7 @@ pub fn _mm_getmant_round_sh<
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetmantsh, NORM = 0, SIGN = 0, SAE = 8))]
-#[rustc_legacy_const_generics(4, 5, 6)]
+#[redox_legacy_const_generics(4, 5, 6)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_getmant_round_sh<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -10075,7 +10075,7 @@ pub fn _mm_mask_getmant_round_sh<
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vgetmantsh, NORM = 0, SIGN = 0, SAE = 8))]
-#[rustc_legacy_const_generics(3, 4, 5)]
+#[redox_legacy_const_generics(3, 4, 5)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_getmant_round_sh<
     const NORM: _MM_MANTISSA_NORM_ENUM,
@@ -10107,7 +10107,7 @@ pub fn _mm_maskz_getmant_round_sh<
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vrndscaleph, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_roundscale_ph<const IMM8: i32>(a: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -10130,7 +10130,7 @@ pub fn _mm_roundscale_ph<const IMM8: i32>(a: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vrndscaleph, IMM8 = 0))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_roundscale_ph<const IMM8: i32>(src: __m128h, k: __mmask8, a: __m128h) -> __m128h {
     unsafe {
@@ -10155,7 +10155,7 @@ pub fn _mm_mask_roundscale_ph<const IMM8: i32>(src: __m128h, k: __mmask8, a: __m
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vrndscaleph, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_roundscale_ph<const IMM8: i32>(k: __mmask8, a: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -10177,7 +10177,7 @@ pub fn _mm_maskz_roundscale_ph<const IMM8: i32>(k: __mmask8, a: __m128h) -> __m1
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vrndscaleph, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_roundscale_ph<const IMM8: i32>(a: __m256h) -> __m256h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -10200,7 +10200,7 @@ pub fn _mm256_roundscale_ph<const IMM8: i32>(a: __m256h) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vrndscaleph, IMM8 = 0))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_mask_roundscale_ph<const IMM8: i32>(
     src: __m256h,
@@ -10229,7 +10229,7 @@ pub fn _mm256_mask_roundscale_ph<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vrndscaleph, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_maskz_roundscale_ph<const IMM8: i32>(k: __mmask16, a: __m256h) -> __m256h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -10251,7 +10251,7 @@ pub fn _mm256_maskz_roundscale_ph<const IMM8: i32>(k: __mmask16, a: __m256h) -> 
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vrndscaleph, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_roundscale_ph<const IMM8: i32>(a: __m512h) -> __m512h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -10274,7 +10274,7 @@ pub fn _mm512_roundscale_ph<const IMM8: i32>(a: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vrndscaleph, IMM8 = 0))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_roundscale_ph<const IMM8: i32>(
     src: __m512h,
@@ -10301,7 +10301,7 @@ pub fn _mm512_mask_roundscale_ph<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vrndscaleph, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_roundscale_ph<const IMM8: i32>(k: __mmask32, a: __m512h) -> __m512h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -10324,7 +10324,7 @@ pub fn _mm512_maskz_roundscale_ph<const IMM8: i32>(k: __mmask32, a: __m512h) -> 
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vrndscaleph, IMM8 = 0, SAE = 8))]
-#[rustc_legacy_const_generics(1, 2)]
+#[redox_legacy_const_generics(1, 2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_roundscale_round_ph<const IMM8: i32, const SAE: i32>(a: __m512h) -> __m512h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -10349,7 +10349,7 @@ pub fn _mm512_roundscale_round_ph<const IMM8: i32, const SAE: i32>(a: __m512h) -
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vrndscaleph, IMM8 = 0, SAE = 8))]
-#[rustc_legacy_const_generics(3, 4)]
+#[redox_legacy_const_generics(3, 4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_roundscale_round_ph<const IMM8: i32, const SAE: i32>(
     src: __m512h,
@@ -10379,7 +10379,7 @@ pub fn _mm512_mask_roundscale_round_ph<const IMM8: i32, const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vrndscaleph, IMM8 = 0, SAE = 8))]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_roundscale_round_ph<const IMM8: i32, const SAE: i32>(
     k: __mmask32,
@@ -10406,7 +10406,7 @@ pub fn _mm512_maskz_roundscale_round_ph<const IMM8: i32, const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vrndscalesh, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_roundscale_sh<const IMM8: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -10429,7 +10429,7 @@ pub fn _mm_roundscale_sh<const IMM8: i32>(a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vrndscalesh, IMM8 = 0))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_roundscale_sh<const IMM8: i32>(
     src: __m128h,
@@ -10457,7 +10457,7 @@ pub fn _mm_mask_roundscale_sh<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vrndscalesh, IMM8 = 0))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_roundscale_sh<const IMM8: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -10482,7 +10482,7 @@ pub fn _mm_maskz_roundscale_sh<const IMM8: i32>(k: __mmask8, a: __m128h, b: __m1
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vrndscalesh, IMM8 = 0, SAE = 8))]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_roundscale_round_sh<const IMM8: i32, const SAE: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -10508,7 +10508,7 @@ pub fn _mm_roundscale_round_sh<const IMM8: i32, const SAE: i32>(a: __m128h, b: _
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vrndscalesh, IMM8 = 0, SAE = 8))]
-#[rustc_legacy_const_generics(4, 5)]
+#[redox_legacy_const_generics(4, 5)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_roundscale_round_sh<const IMM8: i32, const SAE: i32>(
     src: __m128h,
@@ -10541,7 +10541,7 @@ pub fn _mm_mask_roundscale_round_sh<const IMM8: i32, const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vrndscalesh, IMM8 = 0, SAE = 8))]
-#[rustc_legacy_const_generics(3, 4)]
+#[redox_legacy_const_generics(3, 4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_roundscale_round_sh<const IMM8: i32, const SAE: i32>(
     k: __mmask8,
@@ -10676,7 +10676,7 @@ pub fn _mm512_maskz_scalef_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vscalefph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_scalef_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __m512h {
     static_assert_rounding!(ROUNDING);
@@ -10698,7 +10698,7 @@ pub fn _mm512_scalef_round_ph<const ROUNDING: i32>(a: __m512h, b: __m512h) -> __
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vscalefph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_scalef_round_ph<const ROUNDING: i32>(
     src: __m512h,
@@ -10727,7 +10727,7 @@ pub fn _mm512_mask_scalef_round_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vscalefph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_scalef_round_ph<const ROUNDING: i32>(
     k: __mmask32,
@@ -10793,7 +10793,7 @@ pub fn _mm_maskz_scalef_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vscalefsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_scalef_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -10816,7 +10816,7 @@ pub fn _mm_scalef_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m12
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vscalefsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_scalef_round_sh<const ROUNDING: i32>(
     src: __m128h,
@@ -10846,7 +10846,7 @@ pub fn _mm_mask_scalef_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vscalefsh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_scalef_round_sh<const ROUNDING: i32>(
     k: __mmask8,
@@ -10872,7 +10872,7 @@ pub fn _mm_maskz_scalef_round_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vreduceph, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_reduce_ph<const IMM8: i32>(a: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -10895,7 +10895,7 @@ pub fn _mm_reduce_ph<const IMM8: i32>(a: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vreduceph, IMM8 = 0))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_reduce_ph<const IMM8: i32>(src: __m128h, k: __mmask8, a: __m128h) -> __m128h {
     unsafe {
@@ -10920,7 +10920,7 @@ pub fn _mm_mask_reduce_ph<const IMM8: i32>(src: __m128h, k: __mmask8, a: __m128h
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vreduceph, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_reduce_ph<const IMM8: i32>(k: __mmask8, a: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -10942,7 +10942,7 @@ pub fn _mm_maskz_reduce_ph<const IMM8: i32>(k: __mmask8, a: __m128h) -> __m128h 
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vreduceph, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_reduce_ph<const IMM8: i32>(a: __m256h) -> __m256h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -10965,7 +10965,7 @@ pub fn _mm256_reduce_ph<const IMM8: i32>(a: __m256h) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vreduceph, IMM8 = 0))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_mask_reduce_ph<const IMM8: i32>(src: __m256h, k: __mmask16, a: __m256h) -> __m256h {
     unsafe {
@@ -10990,7 +10990,7 @@ pub fn _mm256_mask_reduce_ph<const IMM8: i32>(src: __m256h, k: __mmask16, a: __m
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vreduceph, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_maskz_reduce_ph<const IMM8: i32>(k: __mmask16, a: __m256h) -> __m256h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -11012,7 +11012,7 @@ pub fn _mm256_maskz_reduce_ph<const IMM8: i32>(k: __mmask16, a: __m256h) -> __m2
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vreduceph, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_reduce_ph<const IMM8: i32>(a: __m512h) -> __m512h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -11035,7 +11035,7 @@ pub fn _mm512_reduce_ph<const IMM8: i32>(a: __m512h) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vreduceph, IMM8 = 0))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_reduce_ph<const IMM8: i32>(src: __m512h, k: __mmask32, a: __m512h) -> __m512h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -11058,7 +11058,7 @@ pub fn _mm512_mask_reduce_ph<const IMM8: i32>(src: __m512h, k: __mmask32, a: __m
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vreduceph, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_reduce_ph<const IMM8: i32>(k: __mmask32, a: __m512h) -> __m512h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -11082,7 +11082,7 @@ pub fn _mm512_maskz_reduce_ph<const IMM8: i32>(k: __mmask32, a: __m512h) -> __m5
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vreduceph, IMM8 = 0, SAE = 8))]
-#[rustc_legacy_const_generics(1, 2)]
+#[redox_legacy_const_generics(1, 2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_reduce_round_ph<const IMM8: i32, const SAE: i32>(a: __m512h) -> __m512h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -11108,7 +11108,7 @@ pub fn _mm512_reduce_round_ph<const IMM8: i32, const SAE: i32>(a: __m512h) -> __
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vreduceph, IMM8 = 0, SAE = 8))]
-#[rustc_legacy_const_generics(3, 4)]
+#[redox_legacy_const_generics(3, 4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_reduce_round_ph<const IMM8: i32, const SAE: i32>(
     src: __m512h,
@@ -11140,7 +11140,7 @@ pub fn _mm512_mask_reduce_round_ph<const IMM8: i32, const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vreduceph, IMM8 = 0, SAE = 8))]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_reduce_round_ph<const IMM8: i32, const SAE: i32>(
     k: __mmask32,
@@ -11167,7 +11167,7 @@ pub fn _mm512_maskz_reduce_round_ph<const IMM8: i32, const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vreducesh, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_reduce_sh<const IMM8: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -11191,7 +11191,7 @@ pub fn _mm_reduce_sh<const IMM8: i32>(a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vreducesh, IMM8 = 0))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_reduce_sh<const IMM8: i32>(
     src: __m128h,
@@ -11220,7 +11220,7 @@ pub fn _mm_mask_reduce_sh<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vreducesh, IMM8 = 0))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_reduce_sh<const IMM8: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -11245,7 +11245,7 @@ pub fn _mm_maskz_reduce_sh<const IMM8: i32>(k: __mmask8, a: __m128h, b: __m128h)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vreducesh, IMM8 = 0, SAE = 8))]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_reduce_round_sh<const IMM8: i32, const SAE: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
@@ -11272,7 +11272,7 @@ pub fn _mm_reduce_round_sh<const IMM8: i32, const SAE: i32>(a: __m128h, b: __m12
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vreducesh, IMM8 = 0, SAE = 8))]
-#[rustc_legacy_const_generics(4, 5)]
+#[redox_legacy_const_generics(4, 5)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_reduce_round_sh<const IMM8: i32, const SAE: i32>(
     src: __m128h,
@@ -11306,7 +11306,7 @@ pub fn _mm_mask_reduce_round_sh<const IMM8: i32, const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vreducesh, IMM8 = 0, SAE = 8))]
-#[rustc_legacy_const_generics(3, 4)]
+#[redox_legacy_const_generics(3, 4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_reduce_round_sh<const IMM8: i32, const SAE: i32>(
     k: __mmask8,
@@ -11325,7 +11325,7 @@ pub fn _mm_maskz_reduce_round_sh<const IMM8: i32, const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_add_ph(a: __m128h) -> f16 {
     unsafe {
         let b = simd_shuffle!(a, a, [4, 5, 6, 7, 0, 1, 2, 3]);
@@ -11343,7 +11343,7 @@ pub const fn _mm_reduce_add_ph(a: __m128h) -> f16 {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_add_ph(a: __m256h) -> f16 {
     unsafe {
         let p = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
@@ -11359,7 +11359,7 @@ pub const fn _mm256_reduce_add_ph(a: __m256h) -> f16 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_reduce_add_ph(a: __m512h) -> f16 {
     unsafe {
         let p = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
@@ -11381,7 +11381,7 @@ pub const fn _mm512_reduce_add_ph(a: __m512h) -> f16 {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_reduce_mul_ph(a: __m128h) -> f16 {
     unsafe {
         let b = simd_shuffle!(a, a, [4, 5, 6, 7, 0, 1, 2, 3]);
@@ -11399,7 +11399,7 @@ pub const fn _mm_reduce_mul_ph(a: __m128h) -> f16 {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_reduce_mul_ph(a: __m256h) -> f16 {
     unsafe {
         let p = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
@@ -11415,7 +11415,7 @@ pub const fn _mm256_reduce_mul_ph(a: __m256h) -> f16 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_reduce_mul_ph(a: __m512h) -> f16 {
     unsafe {
         let p = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
@@ -11581,7 +11581,7 @@ macro_rules! fpclass_asm { // FIXME: use LLVM intrinsics
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclassph, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_fpclass_ph_mask<const IMM8: i32>(a: __m128h) -> __mmask8 {
     unsafe {
@@ -11608,7 +11608,7 @@ pub fn _mm_fpclass_ph_mask<const IMM8: i32>(a: __m128h) -> __mmask8 {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclassph, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask8, a: __m128h) -> __mmask8 {
     unsafe {
@@ -11634,7 +11634,7 @@ pub fn _mm_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask8, a: __m128h) -> __
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclassph, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_fpclass_ph_mask<const IMM8: i32>(a: __m256h) -> __mmask16 {
     unsafe {
@@ -11661,7 +11661,7 @@ pub fn _mm256_fpclass_ph_mask<const IMM8: i32>(a: __m256h) -> __mmask16 {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclassph, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask16, a: __m256h) -> __mmask16 {
     unsafe {
@@ -11687,7 +11687,7 @@ pub fn _mm256_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask16, a: __m256h) -
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfpclassph, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_fpclass_ph_mask<const IMM8: i32>(a: __m512h) -> __mmask32 {
     unsafe {
@@ -11714,7 +11714,7 @@ pub fn _mm512_fpclass_ph_mask<const IMM8: i32>(a: __m512h) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfpclassph, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask32, a: __m512h) -> __mmask32 {
     unsafe {
@@ -11740,7 +11740,7 @@ pub fn _mm512_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask32, a: __m512h) -
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfpclasssh, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_fpclass_sh_mask<const IMM8: i32>(a: __m128h) -> __mmask8 {
     _mm_mask_fpclass_sh_mask::<IMM8>(0xff, a)
@@ -11764,7 +11764,7 @@ pub fn _mm_fpclass_sh_mask<const IMM8: i32>(a: __m128h) -> __mmask8 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vfpclasssh, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_fpclass_sh_mask<const IMM8: i32>(k1: __mmask8, a: __m128h) -> __mmask8 {
     unsafe {
@@ -11780,7 +11780,7 @@ pub fn _mm_mask_fpclass_sh_mask<const IMM8: i32>(k1: __mmask8, a: __m128h) -> __
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_blend_ph(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     unsafe { simd_select_bitmask(k, b, a) }
 }
@@ -11792,7 +11792,7 @@ pub const fn _mm_mask_blend_ph(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_blend_ph(k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
     unsafe { simd_select_bitmask(k, b, a) }
 }
@@ -11804,7 +11804,7 @@ pub const fn _mm256_mask_blend_ph(k: __mmask16, a: __m256h, b: __m256h) -> __m25
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_mask_blend_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
     unsafe { simd_select_bitmask(k, b, a) }
 }
@@ -12013,7 +12013,7 @@ pub fn _mm512_maskz_cvtepi16_ph(k: __mmask32, a: __m512i) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtw2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundepi16_ph<const ROUNDING: i32>(a: __m512i) -> __m512h {
     unsafe {
@@ -12038,7 +12038,7 @@ pub fn _mm512_cvt_roundepi16_ph<const ROUNDING: i32>(a: __m512i) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtw2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundepi16_ph<const ROUNDING: i32>(
     src: __m512h,
@@ -12066,7 +12066,7 @@ pub fn _mm512_mask_cvt_roundepi16_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtw2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundepi16_ph<const ROUNDING: i32>(k: __mmask32, a: __m512i) -> __m512h {
     static_assert_rounding!(ROUNDING);
@@ -12199,7 +12199,7 @@ pub fn _mm512_maskz_cvtepu16_ph(k: __mmask32, a: __m512i) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtuw2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundepu16_ph<const ROUNDING: i32>(a: __m512i) -> __m512h {
     unsafe {
@@ -12224,7 +12224,7 @@ pub fn _mm512_cvt_roundepu16_ph<const ROUNDING: i32>(a: __m512i) -> __m512h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtuw2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundepu16_ph<const ROUNDING: i32>(
     src: __m512h,
@@ -12252,7 +12252,7 @@ pub fn _mm512_mask_cvt_roundepu16_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtuw2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundepu16_ph<const ROUNDING: i32>(k: __mmask32, a: __m512i) -> __m512h {
     static_assert_rounding!(ROUNDING);
@@ -12386,7 +12386,7 @@ pub fn _mm512_maskz_cvtepi32_ph(k: __mmask16, a: __m512i) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtdq2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundepi32_ph<const ROUNDING: i32>(a: __m512i) -> __m256h {
     unsafe {
@@ -12411,7 +12411,7 @@ pub fn _mm512_cvt_roundepi32_ph<const ROUNDING: i32>(a: __m512i) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtdq2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundepi32_ph<const ROUNDING: i32>(
     src: __m256h,
@@ -12439,7 +12439,7 @@ pub fn _mm512_mask_cvt_roundepi32_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtdq2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundepi32_ph<const ROUNDING: i32>(k: __mmask16, a: __m512i) -> __m256h {
     static_assert_rounding!(ROUNDING);
@@ -12475,7 +12475,7 @@ pub fn _mm_cvti32_sh(a: __m128h, b: i32) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsi2sh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cvt_roundi32_sh<const ROUNDING: i32>(a: __m128h, b: i32) -> __m128h {
     unsafe {
@@ -12611,7 +12611,7 @@ pub fn _mm512_maskz_cvtepu32_ph(k: __mmask16, a: __m512i) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtudq2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundepu32_ph<const ROUNDING: i32>(a: __m512i) -> __m256h {
     unsafe {
@@ -12636,7 +12636,7 @@ pub fn _mm512_cvt_roundepu32_ph<const ROUNDING: i32>(a: __m512i) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtudq2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundepu32_ph<const ROUNDING: i32>(
     src: __m256h,
@@ -12664,7 +12664,7 @@ pub fn _mm512_mask_cvt_roundepu32_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtudq2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundepu32_ph<const ROUNDING: i32>(k: __mmask16, a: __m512i) -> __m256h {
     static_assert_rounding!(ROUNDING);
@@ -12700,7 +12700,7 @@ pub fn _mm_cvtu32_sh(a: __m128h, b: u32) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtusi2sh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cvt_roundu32_sh<const ROUNDING: i32>(a: __m128h, b: u32) -> __m128h {
     unsafe {
@@ -12837,7 +12837,7 @@ pub fn _mm512_maskz_cvtepi64_ph(k: __mmask8, a: __m512i) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtqq2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundepi64_ph<const ROUNDING: i32>(a: __m512i) -> __m128h {
     unsafe {
@@ -12862,7 +12862,7 @@ pub fn _mm512_cvt_roundepi64_ph<const ROUNDING: i32>(a: __m512i) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtqq2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundepi64_ph<const ROUNDING: i32>(
     src: __m128h,
@@ -12890,7 +12890,7 @@ pub fn _mm512_mask_cvt_roundepi64_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtqq2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundepi64_ph<const ROUNDING: i32>(k: __mmask8, a: __m512i) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -13025,7 +13025,7 @@ pub fn _mm512_maskz_cvtepu64_ph(k: __mmask8, a: __m512i) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtuqq2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundepu64_ph<const ROUNDING: i32>(a: __m512i) -> __m128h {
     unsafe {
@@ -13050,7 +13050,7 @@ pub fn _mm512_cvt_roundepu64_ph<const ROUNDING: i32>(a: __m512i) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtuqq2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundepu64_ph<const ROUNDING: i32>(
     src: __m128h,
@@ -13078,7 +13078,7 @@ pub fn _mm512_mask_cvt_roundepu64_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtuqq2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundepu64_ph<const ROUNDING: i32>(k: __mmask8, a: __m512i) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -13214,7 +13214,7 @@ pub fn _mm512_maskz_cvtxps_ph(k: __mmask16, a: __m512) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtps2phx, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvtx_roundps_ph<const ROUNDING: i32>(a: __m512) -> __m256h {
     static_assert_rounding!(ROUNDING);
@@ -13237,7 +13237,7 @@ pub fn _mm512_cvtx_roundps_ph<const ROUNDING: i32>(a: __m512) -> __m256h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtps2phx, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvtx_roundps_ph<const ROUNDING: i32>(
     src: __m256h,
@@ -13266,7 +13266,7 @@ pub fn _mm512_mask_cvtx_roundps_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtps2phx, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvtx_roundps_ph<const ROUNDING: i32>(k: __mmask16, a: __m512) -> __m256h {
     static_assert_rounding!(ROUNDING);
@@ -13330,7 +13330,7 @@ pub fn _mm_maskz_cvtss_sh(k: __mmask8, a: __m128h, b: __m128) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtss2sh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cvt_roundss_sh<const ROUNDING: i32>(a: __m128h, b: __m128) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -13354,7 +13354,7 @@ pub fn _mm_cvt_roundss_sh<const ROUNDING: i32>(a: __m128h, b: __m128) -> __m128h
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtss2sh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_cvt_roundss_sh<const ROUNDING: i32>(
     src: __m128h,
@@ -13385,7 +13385,7 @@ pub fn _mm_mask_cvt_roundss_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtss2sh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_cvt_roundss_sh<const ROUNDING: i32>(
     k: __mmask8,
@@ -13525,7 +13525,7 @@ pub fn _mm512_maskz_cvtpd_ph(k: __mmask8, a: __m512d) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtpd2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundpd_ph<const ROUNDING: i32>(a: __m512d) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -13548,7 +13548,7 @@ pub fn _mm512_cvt_roundpd_ph<const ROUNDING: i32>(a: __m512d) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtpd2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundpd_ph<const ROUNDING: i32>(
     src: __m128h,
@@ -13577,7 +13577,7 @@ pub fn _mm512_mask_cvt_roundpd_ph<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtpd2ph, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundpd_ph<const ROUNDING: i32>(k: __mmask8, a: __m512d) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -13641,7 +13641,7 @@ pub fn _mm_maskz_cvtsd_sh(k: __mmask8, a: __m128h, b: __m128d) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsd2sh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cvt_roundsd_sh<const ROUNDING: i32>(a: __m128h, b: __m128d) -> __m128h {
     static_assert_rounding!(ROUNDING);
@@ -13665,7 +13665,7 @@ pub fn _mm_cvt_roundsd_sh<const ROUNDING: i32>(a: __m128h, b: __m128d) -> __m128
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsd2sh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_cvt_roundsd_sh<const ROUNDING: i32>(
     src: __m128h,
@@ -13696,7 +13696,7 @@ pub fn _mm_mask_cvt_roundsd_sh<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsd2sh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_cvt_roundsd_sh<const ROUNDING: i32>(
     k: __mmask8,
@@ -13840,7 +13840,7 @@ pub fn _mm512_maskz_cvtph_epi16(k: __mmask32, a: __m512h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2w, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundph_epi16<const ROUNDING: i32>(a: __m512h) -> __m512i {
     static_assert_rounding!(ROUNDING);
@@ -13863,7 +13863,7 @@ pub fn _mm512_cvt_roundph_epi16<const ROUNDING: i32>(a: __m512h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2w, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundph_epi16<const ROUNDING: i32>(
     src: __m512i,
@@ -13891,7 +13891,7 @@ pub fn _mm512_mask_cvt_roundph_epi16<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2w, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundph_epi16<const ROUNDING: i32>(k: __mmask32, a: __m512h) -> __m512i {
     static_assert_rounding!(ROUNDING);
@@ -14025,7 +14025,7 @@ pub fn _mm512_maskz_cvtph_epu16(k: __mmask32, a: __m512h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2uw, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundph_epu16<const SAE: i32>(a: __m512h) -> __m512i {
     static_assert_sae!(SAE);
@@ -14042,7 +14042,7 @@ pub fn _mm512_cvt_roundph_epu16<const SAE: i32>(a: __m512h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2uw, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundph_epu16<const SAE: i32>(
     src: __m512i,
@@ -14064,7 +14064,7 @@ pub fn _mm512_mask_cvt_roundph_epu16<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2uw, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundph_epu16<const SAE: i32>(k: __mmask32, a: __m512h) -> __m512i {
     static_assert_sae!(SAE);
@@ -14201,7 +14201,7 @@ pub fn _mm512_maskz_cvttph_epi16(k: __mmask32, a: __m512h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2w, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvtt_roundph_epi16<const SAE: i32>(a: __m512h) -> __m512i {
     static_assert_sae!(SAE);
@@ -14218,7 +14218,7 @@ pub fn _mm512_cvtt_roundph_epi16<const SAE: i32>(a: __m512h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2w, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvtt_roundph_epi16<const SAE: i32>(
     src: __m512i,
@@ -14241,7 +14241,7 @@ pub fn _mm512_mask_cvtt_roundph_epi16<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2w, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvtt_roundph_epi16<const SAE: i32>(k: __mmask32, a: __m512h) -> __m512i {
     static_assert_sae!(SAE);
@@ -14378,7 +14378,7 @@ pub fn _mm512_maskz_cvttph_epu16(k: __mmask32, a: __m512h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2uw, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvtt_roundph_epu16<const SAE: i32>(a: __m512h) -> __m512i {
     static_assert_sae!(SAE);
@@ -14395,7 +14395,7 @@ pub fn _mm512_cvtt_roundph_epu16<const SAE: i32>(a: __m512h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2uw, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvtt_roundph_epu16<const SAE: i32>(
     src: __m512i,
@@ -14418,7 +14418,7 @@ pub fn _mm512_mask_cvtt_roundph_epu16<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2uw, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvtt_roundph_epu16<const SAE: i32>(k: __mmask32, a: __m512h) -> __m512i {
     static_assert_sae!(SAE);
@@ -14555,7 +14555,7 @@ pub fn _mm512_maskz_cvtph_epi32(k: __mmask16, a: __m256h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2dq, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundph_epi32<const ROUNDING: i32>(a: __m256h) -> __m512i {
     static_assert_rounding!(ROUNDING);
@@ -14577,7 +14577,7 @@ pub fn _mm512_cvt_roundph_epi32<const ROUNDING: i32>(a: __m256h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2dq, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundph_epi32<const ROUNDING: i32>(
     src: __m512i,
@@ -14605,7 +14605,7 @@ pub fn _mm512_mask_cvt_roundph_epi32<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2dq, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundph_epi32<const ROUNDING: i32>(k: __mmask16, a: __m256h) -> __m512i {
     static_assert_rounding!(ROUNDING);
@@ -14639,7 +14639,7 @@ pub fn _mm_cvtsh_i32(a: __m128h) -> i32 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsh2si, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cvt_roundsh_i32<const ROUNDING: i32>(a: __m128h) -> i32 {
     unsafe {
@@ -14778,7 +14778,7 @@ pub fn _mm512_maskz_cvtph_epu32(k: __mmask16, a: __m256h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2udq, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundph_epu32<const ROUNDING: i32>(a: __m256h) -> __m512i {
     static_assert_rounding!(ROUNDING);
@@ -14800,7 +14800,7 @@ pub fn _mm512_cvt_roundph_epu32<const ROUNDING: i32>(a: __m256h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2udq, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundph_epu32<const ROUNDING: i32>(
     src: __m512i,
@@ -14828,7 +14828,7 @@ pub fn _mm512_mask_cvt_roundph_epu32<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2udq, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundph_epu32<const ROUNDING: i32>(k: __mmask16, a: __m256h) -> __m512i {
     static_assert_rounding!(ROUNDING);
@@ -14856,7 +14856,7 @@ pub fn _mm_cvtsh_u32(a: __m128h) -> u32 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsh2usi, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cvt_roundsh_u32<const SAE: i32>(a: __m128h) -> u32 {
     unsafe {
@@ -14989,7 +14989,7 @@ pub fn _mm512_maskz_cvttph_epi32(k: __mmask16, a: __m256h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2dq, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvtt_roundph_epi32<const SAE: i32>(a: __m256h) -> __m512i {
     static_assert_sae!(SAE);
@@ -15005,7 +15005,7 @@ pub fn _mm512_cvtt_roundph_epi32<const SAE: i32>(a: __m256h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2dq, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvtt_roundph_epi32<const SAE: i32>(
     src: __m512i,
@@ -15027,7 +15027,7 @@ pub fn _mm512_mask_cvtt_roundph_epi32<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2dq, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvtt_roundph_epi32<const SAE: i32>(k: __mmask16, a: __m256h) -> __m512i {
     static_assert_sae!(SAE);
@@ -15055,7 +15055,7 @@ pub fn _mm_cvttsh_i32(a: __m128h) -> i32 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttsh2si, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cvtt_roundsh_i32<const SAE: i32>(a: __m128h) -> i32 {
     unsafe {
@@ -15188,7 +15188,7 @@ pub fn _mm512_maskz_cvttph_epu32(k: __mmask16, a: __m256h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2udq, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvtt_roundph_epu32<const SAE: i32>(a: __m256h) -> __m512i {
     static_assert_sae!(SAE);
@@ -15204,7 +15204,7 @@ pub fn _mm512_cvtt_roundph_epu32<const SAE: i32>(a: __m256h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2udq, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvtt_roundph_epu32<const SAE: i32>(
     src: __m512i,
@@ -15226,7 +15226,7 @@ pub fn _mm512_mask_cvtt_roundph_epu32<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2udq, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvtt_roundph_epu32<const SAE: i32>(k: __mmask16, a: __m256h) -> __m512i {
     static_assert_sae!(SAE);
@@ -15254,7 +15254,7 @@ pub fn _mm_cvttsh_u32(a: __m128h) -> u32 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttsh2usi, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cvtt_roundsh_u32<const SAE: i32>(a: __m128h) -> u32 {
     unsafe {
@@ -15393,7 +15393,7 @@ pub fn _mm512_maskz_cvtph_epi64(k: __mmask8, a: __m128h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2qq, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundph_epi64<const ROUNDING: i32>(a: __m128h) -> __m512i {
     static_assert_rounding!(ROUNDING);
@@ -15415,7 +15415,7 @@ pub fn _mm512_cvt_roundph_epi64<const ROUNDING: i32>(a: __m128h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2qq, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundph_epi64<const ROUNDING: i32>(
     src: __m512i,
@@ -15443,7 +15443,7 @@ pub fn _mm512_mask_cvt_roundph_epi64<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2qq, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundph_epi64<const ROUNDING: i32>(k: __mmask8, a: __m128h) -> __m512i {
     static_assert_rounding!(ROUNDING);
@@ -15580,7 +15580,7 @@ pub fn _mm512_maskz_cvtph_epu64(k: __mmask8, a: __m128h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2uqq, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundph_epu64<const ROUNDING: i32>(a: __m128h) -> __m512i {
     static_assert_rounding!(ROUNDING);
@@ -15602,7 +15602,7 @@ pub fn _mm512_cvt_roundph_epu64<const ROUNDING: i32>(a: __m128h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2uqq, ROUNDING = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundph_epu64<const ROUNDING: i32>(
     src: __m512i,
@@ -15630,7 +15630,7 @@ pub fn _mm512_mask_cvt_roundph_epu64<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2uqq, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundph_epu64<const ROUNDING: i32>(k: __mmask8, a: __m128h) -> __m512i {
     static_assert_rounding!(ROUNDING);
@@ -15761,7 +15761,7 @@ pub fn _mm512_maskz_cvttph_epi64(k: __mmask8, a: __m128h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2qq, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvtt_roundph_epi64<const SAE: i32>(a: __m128h) -> __m512i {
     static_assert_sae!(SAE);
@@ -15777,7 +15777,7 @@ pub fn _mm512_cvtt_roundph_epi64<const SAE: i32>(a: __m128h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2qq, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvtt_roundph_epi64<const SAE: i32>(
     src: __m512i,
@@ -15799,7 +15799,7 @@ pub fn _mm512_mask_cvtt_roundph_epi64<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2qq, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvtt_roundph_epi64<const SAE: i32>(k: __mmask8, a: __m128h) -> __m512i {
     static_assert_sae!(SAE);
@@ -15930,7 +15930,7 @@ pub fn _mm512_maskz_cvttph_epu64(k: __mmask8, a: __m128h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2uqq, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvtt_roundph_epu64<const SAE: i32>(a: __m128h) -> __m512i {
     static_assert_sae!(SAE);
@@ -15946,7 +15946,7 @@ pub fn _mm512_cvtt_roundph_epu64<const SAE: i32>(a: __m128h) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2uqq, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvtt_roundph_epu64<const SAE: i32>(
     src: __m512i,
@@ -15968,7 +15968,7 @@ pub fn _mm512_mask_cvtt_roundph_epu64<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttph2uqq, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvtt_roundph_epu64<const SAE: i32>(k: __mmask8, a: __m128h) -> __m512i {
     static_assert_sae!(SAE);
@@ -16098,7 +16098,7 @@ pub fn _mm512_maskz_cvtxph_ps(k: __mmask16, a: __m256h) -> __m512 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2psx, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvtx_roundph_ps<const SAE: i32>(a: __m256h) -> __m512 {
     static_assert_sae!(SAE);
@@ -16115,7 +16115,7 @@ pub fn _mm512_cvtx_roundph_ps<const SAE: i32>(a: __m256h) -> __m512 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2psx, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvtx_roundph_ps<const SAE: i32>(
     src: __m512,
@@ -16138,7 +16138,7 @@ pub fn _mm512_mask_cvtx_roundph_ps<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2psx, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvtx_roundph_ps<const SAE: i32>(k: __mmask16, a: __m256h) -> __m512 {
     static_assert_sae!(SAE);
@@ -16196,7 +16196,7 @@ pub fn _mm_maskz_cvtsh_ss(k: __mmask8, a: __m128, b: __m128h) -> __m128 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsh2ss, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cvt_roundsh_ss<const SAE: i32>(a: __m128, b: __m128h) -> __m128 {
     static_assert_sae!(SAE);
@@ -16214,7 +16214,7 @@ pub fn _mm_cvt_roundsh_ss<const SAE: i32>(a: __m128, b: __m128h) -> __m128 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsh2ss, SAE = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_cvt_roundsh_ss<const SAE: i32>(
     src: __m128,
@@ -16239,7 +16239,7 @@ pub fn _mm_mask_cvt_roundsh_ss<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsh2ss, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_cvt_roundsh_ss<const SAE: i32>(k: __mmask8, a: __m128, b: __m128h) -> __m128 {
     static_assert_sae!(SAE);
@@ -16369,7 +16369,7 @@ pub fn _mm512_maskz_cvtph_pd(k: __mmask8, a: __m128h) -> __m512d {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2pd, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cvt_roundph_pd<const SAE: i32>(a: __m128h) -> __m512d {
     static_assert_sae!(SAE);
@@ -16386,7 +16386,7 @@ pub fn _mm512_cvt_roundph_pd<const SAE: i32>(a: __m128h) -> __m512d {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2pd, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_cvt_roundph_pd<const SAE: i32>(
     src: __m512d,
@@ -16409,7 +16409,7 @@ pub fn _mm512_mask_cvt_roundph_pd<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtph2pd, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_maskz_cvt_roundph_pd<const SAE: i32>(k: __mmask8, a: __m128h) -> __m512d {
     static_assert_sae!(SAE);
@@ -16466,7 +16466,7 @@ pub fn _mm_maskz_cvtsh_sd(k: __mmask8, a: __m128d, b: __m128h) -> __m128d {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsh2sd, SAE = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cvt_roundsh_sd<const SAE: i32>(a: __m128d, b: __m128h) -> __m128d {
     static_assert_sae!(SAE);
@@ -16484,7 +16484,7 @@ pub fn _mm_cvt_roundsh_sd<const SAE: i32>(a: __m128d, b: __m128h) -> __m128d {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsh2sd, SAE = 8))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_cvt_roundsh_sd<const SAE: i32>(
     src: __m128d,
@@ -16508,7 +16508,7 @@ pub fn _mm_mask_cvt_roundsh_sd<const SAE: i32>(
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsh2sd, SAE = 8))]
-#[rustc_legacy_const_generics(3)]
+#[redox_legacy_const_generics(3)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_maskz_cvt_roundsh_sd<const SAE: i32>(k: __mmask8, a: __m128d, b: __m128h) -> __m128d {
     static_assert_sae!(SAE);
@@ -16521,7 +16521,7 @@ pub fn _mm_maskz_cvt_roundsh_sd<const SAE: i32>(k: __mmask8, a: __m128d, b: __m1
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtsh_h(a: __m128h) -> f16 {
     unsafe { simd_extract!(a, 0) }
 }
@@ -16532,7 +16532,7 @@ pub const fn _mm_cvtsh_h(a: __m128h) -> f16 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cvtsh_h(a: __m256h) -> f16 {
     unsafe { simd_extract!(a, 0) }
 }
@@ -16543,7 +16543,7 @@ pub const fn _mm256_cvtsh_h(a: __m256h) -> f16 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_cvtsh_h(a: __m512h) -> f16 {
     unsafe { simd_extract!(a, 0) }
 }
@@ -16554,7 +16554,7 @@ pub const fn _mm512_cvtsh_h(a: __m512h) -> f16 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtsi128_si16(a: __m128i) -> i16 {
     unsafe { simd_extract!(a.as_i16x8(), 0) }
 }
@@ -16565,7 +16565,7 @@ pub const fn _mm_cvtsi128_si16(a: __m128i) -> i16 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtsi16_si128(a: i16) -> __m128i {
     unsafe { transmute(simd_insert!(i16x8::ZERO, 0, a)) }
 }
@@ -16936,13 +16936,13 @@ mod tests {
     use stdarch_test::simd_test;
 
     #[target_feature(enable = "avx512fp16")]
-    #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+    #[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
     const fn _mm_set1_pch(re: f16, im: f16) -> __m128h {
         _mm_setr_ph(re, im, re, im, re, im, re, im)
     }
 
     #[target_feature(enable = "avx512fp16")]
-    #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+    #[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
     const fn _mm256_set1_pch(re: f16, im: f16) -> __m256h {
         _mm256_setr_ph(
             re, im, re, im, re, im, re, im, re, im, re, im, re, im, re, im,
@@ -16950,7 +16950,7 @@ mod tests {
     }
 
     #[target_feature(enable = "avx512fp16")]
-    #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+    #[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
     const fn _mm512_set1_pch(re: f16, im: f16) -> __m512h {
         _mm512_setr_ph(
             re, im, re, im, re, im, re, im, re, im, re, im, re, im, re, im, re, im, re, im, re, im,

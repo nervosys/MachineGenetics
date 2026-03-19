@@ -5,7 +5,7 @@
 
 pub enum AtomicOrdering {
     // These values must match the compiler's `AtomicOrdering` defined in
-    // `rustc_middle/src/ty/consts/int.rs`!
+    // `redox_middle/src/ty/consts/int.rs`!
     Relaxed = 0,
     Release = 1,
     Acquire = 2,
@@ -13,7 +13,7 @@ pub enum AtomicOrdering {
     SeqCst = 4,
 }
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 unsafe fn atomic_xadd<T, U, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
 
 #[lang = "pointee_sized"]

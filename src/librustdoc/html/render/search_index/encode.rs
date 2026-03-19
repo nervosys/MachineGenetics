@@ -12,7 +12,7 @@ pub(crate) fn write_signed_vlqhex_to_string(n: i32, string: &mut String) {
     // (`a` is the imaginary -0), and, because all the bits are shifted
     // by one, `` A` `` is actually 8 and `` Aa `` is -8.
     //
-    // https://rust-lang.github.io/rustc-dev-guide/rustdoc-internals/search.html
+    // https://rust-lang.github.io/redox-dev-guide/rustdoc-internals/search.html
     // describes the encoding in more detail.
     let mut shift: u32 = 28;
     let mut mask: u32 = 0xF0_00_00_00;

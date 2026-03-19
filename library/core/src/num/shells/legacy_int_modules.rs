@@ -8,7 +8,7 @@ macro_rules! legacy_int_module {
             since = "TBD",
             note = "all constants in this module replaced by associated constants on the type"
         )]
-        #[rustc_diagnostic_item = concat!(stringify!($T), "_legacy_mod")]
+        #[redox_diagnostic_item = concat!(stringify!($T), "_legacy_mod")]
         pub mod $T {
             #![doc = concat!("Redundant constants module for the [`", stringify!($T), "` primitive type][", stringify!($T), "].")]
             //!
@@ -31,7 +31,7 @@ macro_rules! legacy_int_module {
             ///
             #[$attr]
             #[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on this type")]
-            #[rustc_diagnostic_item = concat!(stringify!($T), "_legacy_const_min")]
+            #[redox_diagnostic_item = concat!(stringify!($T), "_legacy_const_min")]
             pub const MIN: $T = $T::MIN;
 
             #[doc = concat!(
@@ -51,7 +51,7 @@ macro_rules! legacy_int_module {
             ///
             #[$attr]
             #[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on this type")]
-            #[rustc_diagnostic_item = concat!(stringify!($T), "_legacy_const_max")]
+            #[redox_diagnostic_item = concat!(stringify!($T), "_legacy_const_max")]
             pub const MAX: $T = $T::MAX;
         }
     )

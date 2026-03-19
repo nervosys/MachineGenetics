@@ -102,7 +102,7 @@ use hir_expand::{
     EditionedFileId, ExpansionInfo, HirFileId, InMacroFile, MacroCallId, attrs::AttrId,
     name::AsName,
 };
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::FileId;
 use stdx::impl_from;

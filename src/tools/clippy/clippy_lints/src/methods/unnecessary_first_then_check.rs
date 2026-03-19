@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::SpanRangeExt;
 
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::LateContext;
-use rustc_span::Span;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::LateContext;
+use redox_span::Span;
 
 use super::UNNECESSARY_FIRST_THEN_CHECK;
 

@@ -3,7 +3,7 @@
 
 use crate::flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan};
 use itertools::Itertools;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use smallvec::SmallVec;
 use stdx::format_to;
 use vfs::{AbsPath, AbsPathBuf};
@@ -25,7 +25,7 @@ fn diagnostic_severity(
         DiagnosticLevel::Ice => lsp_types::DiagnosticSeverity::ERROR,
         DiagnosticLevel::Error => lsp_types::DiagnosticSeverity::ERROR,
         DiagnosticLevel::Warning => match code {
-            // HACK: special case for `warnings` rustc lint.
+            // HACK: special case for `warnings` redox lint.
             Some(code)
                 if config.warnings_as_hint.iter().any(|lint| {
                     lint == "warnings" || ide_db::helpers::lint_eq_or_in_group(&code.code, lint)
@@ -33,7 +33,7 @@ fn diagnostic_severity(
             {
                 lsp_types::DiagnosticSeverity::HINT
             }
-            // HACK: special case for `warnings` rustc lint.
+            // HACK: special case for `warnings` redox lint.
             Some(code)
                 if config.warnings_as_info.iter().any(|lint| {
                     lint == "warnings" || ide_db::helpers::lint_eq_or_in_group(&code.code, lint)
@@ -52,7 +52,7 @@ fn diagnostic_severity(
 
 /// Checks whether a file name is from macro invocation and does not refer to an actual file.
 fn is_dummy_macro_file(file_name: &str) -> bool {
-    // FIXME: current rustc does not seem to emit `<macro file>` files anymore?
+    // FIXME: current redox does not seem to emit `<macro file>` files anymore?
     file_name.starts_with('<') && file_name.ends_with('>')
 }
 
@@ -115,7 +115,7 @@ fn position(
     }
 }
 
-/// Extracts a suitable "primary" location from a rustc diagnostic.
+/// Extracts a suitable "primary" location from a redox diagnostic.
 ///
 /// This takes locations pointing into the standard library, or generally outside the current
 /// workspace into account and tries to avoid those, in case macros are involved.
@@ -187,7 +187,7 @@ fn map_rust_child_diagnostic(
 ) -> MappedRustChildDiagnostic {
     let spans: SmallVec<[&DiagnosticSpan; 1]> = rd.spans.iter().filter(|s| s.is_primary).collect();
     if spans.is_empty() {
-        // `rustc` uses these spanless children as a way to print multi-line
+        // `redox` uses these spanless children as a way to print multi-line
         // messages
         return MappedRustChildDiagnostic::MessageLine(rd.message.clone());
     }
@@ -218,7 +218,7 @@ fn map_rust_child_diagnostic(
         }
     }
 
-    // rustc renders suggestion diagnostics by appending the suggested replacement, so do the same
+    // redox renders suggestion diagnostics by appending the suggested replacement, so do the same
     // here, otherwise the diagnostic text is missing useful information.
     let mut message = rd.message.clone();
     if !suggested_replacements.is_empty() {
@@ -310,7 +310,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 
     let severity = diagnostic_severity(config, level, diagnostic_code.as_ref());
 
-    let mut source = "rustc";
+    let mut source = "redox";
     if let Some(code_val) = code {
         // See if this is an RFC #2103 scoped lint (e.g. from Clippy)
         if let Some((s, c)) = code_val.split("::").collect_tuple() {
@@ -361,7 +361,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     }
 
     let code_description = match source {
-        "rustc" => rustc_code_description(code),
+        "redox" => redox_code_description(code),
         "clippy" => clippy_code_description(code),
         _ => None,
     };
@@ -486,7 +486,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     diagnostics
 }
 
-fn rustc_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescription> {
+fn redox_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescription> {
     code.filter(|code| {
         let mut chars = code.chars();
         chars.next() == Some('E')
@@ -546,7 +546,7 @@ mod tests {
     }
 
     #[test]
-    fn rustc_incompatible_type_for_trait() {
+    fn redox_incompatible_type_for_trait() {
         check(
             r##"{
                 "message": "method `next` has an incompatible type for trait",
@@ -591,12 +591,12 @@ mod tests {
                 "rendered": "error[E0053]: method `next` has an incompatible type for trait\n  --> compiler/ty/list_iter.rs:52:5\n   |\n52 |     fn next(&self) -> Option<&'list ty::Ref<M>> {\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ in mutability\n   |\n   = note: expected type `fn(&mut ty::list_iter::ListIterator<'list, M>) -> std::option::Option<&ty::Ref<M>>`\n              found type `fn(&ty::list_iter::ListIterator<'list, M>) -> std::option::Option<&'list ty::Ref<M>>`\n\n"
             }
             "##,
-            expect_file!["./test_data/rustc_incompatible_type_for_trait.txt"],
+            expect_file!["./test_data/redox_incompatible_type_for_trait.txt"],
         );
     }
 
     #[test]
-    fn rustc_unused_variable() {
+    fn redox_unused_variable() {
         check(
             r##"{
     "message": "unused variable: `foo`",
@@ -670,13 +670,13 @@ mod tests {
     ],
     "rendered": "warning: unused variable: `foo`\n   --> driver/subcommand/repl.rs:291:9\n    |\n291 |     let foo = 42;\n    |         ^^^ help: consider prefixing with an underscore: `_foo`\n    |\n    = note: #[warn(unused_variables)] on by default\n\n"
     }"##,
-            expect_file!["./test_data/rustc_unused_variable.txt"],
+            expect_file!["./test_data/redox_unused_variable.txt"],
         );
     }
 
     #[test]
     #[cfg(not(windows))]
-    fn rustc_unused_variable_as_info() {
+    fn redox_unused_variable_as_info() {
         check_with_config(
             DiagnosticsMapConfig {
                 warnings_as_info: vec!["unused_variables".to_owned()],
@@ -754,13 +754,13 @@ mod tests {
     ],
     "rendered": "warning: unused variable: `foo`\n   --> driver/subcommand/repl.rs:291:9\n    |\n291 |     let foo = 42;\n    |         ^^^ help: consider prefixing with an underscore: `_foo`\n    |\n    = note: #[warn(unused_variables)] on by default\n\n"
     }"##,
-            expect_file!["./test_data/rustc_unused_variable_as_info.txt"],
+            expect_file!["./test_data/redox_unused_variable_as_info.txt"],
         );
     }
 
     #[test]
     #[cfg(not(windows))]
-    fn rustc_unused_variable_as_hint() {
+    fn redox_unused_variable_as_hint() {
         check_with_config(
             DiagnosticsMapConfig {
                 warnings_as_hint: vec!["unused_variables".to_owned()],
@@ -838,12 +838,12 @@ mod tests {
     ],
     "rendered": "warning: unused variable: `foo`\n   --> driver/subcommand/repl.rs:291:9\n    |\n291 |     let foo = 42;\n    |         ^^^ help: consider prefixing with an underscore: `_foo`\n    |\n    = note: #[warn(unused_variables)] on by default\n\n"
     }"##,
-            expect_file!["./test_data/rustc_unused_variable_as_hint.txt"],
+            expect_file!["./test_data/redox_unused_variable_as_hint.txt"],
         );
     }
 
     #[test]
-    fn rustc_wrong_number_of_parameters() {
+    fn redox_wrong_number_of_parameters() {
         check(
             r##"{
     "message": "this function takes 2 parameters but 3 parameters were supplied",
@@ -959,7 +959,7 @@ mod tests {
     "children": [],
     "rendered": "error[E0061]: this function takes 2 parameters but 3 parameters were supplied\n   --> compiler/ty/select.rs:104:18\n    |\n104 |               self.add_evidence(target_fixed, evidence_fixed, false);\n    |                    ^^^^^^^^^^^^ expected 2 parameters\n...\n219 | /     pub fn add_evidence(\n220 | |         &mut self,\n221 | |         target_poly: &ty::Ref<ty::Poly>,\n222 | |         evidence_poly: &ty::Ref<ty::Poly>,\n...   |\n230 | |         }\n231 | |     }\n    | |_____- defined here\n\n"
     }"##,
-            expect_file!["./test_data/rustc_wrong_number_of_parameters.txt"],
+            expect_file!["./test_data/redox_wrong_number_of_parameters.txt"],
         );
     }
 
@@ -1081,7 +1081,7 @@ mod tests {
     }
 
     #[test]
-    fn rustc_range_map_lsp_position() {
+    fn redox_range_map_lsp_position() {
         check(
             r##"{
             "message": "mismatched types",
@@ -1137,12 +1137,12 @@ mod tests {
             "children": [],
             "rendered": "error[E0308]: mismatched types\n --> crates/test_diagnostics/src/main.rs:4:18\n  |\n4 |     let x: u32 = \"𐐀𐐀𐐀𐐀\"; // 17-23\n  |            ---   ^^^^^^ expected `u32`, found `&str`\n  |            |\n  |            expected due to this\n\n"
         }"##,
-            expect_file!("./test_data/rustc_range_map_lsp_position.txt"),
+            expect_file!("./test_data/redox_range_map_lsp_position.txt"),
         )
     }
 
     #[test]
-    fn rustc_mismatched_type() {
+    fn redox_mismatched_type() {
         check(
             r##"{
     "message": "mismatched types",
@@ -1177,7 +1177,7 @@ mod tests {
     "children": [],
     "rendered": "error[E0308]: mismatched types\n  --> runtime/compiler_support.rs:48:65\n   |\n48 |     let layout = alloc::Layout::from_size_align_unchecked(size, align);\n   |                                                                 ^^^^^ expected usize, found u32\n\n"
     }"##,
-            expect_file!["./test_data/rustc_mismatched_type.txt"],
+            expect_file!["./test_data/redox_mismatched_type.txt"],
         );
     }
 

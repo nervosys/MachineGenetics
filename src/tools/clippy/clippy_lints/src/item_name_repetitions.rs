@@ -2,11 +2,11 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_hir};
 use clippy_utils::str_utils::{camel_case_split, count_match_end, count_match_start, to_camel_case, to_snake_case};
 use clippy_utils::{is_bool, is_from_proc_macro};
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::{Body, EnumDef, FieldDef, Item, ItemKind, QPath, TyKind, UseKind, Variant, VariantData};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
-use rustc_span::symbol::Symbol;
+use redox_data_structures::fx::FxHashSet;
+use redox_hir::{Body, EnumDef, FieldDef, Item, ItemKind, QPath, TyKind, UseKind, Variant, VariantData};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
+use redox_span::symbol::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does

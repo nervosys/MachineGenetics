@@ -4,13 +4,13 @@ use clippy_utils::source::{SourceText, SpanRangeExt, snippet};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures, is_local_used};
 use core::ops::ControlFlow;
-use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::{
+use redox_errors::{Applicability, MultiSpan};
+use redox_hir::{
     BindingMode, Block, Expr, ExprKind, HirId, LetStmt, LocalSource, MatchSource, Node, Pat, PatKind, Stmt, StmtKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does

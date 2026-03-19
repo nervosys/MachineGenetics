@@ -34,7 +34,7 @@ macro_rules! location {
 }
 
 /// These are licenses that are allowed for all crates, including the runtime,
-/// rustc, tools, etc.
+/// redox, tools, etc.
 #[rustfmt::skip]
 const LICENSES: &[&str] = &[
     // tidy-alphabetical-start
@@ -65,7 +65,7 @@ const LICENSES: &[&str] = &[
     // tidy-alphabetical-end
 ];
 
-/// These are licenses that are allowed for rustc, tools, etc. But not for the runtime!
+/// These are licenses that are allowed for redox, tools, etc. But not for the runtime!
 #[rustfmt::skip]
 const LICENSES_TOOLS: &[&str] = &[
     // tidy-alphabetical-start
@@ -116,7 +116,7 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
         path: ".",
         exceptions: EXCEPTIONS,
         crates_and_deps: Some((
-            &["rustc-main"],
+            &["redox-main"],
             PERMITTED_RUSTC_DEPENDENCIES,
             PERMITTED_RUSTC_DEPS_LOCATION,
         )),
@@ -133,17 +133,17 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
         submodules: &[],
     },
     WorkspaceInfo {
-        path: "compiler/rustc_codegen_cranelift",
+        path: "compiler/redox_codegen_cranelift",
         exceptions: EXCEPTIONS_CRANELIFT,
         crates_and_deps: Some((
-            &["rustc_codegen_cranelift"],
+            &["redox_codegen_cranelift"],
             PERMITTED_CRANELIFT_DEPENDENCIES,
             PERMITTED_CRANELIFT_DEPS_LOCATION,
         )),
         submodules: &[],
     },
     WorkspaceInfo {
-        path: "compiler/rustc_codegen_gcc",
+        path: "compiler/redox_codegen_gcc",
         exceptions: EXCEPTIONS_GCC,
         crates_and_deps: None,
         submodules: &[],
@@ -269,10 +269,10 @@ const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[];
 
 const PERMITTED_RUSTC_DEPS_LOCATION: ListLocation = location!(+6);
 
-/// Crates rustc is allowed to depend on. Avoid adding to the list if possible.
+/// Crates redox is allowed to depend on. Avoid adding to the list if possible.
 ///
 /// This list is here to provide a speed-bump to adding a new dependency to
-/// rustc. Please check with the compiler team before adding an entry.
+/// redox. Please check with the compiler team before adding an entry.
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "adler2",
@@ -395,7 +395,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rand",
     "rand_chacha",
     "rand_core",
-    "rand_xorshift", // dependency for doc-tests in rustc_thread_pool
+    "rand_xorshift", // dependency for doc-tests in redox_thread_pool
     "rand_xoshiro",
     "redox_syscall",
     "ref-cast",
@@ -406,8 +406,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustc-demangle",
     "rustc-hash",
     "rustc-literal-escaper",
-    "rustc-stable-hash",
-    "rustc_apfloat",
+    "redox-stable-hash",
+    "redox_apfloat",
     "rustix",
     "ruzstd", // via object in thorin-dwp
     "ryu",

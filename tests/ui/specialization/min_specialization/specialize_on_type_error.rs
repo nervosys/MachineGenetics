@@ -1,9 +1,9 @@
 // A regression test for #109815.
 
 #![feature(min_specialization)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 trait X {}
 trait Y: X {}
 trait Z {

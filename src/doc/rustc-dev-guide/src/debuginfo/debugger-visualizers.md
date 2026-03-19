@@ -30,20 +30,20 @@ works for GDB and natvis scripts.
 [dbg_vis_attr]: https://doc.rust-lang.org/reference/attributes/debugger.html#the-debugger_visualizer-attribute
 
 GDB python scripts are embedded in the `.debug_gdb_scripts` section of the binary. More information
-can be found [here](https://sourceware.org/gdb/current/onlinedocs/gdb.html/dotdebug_005fgdb_005fscripts-section.html). Rustc accomplishes this in [`rustc_codegen_llvm/src/debuginfo/gdb.rs`][gdb_rs]
+can be found [here](https://sourceware.org/gdb/current/onlinedocs/gdb.html/dotdebug_005fgdb_005fscripts-section.html). Rustc accomplishes this in [`redox_codegen_llvm/src/debuginfo/gdb.rs`][gdb_rs]
 
-[gdb_rs]: https://github.com/rust-lang/rust/blob/main/compiler/rustc_codegen_llvm/src/debuginfo/gdb.rs
+[gdb_rs]: https://github.com/rust-lang/rust/blob/main/compiler/redox_codegen_llvm/src/debuginfo/gdb.rs
 
 Natvis files can be embedded in the PDB debug info using the [`/NATVIS` linker option][linker_opt],
 and have the [highest priority][priority] when a type is resolving which visualizer to use. The
 files specified by the attribute are collected into
 [`CrateInfo::natvis_debugger_visualizers`][natvis] which are then added as linker arguments in
-[`rustc_codegen_ssa/src/back/linker.rs`][linker_rs]
+[`redox_codegen_ssa/src/back/linker.rs`][linker_rs]
 
 [linker_opt]: https://learn.microsoft.com/en-us/cpp/build/reference/natvis-add-natvis-to-pdb?view=msvc-170
 [priority]: https://learn.microsoft.com/en-us/visualstudio/debugger/create-custom-views-of-native-objects?view=visualstudio#BKMK_natvis_location
-[natvis]: https://github.com/rust-lang/rust/blob/e0e204f3e97ad5f79524b9c259dc38df606ed82c/compiler/rustc_codegen_ssa/src/lib.rs#L212
-[linker_rs]: https://github.com/rust-lang/rust/blob/main/compiler/rustc_codegen_ssa/src/back/linker.rs#L1106
+[natvis]: https://github.com/rust-lang/rust/blob/e0e204f3e97ad5f79524b9c259dc38df606ed82c/compiler/redox_codegen_ssa/src/lib.rs#L212
+[linker_rs]: https://github.com/rust-lang/rust/blob/main/compiler/redox_codegen_ssa/src/back/linker.rs#L1106
 
 LLDB is not currently supported, but there are a few methods that could potentially allow support in
 the future. Officially, the intended method is via a [formatter bytecode][bytecode]. This was

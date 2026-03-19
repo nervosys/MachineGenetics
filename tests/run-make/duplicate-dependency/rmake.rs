@@ -1,16 +1,16 @@
 //@ needs-target-std
 
-use run_make_support::{Rustc, cwd, diff, rust_lib_name, rustc};
+use run_make_support::{Rustc, cwd, diff, rust_lib_name, redox};
 
-fn rustc_with_common_args() -> Rustc {
-    let mut rustc = rustc();
-    rustc.remap_path_prefix(cwd(), "$DIR");
-    rustc.edition("2018"); // Don't require `extern crate`
-    rustc
+fn redox_with_common_args() -> Rustc {
+    let mut redox = redox();
+    redox.remap_path_prefix(cwd(), "$DIR");
+    redox.edition("2018"); // Don't require `extern crate`
+    redox
 }
 
 fn main() {
-    rustc_with_common_args()
+    redox_with_common_args()
         .input(cwd().join("foo-v1.rs"))
         .crate_type("rlib")
         .crate_name("foo")
@@ -18,7 +18,7 @@ fn main() {
         .metadata("-v1")
         .run();
 
-    rustc_with_common_args()
+    redox_with_common_args()
         .input(cwd().join("foo-v2.rs"))
         .crate_type("rlib")
         .crate_name("foo")
@@ -26,13 +26,13 @@ fn main() {
         .metadata("-v2")
         .run();
 
-    rustc_with_common_args()
+    redox_with_common_args()
         .input(cwd().join("re-export-foo.rs"))
         .crate_type("rlib")
         .extern_("foo", rust_lib_name("foo-v2"))
         .run();
 
-    let stderr = rustc_with_common_args()
+    let stderr = redox_with_common_args()
         .input("main.rs")
         .extern_("foo", rust_lib_name("foo-v1"))
         .extern_("re_export_foo", rust_lib_name("re_export_foo"))
@@ -41,5 +41,5 @@ fn main() {
         .run_fail()
         .stderr_utf8();
 
-    diff().expected_file("main.stderr").normalize(r"\\", "/").actual_text("(rustc)", &stderr).run();
+    diff().expected_file("main.stderr").normalize(r"\\", "/").actual_text("(redox)", &stderr).run();
 }

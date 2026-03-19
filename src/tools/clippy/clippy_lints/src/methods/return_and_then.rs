@@ -1,9 +1,9 @@
 use clippy_utils::res::MaybeDef;
-use rustc_errors::Applicability;
-use rustc_hir::{self as hir, Node};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, GenericArg, Ty};
-use rustc_span::sym;
+use redox_errors::Applicability;
+use redox_hir::{self as hir, Node};
+use redox_lint::LateContext;
+use redox_middle::ty::{self, GenericArg, Ty};
+use redox_span::sym;
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;

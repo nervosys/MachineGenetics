@@ -1,7 +1,7 @@
 //@ revisions: with without
 //@ compile-flags: -Znext-solver
-#![feature(rustc_attrs)]
-#![rustc_no_implicit_bounds]
+#![feature(redox_attrs)]
+#![redox_no_implicit_bounds]
 
 // This test is incredibly subtle. At its core the goal is to get a coinductive cycle,
 // which, depending on its root goal, either holds or errors. We achieve this by getting
@@ -17,7 +17,7 @@
 // tl;dr: our caching of coinductive cycles was broken and this is a regression
 // test for that.
 
-#[rustc_coinductive]
+#[redox_coinductive]
 trait Trait<T, V, D> {}
 struct A<T>(*const T);
 struct B<T>(*const T);

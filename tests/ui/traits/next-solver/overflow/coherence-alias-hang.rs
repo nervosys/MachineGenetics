@@ -4,8 +4,8 @@
 // Regression test for nalgebra hang <https://github.com/rust-lang/rust/issues/130056>.
 
 #![feature(lazy_type_alias)]
-#![feature(rustc_attrs)]
-#![rustc_no_implicit_bounds]
+#![feature(redox_attrs)]
+#![redox_no_implicit_bounds]
 #![allow(incomplete_features)]
 
 type Id<T> = T;

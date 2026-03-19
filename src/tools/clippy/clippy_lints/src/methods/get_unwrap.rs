@@ -2,9 +2,9 @@ use super::utils::derefs_to_slice;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{get_parent_expr, sym};
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_lint::LateContext;
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_lint::LateContext;
 
 use super::GET_UNWRAP;
 

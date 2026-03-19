@@ -6,7 +6,7 @@ use cfg::{CfgAtom, CfgDiff};
 use expect_test::{ExpectFile, expect_file};
 use intern::sym;
 use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use serde::de::DeserializeOwned;
 use span::FileId;
 
@@ -39,12 +39,12 @@ fn load_workspace_from_metadata(file: &str) -> ProjectWorkspace {
         kind: ProjectWorkspaceKind::Cargo {
             cargo: cargo_workspace,
             build_scripts: WorkspaceBuildScripts::default(),
-            rustc: Err(None),
+            redox: Err(None),
             error: None,
         },
         cfg_overrides: Default::default(),
         sysroot: Sysroot::empty(),
-        rustc_cfg: Vec::new(),
+        redox_cfg: Vec::new(),
         toolchain: None,
         target: Err("target_data_layout not loaded".into()),
         extra_includes: Vec::new(),
@@ -59,7 +59,7 @@ fn load_rust_project(file: &str) -> (CrateGraphBuilder, ProcMacroPaths) {
     let project_workspace = ProjectWorkspace {
         kind: ProjectWorkspaceKind::Json(project),
         sysroot,
-        rustc_cfg: Vec::new(),
+        redox_cfg: Vec::new(),
         toolchain: None,
         target: Err("test has no target data".into()),
         cfg_overrides: Default::default(),
@@ -261,11 +261,11 @@ fn smoke_test_real_sysroot_cargo() {
         kind: ProjectWorkspaceKind::Cargo {
             cargo: cargo_workspace,
             build_scripts: WorkspaceBuildScripts::default(),
-            rustc: Err(None),
+            redox: Err(None),
             error: None,
         },
         sysroot,
-        rustc_cfg: Vec::new(),
+        redox_cfg: Vec::new(),
         cfg_overrides: Default::default(),
         toolchain: None,
         target: Err("target_data_layout not loaded".into()),

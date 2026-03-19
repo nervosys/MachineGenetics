@@ -47,7 +47,7 @@ fn main() {
         assert_static(&[1, 2, 3][4]);
     }
 
-    // More complicated case involving control flow and a `#[rustc_promotable]` function
+    // More complicated case involving control flow and a `#[redox_promotable]` function
     let decision = std::hint::black_box(true);
     let x: &'static usize = if decision { &mem::size_of::<usize>() } else { &0 };
 }

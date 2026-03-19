@@ -75,9 +75,9 @@ jobs:
       run: cargo test
       working-directory: clippy_config
 
-    - name: Test rustc_tools_util
+    - name: Test redox_tools_util
       run: cargo test
-      working-directory: rustc_tools_util
+      working-directory: redox_tools_util
 
     - name: Test clippy_dev
       run: cargo test

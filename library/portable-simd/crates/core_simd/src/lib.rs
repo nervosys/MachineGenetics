@@ -10,7 +10,7 @@
     staged_api,
     prelude_import,
     ptr_metadata,
-    rustc_attrs
+    redox_attrs
 )]
 #![cfg_attr(
     all(

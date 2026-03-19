@@ -20,8 +20,8 @@ unsafe_impl_trusted_step![AsciiChar char i8 i16 i32 i64 i128 isize u8 u16 u32 u6
 ///
 /// The *successor* operation moves towards values that compare greater.
 /// The *predecessor* operation moves towards values that compare lesser.
-#[rustc_diagnostic_item = "range_step"]
-#[rustc_on_unimplemented(
+#[redox_diagnostic_item = "range_step"]
+#[redox_on_unimplemented(
     message = "`std::ops::Range<{Self}>` is not an iterator",
     label = "`Range<{Self}>` is not an iterator",
     note = "`Range` only implements `Iterator` for select types in the standard library, \
@@ -226,7 +226,7 @@ macro_rules! step_identical_methods {
     () => {
         #[inline]
         #[allow(arithmetic_overflow)]
-        #[rustc_inherit_overflow_checks]
+        #[redox_inherit_overflow_checks]
         fn forward(start: Self, n: usize) -> Self {
             // In debug builds, trigger a panic on overflow.
             // This should optimize completely out in release builds.
@@ -239,7 +239,7 @@ macro_rules! step_identical_methods {
 
         #[inline]
         #[allow(arithmetic_overflow)]
-        #[rustc_inherit_overflow_checks]
+        #[redox_inherit_overflow_checks]
         fn backward(start: Self, n: usize) -> Self {
             // In debug builds, trigger a panic on overflow.
             // This should optimize completely out in release builds.

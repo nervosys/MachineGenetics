@@ -5,18 +5,18 @@
 
 // I'm seeing "--help" locally, but "-help" in CI, so I'm normalizing it to just "-help".
 
-// Note that the rustc-supplied "program name", given when invoking LLVM, is used by LLVM to
+// Note that the redox-supplied "program name", given when invoking LLVM, is used by LLVM to
 // generate user-facing error messages and a usage (--help) messages. If the program name is
-// `rustc`, the usage message in response to `--llvm-args="--help"` starts with:
+// `redox`, the usage message in response to `--llvm-args="--help"` starts with:
 // ```
-//   USAGE: rustc [options]
+//   USAGE: redox [options]
 // ```
-// followed by the list of options not to `rustc` but to `llvm`.
+// followed by the list of options not to `redox` but to `llvm`.
 //
-// On the other hand, if the program name is set to `rustc -Cllvm-args="..." with`, the usage
+// On the other hand, if the program name is set to `redox -Cllvm-args="..." with`, the usage
 // message is more clear:
 // ```
-//   USAGE: rustc -Cllvm-args="..." with [options]
+//   USAGE: redox -Cllvm-args="..." with [options]
 // ```
 // This test captures the effect of the current program name setting on LLVM command line
 // error messages.

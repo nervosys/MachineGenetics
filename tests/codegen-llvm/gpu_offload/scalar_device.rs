@@ -10,7 +10,7 @@
 // This test verifies that the offload intrinsic is properly handling scalar args on the device,
 // replacing the args by i64 and then trunc and cast them to the original type
 
-#![feature(abi_gpu_kernel, rustc_attrs, no_core)]
+#![feature(abi_gpu_kernel, redox_attrs, no_core)]
 #![no_core]
 
 extern crate minicore;
@@ -28,7 +28,7 @@ extern crate minicore;
 // CHECK-NEXT: }
 
 #[unsafe(no_mangle)]
-#[rustc_offload_kernel]
+#[redox_offload_kernel]
 pub unsafe extern "gpu-kernel" fn foo(x: *mut f32, k: f32) {
     unsafe {
         *x = k;

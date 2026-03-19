@@ -71,7 +71,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// ```
     #[inline]
     #[stable(feature = "lazy_cell", since = "1.80.0")]
-    #[rustc_const_stable(feature = "lazy_cell", since = "1.80.0")]
+    #[redox_const_stable(feature = "lazy_cell", since = "1.80.0")]
     pub const fn new(f: F) -> LazyCell<T, F> {
         LazyCell { state: UnsafeCell::new(State::Uninit(f)) }
     }
@@ -99,7 +99,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// assert_eq!(LazyCell::into_inner(lazy).ok(), Some("HELLO, WORLD!".to_string()));
     /// ```
     #[unstable(feature = "lazy_cell_into_inner", issue = "125623")]
-    #[rustc_const_unstable(feature = "lazy_cell_into_inner", issue = "125623")]
+    #[redox_const_unstable(feature = "lazy_cell_into_inner", issue = "125623")]
     pub const fn into_inner(this: Self) -> Result<T, F> {
         match this.state.into_inner() {
             State::Init(data) => Ok(data),
@@ -134,7 +134,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// ```
     #[inline]
     #[stable(feature = "lazy_cell", since = "1.80.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn force(this: &LazyCell<T, F>) -> &T {
         // SAFETY:
         // This invalidates any mutable references to the data. The resulting

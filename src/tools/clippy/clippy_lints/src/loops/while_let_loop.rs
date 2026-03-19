@@ -4,10 +4,10 @@ use clippy_utils::source::{snippet, snippet_indent, snippet_opt};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::any_temporaries_need_ordered_drop;
 use clippy_utils::{higher, peel_blocks};
-use rustc_ast::BindingMode;
-use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind, Path, QPath, StmtKind, Ty};
-use rustc_lint::LateContext;
+use redox_ast::BindingMode;
+use redox_errors::Applicability;
+use redox_hir::{Block, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind, Path, QPath, StmtKind, Ty};
+use redox_lint::LateContext;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'tcx Block<'_>) {
     let (init, let_info, els) = match (loop_block.stmts, loop_block.expr) {

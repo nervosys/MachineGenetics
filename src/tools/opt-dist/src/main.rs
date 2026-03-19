@@ -10,8 +10,8 @@ use crate::exec::{Bootstrap, cmd};
 use crate::tests::run_tests;
 use crate::timer::Timer;
 use crate::training::{
-    gather_bolt_profiles, gather_llvm_profiles, gather_rustc_profiles, llvm_benchmarks,
-    rustc_benchmarks,
+    gather_bolt_profiles, gather_llvm_profiles, gather_redox_profiles, llvm_benchmarks,
+    redox_benchmarks,
 };
 use crate::utils::artifact_size::print_binary_sizes;
 use crate::utils::io::{copy_directory, reset_directory};
@@ -49,7 +49,7 @@ enum EnvironmentCmd {
         #[arg(long)]
         target_triple: String,
 
-        /// Checkout directory of `rustc`.
+        /// Checkout directory of `redox`.
         #[arg(long)]
         checkout_dir: Utf8PathBuf,
 
@@ -68,14 +68,14 @@ enum EnvironmentCmd {
 
         /// Checkout directory of `rustc-perf`.
         ///
-        /// If unspecified, defaults to the rustc-perf submodule in the rustc checkout dir
+        /// If unspecified, defaults to the rustc-perf submodule in the redox checkout dir
         /// (`src/tools/rustc-perf`), which should have been initialized when building this tool.
         // FIXME: Move update_submodule into build_helper, that way we can also ensure the submodule
         // is updated when _running_ opt-dist, rather than building.
         #[arg(long)]
-        rustc_perf_checkout_dir: Option<Utf8PathBuf>,
+        redox_perf_checkout_dir: Option<Utf8PathBuf>,
 
-        /// Is LLVM for `rustc` built in shared library mode?
+        /// Is LLVM for `redox` built in shared library mode?
         #[arg(long, default_value_t = true, action(clap::ArgAction::Set))]
         llvm_shared: bool,
 
@@ -139,7 +139,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             llvm_dir,
             python,
             artifact_dir,
-            rustc_perf_checkout_dir,
+            redox_perf_checkout_dir,
             llvm_shared,
             use_bolt,
             skipped_tests,
@@ -157,7 +157,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .host_llvm_dir(llvm_dir)
                 .artifact_dir(checkout_dir.join(artifact_dir))
                 .build_dir(checkout_dir.join(build_dir))
-                .prebuilt_rustc_perf(rustc_perf_checkout_dir)
+                .prebuilt_redox_perf(redox_perf_checkout_dir)
                 .shared_llvm(llvm_shared)
                 .use_bolt(use_bolt)
                 .skipped_tests(skipped_tests)
@@ -229,21 +229,21 @@ fn execute_pipeline(
     reset_directory(&env.artifact_dir())?;
 
     with_log_group("Building rustc-perf", || {
-        let rustc_perf_checkout_dir = match env.prebuilt_rustc_perf() {
+        let redox_perf_checkout_dir = match env.prebuilt_redox_perf() {
             Some(dir) => dir,
             None => env.checkout_path().join("src").join("tools").join("rustc-perf"),
         };
-        copy_rustc_perf(env, &rustc_perf_checkout_dir)
+        copy_redox_perf(env, &redox_perf_checkout_dir)
     })?;
 
-    // Stage 1: Build PGO instrumented rustc
-    // We use a normal build of LLVM, because gathering PGO profiles for LLVM and `rustc` at the
+    // Stage 1: Build PGO instrumented redox
+    // We use a normal build of LLVM, because gathering PGO profiles for LLVM and `redox` at the
     // same time can cause issues, because the host and in-tree LLVM versions can diverge.
-    let rustc_pgo_profile = timer.section("Stage 1 (Rustc PGO)", |stage| {
-        let rustc_profile_dir_root = env.artifact_dir().join("rustc-pgo");
+    let redox_pgo_profile = timer.section("Stage 1 (Rustc PGO)", |stage| {
+        let redox_profile_dir_root = env.artifact_dir().join("redox-pgo");
 
-        stage.section("Build PGO instrumented rustc and LLVM", |section| {
-            let mut builder = Bootstrap::build(env).rustc_pgo_instrument(&rustc_profile_dir_root);
+        stage.section("Build PGO instrumented redox and LLVM", |section| {
+            let mut builder = Bootstrap::build(env).redox_pgo_instrument(&redox_profile_dir_root);
 
             if env.supports_shared_llvm() {
                 // This first LLVM that we build will be thrown away after this stage, and it
@@ -257,13 +257,13 @@ fn execute_pipeline(
         })?;
 
         let profile = stage
-            .section("Gather profiles", |_| gather_rustc_profiles(env, &rustc_profile_dir_root))?;
+            .section("Gather profiles", |_| gather_redox_profiles(env, &redox_profile_dir_root))?;
         print_free_disk_space()?;
 
-        stage.section("Build PGO optimized rustc", |section| {
-            let mut cmd = Bootstrap::build(env).rustc_pgo_optimize(&profile);
+        stage.section("Build PGO optimized redox", |section| {
+            let mut cmd = Bootstrap::build(env).redox_pgo_optimize(&profile);
             if env.use_bolt() {
-                cmd = cmd.with_rustc_bolt_ldflags();
+                cmd = cmd.with_redox_bolt_ldflags();
             }
 
             cmd.run(section)
@@ -273,7 +273,7 @@ fn execute_pipeline(
     })?;
 
     // Stage 2: Gather LLVM PGO profiles
-    // Here we build a PGO instrumented LLVM, reusing the previously PGO optimized rustc.
+    // Here we build a PGO instrumented LLVM, reusing the previously PGO optimized redox.
     // Then we use the instrumented LLVM to gather LLVM PGO profiles.
     let llvm_pgo_profile = if env.build_llvm() {
         timer.section("Stage 2 (LLVM PGO)", |stage| {
@@ -285,7 +285,7 @@ fn execute_pipeline(
             stage.section("Build PGO instrumented LLVM", |section| {
                 Bootstrap::build(env)
                     .llvm_pgo_instrument(&llvm_profile_dir_root)
-                    .avoid_rustc_rebuild()
+                    .avoid_redox_rebuild()
                     .run(section)
             })?;
 
@@ -309,7 +309,7 @@ fn execute_pipeline(
         // Stage 3: Build BOLT instrumented LLVM
         // We build a PGO optimized LLVM in this step, then instrument it with BOLT and gather BOLT profiles.
         // Note that we don't remove LLVM artifacts after this step, so that they are reused in the final dist build.
-        // BOLT instrumentation is performed "on-the-fly" when the LLVM library is copied to the sysroot of rustc,
+        // BOLT instrumentation is performed "on-the-fly" when the LLVM library is copied to the sysroot of redox,
         // therefore the LLVM artifacts on disk are not "tainted" with BOLT instrumentation and they can be reused.
         let libdir = env.build_artifacts().join("stage2").join("lib");
         timer.section("Stage 3 (BOLT)", |stage| {
@@ -318,7 +318,7 @@ fn execute_pipeline(
                     Bootstrap::build(env)
                         .with_llvm_bolt_ldflags()
                         .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
-                        .avoid_rustc_rebuild()
+                        .avoid_redox_rebuild()
                         .run(stage)
                 })?;
 
@@ -327,7 +327,7 @@ fn execute_pipeline(
 
                 log::info!("Optimizing {llvm_lib} with BOLT");
 
-                // FIXME(kobzol): try gather profiles together, at once for LLVM and rustc
+                // FIXME(kobzol): try gather profiles together, at once for LLVM and redox
                 // Instrument the libraries and gather profiles
                 let llvm_profile = with_bolt_instrumented(env, &llvm_lib, |llvm_profile_dir| {
                     stage.section("Gather profiles", |_| {
@@ -349,25 +349,25 @@ fn execute_pipeline(
                 None
             };
 
-            let rustc_lib = io::find_file_in_dir(&libdir, "librustc_driver", ".so")?;
+            let redox_lib = io::find_file_in_dir(&libdir, "libredox_driver", ".so")?;
 
-            log::info!("Optimizing {rustc_lib} with BOLT");
+            log::info!("Optimizing {redox_lib} with BOLT");
 
             // Instrument it and gather profiles
-            let rustc_profile = with_bolt_instrumented(env, &rustc_lib, |rustc_profile_dir| {
+            let redox_profile = with_bolt_instrumented(env, &redox_lib, |redox_profile_dir| {
                 stage.section("Gather profiles", |_| {
-                    gather_bolt_profiles(env, "rustc", rustc_benchmarks(env), rustc_profile_dir)
+                    gather_bolt_profiles(env, "redox", redox_benchmarks(env), redox_profile_dir)
                 })
             })?;
             print_free_disk_space()?;
 
             // Now optimize the library with BOLT.
-            bolt_optimize(&rustc_lib, &rustc_profile, env)
-                .context("Could not optimize rustc with BOLT")?;
+            bolt_optimize(&redox_lib, &redox_profile, env)
+                .context("Could not optimize redox with BOLT")?;
 
             // LLVM is not being cleared here. Either we built it and we want to use the BOLT-optimized LLVM, or we
             // didn't build it, so we don't want to remove it.
-            Ok(vec![llvm_profile, Some(rustc_profile)])
+            Ok(vec![llvm_profile, Some(redox_profile)])
         })?
     } else {
         vec![]
@@ -375,13 +375,13 @@ fn execute_pipeline(
 
     let mut dist = Bootstrap::dist(env, &dist_args)
         .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
-        .rustc_pgo_optimize(&rustc_pgo_profile);
+        .redox_pgo_optimize(&redox_pgo_profile);
 
-    // if LLVM is not built we'll have PGO optimized rustc
+    // if LLVM is not built we'll have PGO optimized redox
     dist = if env.supports_shared_llvm() || !env.build_llvm() {
-        dist.avoid_rustc_rebuild()
+        dist.avoid_redox_rebuild()
     } else {
-        dist.rustc_rebuild()
+        dist.redox_rebuild()
     };
 
     for bolt_profile in bolt_profiles {
@@ -389,7 +389,7 @@ fn execute_pipeline(
     }
 
     // Final stage: Assemble the dist artifacts
-    // The previous PGO optimized rustc build and PGO optimized LLVM builds should be reused.
+    // The previous PGO optimized redox build and PGO optimized LLVM builds should be reused.
     timer.section("Stage 5 (final build)", |stage| dist.run(stage))?;
 
     // After dist has finished, run a subset of the test suite on the optimized artifacts to discover
@@ -446,19 +446,19 @@ fn main() -> anyhow::Result<()> {
         // a PR makes a change to how LLVM is built.
         for target in [
             "rust-docs",
-            "rustc-docs",
-            "rustc-dev",
+            "redox-docs",
+            "redox-dev",
             "rust-docs-json",
             "rust-analyzer",
-            "rustc-src",
-            "rustc-src-gpl",
+            "redox-src",
+            "redox-src-gpl",
             "extended",
             "clippy",
             "miri",
             "rustfmt",
             "generate-copyright",
             "bootstrap",
-            "rustc_codegen_gcc",
+            "redox_codegen_gcc",
         ] {
             build_args.extend(["--skip".to_string(), target.to_string()]);
         }
@@ -481,15 +481,15 @@ fn main() -> anyhow::Result<()> {
 }
 
 // Copy rustc-perf from the given path into the environment and build it.
-fn copy_rustc_perf(env: &Environment, dir: &Utf8Path) -> anyhow::Result<()> {
-    copy_directory(dir, &env.rustc_perf_dir())?;
-    build_rustc_perf(env)
+fn copy_redox_perf(env: &Environment, dir: &Utf8Path) -> anyhow::Result<()> {
+    copy_directory(dir, &env.redox_perf_dir())?;
+    build_redox_perf(env)
 }
 
-fn build_rustc_perf(env: &Environment) -> anyhow::Result<()> {
+fn build_redox_perf(env: &Environment) -> anyhow::Result<()> {
     cmd(&[env.cargo_stage_0().as_str(), "build", "-p", "collector"])
-        .workdir(&env.rustc_perf_dir())
-        .env("RUSTC", &env.rustc_stage_0().into_string())
+        .workdir(&env.redox_perf_dir())
+        .env("RUSTC", &env.redox_stage_0().into_string())
         .env("RUSTC_BOOTSTRAP", "1")
         .run()?;
     Ok(())

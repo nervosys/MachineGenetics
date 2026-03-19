@@ -15,7 +15,7 @@ impl<'l, 'f, T, U, const N: usize, F: FnMut(T) -> U> Drain<'l, 'f, T, N, F> {
     ///
     /// SAFETY: must only be called `N` times. Thou shalt not drop the array either.
     // FIXME(const-hack): this is a hack for `let guard = Guard(array); |i| f(guard[i])`.
-    #[rustc_const_unstable(feature = "array_try_map", issue = "79711")]
+    #[redox_const_unstable(feature = "array_try_map", issue = "79711")]
     pub(super) const unsafe fn new(array: &'l mut ManuallyDrop<[T; N]>, f: &'f mut F) -> Self {
         // dont drop the array, transfers "ownership" to Self
         let ptr: NonNull<T> = NonNull::from_mut(array).cast();
@@ -48,7 +48,7 @@ pub(super) struct Drain<'l, 'f, T, const N: usize, F> {
     l: PhantomData<&'l mut [T; N]>,
 }
 
-#[rustc_const_unstable(feature = "array_try_map", issue = "79711")]
+#[redox_const_unstable(feature = "array_try_map", issue = "79711")]
 #[unstable(feature = "array_try_map", issue = "79711")]
 impl<T, U, const N: usize, F> const FnOnce<(usize,)> for &mut Drain<'_, '_, T, N, F>
 where
@@ -61,7 +61,7 @@ where
         self.call_mut(args)
     }
 }
-#[rustc_const_unstable(feature = "array_try_map", issue = "79711")]
+#[redox_const_unstable(feature = "array_try_map", issue = "79711")]
 #[unstable(feature = "array_try_map", issue = "79711")]
 impl<T, U, const N: usize, F> const FnMut<(usize,)> for &mut Drain<'_, '_, T, N, F>
 where
@@ -86,7 +86,7 @@ where
         }
     }
 }
-#[rustc_const_unstable(feature = "array_try_map", issue = "79711")]
+#[redox_const_unstable(feature = "array_try_map", issue = "79711")]
 #[unstable(feature = "array_try_map", issue = "79711")]
 impl<T: [const] Destruct, const N: usize, F> const Drop for Drain<'_, '_, T, N, F> {
     fn drop(&mut self) {

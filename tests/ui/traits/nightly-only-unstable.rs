@@ -3,7 +3,7 @@
 //@ aux-crate: force_unstable=force_unstable.rs
 //@[force] compile-flags: -Zforce-unstable-if-unmarked
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 // Regression test for <https://github.com/rust-lang/rust/issues/152692>.
 //

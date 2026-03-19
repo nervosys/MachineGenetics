@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use itertools::Itertools;
-use rustc_errors::Applicability;
-use rustc_lint::LateContext;
-use rustc_span::BytePos;
+use redox_errors::Applicability;
+use redox_lint::LateContext;
+use redox_span::BytePos;
 use std::ops::Range;
 
 use super::{DOC_LAZY_CONTINUATION, DOC_OVERINDENTED_LIST_ITEMS, Fragments};

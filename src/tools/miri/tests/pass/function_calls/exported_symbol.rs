@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 #[no_mangle]
 extern "C" fn foo() -> i32 {
@@ -10,7 +10,7 @@ fn bar() -> i32 {
     -2
 }
 
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 fn baz() -> i32 {
     -3
 }
@@ -40,7 +40,7 @@ fn main() {
 
         extern "Rust" {
             fn bar() -> i32;
-            #[rustc_std_internal_symbol]
+            #[redox_std_internal_symbol]
             fn baz() -> i32;
             fn qux() -> i32;
         }
@@ -64,7 +64,7 @@ fn main() {
 
             extern "C" {
                 fn bar() -> i32;
-                #[rustc_std_internal_symbol]
+                #[redox_std_internal_symbol]
                 fn baz() -> i32;
                 fn qux() -> i32;
             }

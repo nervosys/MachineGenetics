@@ -10,11 +10,11 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{cc, cwd, dynamic_lib_name, is_windows_msvc, rfs, run, rustc};
+use run_make_support::{cc, cwd, dynamic_lib_name, is_windows_msvc, rfs, run, redox};
 
 fn main() {
-    rustc().input("bar.rs").run();
-    rustc().input("foo.rs").run();
+    redox().input("bar.rs").run();
+    redox().input("foo.rs").run();
 
     if is_windows_msvc() {
         cc().input("foo.c").arg("foo.dll.lib").out_exe("foo").run();
@@ -25,6 +25,6 @@ fn main() {
     run("foo");
     rfs::remove_file(dynamic_lib_name("foo"));
 
-    rustc().input("foo.rs").arg("-Clto").run();
+    redox().input("foo.rs").arg("-Clto").run();
     run("foo");
 }

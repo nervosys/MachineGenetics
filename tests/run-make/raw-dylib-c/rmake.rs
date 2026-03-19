@@ -9,12 +9,12 @@
 
 //@ only-windows
 
-use run_make_support::{build_native_dynamic_lib, diff, run, rustc};
+use run_make_support::{build_native_dynamic_lib, diff, run, redox};
 
 fn main() {
-    rustc().crate_type("lib").crate_name("raw_dylib_test").input("lib.rs").run();
-    rustc().crate_type("bin").input("driver.rs").run();
-    rustc().crate_type("bin").crate_name("raw_dylib_test_bin").input("lib.rs").run();
+    redox().crate_type("lib").crate_name("raw_dylib_test").input("lib.rs").run();
+    redox().crate_type("bin").input("driver.rs").run();
+    redox().crate_type("bin").crate_name("raw_dylib_test_bin").input("lib.rs").run();
     build_native_dynamic_lib("extern_1");
     build_native_dynamic_lib("extern_2");
     let out_driver = run("driver").stdout_utf8();

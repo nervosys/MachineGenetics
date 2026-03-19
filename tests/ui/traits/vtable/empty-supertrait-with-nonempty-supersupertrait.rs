@@ -4,7 +4,7 @@
 //! Regression test for #145752
 //! Ensure that `OneTwo` contains a vptr for `TwoAgain`
 #![allow(unused)]
-#![cfg_attr(dump, feature(rustc_attrs))]
+#![cfg_attr(dump, feature(redox_attrs))]
 
 trait One {
     fn one(&self) {
@@ -36,7 +36,7 @@ fn main() {
     (&() as &dyn OneTwo as &dyn TwoAgain as &dyn Two).two();
 }
 
-#[cfg_attr(dump, rustc_dump_vtable)]
+#[cfg_attr(dump, redox_dump_vtable)]
 type T = dyn OneTwo;
 //[dump]~^ ERROR vtable entries: [
 //[dump]~| ERROR            MetadataDropInPlace,

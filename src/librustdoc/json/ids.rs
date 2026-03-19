@@ -5,10 +5,10 @@
 //! [`rustdoc_json_types::Item`] doesn't correspond exactly to what
 //! other phases think of as an "item".
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::DefId;
-use rustc_hir::find_attr;
-use rustc_span::Symbol;
+use redox_data_structures::fx::FxHashMap;
+use redox_hir::def_id::DefId;
+use redox_hir::find_attr;
+use redox_span::Symbol;
 use rustdoc_json_types as types;
 
 use super::JsonRenderer;
@@ -54,7 +54,7 @@ pub(super) struct FullItemId {
     ///    we need to disambiguate.
     extra_id: Option<DefId>,
 
-    /// Needed for `#[rustc_doc_primitive]` modules.
+    /// Needed for `#[redox_doc_primitive]` modules.
     ///
     /// For these, 1 [`DefId`] is used for both the primitive and the fake-module
     /// that holds its docs.

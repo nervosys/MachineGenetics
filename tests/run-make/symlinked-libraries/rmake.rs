@@ -5,11 +5,11 @@
 //@ ignore-cross-compile
 //@ needs-symlink
 
-use run_make_support::{cwd, dynamic_lib_name, path, rfs, rustc};
+use run_make_support::{cwd, dynamic_lib_name, path, rfs, redox};
 
 fn main() {
-    rustc().input("foo.rs").arg("-Cprefer-dynamic").run();
+    redox().input("foo.rs").arg("-Cprefer-dynamic").run();
     rfs::create_dir_all("other");
     rfs::symlink_file(dynamic_lib_name("foo"), path("other").join(dynamic_lib_name("foo")));
-    rustc().input("bar.rs").library_search_path(cwd()).library_search_path("other").run();
+    redox().input("bar.rs").library_search_path(cwd()).library_search_path("other").run();
 }

@@ -2,14 +2,14 @@
 
 // Test that move closures drop derefs with `capture_disjoint_fields` enabled.
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 fn simple_move_closure() {
     struct S(String);
     struct T(S);
 
     let t = T(S("s".into()));
-    let mut c = #[rustc_capture_analysis]
+    let mut c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -28,7 +28,7 @@ fn simple_ref() {
     let mut s = 10;
     let ref_s = &mut s;
 
-    let mut c = #[rustc_capture_analysis]
+    let mut c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -50,7 +50,7 @@ fn struct_contains_ref_to_another_struct_1() {
     let mut s = S("s".into());
     let t = T(&mut s);
 
-    let mut c = #[rustc_capture_analysis]
+    let mut c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -74,7 +74,7 @@ fn struct_contains_ref_to_another_struct_2() {
     let s = S(0);
     let t = T(&s);
 
-    let mut c = #[rustc_capture_analysis]
+    let mut c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -97,7 +97,7 @@ fn struct_contains_ref_to_another_struct_3() {
     let s = S("s".into());
     let t = T(&s);
 
-    let mut c = #[rustc_capture_analysis]
+    let mut c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -119,7 +119,7 @@ fn truncate_box_derefs() {
 
     // Content within the box is moved within the closure
     let b = Box::new(S(10));
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -136,7 +136,7 @@ fn truncate_box_derefs() {
     // Content within the box is used by a shared ref and the box is the root variable
     let b = Box::new(S(10));
 
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -154,7 +154,7 @@ fn truncate_box_derefs() {
     let b = Box::new(S(10));
     let t = (0, b);
 
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -177,7 +177,7 @@ fn box_mut_1() {
     let p_foo = &mut foo;
     let box_p_foo = Box::new(p_foo);
 
-    let c = #[rustc_capture_analysis] move || box_p_foo.x += 10;
+    let c = #[redox_capture_analysis] move || box_p_foo.x += 10;
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -195,7 +195,7 @@ fn box_mut_2() {
     let mut box_foo = Box::new(foo);
     let p_foo = &mut box_foo;
 
-    let c = #[rustc_capture_analysis] move || p_foo.x += 10;
+    let c = #[redox_capture_analysis] move || p_foo.x += 10;
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -209,7 +209,7 @@ fn box_mut_2() {
 fn returned_closure_owns_copy_type_data() -> impl Fn() -> i32 {
     let x = 10;
 
-    let c = #[rustc_capture_analysis] move || x;
+    let c = #[redox_capture_analysis] move || x;
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date

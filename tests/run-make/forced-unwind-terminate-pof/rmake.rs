@@ -8,9 +8,9 @@
 //@ ignore-windows
 //Reason: pthread (POSIX threads) is not available on Windows
 
-use run_make_support::{run, rustc};
+use run_make_support::{run, redox};
 
 fn main() {
-    rustc().input("foo.rs").run();
+    redox().input("foo.rs").run();
     run("foo").assert_stdout_not_contains("cannot unwind");
 }

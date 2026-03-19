@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver
 #![feature(staged_api)]
-#![feature(const_trait_impl, rustc_attrs, intrinsics)]
+#![feature(const_trait_impl, redox_attrs, intrinsics)]
 #![stable(feature = "stable", since = "1.0.0")]
 
 #[stable(feature = "stable", since = "1.0.0")]
@@ -32,7 +32,7 @@ impl const Bar for Foo {
 }
 
 #[stable(feature = "stable", since = "1.0.0")]
-#[rustc_intrinsic]
+#[redox_intrinsic]
 pub const unsafe fn size_of_val<T>(x: *const T) -> usize { 42 }
 //~^ ERROR function has missing const stability attribute
 

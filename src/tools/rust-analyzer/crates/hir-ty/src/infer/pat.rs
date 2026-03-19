@@ -8,8 +8,8 @@ use hir_def::{
     hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, Literal, Pat, PatId},
 };
 use hir_expand::name::Name;
-use rustc_ast_ir::Mutability;
-use rustc_type_ir::inherent::{GenericArg as _, GenericArgs as _, IntoKind, Ty as _};
+use redox_ast_ir::Mutability;
+use redox_type_ir::inherent::{GenericArg as _, GenericArgs as _, IntoKind, Ty as _};
 use stdx::TupleExt;
 
 use crate::{

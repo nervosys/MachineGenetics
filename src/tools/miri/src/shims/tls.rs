@@ -4,10 +4,10 @@ use std::collections::BTreeMap;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::task::Poll;
 
-use rustc_abi::{ExternAbi, HasDataLayout, Size};
-use rustc_middle::ty;
-use rustc_span::Span;
-use rustc_target::spec::Os;
+use redox_abi::{ExternAbi, HasDataLayout, Size};
+use redox_middle::ty;
+use redox_span::Span;
+use redox_target::spec::Os;
 
 use crate::*;
 

@@ -21,7 +21,7 @@ fn main() {
     // We then try to inline that body in this poll call.
     //
     // The inliner does some inlinability checks; one of these checks involves checking
-    // the body for the `#[rustc_no_mir_inline]` attribute. Since the synthetic body had
+    // the body for the `#[redox_no_mir_inline]` attribute. Since the synthetic body had
     // no HIR synthesized, but it's still a local def id, we end up ICEing in the
     // `local_def_id_to_hir_id` call when trying to read its attrs.
     fut.poll(&mut Context::from_waker(Waker::noop()));

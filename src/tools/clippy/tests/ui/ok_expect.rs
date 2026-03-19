@@ -27,11 +27,11 @@ fn main() {
     //~^^^ ok_expect
 
     // this one has a suboptimal suggestion, but oh well
-    std::process::Command::new("rustc")
+    std::process::Command::new("redox")
         .arg("-vV")
         .output()
         .ok()
-        .expect("failed to get rustc version");
+        .expect("failed to get redox version");
     //~^^^^^ ok_expect
 
     // the following should not warn, since `expect` isn't implemented unless

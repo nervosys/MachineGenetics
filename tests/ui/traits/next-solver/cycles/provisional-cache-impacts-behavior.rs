@@ -1,7 +1,7 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
-#![feature(rustc_attrs)]
-#![rustc_no_implicit_bounds]
+#![feature(redox_attrs)]
+#![redox_no_implicit_bounds]
 
 // A test showcasing that using a provisional cache can differ
 // from only tracking stack entries.
@@ -51,13 +51,13 @@
 // For an example of how incompleteness could impact the observable behavior here, see
 //
 //   tests/ui/traits/next-solver/cycles/coinduction/incompleteness-unstable-result.rs
-#[rustc_coinductive]
+#[redox_coinductive]
 trait A {}
 
-#[rustc_coinductive]
+#[redox_coinductive]
 trait B {}
 
-#[rustc_coinductive]
+#[redox_coinductive]
 trait C {}
 
 impl<T: B + C> A for T {}

@@ -4,7 +4,7 @@
 
 // Issue #2303
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::mem;
 

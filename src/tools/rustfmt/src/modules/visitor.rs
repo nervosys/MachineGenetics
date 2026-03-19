@@ -1,6 +1,6 @@
-use rustc_ast::ast;
-use rustc_ast::visit::Visitor;
-use rustc_span::{Symbol, sym};
+use redox_ast::ast;
+use redox_ast::visit::Visitor;
+use redox_span::{Symbol, sym};
 use tracing::debug;
 
 use crate::attr::MetaVisitor;

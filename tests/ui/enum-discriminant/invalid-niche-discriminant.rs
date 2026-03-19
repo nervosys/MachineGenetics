@@ -1,4 +1,4 @@
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 //@ revisions: normal with_delayed
 //@ [with_delayed] compile-flags: -Z eagerly-emit-delayed-bugs
 

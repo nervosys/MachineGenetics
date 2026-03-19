@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
-use rustc_ast::BorrowKind;
-use rustc_errors::{Applicability, Diag};
-use rustc_hir::{Expr, ExprKind, Node, QPath};
-use rustc_lint::LateContext;
-use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
-use rustc_span::sym;
+use redox_ast::BorrowKind;
+use redox_errors::{Applicability, Diag};
+use redox_hir::{Expr, ExprKind, Node, QPath};
+use redox_lint::LateContext;
+use redox_middle::ty::adjustment::{Adjust, DerefAdjustKind};
+use redox_span::sym;
 
 use super::SWAP_WITH_TEMPORARY;
 

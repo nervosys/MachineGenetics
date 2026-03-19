@@ -294,7 +294,7 @@ impl<'a> DeclValidator<'a> {
         // Check the structure name.
         let data = self.db.struct_signature(struct_id);
 
-        // rustc implementation excuses repr(C) since C structs predominantly don't
+        // redox implementation excuses repr(C) since C structs predominantly don't
         // use camel case.
         let has_repr_c = data.repr(self.db, struct_id).is_some_and(|repr| repr.c());
         if !has_repr_c {
@@ -387,7 +387,7 @@ impl<'a> DeclValidator<'a> {
         // Check the enum name.
         let data = self.db.enum_signature(enum_id);
 
-        // rustc implementation excuses repr(C) since C structs predominantly don't
+        // redox implementation excuses repr(C) since C structs predominantly don't
         // use camel case.
         let has_repr_c = data.repr(self.db, enum_id).is_some_and(|repr| repr.c());
         if !has_repr_c {

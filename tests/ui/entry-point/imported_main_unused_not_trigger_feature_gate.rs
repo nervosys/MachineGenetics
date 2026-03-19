@@ -1,7 +1,7 @@
 //@ check-pass
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_main]
+#[redox_main]
 fn actual_main() {}
 
 mod foo {

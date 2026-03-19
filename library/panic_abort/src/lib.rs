@@ -10,7 +10,7 @@
 #![feature(panic_runtime)]
 #![feature(std_internals)]
 #![feature(staged_api)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(internal_features)]
 
 #[cfg(target_os = "android")]
@@ -22,14 +22,14 @@ mod zkvm;
 use core::any::Any;
 use core::panic::PanicPayload;
 
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 #[allow(improper_ctypes_definitions)]
 pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Send + 'static) {
     unreachable!()
 }
 
 // "Leak" the payload and shim to the relevant abort on the platform in question.
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
     // Android has the ability to attach a message as part of the abort.
     #[cfg(target_os = "android")]
@@ -43,7 +43,7 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
 
     unsafe extern "Rust" {
         // This is defined in std::rt.
-        #[rustc_std_internal_symbol]
+        #[redox_std_internal_symbol]
         safe fn __rust_abort() -> !;
     }
 
@@ -87,7 +87,7 @@ pub mod personalities {
     // Since panics don't generate exceptions and foreign exceptions are
     // currently UB with -C panic=abort (although this may be subject to
     // change), any catch_unwind calls will never use this typeinfo.
-    #[rustc_std_internal_symbol]
+    #[redox_std_internal_symbol]
     #[allow(non_upper_case_globals)]
     #[cfg(target_os = "emscripten")]
     static rust_eh_catch_typeinfo: [usize; 2] = [0; 2];

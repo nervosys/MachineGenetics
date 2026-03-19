@@ -229,7 +229,7 @@ impl<'s> ScriptSource<'s> {
 
 /// Returns the index after the shebang line, if present
 pub fn strip_shebang(input: &str) -> Option<usize> {
-    // See rust-lang/rust's compiler/rustc_lexer/src/lib.rs's `strip_shebang`
+    // See rust-lang/rust's compiler/redox_lexer/src/lib.rs's `strip_shebang`
     // Shebang must start with `#!` literally, without any preceding whitespace.
     // For simplicity we consider any line starting with `#!` a shebang,
     // regardless of restrictions put on shebangs by specific platforms.
@@ -237,7 +237,7 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
         // Ok, this is a shebang but if the next non-whitespace token is `[`,
         // then it may be valid Rust code, so consider it Rust code.
         //
-        // NOTE: rustc considers line and block comments to be whitespace but to avoid
+        // NOTE: redox considers line and block comments to be whitespace but to avoid
         // any more awareness of Rust grammar, we are excluding it.
         if !rest.trim_start().starts_with('[') {
             // No other choice than to consider this a shebang.

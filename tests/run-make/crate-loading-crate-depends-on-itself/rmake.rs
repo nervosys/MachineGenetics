@@ -7,12 +7,12 @@
 // and traits of the different versions are mixed, we produce diagnostic output and not an ICE.
 // #133563
 
-use run_make_support::{diff, rust_lib_name, rustc};
+use run_make_support::{diff, rust_lib_name, redox};
 
 fn main() {
-    rustc().input("foo-prev.rs").run();
+    redox().input("foo-prev.rs").run();
 
-    let out = rustc()
+    let out = redox()
         .extra_filename("current")
         .metadata("current")
         .input("foo-current.rs")
@@ -27,5 +27,5 @@ fn main() {
             *line = "  ::: foo-prev.rs:X:Y";
         }
     }
-    diff().expected_file("foo.stderr").actual_text("(rustc)", &lines.join("\n")).run();
+    diff().expected_file("foo.stderr").actual_text("(redox)", &lines.join("\n")).run();
 }

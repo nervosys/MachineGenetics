@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(unused)]
 
 use std::borrow::Borrow;
@@ -52,7 +52,7 @@ fn non_generic(non_clone_type: &PlainType<u32>) {
 
 struct DiagnosticClone;
 impl Clone for DiagnosticClone {
-    #[rustc_diagnostic_item = "other_clone"]
+    #[redox_diagnostic_item = "other_clone"]
     fn clone(&self) -> Self {
         DiagnosticClone
     }

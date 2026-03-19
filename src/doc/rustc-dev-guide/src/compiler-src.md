@@ -2,7 +2,7 @@
 
 Now that we have [seen what the compiler does][orgch],
 let's take a look at the structure of the [`rust-lang/rust`] repository,
-where the rustc source code lives.
+where the redox source code lives.
 
 [`rust-lang/rust`]: https://github.com/rust-lang/rust
 
@@ -20,7 +20,7 @@ bunch of tools and submodules for building a full Rust distribution.
 
 The repository consists of three main directories:
 
-- [`compiler/`] contains the source code for `rustc`. It consists of many crates
+- [`compiler/`] contains the source code for `redox`. It consists of many crates
   that together make up the compiler.
   
 - [`library/`] contains the standard libraries ([`core`], [`alloc`], [`std`],
@@ -53,53 +53,53 @@ The repository consists of three main directories:
 ## Compiler
 
 The compiler is implemented in the various [`compiler/`] crates.
-The [`compiler/`] crates all have names starting with `rustc_*`. These are a
+The [`compiler/`] crates all have names starting with `redox_*`. These are a
 collection of around 50 interdependent crates ranging in size from tiny to
-huge. There is also the `rustc` crate which is the actual binary (i.e. the
+huge. There is also the `redox` crate which is the actual binary (i.e. the
 `main` function); it doesn't actually do anything besides calling the
-[`rustc_driver`] crate, which drives the various parts of compilation in other
+[`redox_driver`] crate, which drives the various parts of compilation in other
 crates.
 
 The dependency order of these crates is complex, but roughly it is
 something like this:
 
-1. `rustc` (the binary) calls [`rustc_driver::main`][main].
-1. [`rustc_driver`] depends on a lot of other crates, but the main one is
-   [`rustc_interface`].
-1. [`rustc_interface`] depends on most of the other compiler crates. It is a
+1. `redox` (the binary) calls [`redox_driver::main`][main].
+1. [`redox_driver`] depends on a lot of other crates, but the main one is
+   [`redox_interface`].
+1. [`redox_interface`] depends on most of the other compiler crates. It is a
    fairly generic interface for driving the whole compilation.
-1. Most of the other `rustc_*` crates depend on [`rustc_middle`], which defines
+1. Most of the other `redox_*` crates depend on [`redox_middle`], which defines
    a lot of central data structures in the compiler.
-1. [`rustc_middle`] and most of the other crates depend on a handful of crates
+1. [`redox_middle`] and most of the other crates depend on a handful of crates
    representing the early parts of the compiler (e.g. the parser), fundamental
    data structures (e.g. [`Span`]), or error reporting:
-   [`rustc_data_structures`], [`rustc_span`], [`rustc_errors`], etc.
+   [`redox_data_structures`], [`redox_span`], [`redox_errors`], etc.
 
-[`rustc_data_structures`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/index.html
-[`rustc_driver`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/index.html
-[`rustc_errors`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html
-[`rustc_interface`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/index.html
-[`rustc_middle`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/index.html
-[`rustc_span`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/index.html
-[`Span`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
-[main]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/fn.main.html
+[`redox_data_structures`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_data_structures/index.html
+[`redox_driver`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_driver/index.html
+[`redox_errors`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/index.html
+[`redox_interface`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_interface/index.html
+[`redox_middle`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/index.html
+[`redox_span`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/index.html
+[`Span`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/struct.Span.html
+[main]: https://doc.rust-lang.org/nightly/nightly-redox/redox_driver/fn.main.html
 
 You can see the exact dependencies by running `cargo tree`,
 just like you would for any other Rust package:
 
 ```console
-cargo tree --package rustc_driver
+cargo tree --package redox_driver
 ```
 
 One final thing: [`src/llvm-project`] is a submodule for our fork of LLVM.
-During bootstrapping, LLVM is built and the [`compiler/rustc_llvm`] crate
+During bootstrapping, LLVM is built and the [`compiler/redox_llvm`] crate
 contains Rust wrappers around LLVM (which is written in C++), so that the
 compiler can interface with it.
 
 Most of this book is about the compiler, so we won't have any further
 explanation of these crates here.
 
-[`compiler/rustc_llvm`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_llvm
+[`compiler/redox_llvm`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/redox_llvm
 [`src/llvm-project`]: https://github.com/rust-lang/rust/tree/HEAD/src/
 [`Cargo.toml`]: https://github.com/rust-lang/rust/blob/HEAD/Cargo.toml
 
@@ -116,7 +116,7 @@ The dependency structure of the compiler is influenced by two main factors:
    that we don't have to rebuild as many crates if you change one.
 
 At the very bottom of the dependency tree are a handful of crates that are used
-by the whole compiler (e.g. [`rustc_span`]). The very early parts of the
+by the whole compiler (e.g. [`redox_span`]). The very early parts of the
 compilation process (e.g. [parsing and the Abstract Syntax Tree (`AST`)][parser]) 
 depend on only these.
 
@@ -124,27 +124,27 @@ After the [`AST`][parser] is constructed and other early analysis is done, the
 compiler's [query system][query] gets set up. The query system is set up in a
 clever way using function pointers. This allows us to break dependencies
 between crates, allowing more parallel compilation. The query system is defined
-in [`rustc_middle`], so nearly all subsequent parts of the compiler depend on
+in [`redox_middle`], so nearly all subsequent parts of the compiler depend on
 this crate. It is a really large crate, leading to long compile times. Some
 efforts have been made to move stuff out of it with varying success. Another
 side-effect is that sometimes related functionality gets scattered across
 different crates. For example, linting functionality is found across earlier
-parts of the crate, [`rustc_lint`], [`rustc_middle`], and other places.
+parts of the crate, [`redox_lint`], [`redox_middle`], and other places.
 
 Ideally there would be fewer, more cohesive crates, with incremental and
 parallel compilation making sure compile times stay reasonable. However,
 incremental and parallel compilation haven't gotten good enough for that yet,
 so breaking things into separate crates has been our solution so far.
 
-At the top of the dependency tree is [`rustc_driver`] and [`rustc_interface`]
+At the top of the dependency tree is [`redox_driver`] and [`redox_interface`]
 which is an unstable wrapper around the query system helping drive various
 stages of compilation. Other consumers of the compiler may use this interface
 in different ways (e.g. [`rustdoc`] or maybe eventually `rust-analyzer`). The
-[`rustc_driver`] crate first parses command line arguments and then uses
-[`rustc_interface`] to drive the compilation to completion.
+[`redox_driver`] crate first parses command line arguments and then uses
+[`redox_interface`] to drive the compilation to completion.
 
-[parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
-[`rustc_lint`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/index.html
+[parser]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/index.html
+[`redox_lint`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/index.html
 [query]: ./query.md
 
 ## rustdoc
@@ -158,8 +158,8 @@ are in a separate crate in [`src/rustdoc-json-types`].
 
 You can read more about [`rustdoc`] in [this chapter][rustdoc-chapter].
 
-[`librustdoc`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/index.html
-[`rustdoc::main`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/fn.main.html
+[`librustdoc`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/index.html
+[`rustdoc::main`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/fn.main.html
 [`src/tools/rustdoc-js`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/rustdoc-js
 [`src/tools/rustdoc-themes`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/rustdoc-themes
 [`src/tools/rustdoc`]:  https://github.com/rust-lang/rust/tree/HEAD/src/tools/rustdoc
@@ -199,7 +199,7 @@ built in a special way because it can use unstable ([`nightly`]) features.
 The standard library is sometimes referred to as [`libstd or the "standard facade"`].
 
 [`libstd or the "standard facade"`]: https://rust-lang.github.io/rfcs/0040-libstd-facade.html
-[`nightly`]: https://doc.rust-lang.org/nightly/nightly-rustc/
+[`nightly`]: https://doc.rust-lang.org/nightly/nightly-redox/
 
 ## Other
 

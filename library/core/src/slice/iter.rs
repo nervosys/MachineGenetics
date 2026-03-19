@@ -65,7 +65,7 @@ impl<'a, T> IntoIterator for &'a mut [T] {
 /// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[rustc_diagnostic_item = "SliceIter"]
+#[redox_diagnostic_item = "SliceIter"]
 pub struct Iter<'a, T: 'a> {
     /// The pointer to the next element to return, or the past-the-end location
     /// if the iterator is empty.
@@ -2684,7 +2684,7 @@ impl<'a, T> RChunksExact<'a, T> {
     /// ```
     #[must_use]
     #[stable(feature = "rchunks", since = "1.31.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     pub const fn remainder(&self) -> &'a [T] {
         self.rem
     }
@@ -2853,7 +2853,7 @@ impl<'a, T> RChunksExactMut<'a, T> {
     /// elements.
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rchunks", since = "1.31.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     pub const fn into_remainder(self) -> &'a mut [T] {
         self.rem
     }

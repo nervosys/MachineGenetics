@@ -1,11 +1,11 @@
 use super::DUPLICATED_ATTRIBUTES;
 use clippy_utils::diagnostics::span_lint_and_then;
 use itertools::Itertools;
-use rustc_ast::{Attribute, MetaItem};
-use rustc_ast_pretty::pprust::path_to_string;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_lint::EarlyContext;
-use rustc_span::{Span, Symbol, sym};
+use redox_ast::{Attribute, MetaItem};
+use redox_ast_pretty::pprust::path_to_string;
+use redox_data_structures::fx::FxHashMap;
+use redox_lint::EarlyContext;
+use redox_span::{Span, Symbol, sym};
 use std::collections::hash_map::Entry;
 
 fn emit_if_duplicated(
@@ -43,11 +43,11 @@ fn check_duplicated_attr(
     };
     if let Some(ident) = attr.ident() {
         let name = ident.name;
-        if name == sym::doc || name == sym::cfg_attr_trace || name == sym::rustc_on_unimplemented || name == sym::reason
+        if name == sym::doc || name == sym::cfg_attr_trace || name == sym::redox_on_unimplemented || name == sym::reason
         {
             // FIXME: Would be nice to handle `cfg_attr` as well. Only problem is to check that cfg
             // conditions are the same.
-            // `#[rustc_on_unimplemented]` contains duplicated subattributes, that's expected.
+            // `#[redox_on_unimplemented]` contains duplicated subattributes, that's expected.
             return;
         }
         if let Some(direct_parent) = parent.last()

@@ -1,9 +1,9 @@
 //! base_db defines basic database traits. The concrete DB is defined by ide.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
 pub use salsa;
 pub use salsa_macros;
@@ -33,16 +33,16 @@ pub use crate::{
 };
 use dashmap::{DashMap, mapref::entry::Entry};
 pub use query_group;
-use rustc_hash::{FxHashSet, FxHasher};
+use redox_hash::{FxHashSet, FxHasher};
 use salsa::{Durability, Setter};
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use syntax::{Parse, SyntaxError, ast};
 use triomphe::Arc;
 pub use vfs::{AnchoredPath, AnchoredPathBuf, FileId, VfsPath, file_set::FileSet};
 
-pub type FxIndexSet<T> = indexmap::IndexSet<T, rustc_hash::FxBuildHasher>;
+pub type FxIndexSet<T> = indexmap::IndexSet<T, redox_hash::FxBuildHasher>;
 pub type FxIndexMap<K, V> =
-    indexmap::IndexMap<K, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
+    indexmap::IndexMap<K, V, std::hash::BuildHasherDefault<redox_hash::FxHasher>>;
 
 #[macro_export]
 macro_rules! impl_intern_key {

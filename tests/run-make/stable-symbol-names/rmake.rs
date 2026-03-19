@@ -1,6 +1,6 @@
 //@ needs-target-std
 //
-// A typo in rustc caused generic symbol names to be non-deterministic -
+// A typo in redox caused generic symbol names to be non-deterministic -
 // that is, it was possible to compile the same file twice with no changes
 // and get outputs with different symbol names.
 // This test compiles each of the two crates twice, and checks that each output
@@ -11,7 +11,7 @@
 
 use std::collections::HashSet;
 
-use run_make_support::{llvm_readobj, regex, rfs, rust_lib_name, rustc};
+use run_make_support::{llvm_readobj, regex, rfs, rust_lib_name, redox};
 
 static LEGACY_PATTERN: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
 static V0_PATTERN: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
@@ -20,18 +20,18 @@ fn main() {
     LEGACY_PATTERN.set(regex::Regex::new(r"_ZN.*E").unwrap()).unwrap();
     V0_PATTERN.set(regex::Regex::new(r"_R[a-zA-Z0-9_]*").unwrap()).unwrap();
     // test 1: first file
-    rustc().input("stable-symbol-names1.rs").run();
+    redox().input("stable-symbol-names1.rs").run();
     let sym1 = process_symbols("stable_symbol_names1", "generic_|mono_");
     rfs::remove_file(rust_lib_name("stable_symbol_names1"));
-    rustc().input("stable-symbol-names1.rs").run();
+    redox().input("stable-symbol-names1.rs").run();
     let sym2 = process_symbols("stable_symbol_names1", "generic_|mono_");
     assert_eq!(sym1, sym2);
 
     // test 2: second file
-    rustc().input("stable-symbol-names2.rs").run();
+    redox().input("stable-symbol-names2.rs").run();
     let sym1 = process_symbols("stable_symbol_names2", "generic_|mono_");
     rfs::remove_file(rust_lib_name("stable_symbol_names2"));
-    rustc().input("stable-symbol-names2.rs").run();
+    redox().input("stable-symbol-names2.rs").run();
     let sym2 = process_symbols("stable_symbol_names2", "generic_|mono_");
     assert_eq!(sym1, sym2);
 

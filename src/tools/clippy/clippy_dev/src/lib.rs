@@ -5,7 +5,7 @@
     os_str_slice,
     os_string_truncate,
     pattern,
-    rustc_private,
+    redox_private,
     slice_split_once
 )]
 #![warn(
@@ -17,11 +17,11 @@
 )]
 #![allow(clippy::missing_panics_doc)]
 
-extern crate rustc_arena;
-extern crate rustc_data_structures;
-#[expect(unused_extern_crates, reason = "required to link to rustc crates")]
-extern crate rustc_driver;
-extern crate rustc_lexer;
+extern crate redox_arena;
+extern crate redox_data_structures;
+#[expect(unused_extern_crates, reason = "required to link to redox crates")]
+extern crate redox_driver;
+extern crate redox_lexer;
 
 pub mod dogfood;
 pub mod edit_lints;

@@ -102,8 +102,8 @@ use crate::vec::Vec;
 /// of `CString` instances can lead to invalid memory accesses, memory leaks,
 /// and other memory errors.
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
-#[rustc_diagnostic_item = "cstring_type"]
-#[rustc_insignificant_dtor]
+#[redox_diagnostic_item = "cstring_type"]
+#[redox_insignificant_dtor]
 #[stable(feature = "alloc_c_string", since = "1.64.0")]
 pub struct CString {
     // Invariant 1: the slice ends with a zero byte and has a length of at least one.
@@ -582,7 +582,7 @@ impl CString {
     #[inline]
     #[must_use]
     #[stable(feature = "as_c_str", since = "1.20.0")]
-    #[rustc_diagnostic_item = "cstring_as_c_str"]
+    #[redox_diagnostic_item = "cstring_as_c_str"]
     pub fn as_c_str(&self) -> &CStr {
         unsafe { CStr::from_bytes_with_nul_unchecked(self.as_bytes_with_nul()) }
     }
@@ -1186,7 +1186,7 @@ impl CStr {
     ///     Cow::Owned(String::from("Hello �World")) as Cow<'_, str>
     /// );
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
@@ -1206,7 +1206,7 @@ impl CStr {
     ///
     /// assert_eq!(boxed.into_c_string(), c_string);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
     pub fn into_c_string(self: Box<Self>) -> CString {

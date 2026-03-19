@@ -21,7 +21,7 @@ by the codegen backend, but not the MIR inliner.
 #![feature(intrinsics)]
 #![allow(internal_features)]
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
 ```
 
@@ -31,11 +31,11 @@ Since these are just regular functions, it is perfectly ok to create the intrins
 #![feature(intrinsics)]
 #![allow(internal_features)]
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
 
 mod foo {
-    #[rustc_intrinsic]
+    #[redox_intrinsic]
     const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {
         panic!("noisy const dealloc")
     }
@@ -52,7 +52,7 @@ with any regular function.
 Various intrinsics have native MIR operations that they correspond to. Instead of requiring
 backends to implement both the intrinsic and the MIR operation, the `lower_intrinsics` pass
 will convert the calls to the MIR operation. Backends do not need to know about these intrinsics
-at all. These intrinsics only make sense without a body, and can be declared as a `#[rustc_intrinsic]`.
+at all. These intrinsics only make sense without a body, and can be declared as a `#[redox_intrinsic]`.
 The body is never used as the lowering pass implements support for all backends, so we never have to
 use the fallback logic.
 
@@ -60,13 +60,13 @@ use the fallback logic.
 
 These must be implemented by all backends.
 
-### `#[rustc_intrinsic]` declarations
+### `#[redox_intrinsic]` declarations
 
 These are written without a body:
 ```rust
 #![feature(intrinsics)]
 #![allow(internal_features)]
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 pub fn abort() -> !;
 ```

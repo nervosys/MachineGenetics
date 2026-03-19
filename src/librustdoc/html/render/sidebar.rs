@@ -3,10 +3,10 @@ use std::cmp::Ordering;
 use std::fmt;
 
 use askama::Template;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::{DefIdMap, DefIdSet};
-use rustc_middle::ty::{self, TyCtxt};
+use redox_data_structures::fx::FxHashSet;
+use redox_hir::def::CtorKind;
+use redox_hir::def_id::{DefIdMap, DefIdSet};
+use redox_middle::ty::{self, TyCtxt};
 use tracing::debug;
 
 use super::{Context, ItemSection, item_ty_to_section};

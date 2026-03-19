@@ -1,12 +1,12 @@
 //@ needs-rust-lld
 use std::path::Path;
 
-use run_make_support::{path, rfs, rustc, rustc_minicore, wasmparser};
+use run_make_support::{path, rfs, redox, redox_minicore, wasmparser};
 
 fn main() {
-    rustc_minicore().target("wasm32-wasip1").target_cpu("mvp").output("libminicore.rlib").run();
+    redox_minicore().target("wasm32-wasip1").target_cpu("mvp").output("libminicore.rlib").run();
 
-    rustc()
+    redox()
         .input("foo.rs")
         .target("wasm32-wasip1")
         .target_cpu("mvp")

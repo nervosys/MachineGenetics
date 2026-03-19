@@ -50,10 +50,10 @@ mod tests {
     fn builtin_macro_fails_expansion() {
         check_diagnostics(
             r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include { () => {} }
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! compile_error { () => {} }
 
   include!("doesntexist");
@@ -91,7 +91,7 @@ fn f() {
 
 //- /core.rs crate:core
 #[macro_export]
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat { () => {} }
 
 pub macro panic {
@@ -115,7 +115,7 @@ pub macro panic {
             config,
             r#"
 //- /lib.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include { () => {} }
 
 include!("foo/bar.rs");
@@ -130,11 +130,11 @@ include!("foo/bar.rs");
         // FIXME: The diagnostic here is duplicated for each eager expansion
         check_diagnostics(
             r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include { () => {} }
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! env { () => {} }
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat { () => {} }
 
   include!(concat!(
@@ -166,15 +166,15 @@ struct S;
         check_diagnostics(
             r#"
 //- minicore: fmt
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! env {}
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include {}
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! compile_error {}
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat {}
 
 fn main() {
@@ -228,7 +228,7 @@ fn f() {
         check_diagnostics(
             r#"
 #[macro_export]
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! format_args {}
 
 #[macro_export]

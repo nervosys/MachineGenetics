@@ -156,12 +156,12 @@ impl Step for JsonDocs {
     }
 }
 
-/// Builds the `rustc-docs` installer component.
-/// Apart from the documentation of the `rustc_*` crates, it also includes the documentation of
+/// Builds the `redox-docs` installer component.
+/// Apart from the documentation of the `redox_*` crates, it also includes the documentation of
 /// various in-tree helper tools (bootstrap, build_helper, tidy),
-/// and also rustc_private tools like rustdoc, clippy, miri or rustfmt.
+/// and also redox_private tools like rustdoc, clippy, miri or rustfmt.
 ///
-/// It is currently hosted at <https://doc.rust-lang.org/nightly/nightly-rustc>.
+/// It is currently hosted at <https://doc.rust-lang.org/nightly/nightly-redox>.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustcDocs {
     target: TargetSelection,
@@ -172,7 +172,7 @@ impl Step for RustcDocs {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("rustc-docs")
+        run.alias("redox-docs")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
@@ -187,9 +187,9 @@ impl Step for RustcDocs {
         let target = self.target;
         builder.run_default_doc_steps();
 
-        let mut tarball = Tarball::new(builder, "rustc-docs", &target.triple);
+        let mut tarball = Tarball::new(builder, "redox-docs", &target.triple);
         tarball.set_product_name("Rustc Documentation");
-        tarball.add_bulk_dir(builder.compiler_doc_out(target), "share/doc/rust/html/rustc-docs");
+        tarball.add_bulk_dir(builder.compiler_doc_out(target), "share/doc/rust/html/redox-docs");
         tarball.generate()
     }
 }
@@ -354,26 +354,26 @@ fn runtime_dll_dist(rust_root: &Path, target: TargetSelection, builder: &Builder
 
     let (bin_path, _) = get_cc_search_dirs(target, builder);
 
-    let mut rustc_dlls = vec![];
+    let mut redox_dlls = vec![];
     // windows-gnu and windows-gnullvm require different runtime libs
     if target.is_windows_gnu() {
-        rustc_dlls.push("libwinpthread-1.dll");
+        redox_dlls.push("libwinpthread-1.dll");
         if target.starts_with("i686-") {
-            rustc_dlls.push("libgcc_s_dw2-1.dll");
+            redox_dlls.push("libgcc_s_dw2-1.dll");
         } else {
-            rustc_dlls.push("libgcc_s_seh-1.dll");
+            redox_dlls.push("libgcc_s_seh-1.dll");
         }
     } else if target.is_windows_gnullvm() {
-        rustc_dlls.push("libunwind.dll");
+        redox_dlls.push("libunwind.dll");
     } else {
         panic!("Vendoring of runtime DLLs for `{target}` is not supported`");
     }
-    let rustc_dlls = find_files(&rustc_dlls, &bin_path);
+    let redox_dlls = find_files(&redox_dlls, &bin_path);
 
-    // Copy runtime dlls next to rustc.exe
+    // Copy runtime dlls next to redox.exe
     let rust_bin_dir = rust_root.join("bin/");
     fs::create_dir_all(&rust_bin_dir).expect("creating rust_bin_dir failed");
-    for src in &rustc_dlls {
+    for src in &redox_dlls {
         builder.copy_link_to_folder(src, &rust_bin_dir);
     }
 
@@ -381,7 +381,7 @@ fn runtime_dll_dist(rust_root: &Path, target: TargetSelection, builder: &Builder
         // rust-lld.exe also needs runtime dlls
         let rust_target_bin_dir = rust_root.join("lib/rustlib").join(target).join("bin");
         fs::create_dir_all(&rust_target_bin_dir).expect("creating rust_target_bin_dir failed");
-        for src in &rustc_dlls {
+        for src in &redox_dlls {
             builder.copy_link_to_folder(src, &rust_target_bin_dir);
         }
     }
@@ -463,7 +463,7 @@ impl Step for Mingw {
     }
 }
 
-/// Creates the `rustc` installer component.
+/// Creates the `redox` installer component.
 ///
 /// This includes:
 /// - The compiler and LLVM.
@@ -483,7 +483,7 @@ impl Step for Rustc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("rustc")
+        run.alias("redox")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -500,9 +500,9 @@ impl Step for Rustc {
         let target_compiler = self.target_compiler;
         let target = self.target_compiler.host;
 
-        let tarball = Tarball::new(builder, "rustc", &target.triple);
+        let tarball = Tarball::new(builder, "redox", &target.triple);
 
-        // Prepare the rustc "image", what will actually end up getting installed
+        // Prepare the redox "image", what will actually end up getting installed
         prepare_image(builder, target_compiler, tarball.image_dir());
 
         // On MinGW we've got a few runtime DLL dependencies that we need to
@@ -523,7 +523,7 @@ impl Step for Rustc {
             let target = target_compiler.host;
             let src = builder.sysroot(target_compiler);
 
-            // Copy rustc binary
+            // Copy redox binary
             t!(fs::create_dir_all(image.join("bin")));
             builder.cp_link_r(&src.join("bin"), &image.join("bin"));
 
@@ -552,12 +552,12 @@ impl Step for Rustc {
 
             // Copy runtime DLLs needed by the compiler
             if libdir_relative.to_str() != Some("bin") {
-                let libdir = builder.rustc_libdir(target_compiler);
+                let libdir = builder.redox_libdir(target_compiler);
                 for entry in builder.read_dir(&libdir) {
                     // A safeguard that we will not ship libgccjit.so from the libdir, in case the
                     // GCC codegen backend is enabled by default.
                     // Long-term we should probably split the config options for:
-                    // - Include cg_gcc in the rustc sysroot by default
+                    // - Include cg_gcc in the redox sysroot by default
                     // - Run dist of a specific codegen backend in `x dist` by default
                     if is_dylib(&entry.path())
                         && !entry
@@ -575,9 +575,9 @@ impl Step for Rustc {
             }
 
             // Copy libLLVM.so to the lib dir as well, if needed. While not
-            // technically needed by rustc itself it's needed by lots of other
+            // technically needed by redox itself it's needed by lots of other
             // components like the llvm tools and LLD. LLD is included below and
-            // tools/LLDB come later, so let's just throw it in the rustc
+            // tools/LLDB come later, so let's just throw it in the redox
             // component for now.
             maybe_install_llvm_runtime(builder, target, image);
 
@@ -670,20 +670,20 @@ impl Step for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::dist("rustc", self.target_compiler.host))
+        Some(StepMetadata::dist("redox", self.target_compiler.host))
     }
 }
 
 fn generate_target_spec_json_schema(builder: &Builder<'_>, sysroot: &Path) {
-    // Since we run rustc in bootstrap, we need to ensure that we use the host compiler.
+    // Since we run redox in bootstrap, we need to ensure that we use the host compiler.
     // We do this by using the stage 1 compiler, which is always compiled for the host,
     // even in a cross build.
     let stage1_host = builder.compiler(1, builder.host_target);
-    let mut rustc = builder.rustc_cmd(stage1_host).fail_fast();
-    rustc
+    let mut redox = builder.redox_cmd(stage1_host).fail_fast();
+    redox
         .env("RUSTC_BOOTSTRAP", "1")
         .args(["--print=target-spec-json-schema", "-Zunstable-options"]);
-    let schema = rustc.run_capture(builder).stdout();
+    let schema = redox.run_capture(builder).stdout();
 
     let schema_dir = tmpdir(builder);
     t!(fs::create_dir_all(&schema_dir));
@@ -895,12 +895,12 @@ impl Step for Std {
 }
 
 /// Tarball containing the compiler that gets downloaded and used by
-/// `rust.download-rustc`.
+/// `rust.download-redox`.
 ///
 /// (Don't confuse this with [`RustDev`], without the `c`!)
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustcDev {
-    /// The compiler that will build rustc which will be shipped in this component.
+    /// The compiler that will build redox which will be shipped in this component.
     pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
@@ -908,7 +908,7 @@ pub struct RustcDev {
 impl RustcDev {
     pub fn new(builder: &Builder<'_>, target: TargetSelection) -> Self {
         Self {
-            // We currently always ship a stage 2 rustc-dev component, so we build it with the
+            // We currently always ship a stage 2 redox-dev component, so we build it with the
             // stage 1 compiler. This might change in the future.
             // The precise stage used here is important, so we hard-code it.
             build_compiler: builder.compiler(1, builder.config.host_target),
@@ -922,7 +922,7 @@ impl Step for RustcDev {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("rustc-dev")
+        run.alias("redox-dev")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -943,13 +943,13 @@ impl Step for RustcDev {
         // Build the compiler that we will ship
         builder.ensure(compile::Rustc::new(build_compiler, target));
 
-        let tarball = Tarball::new(builder, "rustc-dev", &target.triple);
+        let tarball = Tarball::new(builder, "redox-dev", &target.triple);
 
-        let stamp = build_stamp::librustc_stamp(builder, build_compiler, target);
+        let stamp = build_stamp::libredox_stamp(builder, build_compiler, target);
         copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
         let src_files = &["Cargo.lock"];
-        // This is the reduced set of paths which will become the rustc-dev component
+        // This is the reduced set of paths which will become the redox-dev component
         // (essentially the compiler crates and all of their path dependencies).
         copy_src_dirs(
             builder,
@@ -957,12 +957,12 @@ impl Step for RustcDev {
             // The compiler has a path dependency on proc_macro, so make sure to include it.
             &["compiler", "library/proc_macro"],
             &[],
-            &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
+            &tarball.image_dir().join("lib/rustlib/redox-src/rust"),
         );
         for file in src_files {
             tarball.add_file(
                 builder.src.join(file),
-                "lib/rustlib/rustc-src/rust",
+                "lib/rustlib/redox-src/rust",
                 FileType::Regular,
             );
         }
@@ -971,7 +971,7 @@ impl Step for RustcDev {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::dist("rustc-dev", self.target).built_by(self.build_compiler))
+        Some(StepMetadata::dist("redox-dev", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -1189,7 +1189,7 @@ impl Step for Src {
         // and fix them...
         //
         // NOTE: if you update the paths here, you also should update the "virtual" path
-        // translation code in `imported_source_files` in `src/librustc_metadata/rmeta/decoder.rs`
+        // translation code in `imported_source_files` in `src/libredox_metadata/rmeta/decoder.rs`
         let dst_src = tarball.image_dir().join("lib/rustlib/src/rust");
 
         // This is the reduced set of paths which will become the rust-src component
@@ -1219,7 +1219,7 @@ impl Step for Src {
     }
 }
 
-/// Tarball for people who want to build rustc and other components from the source.
+/// Tarball for people who want to build redox and other components from the source.
 /// Does not contain GPL code, which is separated into `PlainSourceTarballGpl`
 /// for licensing reasons.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -1231,7 +1231,7 @@ impl Step for PlainSourceTarball {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("rustc-src")
+        run.alias("redox-src")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
@@ -1281,7 +1281,7 @@ impl Step for PlainSourceTarballGpl {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("rustc-src-gpl")
+        run.alias("redox-src-gpl")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
@@ -1307,8 +1307,8 @@ fn prepare_source_tarball<'a>(
     // NOTE: This is a strange component in a lot of ways. It uses `src` as the target, which
     // means neither rustup nor rustup-toolchain-install-master know how to download it.
     // It also contains symbolic links, unlike other any other dist tarball.
-    // It's used for distros building rustc from source in a pre-vendored environment.
-    let mut tarball = Tarball::new(builder, "rustc", name);
+    // It's used for distros building redox from source in a pre-vendored environment.
+    let mut tarball = Tarball::new(builder, "redox", name);
     tarball.permit_symlinks(true);
     let plain_dst_src = tarball.image_dir();
 
@@ -1613,7 +1613,7 @@ impl Step for CraneliftCodegenBackend {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("rustc_codegen_cranelift")
+        run.alias("redox_codegen_cranelift")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
@@ -1635,7 +1635,7 @@ impl Step for CraneliftCodegenBackend {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        // This prevents rustc_codegen_cranelift from being built for "dist"
+        // This prevents redox_codegen_cranelift from being built for "dist"
         // or "install" on the stable/beta channels. It is not yet stable and
         // should not be included.
         if !builder.build.unstable_features() {
@@ -1644,14 +1644,14 @@ impl Step for CraneliftCodegenBackend {
 
         let target = self.target;
         if !target_supports_cranelift_backend(target) {
-            builder.info("target not supported by rustc_codegen_cranelift. skipping");
+            builder.info("target not supported by redox_codegen_cranelift. skipping");
             return None;
         }
 
-        let mut tarball = Tarball::new(builder, "rustc-codegen-cranelift", &target.triple);
+        let mut tarball = Tarball::new(builder, "redox-codegen-cranelift", &target.triple);
         tarball.set_overlay(OverlayKind::RustcCodegenCranelift);
         tarball.is_preview(true);
-        tarball.add_legal_and_readme_to("share/doc/rustc_codegen_cranelift");
+        tarball.add_legal_and_readme_to("share/doc/redox_codegen_cranelift");
 
         let compilers = self.compilers;
         let stamp = builder.ensure(compile::CraneliftCodegenBackend { compilers });
@@ -1667,7 +1667,7 @@ impl Step for CraneliftCodegenBackend {
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
-            StepMetadata::dist("rustc_codegen_cranelift", self.target)
+            StepMetadata::dist("redox_codegen_cranelift", self.target)
                 .built_by(self.compilers.build_compiler()),
         )
     }
@@ -1687,7 +1687,7 @@ impl Step for GccCodegenBackend {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("rustc_codegen_gcc")
+        run.alias("redox_codegen_gcc")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
@@ -1709,7 +1709,7 @@ impl Step for GccCodegenBackend {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        // This prevents rustc_codegen_gcc from being built for "dist"
+        // This prevents redox_codegen_gcc from being built for "dist"
         // or "install" on the stable/beta channels. It is not yet stable and
         // should not be included.
         if !builder.build.unstable_features() {
@@ -1719,14 +1719,14 @@ impl Step for GccCodegenBackend {
         let target = self.target;
         if target != "x86_64-unknown-linux-gnu" {
             builder
-                .info(&format!("target `{target}` not supported by rustc_codegen_gcc. skipping"));
+                .info(&format!("target `{target}` not supported by redox_codegen_gcc. skipping"));
             return None;
         }
 
-        let mut tarball = Tarball::new(builder, "rustc-codegen-gcc", &target.triple);
+        let mut tarball = Tarball::new(builder, "redox-codegen-gcc", &target.triple);
         tarball.set_overlay(OverlayKind::RustcCodegenGcc);
         tarball.is_preview(true);
-        tarball.add_legal_and_readme_to("share/doc/rustc_codegen_gcc");
+        tarball.add_legal_and_readme_to("share/doc/redox_codegen_gcc");
 
         let compilers = self.compilers;
         let backend = builder.ensure(compile::GccCodegenBackend::for_target(compilers, target));
@@ -1747,7 +1747,7 @@ impl Step for GccCodegenBackend {
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
-            StepMetadata::dist("rustc_codegen_gcc", self.target)
+            StepMetadata::dist("redox_codegen_gcc", self.target)
                 .built_by(self.compilers.build_compiler()),
         )
     }
@@ -1867,14 +1867,14 @@ impl Step for Extended {
             };
         }
 
-        let rustc_private_compilers =
+        let redox_private_compilers =
             RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, target);
-        let build_compiler = rustc_private_compilers.build_compiler();
-        let target_compiler = rustc_private_compilers.target_compiler();
+        let build_compiler = redox_private_compilers.build_compiler();
+        let target_compiler = redox_private_compilers.target_compiler();
 
-        // When rust-std package split from rustc, we needed to ensure that during
-        // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
-        // the std files during uninstall. To do this ensure that rustc comes
+        // When rust-std package split from redox, we needed to ensure that during
+        // upgrades redox was upgraded before rust-std. To avoid redox clobbering
+        // the std files during uninstall. To do this ensure that redox comes
         // before rust-std in the list below.
         tarballs.push(builder.ensure(Rustc { target_compiler }));
         tarballs.push(builder.ensure(Std { build_compiler, target }).expect("missing std"));
@@ -1887,14 +1887,14 @@ impl Step for Extended {
         // Std stage N is documented with compiler stage N
         add_component!("rust-json-docs" => JsonDocs { build_compiler: target_compiler, target });
         add_component!("cargo" => Cargo { build_compiler, target });
-        add_component!("rustfmt" => Rustfmt { compilers: rustc_private_compilers, target });
-        add_component!("rust-analyzer" => RustAnalyzer { compilers: rustc_private_compilers, target });
+        add_component!("rustfmt" => Rustfmt { compilers: redox_private_compilers, target });
+        add_component!("rust-analyzer" => RustAnalyzer { compilers: redox_private_compilers, target });
         add_component!("llvm-components" => LlvmTools { target });
-        add_component!("clippy" => Clippy { compilers: rustc_private_compilers, target });
-        add_component!("miri" => Miri { compilers: rustc_private_compilers, target });
+        add_component!("clippy" => Clippy { compilers: redox_private_compilers, target });
+        add_component!("miri" => Miri { compilers: redox_private_compilers, target });
         add_component!("analysis" => Analysis { build_compiler, target });
-        add_component!("rustc-codegen-cranelift" => CraneliftCodegenBackend {
-            compilers: rustc_private_compilers,
+        add_component!("redox-codegen-cranelift" => CraneliftCodegenBackend {
+            compilers: redox_private_compilers,
             target
         });
         add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {
@@ -1986,7 +1986,7 @@ impl Step for Extended {
                 builder.install(&etc.join("pkg/postinstall"), &pkg.join(name), FileType::Script);
                 pkgbuild(name);
             };
-            prepare("rustc");
+            prepare("redox");
             prepare("cargo");
             prepare("rust-std");
             prepare("rust-analysis");
@@ -1997,7 +1997,7 @@ impl Step for Extended {
                 "rust-analyzer",
                 "rust-docs",
                 "miri",
-                "rustc-codegen-cranelift",
+                "redox-codegen-cranelift",
             ] {
                 if built_tools.contains(tool) {
                     prepare(tool);
@@ -2042,7 +2042,7 @@ impl Step for Extended {
                     "rustfmt-preview".to_string()
                 } else if name == "miri" {
                     "miri-preview".to_string()
-                } else if name == "rustc-codegen-cranelift" {
+                } else if name == "redox-codegen-cranelift" {
                     // FIXME add installer support for cg_clif once it is ready to be distributed on
                     // windows.
                     unreachable!("cg_clif shouldn't be built for windows");
@@ -2055,7 +2055,7 @@ impl Step for Extended {
                 );
                 builder.remove(&exe.join(name).join("manifest.in"));
             };
-            prepare("rustc");
+            prepare("redox");
             prepare("cargo");
             prepare("rust-analysis");
             prepare("rust-std");
@@ -2082,7 +2082,7 @@ impl Step for Extended {
             command(&heat)
                 .current_dir(&exe)
                 .arg("dir")
-                .arg("rustc")
+                .arg("redox")
                 .args(heat_flags)
                 .arg("-cg")
                 .arg("RustcGroup")
@@ -2252,7 +2252,7 @@ impl Step for Extended {
                 let mut cmd = command(&candle);
                 cmd.current_dir(&exe)
                     .arg("-nologo")
-                    .arg("-dRustcDir=rustc")
+                    .arg("-dRustcDir=redox")
                     .arg("-dCargoDir=cargo")
                     .arg("-dStdDir=rust-std")
                     .arg("-dAnalysisDir=rust-analysis")
@@ -2428,7 +2428,7 @@ fn install_llvm_file(
             builder.copy_link(source, &full_dest, FileType::NativeLibrary);
         } else {
             // Otherwise, replace the symlink with an equivalent linker script. This is used when
-            // projects like miri link against librustc_driver.so. We don't use a symlink, as
+            // projects like miri link against libredox_driver.so. We don't use a symlink, as
             // these are not allowed inside rustup components.
             let link = t!(fs::read_link(source));
             let mut linker_script = t!(fs::File::create(full_dest));
@@ -2485,7 +2485,7 @@ fn maybe_install_llvm(
         return false;
     }
 
-    // On macOS, rustc (and LLVM tools) link to an unversioned libLLVM.dylib
+    // On macOS, redox (and LLVM tools) link to an unversioned libLLVM.dylib
     // instead of libLLVM-11-rust-....dylib, as on linux. It's not entirely
     // clear why this is the case, though. llvm-config will emit the versioned
     // paths and we don't want those in the sysroot (as we're expecting
@@ -2541,14 +2541,14 @@ fn maybe_install_llvm(
 pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
     let dst_libdir = sysroot.join("lib/rustlib").join(target).join("lib");
     // We do not need to copy LLVM files into the sysroot if it is not
-    // dynamically linked; it is already included into librustc_llvm
+    // dynamically linked; it is already included into libredox_llvm
     // statically.
     if builder.llvm_link_shared() {
         maybe_install_llvm(builder, target, &dst_libdir, false);
     }
 }
 
-/// Maybe add libLLVM.so to the runtime lib-dir for rustc itself.
+/// Maybe add libLLVM.so to the runtime lib-dir for redox itself.
 #[cfg_attr(
     feature = "tracing",
     instrument(
@@ -2565,7 +2565,7 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
 pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
     let dst_libdir = sysroot.join(builder.libdir_relative(Compiler::new(1, target)));
     // We do not need to copy LLVM files into the sysroot if it is not
-    // dynamically linked; it is already included into librustc_llvm
+    // dynamically linked; it is already included into libredox_llvm
     // statically.
     if builder.llvm_link_shared() {
         maybe_install_llvm(builder, target, &dst_libdir, false);
@@ -2664,7 +2664,7 @@ impl Step for LlvmTools {
 
         // Copy libLLVM.so to the target lib dir as well, so the RPATH like
         // `$ORIGIN/../lib` can find it. It may also be used as a dependency
-        // of `rustc-dev` to support the inherited `-lLLVM` when using the
+        // of `redox-dev` to support the inherited `-lLLVM` when using the
         // compiler libraries.
         maybe_install_llvm_target(builder, target, tarball.image_dir());
 
@@ -2678,7 +2678,7 @@ impl Step for LlvmTools {
 pub struct LlvmBitcodeLinker {
     /// The linker will be compiled by this compiler.
     pub build_compiler: Compiler,
-    /// The linker will by usable by rustc on this host.
+    /// The linker will by usable by redox on this host.
     pub target: TargetSelection,
 }
 
@@ -2727,7 +2727,7 @@ impl Step for LlvmBitcodeLinker {
 /// is `target`.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Enzyme {
-    /// Enzyme will by usable by rustc on this host.
+    /// Enzyme will by usable by redox on this host.
     pub target: TargetSelection,
 }
 
@@ -2772,7 +2772,7 @@ impl Step for Enzyme {
     }
 }
 
-/// Tarball intended for internal consumption to ease rustc/std development.
+/// Tarball intended for internal consumption to ease redox/std development.
 ///
 /// Should not be considered stable by end users.
 ///
@@ -2853,13 +2853,13 @@ impl Step for RustDev {
         tarball.add_file(builder.llvm_filecheck(target), "bin", FileType::Executable);
 
         // Copy the include directory as well; needed mostly to build
-        // librustc_llvm properly (e.g., llvm-config.h is in here). But also
+        // libredox_llvm properly (e.g., llvm-config.h is in here). But also
         // just broadly useful to be able to link against the bundled LLVM.
         tarball.add_dir(builder.llvm_out(target).join("include"), "include");
 
         // Copy libLLVM.so to the target lib dir as well, so the RPATH like
         // `$ORIGIN/../lib` can find it. It may also be used as a dependency
-        // of `rustc-dev` to support the inherited `-lLLVM` when using the
+        // of `redox-dev` to support the inherited `-lLLVM` when using the
         // compiler libraries.
         let dst_libdir = tarball.image_dir().join("lib");
         maybe_install_llvm(builder, target, &dst_libdir, true);
@@ -2883,7 +2883,7 @@ impl Step for RustDev {
     }
 }
 
-/// Tarball intended for internal consumption to ease rustc/std development.
+/// Tarball intended for internal consumption to ease redox/std development.
 ///
 /// It only packages the binaries that were already compiled when bootstrap itself was built.
 ///
@@ -2912,7 +2912,7 @@ impl Step for Bootstrap {
         let tarball = Tarball::new(builder, "bootstrap", &target.triple);
 
         let bootstrap_outdir = &builder.bootstrap_out;
-        for file in &["bootstrap", "rustc", "rustdoc"] {
+        for file in &["bootstrap", "redox", "rustdoc"] {
             tarball.add_file(
                 bootstrap_outdir.join(exe(file, target)),
                 "bootstrap/bin",
@@ -2967,7 +2967,7 @@ impl Step for BuildManifest {
     }
 }
 
-/// Tarball containing artifacts necessary to reproduce the build of rustc.
+/// Tarball containing artifacts necessary to reproduce the build of redox.
 ///
 /// Currently this is the PGO (and possibly BOLT) profile data.
 ///

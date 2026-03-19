@@ -547,7 +547,7 @@ fn concat_expand(
     while let Some(mut t) = iter.next() {
         // FIXME: hack on top of a hack: `$e:expr` captures get surrounded in parentheses
         // to ensure the right parsing order, so skip the parentheses here. Ideally we'd
-        // implement rustc's model. cc https://github.com/rust-lang/rust-analyzer/pull/10623
+        // implement redox's model. cc https://github.com/rust-lang/rust-analyzer/pull/10623
         if let TtElement::Subtree(subtree, subtree_iter) = &t
             && let Some([tt::TtElement::Leaf(tt)]) = subtree_iter.clone().collect_array()
             && subtree.delimiter.kind == tt::DelimiterKind::Parenthesis

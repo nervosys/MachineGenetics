@@ -5,13 +5,13 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{msrvs, std_or_core, sym};
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, Mutability, Node, Pat, PatKind, Stmt, StmtKind};
-use rustc_lint::LateContext;
-use rustc_span::SyntaxContext;
+use redox_data_structures::fx::FxHashSet;
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::intravisit::{Visitor, walk_expr};
+use redox_hir::{BindingMode, Block, Expr, ExprKind, HirId, Mutability, Node, Pat, PatKind, Stmt, StmtKind};
+use redox_lint::LateContext;
+use redox_span::SyntaxContext;
 
 /// Detects for loop pushing the same item into a Vec
 pub(super) fn check<'tcx>(

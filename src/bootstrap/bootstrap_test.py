@@ -81,7 +81,7 @@ class ProgramOutOfDate(unittest.TestCase):
         self.build = bootstrap.RustBuild()
         self.build.date = "2017-06-15"
         self.build.build_dir = self.container
-        self.rustc_stamp_path = os.path.join(self.container, "stage0", ".rustc-stamp")
+        self.redox_stamp_path = os.path.join(self.container, "stage0", ".redox-stamp")
         self.key = self.build.date + str(None)
 
     def tearDown(self):
@@ -89,22 +89,22 @@ class ProgramOutOfDate(unittest.TestCase):
 
     def test_stamp_path_does_not_exist(self):
         """Return True when the stamp file does not exist"""
-        if os.path.exists(self.rustc_stamp_path):
-            os.unlink(self.rustc_stamp_path)
-        self.assertTrue(self.build.program_out_of_date(self.rustc_stamp_path, self.key))
+        if os.path.exists(self.redox_stamp_path):
+            os.unlink(self.redox_stamp_path)
+        self.assertTrue(self.build.program_out_of_date(self.redox_stamp_path, self.key))
 
     def test_dates_are_different(self):
         """Return True when the dates are different"""
-        with open(self.rustc_stamp_path, "w") as rustc_stamp:
-            rustc_stamp.write("2017-06-14None")
-        self.assertTrue(self.build.program_out_of_date(self.rustc_stamp_path, self.key))
+        with open(self.redox_stamp_path, "w") as redox_stamp:
+            redox_stamp.write("2017-06-14None")
+        self.assertTrue(self.build.program_out_of_date(self.redox_stamp_path, self.key))
 
     def test_same_dates(self):
         """Return False both dates match"""
-        with open(self.rustc_stamp_path, "w") as rustc_stamp:
-            rustc_stamp.write("2017-06-15None")
+        with open(self.redox_stamp_path, "w") as redox_stamp:
+            redox_stamp.write("2017-06-15None")
         self.assertFalse(
-            self.build.program_out_of_date(self.rustc_stamp_path, self.key)
+            self.build.program_out_of_date(self.redox_stamp_path, self.key)
         )
 
 
@@ -216,9 +216,9 @@ class BuildBootstrap(unittest.TestCase):
         cargo_bin = os.environ.get("BOOTSTRAP_TEST_CARGO_BIN")
         if cargo_bin is not None:
             configure_args += ["--set", "build.cargo=" + cargo_bin]
-        rustc_bin = os.environ.get("BOOTSTRAP_TEST_RUSTC_BIN")
-        if rustc_bin is not None:
-            configure_args += ["--set", "build.rustc=" + rustc_bin]
+        redox_bin = os.environ.get("BOOTSTRAP_TEST_RUSTC_BIN")
+        if redox_bin is not None:
+            configure_args += ["--set", "build.redox=" + redox_bin]
 
         env = env.copy()
         env["PATH"] = os.environ["PATH"]

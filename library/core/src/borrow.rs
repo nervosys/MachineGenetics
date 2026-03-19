@@ -153,8 +153,8 @@
 /// [`HashMap<K, V>`]: ../../std/collections/struct.HashMap.html
 /// [`String`]: ../../std/string/struct.String.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Borrow"]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_diagnostic_item = "Borrow"]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 pub const trait Borrow<Borrowed: ?Sized> {
     /// Immutably borrows from an owned value.
     ///
@@ -185,8 +185,8 @@ pub const trait Borrow<Borrowed: ?Sized> {
 /// an underlying type by providing a mutable reference. See [`Borrow<T>`]
 /// for more information on borrowing as another type.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "BorrowMut"]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_diagnostic_item = "BorrowMut"]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 pub const trait BorrowMut<Borrowed: ?Sized>: [const] Borrow<Borrowed> {
     /// Mutably borrows from an owned value.
     ///
@@ -208,16 +208,16 @@ pub const trait BorrowMut<Borrowed: ?Sized>: [const] Borrow<Borrowed> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const Borrow<T> for T {
-    #[rustc_diagnostic_item = "noop_method_borrow"]
+    #[redox_diagnostic_item = "noop_method_borrow"]
     fn borrow(&self) -> &T {
         self
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const BorrowMut<T> for T {
     fn borrow_mut(&mut self) -> &mut T {
         self
@@ -225,7 +225,7 @@ impl<T: ?Sized> const BorrowMut<T> for T {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const Borrow<T> for &T {
     fn borrow(&self) -> &T {
         self
@@ -233,7 +233,7 @@ impl<T: ?Sized> const Borrow<T> for &T {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const Borrow<T> for &mut T {
     fn borrow(&self) -> &T {
         self
@@ -241,7 +241,7 @@ impl<T: ?Sized> const Borrow<T> for &mut T {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const BorrowMut<T> for &mut T {
     fn borrow_mut(&mut self) -> &mut T {
         self

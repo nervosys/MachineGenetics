@@ -4,10 +4,10 @@
 //@ compile-flags: -C opt-level=3 -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 pub trait Trait {
-    #[rustc_nounwind]
+    #[redox_nounwind]
     fn m(&self, _: (i32, i32, i32)) {}
 }
 
@@ -20,7 +20,7 @@ pub fn foo(trait_: &dyn Trait) {
 }
 
 #[no_mangle]
-#[rustc_nounwind]
+#[redox_nounwind]
 pub fn foo_nounwind(trait_: &dyn Trait) {
     // CHECK-LABEL: @foo_nounwind(
     // FIXME: Here should be invoke.

@@ -273,29 +273,29 @@ install!((self, builder, _config),
             );
         }
     };
-    Rustc, path = "compiler/rustc", true, IS_HOST: true, {
+    Rustc, path = "compiler/redox", true, IS_HOST: true, {
         let tarball = builder.ensure(dist::Rustc {
             target_compiler: builder.compiler(self.build_compiler.stage + 1, self.target),
         });
-        install_sh(builder, "rustc", self.build_compiler, Some(self.target), &tarball);
+        install_sh(builder, "redox", self.build_compiler, Some(self.target), &tarball);
     };
-    RustcDev, alias = "rustc-dev", Self::should_build(_config), IS_HOST: true, {
+    RustcDev, alias = "redox-dev", Self::should_build(_config), IS_HOST: true, {
         if let Some(tarball) = builder.ensure(dist::RustcDev {
             build_compiler: self.build_compiler, target: self.target
         }) {
-            install_sh(builder, "rustc-dev", self.build_compiler, Some(self.target), &tarball);
+            install_sh(builder, "redox-dev", self.build_compiler, Some(self.target), &tarball);
         } else {
             builder.info(
                 &format!("skipping Install RustcDev stage{} ({})", self.build_compiler.stage + 1, self.target),
             );
         }
     };
-    RustcCodegenCranelift, alias = "rustc-codegen-cranelift", Self::should_build(_config), IS_HOST: true, {
+    RustcCodegenCranelift, alias = "redox-codegen-cranelift", Self::should_build(_config), IS_HOST: true, {
         if let Some(tarball) = builder.ensure(dist::CraneliftCodegenBackend {
             compilers: RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target),
             target: self.target
         }) {
-            install_sh(builder, "rustc-codegen-cranelift", self.build_compiler, Some(self.target), &tarball);
+            install_sh(builder, "redox-codegen-cranelift", self.build_compiler, Some(self.target), &tarball);
         } else {
             builder.info(
                 &format!("skipping Install CodegenBackend(\"cranelift\") stage{} ({})",

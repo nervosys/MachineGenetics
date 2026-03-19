@@ -25,7 +25,7 @@ If you don't already have a suitable toolchain, download one [here](https://tool
 
 ### Configure rust
 
-The target can be built by enabling it for a `rustc` build, by placing the following in `bootstrap.toml`:
+The target can be built by enabling it for a `redox` build, by placing the following in `bootstrap.toml`:
 
 ```toml
 [build]

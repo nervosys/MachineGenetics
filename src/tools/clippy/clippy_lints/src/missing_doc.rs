@@ -1,25 +1,25 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{is_doc_hidden, is_from_proc_macro};
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{
+use redox_hir::attrs::AttributeKind;
+use redox_hir::def_id::LocalDefId;
+use redox_hir::{
     AttrArgs, Attribute, Body, BodyId, FieldDef, HirId, ImplItem, Item, ItemKind, Node, TraitItem, Variant,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::middle::privacy::Level;
-use rustc_middle::ty::Visibility;
-use rustc_session::impl_lint_pass;
-use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::sym;
-use rustc_span::symbol::kw;
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::middle::privacy::Level;
+use redox_middle::ty::Visibility;
+use redox_session::impl_lint_pass;
+use redox_span::def_id::CRATE_DEF_ID;
+use redox_span::sym;
+use redox_span::symbol::kw;
 
 declare_clippy_lint! {
     /// ### What it does
     /// Warns if there is missing documentation for any private documentable item.
     ///
     /// ### Why restrict this?
-    /// Doc is good. *rustc* has a `MISSING_DOCS`
+    /// Doc is good. *redox* has a `MISSING_DOCS`
     /// allowed-by-default lint for
     /// public members, but has no way to enforce documentation of private items.
     /// This lint fixes that.

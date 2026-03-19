@@ -1,6 +1,6 @@
 # Lint Levels
 
-In `rustc`, lints are divided into six *levels*:
+In `redox`, lints are divided into six *levels*:
 
 1. allow
 2. expect
@@ -25,7 +25,7 @@ pub fn foo() {}
 Compiling this file produces no warnings:
 
 ```bash
-$ rustc lib.rs --crate-type=lib
+$ redox lib.rs --crate-type=lib
 $
 ```
 
@@ -82,7 +82,7 @@ pub fn foo() {
 This will produce this warning:
 
 ```bash
-$ rustc lib.rs --crate-type=lib
+$ redox lib.rs --crate-type=lib
 warning: unused variable: `x`
  --> lib.rs:2:9
   |
@@ -113,7 +113,7 @@ fn main() {
 ```
 
 ```bash
-$ rustc main.rs
+$ redox main.rs
 error: bitshift exceeds the type's number of bits
  --> main.rs:2:13
   |
@@ -135,7 +135,7 @@ This lint level gives you that.
 'force-warn' does for 'warn'. It's the same as 'deny' in that a lint at this
 level will produce an error, but unlike the 'deny' level, the 'forbid' level
 can not be overridden to be anything lower than an error.  However, lint
-levels may still be capped with `--cap-lints` (see below) so `rustc --cap-lints warn`
+levels may still be capped with `--cap-lints` (see below) so `redox --cap-lints warn`
 will make lints set to 'forbid' just warn.
 
 ## Configuring warning levels
@@ -145,7 +145,7 @@ Remember our `missing_docs` example from the 'allow' lint level?
 ```bash
 $ cat lib.rs
 pub fn foo() {}
-$ rustc lib.rs --crate-type=lib
+$ redox lib.rs --crate-type=lib
 $
 ```
 
@@ -161,7 +161,7 @@ The `-A`, `-W`, `--force-warn` `-D`, and `-F` flags let you turn one or more lin
 into allowed, warning, force-warn, deny, or forbid levels, like this:
 
 ```bash
-$ rustc lib.rs --crate-type=lib -W missing-docs
+$ redox lib.rs --crate-type=lib -W missing-docs
 warning: missing documentation for crate
  --> lib.rs:1:1
   |
@@ -178,7 +178,7 @@ warning: missing documentation for a function
 ```
 
 ```bash
-$ rustc lib.rs --crate-type=lib -D missing-docs
+$ redox lib.rs --crate-type=lib -D missing-docs
 error: missing documentation for crate
  --> lib.rs:1:1
   |
@@ -199,25 +199,25 @@ error: aborting due to 2 previous errors
 You can also pass each flag more than once for changing multiple lints:
 
 ```bash
-$ rustc lib.rs --crate-type=lib -D missing-docs -D unused-variables
+$ redox lib.rs --crate-type=lib -D missing-docs -D unused-variables
 ```
 
 And of course, you can mix these five flags together:
 
 ```bash
-$ rustc lib.rs --crate-type=lib -D missing-docs -A unused-variables
+$ redox lib.rs --crate-type=lib -D missing-docs -A unused-variables
 ```
 
 The order of these command line arguments is taken into account. The following allows the `unused-variables` lint, because it is the last argument for that lint:
 
 ```bash
-$ rustc lib.rs --crate-type=lib -D unused-variables -A unused-variables
+$ redox lib.rs --crate-type=lib -D unused-variables -A unused-variables
 ```
 
 You can make use of this behavior by overriding the level of one specific lint out of a group of lints. The following example denies all the lints in the `unused` group, but explicitly allows the `unused-variables` lint in that group (forbid still trumps everything regardless of ordering):
 
 ```bash
-$ rustc lib.rs --crate-type=lib -D unused -A unused-variables
+$ redox lib.rs --crate-type=lib -D unused -A unused-variables
 ```
 
 Since `force-warn` and `forbid` cannot be overridden, setting
@@ -233,7 +233,7 @@ $ cat lib.rs
 #![warn(missing_docs)]
 
 pub fn foo() {}
-$ rustc lib.rs --crate-type=lib
+$ redox lib.rs --crate-type=lib
 warning: missing documentation for crate
  --> lib.rs:1:1
   |
@@ -292,7 +292,7 @@ pub fn get_path() -> PathBuf {
 
 ### Capping lints
 
-`rustc` supports a flag, `--cap-lints LEVEL` that sets the "lint cap level."
+`redox` supports a flag, `--cap-lints LEVEL` that sets the "lint cap level."
 This is the maximum level for all lints. So for example, if we take our
 code sample from the "deny" lint level above:
 
@@ -305,7 +305,7 @@ fn main() {
 And we compile it, capping lints to warn:
 
 ```bash
-$ rustc lib.rs --cap-lints warn
+$ redox lib.rs --cap-lints warn
 warning: bitshift exceeds the type's number of bits
  --> lib.rs:2:5
   |
@@ -324,7 +324,7 @@ warning: this expression will panic at run-time
 It now only warns, rather than errors. We can go further and allow all lints:
 
 ```bash
-$ rustc lib.rs --cap-lints allow
+$ redox lib.rs --cap-lints allow
 $
 ```
 
@@ -353,7 +353,7 @@ Here’s how these different lint controls interact:
    Compiled with:
 
    ```bash
-    $ rustc --force-warn unused_variables lib.rs
+    $ redox --force-warn unused_variables lib.rs
     warning: unused variable: `x`
       --> lib.rs:3:9
       |
@@ -377,7 +377,7 @@ Here’s how these different lint controls interact:
    Compiled with:
 
    ```bash
-    $ rustc --cap-lints=warn lib.rs
+    $ redox --cap-lints=warn lib.rs
     warning: unused variable: `x`
     --> test1.rs:3:9
       |
@@ -406,7 +406,7 @@ Here’s how these different lint controls interact:
    Compiled with:
 
    ```bash
-    $ rustc -A unused_variables -D unused_variables lib.rs
+    $ redox -A unused_variables -D unused_variables lib.rs
     error: unused variable: `x`
     --> test1.rs:2:9
       |

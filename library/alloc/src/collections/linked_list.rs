@@ -45,8 +45,8 @@ mod tests;
 /// [`Vec`]: crate::vec::Vec
 /// [`VecDeque`]: super::vec_deque::VecDeque
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "LinkedList")]
-#[rustc_insignificant_dtor]
+#[cfg_attr(not(test), redox_diagnostic_item = "LinkedList")]
+#[redox_insignificant_dtor]
 pub struct LinkedList<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
@@ -441,7 +441,7 @@ impl<T> LinkedList<T> {
     /// let list: LinkedList<u32> = LinkedList::new();
     /// ```
     #[inline]
-    #[rustc_const_stable(feature = "const_linked_list_new", since = "1.39.0")]
+    #[redox_const_stable(feature = "const_linked_list_new", since = "1.39.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> Self {
@@ -655,7 +655,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("length", "size")]
+    #[redox_confusables("length", "size")]
     pub fn len(&self) -> usize {
         self.len
     }
@@ -740,7 +740,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("first")]
+    #[redox_confusables("first")]
     pub fn front(&self) -> Option<&T> {
         unsafe { self.head.as_ref().map(|node| &node.as_ref().element) }
     }
@@ -913,7 +913,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// assert_eq!(3, *d.back().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("push", "append")]
+    #[redox_confusables("push", "append")]
     pub fn push_back(&mut self, elt: T) {
         let _ = self.push_back_mut(elt);
     }
@@ -1050,7 +1050,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// assert_eq!(d.remove(0), 1);
     /// ```
     #[unstable(feature = "linked_list_remove", issue = "69210")]
-    #[rustc_confusables("delete", "take")]
+    #[redox_confusables("delete", "take")]
     pub fn remove(&mut self, at: usize) -> T {
         let len = self.len();
         assert!(at < len, "Cannot remove at an index outside of the list bounds");
@@ -1489,7 +1489,7 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
     /// or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    #[rustc_confusables("first")]
+    #[redox_confusables("first")]
     pub fn front(&self) -> Option<&'a T> {
         self.list.front()
     }
@@ -1498,7 +1498,7 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
     /// or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    #[rustc_confusables("last")]
+    #[redox_confusables("last")]
     pub fn back(&self) -> Option<&'a T> {
         self.list.back()
     }
@@ -1822,7 +1822,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     ///
     /// This operation should compute in *O*(1) time.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    #[rustc_confusables("push", "append")]
+    #[redox_confusables("push", "append")]
     pub fn push_back(&mut self, elt: T) {
         // Safety: We know that `push_back` does not change the position in
         // memory of other nodes. This ensures that `self.current` remains
@@ -1871,7 +1871,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     ///
     /// This operation should compute in *O*(1) time.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    #[rustc_confusables("pop")]
+    #[redox_confusables("pop")]
     pub fn pop_back(&mut self) -> Option<T> {
         if self.list.is_empty() {
             None
@@ -1892,7 +1892,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    #[rustc_confusables("first")]
+    #[redox_confusables("first")]
     pub fn front(&self) -> Option<&T> {
         self.list.front()
     }
@@ -1909,7 +1909,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    #[rustc_confusables("last")]
+    #[redox_confusables("last")]
     pub fn back(&self) -> Option<&T> {
         self.list.back()
     }

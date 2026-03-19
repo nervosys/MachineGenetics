@@ -2,11 +2,11 @@
 // Uses manual desugaring of EII internals: tests whether the number of parameters matches.
 #![feature(extern_item_impls)]
 #![feature(decl_macro)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(eii_internals)]
 
 #[eii_declaration(bar)]
-#[rustc_builtin_macro(eii_shared_macro)]
+#[redox_builtin_macro(eii_shared_macro)]
 macro foo() {}
 
 unsafe extern "Rust" {

@@ -34,7 +34,7 @@ pub struct f64x4([f64; 4]);
 #[repr(simd)]
 pub struct m64x4([i64; 4]);
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 unsafe fn simd_masked_store<M, P, T, const ALIGN: SimdAlign>(mask: M, pointer: P, values: T);
 
 // CHECK-LABEL: store_i8x16

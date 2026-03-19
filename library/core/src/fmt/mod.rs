@@ -21,7 +21,7 @@ mod num_buffer;
 mod rt;
 
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
-#[rustc_diagnostic_item = "Alignment"]
+#[redox_diagnostic_item = "Alignment"]
 /// Possible alignments returned by `Formatter::align`
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Alignment {
@@ -117,7 +117,7 @@ pub struct Error;
 /// [`std::io::Write`]: ../../std/io/trait.Write.html
 /// [flushable]: ../../std/io/trait.Write.html#tymethod.flush
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "FmtWrite"]
+#[redox_diagnostic_item = "FmtWrite"]
 pub trait Write {
     /// Writes a string slice into this writer, returning whether the write
     /// succeeded.
@@ -312,7 +312,7 @@ pub struct FormattingOptions {
     precision: u16,
 }
 
-// This needs to match with compiler/rustc_ast_lowering/src/format.rs.
+// This needs to match with compiler/redox_ast_lowering/src/format.rs.
 mod flags {
     pub(super) const SIGN_PLUS_FLAG: u32 = 1 << 21;
     pub(super) const SIGN_MINUS_FLAG: u32 = 1 << 22;
@@ -557,7 +557,7 @@ impl Default for FormattingOptions {
 /// documentation of the methods defined on `Formatter` below.
 #[allow(missing_debug_implementations)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Formatter"]
+#[redox_diagnostic_item = "Formatter"]
 pub struct Formatter<'a> {
     options: FormattingOptions,
 
@@ -720,7 +720,7 @@ pub struct Arguments<'a> {
 
 /// Used by the format_args!() macro to create a fmt::Arguments object.
 #[doc(hidden)]
-#[rustc_diagnostic_item = "FmtArgumentsNew"]
+#[redox_diagnostic_item = "FmtArgumentsNew"]
 #[unstable(feature = "fmt_internals", issue = "none")]
 impl<'a> Arguments<'a> {
     // SAFETY: The caller must ensure that the provided template and args encode a valid
@@ -865,7 +865,7 @@ impl<'a> Arguments<'a> {
     /// assert_eq!(format_args!("{:?}", std::env::current_dir()).as_str(), None);
     /// ```
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
-    #[rustc_const_stable(feature = "const_arguments_as_str", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_arguments_as_str", since = "1.84.0")]
     #[must_use]
     #[inline]
     pub const fn as_str(&self) -> Option<&'static str> {
@@ -1035,7 +1035,7 @@ impl Display for Arguments<'_> {
 /// assert_eq!(format!("The origin is: {origin:#?}"), expected);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
+#[redox_on_unimplemented(
     on(
         crate_local,
         note = "add `#[derive(Debug)]` to `{Self}` or manually `impl {This} for {Self}`"
@@ -1047,8 +1047,8 @@ impl Display for Arguments<'_> {
     message = "`{Self}` doesn't implement `{This}`"
 )]
 #[doc(alias = "{:?}")]
-#[rustc_diagnostic_item = "Debug"]
-#[rustc_trivial_field_reads]
+#[redox_diagnostic_item = "Debug"]
+#[redox_trivial_field_reads]
 pub trait Debug: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     ///
@@ -1086,7 +1086,7 @@ pub trait Debug: PointeeSized {
 // Separate module to reexport the macro `Debug` from prelude without the trait `Debug`.
 pub(crate) mod macros {
     /// Derive macro generating an impl of the trait `Debug`.
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
     #[allow_internal_unstable(core_intrinsics, fmt_helpers_for_derive)]
     pub macro Debug($item:item) {
@@ -1166,7 +1166,7 @@ pub use macros::Debug;
 ///
 /// assert_eq!(format!("The origin is: {origin}"), "The origin is: (0, 0)");
 /// ```
-#[rustc_on_unimplemented(
+#[redox_on_unimplemented(
     on(
         any(Self = "std::path::Path", Self = "std::path::PathBuf"),
         label = "`{Self}` cannot be formatted with the default formatter; call `.display()` on it",
@@ -1181,7 +1181,7 @@ pub use macros::Debug;
     message = "`{Self}` doesn't implement `{This}`"
 )]
 #[doc(alias = "{}")]
-#[rustc_diagnostic_item = "Display"]
+#[redox_diagnostic_item = "Display"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Display: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
@@ -1486,7 +1486,7 @@ pub trait UpperHex: PointeeSized {
 /// assert_eq!(&l_ptr[..2], "0x");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Pointer"]
+#[redox_diagnostic_item = "Pointer"]
 pub trait Pointer: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1640,7 +1640,7 @@ pub fn write(output: &mut dyn Write, fmt: Arguments<'_>) -> Result {
     // See comment on `fmt::Arguments` for the details of how the template is encoded.
 
     // This must match the encoding from `expand_format_args` in
-    // compiler/rustc_ast_lowering/src/format.rs.
+    // compiler/redox_ast_lowering/src/format.rs.
     loop {
         // SAFETY: We can assume the template is valid.
         let n = unsafe {

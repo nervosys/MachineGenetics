@@ -2,13 +2,13 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_lint_allowed;
 use itertools::Itertools;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
-use rustc_hir::{BlockCheckMode, Expr, ExprKind, HirId, Stmt, UnsafeSource, find_attr};
-use rustc_lint::{LateContext, LateLintPass, Level, LintContext};
-use rustc_middle::lint::LevelAndSource;
-use rustc_session::impl_lint_pass;
-use rustc_span::{Span, SyntaxContext};
+use redox_hir::def_id::LocalDefId;
+use redox_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
+use redox_hir::{BlockCheckMode, Expr, ExprKind, HirId, Stmt, UnsafeSource, find_attr};
+use redox_lint::{LateContext, LateLintPass, Level, LintContext};
+use redox_middle::lint::LevelAndSource;
+use redox_session::impl_lint_pass;
+use redox_span::{Span, SyntaxContext};
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 
@@ -213,7 +213,7 @@ impl<'tcx> Visitor<'tcx> for BodyVisitor<'_, 'tcx> {
 }
 
 impl<'tcx> LateLintPass<'tcx> for ExprMetavarsInUnsafe {
-    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &rustc_hir::Body<'tcx>) {
+    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &redox_hir::Body<'tcx>) {
         if is_lint_allowed(cx, MACRO_METAVARS_IN_UNSAFE, body.value.hir_id) {
             return;
         }

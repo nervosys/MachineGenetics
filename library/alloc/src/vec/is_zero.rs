@@ -3,7 +3,7 @@ use core::num::{NonZero, Saturating, Wrapping};
 
 use crate::boxed::Box;
 
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 pub(super) unsafe trait IsZero {
     /// Whether this value's representation is all zeros,
     /// or can be represented with all zeroes.
@@ -184,7 +184,7 @@ macro_rules! impl_is_zero_option_of_bool {
             #[inline]
             fn is_zero(&self) -> bool {
                 // SAFETY: This is *not* a stable layout guarantee, but
-                // inside `core` we're allowed to rely on the current rustc
+                // inside `core` we're allowed to rely on the current redox
                 // behavior that options of bools will be one byte with
                 // no padding, so long as they're nested less than 254 deep.
                 let raw: u8 = unsafe { core::mem::transmute(*self) };

@@ -1,5 +1,5 @@
 //@ known-bug: #118784
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 
 use std::collections::HashMap;
 

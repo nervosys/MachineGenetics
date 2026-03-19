@@ -188,9 +188,9 @@ mod uninit;
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "clone"]
-#[rustc_diagnostic_item = "Clone"]
-#[rustc_trivial_field_reads]
-#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+#[redox_diagnostic_item = "Clone"]
+#[redox_trivial_field_reads]
+#[redox_const_unstable(feature = "const_clone", issue = "142757")]
 pub const trait Clone: Sized {
     /// Returns a duplicate of the value.
     ///
@@ -268,14 +268,14 @@ pub const trait Clone: Sized {
     reason = "this isn't part of any API guarantee",
     issue = "none"
 )]
-#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+#[redox_const_unstable(feature = "const_clone", issue = "142757")]
 #[lang = "trivial_clone"]
 // SAFETY:
 // It is sound to specialize on this because the `clone` implementation cannot be
 // lifetime-dependent. Therefore, if `TrivialClone` is implemented for any lifetime,
 // its invariant holds whenever `Clone` is implemented, even if the actual
 // `TrivialClone` bound would not be satisfied because of lifetime bounds.
-#[rustc_unsafe_specialization_marker]
+#[redox_unsafe_specialization_marker]
 // If `#[derive(Clone, Clone, Copy)]` is written, there will be multiple
 // implementations of `TrivialClone`. To keep it from appearing in error
 // messages, make it a `#[marker]` trait.
@@ -283,7 +283,7 @@ pub const trait Clone: Sized {
 pub const unsafe trait TrivialClone: [const] Clone {}
 
 /// Derive macro generating an impl of the trait `Clone`.
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics, derive_clone_copy_internals, trivial_clone)]
 pub macro Clone($item:item) {
@@ -599,7 +599,7 @@ unsafe impl CloneToUninit for crate::bstr::ByteStr {
 ///
 /// Implementations that cannot be described in Rust
 /// are implemented in `traits::SelectionContext::copy_clone_conditions()`
-/// in `rustc_trait_selection`.
+/// in `redox_trait_selection`.
 mod impls {
     use super::TrivialClone;
     use crate::marker::PointeeSized;
@@ -608,7 +608,7 @@ mod impls {
         ($($t:ty)*) => {
             $(
                 #[stable(feature = "rust1", since = "1.0.0")]
-                #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+                #[redox_const_unstable(feature = "const_clone", issue = "142757")]
                 impl const Clone for $t {
                     #[inline(always)]
                     fn clone(&self) -> Self {
@@ -618,7 +618,7 @@ mod impls {
 
                 #[doc(hidden)]
                 #[unstable(feature = "trivial_clone", issue = "none")]
-                #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+                #[redox_const_unstable(feature = "const_clone", issue = "142757")]
                 unsafe impl const TrivialClone for $t {}
             )*
         }
@@ -632,7 +632,7 @@ mod impls {
     }
 
     #[unstable(feature = "never_type", issue = "35121")]
-    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    #[redox_const_unstable(feature = "const_clone", issue = "142757")]
     impl const Clone for ! {
         #[inline]
         fn clone(&self) -> Self {
@@ -642,11 +642,11 @@ mod impls {
 
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
-    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    #[redox_const_unstable(feature = "const_clone", issue = "142757")]
     unsafe impl const TrivialClone for ! {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    #[redox_const_unstable(feature = "const_clone", issue = "142757")]
     impl<T: PointeeSized> const Clone for *const T {
         #[inline(always)]
         fn clone(&self) -> Self {
@@ -656,11 +656,11 @@ mod impls {
 
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
-    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    #[redox_const_unstable(feature = "const_clone", issue = "142757")]
     unsafe impl<T: PointeeSized> const TrivialClone for *const T {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    #[redox_const_unstable(feature = "const_clone", issue = "142757")]
     impl<T: PointeeSized> const Clone for *mut T {
         #[inline(always)]
         fn clone(&self) -> Self {
@@ -670,15 +670,15 @@ mod impls {
 
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
-    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    #[redox_const_unstable(feature = "const_clone", issue = "142757")]
     unsafe impl<T: PointeeSized> const TrivialClone for *mut T {}
 
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    #[redox_const_unstable(feature = "const_clone", issue = "142757")]
     impl<T: PointeeSized> const Clone for &T {
         #[inline(always)]
-        #[rustc_diagnostic_item = "noop_method_clone"]
+        #[redox_diagnostic_item = "noop_method_clone"]
         fn clone(&self) -> Self {
             self
         }
@@ -686,7 +686,7 @@ mod impls {
 
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
-    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    #[redox_const_unstable(feature = "const_clone", issue = "142757")]
     unsafe impl<T: PointeeSized> const TrivialClone for &T {}
 
     /// Shared references can be cloned, but mutable references *cannot*!

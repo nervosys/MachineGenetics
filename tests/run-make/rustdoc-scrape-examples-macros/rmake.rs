@@ -1,6 +1,6 @@
 //@ ignore-cross-compile
 
-use run_make_support::{htmldocck, rust_lib_name, rustc, rustdoc};
+use run_make_support::{htmldocck, rust_lib_name, redox, rustdoc};
 
 fn main() {
     let out_dir = "rustdoc";
@@ -8,7 +8,7 @@ fn main() {
     let proc_crate_name = "foobar_macro";
     let crate_name = "foobar";
 
-    let dylib_name = rustc()
+    let dylib_name = redox()
         .crate_name(proc_crate_name)
         .crate_type("dylib")
         .print("file-names")
@@ -16,14 +16,14 @@ fn main() {
         .run()
         .stdout_utf8();
 
-    rustc()
+    redox()
         .input("src/proc.rs")
         .crate_name(proc_crate_name)
         .edition("2024")
         .crate_type("proc-macro")
         .emit("dep-info,link")
         .run();
-    rustc()
+    redox()
         .input("src/lib.rs")
         .crate_name(crate_name)
         .edition("2024")

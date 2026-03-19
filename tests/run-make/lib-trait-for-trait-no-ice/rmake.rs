@@ -9,9 +9,9 @@
 
 use std::path::Path;
 
-use run_make_support::{rust_lib_name, rustc};
+use run_make_support::{rust_lib_name, redox};
 
 fn main() {
-    rustc().input("foo.rs").crate_type("lib").run();
+    redox().input("foo.rs").crate_type("lib").run();
     assert!(Path::new(&rust_lib_name("foo")).exists());
 }

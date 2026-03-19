@@ -5,13 +5,13 @@ use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::SpanRangeExt;
-use rustc_errors::Applicability;
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{BinOpKind, Constness, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
-use rustc_middle::ty::TyCtxt;
-use rustc_session::impl_lint_pass;
+use redox_errors::Applicability;
+use redox_hir::def::DefKind;
+use redox_hir::def_id::DefId;
+use redox_hir::{BinOpKind, Constness, Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass, Lint, LintContext};
+use redox_middle::ty::TyCtxt;
+use redox_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

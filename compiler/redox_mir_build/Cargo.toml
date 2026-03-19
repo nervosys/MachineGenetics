@@ -1,0 +1,26 @@
+[package]
+name = "redox_mir_build"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+itertools = "0.12"
+redox_abi = { path = "../redox_abi" }
+redox_apfloat = "0.2.0"
+redox_arena = { path = "../redox_arena" }
+redox_ast = { path = "../redox_ast" }
+redox_data_structures = { path = "../redox_data_structures" }
+redox_errors = { path = "../redox_errors" }
+redox_hir = { path = "../redox_hir" }
+redox_index = { path = "../redox_index" }
+redox_infer = { path = "../redox_infer" }
+redox_lint = { path = "../redox_lint" }
+redox_macros = { path = "../redox_macros" }
+redox_middle = { path = "../redox_middle" }
+redox_pattern_analysis = { path = "../redox_pattern_analysis" }
+redox_session = { path = "../redox_session" }
+redox_span = { path = "../redox_span" }
+redox_trait_selection = { path = "../redox_trait_selection" }
+tracing = "0.1"
+# tidy-alphabetical-end

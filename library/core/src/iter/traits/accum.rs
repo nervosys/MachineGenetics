@@ -49,7 +49,7 @@ macro_rules! integer_sum_product {
             fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
                 iter.fold(
                     $zero,
-                    #[rustc_inherit_overflow_checks]
+                    #[redox_inherit_overflow_checks]
                     |a, b| a + b,
                 )
             }
@@ -60,7 +60,7 @@ macro_rules! integer_sum_product {
             fn product<I: Iterator<Item=Self>>(iter: I) -> Self {
                 iter.fold(
                     $one,
-                    #[rustc_inherit_overflow_checks]
+                    #[redox_inherit_overflow_checks]
                     |a, b| a * b,
                 )
             }
@@ -71,7 +71,7 @@ macro_rules! integer_sum_product {
             fn sum<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
                 iter.fold(
                     $zero,
-                    #[rustc_inherit_overflow_checks]
+                    #[redox_inherit_overflow_checks]
                     |a, b| a + b,
                 )
             }
@@ -82,7 +82,7 @@ macro_rules! integer_sum_product {
             fn product<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
                 iter.fold(
                     $one,
-                    #[rustc_inherit_overflow_checks]
+                    #[redox_inherit_overflow_checks]
                     |a, b| a * b,
                 )
             }
@@ -160,7 +160,7 @@ macro_rules! float_sum_product {
             fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
                 iter.fold(
                     -0.0,
-                    #[rustc_inherit_overflow_checks]
+                    #[redox_inherit_overflow_checks]
                     |a, b| a + b,
                 )
             }
@@ -171,7 +171,7 @@ macro_rules! float_sum_product {
             fn product<I: Iterator<Item=Self>>(iter: I) -> Self {
                 iter.fold(
                     1.0,
-                    #[rustc_inherit_overflow_checks]
+                    #[redox_inherit_overflow_checks]
                     |a, b| a * b,
                 )
             }
@@ -182,7 +182,7 @@ macro_rules! float_sum_product {
             fn sum<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
                 iter.fold(
                     -0.0,
-                    #[rustc_inherit_overflow_checks]
+                    #[redox_inherit_overflow_checks]
                     |a, b| a + b,
                 )
             }
@@ -193,7 +193,7 @@ macro_rules! float_sum_product {
             fn product<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
                 iter.fold(
                     1.0,
-                    #[rustc_inherit_overflow_checks]
+                    #[redox_inherit_overflow_checks]
                     |a, b| a * b,
                 )
             }

@@ -2,9 +2,9 @@
 
 use std::mem;
 
-use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_hir::find_attr;
-use rustc_middle::ty::TyCtxt;
+use redox_hir::def_id::{CRATE_DEF_ID, LocalDefId};
+use redox_hir::find_attr;
+use redox_middle::ty::TyCtxt;
 use tracing::debug;
 
 use crate::clean::utils::inherits_doc_hidden;

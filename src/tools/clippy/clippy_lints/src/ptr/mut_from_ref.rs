@@ -1,11 +1,11 @@
 use super::MUT_FROM_REF;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::visitors::contains_unsafe_block;
-use rustc_errors::MultiSpan;
-use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, Body, FnRetTy, FnSig, GenericArg, Lifetime, Mutability, TyKind};
-use rustc_lint::LateContext;
-use rustc_span::Span;
+use redox_errors::MultiSpan;
+use redox_hir::intravisit::Visitor;
+use redox_hir::{self as hir, Body, FnRetTy, FnSig, GenericArg, Lifetime, Mutability, TyKind};
+use redox_lint::LateContext;
+use redox_span::Span;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Option<&Body<'tcx>>) {
     let FnRetTy::Return(ty) = sig.decl.output else { return };

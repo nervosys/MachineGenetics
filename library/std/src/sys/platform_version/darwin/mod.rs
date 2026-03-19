@@ -57,8 +57,8 @@ fn pack_i32_os_version(major: i32, minor: i32, patch: i32) -> OSVersion {
 /// We choose to not do that, and instead follow Apple's behaviour here, and return 10.16 when
 /// compiled with an older SDK; the user should instead upgrade their tooling.
 ///
-/// NOTE: `rustc` currently doesn't set the right SDK version when linking with ld64, so this will
-/// have the wrong behaviour with `-Clinker=ld` on x86_64. But that's a `rustc` bug:
+/// NOTE: `redox` currently doesn't set the right SDK version when linking with ld64, so this will
+/// have the wrong behaviour with `-Clinker=ld` on x86_64. But that's a `redox` bug:
 /// <https://github.com/rust-lang/rust/issues/129432>
 #[inline]
 fn current_version() -> OSVersion {
@@ -184,7 +184,7 @@ fn version_from_sysctl() -> Option<OSVersion> {
 /// `$IPHONE_SIMULATOR_ROOT/System/Library/CoreServices/SystemVersion.plist` on the simulator.
 ///
 /// This file was introduced in macOS 10.3, which is well below the minimum supported version by
-/// `rustc`, which is (at the time of writing) macOS 10.12.
+/// `redox`, which is (at the time of writing) macOS 10.12.
 ///
 /// # Implementation
 ///

@@ -1,11 +1,11 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 pub struct BTreeSet;
 
 impl BTreeSet {
-    #[rustc_confusables("push", "test_b")]
+    #[redox_confusables("push", "test_b")]
     pub fn insert(&self) {}
 
-    #[rustc_confusables("pulled")]
+    #[redox_confusables("pulled")]
     pub fn pull(&self) {}
 }

@@ -4,21 +4,21 @@
 //! Expansion, and Definition Contexts,” *Journal of Functional Programming* 22, no. 2
 //! (March 1, 2012): 181–216, <https://doi.org/10.1017/S0956796812000093>.
 //!
-//! Also see <https://rustc-dev-guide.rust-lang.org/macro-expansion.html#hygiene-and-hierarchies>
+//! Also see <https://redox-dev-guide.rust-lang.org/macro-expansion.html#hygiene-and-hierarchies>
 //!
 //! # The Expansion Order Hierarchy
 //!
-//! `ExpnData` in rustc, rust-analyzer's version is `MacroCallLoc`. Traversing the hierarchy
+//! `ExpnData` in redox, rust-analyzer's version is `MacroCallLoc`. Traversing the hierarchy
 //! upwards can be achieved by walking up `MacroCallLoc::kind`'s contained file id, as
 //! `MacroFile`s are interned `MacroCallLoc`s.
 //!
 //! # The Macro Definition Hierarchy
 //!
-//! `SyntaxContextData` in rustc and rust-analyzer. Basically the same in both.
+//! `SyntaxContextData` in redox and rust-analyzer. Basically the same in both.
 //!
 //! # The Call-site Hierarchy
 //!
-//! `ExpnData::call_site` in rustc, `MacroCallLoc::call_site` in rust-analyzer.
+//! `ExpnData::call_site` in redox, `MacroCallLoc::call_site` in rust-analyzer.
 use crate::Edition;
 use std::fmt;
 

@@ -9,7 +9,7 @@
 #![feature(strict_provenance_lints)]
 //~^ ERROR too many leading `super` keywords [E0433]
 //~| ERROR cannot find type `Ts` in this scope [E0425]
-//~| ERROR `#[prelude_import]` is for use by rustc only [E0658]
+//~| ERROR `#[prelude_import]` is for use by redox only [E0658]
 //~| WARN strict provenance disallows casting integer `usize` to pointer `*const u32`
 #![core::contracts::ensures(|ret| ret.is_none_or(Stars::is_valid))]
 //~^ ERROR use of unstable library feature `contracts` [E0658]

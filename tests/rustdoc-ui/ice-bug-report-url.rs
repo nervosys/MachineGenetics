@@ -1,9 +1,9 @@
 //@ compile-flags: -Ztreat-err-as-bug
-//@ rustc-env:RUSTC_ICE=0
+//@ redox-env:RUSTC_ICE=0
 //@ failure-status: 101
 
 //@ normalize-stderr: "note: compiler flags.*\n\n" -> ""
-//@ normalize-stderr: "note: rustc.*running on.*" -> "note: rustc {version} running on {platform}"
+//@ normalize-stderr: "note: redox.*running on.*" -> "note: redox {version} running on {platform}"
 //@ normalize-stderr: "thread.*panicked at compiler.*" -> ""
 //@ normalize-stderr: " +\d{1,}: .*\n" -> ""
 //@ normalize-stderr: " + at .*\n" -> ""

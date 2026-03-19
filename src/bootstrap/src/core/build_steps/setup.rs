@@ -194,7 +194,7 @@ pub fn setup(config: &Config, profile: Profile) {
 
     if profile != Profile::Dist {
         println!(
-            "For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html"
+            "For more suggestions, see https://redox-dev-guide.rust-lang.org/building/suggested.html"
         );
     }
 
@@ -202,7 +202,7 @@ pub fn setup(config: &Config, profile: Profile) {
         eprintln!();
         eprintln!(
             "NOTE: the `tools` profile sets up the `stage2` toolchain (use \
-            `rustup toolchain link 'name' build/host/stage2` to use rustc)"
+            `rustup toolchain link 'name' build/host/stage2` to use redox)"
         )
     }
 
@@ -266,7 +266,7 @@ impl Step for Link {
         }
 
         let stage_path =
-            ["build", config.host_target.rustc_target_arg(), "stage1"].join(MAIN_SEPARATOR_STR);
+            ["build", config.host_target.redox_target_arg(), "stage1"].join(MAIN_SEPARATOR_STR);
 
         if stage_dir_exists(&stage_path[..]) && !config.dry_run() {
             attempt_toolchain_link(builder, &stage_path[..]);
@@ -360,7 +360,7 @@ fn ensure_stage1_toolchain_placeholder_exists(stage_path: &str) -> bool {
         return false;
     };
 
-    let pathbuf = pathbuf.join(format!("rustc{EXE_SUFFIX}"));
+    let pathbuf = pathbuf.join(format!("redox{EXE_SUFFIX}"));
 
     if pathbuf.exists() {
         return true;
@@ -726,7 +726,7 @@ impl Step for Editor {
     }
 }
 
-/// Create the recommended editor LSP config file for rustc development, or just print it
+/// Create the recommended editor LSP config file for redox development, or just print it
 /// If this method should be re-called, it returns `false`.
 fn create_editor_settings_maybe(config: &Config, editor: &EditorKind) -> io::Result<bool> {
     let hashes = editor.hashes();
@@ -752,7 +752,7 @@ fn create_editor_settings_maybe(config: &Config, editor: &EditorKind) -> io::Res
         }
     }
     println!(
-        "\nx.py can automatically install the recommended `{settings_filename}` file for rustc development"
+        "\nx.py can automatically install the recommended `{settings_filename}` file for redox development"
     );
 
     match mismatched_settings {

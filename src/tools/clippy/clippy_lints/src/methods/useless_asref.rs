@@ -3,13 +3,13 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, peel_and_count_ty_refs, should_call_clone_as_function};
 use clippy_utils::{get_parent_expr, peel_blocks, strip_pat_refs};
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{self as hir, LangItem, Node};
-use rustc_lint::LateContext;
-use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
-use rustc_middle::ty::{Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_span::{Span, Symbol, sym};
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::{self as hir, LangItem, Node};
+use redox_lint::LateContext;
+use redox_middle::ty::adjustment::{Adjust, DerefAdjustKind};
+use redox_middle::ty::{Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use redox_span::{Span, Symbol, sym};
 
 use core::ops::ControlFlow;
 

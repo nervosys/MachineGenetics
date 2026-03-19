@@ -2,9 +2,9 @@
 //@ edition:2021
 //@ aux-build:non_local_macro.rs
 //
-// To suggest any Cargo specific help/note rustc wants
+// To suggest any Cargo specific help/note redox wants
 // the `CARGO_CRATE_NAME` env to be set, so we set it
-//@ rustc-env:CARGO_CRATE_NAME=non_local_def
+//@ redox-env:CARGO_CRATE_NAME=non_local_def
 //
 // and since we specifically want to check the presence
 // of the `cargo update` suggestion we assert it here.

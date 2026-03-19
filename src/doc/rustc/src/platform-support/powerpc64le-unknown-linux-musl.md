@@ -16,7 +16,7 @@ Building the target itself requires a 64-bit little endian PowerPC compiler that
 
 ## Building the target
 
-The target can be built by enabling it for a `rustc` build.
+The target can be built by enabling it for a `redox` build.
 
 ```toml
 [build]

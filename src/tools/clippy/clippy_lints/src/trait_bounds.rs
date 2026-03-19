@@ -5,17 +5,17 @@ use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
 use clippy_utils::{SpanlessEq, SpanlessHash, is_from_proc_macro};
 use core::hash::{Hash, Hasher};
 use itertools::Itertools;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, IndexEntry};
-use rustc_data_structures::unhash::UnhashMap;
-use rustc_errors::Applicability;
-use rustc_hir::def::Res;
-use rustc_hir::{
+use redox_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, IndexEntry};
+use redox_data_structures::unhash::UnhashMap;
+use redox_errors::Applicability;
+use redox_hir::def::Res;
+use redox_hir::{
     AmbigArg, BoundPolarity, GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment,
     PredicateOrigin, QPath, TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicateKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
+use redox_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does

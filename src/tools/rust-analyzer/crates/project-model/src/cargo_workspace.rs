@@ -7,7 +7,7 @@ use base_db::Env;
 use cargo_metadata::{CargoOpt, MetadataCommand, PackageId};
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use serde_derive::Deserialize;
 use serde_json::from_value;
 use span::Edition;
@@ -43,7 +43,7 @@ pub struct CargoWorkspace {
     /// Environment variables set in the `.cargo/config` file and the extraEnv
     /// configuration option.
     env: Env,
-    requires_rustc_private: bool,
+    requires_redox_private: bool,
 }
 
 impl ops::Index<Package> for CargoWorkspace {
@@ -60,12 +60,12 @@ impl ops::Index<Target> for CargoWorkspace {
     }
 }
 
-/// Describes how to set the rustc source directory.
+/// Describes how to set the redox source directory.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RustLibSource {
-    /// Explicit path for the rustc source directory.
+    /// Explicit path for the redox source directory.
     Path(AbsPathBuf),
-    /// Try to automatically detect where the rustc source directory is.
+    /// Try to automatically detect where the redox source directory is.
     Discover,
 }
 
@@ -115,18 +115,18 @@ pub struct CargoConfig {
     pub all_targets: bool,
     /// List of features to activate.
     pub features: CargoFeatures,
-    /// rustc target
+    /// redox target
     pub target: Option<String>,
     /// Sysroot loading behavior
     pub sysroot: Option<RustLibSource>,
     pub sysroot_src: Option<AbsPathBuf>,
-    /// rustc private crate source
-    pub rustc_source: Option<RustLibSource>,
+    /// redox private crate source
+    pub redox_source: Option<RustLibSource>,
     /// Extra includes to add to the VFS.
     pub extra_includes: Vec<AbsPathBuf>,
     pub cfg_overrides: CfgOverrides,
     /// Invoke `cargo check` through the RUSTC_WRAPPER.
-    pub wrap_rustc_in_build_scripts: bool,
+    pub wrap_redox_in_build_scripts: bool,
     /// The command to run instead of `cargo check` for building build scripts.
     pub run_build_script_command: Option<Vec<String>>,
     /// Extra args to pass to the cargo command.
@@ -197,7 +197,7 @@ pub struct PackageData {
 
 #[derive(Deserialize, Default, Debug, Clone, Eq, PartialEq)]
 pub struct RustAnalyzerPackageMetaData {
-    pub rustc_private: bool,
+    pub redox_private: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -316,13 +316,13 @@ impl TargetKind {
 pub struct CargoMetadataConfig {
     /// List of features to activate.
     pub features: CargoFeatures,
-    /// rustc targets
+    /// redox targets
     pub targets: Vec<String>,
     /// Extra args to pass to the cargo command.
     pub extra_args: Vec<String>,
     /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, Option<String>>,
-    /// What kind of metadata are we fetching: workspace, rustc, or sysroot.
+    /// What kind of metadata are we fetching: workspace, redox, or sysroot.
     pub kind: &'static str,
     /// The toolchain version, if known.
     /// Used to conditionally enable unstable cargo features.
@@ -352,7 +352,7 @@ impl CargoWorkspace {
         let workspace_root = AbsPathBuf::assert(meta.workspace_root);
         let target_directory = AbsPathBuf::assert(meta.target_directory);
         let mut is_virtual_workspace = true;
-        let mut requires_rustc_private = false;
+        let mut requires_redox_private = false;
 
         let mut members = FxHashSet::default();
 
@@ -424,7 +424,7 @@ impl CargoWorkspace {
                 members.insert(pkg);
             }
             let pkg_data = &mut packages[pkg];
-            requires_rustc_private |= pkg_data.metadata.rustc_private;
+            requires_redox_private |= pkg_data.metadata.redox_private;
             pkg_by_id.insert(id, pkg);
             for meta_tgt in meta_targets {
                 let cargo_metadata::Target { name, kind, required_features, src_path, .. } =
@@ -511,7 +511,7 @@ impl CargoWorkspace {
             target_directory,
             manifest_path: ws_manifest_path,
             is_virtual_workspace,
-            requires_rustc_private,
+            requires_redox_private,
             is_sysroot,
             env: cargo_env,
         }
@@ -611,8 +611,8 @@ impl CargoWorkspace {
         self.is_sysroot
     }
 
-    pub fn requires_rustc_private(&self) -> bool {
-        self.requires_rustc_private
+    pub fn requires_redox_private(&self) -> bool {
+        self.requires_redox_private
     }
 }
 

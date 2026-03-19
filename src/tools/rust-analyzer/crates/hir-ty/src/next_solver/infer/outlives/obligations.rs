@@ -1,5 +1,5 @@
 use ena::undo_log::UndoLogs;
-use rustc_type_ir::{OutlivesPredicate, TypeVisitableExt};
+use redox_type_ir::{OutlivesPredicate, TypeVisitableExt};
 use tracing::{debug, instrument};
 
 use crate::next_solver::{

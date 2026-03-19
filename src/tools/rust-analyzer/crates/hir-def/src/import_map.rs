@@ -6,7 +6,7 @@ use base_db::Crate;
 use fst::{Automaton, Streamer, raw::IndexedValue};
 use hir_expand::name::Name;
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
+use redox_hash::FxHashSet;
 use smallvec::SmallVec;
 use span::Edition;
 use stdx::format_to;

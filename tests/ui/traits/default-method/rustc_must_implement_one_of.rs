@@ -1,6 +1,6 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_must_implement_one_of(eq, neq)]
+#[redox_must_implement_one_of(eq, neq)]
 trait Equal {
     fn eq(&self, other: &Self) -> bool {
         !self.neq(other)

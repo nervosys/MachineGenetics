@@ -2,29 +2,29 @@
 //@ pp-exact - Make sure we actually print the attributes
 
 #![allow(non_camel_case_types)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 enum crew_of_enterprise_d {
 
-    #[rustc_dummy]
+    #[redox_dummy]
     jean_luc_picard,
 
-    #[rustc_dummy]
+    #[redox_dummy]
     william_t_riker,
 
-    #[rustc_dummy]
+    #[redox_dummy]
     beverly_crusher,
 
-    #[rustc_dummy]
+    #[redox_dummy]
     deanna_troi,
 
-    #[rustc_dummy]
+    #[redox_dummy]
     data,
 
-    #[rustc_dummy]
+    #[redox_dummy]
     worf,
 
-    #[rustc_dummy]
+    #[redox_dummy]
     geordi_la_forge,
 }
 

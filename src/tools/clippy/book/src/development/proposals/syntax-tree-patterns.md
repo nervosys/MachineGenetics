@@ -459,7 +459,7 @@ proposed solution:
              +---------------+-----------+---------+
              |               |           |         |
              v               v           v         v
-        syntax::ast     rustc::hir      syn       ...
+        syntax::ast     redox::hir      syn       ...
 ```
 
 The pattern syntax described in the previous section is parsed / lowered into

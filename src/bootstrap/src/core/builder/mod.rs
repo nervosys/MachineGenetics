@@ -283,7 +283,7 @@ impl RunConfig<'_> {
 
         let crates = match alias {
             Alias::Library => self.builder.in_tree_crates("sysroot", Some(self.target)),
-            Alias::Compiler => self.builder.in_tree_crates("rustc-main", Some(self.target)),
+            Alias::Compiler => self.builder.in_tree_crates("redox-main", Some(self.target)),
         };
 
         crates.into_iter().map(|krate| krate.name.to_string()).collect()
@@ -706,7 +706,7 @@ impl Step for Libdir {
         if !builder.config.dry_run() {
             // Avoid deleting the `rustlib/` directory we just copied (in `impl Step for
             // Sysroot`).
-            if !builder.download_rustc() {
+            if !builder.download_redox() {
                 let sysroot_target_libdir = sysroot.join(self.target).join("lib");
                 builder.do_if_verbose(|| {
                     eprintln!(
@@ -867,7 +867,7 @@ impl<'a> Builder<'a> {
                 test::CodegenCranelift,
                 test::CodegenGCC,
                 test::Crate,
-                test::CrateLibrustc,
+                test::CrateLibredox,
                 test::CrateRustdoc,
                 test::CrateRustdocJsonTypes,
                 test::CrateBootstrap,
@@ -911,7 +911,7 @@ impl<'a> Builder<'a> {
                 test::BuildStd,
             ),
             Kind::Miri => describe!(test::Crate),
-            Kind::Bench => describe!(test::Crate, test::CrateLibrustc, test::CrateRustdoc),
+            Kind::Bench => describe!(test::Crate, test::CrateLibredox, test::CrateRustdoc),
             Kind::Doc => describe!(
                 doc::UnstableBook,
                 doc::UnstableBookGen,
@@ -979,9 +979,9 @@ impl<'a> Builder<'a> {
             Kind::Install => describe!(
                 install::Docs,
                 install::Std,
-                // During the Rust compiler (rustc) installation process, we copy the entire sysroot binary
+                // During the Rust compiler (redox) installation process, we copy the entire sysroot binary
                 // path (build/host/stage2/bin). Since the building tools also make their copy in the sysroot
-                // binary path, we must install rustc before the tools. Otherwise, the rust-installer will
+                // binary path, we must install redox before the tools. Otherwise, the rust-installer will
                 // install the same binaries twice for each tool, leaving backup files (*.old) as a result.
                 install::Rustc,
                 install::RustcDev,
@@ -1122,9 +1122,9 @@ impl<'a> Builder<'a> {
         cli_paths::match_paths_to_steps_and_run(self, v, paths);
     }
 
-    /// Returns if `std` should be statically linked into `rustc_driver`.
+    /// Returns if `std` should be statically linked into `redox_driver`.
     /// It's currently not done on `windows-gnu` due to linker bugs.
-    pub fn link_std_into_rustc_driver(&self, target: TargetSelection) -> bool {
+    pub fn link_std_into_redox_driver(&self, target: TargetSelection) -> bool {
         !target.triple.ends_with("-windows-gnu")
     }
 
@@ -1150,20 +1150,20 @@ impl<'a> Builder<'a> {
     }
 
     /// This function can be used to provide a build compiler for building
-    /// the standard library, in order to avoid unnecessary rustc builds in case where std uplifting
+    /// the standard library, in order to avoid unnecessary redox builds in case where std uplifting
     /// would happen anyway.
     ///
     /// This is an important optimization mainly for CI.
     ///
-    /// Normally, to build stage N libstd, we need stage N rustc.
+    /// Normally, to build stage N libstd, we need stage N redox.
     /// However, if we know that we will uplift libstd from stage 1 anyway, building the stage N
-    /// rustc can be wasteful.
+    /// redox can be wasteful.
     /// In particular, if we do a cross-compiling dist stage 2 build from target1 to target2,
     /// we need:
-    /// - stage 2 libstd for target2 (uplifted from stage 1, where it was built by target1 rustc)
-    /// - stage 2 rustc for target2
+    /// - stage 2 libstd for target2 (uplifted from stage 1, where it was built by target1 redox)
+    /// - stage 2 redox for target2
     ///
-    /// However, without this optimization, we would also build stage 2 rustc for **target1**,
+    /// However, without this optimization, we would also build stage 2 redox for **target1**,
     /// which is completely wasteful.
     pub fn compiler_for_std(&self, stage: u32) -> Compiler {
         if compile::Std::should_be_uplifted_from_stage_1(self, stage) {
@@ -1303,9 +1303,9 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     ///
     /// For example this returns `<sysroot>/lib` on Unix and `<sysroot>/bin` on
     /// Windows.
-    pub fn rustc_libdir(&self, compiler: Compiler) -> PathBuf {
+    pub fn redox_libdir(&self, compiler: Compiler) -> PathBuf {
         if compiler.is_snapshot(self) {
-            self.rustc_snapshot_libdir()
+            self.redox_snapshot_libdir()
         } else {
             match self.config.libdir_relative() {
                 Some(relative_libdir) if compiler.stage >= 1 => {
@@ -1344,8 +1344,8 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         }
     }
 
-    pub fn rustc_lib_paths(&self, compiler: Compiler) -> Vec<PathBuf> {
-        let mut dylib_dirs = vec![self.rustc_libdir(compiler)];
+    pub fn redox_lib_paths(&self, compiler: Compiler) -> Vec<PathBuf> {
+        let mut dylib_dirs = vec![self.redox_libdir(compiler)];
 
         // Ensure that the downloaded LLVM libraries can be found.
         if self.config.llvm_from_ci {
@@ -1358,7 +1358,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
 
     /// Adds the compiler's directory of dynamic libraries to `cmd`'s dynamic
     /// library lookup path.
-    pub fn add_rustc_lib_path(&self, compiler: Compiler, cmd: &mut BootstrapCommand) {
+    pub fn add_redox_lib_path(&self, compiler: Compiler, cmd: &mut BootstrapCommand) {
         // Windows doesn't need dylib path munging because the dlls for the
         // compiler live next to the compiler and the system will find them
         // automatically.
@@ -1366,23 +1366,23 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
             return;
         }
 
-        add_dylib_path(self.rustc_lib_paths(compiler), cmd);
+        add_dylib_path(self.redox_lib_paths(compiler), cmd);
     }
 
     /// Gets a path to the compiler specified.
-    pub fn rustc(&self, compiler: Compiler) -> PathBuf {
+    pub fn redox(&self, compiler: Compiler) -> PathBuf {
         if compiler.is_snapshot(self) {
-            self.initial_rustc.clone()
+            self.initial_redox.clone()
         } else {
-            self.sysroot(compiler).join("bin").join(exe("rustc", compiler.host))
+            self.sysroot(compiler).join("bin").join(exe("redox", compiler.host))
         }
     }
 
     /// Gets a command to run the compiler specified, including the dynamic library
     /// path in case the executable has not been build with `rpath` enabled.
-    pub fn rustc_cmd(&self, compiler: Compiler) -> BootstrapCommand {
-        let mut cmd = command(self.rustc(compiler));
-        self.add_rustc_lib_path(compiler, &mut cmd);
+    pub fn redox_cmd(&self, compiler: Compiler) -> BootstrapCommand {
+        let mut cmd = command(self.redox(compiler));
+        self.add_redox_lib_path(compiler, &mut cmd);
         cmd
     }
 
@@ -1420,11 +1420,11 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         // in `tool::ToolBuild` step, so they match the Miri we just built. However this means they
         // are actually living one stage up, i.e. we are running `stage1-tools-bin/miri` with the
         // libraries in `stage1/lib`. This is an unfortunate off-by-1 caused (possibly) by the fact
-        // that Miri doesn't have an "assemble" step like rustc does that would cross the stage boundary.
-        // We can't use `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries
+        // that Miri doesn't have an "assemble" step like redox does that would cross the stage boundary.
+        // We can't use `add_redox_lib_path` as that's a NOP on Windows but we do need these libraries
         // added to the PATH due to the stage mismatch.
         // Also see https://github.com/rust-lang/rust/pull/123192#issuecomment-2028901503.
-        add_dylib_path(self.rustc_lib_paths(run_compiler), &mut cmd);
+        add_dylib_path(self.redox_lib_paths(run_compiler), &mut cmd);
         cmd
     }
 
@@ -1464,8 +1464,8 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
             .env("RUSTC_SYSROOT", self.sysroot(compiler))
             // Note that this is *not* the sysroot_libdir because rustdoc must be linked
-            // equivalently to rustc.
-            .env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler))
+            // equivalently to redox.
+            .env("RUSTDOC_LIBDIR", self.redox_libdir(compiler))
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
             .env("RUSTDOC_REAL", self.rustdoc_for_compiler(compiler))
             .env("RUSTC_BOOTSTRAP", "1");

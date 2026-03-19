@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_ast::attr::AttributeExt as _;
-use rustc_ast::token::{CommentKind, DocFragmentKind};
-use rustc_errors::Applicability;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{AttrStyle, Attribute};
-use rustc_lint::{LateContext, LintContext};
+use redox_ast::attr::AttributeExt as _;
+use redox_ast::token::{CommentKind, DocFragmentKind};
+use redox_errors::Applicability;
+use redox_hir::attrs::AttributeKind;
+use redox_hir::{AttrStyle, Attribute};
+use redox_lint::{LateContext, LintContext};
 
 use std::ops::Range;
 

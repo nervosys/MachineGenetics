@@ -19,10 +19,10 @@
 //! [RFC]: <https://github.com/rust-lang/rfcs/pull/2256>
 //! [Swift]: <https://github.com/apple/swift/blob/13d593df6f359d0cb2fc81cfaac273297c539455/lib/Syntax/README.md>
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
 mod parsing;
 mod ptr;
@@ -62,7 +62,7 @@ pub use rowan::{
     Direction, GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent,
     api::Preorder,
 };
-pub use rustc_literal_escaper as unescape;
+pub use redox_literal_escaper as unescape;
 pub use smol_str::{SmolStr, SmolStrBuilder, ToSmolStr, format_smolstr};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of

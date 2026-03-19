@@ -1,9 +1,9 @@
 //! A set of high-level utility fixture methods to use in tests.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
 use std::{any::TypeId, mem, str::FromStr, sync};
 

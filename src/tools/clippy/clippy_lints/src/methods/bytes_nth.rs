@@ -2,9 +2,9 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sym;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, LangItem};
-use rustc_lint::LateContext;
+use redox_errors::Applicability;
+use redox_hir::{Expr, LangItem};
+use redox_lint::LateContext;
 
 use crate::methods::method_call;
 

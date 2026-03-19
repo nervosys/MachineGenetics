@@ -22,7 +22,7 @@ use hir_ty::{
     next_solver::ClauseKind,
 };
 use itertools::Itertools;
-use rustc_type_ir::inherent::IntoKind;
+use redox_type_ir::inherent::IntoKind;
 
 use crate::{
     Adt, AnyFunctionId, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Crate, Enum,

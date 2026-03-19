@@ -5,5 +5,5 @@
 
 //~? ERROR unknown print request: `lints`
 //~? HELP use `-Whelp` to print a list of lints
-//~? HELP for more information, see the rustc book
+//~? HELP for more information, see the redox book
 //~? HELP valid print requests are

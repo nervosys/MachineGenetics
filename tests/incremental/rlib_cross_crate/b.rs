@@ -9,19 +9,19 @@
 //@ compile-flags: -Z query-dep-graph
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 extern crate a;
 
-#[rustc_clean(except="typeck,optimized_mir", cfg="rpass2")]
-#[rustc_clean(cfg="rpass3")]
+#[redox_clean(except="typeck,optimized_mir", cfg="rpass2")]
+#[redox_clean(cfg="rpass3")]
 pub fn use_X() -> u32 {
     let x: a::X = 22;
     x as u32
 }
 
-#[rustc_clean(cfg="rpass2")]
-#[rustc_clean(cfg="rpass3")]
+#[redox_clean(cfg="rpass2")]
+#[redox_clean(cfg="rpass3")]
 pub fn use_Y() {
     let x: a::Y = 'c';
 }

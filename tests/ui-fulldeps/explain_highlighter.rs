@@ -1,12 +1,12 @@
 //@ run-pass
 //@ check-run-results
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 use std::io::Write;
-extern crate rustc_driver;
-extern crate rustc_driver_impl;
+extern crate redox_driver;
+extern crate redox_driver_impl;
 
-use rustc_driver_impl::highlighter::highlight;
+use redox_driver_impl::highlighter::highlight;
 
 const TEST_INPUT: &str = "
 struct Foo;

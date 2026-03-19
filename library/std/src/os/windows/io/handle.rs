@@ -145,7 +145,7 @@ impl BorrowedHandle<'_> {
     ///
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
-    #[rustc_const_stable(feature = "io_safety", since = "1.63.0")]
+    #[redox_const_stable(feature = "io_safety", since = "1.63.0")]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub const unsafe fn borrow_raw(handle: RawHandle) -> Self {
         Self { handle, _phantom: PhantomData }

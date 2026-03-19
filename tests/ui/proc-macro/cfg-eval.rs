@@ -5,7 +5,7 @@
 #![feature(cfg_eval)]
 #![feature(proc_macro_hygiene)]
 #![feature(stmt_expr_attributes)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;
 
@@ -32,6 +32,6 @@ fn main() {
     // turn this into `(#[cfg(true)] 1)`, which is a parenthesized expression, not a tuple
     // expression. `#[cfg]` is not supported inside parenthesized expressions, so this will
     // produce an error when attribute collection runs.
-    let _ = #[cfg_eval] #[print_attr] #[cfg_attr(not(FALSE), rustc_dummy)]
+    let _ = #[cfg_eval] #[print_attr] #[cfg_attr(not(FALSE), redox_dummy)]
     (#[cfg(false)] 0, #[cfg(true)] 1,);
 }

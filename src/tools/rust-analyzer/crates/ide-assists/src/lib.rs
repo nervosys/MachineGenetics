@@ -58,7 +58,7 @@
 //! See also this post:
 //! <https://rust-analyzer.github.io/blog/2020/09/28/how-to-make-a-light-bulb.html>
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 // It's useful to refer to code that is private in doc comments.
 #![allow(rustdoc::private_intra_doc_links)]
 

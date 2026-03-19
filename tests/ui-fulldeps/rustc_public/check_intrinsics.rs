@@ -9,20 +9,20 @@
 //@ ignore-cross-compile
 //@ ignore-remote
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
-extern crate rustc_hir;
+extern crate redox_middle;
+extern crate redox_hir;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
+extern crate redox_driver;
+extern crate redox_interface;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
-use rustc_public::mir::mono::{Instance, InstanceKind};
-use rustc_public::mir::visit::{Location, MirVisitor};
-use rustc_public::mir::{LocalDecl, Terminator, TerminatorKind};
-use rustc_public::ty::{FnDef, GenericArgs, RigidTy, TyKind};
+use redox_public::mir::mono::{Instance, InstanceKind};
+use redox_public::mir::visit::{Location, MirVisitor};
+use redox_public::mir::{LocalDecl, Terminator, TerminatorKind};
+use redox_public::ty::{FnDef, GenericArgs, RigidTy, TyKind};
 use std::assert_matches;
 use std::convert::TryFrom;
 use std::io::Write;
@@ -31,7 +31,7 @@ use std::ops::ControlFlow;
 /// This function tests that we can correctly get type information from binary operations.
 fn test_intrinsics() -> ControlFlow<()> {
     // Find items in the local crate.
-    let main_def = rustc_public::all_local_items()[0];
+    let main_def = redox_public::all_local_items()[0];
     let main_instance = Instance::try_from(main_def).unwrap();
     let main_body = main_instance.body().unwrap();
     let mut visitor = CallsVisitor { locals: main_body.locals(), calls: Default::default() };
@@ -114,7 +114,7 @@ impl<'a> MirVisitor for CallsVisitor<'a> {
 fn main() {
     let path = "binop_input.rs";
     generate_input(&path).unwrap();
-    let args = &["rustc".to_string(), "--crate-type=lib".to_string(), path.to_string()];
+    let args = &["redox".to_string(), "--crate-type=lib".to_string(), path.to_string()];
     run!(args, test_intrinsics).unwrap();
 }
 

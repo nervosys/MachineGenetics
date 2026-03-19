@@ -1,14 +1,14 @@
 #![deny(clippy::outer_expn_expn_data)]
 #![allow(clippy::missing_clippy_version_attribute)]
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_hir;
-extern crate rustc_lint;
-extern crate rustc_middle;
+extern crate redox_hir;
+extern crate redox_lint;
+extern crate redox_middle;
 #[macro_use]
-extern crate rustc_session;
-use rustc_hir::Expr;
-use rustc_lint::{LateContext, LateLintPass};
+extern crate redox_session;
+use redox_hir::Expr;
+use redox_lint::{LateContext, LateLintPass};
 
 declare_lint! {
     pub TEST_LINT,

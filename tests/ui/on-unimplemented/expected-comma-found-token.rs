@@ -1,9 +1,9 @@
 //! Test for invalid MetaItem syntax in the attribute
 
 #![crate_type = "lib"]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_on_unimplemented(
+#[redox_on_unimplemented(
     message="the message"
     label="the label" //~ ERROR expected `,`, found `label`
 )]

@@ -23,7 +23,7 @@
 //@ ignore-cross-compile (linker binary needs to run)
 
 use run_make_support::{
-    bin_name, cwd, diff, is_darwin, is_windows, regex, rfs, run_in_tmpdir, rust_lib_name, rustc,
+    bin_name, cwd, diff, is_darwin, is_windows, regex, rfs, run_in_tmpdir, rust_lib_name, redox,
 };
 
 fn main() {
@@ -75,15 +75,15 @@ fn main() {
     eprintln!("final extern test");
     // Builds should be reproducible when using the --extern flag.
     run_in_tmpdir(|| {
-        rustc().input("reproducible-build-aux.rs").run();
-        rustc()
+        redox().input("reproducible-build-aux.rs").run();
+        redox()
             .input("reproducible-build.rs")
             .crate_type("rlib")
             .extern_("reproducible_build_aux", rust_lib_name("reproducible_build_aux"))
             .run();
         rfs::copy(rust_lib_name("reproducible_build"), rust_lib_name("foo"));
         rfs::copy(rust_lib_name("reproducible_build_aux"), rust_lib_name("bar"));
-        rustc()
+        redox()
             .input("reproducible-build.rs")
             .crate_type("rlib")
             .extern_("reproducible_build_aux", rust_lib_name("bar"))
@@ -95,10 +95,10 @@ fn main() {
 #[track_caller]
 fn smoke_test(flag: Option<SmokeFlag>) {
     run_in_tmpdir(|| {
-        rustc().input("linker.rs").opt().run();
-        rustc().input("reproducible-build-aux.rs").run();
-        let mut compiler1 = rustc();
-        let mut compiler2 = rustc();
+        redox().input("linker.rs").opt().run();
+        redox().input("reproducible-build-aux.rs").run();
+        let mut compiler1 = redox();
+        let mut compiler2 = redox();
         if let Some(flag) = flag {
             match flag {
                 SmokeFlag::Debug => {
@@ -128,8 +128,8 @@ fn smoke_test(flag: Option<SmokeFlag>) {
         {
             // The AIX link command includes an additional argument
             // that specifies the file containing exported symbols, e.g.,
-            // -bE:/tmp/rustcO6hxkY/list.exp. In this example, the part of the
-            // directory name "rustcO6hxkY" is randomly generated to ensure that
+            // -bE:/tmp/redoxO6hxkY/list.exp. In this example, the part of the
+            // directory name "redoxO6hxkY" is randomly generated to ensure that
             // different linking processes do not collide. For the purpose
             // of comparing link arguments, the randomly generated part is
             // replaced with a placeholder.
@@ -139,12 +139,12 @@ fn smoke_test(flag: Option<SmokeFlag>) {
                 std::fs::read_to_string("linker-arguments2").expect("Failed to read file");
 
             // Define the regex for the directory name containing the random substring.
-            let re = regex::Regex::new(r"rustc[a-zA-Z0-9]{6}/list\.exp").expect("Invalid regex");
+            let re = regex::Regex::new(r"redox[a-zA-Z0-9]{6}/list\.exp").expect("Invalid regex");
 
             // Compare link commands with random strings replaced by placeholders.
             assert!(
-                re.replace_all(&content1, "rustcXXXXXX/list.exp").to_string()
-                    == re.replace_all(&content2, "rustcXXXXXX/list.exp").to_string()
+                re.replace_all(&content1, "redoxXXXXXX/list.exp").to_string()
+                    == re.replace_all(&content2, "redoxXXXXXX/list.exp").to_string()
             );
         }
     });
@@ -153,9 +153,9 @@ fn smoke_test(flag: Option<SmokeFlag>) {
 #[track_caller]
 fn paths_test(flag: PathsFlag) {
     run_in_tmpdir(|| {
-        rustc().input("reproducible-build-aux.rs").run();
-        let mut compiler1 = rustc();
-        let mut compiler2 = rustc();
+        redox().input("reproducible-build-aux.rs").run();
+        let mut compiler1 = redox();
+        let mut compiler2 = redox();
         match flag {
             PathsFlag::Link => {
                 compiler1.library_search_path("a");
@@ -177,11 +177,11 @@ fn paths_test(flag: PathsFlag) {
 fn diff_dir_test(crate_type: CrateType, remap_type: RemapType) {
     run_in_tmpdir(|| {
         let base_dir = cwd();
-        rustc().input("reproducible-build-aux.rs").run();
+        redox().input("reproducible-build-aux.rs").run();
         rfs::create_dir("test");
         rfs::copy("reproducible-build.rs", "test/reproducible-build.rs");
-        let mut compiler1 = rustc();
-        let mut compiler2 = rustc();
+        let mut compiler1 = redox();
+        let mut compiler2 = redox();
         match crate_type {
             CrateType::Bin => {
                 compiler1.crate_type("bin");

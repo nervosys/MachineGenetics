@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use run_make_support::{htmldocck, rfs, rustc, rustdoc};
+use run_make_support::{htmldocck, rfs, redox, rustdoc};
 
 pub fn scrape(extra_args_scrape: &[&str], extra_args_doc: &[&str]) {
     let out_dir = Path::new("rustdoc");
@@ -10,7 +10,7 @@ pub fn scrape(extra_args_scrape: &[&str], extra_args_doc: &[&str]) {
         .filter(|path| path.is_file() && path.extension().is_some_and(|ext| ext == "rs"))
         .collect::<Vec<_>>();
 
-    rustc().input("src/lib.rs").crate_name(crate_name).crate_type("lib").emit("metadata").run();
+    redox().input("src/lib.rs").crate_name(crate_name).crate_type("lib").emit("metadata").run();
 
     let mut out_deps = Vec::with_capacity(deps.len());
     for dep in deps {

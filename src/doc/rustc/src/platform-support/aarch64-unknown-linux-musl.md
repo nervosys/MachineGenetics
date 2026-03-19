@@ -16,7 +16,7 @@ that is supported by `cc-rs`.
 
 ## Building the target
 
-The target can be built by enabling it for a `rustc` build.
+The target can be built by enabling it for a `redox` build.
 
 ```toml
 [build]

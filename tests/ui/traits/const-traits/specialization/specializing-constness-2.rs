@@ -1,7 +1,7 @@
-#![feature(const_trait_impl, min_specialization, rustc_attrs)]
+#![feature(const_trait_impl, min_specialization, redox_attrs)]
 #![allow(internal_features)]
 
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 pub const trait Sup {}
 
 impl const Sup for () {}

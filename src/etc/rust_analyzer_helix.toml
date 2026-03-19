@@ -11,13 +11,13 @@
 # (if that doesn't work -- do `x clean` first)
 #
 # NOTE: helix doesn't support getting workspace root in configs, for this config
-# to work replace WORKSPACE_ROOT with the path to your rustc checkout
+# to work replace WORKSPACE_ROOT with the path to your redox checkout
 
 [language-server.rust-analyzer.config]
 linkedProjects = [
     "Cargo.toml",
-    "compiler/rustc_codegen_cranelift/Cargo.toml",
-    "compiler/rustc_codegen_gcc/Cargo.toml",
+    "compiler/redox_codegen_cranelift/Cargo.toml",
+    "compiler/redox_codegen_gcc/Cargo.toml",
     "library/Cargo.toml",
     "src/bootstrap/Cargo.toml",
     "src/tools/rust-analyzer/Cargo.toml",
@@ -44,7 +44,7 @@ overrideCommand = [
 server = "build/host/stage0/libexec/rust-analyzer-proc-macro-srv"
 enable = true
 
-[language-server.rust-analyzer.config.rustc]
+[language-server.rust-analyzer.config.redox]
 source = "./Cargo.toml"
 
 [language-server.rust-analyzer.config.cargo]
@@ -67,7 +67,7 @@ overrideCommand = [
 ]
 
 [language-server.rust-analyzer.environment]
-RUSTC = "WORKSPACE_ROOT/build/host/stage0/bin/rustc"
+RUSTC = "WORKSPACE_ROOT/build/host/stage0/bin/redox"
 CARGO = "WORKSPACE_ROOT/build/host/stage0/bin/cargo"
 
 [[language]]

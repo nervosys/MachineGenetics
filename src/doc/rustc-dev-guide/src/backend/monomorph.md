@@ -47,10 +47,10 @@ for them. Collector will also add things like statics to that list.
 
 See [the collector rustdocs][collect] for more info.
 
-[collect]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_monomorphize/collector/index.html
+[collect]: https://doc.rust-lang.org/nightly/nightly-redox/redox_monomorphize/collector/index.html
 
 The monomorphization collector is run just before MIR lowering and codegen.
-[`rustc_codegen_ssa::base::codegen_crate`][codegen1] calls the
+[`redox_codegen_ssa::base::codegen_crate`][codegen1] calls the
 [`collect_and_partition_mono_items`][mono] query, which does monomorphization
 collection and then partitions them into [codegen
 units](../appendix/glossary.md#codegen-unit).
@@ -74,6 +74,6 @@ or more modules in Crate B.
 
 For more details about the partitioner read the module level [documentation].
 
-[mono]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_monomorphize/partitioning/fn.collect_and_partition_mono_items.html
-[codegen1]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_crate.html
-[documentation]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_monomorphize/partitioning/index.html
+[mono]: https://doc.rust-lang.org/nightly/nightly-redox/redox_monomorphize/partitioning/fn.collect_and_partition_mono_items.html
+[codegen1]: https://doc.rust-lang.org/nightly/nightly-redox/redox_codegen_ssa/base/fn.codegen_crate.html
+[documentation]: https://doc.rust-lang.org/nightly/nightly-redox/redox_monomorphize/partitioning/index.html

@@ -9,10 +9,10 @@
 //! be sure without a real client anyway.
 
 #![allow(clippy::disallowed_types)]
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
 mod cli;
 mod flycheck;
@@ -1011,23 +1011,23 @@ fn main() {
         r#"pub fn message() -> &'static str { "Hello, World!" }"#,
     )
     .unwrap();
-    println!("cargo:rustc-cfg=atom_cfg");
-    println!("cargo:rustc-cfg=featlike=\"set\"");
+    println!("cargo:redox-cfg=atom_cfg");
+    println!("cargo:redox-cfg=featlike=\"set\"");
     println!("cargo:rerun-if-changed=build.rs");
 }
 //- /src/main.rs
 #![allow(warnings)]
-#![feature(rustc_attrs)]
-#[rustc_builtin_macro] macro_rules! include {
+#![feature(redox_attrs)]
+#[redox_builtin_macro] macro_rules! include {
     ($file:expr $(,)?) => {{ /* compiler built-in */ }};
 }
-#[rustc_builtin_macro] macro_rules! include_str {
+#[redox_builtin_macro] macro_rules! include_str {
     ($file:expr $(,)?) => {{ /* compiler built-in */ }};
 }
-#[rustc_builtin_macro] macro_rules! concat {
+#[redox_builtin_macro] macro_rules! concat {
     ($($e:ident),+ $(,)?) => {{ /* compiler built-in */ }};
 }
-#[rustc_builtin_macro] macro_rules! env {
+#[redox_builtin_macro] macro_rules! env {
     ($name:expr $(,)?) => {{ /* compiler built-in */ }};
     ($name:expr, $error_msg:expr $(,)?) => {{ /* compiler built-in */ }};
 }

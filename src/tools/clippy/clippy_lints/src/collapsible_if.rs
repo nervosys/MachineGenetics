@@ -3,14 +3,14 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::{IntoSpan as _, SpanRangeExt, snippet, snippet_block_with_applicability};
 use clippy_utils::{can_use_if_let_chains, span_contains_non_whitespace, sym, tokenize_with_text};
-use rustc_ast::{BinOpKind, MetaItemInner};
-use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, StmtKind};
-use rustc_lexer::TokenKind;
-use rustc_lint::{LateContext, LateLintPass, Level};
-use rustc_session::impl_lint_pass;
-use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Span, Symbol};
+use redox_ast::{BinOpKind, MetaItemInner};
+use redox_errors::Applicability;
+use redox_hir::{Block, Expr, ExprKind, StmtKind};
+use redox_lexer::TokenKind;
+use redox_lint::{LateContext, LateLintPass, Level};
+use redox_session::impl_lint_pass;
+use redox_span::source_map::SourceMap;
+use redox_span::{BytePos, Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -335,7 +335,7 @@ fn span_extract_keyword(sm: &SourceMap, span: Span, keyword: &str) -> Option<Spa
 
 /// Peel the parentheses from an `if` expression, e.g. `((if true {} else {}))`.
 pub(super) fn peel_parens(sm: &SourceMap, mut span: Span) -> (Span, Span, Span) {
-    use crate::rustc_span::Pos;
+    use crate::redox_span::Pos;
 
     let start = span.shrink_to_lo();
     let end = span.shrink_to_hi();

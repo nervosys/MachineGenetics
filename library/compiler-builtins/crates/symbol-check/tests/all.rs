@@ -30,8 +30,8 @@ fn test_duplicates() {
 
     // For the "bad" file, we need duplicate symbols from different object files in the archive. Do
     // this reliably by building an archive and a separate object file then merging them.
-    t.rustc_build(&input_dir().join("duplicates.rs"), &lib_out, |cmd| cmd);
-    t.rustc_build(&input_dir().join("duplicates.rs"), &dup_out, |cmd| {
+    t.redox_build(&input_dir().join("duplicates.rs"), &lib_out, |cmd| cmd);
+    t.redox_build(&input_dir().join("duplicates.rs"), &dup_out, |cmd| {
         cmd.arg("--emit=obj")
     });
 
@@ -67,7 +67,7 @@ fn test_core_symbols() {
     let t = TestTarget::from_env();
     let dir = tempdir().unwrap();
     let lib_out = dir.path().join("libfoo.rlib");
-    t.rustc_build(&input_dir().join("core_symbols.rs"), &lib_out, |cmd| cmd);
+    t.redox_build(&input_dir().join("core_symbols.rs"), &lib_out, |cmd| cmd);
     let assert = t.symcheck_exe().arg(&lib_out).assert();
     assert
         .failure()
@@ -84,7 +84,7 @@ fn test_visible_symbols() {
     }
     let dir = tempdir().unwrap();
     let lib_out = dir.path().join("libfoo.rlib");
-    t.rustc_build(&input_dir().join("good_lib.rs"), &lib_out, |cmd| cmd);
+    t.redox_build(&input_dir().join("good_lib.rs"), &lib_out, |cmd| cmd);
     let assert = t.symcheck_exe().arg(&lib_out).assert();
     assert.failure().stderr_contains("found 1 visible symbols"); // good is visible.
 }
@@ -192,7 +192,7 @@ fn test_good_lib() {
     let t = TestTarget::from_env();
     let dir = tempdir().unwrap();
     let lib_out = dir.path().join("libfoo.rlib");
-    t.rustc_build(&input_dir().join("good_lib.rs"), &lib_out, |cmd| cmd);
+    t.redox_build(&input_dir().join("good_lib.rs"), &lib_out, |cmd| cmd);
     let assert = t
         .symcheck_exe()
         .arg(&lib_out)
@@ -242,8 +242,8 @@ impl TestTarget {
     }
 
     /// Build i -> o with optional additional configuration.
-    fn rustc_build(&self, i: &Path, o: &Path, mut f: impl FnMut(&mut Command) -> &mut Command) {
-        let mut cmd = Command::new("rustc");
+    fn redox_build(&self, i: &Path, o: &Path, mut f: impl FnMut(&mut Command) -> &mut Command) {
+        let mut cmd = Command::new("redox");
         cmd.arg(i)
             .arg("--target")
             .arg(&self.triple)
@@ -287,7 +287,7 @@ impl TestTarget {
         }
     }
 
-    /// Based on `rustc_target`.
+    /// Based on `redox_target`.
     fn binary_obj_format(&self) -> BinaryFormat {
         let t = &self.triple;
         if t.contains("-windows-") || t.contains("-cygwin") {

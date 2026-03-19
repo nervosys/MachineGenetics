@@ -4,18 +4,18 @@ use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
 use clippy_utils::ty::{is_copy, same_type_modulo_regions};
 use clippy_utils::{get_parent_expr, is_ty_alias, sym};
-use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, PatKind};
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::Obligation;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use redox_errors::Applicability;
+use redox_hir::def_id::DefId;
+use redox_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, PatKind};
+use redox_infer::infer::TyCtxtInferExt;
+use redox_infer::traits::Obligation;
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::traits::ObligationCause;
+use redox_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
+use redox_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
+use redox_session::impl_lint_pass;
+use redox_span::Span;
+use redox_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 declare_clippy_lint! {
     /// ### What it does

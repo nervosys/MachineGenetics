@@ -7,10 +7,10 @@
 //@ ignore-android: FIXME(#142855)
 //@ ignore-sgx: (x86 machine code cannot be directly executed)
 
-use run_make_support::{cc, extra_c_flags, run, rustc, static_lib_name};
+use run_make_support::{cc, extra_c_flags, run, redox, static_lib_name};
 
 fn main() {
-    rustc().edition("2021").input("checkrust.rs").run();
+    redox().edition("2021").input("checkrust.rs").run();
     cc().input("test.c")
         .input(static_lib_name("checkrust"))
         .out_exe("test")

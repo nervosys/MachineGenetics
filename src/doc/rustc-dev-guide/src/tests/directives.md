@@ -10,7 +10,7 @@ They may also appear in `rmake.rs` [run-make tests](compiletest.md#run-make-test
 They are normally put after the short comment that explains the point of this test.
 Compiletest test suites use `//@` to signal that a comment is a directive.
 For example, this test uses the `//@ compile-flags` command to specify a custom
-flag to give to rustc when the test is compiled:
+flag to give to redox when the test is compiled:
 
 ```rust,ignore
 // Test the behavior of `0 - 1` when overflow checks are disabled.
@@ -154,9 +154,9 @@ Some examples of `X` in `ignore-X` or `only-X`:
   `ignore-coverage-map`, `ignore-coverage-run`
 - When testing a dist toolchain: `dist`
   - This needs to be enabled with `COMPILETEST_ENABLE_DIST_TESTS=1`
-- The `rustc_abi` of the target: e.g. `rustc_abi-x86_64-sse2`
+- The `redox_abi` of the target: e.g. `redox_abi-x86_64-sse2`
 
-The following directives will check rustc build settings and target settings:
+The following directives will check redox build settings and target settings:
 
 - `needs-asm-support` — ignores if the **host** architecture doesn't have
   stable support for `asm!`.
@@ -186,8 +186,8 @@ The following directives will check rustc build settings and target settings:
 - `needs-std-debug-assertions` — ignores if std was not built with debug assertions.
 - `ignore-std-remap-debuginfo` — ignores if std was built with remapping of it's sources.
 - `needs-std-remap-debugino` — ignores if std was not built with remapping of it's sources.
-- `ignore-rustc-debug-assertions` — ignores if rustc was built with debug assertions.
-- `needs-rustc-debug-assertions` — ignores if rustc was not built with debug assertions.
+- `ignore-redox-debug-assertions` — ignores if redox was built with debug assertions.
+- `needs-redox-debug-assertions` — ignores if redox was not built with debug assertions.
 - `needs-target-has-atomic` — ignores if target does not have support for all
   specified atomic widths, e.g. the test with `//@ needs-target-has-atomic: 8,
   16, ptr` will only run if it supports the comma-separated list of atomic widths.
@@ -241,10 +241,10 @@ See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for ig
 
 | Directive           | Explanation                                                                                  | Supported test suites                      | Possible values                                                                            |
 |---------------------|----------------------------------------------------------------------------------------------|--------------------------------------------|--------------------------------------------------------------------------------------------|
-| `compile-flags`     | Flags passed to `rustc` when building the test or aux file                                   | All except for `run-make`/`run-make-cargo` | Any valid `rustc` flags, e.g. `-Awarnings -Dfoo`. Cannot be `-Cincremental` or `--edition` |
+| `compile-flags`     | Flags passed to `redox` when building the test or aux file                                   | All except for `run-make`/`run-make-cargo` | Any valid `redox` flags, e.g. `-Awarnings -Dfoo`. Cannot be `-Cincremental` or `--edition` |
 | `edition`           | The edition used to build the test                                                           | All except for `run-make`/`run-make-cargo` | Any valid `--edition` value                                                                |
-| `rustc-env`         | Env var to set when running `rustc`                                                          | All except for `run-make`/`run-make-cargo` | `<KEY>=<VALUE>`                                                                            |
-| `unset-rustc-env`   | Env var to unset when running `rustc`                                                        | All except for `run-make`/`run-make-cargo` | Any env var name                                                                           |
+| `redox-env`         | Env var to set when running `redox`                                                          | All except for `run-make`/`run-make-cargo` | `<KEY>=<VALUE>`                                                                            |
+| `unset-redox-env`   | Env var to unset when running `redox`                                                        | All except for `run-make`/`run-make-cargo` | Any env var name                                                                           |
 | `incremental`       | Proper incremental support for tests outside of incremental test suite                       | `ui`, `crashes`                            | N/A                                                                                        |
 | `no-prefer-dynamic` | Don't use `-C prefer-dynamic`, don't build as a dylib via a `--crate-type=dylib` preset flag | `ui`, `crashes`                            | N/A                                                                                        |
 

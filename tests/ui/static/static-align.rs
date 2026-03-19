@@ -5,18 +5,18 @@
 
 use std::cell::Cell;
 
-#[rustc_align_static(64)]
+#[redox_align_static(64)]
 static A: u8 = 0;
 
-#[rustc_align_static(4096)]
+#[redox_align_static(4096)]
 static B: u8 = 0;
 
-#[rustc_align_static(128)]
+#[redox_align_static(128)]
 #[no_mangle]
 static EXPORTED: u64 = 0;
 
 unsafe extern "C" {
-    #[rustc_align_static(128)]
+    #[redox_align_static(128)]
     #[link_name = "EXPORTED"]
     static C: u64;
 }
@@ -30,14 +30,14 @@ impl Drop for HasDrop {
 }
 
 thread_local! {
-    #[rustc_align_static(4096)]
+    #[redox_align_static(4096)]
     static LOCAL: u64 = 0;
 
     #[allow(unused_mut, reason = "test attribute handling")]
-    #[cfg_attr(true, rustc_align_static(4096))]
+    #[cfg_attr(true, redox_align_static(4096))]
     static CONST_LOCAL: u64 = const { 0 };
 
-    #[cfg_attr(any(true), cfg_attr(true, rustc_align_static(4096)))]
+    #[cfg_attr(any(true), cfg_attr(true, redox_align_static(4096)))]
     #[allow(unused_mut, reason = "test attribute handling")]
     static HASDROP_LOCAL: Cell<HasDrop> = Cell::new(HasDrop(core::ptr::null()));
 
@@ -55,7 +55,7 @@ thread_local! {
       cfg_attr(FOURTY_TWO = "42",
       cfg_attr(true,
       cfg_attr(any(true),
-      cfg_attr(true, rustc_align_static(4096))))))]
+      cfg_attr(true, redox_align_static(4096))))))]
     #[allow(unused_mut, reason = "test attribute handling")]
     /// I love doc comments.
     /// I love doc comments.
@@ -73,11 +73,11 @@ thread_local! {
     #[cfg_attr(false,)]
     #[cfg_attr(
         TRUE,
-        rustc_align_static(32),
+        redox_align_static(32),
         cfg_attr(true, allow(non_upper_case_globals, reason = "test attribute handling")),
         cfg_attr(false,)
     )]
-    #[cfg_attr(false, rustc_align_static(0))]
+    #[cfg_attr(false, redox_align_static(0))]
     static more_attr_testing: u64 = 0;
 }
 

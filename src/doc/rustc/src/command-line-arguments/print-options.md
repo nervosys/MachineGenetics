@@ -1,6 +1,6 @@
 # Print Options
 
-All of these options are passed to `rustc` via the `--print` flag.
+All of these options are passed to `redox` via the `--print` flag.
 
 Those options prints out various information about the compiler. Multiple options can be
 specified, and the information is printed in the order the options are specified.
@@ -22,7 +22,7 @@ Generally coming from either from the `#![crate_name = "..."]` attribute,
 Example:
 
 ```bash
-$ rustc --print crate-name --crate-name my_crate a.rs
+$ redox --print crate-name --crate-name my_crate a.rs
 my_crate
 ```
 
@@ -37,7 +37,7 @@ Absolute path to the sysroot.
 Example (with rustup and the stable toolchain):
 
 ```bash
-$ rustc --print sysroot a.rs
+$ redox --print sysroot a.rs
 /home/[REDACTED]/.rustup/toolchains/stable-x86_64-unknown-linux-gnu
 ```
 
@@ -48,7 +48,7 @@ Path to the target libdir.
 Example (with rustup and the stable toolchain):
 
 ```bash
-$ rustc --print target-libdir a.rs
+$ redox --print target-libdir a.rs
 /home/[REDACTED]/.rustup/toolchains/beta-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/lib
 ```
 
@@ -59,14 +59,14 @@ The target-tuple string of the host compiler.
 Example:
 
 ```bash
-$ rustc --print host-tuple a.rs
+$ redox --print host-tuple a.rs
 x86_64-unknown-linux-gnu
 ```
 
 Example with the `--target` flag:
 
 ```bash
-$ rustc --print host-tuple --target "armv7-unknown-linux-gnueabihf" a.rs
+$ redox --print host-tuple --target "armv7-unknown-linux-gnueabihf" a.rs
 x86_64-unknown-linux-gnu
 ```
 
@@ -77,7 +77,7 @@ List of cfg values. See [conditional compilation] for more information about cfg
 Example (for `x86_64-unknown-linux-gnu`):
 
 ```bash
-$ rustc --print cfg a.rs
+$ redox --print cfg a.rs
 debug_assertions
 panic="unwind"
 target_abi=""
@@ -125,7 +125,7 @@ List of relocation models. Relocation models may be selected with the
 Example:
 
 ```bash
-$ rustc --print relocation-models a.rs
+$ redox --print relocation-models a.rs
 Available relocation models:
     static
     pic
@@ -145,7 +145,7 @@ List of code models. Code models may be selected with the
 Example:
 
 ```bash
-$ rustc --print code-models a.rs
+$ redox --print code-models a.rs
 Available code models:
     tiny
     small
@@ -162,7 +162,7 @@ List of Thread Local Storage models supported. The model may be selected with th
 Example:
 
 ```bash
-$ rustc --print tls-models a.rs
+$ redox --print tls-models a.rs
 Available TLS models:
     global-dynamic
     local-dynamic
@@ -183,7 +183,7 @@ The note starts with the text `native-static-libs:` to make it easier to fetch t
 Example:
 
 ```bash
-$ rustc --print native-static-libs --crate-type staticlib a.rs
+$ redox --print native-static-libs --crate-type staticlib a.rs
 note: link against the following native artifacts when linking against this static library. The order and any duplication can be significant on some platforms.
 
 note: native-static-libs: -lgcc_s -lutil [REDACTED] -lpthread -lm -ldl -lc
@@ -193,7 +193,7 @@ note: native-static-libs: -lgcc_s -lutil [REDACTED] -lpthread -lm -ldl -lc
 
 This flag does not disable the `--emit` step. This can be useful when debugging linker options.
 
-When linking, this flag causes `rustc` to print the full linker invocation in a human-readable
+When linking, this flag causes `redox` to print the full linker invocation in a human-readable
 form. The exact format of this debugging output is not a stable guarantee, other than that it
 will include the linker executable and the text of each command-line argument passed to the
 linker.
@@ -204,7 +204,7 @@ The currently selected [deployment target] (or minimum OS version) for the selec
 platform target.
 
 This value can be used or passed along to other components alongside a Rust build that need
-this information, such as C compilers. This returns rustc's minimum supported deployment target
+this information, such as C compilers. This returns redox's minimum supported deployment target
 if no `*_DEPLOYMENT_TARGET` variable is present in the environment, or otherwise returns the
 variable's parsed value.
 

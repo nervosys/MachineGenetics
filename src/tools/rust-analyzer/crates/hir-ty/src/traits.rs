@@ -11,8 +11,8 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use intern::sym;
-use rustc_next_trait_solver::solve::{HasChanged, SolverDelegateEvalExt};
-use rustc_type_ir::{
+use redox_next_trait_solver::solve::{HasChanged, SolverDelegateEvalExt};
+use redox_type_ir::{
     TypingMode,
     inherent::{AdtDef, BoundExistentialPredicates, IntoKind, Span as _},
     solve::Certainty,
@@ -136,7 +136,7 @@ pub fn next_trait_solve_canonical_in_ctxt<'db>(
 pub fn next_trait_solve_in_ctxt<'db, 'a>(
     infer_ctxt: &'a InferCtxt<'db>,
     goal: Goal<'db, Predicate<'db>>,
-) -> Result<(HasChanged, Certainty), rustc_type_ir::solve::NoSolution> {
+) -> Result<(HasChanged, Certainty), redox_type_ir::solve::NoSolution> {
     tracing::info!(?goal);
 
     let context = <&SolverContext<'db>>::from(infer_ctxt);
@@ -230,7 +230,7 @@ fn implements_trait_unique_impl<'db>(
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
     let args = create_args(&infcx);
-    let trait_ref = rustc_type_ir::TraitRef::new_from_args(interner, trait_.into(), args);
+    let trait_ref = redox_type_ir::TraitRef::new_from_args(interner, trait_.into(), args);
     let goal = Goal::new(interner, env.param_env, trait_ref);
 
     let result = crate::traits::next_trait_solve_in_ctxt(&infcx, goal);
@@ -253,7 +253,7 @@ pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id
         | TyKind::Char
         | TyKind::Int(_)
         | TyKind::Uint(_)
-        | TyKind::Float(_) => def_map.is_rustc_coherence_is_core(),
+        | TyKind::Float(_) => def_map.is_redox_coherence_is_core(),
 
         TyKind::Adt(adt_def, _) => adt_def.def_id().0.module(db).krate(db) == def_map.krate(),
         TyKind::Dynamic(it, _) => it
@@ -263,7 +263,7 @@ pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id
         _ => true,
     };
     impl_allowed || {
-        let rustc_has_incoherent_inherent_impls = match self_ty {
+        let redox_has_incoherent_inherent_impls = match self_ty {
             TyKind::Tuple(_)
             | TyKind::FnDef(_, _)
             | TyKind::Array(_, _)
@@ -301,7 +301,7 @@ pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id
             _ => false,
         };
         let items = impl_id.impl_items(db);
-        rustc_has_incoherent_inherent_impls
+        redox_has_incoherent_inherent_impls
             && !items.items.is_empty()
             && items.items.iter().all(|&(_, assoc)| match assoc {
                 AssocItemId::FunctionId(it) => {

@@ -2,14 +2,14 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::paths::{PathNS, lookup_path_str};
 use clippy_utils::source::SpanRangeExt;
-use rustc_errors::Applicability;
-use rustc_hir::def::Res;
-use rustc_hir::def_id::DefIdMap;
-use rustc_hir::{Item, ItemKind, UseKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::TyCtxt;
-use rustc_session::impl_lint_pass;
-use rustc_span::Symbol;
+use redox_errors::Applicability;
+use redox_hir::def::Res;
+use redox_hir::def_id::DefIdMap;
+use redox_hir::{Item, ItemKind, UseKind};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty::TyCtxt;
+use redox_session::impl_lint_pass;
+use redox_span::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does

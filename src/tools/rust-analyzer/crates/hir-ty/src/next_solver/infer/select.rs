@@ -1,10 +1,10 @@
-#![expect(dead_code, reason = "this is used by rustc")]
+#![expect(dead_code, reason = "this is used by redox")]
 
 use std::ops::ControlFlow;
 
 use hir_def::TraitId;
 use macros::{TypeFoldable, TypeVisitable};
-use rustc_type_ir::{
+use redox_type_ir::{
     Interner,
     solve::{BuiltinImplSource, CandidateSource, Certainty, inspect::ProbeKind},
 };

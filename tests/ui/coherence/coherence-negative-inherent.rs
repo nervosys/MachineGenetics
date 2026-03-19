@@ -1,10 +1,10 @@
 //@ check-pass
 
 #![feature(negative_impls)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(with_negative_coherence)]
 
-#[rustc_strict_coherence]
+#[redox_strict_coherence]
 trait Foo {}
 
 impl !Foo for u32 {}

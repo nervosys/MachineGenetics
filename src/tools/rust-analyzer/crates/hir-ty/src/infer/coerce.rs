@@ -41,8 +41,8 @@ use hir_def::{
     hir::{ExprId, ExprOrPatId},
     signatures::FunctionSignature,
 };
-use rustc_ast_ir::Mutability;
-use rustc_type_ir::{
+use redox_ast_ir::Mutability;
+use redox_type_ir::{
     BoundVar, DebruijnIndex, TyVid, TypeAndMut, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
     error::TypeError,
@@ -592,7 +592,7 @@ where
             | TyKind::Int(_)
             | TyKind::Uint(_)
             | TyKind::Float(_)
-            | TyKind::Infer(rustc_type_ir::IntVar(_) | rustc_type_ir::FloatVar(_))
+            | TyKind::Infer(redox_type_ir::IntVar(_) | redox_type_ir::FloatVar(_))
             | TyKind::Str
             | TyKind::Array(_, _)
             | TyKind::Slice(_)
@@ -737,7 +737,7 @@ where
                         let unsize_ty = trait_pred.trait_ref.args[1].expect_ty();
                         debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_pred);
                         match (self_ty.kind(), unsize_ty.kind()) {
-                            (TyKind::Infer(rustc_type_ir::TyVar(v)), TyKind::Dynamic(..))
+                            (TyKind::Infer(redox_type_ir::TyVar(v)), TyKind::Dynamic(..))
                                 if self.delegate.type_var_is_sized(v) =>
                             {
                                 debug!("coerce_unsized: have sized infer {:?}", v);
@@ -758,7 +758,7 @@ where
                         if !coerce_source.references_non_lt_error()
                             && !coerce_target.references_non_lt_error()
                         {
-                            // rustc always early-returns here, even when the types contains errors. However not bailing
+                            // redox always early-returns here, even when the types contains errors. However not bailing
                             // improves error recovery, and while we don't implement generic consts properly, it also helps
                             // correct code.
                             return Err(TypeError::Mismatch);

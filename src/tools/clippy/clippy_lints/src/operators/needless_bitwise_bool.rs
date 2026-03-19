@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::SpanRangeExt;
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::LateContext;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind};
+use redox_lint::LateContext;
 
 use super::NEEDLESS_BITWISE_BOOL;
 

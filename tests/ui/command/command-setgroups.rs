@@ -4,7 +4,7 @@
 //@ ignore-nto - does not have `/bin/id`, expects groups to be i32 (not u32)
 //@ needs-subprocess
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![feature(setgroups)]
 
 extern crate libc;

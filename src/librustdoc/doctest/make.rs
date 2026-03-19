@@ -5,18 +5,18 @@ use std::fmt::{self, Write as _};
 use std::io;
 use std::sync::Arc;
 
-use rustc_ast::token::{Delimiter, TokenKind};
-use rustc_ast::tokenstream::TokenTree;
-use rustc_ast::{self as ast, AttrStyle, HasAttrs, StmtKind};
-use rustc_errors::emitter::get_stderr_color_choice;
-use rustc_errors::{AutoStream, ColorChoice, ColorConfig, DiagCtxtHandle};
-use rustc_parse::lexer::StripTokens;
-use rustc_parse::new_parser_from_source_str;
-use rustc_session::parse::ParseSess;
-use rustc_span::edition::{DEFAULT_EDITION, Edition};
-use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::sym;
-use rustc_span::{DUMMY_SP, FileName, Span, kw};
+use redox_ast::token::{Delimiter, TokenKind};
+use redox_ast::tokenstream::TokenTree;
+use redox_ast::{self as ast, AttrStyle, HasAttrs, StmtKind};
+use redox_errors::emitter::get_stderr_color_choice;
+use redox_errors::{AutoStream, ColorChoice, ColorConfig, DiagCtxtHandle};
+use redox_parse::lexer::StripTokens;
+use redox_parse::new_parser_from_source_str;
+use redox_session::parse::ParseSess;
+use redox_span::edition::{DEFAULT_EDITION, Edition};
+use redox_span::source_map::SourceMap;
+use redox_span::symbol::sym;
+use redox_span::{DUMMY_SP, FileName, Span, kw};
 use tracing::debug;
 
 use super::GlobalTestOptions;
@@ -119,8 +119,8 @@ impl<'a> BuildDocTestBuilder<'a> {
             global_crate_attrs,
         } = self;
 
-        let result = rustc_driver::catch_fatal_errors(|| {
-            rustc_span::create_session_if_not_set_then(edition, |_| {
+        let result = redox_driver::catch_fatal_errors(|| {
+            redox_span::create_session_if_not_set_then(edition, |_| {
                 parse_source(source, &crate_name, dcx, span)
             })
         });
@@ -455,9 +455,9 @@ fn parse_source(
     parent_dcx: Option<DiagCtxtHandle<'_>>,
     span: Span,
 ) -> Result<ParseSourceInfo, ()> {
-    use rustc_errors::DiagCtxt;
-    use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
-    use rustc_span::source_map::FilePathMapping;
+    use redox_errors::DiagCtxt;
+    use redox_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
+    use redox_span::source_map::FilePathMapping;
 
     let mut info =
         ParseSourceInfo { already_has_extern_crate: crate_name.is_none(), ..Default::default() };
@@ -492,7 +492,7 @@ fn parse_source(
             }
         };
 
-    fn push_to_s(s: &mut String, source: &str, span: rustc_span::Span, prev_span_hi: &mut usize) {
+    fn push_to_s(s: &mut String, source: &str, span: redox_span::Span, prev_span_hi: &mut usize) {
         let extra_len = DOCTEST_CODE_WRAPPER.len();
         // We need to shift by the length of `DOCTEST_CODE_WRAPPER` because we
         // added it at the beginning of the source we provided to the parser.
@@ -539,8 +539,8 @@ fn parse_source(
     let mut prev_span_hi = 0;
     let not_crate_attrs = &[sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
     let parsed = parser.parse_item(
-        rustc_parse::parser::ForceCollect::No,
-        rustc_parse::parser::AllowConstBlockItems::No,
+        redox_parse::parser::ForceCollect::No,
+        redox_parse::parser::AllowConstBlockItems::No,
     );
 
     let result = match parsed {

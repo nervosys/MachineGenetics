@@ -1,14 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::source::{snippet, snippet_indent};
-use rustc_ast::LitKind;
-use rustc_data_structures::packed::Pu128;
-use rustc_errors::Applicability;
-use rustc_hir::{ConstArgKind, Expr, ExprKind, LetStmt, LocalSource, Node};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{IsSuggestable, Ty};
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
+use redox_ast::LitKind;
+use redox_data_structures::packed::Pu128;
+use redox_errors::Applicability;
+use redox_hir::{ConstArgKind, Expr, ExprKind, LetStmt, LocalSource, Node};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::{IsSuggestable, Ty};
+use redox_session::declare_lint_pass;
+use redox_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does

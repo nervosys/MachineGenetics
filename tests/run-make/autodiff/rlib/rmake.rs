@@ -1,11 +1,11 @@
 //@ needs-enzyme
 //@ ignore-cross-compile
 
-use run_make_support::{cwd, run, rustc};
+use run_make_support::{cwd, run, redox};
 
 fn main() {
     // Build the dependency crate.
-    rustc()
+    redox()
         .input("dep.rs")
         .arg("-Zautodiff=Enable")
         .arg("--edition=2024")
@@ -25,7 +25,7 @@ fn main() {
         format!("--extern=simple_dep={}", cwd.join("libsimple_dep.rlib").to_string_lossy());
 
     // Build the main library that depends on `simple_dep`.
-    rustc()
+    redox()
         .input("lib.rs")
         .arg("-Zautodiff=Enable")
         .arg("--edition=2024")
@@ -41,7 +41,7 @@ fn main() {
     let foo_rlib = format!("--extern=foo={}", cwd.join("libfoo.rlib").to_string_lossy());
 
     // Build the final binary linking both rlibs.
-    rustc()
+    redox()
         .input("main.rs")
         .arg("-Zautodiff=Enable")
         .arg("--edition=2024")

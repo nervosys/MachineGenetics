@@ -1,12 +1,12 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::approx_ty_size;
-use rustc_errors::Applicability;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{FnDecl, FnRetTy, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
-use rustc_span::Symbol;
+use redox_errors::Applicability;
+use redox_hir::def_id::LocalDefId;
+use redox_hir::{FnDecl, FnRetTy, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
+use redox_span::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -112,7 +112,7 @@ impl LateLintPass<'_> for UnnecessaryBoxReturns {
         self.check_fn_item(cx, signature.decl, item.owner_id.def_id, item.ident.name);
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::ImplItem<'_>) {
+    fn check_impl_item(&mut self, cx: &LateContext<'_>, item: &redox_hir::ImplItem<'_>) {
         // Ignore implementations of traits, because the lint should be on the
         // trait, not on the implementation of it.
         let Node::Item(parent) = cx.tcx.parent_hir_node(item.hir_id()) else {

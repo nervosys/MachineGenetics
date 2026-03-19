@@ -10,7 +10,7 @@ use crate::utils::io::{copy_directory, find_file_in_dir, unpack_archive};
 /// Run tests on optimized dist artifacts.
 pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
     // After `dist` is executed, we extract its archived components into a sysroot directory,
-    // and then use that extracted rustc as a stage0 compiler.
+    // and then use that extracted redox as a stage0 compiler.
     // Then we run a subset of tests using that compiler, to have a basic smoke test which checks
     // whether the optimization pipeline hasn't broken something.
     let build_dir = env.build_root();
@@ -29,39 +29,39 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
 
     let channel = version_to_channel(&version);
 
-    // Extract rustc, libstd, cargo and src archives to create the optimized sysroot
-    let rustc_dir = extract_dist_dir(&format!("rustc-{version}-{host_triple}"))?.join("rustc");
+    // Extract redox, libstd, cargo and src archives to create the optimized sysroot
+    let redox_dir = extract_dist_dir(&format!("redox-{version}-{host_triple}"))?.join("redox");
     let libstd_dir = extract_dist_dir(&format!("rust-std-{version}-{host_triple}"))?
         .join(format!("rust-std-{host_triple}"));
     let cargo_dir = extract_dist_dir(&format!("cargo-{version}-{host_triple}"))?.join("cargo");
     let extracted_src_dir = extract_dist_dir(&format!("rust-src-{version}"))?.join("rust-src");
 
-    // If we have a Cranelift archive, copy it to the rustc sysroot
-    if let Ok(_) = find_file_in_dir(&dist_dir, "rustc-codegen-cranelift-", ".tar.xz") {
+    // If we have a Cranelift archive, copy it to the redox sysroot
+    if let Ok(_) = find_file_in_dir(&dist_dir, "redox-codegen-cranelift-", ".tar.xz") {
         let extracted_codegen_dir =
-            extract_dist_dir(&format!("rustc-codegen-cranelift-{version}-{host_triple}"))?
-                .join("rustc-codegen-cranelift-preview");
+            extract_dist_dir(&format!("redox-codegen-cranelift-{version}-{host_triple}"))?
+                .join("redox-codegen-cranelift-preview");
         let rel_path =
             Utf8Path::new("lib").join("rustlib").join(host_triple).join("codegen-backends");
-        copy_directory(&extracted_codegen_dir.join(&rel_path), &rustc_dir.join(&rel_path))?;
+        copy_directory(&extracted_codegen_dir.join(&rel_path), &redox_dir.join(&rel_path))?;
     }
 
-    // We need to manually copy libstd to the extracted rustc sysroot
+    // We need to manually copy libstd to the extracted redox sysroot
     copy_directory(
         &libstd_dir.join("lib").join("rustlib").join(host_triple).join("lib"),
-        &rustc_dir.join("lib").join("rustlib").join(host_triple).join("lib"),
+        &redox_dir.join("lib").join("rustlib").join(host_triple).join("lib"),
     )?;
 
-    // Extract sources - they aren't in the `rustc-nightly-{host}` tarball, so we need to manually copy libstd
+    // Extract sources - they aren't in the `redox-nightly-{host}` tarball, so we need to manually copy libstd
     // sources to the extracted sysroot. We need sources available so that `-Zsimulate-remapped-rust-src-base`
     // works correctly.
     copy_directory(
         &extracted_src_dir.join("lib").join("rustlib").join("src"),
-        &rustc_dir.join("lib").join("rustlib").join("src"),
+        &redox_dir.join("lib").join("rustlib").join("src"),
     )?;
 
-    let rustc_path = rustc_dir.join("bin").join(format!("rustc{}", executable_extension()));
-    assert!(rustc_path.is_file());
+    let redox_path = redox_dir.join("bin").join(format!("redox{}", executable_extension()));
+    assert!(redox_path.is_file());
     let cargo_path = cargo_dir.join("bin").join(format!("cargo{}", executable_extension()));
     assert!(cargo_path.is_file());
 
@@ -86,7 +86,7 @@ verbose-tests = true
 lld = false
 
 [build]
-rustc = "{rustc}"
+redox = "{redox}"
 cargo = "{cargo}"
 local-rebuild = true
 compiletest-allow-stage0=true
@@ -94,7 +94,7 @@ compiletest-allow-stage0=true
 [target.{host_triple}]
 llvm-config = "{llvm_config}"
 "#,
-        rustc = rustc_path.to_string().replace('\\', "/"),
+        redox = redox_path.to_string().replace('\\', "/"),
         cargo = cargo_path.to_string().replace('\\', "/"),
         llvm_config = llvm_config.to_string().replace('\\', "/")
     );

@@ -1,7 +1,7 @@
 // Check that we're successfully collecting bound vars behind trait aliases.
 // Regression test for <https://github.com/rust-lang/rust/issues/152244>.
 //@ check-pass
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 #![feature(trait_alias)]
 
 trait A<'a> { type X; }

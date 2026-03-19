@@ -2,15 +2,15 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{DefinedTy, ExprUseNode, expr_use_ctxt, peel_blocks, strip_pat_refs};
-use rustc_ast::ast;
-use rustc_data_structures::packed::Pu128;
-use rustc_errors::{Applicability, Diag};
-use rustc_hir as hir;
-use rustc_hir::PatKind;
-use rustc_hir::def::{DefKind, Res};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
-use rustc_span::{Span, Symbol, sym};
+use redox_ast::ast;
+use redox_data_structures::packed::Pu128;
+use redox_errors::{Applicability, Diag};
+use redox_hir as hir;
+use redox_hir::PatKind;
+use redox_hir::def::{DefKind, Res};
+use redox_lint::LateContext;
+use redox_middle::ty::{self, Ty};
+use redox_span::{Span, Symbol, sym};
 
 use super::UNNECESSARY_FOLD;
 

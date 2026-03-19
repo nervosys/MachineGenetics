@@ -1,9 +1,9 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 
 // For better or worse, associated types are invariant, and hence we
 // get an invariant result for `'a`.
-#[rustc_dump_variances]
+#[redox_dump_variances]
 struct Foo<'a> { //~ ERROR ['a: o]
     x: Box<dyn Fn(i32) -> &'a i32 + 'static>
 }

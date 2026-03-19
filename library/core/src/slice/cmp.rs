@@ -9,7 +9,7 @@ use crate::num::NonZero;
 use crate::ops::ControlFlow;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<T, U> const PartialEq<[U]> for [T]
 where
     T: [const] PartialEq<U>,
@@ -28,7 +28,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<T: [const] Eq> const Eq for [T] {}
 
 /// Implements comparison of slices [lexicographically](Ord#lexicographical-comparison).
@@ -101,7 +101,7 @@ impl<T: PartialOrd> PartialOrd for [T] {
 
 #[doc(hidden)]
 // intermediate trait for specialization of slice's PartialEq
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 const trait SlicePartialEq<B> {
     /// # Safety
     /// `lhs` and `rhs` are both readable for `len` elements
@@ -109,7 +109,7 @@ const trait SlicePartialEq<B> {
 }
 
 // Generic slice equality
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<A, B> const SlicePartialEq<B> for A
 where
     A: [const] PartialEq<B>,
@@ -118,7 +118,7 @@ where
     // and preventing it encourages more useful inlining upstream,
     // such as in `<str as PartialEq>::eq`.
     // The codegen backend can still inline it later if needed.
-    #[rustc_no_mir_inline]
+    #[redox_no_mir_inline]
     default unsafe fn equal_same_length(lhs: *const Self, rhs: *const B, len: usize) -> bool {
         // Implemented as explicit indexing rather
         // than zipped iterators for performance reasons.
@@ -139,7 +139,7 @@ where
 
 // When each element can be compared byte-wise, we can compare all the bytes
 // from the whole size in one call to the intrinsics.
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<A, B> const SlicePartialEq<B> for A
 where
     A: [const] BytewiseEq<B>,
@@ -157,14 +157,14 @@ where
 }
 
 #[doc(hidden)]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 // intermediate trait for specialization of slice's PartialOrd
 const trait SlicePartialOrd: Sized {
     fn partial_compare(left: &[Self], right: &[Self]) -> Option<Ordering>;
 }
 
 #[doc(hidden)]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 // intermediate trait for specialization of slice's PartialOrd chaining methods
 const trait SliceChain: Sized {
     fn chaining_lt(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
@@ -236,15 +236,15 @@ where
 }
 */
 
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<A: [const] AlwaysApplicableOrd> const SlicePartialOrd for A {
     fn partial_compare(left: &[A], right: &[A]) -> Option<Ordering> {
         Some(SliceOrd::compare(left, right))
     }
 }
 
-#[rustc_specialization_trait]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_specialization_trait]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 const trait AlwaysApplicableOrd: [const] SliceOrd + [const] Ord {}
 
 macro_rules! always_applicable_ord {
@@ -264,7 +264,7 @@ always_applicable_ord! {
 }
 
 #[doc(hidden)]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 // intermediate trait for specialization of slice's Ord
 const trait SliceOrd: Sized {
     fn compare(left: &[Self], right: &[Self]) -> Ordering;
@@ -289,23 +289,23 @@ impl<A: Ord> SliceOrd for A {
 ///   layout as `u8` and always be initialized.
 /// * For every `x` and `y` of this type, `Ord(x, y)` must return the same
 ///   value as `Ord::cmp(transmute::<_, u8>(x), transmute::<_, u8>(y))`.
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 const unsafe trait UnsignedBytewiseOrd: [const] Ord {}
 
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 unsafe impl const UnsignedBytewiseOrd for bool {}
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 unsafe impl const UnsignedBytewiseOrd for u8 {}
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 unsafe impl const UnsignedBytewiseOrd for NonZero<u8> {}
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 unsafe impl const UnsignedBytewiseOrd for Option<NonZero<u8>> {}
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 unsafe impl const UnsignedBytewiseOrd for ascii::Char {}
 
 // `compare_bytes` compares a sequence of unsigned bytes lexicographically, so
 // use it if the requirements for `UnsignedBytewiseOrd` are fulfilled.
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<A: [const] Ord + [const] UnsignedBytewiseOrd> const SliceOrd for A {
     #[inline]
     fn compare(left: &[Self], right: &[Self]) -> Ordering {
@@ -332,7 +332,7 @@ impl<A: [const] Ord + [const] UnsignedBytewiseOrd> const SliceOrd for A {
 
 // Don't generate our own chaining loops for `memcmp`-able things either.
 
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<A: [const] PartialOrd + [const] UnsignedBytewiseOrd> const SliceChain for A {
     #[inline]
     fn chaining_lt(left: &[Self], right: &[Self]) -> ControlFlow<bool> {

@@ -17,7 +17,7 @@
 // This target is special because it uses the XCOFF binary format
 // It is tested alongside an elf powerpc target to pin down commonalities and differences.
 //
-// https://doc.rust-lang.org/rustc/platform-support/aix.html
+// https://doc.rust-lang.org/redox/platform-support/aix.html
 // https://www.ibm.com/docs/en/aix/7.2?topic=formats-xcoff-object-file-format
 
 extern crate minicore;

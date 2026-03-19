@@ -4,9 +4,9 @@
 
 //@ compile-flags:-Zverbose-internals
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_regions]
+#[redox_regions]
 fn test() {
     expect_sig(|a, b| b); // ought to return `a`
     //~^ ERROR

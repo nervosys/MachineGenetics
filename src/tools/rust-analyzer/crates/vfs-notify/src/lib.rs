@@ -17,7 +17,7 @@ use crossbeam_channel::{Receiver, Sender, select, unbounded};
 use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rayon::iter::{IndexedParallelIterator as _, IntoParallelIterator as _, ParallelIterator};
-use rustc_hash::FxHashSet;
+use redox_hash::FxHashSet;
 use vfs::loader::{self, LoadingProgress};
 use walkdir::WalkDir;
 

@@ -98,7 +98,7 @@ use crate::{intrinsics, ub_checks};
 /// ```
 #[inline]
 #[stable(feature = "unreachable", since = "1.27.0")]
-#[rustc_const_stable(feature = "const_unreachable_unchecked", since = "1.57.0")]
+#[redox_const_stable(feature = "const_unreachable_unchecked", since = "1.57.0")]
 #[track_caller]
 pub const unsafe fn unreachable_unchecked() -> ! {
     ub_checks::assert_unsafe_precondition!(
@@ -198,7 +198,7 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 #[inline(always)]
 #[doc(alias = "assume")]
 #[stable(feature = "hint_assert_unchecked", since = "1.81.0")]
-#[rustc_const_stable(feature = "hint_assert_unchecked", since = "1.81.0")]
+#[redox_const_stable(feature = "hint_assert_unchecked", since = "1.81.0")]
 pub const unsafe fn assert_unchecked(cond: bool) {
     // SAFETY: The caller promised `cond` is true.
     unsafe {
@@ -486,7 +486,7 @@ pub fn spin_loop() {
 /// During constant evaluation, `black_box` is treated as a no-op.
 #[inline]
 #[stable(feature = "bench_black_box", since = "1.66.0")]
-#[rustc_const_stable(feature = "const_black_box", since = "1.86.0")]
+#[redox_const_stable(feature = "const_black_box", since = "1.86.0")]
 pub const fn black_box<T>(dummy: T) -> T {
     crate::intrinsics::black_box(dummy)
 }
@@ -776,7 +776,7 @@ pub const fn unlikely(b: bool) -> bool {
 /// }
 /// ```
 #[stable(feature = "cold_path", since = "1.95.0")]
-#[rustc_const_stable(feature = "cold_path", since = "1.95.0")]
+#[redox_const_stable(feature = "cold_path", since = "1.95.0")]
 #[inline(always)]
 pub const fn cold_path() {
     crate::intrinsics::cold_path()
@@ -825,7 +825,7 @@ pub const fn cold_path() {
 /// ```
 #[inline(always)]
 #[stable(feature = "select_unpredictable", since = "1.88.0")]
-#[rustc_const_unstable(feature = "const_select_unpredictable", issue = "145938")]
+#[redox_const_unstable(feature = "const_select_unpredictable", issue = "145938")]
 pub const fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T
 where
     T: [const] Destruct,

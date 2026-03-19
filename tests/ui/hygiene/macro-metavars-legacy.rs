@@ -1,6 +1,6 @@
 // Ensure macro metavariables are compared with legacy hygiene
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 //@ run-pass
 

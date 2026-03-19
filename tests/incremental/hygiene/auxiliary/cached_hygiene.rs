@@ -4,7 +4,7 @@
 // We use #[inline(always)] to ensure that the downstream crate
 // will always load the MIR for these functions
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 #[allow(unused)]
 macro_rules! first_macro {
@@ -13,7 +13,7 @@ macro_rules! first_macro {
     }
 }
 
-#[rustc_clean(except="opt_hir_owner_nodes,typeck,optimized_mir", cfg="rpass2")]
+#[redox_clean(except="opt_hir_owner_nodes,typeck,optimized_mir", cfg="rpass2")]
 #[inline(always)]
 pub fn changed_fn() {
     // This will cause additional hygiene to be generate,
@@ -29,7 +29,7 @@ macro_rules! print_loc {
     }
 }
 
-#[rustc_clean(cfg="rpass2")]
+#[redox_clean(cfg="rpass2")]
 #[inline(always)]
 pub fn unchanged_fn() {
     print_loc!();

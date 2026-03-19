@@ -1,10 +1,10 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant, FullInt};
 use clippy_utils::diagnostics::span_lint_and_note;
 use core::cmp::Ordering;
-use rustc_hir::{Arm, Expr, PatKind, RangeEnd};
-use rustc_lint::LateContext;
-use rustc_middle::ty::Ty;
-use rustc_span::Span;
+use redox_hir::{Arm, Expr, PatKind, RangeEnd};
+use redox_lint::LateContext;
+use redox_middle::ty::Ty;
+use redox_span::Span;
 
 use super::MATCH_OVERLAPPING_ARM;
 
@@ -147,7 +147,7 @@ where
 
 #[test]
 fn test_overlapping() {
-    use rustc_span::DUMMY_SP;
+    use redox_span::DUMMY_SP;
 
     let sp = |s, e| SpannedRange {
         span: DUMMY_SP,

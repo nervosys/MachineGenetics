@@ -2,7 +2,7 @@
 //@ compile-flags: -Zdump-mir-exclude-alloc-bytes -Zmir-enable-passes=+ReferencePropagation
 
 #![crate_type = "lib"]
-#![feature(core_intrinsics, rustc_attrs)]
+#![feature(core_intrinsics, redox_attrs)]
 
 pub enum Value {
     V0(i32),
@@ -34,7 +34,7 @@ fn loop_deref_mut(val: &mut Value) -> Value {
 }
 
 #[inline(never)]
-#[rustc_nounwind]
+#[redox_nounwind]
 fn get<T>(v: &T) -> &T {
     v
 }

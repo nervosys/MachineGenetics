@@ -35,7 +35,7 @@ So what do we need to do?
    generates executable code,
    and links together an executable binary.
 
-[codegen1]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_crate.html
+[codegen1]: https://doc.rust-lang.org/nightly/nightly-redox/redox_codegen_ssa/base/fn.codegen_crate.html
 
 The code for codegen is actually a bit complex due to a few factors:
 
@@ -46,12 +46,12 @@ The code for codegen is actually a bit complex due to a few factors:
 - Codegen happens asynchronously in another thread for performance.
 - The actual codegen is done by a third-party library (either of the 3 backends).
 
-Generally, the [`rustc_codegen_ssa`][ssa] crate contains backend-agnostic code,
-while the [`rustc_codegen_llvm`][llvm] crate contains code specific to LLVM codegen.
+Generally, the [`redox_codegen_ssa`][ssa] crate contains backend-agnostic code,
+while the [`redox_codegen_llvm`][llvm] crate contains code specific to LLVM codegen.
 
-[ssa]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/index.html
-[llvm]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/index.html
+[ssa]: https://doc.rust-lang.org/nightly/nightly-redox/redox_codegen_ssa/index.html
+[llvm]: https://doc.rust-lang.org/nightly/nightly-redox/redox_codegen_llvm/index.html
 
 At a very high level, the entry point is
-[`rustc_codegen_ssa::base::codegen_crate`][codegen1].
+[`redox_codegen_ssa::base::codegen_crate`][codegen1].
 This function starts the process discussed in the rest of this chapter.

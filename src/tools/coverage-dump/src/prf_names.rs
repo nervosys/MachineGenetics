@@ -28,7 +28,7 @@ pub(crate) fn make_function_names_table(llvm_ir: &str) -> anyhow::Result<HashMap
     fn demangle_if_able(symbol_name_bytes: &[u8]) -> anyhow::Result<String> {
         // In practice, raw symbol names should always be ASCII.
         let symbol_name_str = std::str::from_utf8(symbol_name_bytes)?;
-        match rustc_demangle::try_demangle(symbol_name_str) {
+        match redox_demangle::try_demangle(symbol_name_str) {
             Ok(d) => Ok(format!("{d:#}")),
             // If demangling failed, don't treat it as an error. This lets us
             // run the dump tool against non-Rust coverage maps produced by

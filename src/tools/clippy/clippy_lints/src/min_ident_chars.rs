@@ -1,17 +1,17 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{Visitor, walk_item, walk_trait_item};
-use rustc_hir::{
+use redox_data_structures::fx::FxHashSet;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::intravisit::{Visitor, walk_item, walk_trait_item};
+use redox_hir::{
     GenericParamKind, HirId, Impl, ImplItem, ImplItemImplKind, ImplItemKind, Item, ItemKind, ItemLocalId, Node, Pat,
     PatKind, TraitItem, UsePath,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::symbol::Ident;
+use redox_span::{Span, Symbol};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -87,7 +87,7 @@ impl LateLintPass<'_> for MinIdentChars {
 
         // If the function is declared but not defined in a trait, check_pat isn't called so we need to
         // check this explicitly
-        if matches!(&item.kind, rustc_hir::TraitItemKind::Fn(_, _)) {
+        if matches!(&item.kind, redox_hir::TraitItemKind::Fn(_, _)) {
             let param_names = cx.tcx.fn_arg_idents(item.owner_id.to_def_id());
             for ident in param_names.iter().flatten() {
                 let str = ident.as_str();
@@ -122,7 +122,7 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
         let Self { conf, cx } = *self;
         // FIXME(#112534) Reimplementation of `find`, as it uses indexing, which can (and will in
         // async functions, or really anything async) panic. This should probably be fixed on the
-        // rustc side, this is just a temporary workaround.
+        // redox side, this is just a temporary workaround.
         let node = if hir_id.local_id == ItemLocalId::from_u32(0) {
             // In this case, we can just use `find`, `Owner`'s `node` field is private anyway so we can't
             // reimplement it even if we wanted to

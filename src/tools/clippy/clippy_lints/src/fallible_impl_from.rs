@@ -2,11 +2,11 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::method_chain_args;
 use clippy_utils::res::MaybeDef;
-use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
-use rustc_span::{Span, sym};
+use redox_hir as hir;
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty;
+use redox_session::declare_lint_pass;
+use redox_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -62,8 +62,8 @@ impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
 }
 
 fn lint_impl_body(cx: &LateContext<'_>, item_def_id: hir::OwnerId, impl_span: Span) {
-    use rustc_hir::Expr;
-    use rustc_hir::intravisit::{self, Visitor};
+    use redox_hir::Expr;
+    use redox_hir::intravisit::{self, Visitor};
 
     struct FindPanicUnwrap<'a, 'tcx> {
         lcx: &'a LateContext<'tcx>,

@@ -5,10 +5,10 @@
 
 //@ ignore-cross-compile target-cpu=native doesn't work well when cross compiling
 
-use run_make_support::{run, rustc};
+use run_make_support::{run, redox};
 
 fn main() {
-    let out = rustc()
+    let out = redox()
         .input("foo.rs")
         .arg("-Ctarget-cpu=native")
         .arg("-Zverify-llvm-ir")

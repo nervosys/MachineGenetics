@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use rustc_ast::ast::{Pat, PatKind};
-use rustc_errors::Applicability;
-use rustc_lint::EarlyContext;
-use rustc_span::Span;
+use redox_ast::ast::{Pat, PatKind};
+use redox_errors::Applicability;
+use redox_lint::EarlyContext;
+use redox_span::Span;
 
 use super::UNNEEDED_WILDCARD_PATTERN;
 

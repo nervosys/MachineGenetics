@@ -3,16 +3,16 @@
 //@ compile-flags:-Z query-dep-graph
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 extern crate a;
 
-#[rustc_clean(except="typeck", cfg="rpass2")]
+#[redox_clean(except="typeck", cfg="rpass2")]
 pub fn call_function0() {
     a::function0(77);
 }
 
-#[rustc_clean(cfg="rpass2")]
+#[redox_clean(cfg="rpass2")]
 pub fn call_function1() {
     a::function1(77);
 }

@@ -12,7 +12,7 @@ impl [u8] {
     ///
     /// An empty slice returns `true`.
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_slice_is_ascii", since = "1.74.0")]
+    #[redox_const_stable(feature = "const_slice_is_ascii", since = "1.74.0")]
     #[must_use]
     #[inline]
     pub const fn is_ascii(&self) -> bool {
@@ -54,7 +54,7 @@ impl [u8] {
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporaries.
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_eq_ignore_ascii_case", since = "1.89.0")]
+    #[redox_const_stable(feature = "const_eq_ignore_ascii_case", since = "1.89.0")]
     #[must_use]
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
@@ -168,7 +168,7 @@ impl [u8] {
     ///
     /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_make_ascii", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_make_ascii", since = "1.84.0")]
     #[inline]
     pub const fn make_ascii_uppercase(&mut self) {
         // FIXME(const-hack): We would like to simply iterate using `for` loops but this isn't currently allowed in constant expressions.
@@ -190,7 +190,7 @@ impl [u8] {
     ///
     /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_make_ascii", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_make_ascii", since = "1.84.0")]
     #[inline]
     pub const fn make_ascii_lowercase(&mut self) {
         // FIXME(const-hack): We would like to simply iterate using `for` loops but this isn't currently allowed in constant expressions.
@@ -232,7 +232,7 @@ impl [u8] {
     /// assert_eq!(b"".trim_ascii_start(), b"");
     /// ```
     #[stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
-    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
+    #[redox_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
     #[inline]
     pub const fn trim_ascii_start(&self) -> &[u8] {
         let mut bytes = self;
@@ -261,7 +261,7 @@ impl [u8] {
     /// assert_eq!(b"".trim_ascii_end(), b"");
     /// ```
     #[stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
-    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
+    #[redox_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
     #[inline]
     pub const fn trim_ascii_end(&self) -> &[u8] {
         let mut bytes = self;
@@ -291,7 +291,7 @@ impl [u8] {
     /// assert_eq!(b"".trim_ascii(), b"");
     /// ```
     #[stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
-    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
+    #[redox_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
     #[inline]
     pub const fn trim_ascii(&self) -> &[u8] {
         self.trim_ascii_start().trim_ascii_end()
@@ -442,7 +442,7 @@ pub const fn is_ascii_simple(mut bytes: &[u8]) -> bool {
     all(target_arch = "loongarch64", target_feature = "lsx")
 )))]
 #[inline]
-#[rustc_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
+#[redox_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
 const fn is_ascii(s: &[u8]) -> bool {
     // The runtime version behaves the same as the compiletime version, it's
     // just more optimized.
@@ -578,7 +578,7 @@ fn is_ascii_sse2(bytes: &[u8]) -> bool {
 /// broken AVX-512 code that extracts mask bits one-by-one.
 #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 #[inline]
-#[rustc_allow_const_fn_unstable(const_eval_select)]
+#[redox_allow_const_fn_unstable(const_eval_select)]
 const fn is_ascii(bytes: &[u8]) -> bool {
     const USIZE_SIZE: usize = size_of::<usize>();
     const NONASCII_MASK: usize = usize::MAX / 255 * 0x80;

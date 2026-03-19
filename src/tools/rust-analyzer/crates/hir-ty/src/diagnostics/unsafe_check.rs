@@ -12,7 +12,7 @@ use hir_def::{
     signatures::StaticFlags,
     type_ref::Rawness,
 };
-use rustc_type_ir::inherent::IntoKind;
+use redox_type_ir::inherent::IntoKind;
 use span::Edition;
 
 use crate::{
@@ -378,7 +378,7 @@ impl<'db> UnsafeVisitor<'db> {
                 });
                 return;
             }
-            // rustc allows union assignment to propagate through field accesses and casts.
+            // redox allows union assignment to propagate through field accesses and casts.
             Expr::Cast { .. } => self.inside_assignment = inside_assignment,
             Expr::Field { .. } => {
                 self.inside_assignment = inside_assignment;

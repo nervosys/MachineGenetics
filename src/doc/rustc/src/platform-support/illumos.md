@@ -22,7 +22,7 @@ The illumos target supports `std` and uses the standard ELF file format.
 ## Building the target
 
 These targets can be built by adding `aarch64-unknown-illumos` and
-`x86_64-unknown-illumos` as targets in the rustc list.
+`x86_64-unknown-illumos` as targets in the redox list.
 
 ## Building Rust programs
 

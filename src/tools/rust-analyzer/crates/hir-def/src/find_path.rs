@@ -9,7 +9,7 @@ use hir_expand::{
     name::{AsName, Name},
 };
 use intern::sym;
-use rustc_hash::FxHashSet;
+use redox_hash::FxHashSet;
 
 use crate::{
     FindPathConfig, ModuleDefId, ModuleId,

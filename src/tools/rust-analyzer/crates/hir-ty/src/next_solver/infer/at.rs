@@ -25,7 +25,7 @@
 //! sometimes useful when the types of `c` and `d` are not traceable
 //! things. (That system should probably be refactored.)
 
-use rustc_type_ir::{
+use redox_type_ir::{
     FnSig, GenericArgKind, TypeFoldable, TypingMode, Variance,
     error::ExpectedFound,
     inherent::Span as _,

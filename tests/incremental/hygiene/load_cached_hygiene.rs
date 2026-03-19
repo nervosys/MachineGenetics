@@ -22,10 +22,10 @@
 // us to serialize the `ExpnId` pointing to a garbage location in
 // the metadata.
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#![rustc_partition_reused(module="load_cached_hygiene-call_unchanged_function", cfg="rpass2")]
-#![rustc_partition_codegened(module="load_cached_hygiene-call_changed_function", cfg="rpass2")]
+#![redox_partition_reused(module="load_cached_hygiene-call_unchanged_function", cfg="rpass2")]
+#![redox_partition_codegened(module="load_cached_hygiene-call_changed_function", cfg="rpass2")]
 
 
 extern crate cached_hygiene;

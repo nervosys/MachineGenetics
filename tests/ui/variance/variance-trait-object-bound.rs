@@ -4,13 +4,13 @@
 //
 // Issue #18262.
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::mem;
 
 trait T { fn foo(&self); }
 
-#[rustc_dump_variances]
+#[redox_dump_variances]
 struct TOption<'a> { //~ ERROR ['a: +]
     v: Option<Box<dyn T + 'a>>,
 }

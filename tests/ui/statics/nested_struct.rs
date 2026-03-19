@@ -1,7 +1,7 @@
 //@ check-pass
 /// oli-obk added this test after messing up the interner logic
 /// around mutability of nested allocations. This was not caught
-/// by the test suite, but by trying to build stage2 rustc.
+/// by the test suite, but by trying to build stage2 redox.
 /// There is no real explanation for this test, as it was just
 /// a bug during a refactoring.
 

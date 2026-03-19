@@ -1,5 +1,5 @@
-use rustc_abi::{Align, Size};
-use rustc_const_eval::interpret::{AllocId, InterpCx, InterpResult};
+use redox_abi::{Align, Size};
+use redox_const_eval::interpret::{AllocId, InterpCx, InterpResult};
 
 pub use self::intercept::EvalContextExt as GenmcEvalContextExt;
 pub use self::run::run_genmc_mode;
@@ -25,7 +25,7 @@ mod run {
     use std::num::NonZeroI32;
     use std::rc::Rc;
 
-    use rustc_middle::ty::TyCtxt;
+    use redox_middle::ty::TyCtxt;
 
     use crate::{GenmcCtx, MiriConfig};
 
@@ -45,8 +45,8 @@ mod intercept {
     pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         fn genmc_intercept_function(
             &mut self,
-            _instance: rustc_middle::ty::Instance<'tcx>,
-            _args: &[rustc_const_eval::interpret::FnArg<'tcx, crate::Provenance>],
+            _instance: redox_middle::ty::Instance<'tcx>,
+            _args: &[redox_const_eval::interpret::FnArg<'tcx, crate::Provenance>],
             _dest: &crate::PlaceTy<'tcx>,
         ) -> InterpResult<'tcx, bool> {
             unreachable!()

@@ -4,13 +4,13 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::{is_from_proc_macro, sym};
 use hir::def_id::DefId;
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::{ExprKind, Item, ItemKind, QPath, UseKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::Symbol;
-use rustc_span::symbol::kw;
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_hir::{ExprKind, Item, ItemKind, QPath, UseKind};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::Symbol;
+use redox_span::symbol::kw;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
         }
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx redox_hir::Expr<'tcx>) {
         // `std::<integer>::<CONST>` check
         let (sugg, msg) = if let ExprKind::Path(qpath) = &expr.kind
             && let QPath::Resolved(None, path) = qpath

@@ -4,13 +4,13 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::HirNode;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet, snippet_block_with_context, snippet_with_context};
 use clippy_utils::{is_expr_identity_of_pat, is_refutable, peel_blocks};
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Applicability;
-use rustc_hir::def::Res;
-use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_path, walk_stmt};
-use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, Item, ItemKind, Node, PatKind, Path, Stmt, StmtKind};
-use rustc_lint::LateContext;
-use rustc_span::{Span, Symbol};
+use redox_data_structures::fx::FxHashSet;
+use redox_errors::Applicability;
+use redox_hir::def::Res;
+use redox_hir::intravisit::{Visitor, walk_block, walk_expr, walk_path, walk_stmt};
+use redox_hir::{Arm, Block, Expr, ExprKind, HirId, Item, ItemKind, Node, PatKind, Path, Stmt, StmtKind};
+use redox_lint::LateContext;
+use redox_span::{Span, Symbol};
 
 use super::MATCH_SINGLE_BINDING;
 

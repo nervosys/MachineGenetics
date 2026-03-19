@@ -17,7 +17,7 @@ use hir_def::{
     signatures::TraitFlags,
     type_ref::{TypeRef, TypeRefId},
 };
-use rustc_type_ir::{
+use redox_type_ir::{
     AliasTerm, AliasTy, AliasTyKind,
     inherent::{GenericArgs as _, Region as _, Ty as _},
 };
@@ -445,10 +445,10 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                     ValueNs::ImplSelf(_) => {
                         prohibit_generics_on_resolved(GenericArgsProhibitedReason::SelfTy);
                     }
-                    // FIXME: rustc generates E0107 (incorrect number of generic arguments) and not
+                    // FIXME: redox generates E0107 (incorrect number of generic arguments) and not
                     // E0109 (generic arguments provided for a type that doesn't accept them) for
                     // consts and statics, presumably as a defense against future in which consts
-                    // and statics can be generic, or just because it was easier for rustc implementors.
+                    // and statics can be generic, or just because it was easier for redox implementors.
                     // That means we'll show the wrong error code. Because of us it's easier to do it
                     // this way :)
                     ValueNs::GenericParam(_) => {
@@ -551,7 +551,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
     }
 
     /// Collect generic arguments from a path into a `Substs`. See also
-    /// `create_substs_for_ast_path` and `def_to_ty` in rustc.
+    /// `create_substs_for_ast_path` and `def_to_ty` in redox.
     pub(crate) fn substs_from_path(
         &mut self,
         // Note that we don't call `db.value_type(resolved)` here,
@@ -582,7 +582,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 // (via `use Enum::Variant`). The resolver returns whether they were, but we don't have its result
                 // available here. The worst that can happen is that we will show some confusing diagnostics to the user,
                 // if generics exist on the module and they don't match with the variant.
-                // preferred). See also `def_ids_for_path_segments` in rustc.
+                // preferred). See also `def_ids_for_path_segments` in redox.
                 //
                 // `wrapping_sub(1)` will return a number which `get` will return None for if current_segment_idx<2.
                 // This simplifies the code a bit.
@@ -763,7 +763,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                     };
                 match param {
                     GenericParamDataRef::LifetimeParamData(_) => {
-                        Region::new(self.ctx.ctx.interner, rustc_type_ir::ReError(ErrorGuaranteed))
+                        Region::new(self.ctx.ctx.interner, redox_type_ir::ReError(ErrorGuaranteed))
                             .into()
                     }
                     GenericParamDataRef::TypeParamData(param) => {
@@ -799,7 +799,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         unknown_const_as_generic(const_param_ty_query(self.ctx.ctx.db, const_id))
                     }
                     GenericParamId::LifetimeParamId(_) => {
-                        Region::new(self.ctx.ctx.interner, rustc_type_ir::ReError(ErrorGuaranteed))
+                        Region::new(self.ctx.ctx.interner, redox_type_ir::ReError(ErrorGuaranteed))
                             .into()
                     }
                 }
@@ -931,8 +931,8 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 let ty = this.ctx.lower_ty(type_ref);
                                 let pred = Clause(Predicate::new(
                                     interner,
-                                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                                        rustc_type_ir::ClauseKind::Projection(
+                                    Binder::dummy(redox_type_ir::PredicateKind::Clause(
+                                        redox_type_ir::ClauseKind::Projection(
                                             ProjectionPredicate {
                                                 projection_term,
                                                 term: ty.into(),
@@ -1318,9 +1318,9 @@ fn type_looks_like_const(
     type_ref: TypeRefId,
 ) -> Option<TypeLikeConst<'_>> {
     // A path/`_` const will be parsed as a type, instead of a const, because when parsing/lowering
-    // in hir-def we don't yet know the expected argument kind. rustc does this a bit differently,
+    // in hir-def we don't yet know the expected argument kind. redox does this a bit differently,
     // when lowering to HIR it resolves the path, and if it doesn't resolve to the type namespace
-    // it is lowered as a const. Our behavior could deviate from rustc when the value is resolvable
+    // it is lowered as a const. Our behavior could deviate from redox when the value is resolvable
     // in both the type and value namespaces, but I believe we only allow more code.
     let type_ref = &store[type_ref];
     match type_ref {

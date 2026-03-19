@@ -7,6 +7,6 @@ fn main() {
         .unwrap_or(0);
     let profile = env::var("PROFILE").unwrap_or_default();
     if profile == "release" || opt_level >= 2 {
-        println!("cargo:rustc-cfg=optimized");
+        println!("cargo:redox-cfg=optimized");
     }
 }

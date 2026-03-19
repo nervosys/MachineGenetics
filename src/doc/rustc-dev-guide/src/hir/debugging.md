@@ -1,7 +1,7 @@
 # HIR Debugging
 
 Use the `-Z unpretty=hir` flag to produce a human-readable representation of the HIR.
-For cargo projects this can be done with `cargo rustc -- -Z unpretty=hir`.
+For cargo projects this can be done with `cargo redox -- -Z unpretty=hir`.
 This output is useful when you need to see at a glance how your code was desugared and transformed
 during AST lowering.
 
@@ -12,4 +12,4 @@ compiler.
 If you are trying to correlate `NodeId`s or `DefId`s with source code, the
 `-Z unpretty=expanded,identified` flag may be useful.
 
-TODO: anything else? [#1159](https://github.com/rust-lang/rustc-dev-guide/issues/1159)
+TODO: anything else? [#1159](https://github.com/rust-lang/redox-dev-guide/issues/1159)

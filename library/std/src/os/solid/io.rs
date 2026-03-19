@@ -72,7 +72,7 @@ type ValidRawFd = core::num::niche_types::NotAllOnes<RawFd>;
 /// socket, which is then borrowed under the same lifetime.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
-#[rustc_nonnull_optimization_guaranteed]
+#[redox_nonnull_optimization_guaranteed]
 pub struct BorrowedFd<'socket> {
     fd: ValidRawFd,
     _phantom: PhantomData<&'socket OwnedFd>,
@@ -87,7 +87,7 @@ pub struct BorrowedFd<'socket> {
 /// an argument, it is not captured or consumed, and it never has the value
 /// `SOLID_NET_INVALID_FD`.
 #[repr(transparent)]
-#[rustc_nonnull_optimization_guaranteed]
+#[redox_nonnull_optimization_guaranteed]
 pub struct OwnedFd {
     fd: ValidRawFd,
 }

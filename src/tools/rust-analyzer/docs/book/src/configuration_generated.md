@@ -153,7 +153,7 @@ Extra arguments that are passed to every cargo invocation.
 
 Default: `{}`
 
-Extra environment variables that will be set when running cargo, rustc
+Extra environment variables that will be set when running cargo, redox
 or other commands within the workspace. Useful for setting RUSTFLAGS.
 
 
@@ -186,7 +186,7 @@ entirely offline, and Cargo metadata for dependencies is not fetched.
 Default: `"discover"`
 
 Relative path to the sysroot, or "discover" to try to automatically find it via
-"rustc --print sysroot".
+"redox --print sysroot".
 
 Unsetting this disables sysroot loading.
 
@@ -588,7 +588,7 @@ usual.
 Default: `{}`
 
 Map of prefixes to be substituted when parsing diagnostic file paths. This should be the
-reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
+reverse mapping of what is passed to `redox` as `--remap-path-prefix`.
 
 
 ## rust-analyzer.diagnostics.styleLints.enable {#diagnostics.styleLints.enable}
@@ -1427,7 +1427,7 @@ doc-tests.
 Unless the launched target uses a
 [custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),
 they will end up being interpreted as options to
-[`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
+[`redox`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/redox/tests/index.html#cli-arguments).
 
 
 ## rust-analyzer.runnables.test.command {#runnables.test.command}
@@ -1449,16 +1449,16 @@ replace the package name, target option (such as `--bin` or `--example`), the ta
 the test name (name of test function or test mod path).
 
 
-## rust-analyzer.rustc.source {#rustc.source}
+## rust-analyzer.redox.source {#redox.source}
 
 Default: `null`
 
-Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
-projects, or "discover" to try to automatically find it if the `rustc-dev` component
+Path to the Cargo.toml of the rust compiler workspace, for usage in redox_private
+projects, or "discover" to try to automatically find it if the `redox-dev` component
 is installed.
 
-Any project which uses rust-analyzer with the rustcPrivate
-crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
+Any project which uses rust-analyzer with the redoxPrivate
+crates must set `[package.metadata.rust-analyzer] redox_private=true` to use it.
 
 This option does not take effect until rust-analyzer is restarted.
 

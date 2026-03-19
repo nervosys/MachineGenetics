@@ -1,6 +1,6 @@
 //! A simple const eval API, for use on arbitrary HIR expressions.
 //!
-//! This cannot use rustc's const eval, aka miri, as arbitrary HIR expressions cannot be lowered to
+//! This cannot use redox's const eval, aka miri, as arbitrary HIR expressions cannot be lowered to
 //! executable MIR bodies, so we have to do this instead.
 #![expect(clippy::float_cmp)]
 
@@ -8,22 +8,22 @@ use crate::res::MaybeDef;
 use crate::source::{SpanRangeExt, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, sym, unsext};
 
-use rustc_abi::Size;
-use rustc_apfloat::Float;
-use rustc_apfloat::ieee::{Half, Quad};
-use rustc_ast::ast::{LitFloatType, LitKind};
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{
+use redox_abi::Size;
+use redox_apfloat::Float;
+use redox_apfloat::ieee::{Half, Quad};
+use redox_ast::ast::{LitFloatType, LitKind};
+use redox_hir::def::{DefKind, Res};
+use redox_hir::{
     BinOpKind, Block, ConstArgKind, ConstBlock, ConstItemRhs, Expr, ExprKind, HirId, PatExpr, PatExprKind, QPath,
     TyKind, UnOp,
 };
-use rustc_lexer::{FrontmatterAllowed, tokenize};
-use rustc_lint::LateContext;
-use rustc_middle::mir::ConstValue;
-use rustc_middle::mir::interpret::{Scalar, alloc_range};
-use rustc_middle::ty::{self, FloatTy, IntTy, ScalarInt, Ty, TyCtxt, TypeckResults, UintTy};
-use rustc_middle::{bug, mir, span_bug};
-use rustc_span::{Symbol, SyntaxContext};
+use redox_lexer::{FrontmatterAllowed, tokenize};
+use redox_lint::LateContext;
+use redox_middle::mir::ConstValue;
+use redox_middle::mir::interpret::{Scalar, alloc_range};
+use redox_middle::ty::{self, FloatTy, IntTy, ScalarInt, Ty, TyCtxt, TypeckResults, UintTy};
+use redox_middle::{bug, mir, span_bug};
+use redox_span::{Symbol, SyntaxContext};
 use std::cell::Cell;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
@@ -906,7 +906,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                     && let Some(src) = (span.lo..expr_lo).get_source_range(&self.tcx)
                     && let Some(src) = src.as_str()
                 {
-                    use rustc_lexer::TokenKind::{BlockComment, LineComment, OpenBrace, Semi, Whitespace};
+                    use redox_lexer::TokenKind::{BlockComment, LineComment, OpenBrace, Semi, Whitespace};
                     if !tokenize(src, FrontmatterAllowed::No)
                         .map(|t| t.kind)
                         .filter(|t| !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. } | Semi))

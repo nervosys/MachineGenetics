@@ -7,10 +7,10 @@
 //@ ignore-cross-compile
 //@ only-linux
 
-use run_make_support::{cc, cwd, run, rustc};
+use run_make_support::{cc, cwd, run, redox};
 
 fn main() {
-    rustc().input("foo.rs").run();
+    redox().input("foo.rs").run();
     cc().input("foo.c")
         .arg("-lfoo")
         .library_search_path(cwd())

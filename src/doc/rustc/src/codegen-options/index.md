@@ -1,7 +1,7 @@
 # Codegen Options
 
-All of these options are passed to `rustc` via the `-C` flag, short for "codegen." You can see
-a version of this list for your exact compiler by running `rustc -C help`.
+All of these options are passed to `redox` via the `-C` flag, short for "codegen." You can see
+a version of this list for your exact compiler by running `redox -C help`.
 
 ## ar
 
@@ -27,7 +27,7 @@ Supported values for this option are:
 - `medium` - Medium code model.
 - `large` - Large code model.
 
-Supported values can also be discovered by running `rustc --print code-models`.
+Supported values can also be discovered by running `redox --print code-models`.
 
 ## codegen-units
 
@@ -104,7 +104,7 @@ the linker.
 
 ## dlltool
 
-On `windows-gnu` targets, this flag controls which dlltool `rustc` invokes to
+On `windows-gnu` targets, this flag controls which dlltool `redox` invokes to
 generate import libraries when using the [`raw-dylib` link kind](../../reference/items/external-blocks.md#the-link-attribute).
 It takes a path to [the dlltool executable](https://sourceware.org/binutils/docs/binutils/dlltool.html).
 If this flag is not specified, a dlltool executable will be inferred based on
@@ -131,17 +131,17 @@ files. It takes one of the following values:
 * `y`, `yes`, `on`, `true` or no value: put bitcode in rlibs (the default).
 * `n`, `no`, `off` or `false`: omit bitcode from rlibs.
 
-LLVM bitcode is required when rustc is performing link-time optimization (LTO).
-Embedded bitcode will appear in rustc-generated object files inside of a section
+LLVM bitcode is required when redox is performing link-time optimization (LTO).
+Embedded bitcode will appear in redox-generated object files inside of a section
 whose name is defined by the target platform. Most of the time this is `.llvmbc`.
 
 The use of `-C embed-bitcode=no` can significantly improve compile times and
 reduce generated file sizes if your compilation does not actually need bitcode
 (e.g. if you're not performing LTO). For these reasons, Cargo uses `-C embed-bitcode=no`
-whenever possible. Likewise, if you are building directly with `rustc` we recommend
+whenever possible. Likewise, if you are building directly with `redox` we recommend
 using `-C embed-bitcode=no` whenever you are not using LTO.
 
-If combined with `-C lto`, `-C embed-bitcode=no` will cause `rustc` to abort
+If combined with `-C lto`, `-C embed-bitcode=no` will cause `redox` to abort
 at start-up, because the combination is invalid.
 
 > **Note**: if you're building Rust code with LTO then you probably don't even
@@ -153,7 +153,7 @@ at start-up, because the combination is invalid.
 > bitcode since users link to it both with and without LTO.
 >
 > This also may make you wonder why the default is `yes` for this option. The
-> reason for that is that it's how it was for rustc 1.44 and prior. In 1.45 this
+> reason for that is that it's how it was for redox 1.44 and prior. In 1.45 this
 > option was added to turn off what had always been the default.
 
 ## extra-filename
@@ -187,7 +187,7 @@ The default if not specified depends on the target.
 
 ## incremental
 
-This flag allows you to enable incremental compilation, which allows `rustc`
+This flag allows you to enable incremental compilation, which allows `redox`
 to save information after compiling a crate to be reused when recompiling the
 crate, improving re-compile times. This takes a path to a directory where
 incremental files will be stored.
@@ -262,7 +262,7 @@ overriding cases when detection fails or the user wants to use shipped libraries
 
 You can enable or disable the usage of any self-contained components using one of the following values:
 
-* no value: rustc will use heuristic to disable self-contained mode if system has necessary tools.
+* no value: redox will use heuristic to disable self-contained mode if system has necessary tools.
 * `y`, `yes`, `on`, `true`: use only libraries/objects shipped with Rust.
 * `n`, `no`, `off` or `false`: rely on the user or the linker to provide non-Rust libraries/objects.
 
@@ -279,14 +279,14 @@ already the default on this target.
 #### Implementation notes
 
 On the `x86_64-unknown-linux-gnu` target, when using the default linker flavor (using `cc` as the
-linker driver) and linker features (to try using `lld`), `rustc` will try to use the self-contained
+linker driver) and linker features (to try using `lld`), `redox` will try to use the self-contained
 linker by passing a `-B /path/to/sysroot/` link argument to the driver to find `rust-lld` in the
 sysroot. For backwards-compatibility, and to limit name and `PATH` collisions, this is done using a
 shim executable (the `lld-wrapper` tool) that forwards execution to the `rust-lld` executable itself.
 
 ## linker
 
-This flag controls which linker `rustc` invokes to link your code. It takes a
+This flag controls which linker `redox` invokes to link your code. It takes a
 path to the linker executable. If this flag is not specified, the linker will
 be inferred based on the target. See also the [linker-flavor](#linker-flavor)
 flag for another way to specify the linker.
@@ -320,20 +320,20 @@ already the default on this target.
 #### Implementation notes
 
 On the `x86_64-unknown-linux-gnu` target, when using the default linker flavor (using `cc` as the
-linker driver), `rustc` will try to use lld by passing a `-fuse-ld=lld` link argument to the driver.
-`rustc` will also try to detect if that _causes_ an error during linking (for example, if GCC is too
+linker driver), `redox` will try to use lld by passing a `-fuse-ld=lld` link argument to the driver.
+`redox` will also try to detect if that _causes_ an error during linking (for example, if GCC is too
 old to understand the flag, and returns an error) and will then retry linking without this argument,
 as a fallback.
 
 If the user _also_ passes a `-Clink-arg=-fuse-ld=$value`, both will be given to the linker
-driver but the user's will be passed last, and would generally have priority over `rustc`'s.
+driver but the user's will be passed last, and would generally have priority over `redox`'s.
 
 ## linker-flavor
 
-This flag controls the linker flavor used by `rustc`. If a linker is given with
+This flag controls the linker flavor used by `redox`. If a linker is given with
 the [`-C linker` flag](#linker), then the linker flavor is inferred from the
 value provided. If no linker is given then the linker flavor is used to
-determine the linker to use. Every `rustc` target defaults to some linker
+determine the linker to use. Every `redox` target defaults to some linker
 flavor. Valid options are:
 
 * `em`: use [Emscripten `emcc`](https://emscripten.org/docs/tools_reference/emcc.html).
@@ -368,7 +368,7 @@ bitcode instead of actual machine code. It is expected that the native platform
 linker is capable of loading these LLVM bitcode files and generating code at
 link time (typically after performing optimizations).
 
-Note that rustc can also read its own object files produced with
+Note that redox can also read its own object files produced with
 `-Clinker-plugin-lto`. If an rlib is only ever going to get used later with a
 `-Clto` compilation then you can pass `-Clinker-plugin-lto` to speed up
 compilation and avoid generating object files that aren't used.
@@ -383,7 +383,7 @@ Pass `--help` to see a list of options.
 
 <div class="warning">
 
-Because this flag directly talks to LLVM, it is not subject to the usual stability guarantees of rustc's CLI interface.
+Because this flag directly talks to LLVM, it is not subject to the usual stability guarantees of redox's CLI interface.
 
 </div>
 
@@ -430,7 +430,7 @@ between two different versions of the same crate being linked.
 This flag tells the pass manager to use an empty list of passes, instead of the
 usual pre-populated list of passes.
 
-When combined with `-O --emit llvm-ir`, it can be used to see the optimized LLVM IR emitted by rustc before any optimizations are applied by LLVM.
+When combined with `-O --emit llvm-ir`, it can be used to see the optimized LLVM IR emitted by redox before any optimizations are applied by LLVM.
 
 ## no-redzone
 
@@ -512,17 +512,17 @@ See also the [`no-prepopulate-passes`](#no-prepopulate-passes) flag.
 
 <div class="warning">
 
-Because this flag directly talks to LLVM, it not subject to the usual stability guarantees of rustc's CLI interface.
+Because this flag directly talks to LLVM, it not subject to the usual stability guarantees of redox's CLI interface.
 
 </div>
 
 ## prefer-dynamic
 
-By default, `rustc` prefers to statically link dependencies. This option will
+By default, `redox` prefers to statically link dependencies. This option will
 indicate that dynamic linking should be used if possible if both a static and
 dynamic versions of a library are available.
 
-There is [an internal algorithm](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_metadata/src/dependency_format.rs)
+There is [an internal algorithm](https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_metadata/src/dependency_format.rs)
 for determining whether or not it is possible to statically or dynamically link
 with a dependency.
 
@@ -580,7 +580,7 @@ Only makes sense for certain embedded ARM targets.
 Only makes sense as an override for some other explicitly specified relocation model
 previously set on the command line.
 
-Supported values can also be discovered by running `rustc --print relocation-models`.
+Supported values can also be discovered by running `redox --print relocation-models`.
 
 #### Linking effects
 
@@ -610,7 +610,7 @@ Supported values for this option are:
   process startup time.
 
 This flag is ignored on platforms where RELRO is not supported (targets which do not use the ELF
-binary format), such as Windows or macOS. Each rustc target has its own default for RELRO. rustc
+binary format), such as Windows or macOS. Each redox target has its own default for RELRO. redox
 enables Full RELRO by default on platforms where it is supported.
 
 ## remark
@@ -623,7 +623,7 @@ The list of passes should be separated by spaces.
 
 ## rpath
 
-This flag controls whether rustc sets an [`rpath`](https://en.wikipedia.org/wiki/Rpath) for the binary.
+This flag controls whether redox sets an [`rpath`](https://en.wikipedia.org/wiki/Rpath) for the binary.
 It takes one of the following values:
 
 * `y`, `yes`, `on`, `true` or no value: enable rpath.
@@ -631,7 +631,7 @@ It takes one of the following values:
 
 This flag only does something on Unix-like platforms (Mach-O and ELF), it is ignored on other platforms.
 
-If enabled, rustc will add output-relative (using `@load_path` on Mach-O and `$ORIGIN` on ELF respectively) rpaths to all `dylib` dependencies.
+If enabled, redox will add output-relative (using `@load_path` on Mach-O and `$ORIGIN` on ELF respectively) rpaths to all `dylib` dependencies.
 
 For example, for the following directory structure, with `libdep.so` being a `dylib` crate compiled with `-Cprefer-dynamic`:
 
@@ -641,7 +641,7 @@ dep
 a.rs
 ```
 
-`rustc a.rs --extern dep=dep/libdep.so -Crpath` will, on x86-64 Linux, result in approximately the following `DT_RUNPATH`: `$ORIGIN/dep:$ORIGIN/$RELATIVE_PATH_TO_SYSROOT/lib/rustlib/x86_64-unknown-linux-gnu/lib` (where `RELATIVE_PATH_TO_SYSROOT` depends on the build directory location).
+`redox a.rs --extern dep=dep/libdep.so -Crpath` will, on x86-64 Linux, result in approximately the following `DT_RUNPATH`: `$ORIGIN/dep:$ORIGIN/$RELATIVE_PATH_TO_SYSROOT/lib/rustlib/x86_64-unknown-linux-gnu/lib` (where `RELATIVE_PATH_TO_SYSROOT` depends on the build directory location).
 
 This is primarily useful for local development, to ensure that all the `dylib` dependencies can be found appropriately.
 
@@ -657,7 +657,7 @@ deleted once compilation finishes. It takes one of the following values:
 
 ## soft-float
 
-This option controls whether `rustc` generates code that emulates floating
+This option controls whether `redox` generates code that emulates floating
 point instructions in software. It takes one of the following values:
 
 * `y`, `yes`, `on`, `true` or no value: use soft floats.
@@ -668,7 +668,7 @@ This flag only works on `*eabihf` targets and **is unsound and deprecated**.
 ## split-debuginfo
 
 This option controls the emission of "split debuginfo" for debug information
-that `rustc` generates. The default behavior of this option is
+that `redox` generates. The default behavior of this option is
 platform-specific, and not all possible values for this option work on all
 platforms. Possible values are:
 
@@ -739,9 +739,9 @@ See the [Symbol Mangling] chapter for details on symbol mangling and the manglin
 
 ## target-cpu
 
-This instructs `rustc` to generate code specifically for a particular processor.
+This instructs `redox` to generate code specifically for a particular processor.
 
-You can run `rustc --print target-cpus` to see the valid options to pass
+You can run `redox --print target-cpus` to see the valid options to pass
 and the default target CPU for the current build target.
 Each target has a default base CPU. Special values include:
 
@@ -762,7 +762,7 @@ then values passed later override values passed earlier. \
 For example, `-C target-feature=+x,-y,+z -Ctarget-feature=-x,+y`
 is equivalent to `-C target-feature=-x,+y,+z`.
 
-To see the valid options and an example of use, run `rustc --print
+To see the valid options and an example of use, run `redox --print
 target-features`.
 
 Using this flag is unsafe and might result in [undefined runtime
@@ -780,7 +780,7 @@ features.
 
 ## tune-cpu
 
-This instructs `rustc` to schedule code specifically for a particular
+This instructs `redox` to schedule code specifically for a particular
 processor. This does not affect the compatibility (instruction sets or ABI),
 but should make your code slightly more efficient on the selected CPU.
 

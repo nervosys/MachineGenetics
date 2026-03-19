@@ -23,7 +23,7 @@ trait Bar {}
 //~^WARN #[diagnostic::on_unimplemented]` can only be applied to trait definitions
 impl Bar for i32 {}
 
-// cannot use special rustc_on_unimplement symbols
+// cannot use special redox_on_unimplement symbols
 // in the format string
 #[diagnostic::on_unimplemented(
     message = "{from_desugaring}{direct}{cause}{integral}{integer}",

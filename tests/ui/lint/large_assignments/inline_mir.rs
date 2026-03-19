@@ -7,7 +7,7 @@
 //!
 //! ```text
 //! error: moving 9999 bytes
-//!   --> /rustc/FAKE_PREFIX/library/core/src/cell.rs:2054:9
+//!   --> /redox/FAKE_PREFIX/library/core/src/cell.rs:2054:9
 //!    |
 //!    = note: value moved from here
 //! ```

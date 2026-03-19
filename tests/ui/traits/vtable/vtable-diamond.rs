@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 trait A {
     fn foo_a(&self) {}
@@ -18,19 +18,19 @@ trait D: B + C {
 
 struct S;
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl A for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl B for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl C for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl D for S {}
 //~^ ERROR vtable entries
 

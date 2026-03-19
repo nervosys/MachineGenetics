@@ -6,16 +6,16 @@
 //@ ignore-remote
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
+extern crate redox_driver;
+extern crate redox_interface;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
-use rustc_public::CrateDef;
+use redox_public::CrateDef;
 use std::collections::HashSet;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -24,7 +24,7 @@ const CRATE_NAME: &str = "trait_test";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_traits() -> ControlFlow<()> {
-    let local_crate = rustc_public::local_crate();
+    let local_crate = redox_public::local_crate();
     let local_traits = local_crate.trait_decls();
     assert_eq!(local_traits.len(), 1, "Expected `Max` trait, but found {:?}", local_traits);
     assert_eq!(&local_traits[0].trimmed_name(), "Max");
@@ -42,14 +42,14 @@ fn test_traits() -> ControlFlow<()> {
     assert_impl(&impl_names, "<u64 as Max>");
     assert_impl(&impl_names, "<impl From<Positive> for u64>");
 
-    let all_traits = rustc_public::all_trait_decls();
+    let all_traits = redox_public::all_trait_decls();
     assert!(all_traits.len() > local_traits.len());
     assert!(
         local_traits.iter().all(|t| all_traits.contains(t)),
         "Local: {local_traits:#?}, All: {all_traits:#?}"
     );
 
-    let all_impls = rustc_public::all_trait_impls();
+    let all_impls = redox_public::all_trait_impls();
     assert!(all_impls.len() > local_impls.len());
     assert!(
         local_impls.iter().all(|t| all_impls.contains(t)),
@@ -73,7 +73,7 @@ fn main() {
     let path = "trait_queries.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

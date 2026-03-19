@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 use clippy_utils::paths::{PathLookup, PathNS};
 use clippy_utils::{macro_path, sym, type_path, value_path};

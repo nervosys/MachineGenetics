@@ -1,4 +1,4 @@
-// Previously, rustc mandated that cdylibs could only link against rlibs as dependencies,
+// Previously, redox mandated that cdylibs could only link against rlibs as dependencies,
 // making linkage between cdylibs and dylibs impossible. After this was changed in #68448,
 // this test attempts to link both `foo` (a cdylib) and `bar` (a dylib) and checks that
 // both compilation and execution are successful.
@@ -9,14 +9,14 @@
 
 use run_make_support::{
     bin_name, cc, dynamic_lib_extension, dynamic_lib_name, filename_contains, has_extension,
-    has_prefix, has_suffix, is_windows_msvc, msvc_import_dynamic_lib_name, path, run, rustc,
+    has_prefix, has_suffix, is_windows_msvc, msvc_import_dynamic_lib_name, path, run, redox,
     shallow_find_files, target,
 };
 
 fn main() {
-    rustc().arg("-Cprefer-dynamic").input("bar.rs").run();
-    rustc().input("foo.rs").run();
-    let sysroot_libs_dir = rustc().print("target-libdir").target(target()).run().stdout_utf8();
+    redox().arg("-Cprefer-dynamic").input("bar.rs").run();
+    redox().input("foo.rs").run();
+    let sysroot_libs_dir = redox().print("target-libdir").target(target()).run().stdout_utf8();
     let sysroot_libs_dir = sysroot_libs_dir.trim();
     if is_windows_msvc() {
         let mut libs = shallow_find_files(sysroot_libs_dir, |path| {

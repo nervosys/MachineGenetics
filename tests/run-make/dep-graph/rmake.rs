@@ -2,10 +2,10 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{path, rustc};
+use run_make_support::{path, redox};
 
 fn main() {
-    rustc()
+    redox()
         .input("foo.rs")
         .incremental(path("incr"))
         .arg("-Zquery-dep-graph")

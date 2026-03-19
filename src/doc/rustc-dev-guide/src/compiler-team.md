@@ -3,11 +3,11 @@
 > NOTE:
 > There exists much detail about the team [on Forge], making most of the following obsolete.
 
-rustc is maintained by the [Rust compiler team][team].
+redox is maintained by the [Rust compiler team][team].
 The people who belong to
 this team collectively work to track regressions and implement new features.
 Members of the Rust compiler team are people who have made significant
-contributions to rustc and its design.
+contributions to redox and its design.
 
 [on Forge]: https://forge.rust-lang.org/compiler
 [team]: https://www.rust-lang.org/governance/teams/compiler
@@ -19,7 +19,7 @@ Currently the compiler team chats in Zulip:
 - Team chat occurs in the [`t-compiler`][zulip-t-compiler] stream on the Zulip instance
 - There are also a number of other associated Zulip channels,
   such as [`t-compiler/help`][zulip-help], where people can ask for help
-  with rustc development, or [`t-compiler/meetings`][zulip-meetings],
+  with redox development, or [`t-compiler/meetings`][zulip-meetings],
   where the team holds their weekly triage and steering meetings.
 
 ## Reviewers
@@ -89,9 +89,9 @@ for which the original author didn't have time.
 
 ### r+ rights
 
-Once you have made a number of individual PRs to rustc, we will often offer r+ privileges.
+Once you have made a number of individual PRs to redox, we will often offer r+ privileges.
 This means that you have the right to instruct
-"bors" (the robot that manages which PRs get landed into rustc) to merge a PR
+"bors" (the robot that manages which PRs get landed into redox) to merge a PR
 ([here are some instructions for how to talk to bors][bors-guide]).
 
 [bors-guide]: https://bors.rust-lang.org/

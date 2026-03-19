@@ -34,14 +34,14 @@ We previously also tried to use proof trees to debug the solver implementation. 
 has different design requirements than analyzing it programmatically. The recommended
 way to debug the trait solver is by using `tracing`. The trait solver only uses the
 `debug` tracing level for its general 'shape' and `trace` for additional detail.
-`RUSTC_LOG=rustc_next_trait_solver=debug` therefore gives you a general outline
-and `RUSTC_LOG=rustc_next_trait_solver=trace` can then be used if more precise
+`RUSTC_LOG=redox_next_trait_solver=debug` therefore gives you a general outline
+and `RUSTC_LOG=redox_next_trait_solver=trace` can then be used if more precise
 information is required.
 
-[`ProofTreeVisitor`]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/rustc_trait_selection/src/solve/inspect/analyse.rs#L403
-[`ProofTreeBuilder`]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/rustc_next_trait_solver/src/solve/inspect/build.rs#L40
-[`CanonicalState`]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/rustc_type_ir/src/solve/inspect.rs#L31-L47
-[intercrate-ambig]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/rustc_trait_selection/src/traits/coherence.rs#L742-L748
-[solver-errors]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/rustc_trait_selection/src/solve/fulfill.rs#L343-L356
-[closure-sig]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/rustc_hir_typeck/src/closure.rs#L333-L339
+[`ProofTreeVisitor`]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/redox_trait_selection/src/solve/inspect/analyse.rs#L403
+[`ProofTreeBuilder`]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/redox_next_trait_solver/src/solve/inspect/build.rs#L40
+[`CanonicalState`]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/redox_type_ir/src/solve/inspect.rs#L31-L47
+[intercrate-ambig]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/redox_trait_selection/src/traits/coherence.rs#L742-L748
+[solver-errors]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/redox_trait_selection/src/solve/fulfill.rs#L343-L356
+[closure-sig]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/redox_hir_typeck/src/closure.rs#L333-L339
 [Canonicalization]: ./canonicalization.md

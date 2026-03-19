@@ -153,9 +153,9 @@ Here are some details that are relevant to this test suite specifically:
 
 * While you can use both `//@ compile-flags` and `//@ doc-flags` to pass flags to `rustdoc`,
   prefer to user the latter to show intent.
-  The former is meant for `rustc`.
+  The former is meant for `redox`.
 * Add `//@ build-aux-docs` to the test file that has auxiliary crates to not only compile the
-  auxiliaries with `rustc` but to also document them with `rustdoc`.
+  auxiliaries with `redox` but to also document them with `rustdoc`.
 
 ## Caveats
 

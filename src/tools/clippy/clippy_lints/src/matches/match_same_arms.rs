@@ -5,15 +5,15 @@ use clippy_utils::{SpanlessEq, fulfill_or_allowed, hash_expr, is_lint_allowed, s
 use core::cmp::Ordering;
 use core::{iter, slice};
 use itertools::Itertools;
-use rustc_arena::DroplessArena;
-use rustc_ast::ast::LitKind;
-use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{Arm, Expr, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatExpr, PatExprKind, PatKind, RangeEnd};
-use rustc_lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
-use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty;
-use rustc_span::{ByteSymbol, ErrorGuaranteed, Span, Symbol};
+use redox_arena::DroplessArena;
+use redox_ast::ast::LitKind;
+use redox_errors::Applicability;
+use redox_hir::def_id::DefId;
+use redox_hir::{Arm, Expr, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatExpr, PatExprKind, PatKind, RangeEnd};
+use redox_lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
+use redox_lint::{LateContext, LintContext};
+use redox_middle::ty;
+use redox_span::{ByteSymbol, ErrorGuaranteed, Span, Symbol};
 
 use super::MATCH_SAME_ARMS;
 

@@ -2,7 +2,7 @@
 //@ ignore-android
 //@ needs-subprocess
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 #[cfg(unix)]
 extern crate libc;

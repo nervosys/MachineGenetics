@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 
 use run_make_support::rfs::create_dir_all;
 use run_make_support::{
-    cwd, filename_contains, has_extension, rfs, run_in_tmpdir, rustc, serde_json,
+    cwd, filename_contains, has_extension, rfs, run_in_tmpdir, redox, serde_json,
     shallow_find_files,
 };
 
@@ -42,7 +42,7 @@ fn test_metrics_dump() {
     run_in_tmpdir(|| {
         let metrics_dir = cwd().join("metrics");
         create_dir_all(&metrics_dir);
-        rustc()
+        redox()
             .input("main.rs")
             .incremental("incremental")
             .env("RUST_BACKTRACE", "short")
@@ -80,7 +80,7 @@ fn test_metrics_dump() {
 #[track_caller]
 fn test_metrics_errors() {
     run_in_tmpdir(|| {
-        rustc()
+        redox()
             .input("main.rs")
             .incremental("incremental")
             .env("RUST_BACKTRACE", "short")

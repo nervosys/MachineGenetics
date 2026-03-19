@@ -5,10 +5,10 @@
 //!
 //! Please see https://github.com/rust-lang/rust/issues/144521.
 
-use run_make_support::{rustc, rustdoc};
+use run_make_support::{redox, rustdoc};
 
 fn main() {
-    rustc()
+    redox()
         .input("d.rs")
         .edition("2024")
         .crate_type("rlib")

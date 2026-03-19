@@ -4,14 +4,14 @@ use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::ty::is_copy;
 use clippy_utils::{CaptureKind, can_move_expr_to_closure, contains_return, is_from_proc_macro, peel_blocks, sym};
-use rustc_ast::Mutability;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, HirId, Param, Pat};
-use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty::Binder;
-use rustc_middle::ty::adjustment::Adjust;
-use rustc_span::Span;
+use redox_ast::Mutability;
+use redox_data_structures::fx::FxHashSet;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind, HirId, Param, Pat};
+use redox_lint::{LateContext, LintContext};
+use redox_middle::ty::Binder;
+use redox_middle::ty::adjustment::Adjust;
+use redox_span::Span;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &Expr<'_>, call_span: Span) {
     if !expr.span.in_external_macro(cx.sess().source_map())
@@ -77,7 +77,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
 fn find_bindings_from_pat(pat: &Pat<'_>) -> FxHashSet<HirId> {
     let mut bindings = FxHashSet::default();
     pat.walk(|p| {
-        if let rustc_hir::PatKind::Binding(_, hir_id, _, _) = p.kind {
+        if let redox_hir::PatKind::Binding(_, hir_id, _, _) = p.kind {
             bindings.insert(hir_id);
         }
         true

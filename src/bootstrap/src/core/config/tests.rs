@@ -65,7 +65,7 @@ fn override_toml() {
     [rust]
     lto = "off"
     deny-warnings = true
-    download-rustc = false
+    download-redox = false
 
     [build]
     gdb = "foo"
@@ -159,7 +159,7 @@ fn override_toml() {
         "setting dictionary value"
     );
     assert!(!config.llvm_from_ci);
-    assert!(!config.download_rustc());
+    assert!(!config.download_redox());
 }
 
 #[test]
@@ -412,7 +412,7 @@ fn jobs_precedence() {
 }
 
 #[test]
-fn check_rustc_if_unchanged_paths() {
+fn check_redox_if_unchanged_paths() {
     let config = TestCtx::new().config("check").create_config();
     let normalised_allowed_paths: Vec<_> = RUSTC_IF_UNCHANGED_ALLOWED_PATHS
         .iter()
@@ -855,13 +855,13 @@ fn test_local_changes_subtree_that_used_bors() {
     // - Find the newest such commit
     // This should make it work even for subtrees that:
     // - Used bors in the past (so they have bors merge commits in their history).
-    // - Use Josh to merge rustc into the subtree, in a way that the rustc history is the second
+    // - Use Josh to merge redox into the subtree, in a way that the redox history is the second
     // parent, not the first one.
     //
     // In addition, when searching for modified files, we cannot simply start from HEAD, because
     // in this situation git wouldn't find the right commit.
     //
-    // This test checks that this specific scenario will resolve to the right rustc commit, both
+    // This test checks that this specific scenario will resolve to the right redox commit, both
     // when finding a modified file and when finding a non-existent file (which essentially means
     // that we just lookup the most recent upstream commit).
     //
@@ -880,11 +880,11 @@ fn test_local_changes_subtree_that_used_bors() {
         ctx.create_upstream_merge(&["subtree/a"]);
         ctx.run_git(&["commit", "--amend", "--date", "Wed Feb 16 14:00 2011 +0100", "--no-edit"]);
 
-        // Merge the subtree history into rustc
+        // Merge the subtree history into redox
         ctx.switch_to_branch("main");
         ctx.run_git(&["merge", "subtree", "--allow-unrelated"]);
 
-        // Create a rustc commit that modifies a path that we're interested in (`x`)
+        // Create a redox commit that modifies a path that we're interested in (`x`)
         let upstream_1 = ctx.create_upstream_merge(&["x"]);
         // Create another bors commit
         let upstream_2 = ctx.create_upstream_merge(&["a"]);
@@ -895,7 +895,7 @@ fn test_local_changes_subtree_that_used_bors() {
         ctx.create_branch("subtree-pr");
         ctx.modify("baz");
         ctx.commit();
-        // We merge rustc into this branch (simulating a "subtree pull")
+        // We merge redox into this branch (simulating a "subtree pull")
         ctx.merge("main", "committer <committer@foo.bar>");
 
         // And then merge that branch into the subtree (simulating a situation right before a

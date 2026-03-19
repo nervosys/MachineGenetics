@@ -10,28 +10,28 @@ use std::{fmt, process};
 
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
-use rustc_abi::{Align, ExternAbi, Size};
-use rustc_apfloat::{Float, FloatConvert};
-use rustc_ast::expand::allocator::{self, SpecialAllocatorMethod};
-use rustc_data_structures::either::Either;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use redox_abi::{Align, ExternAbi, Size};
+use redox_apfloat::{Float, FloatConvert};
+use redox_ast::expand::allocator::{self, SpecialAllocatorMethod};
+use redox_data_structures::either::Either;
+use redox_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
-use rustc_data_structures::static_assert_size;
-use rustc_hir::attrs::InlineAttr;
-use rustc_log::tracing;
-use rustc_middle::middle::codegen_fn_attrs::TargetFeatureKind;
-use rustc_middle::mir;
-use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::layout::{
+use redox_data_structures::static_assert_size;
+use redox_hir::attrs::InlineAttr;
+use redox_log::tracing;
+use redox_middle::middle::codegen_fn_attrs::TargetFeatureKind;
+use redox_middle::mir;
+use redox_middle::query::TyCtxtAt;
+use redox_middle::ty::layout::{
     HasTyCtxt, HasTypingEnv, LayoutCx, LayoutError, LayoutOf, TyAndLayout,
 };
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_session::config::InliningThreshold;
-use rustc_span::def_id::{CrateNum, DefId};
-use rustc_span::{Span, SpanData, Symbol};
-use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{Arch, Os};
+use redox_middle::ty::{self, Instance, Ty, TyCtxt};
+use redox_session::config::InliningThreshold;
+use redox_span::def_id::{CrateNum, DefId};
+use redox_span::{Span, SpanData, Symbol};
+use redox_symbol_mangling::mangle_internal_symbol;
+use redox_target::callconv::FnAbi;
+use redox_target::spec::{Arch, Os};
 
 use crate::alloc_addresses::EvalContextExt;
 use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
@@ -676,10 +676,10 @@ impl<'tcx> MiriMachine<'tcx> {
             let crate_name =
                 tcx.sess.opts.crate_name.clone().unwrap_or_else(|| "unknown-crate".to_string());
             let pid = process::id();
-            // We adopt the same naming scheme for the profiler output that rustc uses. In rustc,
+            // We adopt the same naming scheme for the profiler output that redox uses. In redox,
             // the PID is padded so that the nondeterministic value of the PID does not spread
             // nondeterminism to the allocator. In Miri we are not aiming for such performance
-            // control, we just pad for consistency with rustc.
+            // control, we just pad for consistency with redox.
             let filename = format!("{crate_name}-{pid:07}");
             let path = Path::new(out).join(filename);
             measureme::Profiler::new(path).expect("Couldn't create `measureme` profiler")
@@ -774,7 +774,7 @@ impl<'tcx> MiriMachine<'tcx> {
             monotonic_clock: MonotonicClock::new(config.isolated_op == IsolatedOp::Allow),
             #[cfg(all(feature = "native-lib", unix))]
             native_lib: config.native_lib.iter().map(|lib_file_path| {
-                let host_triple = rustc_session::config::host_tuple();
+                let host_triple = redox_session::config::host_tuple();
                 let target_triple = tcx.sess.opts.target_triple.tuple();
                 // Check if host target == the session target.
                 if host_triple != target_triple {
@@ -825,7 +825,7 @@ impl<'tcx> MiriMachine<'tcx> {
     fn allocator_shim_symbols(
         tcx: TyCtxt<'tcx>,
     ) -> FxHashMap<Symbol, Either<Symbol, SpecialAllocatorMethod>> {
-        use rustc_codegen_ssa::base::allocator_shim_contents;
+        use redox_codegen_ssa::base::allocator_shim_contents;
 
         // codegen uses `allocator_kind_for_codegen` here, but that's only needed to deal with
         // dylibs which we do not support.
@@ -1073,7 +1073,7 @@ impl VisitProvenance for MiriMachine<'_> {
     }
 }
 
-/// A rustc InterpCx for Miri.
+/// A redox InterpCx for Miri.
 pub type MiriInterpCx<'tcx> = InterpCx<'tcx, MiriMachine<'tcx>>;
 
 /// A little trait that's useful to be inherited by extension traits.

@@ -1,5 +1,5 @@
 // This test ensures that rustdoc doesn't panic on higher-ranked lifetimes
-// with bounds, because an error should have already been emitted by rustc.
+// with bounds, because an error should have already been emitted by redox.
 
 pub fn hrlt<'b, 'c>()
 where

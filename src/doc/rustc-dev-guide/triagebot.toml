@@ -74,7 +74,7 @@ allow-unauthenticated = [
 welcome-message = ""
 welcome-message-no-reviewer = """\
 Thanks for the PR. If you have write access, feel free to merge this PR if it \
-does not need reviews. You can request a review using `r? rustc-dev-guide` or \
+does not need reviews. You can request a review using `r? redox-dev-guide` or \
 `r? <username>`.
 """
 
@@ -82,7 +82,7 @@ does not need reviews. You can request a review using `r? rustc-dev-guide` or \
 # Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment.html#usage
 # Keep members alphanumerically sorted.
 [assign.adhoc_groups]
-rustc-dev-guide = [
+redox-dev-guide = [
     "@BoxyUwU",
     "@jyn514",
     "@reddevilmidzy",

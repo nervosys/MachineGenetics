@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_hir};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, Attribute, find_attr};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::AssocContainer;
-use rustc_session::config::CrateType;
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
+use redox_hir::def_id::DefId;
+use redox_hir::{self as hir, Attribute, find_attr};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty::AssocContainer;
+use redox_session::config::CrateType;
+use redox_session::declare_lint_pass;
+use redox_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -192,7 +192,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
 }
 
 /// Checks if this function is externally exported, where #[inline] wouldn't have the desired effect
-/// and a rustc warning would be triggered, see #15301
+/// and a redox warning would be triggered, see #15301
 fn fn_is_externally_exported(cx: &LateContext<'_>, def_id: DefId) -> bool {
     let attrs = cx.tcx.codegen_fn_attrs(def_id);
     attrs.contains_extern_indicator()

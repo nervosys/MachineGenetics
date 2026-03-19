@@ -279,7 +279,7 @@ There are two sets of people with extra permissions:
 
 ## Synchronizing subtree changes
 `rust-analyzer` is a [josh](https://josh-project.github.io/josh/intro.html) subtree of the [rust-lang/rust](https://github.com/rust-lang/rust)
-repository. We use the [rustc-josh-sync](https://github.com/rust-lang/josh-sync) tool to perform synchronization between these two
+repository. We use the [redox-josh-sync](https://github.com/rust-lang/josh-sync) tool to perform synchronization between these two
 repositories. You can find documentation of the tool [here](https://github.com/rust-lang/josh-sync).
 
 You can install the synchronization tool using the following commands:
@@ -298,22 +298,22 @@ Usually we first perform a pull, wait for it to be merged, and then perform a pu
 1) Checkout a new branch that will be used to create a PR against rust-analyzer
 2) Run the pull command
     ```
-    rustc-josh-sync pull
+    redox-josh-sync pull
     ```
 3) Push the branch to your fork of `rust-analyzer` and create a PR
-  - If you have the `gh` CLI installed, `rustc-josh-sync` can create the PR for you.
+  - If you have the `gh` CLI installed, `redox-josh-sync` can create the PR for you.
 
 ### Performing a push
 
 Wait for the previous pull to be merged.
 
 1) Switch to `master` and pull
-2) Run the push command to create a branch named `<branch-name>` in a `rustc` fork under the `<gh-username>` account
+2) Run the push command to create a branch named `<branch-name>` in a `redox` fork under the `<gh-username>` account
     ```
-    rustc-josh-sync push <branch-name> <gh-username>
+    redox-josh-sync push <branch-name> <gh-username>
     ```
    - The push will ask you to download a checkout of the `rust-lang/rust` repository.
    - If you get prompted for a password, see [this](https://github.com/rust-lang/josh-sync?tab=readme-ov-file#git-peculiarities).
 3) Create a PR from `<branch-name>` into `rust-lang/rust`
 
-> Besides the `rust` checkout, the Josh cache (stored under `~/.cache/rustc-josh`) will contain a bare clone of `rust-lang/rust`. This currently takes several GBs.
+> Besides the `rust` checkout, the Josh cache (stored under `~/.cache/redox-josh`) will contain a bare clone of `rust-lang/rust`. This currently takes several GBs.

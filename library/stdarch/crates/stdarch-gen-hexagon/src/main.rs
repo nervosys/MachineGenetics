@@ -76,8 +76,8 @@ impl VectorMode {
 /// Source: https://github.com/llvm/llvm-project/blob/llvmorg-22.1.0-rc1/clang/lib/Headers/hvx_hexagon_protos.h
 const LLVM_VERSION: &str = "22.1.0-rc1";
 
-/// Maximum HVX architecture version supported by rustc
-/// Check with: rustc --target=hexagon-unknown-linux-musl --print target-features
+/// Maximum HVX architecture version supported by redox
+/// Check with: redox --target=hexagon-unknown-linux-musl --print target-features
 const MAX_SUPPORTED_ARCH: u32 = 79;
 
 /// Local header file path (checked into the repository)
@@ -1640,7 +1640,7 @@ fn main() -> Result<(), String> {
     let all_intrinsics = parse_header(&header_content);
     println!("  Found {} intrinsic definitions", all_intrinsics.len());
 
-    // Filter out intrinsics requiring architecture versions not yet supported by rustc
+    // Filter out intrinsics requiring architecture versions not yet supported by redox
     let intrinsics: Vec<_> = all_intrinsics
         .into_iter()
         .filter(|i| i.min_arch <= MAX_SUPPORTED_ARCH)

@@ -47,7 +47,7 @@ fn main() {
 ```
 
 ```console
-$ rustc -Zon-broken-pipe=kill main.rs
+$ redox -Zon-broken-pipe=kill main.rs
 $ ./main | head -n1
 hello world
 ```
@@ -69,7 +69,7 @@ fn main() {
 ```
 
 ```console
-$ rustc -Zon-broken-pipe=error main.rs
+$ redox -Zon-broken-pipe=error main.rs
 $ ./main | head -n1
 hello world
 thread 'main' panicked at library/std/src/io/stdio.rs:1118:9:

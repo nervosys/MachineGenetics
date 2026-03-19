@@ -3,7 +3,7 @@
 //@ needs-threads
 //@ run-pass
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 extern crate libc;
 

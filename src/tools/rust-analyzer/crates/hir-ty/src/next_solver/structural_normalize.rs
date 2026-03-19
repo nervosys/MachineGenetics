@@ -1,4 +1,4 @@
-use rustc_type_ir::{AliasRelationDirection, inherent::Term as _};
+use redox_type_ir::{AliasRelationDirection, inherent::Term as _};
 
 use crate::next_solver::{
     Const, PredicateKind, Term, Ty,

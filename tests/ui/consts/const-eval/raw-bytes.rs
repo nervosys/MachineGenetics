@@ -5,7 +5,7 @@
 //@ dont-require-annotations: NOTE
 
 #![allow(invalid_value, unnecessary_transmutes)]
-#![feature(never_type, rustc_attrs, ptr_metadata, slice_from_ptr_range, const_slice_from_ptr_range)]
+#![feature(never_type, redox_attrs, ptr_metadata, slice_from_ptr_range, const_slice_from_ptr_range)]
 
 use std::mem;
 use std::alloc::Layout;
@@ -63,14 +63,14 @@ const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
 const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
 //~^ ERROR constructing invalid value
 
-#[rustc_layout_scalar_valid_range_start(10)]
-#[rustc_layout_scalar_valid_range_end(30)]
+#[redox_layout_scalar_valid_range_start(10)]
+#[redox_layout_scalar_valid_range_end(30)]
 struct RestrictedRange1(u32);
 const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
 //~^ ERROR constructing invalid value
 
-#[rustc_layout_scalar_valid_range_start(30)]
-#[rustc_layout_scalar_valid_range_end(10)]
+#[redox_layout_scalar_valid_range_start(30)]
+#[redox_layout_scalar_valid_range_end(10)]
 struct RestrictedRange2(u32);
 const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
 //~^ ERROR constructing invalid value

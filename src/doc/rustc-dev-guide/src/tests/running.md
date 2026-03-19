@@ -41,7 +41,7 @@ notice a change) you can use the `--force-rerun` CLI option.
 ## Running a subset of the test suites
 
 When working on a specific PR, you will usually want to run a smaller set of tests.
-For example, a good "smoke test" that can be used after modifying rustc
+For example, a good "smoke test" that can be used after modifying redox
 to see if things are generally working correctly would be to exercise the `ui`
 test suite ([`tests/ui`]):
 
@@ -137,14 +137,14 @@ CI will run these tests for you.
 You may want to run unit tests on a specific file with following:
 
 ```text
-./x test compiler/rustc_data_structures/src/thin_vec/tests.rs
+./x test compiler/redox_data_structures/src/thin_vec/tests.rs
 ```
 
 But unfortunately, it's impossible.
 You should invoke the following instead:
 
 ```text
-./x test compiler/rustc_data_structures/ --test-args thin_vec
+./x test compiler/redox_data_structures/ --test-args thin_vec
 ```
 
 ## Running an individual test
@@ -163,12 +163,12 @@ one you get with `#[test]`), so this command would wind up filtering for tests
 that include "issue-1234" in the name.
 Thus, `--test-args` is a good way to run a collection of related tests.
 
-## Passing arguments to `rustc` when running tests
+## Passing arguments to `redox` when running tests
 
 It can sometimes be useful to run some tests with specific compiler arguments,
 without using `RUSTFLAGS` (during development of unstable features, with `-Z` flags, for example).
 
-This can be done with `./x test`'s `--compiletest-rustc-args` option, to pass
+This can be done with `./x test`'s `--compiletest-redox-args` option, to pass
 additional arguments to the compiler when building the tests.
 
 ## Editing and updating the reference files
@@ -194,7 +194,7 @@ There are a few options for running tests:
   print a single dot (the default).
   If `true`, the name of every test will be printed.
   This is equivalent to the `--quiet` option in the [Rust test
-  harness](https://doc.rust-lang.org/rustc/tests/).
+  harness](https://doc.rust-lang.org/redox/tests/).
 * The environment variable `RUST_TEST_THREADS` can be set to the number of
   concurrent threads to use for testing.
 
@@ -235,7 +235,7 @@ toolchain](../building/how-to-build-and-run.md#creating-a-rustup-toolchain), you
 can do something like:
 
 ```text
-rustc +stage1 tests/ui/issue-1234.rs
+redox +stage1 tests/ui/issue-1234.rs
 ```
 
 This is much faster, but doesn't always work.
@@ -399,7 +399,7 @@ In my case I git-cloned it next to my rust folder, so it was `../wasi-sdk/build/
 Now, tests should just run, you don't have to set up anything else.
 
 [wasi sdk repository]: https://github.com/WebAssembly/wasi-sdk
-[wasm32-wasip1 target support page]: https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustc/src/platform-support/wasm32-wasip1.md#building-the-target.
+[wasm32-wasip1 target support page]: https://github.com/rust-lang/rust/blob/HEAD/src/doc/redox/src/platform-support/wasm32-wasip1.md#building-the-target.
 
 
 [`tests/ui`]: https://github.com/rust-lang/rust/tree/HEAD/tests/ui

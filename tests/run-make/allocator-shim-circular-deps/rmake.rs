@@ -8,9 +8,9 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{rust_lib_name, rustc};
+use run_make_support::{rust_lib_name, redox};
 
 fn main() {
-    rustc().input("my_lib.rs").run();
-    rustc().input("main.rs").arg("--test").extern_("my_lib", rust_lib_name("my_lib")).run();
+    redox().input("my_lib.rs").run();
+    redox().input("main.rs").arg("--test").extern_("my_lib", rust_lib_name("my_lib")).run();
 }

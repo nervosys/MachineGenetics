@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::peel_blocks;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
-use rustc_hir::def::Res;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, ExprKind, FnDecl, FnRetTy};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::{Span, sym};
+use redox_hir::def::Res;
+use redox_hir::def_id::LocalDefId;
+use redox_hir::intravisit::FnKind;
+use redox_hir::{Body, ExprKind, FnDecl, FnRetTy};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does

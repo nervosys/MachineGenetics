@@ -11,7 +11,7 @@ use std::{
 
 use dashmap::{DashMap, SharedValue};
 use hashbrown::raw::RawTable;
-use rustc_hash::FxHasher;
+use redox_hash::FxHasher;
 use triomphe::Arc;
 
 pub mod symbols;

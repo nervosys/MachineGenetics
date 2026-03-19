@@ -55,8 +55,8 @@ compile_error!(
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[lang = "panic_fmt"] // needed for const-evaluated panics
-#[rustc_do_not_const_check] // hooked by const-eval
-#[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
+#[redox_do_not_const_check] // hooked by const-eval
+#[redox_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if cfg!(panic = "immediate-abort") {
         super::intrinsics::abort()
@@ -82,16 +82,16 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 
 /// Like `panic_fmt`, but for non-unwinding panics.
 ///
-/// Has to be a separate function so that it can carry the `rustc_nounwind` attribute.
+/// Has to be a separate function so that it can carry the `redox_nounwind` attribute.
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 // This attribute has the key side-effect that if the panic handler ignores `can_unwind`
 // and unwinds anyway, we will hit the "unwinding out of nounwind function" guard,
 // which causes a "panic in a function that cannot unwind".
-#[rustc_nounwind]
-#[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
-#[rustc_allow_const_fn_unstable(const_eval_select)]
+#[redox_nounwind]
+#[redox_const_stable_indirect] // must follow stable const rules since it is exposed to stable
+#[redox_allow_const_fn_unstable(const_eval_select)]
 pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: bool) -> ! {
     const_eval_select!(
         @capture { fmt: fmt::Arguments<'_>, force_no_backtrace: bool } -> !:
@@ -133,7 +133,7 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
-#[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
+#[redox_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 #[lang = "panic"] // used by lints and miri for panics
 pub const fn panic(expr: &'static str) -> ! {
     // Use Arguments::from_str instead of format_args!("{expr}") to potentially
@@ -168,7 +168,7 @@ macro_rules! panic_const {
             #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
             #[cfg_attr(panic = "immediate-abort", inline)]
             #[track_caller]
-            #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
+            #[redox_const_stable_indirect] // must follow stable const rules since it is exposed to stable
             #[lang = stringify!($lang)]
             pub const fn $lang() -> ! {
                 // See the comment in `panic(&'static str)` for why we use `Arguments::from_str` here.
@@ -219,8 +219,8 @@ pub mod panic_const {
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[lang = "panic_nounwind"] // needed by codegen for non-unwinding panics
-#[rustc_nounwind]
-#[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
+#[redox_nounwind]
+#[redox_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 pub const fn panic_nounwind(expr: &'static str) -> ! {
     panic_nounwind_fmt(fmt::Arguments::from_str(expr), /* force_no_backtrace */ false);
 }
@@ -228,14 +228,14 @@ pub const fn panic_nounwind(expr: &'static str) -> ! {
 /// Like `panic_nounwind`, but also inhibits showing a backtrace.
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
 #[cfg_attr(panic = "immediate-abort", inline)]
-#[rustc_nounwind]
+#[redox_nounwind]
 pub fn panic_nounwind_nobacktrace(expr: &'static str) -> ! {
     panic_nounwind_fmt(fmt::Arguments::from_str(expr), /* force_no_backtrace */ true);
 }
 
 #[inline]
 #[track_caller]
-#[rustc_diagnostic_item = "unreachable_display"] // needed for `non-fmt-panics` lint
+#[redox_diagnostic_item = "unreachable_display"] // needed for `non-fmt-panics` lint
 pub fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("internal error: entered unreachable code: {}", *x));
 }
@@ -244,8 +244,8 @@ pub fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
 /// a lint on `panic!(my_str_variable);`.
 #[inline]
 #[track_caller]
-#[rustc_diagnostic_item = "panic_str_2015"]
-#[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
+#[redox_diagnostic_item = "panic_str_2015"]
+#[redox_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 pub const fn panic_str_2015(expr: &str) -> ! {
     panic_display(&expr);
 }
@@ -253,8 +253,8 @@ pub const fn panic_str_2015(expr: &str) -> ! {
 #[inline]
 #[track_caller]
 #[lang = "panic_display"] // needed for const-evaluated panics
-#[rustc_do_not_const_check] // hooked by const-eval
-#[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
+#[redox_do_not_const_check] // hooked by const-eval
+#[redox_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("{}", *x));
 }
@@ -275,7 +275,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[lang = "panic_misaligned_pointer_dereference"] // needed by codegen for panic on misaligned pointer deref
-#[rustc_nounwind] // `CheckAlignment` MIR pass requires this function to never unwind
+#[redox_nounwind] // `CheckAlignment` MIR pass requires this function to never unwind
 fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
     if cfg!(panic = "immediate-abort") {
         super::intrinsics::abort()
@@ -293,7 +293,7 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[lang = "panic_null_pointer_dereference"] // needed by codegen for panic on null pointer deref
-#[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
+#[redox_nounwind] // `CheckNull` MIR pass requires this function to never unwind
 fn panic_null_pointer_dereference() -> ! {
     if cfg!(panic = "immediate-abort") {
         super::intrinsics::abort()
@@ -309,7 +309,7 @@ fn panic_null_pointer_dereference() -> ! {
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[lang = "panic_invalid_enum_construction"] // needed by codegen for panic on invalid enum construction.
-#[rustc_nounwind] // `CheckEnums` MIR pass requires this function to never unwind
+#[redox_nounwind] // `CheckEnums` MIR pass requires this function to never unwind
 fn panic_invalid_enum_construction(source: u128) -> ! {
     if cfg!(panic = "immediate-abort") {
         super::intrinsics::abort()
@@ -331,9 +331,9 @@ fn panic_invalid_enum_construction(source: u128) -> ! {
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[lang = "panic_cannot_unwind"] // needed by codegen for panic in nounwind function
-#[rustc_nounwind]
+#[redox_nounwind]
 fn panic_cannot_unwind() -> ! {
-    // Keep the text in sync with `UnwindTerminateReason::as_str` in `rustc_middle`.
+    // Keep the text in sync with `UnwindTerminateReason::as_str` in `redox_middle`.
     panic_nounwind("panic in a function that cannot unwind")
 }
 
@@ -347,15 +347,15 @@ fn panic_cannot_unwind() -> ! {
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[lang = "panic_in_cleanup"] // needed by codegen for panic in nounwind function
-#[rustc_nounwind]
+#[redox_nounwind]
 fn panic_in_cleanup() -> ! {
-    // Keep the text in sync with `UnwindTerminateReason::as_str` in `rustc_middle`.
+    // Keep the text in sync with `UnwindTerminateReason::as_str` in `redox_middle`.
     panic_nounwind_nobacktrace("panic in a destructor during cleanup")
 }
 
 /// This function is used instead of panic_fmt in const eval.
 #[lang = "const_panic_fmt"] // needed by const-eval machine to replace calls to `panic_fmt` lang item
-#[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
+#[redox_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if let Some(msg) = fmt.as_str() {
         // The panic_display function is hooked by const eval.

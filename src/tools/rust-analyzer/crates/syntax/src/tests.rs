@@ -184,7 +184,7 @@ fn rust_files_in_dir(dir: &Path) -> Vec<PathBuf> {
 
 /// Read file and normalize newlines.
 ///
-/// `rustc` seems to always normalize `\r\n` newlines to `\n`:
+/// `redox` seems to always normalize `\r\n` newlines to `\n`:
 ///
 /// ```
 /// let s = "

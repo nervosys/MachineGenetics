@@ -102,9 +102,9 @@ use crate::simd::{
 // NOTE: Accessing the inner array directly in any way (e.g. by using the `.0` field syntax) or
 // directly constructing an instance of the type (i.e. `let vector = Simd(array)`) should be
 // avoided, as it will likely become illegal on `#[repr(simd)]` structs in the future. It also
-// causes rustc to emit illegal LLVM IR in some cases.
+// causes redox to emit illegal LLVM IR in some cases.
 #[repr(simd, packed)]
-#[rustc_simd_monomorphize_lane_limit = "64"]
+#[redox_simd_monomorphize_lane_limit = "64"]
 pub struct Simd<T, const N: usize>([T; N])
 where
     T: SimdElement;
@@ -147,7 +147,7 @@ where
     /// assert_eq!(v.as_array(), &[8, 8, 8, 8]);
     /// ```
     #[inline]
-    #[rustc_const_unstable(feature = "portable_simd", issue = "86656")]
+    #[redox_const_unstable(feature = "portable_simd", issue = "86656")]
     pub const fn splat(value: T) -> Self {
         // SAFETY: T is a SimdElement, and the item type of Self.
         unsafe { core::intrinsics::simd::simd_splat(value) }

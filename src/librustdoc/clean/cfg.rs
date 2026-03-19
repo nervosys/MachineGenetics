@@ -7,14 +7,14 @@ use std::sync::Arc;
 use std::{fmt, mem, ops};
 
 use itertools::Either;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
-use rustc_hir as hir;
-use rustc_hir::Attribute;
-use rustc_hir::attrs::{self, AttributeKind, CfgEntry, CfgHideShow, HideOrShow};
-use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{DUMMY_SP, Span};
+use redox_data_structures::fx::{FxHashMap, FxHashSet};
+use redox_data_structures::thin_vec::{ThinVec, thin_vec};
+use redox_hir as hir;
+use redox_hir::Attribute;
+use redox_hir::attrs::{self, AttributeKind, CfgEntry, CfgHideShow, HideOrShow};
+use redox_middle::ty::TyCtxt;
+use redox_span::symbol::{Symbol, sym};
+use redox_span::{DUMMY_SP, Span};
 
 use crate::display::{Joined as _, MaybeDisplay, Wrapped};
 use crate::html::escape::Escape;
@@ -588,8 +588,8 @@ impl Default for CfgInfo {
 
 fn show_hide_show_conflict_error(
     tcx: TyCtxt<'_>,
-    item_span: rustc_span::Span,
-    previous: rustc_span::Span,
+    item_span: redox_span::Span,
+    previous: redox_span::Span,
 ) {
     let mut diag = tcx.sess.dcx().struct_span_err(
         item_span,
@@ -612,8 +612,8 @@ fn handle_auto_cfg_hide_show(
     tcx: TyCtxt<'_>,
     cfg_info: &mut CfgInfo,
     attr: &CfgHideShow,
-    new_show_attrs: &mut FxHashMap<(Symbol, Option<Symbol>), rustc_span::Span>,
-    new_hide_attrs: &mut FxHashMap<(Symbol, Option<Symbol>), rustc_span::Span>,
+    new_show_attrs: &mut FxHashMap<(Symbol, Option<Symbol>), redox_span::Span>,
+    new_hide_attrs: &mut FxHashMap<(Symbol, Option<Symbol>), redox_span::Span>,
 ) {
     for value in &attr.values {
         let simple = NameValueCfg::from(value);
@@ -641,7 +641,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
     cfg_info: &mut CfgInfo,
 ) -> Option<Arc<Cfg>> {
     fn check_changed_auto_active_status(
-        changed_auto_active_status: &mut Option<rustc_span::Span>,
+        changed_auto_active_status: &mut Option<redox_span::Span>,
         attr_span: Span,
         cfg_info: &mut CfgInfo,
         tcx: TyCtxt<'_>,

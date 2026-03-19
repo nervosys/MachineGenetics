@@ -3,9 +3,9 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::{expr_use_ctxt, fn_def_id, std_or_core, sym};
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::LateContext;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::LateContext;
 
 use super::MANUAL_REPEAT_N;
 

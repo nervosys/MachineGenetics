@@ -2,7 +2,7 @@
 #![feature(coroutines)]
 #![feature(coroutine_clone)]
 #![feature(coroutine_trait)]
-#![feature(rustc_attrs, stmt_expr_attributes, liballoc_internals)]
+#![feature(redox_attrs, stmt_expr_attributes, liballoc_internals)]
 
 use std::ops::Coroutine;
 use std::pin::Pin;

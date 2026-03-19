@@ -7,11 +7,11 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{cc, has_extension, has_prefix, run, rustc, shallow_find_files};
+use run_make_support::{cc, has_extension, has_prefix, run, redox, shallow_find_files};
 
 fn main() {
-    rustc().input("foo.rs").crate_type("bin").emit("obj").panic("abort").run();
-    let libdir = rustc().print("target-libdir").run().stdout_utf8();
+    redox().input("foo.rs").crate_type("bin").emit("obj").panic("abort").run();
+    let libdir = redox().print("target-libdir").run().stdout_utf8();
     let libdir = libdir.trim();
 
     let alloc_libs = shallow_find_files(&libdir, |path| {
@@ -46,7 +46,7 @@ fn main() {
     run("foo");
 
     // Check that linking without __rust_no_alloc_shim_is_unstable_v2 defined fails
-    rustc()
+    redox()
         .input("foo.rs")
         .crate_type("bin")
         .emit("obj")

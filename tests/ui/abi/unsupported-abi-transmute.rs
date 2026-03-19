@@ -2,7 +2,7 @@
 
 //@ edition: 2018
 //@ compile-flags: --crate-type=lib
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use core::mem;
 

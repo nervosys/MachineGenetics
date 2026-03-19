@@ -1,4 +1,4 @@
-// Same as rustc's `tests/ui/async-await/async-closures/captures.rs`, keep in sync
+// Same as redox's `tests/ui/async-await/async-closures/captures.rs`, keep in sync
 
 #![feature(async_trait_bounds)]
 

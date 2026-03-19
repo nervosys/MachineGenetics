@@ -3,12 +3,12 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::paths::{PathNS, lookup_path};
 use clippy_utils::peel_ref_operators;
 use clippy_utils::res::MaybeQPath;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_lint_defs::{declare_lint_pass, declare_tool_lint};
-use rustc_middle::mir::ConstValue;
-use rustc_span::symbol::Symbol;
+use redox_hir::def_id::DefId;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_lint_defs::{declare_lint_pass, declare_tool_lint};
+use redox_middle::mir::ConstValue;
+use redox_span::symbol::Symbol;
 
 declare_tool_lint! {
     /// ### What it does
@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryDefPath {
                             diag.help(
                                 "remove the `PathLookup` and use utilities such as `cx.tcx.is_diagnostic_item` instead",
                             );
-                            diag.help("see also https://doc.rust-lang.org/nightly/nightly-rustc/?search=diag&filter-crate=clippy_utils");
+                            diag.help("see also https://doc.rust-lang.org/nightly/nightly-redox/?search=diag&filter-crate=clippy_utils");
                         },
                     );
                 } else if let Some(item_name) = get_lang_item_name(cx, def_id) {
@@ -87,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryDefPath {
                         format!("a language item exists for this path: LangItem::{item_name}"),
                         |diag| {
                             diag.help("remove the `PathLookup` and use utilities such as `cx.tcx.lang_items` instead");
-                            diag.help("see also https://doc.rust-lang.org/nightly/nightly-rustc/?search=lang&filter-crate=clippy_utils");
+                            diag.help("see also https://doc.rust-lang.org/nightly/nightly-redox/?search=lang&filter-crate=clippy_utils");
                         },
                     );
                 }

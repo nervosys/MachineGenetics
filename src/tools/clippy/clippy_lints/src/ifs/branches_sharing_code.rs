@@ -8,12 +8,12 @@ use clippy_utils::{
 };
 use core::iter;
 use core::ops::ControlFlow;
-use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, ItemKind, LetStmt, Node, Stmt, StmtKind, UseKind, intravisit};
-use rustc_lint::LateContext;
-use rustc_span::hygiene::walk_chain;
-use rustc_span::source_map::SourceMap;
-use rustc_span::{Span, Symbol};
+use redox_errors::Applicability;
+use redox_hir::{Block, Expr, ExprKind, HirId, HirIdSet, ItemKind, LetStmt, Node, Stmt, StmtKind, UseKind, intravisit};
+use redox_lint::LateContext;
+use redox_span::hygiene::walk_chain;
+use redox_span::source_map::SourceMap;
+use redox_span::{Span, Symbol};
 
 use super::BRANCHES_SHARING_CODE;
 

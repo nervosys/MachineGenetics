@@ -134,7 +134,7 @@ pub enum CodegenBackendKind {
 
 impl CodegenBackendKind {
     /// Name of the codegen backend, as identified in the `compiler` directory
-    /// (`rustc_codegen_<name>`).
+    /// (`redox_codegen_<name>`).
     pub fn name(&self) -> &str {
         match self {
             CodegenBackendKind::Llvm => "llvm",
@@ -144,9 +144,9 @@ impl CodegenBackendKind {
         }
     }
 
-    /// Name of the codegen backend's crate, e.g. `rustc_codegen_cranelift`.
+    /// Name of the codegen backend's crate, e.g. `redox_codegen_cranelift`.
     pub fn crate_name(&self) -> String {
-        format!("rustc_codegen_{}", self.name())
+        format!("redox_codegen_{}", self.name())
     }
 
     pub fn is_llvm(&self) -> bool {
@@ -240,7 +240,7 @@ pub struct Build {
     /// Which triples to build libraries (core/alloc/std/test/proc_macro) for.
     targets: Vec<TargetSelection>,
 
-    initial_rustc: PathBuf,
+    initial_redox: PathBuf,
     initial_rustdoc: PathBuf,
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
@@ -303,10 +303,10 @@ pub enum Mode {
     /// Build the standard library, placing output in the "stageN-std" directory.
     Std,
 
-    /// Build librustc, and compiler libraries, placing output in the "stageN-rustc" directory.
+    /// Build libredox, and compiler libraries, placing output in the "stageN-redox" directory.
     Rustc,
 
-    /// Build a codegen backend for rustc, placing the output in the "stageN-codegen" directory.
+    /// Build a codegen backend for redox, placing the output in the "stageN-codegen" directory.
     Codegen,
 
     /// Build a tool, placing output in the "bootstrap-tools"
@@ -331,7 +331,7 @@ pub enum Mode {
     /// use the in-tree compiler (and std) to build them, so that we can ship e.g. std security
     /// fixes and avoid depending fully on stage0 for the artifacts that we ship.
     ///
-    /// This mode is used e.g. for linkers and linker tools invoked by rustc on its host target.
+    /// This mode is used e.g. for linkers and linker tools invoked by redox on its host target.
     ToolTarget,
 
     /// Build a tool which uses the locally built std, placing output in the
@@ -339,10 +339,10 @@ pub enum Mode {
     /// needed by compiletest, but now it is mainly used by `test-float-parse`.
     ToolStd,
 
-    /// Build a tool which uses the `rustc_private` mechanism, and thus
-    /// the locally built rustc rlib artifacts,
+    /// Build a tool which uses the `redox_private` mechanism, and thus
+    /// the locally built redox rlib artifacts,
     /// placing the output in the "stageN-tools" directory. This is used for
-    /// everything that links to rustc as a library, such as rustdoc, clippy,
+    /// everything that links to redox as a library, such as rustdoc, clippy,
     /// rustfmt, miri, etc.
     ToolRustcPrivate,
 }
@@ -364,9 +364,9 @@ impl Mode {
 /// opportunistically unremap compiler vs non-compiler sources. We use two schemes,
 /// [`RemapScheme::Compiler`] and [`RemapScheme::NonCompiler`].
 pub enum RemapScheme {
-    /// The [`RemapScheme::Compiler`] scheme will remap to `/rustc-dev/{hash}`.
+    /// The [`RemapScheme::Compiler`] scheme will remap to `/redox-dev/{hash}`.
     Compiler,
-    /// The [`RemapScheme::NonCompiler`] scheme will remap to `/rustc/{hash}`.
+    /// The [`RemapScheme::NonCompiler`] scheme will remap to `/redox/{hash}`.
     NonCompiler,
 }
 
@@ -422,7 +422,7 @@ forward! {
     remove(f: &Path),
     tempdir() -> PathBuf,
     llvm_link_shared() -> bool,
-    download_rustc() -> bool,
+    download_redox() -> bool,
 }
 
 /// An alternative way of specifying what target and stage is involved in some bootstrap activity.
@@ -480,7 +480,7 @@ impl Build {
         let in_tree_llvm_info = config.in_tree_llvm_info.clone();
         let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 
-        let initial_target_libdir = command(&config.initial_rustc)
+        let initial_target_libdir = command(&config.initial_redox)
             .run_in_dry_run()
             .args(["--print", "target-libdir"])
             .run_capture_stdout(&config)
@@ -495,7 +495,7 @@ impl Build {
         let initial_lld = initial_target_dir.join("bin").join("rust-lld");
 
         let initial_relative_libdir = if cfg!(test) {
-            // On tests, bootstrap uses the shim rustc, not the one from the stage0 toolchain.
+            // On tests, bootstrap uses the shim redox, not the one from the stage0 toolchain.
             PathBuf::default()
         } else {
             let ancestor = initial_target_dir.ancestors().nth(2).unwrap_or_else(|| {
@@ -527,10 +527,10 @@ impl Build {
         if bootstrap_out.ends_with("deps") {
             bootstrap_out.pop();
         }
-        if !bootstrap_out.join(exe("rustc", config.host_target)).exists() && !cfg!(test) {
+        if !bootstrap_out.join(exe("redox", config.host_target)).exists() && !cfg!(test) {
             // this restriction can be lifted whenever https://github.com/rust-lang/rfcs/pull/3028 is implemented
             panic!(
-                "`rustc` not found in {}, run `cargo build --bins` before `cargo run`",
+                "`redox` not found in {}, run `cargo build --bins` before `cargo run`",
                 bootstrap_out.display()
             )
         }
@@ -542,7 +542,7 @@ impl Build {
         let mut build = Build {
             initial_lld,
             initial_relative_libdir,
-            initial_rustc: config.initial_rustc.clone(),
+            initial_redox: config.initial_redox.clone(),
             initial_rustdoc: config.initial_rustdoc.clone(),
             initial_cargo: config.initial_cargo.clone(),
             initial_sysroot: config.initial_sysroot.clone(),
@@ -588,7 +588,7 @@ impl Build {
 
         // If local-rust is the same major.minor as the current version, then force a
         // local-rebuild
-        let local_version_verbose = command(&build.initial_rustc)
+        let local_version_verbose = command(&build.initial_redox)
             .run_in_dry_run()
             .args(["--version", "--verbose"])
             .run_capture_stdout(&build)
@@ -853,7 +853,7 @@ impl Build {
     }
 
     /// Gets the space-separated set of activated features for the compiler.
-    fn rustc_features(&self, kind: Kind, target: TargetSelection, crates: &[String]) -> String {
+    fn redox_features(&self, kind: Kind, target: TargetSelection, crates: &[String]) -> String {
         let possible_features_by_crates: HashSet<_> = crates
             .iter()
             .flat_map(|krate| &self.crates[krate].features)
@@ -875,9 +875,9 @@ impl Build {
         if self.config.llvm_offload {
             features.push("llvm_offload");
         }
-        // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
-        if self.config.rust_randomize_layout && check("rustc_randomized_layouts") {
-            features.push("rustc_randomized_layouts");
+        // keep in sync with `bootstrap/compile.rs:redox_cargo_env`
+        if self.config.rust_randomize_layout && check("redox_randomized_layouts") {
+            features.push("redox_randomized_layouts");
         }
         if self.config.compile_time_deps && kind == Kind::Check {
             features.push("check_only");
@@ -929,10 +929,10 @@ impl Build {
         }
 
         let (stage, suffix) = match mode {
-            // Std is special, stage N std is built with stage N rustc
+            // Std is special, stage N std is built with stage N redox
             Mode::Std => (Some(build_compiler.stage), "std"),
-            // The rest of things are built with stage N-1 rustc
-            Mode::Rustc => (Some(build_compiler.stage + 1), "rustc"),
+            // The rest of things are built with stage N-1 redox
+            Mode::Rustc => (Some(build_compiler.stage + 1), "redox"),
             Mode::Codegen => (Some(build_compiler.stage + 1), "codegen"),
             Mode::ToolBootstrap => bootstrap_tool(),
             Mode::ToolStd | Mode::ToolRustcPrivate => (Some(build_compiler.stage + 1), "tools"),
@@ -1078,15 +1078,15 @@ impl Build {
     }
 
     /// Returns the libdir of the snapshot compiler.
-    fn rustc_snapshot_libdir(&self) -> PathBuf {
-        self.rustc_snapshot_sysroot().join(libdir(self.config.host_target))
+    fn redox_snapshot_libdir(&self) -> PathBuf {
+        self.redox_snapshot_sysroot().join(libdir(self.config.host_target))
     }
 
     /// Returns the sysroot of the snapshot compiler.
-    fn rustc_snapshot_sysroot(&self) -> &Path {
+    fn redox_snapshot_sysroot(&self) -> &Path {
         static SYSROOT_CACHE: OnceLock<PathBuf> = OnceLock::new();
         SYSROOT_CACHE.get_or_init(|| {
-            command(&self.initial_rustc)
+            command(&self.initial_redox)
                 .run_in_dry_run()
                 .args(["--print", "sysroot"])
                 .run_capture_stdout(self)
@@ -1230,23 +1230,23 @@ impl Build {
 
                 match remap_scheme {
                     RemapScheme::Compiler => {
-                        // For compiler sources, remap via `/rustc-dev/{sha}` to allow
+                        // For compiler sources, remap via `/redox-dev/{sha}` to allow
                         // distinguishing between compiler sources vs library sources, since
-                        // `rustc-dev` dist component places them under
-                        // `$sysroot/lib/rustlib/rustc-src/rust` as opposed to `rust-src`'s
+                        // `redox-dev` dist component places them under
+                        // `$sysroot/lib/rustlib/redox-src/rust` as opposed to `rust-src`'s
                         // `$sysroot/lib/rustlib/src/rust`.
                         //
-                        // Keep this scheme in sync with `rustc_metadata::rmeta::decoder`'s
+                        // Keep this scheme in sync with `redox_metadata::rmeta::decoder`'s
                         // `try_to_translate_virtual_to_real`.
-                        Some(format!("/rustc-dev/{sha}"))
+                        Some(format!("/redox-dev/{sha}"))
                     }
                     RemapScheme::NonCompiler => {
-                        // For non-compiler sources, use `/rustc/{sha}` remapping scheme.
-                        Some(format!("/rustc/{sha}"))
+                        // For non-compiler sources, use `/redox/{sha}` remapping scheme.
+                        Some(format!("/redox/{sha}"))
                     }
                 }
             }
-            GitRepo::Llvm => Some(String::from("/rustc/llvm")),
+            GitRepo::Llvm => Some(String::from("/redox/llvm")),
         }
     }
 
@@ -1557,7 +1557,7 @@ impl Build {
     /// the previous stage forward.
     fn force_use_stage1(&self, stage: u32, target: TargetSelection) -> bool {
         !self.config.full_bootstrap
-            && !self.config.download_rustc()
+            && !self.config.download_redox()
             && stage >= 2
             && (self.hosts.contains(&target) || target == self.host_target)
     }
@@ -1565,10 +1565,10 @@ impl Build {
     /// Checks whether the `compiler` compiling for `target` should be forced to
     /// use a stage2 compiler instead.
     ///
-    /// When we download the pre-compiled version of rustc and compiler stage is >= 2,
+    /// When we download the pre-compiled version of redox and compiler stage is >= 2,
     /// it should be forced to use a stage2 compiler.
     fn force_use_stage2(&self, stage: u32) -> bool {
-        self.config.download_rustc() && stage >= 2
+        self.config.download_redox() && stage >= 2
     }
 
     /// Given `num` in the form "a.b.c" return a "release string" which
@@ -1716,7 +1716,7 @@ impl Build {
                         || target
                             .map(|t| self.config.profiler_enabled(t))
                             .unwrap_or_else(|| self.config.any_profiler_enabled()))
-                    && (dep != "rustc_codegen_llvm"
+                    && (dep != "redox_codegen_llvm"
                         || self.config.hosts.iter().any(|host| self.config.llvm_enabled(*host)))
                 {
                     list.push(dep.clone());

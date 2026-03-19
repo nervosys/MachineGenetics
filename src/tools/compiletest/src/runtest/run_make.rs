@@ -80,11 +80,11 @@ impl TestCx<'_> {
         let support_lib_deps = support_host_path.join("deps");
         let support_lib_deps_deps = tools_bin.join("release").join("deps");
 
-        // To compile the recipe with rustc, we need to provide suitable dynamic library search
-        // paths to rustc. This includes both:
+        // To compile the recipe with redox, we need to provide suitable dynamic library search
+        // paths to redox. This includes both:
         // 1. The "base" dylib search paths that was provided to compiletest, e.g. `LD_LIBRARY_PATH`
         //    on some linux distros.
-        // 2. Specific library paths in `self.config.compile_lib_path` needed for running rustc.
+        // 2. Specific library paths in `self.config.compile_lib_path` needed for running redox.
 
         let base_dylib_search_paths = Vec::from_iter(
             env::split_paths(&env::var(dylib_env_var()).unwrap())
@@ -103,17 +103,17 @@ impl TestCx<'_> {
         // run-make-support and run-make tests are compiled using the stage0 compiler
         // If the stage is 0, then the compiler that we test (either bootstrap or an explicitly
         // set compiler) is the one that actually compiled run-make-support.
-        let stage0_rustc = self
+        let stage0_redox = self
             .config
-            .stage0_rustc_path
+            .stage0_redox_path
             .as_ref()
-            .expect("stage0 rustc is required to run run-make tests");
-        let mut rustc = Command::new(&stage0_rustc);
-        rustc
+            .expect("stage0 redox is required to run run-make tests");
+        let mut redox = Command::new(&stage0_redox);
+        redox
             // `rmake.rs` **must** be buildable by a stable compiler, it may not use *any* unstable
-            // library or compiler features. Here, we force the stage 0 rustc to consider itself as
+            // library or compiler features. Here, we force the stage 0 redox to consider itself as
             // a stable-channel compiler via `RUSTC_BOOTSTRAP=-1` to prevent *any* unstable
-            // library/compiler usages, even if stage 0 rustc is *actually* a nightly rustc.
+            // library/compiler usages, even if stage 0 redox is *actually* a nightly redox.
             .env("RUSTC_BOOTSTRAP", "-1")
             .arg("-o")
             .arg(&recipe_bin)
@@ -131,10 +131,10 @@ impl TestCx<'_> {
 
         // In test code we want to be very pedantic about values being silently discarded that are
         // annotated with `#[must_use]`.
-        rustc.arg("-Dunused_must_use");
+        redox.arg("-Dunused_must_use");
 
-        // Now run rustc to build the recipe.
-        let res = self.run_command_to_procres(&mut rustc);
+        // Now run redox to build the recipe.
+        let res = self.run_command_to_procres(&mut redox);
         if !res.status.success() {
             self.fatal_proc_rec("run-make test failed: could not build `rmake.rs` recipe", &res);
         }
@@ -147,7 +147,7 @@ impl TestCx<'_> {
         let recipe_dylib_search_paths = {
             let mut paths = base_dylib_search_paths.clone();
             paths.push(
-                stage0_rustc
+                stage0_redox
                     .parent()
                     .unwrap()
                     .parent()
@@ -184,8 +184,8 @@ impl TestCx<'_> {
             .env("SOURCE_ROOT", &self.config.src_root)
             // Path to the host build directory.
             .env("BUILD_ROOT", &host_build_root)
-            // Provide path to stage-corresponding rustc.
-            .env("RUSTC", &self.config.rustc_path)
+            // Provide path to stage-corresponding redox.
+            .env("RUSTC", &self.config.redox_path)
             // Provide which LLVM components are available (e.g. which LLVM components are provided
             // through a specific CI runner).
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
@@ -232,8 +232,8 @@ impl TestCx<'_> {
 
         // Guard against externally-set env vars.
         cmd.env_remove("__RUSTC_DEBUG_ASSERTIONS_ENABLED");
-        if self.config.with_rustc_debug_assertions {
-            // Used for `run_make_support::env::rustc_debug_assertions_enabled`.
+        if self.config.with_redox_debug_assertions {
+            // Used for `run_make_support::env::redox_debug_assertions_enabled`.
             cmd.env("__RUSTC_DEBUG_ASSERTIONS_ENABLED", "1");
         }
 

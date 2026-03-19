@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::sym;
-use rustc_ast as ast;
-use rustc_errors::{Applicability, Diag};
-use rustc_hir as hir;
-use rustc_lint::LateContext;
-use rustc_span::Span;
+use redox_ast as ast;
+use redox_errors::{Applicability, Diag};
+use redox_hir as hir;
+use redox_lint::LateContext;
+use redox_span::Span;
 
 use super::SUSPICIOUS_COMMAND_ARG_SPACE;
 

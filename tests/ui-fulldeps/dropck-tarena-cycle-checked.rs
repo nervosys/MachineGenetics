@@ -6,11 +6,11 @@
 //  which is a reduction of this code to more directly show the reason
 //  for the error message we see here.)
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_arena;
+extern crate redox_arena;
 
-use rustc_arena::TypedArena;
+use redox_arena::TypedArena;
 use std::cell::Cell;
 use id::Id;
 

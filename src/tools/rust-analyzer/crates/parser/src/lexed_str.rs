@@ -10,7 +10,7 @@
 
 use std::ops;
 
-use rustc_literal_escaper::{
+use redox_literal_escaper::{
     EscapeError, Mode, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char,
     unescape_str,
 };
@@ -44,15 +44,15 @@ impl<'a> LexedStr<'a> {
             if script.frontmatter().is_some() {
                 conv.push(FRONTMATTER, script.content_span().start - conv.offset, Vec::new());
             }
-        } else if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
-            // Leave error reporting to `rustc_lexer`
+        } else if let Some(shebang_len) = redox_lexer::strip_shebang(text) {
+            // Leave error reporting to `redox_lexer`
             conv.push(SHEBANG, shebang_len, Vec::new());
         }
 
         // Re-create the tokenizer from scratch every token because `GuardedStrPrefix` is one token in the lexer
         // but we want to split it to two in edition <2024.
         while let Some(token) =
-            rustc_lexer::tokenize(&text[conv.offset..], rustc_lexer::FrontmatterAllowed::No).next()
+            redox_lexer::tokenize(&text[conv.offset..], redox_lexer::FrontmatterAllowed::No).next()
         {
             let token_text = &text[conv.offset..][..token.len as usize];
 
@@ -67,7 +67,7 @@ impl<'a> LexedStr<'a> {
             return None;
         }
 
-        let token = rustc_lexer::tokenize(text, rustc_lexer::FrontmatterAllowed::No).next()?;
+        let token = redox_lexer::tokenize(text, redox_lexer::FrontmatterAllowed::No).next()?;
         if token.len as usize != text.len() {
             return None;
         }
@@ -195,7 +195,7 @@ impl<'a> Converter<'a> {
         }
     }
 
-    fn extend_token(&mut self, kind: &rustc_lexer::TokenKind, mut token_text: &str) {
+    fn extend_token(&mut self, kind: &redox_lexer::TokenKind, mut token_text: &str) {
         // A note on an intended tradeoff:
         // We drop some useful information here (see patterns with double dots `..`)
         // Storing that info in `SyntaxKind` is not possible due to its layout requirements of
@@ -204,8 +204,8 @@ impl<'a> Converter<'a> {
 
         let syntax_kind = {
             match kind {
-                rustc_lexer::TokenKind::LineComment { doc_style: _ } => COMMENT,
-                rustc_lexer::TokenKind::BlockComment { doc_style: _, terminated } => {
+                redox_lexer::TokenKind::LineComment { doc_style: _ } => COMMENT,
+                redox_lexer::TokenKind::BlockComment { doc_style: _, terminated } => {
                     if !terminated {
                         errors.push(
                             "Missing trailing `*/` symbols to terminate the block comment".into(),
@@ -214,7 +214,7 @@ impl<'a> Converter<'a> {
                     COMMENT
                 }
 
-                rustc_lexer::TokenKind::Frontmatter {
+                redox_lexer::TokenKind::Frontmatter {
                     has_invalid_preceding_whitespace,
                     invalid_infostring,
                 } => {
@@ -226,77 +226,77 @@ impl<'a> Converter<'a> {
                     FRONTMATTER
                 }
 
-                rustc_lexer::TokenKind::Whitespace => WHITESPACE,
+                redox_lexer::TokenKind::Whitespace => WHITESPACE,
 
-                rustc_lexer::TokenKind::Ident if token_text == "_" => UNDERSCORE,
-                rustc_lexer::TokenKind::Ident => {
+                redox_lexer::TokenKind::Ident if token_text == "_" => UNDERSCORE,
+                redox_lexer::TokenKind::Ident => {
                     SyntaxKind::from_keyword(token_text, self.edition).unwrap_or(IDENT)
                 }
-                rustc_lexer::TokenKind::InvalidIdent => {
+                redox_lexer::TokenKind::InvalidIdent => {
                     errors.push("Ident contains invalid characters".into());
                     IDENT
                 }
 
-                rustc_lexer::TokenKind::RawIdent => IDENT,
+                redox_lexer::TokenKind::RawIdent => IDENT,
 
-                rustc_lexer::TokenKind::GuardedStrPrefix if self.edition.at_least_2024() => {
-                    // FIXME: rustc does something better for recovery.
+                redox_lexer::TokenKind::GuardedStrPrefix if self.edition.at_least_2024() => {
+                    // FIXME: redox does something better for recovery.
                     errors.push("Invalid string literal (reserved syntax)".into());
                     ERROR
                 }
-                rustc_lexer::TokenKind::GuardedStrPrefix => {
+                redox_lexer::TokenKind::GuardedStrPrefix => {
                     // The token is `#"` or `##`, split it into two.
                     token_text = &token_text[1..];
                     POUND
                 }
 
-                rustc_lexer::TokenKind::Literal { kind, .. } => {
+                redox_lexer::TokenKind::Literal { kind, .. } => {
                     self.extend_literal(token_text.len(), kind);
                     return;
                 }
 
-                rustc_lexer::TokenKind::Lifetime { starts_with_number } => {
+                redox_lexer::TokenKind::Lifetime { starts_with_number } => {
                     if *starts_with_number {
                         errors.push("Lifetime name cannot start with a number".into());
                     }
                     LIFETIME_IDENT
                 }
-                rustc_lexer::TokenKind::UnknownPrefixLifetime => {
+                redox_lexer::TokenKind::UnknownPrefixLifetime => {
                     errors.push("Unknown lifetime prefix".into());
                     LIFETIME_IDENT
                 }
-                rustc_lexer::TokenKind::RawLifetime => LIFETIME_IDENT,
+                redox_lexer::TokenKind::RawLifetime => LIFETIME_IDENT,
 
-                rustc_lexer::TokenKind::Semi => T![;],
-                rustc_lexer::TokenKind::Comma => T![,],
-                rustc_lexer::TokenKind::Dot => T![.],
-                rustc_lexer::TokenKind::OpenParen => T!['('],
-                rustc_lexer::TokenKind::CloseParen => T![')'],
-                rustc_lexer::TokenKind::OpenBrace => T!['{'],
-                rustc_lexer::TokenKind::CloseBrace => T!['}'],
-                rustc_lexer::TokenKind::OpenBracket => T!['['],
-                rustc_lexer::TokenKind::CloseBracket => T![']'],
-                rustc_lexer::TokenKind::At => T![@],
-                rustc_lexer::TokenKind::Pound => T![#],
-                rustc_lexer::TokenKind::Tilde => T![~],
-                rustc_lexer::TokenKind::Question => T![?],
-                rustc_lexer::TokenKind::Colon => T![:],
-                rustc_lexer::TokenKind::Dollar => T![$],
-                rustc_lexer::TokenKind::Eq => T![=],
-                rustc_lexer::TokenKind::Bang => T![!],
-                rustc_lexer::TokenKind::Lt => T![<],
-                rustc_lexer::TokenKind::Gt => T![>],
-                rustc_lexer::TokenKind::Minus => T![-],
-                rustc_lexer::TokenKind::And => T![&],
-                rustc_lexer::TokenKind::Or => T![|],
-                rustc_lexer::TokenKind::Plus => T![+],
-                rustc_lexer::TokenKind::Star => T![*],
-                rustc_lexer::TokenKind::Slash => T![/],
-                rustc_lexer::TokenKind::Caret => T![^],
-                rustc_lexer::TokenKind::Percent => T![%],
-                rustc_lexer::TokenKind::Unknown => ERROR,
-                rustc_lexer::TokenKind::UnknownPrefix if token_text == "builtin" => IDENT,
-                rustc_lexer::TokenKind::UnknownPrefix => {
+                redox_lexer::TokenKind::Semi => T![;],
+                redox_lexer::TokenKind::Comma => T![,],
+                redox_lexer::TokenKind::Dot => T![.],
+                redox_lexer::TokenKind::OpenParen => T!['('],
+                redox_lexer::TokenKind::CloseParen => T![')'],
+                redox_lexer::TokenKind::OpenBrace => T!['{'],
+                redox_lexer::TokenKind::CloseBrace => T!['}'],
+                redox_lexer::TokenKind::OpenBracket => T!['['],
+                redox_lexer::TokenKind::CloseBracket => T![']'],
+                redox_lexer::TokenKind::At => T![@],
+                redox_lexer::TokenKind::Pound => T![#],
+                redox_lexer::TokenKind::Tilde => T![~],
+                redox_lexer::TokenKind::Question => T![?],
+                redox_lexer::TokenKind::Colon => T![:],
+                redox_lexer::TokenKind::Dollar => T![$],
+                redox_lexer::TokenKind::Eq => T![=],
+                redox_lexer::TokenKind::Bang => T![!],
+                redox_lexer::TokenKind::Lt => T![<],
+                redox_lexer::TokenKind::Gt => T![>],
+                redox_lexer::TokenKind::Minus => T![-],
+                redox_lexer::TokenKind::And => T![&],
+                redox_lexer::TokenKind::Or => T![|],
+                redox_lexer::TokenKind::Plus => T![+],
+                redox_lexer::TokenKind::Star => T![*],
+                redox_lexer::TokenKind::Slash => T![/],
+                redox_lexer::TokenKind::Caret => T![^],
+                redox_lexer::TokenKind::Percent => T![%],
+                redox_lexer::TokenKind::Unknown => ERROR,
+                redox_lexer::TokenKind::UnknownPrefix if token_text == "builtin" => IDENT,
+                redox_lexer::TokenKind::UnknownPrefix => {
                     let has_unterminated = self.has_likely_unterminated_string();
 
                     let error_msg = if has_unterminated {
@@ -309,14 +309,14 @@ impl<'a> Converter<'a> {
                     errors.push(error_msg);
                     IDENT
                 }
-                rustc_lexer::TokenKind::Eof => EOF,
+                redox_lexer::TokenKind::Eof => EOF,
             }
         };
 
         self.push(syntax_kind, token_text.len(), errors);
     }
 
-    fn extend_literal(&mut self, len: usize, kind: &rustc_lexer::LiteralKind) {
+    fn extend_literal(&mut self, len: usize, kind: &redox_lexer::LiteralKind) {
         let invalid_raw_msg = String::from("Invalid raw string literal");
 
         let mut errors = vec![];
@@ -325,19 +325,19 @@ impl<'a> Converter<'a> {
         };
 
         let syntax_kind = match *kind {
-            rustc_lexer::LiteralKind::Int { empty_int, base: _ } => {
+            redox_lexer::LiteralKind::Int { empty_int, base: _ } => {
                 if empty_int {
                     errors.push("Missing digits after the integer base prefix".into());
                 }
                 INT_NUMBER
             }
-            rustc_lexer::LiteralKind::Float { empty_exponent, base: _ } => {
+            redox_lexer::LiteralKind::Float { empty_exponent, base: _ } => {
                 if empty_exponent {
                     errors.push("Missing digits after the exponent symbol".into());
                 }
                 FLOAT_NUMBER
             }
-            rustc_lexer::LiteralKind::Char { terminated } => {
+            redox_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
                     no_end_quote('\'', "character");
                 } else {
@@ -349,7 +349,7 @@ impl<'a> Converter<'a> {
                 }
                 CHAR
             }
-            rustc_lexer::LiteralKind::Byte { terminated } => {
+            redox_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
                     no_end_quote('\'', "byte");
                 } else {
@@ -361,7 +361,7 @@ impl<'a> Converter<'a> {
                 }
                 BYTE
             }
-            rustc_lexer::LiteralKind::Str { terminated } => {
+            redox_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
                     no_end_quote('"', "string");
                 } else {
@@ -375,7 +375,7 @@ impl<'a> Converter<'a> {
                 }
                 STRING
             }
-            rustc_lexer::LiteralKind::ByteStr { terminated } => {
+            redox_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
                     no_end_quote('"', "byte string");
                 } else {
@@ -389,7 +389,7 @@ impl<'a> Converter<'a> {
                 }
                 BYTE_STRING
             }
-            rustc_lexer::LiteralKind::CStr { terminated } => {
+            redox_lexer::LiteralKind::CStr { terminated } => {
                 if !terminated {
                     no_end_quote('"', "C string")
                 } else {
@@ -403,19 +403,19 @@ impl<'a> Converter<'a> {
                 }
                 C_STRING
             }
-            rustc_lexer::LiteralKind::RawStr { n_hashes } => {
+            redox_lexer::LiteralKind::RawStr { n_hashes } => {
                 if n_hashes.is_none() {
                     errors.push(invalid_raw_msg);
                 }
                 STRING
             }
-            rustc_lexer::LiteralKind::RawByteStr { n_hashes } => {
+            redox_lexer::LiteralKind::RawByteStr { n_hashes } => {
                 if n_hashes.is_none() {
                     errors.push(invalid_raw_msg);
                 }
                 BYTE_STRING
             }
-            rustc_lexer::LiteralKind::RawCStr { n_hashes } => {
+            redox_lexer::LiteralKind::RawCStr { n_hashes } => {
                 if n_hashes.is_none() {
                     errors.push(invalid_raw_msg);
                 }

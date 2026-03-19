@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 #![allow(private_interfaces)]
 #![deny(improper_ctypes)]

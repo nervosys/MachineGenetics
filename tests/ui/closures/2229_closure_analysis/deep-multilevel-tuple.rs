@@ -1,11 +1,11 @@
 //@ edition:2021
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(unused)]
 
 fn main() {
     let mut t = (((1,2),(3,4)),((5,6),(7,8)));
 
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date

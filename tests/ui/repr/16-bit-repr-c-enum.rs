@@ -7,7 +7,7 @@
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
 //@ ignore-backends: gcc
-#![feature(no_core, intrinsics, staged_api, rustc_attrs)]
+#![feature(no_core, intrinsics, staged_api, redox_attrs)]
 #![no_core]
 #![crate_type = "lib"]
 #![stable(feature = "intrinsics_for_test", since = "3.3.3")]
@@ -27,8 +27,8 @@ enum Foo {
 }
 
 #[stable(feature = "intrinsics_for_test", since = "3.3.3")]
-#[rustc_const_stable(feature = "intrinsics_for_test", since = "3.3.3")]
-#[rustc_intrinsic]
+#[redox_const_stable(feature = "intrinsics_for_test", since = "3.3.3")]
+#[redox_intrinsic]
 const fn size_of<T>() -> usize;
 
 const EXPECTED: usize = 2;

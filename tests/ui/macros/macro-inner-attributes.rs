@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 macro_rules! test { ($nm:ident,
                      #[$a:meta],
@@ -12,7 +12,7 @@ test!(b,
       #[cfg(not(FALSE))],
       pub fn bar() { });
 
-#[rustc_dummy]
+#[redox_dummy]
 fn main() {
     a::bar(); //~ ERROR: cannot find module or crate `a`
     //~^ NOTE: use of unresolved module or unlinked crate `a`

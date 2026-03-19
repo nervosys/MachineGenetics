@@ -1098,7 +1098,7 @@ pub struct Box<T: ?Sized> {
 }
 impl<T> Box<T> {
     fn new(t: T) -> Self {
-        #[rustc_box]
+        #[redox_box]
         Box::new(t)
     }
 }

@@ -2,19 +2,19 @@ use std::collections::hash_map::Entry;
 use std::io::Write;
 use std::path::Path;
 
-use rustc_abi::{Align, CanonAbi, ExternAbi, Size};
-use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
-use rustc_data_structures::either::Either;
-use rustc_hir::attrs::Linkage;
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::CrateNum;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::interpret::AllocInit;
-use rustc_middle::ty::{Instance, Ty};
-use rustc_middle::{mir, ty};
-use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{Arch, Os};
+use redox_abi::{Align, CanonAbi, ExternAbi, Size};
+use redox_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
+use redox_data_structures::either::Either;
+use redox_hir::attrs::Linkage;
+use redox_hir::def::DefKind;
+use redox_hir::def_id::CrateNum;
+use redox_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use redox_middle::mir::interpret::AllocInit;
+use redox_middle::ty::{Instance, Ty};
+use redox_middle::{mir, ty};
+use redox_span::Symbol;
+use redox_target::callconv::FnAbi;
+use redox_target::spec::{Arch, Os};
 
 use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
@@ -509,7 +509,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Promises that a pointer has a given symbolic alignment.
             "miri_promise_symbolic_alignment" => {
-                use rustc_abi::AlignFromBytesError;
+                use redox_abi::AlignFromBytesError;
 
                 let [ptr, align] =
                     this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;

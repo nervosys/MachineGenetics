@@ -6,14 +6,14 @@
 //@ ignore-remote
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
+extern crate redox_driver;
+extern crate redox_interface;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
 use std::io::Write;
 
@@ -24,7 +24,7 @@ use std::io::Write;
 fn main() {
     let path = "input_compilation_result_test.rs";
     generate_input(&path).unwrap();
-    let args = &["rustc".to_string(), path.to_string()];
+    let args = &["redox".to_string(), path.to_string()];
     test_continue(args);
     test_break(args);
     test_failed(args);
@@ -39,7 +39,7 @@ fn test_continue(args: &[String]) {
 
 fn test_break(args: &[String]) {
     let result = run!(args, || ControlFlow::Break::<bool, i32>(false));
-    assert_eq!(result, Err(rustc_public::CompilerError::Interrupted(false)));
+    assert_eq!(result, Err(redox_public::CompilerError::Interrupted(false)));
 }
 
 #[allow(unreachable_code)]
@@ -47,7 +47,7 @@ fn test_skipped(args: &[String]) {
     let mut args = args.to_vec();
     args.push("--version".to_string());
     let result = run!(&args, || unreachable!() as ControlFlow<()>);
-    assert_eq!(result, Err(rustc_public::CompilerError::Skipped));
+    assert_eq!(result, Err(redox_public::CompilerError::Skipped));
 }
 
 #[allow(unreachable_code)]
@@ -55,7 +55,7 @@ fn test_failed(args: &[String]) {
     let mut args = args.to_vec();
     args.push("--cfg=broken".to_string());
     let result = run!(&args, || unreachable!() as ControlFlow<()>);
-    assert_eq!(result, Err(rustc_public::CompilerError::Failed));
+    assert_eq!(result, Err(redox_public::CompilerError::Failed));
 }
 
 /// Test that we are able to pass a closure and set the return according to the captured value.

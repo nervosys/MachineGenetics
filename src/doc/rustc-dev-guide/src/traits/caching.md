@@ -56,7 +56,7 @@ where-clauses in scope, then we use the local cache.  We used to try
 and draw finer-grained distinctions, but that led to a series of
 annoying and weird bugs like [#22019] and [#18290]. This simple rule seems
 to be pretty clearly safe and also still retains a very high hit rate
-(~95% when compiling rustc).
+(~95% when compiling redox).
 
 **TODO**: it looks like `pick_candidate_cache` no longer exists. In
 general, is this section still accurate at all?

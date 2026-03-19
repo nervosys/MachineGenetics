@@ -1,0 +1,46 @@
+[package]
+name = "redox_pattern_analysis"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+rustc-hash = "2.0.0"
+redox_abi = { path = "../redox_abi", optional = true }
+redox_apfloat = "0.2.0"
+redox_arena = { path = "../redox_arena", optional = true }
+redox_data_structures = { path = "../redox_data_structures", optional = true }
+redox_errors = { path = "../redox_errors", optional = true }
+redox_hir = { path = "../redox_hir", optional = true }
+redox_index = { path = "../redox_index", default-features = false }
+redox_macros = { path = "../redox_macros", optional = true }
+redox_middle = { path = "../redox_middle", optional = true }
+redox_session = { path = "../redox_session", optional = true }
+redox_span = { path = "../redox_span", optional = true }
+smallvec = { version = "1.8.1", features = ["union"] }
+tracing = "0.1"
+# tidy-alphabetical-end
+
+[dev-dependencies]
+# tidy-alphabetical-start
+tracing-subscriber = { version = "0.3.3", default-features = false, features = ["fmt", "env-filter", "ansi"] }
+tracing-tree = "0.3.0"
+# tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+default = ["redox"]
+redox = [
+    "dep:redox_abi",
+    "dep:redox_arena",
+    "dep:redox_data_structures",
+    "dep:redox_errors",
+    "dep:redox_hir",
+    "dep:redox_macros",
+    "dep:redox_middle",
+    "dep:redox_session",
+    "dep:redox_span",
+    "smallvec/may_dangle",
+    "redox_index/nightly",
+]
+# tidy-alphabetical-end

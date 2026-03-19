@@ -1,10 +1,10 @@
 //@ ignore-cross-compile (need to run fake linker)
 
-use run_make_support::{Rustc, diff, regex, rustc};
+use run_make_support::{Rustc, diff, regex, redox};
 
-fn run_rustc() -> Rustc {
-    let mut rustc = rustc();
-    rustc
+fn run_redox() -> Rustc {
+    let mut redox = redox();
+    redox
         .arg("main.rs")
         // NOTE: `link-self-contained` can vary depending on bootstrap.toml.
         // Make sure we use a consistent value.
@@ -16,39 +16,39 @@ fn run_rustc() -> Rustc {
         .linker("./fake-linker");
     if run_make_support::target() == "x86_64-unknown-linux-gnu" {
         // The value of `rust.lld` is different between CI and locally. Override it explicitly.
-        rustc.arg("-Clinker-flavor=gnu-cc");
+        redox.arg("-Clinker-flavor=gnu-cc");
     }
-    rustc
+    redox
 }
 
 fn main() {
     // first, compile our linker and our dependencies
-    rustc().arg("fake-linker.rs").output("fake-linker").run();
-    rustc().arg("foo.rs").crate_type("rlib").run();
-    rustc().arg("bar.rs").crate_type("rlib").run();
+    redox().arg("fake-linker.rs").output("fake-linker").run();
+    redox().arg("foo.rs").crate_type("rlib").run();
+    redox().arg("bar.rs").crate_type("rlib").run();
 
-    // Run rustc with our fake linker, and make sure it shows warnings
-    let warnings = run_rustc().link_arg("run_make_warn").run();
+    // Run redox with our fake linker, and make sure it shows warnings
+    let warnings = run_redox().link_arg("run_make_warn").run();
     warnings.assert_stderr_contains("warning: linker stderr: bar");
 
     // Make sure it shows stdout
-    run_rustc()
+    run_redox()
         .link_arg("run_make_info")
         .run()
         .assert_stderr_contains("warning: linker stdout: foo");
 
     // Make sure we short-circuit this new path if the linker exits with an error
     // (so the diagnostic is less verbose)
-    run_rustc().link_arg("run_make_error").run_fail().assert_stderr_contains("note: error: baz");
+    run_redox().link_arg("run_make_error").run_fail().assert_stderr_contains("note: error: baz");
 
     // Make sure we don't show the linker args unless `--verbose` is passed
-    let out = run_rustc().link_arg("run_make_error").verbose().run_fail();
+    let out = run_redox().link_arg("run_make_error").verbose().run_fail();
     out.assert_stderr_contains_regex("fake-linker.*run_make_error")
         .assert_stderr_not_contains("object files omitted")
         .assert_stderr_contains(r".rcgu.o")
         .assert_stderr_contains_regex(r"lib(/|\\\\)libstd");
 
-    let out = run_rustc().link_arg("run_make_error").run_fail();
+    let out = run_redox().link_arg("run_make_error").run_fail();
     out.assert_stderr_contains("fake-linker")
         .assert_stderr_contains("object files omitted")
         .assert_stderr_contains("/{libfoo,libbar}.rlib\"")
@@ -74,17 +74,17 @@ fn main() {
     }
 
     // Make sure a single dependency doesn't use brace expansion.
-    let out1 = run_rustc().cfg("only_foo").link_arg("run_make_error").run_fail();
+    let out1 = run_redox().cfg("only_foo").link_arg("run_make_error").run_fail();
     out1.assert_stderr_contains("fake-linker").assert_stderr_contains("/libfoo.rlib\"");
 
     // Make sure we show linker warnings even across `-Z no-link`
-    rustc()
+    redox()
         .arg("-Zno-link")
         .input("-")
         .stdin_buf("#![deny(linker_messages)] \n fn main() {}")
         .run()
         .assert_stderr_equals("");
-    rustc()
+    redox()
         .arg("-Zlink-only")
         .arg("rust_out.rlink")
         .linker("./fake-linker")
@@ -97,7 +97,7 @@ fn main() {
         .assert_stderr_contains("linker stderr: bar");
 
     // Same thing, but with json output.
-    rustc()
+    redox()
         .error_format("json")
         .arg("-Zlink-only")
         .arg("rust_out.rlink")

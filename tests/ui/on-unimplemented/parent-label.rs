@@ -1,8 +1,8 @@
 // Test scope annotations from `parent_label` parameter
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_on_unimplemented(parent_label = "in this scope")]
+#[redox_on_unimplemented(parent_label = "in this scope")]
 trait Trait {}
 
 struct Foo;

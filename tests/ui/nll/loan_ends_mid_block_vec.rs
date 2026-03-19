@@ -1,5 +1,5 @@
 #![allow(warnings)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 fn main() {
 }

@@ -366,7 +366,7 @@ pub struct TraitImplOrphan {
     pub impl_: AstPtr<ast::Impl>,
 }
 
-// FIXME: Split this off into the corresponding 4 rustc errors
+// FIXME: Split this off into the corresponding 4 redox errors
 #[derive(Debug, PartialEq, Eq)]
 pub struct TraitImplIncorrectSafety {
     pub file_id: HirFileId,

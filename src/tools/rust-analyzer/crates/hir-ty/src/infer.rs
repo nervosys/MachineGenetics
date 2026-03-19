@@ -1,8 +1,8 @@
 //! Type inference, i.e. the process of walking through the code and determining
 //! the type of each expression and pattern.
 //!
-//! For type inference, compare the implementations in rustc (the various
-//! check_* methods in rustc_hir_analysis/check/mod.rs are a good entry point) and
+//! For type inference, compare the implementations in redox (the various
+//! check_* methods in redox_hir_analysis/check/mod.rs are a good entry point) and
 //! IntelliJ-Rust (org.rust.lang.core.types.infer). Our entry point for
 //! inference here is the `infer` function, which infers the types of all
 //! expressions in a given function.
@@ -11,7 +11,7 @@
 //! which represent currently unknown types; as we walk through the expressions,
 //! we might determine that certain variables need to be equal to each other, or
 //! to certain types. To record this, we use the union-find implementation from
-//! the `ena` crate, which is extracted from rustc.
+//! the `ena` crate, which is extracted from redox.
 
 mod autoderef;
 pub(crate) mod cast;
@@ -47,9 +47,9 @@ use hir_expand::{mod_path::ModPath, name::Name};
 use indexmap::IndexSet;
 use intern::sym;
 use la_arena::ArenaMap;
-use rustc_ast_ir::Mutability;
-use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_type_ir::{
+use redox_ast_ir::Mutability;
+use redox_hash::{FxHashMap, FxHashSet};
+use redox_type_ir::{
     AliasTyKind, TypeFoldable,
     inherent::{AdtDef, IntoKind, Ty as _},
 };
@@ -151,7 +151,7 @@ pub fn infer_query_with_inspect<'db>(
 
     ctx.type_inference_fallback();
 
-    // Comment from rustc:
+    // Comment from redox:
     // Even though coercion casts provide type hints, we check casts after fallback for
     // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
     let cast_checks = std::mem::take(&mut ctx.deferred_cast_checks);
@@ -661,7 +661,7 @@ impl InferenceResult {
     pub fn type_of_expr_with_adjust<'db>(&self, id: ExprId) -> Option<Ty<'db>> {
         match self.expr_adjustments.get(&id).and_then(|adjustments| {
             adjustments.iter().rfind(|adj| {
-                // https://github.com/rust-lang/rust/blob/67819923ac8ea353aaa775303f4c3aacbf41d010/compiler/rustc_mir_build/src/thir/cx/expr.rs#L140
+                // https://github.com/rust-lang/rust/blob/67819923ac8ea353aaa775303f4c3aacbf41d010/compiler/redox_mir_build/src/thir/cx/expr.rs#L140
                 !matches!(
                     adj,
                     Adjustment {
@@ -769,7 +769,7 @@ pub(crate) struct InferenceContext<'body, 'db> {
     traits_in_scope: FxHashSet<TraitId>,
     pub(crate) result: InferenceResult,
     tuple_field_accesses_rev:
-        IndexSet<Tys<'db>, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>,
+        IndexSet<Tys<'db>, std::hash::BuildHasherDefault<redox_hash::FxHasher>>,
     /// The return type of the function being inferred, the closure or async block if we're
     /// currently within one.
     ///
@@ -932,7 +932,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
         ctx.type_inference_fallback();
 
-        // Comment from rustc:
+        // Comment from redox:
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
         let cast_checks = std::mem::take(&mut ctx.deferred_cast_checks);
@@ -1021,7 +1021,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                 | UnresolvedField { receiver: ty, .. }
                 | UnresolvedMethodCall { receiver: ty, .. } => {
                     *ty = table.resolve_completely(ty.as_ref()).store();
-                    // FIXME: Remove this when we are on par with rustc in terms of inference
+                    // FIXME: Remove this when we are on par with redox in terms of inference
                     if ty.as_ref().references_non_lt_error() {
                         return false;
                     }
@@ -1897,7 +1897,7 @@ impl<'db> Expectation<'db> {
         }
     }
 
-    /// The following explanation is copied straight from rustc:
+    /// The following explanation is copied straight from redox:
     /// Provides an expectation for an rvalue expression given an *optional*
     /// hint, which is not required for type safety (the resulting type might
     /// be checked higher up, as is the case with `&expr` and `box expr`), but
@@ -1964,7 +1964,7 @@ impl<'db> Expectation<'db> {
         self.only_has_type(table).unwrap_or_else(|| table.next_ty_var())
     }
 
-    /// Comment copied from rustc:
+    /// Comment copied from redox:
     /// Disregard "castable to" expectations because they
     /// can lead us astray. Consider for example `if cond
     /// {22} else {c} as u8` -- if we propagate the

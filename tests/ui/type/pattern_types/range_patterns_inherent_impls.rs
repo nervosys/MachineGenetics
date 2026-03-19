@@ -1,4 +1,4 @@
-#![feature(pattern_types, rustc_attrs)]
+#![feature(pattern_types, redox_attrs)]
 #![feature(pattern_type_macro)]
 #![allow(incomplete_features)]
 

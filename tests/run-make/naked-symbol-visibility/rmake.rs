@@ -6,11 +6,11 @@
 use run_make_support::object::ObjectSymbol;
 use run_make_support::object::read::{File, Object, Symbol};
 use run_make_support::targets::is_windows;
-use run_make_support::{dynamic_lib_name, rfs, rustc};
+use run_make_support::{dynamic_lib_name, rfs, redox};
 
 fn main() {
     let rdylib_name = dynamic_lib_name("a_rust_dylib");
-    rustc().arg("-Zshare-generics=no").input("a_rust_dylib.rs").run();
+    redox().arg("-Zshare-generics=no").input("a_rust_dylib.rs").run();
 
     let binary_data = rfs::read(&rdylib_name);
     let rdylib = File::parse(&*binary_data).unwrap();
@@ -51,7 +51,7 @@ fn main() {
     not_exported(&rdylib, "function_defined_in_global_asm");
 
     // share generics should expose the generic functions
-    rustc().arg("-Zshare-generics=yes").input("a_rust_dylib.rs").run();
+    redox().arg("-Zshare-generics=yes").input("a_rust_dylib.rs").run();
     let binary_data = rfs::read(&rdylib_name);
     let rdylib = File::parse(&*binary_data).unwrap();
 

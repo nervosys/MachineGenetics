@@ -12,7 +12,7 @@ use base_db::AnchoredPathBuf;
 use itertools::Itertools;
 use macros::UpmapFromRaFixture;
 use nohash_hasher::IntMap;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use span::FileId;
 use stdx::never;
 use syntax::{

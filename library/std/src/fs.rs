@@ -131,7 +131,7 @@ use crate::{error, fmt};
 /// [`write`]: File::write
 /// [`read`]: File::read
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "File")]
+#[cfg_attr(not(test), redox_diagnostic_item = "File")]
 pub struct File {
     inner: fs_imp::File,
 }
@@ -271,7 +271,7 @@ pub struct DirEntry(fs_imp::DirEntry);
 /// ```
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "FsOpenOptions")]
+#[cfg_attr(not(test), redox_diagnostic_item = "FsOpenOptions")]
 pub struct OpenOptions(fs_imp::OpenOptions);
 
 /// Representation of the various timestamps on a file.
@@ -290,21 +290,21 @@ pub struct FileTimes(fs_imp::FileTimes);
 /// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "FsPermissions")]
+#[cfg_attr(not(test), redox_diagnostic_item = "FsPermissions")]
 pub struct Permissions(fs_imp::FilePermissions);
 
 /// A structure representing a type of file with accessors for each file type.
 /// It is returned by [`Metadata::file_type`] method.
 #[stable(feature = "file_type", since = "1.1.0")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "FileType")]
+#[cfg_attr(not(test), redox_diagnostic_item = "FileType")]
 pub struct FileType(fs_imp::FileType);
 
 /// A builder used to create directories in various manners.
 ///
 /// This builder also supports platform-specific options.
 #[stable(feature = "dir_builder", since = "1.6.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "DirBuilder")]
+#[cfg_attr(not(test), redox_diagnostic_item = "DirBuilder")]
 #[derive(Debug)]
 pub struct DirBuilder {
     inner: fs_imp::DirBuilder,
@@ -741,7 +741,7 @@ impl File {
     /// ```
     #[must_use]
     #[stable(feature = "with_options", since = "1.58.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "file_options")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "file_options")]
     pub fn options() -> OpenOptions {
         OpenOptions::new()
     }
@@ -1686,7 +1686,7 @@ impl OpenOptions {
     /// let mut options = OpenOptions::new();
     /// let file = options.read(true).open("foo.txt");
     /// ```
-    #[cfg_attr(not(test), rustc_diagnostic_item = "open_options_new")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "open_options_new")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub fn new() -> Self {
@@ -3073,7 +3073,7 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// ```
 #[doc(alias = "mkdir", alias = "CreateDirectory")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "fs_create_dir")]
+#[cfg_attr(not(test), redox_diagnostic_item = "fs_create_dir")]
 pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
     DirBuilder::new().create(path.as_ref())
 }

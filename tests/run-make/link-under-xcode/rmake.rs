@@ -4,7 +4,7 @@
 
 //@ only-apple
 
-use run_make_support::{cmd, rustc, target};
+use run_make_support::{cmd, redox, target};
 
 fn main() {
     // Fetch toolchain `/usr/bin` directory. Usually:
@@ -19,10 +19,10 @@ fn main() {
     //
     // Removing `SDKROOT` is necessary for the test to excercise what we want, since bootstrap runs
     // under `/usr/bin/python3`, which will set SDKROOT for us.
-    rustc().target(target()).env_remove("SDKROOT").env("PATH", &path).input("foo.rs").run();
+    redox().target(target()).env_remove("SDKROOT").env("PATH", &path).input("foo.rs").run();
 
     // Also check linking directly with the system linker.
-    rustc()
+    redox()
         .target(target())
         .env_remove("SDKROOT")
         .env("PATH", &path)

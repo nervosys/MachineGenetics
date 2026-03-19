@@ -190,7 +190,7 @@ impl char {
     /// assert_eq!(None, c);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
-    #[rustc_const_stable(feature = "const_char_convert", since = "1.67.0")]
+    #[redox_const_stable(feature = "const_char_convert", since = "1.67.0")]
     #[must_use]
     #[inline]
     pub const fn from_u32(i: u32) -> Option<char> {
@@ -231,7 +231,7 @@ impl char {
     /// assert_eq!('❤', c);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
-    #[rustc_const_stable(feature = "const_char_from_u32_unchecked", since = "1.81.0")]
+    #[redox_const_stable(feature = "const_char_from_u32_unchecked", since = "1.81.0")]
     #[must_use]
     #[inline]
     pub const unsafe fn from_u32_unchecked(i: u32) -> char {
@@ -283,7 +283,7 @@ impl char {
     /// let _c = char::from_digit(1, 37);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
-    #[rustc_const_stable(feature = "const_char_convert", since = "1.67.0")]
+    #[redox_const_stable(feature = "const_char_convert", since = "1.67.0")]
     #[must_use]
     #[inline]
     pub const fn from_digit(num: u32, radix: u32) -> Option<char> {
@@ -338,7 +338,7 @@ impl char {
     /// '1'.is_digit(1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_char_classify", since = "1.87.0")]
+    #[redox_const_stable(feature = "const_char_classify", since = "1.87.0")]
     #[inline]
     pub const fn is_digit(self, radix: u32) -> bool {
         self.to_digit(radix).is_some()
@@ -394,8 +394,8 @@ impl char {
     /// let _ = '1'.to_digit(1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_char_convert", since = "1.67.0")]
-    #[rustc_diagnostic_item = "char_to_digit"]
+    #[redox_const_stable(feature = "const_char_convert", since = "1.67.0")]
+    #[redox_diagnostic_item = "char_to_digit"]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -639,7 +639,7 @@ impl char {
     /// assert_eq!(len, tokyo.len());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_char_len_utf", since = "1.52.0")]
+    #[redox_const_stable(feature = "const_char_len_utf", since = "1.52.0")]
     #[inline]
     #[must_use]
     pub const fn len_utf8(self) -> usize {
@@ -671,7 +671,7 @@ impl char {
     /// assert_eq!(len, 2);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_char_len_utf", since = "1.52.0")]
+    #[redox_const_stable(feature = "const_char_len_utf", since = "1.52.0")]
     #[inline]
     #[must_use]
     pub const fn len_utf16(self) -> usize {
@@ -709,7 +709,7 @@ impl char {
     /// 'ß'.encode_utf8(&mut b);
     /// ```
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
-    #[rustc_const_stable(feature = "const_char_encode_utf8", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_char_encode_utf8", since = "1.83.0")]
     #[inline]
     pub const fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
         // SAFETY: `char` is not a surrogate, so this is valid UTF-8.
@@ -745,7 +745,7 @@ impl char {
     /// '𝕊'.encode_utf16(&mut b);
     /// ```
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
-    #[rustc_const_stable(feature = "const_char_encode_utf16", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_char_encode_utf16", since = "1.84.0")]
     #[inline]
     pub const fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
         encode_utf16_raw(self as u32, dst)
@@ -814,7 +814,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_unicode_case_lookup", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_unicode_case_lookup", since = "1.84.0")]
     #[inline]
     pub const fn is_lowercase(self) -> bool {
         match self {
@@ -855,7 +855,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_unicode_case_lookup", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_unicode_case_lookup", since = "1.84.0")]
     #[inline]
     pub const fn is_uppercase(self) -> bool {
         match self {
@@ -888,7 +888,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_char_classify", since = "1.87.0")]
+    #[redox_const_stable(feature = "const_char_classify", since = "1.87.0")]
     #[inline]
     pub const fn is_whitespace(self) -> bool {
         match self {
@@ -1224,8 +1224,8 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_char_is_ascii", since = "1.32.0")]
-    #[rustc_diagnostic_item = "char_is_ascii"]
+    #[redox_const_stable(feature = "const_char_is_ascii", since = "1.32.0")]
+    #[redox_diagnostic_item = "char_is_ascii"]
     #[inline]
     pub const fn is_ascii(&self) -> bool {
         *self as u32 <= 0x7F
@@ -1293,7 +1293,7 @@ impl char {
     /// [`to_uppercase()`]: #method.to_uppercase
     #[must_use = "to uppercase the value in-place, use `make_ascii_uppercase()`"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
+    #[redox_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
     pub const fn to_ascii_uppercase(&self) -> char {
         if self.is_ascii_lowercase() {
@@ -1327,7 +1327,7 @@ impl char {
     /// [`to_lowercase()`]: #method.to_lowercase
     #[must_use = "to lowercase the value in-place, use `make_ascii_lowercase()`"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
+    #[redox_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
     pub const fn to_ascii_lowercase(&self) -> char {
         if self.is_ascii_uppercase() {
@@ -1355,7 +1355,7 @@ impl char {
     ///
     /// [to_ascii_lowercase]: #method.to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
+    #[redox_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &char) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()
@@ -1381,7 +1381,7 @@ impl char {
     ///
     /// [`to_ascii_uppercase()`]: #method.to_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_make_ascii", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_make_ascii", since = "1.84.0")]
     #[inline]
     pub const fn make_ascii_uppercase(&mut self) {
         *self = self.to_ascii_uppercase();
@@ -1407,7 +1407,7 @@ impl char {
     ///
     /// [`to_ascii_lowercase()`]: #method.to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_make_ascii", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_make_ascii", since = "1.84.0")]
     #[inline]
     pub const fn make_ascii_lowercase(&mut self) {
         *self = self.to_ascii_lowercase();
@@ -1443,7 +1443,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[redox_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphabetic(&self) -> bool {
         matches!(*self, 'A'..='Z' | 'a'..='z')
@@ -1477,7 +1477,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[redox_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_uppercase(&self) -> bool {
         matches!(*self, 'A'..='Z')
@@ -1511,7 +1511,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[redox_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_lowercase(&self) -> bool {
         matches!(*self, 'a'..='z')
@@ -1548,7 +1548,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[redox_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphanumeric(&self) -> bool {
         matches!(*self, '0'..='9') | matches!(*self, 'A'..='Z') | matches!(*self, 'a'..='z')
@@ -1582,7 +1582,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[redox_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_digit(&self) -> bool {
         matches!(*self, '0'..='9')
@@ -1650,7 +1650,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[redox_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
         matches!(*self, '0'..='9') | matches!(*self, 'A'..='F') | matches!(*self, 'a'..='f')
@@ -1688,7 +1688,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[redox_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_punctuation(&self) -> bool {
         matches!(*self, '!'..='/')
@@ -1725,7 +1725,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[redox_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_graphic(&self) -> bool {
         matches!(*self, '!'..='~')
@@ -1776,7 +1776,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[redox_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_whitespace(&self) -> bool {
         matches!(*self, '\t' | '\n' | '\x0C' | '\r' | ' ')
@@ -1812,7 +1812,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[redox_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_control(&self) -> bool {
         matches!(*self, '\0'..='\x1F' | '\x7F')

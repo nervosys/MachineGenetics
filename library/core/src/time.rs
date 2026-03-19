@@ -77,7 +77,7 @@ const DAYS_PER_WEEK: u64 = 7;
 /// crate to do so.
 #[stable(feature = "duration", since = "1.3.0")]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-#[rustc_diagnostic_item = "Duration"]
+#[redox_diagnostic_item = "Duration"]
 pub struct Duration {
     secs: u64,
     nanos: Nanoseconds, // Always 0 <= nanos < NANOS_PER_SEC
@@ -190,7 +190,7 @@ impl Duration {
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     #[must_use]
-    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[redox_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn new(secs: u64, nanos: u32) -> Duration {
         if nanos < NANOS_PER_SEC {
             // SAFETY: nanos < NANOS_PER_SEC, therefore nanos is within the valid range
@@ -220,7 +220,7 @@ impl Duration {
     #[stable(feature = "duration", since = "1.3.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[redox_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_secs(secs: u64) -> Duration {
         Duration { secs, nanos: Nanoseconds::ZERO }
     }
@@ -240,7 +240,7 @@ impl Duration {
     #[stable(feature = "duration", since = "1.3.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[redox_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_millis(millis: u64) -> Duration {
         let secs = millis / MILLIS_PER_SEC;
         let subsec_millis = (millis % MILLIS_PER_SEC) as u32;
@@ -266,7 +266,7 @@ impl Duration {
     #[stable(feature = "duration_from_micros", since = "1.27.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[redox_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_micros(micros: u64) -> Duration {
         let secs = micros / MICROS_PER_SEC;
         let subsec_micros = (micros % MICROS_PER_SEC) as u32;
@@ -297,7 +297,7 @@ impl Duration {
     #[stable(feature = "duration_extras", since = "1.27.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[redox_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_nanos(nanos: u64) -> Duration {
         const NANOS_PER_SEC: u64 = self::NANOS_PER_SEC as u64;
         let secs = nanos / NANOS_PER_SEC;
@@ -326,11 +326,11 @@ impl Duration {
     /// assert_eq!(321, duration.subsec_nanos());
     /// ```
     #[stable(feature = "duration_from_nanos_u128", since = "1.93.0")]
-    #[rustc_const_stable(feature = "duration_from_nanos_u128", since = "1.93.0")]
+    #[redox_const_stable(feature = "duration_from_nanos_u128", since = "1.93.0")]
     #[must_use]
     #[inline]
     #[track_caller]
-    #[rustc_allow_const_fn_unstable(const_trait_impl, const_convert)] // for `u64::try_from`
+    #[redox_allow_const_fn_unstable(const_trait_impl, const_convert)] // for `u64::try_from`
     pub const fn from_nanos_u128(nanos: u128) -> Duration {
         const NANOS_PER_SEC: u128 = self::NANOS_PER_SEC as u128;
         let Ok(secs) = u64::try_from(nanos / NANOS_PER_SEC) else {
@@ -416,7 +416,7 @@ impl Duration {
     /// assert_eq!(0, duration.subsec_nanos());
     /// ```
     #[stable(feature = "duration_constructors_lite", since = "1.91.0")]
-    #[rustc_const_stable(feature = "duration_constructors_lite", since = "1.91.0")]
+    #[redox_const_stable(feature = "duration_constructors_lite", since = "1.91.0")]
     #[must_use]
     #[inline]
     pub const fn from_hours(hours: u64) -> Duration {
@@ -444,7 +444,7 @@ impl Duration {
     /// assert_eq!(0, duration.subsec_nanos());
     /// ```
     #[stable(feature = "duration_constructors_lite", since = "1.91.0")]
-    #[rustc_const_stable(feature = "duration_constructors_lite", since = "1.91.0")]
+    #[redox_const_stable(feature = "duration_constructors_lite", since = "1.91.0")]
     #[must_use]
     #[inline]
     pub const fn from_mins(mins: u64) -> Duration {
@@ -473,7 +473,7 @@ impl Duration {
     /// ```
     #[must_use]
     #[stable(feature = "duration_zero", since = "1.53.0")]
-    #[rustc_const_stable(feature = "duration_zero", since = "1.53.0")]
+    #[redox_const_stable(feature = "duration_zero", since = "1.53.0")]
     #[inline]
     pub const fn is_zero(&self) -> bool {
         self.secs == 0 && self.nanos.as_inner() == 0
@@ -500,7 +500,7 @@ impl Duration {
     /// [`as_secs_f32`]: Duration::as_secs_f32
     /// [`subsec_nanos`]: Duration::subsec_nanos
     #[stable(feature = "duration", since = "1.3.0")]
-    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[redox_const_stable(feature = "duration_consts", since = "1.32.0")]
     #[must_use]
     #[inline]
     pub const fn as_secs(&self) -> u64 {
@@ -523,7 +523,7 @@ impl Duration {
     /// assert_eq!(duration.subsec_millis(), 432);
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
-    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[redox_const_stable(feature = "duration_consts", since = "1.32.0")]
     #[must_use]
     #[inline]
     pub const fn subsec_millis(&self) -> u32 {
@@ -546,7 +546,7 @@ impl Duration {
     /// assert_eq!(duration.subsec_micros(), 234_567);
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
-    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[redox_const_stable(feature = "duration_consts", since = "1.32.0")]
     #[must_use]
     #[inline]
     pub const fn subsec_micros(&self) -> u32 {
@@ -569,7 +569,7 @@ impl Duration {
     /// assert_eq!(duration.subsec_nanos(), 10_000_000);
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
-    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[redox_const_stable(feature = "duration_consts", since = "1.32.0")]
     #[must_use]
     #[inline]
     pub const fn subsec_nanos(&self) -> u32 {
@@ -587,7 +587,7 @@ impl Duration {
     /// assert_eq!(duration.as_millis(), 5_730);
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
-    #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[redox_const_stable(feature = "duration_as_u128", since = "1.33.0")]
     #[must_use]
     #[inline]
     pub const fn as_millis(&self) -> u128 {
@@ -606,7 +606,7 @@ impl Duration {
     /// assert_eq!(duration.as_micros(), 5_730_023);
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
-    #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[redox_const_stable(feature = "duration_as_u128", since = "1.33.0")]
     #[must_use]
     #[inline]
     pub const fn as_micros(&self) -> u128 {
@@ -625,7 +625,7 @@ impl Duration {
     /// assert_eq!(duration.as_nanos(), 5_730_023_852);
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
-    #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[redox_const_stable(feature = "duration_as_u128", since = "1.33.0")]
     #[must_use]
     #[inline]
     pub const fn as_nanos(&self) -> u128 {
@@ -643,7 +643,7 @@ impl Duration {
     /// assert_eq!(Duration::new(100, 400_000_000).abs_diff(Duration::new(110, 0)), Duration::new(9, 600_000_000));
     /// ```
     #[stable(feature = "duration_abs_diff", since = "1.81.0")]
-    #[rustc_const_stable(feature = "duration_abs_diff", since = "1.81.0")]
+    #[redox_const_stable(feature = "duration_abs_diff", since = "1.81.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -666,7 +666,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[redox_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn checked_add(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_add(rhs.secs) {
             let mut nanos = self.nanos.as_inner() + rhs.nanos.as_inner();
@@ -699,7 +699,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[redox_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn saturating_add(self, rhs: Duration) -> Duration {
         match self.checked_add(rhs) {
             Some(res) => res,
@@ -722,7 +722,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[redox_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn checked_sub(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_sub(rhs.secs) {
             let nanos = if self.nanos.as_inner() >= rhs.nanos.as_inner() {
@@ -755,7 +755,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[redox_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn saturating_sub(self, rhs: Duration) -> Duration {
         match self.checked_sub(rhs) {
             Some(res) => res,
@@ -778,7 +778,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[redox_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn checked_mul(self, rhs: u32) -> Option<Duration> {
         // Multiply nanoseconds as u64, because it cannot overflow that way.
         let total_nanos = self.nanos.as_inner() as u64 * rhs as u64;
@@ -809,7 +809,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[redox_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn saturating_mul(self, rhs: u32) -> Duration {
         match self.checked_mul(rhs) {
             Some(res) => res,
@@ -833,7 +833,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[redox_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn checked_div(self, rhs: u32) -> Option<Duration> {
         if rhs != 0 {
             let (secs, extra_secs) = (self.secs / (rhs as u64), self.secs % (rhs as u64));
@@ -862,7 +862,7 @@ impl Duration {
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts_float", since = "1.83.0")]
+    #[redox_const_stable(feature = "duration_consts_float", since = "1.83.0")]
     pub const fn as_secs_f64(&self) -> f64 {
         (self.secs as f64) + (self.nanos.as_inner() as f64) / (NANOS_PER_SEC as f64)
     }
@@ -881,7 +881,7 @@ impl Duration {
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts_float", since = "1.83.0")]
+    #[redox_const_stable(feature = "duration_consts_float", since = "1.83.0")]
     pub const fn as_secs_f32(&self) -> f32 {
         (self.secs as f32) + (self.nanos.as_inner() as f32) / (NANOS_PER_SEC as f32)
     }
@@ -1100,7 +1100,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts_float", since = "1.83.0")]
+    #[redox_const_stable(feature = "duration_consts_float", since = "1.83.0")]
     pub const fn div_duration_f64(self, rhs: Duration) -> f64 {
         let self_nanos =
             (self.secs as f64) * (NANOS_PER_SEC as f64) + (self.nanos.as_inner() as f64);
@@ -1122,7 +1122,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts_float", since = "1.83.0")]
+    #[redox_const_stable(feature = "duration_consts_float", since = "1.83.0")]
     pub const fn div_duration_f32(self, rhs: Duration) -> f32 {
         let self_nanos =
             (self.secs as f32) * (NANOS_PER_SEC as f32) + (self.nanos.as_inner() as f32);
@@ -1172,7 +1172,7 @@ impl Duration {
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl const Add for Duration {
     type Output = Duration;
 
@@ -1183,7 +1183,7 @@ impl const Add for Duration {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl const AddAssign for Duration {
     #[inline]
     fn add_assign(&mut self, rhs: Duration) {
@@ -1192,7 +1192,7 @@ impl const AddAssign for Duration {
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl const Sub for Duration {
     type Output = Duration;
 
@@ -1203,7 +1203,7 @@ impl const Sub for Duration {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl const SubAssign for Duration {
     #[inline]
     fn sub_assign(&mut self, rhs: Duration) {
@@ -1212,7 +1212,7 @@ impl const SubAssign for Duration {
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl const Mul<u32> for Duration {
     type Output = Duration;
 
@@ -1223,7 +1223,7 @@ impl const Mul<u32> for Duration {
 }
 
 #[stable(feature = "symmetric_u32_duration_mul", since = "1.31.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl const Mul<Duration> for u32 {
     type Output = Duration;
 
@@ -1234,7 +1234,7 @@ impl const Mul<Duration> for u32 {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl const MulAssign<u32> for Duration {
     #[inline]
     fn mul_assign(&mut self, rhs: u32) {
@@ -1243,7 +1243,7 @@ impl const MulAssign<u32> for Duration {
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl const Div<u32> for Duration {
     type Output = Duration;
 
@@ -1255,7 +1255,7 @@ impl const Div<u32> for Duration {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl const DivAssign<u32> for Duration {
     #[inline]
     #[track_caller]

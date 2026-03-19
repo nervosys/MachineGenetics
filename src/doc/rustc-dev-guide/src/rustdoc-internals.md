@@ -9,7 +9,7 @@ For an overview of `rustdoc`, see the ["Rustdoc overview" chapter](./rustdoc.md)
 
 In [`core.rs`] are two central items: the [`rustdoc::core::DocContext`]
 `struct`, and the [`rustdoc::core::run_global_ctxt`] function.
-The latter is where `rustdoc` calls out to `rustc` to compile a crate to the point where
+The latter is where `rustdoc` calls out to `redox` to compile a crate to the point where
 `rustdoc` can take over.
 The former is a state container used when crawling through a crate to gather its documentation.
 
@@ -38,7 +38,7 @@ Also, `clean/mod.rs` defines the types for the "cleaned" [Abstract Syntax Tree
 (`AST`)][ast] used later to render documentation pages.
 Each usually accompanies a
 `clean_*` function that takes some [`AST`][ast] or [High-Level Intermediate
-Representation (`HIR`)][hir] type from `rustc` and converts it into the appropriate "cleaned" type.
+Representation (`HIR`)][hir] type from `redox` and converts it into the appropriate "cleaned" type.
 "Big" items like modules or associated items may
 have some extra processing in its `clean` function, but for the most part these
 `impl`s are straightforward conversions.
@@ -48,7 +48,7 @@ The "entry point" to this module is
 The first step in [`clean::utils::krate`][ck1] is to invoke
 [`visit_ast::RustdocVisitor`] to process the module tree into an intermediate [`visit_ast::Module`].
 This is the step that actually crawls the
-[`rustc_hir::Crate`], normalizing various aspects of name resolution, such as:
+[`redox_hir::Crate`], normalizing various aspects of name resolution, such as:
 
   * handling `#[doc(inline)]` and `#[doc(no_inline)]`
   * handling import globs and cycles, so there are no duplicates or infinite
@@ -62,7 +62,7 @@ This is the step that actually crawls the
 After this step, `clean::krate` invokes [`clean_doc_module`], which actually
 converts the `HIR` items to the cleaned [`AST`][ast].
 This is also the step where cross-crate inlining is performed,
-which requires converting `rustc_middle` data structures into the cleaned [`AST`][ast].
+which requires converting `redox_middle` data structures into the cleaned [`AST`][ast].
 
 The other major thing that happens in `clean/mod.rs` is the collection of doc
 comments and `#[doc=""]` attributes into a separate field of the [`Attributes`]
@@ -72,23 +72,23 @@ This makes it easier to collect this documentation later in the process.
 The primary output of this process is a [`clean::types::Crate`] with a tree of [`Item`]s
 which describe the publicly-documentable items in the target crate.
 
-[`Attributes`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/clean/types/struct.Attributes.html
-[`clean_doc_module`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/clean/fn.clean_doc_module.html
-[`clean::types::Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/clean/types/struct.Crate.html
+[`Attributes`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/clean/types/struct.Attributes.html
+[`clean_doc_module`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/clean/fn.clean_doc_module.html
+[`clean::types::Crate`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/clean/types/struct.Crate.html
 [`clean/mod.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/clean/mod.rs
 [`core.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/core.rs
-[`Item`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/clean/types/struct.Item.html
-[`run_global_ctxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/core/fn.run_global_ctxt.html
-[`rustc_hir::Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Crate.html
-[`rustdoc::core::DocContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/core/struct.DocContext.html
-[`rustdoc::core::run_global_ctxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/core/fn.run_global_ctxt.html
-[`visit_ast::Module`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/visit_ast/struct.Module.html
-[`visit_ast::RustdocVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/visit_ast/struct.RustdocVisitor.html
+[`Item`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/clean/types/struct.Item.html
+[`run_global_ctxt`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/core/fn.run_global_ctxt.html
+[`redox_hir::Crate`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.Crate.html
+[`rustdoc::core::DocContext`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/core/struct.DocContext.html
+[`rustdoc::core::run_global_ctxt`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/core/fn.run_global_ctxt.html
+[`visit_ast::Module`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/visit_ast/struct.Module.html
+[`visit_ast::RustdocVisitor`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/visit_ast/struct.RustdocVisitor.html
 [ast]: ./ast-validation.md
-[ck0]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/clean/utils/fn.krate.html#
-[ck1]: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustdoc/clean/utils.rs.html#31-77
-[hir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html
-[this function for converting lifetimes]: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustdoc/clean/mod.rs.html#256-267
+[ck0]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/clean/utils/fn.krate.html#
+[ck1]: https://doc.rust-lang.org/nightly/nightly-redox/src/rustdoc/clean/utils.rs.html#31-77
+[hir]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/index.html
+[this function for converting lifetimes]: https://doc.rust-lang.org/nightly/nightly-redox/src/rustdoc/clean/mod.rs.html#256-267
 
 ### Passes Anything But a Gas Station (or: [Hot Potato](https://www.youtube.com/watch?v=WNFBIt5HxdY))
 
@@ -156,7 +156,7 @@ There is also a [`stripper`] module in `librustdoc/passes`, but it is a
 collection of utility functions for the `strip-*` passes and is not a pass itself.
 
 [`librustdoc/passes`]: https://github.com/rust-lang/rust/tree/HEAD/src/librustdoc/passes
-[`stripper`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/passes/stripper/index.html
+[`stripper`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/passes/stripper/index.html
 
 ## From clean to HTML
 
@@ -200,8 +200,8 @@ There's also a function [`find_codes`] which is
 called by `find_testable_codes` that specifically scans for Rust code blocks so
 the test-runner code can find all the `doctest`s in the crate.
 
-[`find_codes`]: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustdoc/html/markdown.rs.html#749-818
-[`formats::renderer::run_format`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/formats/renderer/fn.run_format.html
+[`find_codes`]: https://doc.rust-lang.org/nightly/nightly-redox/src/rustdoc/html/markdown.rs.html#749-818
+[`formats::renderer::run_format`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/formats/renderer/fn.run_format.html
 [`html/format.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/html/format.rs
 [`html/layout.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/html/layout.rs
 [`html/markdown.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/html/markdown.rs
@@ -209,7 +209,7 @@ the test-runner code can find all the `doctest`s in the crate.
 [`html/render/print_item.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/html/render/print_item.rs
 [`librustdoc/formats`]: https://github.com/rust-lang/rust/tree/HEAD/src/librustdoc/formats
 [`librustdoc/html`]: https://github.com/rust-lang/rust/tree/HEAD/src/librustdoc/html
-[`print_item`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/html/render/print_item/fn.print_item.html
+[`print_item`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/html/render/print_item/fn.print_item.html
 [Askama]: https://docs.rs/askama/latest/askama/
 
 ### From Soup to Nuts (or: ["An Unbroken Thread Stretches From Those First `Cell`s To Us"][video])
@@ -234,7 +234,7 @@ is complicated from two other constraints that `rustdoc` runs under:
   cover all supported operating systems.
   This means `rustdoc` has to be able to generate docs from `HIR`.
 * Docs can inline across crates. Since crate metadata doesn't contain `HIR`,
-  it must be possible to generate inlined docs from the `rustc_middle` data.
+  it must be possible to generate inlined docs from the `redox_middle` data.
 
 The "clean" [`AST`][ast] acts as a common output format for both input formats.
 There is also some data in clean that doesn't correspond directly to `HIR`, such as
@@ -251,9 +251,9 @@ generation, as well as just keeping things organized:
 * [`SharedContext`] stores data that does not vary by page, such as the `tcx`
   pointer, and a list of all types.
 
-[`Context`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/html/render/context/struct.Context.html
+[`Context`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/html/render/context/struct.Context.html
 [didn't used to be the case]: https://github.com/rust-lang/rust/pull/80090
-[`SharedContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/html/render/context/struct.SharedContext.html
+[`SharedContext`]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/html/render/context/struct.SharedContext.html
 
 ## Other tricks up its sleeve
 
@@ -298,5 +298,5 @@ For example, the url for `std` will be `rust/std/`.
 - [An overview of `rustdoc`](./rustdoc.md)
 - [The rustdoc user guide]
 
-[`rustdoc` api docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/
+[`rustdoc` api docs]: https://doc.rust-lang.org/nightly/nightly-redox/rustdoc/
 [The rustdoc user guide]: https://doc.rust-lang.org/nightly/rustdoc/

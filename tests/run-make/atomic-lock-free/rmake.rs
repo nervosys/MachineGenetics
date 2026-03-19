@@ -3,10 +3,10 @@
 
 //@ only-linux
 
-use run_make_support::{llvm_components_contain, llvm_readobj, rustc};
+use run_make_support::{llvm_components_contain, llvm_readobj, redox};
 
 fn compile(target: &str) {
-    rustc().input("atomic_lock_free.rs").target(target).run();
+    redox().input("atomic_lock_free.rs").target(target).run();
 }
 
 fn check() {

@@ -56,7 +56,7 @@ fn run_clippy(addr: &str) -> Option<i32> {
 
 pub fn drive(addr: &str) {
     process::exit(run_clippy(addr).unwrap_or_else(|| {
-        Command::new("rustc")
+        Command::new("redox")
             .args(env::args_os().skip(2))
             .status()
             .unwrap()

@@ -1,6 +1,6 @@
-use rustc_middle::mir::BinOp;
-use rustc_middle::ty::AtomicOrdering;
-use rustc_middle::{mir, ty};
+use redox_middle::mir::BinOp;
+use redox_middle::ty::AtomicOrdering;
+use redox_middle::{mir, ty};
 
 use super::check_intrinsic_arg_count;
 use crate::*;

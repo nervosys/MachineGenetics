@@ -1,6 +1,6 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_on_unimplemented(on(
+#[redox_on_unimplemented(on(
     all(A = "{integer}", any(Self = "[{integral}; _]",)),
     message = "an array of type `{Self}` cannot be built directly from an iterator",
 ))]

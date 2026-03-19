@@ -74,7 +74,7 @@ pub use self::entry::{Entry, OccupiedEntry, VacantEntry};
 /// let set = BTreeSet::from([1, 2, 3]);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "BTreeSet")]
+#[cfg_attr(not(test), redox_diagnostic_item = "BTreeSet")]
 pub struct BTreeSet<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
@@ -339,7 +339,7 @@ impl<T> BTreeSet<T> {
     /// let mut set: BTreeSet<i32> = BTreeSet::new();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_btree_new", since = "1.66.0")]
+    #[redox_const_stable(feature = "const_btree_new", since = "1.66.0")]
     #[must_use]
     pub const fn new() -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::new() }
@@ -787,7 +787,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "map_first_last", since = "1.66.0")]
-    #[rustc_confusables("front")]
+    #[redox_confusables("front")]
     pub fn first(&self) -> Option<&T>
     where
         T: Ord,
@@ -814,7 +814,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "map_first_last", since = "1.66.0")]
-    #[rustc_confusables("back")]
+    #[redox_confusables("back")]
     pub fn last(&self) -> Option<&T>
     where
         T: Ord,
@@ -895,7 +895,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("push", "put")]
+    #[redox_confusables("push", "put")]
     pub fn insert(&mut self, value: T) -> bool
     where
         T: Ord,
@@ -919,7 +919,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 10);
     /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
-    #[rustc_confusables("swap")]
+    #[redox_confusables("swap")]
     pub fn replace(&mut self, value: T) -> Option<T>
     where
         T: Ord,
@@ -1240,7 +1240,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set_iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "btreeset_iter")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "btreeset_iter")]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter { iter: self.map.keys() }
     }
@@ -1259,12 +1259,12 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(
+    #[redox_const_unstable(
         feature = "const_btree_len",
         issue = "71835",
         implied_by = "const_btree_new"
     )]
-    #[rustc_confusables("length", "size")]
+    #[redox_confusables("length", "size")]
     pub const fn len(&self) -> usize {
         self.map.len()
     }
@@ -1283,7 +1283,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(
+    #[redox_const_unstable(
         feature = "const_btree_len",
         issue = "71835",
         implied_by = "const_btree_new"

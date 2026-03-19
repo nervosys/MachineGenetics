@@ -1,11 +1,11 @@
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir as hir;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
-use rustc_infer::traits;
-use rustc_middle::ty::{self, TypingMode, Upcast};
-use rustc_span::DUMMY_SP;
-use rustc_span::def_id::DefId;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use redox_data_structures::thin_vec::ThinVec;
+use redox_hir as hir;
+use redox_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
+use redox_infer::traits;
+use redox_middle::ty::{self, TypingMode, Upcast};
+use redox_span::DUMMY_SP;
+use redox_span::def_id::DefId;
+use redox_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use tracing::{debug, instrument, trace};
 
 use crate::clean;

@@ -1,7 +1,7 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
 
-// Fixes a regression in `rustc_attr` where we weren't normalizing the
+// Fixes a regression in `redox_attr` where we weren't normalizing the
 // output type of a index operator performing a `Ty::builtin_index` call,
 // leading to an ICE.
 

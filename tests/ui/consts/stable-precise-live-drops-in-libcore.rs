@@ -9,7 +9,7 @@ enum Either<T, S> {
 
 impl<T> Either<T, T> {
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "foo", since = "1.0.0")]
+    #[redox_const_stable(feature = "foo", since = "1.0.0")]
     pub const fn unwrap(self) -> T {
         //~^ ERROR destructor of
         match self {

@@ -7,12 +7,12 @@
 // FIXME(jieyouxu): check cross-compile setup
 //@ ignore-cross-compile
 
-use run_make_support::{cwd, env_var, llvm_readobj, rfs, rustc};
+use run_make_support::{cwd, env_var, llvm_readobj, rfs, redox};
 
 fn main() {
     let target = env_var("TARGET");
 
-    rustc()
+    redox()
         .arg("-")
         .stdin_buf("fn main() {}")
         .emit("link,obj")
@@ -25,7 +25,7 @@ fn main() {
         .section(".comment")
         .input("rust_out")
         .run()
-        .assert_stdout_contains("rustc version 1.");
+        .assert_stdout_contains("redox version 1.");
 
     // Check all object files (including temporary outputs) have a `.comment`
     // section with the expected content.
@@ -38,6 +38,6 @@ fn main() {
             .section(".comment")
             .input(&f)
             .run()
-            .assert_stdout_contains("rustc version 1.");
+            .assert_stdout_contains("redox version 1.");
     });
 }

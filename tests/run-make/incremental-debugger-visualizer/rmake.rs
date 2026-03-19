@@ -4,14 +4,14 @@
 // (in this case, foo.py and foo.natvis) are picked up when compiling incrementally.
 // See https://github.com/rust-lang/rust/pull/111641
 
-use run_make_support::{invalid_utf8_contains, invalid_utf8_not_contains, rfs, rustc};
+use run_make_support::{invalid_utf8_contains, invalid_utf8_not_contains, rfs, redox};
 
 fn main() {
     rfs::create_file("foo.py");
     rfs::write("foo.py", "GDB script v1");
     rfs::create_file("foo.natvis");
     rfs::write("foo.natvis", "Natvis v1");
-    rustc()
+    redox()
         .input("foo.rs")
         .crate_type("rlib")
         .emit("metadata")
@@ -26,7 +26,7 @@ fn main() {
     rfs::remove_file("foo.py");
     rfs::create_file("foo.py");
     rfs::write("foo.py", "GDB script v2");
-    rustc()
+    redox()
         .input("foo.rs")
         .crate_type("rlib")
         .emit("metadata")
@@ -42,7 +42,7 @@ fn main() {
     rfs::remove_file("foo.natvis");
     rfs::create_file("foo.natvis");
     rfs::write("foo.natvis", "Natvis v2");
-    rustc()
+    redox()
         .input("foo.rs")
         .crate_type("rlib")
         .emit("metadata")

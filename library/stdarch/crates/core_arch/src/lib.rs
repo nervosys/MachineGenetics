@@ -15,7 +15,7 @@
     core_intrinsics,
     no_core,
     fmt_helpers_for_derive,
-    rustc_attrs,
+    redox_attrs,
     staged_api,
     doc_cfg,
     riscv_target_feature,

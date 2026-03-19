@@ -3,9 +3,9 @@
 use std::cmp::min;
 
 use itertools::Itertools;
-use rustc_ast::ast;
-use rustc_ast::token::Delimiter;
-use rustc_span::Span;
+use redox_ast::ast;
+use redox_ast::token::Delimiter;
+use redox_span::Span;
 use tracing::debug;
 
 use crate::closures;

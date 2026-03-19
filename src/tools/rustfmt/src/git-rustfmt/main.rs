@@ -1,6 +1,6 @@
 // We need this feature as it changes `dylib` linking behavior and allows us to link to
-// `rustc_driver`.
-#![feature(rustc_private)]
+// `redox_driver`.
+#![feature(redox_private)]
 
 use std::env;
 use std::io::stdout;

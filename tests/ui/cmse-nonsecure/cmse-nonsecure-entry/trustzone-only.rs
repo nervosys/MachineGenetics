@@ -8,7 +8,7 @@
 //@[thumb7] compile-flags: --target thumbv7em-none-eabi
 //@[thumb7] needs-llvm-components: arm
 //@ ignore-backends: gcc
-#![feature(no_core, lang_items, rustc_attrs, cmse_nonsecure_entry)]
+#![feature(no_core, lang_items, redox_attrs, cmse_nonsecure_entry)]
 #![no_core]
 
 extern crate minicore;

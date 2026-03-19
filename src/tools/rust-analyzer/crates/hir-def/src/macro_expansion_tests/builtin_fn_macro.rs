@@ -8,13 +8,13 @@ use crate::macro_expansion_tests::check;
 fn test_column_expand() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! column {() => {}}
 
 fn main() { column!(); }
 "#,
         expect![[r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! column {() => {}}
 
 fn main() { 0u32; }
@@ -26,11 +26,11 @@ fn main() { 0u32; }
 fn test_asm_expand() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! asm {() => {}}
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! global_asm {() => {}}
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! naked_asm {() => {}}
 
 global_asm! {
@@ -56,11 +56,11 @@ fn main() {
 }
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! asm {() => {}}
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! global_asm {() => {}}
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! naked_asm {() => {}}
 
 builtin #global_asm ("")
@@ -85,13 +85,13 @@ fn main() {
 fn test_line_expand() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! line {() => {}}
 
 fn main() { line!() }
 "#,
         expect![[r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! line {() => {}}
 
 fn main() { 0u32 }
@@ -103,7 +103,7 @@ fn main() { 0u32 }
 fn test_stringify_expand() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! stringify {() => {}}
 
 fn main() {
@@ -115,7 +115,7 @@ fn main() {
 }
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! stringify {() => {}}
 
 fn main() {
@@ -129,13 +129,13 @@ fn main() {
 fn test_env_expand() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! env {() => {}}
 
 fn main() { env!("TEST_ENV_VAR"); }
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! env {() => {}}
 
 fn main() { "UNRESOLVED_ENV_VAR"; }
@@ -147,13 +147,13 @@ fn main() { "UNRESOLVED_ENV_VAR"; }
 fn test_option_env_expand() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! option_env {() => {}}
 
 fn main() { option_env!("TEST_ENV_VAR"); }
 "#,
         expect![[r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! option_env {() => {}}
 
 fn main() { $crate::option::Option::None:: < &str>; }
@@ -165,13 +165,13 @@ fn main() { $crate::option::Option::None:: < &str>; }
 fn test_file_expand() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! file {() => {}}
 
 fn main() { file!(); }
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! file {() => {}}
 
 fn main() { "file"; }
@@ -227,7 +227,7 @@ fn main() {
 fn test_compile_error_expand() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! compile_error {
     ($msg:expr) => ({ /* compiler built-in */ });
     ($msg:expr,) => ({ /* compiler built-in */ })
@@ -238,7 +238,7 @@ compile_error!("error, with an escaped quote: \"");
 compile_error!(r"this is a raw string");
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! compile_error {
     ($msg:expr) => ({ /* compiler built-in */ });
     ($msg:expr,) => ({ /* compiler built-in */ })
@@ -254,7 +254,7 @@ macro_rules! compile_error {
 fn test_format_args_expand() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
     ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -265,7 +265,7 @@ fn main() {
 }
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
     ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -282,7 +282,7 @@ fn main() {
 fn regression_15002() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
     ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -298,7 +298,7 @@ fn main() {
 }
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
     ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -325,7 +325,7 @@ builtin #format_args ( = , "{}", x = );
 fn test_format_args_expand_with_comma_exprs() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
     ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -336,7 +336,7 @@ fn main() {
 }
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
     ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -353,7 +353,7 @@ fn main() {
 fn test_format_args_expand_with_raw_strings() {
     check(
         r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
     ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -369,7 +369,7 @@ fn main() {
 }
 "##,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
     ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -386,10 +386,10 @@ fn main() {
 fn test_format_args_expand_eager() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat {}
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
     ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -400,10 +400,10 @@ fn main() {
 }
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat {}
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
     ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -420,7 +420,7 @@ fn main() {
 fn test_format_args_expand_with_broken_member_access() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
     ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -432,7 +432,7 @@ fn main() {
 }
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
     ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -451,7 +451,7 @@ builtin #format_args ("{} {:?}", a.);
 fn test_include_bytes_expand() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include_bytes {
     ($file:expr) => {{ /* compiler built-in */ }};
     ($file:expr,) => {{ /* compiler built-in */ }};
@@ -460,7 +460,7 @@ macro_rules! include_bytes {
 fn main() { include_bytes("foo");include_bytes(r"foo"); }
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include_bytes {
     ($file:expr) => {{ /* compiler built-in */ }};
     ($file:expr,) => {{ /* compiler built-in */ }};
@@ -475,13 +475,13 @@ fn main() { include_bytes("foo");include_bytes(r"foo"); }
 fn test_concat_expand() {
     check(
         r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat {}
 
 fn main() { concat!("fo", "o", 0, r#""bar""#, "\n", false, '"', -4, - 4, '\0'); }
 "##,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat {}
 
 fn main() { "foo0\"bar\"\nfalse\"-4-4\u{0}"; }
@@ -493,13 +493,13 @@ fn main() { "foo0\"bar\"\nfalse\"-4-4\u{0}"; }
 fn test_concat_bytes_expand() {
     check(
         r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat_bytes {}
 
 fn main() { concat_bytes!(b'A', b"BC\"", [68, b'E', 70], br#"G""#,b'\0'); }
 "##,
         expect![[r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat_bytes {}
 
 fn main() { b"ABC\"DEFG\"\x00"; }
@@ -511,7 +511,7 @@ fn main() { b"ABC\"DEFG\"\x00"; }
 fn test_concat_with_captured_expr() {
     check(
         r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat {}
 
 macro_rules! surprise {
@@ -521,7 +521,7 @@ macro_rules! surprise {
 fn main() { concat!(surprise!()); }
 "##,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat {}
 
 macro_rules! surprise {
@@ -537,13 +537,13 @@ fn main() { "s"; }
 fn test_quote_string() {
     check(
         r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! stringify {}
 
 fn main() { stringify!("hello"); }
 "##,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! stringify {}
 
 fn main() { "\"hello\""; }
@@ -555,7 +555,7 @@ fn main() { "\"hello\""; }
 fn cfg_select() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro cfg_select($($tt:tt)*) {}
 
 cfg_select! {
@@ -582,7 +582,7 @@ cfg_select! {
 
     "#,
         expect![[r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro cfg_select($($tt:tt)*) {}
 
 fn true_1() {}

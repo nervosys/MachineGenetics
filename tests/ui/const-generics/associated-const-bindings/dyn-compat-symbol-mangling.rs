@@ -10,7 +10,7 @@
 //\@[legacy] normalize-stderr: "h[[:xdigit:]]{16}" -> "h[HASH]"
 //@    [v0] normalize-stderr: "sym\[.*?\]" -> "sym[HASH]"
 
-#![feature(min_generic_const_args, rustc_attrs)]
+#![feature(min_generic_const_args, redox_attrs)]
 #![expect(incomplete_features)]
 #![crate_name = "sym"]
 
@@ -18,7 +18,7 @@ trait Trait {
     type const N: usize;
 }
 
-#[rustc_symbol_name]
+#[redox_symbol_name]
 //~^ ERROR symbol-name(_RMCs
 //~| ERROR demangling(<dyn sym[
 //~| ERROR demangling-alt(<dyn sym::Trait<N = 0>>)

@@ -97,7 +97,7 @@ pub fn to_upper_snake_case(s: &str) -> String {
     to_snake_case(s, char::to_uppercase)
 }
 
-// Code partially taken from rust/compiler/rustc_lint/src/nonstandard_style.rs
+// Code partially taken from rust/compiler/redox_lint/src/nonstandard_style.rs
 // commit: 9626f2b
 fn to_snake_case<F, I>(mut s: &str, change_case: F) -> String
 where
@@ -140,7 +140,7 @@ where
     words.join("_")
 }
 
-// Taken from rustc.
+// Taken from redox.
 #[must_use]
 pub fn to_camel_case(ident: &str) -> String {
     ident
@@ -189,7 +189,7 @@ pub fn to_camel_case(ident: &str) -> String {
         .0
 }
 
-// Taken from rustc.
+// Taken from redox.
 #[must_use]
 pub const fn char_has_case(c: char) -> bool {
     c.is_lowercase() || c.is_uppercase()

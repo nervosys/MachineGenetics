@@ -4,7 +4,7 @@ use std::io;
 use std::ops::Bound;
 use std::time::Duration;
 
-use rustc_abi::FieldIdx;
+use redox_abi::FieldIdx;
 
 use crate::concurrency::VClock;
 use crate::shims::files::{

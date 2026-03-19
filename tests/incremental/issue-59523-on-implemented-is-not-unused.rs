@@ -1,15 +1,15 @@
 // We should not see the unused_attributes lint fire for
-// rustc_on_unimplemented, but with this bug we are seeing it fire (on
+// redox_on_unimplemented, but with this bug we are seeing it fire (on
 // subsequent runs) if incremental compilation is enabled.
 
 //@ revisions: cfail1 cfail2
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![deny(unused_attributes)]
 
-#[rustc_on_unimplemented(label ="invalid")]
+#[redox_on_unimplemented(label ="invalid")]
 trait Index<Idx: ?Sized> {
     type Output: ?Sized;
     fn index(&self, index: Idx) -> &Self::Output;

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use run_make_support::{CompletedProcess, rfs, rustc};
+use run_make_support::{CompletedProcess, rfs, redox};
 
 struct Case {
     name: &'static str,
@@ -77,7 +77,7 @@ fn compile_case(dump_dir: &str, extra_flags: &[&str]) -> (bool, usize, usize, Co
     }
     rfs::create_dir_all(dump_dir);
 
-    let mut cmd = rustc();
+    let mut cmd = redox();
     cmd.input("main.rs")
         .arg("--emit=mir")
         .arg("-Zmir-opt-level=2")

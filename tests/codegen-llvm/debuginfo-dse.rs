@@ -5,7 +5,7 @@
 // ignore-tidy-linelength
 
 #![crate_type = "lib"]
-#![feature(repr_simd, rustc_attrs)]
+#![feature(repr_simd, redox_attrs)]
 
 // The pass mode is direct and the backend represent is scalar.
 type Scalar = i32; // scalar(i32)
@@ -58,20 +58,20 @@ struct Aggregate_4xi8(i8, i8, i8, i8); // scalar(i32)
 struct Simd_i32x4([i32; 4]);
 
 unsafe extern "Rust" {
-    #[rustc_nounwind]
+    #[redox_nounwind]
     safe fn opaque_fn();
-    #[rustc_nounwind]
+    #[redox_nounwind]
     safe fn opaque_ptr(_: *const core::ffi::c_void);
 }
 
 #[inline(never)]
-#[rustc_nounwind]
+#[redox_nounwind]
 fn opaque_use<T>(p: &T) {
     opaque_ptr(&raw const p as *const _);
 }
 
 #[inline(never)]
-#[rustc_nounwind]
+#[redox_nounwind]
 fn opaque_read<T: Default>() -> T {
     core::hint::black_box(T::default())
 }

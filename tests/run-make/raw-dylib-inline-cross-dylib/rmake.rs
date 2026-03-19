@@ -7,22 +7,22 @@
 
 //@ only-windows
 
-use run_make_support::{cc, diff, is_windows_msvc, llvm_objdump, run, rustc};
+use run_make_support::{cc, diff, is_windows_msvc, llvm_objdump, run, redox};
 
 fn main() {
-    rustc()
+    redox()
         .crate_type("dylib")
         .crate_name("raw_dylib_test")
         .input("lib.rs")
         .arg("-Cprefer-dynamic")
         .run();
-    rustc()
+    redox()
         .crate_type("dylib")
         .crate_name("raw_dylib_test_wrapper")
         .input("lib_wrapper.rs")
         .arg("-Cprefer-dynamic")
         .run();
-    rustc().crate_type("bin").input("driver.rs").arg("-Cprefer-dynamic").run();
+    redox().crate_type("bin").input("driver.rs").arg("-Cprefer-dynamic").run();
     llvm_objdump()
         .arg("--private-headers")
         .input("driver.exe")

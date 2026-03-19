@@ -79,7 +79,7 @@ configuration with additional linker flags:
 
 ```sh
 # Build a static executable for QuRT
-cargo rustc --target hexagon-unknown-qurt -- \
+cargo redox --target hexagon-unknown-qurt -- \
     -C link-args="-static -nostdlib" \
     -C link-args="-L/opt/Hexagon_SDK/6.3.0.0/rtos/qurt/computev69/lib" \
     -C link-args="-lqurt -lc"
@@ -97,7 +97,7 @@ For shared libraries that can be dynamically loaded by QuRT applications:
 
 ```sh
 # Build a shared object for QuRT
-cargo rustc --target hexagon-unknown-qurt \
+cargo redox --target hexagon-unknown-qurt \
     --crate-type=cdylib -- \
     -C link-args="-shared -fPIC" \
     -C link-args="-L/opt/Hexagon_SDK/6.3.0.0/rtos/qurt/computev69/lib"

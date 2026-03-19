@@ -1,9 +1,9 @@
 // Tests that const prop lints interrupting codegen don't leave `.o` files around.
 
-use run_make_support::{cwd, rfs, rustc};
+use run_make_support::{cwd, rfs, redox};
 
 fn main() {
-    rustc().input("input.rs").run_fail().assert_exit_code(1);
+    redox().input("input.rs").run_fail().assert_exit_code(1);
 
     for entry in rfs::read_dir(cwd()) {
         let entry = entry.unwrap();

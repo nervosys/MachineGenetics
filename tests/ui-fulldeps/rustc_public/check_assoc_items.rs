@@ -7,26 +7,26 @@
 //@ ignore-remote
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
-extern crate rustc_public;
+extern crate redox_driver;
+extern crate redox_interface;
+extern crate redox_public;
 
 use std::collections::HashSet;
 use std::io::Write;
 use std::ops::ControlFlow;
 
-use rustc_public::ty::*;
-use rustc_public::{CrateDef, *};
+use redox_public::ty::*;
+use redox_public::{CrateDef, *};
 
 const CRATE_NAME: &str = "crate_assoc_items";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_assoc_items() -> ControlFlow<()> {
-    let local_crate = rustc_public::local_crate();
+    let local_crate = redox_public::local_crate();
     check_items(
         &local_crate.fn_defs(),
         &[
@@ -84,7 +84,7 @@ fn main() {
     let path = "assoc_items.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

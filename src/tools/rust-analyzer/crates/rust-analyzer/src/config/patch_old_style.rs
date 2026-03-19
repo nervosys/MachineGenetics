@@ -68,7 +68,7 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
         lruCapacity -> lru.capacity;
         runnables.cargoExtraArgs -> runnables.extraArgs ;
         runnables.overrideCargo -> runnables.command ;
-        rustcSource -> rustc.source;
+        redoxSource -> redox.source;
         rustfmt.enableRangeFormatting -> rustfmt.rangeFormatting.enable;
     }
 

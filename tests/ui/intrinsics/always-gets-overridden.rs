@@ -3,7 +3,7 @@
 #![feature(intrinsics)]
 //@run-pass
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 pub unsafe fn vtable_size(_ptr: *const ()) -> usize {
     panic!();
 }

@@ -110,7 +110,7 @@ use crate::fmt;
 /// [loader lock]: https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
 /// [`JoinHandle::join`]: crate::thread::JoinHandle::join
 /// [`with`]: LocalKey::with
-#[cfg_attr(not(test), rustc_diagnostic_item = "LocalKey")]
+#[cfg_attr(not(test), redox_diagnostic_item = "LocalKey")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LocalKey<T: 'static> {
     // This outer `LocalKey<T>` type is what's going to be stored in statics,
@@ -140,13 +140,13 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals)]
 #[unstable(feature = "thread_local_internals", issue = "none")]
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 pub macro thread_local_process_attrs {
 
-    // Parse `cfg_attr` to figure out whether it's a `rustc_align_static`.
+    // Parse `cfg_attr` to figure out whether it's a `redox_align_static`.
     // Each `cfg_attr` can have zero or more attributes on the RHS, and can be nested.
 
-    // finished parsing the `cfg_attr`, it had no `rustc_align_static`
+    // finished parsing the `cfg_attr`, it had no `redox_align_static`
     (
         [] [$(#[$($prev_other_attrs:tt)*])*];
         @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [] };
@@ -159,7 +159,7 @@ pub macro thread_local_process_attrs {
         );
     ),
 
-    // finished parsing the `cfg_attr`, it had nothing but `rustc_align_static`
+    // finished parsing the `cfg_attr`, it had nothing but `redox_align_static`
     (
         [$(#[$($prev_align_attrs:tt)*])+] [];
         @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [] };
@@ -172,7 +172,7 @@ pub macro thread_local_process_attrs {
         );
     ),
 
-    // finished parsing the `cfg_attr`, it had a mix of `rustc_align_static` and other attrs
+    // finished parsing the `cfg_attr`, it had a mix of `redox_align_static` and other attrs
     (
         [$(#[$($prev_align_attrs:tt)*])+] [$(#[$($prev_other_attrs:tt)*])+];
         @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [] };
@@ -185,14 +185,14 @@ pub macro thread_local_process_attrs {
         );
     ),
 
-    // it's a `rustc_align_static`
+    // it's a `redox_align_static`
     (
         [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*];
-        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [rustc_align_static($($align_static_args:tt)*) $(, $($attr_rhs:tt)*)?] };
+        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [redox_align_static($($align_static_args:tt)*) $(, $($attr_rhs:tt)*)?] };
         $($rest:tt)*
     ) => (
         $crate::thread::local_impl::thread_local_process_attrs!(
-            [$($prev_align_attrs)* #[rustc_align_static($($align_static_args)*)]] [$($prev_other_attrs)*];
+            [$($prev_align_attrs)* #[redox_align_static($($align_static_args)*)]] [$($prev_other_attrs)*];
             @processing_cfg_attr { pred: ($($predicate)*), rhs: [$($($attr_rhs)*)?] };
             $($rest)*
         );
@@ -258,12 +258,12 @@ pub macro thread_local_process_attrs {
     ),
 
 
-    // Separate attributes into `rustc_align_static` and everything else:
+    // Separate attributes into `redox_align_static` and everything else:
 
-    // `rustc_align_static` attribute
-    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[rustc_align_static $($attr_rest:tt)*] $($rest:tt)*) => (
+    // `redox_align_static` attribute
+    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[redox_align_static $($attr_rest:tt)*] $($rest:tt)*) => (
         $crate::thread::local_impl::thread_local_process_attrs!(
-            [$($prev_align_attrs)* #[rustc_align_static $($attr_rest)*]] [$($prev_other_attrs)*];
+            [$($prev_align_attrs)* #[redox_align_static $($attr_rest)*]] [$($prev_other_attrs)*];
             $($rest)*
         );
     ),
@@ -394,7 +394,7 @@ pub macro thread_local_process_attrs {
 /// [`std::thread::LocalKey`]: crate::thread::LocalKey
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "thread_local_macro")]
+#[cfg_attr(not(test), redox_diagnostic_item = "thread_local_macro")]
 #[allow_internal_unstable(thread_local_internals)]
 macro_rules! thread_local {
     () => {};
@@ -663,7 +663,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// assert_eq!(X.replace(3), 2);
     /// ```
     #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
-    #[rustc_confusables("swap")]
+    #[redox_confusables("swap")]
     pub fn replace(&'static self, value: T) -> T {
         self.with(|cell| cell.replace(value))
     }
@@ -858,7 +858,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// X.with_borrow(|v| assert_eq!(*v, vec![1, 2, 3]));
     /// ```
     #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
-    #[rustc_confusables("swap")]
+    #[redox_confusables("swap")]
     pub fn replace(&'static self, value: T) -> T {
         self.with(|cell| cell.replace(value))
     }

@@ -1,12 +1,12 @@
-pub(crate) use rustc_next_trait_solver::solve::inspect::*;
+pub(crate) use redox_next_trait_solver::solve::inspect::*;
 
-use rustc_ast_ir::try_visit;
-use rustc_next_trait_solver::{
+use redox_ast_ir::try_visit;
+use redox_next_trait_solver::{
     canonical::instantiate_canonical_state,
     resolve::eager_resolve_vars,
     solve::{SolverDelegateEvalExt, inspect},
 };
-use rustc_type_ir::{
+use redox_type_ir::{
     VisitorResult,
     inherent::{IntoKind, Span as _},
     solve::{Certainty, GoalSource, MaybeCause, NoSolution},
@@ -310,7 +310,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
 
     /// Visit all nested goals of this candidate, rolling back
     /// all inference constraints.
-    #[expect(dead_code, reason = "used in rustc")]
+    #[expect(dead_code, reason = "used in redox")]
     fn visit_nested_in_probe<V: ProofTreeVisitor<'db>>(&self, visitor: &mut V) -> V::Result {
         self.goal.infcx.probe(|_| self.visit_nested_no_probe(visitor))
     }

@@ -48,7 +48,7 @@ pub struct f64x8([f64; 8]);
 #[repr(simd)]
 pub struct m64x8([i64; 8]);
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 unsafe fn simd_select<M, V>(mask: M, a: V, b: V) -> V;
 
 // CHECK-LABEL: select_i8x16

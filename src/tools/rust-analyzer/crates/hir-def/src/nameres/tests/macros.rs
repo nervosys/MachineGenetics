@@ -799,11 +799,11 @@ use core::Copy;
 struct Foo;
 
 //- /core.rs crate:core
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro derive($item:item) {}
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro Copy {}
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro Clone {}
 "#,
         |map| assert_eq!(map.modules[map.root].scope.builtin_derive_impls().len(), 2),
@@ -818,7 +818,7 @@ fn resolve_builtin_derive() {
 use core::*;
 
 //- /core.rs crate:core
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro Clone {}
 
 pub trait Clone {}
@@ -844,9 +844,9 @@ use core::{Clone, derive};
 struct Foo;
 
 //- /core.rs crate:core
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro derive($item:item) {}
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro Clone {}
 "#,
         |map| assert_eq!(map.modules[map.root].scope.builtin_derive_impls().len(), 1),
@@ -926,7 +926,7 @@ fn resolves_derive_helper() {
     check(
         r#"
 //- /main.rs crate:main deps:proc
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro derive($item:item) {}
 
 #[derive(proc::Derive)]
@@ -948,7 +948,7 @@ fn derive() {}
 }
 
 #[test]
-fn resolves_derive_helper_rustc_builtin_macro() {
+fn resolves_derive_helper_redox_builtin_macro() {
     cov_mark::check!(resolved_derive_helper);
     // This is NOT the correct usage of `default` helper attribute, but we don't resolve helper
     // attributes on non mod items in hir nameres.
@@ -1208,7 +1208,7 @@ fn eager_macro_correctly_resolves_contents() {
     check(
         r#"
 //- /lib.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include { () => {} }
 
 include!(inner_a!());
@@ -1246,7 +1246,7 @@ fn eager_macro_correctly_resolves_dollar_crate() {
     check(
         r#"
 //- /lib.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include { () => {} }
 
 #[macro_export]
@@ -1276,7 +1276,7 @@ struct A;
     check(
         r#"
 //- /lib.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include { () => {} }
 
 #[macro_export]
@@ -1405,7 +1405,7 @@ fn include_many_mods() {
     check(
         r#"
 //- /lib.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include { () => {} }
 
 mod nested {

@@ -1,4 +1,4 @@
-// The gcc driver is supposed to add a terminator to link files, and the rustc
+// The gcc driver is supposed to add a terminator to link files, and the redox
 // driver previously failed to do this, resulting in a segmentation fault
 // with an older version of LLVM. This test checks that the terminator is present
 // after the fix in #85395.
@@ -11,10 +11,10 @@
 // error on 32 bit systems.
 //@ ignore-cross-compile
 
-use run_make_support::{bin_name, llvm_objdump, run, rustc};
+use run_make_support::{bin_name, llvm_objdump, run, redox};
 
 fn main() {
-    rustc().input("eh_frame-terminator.rs").run();
+    redox().input("eh_frame-terminator.rs").run();
     run("eh_frame-terminator").assert_stdout_contains("1122334455667788");
     llvm_objdump()
         .arg("--dwarf=frames")

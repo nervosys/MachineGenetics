@@ -6,11 +6,11 @@ use crate::consts::{ConstEvalCtxt, Constant};
 use crate::res::MaybeDef;
 use crate::{is_expn_of, sym};
 
-use rustc_ast::ast;
-use rustc_hir as hir;
-use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath, StructTailExpr};
-use rustc_lint::LateContext;
-use rustc_span::{Span, symbol};
+use redox_ast::ast;
+use redox_hir as hir;
+use redox_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath, StructTailExpr};
+use redox_lint::LateContext;
+use redox_span::{Span, symbol};
 
 /// The essential nodes of a desugared for loop as well as the entire span:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Returns `(pat, arg, body, span)`.

@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 extern //~ WARN missing_abi
     "C"suffix //~ ERROR suffixes on string literals are invalid
@@ -27,7 +27,7 @@ fn main() {
     1.0e10suffix; //~ ERROR invalid suffix `suffix` for float literal
 }
 
-#[rustc_dummy = "string"suffix]
+#[redox_dummy = "string"suffix]
 //~^ ERROR suffixes on string literals are invalid
 fn f() {}
 
@@ -40,12 +40,12 @@ fn g() {}
 //~^ ERROR suffixes on string literals are invalid
 extern "C" {}
 
-#[rustc_layout_scalar_valid_range_start(0suffix)]
+#[redox_layout_scalar_valid_range_start(0suffix)]
 //~^ ERROR invalid suffix `suffix` for number literal
 struct S;
 
 impl S {
-    #[rustc_confusables("blah"suffix)]
+    #[redox_confusables("blah"suffix)]
     //~^ ERROR suffixes on string literals are invalid
     fn woof() { }
 }

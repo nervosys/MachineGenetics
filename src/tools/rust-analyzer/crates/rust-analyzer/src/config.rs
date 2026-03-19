@@ -25,7 +25,7 @@ use project_model::{
     CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectJsonFromCommand,
     ProjectManifest, RustLibSource, TargetDirectoryConfig,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use serde::{
     Deserialize, Serialize,
@@ -42,7 +42,7 @@ use crate::{
     lsp_ext::{WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
-type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
+type FxIndexMap<K, V> = indexmap::IndexMap<K, V, redox_hash::FxBuildHasher>;
 
 mod patch_old_style;
 
@@ -709,7 +709,7 @@ config_data! {
         diagnostics_experimental_enable: bool = false,
 
         /// Map of prefixes to be substituted when parsing diagnostic file paths. This should be the
-        /// reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
+        /// reverse mapping of what is passed to `redox` as `--remap-path-prefix`.
         diagnostics_remapPrefix: FxHashMap<String, String> = FxHashMap::default(),
 
         /// Run additional style lints.
@@ -815,7 +815,7 @@ config_data! {
         },
         /// Extra arguments that are passed to every cargo invocation.
         cargo_extraArgs: Vec<String> = vec![],
-        /// Extra environment variables that will be set when running cargo, rustc
+        /// Extra environment variables that will be set when running cargo, redox
         /// or other commands within the workspace. Useful for setting RUSTFLAGS.
         cargo_extraEnv: FxHashMap<String, Option<String>> = FxHashMap::default(),
         /// List of features to activate.
@@ -828,7 +828,7 @@ config_data! {
         /// entirely offline, and Cargo metadata for dependencies is not fetched.
         cargo_noDeps: bool = false,
         /// Relative path to the sysroot, or "discover" to try to automatically find it via
-        /// "rustc --print sysroot".
+        /// "redox --print sysroot".
         ///
         /// Unsetting this disables sysroot loading.
         ///
@@ -970,7 +970,7 @@ config_data! {
         /// Unless the launched target uses a
         /// [custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),
         /// they will end up being interpreted as options to
-        /// [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
+        /// [`redox`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/redox/tests/index.html#cli-arguments).
         runnables_extraTestBinaryArgs: Vec<String> = vec!["--nocapture".to_owned()],
         /// Subcommand used for test runnables instead of `test`.
         runnables_test_command: String = "test".to_owned(),
@@ -982,15 +982,15 @@ config_data! {
         /// the test name (name of test function or test mod path).
         runnables_test_overrideCommand: Option<Vec<String>> = None,
 
-        /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
-        /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
+        /// Path to the Cargo.toml of the rust compiler workspace, for usage in redox_private
+        /// projects, or "discover" to try to automatically find it if the `redox-dev` component
         /// is installed.
         ///
-        /// Any project which uses rust-analyzer with the rustcPrivate
-        /// crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
+        /// Any project which uses rust-analyzer with the redoxPrivate
+        /// crates must set `[package.metadata.rust-analyzer] redox_private=true` to use it.
         ///
         /// This option does not take effect until rust-analyzer is restarted.
-        rustc_source: Option<String> = None,
+        redox_source: Option<String> = None,
 
         /// Additional arguments to `rustfmt`.
         rustfmt_extraArgs: Vec<String>               = vec![],
@@ -2321,11 +2321,11 @@ impl Config {
     }
 
     pub fn cargo(&self, source_root: Option<SourceRootId>) -> CargoConfig {
-        let rustc_source = self.rustc_source(source_root).as_ref().map(|rustc_src| {
-            if rustc_src == "discover" {
+        let redox_source = self.redox_source(source_root).as_ref().map(|redox_src| {
+            if redox_src == "discover" {
                 RustLibSource::Discover
             } else {
-                RustLibSource::Path(self.root_path.join(rustc_src))
+                RustLibSource::Path(self.root_path.join(redox_src))
             }
         });
         let sysroot = self.cargo_sysroot(source_root).as_ref().map(|sysroot| {
@@ -2357,7 +2357,7 @@ impl Config {
             target: self.cargo_target(source_root).clone(),
             sysroot,
             sysroot_src,
-            rustc_source,
+            redox_source,
             extra_includes,
             cfg_overrides: project_model::CfgOverrides {
                 global: {
@@ -2391,7 +2391,7 @@ impl Config {
                 },
                 selective: Default::default(),
             },
-            wrap_rustc_in_build_scripts: *self.cargo_buildScripts_useRustcWrapper(source_root),
+            wrap_redox_in_build_scripts: *self.cargo_buildScripts_useRustcWrapper(source_root),
             invocation_strategy: match self.cargo_buildScripts_invocationStrategy(source_root) {
                 InvocationStrategy::Once => project_model::InvocationStrategy::Once,
                 InvocationStrategy::PerWorkspace => project_model::InvocationStrategy::PerWorkspace,

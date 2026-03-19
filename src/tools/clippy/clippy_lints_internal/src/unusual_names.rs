@@ -2,14 +2,14 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::paths::PathLookup;
 use clippy_utils::sym;
 use itertools::Itertools;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, FnDecl, Pat, PatKind, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::Ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::symbol::kw;
-use rustc_span::{Span, Symbol};
+use redox_hir::def_id::LocalDefId;
+use redox_hir::intravisit::FnKind;
+use redox_hir::{Body, FnDecl, Pat, PatKind, Stmt, StmtKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::Ty;
+use redox_session::{declare_lint_pass, declare_tool_lint};
+use redox_span::symbol::kw;
+use redox_span::{Span, Symbol};
 
 use crate::internal_paths::{APPLICABILITY, EARLY_CONTEXT, LATE_CONTEXT, TY_CTXT};
 
@@ -22,7 +22,7 @@ declare_tool_lint! {
     /// Clippy sources increases consistency.
     ///
     /// ### Example
-    /// Check that an `rustc_errors::Applicability` variable is
+    /// Check that an `redox_errors::Applicability` variable is
     /// named either `app` or `applicability`, and not
     /// `a` or `appl`.
     pub clippy::UNUSUAL_NAMES,
@@ -36,12 +36,12 @@ declare_lint_pass!(UnusualNames => [UNUSUAL_NAMES]);
 const USUAL_NAMES: [(&PathLookup, &str, &[Symbol]); 4] = [
     (
         &APPLICABILITY,
-        "rustc_errors::Applicability",
+        "redox_errors::Applicability",
         &[sym::app, sym::applicability],
     ),
-    (&EARLY_CONTEXT, "rustc_lint::EarlyContext", &[sym::cx]),
-    (&LATE_CONTEXT, "rustc_lint::LateContext", &[sym::cx]),
-    (&TY_CTXT, "rustc_middle::ty::TyCtxt", &[sym::tcx]),
+    (&EARLY_CONTEXT, "redox_lint::EarlyContext", &[sym::cx]),
+    (&LATE_CONTEXT, "redox_lint::LateContext", &[sym::cx]),
+    (&TY_CTXT, "redox_middle::ty::TyCtxt", &[sym::tcx]),
 ];
 
 impl<'tcx> LateLintPass<'tcx> for UnusualNames {

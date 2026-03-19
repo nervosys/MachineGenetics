@@ -528,7 +528,7 @@ fn reservation_impl_should_be_ignored() {
         r#"
 //- minicore: from
 struct S;
-#[rustc_reservation_impl]
+#[redox_reservation_impl]
 impl<T> From<!> for T {}
 fn foo<T, U: From<T>>(_: U) -> T { loop {} }
 

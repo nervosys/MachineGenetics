@@ -3,10 +3,10 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use run_make_support::{rfs, rustc, wasmparser};
+use run_make_support::{rfs, redox, wasmparser};
 
 fn main() {
-    rustc().input("foo.rs").target("wasm32-wasip1").opt().run();
+    redox().input("foo.rs").target("wasm32-wasip1").opt().run();
 
     verify(Path::new("foo.wasm"));
 }

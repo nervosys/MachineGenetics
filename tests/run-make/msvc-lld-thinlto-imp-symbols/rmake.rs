@@ -1,16 +1,16 @@
 // This is a non-regression test for issue #81408 involving an lld bug and ThinLTO, on windows.
-// MSVC's link.exe doesn't need any workarounds in rustc, but lld does, so we'll check that the
+// MSVC's link.exe doesn't need any workarounds in redox, but lld does, so we'll check that the
 // binary runs successfully instead of using a codegen test.
 
 //@ only-x86_64-pc-windows-msvc
 //@ needs-rust-lld
 //@ ignore-cross-compile: the built binary is executed
 
-use run_make_support::{run, rustc};
+use run_make_support::{run, redox};
 
 fn test_with_linker(linker: &str) {
-    rustc().input("issue_81408.rs").crate_name("issue_81408").crate_type("lib").opt().run();
-    rustc()
+    redox().input("issue_81408.rs").crate_name("issue_81408").crate_type("lib").opt().run();
+    redox()
         .input("main.rs")
         .crate_type("bin")
         .arg("-Clto=thin")

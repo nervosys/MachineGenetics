@@ -24,12 +24,12 @@
 // MSVC platforms.
 
 use run_make_support::{
-    clang, env_var, has_extension, has_prefix, llvm_ar, llvm_profdata, rfs, run, rustc,
+    clang, env_var, has_extension, has_prefix, llvm_ar, llvm_profdata, rfs, run, redox,
     shallow_find_files, static_lib_name,
 };
 
 fn main() {
-    rustc()
+    redox()
         .linker_plugin_lto("on")
         .output(static_lib_name("rustlib-xlto"))
         .opt_level("3")
@@ -53,7 +53,7 @@ fn main() {
     });
     let profraw_file = profraw_files.get(0).unwrap();
     llvm_profdata().merge().output("cpp-profdata/merged.profdata").input(profraw_file).run();
-    rustc()
+    redox()
         .linker_plugin_lto("on")
         .profile_use("cpp-profdata/merged.profdata")
         .output(static_lib_name("rustlib-xlto"))
@@ -80,7 +80,7 @@ fn main() {
         .arg("-O3")
         .run();
     llvm_ar().obj_to_ar().output_input(static_lib_name("xyz"), "clib.o").run();
-    rustc()
+    redox()
         .linker_plugin_lto("on")
         .opt_level("3")
         .codegen_units(1)
@@ -107,7 +107,7 @@ fn main() {
         .run();
     rfs::remove_file(static_lib_name("xyz"));
     llvm_ar().obj_to_ar().output_input(static_lib_name("xyz"), "clib.o").run();
-    rustc()
+    redox()
         .linker_plugin_lto("on")
         .opt_level("3")
         .codegen_units(1)

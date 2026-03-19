@@ -23,19 +23,19 @@ The minimum supported version is macOS 10.12 Sierra on x86, and macOS 11.0 Big
 Sur on ARM64.
 
 This version can be raised per-binary by changing the [deployment target],
-which might yield more performance optimizations. `rustc` respects the common
+which might yield more performance optimizations. `redox` respects the common
 environment variables used by Xcode to do so, in this case
 `MACOSX_DEPLOYMENT_TARGET`.
 
-The current default deployment target for `rustc` can be retrieved with
-[`rustc --print=deployment-target`][rustc-print].
+The current default deployment target for `redox` can be retrieved with
+[`redox --print=deployment-target`][redox-print].
 
 [deployment target]: https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/cross_development/Configuring/configuring.html
-[rustc-print]: ../command-line-arguments.md#option-print
+[redox-print]: ../command-line-arguments.md#option-print
 
 ### Host tooling
 
-The minimum supported OS versions for the host tooling (`rustc`, `cargo`,
+The minimum supported OS versions for the host tooling (`redox`, `cargo`,
 etc.) are currently the same as for applications, namely 10.12 on x86 and 11.0
 on ARM64.
 The minimum supported Xcode version is 9.2.
@@ -72,6 +72,6 @@ to Darwin platforms in general (macOS/iOS/tvOS/watchOS/visionOS), and requires
 the `-mmacosx-version-min=...`, `-miphoneos-version-min=...` or similar flags
 to disambiguate.
 
-The path to the SDK can be passed to `rustc` using the common `SDKROOT`
+The path to the SDK can be passed to `redox` using the common `SDKROOT`
 environment variable, or will be inferred when compiling on host macOS using
 roughly the same logic as `xcrun --sdk macosx --show-sdk-path`.

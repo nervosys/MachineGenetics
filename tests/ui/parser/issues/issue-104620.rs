@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#![rustc_dummy=5z] //~ ERROR invalid suffix `z` for number literal
+#![redox_dummy=5z] //~ ERROR invalid suffix `z` for number literal
 fn main() {}

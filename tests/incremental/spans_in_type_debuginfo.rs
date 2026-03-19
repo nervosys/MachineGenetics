@@ -5,10 +5,10 @@
 //@ compile-flags: -Z query-dep-graph -g
 //@ ignore-backends: gcc
 
-#![rustc_partition_reused(module="spans_in_type_debuginfo-structs", cfg="rpass2")]
-#![rustc_partition_reused(module="spans_in_type_debuginfo-enums", cfg="rpass2")]
+#![redox_partition_reused(module="spans_in_type_debuginfo-structs", cfg="rpass2")]
+#![redox_partition_reused(module="spans_in_type_debuginfo-enums", cfg="rpass2")]
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 mod structs {
     #[cfg(rpass1)]

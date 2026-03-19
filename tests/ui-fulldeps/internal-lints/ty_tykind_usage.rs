@@ -1,14 +1,14 @@
 //@ compile-flags: -Z unstable-options
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
-extern crate rustc_type_ir;
+extern crate redox_middle;
+extern crate redox_type_ir;
 
-use rustc_middle::ty::{self, Ty, TyKind};
-use rustc_type_ir::{Interner, TyKind as IrTyKind};
+use redox_middle::ty::{self, Ty, TyKind};
+use redox_type_ir::{Interner, TyKind as IrTyKind};
 
-#[deny(rustc::usage_of_ty_tykind)]
+#[deny(redox::usage_of_ty_tykind)]
 fn main() {
     let kind = TyKind::Bool; //~ ERROR usage of `ty::TyKind::<kind>`
 

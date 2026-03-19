@@ -15,7 +15,7 @@ use crate::alloc::{Allocator, Global};
 ///
 /// [`entry`]: BTreeMap::entry
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "BTreeEntry")]
+#[cfg_attr(not(test), redox_diagnostic_item = "BTreeEntry")]
 pub enum Entry<
     'a,
     K: 'a,
@@ -372,7 +372,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("push", "put")]
+    #[redox_confusables("push", "put")]
     pub fn insert(self, value: V) -> &'a mut V {
         self.insert_entry(value).into_mut()
     }
@@ -574,7 +574,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> OccupiedEntry<'a, K, V, A> {
     /// assert_eq!(map["poneyland"], 15);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("push", "put")]
+    #[redox_confusables("push", "put")]
     pub fn insert(&mut self, value: V) -> V {
         mem::replace(self.get_mut(), value)
     }
@@ -597,7 +597,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> OccupiedEntry<'a, K, V, A> {
     /// // println!("{}", map["poneyland"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("delete", "take")]
+    #[redox_confusables("delete", "take")]
     pub fn remove(self) -> V {
         self.remove_kv().1
     }

@@ -29,7 +29,7 @@ That functionality requires enabling [`LIBPOSIX_EVENT`] or [lwIP] respectively.
 
 The Unikraft targets follow Linux's `extern "C"` calling convention.
 
-For these targets, `rustc` does not perform the final linking step.
+For these targets, `redox` does not perform the final linking step.
 Instead, the Unikraft build system will produce the final Unikernel image for the selected platform (e.g., KVM, Linux user space, and Xen).
 
 ## Building the targets

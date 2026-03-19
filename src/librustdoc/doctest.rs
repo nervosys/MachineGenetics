@@ -18,19 +18,19 @@ use std::{panic, str};
 pub(crate) use make::{BuildDocTestBuilder, DocTestBuilder};
 pub(crate) use markdown::test as test_markdown;
 use proc_macro2::{TokenStream, TokenTree};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxHasher, FxIndexMap, FxIndexSet};
-use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, DiagCtxtHandle};
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::{Attribute, CRATE_HIR_ID};
-use rustc_interface::interface;
-use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, CrateType, ErrorOutputType, Input};
-use rustc_session::lint;
-use rustc_span::edition::Edition;
-use rustc_span::{FileName, RemapPathScopeComponents, Span};
-use rustc_target::spec::{Target, TargetTuple};
+use redox_data_structures::fx::{FxHashMap, FxHashSet, FxHasher, FxIndexMap, FxIndexSet};
+use redox_errors::emitter::HumanReadableErrorType;
+use redox_errors::{ColorConfig, DiagCtxtHandle};
+use redox_hir::attrs::AttributeKind;
+use redox_hir::def_id::LOCAL_CRATE;
+use redox_hir::{Attribute, CRATE_HIR_ID};
+use redox_interface::interface;
+use redox_middle::ty::TyCtxt;
+use redox_session::config::{self, CrateType, ErrorOutputType, Input};
+use redox_session::lint;
+use redox_span::edition::Edition;
+use redox_span::{FileName, RemapPathScopeComponents, Span};
+use redox_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use tracing::{debug, info};
 
@@ -84,7 +84,7 @@ pub(crate) struct GlobalTestOptions {
     /// Whether inserting extra indent spaces in code block,
     /// default is `false`, only `true` for generating code link of Rust playground
     pub(crate) insert_indent_space: bool,
-    /// Path to file containing arguments for the invocation of rustc.
+    /// Path to file containing arguments for the invocation of redox.
     pub(crate) args_file: PathBuf,
 }
 
@@ -196,7 +196,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         extra_symbols: Vec::new(),
         make_codegen_backend: None,
         ice_file: None,
-        using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,
+        using_internal_features: &redox_driver::USING_INTERNAL_FEATURES,
     };
 
     let externs = options.externs.clone();
@@ -214,9 +214,9 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
     let extract_doctests = options.output_format == OutputFormat::Doctest;
     let save_temps = options.codegen_options.save_temps;
     let result = interface::run_compiler(config, |compiler| {
-        let krate = rustc_interface::passes::parse(&compiler.sess);
+        let krate = redox_interface::passes::parse(&compiler.sess);
 
-        let collector = rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
+        let collector = redox_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
             let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
             let opts = scrape_test_config(tcx, crate_name, args_path);
 
@@ -502,9 +502,9 @@ impl DirState {
     }
 }
 
-// NOTE: Keep this in sync with the equivalent structs in rustc
+// NOTE: Keep this in sync with the equivalent structs in redox
 // and cargo.
-// We could unify this struct the one in rustc but they have different
+// We could unify this struct the one in redox but they have different
 // ownership semantics, so doing so would create wasteful allocations.
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct UnusedExterns {
@@ -524,10 +524,10 @@ fn add_exe_suffix(input: String, target: &TargetTuple) -> String {
     input + &exe_suffix
 }
 
-fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Command {
-    let mut args = rustc_wrappers.iter().map(PathBuf::as_path).chain([rustc_binary]);
+fn wrapped_redox_command(redox_wrappers: &[PathBuf], redox_binary: &Path) -> Command {
+    let mut args = redox_wrappers.iter().map(PathBuf::as_path).chain([redox_binary]);
 
-    let exe = args.next().expect("unable to create rustc command");
+    let exe = args.next().expect("unable to create redox command");
     let mut command = Command::new(exe);
     for arg in args {
         command.arg(arg);
@@ -649,11 +649,11 @@ fn run_test(
         }
     }
 
-    let rustc_binary = rustdoc_options
+    let redox_binary = rustdoc_options
         .test_builder
         .as_deref()
-        .unwrap_or_else(|| rustc_interface::util::rustc_path(sysroot).expect("found rustc"));
-    let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
+        .unwrap_or_else(|| redox_interface::util::redox_path(sysroot).expect("found redox"));
+    let mut compiler = wrapped_redox_command(&rustdoc_options.test_builder_wrappers, redox_binary);
 
     compiler.args(&compiler_args);
 
@@ -670,7 +670,7 @@ fn run_test(
         }
         if !rustdoc_options.no_capture && rustdoc_options.merge_doctests == MergeDoctests::Auto {
             // If `no_capture` is disabled, and we might fallback to standalone tests, then we don't
-            // display rustc's output when compiling the merged doctests.
+            // display redox's output when compiling the merged doctests.
             compiler.stderr(Stdio::null());
         }
         // bundled tests are an rlib, loaded by a separate runner executable
@@ -710,7 +710,7 @@ fn run_test(
         let runner_input_file = doctest.path_for_merged_doctest_runner();
 
         let mut runner_compiler =
-            wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
+            wrapped_redox_command(&rustdoc_options.test_builder_wrappers, redox_binary);
         // the test runner does not contain any user-written code, so this doesn't allow
         // the user to exploit nightly-only features on stable
         runner_compiler.env("RUSTC_BOOTSTRAP", "1");
@@ -753,7 +753,7 @@ fn run_test(
         }
         if !rustdoc_options.no_capture && rustdoc_options.merge_doctests == MergeDoctests::Auto {
             // If `no_capture` is disabled and we're autodetecting whether to merge,
-            // we don't display rustc's output when compiling the merged doctests.
+            // we don't display redox's output when compiling the merged doctests.
             runner_compiler.stderr(Stdio::null());
         } else {
             runner_compiler.stderr(Stdio::inherit());

@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_ast::attr::data_structures::CfgEntry;
-use rustc_ast::{AttrItemKind, EarlyParsedAttribute};
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::sym;
+use redox_ast::attr::data_structures::CfgEntry;
+use redox_ast::{AttrItemKind, EarlyParsedAttribute};
+use redox_lint::{EarlyContext, EarlyLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -33,7 +33,7 @@ declare_clippy_lint! {
 declare_lint_pass!(CfgNotTest => [CFG_NOT_TEST]);
 
 impl EarlyLintPass for CfgNotTest {
-    fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &rustc_ast::Attribute) {
+    fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &redox_ast::Attribute) {
         if attr.has_name(sym::cfg_trace) {
             let AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg)) = &attr.get_normal_item().args else {
                 unreachable!()

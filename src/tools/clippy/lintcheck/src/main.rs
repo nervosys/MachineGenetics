@@ -199,7 +199,7 @@ impl Crate {
         if config.fix {
             if let Some(stderr) = stderr
                 .lines()
-                .find(|line| line.contains("failed to automatically apply fixes suggested by rustc to crate"))
+                .find(|line| line.contains("failed to automatically apply fixes suggested by redox to crate"))
             {
                 let subcrate = &stderr[63..];
                 println!(

@@ -6,7 +6,7 @@
 
 // Regression test for <https://github.com/rust-lang/rust/issues/101610>.
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 #[unsafe(no_mangle)]
 fn hack() -> u64 {

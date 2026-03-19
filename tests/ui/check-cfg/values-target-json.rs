@@ -8,13 +8,13 @@
 //@ compile-flags: -Zunstable-options --target={{src-base}}/check-cfg/my-awesome-platform.json
 //@ ignore-backends: gcc
 
-#![feature(lang_items, no_core, auto_traits, rustc_attrs)]
+#![feature(lang_items, no_core, auto_traits, redox_attrs)]
 #![no_core]
 
 extern crate minicore;
 use minicore::*;
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! compile_error {
     () => {};
 }

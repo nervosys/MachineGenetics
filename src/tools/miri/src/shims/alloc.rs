@@ -1,9 +1,9 @@
-use rustc_abi::{Align, AlignFromBytesError, CanonAbi, Size};
-use rustc_ast::expand::allocator::SpecialAllocatorMethod;
-use rustc_middle::ty::Ty;
-use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{Arch, Os};
+use redox_abi::{Align, AlignFromBytesError, CanonAbi, Size};
+use redox_ast::expand::allocator::SpecialAllocatorMethod;
+use redox_middle::ty::Ty;
+use redox_span::Symbol;
+use redox_target::callconv::FnAbi;
+use redox_target::spec::{Arch, Os};
 
 use crate::*;
 
@@ -98,7 +98,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             match e {
                 AlignFromBytesError::TooLarge(_) => {
                     throw_unsup_format!(
-                        "creating allocation with alignment {align} exceeding rustc's maximum \
+                        "creating allocation with alignment {align} exceeding redox's maximum \
                          supported value"
                     );
                 }

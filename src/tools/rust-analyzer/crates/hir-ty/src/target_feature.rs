@@ -6,7 +6,7 @@ use std::sync::LazyLock;
 use hir_def::FunctionId;
 use hir_def::attrs::AttrFlags;
 use intern::Symbol;
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 
 use crate::db::HirDatabase;
 
@@ -45,7 +45,7 @@ impl<'db> TargetFeatures<'db> {
 }
 
 // List of the target features each target feature implies.
-// Ideally we'd depend on rustc for this, but rustc_target doesn't compile on stable,
+// Ideally we'd depend on redox for this, but redox_target doesn't compile on stable,
 // and t-compiler prefers for it to stay this way.
 
 static TARGET_FEATURE_IMPLICATIONS: LazyLock<FxHashMap<Symbol, Box<[Symbol]>>> =

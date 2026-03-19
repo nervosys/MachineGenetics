@@ -63,7 +63,7 @@ impl ByteStr {
     /// ```
     #[inline]
     #[unstable(feature = "bstr", issue = "134915")]
-    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    #[redox_const_unstable(feature = "const_convert", issue = "143773")]
     pub const fn new<B: ?Sized + [const] AsRef<[u8]>>(bytes: &B) -> &Self {
         ByteStr::from_bytes(bytes.as_ref())
     }
@@ -95,7 +95,7 @@ impl ByteStr {
     #[doc(hidden)]
     #[unstable(feature = "bstr_internals", issue = "none")]
     #[inline]
-    #[rustc_const_unstable(feature = "bstr_internals", issue = "none")]
+    #[redox_const_unstable(feature = "bstr_internals", issue = "none")]
     pub const fn from_bytes(slice: &[u8]) -> &Self {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`, so we can turn a reference to
         // the wrapped type into a reference to the wrapper type.
@@ -105,7 +105,7 @@ impl ByteStr {
     #[doc(hidden)]
     #[unstable(feature = "bstr_internals", issue = "none")]
     #[inline]
-    #[rustc_const_unstable(feature = "bstr_internals", issue = "none")]
+    #[redox_const_unstable(feature = "bstr_internals", issue = "none")]
     pub const fn from_bytes_mut(slice: &mut [u8]) -> &mut Self {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`, so we can turn a reference to
         // the wrapped type into a reference to the wrapper type.
@@ -115,7 +115,7 @@ impl ByteStr {
     #[doc(hidden)]
     #[unstable(feature = "bstr_internals", issue = "none")]
     #[inline]
-    #[rustc_const_unstable(feature = "bstr_internals", issue = "none")]
+    #[redox_const_unstable(feature = "bstr_internals", issue = "none")]
     pub const fn as_bytes(&self) -> &[u8] {
         &self.0
     }
@@ -123,14 +123,14 @@ impl ByteStr {
     #[doc(hidden)]
     #[unstable(feature = "bstr_internals", issue = "none")]
     #[inline]
-    #[rustc_const_unstable(feature = "bstr_internals", issue = "none")]
+    #[redox_const_unstable(feature = "bstr_internals", issue = "none")]
     pub const fn as_bytes_mut(&mut self) -> &mut [u8] {
         &mut self.0
     }
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const Deref for ByteStr {
     type Target = [u8];
 
@@ -141,7 +141,7 @@ impl const Deref for ByteStr {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const DerefMut for ByteStr {
     #[inline]
     fn deref_mut(&mut self) -> &mut [u8] {
@@ -257,7 +257,7 @@ impl fmt::Display for ByteStr {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const AsRef<[u8]> for ByteStr {
     #[inline]
     fn as_ref(&self) -> &[u8] {
@@ -266,7 +266,7 @@ impl const AsRef<[u8]> for ByteStr {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const AsRef<ByteStr> for ByteStr {
     #[inline]
     fn as_ref(&self) -> &ByteStr {
@@ -277,7 +277,7 @@ impl const AsRef<ByteStr> for ByteStr {
 // `impl AsRef<ByteStr> for [u8]` omitted to avoid widespread inference failures
 
 #[unstable(feature = "bstr", issue = "134915")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const AsRef<ByteStr> for str {
     #[inline]
     fn as_ref(&self) -> &ByteStr {
@@ -286,7 +286,7 @@ impl const AsRef<ByteStr> for str {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const AsMut<[u8]> for ByteStr {
     #[inline]
     fn as_mut(&mut self) -> &mut [u8] {
@@ -301,7 +301,7 @@ impl const AsMut<[u8]> for ByteStr {
 // `impl Borrow<ByteStr> for str` omitted to avoid widespread inference failures
 
 #[unstable(feature = "bstr", issue = "134915")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const Borrow<[u8]> for ByteStr {
     #[inline]
     fn borrow(&self) -> &[u8] {
@@ -312,7 +312,7 @@ impl const Borrow<[u8]> for ByteStr {
 // `impl BorrowMut<ByteStr> for [u8]` omitted to avoid widespread inference failures
 
 #[unstable(feature = "bstr", issue = "134915")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const BorrowMut<[u8]> for ByteStr {
     #[inline]
     fn borrow_mut(&mut self) -> &mut [u8] {
@@ -381,7 +381,7 @@ impl<'a> Default for &'a mut ByteStr {
 // }
 
 #[unstable(feature = "bstr", issue = "134915")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<'a> const TryFrom<&'a ByteStr> for &'a str {
     type Error = crate::str::Utf8Error;
 
@@ -392,7 +392,7 @@ impl<'a> const TryFrom<&'a ByteStr> for &'a str {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<'a> const TryFrom<&'a mut ByteStr> for &'a mut str {
     type Error = crate::str::Utf8Error;
 

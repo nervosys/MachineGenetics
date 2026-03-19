@@ -1,6 +1,6 @@
 // Check that backtrace info is correctly generated for dynamic libraries and is usable by a
 // rust binary.
-// Part of porting some backtrace tests to rustc: <https://github.com/rust-lang/rust/issues/122899>.
+// Part of porting some backtrace tests to redox: <https://github.com/rust-lang/rust/issues/122899>.
 // Original test:
 // <https://github.com/rust-lang/backtrace-rs/tree/6fa4b85b9962c3e1be8c2e5cc605cd078134152b/crates/dylib-dep>
 // ignore-tidy-linelength

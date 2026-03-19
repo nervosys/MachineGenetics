@@ -5,14 +5,14 @@ use clippy_utils::source::{
 use clippy_utils::ty::{implements_trait, peel_and_count_ty_refs};
 use clippy_utils::{is_lint_allowed, is_unit_expr, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs, sym};
 use core::ops::ControlFlow;
-use rustc_arena::DroplessArena;
-use rustc_errors::{Applicability, Diag};
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{Visitor, walk_pat};
-use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, StmtKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, AdtDef, TyCtxt, TypeckResults, VariantDef};
-use rustc_span::Span;
+use redox_arena::DroplessArena;
+use redox_errors::{Applicability, Diag};
+use redox_hir::def::{DefKind, Res};
+use redox_hir::intravisit::{Visitor, walk_pat};
+use redox_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, StmtKind};
+use redox_lint::LateContext;
+use redox_middle::ty::{self, AdtDef, TyCtxt, TypeckResults, VariantDef};
+use redox_span::Span;
 
 use super::{MATCH_BOOL, SINGLE_MATCH, SINGLE_MATCH_ELSE};
 

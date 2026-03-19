@@ -6,9 +6,9 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{rust_lib_name, rustc};
+use run_make_support::{rust_lib_name, redox};
 
 fn main() {
-    rustc().input("libc.rs").metadata("foo").run();
-    rustc().input("main.rs").extern_("libc", rust_lib_name("libc")).run();
+    redox().input("libc.rs").metadata("foo").run();
+    redox().input("main.rs").extern_("libc", rust_lib_name("libc")).run();
 }

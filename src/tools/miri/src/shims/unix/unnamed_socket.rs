@@ -7,7 +7,7 @@ use std::collections::VecDeque;
 use std::io;
 use std::io::ErrorKind;
 
-use rustc_target::spec::Os;
+use redox_target::spec::Os;
 
 use crate::concurrency::VClock;
 use crate::shims::files::{

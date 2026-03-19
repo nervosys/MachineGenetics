@@ -1,9 +1,9 @@
 use std::ops::Neg;
 
 use rand::Rng as _;
-use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, Semantics, SingleS};
-use rustc_apfloat::{Float, FloatConvert};
-use rustc_middle::ty::{self, FloatTy, ScalarInt};
+use redox_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, Semantics, SingleS};
+use redox_apfloat::{Float, FloatConvert};
+use redox_middle::ty::{self, FloatTy, ScalarInt};
 
 use crate::*;
 
@@ -19,7 +19,7 @@ pub trait ToSoft {
     fn to_soft(self) -> Self::SoftFloat;
 }
 
-impl ToHost for rustc_apfloat::ieee::Double {
+impl ToHost for redox_apfloat::ieee::Double {
     type HostFloat = f64;
 
     fn to_host(self) -> Self::HostFloat {
@@ -28,14 +28,14 @@ impl ToHost for rustc_apfloat::ieee::Double {
 }
 
 impl ToSoft for f64 {
-    type SoftFloat = rustc_apfloat::ieee::Double;
+    type SoftFloat = redox_apfloat::ieee::Double;
 
     fn to_soft(self) -> Self::SoftFloat {
         Float::from_bits(self.to_bits().into())
     }
 }
 
-impl ToHost for rustc_apfloat::ieee::Single {
+impl ToHost for redox_apfloat::ieee::Single {
     type HostFloat = f32;
 
     fn to_host(self) -> Self::HostFloat {
@@ -44,14 +44,14 @@ impl ToHost for rustc_apfloat::ieee::Single {
 }
 
 impl ToSoft for f32 {
-    type SoftFloat = rustc_apfloat::ieee::Single;
+    type SoftFloat = redox_apfloat::ieee::Single;
 
     fn to_soft(self) -> Self::SoftFloat {
         Float::from_bits(self.to_bits().into())
     }
 }
 
-impl ToHost for rustc_apfloat::ieee::Half {
+impl ToHost for redox_apfloat::ieee::Half {
     type HostFloat = f16;
 
     fn to_host(self) -> Self::HostFloat {
@@ -60,7 +60,7 @@ impl ToHost for rustc_apfloat::ieee::Half {
 }
 
 impl ToSoft for f16 {
-    type SoftFloat = rustc_apfloat::ieee::Half;
+    type SoftFloat = redox_apfloat::ieee::Half;
 
     fn to_soft(self) -> Self::SoftFloat {
         Float::from_bits(self.to_bits().into())
@@ -68,7 +68,7 @@ impl ToSoft for f16 {
 }
 
 /// Disturbes a floating-point result by a relative error in the range (-2^scale, 2^scale).
-pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
+pub(crate) fn apply_random_float_error<F: redox_apfloat::Float>(
     ecx: &mut crate::MiriInterpCx<'_>,
     val: F,
     err_scale: i32,
@@ -105,7 +105,7 @@ pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
 }
 
 /// Applies an error of `[-N, +N]` ULP to the given value.
-pub(crate) fn apply_random_float_error_ulp<F: rustc_apfloat::Float>(
+pub(crate) fn apply_random_float_error_ulp<F: redox_apfloat::Float>(
     ecx: &mut crate::MiriInterpCx<'_>,
     val: F,
     max_error: u32,
@@ -380,14 +380,14 @@ where
 pub(crate) fn sqrt<F: Float>(x: F) -> F {
     match x.category() {
         // preserve zero sign
-        rustc_apfloat::Category::Zero => x,
+        redox_apfloat::Category::Zero => x,
         // propagate NaN
-        rustc_apfloat::Category::NaN => x,
+        redox_apfloat::Category::NaN => x,
         // sqrt of negative number is NaN
         _ if x.is_negative() => F::NAN,
         // sqrt(∞) = ∞
-        rustc_apfloat::Category::Infinity => F::INFINITY,
-        rustc_apfloat::Category::Normal => {
+        redox_apfloat::Category::Infinity => F::INFINITY,
+        redox_apfloat::Category::Normal => {
             // Floating point precision, excluding the integer bit
             let prec = i32::try_from(F::PRECISION).unwrap() - 1;
 
@@ -582,8 +582,8 @@ where
     interp_ok(())
 }
 
-/// Extend functionality of `rustc_apfloat` softfloats for IEEE float types.
-pub trait IeeeExt: rustc_apfloat::Float {
+/// Extend functionality of `redox_apfloat` softfloats for IEEE float types.
+pub trait IeeeExt: redox_apfloat::Float {
     // Some values we use:
 
     #[inline]
@@ -627,21 +627,21 @@ impl_ieee_pi!(f64, DoubleS);
 
 #[cfg(test)]
 mod tests {
-    use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
+    use redox_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
 
     use super::sqrt;
 
     #[test]
     fn test_sqrt() {
         #[track_caller]
-        fn test<S: rustc_apfloat::ieee::Semantics>(x: &str, expected: &str) {
+        fn test<S: redox_apfloat::ieee::Semantics>(x: &str, expected: &str) {
             let x: IeeeFloat<S> = x.parse().unwrap();
             let expected: IeeeFloat<S> = expected.parse().unwrap();
             let result = sqrt(x);
             assert_eq!(result, expected);
         }
 
-        fn exact_tests<S: rustc_apfloat::ieee::Semantics>() {
+        fn exact_tests<S: redox_apfloat::ieee::Semantics>() {
             test::<S>("0", "0");
             test::<S>("1", "1");
             test::<S>("1.5625", "1.25");

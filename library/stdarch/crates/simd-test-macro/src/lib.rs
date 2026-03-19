@@ -19,7 +19,7 @@ pub fn simd_test(
     let tokens = TokenStream::from(attr).into_iter().collect::<Vec<_>>();
 
     let target = env::var("TARGET").expect(
-        "TARGET environment variable should be set for rustc (e.g. TARGET=x86_64-apple-darwin cargo test)"
+        "TARGET environment variable should be set for redox (e.g. TARGET=x86_64-apple-darwin cargo test)"
     );
     let target_arch = target
         .split('-')
@@ -125,7 +125,7 @@ pub fn simd_test(
                 const _: () = unsafe { #name() };
             },
             quote! {
-                #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+                #[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
             },
         )
     } else {

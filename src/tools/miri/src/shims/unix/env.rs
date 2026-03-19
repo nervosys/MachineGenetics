@@ -2,11 +2,11 @@ use std::env;
 use std::ffi::{OsStr, OsString};
 use std::io::ErrorKind;
 
-use rustc_abi::{FieldIdx, Size};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_index::IndexVec;
-use rustc_middle::ty::Ty;
-use rustc_target::spec::Os;
+use redox_abi::{FieldIdx, Size};
+use redox_data_structures::fx::FxHashMap;
+use redox_index::IndexVec;
+use redox_middle::ty::Ty;
+use redox_target::spec::Os;
 
 use crate::*;
 

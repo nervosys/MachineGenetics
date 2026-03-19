@@ -1,19 +1,19 @@
 //! This module defines the primary IR[^1] used in rustdoc together with the procedures that
-//! transform rustc data types into it.
+//! transform redox data types into it.
 //!
-//! This IR — commonly referred to as the *cleaned AST* — is modeled after the [AST][rustc_ast].
+//! This IR — commonly referred to as the *cleaned AST* — is modeled after the [AST][redox_ast].
 //!
 //! There are two kinds of transformation — *cleaning* — procedures:
 //!
 //! 1. Cleans [HIR][hir] types. Used for user-written code and inlined local re-exports
 //!    both found in the local crate.
-//! 2. Cleans [`rustc_middle::ty`] types. Used for inlined cross-crate re-exports and anything
+//! 2. Cleans [`redox_middle::ty`] types. Used for inlined cross-crate re-exports and anything
 //!    output by the trait solver (e.g., when synthesizing blanket and auto-trait impls).
 //!    They usually have `ty` or `middle` in their name.
 //!
 //! Their name is prefixed by `clean_`.
 //!
-//! Both the HIR and the `rustc_middle::ty` IR are quite removed from the source code.
+//! Both the HIR and the `redox_middle::ty` IR are quite removed from the source code.
 //! The cleaned AST on the other hand is closer to it which simplifies the rendering process.
 //! Furthermore, operating on a single IR instead of two avoids duplicating efforts down the line.
 //!
@@ -34,24 +34,24 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::mem;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::codes::*;
-use rustc_errors::{FatalError, struct_span_code_err};
-use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, DocAttribute, DocInline};
-use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
-use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{LangItem, PredicateOrigin, find_attr};
-use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
-use rustc_middle::metadata::Reexport;
-use rustc_middle::middle::resolve_bound_vars as rbv;
-use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
-use rustc_middle::{bug, span_bug};
-use rustc_span::ExpnKind;
-use rustc_span::hygiene::{AstPass, MacroKind};
-use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_trait_selection::traits::wf::object_region_bounds;
+use redox_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
+use redox_data_structures::thin_vec::ThinVec;
+use redox_errors::codes::*;
+use redox_errors::{FatalError, struct_span_code_err};
+use redox_hir as hir;
+use redox_hir::attrs::{AttributeKind, DocAttribute, DocInline};
+use redox_hir::def::{CtorKind, DefKind, MacroKinds, Res};
+use redox_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
+use redox_hir::{LangItem, PredicateOrigin, find_attr};
+use redox_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
+use redox_middle::metadata::Reexport;
+use redox_middle::middle::resolve_bound_vars as rbv;
+use redox_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
+use redox_middle::{bug, span_bug};
+use redox_span::ExpnKind;
+use redox_span::hygiene::{AstPass, MacroKind};
+use redox_span::symbol::{Ident, Symbol, kw};
+use redox_trait_selection::traits::wf::object_region_bounds;
 use tracing::{debug, instrument};
 use utils::*;
 
@@ -678,7 +678,7 @@ fn is_impl_trait(param: &hir::GenericParam<'_>) -> bool {
 
 /// This can happen for `async fn`, e.g. `async fn f<'_>(&'_ self)`.
 ///
-/// See `lifetime_to_generic_param` in `rustc_ast_lowering` for more information.
+/// See `lifetime_to_generic_param` in `redox_ast_lowering` for more information.
 fn is_elided_lifetime(param: &hir::GenericParam<'_>) -> bool {
     matches!(
         param.kind,
@@ -959,7 +959,7 @@ fn clean_ty_alias_inner_type<'tcx>(
     }
 
     Some(if adt_def.is_enum() {
-        let variants: rustc_index::IndexVec<_, _> = adt_def
+        let variants: redox_index::IndexVec<_, _> = adt_def
             .variants()
             .iter()
             .map(|variant| clean_variant_def_with_args(variant, args, cx))
@@ -1047,7 +1047,7 @@ fn clean_fn_or_proc_macro<'tcx>(
 }
 
 /// This is needed to make it more "readable" when documenting functions using
-/// `rustc_legacy_const_generics`. More information in
+/// `redox_legacy_const_generics`. More information in
 /// <https://github.com/rust-lang/rust/issues/83167>.
 fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attribute]) {
     let Some(indexes) = find_attr!(attrs, RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes)
@@ -1524,7 +1524,7 @@ fn first_non_private_clean_path<'tcx>(
     cx: &mut DocContext<'tcx>,
     path: &hir::Path<'tcx>,
     new_path_segments: &'tcx [hir::PathSegment<'tcx>],
-    new_path_span: rustc_span::Span,
+    new_path_span: redox_span::Span,
 ) -> Path {
     let new_hir_path =
         hir::Path { segments: new_path_segments, res: path.res, span: new_path_span };
@@ -1798,7 +1798,7 @@ fn maybe_expand_private_type_alias<'tcx>(
 }
 
 pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
-    use rustc_hir::*;
+    use redox_hir::*;
 
     match ty.kind {
         TyKind::Never => Primitive(PrimitiveType::Never),
@@ -1881,9 +1881,9 @@ fn normalize<'tcx>(
         return None;
     }
 
-    use rustc_middle::traits::ObligationCause;
-    use rustc_trait_selection::infer::TyCtxtInferExt;
-    use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
+    use redox_middle::traits::ObligationCause;
+    use redox_trait_selection::infer::TyCtxtInferExt;
+    use redox_trait_selection::traits::query::normalize::QueryNormalizeExt;
 
     // Try to normalize `<X as Y>::T` to a type
     let infcx = cx.tcx.infer_ctxt().build(TypingMode::non_body_analysis());
@@ -2436,9 +2436,9 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
         ty::VariantDiscr::Relative(_) => None,
     };
 
-    use rustc_middle::traits::ObligationCause;
-    use rustc_trait_selection::infer::TyCtxtInferExt;
-    use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
+    use redox_middle::traits::ObligationCause;
+    use redox_trait_selection::infer::TyCtxtInferExt;
+    use redox_trait_selection::traits::query::normalize::QueryNormalizeExt;
 
     let infcx = cx.tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let kind = match variant.ctor_kind() {

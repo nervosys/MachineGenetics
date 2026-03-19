@@ -54,7 +54,7 @@ impl Layout {
     ///   must not overflow `isize` (i.e., the rounded value must be
     ///   less than or equal to `isize::MAX`).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
-    #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[inline]
     pub const fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutError> {
         if Layout::is_size_align_valid(size, align) {
@@ -125,7 +125,7 @@ impl Layout {
     /// This function is unsafe as it does not verify the preconditions from
     /// [`Layout::from_size_align`].
     #[stable(feature = "alloc_layout", since = "1.28.0")]
-    #[rustc_const_stable(feature = "const_alloc_layout_unchecked", since = "1.36.0")]
+    #[redox_const_stable(feature = "const_alloc_layout_unchecked", since = "1.36.0")]
     #[must_use]
     #[inline]
     #[track_caller]
@@ -169,7 +169,7 @@ impl Layout {
 
     /// The minimum size in bytes for a memory block of this layout.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
-    #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[must_use]
     #[inline]
     pub const fn size(&self) -> usize {
@@ -180,7 +180,7 @@ impl Layout {
     ///
     /// The returned alignment is guaranteed to be a power of two.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
-    #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[must_use = "this returns the minimum alignment, \
                   without modifying the layout"]
     #[inline]
@@ -200,7 +200,7 @@ impl Layout {
 
     /// Constructs a `Layout` suitable for holding a value of type `T`.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
-    #[rustc_const_stable(feature = "alloc_layout_const_new", since = "1.42.0")]
+    #[redox_const_stable(feature = "alloc_layout_const_new", since = "1.42.0")]
     #[must_use]
     #[inline]
     pub const fn new<T>() -> Self {
@@ -211,7 +211,7 @@ impl Layout {
     /// allocate backing structure for `T` (which could be a trait
     /// or other unsized type like a slice).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
-    #[rustc_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
     #[must_use]
     #[inline]
     pub const fn for_value<T: ?Sized>(t: &T) -> Self {
@@ -264,7 +264,7 @@ impl Layout {
     /// as a "not yet initialized" sentinel value.
     /// Types that lazily allocate must track initialization by some other means.
     #[stable(feature = "alloc_layout_extra", since = "1.95.0")]
-    #[rustc_const_stable(feature = "alloc_layout_extra", since = "1.95.0")]
+    #[redox_const_stable(feature = "alloc_layout_extra", since = "1.95.0")]
     #[must_use]
     #[inline]
     pub const fn dangling_ptr(&self) -> NonNull<u8> {
@@ -286,7 +286,7 @@ impl Layout {
     /// Returns an error if the combination of `self.size()` and the given
     /// `align` violates the conditions listed in [`Layout::from_size_align`].
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
-    #[rustc_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
     #[inline]
     pub const fn align_to(&self, align: usize) -> Result<Self, LayoutError> {
         if let Some(alignment) = Alignment::new(align) {
@@ -374,7 +374,7 @@ impl Layout {
     /// This is equivalent to adding the result of `padding_needed_for`
     /// to the layout's current size.
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
-    #[rustc_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
     #[must_use = "this returns a new `Layout`, \
                   without modifying the original"]
     #[inline]
@@ -424,7 +424,7 @@ impl Layout {
     /// assert_eq!(repeated, (Layout::from_size_align(0, 4).unwrap(), 8));
     /// ```
     #[stable(feature = "alloc_layout_extra", since = "1.95.0")]
-    #[rustc_const_stable(feature = "alloc_layout_extra", since = "1.95.0")]
+    #[redox_const_stable(feature = "alloc_layout_extra", since = "1.95.0")]
     #[inline]
     pub const fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutError> {
         // FIXME(const-hack): the following could be way shorter with `?`
@@ -489,7 +489,7 @@ impl Layout {
     /// # assert_eq!(repr_c(&[u64, u32, u16, u32]), Ok((s, vec![0, 8, 12, 16])));
     /// ```
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
-    #[rustc_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
     #[inline]
     pub const fn extend(&self, next: Self) -> Result<(Self, usize), LayoutError> {
         let new_alignment = Alignment::max(self.align, next.align);
@@ -521,7 +521,7 @@ impl Layout {
     ///
     /// On arithmetic overflow, returns `LayoutError`.
     #[stable(feature = "alloc_layout_extra", since = "1.95.0")]
-    #[rustc_const_stable(feature = "alloc_layout_extra", since = "1.95.0")]
+    #[redox_const_stable(feature = "alloc_layout_extra", since = "1.95.0")]
     #[inline]
     pub const fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
         if let Some(size) = self.size.checked_mul(n) {
@@ -539,7 +539,7 @@ impl Layout {
     ///
     /// On arithmetic overflow, returns `LayoutError`.
     #[stable(feature = "alloc_layout_extra", since = "1.95.0")]
-    #[rustc_const_stable(feature = "alloc_layout_extra", since = "1.95.0")]
+    #[redox_const_stable(feature = "alloc_layout_extra", since = "1.95.0")]
     #[inline]
     pub const fn extend_packed(&self, next: Self) -> Result<Self, LayoutError> {
         // SAFETY: each `size` is at most `isize::MAX == usize::MAX/2`, so the
@@ -554,7 +554,7 @@ impl Layout {
     /// On arithmetic overflow or when the total size would exceed
     /// `isize::MAX`, returns `LayoutError`.
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
-    #[rustc_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
     #[inline]
     pub const fn array<T>(n: usize) -> Result<Self, LayoutError> {
         // Reduce the amount of code we need to monomorphize per `T`.

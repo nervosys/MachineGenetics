@@ -81,27 +81,27 @@
 //!     addr_of:
 //!     offset_of:
 
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 #![feature(lang_items)]
 
 pub mod marker {
     // region:sized
     #[lang = "pointee_sized"]
     #[fundamental]
-    #[rustc_specialization_trait]
-    #[rustc_coinductive]
+    #[redox_specialization_trait]
+    #[redox_coinductive]
     pub trait PointeeSized {}
 
     #[lang = "meta_sized"]
     #[fundamental]
-    #[rustc_specialization_trait]
-    #[rustc_coinductive]
+    #[redox_specialization_trait]
+    #[redox_coinductive]
     pub trait MetaSized: PointeeSized {}
 
     #[lang = "sized"]
     #[fundamental]
-    #[rustc_specialization_trait]
-    #[rustc_coinductive]
+    #[redox_specialization_trait]
+    #[redox_coinductive]
     pub trait Sized: MetaSized {}
     // endregion:sized
 
@@ -137,7 +137,7 @@ pub mod marker {
     #[lang = "copy"]
     pub trait Copy: Clone {}
     // region:derive
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro Copy($item:item) {}
     // endregion:derive
 
@@ -198,7 +198,7 @@ pub mod marker {
     // endregion:discriminant
 
     // region:coerce_pointee
-    #[rustc_builtin_macro(CoercePointee, attributes(pointee))]
+    #[redox_builtin_macro(CoercePointee, attributes(pointee))]
     #[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
     pub macro CoercePointee($item:item) {
         /* compiler built-in */
@@ -212,7 +212,7 @@ pub mod default {
         fn default() -> Self;
     }
     // region:derive
-    #[rustc_builtin_macro(Default, attributes(default))]
+    #[redox_builtin_macro(Default, attributes(default))]
     pub macro Default($item:item) {}
     // endregion:derive
 
@@ -251,7 +251,7 @@ pub mod hash {
 
     // region:derive
     pub(crate) mod derive {
-        #[rustc_builtin_macro]
+        #[redox_builtin_macro]
         pub macro Hash($item:item) {}
     }
     pub use derive::Hash;
@@ -359,7 +359,7 @@ pub mod clone {
     // endregion:builtin_impls
 
     // region:derive
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro Clone($item:item) {}
     // endregion:derive
 }
@@ -477,12 +477,12 @@ pub mod mem {
     // endregion:drop
 
     // region:transmute
-    #[rustc_intrinsic]
+    #[redox_intrinsic]
     pub fn transmute<Src, Dst>(src: Src) -> Dst;
     // endregion:transmute
 
     // region:size_of
-    #[rustc_intrinsic]
+    #[redox_intrinsic]
     pub fn size_of<T>() -> usize;
     // endregion:size_of
 
@@ -517,7 +517,7 @@ pub mod ptr {
 
     // region:pointee
     #[lang = "pointee_trait"]
-    #[rustc_deny_explicit_impl(implement_via_object = false)]
+    #[redox_deny_explicit_impl(implement_via_object = false)]
     pub trait Pointee: crate::marker::PointeeSized {
         #[lang = "metadata_type"]
         type Metadata: Copy + Send + Sync + Ord + Hash + Unpin;
@@ -534,8 +534,8 @@ pub mod ptr {
 
     // endregion:pointee
     // region:non_null
-    #[rustc_layout_scalar_valid_range_start(1)]
-    #[rustc_nonnull_optimization_guaranteed]
+    #[redox_layout_scalar_valid_range_start(1)]
+    #[redox_nonnull_optimization_guaranteed]
     pub struct NonNull<T: crate::marker::PointeeSized> {
         pointer: *const T,
     }
@@ -550,11 +550,11 @@ pub mod ptr {
     // endregion:non_null
 
     // region:addr_of
-    #[rustc_macro_transparency = "semiopaque"]
+    #[redox_macro_transparency = "semiopaque"]
     pub macro addr_of($place:expr) {
         &raw const $place
     }
-    #[rustc_macro_transparency = "semiopaque"]
+    #[redox_macro_transparency = "semiopaque"]
     pub macro addr_of_mut($place:expr) {
         &raw mut $place
     }
@@ -746,21 +746,21 @@ pub mod ops {
 
         #[lang = "fn"]
         #[fundamental]
-        #[rustc_paren_sugar]
+        #[redox_paren_sugar]
         pub trait Fn<Args: Tuple>: FnMut<Args> {
             extern "rust-call" fn call(&self, args: Args) -> Self::Output;
         }
 
         #[lang = "fn_mut"]
         #[fundamental]
-        #[rustc_paren_sugar]
+        #[redox_paren_sugar]
         pub trait FnMut<Args: Tuple>: FnOnce<Args> {
             extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
         }
 
         #[lang = "fn_once"]
         #[fundamental]
-        #[rustc_paren_sugar]
+        #[redox_paren_sugar]
         pub trait FnOnce<Args: Tuple> {
             #[lang = "fn_once_output"]
             type Output;
@@ -771,7 +771,7 @@ pub mod ops {
             use crate::marker::Tuple;
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            #[redox_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
             impl<A: Tuple, F: ?Sized> const Fn<A> for &F
             where
                 F: [const] Fn<A>,
@@ -782,7 +782,7 @@ pub mod ops {
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            #[redox_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
             impl<A: Tuple, F: ?Sized> const FnMut<A> for &F
             where
                 F: [const] Fn<A>,
@@ -793,7 +793,7 @@ pub mod ops {
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            #[redox_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
             impl<A: Tuple, F: ?Sized> const FnOnce<A> for &F
             where
                 F: [const] Fn<A>,
@@ -806,7 +806,7 @@ pub mod ops {
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            #[redox_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
             impl<A: Tuple, F: ?Sized> const FnMut<A> for &mut F
             where
                 F: [const] FnMut<A>,
@@ -817,7 +817,7 @@ pub mod ops {
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+            #[redox_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
             impl<A: Tuple, F: ?Sized> const FnOnce<A> for &mut F
             where
                 F: [const] FnMut<A>,
@@ -838,14 +838,14 @@ pub mod ops {
 
         #[lang = "async_fn"]
         #[fundamental]
-        #[rustc_paren_sugar]
+        #[redox_paren_sugar]
         pub trait AsyncFn<Args: Tuple>: AsyncFnMut<Args> {
             extern "rust-call" fn async_call(&self, args: Args) -> Self::CallRefFuture<'_>;
         }
 
         #[lang = "async_fn_mut"]
         #[fundamental]
-        #[rustc_paren_sugar]
+        #[redox_paren_sugar]
         pub trait AsyncFnMut<Args: Tuple>: AsyncFnOnce<Args> {
             #[lang = "call_ref_future"]
             type CallRefFuture<'a>: Future<Output = Self::Output>
@@ -856,7 +856,7 @@ pub mod ops {
 
         #[lang = "async_fn_once"]
         #[fundamental]
-        #[rustc_paren_sugar]
+        #[redox_paren_sugar]
         pub trait AsyncFnOnce<Args: Tuple> {
             #[lang = "async_fn_once_output"]
             type Output;
@@ -1202,9 +1202,9 @@ pub mod cmp {
     // endregion:builtin_impls
 
     // region:derive
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro PartialEq($item:item) {}
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro Eq($item:item) {}
     // endregion:derive
 
@@ -1225,9 +1225,9 @@ pub mod cmp {
     }
 
     // region:derive
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro PartialOrd($item:item) {}
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro Ord($item:item) {}
     // endregion:derive
 
@@ -1453,7 +1453,7 @@ pub mod fmt {
 
     // region:derive
     pub(crate) mod derive {
-        #[rustc_builtin_macro]
+        #[redox_builtin_macro]
         pub macro Debug($item:item) {}
     }
     pub use derive::Debug;
@@ -1898,8 +1898,8 @@ mod panic {
         }),
         // Special-case the single-argument case for const_panic.
         ("{}", $arg:expr $(,)?) => ({
-            #[rustc_const_panic_str] // enforce a &&str argument in const-check and hook this by const-eval
-            #[rustc_do_not_const_check] // hooked by const-eval
+            #[redox_const_panic_str] // enforce a &&str argument in const-check and hook this by const-eval
+            #[redox_do_not_const_check] // hooked by const-eval
             const fn panic_cold_display<T: $crate::fmt::Display>(arg: &T) -> ! {
                 $crate::panicking::panic_display(arg)
             }
@@ -1914,7 +1914,7 @@ mod panic {
 }
 
 mod panicking {
-    #[rustc_const_panic_str] // enforce a &&str argument in const-check and hook this by const-eval
+    #[redox_const_panic_str] // enforce a &&str argument in const-check and hook this by const-eval
     pub const fn panic_display<T: crate::fmt::Display>(x: &T) -> ! {
         panic_fmt(crate::format_args!("{}", *x));
     }
@@ -1944,15 +1944,15 @@ mod panicking {
 
 // region:asm
 mod arch {
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
         /* compiler built-in */
     }
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
         /* compiler built-in */
     }
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?) {
         /* compiler built-in */
     }
@@ -1963,7 +1963,7 @@ mod arch {
 mod macros {
     // region:panic
     #[macro_export]
-    #[rustc_builtin_macro(core_panic)]
+    #[redox_builtin_macro(core_panic)]
     macro_rules! panic {
         ($($arg:tt)*) => {
             /* compiler built-in */
@@ -1993,7 +1993,7 @@ mod macros {
 
     // region:assert
     #[macro_export]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[allow_internal_unstable(core_panic, edition_panic, generic_assert_internals)]
     macro_rules! assert {
         ($($arg:tt)*) => {
@@ -2005,7 +2005,7 @@ mod macros {
     // region:fmt
     #[allow_internal_unstable(fmt_internals, const_fmt_arguments_new)]
     #[macro_export]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     macro_rules! const_format_args {
         ($fmt:expr) => {{ /* compiler built-in */ }};
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
@@ -2013,7 +2013,7 @@ mod macros {
 
     #[allow_internal_unstable(fmt_internals)]
     #[macro_export]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     macro_rules! format_args {
         ($fmt:expr) => {{ /* compiler built-in */ }};
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
@@ -2021,7 +2021,7 @@ mod macros {
 
     #[allow_internal_unstable(fmt_internals)]
     #[macro_export]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     macro_rules! format_args_nl {
         ($fmt:expr) => {{ /* compiler built-in */ }};
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
@@ -2064,12 +2064,12 @@ mod macros {
 
     // region:derive
     pub(crate) mod builtin {
-        #[rustc_builtin_macro]
+        #[redox_builtin_macro]
         pub macro derive($item:item) {
             /* compiler built-in */
         }
 
-        #[rustc_builtin_macro]
+        #[redox_builtin_macro]
         pub macro derive_const($item:item) {
             /* compiler built-in */
         }
@@ -2077,7 +2077,7 @@ mod macros {
     // endregion:derive
 
     // region:include
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! include {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
@@ -2085,7 +2085,7 @@ mod macros {
     // endregion:include
 
     // region:include_bytes
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! include_bytes {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
@@ -2093,16 +2093,16 @@ mod macros {
     // endregion:include_bytes
 
     // region:concat
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! concat {}
     // endregion:concat
 
     // region:env
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! env {}
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! option_env {}
     // endregion:env
@@ -2111,8 +2111,8 @@ mod macros {
 // region:non_zero
 pub mod num {
     #[repr(transparent)]
-    #[rustc_layout_scalar_valid_range_start(1)]
-    #[rustc_nonnull_optimization_guaranteed]
+    #[redox_layout_scalar_valid_range_start(1)]
+    #[redox_nonnull_optimization_guaranteed]
     pub struct NonZeroU8(u8);
 }
 // endregion:non_zero
@@ -2151,7 +2151,7 @@ impl_int! {
 
 // region:error
 pub mod error {
-    #[rustc_has_incoherent_inherent_impls]
+    #[redox_has_incoherent_inherent_impls]
     pub trait Error: crate::fmt::Debug + crate::fmt::Display {
         fn source(&self) -> Option<&(dyn Error + 'static)> {
             None
@@ -2161,7 +2161,7 @@ pub mod error {
 // endregion:error
 
 // region:column
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! column {
     () => {};

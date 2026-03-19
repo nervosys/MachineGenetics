@@ -341,7 +341,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 #[lang = "maybe_uninit"]
 #[derive(Copy)]
 #[repr(transparent)]
-#[rustc_pub_transparent]
+#[redox_pub_transparent]
 pub union MaybeUninit<T> {
     uninit: (),
     value: ManuallyDrop<T>,
@@ -390,7 +390,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// [`assume_init`]: MaybeUninit::assume_init
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
+    #[redox_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
     #[must_use = "use `forget` to avoid running Drop code"]
     #[inline(always)]
     pub const fn new(val: T) -> MaybeUninit<T> {
@@ -412,10 +412,10 @@ impl<T> MaybeUninit<T> {
     /// let v: MaybeUninit<String> = MaybeUninit::uninit();
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
+    #[redox_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
     #[must_use]
     #[inline(always)]
-    #[rustc_diagnostic_item = "maybe_uninit_uninit"]
+    #[redox_diagnostic_item = "maybe_uninit_uninit"]
     pub const fn uninit() -> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
@@ -463,9 +463,9 @@ impl<T> MaybeUninit<T> {
     /// ```
     #[inline]
     #[must_use]
-    #[rustc_diagnostic_item = "maybe_uninit_zeroed"]
+    #[redox_diagnostic_item = "maybe_uninit_zeroed"]
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit_zeroed", since = "1.75.0")]
+    #[redox_const_stable(feature = "const_maybe_uninit_zeroed", since = "1.75.0")]
     pub const fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninit();
         // SAFETY: `u.as_mut_ptr()` points to allocated memory.
@@ -559,7 +559,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "maybe_uninit_write", since = "1.55.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit_write", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_maybe_uninit_write", since = "1.85.0")]
     pub const fn write(&mut self, val: T) -> &mut T {
         *self = MaybeUninit::new(val);
         // SAFETY: We just initialized this value.
@@ -600,8 +600,8 @@ impl<T> MaybeUninit<T> {
     /// (Notice that the rules around references to uninitialized data are not finalized yet, but
     /// until they are, it is advisable to avoid them.)
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit_as_ptr", since = "1.59.0")]
-    #[rustc_as_ptr]
+    #[redox_const_stable(feature = "const_maybe_uninit_as_ptr", since = "1.59.0")]
+    #[redox_as_ptr]
     #[inline(always)]
     pub const fn as_ptr(&self) -> *const T {
         // `MaybeUninit` and `ManuallyDrop` are both `repr(transparent)` so we can cast the pointer.
@@ -642,8 +642,8 @@ impl<T> MaybeUninit<T> {
     /// (Notice that the rules around references to uninitialized data are not finalized yet, but
     /// until they are, it is advisable to avoid them.)
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit_as_mut_ptr", since = "1.83.0")]
-    #[rustc_as_ptr]
+    #[redox_const_stable(feature = "const_maybe_uninit_as_mut_ptr", since = "1.83.0")]
+    #[redox_as_ptr]
     #[inline(always)]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         // `MaybeUninit` and `ManuallyDrop` are both `repr(transparent)` so we can cast the pointer.
@@ -696,9 +696,9 @@ impl<T> MaybeUninit<T> {
     /// // `x` had not been initialized yet, so this last line caused undefined behavior. ⚠️
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit_assume_init_by_value", since = "1.59.0")]
+    #[redox_const_stable(feature = "const_maybe_uninit_assume_init_by_value", since = "1.59.0")]
     #[inline(always)]
-    #[rustc_diagnostic_item = "assume_init"]
+    #[redox_diagnostic_item = "assume_init"]
     #[track_caller]
     pub const unsafe fn assume_init(self) -> T {
         // SAFETY: the caller must guarantee that `self` is initialized.
@@ -769,7 +769,7 @@ impl<T> MaybeUninit<T> {
     /// // they both get dropped!
     /// ```
     #[stable(feature = "maybe_uninit_extra", since = "1.60.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit_assume_init_read", since = "1.75.0")]
+    #[redox_const_stable(feature = "const_maybe_uninit_assume_init_read", since = "1.75.0")]
     #[inline(always)]
     #[track_caller]
     pub const unsafe fn assume_init_read(&self) -> T {
@@ -803,7 +803,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// [`assume_init`]: MaybeUninit::assume_init
     #[stable(feature = "maybe_uninit_extra", since = "1.60.0")]
-    #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+    #[redox_const_unstable(feature = "const_drop_in_place", issue = "109342")]
     pub const unsafe fn assume_init_drop(&mut self)
     where
         T: [const] Destruct,
@@ -870,7 +870,7 @@ impl<T> MaybeUninit<T> {
     /// }
     /// ```
     #[stable(feature = "maybe_uninit_ref", since = "1.55.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit_assume_init_ref", since = "1.59.0")]
+    #[redox_const_stable(feature = "const_maybe_uninit_assume_init_ref", since = "1.59.0")]
     #[inline(always)]
     pub const unsafe fn assume_init_ref(&self) -> &T {
         // SAFETY: the caller must guarantee that `self` is initialized.
@@ -987,7 +987,7 @@ impl<T> MaybeUninit<T> {
     /// };
     /// ```
     #[stable(feature = "maybe_uninit_ref", since = "1.55.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit_assume_init", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_maybe_uninit_assume_init", since = "1.84.0")]
     #[inline(always)]
     pub const unsafe fn assume_init_mut(&mut self) -> &mut T {
         // SAFETY: the caller must guarantee that `self` is initialized.
@@ -1140,7 +1140,7 @@ impl<T> [MaybeUninit<T>] {
     ///
     /// [`write_clone_of_slice`]: slice::write_clone_of_slice
     #[stable(feature = "maybe_uninit_write_slice", since = "1.93.0")]
-    #[rustc_const_stable(feature = "maybe_uninit_write_slice", since = "1.93.0")]
+    #[redox_const_stable(feature = "maybe_uninit_write_slice", since = "1.93.0")]
     pub const fn write_copy_of_slice(&mut self, src: &[T]) -> &mut [T]
     where
         T: Copy,
@@ -1464,7 +1464,7 @@ impl<T> [MaybeUninit<T>] {
     /// behaviour.
     #[stable(feature = "maybe_uninit_slice", since = "1.93.0")]
     #[inline(always)]
-    #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+    #[redox_const_unstable(feature = "const_drop_in_place", issue = "109342")]
     pub const unsafe fn assume_init_drop(&mut self)
     where
         T: [const] Destruct,
@@ -1485,7 +1485,7 @@ impl<T> [MaybeUninit<T>] {
     /// behavior: it is up to the caller to guarantee that every `MaybeUninit<T>` in
     /// the slice really is in an initialized state.
     #[stable(feature = "maybe_uninit_slice", since = "1.93.0")]
-    #[rustc_const_stable(feature = "maybe_uninit_slice", since = "1.93.0")]
+    #[redox_const_stable(feature = "maybe_uninit_slice", since = "1.93.0")]
     #[inline(always)]
     pub const unsafe fn assume_init_ref(&self) -> &[T] {
         // SAFETY: casting `slice` to a `*const [T]` is safe since the caller guarantees that
@@ -1504,7 +1504,7 @@ impl<T> [MaybeUninit<T>] {
     /// slice really is in an initialized state. For instance, `.assume_init_mut()` cannot
     /// be used to initialize a `MaybeUninit` slice.
     #[stable(feature = "maybe_uninit_slice", since = "1.93.0")]
-    #[rustc_const_stable(feature = "maybe_uninit_slice", since = "1.93.0")]
+    #[redox_const_stable(feature = "maybe_uninit_slice", since = "1.93.0")]
     #[inline(always)]
     pub const unsafe fn assume_init_mut(&mut self) -> &mut [T] {
         // SAFETY: similar to safety notes for `slice_get_ref`, but we have a

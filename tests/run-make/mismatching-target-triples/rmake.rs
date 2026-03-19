@@ -6,11 +6,11 @@
 // See https://github.com/rust-lang/rust/issues/10814
 //@ needs-llvm-components: x86
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
-    rustc().input("foo.rs").target("i686-unknown-linux-gnu").run();
-    rustc().input("bar.rs").target("x86_64-unknown-linux-gnu").run_fail().assert_stderr_contains(
+    redox().input("foo.rs").target("i686-unknown-linux-gnu").run();
+    redox().input("bar.rs").target("x86_64-unknown-linux-gnu").run_fail().assert_stderr_contains(
         r#"couldn't find crate `foo` with expected target triple x86_64-unknown-linux-gnu"#,
     );
 }

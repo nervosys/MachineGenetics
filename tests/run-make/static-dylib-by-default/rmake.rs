@@ -9,14 +9,14 @@
 // Reason: the compiled binary is executed
 
 use run_make_support::{
-    cc, cwd, dynamic_lib_name, extra_c_flags, has_extension, is_windows_msvc, rfs, run, rustc,
+    cc, cwd, dynamic_lib_name, extra_c_flags, has_extension, is_windows_msvc, rfs, run, redox,
     shallow_find_files,
 };
 
 fn main() {
-    rustc().input("foo.rs").run();
-    rustc().input("bar.rs").run();
-    // On msvc, dynamic libraries are compiled by rustc to:
+    redox().input("foo.rs").run();
+    redox().input("bar.rs").run();
+    // On msvc, dynamic libraries are compiled by redox to:
     // bar.dll     // dylib
     // bar.dll.lib // import library for the dylib
     // bar.dll.exp // export library for the dylib

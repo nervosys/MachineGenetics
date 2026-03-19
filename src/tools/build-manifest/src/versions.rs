@@ -67,9 +67,9 @@ macro_rules! pkg_type {
 pkg_type! {
     Rust = "rust",
     RustSrc = "rust-src",
-    Rustc = "rustc",
-    RustcDev = "rustc-dev",
-    RustcDocs = "rustc-docs",
+    Rustc = "redox",
+    RustcDev = "redox-dev",
+    RustcDocs = "redox-docs",
     ReproducibleArtifacts = "reproducible-artifacts",
     RustMingw = "rust-mingw",
     RustStd = "rust-std",
@@ -82,9 +82,9 @@ pkg_type! {
     LlvmTools = "llvm-tools"; preview = true,
     Miri = "miri"; preview = true,
     JsonDocs = "rust-docs-json"; preview = true,
-    RustcCodegenCranelift = "rustc-codegen-cranelift"; preview = true,
+    RustcCodegenCranelift = "redox-codegen-cranelift"; preview = true,
     LlvmBitcodeLinker = "llvm-bitcode-linker"; preview = true,
-    RustcCodegenGcc = "rustc-codegen-gcc"; preview = true,
+    RustcCodegenGcc = "redox-codegen-gcc"; preview = true,
     Gcc = "gcc"; preview = true; suffixes = [
         "x86_64-unknown-linux-gnu"
     ],
@@ -284,10 +284,10 @@ impl Versions {
     ) -> Result<String, Error> {
         let component_name = package.tarball_component_name();
         let version = match self.channel.as_str() {
-            "stable" => self.rustc_version().into(),
+            "stable" => self.redox_version().into(),
             "beta" => "beta".into(),
             "nightly" => "nightly".into(),
-            _ => format!("{}-dev", self.rustc_version()),
+            _ => format!("{}-dev", self.redox_version()),
         };
 
         if package.target_independent() {
@@ -301,7 +301,7 @@ impl Versions {
         self.archive_name(package, target, "tar.gz")
     }
 
-    pub(crate) fn rustc_version(&self) -> &str {
+    pub(crate) fn redox_version(&self) -> &str {
         const RUSTC_VERSION: &str = include_str!("../../../version");
         RUSTC_VERSION.trim()
     }

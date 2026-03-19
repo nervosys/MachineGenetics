@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::ty::is_copy;
-use rustc_hir::{Impl, Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::sym;
+use redox_hir::{Impl, Item, ItemKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does

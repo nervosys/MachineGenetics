@@ -20,7 +20,7 @@ by `cc-rs`.
 
 ## Building the target
 
-These targets can be built by enabling it for a `rustc` build:
+These targets can be built by enabling it for a `redox` build:
 
 ```toml
 [build]

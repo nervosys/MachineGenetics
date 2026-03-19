@@ -1,4 +1,4 @@
-// NOTE: this is essentially a smoke-test, with more comprehensive tests living in the rustc
+// NOTE: this is essentially a smoke-test, with more comprehensive tests living in the redox
 // repository at tests/ui/consts/const-eval/ub-enum.rs
 #![feature(never_type)]
 

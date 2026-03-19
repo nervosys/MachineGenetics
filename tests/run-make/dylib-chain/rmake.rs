@@ -8,13 +8,13 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{dynamic_lib_name, rfs, run, run_fail, rustc};
+use run_make_support::{dynamic_lib_name, rfs, run, run_fail, redox};
 
 fn main() {
-    rustc().input("m1.rs").arg("-Cprefer-dynamic").run();
-    rustc().input("m2.rs").arg("-Cprefer-dynamic").run();
-    rustc().input("m3.rs").arg("-Cprefer-dynamic").run();
-    rustc().input("m4.rs").run();
+    redox().input("m1.rs").arg("-Cprefer-dynamic").run();
+    redox().input("m2.rs").arg("-Cprefer-dynamic").run();
+    redox().input("m3.rs").arg("-Cprefer-dynamic").run();
+    redox().input("m4.rs").run();
     run("m4");
     rfs::remove_file(dynamic_lib_name("m1"));
     rfs::remove_file(dynamic_lib_name("m2"));

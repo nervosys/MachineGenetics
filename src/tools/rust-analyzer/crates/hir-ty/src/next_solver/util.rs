@@ -3,8 +3,8 @@
 use std::ops::ControlFlow;
 
 use hir_def::TraitId;
-use rustc_abi::{Float, HasDataLayout, Integer, IntegerType, Primitive, ReprOptions};
-use rustc_type_ir::{
+use redox_abi::{Float, HasDataLayout, Integer, IntegerType, Primitive, ReprOptions};
+use redox_type_ir::{
     ConstKind, CoroutineArgs, DebruijnIndex, FloatTy, INNERMOST, IntTy, Interner,
     PredicatePolarity, RegionKind, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
     TypeVisitableExt, TypeVisitor, UintTy, UniverseIndex, elaborate,
@@ -270,7 +270,7 @@ impl PrimitiveExt for Primitive {
 }
 
 impl<'db> HasDataLayout for DbInterner<'db> {
-    fn data_layout(&self) -> &rustc_abi::TargetDataLayout {
+    fn data_layout(&self) -> &redox_abi::TargetDataLayout {
         unimplemented!()
     }
 }
@@ -385,7 +385,7 @@ pub fn sizedness_constraint_for_ty<'db>(
     sizedness: SizedTraitKind,
     ty: Ty<'db>,
 ) -> Option<Ty<'db>> {
-    use rustc_type_ir::TyKind::*;
+    use redox_type_ir::TyKind::*;
 
     match ty.kind() {
         // these are always sized
@@ -488,7 +488,7 @@ impl<'db> TypeVisitor<DbInterner<'db>> for ContainsTypeErrors {
 
     fn visit_ty(&mut self, t: Ty<'db>) -> Self::Result {
         match t.kind() {
-            rustc_type_ir::TyKind::Error(_) => ControlFlow::Break(()),
+            redox_type_ir::TyKind::Error(_) => ControlFlow::Break(()),
             _ => t.super_visit_with(self),
         }
     }

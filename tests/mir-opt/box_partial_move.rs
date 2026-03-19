@@ -1,7 +1,7 @@
 //@ test-mir-pass: ElaborateDrops
 //@ needs-unwind
 
-#![feature(rustc_attrs, liballoc_internals)]
+#![feature(redox_attrs, liballoc_internals)]
 
 // EMIT_MIR box_partial_move.maybe_move.ElaborateDrops.diff
 fn maybe_move(cond: bool, thing: Box<String>) -> Option<String> {

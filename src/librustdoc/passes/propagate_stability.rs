@@ -6,8 +6,8 @@
 //! [`core::error`] module is marked as stable since 1.81.0, so we want to show
 //! [`core::error::Error`] as stable since 1.81.0 as well.
 
-use rustc_hir::def_id::CRATE_DEF_ID;
-use rustc_hir::{Stability, StabilityLevel};
+use redox_hir::def_id::CRATE_DEF_ID;
+use redox_hir::{Stability, StabilityLevel};
 
 use crate::clean::{Crate, Item, ItemId, ItemKind};
 use crate::core::DocContext;
@@ -43,8 +43,8 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                     let hir_id = self.cx.tcx.local_def_id_to_hir_id(id);
                     matches!(
                         self.cx.tcx.hir_node(hir_id),
-                        rustc_hir::Node::Item(rustc_hir::Item {
-                            kind: rustc_hir::ItemKind::Use(_, rustc_hir::UseKind::Glob),
+                        redox_hir::Node::Item(redox_hir::Item {
+                            kind: redox_hir::ItemKind::Use(_, redox_hir::UseKind::Glob),
                             ..
                         })
                     )

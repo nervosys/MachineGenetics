@@ -1,5 +1,5 @@
 #![allow(internal_features)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![deny(warnings)]
 
 use std::thread;

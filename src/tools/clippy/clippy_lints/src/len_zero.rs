@@ -6,14 +6,14 @@ use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{parent_item_name, peel_ref_operators, sym};
-use rustc_ast::ast::LitKind;
-use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{BinOpKind, Expr, ExprKind, PatExprKind, PatKind, RustcVersion, StabilityLevel, StableSince};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty};
-use rustc_session::impl_lint_pass;
-use rustc_span::{Span, Spanned, Symbol};
+use redox_ast::ast::LitKind;
+use redox_errors::Applicability;
+use redox_hir::def_id::DefId;
+use redox_hir::{BinOpKind, Expr, ExprKind, PatExprKind, PatKind, RustcVersion, StabilityLevel, StableSince};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::{self, Ty};
+use redox_session::impl_lint_pass;
+use redox_span::{Span, Spanned, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does

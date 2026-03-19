@@ -8,11 +8,11 @@
 
 //@ ignore-cross-compile
 // Reason: The compiled binary is executed.
-use run_make_support::{build_native_static_lib_optimized, run, rustc};
+use run_make_support::{build_native_static_lib_optimized, run, redox};
 
 fn main() {
     // The issue exercised by this test specifically needs an optimized native static lib.
     build_native_static_lib_optimized("bad");
-    rustc().input("param_passing.rs").opt_level("3").run();
+    redox().input("param_passing.rs").opt_level("3").run();
     run("param_passing");
 }

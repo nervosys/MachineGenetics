@@ -12,14 +12,14 @@
 //! be considered a bug.
 
 use crate::paths::{PathNS, lookup_path};
-use rustc_ast::{LitFloatType, LitIntType, LitKind};
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_qpath, walk_ty};
-use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, GenericArgs, HirId, Node, Param, PathSegment, QPath, TyKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, AdtDef, GenericArgKind, Ty};
-use rustc_span::Span;
+use redox_ast::{LitFloatType, LitIntType, LitKind};
+use redox_hir::def::{DefKind, Res};
+use redox_hir::def_id::DefId;
+use redox_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_qpath, walk_ty};
+use redox_hir::{self as hir, AmbigArg, Expr, ExprKind, GenericArgs, HirId, Node, Param, PathSegment, QPath, TyKind};
+use redox_lint::LateContext;
+use redox_middle::ty::{self, AdtDef, GenericArgKind, Ty};
+use redox_span::Span;
 
 mod certainty;
 use certainty::{Certainty, Meet, join, meet};

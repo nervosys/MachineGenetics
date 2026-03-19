@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(rustdoc_internals)]
 #![no_std]
 
@@ -6,11 +6,11 @@
 #![crate_name="issue_23511"]
 
 pub mod str {
-    #![rustc_doc_primitive = "str"]
+    #![redox_doc_primitive = "str"]
 
     impl str {
         //@ hasraw search.index/name/*.js foo
-        #[rustc_allow_incoherent_impl]
+        #[redox_allow_incoherent_impl]
         pub fn foo(&self) {}
     }
 }

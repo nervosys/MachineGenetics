@@ -1,4 +1,4 @@
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 
 struct NonGeneric {}
 

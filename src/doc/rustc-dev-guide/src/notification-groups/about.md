@@ -1,6 +1,6 @@
 # Notification groups
 
-The **notification groups** are an easy way to help out with rustc in a
+The **notification groups** are an easy way to help out with redox in a
 "piece-meal" fashion, without committing to a larger project.
 Notification groups are **[easy to join](#join)** (just submit a PR!)
 and joining does not entail any particular commitment.

@@ -17,7 +17,7 @@ use project_model::{
 };
 
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace};
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use vfs::{AbsPathBuf, FileId};
 use walkdir::WalkDir;
 
@@ -46,7 +46,7 @@ fn string_to_diagnostic_code_leaky(code: &str) -> DiagnosticCode {
     })
 }
 
-fn detect_errors_from_rustc_stderr_file(p: PathBuf) -> FxHashMap<DiagnosticCode, usize> {
+fn detect_errors_from_redox_stderr_file(p: PathBuf) -> FxHashMap<DiagnosticCode, usize> {
     let text = read_to_string(p).unwrap();
     let mut result = FxHashMap::default();
     {
@@ -63,8 +63,8 @@ fn detect_errors_from_rustc_stderr_file(p: PathBuf) -> FxHashMap<DiagnosticCode,
 impl Tester {
     fn new() -> Result<Self> {
         let mut path = AbsPathBuf::assert_utf8(std::env::temp_dir());
-        path.push("ra-rustc-test");
-        let tmp_file = path.join("ra-rustc-test.rs");
+        path.push("ra-redox-test");
+        let tmp_file = path.join("ra-redox-test.rs");
         std::fs::write(&tmp_file, "")?;
         let cargo_config = CargoConfig {
             sysroot: Some(RustLibSource::Discover),
@@ -92,7 +92,7 @@ impl Tester {
                 cargo: None,
             },
             sysroot,
-            rustc_cfg: vec![],
+            redox_cfg: vec![],
             toolchain: None,
             target: target_data.map_err(|it| it.to_string().into()),
             cfg_overrides: Default::default(),
@@ -135,7 +135,7 @@ impl Tester {
         }
         let stderr_path = p.with_extension("stderr");
         let expected = if stderr_path.exists() {
-            detect_errors_from_rustc_stderr_file(stderr_path)
+            detect_errors_from_redox_stderr_file(stderr_path)
         } else {
             FxHashMap::default()
         };
@@ -233,7 +233,7 @@ impl Tester {
         } else {
             println!("{p:?} FAIL");
             println!("actual   (r-a)   = {actual:?}");
-            println!("expected (rustc) = {expected:?}");
+            println!("expected (redox) = {expected:?}");
             self.fail_count += 1;
         }
     }
@@ -244,8 +244,8 @@ impl Tester {
             self.pass_count, self.fail_count, self.ignore_count
         );
         println!("Testing time and memory = {}", self.stopwatch.elapsed());
-        report_metric("rustc failed tests", self.fail_count, "#");
-        report_metric("rustc testing time", self.stopwatch.elapsed().time.as_millis() as u64, "ms");
+        report_metric("redox failed tests", self.fail_count, "#");
+        report_metric("redox testing time", self.stopwatch.elapsed().time.as_millis() as u64, "ms");
     }
 }
 
@@ -294,7 +294,7 @@ const SUPPORTED_DIAGNOSTICS: &[DiagnosticCode] = &[
 impl flags::RustcTests {
     pub fn run(self) -> Result<()> {
         let mut tester = Tester::new()?;
-        let walk_dir = WalkDir::new(self.rustc_repo.join("tests/ui"));
+        let walk_dir = WalkDir::new(self.redox_repo.join("tests/ui"));
         eprintln!("Running tests for tests/ui");
         for i in walk_dir {
             let i = i?;

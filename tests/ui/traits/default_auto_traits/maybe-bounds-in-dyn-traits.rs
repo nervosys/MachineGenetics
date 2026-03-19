@@ -6,7 +6,7 @@
     more_maybe_bounds,
     negative_impls,
     no_core,
-    rustc_attrs
+    redox_attrs
 )]
 #![allow(internal_features)]
 #![no_std]

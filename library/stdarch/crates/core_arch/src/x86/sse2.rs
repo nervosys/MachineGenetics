@@ -76,7 +76,7 @@ pub fn _mm_mfence() {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(paddb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_add_epi8(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_add(a.as_i8x16(), b.as_i8x16())) }
 }
@@ -88,7 +88,7 @@ pub const fn _mm_add_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(paddw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_add_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_add(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -100,7 +100,7 @@ pub const fn _mm_add_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(paddd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_add_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_add(a.as_i32x4(), b.as_i32x4())) }
 }
@@ -112,7 +112,7 @@ pub const fn _mm_add_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(paddq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_add_epi64(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_add(a.as_i64x2(), b.as_i64x2())) }
 }
@@ -124,7 +124,7 @@ pub const fn _mm_add_epi64(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(paddsb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_adds_epi8(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_saturating_add(a.as_i8x16(), b.as_i8x16())) }
 }
@@ -136,7 +136,7 @@ pub const fn _mm_adds_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(paddsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_adds_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_saturating_add(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -148,7 +148,7 @@ pub const fn _mm_adds_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(paddusb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_adds_epu8(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_saturating_add(a.as_u8x16(), b.as_u8x16())) }
 }
@@ -160,7 +160,7 @@ pub const fn _mm_adds_epu8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(paddusw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_adds_epu16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_saturating_add(a.as_u16x8(), b.as_u16x8())) }
 }
@@ -172,7 +172,7 @@ pub const fn _mm_adds_epu16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pavgb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_avg_epu8(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let a = simd_cast::<_, u16x16>(a.as_u8x16());
@@ -189,7 +189,7 @@ pub const fn _mm_avg_epu8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pavgw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_avg_epu16(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let a = simd_cast::<_, u32x8>(a.as_u16x8());
@@ -234,7 +234,7 @@ pub fn _mm_madd_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pmaxsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_max_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { simd_imax(a.as_i16x8(), b.as_i16x8()).as_m128i() }
 }
@@ -247,7 +247,7 @@ pub const fn _mm_max_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pmaxub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_max_epu8(a: __m128i, b: __m128i) -> __m128i {
     unsafe { simd_imax(a.as_u8x16(), b.as_u8x16()).as_m128i() }
 }
@@ -260,7 +260,7 @@ pub const fn _mm_max_epu8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pminsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_min_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { simd_imin(a.as_i16x8(), b.as_i16x8()).as_m128i() }
 }
@@ -273,7 +273,7 @@ pub const fn _mm_min_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pminub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_min_epu8(a: __m128i, b: __m128i) -> __m128i {
     unsafe { simd_imin(a.as_u8x16(), b.as_u8x16()).as_m128i() }
 }
@@ -288,7 +288,7 @@ pub const fn _mm_min_epu8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pmulhw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mulhi_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let a = simd_cast::<_, i32x8>(a.as_i16x8());
@@ -308,7 +308,7 @@ pub const fn _mm_mulhi_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pmulhuw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mulhi_epu16(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let a = simd_cast::<_, u32x8>(a.as_u16x8());
@@ -328,7 +328,7 @@ pub const fn _mm_mulhi_epu16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pmullw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mullo_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_mul(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -343,7 +343,7 @@ pub const fn _mm_mullo_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pmuludq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mul_epu32(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let a = a.as_u64x2();
@@ -376,7 +376,7 @@ pub fn _mm_sad_epu8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psubb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_sub_epi8(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_sub(a.as_i8x16(), b.as_i8x16())) }
 }
@@ -388,7 +388,7 @@ pub const fn _mm_sub_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psubw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_sub_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_sub(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -400,7 +400,7 @@ pub const fn _mm_sub_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psubd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_sub_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_sub(a.as_i32x4(), b.as_i32x4())) }
 }
@@ -412,7 +412,7 @@ pub const fn _mm_sub_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psubq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_sub_epi64(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_sub(a.as_i64x2(), b.as_i64x2())) }
 }
@@ -425,7 +425,7 @@ pub const fn _mm_sub_epi64(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psubsb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_subs_epi8(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_saturating_sub(a.as_i8x16(), b.as_i8x16())) }
 }
@@ -438,7 +438,7 @@ pub const fn _mm_subs_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psubsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_subs_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_saturating_sub(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -451,7 +451,7 @@ pub const fn _mm_subs_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psubusb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_subs_epu8(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_saturating_sub(a.as_u8x16(), b.as_u8x16())) }
 }
@@ -464,7 +464,7 @@ pub const fn _mm_subs_epu8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psubusw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_subs_epu16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_saturating_sub(a.as_u16x8(), b.as_u16x8())) }
 }
@@ -475,9 +475,9 @@ pub const fn _mm_subs_epu16(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pslldq, IMM8 = 1))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_slli_si128<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { _mm_slli_si128_impl::<IMM8>(a) }
@@ -487,7 +487,7 @@ pub const fn _mm_slli_si128<const IMM8: i32>(a: __m128i) -> __m128i {
 /// `_mm_slli_si128` intrinsic into a compile-time constant.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 const unsafe fn _mm_slli_si128_impl<const IMM8: i32>(a: __m128i) -> __m128i {
     const fn mask(shift: i32, i: u32) -> u32 {
         let shift = shift as u32 & 0xff;
@@ -523,9 +523,9 @@ const unsafe fn _mm_slli_si128_impl<const IMM8: i32>(a: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pslldq, IMM8 = 1))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_bslli_si128<const IMM8: i32>(a: __m128i) -> __m128i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -539,9 +539,9 @@ pub const fn _mm_bslli_si128<const IMM8: i32>(a: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psrldq, IMM8 = 1))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_bsrli_si128<const IMM8: i32>(a: __m128i) -> __m128i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -555,9 +555,9 @@ pub const fn _mm_bsrli_si128<const IMM8: i32>(a: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psllw, IMM8 = 7))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_slli_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe {
@@ -587,9 +587,9 @@ pub fn _mm_sll_epi16(a: __m128i, count: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pslld, IMM8 = 7))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_slli_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe {
@@ -619,9 +619,9 @@ pub fn _mm_sll_epi32(a: __m128i, count: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psllq, IMM8 = 7))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_slli_epi64<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe {
@@ -652,9 +652,9 @@ pub fn _mm_sll_epi64(a: __m128i, count: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psraw, IMM8 = 1))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_srai_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { transmute(simd_shr(a.as_i16x8(), i16x8::splat(IMM8.min(15) as i16))) }
@@ -679,9 +679,9 @@ pub fn _mm_sra_epi16(a: __m128i, count: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psrad, IMM8 = 1))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_srai_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { transmute(simd_shr(a.as_i32x4(), i32x4::splat(IMM8.min(31)))) }
@@ -705,9 +705,9 @@ pub fn _mm_sra_epi32(a: __m128i, count: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psrldq, IMM8 = 1))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_srli_si128<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { _mm_srli_si128_impl::<IMM8>(a) }
@@ -717,7 +717,7 @@ pub const fn _mm_srli_si128<const IMM8: i32>(a: __m128i) -> __m128i {
 /// `_mm_srli_si128` intrinsic into a compile-time constant.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 const unsafe fn _mm_srli_si128_impl<const IMM8: i32>(a: __m128i) -> __m128i {
     const fn mask(shift: i32, i: u32) -> u32 {
         if (shift as u32) > 15 {
@@ -758,9 +758,9 @@ const unsafe fn _mm_srli_si128_impl<const IMM8: i32>(a: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psrlw, IMM8 = 1))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_srli_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe {
@@ -791,9 +791,9 @@ pub fn _mm_srl_epi16(a: __m128i, count: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psrld, IMM8 = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_srli_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe {
@@ -824,9 +824,9 @@ pub fn _mm_srl_epi32(a: __m128i, count: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psrlq, IMM8 = 1))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_srli_epi64<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe {
@@ -858,7 +858,7 @@ pub fn _mm_srl_epi64(a: __m128i, count: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(andps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_and_si128(a: __m128i, b: __m128i) -> __m128i {
     unsafe { simd_and(a, b) }
 }
@@ -871,7 +871,7 @@ pub const fn _mm_and_si128(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(andnps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_andnot_si128(a: __m128i, b: __m128i) -> __m128i {
     unsafe { simd_and(simd_xor(_mm_set1_epi8(-1), a), b) }
 }
@@ -884,7 +884,7 @@ pub const fn _mm_andnot_si128(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(orps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_or_si128(a: __m128i, b: __m128i) -> __m128i {
     unsafe { simd_or(a, b) }
 }
@@ -897,7 +897,7 @@ pub const fn _mm_or_si128(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(xorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_xor_si128(a: __m128i, b: __m128i) -> __m128i {
     unsafe { simd_xor(a, b) }
 }
@@ -909,7 +909,7 @@ pub const fn _mm_xor_si128(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pcmpeqb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpeq_epi8(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i8x16, _>(simd_eq(a.as_i8x16(), b.as_i8x16())) }
 }
@@ -921,7 +921,7 @@ pub const fn _mm_cmpeq_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pcmpeqw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpeq_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i16x8, _>(simd_eq(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -933,7 +933,7 @@ pub const fn _mm_cmpeq_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pcmpeqd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpeq_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i32x4, _>(simd_eq(a.as_i32x4(), b.as_i32x4())) }
 }
@@ -945,7 +945,7 @@ pub const fn _mm_cmpeq_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pcmpgtb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpgt_epi8(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i8x16, _>(simd_gt(a.as_i8x16(), b.as_i8x16())) }
 }
@@ -957,7 +957,7 @@ pub const fn _mm_cmpgt_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pcmpgtw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpgt_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i16x8, _>(simd_gt(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -969,7 +969,7 @@ pub const fn _mm_cmpgt_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pcmpgtd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpgt_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i32x4, _>(simd_gt(a.as_i32x4(), b.as_i32x4())) }
 }
@@ -981,7 +981,7 @@ pub const fn _mm_cmpgt_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pcmpgtb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmplt_epi8(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i8x16, _>(simd_lt(a.as_i8x16(), b.as_i8x16())) }
 }
@@ -993,7 +993,7 @@ pub const fn _mm_cmplt_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pcmpgtw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmplt_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i16x8, _>(simd_lt(a.as_i16x8(), b.as_i16x8())) }
 }
@@ -1005,7 +1005,7 @@ pub const fn _mm_cmplt_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pcmpgtd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmplt_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i32x4, _>(simd_lt(a.as_i32x4(), b.as_i32x4())) }
 }
@@ -1018,7 +1018,7 @@ pub const fn _mm_cmplt_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtdq2pd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtepi32_pd(a: __m128i) -> __m128d {
     unsafe {
         let a = a.as_i32x4();
@@ -1034,7 +1034,7 @@ pub const fn _mm_cvtepi32_pd(a: __m128i) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtsi2sd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtsi32_sd(a: __m128d, b: i32) -> __m128d {
     unsafe { simd_insert!(a, 0, b as f64) }
 }
@@ -1047,7 +1047,7 @@ pub const fn _mm_cvtsi32_sd(a: __m128d, b: i32) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtdq2ps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtepi32_ps(a: __m128i) -> __m128 {
     unsafe { transmute(simd_cast::<_, f32x4>(a.as_i32x4())) }
 }
@@ -1071,7 +1071,7 @@ pub fn _mm_cvtps_epi32(a: __m128) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtsi32_si128(a: i32) -> __m128i {
     unsafe { transmute(i32x4::new(a, 0, 0, 0)) }
 }
@@ -1082,7 +1082,7 @@ pub const fn _mm_cvtsi32_si128(a: i32) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtsi128_si32(a: __m128i) -> i32 {
     unsafe { simd_extract!(a.as_i32x4(), 0) }
 }
@@ -1095,7 +1095,7 @@ pub const fn _mm_cvtsi128_si32(a: __m128i) -> i32 {
 #[target_feature(enable = "sse2")]
 // no particular instruction to test
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set_epi64x(e1: i64, e0: i64) -> __m128i {
     unsafe { transmute(i64x2::new(e0, e1)) }
 }
@@ -1107,7 +1107,7 @@ pub const fn _mm_set_epi64x(e1: i64, e0: i64) -> __m128i {
 #[target_feature(enable = "sse2")]
 // no particular instruction to test
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set_epi32(e3: i32, e2: i32, e1: i32, e0: i32) -> __m128i {
     unsafe { transmute(i32x4::new(e0, e1, e2, e3)) }
 }
@@ -1119,7 +1119,7 @@ pub const fn _mm_set_epi32(e3: i32, e2: i32, e1: i32, e0: i32) -> __m128i {
 #[target_feature(enable = "sse2")]
 // no particular instruction to test
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set_epi16(
     e7: i16,
     e6: i16,
@@ -1140,7 +1140,7 @@ pub const fn _mm_set_epi16(
 #[target_feature(enable = "sse2")]
 // no particular instruction to test
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set_epi8(
     e15: i8,
     e14: i8,
@@ -1174,7 +1174,7 @@ pub const fn _mm_set_epi8(
 #[target_feature(enable = "sse2")]
 // no particular instruction to test
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set1_epi64x(a: i64) -> __m128i {
     i64x2::splat(a).as_m128i()
 }
@@ -1186,7 +1186,7 @@ pub const fn _mm_set1_epi64x(a: i64) -> __m128i {
 #[target_feature(enable = "sse2")]
 // no particular instruction to test
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set1_epi32(a: i32) -> __m128i {
     i32x4::splat(a).as_m128i()
 }
@@ -1198,7 +1198,7 @@ pub const fn _mm_set1_epi32(a: i32) -> __m128i {
 #[target_feature(enable = "sse2")]
 // no particular instruction to test
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set1_epi16(a: i16) -> __m128i {
     i16x8::splat(a).as_m128i()
 }
@@ -1210,7 +1210,7 @@ pub const fn _mm_set1_epi16(a: i16) -> __m128i {
 #[target_feature(enable = "sse2")]
 // no particular instruction to test
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set1_epi8(a: i8) -> __m128i {
     i8x16::splat(a).as_m128i()
 }
@@ -1222,7 +1222,7 @@ pub const fn _mm_set1_epi8(a: i8) -> __m128i {
 #[target_feature(enable = "sse2")]
 // no particular instruction to test
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_setr_epi32(e3: i32, e2: i32, e1: i32, e0: i32) -> __m128i {
     _mm_set_epi32(e0, e1, e2, e3)
 }
@@ -1234,7 +1234,7 @@ pub const fn _mm_setr_epi32(e3: i32, e2: i32, e1: i32, e0: i32) -> __m128i {
 #[target_feature(enable = "sse2")]
 // no particular instruction to test
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_setr_epi16(
     e7: i16,
     e6: i16,
@@ -1255,7 +1255,7 @@ pub const fn _mm_setr_epi16(
 #[target_feature(enable = "sse2")]
 // no particular instruction to test
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_setr_epi8(
     e15: i8,
     e14: i8,
@@ -1287,7 +1287,7 @@ pub const fn _mm_setr_epi8(
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(xorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_setzero_si128() -> __m128i {
     const { unsafe { mem::zeroed() } }
 }
@@ -1298,7 +1298,7 @@ pub const fn _mm_setzero_si128() -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadl_epi64(mem_addr: *const __m128i) -> __m128i {
     _mm_set_epi64x(0, ptr::read_unaligned(mem_addr as *const i64))
 }
@@ -1315,7 +1315,7 @@ pub const unsafe fn _mm_loadl_epi64(mem_addr: *const __m128i) -> __m128i {
     assert_instr(movaps)
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_load_si128(mem_addr: *const __m128i) -> __m128i {
     *mem_addr
 }
@@ -1329,7 +1329,7 @@ pub const unsafe fn _mm_load_si128(mem_addr: *const __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movups))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadu_si128(mem_addr: *const __m128i) -> __m128i {
     let mut dst: __m128i = _mm_undefined_si128();
     ptr::copy_nonoverlapping(
@@ -1379,7 +1379,7 @@ pub unsafe fn _mm_maskmoveu_si128(a: __m128i, mask: __m128i, mem_addr: *mut i8) 
     assert_instr(movaps)
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_store_si128(mem_addr: *mut __m128i, a: __m128i) {
     *mem_addr = a;
 }
@@ -1393,7 +1393,7 @@ pub const unsafe fn _mm_store_si128(mem_addr: *mut __m128i, a: __m128i) {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movups))] // FIXME movdqu expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storeu_si128(mem_addr: *mut __m128i, a: __m128i) {
     mem_addr.write_unaligned(a);
 }
@@ -1406,7 +1406,7 @@ pub const unsafe fn _mm_storeu_si128(mem_addr: *mut __m128i, a: __m128i) {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storel_epi64(mem_addr: *mut __m128i, a: __m128i) {
     ptr::copy_nonoverlapping(ptr::addr_of!(a) as *const u8, mem_addr as *mut u8, 8);
 }
@@ -1476,7 +1476,7 @@ pub unsafe fn _mm_stream_si32(mem_addr: *mut i32, a: i32) {
 // FIXME movd on msvc, movd on i686
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_move_epi64(a: __m128i) -> __m128i {
     unsafe {
         let r: i64x2 = simd_shuffle!(a.as_i64x2(), i64x2::ZERO, [0, 2]);
@@ -1492,7 +1492,7 @@ pub const fn _mm_move_epi64(a: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(packsswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_packs_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let max = simd_splat(i8::MAX as i16);
@@ -1522,7 +1522,7 @@ pub const fn _mm_packs_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(packssdw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_packs_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let max = simd_splat(i16::MAX as i32);
@@ -1548,7 +1548,7 @@ pub const fn _mm_packs_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(packuswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_packus_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let max = simd_splat(u8::MAX as i16);
@@ -1578,9 +1578,9 @@ pub const fn _mm_packus_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pextrw, IMM8 = 7))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_extract_epi16<const IMM8: i32>(a: __m128i) -> i32 {
     static_assert_uimm_bits!(IMM8, 3);
     unsafe { simd_extract!(a.as_u16x8(), IMM8 as u32, u16) as i32 }
@@ -1592,9 +1592,9 @@ pub const fn _mm_extract_epi16<const IMM8: i32>(a: __m128i) -> i32 {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pinsrw, IMM8 = 7))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_insert_epi16<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
     static_assert_uimm_bits!(IMM8, 3);
     unsafe { transmute(simd_insert!(a.as_i16x8(), IMM8 as u32, i as i16)) }
@@ -1607,7 +1607,7 @@ pub const fn _mm_insert_epi16<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pmovmskb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_movemask_epi8(a: __m128i) -> i32 {
     unsafe {
         let z = i8x16::ZERO;
@@ -1622,9 +1622,9 @@ pub const fn _mm_movemask_epi8(a: __m128i) -> i32 {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pshufd, IMM8 = 9))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_shuffle_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe {
@@ -1653,9 +1653,9 @@ pub const fn _mm_shuffle_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pshufhw, IMM8 = 9))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_shufflehi_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe {
@@ -1688,9 +1688,9 @@ pub const fn _mm_shufflehi_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pshuflw, IMM8 = 9))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_shufflelo_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe {
@@ -1720,7 +1720,7 @@ pub const fn _mm_shufflelo_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(punpckhbw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_unpackhi_epi8(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         transmute::<i8x16, _>(simd_shuffle!(
@@ -1738,7 +1738,7 @@ pub const fn _mm_unpackhi_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(punpckhwd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_unpackhi_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let x = simd_shuffle!(a.as_i16x8(), b.as_i16x8(), [4, 12, 5, 13, 6, 14, 7, 15]);
@@ -1753,7 +1753,7 @@ pub const fn _mm_unpackhi_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(unpckhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_unpackhi_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i32x4, _>(simd_shuffle!(a.as_i32x4(), b.as_i32x4(), [2, 6, 3, 7])) }
 }
@@ -1765,7 +1765,7 @@ pub const fn _mm_unpackhi_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(unpckhpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_unpackhi_epi64(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i64x2, _>(simd_shuffle!(a.as_i64x2(), b.as_i64x2(), [1, 3])) }
 }
@@ -1777,7 +1777,7 @@ pub const fn _mm_unpackhi_epi64(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(punpcklbw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_unpacklo_epi8(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         transmute::<i8x16, _>(simd_shuffle!(
@@ -1795,7 +1795,7 @@ pub const fn _mm_unpacklo_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(punpcklwd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_unpacklo_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         let x = simd_shuffle!(a.as_i16x8(), b.as_i16x8(), [0, 8, 1, 9, 2, 10, 3, 11]);
@@ -1810,7 +1810,7 @@ pub const fn _mm_unpacklo_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(unpcklps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_unpacklo_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i32x4, _>(simd_shuffle!(a.as_i32x4(), b.as_i32x4(), [0, 4, 1, 5])) }
 }
@@ -1822,7 +1822,7 @@ pub const fn _mm_unpacklo_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movlhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_unpacklo_epi64(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i64x2, _>(simd_shuffle!(a.as_i64x2(), b.as_i64x2(), [0, 2])) }
 }
@@ -1835,7 +1835,7 @@ pub const fn _mm_unpacklo_epi64(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(addsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_add_sd(a: __m128d, b: __m128d) -> __m128d {
     unsafe { simd_insert!(a, 0, _mm_cvtsd_f64(a) + _mm_cvtsd_f64(b)) }
 }
@@ -1848,7 +1848,7 @@ pub const fn _mm_add_sd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(addpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_add_pd(a: __m128d, b: __m128d) -> __m128d {
     unsafe { simd_add(a, b) }
 }
@@ -1861,7 +1861,7 @@ pub const fn _mm_add_pd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(divsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_div_sd(a: __m128d, b: __m128d) -> __m128d {
     unsafe { simd_insert!(a, 0, _mm_cvtsd_f64(a) / _mm_cvtsd_f64(b)) }
 }
@@ -1874,7 +1874,7 @@ pub const fn _mm_div_sd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(divpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_div_pd(a: __m128d, b: __m128d) -> __m128d {
     unsafe { simd_div(a, b) }
 }
@@ -1935,7 +1935,7 @@ pub fn _mm_min_pd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(mulsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mul_sd(a: __m128d, b: __m128d) -> __m128d {
     unsafe { simd_insert!(a, 0, _mm_cvtsd_f64(a) * _mm_cvtsd_f64(b)) }
 }
@@ -1948,7 +1948,7 @@ pub const fn _mm_mul_sd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(mulpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mul_pd(a: __m128d, b: __m128d) -> __m128d {
     unsafe { simd_mul(a, b) }
 }
@@ -1984,7 +1984,7 @@ pub fn _mm_sqrt_pd(a: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(subsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_sub_sd(a: __m128d, b: __m128d) -> __m128d {
     unsafe { simd_insert!(a, 0, _mm_cvtsd_f64(a) - _mm_cvtsd_f64(b)) }
 }
@@ -1997,7 +1997,7 @@ pub const fn _mm_sub_sd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(subpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_sub_pd(a: __m128d, b: __m128d) -> __m128d {
     unsafe { simd_sub(a, b) }
 }
@@ -2010,7 +2010,7 @@ pub const fn _mm_sub_pd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(andps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_and_pd(a: __m128d, b: __m128d) -> __m128d {
     unsafe {
         let a: __m128i = transmute(a);
@@ -2026,7 +2026,7 @@ pub const fn _mm_and_pd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(andnps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_andnot_pd(a: __m128d, b: __m128d) -> __m128d {
     unsafe {
         let a: __m128i = transmute(a);
@@ -2042,7 +2042,7 @@ pub const fn _mm_andnot_pd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(orps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_or_pd(a: __m128d, b: __m128d) -> __m128d {
     unsafe {
         let a: __m128i = transmute(a);
@@ -2058,7 +2058,7 @@ pub const fn _mm_or_pd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(xorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_xor_pd(a: __m128d, b: __m128d) -> __m128d {
     unsafe {
         let a: __m128i = transmute(a);
@@ -2487,7 +2487,7 @@ pub fn _mm_ucomineq_sd(a: __m128d, b: __m128d) -> i32 {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtpd2ps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtpd_ps(a: __m128d) -> __m128 {
     unsafe {
         let r = simd_cast::<_, f32x2>(a.as_f64x2());
@@ -2505,7 +2505,7 @@ pub const fn _mm_cvtpd_ps(a: __m128d) -> __m128 {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtps2pd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtps_pd(a: __m128) -> __m128d {
     unsafe {
         let a = a.as_f32x4();
@@ -2557,7 +2557,7 @@ pub fn _mm_cvtsd_ss(a: __m128, b: __m128d) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtsd_f64(a: __m128d) -> f64 {
     unsafe { simd_extract!(a, 0) }
 }
@@ -2572,7 +2572,7 @@ pub const fn _mm_cvtsd_f64(a: __m128d) -> f64 {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtss2sd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtss_sd(a: __m128d, b: __m128) -> __m128d {
     unsafe {
         let elt: f32 = simd_extract!(b, 0);
@@ -2623,7 +2623,7 @@ pub fn _mm_cvttps_epi32(a: __m128) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set_sd(a: f64) -> __m128d {
     _mm_set_pd(0.0, a)
 }
@@ -2635,7 +2635,7 @@ pub const fn _mm_set_sd(a: f64) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set1_pd(a: f64) -> __m128d {
     _mm_set_pd(a, a)
 }
@@ -2647,7 +2647,7 @@ pub const fn _mm_set1_pd(a: f64) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set_pd1(a: f64) -> __m128d {
     _mm_set_pd(a, a)
 }
@@ -2659,7 +2659,7 @@ pub const fn _mm_set_pd1(a: f64) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set_pd(a: f64, b: f64) -> __m128d {
     __m128d([b, a])
 }
@@ -2671,7 +2671,7 @@ pub const fn _mm_set_pd(a: f64, b: f64) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_setr_pd(a: f64, b: f64) -> __m128d {
     _mm_set_pd(b, a)
 }
@@ -2684,7 +2684,7 @@ pub const fn _mm_setr_pd(a: f64, b: f64) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(xorp))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_setzero_pd() -> __m128d {
     const { unsafe { mem::zeroed() } }
 }
@@ -2699,7 +2699,7 @@ pub const fn _mm_setzero_pd() -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movmskpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_movemask_pd(a: __m128d) -> i32 {
     // Propagate the highest bit to the rest, because simd_bitmask
     // requires all-1 or all-0.
@@ -2723,7 +2723,7 @@ pub const fn _mm_movemask_pd(a: __m128d) -> i32 {
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_load_pd(mem_addr: *const f64) -> __m128d {
     *(mem_addr as *const __m128d)
 }
@@ -2736,7 +2736,7 @@ pub const unsafe fn _mm_load_pd(mem_addr: *const f64) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_load_sd(mem_addr: *const f64) -> __m128d {
     _mm_setr_pd(*mem_addr, 0.)
 }
@@ -2750,7 +2750,7 @@ pub const unsafe fn _mm_load_sd(mem_addr: *const f64) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadh_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
     _mm_setr_pd(simd_extract!(a, 0), *mem_addr)
 }
@@ -2764,7 +2764,7 @@ pub const unsafe fn _mm_loadh_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movlps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadl_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
     _mm_setr_pd(*mem_addr, simd_extract!(a, 1))
 }
@@ -2807,7 +2807,7 @@ pub unsafe fn _mm_stream_pd(mem_addr: *mut f64, a: __m128d) {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movlps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_store_sd(mem_addr: *mut f64, a: __m128d) {
     *mem_addr = simd_extract!(a, 0)
 }
@@ -2825,7 +2825,7 @@ pub const unsafe fn _mm_store_sd(mem_addr: *mut f64, a: __m128d) {
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_store_pd(mem_addr: *mut f64, a: __m128d) {
     *(mem_addr as *mut __m128d) = a;
 }
@@ -2839,7 +2839,7 @@ pub const unsafe fn _mm_store_pd(mem_addr: *mut f64, a: __m128d) {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movups))] // FIXME movupd expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storeu_pd(mem_addr: *mut f64, a: __m128d) {
     mem_addr.cast::<__m128d>().write_unaligned(a);
 }
@@ -2852,7 +2852,7 @@ pub const unsafe fn _mm_storeu_pd(mem_addr: *mut f64, a: __m128d) {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86_updates", since = "1.82.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storeu_si16(mem_addr: *mut u8, a: __m128i) {
     ptr::write_unaligned(mem_addr as *mut i16, simd_extract(a.as_i16x8(), 0))
 }
@@ -2865,7 +2865,7 @@ pub const unsafe fn _mm_storeu_si16(mem_addr: *mut u8, a: __m128i) {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86_updates", since = "1.82.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storeu_si32(mem_addr: *mut u8, a: __m128i) {
     ptr::write_unaligned(mem_addr as *mut i32, simd_extract(a.as_i32x4(), 0))
 }
@@ -2878,7 +2878,7 @@ pub const unsafe fn _mm_storeu_si32(mem_addr: *mut u8, a: __m128i) {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86_updates", since = "1.82.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storeu_si64(mem_addr: *mut u8, a: __m128i) {
     ptr::write_unaligned(mem_addr as *mut i64, simd_extract(a.as_i64x2(), 0))
 }
@@ -2892,7 +2892,7 @@ pub const unsafe fn _mm_storeu_si64(mem_addr: *mut u8, a: __m128i) {
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_store1_pd(mem_addr: *mut f64, a: __m128d) {
     let b: __m128d = simd_shuffle!(a, a, [0, 0]);
     *(mem_addr as *mut __m128d) = b;
@@ -2907,7 +2907,7 @@ pub const unsafe fn _mm_store1_pd(mem_addr: *mut f64, a: __m128d) {
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_store_pd1(mem_addr: *mut f64, a: __m128d) {
     let b: __m128d = simd_shuffle!(a, a, [0, 0]);
     *(mem_addr as *mut __m128d) = b;
@@ -2923,7 +2923,7 @@ pub const unsafe fn _mm_store_pd1(mem_addr: *mut f64, a: __m128d) {
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storer_pd(mem_addr: *mut f64, a: __m128d) {
     let b: __m128d = simd_shuffle!(a, a, [1, 0]);
     *(mem_addr as *mut __m128d) = b;
@@ -2937,7 +2937,7 @@ pub const unsafe fn _mm_storer_pd(mem_addr: *mut f64, a: __m128d) {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storeh_pd(mem_addr: *mut f64, a: __m128d) {
     *mem_addr = simd_extract!(a, 1);
 }
@@ -2950,7 +2950,7 @@ pub const unsafe fn _mm_storeh_pd(mem_addr: *mut f64, a: __m128d) {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movlps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storel_pd(mem_addr: *mut f64, a: __m128d) {
     *mem_addr = simd_extract!(a, 0);
 }
@@ -2963,7 +2963,7 @@ pub const unsafe fn _mm_storel_pd(mem_addr: *mut f64, a: __m128d) {
 #[target_feature(enable = "sse2")]
 // #[cfg_attr(test, assert_instr(movapd))] // FIXME LLVM uses different codegen
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_load1_pd(mem_addr: *const f64) -> __m128d {
     let d = *mem_addr;
     _mm_setr_pd(d, d)
@@ -2977,7 +2977,7 @@ pub const unsafe fn _mm_load1_pd(mem_addr: *const f64) -> __m128d {
 #[target_feature(enable = "sse2")]
 // #[cfg_attr(test, assert_instr(movapd))] // FIXME same as _mm_load1_pd
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_load_pd1(mem_addr: *const f64) -> __m128d {
     _mm_load1_pd(mem_addr)
 }
@@ -2994,7 +2994,7 @@ pub const unsafe fn _mm_load_pd1(mem_addr: *const f64) -> __m128d {
     assert_instr(movaps)
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadr_pd(mem_addr: *const f64) -> __m128d {
     let a = _mm_load_pd(mem_addr);
     simd_shuffle!(a, a, [1, 0])
@@ -3009,7 +3009,7 @@ pub const unsafe fn _mm_loadr_pd(mem_addr: *const f64) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movups))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadu_pd(mem_addr: *const f64) -> __m128d {
     let mut dst = _mm_undefined_pd();
     ptr::copy_nonoverlapping(
@@ -3028,7 +3028,7 @@ pub const unsafe fn _mm_loadu_pd(mem_addr: *const f64) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86_updates", since = "1.82.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadu_si16(mem_addr: *const u8) -> __m128i {
     transmute(i16x8::new(
         ptr::read_unaligned(mem_addr as *const i16),
@@ -3050,7 +3050,7 @@ pub const unsafe fn _mm_loadu_si16(mem_addr: *const u8) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86_updates", since = "1.82.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadu_si32(mem_addr: *const u8) -> __m128i {
     transmute(i32x4::new(
         ptr::read_unaligned(mem_addr as *const i32),
@@ -3068,7 +3068,7 @@ pub const unsafe fn _mm_loadu_si32(mem_addr: *const u8) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86_mm_loadu_si64", since = "1.46.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadu_si64(mem_addr: *const u8) -> __m128i {
     transmute(i64x2::new(ptr::read_unaligned(mem_addr as *const i64), 0))
 }
@@ -3081,9 +3081,9 @@ pub const unsafe fn _mm_loadu_si64(mem_addr: *const u8) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(shufps, MASK = 2))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_shuffle_pd<const MASK: i32>(a: __m128d, b: __m128d) -> __m128d {
     static_assert_uimm_bits!(MASK, 8);
     unsafe { simd_shuffle!(a, b, [MASK as u32 & 0b1, ((MASK as u32 >> 1) & 0b1) + 2]) }
@@ -3098,7 +3098,7 @@ pub const fn _mm_shuffle_pd<const MASK: i32>(a: __m128d, b: __m128d) -> __m128d 
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_move_sd(a: __m128d, b: __m128d) -> __m128d {
     unsafe { _mm_setr_pd(simd_extract!(b, 0), simd_extract!(a, 1)) }
 }
@@ -3110,7 +3110,7 @@ pub const fn _mm_move_sd(a: __m128d, b: __m128d) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_castpd_ps(a: __m128d) -> __m128 {
     unsafe { transmute(a) }
 }
@@ -3122,7 +3122,7 @@ pub const fn _mm_castpd_ps(a: __m128d) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_castpd_si128(a: __m128d) -> __m128i {
     unsafe { transmute(a) }
 }
@@ -3134,7 +3134,7 @@ pub const fn _mm_castpd_si128(a: __m128d) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_castps_pd(a: __m128) -> __m128d {
     unsafe { transmute(a) }
 }
@@ -3146,7 +3146,7 @@ pub const fn _mm_castps_pd(a: __m128) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_castps_si128(a: __m128) -> __m128i {
     unsafe { transmute(a) }
 }
@@ -3158,7 +3158,7 @@ pub const fn _mm_castps_si128(a: __m128) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_castsi128_pd(a: __m128i) -> __m128d {
     unsafe { transmute(a) }
 }
@@ -3170,7 +3170,7 @@ pub const fn _mm_castsi128_pd(a: __m128i) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_castsi128_ps(a: __m128i) -> __m128 {
     unsafe { transmute(a) }
 }
@@ -3184,7 +3184,7 @@ pub const fn _mm_castsi128_ps(a: __m128i) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_undefined_pd() -> __m128d {
     const { unsafe { mem::zeroed() } }
 }
@@ -3198,7 +3198,7 @@ pub const fn _mm_undefined_pd() -> __m128d {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_undefined_si128() -> __m128i {
     const { unsafe { mem::zeroed() } }
 }
@@ -3214,7 +3214,7 @@ pub const fn _mm_undefined_si128() -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(unpckhpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_unpackhi_pd(a: __m128d, b: __m128d) -> __m128d {
     unsafe { simd_shuffle!(a, b, [1, 3]) }
 }
@@ -3230,7 +3230,7 @@ pub const fn _mm_unpackhi_pd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movlhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_unpacklo_pd(a: __m128d, b: __m128d) -> __m128d {
     unsafe { simd_shuffle!(a, b, [0, 2]) }
 }

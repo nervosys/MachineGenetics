@@ -58,7 +58,7 @@ fn generic_func<Tfunc: std::fmt::Debug>(x: Tfunc) {
 
     _zzz(); // #break
 
-    // rustc really wants to inline this closure, so we use black_box instead of calling it
+    // redox really wants to inline this closure, so we use black_box instead of calling it
     std::hint::black_box(generic_closure);
 }
 

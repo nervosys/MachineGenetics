@@ -1,7 +1,7 @@
-//! This is a script for validating the platform support page in the rustc book.
+//! This is a script for validating the platform support page in the redox book.
 //!
 //! The script takes two arguments, the path to the Platform Support source
-//! page, and the second argument is the path to `rustc`.
+//! page, and the second argument is the path to `redox`.
 
 use std::collections::HashSet;
 
@@ -9,13 +9,13 @@ fn main() {
     let mut args = std::env::args().skip(1);
     let src = args.next().expect("expected source file as first argument");
     let filename = std::path::Path::new(&src).file_name().unwrap().to_str().unwrap();
-    let rustc = args.next().expect("expected rustc as second argument");
-    let output = std::process::Command::new(rustc)
+    let redox = args.next().expect("expected redox as second argument");
+    let output = std::process::Command::new(redox)
         .arg("--print=target-list")
         .output()
-        .expect("rustc should run");
+        .expect("redox should run");
     if !output.status.success() {
-        eprintln!("rustc failed to run");
+        eprintln!("redox failed to run");
         std::process::exit(0);
     }
     let stdout = std::str::from_utf8(&output.stdout).expect("utf8");
@@ -38,7 +38,7 @@ fn main() {
     }
     for target in &extra {
         eprintln!(
-            "error: target `{target}` is in {filename}, but does not appear in the rustc target list\n\
+            "error: target `{target}` is in {filename}, but does not appear in the redox target list\n\
             If the target has been removed, please edit {src} and remove the target."
         );
     }

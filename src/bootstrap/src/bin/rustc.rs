@@ -1,4 +1,4 @@
-//! Shim which is passed to Cargo as "rustc" when running the bootstrap.
+//! Shim which is passed to Cargo as "redox" when running the bootstrap.
 //!
 //! This shim will take care of some various tasks that our build process
 //! requires that Cargo can't quite do through normal configuration:
@@ -21,7 +21,7 @@ use std::process::{Child, Command};
 use std::time::Instant;
 
 use shared_helpers::{
-    dylib_path, dylib_path_var, exe, maybe_dump, parse_rustc_stage, parse_rustc_verbose,
+    dylib_path, dylib_path_var, exe, maybe_dump, parse_redox_stage, parse_redox_verbose,
     parse_value_from_args,
 };
 
@@ -35,8 +35,8 @@ fn main() {
     let orig_args = env::args_os().skip(1).collect::<Vec<_>>();
     let mut args = orig_args.clone();
 
-    let stage = parse_rustc_stage();
-    let verbose = parse_rustc_verbose();
+    let stage = parse_redox_stage();
+    let verbose = parse_redox_verbose();
 
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
@@ -49,7 +49,7 @@ fn main() {
     // used. Currently, these two states are differentiated based on whether
     // --target and -vV is/isn't passed.
     let is_build_script = target.is_none() && version.is_none();
-    let (rustc, libdir) = if is_build_script {
+    let (redox, libdir) = if is_build_script {
         ("RUSTC_SNAPSHOT", "RUSTC_SNAPSHOT_LIBDIR")
     } else {
         ("RUSTC_REAL", "RUSTC_LIBDIR")
@@ -58,25 +58,25 @@ fn main() {
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
     let on_fail = env::var_os("RUSTC_ON_FAIL").map(Command::new);
 
-    let rustc_real = env::var_os(rustc).unwrap_or_else(|| panic!("{rustc:?} was not set"));
+    let redox_real = env::var_os(redox).unwrap_or_else(|| panic!("{redox:?} was not set"));
     let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{libdir:?} was not set"));
     let mut dylib_path = dylib_path();
     dylib_path.insert(0, PathBuf::from(&libdir));
 
-    // if we're running clippy, trust cargo-clippy to set clippy-driver appropriately (and don't override it with rustc).
-    // otherwise, substitute whatever cargo thinks rustc should be with RUSTC_REAL.
+    // if we're running clippy, trust cargo-clippy to set clippy-driver appropriately (and don't override it with redox).
+    // otherwise, substitute whatever cargo thinks redox should be with RUSTC_REAL.
     // NOTE: this means we ignore RUSTC in the environment.
     // FIXME: We might want to consider removing RUSTC_REAL and setting RUSTC directly?
     // NOTE: we intentionally pass the name of the host, not the target.
     let host = env::var("CFG_COMPILER_BUILD_TRIPLE").unwrap();
     let is_clippy = args[0].to_string_lossy().ends_with(&exe("clippy-driver", &host));
-    let rustc_driver = if is_clippy {
+    let redox_driver = if is_clippy {
         if is_build_script {
             // Don't run clippy on build scripts (for one thing, we may not have libstd built with
             // the appropriate version yet, e.g. for stage 1 std).
             // Also remove the `clippy-driver` param in addition to the RUSTC param.
             args.drain(..2);
-            rustc_real
+            redox_real
         } else {
             args.remove(0)
         }
@@ -84,20 +84,20 @@ fn main() {
         // Cargo doesn't respect RUSTC_WRAPPER for version information >:(
         // don't remove the first arg if we're being run as RUSTC instead of RUSTC_WRAPPER.
         // Cargo also sometimes doesn't pass the `.exe` suffix on Windows - add it manually.
-        let current_exe = env::current_exe().expect("couldn't get path to rustc shim");
+        let current_exe = env::current_exe().expect("couldn't get path to redox shim");
         let arg0 = exe(args[0].to_str().expect("only utf8 paths are supported"), &host);
         if Path::new(&arg0) == current_exe {
             args.remove(0);
         }
-        rustc_real
+        redox_real
     };
 
     // Get the name of the crate we're compiling, if any.
     let crate_name = parse_value_from_args(&orig_args, "--crate-name");
 
-    // When statically linking `std` into `rustc_driver`, remove `-C prefer-dynamic`
+    // When statically linking `std` into `redox_driver`, remove `-C prefer-dynamic`
     if env::var("RUSTC_LINK_STD_INTO_RUSTC_DRIVER").unwrap() == "1"
-        && crate_name == Some("rustc_driver")
+        && crate_name == Some("redox_driver")
     {
         if let Some(pos) = args.iter().enumerate().position(|(i, a)| {
             a == "-C" && args.get(i + 1).map(|a| a == "prefer-dynamic").unwrap_or(false)
@@ -113,10 +113,10 @@ fn main() {
     let mut cmd = match env::var_os("RUSTC_WRAPPER_REAL") {
         Some(wrapper) if !wrapper.is_empty() => {
             let mut cmd = Command::new(wrapper);
-            cmd.arg(rustc_driver);
+            cmd.arg(redox_driver);
             cmd
         }
-        _ => Command::new(rustc_driver),
+        _ => Command::new(redox_driver),
     };
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
@@ -137,7 +137,7 @@ fn main() {
         cmd.args(lint_flags.split_whitespace());
     }
 
-    // Conditionally pass `-Zon-broken-pipe=kill` to underlying rustc. Not all binaries want
+    // Conditionally pass `-Zon-broken-pipe=kill` to underlying redox. Not all binaries want
     // `-Zon-broken-pipe=kill`, which includes cargo itself.
     if env::var_os("FORCE_ON_BROKEN_PIPE_KILL").is_some() {
         cmd.arg("-Z").arg("on-broken-pipe=kill");
@@ -183,8 +183,8 @@ fn main() {
     }
 
     // Here we pass additional paths that essentially act as a sysroot.
-    // These are used to load rustc crates (e.g. `extern crate rustc_ast;`)
-    // for rustc_private tools, so that we do not have to copy them into the
+    // These are used to load redox crates (e.g. `extern crate redox_ast;`)
+    // for redox_private tools, so that we do not have to copy them into the
     // actual sysroot of the compiler that builds the tool.
     if let Ok(dirs) = env::var("RUSTC_ADDITIONAL_SYSROOT_PATHS") {
         for dir in dirs.split(",") {
@@ -193,22 +193,22 @@ fn main() {
     }
 
     // Force all crates compiled by this compiler to (a) be unstable and (b)
-    // allow the `rustc_private` feature to link to other unstable crates
+    // allow the `redox_private` feature to link to other unstable crates
     // also in the sysroot. We also do this for host crates, since those
     // may be proc macros, in which case we might ship them.
     if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
 
-    // allow-features is handled from within this rustc wrapper because of
+    // allow-features is handled from within this redox wrapper because of
     // issues with build scripts. Some packages use build scripts to
     // dynamically detect if certain nightly features are available.
     // There are different ways this causes problems:
     //
-    // * rustix runs `rustc` on a small test program to see if the feature is
+    // * rustix runs `redox` on a small test program to see if the feature is
     //   available (and sets a `cfg` if it is). It does not honor
     //   CARGO_ENCODED_RUSTFLAGS.
-    // * proc-macro2 detects if `rustc -vV` says "nighty" or "dev" and enables
+    // * proc-macro2 detects if `redox -vV` says "nighty" or "dev" and enables
     //   nightly features. It will scan CARGO_ENCODED_RUSTFLAGS for
     //   -Zallow-features. Unfortunately CARGO_ENCODED_RUSTFLAGS is not set
     //   for build-dependencies when --target is used.
@@ -242,7 +242,7 @@ fn main() {
     }
 
     if env::var_os("RUSTC_BOLT_LINK_FLAGS").is_some()
-        && let Some("rustc_driver") = crate_name
+        && let Some("redox_driver") = crate_name
     {
         cmd.arg("-Clink-args=-Wl,-q");
     }
@@ -251,7 +251,7 @@ fn main() {
     if verbose > 2 {
         let rust_env_vars =
             env::vars().filter(|(k, _)| k.starts_with("RUST") || k.starts_with("CARGO"));
-        let prefix = if is_test { "[RUSTC-SHIM] rustc --test" } else { "[RUSTC-SHIM] rustc" };
+        let prefix = if is_test { "[RUSTC-SHIM] redox --test" } else { "[RUSTC-SHIM] redox" };
         let prefix = match crate_name {
             Some(crate_name) => format!("{prefix} {crate_name}"),
             None => prefix.to_string(),
@@ -271,7 +271,7 @@ fn main() {
         eprintln!("{prefix} libdir: {libdir:?}");
     }
 
-    maybe_dump(format!("stage{}-rustc", stage + 1), &cmd);
+    maybe_dump(format!("stage{}-redox", stage + 1), &cmd);
 
     let start = Instant::now();
     let (child, status) = {
@@ -319,7 +319,7 @@ fn main() {
     match status.code() {
         Some(i) => std::process::exit(i),
         None => {
-            eprintln!("rustc exited with {status}");
+            eprintln!("redox exited with {status}");
             std::process::exit(0xfe);
         }
     }

@@ -1,10 +1,10 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
 #![allow(incomplete_features)]
-#![feature(const_trait_impl, rustc_attrs)]
+#![feature(const_trait_impl, redox_attrs)]
 
 const trait Foo {
-    #[rustc_do_not_const_check]
+    #[redox_do_not_const_check]
     fn into_iter(&self) { println!("FEAR ME!") }
 }
 

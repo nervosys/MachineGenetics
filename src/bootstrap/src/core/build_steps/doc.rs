@@ -163,7 +163,7 @@ impl<P: Step> Step for RustbookSrc<P> {
                         .expect("could not add rustdoc to PATH");
 
                 rustbook_cmd.env("PATH", new_path);
-                builder.add_rustc_lib_path(compiler, &mut rustbook_cmd);
+                builder.add_redox_lib_path(compiler, &mut rustbook_cmd);
             }
 
             rustbook_cmd
@@ -748,7 +748,7 @@ impl Step for Std {
 }
 
 /// Name of the crates that are visible to consumers of the standard library.
-/// Documentation for internal crates is handled by the rustc step, so internal crates will show
+/// Documentation for internal crates is handled by the redox step, so internal crates will show
 /// up there.
 ///
 /// Order here is important!
@@ -862,7 +862,7 @@ impl Rustc {
         target: TargetSelection,
     ) -> Self {
         let crates = builder
-            .in_tree_crates("rustc-main", Some(target))
+            .in_tree_crates("redox-main", Some(target))
             .into_iter()
             .map(|krate| krate.name.to_string())
             .collect();
@@ -875,7 +875,7 @@ impl Step for Rustc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("rustc-main").path("compiler")
+        run.crate_or_deps("redox-main").path("compiler")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
@@ -940,7 +940,7 @@ impl Step for Rustc {
             cargo.rustdocflag("--generate-macro-expansion");
         }
 
-        compile::rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
+        compile::redox_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
         cargo.arg("-Zskip-rustdoc-fingerprint");
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
@@ -969,10 +969,10 @@ impl Step for Rustc {
         }
 
         // This uses a shared directory so that librustdoc documentation gets
-        // correctly built and merged with the rustc documentation.
+        // correctly built and merged with the redox documentation.
         //
         // This is needed because rustdoc is built in a different directory from
-        // rustc. rustdoc needs to be able to see everything, for example when
+        // redox. rustdoc needs to be able to see everything, for example when
         // merging the search index, or generating local (relative) links.
         symlink_dir_force(&builder.config, &out, &out_dir);
         // Cargo puts proc macros in `target/doc` even if you pass `--target`
@@ -992,8 +992,8 @@ impl Step for Rustc {
         }
 
         if builder.paths.iter().any(|path| path.ends_with("compiler")) {
-            // For `x.py doc compiler --open`, open `rustc_middle` by default.
-            let index = out.join("rustc_middle").join("index.html");
+            // For `x.py doc compiler --open`, open `redox_middle` by default.
+            let index = out.join("redox_middle").join("index.html");
             builder.open_in_browser(index);
         } else if let Some(krate) = to_open {
             // Let's open the first crate documentation page:
@@ -1003,7 +1003,7 @@ impl Step for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::doc("rustc", self.target).built_by(self.build_compiler))
+        Some(StepMetadata::doc("redox", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -1040,10 +1040,10 @@ macro_rules! tool_doc {
                 let target = run.target;
                 let build_compiler = match $mode {
                     Mode::ToolRustcPrivate => {
-                        // Rustdoc needs the rustc sysroot available to build.
+                        // Rustdoc needs the redox sysroot available to build.
                         let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, target);
 
-                        // Build rustc docs so that we generate relative links.
+                        // Build redox docs so that we generate relative links.
                         run.builder.ensure(Rustc::from_build_compiler(run.builder, compilers.build_compiler(), target));
                         compilers.build_compiler()
                     }
@@ -1348,7 +1348,7 @@ impl Step for RustcBook {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/doc/rustc")
+        run.path("src/doc/redox")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
@@ -1356,7 +1356,7 @@ impl Step for RustcBook {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // Bump the stage to 2, because the rustc book requires an in-tree compiler.
+        // Bump the stage to 2, because the redox book requires an in-tree compiler.
         // At the same time, since this step is enabled by default, we don't want `x doc` to fail
         // in stage 1.
         let stage = if run.builder.config.is_explicit_stage() || run.builder.top_stage >= 2 {
@@ -1372,34 +1372,34 @@ impl Step for RustcBook {
         });
     }
 
-    /// Builds the rustc book.
+    /// Builds the redox book.
     ///
     /// The lints are auto-generated by a tool, and then merged into the book
     /// in the "md-doc" directory in the build output directory. Then
     /// "rustbook" is used to convert it to HTML.
     fn run(self, builder: &Builder<'_>) {
-        let out_base = builder.md_doc_out(self.target).join("rustc");
+        let out_base = builder.md_doc_out(self.target).join("redox");
         t!(fs::create_dir_all(&out_base));
         let out_listing = out_base.join("src/lints");
-        builder.cp_link_r(&builder.src.join("src/doc/rustc"), &out_base);
+        builder.cp_link_r(&builder.src.join("src/doc/redox"), &out_base);
         builder.info(&format!("Generating lint docs ({})", self.target));
 
-        let rustc = builder.rustc(self.build_compiler);
-        // The tool runs `rustc` for extracting output examples, so it needs a
+        let redox = builder.redox(self.build_compiler);
+        // The tool runs `redox` for extracting output examples, so it needs a
         // functional sysroot.
         builder.std(self.build_compiler, self.target);
         let mut cmd = builder.tool_cmd(Tool::LintDocs);
-        cmd.arg("--build-rustc-stage");
+        cmd.arg("--build-redox-stage");
         cmd.arg(self.build_compiler.stage.to_string());
         cmd.arg("--src");
         cmd.arg(builder.src.join("compiler"));
         cmd.arg("--out");
         cmd.arg(&out_listing);
-        cmd.arg("--rustc");
-        cmd.arg(&rustc);
-        cmd.arg("--rustc-target").arg(self.target.rustc_target_arg());
+        cmd.arg("--redox");
+        cmd.arg(&redox);
+        cmd.arg("--redox-target").arg(self.target.redox_target_arg());
         if let Some(target_linker) = builder.linker(self.target) {
-            cmd.arg("--rustc-linker").arg(target_linker);
+            cmd.arg("--redox-linker").arg(target_linker);
         }
         if builder.is_verbose() {
             cmd.arg("--verbose");
@@ -1415,7 +1415,7 @@ impl Step for RustcBook {
         // If the lib directories are in an unusual location (changed in
         // bootstrap.toml), then this needs to explicitly update the dylib search
         // path.
-        builder.add_rustc_lib_path(self.build_compiler, &mut cmd);
+        builder.add_redox_lib_path(self.build_compiler, &mut cmd);
         let doc_generator_guard =
             builder.msg(Kind::Run, "lint-docs", None, self.build_compiler, self.target);
         cmd.run(builder);
@@ -1424,7 +1424,7 @@ impl Step for RustcBook {
         // Run rustbook/mdbook to generate the HTML pages.
         builder.ensure(RustbookSrc {
             target: self.target,
-            name: "rustc".to_owned(),
+            name: "redox".to_owned(),
             src: out_base,
             parent: Some(self),
             languages: vec![],

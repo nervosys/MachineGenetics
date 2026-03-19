@@ -1,8 +1,8 @@
 use clippy_utils::res::MaybeResPath;
-use rustc_hir::{self as hir, HirId, HirIdSet, intravisit};
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_span::def_id::LocalDefId;
+use redox_hir::{self as hir, HirId, HirIdSet, intravisit};
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_span::def_id::LocalDefId;
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::iter_input_pats;

@@ -1,11 +1,11 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv};
-use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
-use rustc_hir::{HirId, Lit, RustcVersion};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
-use rustc_span::{Span, symbol};
+use redox_ast::ast::{FloatTy, LitFloatType, LitKind};
+use redox_hir::{HirId, Lit, RustcVersion};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
+use redox_span::{Span, symbol};
 use std::f64::consts as f64;
 
 declare_clippy_lint! {

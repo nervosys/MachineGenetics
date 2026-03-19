@@ -2,7 +2,7 @@
 //@check-pass
 #![warn(unused)]
 #![allow(dead_code)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 #[derive(Debug, Clone, Copy)]
 enum PointType {

@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use run_make_support::{cwd, diff, rustc, rustdoc};
+use run_make_support::{cwd, diff, redox, rustdoc};
 
 fn test_and_compare(input_file: &str, stdout_file: &str, edition: &str, dep: &Path) {
     let mut cmd = rustdoc();
@@ -28,7 +28,7 @@ fn test_and_compare(input_file: &str, stdout_file: &str, edition: &str, dep: &Pa
 fn main() {
     let out_file = cwd().join("libfoo.rlib");
 
-    rustc().input("doctest.rs").crate_type("rlib").output(&out_file).run();
+    redox().input("doctest.rs").crate_type("rlib").output(&out_file).run();
 
     // First we ensure that running with the 2024 edition will not fail at runtime.
     test_and_compare("doctest.rs", "doctest-2024.stdout", "2024", &out_file);

@@ -9,18 +9,18 @@
 // - Multiple lifetime parameters
 // - Arenas
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_arena;
+extern crate redox_arena;
 
-// Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
+// Necessary to pull in object code as the rest of the redox crates are shipped only as rmeta
 // files.
 #[allow(unused_extern_crates)]
-extern crate rustc_driver;
+extern crate redox_driver;
 
 use TypeStructure::{TypeInt, TypeFunction};
 use AstKind::{ExprInt, ExprVar, ExprLambda};
-use rustc_arena::TypedArena;
+use redox_arena::TypedArena;
 use std::collections::HashMap;
 use std::mem;
 

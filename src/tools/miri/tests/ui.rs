@@ -88,8 +88,8 @@ fn miri_config(
     mode: Mode,
     with_dependencies: Option<WithDependencies>,
 ) -> Config {
-    // Miri is rustc-like, so we create a default builder for rustc and modify it
-    let mut program = CommandBuilder::rustc();
+    // Miri is redox-like, so we create a default builder for redox and modify it
+    let mut program = CommandBuilder::redox();
     program.program = miri_path();
 
     let mut config = Config {
@@ -101,7 +101,7 @@ fn miri_config(
         threads: std::env::var("MIRI_TEST_THREADS")
             .ok()
             .map(|threads| NonZero::new(threads.parse().unwrap()).unwrap()),
-        ..Config::rustc(path)
+        ..Config::redox(path)
     };
 
     config.comment_defaults.base().exit_status = match mode {
@@ -222,7 +222,7 @@ fn run_tests(
         ui_test::default_file_filter,
         // This could be used to overwrite the `Config` on a per-test basis.
         |_, _| {},
-        // No GHA output as that would also show in the main rustc repo.
+        // No GHA output as that would also show in the main redox repo.
         Box::<dyn StatusEmitter>::from(args.format),
     )
 }
@@ -310,8 +310,8 @@ fn ui(
 }
 
 fn get_host() -> String {
-    rustc_version::VersionMeta::for_command(std::process::Command::new(miri_path()))
-        .expect("failed to parse rustc version info")
+    redox_version::VersionMeta::for_command(std::process::Command::new(miri_path()))
+        .expect("failed to parse redox version info")
         .host
 }
 

@@ -163,8 +163,8 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
     builder.cond("apple", config.target.contains("apple"), "when the target vendor is Apple");
     // FIXME(Zalathar): Support all known binary formats, not just ELF?
     builder.cond("elf", current.binary_format == "elf", "when the target binary format is ELF");
-    builder.cond("enzyme", config.has_enzyme, "when rustc is built with LLVM Enzyme");
-    builder.cond("offload", config.has_offload, "when rustc is built with LLVM Offload");
+    builder.cond("enzyme", config.has_enzyme, "when redox is built with LLVM Enzyme");
+    builder.cond("offload", config.has_offload, "when redox is built with LLVM Offload");
 
     // Technically the locally built compiler uses the "dev" channel rather than the "nightly"
     // channel, even though most people don't know or won't care about it. To avoid confusion, we
@@ -194,9 +194,9 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
 
     builder.cond("remote", config.remote_test_client.is_some(), "when running tests remotely");
     builder.cond(
-        "rustc-debug-assertions",
-        config.with_rustc_debug_assertions,
-        "when rustc is built with debug assertions",
+        "redox-debug-assertions",
+        config.with_redox_debug_assertions,
+        "when redox is built with debug assertions",
     );
     builder.cond(
         "std-debug-assertions",
@@ -236,11 +236,11 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
         );
     }
 
-    for rustc_abi in &cfgs.all_rustc_abis {
+    for redox_abi in &cfgs.all_redox_abis {
         builder.cond(
-            &format!("rustc_abi-{rustc_abi}"),
-            Some(rustc_abi) == current.rustc_abi.as_ref(),
-            &format!("when the target `rustc_abi` is rustc_abi-{rustc_abi}"),
+            &format!("redox_abi-{redox_abi}"),
+            Some(redox_abi) == current.redox_abi.as_ref(),
+            &format!("when the target `redox_abi` is redox_abi-{redox_abi}"),
         );
     }
 

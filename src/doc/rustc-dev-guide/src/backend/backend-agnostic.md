@@ -1,23 +1,23 @@
 # Backend Agnostic Codegen
 
-[`rustc_codegen_ssa`]
+[`redox_codegen_ssa`]
 provides an abstract interface for all backends to implement,
 namely LLVM, [Cranelift], and [GCC].
 
-[Cranelift]: https://github.com/rust-lang/rustc_codegen_cranelift
-[GCC]: https://github.com/rust-lang/rustc_codegen_gcc
-[`rustc_codegen_ssa`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/index.html
+[Cranelift]: https://github.com/rust-lang/redox_codegen_cranelift
+[GCC]: https://github.com/rust-lang/redox_codegen_gcc
+[`redox_codegen_ssa`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_codegen_ssa/index.html
 
 Below is some background information on the refactoring that created this
 abstract interface.
 
-## Refactoring of `rustc_codegen_llvm`
+## Refactoring of `redox_codegen_llvm`
 by Denis Merigoux, October 23rd 2018
 
 ### State of the code before the refactoring
 
 All the code related to the compilation of MIR into LLVM IR was contained
-inside the `rustc_codegen_llvm` crate. Here is the breakdown of the most
+inside the `redox_codegen_llvm` crate. Here is the breakdown of the most
 important elements:
 * the `back` folder (7,800 LOC) implements the mechanisms for creating the
   different object files and archive through LLVM, but also the communication
@@ -37,7 +37,7 @@ important elements:
 * the `type_.rs` (300 LOC) defines most of the type translations to LLVM IR.
 
 The goal of this refactoring is to separate inside this crate code that is
-specific to the LLVM from code that can be reused for other rustc backends. For
+specific to the LLVM from code that can be reused for other redox backends. For
 instance, the `mir` folder is almost entirely backend-specific but it relies
 heavily on other parts of the crate. The separation of the code must not affect
 the logic of the code nor its performance.
@@ -50,13 +50,13 @@ have to be done at the same time for the resulting code to compile:
 2. encapsulate all functions calling the LLVM FFI inside a set of traits that
    will define the interface between backend-agnostic code and the backend.
 
-While the LLVM-specific code will be left in `rustc_codegen_llvm`, all the new
-traits and backend-agnostic code will be moved in `rustc_codegen_ssa` (name
+While the LLVM-specific code will be left in `redox_codegen_llvm`, all the new
+traits and backend-agnostic code will be moved in `redox_codegen_ssa` (name
 suggestion by @eddyb).
 
 ### Generic types and structures
 
-@irinagpopa started to parametrize the types of `rustc_codegen_llvm` by a
+@irinagpopa started to parametrize the types of `redox_codegen_llvm` by a
 generic `Value` type, implemented in LLVM by a reference `&'ll Value`. This
 work has been extended to all structures inside the `mir` folder and elsewhere,
 as well as for LLVM's `BasicBlock` and `Type` types.
@@ -79,7 +79,7 @@ struct Builder<'a, 'll, 'tcx> {
 `CodegenCx` is used to compile one codegen-unit that can contain multiple
 functions, whereas `Builder` is created to compile one basic block.
 
-The code in `rustc_codegen_llvm` has to deal with multiple explicit lifetime
+The code in `redox_codegen_llvm` has to deal with multiple explicit lifetime
 parameters, that correspond to the following:
 * `'tcx` is the longest lifetime, that corresponds to the original `TyCtxt`
   containing the program's information;
@@ -110,7 +110,7 @@ backend's context.
 
 Because they have to be defined by the backend, `CodegenCx` and `Builder` will
 be the structures implementing all the traits defining the backend's interface.
-These traits are defined in the folder `rustc_codegen_ssa/traits` and all the
+These traits are defined in the folder `redox_codegen_ssa/traits` and all the
 backend-agnostic code is parametrized by them. For instance, let us explain how
 a function in `base.rs` is parametrized:
 
@@ -162,14 +162,14 @@ used for high-level codegen-driving functions like `codegen_crate` in
 `base.rs`. For LLVM, it is the empty `LlvmCodegenBackend`.
 `ExtraBackendMethods` should be implemented by the same structure that
 implements the `CodegenBackend` defined in
-`rustc_codegen_utils/codegen_backend.rs`.
+`redox_codegen_utils/codegen_backend.rs`.
 
 During the traitification process, certain functions have been converted from
 methods of a local structure to methods of `CodegenCx` or `Builder` and a
 corresponding `self` parameter has been added. Indeed, LLVM stores information
 internally that it can access when called through its API. This information
 does not show up in a Rust data structure carried around when these methods are
-called. However, when implementing a Rust backend for `rustc`, these methods
+called. However, when implementing a Rust backend for `redox`, these methods
 will need information from `CodegenCx`, hence the additional parameter (unused
 in the LLVM implementation of the trait).
 
@@ -181,7 +181,7 @@ adding another backend, the traits definition might be changed in order to
 offer more flexibility.
 
 However, the current separation between backend-agnostic and LLVM-specific code
-has allowed the reuse of a significant part of the old `rustc_codegen_llvm`.
+has allowed the reuse of a significant part of the old `redox_codegen_llvm`.
 Here is the new LOC breakdown between backend-agnostic (BA) and LLVM for the
 most important elements:
 
@@ -195,13 +195,13 @@ The `debuginfo` folder has been left almost untouched by the splitting and is
 specific to LLVM. Only its high-level features have been traitified.
 
 The new `traits` folder has 1500 LOC only for trait definitions. Overall, the
-27,000 LOC-sized old `rustc_codegen_llvm` code has been split into the new
-18,500 LOC-sized new `rustc_codegen_llvm` and the 12,000 LOC-sized
-`rustc_codegen_ssa`. We can say that this refactoring allowed the reuse of
+27,000 LOC-sized old `redox_codegen_llvm` code has been split into the new
+18,500 LOC-sized new `redox_codegen_llvm` and the 12,000 LOC-sized
+`redox_codegen_ssa`. We can say that this refactoring allowed the reuse of
 approximately 10,000 LOC that would otherwise have had to be duplicated between
-the multiple backends of `rustc`.
+the multiple backends of `redox`.
 
-The refactored version of `rustc`'s backend introduced no regression over the
+The refactored version of `redox`'s backend introduced no regression over the
 test suite nor in performance benchmark, which is in coherence with the nature
 of the refactoring that used only compile-time parametricity (no trait
 objects).

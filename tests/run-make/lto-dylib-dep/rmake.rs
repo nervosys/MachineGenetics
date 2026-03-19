@@ -6,10 +6,10 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{run, rustc};
+use run_make_support::{run, redox};
 
 fn main() {
-    rustc().input("a_dylib.rs").crate_type("dylib").arg("-Cprefer-dynamic").run();
-    rustc().input("main.rs").arg("-Clto").run();
+    redox().input("a_dylib.rs").crate_type("dylib").arg("-Cprefer-dynamic").run();
+    redox().input("main.rs").arg("-Clto").run();
     run("main");
 }

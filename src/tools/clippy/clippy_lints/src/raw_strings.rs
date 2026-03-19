@@ -1,12 +1,12 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{SpanRangeExt, snippet_opt};
-use rustc_ast::ast::{Expr, ExprKind};
-use rustc_ast::token::LitKind;
-use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::{BytePos, Pos, Span};
+use redox_ast::ast::{Expr, ExprKind};
+use redox_ast::token::LitKind;
+use redox_errors::Applicability;
+use redox_lint::{EarlyContext, EarlyLintPass, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::{BytePos, Pos, Span};
 use std::iter::once;
 use std::ops::ControlFlow;
 
@@ -132,7 +132,7 @@ impl RawStrings {
                     );
                 },
             );
-            if !matches!(cx.get_lint_level(NEEDLESS_RAW_STRINGS).level, rustc_lint::Allow) {
+            if !matches!(cx.get_lint_level(NEEDLESS_RAW_STRINGS).level, redox_lint::Allow) {
                 return;
             }
         }

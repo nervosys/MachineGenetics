@@ -24,22 +24,22 @@ use clippy_utils::macros::macro_backtrace;
 use clippy_utils::paths::{PathNS, lookup_path_str};
 use clippy_utils::ty::{get_field_idx_by_name, implements_trait};
 use clippy_utils::{is_in_const_context, sym};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, DefIdSet};
-use rustc_hir::{
+use redox_data_structures::fx::FxHashMap;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::def_id::{DefId, DefIdSet};
+use redox_hir::{
     ConstArgKind, ConstItemRhs, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, Node, StructTailExpr,
     TraitItem, TraitItemKind, UnOp,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::mir::{ConstValue, UnevaluatedConst};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
-use rustc_middle::ty::{
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::mir::{ConstValue, UnevaluatedConst};
+use redox_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
+use redox_middle::ty::{
     self, AliasTyKind, EarlyBinder, GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable,
     TypeckResults, TypingEnv,
 };
-use rustc_session::impl_lint_pass;
-use rustc_span::DUMMY_SP;
+use redox_session::impl_lint_pass;
+use redox_span::DUMMY_SP;
 use std::collections::hash_map::Entry;
 
 declare_clippy_lint! {

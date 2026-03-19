@@ -1,7 +1,7 @@
 //@ edition:2021
 //@check-pass
 #![warn(unused)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::collections::BTreeMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};

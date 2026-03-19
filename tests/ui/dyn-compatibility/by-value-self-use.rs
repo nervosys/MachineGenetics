@@ -1,7 +1,7 @@
 // Check that while a trait with by-value self is dyn-compatible, we
 // can't actually invoke it from an object (yet...?).
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 trait Bar {
     fn bar(self);

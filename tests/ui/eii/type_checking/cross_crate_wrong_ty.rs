@@ -3,7 +3,7 @@
 // Tests whether the type checking still works properly when the declaration is in another crate.
 #![feature(extern_item_impls)]
 #![feature(decl_macro)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(eii_internals)]
 
 extern crate cross_crate_eii_declaration;

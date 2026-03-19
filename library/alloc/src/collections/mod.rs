@@ -84,7 +84,7 @@ impl TryReserveError {
         reason = "Uncertain how much info should be exposed",
         issue = "48043"
     )]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     pub const fn kind(&self) -> TryReserveErrorKind {
         self.kind.clone()
     }
@@ -126,7 +126,7 @@ pub enum TryReserveErrorKind {
     reason = "Uncertain how much info should be exposed",
     issue = "48043"
 )]
-#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[redox_const_unstable(feature = "const_heap", issue = "79597")]
 #[cfg(not(test))]
 impl const Clone for TryReserveErrorKind {
     fn clone(&self) -> Self {
@@ -147,7 +147,7 @@ pub use realalloc::collections::TryReserveErrorKind;
     reason = "Uncertain how much info should be exposed",
     issue = "48043"
 )]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 #[cfg(not(test))]
 impl const From<TryReserveErrorKind> for TryReserveError {
     #[inline]
@@ -157,7 +157,7 @@ impl const From<TryReserveErrorKind> for TryReserveError {
 }
 
 #[unstable(feature = "try_reserve_kind", issue = "48043")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 #[cfg(not(test))]
 impl const From<LayoutError> for TryReserveErrorKind {
     /// Always evaluates to [`TryReserveErrorKind::CapacityOverflow`].

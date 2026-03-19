@@ -9,13 +9,13 @@
 // This was fixed in #37846, and this test checks
 // that this bug does not make a resurgence.
 
-use run_make_support::{bare_rustc, cwd, rust_lib_name, rustc};
+use run_make_support::{bare_redox, cwd, rust_lib_name, redox};
 
 fn main() {
-    rustc().input("a.rs").run();
-    rustc().input("b.rs").run();
+    redox().input("a.rs").run();
+    redox().input("b.rs").run();
     let curr_dir = cwd().display().to_string();
-    bare_rustc()
+    bare_redox()
         .input("c.rs")
         .arg(format!("-Ldependency={curr_dir}"))
         .extern_("b", cwd().join(rust_lib_name("b")))

@@ -57,7 +57,7 @@ pub fn _mm_cvtsd_u64(a: __m128d) -> u64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsi2ss))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvti64_ss(a: __m128, b: i64) -> __m128 {
     unsafe {
         let b = b as f32;
@@ -72,7 +72,7 @@ pub const fn _mm_cvti64_ss(a: __m128, b: i64) -> __m128 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsi2sd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvti64_sd(a: __m128d, b: i64) -> __m128d {
     unsafe {
         let b = b as f64;
@@ -87,7 +87,7 @@ pub const fn _mm_cvti64_sd(a: __m128d, b: i64) -> __m128d {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtusi2ss))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtu64_ss(a: __m128, b: u64) -> __m128 {
     unsafe {
         let b = b as f32;
@@ -102,7 +102,7 @@ pub const fn _mm_cvtu64_ss(a: __m128, b: u64) -> __m128 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtusi2sd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtu64_sd(a: __m128d, b: u64) -> __m128d {
     unsafe {
         let b = b as f64;
@@ -167,7 +167,7 @@ pub fn _mm_cvttss_u64(a: __m128) -> u64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsi2sd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 pub fn _mm_cvt_roundi64_sd<const ROUNDING: i32>(a: __m128d, b: i64) -> __m128d {
     unsafe {
         static_assert_rounding!(ROUNDING);
@@ -190,7 +190,7 @@ pub fn _mm_cvt_roundi64_sd<const ROUNDING: i32>(a: __m128d, b: i64) -> __m128d {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsi2sd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 pub fn _mm_cvt_roundsi64_sd<const ROUNDING: i32>(a: __m128d, b: i64) -> __m128d {
     unsafe {
         static_assert_rounding!(ROUNDING);
@@ -213,7 +213,7 @@ pub fn _mm_cvt_roundsi64_sd<const ROUNDING: i32>(a: __m128d, b: i64) -> __m128d 
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsi2ss, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 pub fn _mm_cvt_roundi64_ss<const ROUNDING: i32>(a: __m128, b: i64) -> __m128 {
     unsafe {
         static_assert_rounding!(ROUNDING);
@@ -236,7 +236,7 @@ pub fn _mm_cvt_roundi64_ss<const ROUNDING: i32>(a: __m128, b: i64) -> __m128 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtusi2sd, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 pub fn _mm_cvt_roundu64_sd<const ROUNDING: i32>(a: __m128d, b: u64) -> __m128d {
     unsafe {
         static_assert_rounding!(ROUNDING);
@@ -259,7 +259,7 @@ pub fn _mm_cvt_roundu64_sd<const ROUNDING: i32>(a: __m128d, b: u64) -> __m128d {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsi2ss, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 pub fn _mm_cvt_roundsi64_ss<const ROUNDING: i32>(a: __m128, b: i64) -> __m128 {
     unsafe {
         static_assert_rounding!(ROUNDING);
@@ -282,7 +282,7 @@ pub fn _mm_cvt_roundsi64_ss<const ROUNDING: i32>(a: __m128, b: i64) -> __m128 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtusi2ss, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 pub fn _mm_cvt_roundu64_ss<const ROUNDING: i32>(a: __m128, b: u64) -> __m128 {
     unsafe {
         static_assert_rounding!(ROUNDING);
@@ -305,7 +305,7 @@ pub fn _mm_cvt_roundu64_ss<const ROUNDING: i32>(a: __m128, b: u64) -> __m128 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsd2si, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 pub fn _mm_cvt_roundsd_si64<const ROUNDING: i32>(a: __m128d) -> i64 {
     unsafe {
         static_assert_rounding!(ROUNDING);
@@ -327,7 +327,7 @@ pub fn _mm_cvt_roundsd_si64<const ROUNDING: i32>(a: __m128d) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsd2si, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 pub fn _mm_cvt_roundsd_i64<const ROUNDING: i32>(a: __m128d) -> i64 {
     unsafe {
         static_assert_rounding!(ROUNDING);
@@ -349,7 +349,7 @@ pub fn _mm_cvt_roundsd_i64<const ROUNDING: i32>(a: __m128d) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsd2usi, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 pub fn _mm_cvt_roundsd_u64<const ROUNDING: i32>(a: __m128d) -> u64 {
     unsafe {
         static_assert_rounding!(ROUNDING);
@@ -371,7 +371,7 @@ pub fn _mm_cvt_roundsd_u64<const ROUNDING: i32>(a: __m128d) -> u64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtss2si, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 pub fn _mm_cvt_roundss_si64<const ROUNDING: i32>(a: __m128) -> i64 {
     unsafe {
         static_assert_rounding!(ROUNDING);
@@ -393,7 +393,7 @@ pub fn _mm_cvt_roundss_si64<const ROUNDING: i32>(a: __m128) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtss2si, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 pub fn _mm_cvt_roundss_i64<const ROUNDING: i32>(a: __m128) -> i64 {
     unsafe {
         static_assert_rounding!(ROUNDING);
@@ -415,7 +415,7 @@ pub fn _mm_cvt_roundss_i64<const ROUNDING: i32>(a: __m128) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtss2usi, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 pub fn _mm_cvt_roundss_u64<const ROUNDING: i32>(a: __m128) -> u64 {
     unsafe {
         static_assert_rounding!(ROUNDING);
@@ -432,7 +432,7 @@ pub fn _mm_cvt_roundss_u64<const ROUNDING: i32>(a: __m128) -> u64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttsd2si, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 pub fn _mm_cvtt_roundsd_si64<const SAE: i32>(a: __m128d) -> i64 {
     unsafe {
         static_assert_sae!(SAE);
@@ -449,7 +449,7 @@ pub fn _mm_cvtt_roundsd_si64<const SAE: i32>(a: __m128d) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttsd2si, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 pub fn _mm_cvtt_roundsd_i64<const SAE: i32>(a: __m128d) -> i64 {
     unsafe {
         static_assert_sae!(SAE);
@@ -466,7 +466,7 @@ pub fn _mm_cvtt_roundsd_i64<const SAE: i32>(a: __m128d) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttsd2usi, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 pub fn _mm_cvtt_roundsd_u64<const SAE: i32>(a: __m128d) -> u64 {
     unsafe {
         static_assert_sae!(SAE);
@@ -483,7 +483,7 @@ pub fn _mm_cvtt_roundsd_u64<const SAE: i32>(a: __m128d) -> u64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttss2si, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 pub fn _mm_cvtt_roundss_i64<const SAE: i32>(a: __m128) -> i64 {
     unsafe {
         static_assert_sae!(SAE);
@@ -500,7 +500,7 @@ pub fn _mm_cvtt_roundss_i64<const SAE: i32>(a: __m128) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttss2si, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 pub fn _mm_cvtt_roundss_si64<const SAE: i32>(a: __m128) -> i64 {
     unsafe {
         static_assert_sae!(SAE);
@@ -517,7 +517,7 @@ pub fn _mm_cvtt_roundss_si64<const SAE: i32>(a: __m128) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttss2usi, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 pub fn _mm_cvtt_roundss_u64<const SAE: i32>(a: __m128) -> u64 {
     unsafe {
         static_assert_sae!(SAE);

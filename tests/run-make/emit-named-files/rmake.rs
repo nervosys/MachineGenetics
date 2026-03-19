@@ -1,11 +1,11 @@
 //@ needs-target-std
 use std::path::Path;
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 fn emit_and_check(out_dir: &Path, out_file: &str, format: &str) {
     let out_file = out_dir.join(out_file);
-    rustc().input("foo.rs").emit(format!("{format}={}", out_file.display())).run();
+    redox().input("foo.rs").emit(format!("{format}={}", out_file.display())).run();
     assert!(out_file.is_file());
 }
 

@@ -28,11 +28,11 @@ use clippy_config::Conf;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::{higher, sym};
-use rustc_ast::Label;
-use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use redox_ast::Label;
+use redox_hir::{Expr, ExprKind, LoopSource, Pat};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
+use redox_span::Span;
 use utils::{IncrementVisitor, InitializeVisitor, make_iterator_snippet};
 
 declare_clippy_lint! {

@@ -56,7 +56,7 @@ SPDX-FileCopyrightText = "The Rust Project Developers (see https://thanks.rust-l
 SPDX-License-Identifier = "MIT OR Apache-2.0"
 
 [[annotations]]
-path = "compiler/rustc_llvm/llvm-wrapper/SymbolWrapper.cpp"
+path = "compiler/redox_llvm/llvm-wrapper/SymbolWrapper.cpp"
 precedence = "override"
 SPDX-FileCopyrightText = [
     "2003-2019 University of Illinois at Urbana-Champaign.",
@@ -131,7 +131,7 @@ SPDX-FileCopyrightText = [
 SPDX-License-Identifier = "MIT OR Apache-2.0"
 
 [[annotations]]
-path = "src/doc/rustc-dev-guide/mermaid.min.js"
+path = "src/doc/redox-dev-guide/mermaid.min.js"
 precedence = "override"
 SPDX-FileCopyrightText = "2014-2021 Knut Sveidqvist"
 SPDX-License-Identifier = "MIT"

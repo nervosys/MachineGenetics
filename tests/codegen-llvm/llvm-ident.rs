@@ -10,6 +10,6 @@
 // CHECK: !llvm.ident = !{![[ID:[0-9]+]]}
 
 // In addition, check that the metadata node has the expected content.
-// CHECK: ![[ID]] = !{!"rustc version 1.{{.*}}"}
+// CHECK: ![[ID]] = !{!"redox version 1.{{.*}}"}
 
 fn main() {}

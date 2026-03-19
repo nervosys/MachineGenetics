@@ -1,7 +1,7 @@
 //@ check-pass
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_diagnostic_item = "foomp"]
+#[redox_diagnostic_item = "foomp"]
 struct Foomp;
 
 fn main() {}

@@ -9,19 +9,19 @@
 // See https://github.com/rust-lang/rust/issues/37530
 
 use run_make_support::object::read::Object;
-use run_make_support::{bin_name, dynamic_lib_name, is_windows_msvc, object, regex, rfs, rustc};
+use run_make_support::{bin_name, dynamic_lib_name, is_windows_msvc, object, regex, rfs, redox};
 
 fn main() {
     let cdylib_name = dynamic_lib_name("a_cdylib");
     let rdylib_name = dynamic_lib_name("a_rust_dylib");
     let exe_name = bin_name("an_executable");
     let combined_cdylib_name = dynamic_lib_name("combined_rlib_dylib");
-    rustc().arg("-Zshare-generics=no").input("an_rlib.rs").run();
-    rustc().arg("-Zshare-generics=no").input("a_cdylib.rs").run();
-    rustc().arg("-Zshare-generics=no").input("a_rust_dylib.rs").run();
-    rustc().arg("-Zshare-generics=no").input("a_proc_macro.rs").run();
-    rustc().arg("-Zshare-generics=no").input("an_executable.rs").run();
-    rustc()
+    redox().arg("-Zshare-generics=no").input("an_rlib.rs").run();
+    redox().arg("-Zshare-generics=no").input("a_cdylib.rs").run();
+    redox().arg("-Zshare-generics=no").input("a_rust_dylib.rs").run();
+    redox().arg("-Zshare-generics=no").input("a_proc_macro.rs").run();
+    redox().arg("-Zshare-generics=no").input("an_executable.rs").run();
+    redox()
         .arg("-Zshare-generics=no")
         .input("a_cdylib.rs")
         .crate_name("combined_rlib_dylib")
@@ -91,10 +91,10 @@ fn main() {
     // Check that a cdylib DOES NOT export any public Rust functions
     symbols_check(&combined_cdylib_name, SymbolCheckType::AnyRustSymbol, false);
 
-    rustc().arg("-Zshare-generics=yes").input("an_rlib.rs").run();
-    rustc().arg("-Zshare-generics=yes").input("a_cdylib.rs").run();
-    rustc().arg("-Zshare-generics=yes").input("a_rust_dylib.rs").run();
-    rustc().arg("-Zshare-generics=yes").input("an_executable.rs").run();
+    redox().arg("-Zshare-generics=yes").input("an_rlib.rs").run();
+    redox().arg("-Zshare-generics=yes").input("a_cdylib.rs").run();
+    redox().arg("-Zshare-generics=yes").input("a_rust_dylib.rs").run();
+    redox().arg("-Zshare-generics=yes").input("an_executable.rs").run();
 
     // Check that a cdylib exports its public #[no_mangle] functions
     symbols_check(&cdylib_name, SymbolCheckType::StrSymbol("public_c_function_from_cdylib"), true);

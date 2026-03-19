@@ -1,4 +1,4 @@
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 
 #![feature(min_generic_const_args)]
 #![feature(generic_const_exprs)]

@@ -1,12 +1,12 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet;
-use rustc_ast::node_id::NodeSet;
-use rustc_ast::visit::{Visitor, walk_block, walk_item};
-use rustc_ast::{Block, Crate, Inline, Item, ItemKind, ModKind, NodeId};
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use redox_ast::node_id::NodeSet;
+use redox_ast::visit::{Visitor, walk_block, walk_item};
+use redox_ast::{Block, Crate, Inline, Item, ItemKind, ModKind, NodeId};
+use redox_lint::{EarlyContext, EarlyLintPass, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does

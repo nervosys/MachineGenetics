@@ -260,7 +260,7 @@ struct Foo;
 
     #[test]
     fn fix_visibility_of_enum_variant_field() {
-        // Enum variants, as well as their fields, always get the enum's visibility. In fact, rustc
+        // Enum variants, as well as their fields, always get the enum's visibility. In fact, redox
         // rejects any visibility specifiers on them, so this assist should never fire on them.
         check_assist_not_applicable(
             fix_visibility,

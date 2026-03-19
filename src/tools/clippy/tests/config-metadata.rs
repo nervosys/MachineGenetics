@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 use clippy_config::{ClippyConfiguration, get_configuration_metadata};
 use itertools::Itertools;

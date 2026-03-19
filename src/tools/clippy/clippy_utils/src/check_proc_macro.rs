@@ -12,25 +12,25 @@
 //! code was written, and check if the span contains that text. Note this will only work correctly
 //! if the span is not from a `macro_rules` based macro.
 
-use rustc_abi::ExternAbi;
-use rustc_ast as ast;
-use rustc_ast::AttrStyle;
-use rustc_ast::ast::{
+use redox_abi::ExternAbi;
+use redox_ast as ast;
+use redox_ast::AttrStyle;
+use redox_ast::ast::{
     AttrKind, Attribute, GenericArgs, IntTy, LitIntType, LitKind, StrStyle, TraitObjectSyntax, UintTy,
 };
-use rustc_ast::token::CommentKind;
-use rustc_hir::intravisit::FnKind;
-use rustc_hir::{
+use redox_ast::token::CommentKind;
+use redox_hir::intravisit::FnKind;
+use redox_hir::{
     Block, BlockCheckMode, Body, BoundConstness, BoundPolarity, Closure, Destination, Expr, ExprKind, FieldDef,
     FnHeader, FnRetTy, HirId, Impl, ImplItem, ImplItemImplKind, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource,
     MatchSource, MutTy, Node, Path, PolyTraitRef, QPath, Safety, TraitBoundModifiers, TraitImplHeader, TraitItem,
     TraitItemKind, TraitRef, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
 };
-use rustc_lint::{EarlyContext, LateContext, LintContext};
-use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
-use rustc_span::symbol::{Ident, kw};
-use rustc_span::{Span, Symbol, sym};
+use redox_lint::{EarlyContext, LateContext, LintContext};
+use redox_middle::ty::TyCtxt;
+use redox_session::Session;
+use redox_span::symbol::{Ident, kw};
+use redox_span::{Span, Symbol, sym};
 
 /// The search pattern to look for. Used by `span_matches_pat`
 #[derive(Clone)]

@@ -2,7 +2,7 @@
 // On Windows, close via SetStdHandle to 0.
 //@ run-pass
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 #[cfg(windows)]
 fn close_stdout() {

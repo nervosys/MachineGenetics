@@ -4,20 +4,20 @@ While writing lints it's common to check for specific types, traits and
 functions. This raises the question on how to check for these. Types can be
 checked by their complete type path. However, this requires hard coding paths
 and can lead to misclassifications in some edge cases. To counteract this,
-rustc has introduced diagnostic items that are used to identify types via
+redox has introduced diagnostic items that are used to identify types via
 [`Symbol`]s.
 
 ## Finding diagnostic items
 
-Diagnostic items are added to items inside `rustc`/`std`/`core`/`alloc` with the
-`rustc_diagnostic_item` attribute. The item for a specific type can be found by
+Diagnostic items are added to items inside `redox`/`std`/`core`/`alloc` with the
+`redox_diagnostic_item` attribute. The item for a specific type can be found by
 opening the source code in the documentation and looking for this attribute.
 Note that it's often added with the `cfg_attr` attribute to avoid compilation
 errors during tests. A definition often looks like this:
 
 ```rs
 // This is the diagnostic item for this type   vvvvvvv
-#[cfg_attr(not(test), rustc_diagnostic_item = "Penguin")]
+#[cfg_attr(not(test), redox_diagnostic_item = "Penguin")]
 struct Penguin;
 ```
 
@@ -33,15 +33,15 @@ please use the diagnostic item of the item and reference
 A new diagnostic item can be added with these two steps:
 
 1. Find the target item inside the Rust repo. Now add the diagnostic item as a
-   string via the `rustc_diagnostic_item` attribute. This can sometimes cause
+   string via the `redox_diagnostic_item` attribute. This can sometimes cause
    compilation errors while running tests. These errors can be avoided by using
    the `cfg_attr` attribute with the `not(test)` condition (it's fine adding
-   then for all `rustc_diagnostic_item` attributes as a preventive manner). At
+   then for all `redox_diagnostic_item` attributes as a preventive manner). At
    the end, it should look like this:
 
     ```rs
     // This will be the new diagnostic item        vvv
-    #[cfg_attr(not(test), rustc_diagnostic_item = "Cat")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "Cat")]
     struct Cat;
     ```
 
@@ -50,7 +50,7 @@ A new diagnostic item can be added with these two steps:
 
 2. <!-- date-check: Feb 2023 -->
    Diagnostic items in code are accessed via symbols in
-   [`rustc_span::symbol::sym`].
+   [`redox_span::symbol::sym`].
    To add your newly-created diagnostic item,
    simply open the module file,
    and add the name (In this case `Cat`) at the correct point in the list.
@@ -86,8 +86,8 @@ but might differ from existing names:
 
 ## Using diagnostic items
 
-In rustc, diagnostic items are looked up via [`Symbol`]s from inside the
-[`rustc_span::symbol::sym`] module. These can then be mapped to [`DefId`]s
+In redox, diagnostic items are looked up via [`Symbol`]s from inside the
+[`redox_span::symbol::sym`] module. These can then be mapped to [`DefId`]s
 using [`TyCtxt::get_diagnostic_item()`] or checked if they match a [`DefId`]
 using [`TyCtxt::is_diagnostic_item()`]. When mapping from a diagnostic item to
 a [`DefId`], the method will return a `Option<DefId>`. This can be `None` if
@@ -98,7 +98,7 @@ All the following examples are based on [`DefId`]s and their usage.
 ### Example: Checking for a type
 
 ```rust
-use rustc_span::symbol::sym;
+use redox_span::symbol::sym;
 
 /// This example checks if the given type (`ty`) has the type `HashMap` using
 /// `TyCtxt::is_diagnostic_item()`
@@ -153,13 +153,13 @@ who really want to take a deep dive into the topic :)
 
 <!-- Links -->
 
-[`rustc_span::symbol::sym`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/sym/index.html
-[`Symbol`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html
-[`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
-[`TyCtxt::get_diagnostic_item()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.get_diagnostic_item
-[`TyCtxt::is_diagnostic_item()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.is_diagnostic_item
-[`TyCtxt::associated_items()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.associated_items
-[`AssocItems`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/assoc/struct.AssocItems.html
+[`redox_span::symbol::sym`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/symbol/sym/index.html
+[`Symbol`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/symbol/struct.Symbol.html
+[`DefId`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/def_id/struct.DefId.html
+[`TyCtxt::get_diagnostic_item()`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.get_diagnostic_item
+[`TyCtxt::is_diagnostic_item()`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.is_diagnostic_item
+[`TyCtxt::associated_items()`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.associated_items
+[`AssocItems`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/assoc/struct.AssocItems.html
 [`clippy_utils::ty::get_iterator_item_ty()`]: https://github.com/rust-lang/rust-clippy/blob/305177342fbc622c0b3cb148467bab4b9524c934/clippy_utils/src/ty.rs#L55-L72
 [clippy-Common-tools-for-writing-lints]: https://doc.rust-lang.org/nightly/clippy/development/common_tools_writing_lints.html
 [rust#60966]: https://github.com/rust-lang/rust/pull/60966

@@ -10,7 +10,7 @@ pub struct Data {
 }
 
 #[stable(feature = "potato", since = "1.27.0")]
-#[rustc_const_unstable(feature = "data_foo", issue = "none")]
+#[redox_const_unstable(feature = "data_foo", issue = "none")]
 impl const Default for Data {
     fn default() -> Data {
         Data { _data: 0xbeef }

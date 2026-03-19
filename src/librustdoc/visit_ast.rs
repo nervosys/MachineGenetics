@@ -3,19 +3,19 @@
 
 use std::mem;
 
-use rustc_ast::attr::AttributeExt;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_hir as hir;
-use rustc_hir::attrs::DocInline;
-use rustc_hir::def::{DefKind, MacroKinds, Res};
-use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
-use rustc_hir::intravisit::{Visitor, walk_body, walk_item};
-use rustc_hir::{Node, find_attr};
-use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
-use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_span::symbol::{Symbol, kw};
+use redox_ast::attr::AttributeExt;
+use redox_data_structures::fx::{FxHashSet, FxIndexMap};
+use redox_hir as hir;
+use redox_hir::attrs::DocInline;
+use redox_hir::def::{DefKind, MacroKinds, Res};
+use redox_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
+use redox_hir::intravisit::{Visitor, walk_body, walk_item};
+use redox_hir::{Node, find_attr};
+use redox_middle::hir::nested_filter;
+use redox_middle::ty::TyCtxt;
+use redox_span::Span;
+use redox_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
+use redox_span::symbol::{Symbol, kw};
 use tracing::debug;
 
 use crate::clean::reexport_chain;
@@ -607,7 +607,7 @@ impl<'tcx> Visitor<'tcx> for RustdocVisitor<'_, 'tcx> {
         // Handled in `visit_item_inner`
     }
 
-    fn visit_label(&mut self, _: &rustc_ast::Label) {
+    fn visit_label(&mut self, _: &redox_ast::Label) {
         // Unneeded.
     }
 

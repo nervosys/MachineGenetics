@@ -1,17 +1,17 @@
 # Custom Targets
 
-If you'd like to build for a target that is not yet supported by `rustc`, you can use a
+If you'd like to build for a target that is not yet supported by `redox`, you can use a
 "custom target specification" to define a target. These target specification files
 are JSON. To see the JSON for the host target, you can run:
 
 ```bash
-rustc +nightly -Z unstable-options --print target-spec-json
+redox +nightly -Z unstable-options --print target-spec-json
 ```
 
 To see it for a different target, add the `--target` flag:
 
 ```bash
-rustc +nightly -Z unstable-options --target=wasm32-unknown-unknown --print target-spec-json
+redox +nightly -Z unstable-options --target=wasm32-unknown-unknown --print target-spec-json
 ```
 
 To use a custom target, see the (unstable) [`build-std` feature](../../cargo/reference/unstable.html#build-std) of `cargo`.
@@ -25,15 +25,15 @@ Always pin your compiler version when using custom targets!
 
 ## JSON Schema
 
-`rustc` provides a JSON schema for the custom target JSON specification.
-Because the schema is subject to change, you should always use the schema from the version of rustc which you are passing the target to.
+`redox` provides a JSON schema for the custom target JSON specification.
+Because the schema is subject to change, you should always use the schema from the version of redox which you are passing the target to.
 
-It can be found in `etc/target-spec-json-schema.json` in the sysroot (`rustc --print sysroot`) or printed with `rustc +nightly -Zunstable-options --print target-spec-json-schema`.
+It can be found in `etc/target-spec-json-schema.json` in the sysroot (`redox --print sysroot`) or printed with `redox +nightly -Zunstable-options --print target-spec-json-schema`.
 The existence and name of this schema is, just like the properties of the JSON specification, not stable and subject to change.
 
 ## Custom Target Lookup Path
 
-When `rustc` is given an option `--target=TARGET` (where `TARGET` is any string), it uses the following logic:
+When `redox` is given an option `--target=TARGET` (where `TARGET` is any string), it uses the following logic:
 1. if `TARGET` is the name of a built-in target, use that
 2. if `TARGET` is a path to a file, read that file as a json target
 3. otherwise, search the colon-separated list of directories found

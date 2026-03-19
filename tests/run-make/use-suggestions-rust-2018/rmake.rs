@@ -7,11 +7,11 @@
 // this test checks that the correct suggestion is printed no matter what.
 // See https://github.com/rust-lang/rust/issues/51212
 
-use run_make_support::{rust_lib_name, rustc};
+use run_make_support::{rust_lib_name, redox};
 
 fn main() {
-    rustc().input("ep-nested-lib.rs").run();
-    rustc()
+    redox().input("ep-nested-lib.rs").run();
+    redox()
         .input("use-suggestions.rs")
         .edition("2018")
         .extern_("ep_nested_lib", rust_lib_name("ep_nested_lib"))

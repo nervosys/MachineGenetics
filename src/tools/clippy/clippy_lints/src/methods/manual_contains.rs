@@ -3,13 +3,13 @@ use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::peel_hir_pat_refs;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use rustc_ast::UnOp;
-use rustc_errors::Applicability;
-use rustc_hir::def::Res;
-use rustc_hir::{BinOpKind, Body, Expr, ExprKind, HirId, QPath};
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_span::Spanned;
+use redox_ast::UnOp;
+use redox_errors::Applicability;
+use redox_hir::def::Res;
+use redox_hir::{BinOpKind, Body, Expr, ExprKind, HirId, QPath};
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_span::Spanned;
 
 use super::MANUAL_CONTAINS;
 

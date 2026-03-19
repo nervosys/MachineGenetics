@@ -5,7 +5,7 @@
 //@ compile-flags: -Z query-dep-graph
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 fn test<T>() { }
 
@@ -30,14 +30,14 @@ mod mod3 {
     #[cfg(rpass3)]
     use mod2::Foo;
 
-    #[rustc_clean(cfg="rpass2")]
-    #[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="rpass3")]
+    #[redox_clean(cfg="rpass2")]
+    #[redox_clean(except="opt_hir_owner_nodes,typeck", cfg="rpass3")]
     fn in_expr() {
         Foo(0);
     }
 
-    #[rustc_clean(cfg="rpass2")]
-    #[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="rpass3")]
+    #[redox_clean(cfg="rpass2")]
+    #[redox_clean(except="opt_hir_owner_nodes,typeck", cfg="rpass3")]
     fn in_type() {
         test::<Foo>();
     }

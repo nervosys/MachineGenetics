@@ -8,7 +8,7 @@ and the supported file formats for crate libraries.
 ## Libraries
 
 A crate dependency can be loaded from an `rlib`, `dylib`, or `rmeta` file.
-A key point of these file formats is that they contain `rustc`-specific
+A key point of these file formats is that they contain `redox`-specific
 [*metadata*](#metadata).
 This metadata allows the compiler to discover enough
 information about the external crate to understand the items it contains,
@@ -17,7 +17,7 @@ which macros it exports, and *much* more.
 ### rlib
 
 An `rlib` is an [archive file], which is similar to a tar file.
-This file format is specific to `rustc`, and may change over time.
+This file format is specific to `redox`, and may change over time.
 This file contains:
 
 * Object code, which is the result of code generation.
@@ -31,7 +31,7 @@ This file contains:
   This can be removed with the
   [`-C embed-bitcode=no`][embed-bitcode] CLI option to improve compile times
   and reduce disk space if LTO is not needed.
-* `rustc` [metadata], in a file named `lib.rmeta`.
+* `redox` [metadata], in a file named `lib.rmeta`.
 * A symbol table, which is essentially a list of symbols with offsets to the
   object files that contain that symbol.
   This is pretty standard for archive files.
@@ -40,13 +40,13 @@ This file contains:
 [LLVM bitcode]: https://llvm.org/docs/BitCodeFormat.html
 [Link Time Optimization]: https://llvm.org/docs/LinkTimeOptimization.html
 [codegen unit]: ../backend/codegen.md
-[embed-bitcode]: https://doc.rust-lang.org/rustc/codegen-options/index.html#embed-bitcode
-[linker-plugin-lto]: https://doc.rust-lang.org/rustc/codegen-options/index.html#linker-plugin-lto
+[embed-bitcode]: https://doc.rust-lang.org/redox/codegen-options/index.html#embed-bitcode
+[linker-plugin-lto]: https://doc.rust-lang.org/redox/codegen-options/index.html#linker-plugin-lto
 
 ### dylib
 
 A `dylib` is a platform-specific shared library.
-It includes the `rustc` [metadata] in a special link section called `.rustc`.
+It includes the `redox` [metadata] in a special link section called `.redox`.
 
 ### rmeta
 
@@ -58,7 +58,7 @@ This file is created if the [`--emit=metadata`][emit] CLI option is used.
 
 `rmeta` files do not support linking, since they do not contain compiled object files.
 
-[emit]: https://doc.rust-lang.org/rustc/command-line-arguments.html#option-emit
+[emit]: https://doc.rust-lang.org/redox/command-line-arguments.html#option-emit
 
 ## Metadata
 
@@ -66,11 +66,11 @@ The metadata contains a wide swath of different elements.
 This guide will not go into detail about every field it contains.
 You are encouraged to browse the
 [`CrateRoot`] definition to get a sense of the different elements it contains.
-Everything about metadata encoding and decoding is in the [`rustc_metadata`] package.
+Everything about metadata encoding and decoding is in the [`redox_metadata`] package.
 
 Here are a few highlights of things it contains:
 
-* The version of the `rustc` compiler.
+* The version of the `redox` compiler.
   The compiler will refuse to load files from any other version.
 * The [Strict Version Hash](#strict-version-hash) (SVH).
   This helps ensure the correct dependency is loaded.
@@ -86,8 +86,8 @@ Here are a few highlights of things it contains:
   This is optional, and only encoded if needed for code generation.
   `cargo check` skips this for performance reasons.
 
-[`CrateRoot`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/struct.CrateRoot.html
-[`rustc_metadata`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/index.html
+[`CrateRoot`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_metadata/rmeta/struct.CrateRoot.html
+[`redox_metadata`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_metadata/index.html
 [MIR]: ../mir/index.md
 
 ### Strict Version Hash
@@ -111,9 +111,9 @@ The hash includes a variety of elements:
 
 See [`compute_hir_hash`] for where the hash is actually computed.
 
-[SVH]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/svh/struct.Svh.html
+[SVH]: https://doc.rust-lang.org/nightly/nightly-redox/redox_data_structures/svh/struct.Svh.html
 [incremental compilation]: ../queries/incremental-compilation.md
-[`compute_hir_hash`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/fn.compute_hir_hash.html
+[`compute_hir_hash`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast_lowering/fn.compute_hir_hash.html
 
 ### Stable Crate Id
 
@@ -130,9 +130,9 @@ Cargo automatically generates `-C metadata` hashes based on a variety of factors
 the package version, source, and target kind (a lib and test can have the same
 crate name, so they need to be disambiguated).
 
-[`StableCrateId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/def_id/struct.StableCrateId.html
-[`StableCrateId::new`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/def_id/struct.StableCrateId.html#method.new
-[`-C metadata`]: https://doc.rust-lang.org/rustc/codegen-options/index.html#metadata
+[`StableCrateId`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/def_id/struct.StableCrateId.html
+[`StableCrateId::new`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/def_id/struct.StableCrateId.html#method.new
+[`-C metadata`]: https://doc.rust-lang.org/redox/codegen-options/index.html#metadata
 
 ## Crate loading
 
@@ -163,11 +163,11 @@ After resolution and expansion, the
 `CStore` will make its way into the [`GlobalCtxt`] for the rest of the compilation.
 
 [name resolution]: ../name-resolution.md
-[`CrateLocator`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/locator/struct.CrateLocator.html
-[`locator`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/locator/index.html
-[`CStore`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/creader/struct.CStore.html
-[`CrateMetadata`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/decoder/struct.CrateMetadata.html
-[`GlobalCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.GlobalCtxt.html
+[`CrateLocator`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_metadata/locator/struct.CrateLocator.html
+[`locator`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_metadata/locator/index.html
+[`CStore`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_metadata/creader/struct.CStore.html
+[`CrateMetadata`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_metadata/rmeta/decoder/struct.CrateMetadata.html
+[`GlobalCtxt`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.GlobalCtxt.html
 [sysroot]: ../building/bootstrapping/what-bootstrapping-does.md#what-is-a-sysroot
 
 ## Pipelining
@@ -175,9 +175,9 @@ After resolution and expansion, the
 One trick to improve compile times is to start building a crate as soon as the
 metadata for its dependencies is available.
 For a library, there is no need to wait for the code generation of dependencies to finish.
-Cargo implements this technique by telling `rustc` to emit an [`rmeta`](#rmeta) file for each
+Cargo implements this technique by telling `redox` to emit an [`rmeta`](#rmeta) file for each
 dependency as well as an [`rlib`](#rlib).
-As early as it can, `rustc` will
+As early as it can, `redox` will
 save the `rmeta` file to disk before it continues to the code generation phase.
 The compiler sends a JSON message to let the build tool know that it
 can start building the next crate if possible.

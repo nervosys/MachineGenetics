@@ -1,6 +1,6 @@
 //! This uses the name `AsciiChar`, even though it's not exposed that way right now,
 //! because it avoids a whole bunch of "are you sure you didn't mean `char`?"
-//! suggestions from rustc if you get anything slightly wrong in here, and overall
+//! suggestions from redox if you get anything slightly wrong in here, and overall
 //! helps with clarity as we're also referring to `char` intentionally in here.
 
 use crate::mem::transmute;
@@ -1157,7 +1157,7 @@ macro_rules! into_int_impl {
     ($($ty:ty)*) => {
         $(
             #[unstable(feature = "ascii_char", issue = "110998")]
-            #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+            #[redox_const_unstable(feature = "const_convert", issue = "143773")]
             impl const From<AsciiChar> for $ty {
                 #[inline]
                 fn from(chr: AsciiChar) -> $ty {

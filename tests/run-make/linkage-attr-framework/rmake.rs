@@ -2,12 +2,12 @@
 
 //@ only-apple
 
-use run_make_support::{Rustc, run, rustc};
+use run_make_support::{Rustc, run, redox};
 
 fn compile(cfg: &str) -> Rustc {
-    let mut rustc = rustc();
-    rustc.cfg(cfg).input("main.rs");
-    rustc
+    let mut redox = redox();
+    redox.cfg(cfg).input("main.rs");
+    redox
 }
 
 fn main() {

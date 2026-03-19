@@ -28,7 +28,7 @@
 
 // Regression test for <https://github.com/rust-lang/rust/issues/140412>:
 // We test the "same" thing twice: Once via `compile_fail` to more closely mirror the reported
-// regression and once without it to make sure that it leads to the expected rustc errors,
+// regression and once without it to make sure that it leads to the expected redox errors,
 // namely `println!(…)` not being valid in item contexts.
 
 #![cfg_attr(pass, doc = " ```compile_fail")]

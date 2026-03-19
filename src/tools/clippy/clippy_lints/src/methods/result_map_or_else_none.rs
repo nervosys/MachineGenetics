@@ -2,11 +2,11 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet;
 use clippy_utils::{is_none_expr, peel_blocks};
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::LangItem::OptionSome;
-use rustc_lint::LateContext;
-use rustc_span::symbol::sym;
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_hir::LangItem::OptionSome;
+use redox_lint::LateContext;
+use redox_span::symbol::sym;
 
 use super::RESULT_MAP_OR_INTO_OPTION;
 

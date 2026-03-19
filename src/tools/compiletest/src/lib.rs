@@ -53,18 +53,18 @@ fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
-        .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
+        .reqopt("", "redox-path", "path to redox to use for compiling", "PATH")
         .optopt("", "cargo-path", "path to cargo to use for compiling", "PATH")
         .optopt(
             "",
-            "stage0-rustc-path",
-            "path to rustc to use for compiling run-make recipes",
+            "stage0-redox-path",
+            "path to redox to use for compiling run-make recipes",
             "PATH",
         )
         .optopt(
             "",
-            "query-rustc-path",
-            "path to rustc to use for querying target information (defaults to `--rustc-path`)",
+            "query-redox-path",
+            "path to redox to use for querying target information (defaults to `--redox-path`)",
             "PATH",
         )
         .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
@@ -105,7 +105,7 @@ fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "has-enzyme", "run tests that require enzyme")
         .optflag("", "has-offload", "run tests that require offload")
-        .optflag("", "with-rustc-debug-assertions", "whether rustc was built with debug assertions")
+        .optflag("", "with-redox-debug-assertions", "whether redox was built with debug assertions")
         .optflag("", "with-std-debug-assertions", "whether std was built with debug assertions")
         .optflag("", "with-std-remap-debuginfo", "whether std was built with remapping")
         .optmulti(
@@ -122,12 +122,12 @@ fn parse_config(args: Vec<String>) -> Config {
              (eg. emulator, valgrind)",
             "PROGRAM",
         )
-        .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
-        .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
+        .optmulti("", "host-redoxflags", "flags to pass to redox for host", "FLAGS")
+        .optmulti("", "target-redoxflags", "flags to pass to redox for target", "FLAGS")
         .optflag(
             "",
             "rust-randomized-layout",
-            "set this when rustc/stdlib were compiled with randomized layouts",
+            "set this when redox/stdlib were compiled with randomized layouts",
         )
         .optflag("", "optimize-tests", "run tests with optimizations enabled")
         .optflag("", "verbose", "run tests verbosely, showing all output")
@@ -296,7 +296,7 @@ fn parse_config(args: Vec<String>) -> Config {
     let override_codegen_backend = matches.opt_str("override-codegen-backend");
 
     let run_ignored = matches.opt_present("ignored");
-    let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
+    let with_redox_debug_assertions = matches.opt_present("with-redox-debug-assertions");
     let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
     let with_std_remap_debuginfo = matches.opt_present("with-std-remap-debuginfo");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
@@ -376,10 +376,10 @@ fn parse_config(args: Vec<String>) -> Config {
 
         host_compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         target_run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
-        rustc_path: opt_path(matches, "rustc-path"),
+        redox_path: opt_path(matches, "redox-path"),
         cargo_path: matches.opt_str("cargo-path").map(Utf8PathBuf::from),
-        stage0_rustc_path: matches.opt_str("stage0-rustc-path").map(Utf8PathBuf::from),
-        query_rustc_path: matches.opt_str("query-rustc-path").map(Utf8PathBuf::from),
+        stage0_redox_path: matches.opt_str("stage0-redox-path").map(Utf8PathBuf::from),
+        query_redox_path: matches.opt_str("query-redox-path").map(Utf8PathBuf::from),
         rustdoc_path: matches.opt_str("rustdoc-path").map(Utf8PathBuf::from),
         coverage_dump_path: matches.opt_str("coverage-dump-path").map(Utf8PathBuf::from),
         python: matches.opt_str("python").unwrap(),
@@ -410,7 +410,7 @@ fn parse_config(args: Vec<String>) -> Config {
                 .unwrap_or_else(|_| panic!("unknown `--debugger` option `{debugger}` given"))
         }),
         run_ignored,
-        with_rustc_debug_assertions,
+        with_redox_debug_assertions,
         with_std_debug_assertions,
         with_std_remap_debuginfo,
         filters,
@@ -428,8 +428,8 @@ fn parse_config(args: Vec<String>) -> Config {
             _ => panic!("unknown `--run` option `{}` given", mode),
         }),
         runner: matches.opt_str("runner"),
-        host_rustcflags: matches.opt_strs("host-rustcflags"),
-        target_rustcflags: matches.opt_strs("target-rustcflags"),
+        host_redoxflags: matches.opt_strs("host-redoxflags"),
+        target_redoxflags: matches.opt_strs("target-redoxflags"),
         optimize_tests: matches.opt_present("optimize-tests"),
         rust_randomized_layout: matches.opt_present("rust-randomized-layout"),
         target,
@@ -663,7 +663,7 @@ fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> {
 fn common_inputs_stamp(config: &Config) -> Stamp {
     let src_root = &config.src_root;
 
-    let mut stamp = Stamp::from_path(&config.rustc_path);
+    let mut stamp = Stamp::from_path(&config.redox_path);
 
     // Relevant pretty printer files
     let pretty_printer_files = [

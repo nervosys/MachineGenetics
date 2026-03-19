@@ -15,7 +15,7 @@
 #![deny(warnings)]
 
 use run_make_support::symbols::exported_dynamic_symbol_names;
-use run_make_support::{bin_name, cwd, dynamic_lib_name, is_darwin, object, rfs, run, rustc};
+use run_make_support::{bin_name, cwd, dynamic_lib_name, is_darwin, object, rfs, run, redox};
 
 macro_rules! adjust_symbol_prefix {
     ($name:literal) => {
@@ -24,7 +24,7 @@ macro_rules! adjust_symbol_prefix {
 }
 
 fn main() {
-    rustc()
+    redox()
         .input("hashed_dylib.rs")
         .prefer_dynamic()
         .arg("-Zunstable-options")
@@ -32,7 +32,7 @@ fn main() {
         .metadata("foo")
         .run();
 
-    rustc()
+    redox()
         .input("hashed_rlib.rs")
         .prefer_dynamic()
         .arg("-Zunstable-options")
@@ -40,8 +40,8 @@ fn main() {
         .metadata("bar")
         .run();
 
-    rustc().input("default_dylib.rs").library_search_path(cwd()).prefer_dynamic().run();
-    rustc().input("default_bin.rs").library_search_path(cwd()).prefer_dynamic().run();
+    redox().input("default_dylib.rs").library_search_path(cwd()).prefer_dynamic().run();
+    redox().input("default_bin.rs").library_search_path(cwd()).prefer_dynamic().run();
 
     {
         // Check hashed symbol name

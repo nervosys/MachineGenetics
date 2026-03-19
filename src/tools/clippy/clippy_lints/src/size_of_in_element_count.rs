@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::sym;
-use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty};
-use rustc_session::declare_lint_pass;
-use rustc_span::Symbol;
+use redox_hir::{BinOpKind, Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::{self, Ty};
+use redox_session::declare_lint_pass;
+use redox_span::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does

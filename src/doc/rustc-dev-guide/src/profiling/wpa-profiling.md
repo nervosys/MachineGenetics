@@ -7,7 +7,7 @@ Performance Recorder (WPR) and Windows Performance Analyzer (WPA).
 As the names suggest, WPR is for recording system statistics (in the form of event trace log a.k.a.
 ETL files), while WPA is for analyzing these ETL files.
 
-WPR collects system wide statistics, so it won't just record things relevant to rustc but also
+WPR collects system wide statistics, so it won't just record things relevant to redox but also
 everything else that's running on the machine.
 During analysis, we can filter to just the things we find interesting.
 
@@ -16,7 +16,7 @@ before we can successfully profile the Rust compiler.
 
 Here we will explore how to use WPR and WPA for analyzing the Rust compiler as well as provide
 links to useful "profiles" (i.e., settings files that tweak the defaults for WPR and WPA) that are
-specifically designed to make analyzing rustc easier.
+specifically designed to make analyzing redox easier.
 
 ### Installing WPR and WPA
 
@@ -31,7 +31,7 @@ Make sure to select the Windows Performance Toolkit (you don't need to select an
 In order to perform system analysis, you'll first need to record your system with WPR.
 Open WPR and at the bottom of the window select the "profiles" of the things you want to record.
 For looking
-into memory usage of the rustc bootstrap process, we'll want to select the following items:
+into memory usage of the redox bootstrap process, we'll want to select the following items:
 
 * CPU usage
 * VirtualAlloc usage
@@ -44,14 +44,14 @@ Now we need to get our setup ready to record.
 For memory usage analysis, it is best to record the
 stage 2 compiler build with a stage 1 compiler build with debug symbols.
 Having symbols in the
-compiler we're using to build rustc will aid our analysis greatly by allowing WPA to resolve Rust
+compiler we're using to build redox will aid our analysis greatly by allowing WPA to resolve Rust
 symbols correctly.
 Unfortunately, the stage 0 compiler does not have symbols turned on,
 which is why we'll need to build a stage 1 compiler,
 and then a stage 2 compiler ourselves.
 
 To do this, make sure you have set `rust.debuginfo-level = 1` in your `bootstrap.toml` file.
-This tells rustc to generate debug information which includes stack frames when bootstrapping.
+This tells redox to generate debug information which includes stack frames when bootstrapping.
 
 Now you can build the stage 1 compiler: `x build --stage 1 -i library` or however
 else you want to build the stage 1 compiler.
@@ -70,9 +70,9 @@ appears.
 
 Now that our ETL file is open in WPA, we can analyze the results.
 First, we'll want to apply the
-pre-made "profile" which will put WPA into a state conducive to analyzing rustc bootstrap.
+pre-made "profile" which will put WPA into a state conducive to analyzing redox bootstrap.
 Download
-the profile [here](https://github.com/wesleywiser/rustc-bootstrap-wpa-analysis/releases/download/1/rustc.generic.wpaProfile).
+the profile [here](https://github.com/wesleywiser/redox-bootstrap-wpa-analysis/releases/download/1/redox.generic.wpaProfile).
 Select the "Profiles" menu at the top, then "apply" and then choose the downloaded profile.
 
 You should see something resembling the following:
@@ -84,7 +84,7 @@ the Rust stack traces.
 To do this, click "Trace" and then choose "Load Symbols".
 This step can take a while.
 
-Once WPA has loaded symbols for rustc, we can expand the rustc.exe node and begin drilling down
+Once WPA has loaded symbols for redox, we can expand the redox.exe node and begin drilling down
 into the stack with the largest allocations.
 
 To do that, we'll expand the `[Root]` node in the "Commit Stack" column and continue expanding
@@ -105,14 +105,14 @@ The profile also includes a few other tabs which can be helpful:
 
 - System Configuration
     - General information about the system the capture was recorded on.
-- rustc Build Processes
-    - A flat list of relevant processes such as rustc.exe, cargo.exe, link.exe etc.
+- redox Build Processes
+    - A flat list of relevant processes such as redox.exe, cargo.exe, link.exe etc.
     - Each process lists its command line arguments.
-    - Useful for figuring out what a specific rustc process was working on.
-- rustc Build Process Tree
+    - Useful for figuring out what a specific redox process was working on.
+- redox Build Process Tree
     - Timeline showing when processes started and exited.
-- rustc CPU Analysis
-    - Contains charts preconfigured to show hotspots in rustc.
-    - These charts are designed to support analyzing where rustc is spending its time.
-- rustc Memory Analysis
-    - Contains charts preconfigured to show where rustc is allocating memory.
+- redox CPU Analysis
+    - Contains charts preconfigured to show hotspots in redox.
+    - These charts are designed to support analyzing where redox is spending its time.
+- redox Memory Analysis
+    - Contains charts preconfigured to show where redox is allocating memory.

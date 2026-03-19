@@ -1,6 +1,6 @@
 #![feature(intrinsics)]
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 fn size_of<T, U>() -> usize;
 //~^ ERROR E0094
 

@@ -4,18 +4,18 @@ use crate::qualify_min_const_fn::is_stable_const_fn;
 use crate::res::MaybeResPath;
 use crate::ty::needs_ordered_drop;
 use core::ops::ControlFlow;
-use rustc_ast::visit::{VisitorResult, try_visit};
-use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::intravisit::{self, Visitor, walk_block, walk_expr};
-use rustc_hir::{
+use redox_ast::visit::{VisitorResult, try_visit};
+use redox_hir::def::{CtorKind, DefKind, Res};
+use redox_hir::intravisit::{self, Visitor, walk_block, walk_expr};
+use redox_hir::{
     self as hir, AmbigArg, AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId,
     ItemKind, LetExpr, Pat, QPath, Stmt, StructTailExpr, UnOp, UnsafeSource,
 };
-use rustc_lint::LateContext;
-use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::adjustment::Adjust;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeckResults};
-use rustc_span::Span;
+use redox_lint::LateContext;
+use redox_middle::hir::nested_filter;
+use redox_middle::ty::adjustment::Adjust;
+use redox_middle::ty::{self, Ty, TyCtxt, TypeckResults};
+use redox_span::Span;
 
 mod internal {
     /// Trait for visitor functions to control whether or not to descend to child nodes. Implemented

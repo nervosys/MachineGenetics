@@ -1,10 +1,10 @@
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
-use rustc_errors::Applicability;
-use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{Block, BlockCheckMode, Closure, Expr, ExprKind, Stmt, StmtKind, TyKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
+use redox_errors::Applicability;
+use redox_hir::intravisit::{Visitor, walk_expr};
+use redox_hir::{Block, BlockCheckMode, Closure, Expr, ExprKind, Stmt, StmtKind, TyKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::Span;
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};

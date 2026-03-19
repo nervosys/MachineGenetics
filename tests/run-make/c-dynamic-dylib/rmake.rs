@@ -5,12 +5,12 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{build_native_dynamic_lib, dynamic_lib_name, rfs, run, run_fail, rustc};
+use run_make_support::{build_native_dynamic_lib, dynamic_lib_name, rfs, run, run_fail, redox};
 
 fn main() {
     build_native_dynamic_lib("cfoo");
-    rustc().input("foo.rs").arg("-Cprefer-dynamic").run();
-    rustc().input("bar.rs").run();
+    redox().input("foo.rs").arg("-Cprefer-dynamic").run();
+    redox().input("bar.rs").run();
     run("bar");
     rfs::remove_file(dynamic_lib_name("cfoo"));
     run_fail("bar");

@@ -8,17 +8,17 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{has_non_owning_mutable_access, make_normalized_projection, make_projection};
 use clippy_utils::{CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, sym};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
-use rustc_hir::{
+use redox_data_structures::fx::FxHashMap;
+use redox_errors::{Applicability, MultiSpan};
+use redox_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
+use redox_hir::{
     BindingMode, Block, Expr, ExprKind, HirId, HirIdSet, LetStmt, Mutability, Node, Pat, PatKind, Stmt, StmtKind,
 };
-use rustc_lint::LateContext;
-use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, AssocTag, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty};
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use redox_lint::LateContext;
+use redox_middle::hir::nested_filter;
+use redox_middle::ty::{self, AssocTag, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty};
+use redox_span::symbol::Ident;
+use redox_span::{Span, Symbol};
 
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 

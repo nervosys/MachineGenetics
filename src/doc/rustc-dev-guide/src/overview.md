@@ -16,34 +16,34 @@ For now, we will avoid mentioning how the compiler implements these steps except
 ### Invocation
 
 Compilation begins when a user writes a Rust source program in text and invokes
-the `rustc` compiler on it.
+the `redox` compiler on it.
 The work that the compiler needs to perform is defined by command-line options.
 For example, it is possible to enable nightly
 features (`-Z` flags), perform `check`-only builds, or emit the LLVM
 Intermediate Representation (`LLVM-IR`) rather than executable machine code.
-The `rustc` executable call may be indirect through the use of `cargo`.
+The `redox` executable call may be indirect through the use of `cargo`.
 
-Command line argument parsing occurs in the [`rustc_driver`].
+Command line argument parsing occurs in the [`redox_driver`].
 This crate defines the compile configuration that is requested by the user and passes it
-to the rest of the compilation process as a [`rustc_interface::Config`].
+to the rest of the compilation process as a [`redox_interface::Config`].
 
 ### Lexing and parsing
 
-The raw Rust source text is analyzed by a low-level *lexer* located in [`rustc_lexer`].
+The raw Rust source text is analyzed by a low-level *lexer* located in [`redox_lexer`].
 At this stage, the source text is turned into a stream of
 atomic source code units known as _tokens_.
  The `lexer` supports the Unicode character encoding.
 
 The token stream passes through a higher-level lexer located in
-[`rustc_parse`] to prepare for the next stage of the compile process.
+[`redox_parse`] to prepare for the next stage of the compile process.
 The [`Lexer`] `struct` is used at this stage to perform a set of validations
 and turn strings into interned symbols (_interning_ is discussed later).
 [String interning] is a way of storing only one immutable copy of each distinct string value.
 
 The lexer has a small interface and doesn't depend directly on the diagnostic
-infrastructure in `rustc`.
+infrastructure in `redox`.
 Instead it provides diagnostics as plain data which
-are emitted in [`rustc_parse::lexer`] as real diagnostics.
+are emitted in [`redox_parse::lexer`] as real diagnostics.
 The `lexer` preserves full fidelity information for both IDEs and procedural macros
 (sometimes referred to as "proc-macros").
 
@@ -52,23 +52,23 @@ Tree (AST)][parser].
 It uses a recursive descent (top-down) approach to syntax analysis.
 The crate entry points for the `parser` are the
 [`Parser::parse_crate_mod`][parse_crate_mod] and [`Parser::parse_mod`][parse_mod]
-methods found in [`rustc_parse::parser::Parser`].
+methods found in [`redox_parse::parser::Parser`].
 The external module parsing
-entry point is [`rustc_expand::module::parse_external_mod`][parse_external_mod].
+entry point is [`redox_expand::module::parse_external_mod`][parse_external_mod].
 And the macro-`parser` entry point is [`Parser::parse_nonterminal`][parse_nonterminal].
 
 Parsing is performed with a set of [`parser`] utility methods including [`bump`],
 [`check`], [`eat`], [`expect`], [`look_ahead`].
 
 Parsing is organized by semantic construct.
-Separate `parse_*` methods can be found in the [`rustc_parse`][rustc_parse_parser_dir] directory.
+Separate `parse_*` methods can be found in the [`redox_parse`][redox_parse_parser_dir] directory.
 The source file name follows the construct name.
 For example, the following files are found in the `parser`:
 
-- [`expr.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_parse/src/parser/expr.rs)
-- [`pat.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_parse/src/parser/pat.rs)
-- [`ty.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_parse/src/parser/ty.rs)
-- [`stmt.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_parse/src/parser/stmt.rs)
+- [`expr.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_parse/src/parser/expr.rs)
+- [`pat.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_parse/src/parser/pat.rs)
+- [`ty.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_parse/src/parser/ty.rs)
+- [`stmt.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_parse/src/parser/stmt.rs)
 
 This naming scheme is used across many compiler stages.
 You will find either a file or directory with the same name across the parsing, lowering, type
@@ -78,7 +78,7 @@ checking, [Typed High-level Intermediate Representation (`THIR`)][thir] lowering
 Macro-expansion, `AST`-validation, name-resolution, and early linting also take
 place during the lexing and parsing stage.
 
-The [`rustc_ast::ast`]::{[`Crate`], [`Expr`], [`Pat`], ...} `AST` nodes are
+The [`redox_ast::ast`]::{[`Crate`], [`Expr`], [`Pat`], ...} `AST` nodes are
 returned from the parser while the standard [`Diag`] API is used for error handling.
 Generally Rust's compiler will try to recover from errors
 by parsing a superset of Rust's grammar, while also emitting an error type.
@@ -123,7 +123,7 @@ This is called _monomorphization collection_ and it happens at the `MIR` level.
 We then begin what is simply called _code generation_ or _codegen_.
 The [code generation stage][codegen] is when higher-level representations of source are
 turned into an executable binary.
-Since `rustc` uses LLVM for code generation,
+Since `redox` uses LLVM for code generation,
 the first step is to convert the `MIR` to `LLVM-IR`.
 This is where the `MIR` is actually monomorphized.
 The `LLVM-IR` is passed to LLVM, which does a lot more
@@ -135,39 +135,39 @@ The different libraries/binaries are then linked together to produce the final b
 [*trait solving*]: traits/resolution.md
 [*type checking*]: hir-typeck/summary.md
 [*type inference*]: type-inference.md
-[`bump`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.bump
-[`check`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.check
-[`Crate`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_ast/ast/struct.Crate.html
-[`diag`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html
-[`eat`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.eat
-[`expect`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.expect
-[`Expr`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_ast/ast/struct.Expr.html
-[`hir::Ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Ty.html
-[`look_ahead`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.look_ahead
-[`Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html
-[`Pat`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_ast/ast/struct.Pat.html
-[`rustc_ast::ast`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_ast/index.html
-[`rustc_driver`]: rustc-driver/intro.md
-[`rustc_interface::Config`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Config.html
-[`rustc_lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
-[`rustc_parse::lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/index.html
-[`rustc_parse::parser::Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html
-[`rustc_parse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
+[`bump`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/parser/struct.Parser.html#method.bump
+[`check`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/parser/struct.Parser.html#method.check
+[`Crate`]: https://doc.rust-lang.org/beta/nightly-redox/redox_ast/ast/struct.Crate.html
+[`diag`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/struct.Diag.html
+[`eat`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/parser/struct.Parser.html#method.eat
+[`expect`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/parser/struct.Parser.html#method.expect
+[`Expr`]: https://doc.rust-lang.org/beta/nightly-redox/redox_ast/ast/struct.Expr.html
+[`hir::Ty`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.Ty.html
+[`look_ahead`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/parser/struct.Parser.html#method.look_ahead
+[`Parser`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/parser/struct.Parser.html
+[`Pat`]: https://doc.rust-lang.org/beta/nightly-redox/redox_ast/ast/struct.Pat.html
+[`redox_ast::ast`]: https://doc.rust-lang.org/beta/nightly-redox/redox_ast/index.html
+[`redox_driver`]: redox-driver/intro.md
+[`redox_interface::Config`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_interface/interface/struct.Config.html
+[`redox_lexer`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lexer/index.html
+[`redox_parse::lexer`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/lexer/index.html
+[`redox_parse::parser::Parser`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/parser/struct.Parser.html
+[`redox_parse`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/index.html
 [`simplify_try`]: https://github.com/rust-lang/rust/pull/66282
-[`Lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.Lexer.html
-[`Ty<'tcx>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
+[`Lexer`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/lexer/struct.Lexer.html
+[`Ty<'tcx>`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html
 [borrow checking]: borrow-check.md
 [codegen]: backend/codegen.md
-[hir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html
+[hir]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/index.html
 [lex]: the-parser.md
 [mir-opt]: mir/optimizations.md
 [mir]: mir/index.md
-[parse_crate_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.parse_crate_mod
-[parse_external_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/module/fn.parse_external_mod.html
-[parse_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.parse_mod
-[parse_nonterminal]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.parse_nonterminal
-[parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
-[rustc_parse_parser_dir]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_parse/src/parser
+[parse_crate_mod]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/parser/struct.Parser.html#method.parse_crate_mod
+[parse_external_mod]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/module/fn.parse_external_mod.html
+[parse_mod]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/parser/struct.Parser.html#method.parse_mod
+[parse_nonterminal]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/parser/struct.Parser.html#method.parse_nonterminal
+[parser]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/index.html
+[redox_parse_parser_dir]: https://github.com/rust-lang/rust/tree/HEAD/compiler/redox_parse/src/parser
 [String interning]: https://en.wikipedia.org/wiki/String_interning
 [thir]: ./thir.md
 
@@ -206,7 +206,7 @@ For example,
 - Rust stability: the compiler must respect Rust's stability guarantees by not
   breaking programs that previously compiled despite the many changes that are
   always going on to its implementation.
-- Limitations of other tools: `rustc` uses LLVM in its backend, and LLVM has some
+- Limitations of other tools: `redox` uses LLVM in its backend, and LLVM has some
   strengths we leverage and some aspects we need to work around.
 
 So, as you continue your journey through the rest of the guide, keep these things in mind.
@@ -214,16 +214,16 @@ They will often inform decisions that we make.
 
 ### Intermediate representations
 
-As with most compilers, `rustc` uses some intermediate representations (IRs) to
+As with most compilers, `redox` uses some intermediate representations (IRs) to
 facilitate computations.
 In general, working directly with the source code is extremely inconvenient and error-prone.
 Source code is designed to be human-friendly while at
 the same time being unambiguous, but it's less convenient for doing something
 like, say, type checking.
 
-Instead most compilers, including `rustc`, build some sort of IR out of the
+Instead most compilers, including `redox`, build some sort of IR out of the
 source code which is easier to analyze.
-`rustc` has a few IRs, each optimized for different purposes:
+`redox` has a few IRs, each optimized for different purposes:
 
 - Token stream: the lexer produces a stream of tokens directly from the source code.
   This stream of tokens is easier for the parser to deal with than raw text.
@@ -281,7 +281,7 @@ incremental compilation possible -- that is, if the user makes a change to
 their program and recompiles, we want to do as little redundant work as
 possible to output the new binary.
 
-In `rustc`, all the major steps above are organized as a bunch of queries that call each other.
+In `redox`, all the major steps above are organized as a bunch of queries that call each other.
 For example, there is a query to ask for the type of something
 and another to ask for the optimized `MIR` of a function.
 These queries can call each other and are all tracked through the query system.
@@ -307,7 +307,7 @@ for that function and then creates codegen units.
 This kind of split will need
 to remain to ensure that unreachable functions still have their errors emitted.
 
-[passes]: https://github.com/rust-lang/rust/blob/e69c7306e2be08939d95f14229e3f96566fb206c/compiler/rustc_interface/src/passes.rs#L791
+[passes]: https://github.com/rust-lang/rust/blob/e69c7306e2be08939d95f14229e3f96566fb206c/compiler/redox_interface/src/passes.rs#L791
 
 Moreover, the compiler wasn't originally built to use a query system; the query
 system has been retrofitted into the compiler, so parts of it are not query-fied yet.
@@ -330,7 +330,7 @@ You will also see lifetimes with
 the name `'tcx`, which means that something is tied to the lifetime of the
 [`TyCtxt`] (usually it is stored or interned there).
 
-[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
+[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html
 
 For more information about queries in the compiler, see [the queries chapter][queries].
 
@@ -340,23 +340,23 @@ For more information about queries in the compiler, see [the queries chapter][qu
 
 Types are really important in Rust, and they form the core of a lot of compiler analyses.
 The main type (in the compiler) that represents types (in the user's
-program) is [`rustc_middle::ty::Ty`][ty].
+program) is [`redox_middle::ty::Ty`][ty].
 This is so important that we have a whole chapter
 on [`ty::Ty`][ty], but for now, we just want to mention that it exists and is the way
-`rustc` represents types!
+`redox` represents types!
 
-Also note that the [`rustc_middle::ty`] module defines the [`TyCtxt`] struct we mentioned before.
+Also note that the [`redox_middle::ty`] module defines the [`TyCtxt`] struct we mentioned before.
 
-[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
-[`rustc_middle::ty`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_middle/ty/index.html
+[ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html
+[`redox_middle::ty`]: https://doc.rust-lang.org/beta/nightly-redox/redox_middle/ty/index.html
 
 ### Parallelism
 
 Compiler performance is a problem that we would like to improve on (and are always working on).
-One aspect of that is parallelizing `rustc` itself.
+One aspect of that is parallelizing `redox` itself.
 
-Currently, there is only one part of rustc that is parallel by default:
-[code generation](./parallel-rustc.md#Codegen).
+Currently, there is only one part of redox that is parallel by default:
+[code generation](./parallel-redox.md#Codegen).
 
 However, the rest of the compiler is still not yet parallel.
 There have been lots of efforts spent on this, but it is generally a hard problem.
@@ -374,7 +374,7 @@ but there are already some promising performance improvements.
 
 ### Bootstrapping
 
-`rustc` itself is written in Rust.
+`redox` itself is written in Rust.
 So how do we compile the compiler? We use an older compiler to compile the newer compiler.
 This is called [_bootstrapping_].
 
@@ -382,17 +382,17 @@ Bootstrapping has a lot of interesting implications.
 For example, it means that one of the major users of Rust is the Rust compiler, so we are
 constantly testing our own software ("eating our own dogfood").
 
-For more details on bootstrapping, see [the bootstrapping section of the guide][rustc-bootstrap].
+For more details on bootstrapping, see [the bootstrapping section of the guide][redox-bootstrap].
 
 [_bootstrapping_]: https://en.wikipedia.org/wiki/Bootstrapping_(compilers)
-[rustc-bootstrap]: building/bootstrapping/intro.md
+[redox-bootstrap]: building/bootstrapping/intro.md
 
 <!--
 # Unresolved Questions
 
 - Does LLVM ever do optimizations in debug builds?
 - How do I explore phases of the compile process in my own sources (lexer,
-  parser, HIR, etc)? - e.g., `cargo rustc -- -Z unpretty=hir-tree` allows you to
+  parser, HIR, etc)? - e.g., `cargo redox -- -Z unpretty=hir-tree` allows you to
   view `HIR` representation
 - What is the main source entry point for `X`?
 - Where do phases diverge for cross-compilation to machine code across different platforms?
@@ -401,23 +401,23 @@ For more details on bootstrapping, see [the bootstrapping section of the guide][
 # References
 
 - Command line parsing
-  - Guide: [The Rustc Driver and Interface](rustc-driver/intro.md)
-  - Driver definition: [`rustc_driver`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/)
-  - Main entry point: [`rustc_session::config::build_session_options`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/config/fn.build_session_options.html)
+  - Guide: [The Rustc Driver and Interface](redox-driver/intro.md)
+  - Driver definition: [`redox_driver`](https://doc.rust-lang.org/nightly/nightly-redox/redox_driver/)
+  - Main entry point: [`redox_session::config::build_session_options`](https://doc.rust-lang.org/nightly/nightly-redox/redox_session/config/fn.build_session_options.html)
 - Lexical Analysis: Lex the user program to a stream of tokens
   - Guide: [Lexing and Parsing](the-parser.md)
-  - Lexer definition: [`rustc_lexer`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html)
-  - Main entry point: [`rustc_lexer::Cursor::advance_token`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/struct.Cursor.html#method.advance_token)
+  - Lexer definition: [`redox_lexer`](https://doc.rust-lang.org/nightly/nightly-redox/redox_lexer/index.html)
+  - Main entry point: [`redox_lexer::Cursor::advance_token`](https://doc.rust-lang.org/nightly/nightly-redox/redox_lexer/struct.Cursor.html#method.advance_token)
 - Parsing: Parse the stream of tokens to an Abstract Syntax Tree (AST)
   - Guide: [Lexing and Parsing](the-parser.md)
   - Guide: [Macro Expansion](macro-expansion.md)
   - Guide: [Name Resolution](name-resolution.md)
-  - Parser definition: [`rustc_parse`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html)
+  - Parser definition: [`redox_parse`](https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/index.html)
   - Main entry points:
-    - [Entry point for first file in crate](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/passes/fn.parse.html)
-    - [Entry point for outline module parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/module/fn.parse_external_mod.html)
+    - [Entry point for first file in crate](https://doc.rust-lang.org/nightly/nightly-redox/redox_interface/passes/fn.parse.html)
+    - [Entry point for outline module parsing](https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/module/fn.parse_external_mod.html)
     - [Entry point for macro fragments][parse_nonterminal]
-  - `AST` definition: [`rustc_ast`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html)
+  - `AST` definition: [`redox_ast`](https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/ast/index.html)
   - Feature gating: [Feature Gate Checking](feature-gate-check.md)
   - Early linting: **TODO**
 - The High Level Intermediate Representation (HIR)
@@ -425,32 +425,32 @@ For more details on bootstrapping, see [the bootstrapping section of the guide][
   - Guide: [Identifiers in the HIR](hir.md#identifiers-in-the-hir)
   - Guide: [The `HIR` Map](hir.md#the-hir-map)
   - Guide: [Lowering `AST` to `HIR`](./hir/lowering.md)
-  - How to view `HIR` representation for your code `cargo rustc -- -Z unpretty=hir-tree`
-  - Rustc `HIR` definition: [`rustc_hir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html)
+  - How to view `HIR` representation for your code `cargo redox -- -Z unpretty=hir-tree`
+  - Rustc `HIR` definition: [`redox_hir`](https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/index.html)
   - Main entry point: **TODO**
   - Late linting: **TODO**
 - Type Inference
   - Guide: [Type Inference](type-inference.md)
   - Guide: [The ty Module: Representing Types](ty.md) (semantics)
-  - Main entry point (type inference): [`InferCtxtBuilder::enter`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxtBuilder.html#method.enter)
-  - Main entry point (type checking bodies): [the `typeck` query](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.typeck)
+  - Main entry point (type inference): [`InferCtxtBuilder::enter`](https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/struct.InferCtxtBuilder.html#method.enter)
+  - Main entry point (type checking bodies): [the `typeck` query](https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.typeck)
     - These two functions can't be decoupled.
 - The Mid Level Intermediate Representation (MIR)
   - Guide: [The `MIR` (Mid level IR)](mir/index.md)
-  - Definition: [`rustc_middle/src/mir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html)
-  - Definition of sources that manipulates the MIR: [`rustc_mir_build`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/index.html), [`rustc_mir_dataflow`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/index.html), [`rustc_mir_transform`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/index.html)
+  - Definition: [`redox_middle/src/mir`](https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/index.html)
+  - Definition of sources that manipulates the MIR: [`redox_mir_build`](https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_build/index.html), [`redox_mir_dataflow`](https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_dataflow/index.html), [`redox_mir_transform`](https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/index.html)
 - The Borrow Checker
   - Guide: [MIR Borrow Check](borrow-check.md)
-  - Definition: [`rustc_borrowck`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/index.html)
-  - Main entry point: [`mir_borrowck` query](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/fn.mir_borrowck.html)
+  - Definition: [`redox_borrowck`](https://doc.rust-lang.org/nightly/nightly-redox/redox_borrowck/index.html)
+  - Main entry point: [`mir_borrowck` query](https://doc.rust-lang.org/nightly/nightly-redox/redox_borrowck/fn.mir_borrowck.html)
 - `MIR` Optimizations
   - Guide: [MIR Optimizations](mir/optimizations.md)
-  - Definition: [`rustc_mir_transform`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/index.html)
-  - Main entry point: [`optimized_mir` query](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.optimized_mir.html)
+  - Definition: [`redox_mir_transform`](https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/index.html)
+  - Main entry point: [`optimized_mir` query](https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/fn.optimized_mir.html)
 - Code Generation
   - Guide: [Code Generation](backend/codegen.md)
   - Generating Machine Code from `LLVM-IR` with LLVM - **TODO: reference?**
-  - Main entry point: [`rustc_codegen_ssa::base::codegen_crate`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_crate.html)
+  - Main entry point: [`redox_codegen_ssa::base::codegen_crate`](https://doc.rust-lang.org/nightly/nightly-redox/redox_codegen_ssa/base/fn.codegen_crate.html)
     - This monomorphizes and produces `LLVM-IR` for one codegen unit.
       It then starts a background thread to run LLVM, which must be joined later.
-    - Monomorphization happens lazily via [`FunctionCx::monomorphize`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/struct.FunctionCx.html#method.monomorphize) and [`rustc_codegen_ssa::base::codegen_instance `](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_instance.html)
+    - Monomorphization happens lazily via [`FunctionCx::monomorphize`](https://doc.rust-lang.org/nightly/nightly-redox/redox_codegen_ssa/mir/struct.FunctionCx.html#method.monomorphize) and [`redox_codegen_ssa::base::codegen_instance `](https://doc.rust-lang.org/nightly/nightly-redox/redox_codegen_ssa/base/fn.codegen_instance.html)

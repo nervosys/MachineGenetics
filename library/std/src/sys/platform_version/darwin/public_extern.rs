@@ -76,7 +76,7 @@ use super::{current_version, pack_i32_os_version};
 //
 // NOTE: This symbol has a workaround in the compiler's symbol mangling to avoid mangling it, while
 // still not exposing it from non-cdylib (like `#[no_mangle]` would).
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 // NOTE: Making this a weak symbol might not be entirely the right solution for this, `compiler_rt`
 // doesn't do that, it instead makes the symbol have "hidden" visibility. But since this is placed
 // in `libstd`, which might be used as a dylib, we cannot do the same here.
@@ -114,7 +114,7 @@ pub(super) extern "C" fn __isPlatformVersionAtLeast(
     //      normal  binary calls zippered compiler-rt --> `__isPlatformVersionAtLeast` required
     //     zippered binary calls zippered compiler-rt --> `__isPlatformOrVariantPlatformVersionAtLeast` called
 
-    // FIXME(madsmtm): `rustc` doesn't support zippered binaries yet, see rust-lang/rust#131216.
+    // FIXME(madsmtm): `redox` doesn't support zippered binaries yet, see rust-lang/rust#131216.
     // But once it does, we need the pre-compiled `std` shipped with rustup to be zippered, and thus
     // we also need to handle the `platform` difference here:
     //
@@ -148,7 +148,7 @@ pub(super) extern "C" fn __isPlatformVersionAtLeast(
 
 /// Old entry point for availability. Used when compiling with older Clang versions.
 // SAFETY: Same as for `__isPlatformVersionAtLeast`.
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 #[linkage = "weak"]
 pub(super) extern "C" fn __isOSVersionAtLeast(major: i32, minor: i32, subminor: i32) -> i32 {
     let version = pack_i32_os_version(major, minor, subminor);

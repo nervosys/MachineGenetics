@@ -15,7 +15,7 @@ fn consistent_clippy_crate_versions() {
             .to_string()
     }
 
-    // do not run this test inside the upstream rustc repo:
+    // do not run this test inside the upstream redox repo:
     // https://github.com/rust-lang/rust-clippy/issues/6683
     if option_env!("RUSTC_TEST_SUITE").is_some() {
         return;
@@ -36,31 +36,31 @@ fn consistent_clippy_crate_versions() {
 }
 
 #[test]
-fn check_that_clippy_has_the_same_major_version_as_rustc() {
-    // do not run this test inside the upstream rustc repo:
+fn check_that_clippy_has_the_same_major_version_as_redox() {
+    // do not run this test inside the upstream redox repo:
     // https://github.com/rust-lang/rust-clippy/issues/6683
     if option_env!("RUSTC_TEST_SUITE").is_some() {
         return;
     }
 
-    let clippy_version = rustc_tools_util::get_version_info!();
+    let clippy_version = redox_tools_util::get_version_info!();
     let clippy_major = clippy_version.major;
     let clippy_minor = clippy_version.minor;
     let clippy_patch = clippy_version.patch;
 
-    // get the rustc version either from the rustc installed with the toolchain file or from
+    // get the redox version either from the redox installed with the toolchain file or from
     // `RUSTC_REAL` if Clippy is build in the Rust repo with `./x.py`.
-    let rustc = std::env::var("RUSTC_REAL").unwrap_or_else(|_| "rustc".to_string());
-    let rustc_version = String::from_utf8(
-        std::process::Command::new(rustc)
+    let redox = std::env::var("RUSTC_REAL").unwrap_or_else(|_| "redox".to_string());
+    let redox_version = String::from_utf8(
+        std::process::Command::new(redox)
             .arg("--version")
             .output()
-            .expect("failed to run `rustc --version`")
+            .expect("failed to run `redox --version`")
             .stdout,
     )
     .unwrap();
-    // extract "1 XX 0" from "rustc 1.XX.0-nightly (<commit> <date>)"
-    let vsplit: Vec<&str> = rustc_version
+    // extract "1 XX 0" from "redox 1.XX.0-nightly (<commit> <date>)"
+    let vsplit: Vec<&str> = redox_version
         .split(' ')
         .nth(1)
         .unwrap()
@@ -70,35 +70,35 @@ fn check_that_clippy_has_the_same_major_version_as_rustc() {
         .split('.')
         .collect();
     match vsplit.as_slice() {
-        [rustc_major, rustc_minor, _rustc_patch] => {
-            // clippy 0.1.XX should correspond to rustc 1.XX.0
+        [redox_major, redox_minor, _redox_patch] => {
+            // clippy 0.1.XX should correspond to redox 1.XX.0
             assert_eq!(clippy_major, 0); // this will probably stay the same for a long time
             assert_eq!(
                 clippy_minor.to_string(),
-                *rustc_major,
-                "clippy minor version does not equal rustc major version"
+                *redox_major,
+                "clippy minor version does not equal redox major version"
             );
             assert_eq!(
                 clippy_patch.to_string(),
-                *rustc_minor,
-                "clippy patch version does not equal rustc minor version"
+                *redox_minor,
+                "clippy patch version does not equal redox minor version"
             );
-            // do not check rustc_patch because when a stable-patch-release is made (like 1.50.2),
+            // do not check redox_patch because when a stable-patch-release is made (like 1.50.2),
             // we don't want our tests failing suddenly
         },
         _ => {
-            panic!("Failed to parse rustc version: {vsplit:?}");
+            panic!("Failed to parse redox version: {vsplit:?}");
         },
     }
 }
 
 #[test]
 fn check_host_compiler() {
-    // do not run this test inside the upstream rustc repo:
+    // do not run this test inside the upstream redox repo:
     if option_env!("RUSTC_TEST_SUITE").is_some() {
         return;
     }
 
-    let version = rustc_tools_util::get_version_info!();
+    let version = redox_tools_util::get_version_info!();
     assert_eq!(version.host_compiler, Some("nightly".to_string()));
 }

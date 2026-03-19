@@ -9,11 +9,11 @@
 // - minirapier: depends on minibevy_a
 // - repro: depends on minirapier and minibevy_b
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
     // Prepare dependencies, mimicking a check build with cargo.
-    rustc()
+    redox()
         .input("minibevy.rs")
         .crate_name("minibevy")
         .crate_type("lib")
@@ -21,7 +21,7 @@ fn main() {
         .metadata("a")
         .extra_filename("-a")
         .run();
-    rustc()
+    redox()
         .input("minibevy.rs")
         .crate_name("minibevy")
         .crate_type("lib")
@@ -29,7 +29,7 @@ fn main() {
         .metadata("b")
         .extra_filename("-b")
         .run();
-    rustc()
+    redox()
         .input("minirapier.rs")
         .crate_name("minirapier")
         .crate_type("lib")
@@ -38,7 +38,7 @@ fn main() {
         .run();
 
     // Building the main crate used to ICE here when printing the `type annotations needed` error.
-    rustc()
+    redox()
         .input("repro.rs")
         .extern_("minibevy", "libminibevy-b.rmeta")
         .extern_("minirapier", "libminirapier.rmeta")

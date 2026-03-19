@@ -5,14 +5,14 @@ use clippy_utils::paths::{self, PathNS, find_crates, lookup_path_str};
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{fn_def_id, is_no_std_crate, sym};
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_hir::{self as hir, BodyId, Expr, ExprKind, HirId, Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use redox_data_structures::fx::FxIndexMap;
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::def_id::{CrateNum, DefId};
+use redox_hir::{self as hir, BodyId, Expr, ExprKind, HirId, Item, ItemKind};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -144,9 +144,9 @@ impl<'hir> LateLintPass<'hir> for NonStdLazyStatic {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'hir>, ty: &'hir rustc_hir::Ty<'hir, rustc_hir::AmbigArg>) {
+    fn check_ty(&mut self, cx: &LateContext<'hir>, ty: &'hir redox_hir::Ty<'hir, redox_hir::AmbigArg>) {
         // Record if types from `once_cell` besides `sync::Lazy` are used.
-        if let rustc_hir::TyKind::Path(qpath) = ty.peel_refs().kind
+        if let redox_hir::TyKind::Path(qpath) = ty.peel_refs().kind
             && let Some(ty_def_id) = cx.qpath_res(&qpath, ty.hir_id).opt_def_id()
             // Is from `once_cell` crate
             && self.once_cell_crates.contains(&ty_def_id.krate)
@@ -248,7 +248,7 @@ impl LazyInfo {
 
 /// Return the span of a given `Path` without including any of its args.
 ///
-/// NB: Re-write of a private function `rustc_lint::non_local_def::path_span_without_args`.
+/// NB: Re-write of a private function `redox_lint::non_local_def::path_span_without_args`.
 fn path_span_without_args(path: &hir::Path<'_>) -> Span {
     path.segments
         .last()

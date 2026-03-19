@@ -1,7 +1,7 @@
 //@ compile-flags:-Zverbose-internals
 
 #![allow(warnings)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::cell::Cell;
 
@@ -18,13 +18,13 @@ where
     f(None, &value);
 }
 
-#[rustc_regions]
+#[redox_regions]
 fn generic<T>(value: T) {
     let cell = Cell::new(&());
     twice(cell, value, |a, b| invoke(a, b));
 }
 
-#[rustc_regions]
+#[redox_regions]
 fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
     twice(cell, value, |a, b| invoke(a, b));
     //~^ ERROR the parameter type `T` may not live long enough

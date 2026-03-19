@@ -8,21 +8,21 @@ we have a complete [*Abstract Syntax Tree* (AST)][ast] for our crate with no
 unexpanded macros (or a compile error).
 
 [ast]: ./ast-validation.md
-[placeholders]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/placeholders/index.html
+[placeholders]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/placeholders/index.html
 
 First, we discuss the algorithm that expands and integrates macro output into ASTs.
 Next, we take a look at how hygiene data is collected.
 Finally, we look at the specifics of expanding different types of macros.
 
-Many of the algorithms and data structures described below are in [`rustc_expand`],
-with fundamental data structures in [`rustc_expand::base`][base].
+Many of the algorithms and data structures described below are in [`redox_expand`],
+with fundamental data structures in [`redox_expand::base`][base].
 
 Also of note, `cfg` and `cfg_attr` are treated specially from other macros, and are
-handled in [`rustc_expand::config`][cfg].
+handled in [`redox_expand::config`][cfg].
 
-[`rustc_expand`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/index.html
-[base]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/index.html
-[cfg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/config/index.html
+[`redox_expand`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/index.html
+[base]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/base/index.html
+[cfg]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/config/index.html
 
 ## Expansion and AST Integration
 
@@ -35,8 +35,8 @@ With few exceptions, we
 use this method on the whole crate (see ["Eager Expansion"](#eager-expansion)
 below for more detailed discussion of edge case expansion issues).
 
-[`rustc_builtin_macros`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_builtin_macros/index.html
-[reb]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/build/index.html
+[`redox_builtin_macros`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_builtin_macros/index.html
+[reb]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/build/index.html
 
 At a high level, [`fully_expand_fragment`][fef] works in iterations.
 We keep a
@@ -46,7 +46,7 @@ We repeatedly try to pick a macro from the queue, resolve it, expand it, and int
 If we can't make progress in an iteration, this represents a compile error.
  Here is the [algorithm][original]:
 
-[fef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/struct.MacroExpander.html#method.fully_expand_fragment
+[fef]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/expand/struct.MacroExpander.html#method.fully_expand_fragment
 [original]: https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
 
 1. Initialize a `queue` of unresolved macros.
@@ -91,21 +91,21 @@ If we can't make progress in an iteration, this represents a compile error.
       1. Put the macro back in the queue.
       2. Continue to next iteration...
 
-[`AstFragment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/enum.AstFragment.html
-[`BuildReducedGraphVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/build_reduced_graph/struct.BuildReducedGraphVisitor.html
-[`DefCollector`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/def_collector/struct.DefCollector.html
-[`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
-[`ExpnId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnId.html
-[`InvocationCollector`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/struct.InvocationCollector.html
-[`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/node_id/struct.NodeId.html
-[`set_expn_data`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.LocalExpnId.html#method.set_expn_data
-[`SyntaxContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html
-[`TokenStream`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/struct.TokenStream.html
+[`AstFragment`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/expand/enum.AstFragment.html
+[`BuildReducedGraphVisitor`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/build_reduced_graph/struct.BuildReducedGraphVisitor.html
+[`DefCollector`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/def_collector/struct.DefCollector.html
+[`DefId`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/def_id/struct.DefId.html
+[`ExpnId`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.ExpnId.html
+[`InvocationCollector`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/expand/struct.InvocationCollector.html
+[`NodeId`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/node_id/struct.NodeId.html
+[`set_expn_data`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.LocalExpnId.html#method.set_expn_data
+[`SyntaxContext`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.SyntaxContext.html
+[`TokenStream`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/tokenstream/struct.TokenStream.html
 [defpath]: hir.md#identifiers-in-the-hir
 [hybelow]: #hygiene-and-hierarchies
-[hygiene]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/index.html
-[inv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/struct.Invocation.html
-[tt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/enum.TokenTree.html
+[hygiene]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/index.html
+[inv]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/expand/struct.Invocation.html
+[tt]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/tokenstream/enum.TokenTree.html
 
 ### Error Recovery
 
@@ -114,21 +114,21 @@ If we make no progress in an iteration we have reached a compilation error
 unresolved macros or imports) with the intent of generating diagnostics.
 Failure recovery happens by expanding unresolved macros into
 [`ExprKind::Err`][err] and allows compilation to continue past the first error
-so that `rustc` can report more errors than just the original failure.
+so that `redox` can report more errors than just the original failure.
 
-[err]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/enum.ExprKind.html#variant.Err
+[err]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/ast/enum.ExprKind.html#variant.Err
 
 ### Name Resolution
 
 Notice that name resolution is involved here: we need to resolve imports and
 macro names in the above algorithm.
-This is done in [`rustc_resolve::macros`][mresolve], which resolves macro paths, validates
+This is done in [`redox_resolve::macros`][mresolve], which resolves macro paths, validates
 those resolutions, and reports various errors (e.g. "not found", "found, but
 it's unstable", "expected x, found y").
 However, we don't try to resolve other names yet.
 This happens later, as we will see in the chapter: [Name Resolution](./name-resolution.md).
 
-[mresolve]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/macros/index.html
+[mresolve]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/macros/index.html
 
 ### Eager Expansion
 
@@ -152,10 +152,10 @@ An eager-expansion would expand `bar!` first.
 Eager-expansion is not a generally available feature of Rust.
 Implementing eager-expansion more generally would be challenging, so we implement it for a
 few special built-in macros for the sake of user-experience.
-The built-in macros are implemented in [`rustc_builtin_macros`], along with some other
+The built-in macros are implemented in [`redox_builtin_macros`], along with some other
 early code generation facilities like injection of standard library imports or
 generation of test harness.
-There are some additional helpers for building AST fragments in [`rustc_expand::build`][reb].
+There are some additional helpers for building AST fragments in [`redox_expand::build`][reb].
 Eager-expansion generally performs a subset of the things that lazy (normal) expansion does.
 It is done by invoking [`fully_expand_fragment`][fef] on only part of a crate (as opposed
 to the whole crate, like we normally do).
@@ -164,8 +164,8 @@ to the whole crate, like we normally do).
 
 Here are some other notable data structures involved in expansion and integration:
 - [`ResolverExpand`] - a `trait` used to break crate dependencies.
-  This allows the resolver services to be used in [`rustc_ast`], despite [`rustc_resolve`] and
-  pretty much everything else depending on [`rustc_ast`].
+  This allows the resolver services to be used in [`redox_ast`], despite [`redox_resolve`] and
+  pretty much everything else depending on [`redox_ast`].
 - [`ExtCtxt`]/[`ExpansionData`] - holds various intermediate expansion infrastructure data.
 - [`Annotatable`] - a piece of AST that can be an attribute target, almost the same
   thing as [`AstFragment`] except for types and patterns that can be produced by
@@ -174,15 +174,15 @@ Here are some other notable data structures involved in expansion and integratio
   a different [`AstFragment`] depending on its [`AstFragmentKind`] (i.e. an item,
   expression, pattern, etc).
 
-[`AstFragment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/enum.AstFragment.html
-[`rustc_ast`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/index.html
-[`rustc_resolve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/index.html
-[`ResolverExpand`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/trait.ResolverExpand.html
-[`ExtCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/struct.ExtCtxt.html
-[`ExpansionData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/struct.ExpansionData.html
-[`Annotatable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/enum.Annotatable.html
-[`MacResult`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/trait.MacResult.html
-[`AstFragmentKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/enum.AstFragmentKind.html
+[`AstFragment`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/expand/enum.AstFragment.html
+[`redox_ast`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/index.html
+[`redox_resolve`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/index.html
+[`ResolverExpand`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/base/trait.ResolverExpand.html
+[`ExtCtxt`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/base/struct.ExtCtxt.html
+[`ExpansionData`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/base/struct.ExpansionData.html
+[`Annotatable`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/base/enum.Annotatable.html
+[`MacResult`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/base/trait.MacResult.html
+[`AstFragmentKind`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/expand/enum.AstFragmentKind.html
 
 ## Hygiene and Hierarchies
 
@@ -235,10 +235,10 @@ a macro author may want to introduce a new name to the context where the macro w
 Alternately, the macro author may be defining a variable for use
 only within the macro (i.e. it should not be visible outside the macro).
 
-[code_dir]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_expand/src/mbe
-[code_mp]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser
-[code_mr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_rules
-[code_parse_int]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/struct.TtParser.html#method.parse_tt
+[code_dir]: https://github.com/rust-lang/rust/tree/HEAD/compiler/redox_expand/src/mbe
+[code_mp]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/mbe/macro_parser
+[code_mr]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/mbe/macro_rules
+[code_parse_int]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/mbe/macro_parser/struct.TtParser.html#method.parse_tt
 [parsing]: ./the-parser.html
 
 The context is attached to AST nodes.
@@ -246,10 +246,10 @@ All AST nodes generated by macros have context attached.
 Additionally, there may be other nodes that have context
 attached, such as some desugared syntax (non-macro-expanded nodes are
 considered to just have the "root" context, as described below).
-Throughout the compiler, we use [`rustc_span::Span`s][span] to refer to code locations.
+Throughout the compiler, we use [`redox_span::Span`s][span] to refer to code locations.
 This struct also has hygiene information attached to it, as we will see later.
 
-[span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
+[span]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/struct.Span.html
 
 Because macros invocations and definitions can be nested, the syntax context of
 a node must be a hierarchy.
@@ -269,7 +269,7 @@ All macros receive an integer ID, assigned continuously starting from 0 as we di
 calls.
 All hierarchies start at [`ExpnId::root`][rootid], which is its own parent.
 
-The [`rustc_span::hygiene`][hy] crate contains all of the hygiene-related algorithms
+The [`redox_span::hygiene`][hy] crate contains all of the hygiene-related algorithms
 (with the exception of some hacks in [`Resolver::resolve_crate_root`][hacks])
 and structures related to hygiene and expansion that are kept in global data.
 
@@ -278,12 +278,12 @@ This is a global piece of data containing hygiene and expansion info that can be
 any [`Ident`] without any context.
 
 
-[`ExpnId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnId.html
-[rootid]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnId.html#method.root
-[hd]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.HygieneData.html
-[hy]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/index.html
-[hacks]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/struct.Resolver.html#method.resolve_crate_root
-[`Ident`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html
+[`ExpnId`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.ExpnId.html
+[rootid]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.ExpnId.html#method.root
+[hd]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.HygieneData.html
+[hy]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/index.html
+[hacks]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/struct.Resolver.html#method.resolve_crate_root
+[`Ident`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/symbol/struct.Ident.html
 
 ### The Expansion Order Hierarchy
 
@@ -295,8 +295,8 @@ The [`ExpnData`] struct itself contains a subset of properties from both macro
 definition and macro call available through global data.
 [`ExpnData::parent`][edp] tracks the child-to-parent link in this hierarchy.
 
-[`ExpnData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnData.html
-[edp]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnData.html#structfield.parent
+[`ExpnData`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.ExpnData.html
+[edp]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.ExpnData.html#structfield.parent
 
 For example:
 
@@ -327,19 +327,19 @@ a code location and [`SyntaxContext`][sc].
 Likewise, an [`Ident`] is just an interned
 [`Symbol`] + `Span` (i.e. an interned string + hygiene data).
 
-[`Symbol`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html
-[scd]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.SyntaxContextData.html
-[scdp]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.SyntaxContextData.html#structfield.parent
-[sc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html
-[scdoe]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.SyntaxContextData.html#structfield.outer_expn
-[am]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html#method.apply_mark
+[`Symbol`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/symbol/struct.Symbol.html
+[scd]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.SyntaxContextData.html
+[scdp]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.SyntaxContextData.html#structfield.parent
+[sc]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.SyntaxContext.html
+[scdoe]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.SyntaxContextData.html#structfield.outer_expn
+[am]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.SyntaxContext.html#method.apply_mark
 
 For built-in macros, we use the context:
 [`SyntaxContext::empty().apply_mark(expn_id)`], and such macros are
 considered to be defined at the hierarchy root.
 We do the same for `proc macro`s because we haven't implemented cross-crate hygiene yet.
 
-[`SyntaxContext::empty().apply_mark(expn_id)`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html#method.apply_mark
+[`SyntaxContext::empty().apply_mark(expn_id)`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.SyntaxContext.html#method.apply_mark
 
 If the token had context `X` before being produced by a macro then after being
 produced by the macro it has context `X -> macro_id`.
@@ -356,7 +356,7 @@ m!();
 Here `ident` which initially has context [`SyntaxContext::root`][scr] has
 context `ROOT -> id(m)` after it's produced by `m`.
 
-[scr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html#method.root
+[scr]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.SyntaxContext.html#method.root
 
 Example 1:
 
@@ -390,7 +390,7 @@ macros have stronger hygiene than the legacy "Macros By Example" (MBE)
 system which can result in weird interactions between the two.
 The hack is intended to make things "just work" for now.
 
-[`ExpnId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnId.html
+[`ExpnId`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.ExpnId.html
 [hack]: https://github.com/rust-lang/rust/pull/51762#issuecomment-401400732
 
 ### The Call-site Hierarchy
@@ -399,7 +399,7 @@ The third and final hierarchy tracks the location of macro invocations.
 
 In this hierarchy [`ExpnData::call_site`][callsite] is the `child -> parent` link.
 
-[callsite]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnData.html#structfield.call_site
+[callsite]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/hygiene/struct.ExpnData.html#structfield.call_site
 
 Here is an example:
 
@@ -415,10 +415,10 @@ For the `baz` AST node in the final output, the expansion-order hierarchy is
 
 ### Macro Backtraces
 
-Macro backtraces are implemented in [`rustc_span`] using the hygiene machinery
-in [`rustc_span::hygiene`][hy].
+Macro backtraces are implemented in [`redox_span`] using the hygiene machinery
+in [`redox_span::hygiene`][hy].
 
-[`rustc_span`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/index.html
+[`redox_span`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/index.html
 
 ## Producing Macro Output
 
@@ -447,12 +447,12 @@ Some important data structures/interfaces here:
 - [`BangProcMacro`]/[`TTMacroExpander`]/[`AttrProcMacro`]/[`MultiItemModifier`] -
   `trait`s representing the expander function signatures.
 
-[`SyntaxExtension`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/struct.SyntaxExtension.html
-[`SyntaxExtensionKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/enum.SyntaxExtensionKind.html
-[`BangProcMacro`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/trait.BangProcMacro.html
-[`TTMacroExpander`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/trait.TTMacroExpander.html
-[`AttrProcMacro`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/trait.AttrProcMacro.html
-[`MultiItemModifier`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/trait.MultiItemModifier.html
+[`SyntaxExtension`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/base/struct.SyntaxExtension.html
+[`SyntaxExtensionKind`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/base/enum.SyntaxExtensionKind.html
+[`BangProcMacro`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/base/trait.BangProcMacro.html
+[`TTMacroExpander`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/base/trait.TTMacroExpander.html
+[`AttrProcMacro`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/base/trait.AttrProcMacro.html
+[`MultiItemModifier`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/base/trait.MultiItemModifier.html
 
 ## Macros By Example
 
@@ -461,7 +461,7 @@ When macros are expanded, we may invoke the MBE parser to parse and expand a mac
  The MBE parser, in turn, may call the Rust parser when it needs to bind a
 metavariable (e.g. `$my_expr`) while parsing the contents of a macro
 invocation.
-The code for macro expansion is in [`compiler/rustc_expand/src/mbe/`][code_dir].
+The code for macro expansion is in [`compiler/redox_expand/src/mbe/`][code_dir].
 
 ### Example
 
@@ -511,7 +511,7 @@ There are two parts to MBE expansion done by the macro parser:
 We think of the MBE parser as a nondeterministic finite automaton (NFA) based
 regex parser since it uses an algorithm similar in spirit to the [Earley
 parsing algorithm](https://en.wikipedia.org/wiki/Earley_parser).
-The macro parser is defined in [`compiler/rustc_expand/src/mbe/macro_parser.rs`][code_mp].
+The macro parser is defined in [`compiler/redox_expand/src/mbe/macro_parser.rs`][code_mp].
 
 The interface of the macro parser is as follows (this is slightly simplified):
 
@@ -535,7 +535,7 @@ We use these items in macro parser:
   against.
   They're converted from the original token trees in the macro's definition before matching.
 
-[`MatcherLoc`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/enum.MatcherLoc.html
+[`MatcherLoc`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/mbe/macro_parser/enum.MatcherLoc.html
 
 In the analogy of a regex parser, the token stream is the input and we are
 matching it against the pattern defined by matcher.
@@ -560,9 +560,9 @@ with one exception: in order to parse different types of metavariables, such as
 `ident`, `block`, `expr`, etc., the macro parser must call back to the normal
 Rust parser.
 
-The code to parse macro definitions is in [`compiler/rustc_expand/src/mbe/macro_rules.rs`][code_mr].
+The code to parse macro definitions is in [`compiler/redox_expand/src/mbe/macro_rules.rs`][code_mr].
 For more information about the macro parser's implementation, see the comments in
-[`compiler/rustc_expand/src/mbe/macro_parser.rs`][code_mp].
+[`compiler/redox_expand/src/mbe/macro_parser.rs`][code_mp].
 
 Using our example, we would try to match the token stream `print foo` from the invocation against
 the matchers `print $mvar:ident` and `print twice $mvar:ident` that we previously extracted from the
@@ -592,21 +592,21 @@ them a stream of tokens.
 A proc macro can then transform the token stream and
 output a new token stream, which is synthesized into the AST.
 
-The token stream type used by proc macros is _stable_, so `rustc` does not use it internally.
+The token stream type used by proc macros is _stable_, so `redox` does not use it internally.
 The compiler's (unstable) token stream is defined in
-[`rustc_ast::tokenstream::TokenStream`][rustcts].
+[`redox_ast::tokenstream::TokenStream`][redoxts].
 This is converted into the stable [`proc_macro::TokenStream`][stablets] and back in
-[`rustc_expand::proc_macro`][pm] and [`rustc_expand::proc_macro_server`][pms].
+[`redox_expand::proc_macro`][pm] and [`redox_expand::proc_macro_server`][pms].
 Since the Rust ABI is currently unstable, we use the C ABI for this conversion.
 
-[tsmod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/index.html
-[rustcts]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/struct.TokenStream.html
+[tsmod]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/tokenstream/index.html
+[redoxts]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/tokenstream/struct.TokenStream.html
 [stablets]: https://doc.rust-lang.org/proc_macro/struct.TokenStream.html
-[pm]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/proc_macro/index.html
-[pms]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/proc_macro_server/index.html
-[`ParseResult`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/enum.ParseResult.html
+[pm]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/proc_macro/index.html
+[pms]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/proc_macro_server/index.html
+[`ParseResult`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_expand/mbe/macro_parser/enum.ParseResult.html
 
-<!-- TODO(rylev): more here. [#1160](https://github.com/rust-lang/rustc-dev-guide/issues/1160) -->
+<!-- TODO(rylev): more here. [#1160](https://github.com/rust-lang/redox-dev-guide/issues/1160) -->
 
 ### Custom Derive
 
@@ -619,4 +619,4 @@ by giving it more hygiene-related features, better scoping and visibility
 rules, etc. Internally this uses the same machinery as today's MBEs with some
 additional syntactic sugar and are allowed to be in namespaces.
 
-<!-- TODO(rylev): more? [#1160](https://github.com/rust-lang/rustc-dev-guide/issues/1160) -->
+<!-- TODO(rylev): more? [#1160](https://github.com/rust-lang/redox-dev-guide/issues/1160) -->

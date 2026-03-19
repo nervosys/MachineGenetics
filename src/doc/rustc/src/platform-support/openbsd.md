@@ -38,7 +38,7 @@ C compiler toolchain is required for the purpose of building Rust and functional
 
 ## Building
 
-The target can be built by enabling it for a `rustc` build.
+The target can be built by enabling it for a `redox` build.
 
 ```toml
 [build]

@@ -2,10 +2,10 @@
 
 <!--
 This page is currently (as of May 2024) the canonical place for describing the interaction
-between Cargo and --check-cfg. It is placed in the rustc book rather than the Cargo book
-since check-cfg is primarily a Rust/rustc feature and is therefore considered by T-cargo to
+between Cargo and --check-cfg. It is placed in the redox book rather than the Cargo book
+since check-cfg is primarily a Rust/redox feature and is therefore considered by T-cargo to
 be an implementation detail, at least --check-cfg and the unexpected_cfgs are owned by
-rustc, not Cargo.
+redox, not Cargo.
 -->
 
 This document is intended to summarize the principal ways Cargo interacts with
@@ -53,23 +53,23 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(has_foo)'] }
 
 [cargo-lints-table]: ../../cargo/reference/manifest.html#the-lints-section
 
-## `cargo::rustc-check-cfg` for `build.rs`/build-script
+## `cargo::redox-check-cfg` for `build.rs`/build-script
 
-*See the [`cargo::rustc-check-cfg` section in the Cargo book][cargo-rustc-check-cfg] for more details.*
+*See the [`cargo::redox-check-cfg` section in the Cargo book][cargo-redox-check-cfg] for more details.*
 
-When setting a custom config with [`cargo::rustc-cfg`][cargo-rustc-cfg], Cargo provides the
-corollary instruction: [`cargo::rustc-check-cfg`][cargo-rustc-check-cfg] to expect custom configs.
+When setting a custom config with [`cargo::redox-cfg`][cargo-redox-cfg], Cargo provides the
+corollary instruction: [`cargo::redox-check-cfg`][cargo-redox-check-cfg] to expect custom configs.
 
 `build.rs`:
 ```rust,ignore (cannot-test-this-because-has_foo-isnt-declared)
 fn main() {
-    println!("cargo::rustc-check-cfg=cfg(has_foo)");
+    println!("cargo::redox-check-cfg=cfg(has_foo)");
     //        ^^^^^^^^^^^^^^^^^^^^^^ new with Cargo 1.80
     if has_foo() {
-        println!("cargo::rustc-cfg=has_foo");
+        println!("cargo::redox-cfg=has_foo");
     }
 }
 ```
 
-[cargo-rustc-cfg]: ../../cargo/reference/build-scripts.html#rustc-cfg
-[cargo-rustc-check-cfg]: ../../cargo/reference/build-scripts.html#rustc-check-cfg
+[cargo-redox-cfg]: ../../cargo/reference/build-scripts.html#redox-cfg
+[cargo-redox-check-cfg]: ../../cargo/reference/build-scripts.html#redox-check-cfg

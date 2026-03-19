@@ -1559,7 +1559,7 @@ fn test() {
         check(
             r#"
 //- /main.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include {}
 
 include!("foo.rs");
@@ -1584,7 +1584,7 @@ fn foo() {}
         check(
             r#"
 //- /main.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include {}
 
 include!("foo.rs");
@@ -2205,7 +2205,7 @@ fn f(e: Enum) {
             r#"
 //- /main.rs
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include_str {}
 
 fn main() {
@@ -2223,9 +2223,9 @@ fn main() {
         check(
             r#"
 //- /main.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include_str {}
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! concat {}
 
 fn main() {
@@ -2246,7 +2246,7 @@ fn main() {
         check(
             r#"
 //- /main.rs
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! include_str {}
 
 #[doc = include_str!("docs.md$0")]
@@ -2496,7 +2496,7 @@ impl Twait for Stwuct {
         check(
             r#"
         //- minicore:derive
-        #[rustc_builtin_macro]
+        #[redox_builtin_macro]
         pub macro Copy {}
                // ^^^^
         #[derive(Copy$0)]
@@ -2506,7 +2506,7 @@ impl Twait for Stwuct {
         check(
             r#"
 //- minicore:derive
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro Copy {}
        // ^^^^
 #[cfg_attr(feature = "false", derive)]
@@ -2518,7 +2518,7 @@ struct Foo;
             r#"
 //- minicore:derive
 mod foo {
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro Copy {}
            // ^^^^
 }
@@ -2531,7 +2531,7 @@ struct Foo;
 //- minicore:derive
 mod foo {
  // ^^^
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro Copy {}
 }
 #[derive(foo$0::Copy)]

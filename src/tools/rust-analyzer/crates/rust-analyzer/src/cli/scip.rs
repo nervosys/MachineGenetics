@@ -9,7 +9,7 @@ use ide::{
 };
 use ide_db::LineIndexDatabase;
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use scip::types::{self as scip_types, SymbolInformation};
 use tracing::error;
 use vfs::FileId;

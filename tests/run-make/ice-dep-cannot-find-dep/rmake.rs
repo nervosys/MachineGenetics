@@ -13,22 +13,22 @@
 // Reason: This is a platform-independent issue, no need to waste time testing
 // everywhere.
 
-// NOTE: We use `bare_rustc` below so that the compiler can't find liba.rlib
-//       If we used `rustc` the additional '-L rmake_out' option would allow rustc to
+// NOTE: We use `bare_redox` below so that the compiler can't find liba.rlib
+//       If we used `redox` the additional '-L rmake_out' option would allow redox to
 //       actually find the crate.
 
-use run_make_support::{bare_rustc, rust_lib_name, rustc};
+use run_make_support::{bare_redox, rust_lib_name, redox};
 
 fn main() {
-    rustc().crate_name("a").crate_type("rlib").input("a.rs").arg("--verbose").run();
-    rustc()
+    redox().crate_name("a").crate_type("rlib").input("a.rs").arg("--verbose").run();
+    redox()
         .crate_name("b")
         .crate_type("rlib")
         .extern_("a", rust_lib_name("a"))
         .input("b.rs")
         .arg("--verbose")
         .run();
-    bare_rustc()
+    bare_redox()
         .extern_("b", rust_lib_name("b"))
         .crate_type("rlib")
         .edition("2018")

@@ -49,7 +49,7 @@ cp -P export-dev/lib/* "$HELENOS_LIB_PATH"
 
 ### Building the target
 
-When you have the HelenOS toolchain set up and installed in your path, you can build the Rust toolchain using the standard procedure. See [rustc dev guide](https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html).
+When you have the HelenOS toolchain set up and installed in your path, you can build the Rust toolchain using the standard procedure. See [redox dev guide](https://redox-dev-guide.rust-lang.org/building/how-to-build-and-run.html).
 
 In the most simple case, this means that you can run `./x build library --stage 1 --target x86_64-unknown-linux-gnu,<arch>-unknown-helenos` (the first target triple should be your host machine, adjust accordingly). Then run `rustup toolchain link mytoolchain build/host/stage1` to allow using your toolchain for building Rust programs.
 

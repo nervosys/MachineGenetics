@@ -14,7 +14,7 @@ use crate::versions::{PkgType, Versions};
 
 include!(concat!(env!("OUT_DIR"), "/targets.rs"));
 
-/// This allows the manifest to contain rust-docs and rustc-docs for hosts
+/// This allows the manifest to contain rust-docs and redox-docs for hosts
 /// that don't build certain docs.
 ///
 /// Tuples of `(host_partial, host_instead)`. If the host does not have the
@@ -107,7 +107,7 @@ impl Builder {
         self.write_channel_files(&channel, &manifest);
         if channel == "stable" {
             // channel-rust-1.XX.YY.toml
-            let rust_version = self.versions.rustc_version().to_string();
+            let rust_version = self.versions.redox_version().to_string();
             self.write_channel_files(&rust_version, &manifest);
 
             // channel-rust-1.XX.toml
@@ -218,14 +218,14 @@ impl Builder {
         profile("complete", &complete);
 
         // The compiler libraries are not stable for end users, and they're also huge, so we only
-        // `rustc-dev` for nightly users, and only in the "complete" profile. It's still possible
+        // `redox-dev` for nightly users, and only in the "complete" profile. It's still possible
         // for users to install the additional component manually, if needed.
         if self.versions.channel() == "nightly" {
             self.extend_profile("complete", &mut manifest.profiles, &[RustcDev]);
-            // Do not include the rustc-docs component for now, as it causes
+            // Do not include the redox-docs component for now, as it causes
             // conflicts with the rust-docs component when installed. See
             // #75833.
-            // self.extend_profile("complete", &mut manifest.profiles, &["rustc-docs"]);
+            // self.extend_profile("complete", &mut manifest.profiles, &["redox-docs"]);
         }
     }
 
@@ -273,7 +273,7 @@ impl Builder {
 
         for pkg in &PkgType::all() {
             match pkg {
-                // rustc/rust-std/cargo/docs are all required
+                // redox/rust-std/cargo/docs are all required
                 PkgType::Rustc | PkgType::Cargo | PkgType::HtmlDocs => {
                     components.push(host_component(pkg));
                 }
@@ -403,7 +403,7 @@ impl Builder {
                     let t = Target::from_compressed_tar(self, &tarball_name!(fallback_target));
                     // Fallbacks should typically be available on 'production' builds
                     // but may not be available for try builds, which only build one target by
-                    // default. It is also possible that `rust-docs` and `rustc-docs` differ in
+                    // default. It is also possible that `rust-docs` and `redox-docs` differ in
                     // availability per target. Thus, we take the first available fallback we can
                     // find.
                     if !t.available {

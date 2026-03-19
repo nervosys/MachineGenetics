@@ -1,7 +1,7 @@
 //@ run-pass
 
 #![allow(dead_code)]
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 mod bar {
     extern "C" {}

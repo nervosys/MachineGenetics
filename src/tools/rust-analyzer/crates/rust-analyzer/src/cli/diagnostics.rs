@@ -2,7 +2,7 @@
 //! status code if any errors are found.
 
 use project_model::{CargoConfig, RustLibSource};
-use rustc_hash::FxHashSet;
+use redox_hash::FxHashSet;
 
 use hir::{Crate, Module, db::HirDatabase, sym};
 use ide::{AnalysisHost, AssistResolveStrategy, Diagnostic, DiagnosticsConfig, Severity};

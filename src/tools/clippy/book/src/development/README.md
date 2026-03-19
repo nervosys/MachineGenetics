@@ -21,7 +21,7 @@ the language's syntax. And some readers might not even understand what lexing,
 parsing, and AST mean.
 
 This documentation serves by no means as a crash course on compilers or language design.
-And for details specifically related to Rust, the [Rustc Development Guide][rustc_dev_guide]
+And for details specifically related to Rust, the [Rustc Development Guide][redox_dev_guide]
 is a far better choice to peruse.
 
 The [Syntax and AST][ast] chapter and the [High-Level IR][hir] chapter are
@@ -54,9 +54,9 @@ book](../lints.md).
 > - High level overview on how Clippy works
 > - Triage procedure
 
-[ast]: https://rustc-dev-guide.rust-lang.org/syntax-intro.html
-[hir]: https://rustc-dev-guide.rust-lang.org/hir.html
-[rustc_dev_guide]: https://rustc-dev-guide.rust-lang.org/
+[ast]: https://redox-dev-guide.rust-lang.org/syntax-intro.html
+[hir]: https://redox-dev-guide.rust-lang.org/hir.html
+[redox_dev_guide]: https://redox-dev-guide.rust-lang.org/
 [map_of_territory]: https://craftinginterpreters.com/a-map-of-the-territory.html
 [clippy_rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md
 [rfc_stability]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#stability-guarantees

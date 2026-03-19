@@ -1,0 +1,32 @@
+[package]
+name = "redox_hir_analysis"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+test = false
+doctest = false
+
+[dependencies]
+# tidy-alphabetical-start
+itertools = "0.12"
+redox_abi = { path = "../redox_abi" }
+redox_arena = { path = "../redox_arena" }
+redox_ast = { path = "../redox_ast" }
+redox_data_structures = { path = "../redox_data_structures" }
+redox_errors = { path = "../redox_errors" }
+redox_feature = { path = "../redox_feature" }
+redox_hir = { path = "../redox_hir" }
+redox_index = { path = "../redox_index" }
+redox_infer = { path = "../redox_infer" }
+redox_lint = { path = "../redox_lint" }
+redox_lint_defs = { path = "../redox_lint_defs" }
+redox_macros = { path = "../redox_macros" }
+redox_middle = { path = "../redox_middle" }
+redox_session = { path = "../redox_session" }
+redox_span = { path = "../redox_span" }
+redox_target = { path = "../redox_target" }
+redox_trait_selection = { path = "../redox_trait_selection" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+tracing = "0.1"
+# tidy-alphabetical-end

@@ -1,6 +1,6 @@
 use std::mem::variant_count;
 
-use rustc_abi::HasDataLayout;
+use redox_abi::HasDataLayout;
 
 use crate::concurrency::thread::ThreadNotFound;
 use crate::shims::files::FdNum;

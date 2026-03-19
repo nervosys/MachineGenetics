@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::{is_expr_identity_function, is_expr_untyped_identity_function};
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::ExprKind;
-use rustc_lint::LateContext;
-use rustc_span::{Span, sym};
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_hir::ExprKind;
+use redox_lint::LateContext;
+use redox_span::{Span, sym};
 
 use super::FILTER_MAP_IDENTITY;
 

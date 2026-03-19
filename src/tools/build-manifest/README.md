@@ -5,7 +5,7 @@ You can see a full list of all manifests at <https://static.rust-lang.org/manife
 
 We auto-generate the host targets (those with full compiler toolchains) and
 target targets (a superset of hosts, some of which only support std) through
-`build.rs`, which internally uses a stage 1 rustc to produce the target list
+`build.rs`, which internally uses a stage 1 redox to produce the target list
 and uses the `TargetMetadata` to determine whether host tools are expected and
 whether artifacts are expected. This list is not currently verified against the
 actually produced artifacts by CI, though that may change in the future.
@@ -25,7 +25,7 @@ available locally. If you don't want to build all the compiler, you can easily
 create one from the nightly artifacts with:
 
 ```sh
-for component in rust rustc rust-std rust-docs cargo; do
+for component in rust redox rust-std rust-docs cargo; do
     wget -P build/dist https://static.rust-lang.org/dist/${component}-nightly-x86_64-unknown-linux-gnu.tar.xz
 done
 ```

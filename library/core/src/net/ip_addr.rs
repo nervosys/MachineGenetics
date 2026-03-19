@@ -24,7 +24,7 @@ use crate::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 /// assert_eq!(localhost_v4.is_ipv6(), false);
 /// assert_eq!(localhost_v4.is_ipv4(), true);
 /// ```
-#[rustc_diagnostic_item = "IpAddr"]
+#[redox_diagnostic_item = "IpAddr"]
 #[stable(feature = "ip_addr", since = "1.7.0")]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub enum IpAddr {
@@ -67,7 +67,7 @@ pub enum IpAddr {
 /// assert!("0000000.0.0.0".parse::<Ipv4Addr>().is_err()); // first octet is a zero in octal
 /// assert!("0xcb.0x0.0x71.0x00".parse::<Ipv4Addr>().is_err()); // all octets are in hex
 /// ```
-#[rustc_diagnostic_item = "Ipv4Addr"]
+#[redox_diagnostic_item = "Ipv4Addr"]
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv4Addr {
@@ -160,7 +160,7 @@ impl Hash for Ipv4Addr {
 /// assert_eq!("::1".parse(), Ok(localhost));
 /// assert_eq!(localhost.is_loopback(), true);
 /// ```
-#[rustc_diagnostic_item = "Ipv6Addr"]
+#[redox_diagnostic_item = "Ipv6Addr"]
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
@@ -246,7 +246,7 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)).is_unspecified(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)).is_unspecified(), true);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
     #[must_use]
     #[inline]
@@ -270,7 +270,7 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)).is_loopback(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1)).is_loopback(), true);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
     #[must_use]
     #[inline]
@@ -319,7 +319,7 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(224, 254, 0, 0)).is_multicast(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0)).is_multicast(), true);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
     #[must_use]
     #[inline]
@@ -396,7 +396,7 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv4(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv4(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(feature = "ipaddr_checker", since = "1.16.0")]
     #[must_use]
     #[inline]
@@ -417,7 +417,7 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv6(), false);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv6(), true);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(feature = "ipaddr_checker", since = "1.16.0")]
     #[must_use]
     #[inline]
@@ -445,7 +445,7 @@ impl IpAddr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "ip_to_canonical", since = "1.75.0")]
-    #[rustc_const_stable(feature = "ip_to_canonical", since = "1.75.0")]
+    #[redox_const_stable(feature = "ip_to_canonical", since = "1.75.0")]
     pub const fn to_canonical(&self) -> IpAddr {
         match self {
             IpAddr::V4(_) => *self,
@@ -488,7 +488,7 @@ impl Ipv4Addr {
     ///
     /// let addr = Ipv4Addr::new(127, 0, 0, 1);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
+    #[redox_const_stable(feature = "const_ip_32", since = "1.32.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
@@ -533,7 +533,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x00), Ipv4Addr::from_bits(addr_bits));
     ///
     /// ```
-    #[rustc_const_stable(feature = "ip_bits", since = "1.80.0")]
+    #[redox_const_stable(feature = "ip_bits", since = "1.80.0")]
     #[stable(feature = "ip_bits", since = "1.80.0")]
     #[must_use]
     #[inline]
@@ -553,7 +553,7 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::from_bits(0x12345678);
     /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78), addr);
     /// ```
-    #[rustc_const_stable(feature = "ip_bits", since = "1.80.0")]
+    #[redox_const_stable(feature = "ip_bits", since = "1.80.0")]
     #[stable(feature = "ip_bits", since = "1.80.0")]
     #[must_use]
     #[inline]
@@ -613,7 +613,7 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::new(127, 0, 0, 1);
     /// assert_eq!(addr.octets(), [127, 0, 0, 1]);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
@@ -632,7 +632,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
     /// ```
     #[stable(feature = "ip_from", since = "1.91.0")]
-    #[rustc_const_stable(feature = "ip_from", since = "1.91.0")]
+    #[redox_const_stable(feature = "ip_from", since = "1.91.0")]
     #[must_use]
     #[inline]
     pub const fn from_octets(octets: [u8; 4]) -> Ipv4Addr {
@@ -673,7 +673,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(0, 0, 0, 0).is_unspecified(), true);
     /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_unspecified(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
+    #[redox_const_stable(feature = "const_ip_32", since = "1.32.0")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
     #[must_use]
     #[inline]
@@ -695,7 +695,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(127, 0, 0, 1).is_loopback(), true);
     /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_loopback(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[must_use]
     #[inline]
@@ -726,7 +726,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 168, 0, 2).is_private(), true);
     /// assert_eq!(Ipv4Addr::new(192, 169, 0, 2).is_private(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[must_use]
     #[inline]
@@ -754,7 +754,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(169, 254, 10, 65).is_link_local(), true);
     /// assert_eq!(Ipv4Addr::new(16, 89, 10, 65).is_link_local(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[must_use]
     #[inline]
@@ -955,7 +955,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_multicast(), true);
     /// assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_multicast(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[must_use]
     #[inline]
@@ -977,7 +977,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_broadcast(), true);
     /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_broadcast(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[must_use]
     #[inline]
@@ -1005,7 +1005,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_documentation(), true);
     /// assert_eq!(Ipv4Addr::new(193, 34, 17, 19).is_documentation(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[must_use]
     #[inline]
@@ -1033,7 +1033,7 @@ impl Ipv4Addr {
     ///     Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc000, 0x2ff)
     /// );
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
@@ -1058,7 +1058,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_mapped(),
     ///            Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x2ff));
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
@@ -1087,7 +1087,7 @@ impl fmt::Debug for IpAddr {
 }
 
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<Ipv4Addr> for IpAddr {
     /// Copies this address to a new `IpAddr::V4`.
     ///
@@ -1110,7 +1110,7 @@ impl const From<Ipv4Addr> for IpAddr {
 }
 
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<Ipv6Addr> for IpAddr {
     /// Copies this address to a new `IpAddr::V6`.
     ///
@@ -1221,7 +1221,7 @@ impl Ord for Ipv4Addr {
 }
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<Ipv4Addr> for u32 {
     /// Uses [`Ipv4Addr::to_bits`] to convert an IPv4 address to a host byte order `u32`.
     #[inline]
@@ -1231,7 +1231,7 @@ impl const From<Ipv4Addr> for u32 {
 }
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<u32> for Ipv4Addr {
     /// Uses [`Ipv4Addr::from_bits`] to convert a host byte order `u32` into an IPv4 address.
     #[inline]
@@ -1241,7 +1241,7 @@ impl const From<u32> for Ipv4Addr {
 }
 
 #[stable(feature = "from_slice_v4", since = "1.9.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<[u8; 4]> for Ipv4Addr {
     /// Creates an `Ipv4Addr` from a four element byte array.
     ///
@@ -1260,7 +1260,7 @@ impl const From<[u8; 4]> for Ipv4Addr {
 }
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<[u8; 4]> for IpAddr {
     /// Creates an `IpAddr::V4` from a four element byte array.
     ///
@@ -1290,7 +1290,7 @@ impl Ipv6Addr {
     ///
     /// let addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
+    #[redox_const_stable(feature = "const_ip_32", since = "1.32.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
@@ -1360,7 +1360,7 @@ impl Ipv6Addr {
     ///     Ipv6Addr::from_bits(addr_bits));
     ///
     /// ```
-    #[rustc_const_stable(feature = "ip_bits", since = "1.80.0")]
+    #[redox_const_stable(feature = "ip_bits", since = "1.80.0")]
     #[stable(feature = "ip_bits", since = "1.80.0")]
     #[must_use]
     #[inline]
@@ -1385,7 +1385,7 @@ impl Ipv6Addr {
     ///     ),
     ///     addr);
     /// ```
-    #[rustc_const_stable(feature = "ip_bits", since = "1.80.0")]
+    #[redox_const_stable(feature = "ip_bits", since = "1.80.0")]
     #[stable(feature = "ip_bits", since = "1.80.0")]
     #[must_use]
     #[inline]
@@ -1438,7 +1438,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).segments(),
     ///            [0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff]);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
@@ -1479,7 +1479,7 @@ impl Ipv6Addr {
     /// );
     /// ```
     #[stable(feature = "ip_from", since = "1.91.0")]
-    #[rustc_const_stable(feature = "ip_from", since = "1.91.0")]
+    #[redox_const_stable(feature = "ip_from", since = "1.91.0")]
     #[must_use]
     #[inline]
     pub const fn from_segments(segments: [u16; 8]) -> Ipv6Addr {
@@ -1501,7 +1501,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unspecified(), false);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0).is_unspecified(), true);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[must_use]
     #[inline]
@@ -1525,7 +1525,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_loopback(), false);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1).is_loopback(), true);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[must_use]
     #[inline]
@@ -1652,7 +1652,7 @@ impl Ipv6Addr {
     #[must_use]
     #[inline]
     #[stable(feature = "ipv6_is_unique_local", since = "1.84.0")]
-    #[rustc_const_stable(feature = "ipv6_is_unique_local", since = "1.84.0")]
+    #[redox_const_stable(feature = "ipv6_is_unique_local", since = "1.84.0")]
     pub const fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
@@ -1730,7 +1730,7 @@ impl Ipv6Addr {
     #[must_use]
     #[inline]
     #[stable(feature = "ipv6_is_unique_local", since = "1.84.0")]
-    #[rustc_const_stable(feature = "ipv6_is_unique_local", since = "1.84.0")]
+    #[redox_const_stable(feature = "ipv6_is_unique_local", since = "1.84.0")]
     pub const fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }
@@ -1876,7 +1876,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).is_multicast(), true);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_multicast(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[must_use]
     #[inline]
@@ -1932,7 +1932,7 @@ impl Ipv6Addr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "ipv6_to_ipv4_mapped", since = "1.63.0")]
-    #[rustc_const_stable(feature = "const_ipv6_to_ipv4_mapped", since = "1.75.0")]
+    #[redox_const_stable(feature = "const_ipv6_to_ipv4_mapped", since = "1.75.0")]
     pub const fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
         match self.octets() {
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, a, b, c, d] => {
@@ -1970,7 +1970,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4(),
     ///            Some(Ipv4Addr::new(0, 0, 0, 1)));
     /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[redox_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
@@ -2000,7 +2000,7 @@ impl Ipv6Addr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "ip_to_canonical", since = "1.75.0")]
-    #[rustc_const_stable(feature = "ip_to_canonical", since = "1.75.0")]
+    #[redox_const_stable(feature = "ip_to_canonical", since = "1.75.0")]
     pub const fn to_canonical(&self) -> IpAddr {
         if let Some(mapped) = self.to_ipv4_mapped() {
             return IpAddr::V4(mapped);
@@ -2016,7 +2016,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).octets(),
     ///            [0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     /// ```
-    #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
+    #[redox_const_stable(feature = "const_ip_32", since = "1.32.0")]
     #[stable(feature = "ipv6_to_octets", since = "1.12.0")]
     #[must_use]
     #[inline]
@@ -2044,7 +2044,7 @@ impl Ipv6Addr {
     /// );
     /// ```
     #[stable(feature = "ip_from", since = "1.91.0")]
-    #[rustc_const_stable(feature = "ip_from", since = "1.91.0")]
+    #[redox_const_stable(feature = "ip_from", since = "1.91.0")]
     #[must_use]
     #[inline]
     pub const fn from_octets(octets: [u8; 16]) -> Ipv6Addr {
@@ -2215,7 +2215,7 @@ impl Ord for Ipv6Addr {
 }
 
 #[stable(feature = "i128", since = "1.26.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<Ipv6Addr> for u128 {
     /// Uses [`Ipv6Addr::to_bits`] to convert an IPv6 address to a host byte order `u128`.
     #[inline]
@@ -2224,7 +2224,7 @@ impl const From<Ipv6Addr> for u128 {
     }
 }
 #[stable(feature = "i128", since = "1.26.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<u128> for Ipv6Addr {
     /// Uses [`Ipv6Addr::from_bits`] to convert a host byte order `u128` to an IPv6 address.
     #[inline]
@@ -2234,7 +2234,7 @@ impl const From<u128> for Ipv6Addr {
 }
 
 #[stable(feature = "ipv6_from_octets", since = "1.9.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<[u8; 16]> for Ipv6Addr {
     /// Creates an `Ipv6Addr` from a sixteen element byte array.
     ///
@@ -2262,7 +2262,7 @@ impl const From<[u8; 16]> for Ipv6Addr {
 }
 
 #[stable(feature = "ipv6_from_segments", since = "1.16.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<[u16; 8]> for Ipv6Addr {
     /// Creates an `Ipv6Addr` from an eight element 16-bit array.
     ///
@@ -2291,7 +2291,7 @@ impl const From<[u16; 8]> for Ipv6Addr {
 }
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<[u8; 16]> for IpAddr {
     /// Creates an `IpAddr::V6` from a sixteen element byte array.
     ///
@@ -2319,7 +2319,7 @@ impl const From<[u8; 16]> for IpAddr {
 }
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<[u16; 8]> for IpAddr {
     /// Creates an `IpAddr::V6` from an eight element 16-bit array.
     ///
@@ -2347,7 +2347,7 @@ impl const From<[u16; 8]> for IpAddr {
 }
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl const Not for Ipv4Addr {
     type Output = Ipv4Addr;
 
@@ -2363,7 +2363,7 @@ impl const Not for Ipv4Addr {
 }
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl const Not for &'_ Ipv4Addr {
     type Output = Ipv4Addr;
 
@@ -2374,7 +2374,7 @@ impl const Not for &'_ Ipv4Addr {
 }
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl const Not for Ipv6Addr {
     type Output = Ipv6Addr;
 
@@ -2390,7 +2390,7 @@ impl const Not for Ipv6Addr {
 }
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl const Not for &'_ Ipv6Addr {
     type Output = Ipv6Addr;
 
@@ -2475,16 +2475,16 @@ macro_rules! bitop_impls {
 
 bitop_impls! {
     #[stable(feature = "ip_bitops", since = "1.75.0")]
-    #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+    #[redox_const_unstable(feature = "const_ops", issue = "143802")]
     impl (BitAnd, BitAndAssign) for Ipv4Addr = (bitand, bitand_assign);
     #[stable(feature = "ip_bitops", since = "1.75.0")]
-    #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+    #[redox_const_unstable(feature = "const_ops", issue = "143802")]
     impl (BitOr, BitOrAssign) for Ipv4Addr = (bitor, bitor_assign);
 
     #[stable(feature = "ip_bitops", since = "1.75.0")]
-    #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+    #[redox_const_unstable(feature = "const_ops", issue = "143802")]
     impl (BitAnd, BitAndAssign) for Ipv6Addr = (bitand, bitand_assign);
     #[stable(feature = "ip_bitops", since = "1.75.0")]
-    #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+    #[redox_const_unstable(feature = "const_ops", issue = "143802")]
     impl (BitOr, BitOrAssign) for Ipv6Addr = (bitor, bitor_assign);
 }

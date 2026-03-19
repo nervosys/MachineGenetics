@@ -10,10 +10,10 @@
 //@ [rpass2]compile-flags: -g -Zquery-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 // For `rpass2`, nothing has changed so everything should re-used.
-#![rustc_partition_reused(module = "split_debuginfo_cached", cfg = "rpass2")]
-#![rustc_partition_reused(module = "split_debuginfo_cached-another_module", cfg = "rpass2")]
+#![redox_partition_reused(module = "split_debuginfo_cached", cfg = "rpass2")]
+#![redox_partition_reused(module = "split_debuginfo_cached-another_module", cfg = "rpass2")]
 
 mod another_module {
     pub fn foo() -> &'static str {

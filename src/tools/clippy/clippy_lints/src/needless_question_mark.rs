@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::res::MaybeQPath;
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Block, Body, Expr, ExprKind, LangItem, MatchSource};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::{Block, Body, Expr, ExprKind, LangItem, MatchSource};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

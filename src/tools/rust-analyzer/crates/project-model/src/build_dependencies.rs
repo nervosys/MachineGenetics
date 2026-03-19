@@ -14,7 +14,7 @@ use cfg::CfgAtom;
 use itertools::Itertools;
 use la_arena::ArenaMap;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize as _;
 use stdx::never;
 use toolchain::Tool;
@@ -179,22 +179,22 @@ impl WorkspaceBuildScripts {
         self.outputs.get(idx)
     }
 
-    /// Assembles build script outputs for the rustc crates via `--print target-libdir`.
-    pub(crate) fn rustc_crates(
-        rustc: &CargoWorkspace,
+    /// Assembles build script outputs for the redox crates via `--print target-libdir`.
+    pub(crate) fn redox_crates(
+        redox: &CargoWorkspace,
         current_dir: &AbsPath,
         extra_env: &FxHashMap<String, Option<String>>,
         sysroot: &Sysroot,
     ) -> Self {
         let mut bs = WorkspaceBuildScripts::default();
-        for p in rustc.packages() {
+        for p in redox.packages() {
             bs.outputs.insert(p, BuildScriptOutput::default());
         }
         let res = (|| {
             let target_libdir = (|| {
                 let mut cargo_config = sysroot.tool(Tool::Cargo, current_dir, extra_env);
                 cargo_config
-                    .args(["rustc", "-Z", "unstable-options", "--print", "target-libdir"])
+                    .args(["redox", "-Z", "unstable-options", "--print", "target-libdir"])
                     .env("RUSTC_BOOTSTRAP", "1");
                 if let Ok(it) = utf8_stdout(&mut cargo_config) {
                     return Ok(it);
@@ -206,7 +206,7 @@ impl WorkspaceBuildScripts {
 
             let target_libdir = AbsPathBuf::try_from(Utf8PathBuf::from(target_libdir))
                 .map_err(|_| anyhow::format_err!("target-libdir was not an absolute path"))?;
-            tracing::info!("Loading rustc proc-macro paths from {target_libdir}");
+            tracing::info!("Loading redox proc-macro paths from {target_libdir}");
 
             let proc_macro_dylibs: Vec<(String, AbsPathBuf)> = std::fs::read_dir(target_libdir)?
                 .filter_map(|entry| {
@@ -247,11 +247,11 @@ impl WorkspaceBuildScripts {
                     None
                 })
                 .collect();
-            for p in rustc.packages() {
-                let package = &rustc[p];
+            for p in redox.packages() {
+                let package = &redox[p];
                 bs.outputs[p].proc_macro_dylib_path =
                     if package.targets.iter().any(|&it| {
-                        matches!(rustc[it].kind, TargetKind::Lib { is_proc_macro: true })
+                        matches!(redox[it].kind, TargetKind::Lib { is_proc_macro: true })
                     }) {
                         match proc_macro_dylibs.iter().find(|(name, _)| *name == package.name) {
                             Some((_, path)) => ProcMacroDylibPath::Path(path.clone()),
@@ -263,10 +263,10 @@ impl WorkspaceBuildScripts {
             }
 
             if tracing::enabled!(tracing::Level::INFO) {
-                for package in rustc.packages() {
+                for package in redox.packages() {
                     let package_build_data = &bs.outputs[package];
                     if !package_build_data.is_empty() {
-                        tracing::info!("{}: {package_build_data:?}", rustc[package].manifest,);
+                        tracing::info!("{}: {package_build_data:?}", redox[package].manifest,);
                     }
                 }
             }
@@ -538,7 +538,7 @@ impl WorkspaceBuildScripts {
                         cmd.arg("--all-targets");
                     }
 
-                    if config.wrap_rustc_in_build_scripts {
+                    if config.wrap_redox_in_build_scripts {
                         // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
                         // that to compile only proc macros and build scripts during the initial
                         // `cargo check`.

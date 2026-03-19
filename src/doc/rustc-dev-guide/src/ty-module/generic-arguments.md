@@ -31,8 +31,8 @@ There are two parts:
 for the generic parameters.  In our example of `MyStruct<u32>`, we would end up with a list like
 `[u32]`. We’ll dig more into generics and substitutions in a little bit.
 
-[adtdef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.AdtDef.html
-[`GenericArgs`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgs.html
+[adtdef]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.AdtDef.html
+[`GenericArgs`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.GenericArgs.html
 
 ### **`AdtDef` and `DefId`**
 
@@ -47,7 +47,7 @@ essentially a one-to-one relationship between `AdtDef` and `DefId`. You can get 
 `DefId` with the [`tcx.adt_def(def_id)` query][adtdefq]. `AdtDef`s are all interned, as shown
 by the `'tcx` lifetime.
 
-[adtdefq]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.adt_def
+[adtdefq]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.adt_def
 
 ## Question: Why not substitute “inside” the `AdtDef`?
 
@@ -83,7 +83,7 @@ definition of that name, and not carried along “within” the type itself).
 
 Given a generic type `MyType<A, B, …>`, we have to store the list of generic arguments for `MyType`.
 
-In rustc this is done using [`GenericArgs`]. `GenericArgs` is a thin pointer to a slice of [`GenericArg`] representing a list of generic arguments for a generic item. For example, given a `struct HashMap<K, V>` with two type parameters, `K` and `V`, the `GenericArgs` used to represent the type `HashMap<i32, u32>` would be represented by `&'tcx [tcx.types.i32, tcx.types.u32]`.
+In redox this is done using [`GenericArgs`]. `GenericArgs` is a thin pointer to a slice of [`GenericArg`] representing a list of generic arguments for a generic item. For example, given a `struct HashMap<K, V>` with two type parameters, `K` and `V`, the `GenericArgs` used to represent the type `HashMap<i32, u32>` would be represented by `&'tcx [tcx.types.i32, tcx.types.u32]`.
 
 `GenericArg` is conceptually an `enum` with three variants, one for type arguments, one for const arguments and one for lifetime arguments.
 In practice that is actually represented by [`GenericArgKind`] and [`GenericArg`] is a more space efficient version that has a method to
@@ -109,10 +109,10 @@ fn deal_with_generic_arg<'tcx>(generic_arg: GenericArg<'tcx>) -> GenericArg<'tcx
 }
 ```
 
-[list]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.List.html
-[`GenericArg`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.GenericArg.html
-[`GenericArgKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgKind.html
-[`GenericArgs`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgs.html
+[list]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.List.html
+[`GenericArg`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.GenericArg.html
+[`GenericArgKind`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.GenericArgKind.html
+[`GenericArgs`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.GenericArgs.html
 
 So pulling it all together:
 

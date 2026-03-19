@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 //@ set Local = "$.index[?(@.name=='Local')].id"
 pub trait Local {}
@@ -13,6 +13,6 @@ impl Local for bool {}
 
 // FIXME(#101695): Test bool's `impls` include "Local for bool"
 //@ has "$.index[?(@.name=='bool')]"
-#[rustc_doc_primitive = "bool"]
+#[redox_doc_primitive = "bool"]
 /// Boolean docs
 mod prim_bool {}

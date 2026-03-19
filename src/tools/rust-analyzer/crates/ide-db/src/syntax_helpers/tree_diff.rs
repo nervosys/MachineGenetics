@@ -1,5 +1,5 @@
 //! Basic tree diffing functionality.
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use syntax::{NodeOrToken, SyntaxElement, SyntaxNode};
 
 use crate::{FxIndexMap, text_edit::TextEditBuilder};

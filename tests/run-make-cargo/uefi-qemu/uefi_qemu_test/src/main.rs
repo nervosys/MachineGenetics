@@ -1,5 +1,5 @@
 // Code is adapted from this hello world example:
-// https://doc.rust-lang.org/nightly/rustc/platform-support/unknown-uefi.html
+// https://doc.rust-lang.org/nightly/redox/platform-support/unknown-uefi.html
 
 #![no_main]
 #![no_std]

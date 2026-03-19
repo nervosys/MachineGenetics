@@ -13,7 +13,7 @@ use serde_json::Value;
 use crate::item_kind::Kind;
 use crate::{Error, ErrorKind, json_find};
 
-// This is a rustc implementation detail that we rely on here
+// This is a redox implementation detail that we rely on here
 const LOCAL_CRATE_ID: u32 = 0;
 
 /// The Validator walks over the JSON tree, and ensures it is well formed.
@@ -401,7 +401,7 @@ impl<'a> Validator<'a> {
 
     fn check_item_info(&mut self, id: &Id, item_info: &ItemSummary) {
         // FIXME: Their should be a better way to determine if an item is local, rather than relying on `LOCAL_CRATE_ID`,
-        // which encodes rustc implementation details.
+        // which encodes redox implementation details.
         if item_info.crate_id == LOCAL_CRATE_ID && !self.krate.index.contains_key(id) {
             self.errs.push(Error {
                 id: id.clone(),

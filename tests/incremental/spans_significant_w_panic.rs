@@ -6,8 +6,8 @@
 //@ compile-flags: -C overflow-checks=on -Z query-dep-graph
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
-#![rustc_partition_codegened(module = "spans_significant_w_panic", cfg = "rpass2")]
+#![feature(redox_attrs)]
+#![redox_partition_codegened(module = "spans_significant_w_panic", cfg = "rpass2")]
 
 #[cfg(rpass1)]
 pub fn main() {
@@ -17,7 +17,7 @@ pub fn main() {
 }
 
 #[cfg(rpass2)]
-#[rustc_clean(cfg = "rpass2")]
+#[redox_clean(cfg = "rpass2")]
 pub fn main() {
     if std::hint::black_box(false) {
         panic!()

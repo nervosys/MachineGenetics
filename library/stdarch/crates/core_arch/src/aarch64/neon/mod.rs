@@ -98,7 +98,7 @@ pub(crate) use shift_right_and_insert;
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, N1 = 0, N2 = 0))]
-#[rustc_legacy_const_generics(1, 3)]
+#[redox_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_lane_s64<const N1: i32, const N2: i32>(_a: int64x1_t, b: int64x1_t) -> int64x1_t {
     static_assert!(N1 == 0);
@@ -110,7 +110,7 @@ pub fn vcopy_lane_s64<const N1: i32, const N2: i32>(_a: int64x1_t, b: int64x1_t)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, N1 = 0, N2 = 0))]
-#[rustc_legacy_const_generics(1, 3)]
+#[redox_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_lane_u64<const N1: i32, const N2: i32>(_a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     static_assert!(N1 == 0);
@@ -122,7 +122,7 @@ pub fn vcopy_lane_u64<const N1: i32, const N2: i32>(_a: uint64x1_t, b: uint64x1_
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, N1 = 0, N2 = 0))]
-#[rustc_legacy_const_generics(1, 3)]
+#[redox_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_lane_p64<const N1: i32, const N2: i32>(_a: poly64x1_t, b: poly64x1_t) -> poly64x1_t {
     static_assert!(N1 == 0);
@@ -134,7 +134,7 @@ pub fn vcopy_lane_p64<const N1: i32, const N2: i32>(_a: poly64x1_t, b: poly64x1_
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, N1 = 0, N2 = 0))]
-#[rustc_legacy_const_generics(1, 3)]
+#[redox_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_lane_f64<const N1: i32, const N2: i32>(
     _a: float64x1_t,
@@ -149,7 +149,7 @@ pub fn vcopy_lane_f64<const N1: i32, const N2: i32>(
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, LANE1 = 0, LANE2 = 1))]
-#[rustc_legacy_const_generics(1, 3)]
+#[redox_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_laneq_s64<const LANE1: i32, const LANE2: i32>(
     _a: int64x1_t,
@@ -164,7 +164,7 @@ pub fn vcopy_laneq_s64<const LANE1: i32, const LANE2: i32>(
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, LANE1 = 0, LANE2 = 1))]
-#[rustc_legacy_const_generics(1, 3)]
+#[redox_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_laneq_u64<const LANE1: i32, const LANE2: i32>(
     _a: uint64x1_t,
@@ -179,7 +179,7 @@ pub fn vcopy_laneq_u64<const LANE1: i32, const LANE2: i32>(
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, LANE1 = 0, LANE2 = 1))]
-#[rustc_legacy_const_generics(1, 3)]
+#[redox_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_laneq_p64<const LANE1: i32, const LANE2: i32>(
     _a: poly64x1_t,
@@ -194,7 +194,7 @@ pub fn vcopy_laneq_p64<const LANE1: i32, const LANE2: i32>(
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, LANE1 = 0, LANE2 = 1))]
-#[rustc_legacy_const_generics(1, 3)]
+#[redox_legacy_const_generics(1, 3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcopy_laneq_f64<const LANE1: i32, const LANE2: i32>(
     _a: float64x1_t,
@@ -227,7 +227,7 @@ pub unsafe fn vld1q_dup_f64(ptr: *const f64) -> float64x2_t {
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(ldr, LANE = 0))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld1_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x1_t) -> float64x1_t {
@@ -238,7 +238,7 @@ pub unsafe fn vld1_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x1_t) 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(ld1, LANE = 1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld1q_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x2_t) -> float64x2_t {
@@ -353,7 +353,7 @@ pub fn vaddd_u64(a: u64, b: u64) -> u64 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, N = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vext_p64<const N: i32>(a: poly64x1_t, _b: poly64x1_t) -> poly64x1_t {
     static_assert!(N == 0);
@@ -364,7 +364,7 @@ pub fn vext_p64<const N: i32>(a: poly64x1_t, _b: poly64x1_t) -> poly64x1_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, N = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vext_f64<const N: i32>(a: float64x1_t, _b: float64x1_t) -> float64x1_t {
     static_assert!(N == 0);
@@ -482,7 +482,7 @@ pub fn vget_low_p64(a: poly64x2_t) -> poly64x1_t {
 /// Duplicate vector element to vector or scalar
 #[inline]
 #[target_feature(enable = "neon")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
@@ -496,7 +496,7 @@ pub fn vget_lane_f64<const IMM5: i32>(v: float64x1_t) -> f64 {
 /// Duplicate vector element to vector or scalar
 #[inline]
 #[target_feature(enable = "neon")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
@@ -520,7 +520,7 @@ pub fn vcombine_f64(low: float64x1_t, high: float64x1_t) -> float64x2_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, N = 2))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshld_n_s64<const N: i32>(a: i64) -> i64 {
     static_assert_uimm_bits!(N, 6);
@@ -531,7 +531,7 @@ pub fn vshld_n_s64<const N: i32>(a: i64) -> i64 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, N = 2))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshld_n_u64<const N: i32>(a: u64) -> u64 {
     static_assert_uimm_bits!(N, 6);
@@ -542,7 +542,7 @@ pub fn vshld_n_u64<const N: i32>(a: u64) -> u64 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, N = 2))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshrd_n_s64<const N: i32>(a: i64) -> i64 {
     static_assert!(N >= 1 && N <= 64);
@@ -554,7 +554,7 @@ pub fn vshrd_n_s64<const N: i32>(a: i64) -> i64 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, N = 2))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshrd_n_u64<const N: i32>(a: u64) -> u64 {
     static_assert!(N >= 1 && N <= 64);
@@ -570,7 +570,7 @@ pub fn vshrd_n_u64<const N: i32>(a: u64) -> u64 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, N = 2))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vsrad_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
     static_assert!(N >= 1 && N <= 64);
@@ -581,7 +581,7 @@ pub fn vsrad_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, N = 2))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vsrad_n_u64<const N: i32>(a: u64, b: u64) -> u64 {
     static_assert!(N >= 1 && N <= 64);

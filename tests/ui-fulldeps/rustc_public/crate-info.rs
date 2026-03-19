@@ -6,21 +6,21 @@
 //@ ignore-remote
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_hir;
-extern crate rustc_middle;
+extern crate redox_hir;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
+extern crate redox_driver;
+extern crate redox_interface;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
-use rustc_hir::def::DefKind;
-use rustc_public::ItemKind;
-use rustc_public::crate_def::CrateDef;
-use rustc_public::mir::mono::Instance;
-use rustc_public::ty::{RigidTy, TyKind};
+use redox_hir::def::DefKind;
+use redox_public::ItemKind;
+use redox_public::crate_def::CrateDef;
+use redox_public::mir::mono::Instance;
+use redox_public::ty::{RigidTy, TyKind};
 use std::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -29,18 +29,18 @@ const CRATE_NAME: &str = "input";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
-    // Get the local crate using rustc_public API.
-    let local = rustc_public::local_crate();
+    // Get the local crate using redox_public API.
+    let local = redox_public::local_crate();
     assert_eq!(&local.name, CRATE_NAME);
 
-    assert_eq!(rustc_public::entry_fn(), None);
+    assert_eq!(redox_public::entry_fn(), None);
 
     // Find items in the local crate.
-    let items = rustc_public::all_local_items();
+    let items = redox_public::all_local_items();
     assert!(get_item(&items, (DefKind::Fn, "input::foo::bar")).is_some());
 
     // Find the `std` crate and assert that there is only one of it.
-    assert!(rustc_public::find_crates("std").len() == 1);
+    assert!(redox_public::find_crates("std").len() == 1);
 
     let bar = get_item(&items, (DefKind::Fn, "input::bar")).unwrap();
     let body = bar.expect_body();
@@ -49,11 +49,11 @@ fn test_stable_mir() -> ControlFlow<()> {
     let block = &body.blocks[0];
     assert_eq!(block.statements.len(), 1);
     match &block.statements[0].kind {
-        rustc_public::mir::StatementKind::Assign(..) => {}
+        redox_public::mir::StatementKind::Assign(..) => {}
         other => panic!("{other:?}"),
     }
     match &block.terminator.kind {
-        rustc_public::mir::TerminatorKind::Return => {}
+        redox_public::mir::TerminatorKind::Return => {}
         other => panic!("{other:?}"),
     }
 
@@ -63,7 +63,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     assert_eq!(body.blocks.len(), 4);
     let block = &body.blocks[0];
     match &block.terminator.kind {
-        rustc_public::mir::TerminatorKind::Call { .. } => {}
+        redox_public::mir::TerminatorKind::Call { .. } => {}
         other => panic!("{other:?}"),
     }
 
@@ -72,32 +72,32 @@ fn test_stable_mir() -> ControlFlow<()> {
     assert_eq!(body.locals().len(), 6);
     assert_matches!(
         body.locals()[0].ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Bool)
+        redox_public::ty::TyKind::RigidTy(redox_public::ty::RigidTy::Bool)
     );
     assert_matches!(
         body.locals()[1].ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Bool)
+        redox_public::ty::TyKind::RigidTy(redox_public::ty::RigidTy::Bool)
     );
     assert_matches!(
         body.locals()[2].ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Char)
+        redox_public::ty::TyKind::RigidTy(redox_public::ty::RigidTy::Char)
     );
     assert_matches!(
         body.locals()[3].ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Int(
-            rustc_public::ty::IntTy::I32
+        redox_public::ty::TyKind::RigidTy(redox_public::ty::RigidTy::Int(
+            redox_public::ty::IntTy::I32
         ))
     );
     assert_matches!(
         body.locals()[4].ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Uint(
-            rustc_public::ty::UintTy::U64
+        redox_public::ty::TyKind::RigidTy(redox_public::ty::RigidTy::Uint(
+            redox_public::ty::UintTy::U64
         ))
     );
     assert_matches!(
         body.locals()[5].ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Float(
-            rustc_public::ty::FloatTy::F64
+        redox_public::ty::TyKind::RigidTy(redox_public::ty::RigidTy::Float(
+            redox_public::ty::FloatTy::F64
         ))
     );
 
@@ -106,7 +106,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     assert_eq!(body.blocks.len(), 2);
     let block = &body.blocks[0];
     match &block.terminator.kind {
-        rustc_public::mir::TerminatorKind::Drop { .. } => {}
+        redox_public::mir::TerminatorKind::Drop { .. } => {}
         other => panic!("{other:?}"),
     }
 
@@ -115,7 +115,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     assert_eq!(body.blocks.len(), 2);
     let block = &body.blocks[0];
     match &block.terminator.kind {
-        rustc_public::mir::TerminatorKind::Assert { .. } => {}
+        redox_public::mir::TerminatorKind::Assert { .. } => {}
         other => panic!("{other:?}"),
     }
 
@@ -123,7 +123,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     let instance = Instance::try_from(monomorphic.clone()).unwrap();
     for block in instance.body().unwrap().blocks {
         match &block.terminator.kind {
-            rustc_public::mir::TerminatorKind::Call { func, .. } => {
+            redox_public::mir::TerminatorKind::Call { func, .. } => {
                 let TyKind::RigidTy(ty) = func.ty(&body.locals()).unwrap().kind() else {
                     unreachable!()
                 };
@@ -134,7 +134,7 @@ fn test_stable_mir() -> ControlFlow<()> {
                     other => panic!("{other:?}"),
                 }
             }
-            rustc_public::mir::TerminatorKind::Return => {}
+            redox_public::mir::TerminatorKind::Return => {}
             other => panic!("{other:?}"),
         }
     }
@@ -149,26 +149,26 @@ fn test_stable_mir() -> ControlFlow<()> {
     assert_eq!(body.locals().len(), 4);
     assert_matches!(
         body.ret_local().ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Char)
+        redox_public::ty::TyKind::RigidTy(redox_public::ty::RigidTy::Char)
     );
     assert_eq!(body.arg_locals().len(), 2);
     assert_matches!(
         body.arg_locals()[0].ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Int(
-            rustc_public::ty::IntTy::I32
+        redox_public::ty::TyKind::RigidTy(redox_public::ty::RigidTy::Int(
+            redox_public::ty::IntTy::I32
         ))
     );
     assert_matches!(
         body.arg_locals()[1].ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Uint(
-            rustc_public::ty::UintTy::U64
+        redox_public::ty::TyKind::RigidTy(redox_public::ty::RigidTy::Uint(
+            redox_public::ty::UintTy::U64
         ))
     );
     assert_eq!(body.inner_locals().len(), 1);
     // If conditions have an extra inner local to hold their results
     assert_matches!(
         body.inner_locals()[0].ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Bool)
+        redox_public::ty::TyKind::RigidTy(redox_public::ty::RigidTy::Bool)
     );
 
     ControlFlow::Continue(())
@@ -176,9 +176,9 @@ fn test_stable_mir() -> ControlFlow<()> {
 
 // Use internal API to find a function in a crate.
 fn get_item<'a>(
-    items: &'a rustc_public::CrateItems,
+    items: &'a redox_public::CrateItems,
     item: (DefKind, &str),
-) -> Option<&'a rustc_public::CrateItem> {
+) -> Option<&'a redox_public::CrateItem> {
     items.iter().find(|crate_item| {
         matches!(
             (item.0, crate_item.kind()),
@@ -196,7 +196,7 @@ fn main() {
     let path = "input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg;
-use rustc_ast::ast::{BinOpKind, Expr, ExprKind, LitKind, UnOp};
-use rustc_data_structures::packed::Pu128;
-use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
+use redox_ast::ast::{BinOpKind, Expr, ExprKind, LitKind, UnOp};
+use redox_data_structures::packed::Pu128;
+use redox_errors::Applicability;
+use redox_lint::{EarlyContext, EarlyLintPass};
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

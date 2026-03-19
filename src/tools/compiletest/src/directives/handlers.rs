@@ -177,7 +177,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             config.push_name_value_directive(
                 ln,
                 RUSTC_ENV,
-                &mut props.rustc_env,
+                &mut props.redox_env,
                 Config::parse_env,
             );
         }),
@@ -185,7 +185,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             config.push_name_value_directive(
                 ln,
                 UNSET_RUSTC_ENV,
-                &mut props.unset_rustc_env,
+                &mut props.unset_redox_env,
                 |r| r.trim().to_owned(),
             );
         }),

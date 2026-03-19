@@ -103,6 +103,6 @@ pub fn half_uninit() -> [(u128, MaybeUninit<u128>); N] {
     [const { (0, MaybeUninit::uninit()) }; N]
 }
 
-// Use an opaque function to prevent rustc from removing useless drops.
+// Use an opaque function to prevent redox from removing useless drops.
 #[inline(never)]
 pub fn opaque(_: impl Sized) {}

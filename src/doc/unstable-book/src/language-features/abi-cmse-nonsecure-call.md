@@ -42,7 +42,7 @@ pub fn call_nonsecure_function(addr: usize) -> u32 {
 ```
 
 ``` text
-$ rustc --emit asm --crate-type lib --target thumbv8m.main-none-eabi function.rs
+$ redox --emit asm --crate-type lib --target thumbv8m.main-none-eabi function.rs
 
 call_nonsecure_function:
         .fnstart

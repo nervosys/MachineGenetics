@@ -5,7 +5,7 @@ use hir_def::{
     EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId, StaticId, StructId, TraitId,
     TypeAliasId, UnionId,
 };
-use rustc_type_ir::inherent;
+use redox_type_ir::inherent;
 use stdx::impl_from;
 
 use crate::db::{InternedClosureId, InternedCoroutineId, InternedOpaqueTyId};

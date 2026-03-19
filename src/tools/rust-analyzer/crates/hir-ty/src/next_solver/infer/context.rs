@@ -1,6 +1,6 @@
 //! Definition of `InferCtxtLike` from the librarified type layer.
 
-use rustc_type_ir::{
+use redox_type_ir::{
     ConstVid, FloatVarValue, FloatVid, GenericArgKind, InferConst, InferTy, IntVarValue, IntVid,
     RegionVid, TyVid, TypeFoldable, TypingMode, UniverseIndex,
     inherent::{Const as _, IntoKind, Ty as _},
@@ -15,7 +15,7 @@ use crate::next_solver::{
 
 use super::{BoundRegionConversionTime, InferCtxt, relate::RelateResult};
 
-impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
+impl<'db> redox_type_ir::InferCtxtLike for InferCtxt<'db> {
     type Interner = DbInterner<'db>;
 
     fn cx(&self) -> DbInterner<'db> {
@@ -87,7 +87,7 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
             .opportunistic_resolve_var(self.interner, vid)
     }
 
-    fn is_changed_arg(&self, arg: <Self::Interner as rustc_type_ir::Interner>::GenericArg) -> bool {
+    fn is_changed_arg(&self, arg: <Self::Interner as redox_type_ir::Interner>::GenericArg) -> bool {
         match arg.kind() {
             GenericArgKind::Lifetime(_) => {
                 // Lifetimes should not change affect trait selection.
@@ -142,7 +142,7 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
         self.next_ty_var()
     }
 
-    fn next_region_infer(&self) -> <Self::Interner as rustc_type_ir::Interner>::Region {
+    fn next_region_infer(&self) -> <Self::Interner as redox_type_ir::Interner>::Region {
         self.next_region_var()
     }
 
@@ -169,19 +169,19 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
         self.enter_forall(value, f)
     }
 
-    fn equate_ty_vids_raw(&self, a: rustc_type_ir::TyVid, b: rustc_type_ir::TyVid) {
+    fn equate_ty_vids_raw(&self, a: redox_type_ir::TyVid, b: redox_type_ir::TyVid) {
         self.inner.borrow_mut().type_variables().equate(a, b);
     }
 
-    fn equate_int_vids_raw(&self, a: rustc_type_ir::IntVid, b: rustc_type_ir::IntVid) {
+    fn equate_int_vids_raw(&self, a: redox_type_ir::IntVid, b: redox_type_ir::IntVid) {
         self.inner.borrow_mut().int_unification_table().union(a, b);
     }
 
-    fn equate_float_vids_raw(&self, a: rustc_type_ir::FloatVid, b: rustc_type_ir::FloatVid) {
+    fn equate_float_vids_raw(&self, a: redox_type_ir::FloatVid, b: redox_type_ir::FloatVid) {
         self.inner.borrow_mut().float_unification_table().union(a, b);
     }
 
-    fn equate_const_vids_raw(&self, a: rustc_type_ir::ConstVid, b: rustc_type_ir::ConstVid) {
+    fn equate_const_vids_raw(&self, a: redox_type_ir::ConstVid, b: redox_type_ir::ConstVid) {
         self.inner.borrow_mut().const_unification_table().union(a, b);
     }
 
@@ -189,8 +189,8 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
         &self,
         relation: &mut R,
         target_is_expected: bool,
-        target_vid: rustc_type_ir::TyVid,
-        instantiation_variance: rustc_type_ir::Variance,
+        target_vid: redox_type_ir::TyVid,
+        instantiation_variance: redox_type_ir::Variance,
         source_ty: Ty<'db>,
     ) -> RelateResult<'db, ()> {
         self.instantiate_ty_var(
@@ -204,16 +204,16 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
 
     fn instantiate_int_var_raw(
         &self,
-        vid: rustc_type_ir::IntVid,
-        value: rustc_type_ir::IntVarValue,
+        vid: redox_type_ir::IntVid,
+        value: redox_type_ir::IntVarValue,
     ) {
         self.inner.borrow_mut().int_unification_table().union_value(vid, value);
     }
 
     fn instantiate_float_var_raw(
         &self,
-        vid: rustc_type_ir::FloatVid,
-        value: rustc_type_ir::FloatVarValue,
+        vid: redox_type_ir::FloatVid,
+        value: redox_type_ir::FloatVarValue,
     ) {
         self.inner.borrow_mut().float_unification_table().union_value(vid, value);
     }
@@ -222,7 +222,7 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
         &self,
         relation: &mut R,
         target_is_expected: bool,
-        target_vid: rustc_type_ir::ConstVid,
+        target_vid: redox_type_ir::ConstVid,
         source_ct: Const<'db>,
     ) -> RelateResult<'db, ()> {
         self.instantiate_const_var(relation, target_is_expected, target_vid, source_ct)
@@ -314,18 +314,18 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
         let _ = self.take_opaque_types();
     }
 
-    fn sub_unification_table_root_var(&self, var: rustc_type_ir::TyVid) -> rustc_type_ir::TyVid {
+    fn sub_unification_table_root_var(&self, var: redox_type_ir::TyVid) -> redox_type_ir::TyVid {
         self.sub_unification_table_root_var(var)
     }
 
-    fn sub_unify_ty_vids_raw(&self, a: rustc_type_ir::TyVid, b: rustc_type_ir::TyVid) {
+    fn sub_unify_ty_vids_raw(&self, a: redox_type_ir::TyVid, b: redox_type_ir::TyVid) {
         self.sub_unify_ty_vids_raw(a, b);
     }
 
     fn opaques_with_sub_unified_hidden_type(
         &self,
         _ty: TyVid,
-    ) -> Vec<rustc_type_ir::AliasTy<Self::Interner>> {
+    ) -> Vec<redox_type_ir::AliasTy<Self::Interner>> {
         // FIXME: I guess we are okay without this for now since currently r-a lacks of
         // detailed checks over opaque types. Might need to implement this in future.
         vec![]

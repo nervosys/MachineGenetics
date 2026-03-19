@@ -5,10 +5,10 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{run, rustc};
+use run_make_support::{run, redox};
 
 fn main() {
-    rustc().stdin_buf(b"fn main(){}").arg("-Zno-link").arg("-").run();
-    rustc().arg("-Zlink-only").input("rust_out.rlink").run();
+    redox().stdin_buf(b"fn main(){}").arg("-Zno-link").arg("-").run();
+    redox().arg("-Zlink-only").input("rust_out.rlink").run();
     run("rust_out");
 }

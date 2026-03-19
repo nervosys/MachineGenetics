@@ -144,7 +144,7 @@ where
 {
     /// Constructs a mask by setting all elements to the given value.
     #[inline]
-    #[rustc_const_unstable(feature = "portable_simd", issue = "86656")]
+    #[redox_const_unstable(feature = "portable_simd", issue = "86656")]
     pub const fn splat(value: bool) -> Self {
         Self(Simd::splat(if value { T::TRUE } else { T::FALSE }))
     }

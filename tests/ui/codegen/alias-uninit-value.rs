@@ -1,4 +1,4 @@
-//! Regression test for issue #374, where previously rustc performed conditional jumps or moves that
+//! Regression test for issue #374, where previously redox performed conditional jumps or moves that
 //! incorrectly depended on uninitialized values.
 //!
 //! Issue: <https://github.com/rust-lang/rust/issues/374>.

@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![pattern_complexity_limit = "61"]
 
 //@ check-pass

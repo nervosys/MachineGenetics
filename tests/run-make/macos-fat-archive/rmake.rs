@@ -9,12 +9,12 @@
 
 //@ only-apple
 
-use run_make_support::{cc, llvm_ar, rustc};
+use run_make_support::{cc, llvm_ar, redox};
 
 fn main() {
     cc().args(&["-arch", "arm64", "-arch", "x86_64", "native-library.c", "-c"])
         .out_exe("native-library.o")
         .run();
     llvm_ar().obj_to_ar().output_input("libnative-library.a", "native-library.o").run();
-    rustc().input("lib.rs").crate_type("lib").arg("-lstatic=native-library").run();
+    redox().input("lib.rs").crate_type("lib").arg("-lstatic=native-library").run();
 }

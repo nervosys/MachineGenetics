@@ -35,9 +35,9 @@ use hir_def::{
 use hir_expand::name::Name;
 use la_arena::{Arena, ArenaMap, Idx};
 use path::{PathDiagnosticCallback, PathLoweringContext};
-use rustc_ast_ir::Mutability;
-use rustc_hash::FxHashSet;
-use rustc_type_ir::{
+use redox_ast_ir::Mutability;
+use redox_hash::FxHashSet;
+use redox_type_ir::{
     AliasTyKind, BoundVarIndexKind, ConstKind, DebruijnIndex, ExistentialPredicate,
     ExistentialProjection, ExistentialTraitRef, FnSig, Interner, OutlivesPredicate, TermKind,
     TyKind, TypeFoldable, TypeVisitableExt, Upcast, UpcastFrom, elaborate,
@@ -335,7 +335,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 let args = GenericArgs::empty(self.interner);
                 Some(Const::new(
                     self.interner,
-                    rustc_type_ir::ConstKind::Unevaluated(UnevaluatedConst::new(
+                    redox_type_ir::ConstKind::Unevaluated(UnevaluatedConst::new(
                         GeneralConstId::ConstId(c).into(),
                         args,
                     )),
@@ -624,8 +624,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             &WherePredicate::Lifetime { bound, target } => Either::Right(iter::once((
                 Clause(Predicate::new(
                     self.interner,
-                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                        rustc_type_ir::ClauseKind::RegionOutlives(OutlivesPredicate(
+                    Binder::dummy(redox_type_ir::PredicateKind::Clause(
+                        redox_type_ir::ClauseKind::RegionOutlives(OutlivesPredicate(
                             self.lower_lifetime(bound),
                             self.lower_lifetime(target),
                         )),
@@ -665,10 +665,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         }
                         clause = Some(Clause(Predicate::new(
                             interner,
-                            Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                                rustc_type_ir::ClauseKind::Trait(TraitPredicate {
+                            Binder::dummy(redox_type_ir::PredicateKind::Clause(
+                                redox_type_ir::ClauseKind::Trait(TraitPredicate {
                                     trait_ref,
-                                    polarity: rustc_type_ir::PredicatePolarity::Positive,
+                                    polarity: redox_type_ir::PredicatePolarity::Positive,
                                 }),
                             )),
                         )));
@@ -691,8 +691,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 let lifetime = self.lower_lifetime(l);
                 clause = Some(Clause(Predicate::new(
                     self.interner,
-                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                        rustc_type_ir::ClauseKind::TypeOutlives(OutlivesPredicate(
+                    Binder::dummy(redox_type_ir::PredicateKind::Clause(
+                        redox_type_ir::ClauseKind::TypeOutlives(OutlivesPredicate(
                             self_ty, lifetime,
                         )),
                     )),
@@ -725,7 +725,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 let db = ctx.db;
                 ctx.lower_type_bound(b, dummy_self_ty, false).for_each(|(b, _)| {
                     match b.kind().skip_binder() {
-                        rustc_type_ir::ClauseKind::Trait(t) => {
+                        redox_type_ir::ClauseKind::Trait(t) => {
                             let id = t.def_id();
                             let is_auto = db.trait_signature(id.0).flags.contains(TraitFlags::AUTO);
                             if is_auto {
@@ -738,22 +738,22 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                                 principal = Some(b.kind().rebind(t.trait_ref));
                             }
                         }
-                        rustc_type_ir::ClauseKind::Projection(p) => {
+                        redox_type_ir::ClauseKind::Projection(p) => {
                             projections.push(b.kind().rebind(p));
                         }
-                        rustc_type_ir::ClauseKind::TypeOutlives(outlives_predicate) => {
+                        redox_type_ir::ClauseKind::TypeOutlives(outlives_predicate) => {
                             if region.is_some() {
                                 // FIXME: Report an error.
                                 had_error = true;
                             }
                             region = Some(outlives_predicate.1);
                         }
-                        rustc_type_ir::ClauseKind::RegionOutlives(_)
-                        | rustc_type_ir::ClauseKind::ConstArgHasType(_, _)
-                        | rustc_type_ir::ClauseKind::WellFormed(_)
-                        | rustc_type_ir::ClauseKind::ConstEvaluatable(_)
-                        | rustc_type_ir::ClauseKind::HostEffect(_)
-                        | rustc_type_ir::ClauseKind::UnstableFeature(_) => unreachable!(),
+                        redox_type_ir::ClauseKind::RegionOutlives(_)
+                        | redox_type_ir::ClauseKind::ConstArgHasType(_, _)
+                        | redox_type_ir::ClauseKind::WellFormed(_)
+                        | redox_type_ir::ClauseKind::ConstEvaluatable(_)
+                        | redox_type_ir::ClauseKind::HostEffect(_)
+                        | redox_type_ir::ClauseKind::UnstableFeature(_) => unreachable!(),
                     }
                 })
             }
@@ -807,7 +807,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 
             if let Some(principal_trait) = principal {
                 // Generally we should not elaborate in lowering as this can lead to cycles, but
-                // here rustc cycles as well.
+                // here redox cycles as well.
                 for clause in elaborate::elaborate(
                     interner,
                     [Clause::upcast_from(
@@ -955,7 +955,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         if let Some(bounds) = bounds {
             let region = match region {
                 Some(it) => match it.kind() {
-                    rustc_type_ir::RegionKind::ReBound(BoundVarIndexKind::Bound(db), var) => {
+                    redox_type_ir::RegionKind::ReBound(BoundVarIndexKind::Bound(db), var) => {
                         Region::new_bound(
                             self.interner,
                             db.shifted_out_to_binder(DebruijnIndex::from_u32(2)),
@@ -980,7 +980,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         let args = GenericArgs::identity_for_item(interner, def_id);
         let self_ty = Ty::new_alias(
             self.interner,
-            rustc_type_ir::AliasTyKind::Opaque,
+            redox_type_ir::AliasTyKind::Opaque,
             AliasTy::new_from_args(interner, def_id, args),
         );
         let (predicates, assoc_ty_bounds_start) =
@@ -1006,10 +1006,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         );
                         Clause(Predicate::new(
                             interner,
-                            Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                                rustc_type_ir::ClauseKind::Trait(TraitPredicate {
+                            Binder::dummy(redox_type_ir::PredicateKind::Clause(
+                                redox_type_ir::ClauseKind::Trait(TraitPredicate {
                                     trait_ref,
-                                    polarity: rustc_type_ir::PredicatePolarity::Positive,
+                                    polarity: redox_type_ir::PredicatePolarity::Positive,
                                 }),
                             )),
                         ))
@@ -1700,8 +1700,8 @@ enum AssocTypeShorthandResolution {
 /// This query exists only to be used when resolving short-hand associated types
 /// like `T::Item`.
 ///
-/// See the analogous query in rustc and its comment:
-/// <https://github.com/rust-lang/rust/blob/9150f844e2624eb013ec78ca08c1d416e6644026/src/librustc_typeck/astconv.rs#L46>
+/// See the analogous query in redox and its comment:
+/// <https://github.com/rust-lang/rust/blob/9150f844e2624eb013ec78ca08c1d416e6644026/src/libredox_typeck/astconv.rs#L46>
 ///
 /// This is a query mostly to handle cycles somewhat gracefully; e.g. the
 /// following bounds are disallowed: `T: Foo<U::Item>, U: Foo<T::Item>`, but
@@ -2084,13 +2084,13 @@ pub(crate) fn param_env_from_predicates<'db>(
     interner: DbInterner<'db>,
     predicates: &'db GenericPredicates,
 ) -> ParamEnv<'db> {
-    let clauses = rustc_type_ir::elaborate::elaborate(
+    let clauses = redox_type_ir::elaborate::elaborate(
         interner,
         predicates.all_predicates().iter_identity_copied(),
     );
     let clauses = Clauses::new_from_iter(interner, clauses);
 
-    // FIXME: We should normalize projections here, like rustc does.
+    // FIXME: We should normalize projections here, like redox does.
     ParamEnv { clauses }
 }
 
@@ -2198,10 +2198,10 @@ fn generic_predicates(db: &dyn HirDatabase, def: GenericDefId) -> (GenericPredic
                 );
                 let clause = Clause(Predicate::new(
                     interner,
-                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                        rustc_type_ir::ClauseKind::Trait(TraitPredicate {
+                    Binder::dummy(redox_type_ir::PredicateKind::Clause(
+                        redox_type_ir::ClauseKind::Trait(TraitPredicate {
                             trait_ref,
-                            polarity: rustc_type_ir::PredicatePolarity::Positive,
+                            polarity: redox_type_ir::PredicatePolarity::Positive,
                         }),
                     )),
                 ));
@@ -2278,7 +2278,7 @@ fn generic_predicates(db: &dyn HirDatabase, def: GenericDefId) -> (GenericPredic
         //
         // In the chalk setup, this predicate is not part of the
         // "predicates" for a trait item. But it is useful in
-        // rustc because if you directly (e.g.) invoke a trait
+        // redox because if you directly (e.g.) invoke a trait
         // method like `Trait::method(...)`, you must naturally
         // prove that the trait applies to the types that were
         // used, and adding the predicate into this list ensures
@@ -2544,7 +2544,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
             if let Some(bound) = pred
                 .kind()
                 .map_bound(|c| match c {
-                    rustc_type_ir::ClauseKind::Trait(t) => {
+                    redox_type_ir::ClauseKind::Trait(t) => {
                         let id = t.def_id();
                         let is_auto = db.trait_signature(id.0).flags.contains(TraitFlags::AUTO);
                         if is_auto {
@@ -2557,7 +2557,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
                             )))
                         }
                     }
-                    rustc_type_ir::ClauseKind::Projection(p) => Some(
+                    redox_type_ir::ClauseKind::Projection(p) => Some(
                         ExistentialPredicate::Projection(ExistentialProjection::new_from_args(
                             interner,
                             p.def_id(),
@@ -2565,13 +2565,13 @@ pub(crate) fn associated_ty_item_bounds<'db>(
                             p.term,
                         )),
                     ),
-                    rustc_type_ir::ClauseKind::TypeOutlives(_) => None,
-                    rustc_type_ir::ClauseKind::RegionOutlives(_)
-                    | rustc_type_ir::ClauseKind::ConstArgHasType(_, _)
-                    | rustc_type_ir::ClauseKind::WellFormed(_)
-                    | rustc_type_ir::ClauseKind::ConstEvaluatable(_)
-                    | rustc_type_ir::ClauseKind::HostEffect(_)
-                    | rustc_type_ir::ClauseKind::UnstableFeature(_) => unreachable!(),
+                    redox_type_ir::ClauseKind::TypeOutlives(_) => None,
+                    redox_type_ir::ClauseKind::RegionOutlives(_)
+                    | redox_type_ir::ClauseKind::ConstArgHasType(_, _)
+                    | redox_type_ir::ClauseKind::WellFormed(_)
+                    | redox_type_ir::ClauseKind::ConstEvaluatable(_)
+                    | redox_type_ir::ClauseKind::HostEffect(_)
+                    | redox_type_ir::ClauseKind::UnstableFeature(_) => unreachable!(),
                 })
                 .transpose()
             {

@@ -3,13 +3,13 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::option_arg_ty;
 use clippy_utils::{is_from_proc_macro, is_trait_impl_item};
-use rustc_errors::Applicability;
-use rustc_hir::intravisit::FnKind;
-use rustc_hir::{self as hir, FnDecl, HirId};
-use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty::{self, Mutability, Ty};
-use rustc_span::Span;
-use rustc_span::def_id::LocalDefId;
+use redox_errors::Applicability;
+use redox_hir::intravisit::FnKind;
+use redox_hir::{self as hir, FnDecl, HirId};
+use redox_lint::{LateContext, LintContext};
+use redox_middle::ty::{self, Mutability, Ty};
+use redox_span::Span;
+use redox_span::def_id::LocalDefId;
 
 fn check_ty<'a>(cx: &LateContext<'a>, param: &hir::Ty<'a>, param_ty: Ty<'a>, fixes: &mut Vec<(Span, String)>) {
     if !param.span.in_external_macro(cx.sess().source_map())

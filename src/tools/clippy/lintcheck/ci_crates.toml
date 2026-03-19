@@ -130,7 +130,7 @@ adler = { name = 'adler', version = '1.0.2' }
 pkg-config = { name = 'pkg-config', version = '0.3.30' }
 redox_syscall = { name = 'redox_syscall', version = '0.5.3' }
 nom = { name = 'nom', version = '8.0.0-alpha2' }
-rustc_version = { name = 'rustc_version', version = '0.4.0' }
+redox_version = { name = 'redox_version', version = '0.4.0' }
 futures-macro = { name = 'futures-macro', version = '0.3.31' }
 clap_derive = { name = 'clap_derive', version = '4.5.8' }
 futures-executor = { name = 'futures-executor', version = '0.3.31' }

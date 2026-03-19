@@ -17,7 +17,7 @@
 //!
 //! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 
-use rustc_type_ir::{
+use redox_type_ir::{
     AliasRelationDirection, Interner, TypeVisitableExt, Upcast, Variance,
     inherent::{IntoKind, Span as _},
     relate::{
@@ -153,20 +153,20 @@ impl<'db> TypeRelation<DbInterner<'db>> for LatticeOp<'_, 'db> {
             // is (e.g.) `Box<i32>`. A more obvious solution might be to
             // iterate on the subtype obligations that are returned, but I
             // think this suffices. -nmatsakis
-            (TyKind::Infer(rustc_type_ir::TyVar(..)), _) => {
+            (TyKind::Infer(redox_type_ir::TyVar(..)), _) => {
                 let v = infcx.next_ty_var();
                 self.relate_bound(v, b, a)?;
                 Ok(v)
             }
-            (_, TyKind::Infer(rustc_type_ir::TyVar(..))) => {
+            (_, TyKind::Infer(redox_type_ir::TyVar(..))) => {
                 let v = infcx.next_ty_var();
                 self.relate_bound(v, a, b)?;
                 Ok(v)
             }
 
             (
-                TyKind::Alias(rustc_type_ir::Opaque, AliasTy { def_id: a_def_id, .. }),
-                TyKind::Alias(rustc_type_ir::Opaque, AliasTy { def_id: b_def_id, .. }),
+                TyKind::Alias(redox_type_ir::Opaque, AliasTy { def_id: a_def_id, .. }),
+                TyKind::Alias(redox_type_ir::Opaque, AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id => super_combine_tys(infcx, self, a, b),
 
             _ => super_combine_tys(infcx, self, a, b),

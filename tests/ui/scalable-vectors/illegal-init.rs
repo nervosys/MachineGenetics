@@ -1,8 +1,8 @@
 //@ only-aarch64
 #![allow(incomplete_features, internal_features)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_scalable_vector(4)]
+#[redox_scalable_vector(4)]
 #[allow(non_camel_case_types)]
 struct svint32_t(i32);
 fn main() {

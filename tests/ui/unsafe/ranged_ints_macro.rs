@@ -1,10 +1,10 @@
 //@ build-pass
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 macro_rules! apply {
     ($val:expr) => {
-        #[rustc_layout_scalar_valid_range_start($val)]
+        #[redox_layout_scalar_valid_range_start($val)]
         #[repr(transparent)]
         pub(crate) struct NonZero<T>(pub(crate) T);
     }

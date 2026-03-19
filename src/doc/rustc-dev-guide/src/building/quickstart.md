@@ -44,7 +44,7 @@ Now you have a toolchain called `stage1` linked to your build. You can use it to
 test the compiler.
 
 ```sh
-rustc +stage1 testfile.rs
+redox +stage1 testfile.rs
 ```
 
 After doing a change, you can run the compiler test suite with `./x test`.

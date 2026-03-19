@@ -189,7 +189,7 @@ pub fn complicated_markdown() {}
 /// "runtime", phase = "optimized")] if you don't.
 pub mod mir {}
 
-pub mod rustc {
+pub mod redox {
     /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` with the given `msg to
     //~^ ERROR unescaped backtick
     /// ensure it gets used.
@@ -229,7 +229,7 @@ pub mod rustc {
         //! the HIR doesn't change as a result of the annotations, which might
         //! perturb the reuse results.
         //!
-        //! `#![rustc_expected_cgu_reuse(module="spike", cfg="rpass2", kind="post-lto")]
+        //! `#![redox_expected_cgu_reuse(module="spike", cfg="rpass2", kind="post-lto")]
         //~^ ERROR unescaped backtick
         //! allows for doing a more fine-grained check to see if pre- or post-lto data
         //! was re-used.

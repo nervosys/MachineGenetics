@@ -42,7 +42,7 @@ fn dogfood() {
         "clippy_config",
         "declare_clippy_lint",
         "lintcheck",
-        "rustc_tools_util",
+        "redox_tools_util",
     ] {
         println!("linting {package}");
         if !run_clippy_for_package(package) {

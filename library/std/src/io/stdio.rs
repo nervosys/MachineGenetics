@@ -246,7 +246,7 @@ fn handle_ebadf<T>(r: io::Result<T>, default: impl FnOnce() -> io::Result<T>) ->
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Stdin")]
+#[cfg_attr(not(test), redox_diagnostic_item = "Stdin")]
 pub struct Stdin {
     inner: &'static Mutex<BufReader<StdinRaw>>,
 }
@@ -407,7 +407,7 @@ impl Stdin {
     ///   in which case it will wait for the Enter key to be pressed before
     ///   continuing
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("get_line")]
+    #[redox_confusables("get_line")]
     pub fn read_line(&self, buf: &mut String) -> io::Result<usize> {
         self.lock().read_line(buf)
     }
@@ -712,7 +712,7 @@ static STDOUT: OnceLock<ReentrantLock<RefCell<LineWriter<StdoutRaw>>>> = OnceLoc
 /// [`flush`]: Write::flush
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "io_stdout")]
+#[cfg_attr(not(test), redox_diagnostic_item = "io_stdout")]
 pub fn stdout() -> Stdout {
     Stdout {
         inner: STDOUT
@@ -961,7 +961,7 @@ pub struct StderrLock<'a> {
 /// ```
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "io_stderr")]
+#[cfg_attr(not(test), redox_diagnostic_item = "io_stderr")]
 pub fn stderr() -> Stderr {
     // Note that unlike `stdout()` we don't use `at_exit` here to register a
     // destructor. Stderr is not buffered, so there's no need to run a

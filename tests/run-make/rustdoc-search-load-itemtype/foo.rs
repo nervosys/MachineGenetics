@@ -1,4 +1,4 @@
-#![feature(extern_types, rustc_attrs, rustdoc_internals, trait_alias)]
+#![feature(extern_types, redox_attrs, rustdoc_internals, trait_alias)]
 #![allow(internal_features)]
 #![no_std]
 
@@ -11,7 +11,7 @@ mod w_keyword {}
 //@ has foo/primitive.u32.html
 //@ hasraw search.index/name/*.js u32
 //@ !hasraw search.index/name/*.js u_primitive
-#[rustc_doc_primitive = "u32"]
+#[redox_doc_primitive = "u32"]
 mod u_primitive {}
 
 //@ has foo/x_mod/index.html

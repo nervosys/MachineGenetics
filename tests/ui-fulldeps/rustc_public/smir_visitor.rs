@@ -6,17 +6,17 @@
 //@ ignore-remote
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
-extern crate rustc_public;
+extern crate redox_driver;
+extern crate redox_interface;
+extern crate redox_public;
 
-use rustc_public::mir::MirVisitor;
-use rustc_public::mir::MutMirVisitor;
-use rustc_public::*;
+use redox_public::mir::MirVisitor;
+use redox_public::mir::MutMirVisitor;
+use redox_public::*;
 use std::collections::HashSet;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -24,7 +24,7 @@ use std::ops::ControlFlow;
 const CRATE_NAME: &str = "input";
 
 fn test_visitor() -> ControlFlow<()> {
-    let main_fn = rustc_public::entry_fn();
+    let main_fn = redox_public::entry_fn();
     let main_body = main_fn.unwrap().expect_body();
     let main_visitor = TestVisitor::collect(&main_body);
     assert!(main_visitor.ret_val.is_some());
@@ -98,7 +98,7 @@ impl<'a> mir::MirVisitor for TestVisitor<'a> {
 }
 
 fn test_mut_visitor() -> ControlFlow<()> {
-    let main_fn = rustc_public::entry_fn();
+    let main_fn = redox_public::entry_fn();
     let mut main_body = main_fn.unwrap().expect_body();
     let locals = main_body.locals().to_vec();
     let mut main_visitor = TestMutVisitor::collect(locals);
@@ -182,7 +182,7 @@ fn main() {
     let path = "sim_visitor_input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

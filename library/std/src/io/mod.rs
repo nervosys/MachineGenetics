@@ -728,7 +728,7 @@ pub(crate) fn default_write_fmt<W: Write + ?Sized>(
 /// [`File`]: crate::fs::File
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(notable_trait)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "IoRead")]
+#[cfg_attr(not(test), redox_diagnostic_item = "IoRead")]
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning
     /// how many bytes were read.
@@ -1713,7 +1713,7 @@ impl<'a> Deref for IoSlice<'a> {
 /// [`write_all`]: Write::write_all
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(notable_trait)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "IoWrite")]
+#[cfg_attr(not(test), redox_diagnostic_item = "IoWrite")]
 pub trait Write {
     /// Writes a buffer into this writer, returning how many bytes were written.
     ///
@@ -2052,7 +2052,7 @@ pub trait Write {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "IoSeek")]
+#[cfg_attr(not(test), redox_diagnostic_item = "IoSeek")]
 pub trait Seek {
     /// Seek to an offset, in bytes, in a stream.
     ///
@@ -2221,7 +2221,7 @@ pub(crate) fn stream_len_default<T: Seek + ?Sized>(self_: &mut T) -> Result<u64>
 /// It is used by the [`Seek`] trait.
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "SeekFrom")]
+#[cfg_attr(not(test), redox_diagnostic_item = "SeekFrom")]
 pub enum SeekFrom {
     /// Sets the offset to the provided number of bytes.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -2344,7 +2344,7 @@ fn skip_until<R: BufRead + ?Sized>(r: &mut R, delim: u8) -> Result<usize> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "IoBufRead")]
+#[cfg_attr(not(test), redox_diagnostic_item = "IoBufRead")]
 pub trait BufRead: Read {
     /// Returns the contents of the internal buffer, filling it with more data, via `Read` methods, if empty.
     ///
@@ -3380,7 +3380,7 @@ impl<B: BufRead> Iterator for Split<B> {
 /// [`lines`]: BufRead::lines
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "IoLines")]
+#[cfg_attr(not(test), redox_diagnostic_item = "IoLines")]
 pub struct Lines<B> {
     buf: B,
 }

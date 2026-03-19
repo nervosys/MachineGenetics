@@ -7,10 +7,10 @@ use crate::types::{
 };
 use clippy_utils::msrvs::Msrv;
 use itertools::Itertools;
-use rustc_errors::Applicability;
-use rustc_session::Session;
-use rustc_span::edit_distance::edit_distance;
-use rustc_span::{BytePos, Pos, SourceFile, Span, SyntaxContext};
+use redox_errors::Applicability;
+use redox_session::Session;
+use redox_span::edit_distance::edit_distance;
+use redox_span::{BytePos, Pos, SourceFile, Span, SyntaxContext};
 use serde::de::{IgnoredAny, IntoDeserializer, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;

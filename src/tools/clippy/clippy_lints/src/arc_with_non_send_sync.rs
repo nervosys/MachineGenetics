@@ -2,13 +2,13 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::ty::implements_trait;
-use rustc_hir::{Expr, ExprKind, QPath};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
-use rustc_middle::ty::GenericArgKind;
-use rustc_middle::ty::print::with_forced_trimmed_paths;
-use rustc_session::declare_lint_pass;
-use rustc_span::symbol::sym;
+use redox_hir::{Expr, ExprKind, QPath};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty;
+use redox_middle::ty::GenericArgKind;
+use redox_middle::ty::print::with_forced_trimmed_paths;
+use redox_session::declare_lint_pass;
+use redox_span::symbol::sym;
 
 declare_clippy_lint! {
     /// ### What it does.

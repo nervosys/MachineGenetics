@@ -1,13 +1,13 @@
 //@aux-build:../../ui/auxiliary/proc_macros.rs
 //@revisions: default default_exp bad_conf_1 bad_conf_2 bad_conf_3 bad_conf_4 bad_conf_5 bad_conf_6
-//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default
-//@[default_exp] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default_exp
-//@[bad_conf_1] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_1
-//@[bad_conf_2] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_2
-//@[bad_conf_3] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_3
-//@[bad_conf_4] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_4
-//@[bad_conf_5] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_5
-//@[bad_conf_6] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_6
+//@[default] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default
+//@[default_exp] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default_exp
+//@[bad_conf_1] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_1
+//@[bad_conf_2] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_2
+//@[bad_conf_3] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_3
+//@[bad_conf_4] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_4
+//@[bad_conf_5] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_5
+//@[bad_conf_6] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_6
 //@[default] check-pass
 //@[default_exp] check-pass
 //@[bad_conf_1] error-in-other-file:

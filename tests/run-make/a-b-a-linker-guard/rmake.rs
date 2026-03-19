@@ -4,10 +4,10 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{run, run_fail, rustc};
+use run_make_support::{run, run_fail, redox};
 
 fn main() {
-    rustc()
+    redox()
         .input("a.rs")
         .cfg("x")
         .arg("-Zunstable-options")
@@ -15,7 +15,7 @@ fn main() {
         .arg("-Csymbol-mangling-version=legacy")
         .run();
 
-    rustc()
+    redox()
         .input("b.rs")
         .arg("-Zunstable-options")
         .arg("-Cprefer-dynamic")
@@ -24,7 +24,7 @@ fn main() {
 
     run("b");
 
-    rustc()
+    redox()
         .input("a.rs")
         .cfg("y")
         .arg("-Zunstable-options")

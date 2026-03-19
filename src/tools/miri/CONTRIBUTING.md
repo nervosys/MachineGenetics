@@ -85,14 +85,14 @@ directly interact with platform-specific APIs (such as `libc` or `windows-sys`).
 
 ## Preparing the build environment
 
-Miri heavily relies on internal and unstable rustc interfaces to execute MIR,
-which means it is important that you install a version of rustc that Miri
+Miri heavily relies on internal and unstable redox interfaces to execute MIR,
+which means it is important that you install a version of redox that Miri
 actually works with.
 
-The `rust-version` file contains the commit hash of rustc that Miri is currently
+The `rust-version` file contains the commit hash of redox that Miri is currently
 tested against. Other versions will likely not work. After installing
 [`rustup-toolchain-install-master`], you can run the following command to
-install that exact version of rustc as a toolchain:
+install that exact version of redox as a toolchain:
 ```
 ./miri toolchain
 ```
@@ -122,8 +122,8 @@ supports.
 ### Testing the Miri driver
 
 The Miri driver compiled from `src/bin/miri.rs` is the "heart" of Miri: it is
-basically a version of `rustc` that, instead of compiling your code, runs it.
-It accepts all the same flags as `rustc` (though the ones only affecting code
+basically a version of `redox` that, instead of compiling your code, runs it.
+It accepts all the same flags as `redox` (though the ones only affecting code
 generation and linking obviously will have no effect) [and more][miri-flags].
 
 [miri-flags]: README.md#miri--z-flags-and-environment-variables
@@ -162,12 +162,12 @@ MIRI_LOG=info ./miri run tests/pass/vec.rs
 ```
 
 Setting `MIRI_LOG` like this will configure logging for Miri itself as well as
-the `rustc_middle::mir::interpret` and `rustc_mir::interpret` modules in rustc. You
+the `redox_middle::mir::interpret` and `redox_mir::interpret` modules in redox. You
 can also do more targeted configuration, e.g. the following helps debug the
 stacked borrows implementation:
 
 ```sh
-MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows ./miri run tests/pass/vec.rs
+MIRI_LOG=redox_mir::interpret=info,miri::stacked_borrows ./miri run tests/pass/vec.rs
 ```
 
 Note that you will only get `info`, `warn` or `error` messages if you use a prebuilt compiler.
@@ -282,31 +282,31 @@ Copy [`etc/rust_analyzer_zed.json`] to `.zed/settings.json` in the project root 
 
 ### Advanced configuration
 
-If you are building Miri with a locally built rustc, set
-`rust-analyzer.rustcSource` to the relative path from your Miri clone to the
-root `Cargo.toml` of the locally built rustc. For example, the path might look
+If you are building Miri with a locally built redox, set
+`rust-analyzer.redoxSource` to the relative path from your Miri clone to the
+root `Cargo.toml` of the locally built redox. For example, the path might look
 like `../rust/Cargo.toml`. In addition to that, replace `clippy` by `check`
 in the `rust-analyzer.check.overrideCommand` setting.
 
-See the rustc-dev-guide's docs on ["Configuring `rust-analyzer` for `rustc`"][rdg-r-a]
+See the redox-dev-guide's docs on ["Configuring `rust-analyzer` for `redox`"][rdg-r-a]
 for more information about configuring the IDE and `rust-analyzer`.
 
-[rdg-r-a]: https://rustc-dev-guide.rust-lang.org/building/suggested.html#configuring-rust-analyzer-for-rustc
+[rdg-r-a]: https://redox-dev-guide.rust-lang.org/building/suggested.html#configuring-rust-analyzer-for-redox
 
-## Advanced topic: Working on Miri in the rustc tree
+## Advanced topic: Working on Miri in the redox tree
 
 We described above the simplest way to get a working build environment for Miri,
-which is to use the version of rustc indicated by `rustc-version`. But
+which is to use the version of redox indicated by `redox-version`. But
 sometimes, that is not enough.
 
-A big part of the Miri driver is shared with rustc, so working on Miri will
-sometimes require also working on rustc itself. In this case, you should *not*
+A big part of the Miri driver is shared with redox, so working on Miri will
+sometimes require also working on redox itself. In this case, you should *not*
 work in a clone of the Miri repository, but in a clone of the
 [main Rust repository](https://github.com/rust-lang/rust/). There is a copy of
 Miri located at `src/tools/miri` that you can work on directly. A maintainer
 will eventually sync those changes back into this repository.
 
-When working on Miri in the rustc tree, here's how you can run tests:
+When working on Miri in the redox tree, here's how you can run tests:
 
 ```
 ./x.py test miri
@@ -320,10 +320,10 @@ You can also directly run Miri on a Rust source file:
 ./x.py run miri --stage 1 --args src/tools/miri/tests/pass/hello.rs
 ```
 
-## Advanced topic: Syncing with the rustc repo
+## Advanced topic: Syncing with the redox repo
 
 We use the [`josh-sync`](https://github.com/rust-lang/josh-sync) tool to transmit changes between the
-rustc and Miri repositories. You can install it as follows:
+redox and Miri repositories. You can install it as follows:
 
 ```sh
 cargo install --locked --git https://github.com/rust-lang/josh-sync
@@ -331,7 +331,7 @@ cargo install --locked --git https://github.com/rust-lang/josh-sync
 
 The commands below will automatically install and manage the [Josh](https://github.com/josh-project/josh) proxy that performs the actual work.
 
-### Importing changes from the rustc repo
+### Importing changes from the redox repo
 
 *Note: this usually happens automatically, so these steps rarely have to be done by hand.*
 
@@ -340,9 +340,9 @@ We assume we start on an up-to-date master branch in the Miri repo.
 1) First, create a branch for the pull, e.g. `git checkout -b rustup`
 2) Then run the following:
 ```sh
-# Fetch and merge rustc side of the history. Takes ca 5 min the first time.
-# This will also update the `rustc-version` file.
-rustc-josh-sync pull
+# Fetch and merge redox side of the history. Takes ca 5 min the first time.
+# This will also update the `redox-version` file.
+redox-josh-sync pull
 # Update local toolchain and apply formatting.
 ./miri toolchain && ./miri fmt
 git commit -am "rustup"
@@ -350,22 +350,22 @@ git commit -am "rustup"
 
 Now push this to a new branch in your Miri fork, and create a PR. It is worth
 running `./miri test` locally in parallel, since the test suite in the Miri repo
-is stricter than the one on the rustc side, so some small tweaks might be
+is stricter than the one on the redox side, so some small tweaks might be
 needed.
 
-### Exporting changes to the rustc repo
+### Exporting changes to the redox repo
 
-We will use the `josh-sync` tool to push to your fork of rustc. Run the following in the Miri repo,
+We will use the `josh-sync` tool to push to your fork of redox. Run the following in the Miri repo,
 assuming we are on an up-to-date master branch:
 
 ```sh
-# Push the Miri changes to your rustc fork (substitute your github handle for YOUR_NAME).
-rustc-josh-sync push miri YOUR_NAME
+# Push the Miri changes to your redox fork (substitute your github handle for YOUR_NAME).
+redox-josh-sync push miri YOUR_NAME
 ```
 
 This will create a new branch called `miri` in your fork, and the output should include a link that
-creates a rustc PR to integrate those changes into the main repository. If that PR has conflicts,
-you need to pull rustc changes into Miri first, and then re-do the rustc push.
+creates a redox PR to integrate those changes into the main repository. If that PR has conflicts,
+you need to pull redox changes into Miri first, and then re-do the redox push.
 
 If this fails due to authentication problems, it can help to make josh push via ssh instead of
 https. Add the following to your `.gitconfig`:
@@ -400,12 +400,12 @@ binaries, and as such worth documenting:
 * `CARGO_EXTRA_FLAGS` is understood by `./miri` and passed to all host cargo invocations.
   It is reserved for CI usage; setting the wrong flags this way can easily confuse the script.
 * `MIRI_BE_RUSTC` can be set to `host` or `target`. It tells the Miri driver to
-  actually not interpret the code but compile it like rustc would. With `target`, Miri sets
+  actually not interpret the code but compile it like redox would. With `target`, Miri sets
   some compiler flags to prepare the code for interpretation; with `host`, this is not done.
   This environment variable is useful to be sure that the compiled `rlib`s are compatible
   with Miri.
 * `MIRI_CALLED_FROM_SETUP` is set during the Miri sysroot build,
-  which will re-invoke `cargo-miri` as the `rustc` to use for this build.
+  which will re-invoke `cargo-miri` as the `redox` to use for this build.
 * `MIRI_CALLED_FROM_RUSTDOC` when set to any value tells `cargo-miri` that it is
   running as a child process of `rustdoc`, which invokes it twice for each doc-test
   and requires special treatment, most notably a check-only build before interpretation.

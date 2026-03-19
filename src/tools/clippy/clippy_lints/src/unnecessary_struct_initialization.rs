@@ -3,10 +3,10 @@ use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{get_parent_expr, is_mutable};
-use rustc_hir::{Expr, ExprField, ExprKind, Path, QPath, StructTailExpr, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::{DesugaringKind, Ident};
+use redox_hir::{Expr, ExprField, ExprKind, Path, QPath, StructTailExpr, UnOp};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::{DesugaringKind, Ident};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -87,7 +87,7 @@ impl LateLintPass<'_> for UnnecessaryStruct {
             "unnecessary struct building",
             "replace with",
             snippet(cx, sugg, "..").into_owned(),
-            rustc_errors::Applicability::MachineApplicable,
+            redox_errors::Applicability::MachineApplicable,
         );
     }
 }

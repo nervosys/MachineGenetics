@@ -4,11 +4,11 @@
 //@ ignore-cross-compile
 
 use run_make_support::{
-    cc, cwd, dynamic_lib_extension, is_windows_msvc, rfs, run, run_fail, rustc,
+    cc, cwd, dynamic_lib_extension, is_windows_msvc, rfs, run, run_fail, redox,
 };
 
 fn main() {
-    rustc().input("foo.rs").run();
+    redox().input("foo.rs").run();
 
     if is_windows_msvc() {
         let lib = "foo.dll.lib";

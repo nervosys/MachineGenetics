@@ -1,7 +1,7 @@
 // Test that the variance computation considers types/regions that
 // appear in projections to be invariant.
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 trait Trait<'a> {
     type Type;
@@ -9,12 +9,12 @@ trait Trait<'a> {
     fn method(&'a self) { }
 }
 
-#[rustc_dump_variances]
+#[redox_dump_variances]
 struct Foo<'a, T : Trait<'a>> { //~ ERROR ['a: +, T: +]
     field: (T, &'a ())
 }
 
-#[rustc_dump_variances]
+#[redox_dump_variances]
 struct Bar<'a, T : Trait<'a>> { //~ ERROR ['a: o, T: o]
     field: <T as Trait<'a>>::Type
 }

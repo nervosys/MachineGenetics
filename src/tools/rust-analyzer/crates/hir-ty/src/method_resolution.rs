@@ -1,7 +1,7 @@
 //! This module is concerned with finding methods that a given type provides.
-//! For details about how this works in rustc, see the method lookup page in the
-//! [rustc guide](https://rust-lang.github.io/rustc-guide/method-lookup.html)
-//! and the corresponding code mostly in rustc_hir_analysis/check/method/probe.rs.
+//! For details about how this works in redox, see the method lookup page in the
+//! [redox guide](https://rust-lang.github.io/redox-guide/method-lookup.html)
+//! and the corresponding code mostly in redox_hir_analysis/check/method/probe.rs.
 
 mod confirm;
 mod probe;
@@ -24,8 +24,8 @@ use hir_def::{
     resolver::Resolver,
 };
 use intern::{Symbol, sym};
-use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_type_ir::{
+use redox_hash::{FxHashMap, FxHashSet};
+use redox_type_ir::{
     TypeVisitableExt,
     fast_reject::{TreatParams, simplify_type},
     inherent::{BoundExistentialPredicates, IntoKind},
@@ -405,7 +405,7 @@ pub fn is_dyn_method<'db>(
     );
     let self_ty = trait_ref.self_ty();
     if let TyKind::Dynamic(d, _) = self_ty.kind() {
-        // rustc doesn't accept `impl Foo<2> for dyn Foo<5>`, so if the trait id is equal, no matter
+        // redox doesn't accept `impl Foo<2> for dyn Foo<5>`, so if the trait id is equal, no matter
         // what the generics are, we are sure that the method is come from the vtable.
         let is_my_trait_in_bounds = d
             .principal_def_id()
@@ -527,7 +527,7 @@ pub(crate) fn find_matching_impl<'db>(
 #[salsa::tracked(returns(ref))]
 fn crates_containing_incoherent_inherent_impls(db: &dyn HirDatabase, krate: Crate) -> Box<[Crate]> {
     let _p = tracing::info_span!("crates_containing_incoherent_inherent_impls").entered();
-    // We assume that only sysroot crates contain `#[rustc_has_incoherent_inherent_impls]`
+    // We assume that only sysroot crates contain `#[redox_has_incoherent_inherent_impls]`
     // impls, since this is an internal feature and only std uses it.
     krate.transitive_deps(db).into_iter().filter(|krate| krate.data(db).origin.is_lang()).collect()
 }

@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![allow(
     clippy::missing_docs_in_private_items,
     clippy::must_use_candidate,
@@ -10,23 +10,23 @@
     rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications,
-    rustc::internal
+    redox::internal
 )]
-// Disable this rustc lint for now, as it was also done in rustc
-#![allow(rustc::potential_query_instability)]
+// Disable this redox lint for now, as it was also done in redox
+#![allow(redox::potential_query_instability)]
 // None of these lints need a version.
 #![allow(clippy::missing_clippy_version_attribute)]
 
-extern crate rustc_ast;
-extern crate rustc_attr_parsing;
-extern crate rustc_data_structures;
-extern crate rustc_errors;
-extern crate rustc_hir;
-extern crate rustc_lint;
-extern crate rustc_lint_defs;
-extern crate rustc_middle;
-extern crate rustc_session;
-extern crate rustc_span;
+extern crate redox_ast;
+extern crate redox_attr_parsing;
+extern crate redox_data_structures;
+extern crate redox_errors;
+extern crate redox_hir;
+extern crate redox_lint;
+extern crate redox_lint_defs;
+extern crate redox_middle;
+extern crate redox_session;
+extern crate redox_span;
 
 mod almost_standard_lint_formulation;
 mod collapsible_span_lint_calls;
@@ -42,7 +42,7 @@ mod unnecessary_def_path;
 mod unsorted_clippy_utils_paths;
 mod unusual_names;
 
-use rustc_lint::{Lint, LintStore};
+use redox_lint::{Lint, LintStore};
 
 static LINTS: &[&Lint] = &[
     almost_standard_lint_formulation::ALMOST_STANDARD_LINT_FORMULATION,

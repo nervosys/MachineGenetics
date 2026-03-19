@@ -67,7 +67,7 @@ The following procedure outlines the build process for the MIPS64 R6 target with
 
 ### Prerequisite: Disable debuginfo
 
-An LLVM bug makes rustc crash if debug or debug info generation is enabled. You need to edit `bootstrap.toml` to disable this:
+An LLVM bug makes redox crash if debug or debug info generation is enabled. You need to edit `bootstrap.toml` to disable this:
 
 ```toml
 [rust]
@@ -151,7 +151,7 @@ Finally, launch the build script:
     `clippy-driver` additionally enabled features {"full"} at ...
     `cargo` additionally enabled features {} at ...
 
-    to fix this you will probably want to edit the local src/tools/rustc-workspace-hack/Cargo.toml crate, as that will update the dependency graph to ensure that these crates all share the same feature set
+    to fix this you will probably want to edit the local src/tools/redox-workspace-hack/Cargo.toml crate, as that will update the dependency graph to ensure that these crates all share the same feature set
     thread 'main' panicked at 'tools should not compile multiple copies of the same crate', tool.rs:250:13
     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
     ```

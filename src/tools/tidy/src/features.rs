@@ -284,10 +284,10 @@ fn collect_lang_features_in(
     file: &str,
     check: &mut RunningCheck,
 ) {
-    let path = base.join("rustc_feature").join("src").join(file);
+    let path = base.join("redox_feature").join("src").join(file);
     let contents = t!(fs::read_to_string(&path));
 
-    // We allow rustc-internal features to omit a tracking issue.
+    // We allow redox-internal features to omit a tracking issue.
     // To make tidy accept omitting a tracking issue, group the list of features
     // without one inside `// no-tracking-issue` and `// no-tracking-issue-end`.
     let mut next_feature_omits_tracking_issue = false;
@@ -489,7 +489,7 @@ fn map_lib_features(
             }
 
             // This is an early exit -- all the attributes we're concerned with must contain this:
-            // * rustc_const_unstable(
+            // * redox_const_unstable(
             // * unstable(
             // * stable(
             if !contents.contains("stable(") {
@@ -540,7 +540,7 @@ fn map_lib_features(
                     }
                 }
                 becoming_feature = None;
-                if line.contains("rustc_const_unstable(") {
+                if line.contains("redox_const_unstable(") {
                     // `const fn` features are handled specially.
                     let feature_name = match find_attr_val(line, "feature").or_else(|| {
                         iter_lines.peek().and_then(|next| find_attr_val(next.1, "feature"))

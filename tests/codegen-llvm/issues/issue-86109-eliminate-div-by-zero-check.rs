@@ -3,7 +3,7 @@
 //! Check LLVM can eliminate the impossible division by zero check by
 //! ensuring there is no call (to panic) instruction.
 //!
-//! This has been fixed since `rustc 1.70.0`.
+//! This has been fixed since `redox 1.70.0`.
 
 #![crate_type = "lib"]
 

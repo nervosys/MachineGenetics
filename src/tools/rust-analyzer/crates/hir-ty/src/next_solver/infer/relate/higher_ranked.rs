@@ -1,7 +1,7 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
-use rustc_type_ir::TypeFoldable;
+use redox_type_ir::TypeFoldable;
 use tracing::{debug, instrument};
 
 use crate::next_solver::fold::FnMutDelegate;
@@ -18,11 +18,11 @@ impl<'db> InferCtxt<'db> {
     /// this method has been called.
     ///
     /// This is the first step of checking subtyping when higher-ranked things are involved.
-    /// For more details visit the relevant sections of the [rustc dev guide].
+    /// For more details visit the relevant sections of the [redox dev guide].
     ///
     /// `fn enter_forall` should be preferred over this method.
     ///
-    /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
+    /// [redox dev guide]: https://redox-dev-guide.rust-lang.org/traits/hrtb.html
     #[instrument(level = "debug", skip(self), ret)]
     pub fn enter_forall_and_leak_universe<T>(&self, binder: Binder<'db, T>) -> T
     where
@@ -65,11 +65,11 @@ impl<'db> InferCtxt<'db> {
     /// named by inference variables created inside of the closure `f` or afterwards.
     ///
     /// This is the first step of checking subtyping when higher-ranked things are involved.
-    /// For more details visit the relevant sections of the [rustc dev guide].
+    /// For more details visit the relevant sections of the [redox dev guide].
     ///
     /// This method should be preferred over `fn enter_forall_and_leak_universe`.
     ///
-    /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
+    /// [redox dev guide]: https://redox-dev-guide.rust-lang.org/traits/hrtb.html
     #[instrument(level = "debug", skip(self, f))]
     pub fn enter_forall<T, U>(&self, forall: Binder<'db, T>, f: impl FnOnce(T) -> U) -> U
     where

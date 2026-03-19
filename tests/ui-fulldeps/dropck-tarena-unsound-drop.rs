@@ -9,11 +9,11 @@
 // (Also compare against dropck_tarena_cycle_checked.rs, from which
 // this was reduced to better understand its error message.)
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_arena;
+extern crate redox_arena;
 
-use rustc_arena::TypedArena;
+use redox_arena::TypedArena;
 
 trait HasId { fn count(&self) -> usize; }
 

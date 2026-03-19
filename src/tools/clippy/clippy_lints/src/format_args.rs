@@ -14,22 +14,22 @@ use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_from_proc_macro, is_in_test, sym, trait_ref_of_method};
 use itertools::Itertools;
-use rustc_ast::{
+use redox_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
     FormatPlaceholder, FormatTrait,
 };
-use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::Applicability;
-use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
-use rustc_hir::{Expr, ExprKind, LangItem, RustcVersion, find_attr};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
-use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Upcast};
-use rustc_session::impl_lint_pass;
-use rustc_span::edition::Edition::Edition2021;
-use rustc_span::{BytePos, Pos, Span, Symbol};
-use rustc_trait_selection::infer::TyCtxtInferExt;
-use rustc_trait_selection::traits::{Obligation, ObligationCause, Selection, SelectionContext};
+use redox_data_structures::fx::FxHashMap;
+use redox_errors::Applicability;
+use redox_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
+use redox_hir::{Expr, ExprKind, LangItem, RustcVersion, find_attr};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
+use redox_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Upcast};
+use redox_session::impl_lint_pass;
+use redox_span::edition::Edition::Edition2021;
+use redox_span::{BytePos, Pos, Span, Symbol};
+use redox_trait_selection::infer::TyCtxtInferExt;
+use redox_trait_selection::traits::{Obligation, ObligationCause, Selection, SelectionContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -323,7 +323,7 @@ struct FormatArgsExpr<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
     macro_call: &'a MacroCall,
-    format_args: &'a rustc_ast::FormatArgs,
+    format_args: &'a redox_ast::FormatArgs,
     ignore_mixed: bool,
     msrv: &'a Msrv,
     ty_msrv_map: &'a FxHashMap<Ty<'tcx>, Option<RustcVersion>>,
@@ -501,7 +501,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         let arg = &self.format_args.arguments.all_args()[index];
 
         if !matches!(arg.kind, FormatArgumentKind::Captured(_))
-            && let rustc_ast::ExprKind::Path(None, path) = &arg.expr.kind
+            && let redox_ast::ExprKind::Path(None, path) = &arg.expr.kind
             && let [segment] = path.segments.as_slice()
             && segment.args.is_none()
             && let Some(arg_span) = format_arg_removal_span(self.format_args, index)

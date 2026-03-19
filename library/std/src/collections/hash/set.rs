@@ -121,7 +121,7 @@ use crate::ops::{BitAnd, BitOr, BitXor, Sub};
 /// static SET: Mutex<HashSet<String, BuildHasherDefault<DefaultHasher>>> =
 ///     Mutex::new(HashSet::with_hasher(BuildHasherDefault::new()));
 /// ```
-#[cfg_attr(not(test), rustc_diagnostic_item = "HashSet")]
+#[cfg_attr(not(test), redox_diagnostic_item = "HashSet")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashSet<
     T,
@@ -231,7 +231,7 @@ impl<T, S> HashSet<T, S> {
     #[inline]
     #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    #[rustc_const_stable(feature = "const_collections_with_hasher", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_collections_with_hasher", since = "1.85.0")]
     pub const fn with_hasher(hasher: S) -> HashSet<T, S> {
         HashSet { base: base::HashSet::with_hasher(hasher) }
     }
@@ -347,9 +347,9 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// In the current implementation, iterating over set takes O(capacity) time
     /// instead of O(len) because it internally visits empty buckets too.
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "hashset_iter")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "hashset_iter")]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter { base: self.base.iter() }
     }
@@ -413,7 +413,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// assert!(set.is_empty());
     /// ```
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<'_, T, A> {
         Drain { base: self.base.drain() }
@@ -450,7 +450,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// assert_eq!(odds, vec![1, 3, 5, 7]);
     /// ```
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "hash_extract_if", since = "1.88.0")]
     pub fn extract_if<F>(&mut self, pred: F) -> ExtractIf<'_, T, F, A>
     where
@@ -478,7 +478,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     ///
     /// In the current implementation, this operation takes O(capacity) time
     /// instead of O(len) because it internally visits empty buckets too.
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "retain_hash_collection", since = "1.18.0")]
     pub fn retain<F>(&mut self, f: F)
     where
@@ -650,7 +650,7 @@ where
     /// assert_eq!(diff, [4].iter().collect());
     /// ```
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn difference<'a>(&'a self, other: &'a HashSet<T, S, A>) -> Difference<'a, T, S, A> {
         Difference { iter: self.iter(), other }
@@ -678,7 +678,7 @@ where
     /// assert_eq!(diff1, [1, 4].iter().collect());
     /// ```
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn symmetric_difference<'a>(
         &'a self,
@@ -712,7 +712,7 @@ where
     /// assert_eq!(intersection, [2, 3].iter().collect());
     /// ```
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T, S, A>) -> Intersection<'a, T, S, A> {
         if self.len() <= other.len() {
@@ -741,7 +741,7 @@ where
     /// assert_eq!(union, [1, 2, 3, 4].iter().collect());
     /// ```
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a HashSet<T, S, A>) -> Union<'a, T, S, A> {
         if self.len() >= other.len() {
@@ -995,7 +995,7 @@ where
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("push", "append", "put")]
+    #[redox_confusables("push", "append", "put")]
     pub fn insert(&mut self, value: T) -> bool {
         self.base.insert(value)
     }
@@ -1017,7 +1017,7 @@ where
     /// ```
     #[inline]
     #[stable(feature = "set_recovery", since = "1.9.0")]
-    #[rustc_confusables("swap")]
+    #[redox_confusables("swap")]
     pub fn replace(&mut self, value: T) -> Option<T> {
         self.base.replace(value)
     }
@@ -1042,7 +1042,7 @@ where
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("delete", "take")]
+    #[redox_confusables("delete", "take")]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
     where
         T: Borrow<Q>,
@@ -1240,7 +1240,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl<T, S> const Default for HashSet<T, S>
 where
     S: [const] Default,
@@ -1401,7 +1401,7 @@ where
 /// let mut iter = a.iter();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "hashset_iter_ty")]
+#[cfg_attr(not(test), redox_diagnostic_item = "hashset_iter_ty")]
 pub struct Iter<'a, K: 'a> {
     base: base::Iter<'a, K>,
 }
@@ -1463,7 +1463,7 @@ impl<K> Default for IntoIter<K> {
 /// let mut drain = a.drain();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "hashset_drain_ty")]
+#[cfg_attr(not(test), redox_diagnostic_item = "hashset_drain_ty")]
 pub struct Drain<
     'a,
     K: 'a,
@@ -1627,7 +1627,7 @@ impl<'a, T, S, A: Allocator> IntoIterator for &'a HashSet<T, S, A> {
     type IntoIter = Iter<'a, T>;
 
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
     }
@@ -1659,7 +1659,7 @@ impl<T, S, A: Allocator> IntoIterator for HashSet<T, S, A> {
     /// }
     /// ```
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     fn into_iter(self) -> IntoIter<T, A> {
         IntoIter { base: self.base.into_iter() }
     }

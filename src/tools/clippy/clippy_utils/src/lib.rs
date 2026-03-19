@@ -1,7 +1,7 @@
 #![feature(box_patterns)]
 #![feature(macro_metavar_expr)]
 #![feature(never_type)]
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
@@ -11,34 +11,34 @@
     rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications,
-    rustc::internal
+    redox::internal
 )]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
-extern crate rustc_abi;
-extern crate rustc_ast;
-extern crate rustc_attr_parsing;
-extern crate rustc_const_eval;
-extern crate rustc_data_structures;
+extern crate redox_abi;
+extern crate redox_ast;
+extern crate redox_attr_parsing;
+extern crate redox_const_eval;
+extern crate redox_data_structures;
 #[expect(
     unused_extern_crates,
-    reason = "The `rustc_driver` crate seems to be required in order to use the `rust_ast` crate."
+    reason = "The `redox_driver` crate seems to be required in order to use the `rust_ast` crate."
 )]
-extern crate rustc_driver;
-extern crate rustc_errors;
-extern crate rustc_hir;
-extern crate rustc_hir_analysis;
-extern crate rustc_hir_typeck;
-extern crate rustc_index;
-extern crate rustc_infer;
-extern crate rustc_lexer;
-extern crate rustc_lint;
-extern crate rustc_middle;
-extern crate rustc_mir_dataflow;
-extern crate rustc_session;
-extern crate rustc_span;
-extern crate rustc_trait_selection;
+extern crate redox_driver;
+extern crate redox_errors;
+extern crate redox_hir;
+extern crate redox_hir_analysis;
+extern crate redox_hir_typeck;
+extern crate redox_index;
+extern crate redox_infer;
+extern crate redox_lexer;
+extern crate redox_lint;
+extern crate redox_middle;
+extern crate redox_mir_dataflow;
+extern crate redox_session;
+extern crate redox_span;
+extern crate redox_trait_selection;
 
 pub mod ast_utils;
 #[deny(missing_docs)]
@@ -79,43 +79,43 @@ use std::iter::{once, repeat_n, zip};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use itertools::Itertools;
-use rustc_abi::Integer;
-use rustc_ast::ast::{self, LitKind, RangeLimits};
-use rustc_ast::{LitIntType, join_path_syms};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexmap;
-use rustc_data_structures::packed::Pu128;
-use rustc_data_structures::unhash::UnindexMap;
-use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
-use rustc_hir::attrs::CfgEntry;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
-use rustc_hir::definitions::{DefPath, DefPathData};
-use rustc_hir::hir_id::{HirIdMap, HirIdSet};
-use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{
+use redox_abi::Integer;
+use redox_ast::ast::{self, LitKind, RangeLimits};
+use redox_ast::{LitIntType, join_path_syms};
+use redox_data_structures::fx::FxHashMap;
+use redox_data_structures::indexmap;
+use redox_data_structures::packed::Pu128;
+use redox_data_structures::unhash::UnindexMap;
+use redox_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
+use redox_hir::attrs::CfgEntry;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::def_id::{DefId, LocalDefId, LocalModDefId};
+use redox_hir::definitions::{DefPath, DefPathData};
+use redox_hir::hir_id::{HirIdMap, HirIdSet};
+use redox_hir::intravisit::{Visitor, walk_expr};
+use redox_hir::{
     self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, CoroutineDesugaring,
     CoroutineKind, CoroutineSource, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs,
     HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId,
     OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem,
     TraitItemKind, TraitRef, TyKind, UnOp, def, find_attr,
 };
-use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
-use rustc_lint::{LateContext, Level, Lint, LintContext};
-use rustc_middle::hir::nested_filter;
-use rustc_middle::hir::place::PlaceBase;
-use rustc_middle::lint::LevelAndSource;
-use rustc_middle::mir::{AggregateKind, Operand, RETURN_PLACE, Rvalue, StatementKind, TerminatorKind};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind, PointerCoercion};
-use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{
-    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, GenericArgKind, GenericArgsRef, IntTy, Ty, TyCtxt,
+use redox_lexer::{FrontmatterAllowed, TokenKind, tokenize};
+use redox_lint::{LateContext, Level, Lint, LintContext};
+use redox_middle::hir::nested_filter;
+use redox_middle::hir::place::PlaceBase;
+use redox_middle::lint::LevelAndSource;
+use redox_middle::mir::{AggregateKind, Operand, RETURN_PLACE, Rvalue, StatementKind, TerminatorKind};
+use redox_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind, PointerCoercion};
+use redox_middle::ty::layout::IntegerExt;
+use redox_middle::ty::{
+    self as redox_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, GenericArgKind, GenericArgsRef, IntTy, Ty, TyCtxt,
     TypeFlags, TypeVisitableExt, UintTy, UpvarCapture,
 };
-use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{InnerSpan, Span};
+use redox_span::hygiene::{ExpnKind, MacroKind};
+use redox_span::source_map::SourceMap;
+use redox_span::symbol::{Ident, Symbol, kw};
+use redox_span::{InnerSpan, Span};
 use source::{SpanRangeExt, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
@@ -133,13 +133,13 @@ pub const VEC_METHODS_SHADOWING_SLICE_METHODS: [Symbol; 3] = [sym::as_ptr, sym::
 #[macro_export]
 macro_rules! extract_msrv_attr {
     () => {
-        fn check_attributes(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::ast::Attribute]) {
-            let sess = rustc_lint::LintContext::sess(cx);
+        fn check_attributes(&mut self, cx: &redox_lint::EarlyContext<'_>, attrs: &[redox_ast::ast::Attribute]) {
+            let sess = redox_lint::LintContext::sess(cx);
             self.msrv.check_attributes(sess, attrs);
         }
 
-        fn check_attributes_post(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::ast::Attribute]) {
-            let sess = rustc_lint::LintContext::sess(cx);
+        fn check_attributes_post(&mut self, cx: &redox_lint::EarlyContext<'_>, attrs: &[redox_ast::ast::Attribute]) {
+            let sess = redox_lint::LintContext::sess(cx);
             self.msrv.check_attributes_post(sess, attrs);
         }
     };
@@ -237,7 +237,7 @@ pub fn is_in_const_context(cx: &LateContext<'_>) -> bool {
 ///  * const blocks (or inline consts)
 ///  * associated constants
 pub fn is_inside_always_const_context(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
-    use rustc_hir::ConstContext::{Const, ConstFn, Static};
+    use redox_hir::ConstContext::{Const, ConstFn, Static};
     let Some(ctx) = tcx.hir_body_const_context(tcx.hir_enclosing_body_owner(hir_id)) else {
         return false;
     };
@@ -564,8 +564,8 @@ pub fn is_default_equivalent_call(
     let Some(ty) = cx.tcx.typeck(e.hir_id.owner.def_id).expr_ty_adjusted_opt(e) else {
         return false;
     };
-    let args = rustc_ty::GenericArgs::for_item(cx.tcx, default_fn_def_id, |param, _| {
-        if let rustc_ty::GenericParamDefKind::Lifetime = param.kind {
+    let args = redox_ty::GenericArgs::for_item(cx.tcx, default_fn_def_id, |param, _| {
+        if let redox_ty::GenericParamDefKind::Lifetime = param.kind {
             cx.tcx.lifetimes.re_erased.into()
         } else if param.index == 0 && param.name == kw::SelfUpper {
             ty.into()
@@ -573,10 +573,10 @@ pub fn is_default_equivalent_call(
             param.to_error(cx.tcx)
         }
     });
-    let instance = rustc_ty::Instance::try_resolve(cx.tcx, cx.typing_env(), default_fn_def_id, args);
+    let instance = redox_ty::Instance::try_resolve(cx.tcx, cx.typing_env(), default_fn_def_id, args);
 
     let Ok(Some(instance)) = instance else { return false };
-    if let rustc_ty::InstanceKind::Item(def) = instance.def
+    if let redox_ty::InstanceKind::Item(def) = instance.def
         && !cx.tcx.is_mir_available(def)
     {
         return false;
@@ -614,7 +614,7 @@ pub fn is_default_equivalent_call(
                 TerminatorKind::Call {
                     func: Operand::Constant(c),
                     ..
-                } if let rustc_ty::FnDef(did, _args) = c.ty().kind()
+                } if let redox_ty::FnDef(did, _args) = c.ty().kind()
                     && *did == repl_def_id =>
                 {
                     return true;
@@ -622,7 +622,7 @@ pub fn is_default_equivalent_call(
                 TerminatorKind::TailCall {
                     func: Operand::Constant(c),
                     ..
-                } if let rustc_ty::FnDef(did, _args) = c.ty().kind()
+                } if let redox_ty::FnDef(did, _args) = c.ty().kind()
                     && *did == repl_def_id =>
                 {
                     return true;
@@ -663,7 +663,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             .qpath_res(qpath, e.hir_id)
             .ctor_parent(cx)
             .is_lang_item(cx, OptionNone),
-        ExprKind::AddrOf(rustc_hir::BorrowKind::Ref, _, expr) => matches!(expr.kind, ExprKind::Array([])),
+        ExprKind::AddrOf(redox_hir::BorrowKind::Ref, _, expr) => matches!(expr.kind, ExprKind::Array([])),
         ExprKind::Block(Block { stmts: [], expr, .. }, _) => expr.is_some_and(|e| is_default_equivalent(cx, e)),
         _ => false,
     }
@@ -841,7 +841,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
             .adjustments()
             .get(child_id)
             .map_or(&[][..], |x| &**x)
-            && let rustc_ty::RawPtr(_, mutability) | rustc_ty::Ref(_, _, mutability) =
+            && let redox_ty::RawPtr(_, mutability) | redox_ty::Ref(_, _, mutability) =
                 *adjust.last().map_or(target, |a| a.target).kind()
         {
             return CaptureKind::Ref(mutability);
@@ -1172,7 +1172,7 @@ pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
         match node {
             Node::Expr(e) => match e.kind {
                 ExprKind::Closure { .. }
-                    if let rustc_ty::Closure(_, subs) = cx.typeck_results().expr_ty(e).kind()
+                    if let redox_ty::Closure(_, subs) = cx.typeck_results().expr_ty(e).kind()
                         && subs.as_closure().kind() == ClosureKind::FnOnce => {},
 
                 // Note: A closure's kind is determined by how it's used, not it's captures.
@@ -1334,7 +1334,7 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
     let ty = cx.typeck_results().expr_ty(expr);
     if let Some(Range { start, end, limits, .. }) = Range::hir(cx, expr) {
         let start_is_none_or_min = start.is_none_or(|start| {
-            if let rustc_ty::Adt(_, subst) = ty.kind()
+            if let redox_ty::Adt(_, subst) = ty.kind()
                 && let bnd_ty = subst.type_at(0)
                 && let Some(start_const) = ConstEvalCtxt::new(cx).eval(start)
             {
@@ -1345,7 +1345,7 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
         });
         let end_is_none_or_max = end.is_none_or(|end| match limits {
             RangeLimits::Closed => {
-                if let rustc_ty::Adt(_, subst) = ty.kind()
+                if let redox_ty::Adt(_, subst) = ty.kind()
                     && let bnd_ty = subst.type_at(0)
                     && let Some(end_const) = ConstEvalCtxt::new(cx).eval(end)
                 {
@@ -1424,7 +1424,7 @@ pub fn is_float_literal(expr: &Expr<'_>, value: f64) -> bool {
 /// Examples of coercions can be found in the Nomicon at
 /// <https://doc.rust-lang.org/nomicon/coercions.html>.
 ///
-/// See `rustc_middle::ty::adjustment::Adjustment` and `rustc_hir_analysis::check::coercion` for
+/// See `redox_middle::ty::adjustment::Adjustment` and `redox_hir_analysis::check::coercion` for
 /// more information on adjustments and coercions.
 pub fn is_adjusted(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     cx.typeck_results().adjustments().get(e.hir_id).is_some()
@@ -1507,7 +1507,7 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_>, expr: &Expr<'_
 }
 
 /// Returns `true` if a pattern is refutable.
-// TODO: should be implemented using rustc/mir_build/thir machinery
+// TODO: should be implemented using redox/mir_build/thir machinery
 pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
     fn is_qpath_refutable(cx: &LateContext<'_>, qpath: &QPath<'_>, id: HirId) -> bool {
         !matches!(
@@ -1543,11 +1543,11 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         },
         PatKind::Slice(head, middle, tail) => {
             match &cx.typeck_results().node_type(pat.hir_id).kind() {
-                rustc_ty::Slice(..) => {
+                redox_ty::Slice(..) => {
                     // [..] is the only irrefutable slice pattern.
                     !head.is_empty() || middle.is_none() || !tail.is_empty()
                 },
-                rustc_ty::Array(..) => are_refutable(cx, head.iter().chain(middle).chain(tail.iter())),
+                redox_ty::Array(..) => are_refutable(cx, head.iter().chain(middle).chain(tail.iter())),
                 _ => {
                     // unreachable!()
                     true
@@ -2031,8 +2031,8 @@ pub fn is_expr_final_block_expr(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 }
 
 /// Checks if the expression is a temporary value.
-// This logic is the same as the one used in rustc's `check_named_place_expr function`.
-// https://github.com/rust-lang/rust/blob/3ed2a10d173d6c2e0232776af338ca7d080b1cd4/compiler/rustc_hir_typeck/src/expr.rs#L482-L499
+// This logic is the same as the one used in redox's `check_named_place_expr function`.
+// https://github.com/rust-lang/rust/blob/3ed2a10d173d6c2e0232776af338ca7d080b1cd4/compiler/redox_hir_typeck/src/expr.rs#L482-L499
 pub fn is_expr_temporary_value(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     !expr.is_place_expr(|base| {
         cx.typeck_results()
@@ -2087,7 +2087,7 @@ pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
 /// }
 /// ```
 pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
-    use rustc_trait_selection::traits;
+    use redox_trait_selection::traits;
     let predicates = cx
         .tcx
         .predicates_of(did)
@@ -2144,9 +2144,9 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
     let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
     let expr_kind = expr_type.kind();
     let is_primitive = match expr_kind {
-        rustc_ty::Slice(element_type) => is_recursively_primitive_type(*element_type),
-        rustc_ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), &rustc_ty::Slice(_)) => {
-            if let rustc_ty::Slice(element_type) = inner_ty.kind() {
+        redox_ty::Slice(element_type) => is_recursively_primitive_type(*element_type),
+        redox_ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), &redox_ty::Slice(_)) => {
+            if let redox_ty::Slice(element_type) = inner_ty.kind() {
                 is_recursively_primitive_type(*element_type)
             } else {
                 unreachable!()
@@ -2159,9 +2159,9 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
         // if we have wrappers like Array, Slice or Tuple, print these
         // and get the type enclosed in the slice ref
         match expr_type.peel_refs().walk().nth(1).unwrap().expect_ty().kind() {
-            rustc_ty::Slice(..) => return Some("slice".into()),
-            rustc_ty::Array(..) => return Some("array".into()),
-            rustc_ty::Tuple(..) => return Some("tuple".into()),
+            redox_ty::Slice(..) => return Some("slice".into()),
+            redox_ty::Array(..) => return Some("array".into()),
+            redox_ty::Tuple(..) => return Some("tuple".into()),
             _ => {
                 // is_recursively_primitive_type() should have taken care
                 // of the rest and we can rely on the type that is found
@@ -3156,8 +3156,8 @@ pub fn get_path_from_caller_to_method_type<'tcx>(
     let assoc_item = tcx.associated_item(method);
     let def_id = assoc_item.container_id(tcx);
     match assoc_item.container {
-        rustc_ty::AssocContainer::Trait => get_path_to_callee(tcx, from, def_id),
-        rustc_ty::AssocContainer::InherentImpl | rustc_ty::AssocContainer::TraitImpl(_) => {
+        redox_ty::AssocContainer::Trait => get_path_to_callee(tcx, from, def_id),
+        redox_ty::AssocContainer::InherentImpl | redox_ty::AssocContainer::TraitImpl(_) => {
             let ty = tcx.type_of(def_id).instantiate_identity();
             get_path_to_ty(tcx, from, ty, args)
         },
@@ -3166,15 +3166,15 @@ pub fn get_path_from_caller_to_method_type<'tcx>(
 
 fn get_path_to_ty<'tcx>(tcx: TyCtxt<'tcx>, from: LocalDefId, ty: Ty<'tcx>, args: GenericArgsRef<'tcx>) -> String {
     match ty.kind() {
-        rustc_ty::Adt(adt, _) => get_path_to_callee(tcx, from, adt.did()),
+        redox_ty::Adt(adt, _) => get_path_to_callee(tcx, from, adt.did()),
         // TODO these types need to be recursively resolved as well
-        rustc_ty::Array(..)
-        | rustc_ty::Dynamic(..)
-        | rustc_ty::Never
-        | rustc_ty::RawPtr(_, _)
-        | rustc_ty::Ref(..)
-        | rustc_ty::Slice(_)
-        | rustc_ty::Tuple(_) => format!("<{}>", EarlyBinder::bind(ty).instantiate(tcx, args)),
+        redox_ty::Array(..)
+        | redox_ty::Dynamic(..)
+        | redox_ty::Never
+        | redox_ty::RawPtr(_, _)
+        | redox_ty::Ref(..)
+        | redox_ty::Slice(_)
+        | redox_ty::Tuple(_) => format!("<{}>", EarlyBinder::bind(ty).instantiate(tcx, args)),
         _ => ty.to_string(),
     }
 }
@@ -3382,7 +3382,7 @@ pub fn expr_requires_coercion<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -
         ExprKind::Struct(qpath, _, _) => {
             let res = cx.typeck_results().qpath_res(qpath, expr.hir_id);
             if let Some((_, v_def)) = adt_and_variant_of_res(cx, res) {
-                let rustc_ty::Adt(_, generic_args) = cx.typeck_results().expr_ty_adjusted(expr).kind() else {
+                let redox_ty::Adt(_, generic_args) = cx.typeck_results().expr_ty_adjusted(expr).kind() else {
                     // This should never happen, but when it does, not linting is the better option.
                     return true;
                 };

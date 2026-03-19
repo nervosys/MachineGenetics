@@ -9,12 +9,12 @@
 //! The `cli` submodule implements some batch-processing analysis, primarily as
 //! a debugging aid.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
-extern crate ra_ap_rustc_type_ir as rustc_type_ir;
+extern crate ra_ap_redox_type_ir as redox_type_ir;
 
 /*
     If you bump this, grep for `FIXME(MINIMUM_SUPPORTED_TOOLCHAIN_VERSION)` to check for old support code we can drop

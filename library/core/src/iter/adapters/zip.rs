@@ -568,7 +568,7 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 // after `__iterator_get_unchecked` is supposed to be allowed.
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 pub unsafe trait TrustedRandomAccess: TrustedRandomAccessNoCoerce {}
 
 /// Like [`TrustedRandomAccess`] but without any of the requirements / guarantees around
@@ -581,7 +581,7 @@ pub unsafe trait TrustedRandomAccess: TrustedRandomAccessNoCoerce {}
 /// [`TrustedRandomAccess`] and `TrustedRandomAccessNoCoerce`.
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 pub unsafe trait TrustedRandomAccessNoCoerce: Sized {
     // Convenience method.
     fn size(&self) -> usize

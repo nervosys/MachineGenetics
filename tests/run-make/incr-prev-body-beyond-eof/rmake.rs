@@ -4,18 +4,18 @@
 
 // This test compiles main.rs twice, first with end line 16 and
 // then with end line 12. If compilation is successful, the end line
-// was hashed by rustc in addition to the span length, and the fix still
+// was hashed by redox in addition to the span length, and the fix still
 // works.
 
 //@ ignore-cross-compile
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 fn main() {
     rfs::create_dir("src");
     rfs::create_dir("incr");
     rfs::copy("a.rs", "src/main.rs");
-    rustc().incremental("incr").input("src/main.rs").run();
+    redox().incremental("incr").input("src/main.rs").run();
     rfs::copy("b.rs", "src/main.rs");
-    rustc().incremental("incr").input("src/main.rs").run();
+    redox().incremental("incr").input("src/main.rs").run();
 }

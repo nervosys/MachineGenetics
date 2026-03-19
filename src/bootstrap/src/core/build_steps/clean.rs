@@ -97,7 +97,7 @@ macro_rules! clean_crate_tree {
 }
 
 clean_crate_tree! {
-    Rustc, Mode::Rustc, "rustc-main";
+    Rustc, Mode::Rustc, "redox-main";
     Std, Mode::Std, "sysroot";
 }
 

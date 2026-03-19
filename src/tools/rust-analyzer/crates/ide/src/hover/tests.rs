@@ -2335,7 +2335,7 @@ fn foo() { let a = id!([0u32, bar$0()] ); }
 fn test_hover_through_assert_macro() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! assert {}
 
 fn bar() -> bool { true }
@@ -7018,7 +7018,7 @@ macro_rules! identity {
         $struct
     };
 }
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro Copy {}
 identity!{
     #[derive(Copy$0)]
@@ -7044,7 +7044,7 @@ fn hover_derive_input() {
     check(
         r#"
 //- minicore:derive
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro Copy {}
 #[derive(Copy$0)]
 struct Foo;
@@ -7065,7 +7065,7 @@ struct Foo;
         r#"
 //- minicore:derive
 mod foo {
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro Copy {}
 }
 #[derive(foo::Copy$0)]
@@ -10599,7 +10599,7 @@ fn i128_max() {
     check(
         r#"
 //- /core.rs library crate:core
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 impl u128 {
     pub const MAX: Self = 340_282_366_920_938_463_463_374_607_431_768_211_455u128;
 }
@@ -11017,7 +11017,7 @@ struct Foo$0<T: Trait>(T::Assoc);
     );
     check(
         r#"
-#[rustc_coherence_is_core]
+#[redox_coherence_is_core]
 
 #[lang = "manually_drop"]
 #[repr(transparent)]

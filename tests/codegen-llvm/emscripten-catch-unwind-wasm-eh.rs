@@ -3,7 +3,7 @@
 
 // Emscripten catch_unwind using wasm exceptions
 
-#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, intrinsics, redox_attrs)]
 #![crate_type = "lib"]
 #![no_std]
 #![no_core]
@@ -23,11 +23,11 @@ trait Copy {}
 
 impl<T> Copy for *mut T {}
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 const fn size_of<T>() -> usize {
     loop {}
 }
-#[rustc_intrinsic]
+#[redox_intrinsic]
 unsafe fn catch_unwind(
     try_fn: fn(_: *mut u8),
     data: *mut u8,

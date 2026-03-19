@@ -8,7 +8,7 @@
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 //@ normalize-stdout: "ran in \d+\.\d+s" -> "ran in $$TIME"
 //@ normalize-stdout: "compilation took \d+\.\d+s" -> "compilation took $$TIME"
-//@ rustc-env:RUST_BACKTRACE=0
+//@ redox-env:RUST_BACKTRACE=0
 //@ failure-status: 101
 
 //! ```rust

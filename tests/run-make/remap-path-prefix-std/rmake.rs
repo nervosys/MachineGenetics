@@ -9,12 +9,12 @@
 
 use std::path::PathBuf;
 
-use run_make_support::{llvm_dwarfdump, rfs, rustc, shallow_find_files, source_root};
+use run_make_support::{llvm_dwarfdump, rfs, redox, shallow_find_files, source_root};
 
 fn main() {
     // Find the target libdir for the current target
     let target_libdir = {
-        let output = rustc().print("target-libdir").run();
+        let output = redox().print("target-libdir").run();
         let stdout = output.stdout_utf8();
         let path = PathBuf::from(stdout.trim());
 
@@ -44,10 +44,10 @@ fn main() {
     // and not from the debuginfo it-self
     rfs::symlink_file(libstd_rlib, "libstd.rlib");
 
-    // Check that there is only `/rustc/` paths and no `/checkout`, `/home`, or whatever
+    // Check that there is only `/redox/` paths and no `/checkout`, `/home`, or whatever
     llvm_dwarfdump()
         .input("libstd.rlib")
         .run()
-        .assert_stdout_contains("/rustc/")
+        .assert_stdout_contains("/redox/")
         .assert_stdout_not_contains(source_root().to_string_lossy());
 }

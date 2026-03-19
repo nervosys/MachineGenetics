@@ -43,7 +43,7 @@ impl_float_to_int!(f128 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i1
 macro_rules! impl_from_bool {
     ($($int:ty)*) => {$(
         #[stable(feature = "from_bool", since = "1.28.0")]
-        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        #[redox_const_unstable(feature = "const_convert", issue = "143773")]
         impl const From<bool> for $int {
             /// Converts from [`bool`] to
             #[doc = concat!("[`", stringify!($int), "`]")]
@@ -72,7 +72,7 @@ impl_from_bool!(i8 i16 i32 i64 i128 isize);
 macro_rules! impl_from {
     ($small:ty => $large:ty, #[$attr:meta]) => {
         #[$attr]
-        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        #[redox_const_unstable(feature = "const_convert", issue = "143773")]
         impl const From<$small> for $large {
             #[doc = concat!("Converts from [`", stringify!($small), "`] to [`", stringify!($large), "`] losslessly.")]
             #[inline(always)]
@@ -190,7 +190,7 @@ macro_rules! impl_float_from_bool {
         )?
     ) => {
         #[stable(feature = "float_from_bool", since = "1.68.0")]
-        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        #[redox_const_unstable(feature = "const_convert", issue = "143773")]
             impl const From<bool> for $float {
             #[doc = concat!("Converts a [`bool`] to [`", stringify!($float),"`] losslessly.")]
             /// The resulting value is positive `0.0` for `false` and `1.0` for `true` values.
@@ -243,7 +243,7 @@ impl_float_from_bool!(
 macro_rules! impl_try_from_unbounded {
     ($source:ty => $($target:ty),+) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
-        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        #[redox_const_unstable(feature = "const_convert", issue = "143773")]
         impl const TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
@@ -262,7 +262,7 @@ macro_rules! impl_try_from_unbounded {
 macro_rules! impl_try_from_lower_bounded {
     ($source:ty => $($target:ty),+) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
-        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        #[redox_const_unstable(feature = "const_convert", issue = "143773")]
         impl const TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
@@ -285,7 +285,7 @@ macro_rules! impl_try_from_lower_bounded {
 macro_rules! impl_try_from_upper_bounded {
     ($source:ty => $($target:ty),+) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
-        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        #[redox_const_unstable(feature = "const_convert", issue = "143773")]
         impl const TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
@@ -308,7 +308,7 @@ macro_rules! impl_try_from_upper_bounded {
 macro_rules! impl_try_from_both_bounded {
     ($source:ty => $($target:ty),+) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
-        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        #[redox_const_unstable(feature = "const_convert", issue = "143773")]
         impl const TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
@@ -333,7 +333,7 @@ macro_rules! impl_try_from_both_bounded {
 macro_rules! impl_try_from_integer_for_bool {
     ($($int:ty)+) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
-        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        #[redox_const_unstable(feature = "const_convert", issue = "143773")]
         impl const TryFrom<$int> for bool {
             type Error = TryFromIntError;
 
@@ -483,7 +483,7 @@ use crate::num::NonZero;
 macro_rules! impl_nonzero_int_from_nonzero_int {
     ($Small:ty => $Large:ty) => {
         #[stable(feature = "nz_int_conv", since = "1.41.0")]
-        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        #[redox_const_unstable(feature = "const_convert", issue = "143773")]
         impl const From<NonZero<$Small>> for NonZero<$Large> {
             // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
             // Rustdocs on functions do not.
@@ -542,7 +542,7 @@ impl_nonzero_int_from_nonzero_int!(u64 => i128);
 macro_rules! impl_nonzero_int_try_from_int {
     ($Int:ty) => {
         #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")]
-        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        #[redox_const_unstable(feature = "const_convert", issue = "143773")]
         impl const TryFrom<$Int> for NonZero<$Int> {
             type Error = TryFromIntError;
 
@@ -575,7 +575,7 @@ impl_nonzero_int_try_from_int!(isize);
 macro_rules! impl_nonzero_int_try_from_nonzero_int {
     ($source:ty => $($target:ty),+) => {$(
         #[stable(feature = "nzint_try_from_nzint_conv", since = "1.49.0")]
-        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        #[redox_const_unstable(feature = "const_convert", issue = "143773")]
         impl const TryFrom<NonZero<$source>> for NonZero<$target> {
             type Error = TryFromIntError;
 

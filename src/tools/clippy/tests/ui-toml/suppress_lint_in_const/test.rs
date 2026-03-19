@@ -26,18 +26,18 @@ fn main() {
     let index: usize = 1;
     x[index];
     //~^ indexing_slicing
-    x[4]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
-    x[1 << 3]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
+    x[4]; // Ok, let redox's `unconditional_panic` lint handle `usize` indexing on arrays.
+    x[1 << 3]; // Ok, let redox's `unconditional_panic` lint handle `usize` indexing on arrays.
 
     x[0]; // Ok, should not produce stderr.
     x[3]; // Ok, should not produce stderr.
     x[const { idx() }]; // Ok, should not produce stderr.
-    x[const { idx4() }]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
+    x[const { idx4() }]; // Ok, let redox's `unconditional_panic` lint handle `usize` indexing on arrays.
     const { &ARR[idx()] }; // Ok, should not produce stderr, since `suppress-restriction-lint-in-const` is set true.
 
     let y = &x;
     y[0]; // Ok, referencing shouldn't affect this lint. See the issue 6021
-    y[4]; // Ok, rustc will handle references too.
+    y[4]; // Ok, redox will handle references too.
 
     let v = vec![0; 5];
     v[0];
@@ -49,7 +49,7 @@ fn main() {
 
     const N: usize = 15; // Out of bounds
     const M: usize = 3; // In bounds
-    x[N]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
+    x[N]; // Ok, let redox's `unconditional_panic` lint handle `usize` indexing on arrays.
     x[M]; // Ok, should not produce stderr.
     v[N];
     //~^ indexing_slicing

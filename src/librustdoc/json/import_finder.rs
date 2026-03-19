@@ -1,4 +1,4 @@
-use rustc_hir::def_id::DefIdSet;
+use redox_hir::def_id::DefIdSet;
 
 use crate::clean::{self, Import, ImportSource, Item};
 use crate::fold::DocFolder;

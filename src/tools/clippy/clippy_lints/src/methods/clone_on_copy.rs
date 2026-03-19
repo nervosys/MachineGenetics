@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_copy;
-use rustc_errors::Applicability;
-use rustc_hir::{BindingMode, ByRef, Expr, ExprKind, MatchSource, Node, PatKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_middle::ty::adjustment::Adjust;
-use rustc_middle::ty::print::with_forced_trimmed_paths;
+use redox_errors::Applicability;
+use redox_hir::{BindingMode, ByRef, Expr, ExprKind, MatchSource, Node, PatKind};
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_middle::ty::adjustment::Adjust;
+use redox_middle::ty::print::with_forced_trimmed_paths;
 
 use super::CLONE_ON_COPY;
 
@@ -48,7 +48,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) 
                 ExprKind::Call(hir_callee, [_]) => matches!(
                     hir_callee.kind,
                     ExprKind::Path(qpath)
-                    if cx.tcx.qpath_is_lang_item(qpath, rustc_hir::LangItem::TryTraitBranch)
+                    if cx.tcx.qpath_is_lang_item(qpath, redox_hir::LangItem::TryTraitBranch)
                 ),
                 ExprKind::MethodCall(_, self_arg, ..) if expr.hir_id == self_arg.hir_id => true,
                 ExprKind::Match(_, _, MatchSource::TryDesugar(_) | MatchSource::AwaitDesugar)

@@ -92,20 +92,20 @@ This has a number of benefits:
 - Implementors of `visit_ty` and `visit_const_arg` will never encounter inferred types/consts making it impossible to write a visitor that seems to work right but handles edge cases wrong 
 - The `visit_infer` method handles *all* cases of inferred type/consts in the HIR making it easy for visitors to handle inferred type/consts in one dedicated place and not forget cases
 
-[ty_infer]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.TyKind.html#variant.Infer
-[const_infer]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.ConstArgKind.html#variant.Infer
-[generic_arg_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.GenericArg.html#variant.Type
-[generic_arg_const]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.GenericArg.html#variant.Const
-[generic_arg_infer]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.GenericArg.html#variant.Infer
-[ambig_arg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.AmbigArg.html
-[visit_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/intravisit/trait.Visitor.html#method.visit_ty
-[visit_const_arg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/intravisit/trait.Visitor.html#method.visit_const_arg
-[visit_infer]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/intravisit/trait.Visitor.html#method.visit_infer
-[`LateResolutionVisitor::visit_generic_arg`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/late/struct.LateResolutionVisitor.html#method.visit_generic_arg
-[`LoweringContext::lower_generic_arg`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/struct.LoweringContext.html#method.lower_generic_arg
-[`ast::GenericArg::Ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/enum.GenericArg.html#variant.Type
-[`ast::Ty::Infer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/enum.TyKind.html#variant.Infer
-[`ast::AnonConst`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/struct.AnonConst.html
-[`hir::GenericArg::Infer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.GenericArg.html#variant.Infer
-[`ast::ExprKind::Underscore`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/enum.ExprKind.html#variant.Underscore
-[`ast::Ty::Path(N)`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/enum.TyKind.html#variant.Path
+[ty_infer]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/enum.TyKind.html#variant.Infer
+[const_infer]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/enum.ConstArgKind.html#variant.Infer
+[generic_arg_ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/enum.GenericArg.html#variant.Type
+[generic_arg_const]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/enum.GenericArg.html#variant.Const
+[generic_arg_infer]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/enum.GenericArg.html#variant.Infer
+[ambig_arg]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/enum.AmbigArg.html
+[visit_ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/intravisit/trait.Visitor.html#method.visit_ty
+[visit_const_arg]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/intravisit/trait.Visitor.html#method.visit_const_arg
+[visit_infer]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/intravisit/trait.Visitor.html#method.visit_infer
+[`LateResolutionVisitor::visit_generic_arg`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/late/struct.LateResolutionVisitor.html#method.visit_generic_arg
+[`LoweringContext::lower_generic_arg`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast_lowering/struct.LoweringContext.html#method.lower_generic_arg
+[`ast::GenericArg::Ty`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/ast/enum.GenericArg.html#variant.Type
+[`ast::Ty::Infer`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/ast/enum.TyKind.html#variant.Infer
+[`ast::AnonConst`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/ast/struct.AnonConst.html
+[`hir::GenericArg::Infer`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/enum.GenericArg.html#variant.Infer
+[`ast::ExprKind::Underscore`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/ast/enum.ExprKind.html#variant.Underscore
+[`ast::Ty::Path(N)`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/ast/enum.TyKind.html#variant.Path

@@ -2,7 +2,7 @@
 
 This chapter is intended to provide basic help for adding, removing, and modifying feature gates.
 
-For how rustc enforces and checks feature gates in the compiler pipeline,
+For how redox enforces and checks feature gates in the compiler pipeline,
 see [Feature Gate Checking][feature-gate-check].
 
 Note that this is specific to *language* feature gates; *library* feature gates use [a different
@@ -23,7 +23,7 @@ See ["Stability in code"][adding] in the "Implementing new features" section for
 
 To remove a feature gate, follow these steps:
 
-1. Remove the feature gate declaration in `rustc_feature/src/unstable.rs`.
+1. Remove the feature gate declaration in `redox_feature/src/unstable.rs`.
    It will look like this:
 
    ```rust,ignore
@@ -32,7 +32,7 @@ To remove a feature gate, follow these steps:
    ```
 
 2. Add a modified version of the feature gate declaration that you just
-   removed to `rustc_feature/src/removed.rs`:
+   removed to `redox_feature/src/removed.rs`:
 
    ```rust,ignore
    /// description of feature
@@ -48,7 +48,7 @@ To remove a feature gate, follow these steps:
 To rename a feature gate, follow these steps (the first two are the same steps
 to follow when [removing a feature gate][removing]):
 
-1. Remove the old feature gate declaration in `rustc_feature/src/unstable.rs`.
+1. Remove the old feature gate declaration in `redox_feature/src/unstable.rs`.
    It will look like this:
 
    ```rust,ignore
@@ -57,7 +57,7 @@ to follow when [removing a feature gate][removing]):
    ```
 
 2. Add a modified version of the old feature gate declaration that you just
-   removed to `rustc_feature/src/removed.rs`:
+   removed to `redox_feature/src/removed.rs`:
 
    ```rust,ignore
    /// description of feature
@@ -66,7 +66,7 @@ to follow when [removing a feature gate][removing]):
     Some("renamed to `$new_feature_name`"))
    ```
 
-3. Add a feature gate declaration with the new name to `rustc_feature/src/unstable.rs`.
+3. Add a feature gate declaration with the new name to `redox_feature/src/unstable.rs`.
    It should look very similar to the old declaration:
 
    ```rust,ignore

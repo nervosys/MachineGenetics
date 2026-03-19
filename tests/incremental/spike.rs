@@ -6,11 +6,11 @@
 //@ compile-flags: -Z query-dep-graph
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#![rustc_partition_reused(module="spike", cfg="rpass2")]
-#![rustc_partition_codegened(module="spike-x", cfg="rpass2")]
-#![rustc_partition_reused(module="spike-y", cfg="rpass2")]
+#![redox_partition_reused(module="spike", cfg="rpass2")]
+#![redox_partition_codegened(module="spike-x", cfg="rpass2")]
+#![redox_partition_reused(module="spike-y", cfg="rpass2")]
 
 mod x {
     pub struct X {

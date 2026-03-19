@@ -21,7 +21,7 @@ use std::fmt;
 use hir_expand::{MacroDefId, name::Name};
 use intern::Symbol;
 use la_arena::Idx;
-use rustc_apfloat::ieee::{Half as f16, Quad as f128};
+use redox_apfloat::ieee::{Half as f16, Quad as f128};
 use syntax::ast;
 use type_ref::TypeRefId;
 
@@ -650,7 +650,7 @@ pub struct RecordFieldPat {
     pub pat: PatId,
 }
 
-/// Close relative to rustc's hir::PatKind
+/// Close relative to redox's hir::PatKind
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Pat {
     Missing,

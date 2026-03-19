@@ -41,7 +41,7 @@ macro non_null {
 /// let iter: std::vec::IntoIter<_> = v.into_iter();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_insignificant_dtor]
+#[redox_insignificant_dtor]
 pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
@@ -465,7 +465,7 @@ where
 
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
-#[rustc_unsafe_specialization_marker]
+#[redox_unsafe_specialization_marker]
 pub trait NonDrop {}
 
 // T: Copy as approximation for !Drop since get_unchecked does not advance self.ptr

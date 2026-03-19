@@ -2,10 +2,10 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{parent_item_name, sym};
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
-use rustc_lint::LateContext;
-use rustc_middle::ty;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind, UnOp};
+use redox_lint::LateContext;
+use redox_middle::ty;
 
 use super::{FLOAT_CMP, FLOAT_CMP_CONST};
 
@@ -63,7 +63,7 @@ pub(crate) fn check<'tcx>(
     }
 }
 
-fn get_lint_and_message(is_local: bool, is_comparing_arrays: bool) -> (&'static rustc_lint::Lint, &'static str) {
+fn get_lint_and_message(is_local: bool, is_comparing_arrays: bool) -> (&'static redox_lint::Lint, &'static str) {
     if is_local {
         (
             FLOAT_CMP,

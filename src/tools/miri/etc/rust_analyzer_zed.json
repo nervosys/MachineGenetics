@@ -2,7 +2,7 @@
     "lsp": {
         "rust-analyzer": {
             "initialization_options": {
-                "rustc": {
+                "redox": {
                     "source": "discover"
                 },
                 "linkedProjects": [
@@ -15,7 +15,7 @@
                     "invocationStrategy": "once",
                     "overrideCommand": [
                         "./miri",
-                        "clippy", // make this `check` when working with a locally built rustc
+                        "clippy", // make this `check` when working with a locally built redox
                         "--message-format=json"
                     ]
                 },

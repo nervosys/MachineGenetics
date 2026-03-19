@@ -4,14 +4,14 @@ use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_con
 use clippy_utils::{
     SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, peel_blocks, sym,
 };
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
-use rustc_span::Spanned;
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::def_id::DefId;
+use redox_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty;
+use redox_session::declare_lint_pass;
+use redox_span::Spanned;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -298,7 +298,7 @@ const MAX_LENGTH_BYTE_STRING_LIT: usize = 32;
 
 impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        use rustc_ast::LitKind;
+        use redox_ast::LitKind;
 
         if let ExprKind::Call(fun, [bytes_arg]) = e.kind
             // Find `std::str::converts::from_utf8` or `std::primitive::str::from_utf8`

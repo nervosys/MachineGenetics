@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet;
 use clippy_utils::{is_entrypoint_fn, is_no_std_crate};
-use rustc_hir::{Expr, ExprKind, QPath};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use redox_hir::{Expr, ExprKind, QPath};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

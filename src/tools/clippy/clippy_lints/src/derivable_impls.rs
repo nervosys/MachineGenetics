@@ -3,16 +3,16 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::indent_of;
 use clippy_utils::{is_default_equivalent, peel_blocks};
-use rustc_errors::Applicability;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{
+use redox_errors::Applicability;
+use redox_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use redox_hir::{
     self as hir, Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
-use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty, TypeckResults, VariantDef};
-use rustc_session::impl_lint_pass;
-use rustc_span::sym;
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::adjustment::{Adjust, PointerCoercion};
+use redox_middle::ty::{self, AdtDef, GenericArgsRef, Ty, TypeckResults, VariantDef};
+use redox_session::impl_lint_pass;
+use redox_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does

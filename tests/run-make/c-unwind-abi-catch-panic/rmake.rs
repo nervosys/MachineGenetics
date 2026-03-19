@@ -9,10 +9,10 @@
 //@ needs-unwind
 // Reason: this test exercises panic unwinding
 
-use run_make_support::{build_native_static_lib, run, rustc};
+use run_make_support::{build_native_static_lib, run, redox};
 
 fn main() {
     build_native_static_lib("add");
-    rustc().input("main.rs").run();
+    redox().input("main.rs").run();
     run("main");
 }

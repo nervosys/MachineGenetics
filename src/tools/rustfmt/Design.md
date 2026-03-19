@@ -134,7 +134,7 @@ not worthwhile due to uniformity being desirable, but it is a useful goal).
 
 ### Architecture details
 
-We use the AST from [syntex_syntax], an export of rustc's libsyntax. We use
+We use the AST from [syntex_syntax], an export of redox's libsyntax. We use
 syntex_syntax's visit module to walk the AST to find starting points for
 reformatting. Eventually, we should reformat everything and we shouldn't need
 the visit module. We keep track of the last formatted position in the code, and

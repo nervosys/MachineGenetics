@@ -12,7 +12,7 @@ use crate::ptr::{self, NonNull};
 #[allow_internal_unstable(thread_local_internals)]
 #[allow_internal_unsafe]
 #[unstable(feature = "thread_local_internals", issue = "none")]
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 pub macro thread_local_inner {
     // NOTE: we cannot import `Storage` or `LocalKey` with a `use` because that can shadow user
     // provided type or type alias with a matching name. Please update the shadowing test in
@@ -48,8 +48,8 @@ pub macro thread_local_inner {
         }
     }},
 
-    // process a single `rustc_align_static` attribute
-    (@align $final_align:ident, rustc_align_static($($align:tt)*) $(, $($attr_rest:tt)+)?) => {
+    // process a single `redox_align_static` attribute
+    (@align $final_align:ident, redox_align_static($($align:tt)*) $(, $($attr_rest:tt)+)?) => {
         let new_align: $crate::primitive::usize = $($align)*;
         if new_align > $final_align {
             $final_align = new_align;
@@ -103,7 +103,7 @@ unsafe impl<T, const ALIGN: usize> Sync for Storage<T, ALIGN> {}
 
 #[repr(C)]
 struct Value<T: 'static> {
-    // This field must be first, for correctness of `#[rustc_align_static]`
+    // This field must be first, for correctness of `#[redox_align_static]`
     value: T,
     // INVARIANT: if this value is stored under a TLS key, `key` must be that `key`.
     key: Key,
@@ -261,7 +261,7 @@ unsafe extern "C" fn destroy_value<T: 'static, const ALIGN: usize>(ptr: *mut u8)
     });
 }
 
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 pub(crate) macro local_pointer {
     () => {},
     ($vis:vis static $name:ident; $($rest:tt)*) => {

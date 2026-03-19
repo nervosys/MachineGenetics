@@ -11,10 +11,10 @@
     feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)
 )]
 #![allow(internal_features, unused_features)]
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
 pub mod bidirectional_protocol;
 pub mod legacy_protocol;

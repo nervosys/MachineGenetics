@@ -4,7 +4,7 @@
 //!
 //! This test was introduced as part of commit `a833f152baa17460e8414355e832d30d5161f8e8` which
 //! removes an "artificial block". See also commit `3d738e9e0634a4cd6239d1317bd7dad53be68dc8` for
-//! more elaboration, reproduced below (this is outdated for *today*'s rustc as of 2024-12-10, but
+//! more elaboration, reproduced below (this is outdated for *today*'s redox as of 2024-12-10, but
 //! is helpful to understand the original intention):
 //!
 //! > Return a fresh, unreachable context after ret, break, and cont

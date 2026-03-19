@@ -7,7 +7,7 @@
 
 use builtins_test::*;
 use compiler_builtins::float::Float;
-use rustc_apfloat::{Float as _, FloatConvert as _};
+use redox_apfloat::{Float as _, FloatConvert as _};
 
 mod i_to_f {
     use super::*;
@@ -260,7 +260,7 @@ macro_rules! f_to_f {
         #[test]
         fn $fn() {
             use compiler_builtins::float::{$mod::$fn, Float};
-            use rustc_apfloat::ieee::{$from_ap_ty, $to_ap_ty};
+            use redox_apfloat::ieee::{$from_ap_ty, $to_ap_ty};
 
             fuzz_float(N, |x: $from_ty| {
                 let tmp0: $to_ty = apfloat_fallback!(

@@ -11,14 +11,14 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 fn main() {
     rfs::create_dir("incr");
     rfs::create_dir("src");
     rfs::create_dir("src/mydir");
     rfs::copy("main.rs", "src/main.rs");
-    rustc().input("src/main.rs").incremental("incr").arg("--test").run();
+    redox().input("src/main.rs").incremental("incr").arg("--test").run();
     rfs::rename("src/main.rs", "src/mydir/main.rs");
-    rustc().input("src/mydir/main.rs").incremental("incr").arg("--test").run();
+    redox().input("src/mydir/main.rs").incremental("incr").arg("--test").run();
 }

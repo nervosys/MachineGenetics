@@ -12,7 +12,7 @@
 //~^ ERROR: unknown lint
 #[warn(clippy::useles_transute)]
 //~^ ERROR: unknown lint
-// Should suggest rustc lint name(`dead_code`)
+// Should suggest redox lint name(`dead_code`)
 #[warn(clippy::dead_cod)]
 //~^ ERROR: unknown lint
 // Shouldn't suggest removed/deprecated clippy lint name(`unused_collect`)
@@ -21,7 +21,7 @@
 // Shouldn't suggest renamed clippy lint name(`const_static_lifetime`)
 #[warn(clippy::const_static_lifetim)]
 //~^ ERROR: unknown lint
-// issue #118183, should report `missing_docs` from rustc lint
+// issue #118183, should report `missing_docs` from redox lint
 #[warn(clippy::missing_docs)]
 //~^ ERROR: unknown lint
 fn main() {}

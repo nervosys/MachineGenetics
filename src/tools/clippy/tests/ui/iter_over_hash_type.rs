@@ -1,5 +1,5 @@
 //@aux-build:proc_macros.rs
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![warn(clippy::iter_over_hash_type)]
 use std::collections::{HashMap, HashSet};
 

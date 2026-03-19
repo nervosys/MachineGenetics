@@ -109,8 +109,8 @@ impl<T> [T] {
     /// ```
     #[lang = "slice_len_fn"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_slice_len", since = "1.39.0")]
-    #[rustc_no_implicit_autorefs]
+    #[redox_const_stable(feature = "const_slice_len", since = "1.39.0")]
+    #[redox_no_implicit_autorefs]
     #[inline]
     #[must_use]
     pub const fn len(&self) -> usize {
@@ -129,8 +129,8 @@ impl<T> [T] {
     /// assert!(b.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_slice_is_empty", since = "1.39.0")]
-    #[rustc_no_implicit_autorefs]
+    #[redox_const_stable(feature = "const_slice_is_empty", since = "1.39.0")]
+    #[redox_no_implicit_autorefs]
     #[inline]
     #[must_use]
     pub const fn is_empty(&self) -> bool {
@@ -149,7 +149,7 @@ impl<T> [T] {
     /// assert_eq!(None, w.first());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
+    #[redox_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
     #[inline]
     #[must_use]
     pub const fn first(&self) -> Option<&T> {
@@ -172,7 +172,7 @@ impl<T> [T] {
     /// assert_eq!(None, y.first_mut());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_slice_first_last", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_slice_first_last", since = "1.83.0")]
     #[inline]
     #[must_use]
     pub const fn first_mut(&mut self) -> Option<&mut T> {
@@ -192,7 +192,7 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
-    #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
+    #[redox_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
     #[inline]
     #[must_use]
     pub const fn split_first(&self) -> Option<(&T, &[T])> {
@@ -214,7 +214,7 @@ impl<T> [T] {
     /// assert_eq!(x, &[3, 4, 5]);
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
-    #[rustc_const_stable(feature = "const_slice_first_last", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_slice_first_last", since = "1.83.0")]
     #[inline]
     #[must_use]
     pub const fn split_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
@@ -234,7 +234,7 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
-    #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
+    #[redox_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
     #[inline]
     #[must_use]
     pub const fn split_last(&self) -> Option<(&T, &[T])> {
@@ -256,7 +256,7 @@ impl<T> [T] {
     /// assert_eq!(x, &[4, 5, 3]);
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
-    #[rustc_const_stable(feature = "const_slice_first_last", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_slice_first_last", since = "1.83.0")]
     #[inline]
     #[must_use]
     pub const fn split_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
@@ -275,7 +275,7 @@ impl<T> [T] {
     /// assert_eq!(None, w.last());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
+    #[redox_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
     #[inline]
     #[must_use]
     pub const fn last(&self) -> Option<&T> {
@@ -298,7 +298,7 @@ impl<T> [T] {
     /// assert_eq!(None, y.last_mut());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_slice_first_last", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_slice_first_last", since = "1.83.0")]
     #[inline]
     #[must_use]
     pub const fn last_mut(&mut self) -> Option<&mut T> {
@@ -323,7 +323,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_first_last_chunk", since = "1.77.0")]
-    #[rustc_const_stable(feature = "slice_first_last_chunk", since = "1.77.0")]
+    #[redox_const_stable(feature = "slice_first_last_chunk", since = "1.77.0")]
     pub const fn first_chunk<const N: usize>(&self) -> Option<&[T; N]> {
         if self.len() < N {
             None
@@ -353,7 +353,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_first_last_chunk", since = "1.77.0")]
-    #[rustc_const_stable(feature = "const_slice_first_last_chunk", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_slice_first_last_chunk", since = "1.83.0")]
     pub const fn first_chunk_mut<const N: usize>(&mut self) -> Option<&mut [T; N]> {
         if self.len() < N {
             None
@@ -383,7 +383,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_first_last_chunk", since = "1.77.0")]
-    #[rustc_const_stable(feature = "slice_first_last_chunk", since = "1.77.0")]
+    #[redox_const_stable(feature = "slice_first_last_chunk", since = "1.77.0")]
     pub const fn split_first_chunk<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
         let Some((first, tail)) = self.split_at_checked(N) else { return None };
 
@@ -413,7 +413,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_first_last_chunk", since = "1.77.0")]
-    #[rustc_const_stable(feature = "const_slice_first_last_chunk", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_slice_first_last_chunk", since = "1.83.0")]
     pub const fn split_first_chunk_mut<const N: usize>(
         &mut self,
     ) -> Option<(&mut [T; N], &mut [T])> {
@@ -443,7 +443,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_first_last_chunk", since = "1.77.0")]
-    #[rustc_const_stable(feature = "slice_first_last_chunk", since = "1.77.0")]
+    #[redox_const_stable(feature = "slice_first_last_chunk", since = "1.77.0")]
     pub const fn split_last_chunk<const N: usize>(&self) -> Option<(&[T], &[T; N])> {
         let Some(index) = self.len().checked_sub(N) else { return None };
         let (init, last) = self.split_at(index);
@@ -474,7 +474,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_first_last_chunk", since = "1.77.0")]
-    #[rustc_const_stable(feature = "const_slice_first_last_chunk", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_slice_first_last_chunk", since = "1.83.0")]
     pub const fn split_last_chunk_mut<const N: usize>(
         &mut self,
     ) -> Option<(&mut [T], &mut [T; N])> {
@@ -505,7 +505,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_first_last_chunk", since = "1.77.0")]
-    #[rustc_const_stable(feature = "const_slice_last_chunk", since = "1.80.0")]
+    #[redox_const_stable(feature = "const_slice_last_chunk", since = "1.80.0")]
     pub const fn last_chunk<const N: usize>(&self) -> Option<&[T; N]> {
         // FIXME(const-hack): Without const traits, we need this instead of `get`.
         let Some(index) = self.len().checked_sub(N) else { return None };
@@ -535,7 +535,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_first_last_chunk", since = "1.77.0")]
-    #[rustc_const_stable(feature = "const_slice_first_last_chunk", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_slice_first_last_chunk", since = "1.83.0")]
     pub const fn last_chunk_mut<const N: usize>(&mut self) -> Option<&mut [T; N]> {
         // FIXME(const-hack): Without const traits, we need this instead of `get`.
         let Some(index) = self.len().checked_sub(N) else { return None };
@@ -565,10 +565,10 @@ impl<T> [T] {
     /// assert_eq!(None, v.get(0..4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_no_implicit_autorefs]
+    #[redox_no_implicit_autorefs]
     #[inline]
     #[must_use]
-    #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+    #[redox_const_unstable(feature = "const_index", issue = "143775")]
     pub const fn get<I>(&self, index: I) -> Option<&I::Output>
     where
         I: [const] SliceIndex<Self>,
@@ -592,10 +592,10 @@ impl<T> [T] {
     /// assert_eq!(x, &[0, 42, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_no_implicit_autorefs]
+    #[redox_no_implicit_autorefs]
     #[inline]
     #[must_use]
-    #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+    #[redox_const_unstable(feature = "const_index", issue = "143775")]
     pub const fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
     where
         I: [const] SliceIndex<Self>,
@@ -631,11 +631,11 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_no_implicit_autorefs]
+    #[redox_no_implicit_autorefs]
     #[inline]
     #[must_use]
     #[track_caller]
-    #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+    #[redox_const_unstable(feature = "const_index", issue = "143775")]
     pub const unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
     where
         I: [const] SliceIndex<Self>,
@@ -676,11 +676,11 @@ impl<T> [T] {
     /// assert_eq!(x, &[1, 13, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_no_implicit_autorefs]
+    #[redox_no_implicit_autorefs]
     #[inline]
     #[must_use]
     #[track_caller]
-    #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+    #[redox_const_unstable(feature = "const_index", issue = "143775")]
     pub const unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
     where
         I: [const] SliceIndex<Self>,
@@ -718,9 +718,9 @@ impl<T> [T] {
     ///
     /// [`as_mut_ptr`]: slice::as_mut_ptr
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_slice_as_ptr", since = "1.32.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
+    #[redox_const_stable(feature = "const_slice_as_ptr", since = "1.32.0")]
+    #[redox_never_returns_null_ptr]
+    #[redox_as_ptr]
     #[inline(always)]
     #[must_use]
     pub const fn as_ptr(&self) -> *const T {
@@ -749,9 +749,9 @@ impl<T> [T] {
     /// assert_eq!(x, &[3, 4, 6]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
+    #[redox_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[redox_never_returns_null_ptr]
+    #[redox_as_ptr]
     #[inline(always)]
     #[must_use]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
@@ -787,7 +787,7 @@ impl<T> [T] {
     ///
     /// [`as_ptr`]: slice::as_ptr
     #[stable(feature = "slice_ptr_range", since = "1.48.0")]
-    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[redox_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline]
     #[must_use]
     pub const fn as_ptr_range(&self) -> Range<*const T> {
@@ -830,7 +830,7 @@ impl<T> [T] {
     ///
     /// [`as_mut_ptr`]: slice::as_mut_ptr
     #[stable(feature = "slice_ptr_range", since = "1.48.0")]
-    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[redox_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline]
     #[must_use]
     pub const fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
@@ -844,7 +844,7 @@ impl<T> [T] {
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
     #[stable(feature = "core_slice_as_array", since = "1.93.0")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[redox_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_array<const N: usize>(&self) -> Option<&[T; N]> {
@@ -863,7 +863,7 @@ impl<T> [T] {
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
     #[stable(feature = "core_slice_as_array", since = "1.93.0")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[redox_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_mut_array<const N: usize>(&mut self) -> Option<&mut [T; N]> {
@@ -899,7 +899,7 @@ impl<T> [T] {
     /// assert!(v == ["a", "b", "e", "d", "c"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_swap", since = "1.85.0")]
     #[inline]
     #[track_caller]
     pub const fn swap(&mut self, a: usize, b: usize) {
@@ -973,7 +973,7 @@ impl<T> [T] {
     /// assert!(v == [3, 2, 1]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_slice_reverse", since = "1.90.0")]
+    #[redox_const_stable(feature = "const_slice_reverse", since = "1.90.0")]
     #[inline]
     pub const fn reverse(&mut self) {
         let half_len = self.len() / 2;
@@ -1034,9 +1034,9 @@ impl<T> [T] {
     /// assert_eq!(iterator.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
-    #[rustc_diagnostic_item = "slice_iter"]
+    #[redox_diagnostic_item = "slice_iter"]
     pub const fn iter(&self) -> Iter<'_, T> {
         Iter::new(self)
     }
@@ -1054,7 +1054,7 @@ impl<T> [T] {
     /// }
     /// assert_eq!(x, &[3, 4, 6]);
     /// ```
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub const fn iter_mut(&mut self) -> IterMut<'_, T> {
@@ -1109,7 +1109,7 @@ impl<T> [T] {
     /// assert_eq!(array, ['s', 't', ' ', '2', '0', '1', '5', 'u', 'R']);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
     pub const fn windows(&self, size: usize) -> Windows<'_, T> {
@@ -1149,7 +1149,7 @@ impl<T> [T] {
     /// [`rchunks`]: slice::rchunks
     /// [`as_chunks`]: slice::as_chunks
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
     pub const fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
@@ -1193,7 +1193,7 @@ impl<T> [T] {
     /// [`rchunks_mut`]: slice::rchunks_mut
     /// [`as_chunks_mut`]: slice::as_chunks_mut
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
     pub const fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<'_, T> {
@@ -1236,7 +1236,7 @@ impl<T> [T] {
     /// [`rchunks_exact`]: slice::rchunks_exact
     /// [`as_chunks`]: slice::as_chunks
     #[stable(feature = "chunks_exact", since = "1.31.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
     pub const fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
@@ -1284,7 +1284,7 @@ impl<T> [T] {
     /// [`rchunks_exact_mut`]: slice::rchunks_exact_mut
     /// [`as_chunks_mut`]: slice::as_chunks_mut
     #[stable(feature = "chunks_exact", since = "1.31.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
     pub const fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<'_, T> {
@@ -1331,7 +1331,7 @@ impl<T> [T] {
     /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked() // Zero-length chunks are never allowed
     /// ```
     #[stable(feature = "slice_as_chunks", since = "1.88.0")]
-    #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[redox_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[inline]
     #[must_use]
     #[track_caller]
@@ -1389,7 +1389,7 @@ impl<T> [T] {
     /// assert_eq!(chunks, &[['R', 'u'], ['s', 't']]);
     /// ```
     #[stable(feature = "slice_as_chunks", since = "1.88.0")]
-    #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[redox_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1436,7 +1436,7 @@ impl<T> [T] {
     /// assert_eq!(chunks, &[['o', 'r'], ['e', 'm']]);
     /// ```
     #[stable(feature = "slice_as_chunks", since = "1.88.0")]
-    #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[redox_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1491,7 +1491,7 @@ impl<T> [T] {
     /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked_mut() // Zero-length chunks are never allowed
     /// ```
     #[stable(feature = "slice_as_chunks", since = "1.88.0")]
-    #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[redox_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[inline]
     #[must_use]
     #[track_caller]
@@ -1545,7 +1545,7 @@ impl<T> [T] {
     /// assert_eq!(v, &[1, 1, 2, 2, 9]);
     /// ```
     #[stable(feature = "slice_as_chunks", since = "1.88.0")]
-    #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[redox_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1598,7 +1598,7 @@ impl<T> [T] {
     /// assert_eq!(v, &[9, 1, 1, 2, 2]);
     /// ```
     #[stable(feature = "slice_as_chunks", since = "1.88.0")]
-    #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[redox_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1640,7 +1640,7 @@ impl<T> [T] {
     ///
     /// [`windows`]: slice::windows
     #[stable(feature = "array_windows", since = "1.94.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
     pub const fn array_windows<const N: usize>(&self) -> ArrayWindows<'_, T, N> {
@@ -1680,7 +1680,7 @@ impl<T> [T] {
     /// [`chunks`]: slice::chunks
     /// [`as_rchunks`]: slice::as_rchunks
     #[stable(feature = "rchunks", since = "1.31.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
     pub const fn rchunks(&self, chunk_size: usize) -> RChunks<'_, T> {
@@ -1724,7 +1724,7 @@ impl<T> [T] {
     /// [`chunks_mut`]: slice::chunks_mut
     /// [`as_rchunks_mut`]: slice::as_rchunks_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
     pub const fn rchunks_mut(&mut self, chunk_size: usize) -> RChunksMut<'_, T> {
@@ -1769,7 +1769,7 @@ impl<T> [T] {
     /// [`chunks_exact`]: slice::chunks_exact
     /// [`as_rchunks`]: slice::as_rchunks
     #[stable(feature = "rchunks", since = "1.31.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
     pub const fn rchunks_exact(&self, chunk_size: usize) -> RChunksExact<'_, T> {
@@ -1818,7 +1818,7 @@ impl<T> [T] {
     /// [`chunks_exact_mut`]: slice::chunks_exact_mut
     /// [`as_rchunks_mut`]: slice::as_rchunks_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
     pub const fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<'_, T> {
@@ -1859,7 +1859,7 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[stable(feature = "slice_group_by", since = "1.77.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     pub const fn chunk_by<F>(&self, pred: F) -> ChunkBy<'_, T, F>
     where
@@ -1901,7 +1901,7 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[stable(feature = "slice_group_by", since = "1.77.0")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    #[redox_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     pub const fn chunk_by_mut<F>(&mut self, pred: F) -> ChunkByMut<'_, T, F>
     where
@@ -1945,7 +1945,7 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_slice_split_at_not_mut", since = "1.71.0")]
+    #[redox_const_stable(feature = "const_slice_split_at_not_mut", since = "1.71.0")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1982,7 +1982,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    #[rustc_const_stable(feature = "const_slice_split_at_mut", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_slice_split_at_mut", since = "1.83.0")]
     pub const fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         match self.split_at_mut_checked(mid) {
             Some(pair) => pair,
@@ -2031,7 +2031,7 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "slice_split_at_unchecked", since = "1.79.0")]
-    #[rustc_const_stable(feature = "const_slice_split_at_unchecked", since = "1.77.0")]
+    #[redox_const_stable(feature = "const_slice_split_at_unchecked", since = "1.77.0")]
     #[inline]
     #[must_use]
     #[track_caller]
@@ -2085,7 +2085,7 @@ impl<T> [T] {
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
     #[stable(feature = "slice_split_at_unchecked", since = "1.79.0")]
-    #[rustc_const_stable(feature = "const_slice_split_at_mut", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_slice_split_at_mut", since = "1.83.0")]
     #[inline]
     #[must_use]
     #[track_caller]
@@ -2147,7 +2147,7 @@ impl<T> [T] {
     /// assert_eq!(None, v.split_at_checked(7));
     /// ```
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    #[rustc_const_stable(feature = "split_at_checked", since = "1.80.0")]
+    #[redox_const_stable(feature = "split_at_checked", since = "1.80.0")]
     #[inline]
     #[must_use]
     pub const fn split_at_checked(&self, mid: usize) -> Option<(&[T], &[T])> {
@@ -2186,7 +2186,7 @@ impl<T> [T] {
     /// assert_eq!(None, v.split_at_mut_checked(7));
     /// ```
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_slice_split_at_mut", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_slice_split_at_mut", since = "1.83.0")]
     #[inline]
     #[must_use]
     pub const fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut [T], &mut [T])> {
@@ -3880,7 +3880,7 @@ impl<T> [T] {
     /// assert_eq!(a, ['a', 'c', 'd', 'e', 'b', 'f']);
     /// ```
     #[stable(feature = "slice_rotate", since = "1.26.0")]
-    #[rustc_const_stable(feature = "const_slice_rotate", since = "1.92.0")]
+    #[redox_const_stable(feature = "const_slice_rotate", since = "1.92.0")]
     pub const fn rotate_left(&mut self, mid: usize) {
         assert!(mid <= self.len());
         let k = self.len() - mid;
@@ -3926,7 +3926,7 @@ impl<T> [T] {
     /// assert_eq!(a, ['a', 'e', 'b', 'c', 'd', 'f']);
     /// ```
     #[stable(feature = "slice_rotate", since = "1.26.0")]
-    #[rustc_const_stable(feature = "const_slice_rotate", since = "1.92.0")]
+    #[redox_const_stable(feature = "const_slice_rotate", since = "1.92.0")]
     pub const fn rotate_right(&mut self, k: usize) {
         assert!(k <= self.len());
         let mid = self.len() - k;
@@ -4250,7 +4250,7 @@ impl<T> [T] {
     /// [`split_at_mut`]: slice::split_at_mut
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     #[track_caller]
-    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    #[redox_const_unstable(feature = "const_clone", issue = "142757")]
     pub const fn clone_from_slice(&mut self, src: &[T])
     where
         T: [const] Clone + [const] Destruct,
@@ -4315,7 +4315,7 @@ impl<T> [T] {
     #[doc(alias = "memcpy")]
     #[inline]
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_copy_from_slice", since = "1.87.0")]
+    #[redox_const_stable(feature = "const_copy_from_slice", since = "1.87.0")]
     #[track_caller]
     pub const fn copy_from_slice(&mut self, src: &[T])
     where
@@ -4417,7 +4417,7 @@ impl<T> [T] {
     ///
     /// [`split_at_mut`]: slice::split_at_mut
     #[stable(feature = "swap_with_slice", since = "1.27.0")]
-    #[rustc_const_unstable(feature = "const_swap_with_slice", issue = "142204")]
+    #[redox_const_unstable(feature = "const_swap_with_slice", issue = "142204")]
     #[track_caller]
     pub const fn swap_with_slice(&mut self, other: &mut [T]) {
         assert!(self.len() == other.len(), "destination and source slices have different lengths");
@@ -5006,7 +5006,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_take", since = "1.87.0")]
-    #[rustc_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
+    #[redox_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
     pub const fn split_off_first<'a>(self: &mut &'a Self) -> Option<&'a T> {
         // FIXME(const-hack): Use `?` when available in const instead of `let-else`.
         let Some((first, rem)) = self.split_first() else { return None };
@@ -5031,7 +5031,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_take", since = "1.87.0")]
-    #[rustc_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
+    #[redox_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
     pub const fn split_off_first_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
         // FIXME(const-hack): Use `mem::take` and `?` when available in const.
         // Original: `mem::take(self).split_first_mut()?`
@@ -5056,7 +5056,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_take", since = "1.87.0")]
-    #[rustc_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
+    #[redox_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
     pub const fn split_off_last<'a>(self: &mut &'a Self) -> Option<&'a T> {
         // FIXME(const-hack): Use `?` when available in const instead of `let-else`.
         let Some((last, rem)) = self.split_last() else { return None };
@@ -5081,7 +5081,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_take", since = "1.87.0")]
-    #[rustc_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
+    #[redox_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
     pub const fn split_off_last_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
         // FIXME(const-hack): Use `mem::take` and `?` when available in const.
         // Original: `mem::take(self).split_last_mut()?`
@@ -5436,7 +5436,7 @@ impl<T, const N: usize> [[T; N]] {
     /// assert!(empty_slice_of_arrays.as_flattened().is_empty());
     /// ```
     #[stable(feature = "slice_flatten", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_slice_flatten", since = "1.87.0")]
+    #[redox_const_stable(feature = "const_slice_flatten", since = "1.87.0")]
     pub const fn as_flattened(&self) -> &[T] {
         let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
@@ -5478,7 +5478,7 @@ impl<T, const N: usize> [[T; N]] {
     /// assert_eq!(array, [[6, 7, 8], [9, 10, 11], [12, 13, 14]]);
     /// ```
     #[stable(feature = "slice_flatten", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_slice_flatten", since = "1.87.0")]
+    #[redox_const_stable(feature = "const_slice_flatten", since = "1.87.0")]
     pub const fn as_flattened_mut(&mut self) -> &mut [T] {
         let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
@@ -5580,14 +5580,14 @@ const unsafe fn copy_from_slice_impl<T: Clone>(dest: &mut [T], src: &[T]) {
     }
 }
 
-#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+#[redox_const_unstable(feature = "const_clone", issue = "142757")]
 const trait CloneFromSpec<T> {
     fn spec_clone_from(&mut self, src: &[T])
     where
         T: [const] Destruct;
 }
 
-#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+#[redox_const_unstable(feature = "const_clone", issue = "142757")]
 impl<T> const CloneFromSpec<T> for [T]
 where
     T: [const] Clone + [const] Destruct,
@@ -5609,7 +5609,7 @@ where
     }
 }
 
-#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+#[redox_const_unstable(feature = "const_clone", issue = "142757")]
 impl<T> const CloneFromSpec<T> for [T]
 where
     T: [const] TrivialClone + [const] Destruct,
@@ -5624,7 +5624,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl<T> const Default for &[T] {
     /// Creates an empty slice.
     fn default() -> Self {
@@ -5633,7 +5633,7 @@ impl<T> const Default for &[T] {
 }
 
 #[stable(feature = "mut_slice_default", since = "1.5.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl<T> const Default for &mut [T] {
     /// Creates a mutable empty slice.
     fn default() -> Self {

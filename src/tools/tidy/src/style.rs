@@ -22,7 +22,7 @@ use std::path::Path;
 use std::sync::LazyLock;
 
 use regex::RegexSetBuilder;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 
 use crate::diagnostics::{CheckId, TidyCtx};
 use crate::walk::{filter_dirs, walk};
@@ -320,7 +320,7 @@ fn skip_markdown_path(path: &Path) -> bool {
         "src/doc/nomicon",
         "src/doc/reference",
         "src/doc/rust-by-example",
-        "src/doc/rustc-dev-guide",
+        "src/doc/redox-dev-guide",
     ];
     SKIP_MD.iter().any(|p| path.ends_with(p))
 }
@@ -578,7 +578,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     "copyright notices attributed to the Rust Project Developers are deprecated"
                 );
             }
-            if !file.components().any(|c| c.as_os_str() == "rustc_baked_icu_data")
+            if !file.components().any(|c| c.as_os_str() == "redox_baked_icu_data")
                 && is_unexplained_ignore(&extension, line)
             {
                 err(UNEXPLAINED_IGNORE_DOCTEST_INFO);

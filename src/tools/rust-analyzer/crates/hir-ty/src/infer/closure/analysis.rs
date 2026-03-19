@@ -13,9 +13,9 @@ use hir_def::{
     item_tree::FieldsShape,
     resolver::ValueNs,
 };
-use rustc_ast_ir::Mutability;
-use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_type_ir::inherent::{GenericArgs as _, IntoKind, Ty as _};
+use redox_ast_ir::Mutability;
+use redox_hash::{FxHashMap, FxHashSet};
+use redox_type_ir::inherent::{GenericArgs as _, IntoKind, Ty as _};
 use smallvec::{SmallVec, smallvec};
 use stdx::{format_to, never};
 use syntax::utils::is_raw_identifier;
@@ -1108,8 +1108,8 @@ impl<'db> InferenceContext<'_, 'db> {
         }
         self.restrict_precision_for_unsafe();
         // `closure_kind` should be done before adjust_for_move_closure
-        // If there exists pre-deduced kind of a closure, use it instead of one determined by capture, as rustc does.
-        // rustc also does diagnostics here if the latter is not a subtype of the former.
+        // If there exists pre-deduced kind of a closure, use it instead of one determined by capture, as redox does.
+        // redox also does diagnostics here if the latter is not a subtype of the former.
         let closure_kind = self
             .result
             .closure_info

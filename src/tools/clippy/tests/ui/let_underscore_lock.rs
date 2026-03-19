@@ -28,7 +28,7 @@ fn main() {
 
 #[allow(let_underscore_lock)]
 fn uplifted() {
-    // shouldn't lint std locks as they were uplifted as rustc's `let_underscore_lock`
+    // shouldn't lint std locks as they were uplifted as redox's `let_underscore_lock`
 
     let m = std::sync::Mutex::new(());
     let rw = std::sync::RwLock::new(());

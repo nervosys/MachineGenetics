@@ -60,14 +60,14 @@ impl Attrs<'_> {
     }
 }
 
-// This fn is intended for `#[proc_macro_derive(..)]` and `#[rustc_builtin_macro(..)]`, which have
+// This fn is intended for `#[proc_macro_derive(..)]` and `#[redox_builtin_macro(..)]`, which have
 // the same structure.
 pub(crate) fn parse_macro_name_and_helper_attrs(tt: &TopSubtree) -> Option<(Name, Box<[Name]>)> {
     if let Some([TtElement::Leaf(Leaf::Ident(trait_name))]) =
         tt.token_trees().iter().collect_array()
     {
         // `#[proc_macro_derive(Trait)]`
-        // `#[rustc_builtin_macro(Trait)]`
+        // `#[redox_builtin_macro(Trait)]`
         Some((trait_name.as_name(), Box::new([])))
     } else if let Some(
         [
@@ -81,7 +81,7 @@ pub(crate) fn parse_macro_name_and_helper_attrs(tt: &TopSubtree) -> Option<(Name
         && attributes.sym == sym::attributes
     {
         // `#[proc_macro_derive(Trait, attributes(helper1, helper2, ...))]`
-        // `#[rustc_builtin_macro(Trait, attributes(helper1, helper2, ...))]`
+        // `#[redox_builtin_macro(Trait, attributes(helper1, helper2, ...))]`
         let helpers = helpers
             .filter_map(|tt| match tt {
                 TtElement::Leaf(Leaf::Ident(helper)) => Some(helper.as_name()),

@@ -31,4 +31,4 @@ this target, you will either need to build Rust with the target enabled (see
 
 ## Testing
 
-This is a cross-compiled target and there is no support to run rustc test suite.
+This is a cross-compiled target and there is no support to run redox test suite.

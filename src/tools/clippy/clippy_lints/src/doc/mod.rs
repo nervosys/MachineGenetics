@@ -4,24 +4,24 @@ use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
 use clippy_utils::{is_entrypoint_fn, is_trait_impl_item};
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Applicability;
-use rustc_hir::{Attribute, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc_resolve::rustdoc::pulldown_cmark::Event::{
+use redox_data_structures::fx::FxHashSet;
+use redox_errors::Applicability;
+use redox_hir::{Attribute, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
+use redox_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use redox_resolve::rustdoc::pulldown_cmark::Event::{
     Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
     TaskListMarker, Text,
 };
-use rustc_resolve::rustdoc::pulldown_cmark::Tag::{
+use redox_resolve::rustdoc::pulldown_cmark::Tag::{
     BlockQuote, CodeBlock, FootnoteDefinition, Heading, Item, Link, Paragraph,
 };
-use rustc_resolve::rustdoc::pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
-use rustc_resolve::rustdoc::{
+use redox_resolve::rustdoc::pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
+use redox_resolve::rustdoc::{
     DocFragment, add_doc_fragment, attrs_to_doc_fragments, main_body_opts, pulldown_cmark,
     source_span_for_markdown_range, span_of_fragments,
 };
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use redox_session::impl_lint_pass;
+use redox_span::Span;
 use std::ops::Range;
 use url::Url;
 
@@ -742,7 +742,7 @@ impl Documentation {
 }
 
 impl EarlyLintPass for Documentation {
-    fn check_attributes(&mut self, cx: &EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
+    fn check_attributes(&mut self, cx: &EarlyContext<'_>, attrs: &[redox_ast::Attribute]) {
         include_in_doc_without_cfg::check(cx, attrs);
     }
 }

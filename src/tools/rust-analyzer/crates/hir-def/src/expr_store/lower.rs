@@ -17,7 +17,7 @@ use hir_expand::{
     span_map::SpanMapRef,
 };
 use intern::{Symbol, sym};
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use stdx::never;
 use syntax::{
     AstNode, AstPtr, SyntaxNodePtr,
@@ -1150,11 +1150,11 @@ impl<'db> ExprCollector<'db> {
             ast::Expr::ForExpr(e) => self.collect_for_loop(syntax_ptr, e),
             ast::Expr::CallExpr(e) => {
                 // FIXME(MINIMUM_SUPPORTED_TOOLCHAIN_VERSION): Remove this once we drop support for <1.86, https://github.com/rust-lang/rust/commit/ac9cb908ac4301dfc25e7a2edee574320022ae2c
-                let is_rustc_box = {
+                let is_redox_box = {
                     let attrs = e.attrs();
-                    attrs.filter_map(|it| it.as_simple_atom()).any(|it| it == "rustc_box")
+                    attrs.filter_map(|it| it.as_simple_atom()).any(|it| it == "redox_box")
                 };
-                if is_rustc_box {
+                if is_redox_box {
                     let expr = self.collect_expr_opt(e.arg_list().and_then(|it| it.args().next()));
                     self.alloc_expr(Expr::Box { expr }, syntax_ptr)
                 } else {

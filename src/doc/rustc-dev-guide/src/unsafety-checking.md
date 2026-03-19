@@ -36,7 +36,7 @@ assignment expression and then visiting the subexpression being borrowed or
 assigned with a separate visitor.
 
 [THIR]: ./thir.md
-[`check_unsafety`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/check_unsafety/index.html
+[`check_unsafety`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_build/check_unsafety/index.html
 [`NonNull`]: https://doc.rust-lang.org/std/ptr/struct.NonNull.html
 
 ## The unused_unsafe lint
@@ -75,4 +75,4 @@ the ast that searches for unsafe blocks, functions and implementations, as well
 as certain unsafe attributes.
 
 [Unsafe traits]: https://doc.rust-lang.org/reference/items/traits.html#unsafe-traits
-[coherence]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_hir_analysis/src/coherence/unsafety.rs
+[coherence]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_hir_analysis/src/coherence/unsafety.rs

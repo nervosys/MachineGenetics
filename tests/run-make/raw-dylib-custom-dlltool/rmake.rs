@@ -11,10 +11,10 @@
 // Reason: this test specifically checks the custom dlltool feature, only
 // available on Windows-gnu.
 
-use run_make_support::{diff, rustc};
+use run_make_support::{diff, redox};
 
 fn main() {
-    let out = rustc()
+    let out = redox()
         .crate_type("lib")
         .crate_name("raw_dylib_test")
         .input("lib.rs")

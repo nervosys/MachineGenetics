@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{MacroCall, find_assert_args, find_assert_eq_args, root_macro_call_first_node};
 use clippy_utils::sym;
-use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{BorrowKind, Expr, ExprKind, MatchSource, Mutability};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::nested_filter;
-use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
+use redox_hir::intravisit::{Visitor, walk_expr};
+use redox_hir::{BorrowKind, Expr, ExprKind, MatchSource, Mutability};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::hir::nested_filter;
+use redox_middle::ty;
+use redox_session::declare_lint_pass;
+use redox_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does

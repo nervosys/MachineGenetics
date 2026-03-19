@@ -1,6 +1,6 @@
 //! Defining opaque types via inference.
 
-use rustc_type_ir::{TypeVisitableExt, fold_regions};
+use redox_type_ir::{TypeVisitableExt, fold_regions};
 use tracing::{debug, instrument};
 
 use crate::{
@@ -30,7 +30,7 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 }
 
-#[expect(unused, reason = "rustc has this")]
+#[expect(unused, reason = "redox has this")]
 #[derive(Copy, Clone, Debug)]
 enum UsageKind<'db> {
     None,

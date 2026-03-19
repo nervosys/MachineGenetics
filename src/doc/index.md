@@ -122,9 +122,9 @@ toolchain and language.
 their differences. The latest version of the toolchain supports all
 historical editions.
 
-### The `rustc` Book
+### The `redox` Book
 
-[The `rustc` Book](rustc/index.html) describes the Rust compiler, `rustc`.
+[The `redox` Book](redox/index.html) describes the Rust compiler, `redox`.
 
 ### The Cargo Book
 
@@ -142,8 +142,8 @@ dependency manager.
 ### Extended Error Listing
 
 Many of Rust's errors come with error codes, and you can request extended
-diagnostics from the compiler on those errors (with `rustc --explain`). You can
-also read them here if you prefer: [rustc error codes](error_codes/index.html)
+diagnostics from the compiler on those errors (with `redox --explain`). You can
+also read them here if you prefer: [redox error codes](error_codes/index.html)
 
 
 ## Mastering Rust
@@ -172,9 +172,9 @@ unsafe Rust. It's also sometimes called "the 'nomicon."
 [The Unstable Book](unstable-book/index.html) has documentation for unstable
 features.
 
-### The `rustc` Development Guide
+### The `redox` Development Guide
 
-[The `rustc-dev-guide`](https://rustc-dev-guide.rust-lang.org/)
+[The `redox-dev-guide`](https://redox-dev-guide.rust-lang.org/)
 documents how the compiler works and how to contribute to it. This is useful if
 you want to build or modify the Rust compiler from source (e.g. to target
 something non-standard).

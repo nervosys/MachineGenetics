@@ -6,6 +6,6 @@
 //@ dont-check-compiler-stderr
 //@ compile-flags: --error-format human
 //@ aux-build: rust-log-aux.rs
-//@ rustc-env:RUSTC_LOG=debug
+//@ redox-env:RUSTC_LOG=debug
 
 fn main() {}

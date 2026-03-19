@@ -39,7 +39,7 @@ impl Trait for Struct {
     where
         // higher-ranked to allow potentially-false bounds
         for<'a> dyn Index<(), Output = ()>: Index<()>,
-        // after #132289 rustc used to believe this bound false
+        // after #132289 redox used to believe this bound false
     {
         println!("hello!");
     }

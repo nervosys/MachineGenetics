@@ -4,7 +4,7 @@
 // cross-compiled standard libraries.
 #![feature(no_core, auto_traits)]
 #![no_core]
-#![feature(repr_simd, simd_ffi, link_llvm_intrinsics, lang_items, rustc_attrs)]
+#![feature(repr_simd, simd_ffi, link_llvm_intrinsics, lang_items, redox_attrs)]
 
 #[derive(Copy)]
 #[repr(simd)]
@@ -77,12 +77,12 @@ pub mod marker {
 auto trait Freeze {}
 
 #[macro_export]
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! Copy {
     () => {};
 }
 #[macro_export]
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! derive {
     () => {};
 }

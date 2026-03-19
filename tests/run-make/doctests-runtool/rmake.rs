@@ -5,7 +5,7 @@
 use std::path::PathBuf;
 
 use run_make_support::rfs::{create_dir, remove_dir_all};
-use run_make_support::{rustc, rustdoc};
+use run_make_support::{redox, rustdoc};
 
 fn mkdir(name: &str) -> PathBuf {
     let dir = PathBuf::from(name);
@@ -20,8 +20,8 @@ fn main() {
     let run_tool = mkdir("runtool");
     let run_tool_binary = run_tool.join("runtool");
 
-    rustc().input("t.rs").crate_type("rlib").run();
-    rustc().input("runtool.rs").output(&run_tool_binary).run();
+    redox().input("t.rs").crate_type("rlib").run();
+    redox().input("runtool.rs").output(&run_tool_binary).run();
 
     rustdoc()
         .input("t.rs")

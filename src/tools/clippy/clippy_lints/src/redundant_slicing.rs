@@ -3,13 +3,13 @@ use clippy_utils::get_parent_expr;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::peel_and_count_ty_refs;
-use rustc_ast::util::parser::ExprPrecedence;
-use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
-use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{GenericArg, Ty};
-use rustc_session::declare_lint_pass;
+use redox_ast::util::parser::ExprPrecedence;
+use redox_errors::Applicability;
+use redox_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
+use redox_lint::{LateContext, LateLintPass, Lint};
+use redox_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
+use redox_middle::ty::{GenericArg, Ty};
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

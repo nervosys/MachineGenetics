@@ -3,13 +3,13 @@ use clippy_config::types::{DisallowedPathWithoutReplacement, create_disallowed_m
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::paths::{self, PathNS};
 use clippy_utils::sym;
-use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, DefIdMap};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::mir::CoroutineLayout;
-use rustc_middle::ty::TyCtxt;
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use redox_hir as hir;
+use redox_hir::def_id::{DefId, DefIdMap};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::mir::CoroutineLayout;
+use redox_middle::ty::TyCtxt;
+use redox_session::impl_lint_pass;
+use redox_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -213,7 +213,7 @@ impl<'tcx> LateLintPass<'tcx> for AwaitHolding {
 impl AwaitHolding {
     fn check_interior_types(&self, cx: &LateContext<'_>, coroutine: &CoroutineLayout<'_>) {
         for (ty_index, ty_cause) in coroutine.field_tys.iter_enumerated() {
-            if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
+            if let redox_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
                 let await_points = || {
                     coroutine
                         .variant_source_info

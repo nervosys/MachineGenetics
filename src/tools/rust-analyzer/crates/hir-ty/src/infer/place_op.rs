@@ -2,8 +2,8 @@
 
 use hir_def::hir::ExprId;
 use intern::sym;
-use rustc_ast_ir::Mutability;
-use rustc_type_ir::inherent::{IntoKind, Ty as _};
+use redox_ast_ir::Mutability;
+use redox_type_ir::inherent::{IntoKind, Ty as _};
 use tracing::debug;
 
 use crate::{
@@ -264,7 +264,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 // We would need to recover the `T` used when we resolve `<_ as Index<T>>::index`
                 // in try_index_step. This is the arg at index 1.
                 //
-                // FIXME: rustc does not use the type of `index_expr` with the following explanation.
+                // FIXME: redox does not use the type of `index_expr` with the following explanation.
                 //
                 // Note: we should *not* use `expr_ty` of index_expr here because autoderef
                 // during coercions can cause type of index_expr to differ from `T` (#72002).

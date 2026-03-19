@@ -1,4 +1,4 @@
-// `-Z packed_bundled_libs` is an unstable rustc flag that makes the compiler
+// `-Z packed_bundled_libs` is an unstable redox flag that makes the compiler
 // only require a native library and no supplementary object files to compile.
 // Output files compiled with this flag should still contain all expected symbols -
 // that is what this test checks.
@@ -9,14 +9,14 @@
 
 use run_make_support::{
     bin_name, build_native_static_lib, cwd, filename_contains, is_windows_msvc, llvm_ar, llvm_nm,
-    rfs, rust_lib_name, rustc, shallow_find_files,
+    rfs, rust_lib_name, redox, shallow_find_files,
 };
 
 fn main() {
     build_native_static_lib("native_dep_1");
     build_native_static_lib("native_dep_2");
     build_native_static_lib("native_dep_3");
-    rustc().input("rust_dep_up.rs").crate_type("rlib").arg("-Zpacked_bundled_libs").run();
+    redox().input("rust_dep_up.rs").crate_type("rlib").arg("-Zpacked_bundled_libs").run();
     llvm_nm()
         .input(rust_lib_name("rust_dep_up"))
         .run()
@@ -39,7 +39,7 @@ fn main() {
         .arg(rust_lib_name("rust_dep_up"))
         .run()
         .assert_stdout_contains("native_dep_3");
-    rustc()
+    redox()
         .input("rust_dep_local.rs")
         .extern_("rlib", rust_lib_name("rust_dep_up"))
         .arg("-Zpacked_bundled_libs")
@@ -64,7 +64,7 @@ fn main() {
         rfs::remove_file(file);
     }
 
-    rustc()
+    redox()
         .input("main.rs")
         .extern_("lib", rust_lib_name("rust_dep_local"))
         .output(bin_name("main"))

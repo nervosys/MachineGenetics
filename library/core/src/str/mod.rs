@@ -63,7 +63,7 @@ pub use validations::{next_code_point, utf8_char_width};
 #[inline(never)]
 #[cold]
 #[track_caller]
-#[rustc_allow_const_fn_unstable(const_eval_select)]
+#[redox_allow_const_fn_unstable(const_eval_select)]
 #[cfg(not(panic = "immediate-abort"))]
 const fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     crate::intrinsics::const_eval_select((s, begin, end), slice_error_fail_ct, slice_error_fail_rt)
@@ -149,9 +149,9 @@ impl str {
     /// assert_eq!("ƒoo".chars().count(), 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_str_len", since = "1.39.0")]
-    #[rustc_diagnostic_item = "str_len"]
-    #[rustc_no_implicit_autorefs]
+    #[redox_const_stable(feature = "const_str_len", since = "1.39.0")]
+    #[redox_diagnostic_item = "str_len"]
+    #[redox_no_implicit_autorefs]
     #[must_use]
     #[inline]
     pub const fn len(&self) -> usize {
@@ -170,8 +170,8 @@ impl str {
     /// assert!(!s.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_str_is_empty", since = "1.39.0")]
-    #[rustc_no_implicit_autorefs]
+    #[redox_const_stable(feature = "const_str_is_empty", since = "1.39.0")]
+    #[redox_no_implicit_autorefs]
     #[must_use]
     #[inline]
     pub const fn is_empty(&self) -> bool {
@@ -250,8 +250,8 @@ impl str {
     /// assert_eq!("💖", sparkle_heart);
     /// ```
     #[stable(feature = "inherent_str_constructors", since = "1.87.0")]
-    #[rustc_const_stable(feature = "inherent_str_constructors", since = "1.87.0")]
-    #[rustc_diagnostic_item = "str_inherent_from_utf8"]
+    #[redox_const_stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[redox_diagnostic_item = "str_inherent_from_utf8"]
     pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
         converts::from_utf8(v)
     }
@@ -283,8 +283,8 @@ impl str {
     /// See the docs for [`Utf8Error`] for more details on the kinds of
     /// errors that can be returned.
     #[stable(feature = "inherent_str_constructors", since = "1.87.0")]
-    #[rustc_const_stable(feature = "const_str_from_utf8", since = "1.87.0")]
-    #[rustc_diagnostic_item = "str_inherent_from_utf8_mut"]
+    #[redox_const_stable(feature = "const_str_from_utf8", since = "1.87.0")]
+    #[redox_diagnostic_item = "str_inherent_from_utf8_mut"]
     pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
         converts::from_utf8_mut(v)
     }
@@ -315,8 +315,8 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "inherent_str_constructors", since = "1.87.0")]
-    #[rustc_const_stable(feature = "inherent_str_constructors", since = "1.87.0")]
-    #[rustc_diagnostic_item = "str_inherent_from_utf8_unchecked"]
+    #[redox_const_stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[redox_diagnostic_item = "str_inherent_from_utf8_unchecked"]
     pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
         // SAFETY: converts::from_utf8_unchecked has the same safety requirements as this function.
         unsafe { converts::from_utf8_unchecked(v) }
@@ -340,8 +340,8 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "inherent_str_constructors", since = "1.87.0")]
-    #[rustc_const_stable(feature = "inherent_str_constructors", since = "1.87.0")]
-    #[rustc_diagnostic_item = "str_inherent_from_utf8_unchecked_mut"]
+    #[redox_const_stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[redox_diagnostic_item = "str_inherent_from_utf8_unchecked_mut"]
     pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
         // SAFETY: converts::from_utf8_unchecked_mut has the same safety requirements as this function.
         unsafe { converts::from_utf8_unchecked_mut(v) }
@@ -372,7 +372,7 @@ impl str {
     /// ```
     #[must_use]
     #[stable(feature = "is_char_boundary", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_is_char_boundary", since = "1.86.0")]
+    #[redox_const_stable(feature = "const_is_char_boundary", since = "1.86.0")]
     #[inline]
     pub const fn is_char_boundary(&self, index: usize) -> bool {
         // 0 is always ok.
@@ -421,7 +421,7 @@ impl str {
     /// assert_eq!(&s[..closest], "❤️🧡");
     /// ```
     #[stable(feature = "round_char_boundary", since = "1.91.0")]
-    #[rustc_const_stable(feature = "round_char_boundary", since = "1.91.0")]
+    #[redox_const_stable(feature = "round_char_boundary", since = "1.91.0")]
     #[inline]
     pub const fn floor_char_boundary(&self, index: usize) -> usize {
         if index >= self.len() {
@@ -464,7 +464,7 @@ impl str {
     /// assert_eq!(&s[..closest], "❤️🧡💛");
     /// ```
     #[stable(feature = "round_char_boundary", since = "1.91.0")]
-    #[rustc_const_stable(feature = "round_char_boundary", since = "1.91.0")]
+    #[redox_const_stable(feature = "round_char_boundary", since = "1.91.0")]
     #[inline]
     pub const fn ceil_char_boundary(&self, index: usize) -> usize {
         if index >= self.len() {
@@ -495,7 +495,7 @@ impl str {
     /// assert_eq!(b"bors", bytes);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "str_as_bytes", since = "1.39.0")]
+    #[redox_const_stable(feature = "str_as_bytes", since = "1.39.0")]
     #[must_use]
     #[inline(always)]
     #[allow(unused_attributes)]
@@ -541,7 +541,7 @@ impl str {
     /// assert_eq!("🍔∈🌏", s);
     /// ```
     #[stable(feature = "str_mut_extras", since = "1.20.0")]
-    #[rustc_const_stable(feature = "const_str_as_mut", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_str_as_mut", since = "1.83.0")]
     #[must_use]
     #[inline(always)]
     pub const unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
@@ -570,9 +570,9 @@ impl str {
     /// let ptr = s.as_ptr();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "rustc_str_as_ptr", since = "1.32.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
+    #[redox_const_stable(feature = "redox_str_as_ptr", since = "1.32.0")]
+    #[redox_never_returns_null_ptr]
+    #[redox_as_ptr]
     #[must_use]
     #[inline(always)]
     pub const fn as_ptr(&self) -> *const u8 {
@@ -588,9 +588,9 @@ impl str {
     /// It is your responsibility to make sure that the string slice only gets
     /// modified in a way that it remains valid UTF-8.
     #[stable(feature = "str_as_mut_ptr", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_str_as_mut", since = "1.83.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
+    #[redox_const_stable(feature = "const_str_as_mut", since = "1.83.0")]
+    #[redox_never_returns_null_ptr]
+    #[redox_as_ptr]
     #[must_use]
     #[inline(always)]
     pub const fn as_mut_ptr(&mut self) -> *mut u8 {
@@ -617,7 +617,7 @@ impl str {
     /// assert!(v.get(..42).is_none());
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
-    #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+    #[redox_const_unstable(feature = "const_index", issue = "143775")]
     #[inline]
     pub const fn get<I: [const] SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
         i.get(self)
@@ -650,7 +650,7 @@ impl str {
     /// assert_eq!("HEllo", v);
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
-    #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+    #[redox_const_unstable(feature = "const_index", issue = "143775")]
     #[inline]
     pub const fn get_mut<I: [const] SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
         i.get_mut(self)
@@ -843,7 +843,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
-    #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
+    #[redox_const_stable(feature = "const_str_split_at", since = "1.86.0")]
     pub const fn split_at(&self, mid: usize) -> (&str, &str) {
         match self.split_at_checked(mid) {
             None => slice_error_fail(self, 0, mid),
@@ -884,7 +884,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
-    #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
+    #[redox_const_stable(feature = "const_str_split_at", since = "1.86.0")]
     pub const fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -924,7 +924,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
+    #[redox_const_stable(feature = "const_str_split_at", since = "1.86.0")]
     pub const fn split_at_checked(&self, mid: usize) -> Option<(&str, &str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -965,7 +965,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
+    #[redox_const_stable(feature = "const_str_split_at", since = "1.86.0")]
     pub const fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -1062,7 +1062,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_diagnostic_item = "str_chars"]
+    #[redox_diagnostic_item = "str_chars"]
     pub fn chars(&self) -> Chars<'_> {
         Chars { iter: self.as_bytes().iter() }
     }
@@ -1193,7 +1193,7 @@ impl str {
     #[must_use = "this returns the split string as an iterator, \
                   without modifying the original"]
     #[stable(feature = "split_whitespace", since = "1.1.0")]
-    #[rustc_diagnostic_item = "str_split_whitespace"]
+    #[redox_diagnostic_item = "str_split_whitespace"]
     #[inline]
     pub fn split_whitespace(&self) -> SplitWhitespace<'_> {
         SplitWhitespace { inner: self.split(IsWhitespace).filter(IsNotEmpty) }
@@ -1401,7 +1401,7 @@ impl str {
     /// assert!(bananas.starts_with(&['a', 'b', 'c', 'd']));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "str_starts_with"]
+    #[redox_diagnostic_item = "str_starts_with"]
     pub fn starts_with<P: Pattern>(&self, pat: P) -> bool {
         pat.is_prefix_of(self)
     }
@@ -1426,7 +1426,7 @@ impl str {
     /// assert!(!bananas.ends_with("nana"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "str_ends_with"]
+    #[redox_diagnostic_item = "str_ends_with"]
     pub fn ends_with<P: Pattern>(&self, pat: P) -> bool
     where
         for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
@@ -2167,7 +2167,7 @@ impl str {
     #[must_use = "this returns the trimmed string as a slice, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "str_trim"]
+    #[redox_diagnostic_item = "str_trim"]
     pub fn trim(&self) -> &str {
         self.trim_matches(char::is_whitespace)
     }
@@ -2206,7 +2206,7 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
-    #[rustc_diagnostic_item = "str_trim_start"]
+    #[redox_diagnostic_item = "str_trim_start"]
     pub fn trim_start(&self) -> &str {
         self.trim_start_matches(char::is_whitespace)
     }
@@ -2245,7 +2245,7 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
-    #[rustc_diagnostic_item = "str_trim_end"]
+    #[redox_diagnostic_item = "str_trim_end"]
     pub fn trim_end(&self) -> &str {
         self.trim_end_matches(char::is_whitespace)
     }
@@ -2780,7 +2780,7 @@ impl str {
     /// assert!(!non_ascii.is_ascii());
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_slice_is_ascii", since = "1.74.0")]
+    #[redox_const_stable(feature = "const_slice_is_ascii", since = "1.74.0")]
     #[must_use]
     #[inline]
     pub const fn is_ascii(&self) -> bool {
@@ -2834,7 +2834,7 @@ impl str {
     /// assert!(!"Ferrös".eq_ignore_ascii_case("FERRÖS"));
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_eq_ignore_ascii_case", since = "1.89.0")]
+    #[redox_const_stable(feature = "const_eq_ignore_ascii_case", since = "1.89.0")]
     #[must_use]
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &str) -> bool {
@@ -2861,7 +2861,7 @@ impl str {
     /// assert_eq!("GRüßE, JüRGEN ❤", s);
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_make_ascii", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_make_ascii", since = "1.84.0")]
     #[inline]
     pub const fn make_ascii_uppercase(&mut self) {
         // SAFETY: changing ASCII letters only does not invalidate UTF-8.
@@ -2889,7 +2889,7 @@ impl str {
     /// assert_eq!("grÜße, jÜrgen ❤", s);
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_make_ascii", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_make_ascii", since = "1.84.0")]
     #[inline]
     pub const fn make_ascii_lowercase(&mut self) {
         // SAFETY: changing ASCII letters only does not invalidate UTF-8.
@@ -2914,7 +2914,7 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
-    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
+    #[redox_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
     #[inline]
     pub const fn trim_ascii_start(&self) -> &str {
         // SAFETY: Removing ASCII characters from a `&str` does not invalidate
@@ -2939,7 +2939,7 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
-    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
+    #[redox_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
     #[inline]
     pub const fn trim_ascii_end(&self) -> &str {
         // SAFETY: Removing ASCII characters from a `&str` does not invalidate
@@ -2965,7 +2965,7 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
-    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
+    #[redox_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
     #[inline]
     pub const fn trim_ascii(&self) -> &str {
         // SAFETY: Removing ASCII characters from a `&str` does not invalidate
@@ -3144,7 +3144,7 @@ impl str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const AsRef<[u8]> for str {
     #[inline]
     fn as_ref(&self) -> &[u8] {
@@ -3153,7 +3153,7 @@ impl const AsRef<[u8]> for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl const Default for &str {
     /// Creates an empty str
     #[inline]
@@ -3163,7 +3163,7 @@ impl const Default for &str {
 }
 
 #[stable(feature = "default_mut_str", since = "1.28.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl const Default for &mut str {
     /// Creates an empty mutable str
     #[inline]

@@ -258,9 +258,9 @@ macro_rules! acquire {
 ///
 /// [rc_examples]: crate::rc#examples
 #[doc(search_unbox)]
-#[rustc_diagnostic_item = "Arc"]
+#[redox_diagnostic_item = "Arc"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_insignificant_dtor]
+#[redox_insignificant_dtor]
 pub struct Arc<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
@@ -339,7 +339,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
 ///
 /// [`upgrade`]: Weak::upgrade
 #[stable(feature = "arc_weak", since = "1.4.0")]
-#[rustc_diagnostic_item = "ArcWeak"]
+#[redox_diagnostic_item = "ArcWeak"]
 pub struct Weak<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
@@ -1663,7 +1663,7 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "rc_raw", since = "1.17.0")]
-    #[rustc_never_returns_null_ptr]
+    #[redox_never_returns_null_ptr]
     pub fn into_raw(this: Self) -> *const T {
         let this = ManuallyDrop::new(this);
         Self::as_ptr(&*this)
@@ -1806,7 +1806,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
-    #[rustc_never_returns_null_ptr]
+    #[redox_never_returns_null_ptr]
     pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(this.ptr);
 
@@ -2946,7 +2946,7 @@ impl<T> Weak<T> {
     /// ```
     #[inline]
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
-    #[rustc_const_stable(feature = "const_weak_new", since = "1.73.0")]
+    #[redox_const_stable(feature = "const_weak_new", since = "1.73.0")]
     #[must_use]
     pub const fn new() -> Weak<T> {
         Weak { ptr: NonNull::without_provenance(NonZeroUsize::MAX), alloc: Global }

@@ -88,13 +88,13 @@ As noted in the [`wasm32-unknown-unknown` document](./wasm32-unknown-unknown.md)
 Is it therefore reasonable to wonder what the difference is between building with this:
 
 ```sh
-$ rustc --target wasm32-unknown-unknown -Ctarget-cpu=mvp -Ctarget-feature=+mutable-globals
+$ redox --target wasm32-unknown-unknown -Ctarget-cpu=mvp -Ctarget-feature=+mutable-globals
 ```
 
 and building with this:
 
 ```sh
-$ rustc --target wasm32v1-none
+$ redox --target wasm32v1-none
 ```
 
 The difference is in how the `core` and `alloc` crates are compiled for distribution with the toolchain, and whether it works on _stable_ Rust toolchains or requires _nightly_ ones. Again referring back to the [`wasm32-unknown-unknown` document](./wasm32-unknown-unknown.md), note that to disable all post-MVP proposals on that target one _actually_ has to compile with this:

@@ -4,7 +4,7 @@
 //@ ignore-fuchsia must translate zircon signal to SIGSEGV/SIGBUS, FIXME (#58590)
 //@ ignore-backends: gcc
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 use std::env;
 use std::ffi::c_char;

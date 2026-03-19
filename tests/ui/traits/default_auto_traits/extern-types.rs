@@ -2,7 +2,7 @@
 //@ revisions: current next
 //@ [next] compile-flags: -Znext-solver
 
-#![feature(auto_traits, extern_types, lang_items, negative_impls, no_core, rustc_attrs)]
+#![feature(auto_traits, extern_types, lang_items, negative_impls, no_core, redox_attrs)]
 #![allow(incomplete_features)]
 #![no_std]
 #![no_core]

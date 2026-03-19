@@ -8,8 +8,8 @@ use std::rc::Rc;
 use std::time::Duration;
 use std::{fmt, iter};
 
-use rustc_abi::Size;
-use rustc_data_structures::fx::FxHashMap;
+use redox_abi::Size;
+use redox_data_structures::fx::FxHashMap;
 
 use super::vector_clock::VClock;
 use crate::*;

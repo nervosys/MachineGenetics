@@ -21,8 +21,8 @@ pub fn default_paths_to_vendor(builder: &Builder<'_>) -> Vec<(PathBuf, Vec<&'sta
         ("src/tools/cargo/Cargo.toml", vec!["src/tools/cargo"]),
         ("src/tools/clippy/clippy_test_deps/Cargo.toml", vec![]),
         ("src/tools/rust-analyzer/Cargo.toml", vec![]),
-        ("compiler/rustc_codegen_cranelift/Cargo.toml", vec![]),
-        ("compiler/rustc_codegen_gcc/Cargo.toml", vec![]),
+        ("compiler/redox_codegen_cranelift/Cargo.toml", vec![]),
+        ("compiler/redox_codegen_gcc/Cargo.toml", vec![]),
         ("library/Cargo.toml", vec![]),
         ("src/bootstrap/Cargo.toml", vec![]),
         ("src/tools/rustbook/Cargo.toml", SUBMODULES_FOR_RUSTBOOK.into()),
@@ -107,7 +107,7 @@ impl Step for Vendor {
         // Will read the libstd Cargo.toml
         // which uses the unstable `public-dependency` feature.
         cmd.env("RUSTC_BOOTSTRAP", "1");
-        cmd.env("RUSTC", &builder.initial_rustc);
+        cmd.env("RUSTC", &builder.initial_redox);
 
         cmd.current_dir(self.root_dir).arg(&self.output_dir);
 

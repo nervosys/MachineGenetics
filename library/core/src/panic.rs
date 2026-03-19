@@ -19,8 +19,8 @@ use crate::any::Any;
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
 #[allow_internal_unstable(panic_internals, const_format_args)]
-#[rustc_diagnostic_item = "core_panic_2015_macro"]
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_diagnostic_item = "core_panic_2015_macro"]
+#[redox_macro_transparency = "semiopaque"]
 pub macro panic_2015 {
     () => (
         $crate::panicking::panic("explicit panic")
@@ -46,8 +46,8 @@ pub macro panic_2015 {
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
 #[allow_internal_unstable(panic_internals, const_format_args)]
-#[rustc_diagnostic_item = "core_panic_2021_macro"]
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_diagnostic_item = "core_panic_2021_macro"]
+#[redox_macro_transparency = "semiopaque"]
 pub macro panic_2021 {
     () => (
         $crate::panicking::panic("explicit panic")
@@ -66,8 +66,8 @@ pub macro panic_2021 {
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use unreachable!() instead")]
 #[allow_internal_unstable(panic_internals)]
-#[rustc_diagnostic_item = "unreachable_2015_macro"]
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_diagnostic_item = "unreachable_2015_macro"]
+#[redox_macro_transparency = "semiopaque"]
 pub macro unreachable_2015 {
     () => (
         $crate::panicking::panic("internal error: entered unreachable code")
@@ -85,7 +85,7 @@ pub macro unreachable_2015 {
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use unreachable!() instead")]
 #[allow_internal_unstable(panic_internals)]
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 pub macro unreachable_2021 {
     () => (
         $crate::panicking::panic("internal error: entered unreachable code")
@@ -115,7 +115,7 @@ pub macro unreachable_2021 {
 /// to prevent unwinds. However, note that `extern "C" fn` will automatically
 /// convert unwinds to aborts, so using this function isn't necessary for FFI.
 #[unstable(feature = "abort_unwind", issue = "130338")]
-#[rustc_nounwind]
+#[redox_nounwind]
 pub fn abort_unwind<F: FnOnce() -> R, R>(f: F) -> R {
     f()
 }
@@ -158,9 +158,9 @@ pub unsafe trait PanicPayload: crate::fmt::Display {
 pub macro const_panic {
     ($const_msg:literal, $runtime_msg:literal, $($arg:ident : $ty:ty = $val:expr),* $(,)?) => {{
         // Wrap call to `const_eval_select` in a function so that we can
-        // add the `rustc_allow_const_fn_unstable`. This is okay to do
+        // add the `redox_allow_const_fn_unstable`. This is okay to do
         // because both variants will panic, just with different messages.
-        #[rustc_allow_const_fn_unstable(const_eval_select)]
+        #[redox_allow_const_fn_unstable(const_eval_select)]
         #[inline(always)] // inline the wrapper
         #[track_caller]
         const fn do_panic($($arg: $ty),*) -> ! {

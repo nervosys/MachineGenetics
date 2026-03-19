@@ -4,8 +4,8 @@ use std::collections::hash_map;
 
 use hir_def::{GenericParamId, TraitId, hir::ExprId};
 use intern::{Symbol, sym};
-use rustc_ast_ir::Mutability;
-use rustc_type_ir::inherent::{IntoKind, Ty as _};
+use redox_ast_ir::Mutability;
+use redox_type_ir::inherent::{IntoKind, Ty as _};
 use syntax::ast::{ArithOp, BinaryOp, UnaryOp};
 use tracing::debug;
 

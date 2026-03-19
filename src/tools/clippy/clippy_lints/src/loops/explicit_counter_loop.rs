@@ -5,12 +5,12 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::{EMPTY, Sugg};
 use clippy_utils::{get_enclosing_block, is_integer_const, is_integer_literal_untyped};
-use rustc_ast::{Label, RangeLimits};
-use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_block, walk_expr};
-use rustc_hir::{Expr, Pat};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty, UintTy};
+use redox_ast::{Label, RangeLimits};
+use redox_errors::Applicability;
+use redox_hir::intravisit::{walk_block, walk_expr};
+use redox_hir::{Expr, Pat};
+use redox_lint::LateContext;
+use redox_middle::ty::{self, Ty, UintTy};
 
 // To trigger the EXPLICIT_COUNTER_LOOP lint, a variable must be incremented exactly once in the
 // loop body.

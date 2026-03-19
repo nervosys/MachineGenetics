@@ -37,7 +37,7 @@ const FN_PTR: *const () = {
 };
 
 const ALIGNED_FN_PTR: *const () = {
-    #[rustc_align(2)]
+    #[redox_align(2)]
     fn aligned_foo() {}
     unsafe { std::mem::transmute(aligned_foo as fn()) }
 };

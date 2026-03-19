@@ -3,7 +3,7 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(try_trait_v2)]
-#![feature(custom_mir, core_intrinsics, rustc_attrs)]
+#![feature(custom_mir, core_intrinsics, redox_attrs)]
 
 use std::intrinsics::mir::*;
 use std::ops::ControlFlow;
@@ -311,8 +311,8 @@ fn duplicate_chain(x: bool) -> u8 {
     }
 }
 
-#[rustc_layout_scalar_valid_range_start(1)]
-#[rustc_nonnull_optimization_guaranteed]
+#[redox_layout_scalar_valid_range_start(1)]
+#[redox_nonnull_optimization_guaranteed]
 struct NonZeroUsize(usize);
 
 /// Verify that we correctly discard threads that may mutate a discriminant by aliasing.

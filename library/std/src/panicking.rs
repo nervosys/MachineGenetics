@@ -28,7 +28,7 @@ use crate::sys::stdio::panic_output;
 use crate::{fmt, intrinsics, process, thread};
 
 // This forces codegen of the function called by panic!() inside the std crate, rather than in
-// downstream crates. Primarily this is useful for rustc's codegen tests, which rely on noticing
+// downstream crates. Primarily this is useful for redox's codegen tests, which rely on noticing
 // complete removal of panic from generated IR. Since begin_panic is inline(never), it's only
 // codegen'd once per crate-graph so this pushes that to std rather than our codegen test crates.
 //
@@ -55,14 +55,14 @@ pub static EMPTY_PANIC: fn(&'static str) -> ! =
 // hook up these functions, but it is not this day!
 #[allow(improper_ctypes)]
 unsafe extern "C" {
-    #[rustc_std_internal_symbol]
+    #[redox_std_internal_symbol]
     fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
 }
 
 unsafe extern "Rust" {
     /// `PanicPayload` lazily performs allocation only when needed (this avoids
     /// allocations when using the "abort" panic runtime).
-    #[rustc_std_internal_symbol]
+    #[redox_std_internal_symbol]
     fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32;
 }
 
@@ -70,7 +70,7 @@ unsafe extern "Rust" {
 /// panic but doesn't rethrow it. We don't support this case since it messes
 /// with our panic count.
 #[cfg(not(test))]
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 extern "C" fn __rust_drop_panic() -> ! {
     rtabort!("Rust panics must be rethrown");
 }
@@ -78,7 +78,7 @@ extern "C" fn __rust_drop_panic() -> ! {
 /// This function is called by the panic runtime if it catches an exception
 /// object which does not correspond to a Rust panic.
 #[cfg(not(test))]
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 extern "C" fn __rust_foreign_exception() -> ! {
     rtabort!("Rust cannot catch foreign exceptions");
 }
@@ -589,16 +589,16 @@ pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any +
     // SAFETY:
     // data must be non-NUL, correctly aligned, and a pointer to a `Data<F, R>`
     // Since this uses `cleanup` it also hinges on a correct implementation of
-    // `__rustc_panic_cleanup`.
+    // `__redox_panic_cleanup`.
     //
     // This function cannot be marked as `unsafe` because `intrinsics::catch_unwind`
     // expects normal function pointers.
     #[inline]
-    #[rustc_nounwind] // `intrinsic::catch_unwind` requires catch fn to be nounwind
+    #[redox_nounwind] // `intrinsic::catch_unwind` requires catch fn to be nounwind
     fn do_catch<F: FnOnce() -> R, R>(data: *mut u8, payload: *mut u8) {
         // SAFETY: this is the responsibility of the caller, see above.
         //
-        // When `__rustc_panic_cleaner` is correctly implemented we can rely
+        // When `__redox_panic_cleaner` is correctly implemented we can rely
         // on `obj` being the correct thing to pass to `data.p` (after wrapping
         // in `ManuallyDrop`).
         unsafe {
@@ -716,7 +716,7 @@ pub fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
-#[rustc_do_not_const_check] // hooked by const-eval
+#[redox_do_not_const_check] // hooked by const-eval
 pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
     if cfg!(panic = "immediate-abort") {
         intrinsics::abort()
@@ -877,17 +877,17 @@ pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     rust_panic(&mut RewrapBox(payload))
 }
 
-/// A function with a fixed suffix (through `rustc_std_internal_symbol`)
+/// A function with a fixed suffix (through `redox_std_internal_symbol`)
 /// on which to slap yer breakpoints.
 #[inline(never)]
-#[cfg_attr(not(test), rustc_std_internal_symbol)]
+#[cfg_attr(not(test), redox_std_internal_symbol)]
 #[cfg(not(panic = "immediate-abort"))]
 fn rust_panic(msg: &mut dyn PanicPayload) -> ! {
     let code = unsafe { __rust_start_panic(msg) };
     rtabort!("failed to initiate panic, error {code}")
 }
 
-#[cfg_attr(not(test), rustc_std_internal_symbol)]
+#[cfg_attr(not(test), redox_std_internal_symbol)]
 #[cfg(panic = "immediate-abort")]
 fn rust_panic(_: &mut dyn PanicPayload) -> ! {
     crate::intrinsics::abort();

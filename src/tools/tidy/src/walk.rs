@@ -10,8 +10,8 @@ pub fn filter_dirs(path: &Path) -> bool {
     // bootstrap/etc
     let skip = [
         "tidy-test-file",
-        "compiler/rustc_codegen_cranelift",
-        "compiler/rustc_codegen_gcc",
+        "compiler/redox_codegen_cranelift",
+        "compiler/redox_codegen_gcc",
         "src/llvm-project",
         "library/backtrace",
         "library/compiler-builtins",
@@ -30,7 +30,7 @@ pub fn filter_dirs(path: &Path) -> bool {
         "src/doc/embedded-book",
         "src/doc/nomicon",
         "src/doc/rust-by-example",
-        "src/doc/rustc-dev-guide",
+        "src/doc/redox-dev-guide",
         "src/doc/reference",
         "src/gcc",
         "src/bootstrap/target",

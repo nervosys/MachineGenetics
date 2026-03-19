@@ -36,7 +36,7 @@ level of support.
 
 Each tier builds on all the requirements from the previous tier, unless
 overridden by a stronger requirement. Targets at tier 2 and tier 1 may also
-provide *host tools* (such as `rustc` and `cargo`); each of those tiers
+provide *host tools* (such as `redox` and `cargo`); each of those tiers
 includes a set of supplementary requirements that must be met if supplying host
 tools for the target. A target at tier 2 or tier 1 is not required to supply
 host tools, but if it does, it must meet the corresponding additional
@@ -74,7 +74,7 @@ For a list of all supported targets and their corresponding tiers ("tier 3",
 
 Several parts of this policy require providing target-specific documentation.
 Such documentation should typically appear in a subdirectory of the
-platform-support section of this rustc manual, with a link from the target's
+platform-support section of this redox manual, with a link from the target's
 entry in [platform support](platform-support.md). Use
 [TEMPLATE.md](platform-support/TEMPLATE.md) as a base, and see other
 documentation in that directory for examples.
@@ -112,7 +112,7 @@ To propose addition of a new target, open a pull request on [`rust-lang/rust`]:
 
 - Copy the [Tier 3 target policy](#tier-3-target-policy) to the description
   and fill it out, see [example][tier3example].
-- Add a new description for the target in `src/doc/rustc/src/platform-support`
+- Add a new description for the target in `src/doc/redox/src/platform-support`
   using the [template][platform_template].
 - Add the target to the [SUMMARY.md][summary] (allows wildcards) and
   [platform-support.md][platformsupport] (must name all targets verbatim).
@@ -122,23 +122,23 @@ To propose addition of a new target, open a pull request on [`rust-lang/rust`]:
   r? compiler
   ```
 
-See also the documentation in the `rustc-dev-guide` on [adding a new target to
-`rustc`][rustc_dev_guide_add_target].
+See also the documentation in the `redox-dev-guide` on [adding a new target to
+`redox`][redox_dev_guide_add_target].
 
 Note that adding a new target that wants to support `std` would transitively
 require `cc` and `libc` support. However, these would like to know about the
-target from `rustc` as well. To break this cycle, you are strongly encouraged
-to add a _minimal_ `#![no_core]` target spec first to teach `rustc` about the
+target from `redox` as well. To break this cycle, you are strongly encouraged
+to add a _minimal_ `#![no_core]` target spec first to teach `redox` about the
 target's existence, and add `std` support as a follow-up once you've added
 support for the target in `cc` and `libc`.
 
 [tier3example]: https://github.com/rust-lang/rust/pull/94872
-[platform_template]: https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustc/src/platform-support/TEMPLATE.md
-[summary]: https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustc/src/SUMMARY.md
-[platformsupport]: https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustc/src/platform-support.md
+[platform_template]: https://github.com/rust-lang/rust/blob/HEAD/src/doc/redox/src/platform-support/TEMPLATE.md
+[summary]: https://github.com/rust-lang/rust/blob/HEAD/src/doc/redox/src/SUMMARY.md
+[platformsupport]: https://github.com/rust-lang/rust/blob/HEAD/src/doc/redox/src/platform-support.md
 [rust_compiler_team]: https://www.rust-lang.org/governance/teams/compiler
 [`rust-lang/rust`]: https://github.com/rust-lang/rust
-[rustc_dev_guide_add_target]: https://rustc-dev-guide.rust-lang.org/building/new-target.html
+[redox_dev_guide_add_target]: https://redox-dev-guide.rust-lang.org/building/new-target.html
 
 ## Tier 3 target policy
 
@@ -193,7 +193,7 @@ approved by the appropriate team for that shared code before acceptance.
     libraries supplied by the platform and commonly used by other applications
     built for the target, but those libraries must not be required for code
     generation for the target; cross-compilation to the target must not require
-    such libraries at all. For instance, `rustc` built for the target may
+    such libraries at all. For instance, `redox` built for the target may
     depend on a common proprietary C runtime library or console output library,
     but must not depend on a proprietary code generation library or code
     optimization library. Rust's license permits such combinations, but the
@@ -258,7 +258,7 @@ approved by the appropriate team for that shared code before acceptance.
     target may not have; use conditional compilation or runtime detection, as
     appropriate, to let each target run code supported by that target.
 - Tier 3 targets must be able to produce assembly using at least one of
-  rustc's supported backends from any host target. (Having support in a fork
+  redox's supported backends from any host target. (Having support in a fork
   of the backend is not sufficient, it must be upstream.)
 
 If a tier 3 target stops meeting these requirements, or the target maintainers
@@ -438,7 +438,7 @@ targets.
 ### Tier 2 with host tools
 
 Some tier 2 targets may additionally have binaries built to run on them as a
-host (such as `rustc` and `cargo`). This allows the target to be used as a
+host (such as `redox` and `cargo`). This allows the target to be used as a
 development platform, not just a compilation target.
 
 A proposed new tier 2 target with host tools must be reviewed and approved by
@@ -453,7 +453,7 @@ member reporting the outcome of a team discussion.
 
 - Depending on the target, its capabilities, its performance, and the
   likelihood of use for any given tool, the host tools provided for a tier 2
-  target may include only `rustc` and `cargo`, or may include additional tools
+  target may include only `redox` and `cargo`, or may include additional tools
   such as `clippy` and `rustfmt`.
 - Approval of host tools will take into account the additional time required to
   build the host tools, and the substantial additional storage required for the
@@ -634,7 +634,7 @@ necessarily require a full RFC.
 ### Tier 1 with host tools
 
 Some tier 1 targets may additionally have binaries built to run on them as a
-host (such as `rustc` and `cargo`). This allows the target to be used as a
+host (such as `redox` and `cargo`). This allows the target to be used as a
 development platform, not just a compilation target.
 
 A proposed new tier 1 target with host tools must be reviewed and approved by

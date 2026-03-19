@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 // This test checks that all lints defined in `clippy_config::conf` in `#[lints]`
 // attributes exist as Clippy lints.

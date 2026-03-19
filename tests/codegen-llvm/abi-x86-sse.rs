@@ -12,7 +12,7 @@
 //@[x86-32-nosse] compile-flags: --target i586-unknown-linux-gnu
 //@[x86-32-nosse] needs-llvm-components: x86
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd)]
+#![feature(no_core, lang_items, redox_attrs, repr_simd)]
 #![no_core]
 #![crate_type = "lib"]
 

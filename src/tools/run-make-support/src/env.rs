@@ -18,10 +18,10 @@ pub fn env_var_os(name: &str) -> OsString {
     }
 }
 
-/// Check if staged `rustc`-under-test was built with debug assertions.
+/// Check if staged `redox`-under-test was built with debug assertions.
 #[track_caller]
 #[must_use]
-pub fn rustc_debug_assertions_enabled() -> bool {
+pub fn redox_debug_assertions_enabled() -> bool {
     // Note: we assume this env var is set when the test recipe is being executed.
     std::env::var_os("__RUSTC_DEBUG_ASSERTIONS_ENABLED").is_some()
 }

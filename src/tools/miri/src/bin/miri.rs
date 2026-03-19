@@ -1,4 +1,4 @@
-#![feature(rustc_private, stmt_expr_attributes)]
+#![feature(redox_private, stmt_expr_attributes)]
 #![allow(
     clippy::manual_range_contains,
     clippy::useless_format,
@@ -6,24 +6,24 @@
     clippy::needless_lifetimes
 )]
 
-// The rustc crates we need
-extern crate rustc_abi;
-extern crate rustc_codegen_ssa;
-extern crate rustc_data_structures;
-extern crate rustc_driver;
-extern crate rustc_hir;
-extern crate rustc_hir_analysis;
-extern crate rustc_interface;
-extern crate rustc_log;
-extern crate rustc_middle;
-extern crate rustc_session;
-extern crate rustc_span;
-extern crate rustc_target;
+// The redox crates we need
+extern crate redox_abi;
+extern crate redox_codegen_ssa;
+extern crate redox_data_structures;
+extern crate redox_driver;
+extern crate redox_hir;
+extern crate redox_hir_analysis;
+extern crate redox_interface;
+extern crate redox_log;
+extern crate redox_middle;
+extern crate redox_session;
+extern crate redox_span;
+extern crate redox_target;
 
-/// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
+/// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/redox/src/main.rs
 /// and https://github.com/rust-lang/rust/pull/146627 for why we need this.
 ///
-/// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `rustc` crates
+/// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `redox` crates
 /// above, instead of via Cargo as you'd normally do. This is currently needed for LTO due to
 /// https://github.com/rust-lang/cc-rs/issues/1613.
 #[cfg(feature = "jemalloc")]
@@ -49,27 +49,27 @@ use miri::{
     BacktraceStyle, BorrowTrackerMethod, GenmcConfig, GenmcCtx, MiriConfig, MiriEntryFnType,
     ProvenanceMode, TreeBorrowsParams, ValidationMode, run_genmc_mode,
 };
-use rustc_abi::ExternAbi;
-use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::sync::{self, DynSync};
-use rustc_driver::Compilation;
-use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::{self as hir, Node};
-use rustc_hir_analysis::check::check_function_signature;
-use rustc_interface::interface::Config;
-use rustc_interface::util::DummyCodegenBackend;
-use rustc_log::tracing::debug;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::middle::exported_symbols::{
+use redox_abi::ExternAbi;
+use redox_codegen_ssa::traits::CodegenBackend;
+use redox_data_structures::sync::{self, DynSync};
+use redox_driver::Compilation;
+use redox_hir::def_id::LOCAL_CRATE;
+use redox_hir::{self as hir, Node};
+use redox_hir_analysis::check::check_function_signature;
+use redox_interface::interface::Config;
+use redox_interface::util::DummyCodegenBackend;
+use redox_log::tracing::debug;
+use redox_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use redox_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
-use rustc_middle::query::LocalCrate;
-use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::EarlyDiagCtxt;
-use rustc_session::config::{CrateType, ErrorOutputType, OptLevel, Options};
-use rustc_span::def_id::DefId;
-use rustc_target::spec::Target;
+use redox_middle::query::LocalCrate;
+use redox_middle::traits::{ObligationCause, ObligationCauseCode};
+use redox_middle::ty::{self, Ty, TyCtxt};
+use redox_session::EarlyDiagCtxt;
+use redox_session::config::{CrateType, ErrorOutputType, OptLevel, Options};
+use redox_span::def_id::DefId;
+use redox_target::spec::Target;
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 
@@ -144,7 +144,7 @@ fn run_many_seeds(
     eval_entry_once: impl Fn(u64) -> Result<(), NonZeroI32> + DynSync,
 ) -> Result<(), NonZeroI32> {
     let exit_code =
-        sync::IntoDynSyncSend(AtomicU32::new(rustc_driver::EXIT_SUCCESS.cast_unsigned()));
+        sync::IntoDynSyncSend(AtomicU32::new(redox_driver::EXIT_SUCCESS.cast_unsigned()));
     let num_failed = sync::IntoDynSyncSend(AtomicU32::new(0));
     sync::par_for_each_in(many_seeds.seeds.clone(), |&seed| {
         if let Err(return_code) = eval_entry_once(seed.into()) {
@@ -180,7 +180,7 @@ fn make_miri_codegen_backend(opts: &Options, target: &Target) -> Box<dyn Codegen
     // Use the target_config method of the default codegen backend (eg LLVM) to ensure the
     // calculated target features match said backend by respecting eg -Ctarget-cpu.
     let target_config_backend =
-        rustc_interface::util::get_codegen_backend(&early_dcx, &opts.sysroot, None, target);
+        redox_interface::util::get_codegen_backend(&early_dcx, &opts.sysroot, None, target);
     let target_config_backend_init = Once::new();
 
     Box::new(DummyCodegenBackend {
@@ -191,8 +191,8 @@ fn make_miri_codegen_backend(opts: &Options, target: &Target) -> Box<dyn Codegen
     })
 }
 
-impl rustc_driver::Callbacks for MiriCompilerCalls {
-    fn config(&mut self, config: &mut rustc_interface::interface::Config) {
+impl redox_driver::Callbacks for MiriCompilerCalls {
+    fn config(&mut self, config: &mut redox_interface::interface::Config) {
         // We never reach codegen anyway.
         config.make_codegen_backend = Some(Box::new(make_miri_codegen_backend));
 
@@ -202,7 +202,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 
     fn after_analysis<'tcx>(
         &mut self,
-        _: &rustc_interface::interface::Compiler,
+        _: &redox_interface::interface::Compiler,
         tcx: TyCtxt<'tcx>,
     ) -> Compilation {
         // Compilation is done, interpretation is starting. Deal with diagnostics from the
@@ -268,7 +268,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             tcx.dcx().abort_if_errors();
             exit(return_code.get());
         } else {
-            exit(rustc_driver::EXIT_SUCCESS);
+            exit(redox_driver::EXIT_SUCCESS);
         }
 
         // Unreachable.
@@ -278,8 +278,8 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 /// This compiler produces rlibs that are meant for later consumption by Miri.
 struct MiriDepCompilerCalls;
 
-impl rustc_driver::Callbacks for MiriDepCompilerCalls {
-    #[allow(rustc::potential_query_instability)] // rustc_codegen_ssa (where this code is copied from) also allows this lint
+impl redox_driver::Callbacks for MiriDepCompilerCalls {
+    #[allow(redox::potential_query_instability)] // redox_codegen_ssa (where this code is copied from) also allows this lint
     fn config(&mut self, config: &mut Config) {
         // We don't need actual codegen, we just emit an rlib that Miri can later consume.
         config.make_codegen_backend = Some(Box::new(make_miri_codegen_backend));
@@ -288,7 +288,7 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
         // queried by cargo about the supported crate types so that cargo still receives the
         // warnings it expects.
         if config.opts.prints.is_empty() {
-            #[allow(rustc::bad_opt_access)] // tcx does not exist yet
+            #[allow(redox::bad_opt_access)] // tcx does not exist yet
             {
                 let any_crate_types = !config.opts.crate_types.is_empty();
                 config
@@ -307,17 +307,17 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
         // which will be used later in non-`MIRI_BE_RUSTC` mode.
         config.override_queries = Some(|_, local_providers| {
             // We need to add #[used] symbols to exported_symbols for `lookup_link_section`.
-            // FIXME handle this somehow in rustc itself to avoid this hack.
+            // FIXME handle this somehow in redox itself to avoid this hack.
             local_providers.queries.exported_non_generic_symbols = |tcx, LocalCrate| {
                 let reachable_set = tcx
                     .with_stable_hashing_context(|hcx| tcx.reachable_set(()).to_sorted(&hcx, true));
                 tcx.arena.alloc_from_iter(
                     // This is based on:
-                    // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L62-L63
-                    // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L174
+                    // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/redox_codegen_ssa/src/back/symbol_export.rs#L62-L63
+                    // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/redox_codegen_ssa/src/back/symbol_export.rs#L174
                     reachable_set.into_iter().filter_map(|&local_def_id| {
-                        // Do the same filtering that rustc does:
-                        // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L84-L102
+                        // Do the same filtering that redox does:
+                        // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/redox_codegen_ssa/src/back/symbol_export.rs#L84-L102
                         // Otherwise it may cause unexpected behaviours and ICEs
                         // (https://github.com/rust-lang/rust/issues/86261).
                         let is_reachable_non_generic = matches!(
@@ -348,7 +348,7 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
                                     level: SymbolExportLevel::C,
                                     kind: SymbolExportKind::Text,
                                     used: false,
-                                    rustc_std_internal_symbol: false,
+                                    redox_std_internal_symbol: false,
                                 },
                             ))
                         } else {
@@ -365,11 +365,11 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
 
     fn after_analysis<'tcx>(
         &mut self,
-        _: &rustc_interface::interface::Compiler,
+        _: &redox_interface::interface::Compiler,
         tcx: TyCtxt<'tcx>,
     ) -> Compilation {
         // While the dummy codegen backend doesn't do any codegen, we are still emulating
-        // regular rustc builds, which would perform post-mono const-eval during collection.
+        // regular redox builds, which would perform post-mono const-eval during collection.
         // So let's also do that here. In particular this is needed to make `compile_fail`
         // doc tests trigger post-mono errors.
         let _ = tcx.collect_and_partition_mono_items(());
@@ -402,20 +402,20 @@ use fatal_error;
 /// Execute a compiler with the given CLI arguments and callbacks.
 fn run_compiler_and_exit(
     args: &[String],
-    callbacks: &mut (dyn rustc_driver::Callbacks + Send),
+    callbacks: &mut (dyn redox_driver::Callbacks + Send),
 ) -> ! {
-    // Install the ctrlc handler that sets `rustc_const_eval::CTRL_C_RECEIVED`, even if
+    // Install the ctrlc handler that sets `redox_const_eval::CTRL_C_RECEIVED`, even if
     // MIRI_BE_RUSTC is set. We do this late so that when `native_lib::init_sv` is called,
     // there are no other threads.
-    rustc_driver::install_ctrlc_handler();
+    redox_driver::install_ctrlc_handler();
 
     // Invoke compiler, catch any unwinding panics and handle return code.
     let exit_code =
-        rustc_driver::catch_with_exit_code(move || rustc_driver::run_compiler(args, callbacks));
+        redox_driver::catch_with_exit_code(move || redox_driver::run_compiler(args, callbacks));
     exit(if exit_code == ExitCode::SUCCESS {
-        rustc_driver::EXIT_SUCCESS
+        redox_driver::EXIT_SUCCESS
     } else {
-        rustc_driver::EXIT_FAILURE
+        redox_driver::EXIT_FAILURE
     })
 }
 
@@ -449,61 +449,61 @@ fn parse_range(val: &str) -> Result<Range<u32>, &'static str> {
 fn main() -> ExitCode {
     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
-    // Snapshot a copy of the environment before `rustc` starts messing with it.
+    // Snapshot a copy of the environment before `redox` starts messing with it.
     // (`install_ice_hook` might change `RUST_BACKTRACE`.)
     let env_snapshot = env::vars_os().collect::<Vec<_>>();
 
-    let args = rustc_driver::catch_fatal_errors(|| rustc_driver::args::raw_args(&early_dcx))
-        .unwrap_or_else(|_| std::process::exit(rustc_driver::EXIT_FAILURE));
+    let args = redox_driver::catch_fatal_errors(|| redox_driver::args::raw_args(&early_dcx))
+        .unwrap_or_else(|_| std::process::exit(redox_driver::EXIT_FAILURE));
 
-    // If the environment asks us to actually be rustc, then do that.
+    // If the environment asks us to actually be redox, then do that.
     if let Some(crate_kind) = env::var_os("MIRI_BE_RUSTC") {
         if crate_kind == "host" {
-            // For host crates like proc macros and build scripts, we are an entirely normal rustc.
+            // For host crates like proc macros and build scripts, we are an entirely normal redox.
             // These eventually produce actual binaries and never run in Miri.
-            return rustc_driver::main();
+            return redox_driver::main();
         } else if crate_kind != "target" {
             panic!("invalid `MIRI_BE_RUSTC` value: {crate_kind:?}")
         };
 
-        // Earliest rustc setup.
-        rustc_driver::install_ice_hook(rustc_driver::DEFAULT_BUG_REPORT_URL, |_| ());
-        rustc_driver::init_rustc_env_logger(&early_dcx);
+        // Earliest redox setup.
+        redox_driver::install_ice_hook(redox_driver::DEFAULT_BUG_REPORT_URL, |_| ());
+        redox_driver::init_redox_env_logger(&early_dcx);
 
         let mut args = args;
         // Splice in the default arguments after the program name.
-        // Some options have different defaults in Miri than in plain rustc; apply those by making
+        // Some options have different defaults in Miri than in plain redox; apply those by making
         // them the first arguments after the binary name (but later arguments can overwrite them).
         args.splice(1..1, miri::MIRI_DEFAULT_ARGS.iter().map(ToString::to_string));
 
-        // We cannot use `rustc_driver::main` as we want it to use `args` as the CLI arguments.
+        // We cannot use `redox_driver::main` as we want it to use `args` as the CLI arguments.
         run_compiler_and_exit(&args, &mut MiriDepCompilerCalls)
     }
 
     // Add an ICE bug report hook.
-    rustc_driver::install_ice_hook("https://github.com/rust-lang/miri/issues/new", |_| ());
+    redox_driver::install_ice_hook("https://github.com/rust-lang/miri/issues/new", |_| ());
 
     // Init loggers the Miri way.
     init_early_loggers(&early_dcx);
 
-    // Parse our arguments and split them across `rustc` and `miri`.
+    // Parse our arguments and split them across `redox` and `miri`.
     let mut many_seeds: Option<Range<u32>> = None;
     let mut many_seeds_keep_going = false;
     let mut miri_config = MiriConfig::default();
     miri_config.env = env_snapshot;
 
-    let mut rustc_args = vec![];
+    let mut redox_args = vec![];
     let mut after_dashdash = false;
 
     // Note that we require values to be given with `=`, not with a space.
-    // This matches how rustc parses `-Z`.
-    // However, unlike rustc we do not accept a space after `-Z`.
+    // This matches how redox parses `-Z`.
+    // However, unlike redox we do not accept a space after `-Z`.
     for arg in args {
-        if rustc_args.is_empty() {
+        if redox_args.is_empty() {
             // Very first arg: binary name.
-            rustc_args.push(arg);
+            redox_args.push(arg);
             // Also add the default arguments.
-            rustc_args.extend(miri::MIRI_DEFAULT_ARGS.iter().map(ToString::to_string));
+            redox_args.extend(miri::MIRI_DEFAULT_ARGS.iter().map(ToString::to_string));
         } else if after_dashdash {
             // Everything that comes after `--` is forwarded to the interpreted crate.
             miri_config.args.push(arg);
@@ -709,8 +709,8 @@ fn main() -> ExitCode {
         } else if let Some(param) = arg.strip_prefix("-Zmiri-user-relevant-crates=") {
             miri_config.user_relevant_crates.extend(param.split(',').map(|s| s.to_owned()));
         } else {
-            // Forward to rustc.
-            rustc_args.push(arg);
+            // Forward to redox.
+            redox_args.push(arg);
         }
     }
 
@@ -744,15 +744,15 @@ fn main() -> ExitCode {
     }
 
     // Ensure we have parallelism for many-seeds mode.
-    if many_seeds.is_some() && !rustc_args.iter().any(|arg| arg.starts_with("-Zthreads=")) {
+    if many_seeds.is_some() && !redox_args.iter().any(|arg| arg.starts_with("-Zthreads=")) {
         // Clamp to 20 threads; things get a less efficient beyond that due to lock contention.
         let threads = std::thread::available_parallelism().map_or(1, |n| n.get()).min(20);
-        rustc_args.push(format!("-Zthreads={threads}"));
+        redox_args.push(format!("-Zthreads={threads}"));
     }
     let many_seeds =
         many_seeds.map(|seeds| ManySeedsConfig { seeds, keep_going: many_seeds_keep_going });
 
-    debug!("rustc arguments: {:?}", rustc_args);
+    debug!("redox arguments: {:?}", redox_args);
     debug!("crate arguments: {:?}", miri_config.args);
     if !miri_config.native_lib.is_empty() && miri_config.native_lib_enable_tracing {
         // SAFETY: No other threads are running
@@ -764,5 +764,5 @@ fn main() -> ExitCode {
             );
         }
     }
-    run_compiler_and_exit(&rustc_args, &mut MiriCompilerCalls::new(miri_config, many_seeds))
+    run_compiler_and_exit(&redox_args, &mut MiriCompilerCalls::new(miri_config, many_seeds))
 }

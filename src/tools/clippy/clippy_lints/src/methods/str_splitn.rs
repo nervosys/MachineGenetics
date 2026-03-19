@@ -7,13 +7,13 @@ use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::visitors::{Descend, for_each_expr};
 use clippy_utils::{paths, sym};
 use core::ops::ControlFlow;
-use rustc_errors::Applicability;
-use rustc_hir::{
+use redox_errors::Applicability;
+use redox_hir::{
     BindingMode, Expr, ExprKind, HirId, LangItem, LetStmt, MatchSource, Node, Pat, PatKind, Stmt, StmtKind,
 };
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_span::{Span, Symbol, SyntaxContext};
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_span::{Span, Symbol, SyntaxContext};
 
 use super::{MANUAL_SPLIT_ONCE, NEEDLESS_SPLITN};
 

@@ -133,7 +133,7 @@ where
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     fn advance_by(&mut self, mut n: usize) -> Result<(), NonZero<usize>> {
         let skip_inner = self.n;
         let skip_and_advance = skip_inner.saturating_add(n);

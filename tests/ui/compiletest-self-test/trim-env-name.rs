@@ -2,13 +2,13 @@
 //@ revisions: set unset
 //@ run-pass
 //@ ignore-cross-compile (assume that non-cross targets have working env vars)
-//@ rustc-env: MY_RUSTC_ENV =  my-rustc-value
+//@ redox-env: MY_RUSTC_ENV =  my-redox-value
 //@ exec-env:  MY_EXEC_ENV  =  my-exec-value
-//@[unset] unset-rustc-env:    MY_RUSTC_ENV
+//@[unset] unset-redox-env:    MY_RUSTC_ENV
 //@[unset] unset-exec-env:     MY_EXEC_ENV
 
 // Check that compiletest trims whitespace from environment variable names
-// specified in `rustc-env` and `exec-env` directives, so that
+// specified in `redox-env` and `exec-env` directives, so that
 // `//@ exec-env: FOO=bar` sees the name as `FOO` and not ` FOO`.
 //
 // Values are currently not trimmed.
@@ -18,6 +18,6 @@
 
 fn main() {
     let is_set = cfg!(set);
-    assert_eq!(option_env!("MY_RUSTC_ENV"), is_set.then_some("  my-rustc-value"));
+    assert_eq!(option_env!("MY_RUSTC_ENV"), is_set.then_some("  my-redox-value"));
     assert_eq!(std::env::var("MY_EXEC_ENV").ok().as_deref(), is_set.then_some("  my-exec-value"));
 }

@@ -1,10 +1,10 @@
 //@ needs-enzyme
 //@ ignore-cross-compile
 
-use run_make_support::{llvm_filecheck, rfs, rustc};
+use run_make_support::{llvm_filecheck, rfs, redox};
 
 fn main() {
-    rustc()
+    redox()
         .input("test.rs")
         .arg("-Zautodiff=Enable")
         .arg("-Zautodiff=NoPostopt")

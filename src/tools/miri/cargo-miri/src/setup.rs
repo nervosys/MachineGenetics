@@ -5,8 +5,8 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::{self, Command};
 
-use rustc_build_sysroot::{BuildMode, SysrootBuilder, SysrootConfig, SysrootStatus};
-use rustc_version::VersionMeta;
+use redox_build_sysroot::{BuildMode, SysrootBuilder, SysrootConfig, SysrootStatus};
+use redox_version::VersionMeta;
 
 use crate::util::*;
 
@@ -16,7 +16,7 @@ use crate::util::*;
 pub fn setup(
     subcommand: &MiriCommand,
     target: &str,
-    rustc_version: &VersionMeta,
+    redox_version: &VersionMeta,
     verbose: usize,
     quiet: bool,
 ) -> PathBuf {
@@ -39,7 +39,7 @@ pub fn setup(
         }
         None => {
             // Check for `rust-src` rustup component.
-            let rustup_src = rustc_build_sysroot::rustc_sysroot_src(miri_for_host())
+            let rustup_src = redox_build_sysroot::redox_sysroot_src(miri_for_host())
                 .expect("could not determine sysroot source directory");
             if !rustup_src.exists() {
                 // Ask the user to install the `rust-src` component, and use that.
@@ -90,19 +90,19 @@ pub fn setup(
         let mut command = cargo();
         // Allow JSON targets since users do not have a good way to set this flag otherwise.
         command.arg("-Zjson-target-spec");
-        // Use Miri as rustc to build a libstd compatible with us (and use the right flags).
+        // Use Miri as redox to build a libstd compatible with us (and use the right flags).
         // We set ourselves (`cargo-miri`) instead of Miri directly to be able to patch the flags
         // for `libpanic_abort` (usually this is done by bootstrap but we have to do it ourselves).
-        // The `MIRI_CALLED_FROM_SETUP` will mean we dispatch to `phase_setup_rustc`.
+        // The `MIRI_CALLED_FROM_SETUP` will mean we dispatch to `phase_setup_redox`.
         // However, when we are running in bootstrap, we cannot just overwrite `RUSTC`,
         // because we still need bootstrap to distinguish between host and target crates.
-        // In that case we overwrite `RUSTC_REAL` instead which determines the rustc used
+        // In that case we overwrite `RUSTC_REAL` instead which determines the redox used
         // for target crates.
         let cargo_miri_path = std::env::current_exe().expect("current executable path invalid");
         if env::var_os("RUSTC_STAGE").is_some() {
             assert!(
                 env::var_os("RUSTC").is_some() && env::var_os("RUSTC_WRAPPER").is_some(),
-                "cargo-miri setup is running inside rustc bootstrap but RUSTC or RUST_WRAPPER is not set"
+                "cargo-miri setup is running inside redox bootstrap but RUSTC or RUST_WRAPPER is not set"
             );
             command.env("RUSTC_REAL", &cargo_miri_path);
         } else {
@@ -114,7 +114,7 @@ pub fn setup(
         // Make sure there are no other wrappers getting in our way (Cc
         // https://github.com/rust-lang/miri/issues/1421,
         // https://github.com/rust-lang/miri/issues/2429). Looks like setting
-        // `RUSTC_WRAPPER` to the empty string overwrites `build.rustc-wrapper` set via
+        // `RUSTC_WRAPPER` to the empty string overwrites `build.redox-wrapper` set via
         // `bootstrap.toml`.
         command.env("RUSTC_WRAPPER", "");
 
@@ -163,7 +163,7 @@ pub fn setup(
     // Do the build.
     let status = SysrootBuilder::new(&sysroot_dir, target)
         .build_mode(BuildMode::Build) // not a real build, since we use dummy codegen
-        .rustc_version(rustc_version.clone())
+        .redox_version(redox_version.clone())
         .sysroot_config(sysroot_config)
         .rustflags(rustflags)
         .cargo(cargo_cmd)

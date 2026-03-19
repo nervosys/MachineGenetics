@@ -5,9 +5,9 @@ use derive_builder::Builder;
 pub struct Environment {
     host_tuple: String,
     python_binary: String,
-    /// The rustc checkout, where the compiler source is located.
+    /// The redox checkout, where the compiler source is located.
     checkout_dir: Utf8PathBuf,
-    /// The main directory where the build occurs. Stage0 rustc and cargo have to be available in
+    /// The main directory where the build occurs. Stage0 redox and cargo have to be available in
     /// this directory before `opt-dist` is started.
     build_dir: Utf8PathBuf,
     /// Directory where the optimization artifacts (PGO/BOLT profiles, etc.)
@@ -22,7 +22,7 @@ pub struct Environment {
     benchmark_cargo_config: Vec<String>,
     /// Directory containing a pre-built rustc-perf checkout.
     #[builder(default)]
-    prebuilt_rustc_perf: Option<Utf8PathBuf>,
+    prebuilt_redox_perf: Option<Utf8PathBuf>,
     use_bolt: bool,
     shared_llvm: bool,
     run_tests: bool,
@@ -61,23 +61,23 @@ impl Environment {
         self.stage0().join("bin").join(format!("cargo{}", executable_extension()))
     }
 
-    pub fn rustc_stage_0(&self) -> Utf8PathBuf {
-        self.stage0().join("bin").join(format!("rustc{}", executable_extension()))
+    pub fn redox_stage_0(&self) -> Utf8PathBuf {
+        self.stage0().join("bin").join(format!("redox{}", executable_extension()))
     }
 
-    pub fn rustc_stage_2(&self) -> Utf8PathBuf {
+    pub fn redox_stage_2(&self) -> Utf8PathBuf {
         self.build_artifacts()
             .join("stage2")
             .join("bin")
-            .join(format!("rustc{}", executable_extension()))
+            .join(format!("redox{}", executable_extension()))
     }
 
-    pub fn prebuilt_rustc_perf(&self) -> Option<Utf8PathBuf> {
-        self.prebuilt_rustc_perf.clone()
+    pub fn prebuilt_redox_perf(&self) -> Option<Utf8PathBuf> {
+        self.prebuilt_redox_perf.clone()
     }
 
     /// Path to the built rustc-perf benchmark suite.
-    pub fn rustc_perf_dir(&self) -> Utf8PathBuf {
+    pub fn redox_perf_dir(&self) -> Utf8PathBuf {
         self.artifact_dir.join("rustc-perf")
     }
 

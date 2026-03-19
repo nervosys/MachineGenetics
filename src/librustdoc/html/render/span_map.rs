@@ -1,18 +1,18 @@
 use std::path::{Path, PathBuf};
 
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::intravisit::{self, Visitor, VisitorExt};
-use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node, QPath};
-use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::TyCtxt;
-use rustc_span::{BytePos, ExpnKind};
+use redox_data_structures::fx::{FxHashMap, FxIndexMap};
+use redox_hir::def::{DefKind, Res};
+use redox_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
+use redox_hir::intravisit::{self, Visitor, VisitorExt};
+use redox_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node, QPath};
+use redox_middle::hir::nested_filter;
+use redox_middle::ty::TyCtxt;
+use redox_span::{BytePos, ExpnKind};
 
-use crate::clean::{self, PrimitiveType, rustc_span};
+use crate::clean::{self, PrimitiveType, redox_span};
 use crate::html::sources;
 
-/// This is a stripped down version of [`rustc_span::Span`] that only contains the start and end byte positions of the span.
+/// This is a stripped down version of [`redox_span::Span`] that only contains the start and end byte positions of the span.
 ///
 /// Profiling showed that the `Span` interner was taking up a lot of the run-time when highlighting, and since we
 /// never actually use the context and parent that are stored in a normal `Span`, we can replace its usages with this
@@ -23,8 +23,8 @@ pub(crate) struct Span {
     hi: BytePos,
 }
 
-impl From<rustc_span::Span> for Span {
-    fn from(value: rustc_span::Span) -> Self {
+impl From<redox_span::Span> for Span {
+    fn from(value: redox_span::Span) -> Self {
         Self { lo: value.lo(), hi: value.hi() }
     }
 }
@@ -101,14 +101,14 @@ struct SpanMapVisitor<'tcx> {
 
 impl SpanMapVisitor<'_> {
     /// This function is where we handle `hir::Path` elements and add them into the "span map".
-    fn handle_path(&mut self, path: &rustc_hir::Path<'_>, only_use_last_segment: bool) {
+    fn handle_path(&mut self, path: &redox_hir::Path<'_>, only_use_last_segment: bool) {
         match path.res {
             // FIXME: For now, we handle `DefKind` if it's not a `DefKind::TyParam`.
             // Would be nice to support them too alongside the other `DefKind`
             // (such as primitive types!).
             Res::Def(kind, def_id) if kind != DefKind::TyParam => {
                 let link = if def_id.as_local().is_some() {
-                    LinkFromSrc::Local(rustc_span(def_id, self.tcx))
+                    LinkFromSrc::Local(redox_span(def_id, self.tcx))
                 } else {
                     LinkFromSrc::External(def_id)
                 };
@@ -175,7 +175,7 @@ impl SpanMapVisitor<'_> {
     /// so, we loop until we find the macro definition by using `outer_expn_data` in a loop.
     /// Finally, we get the information about the macro itself (`span` if "local", `DefId`
     /// otherwise) and store it inside the span map.
-    fn handle_macro(&mut self, span: rustc_span::Span) -> bool {
+    fn handle_macro(&mut self, span: redox_span::Span) -> bool {
         if !span.from_expansion() {
             return false;
         }
@@ -229,7 +229,7 @@ impl SpanMapVisitor<'_> {
         // method/function calls, we need the call expression specifically.
         if let Some(def_id) = typeck_results.type_dependent_def_id(expr_hir_id.unwrap_or(hir_id)) {
             let link = if def_id.as_local().is_some() {
-                LinkFromSrc::Local(rustc_span(def_id, tcx))
+                LinkFromSrc::Local(redox_span(def_id, tcx))
             } else {
                 LinkFromSrc::External(def_id)
             };
@@ -245,7 +245,7 @@ fn hir_enclosing_body_owner(tcx: TyCtxt<'_>, hir_id: HirId) -> Option<LocalDefId
         // FIXME: associated type impl items don't have an associated body, so we don't handle
         // them currently.
         if let Node::ImplItem(impl_item) = node
-            && matches!(impl_item.kind, rustc_hir::ImplItemKind::Type(_))
+            && matches!(impl_item.kind, redox_hir::ImplItemKind::Type(_))
         {
             return None;
         } else if let Some((def_id, _)) = node.associated_body() {
@@ -262,7 +262,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         self.tcx
     }
 
-    fn visit_path(&mut self, path: &rustc_hir::Path<'tcx>, _id: HirId) {
+    fn visit_path(&mut self, path: &redox_hir::Path<'tcx>, _id: HirId) {
         if self.handle_macro(path.span) {
             return;
         }
@@ -270,14 +270,14 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         intravisit::walk_path(self, path);
     }
 
-    fn visit_qpath(&mut self, qpath: &QPath<'tcx>, id: HirId, _span: rustc_span::Span) {
+    fn visit_qpath(&mut self, qpath: &QPath<'tcx>, id: HirId, _span: redox_span::Span) {
         match *qpath {
             QPath::TypeRelative(qself, path) => {
                 if matches!(path.res, Res::Err) {
                     let tcx = self.tcx;
                     if let Some(body_id) = hir_enclosing_body_owner(tcx, id) {
                         let typeck_results = tcx.typeck_body(tcx.hir_body_owned_by(body_id).id());
-                        let path = rustc_hir::Path {
+                        let path = redox_hir::Path {
                             // We change the span to not include parens.
                             span: path.ident.span,
                             res: typeck_results.qpath_res(qpath, id),
@@ -289,13 +289,13 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                     self.infer_id(path.hir_id, Some(id), path.ident.span.into());
                 }
 
-                rustc_ast::visit::try_visit!(self.visit_ty_unambig(qself));
+                redox_ast::visit::try_visit!(self.visit_ty_unambig(qself));
                 self.visit_path_segment(path);
             }
             QPath::Resolved(maybe_qself, path) => {
                 self.handle_path(path, true);
 
-                rustc_ast::visit::visit_opt!(self, visit_ty_unambig, maybe_qself);
+                redox_ast::visit::visit_opt!(self, visit_ty_unambig, maybe_qself);
                 if !self.handle_macro(path.span) {
                     intravisit::walk_path(self, path);
                 }
@@ -303,7 +303,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         }
     }
 
-    fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: rustc_span::Span, id: HirId) {
+    fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: redox_span::Span, id: HirId) {
         // To make the difference between "mod foo {}" and "mod foo;". In case we "import" another
         // file, we want to link to it. Otherwise no need to create a link.
         if !span.overlaps(m.spans.inner_span) {
@@ -323,7 +323,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         intravisit::walk_mod(self, m);
     }
 
-    fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx redox_hir::Expr<'tcx>) {
         match expr.kind {
             ExprKind::MethodCall(segment, ..) => {
                 self.infer_id(segment.hir_id, Some(expr.hir_id), segment.ident.span.into())

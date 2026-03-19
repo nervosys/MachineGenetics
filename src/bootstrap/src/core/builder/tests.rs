@@ -59,7 +59,7 @@ macro_rules! doc_std {
     ($host:ident => $target:ident, stage = $stage:literal) => {{ doc::Std::new($stage, TargetSelection::from_user($target), DocumentationFormat::Html) }};
 }
 
-macro_rules! rustc {
+macro_rules! redox {
     ($host:ident => $target:ident, stage = $stage:literal) => {
         compile::Rustc::new(
             Compiler::new($stage, TargetSelection::from_user($host)),
@@ -165,61 +165,61 @@ fn check_missing_paths_for_x_test_tests() {
 }
 
 #[test]
-fn ci_rustc_if_unchanged_invalidate_on_compiler_changes() {
+fn ci_redox_if_unchanged_invalidate_on_compiler_changes() {
     git_test(|ctx| {
-        prepare_rustc_checkout(ctx);
+        prepare_redox_checkout(ctx);
         ctx.create_upstream_merge(&["compiler/bar"]);
-        // This change should invalidate download-ci-rustc
+        // This change should invalidate download-ci-redox
         ctx.create_nonupstream_merge(&["compiler/foo"]);
 
-        let config = parse_config_download_rustc_at(ctx.get_path(), "if-unchanged", true);
-        assert_eq!(config.download_rustc_commit, None);
+        let config = parse_config_download_redox_at(ctx.get_path(), "if-unchanged", true);
+        assert_eq!(config.download_redox_commit, None);
     });
 }
 
 #[test]
-fn ci_rustc_if_unchanged_do_not_invalidate_on_library_changes_outside_ci() {
+fn ci_redox_if_unchanged_do_not_invalidate_on_library_changes_outside_ci() {
     git_test(|ctx| {
-        prepare_rustc_checkout(ctx);
+        prepare_redox_checkout(ctx);
         let sha = ctx.create_upstream_merge(&["compiler/bar"]);
-        // This change should not invalidate download-ci-rustc
+        // This change should not invalidate download-ci-redox
         ctx.create_nonupstream_merge(&["library/foo"]);
 
-        let config = parse_config_download_rustc_at(ctx.get_path(), "if-unchanged", false);
-        assert_eq!(config.download_rustc_commit, Some(sha));
+        let config = parse_config_download_redox_at(ctx.get_path(), "if-unchanged", false);
+        assert_eq!(config.download_redox_commit, Some(sha));
     });
 }
 
 #[test]
-fn ci_rustc_if_unchanged_do_not_invalidate_on_tool_changes() {
+fn ci_redox_if_unchanged_do_not_invalidate_on_tool_changes() {
     git_test(|ctx| {
-        prepare_rustc_checkout(ctx);
+        prepare_redox_checkout(ctx);
         let sha = ctx.create_upstream_merge(&["compiler/bar"]);
-        // This change should not invalidate download-ci-rustc
+        // This change should not invalidate download-ci-redox
         ctx.create_nonupstream_merge(&["src/tools/foo"]);
 
-        let config = parse_config_download_rustc_at(ctx.get_path(), "if-unchanged", true);
-        assert_eq!(config.download_rustc_commit, Some(sha));
+        let config = parse_config_download_redox_at(ctx.get_path(), "if-unchanged", true);
+        assert_eq!(config.download_redox_commit, Some(sha));
     });
 }
 
-/// Prepares the given directory so that it looks like a rustc checkout.
+/// Prepares the given directory so that it looks like a redox checkout.
 /// Also configures `GitCtx` to use the correct merge bot e-mail for upstream merge commits.
-fn prepare_rustc_checkout(ctx: &mut GitCtx) {
+fn prepare_redox_checkout(ctx: &mut GitCtx) {
     ctx.merge_bot_email =
         format!("Merge bot <{}>", parse_stage0_file().config.git_merge_commit_email);
     ctx.write("src/ci/channel", "nightly");
     ctx.commit();
 }
 
-/// Parses a Config directory from `path`, with the given value of `download_rustc`.
-fn parse_config_download_rustc_at(path: &Path, download_rustc: &str, ci: bool) -> Config {
+/// Parses a Config directory from `path`, with the given value of `download_redox`.
+fn parse_config_download_redox_at(path: &Path, download_redox: &str, ci: bool) -> Config {
     TestCtx::new()
         .config("build")
         .args(&[
             "--ci",
             if ci { "true" } else { "false" },
-            format!("--set=rust.download-rustc='{download_rustc}'").as_str(),
+            format!("--set=rust.download-redox='{download_redox}'").as_str(),
             "--src",
             path.to_str().unwrap(),
         ])
@@ -313,7 +313,7 @@ fn test_test_compiler() {
     let config = configure_with_args(&["test", "compiler"], &[&host_target()], &[TEST_TRIPLE_1]);
     let cache = run_build(&config.paths.clone(), config);
 
-    let compiler = cache.contains::<test::CrateLibrustc>();
+    let compiler = cache.contains::<test::CrateLibredox>();
     let cranelift = cache.contains::<test::CodegenCranelift>();
     let gcc = cache.contains::<test::CodegenGCC>();
 
@@ -531,8 +531,8 @@ mod snapshot {
             ctx.config("build")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [build] rustdoc 1 <host>
         ");
     }
@@ -550,15 +550,15 @@ mod snapshot {
                 .targets(&[&host_target(), TEST_TRIPLE_1])
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 1 <host> -> std 1 <target1>
-        [build] rustc 2 <host> -> std 2 <target1>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 2 <host> -> std 2 <host>
+        [build] redox 1 <host> -> std 1 <target1>
+        [build] redox 2 <host> -> std 2 <target1>
         [build] rustdoc 2 <host>
         [build] llvm <target1>
-        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] redox 1 <host> -> redox 2 <target1>
         [build] rustdoc 2 <target1>
         ");
     }
@@ -573,8 +573,8 @@ mod snapshot {
                 .targets(&[TEST_TRIPLE_1])
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <target1>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <target1>
         "
         );
     }
@@ -587,19 +587,19 @@ mod snapshot {
                 .path("compiler")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
         ");
     }
 
     #[test]
-    fn build_rustc_no_explicit_stage() {
+    fn build_redox_no_explicit_stage() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("build")
-                .path("rustc")
+                .path("redox")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
         ");
     }
 
@@ -619,7 +619,7 @@ mod snapshot {
                 .stage(1)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
         ");
     }
 
@@ -632,9 +632,9 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
         ");
     }
 
@@ -647,11 +647,11 @@ mod snapshot {
                 .stage(3)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 2 <host> -> rustc 3 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 2 <host> -> std 2 <host>
+        [build] redox 2 <host> -> redox 3 <host>
         ");
     }
 
@@ -666,13 +666,13 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] llvm <target1>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> std 1 <target1>
-        [build] rustc 2 <host> -> std 2 <target1>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 2 <host> -> rustc 3 <target1>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> std 1 <target1>
+        [build] redox 2 <host> -> std 2 <target1>
+        [build] redox 2 <host> -> std 2 <host>
+        [build] redox 2 <host> -> redox 3 <target1>
         ");
     }
 
@@ -686,11 +686,11 @@ mod snapshot {
                 .args(&["--set", "build.full-bootstrap=true"])
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 2 <host> -> rustc 3 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 2 <host> -> std 2 <host>
+        [build] redox 2 <host> -> redox 3 <host>
         ");
     }
 
@@ -706,12 +706,12 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] llvm <target1>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <target1>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 2 <host> -> rustc 3 <target1>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 2 <host> -> std 2 <target1>
+        [build] redox 2 <host> -> std 2 <host>
+        [build] redox 2 <host> -> redox 3 <target1>
         ");
     }
 
@@ -724,9 +724,9 @@ mod snapshot {
                 .args(&["--set", "rust.codegen-backends=['llvm', 'cranelift']"])
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> rustc_codegen_cranelift 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> redox_codegen_cranelift 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [build] rustdoc 1 <host>
         "
         );
@@ -742,14 +742,14 @@ mod snapshot {
                 .args(&["--set", "rust.lld=true", "--set", "rust.llvm-bitcode-linker=true"])
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> LldWrapper 1 <host>
-        [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> LldWrapper 2 <host>
-        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> LldWrapper 1 <host>
+        [build] redox 0 <host> -> LlvmBitcodeLinker 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> LldWrapper 2 <host>
+        [build] redox 1 <host> -> LlvmBitcodeLinker 2 <host>
+        [build] redox 2 <host> -> std 2 <host>
         [build] rustdoc 2 <host>
         "
         );
@@ -766,19 +766,19 @@ mod snapshot {
                 .hosts(&[TEST_TRIPLE_1])
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> LldWrapper 1 <host>
-        [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> LldWrapper 2 <host>
-        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
-        [build] rustc 1 <host> -> std 1 <target1>
-        [build] rustc 2 <host> -> std 2 <target1>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> LldWrapper 1 <host>
+        [build] redox 0 <host> -> LlvmBitcodeLinker 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> LldWrapper 2 <host>
+        [build] redox 1 <host> -> LlvmBitcodeLinker 2 <host>
+        [build] redox 1 <host> -> std 1 <target1>
+        [build] redox 2 <host> -> std 2 <target1>
         [build] llvm <target1>
-        [build] rustc 1 <host> -> rustc 2 <target1>
-        [build] rustc 1 <host> -> LldWrapper 2 <target1>
-        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
+        [build] redox 1 <host> -> redox 2 <target1>
+        [build] redox 1 <host> -> LldWrapper 2 <target1>
+        [build] redox 1 <host> -> LlvmBitcodeLinker 2 <target1>
         [build] rustdoc 2 <target1>
         "
         );
@@ -795,8 +795,8 @@ mod snapshot {
                     .path("compiler")
                     .render_steps(), @r"
             [build] llvm <host>
-            [build] rustc 0 <host> -> rustc 1 <host>
-            [build] rustc 0 <host> -> LldWrapper 1 <host>
+            [build] redox 0 <host> -> redox 1 <host>
+            [build] redox 0 <host> -> LldWrapper 1 <host>
             ");
             },
         );
@@ -814,7 +814,7 @@ mod snapshot {
                     .args(&["--set", "rust.lld=false"])
                     .render_steps(), @r"
                 [build] llvm <host>
-                [build] rustc 0 <host> -> rustc 1 <host>
+                [build] redox 0 <host> -> redox 1 <host>
                 ");
             },
         );
@@ -828,8 +828,8 @@ mod snapshot {
             .path("library")
             .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         ");
     }
 
@@ -849,7 +849,7 @@ mod snapshot {
                 .stage(0)
                 .targets(&[TEST_TRIPLE_1])
                 .args(&["--set", "build.local-rebuild=true"])
-                .render_steps(), @"[build] rustc 0 <host> -> std 0 <target1>");
+                .render_steps(), @"[build] redox 0 <host> -> std 0 <target1>");
     }
 
     #[test]
@@ -861,8 +861,8 @@ mod snapshot {
                 .stage(1)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         ");
     }
 
@@ -875,10 +875,10 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 2 <host> -> std 2 <host>
         ");
     }
 
@@ -890,8 +890,8 @@ mod snapshot {
                 .path("miri")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> miri 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> miri 1 <host>
         ");
     }
 
@@ -911,8 +911,8 @@ mod snapshot {
                 .stage(1)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> miri 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> miri 1 <host>
         ");
     }
 
@@ -925,10 +925,10 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> miri 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> miri 2 <host>
         ");
     }
 
@@ -940,8 +940,8 @@ mod snapshot {
                 .path("error_index_generator")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> error-index 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> error-index 1 <host>
         ");
     }
 
@@ -951,7 +951,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("build")
                 .path("opt-dist")
-                .render_steps(), @"[build] rustc 0 <host> -> OptimizedDist 1 <host>");
+                .render_steps(), @"[build] redox 0 <host> -> OptimizedDist 1 <host>");
     }
 
     #[test]
@@ -968,7 +968,7 @@ mod snapshot {
             ctx.config("build")
                 .path("opt-dist")
                 .stage(1)
-                .render_steps(), @"[build] rustc 0 <host> -> OptimizedDist 1 <host>");
+                .render_steps(), @"[build] redox 0 <host> -> OptimizedDist 1 <host>");
     }
 
     #[test]
@@ -978,7 +978,7 @@ mod snapshot {
             ctx.config("build")
                 .path("opt-dist")
                 .stage(2)
-                .render_steps(), @"[build] rustc 0 <host> -> OptimizedDist 1 <host>");
+                .render_steps(), @"[build] redox 0 <host> -> OptimizedDist 1 <host>");
     }
 
     #[test]
@@ -996,41 +996,41 @@ mod snapshot {
             .paths(&["library", "core"])
             .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         ");
 
         insta::assert_snapshot!(ctx.config("build")
             .paths(&["std"])
             .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         ");
 
         insta::assert_snapshot!(ctx.config("build")
             .paths(&["core"])
             .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         ");
 
         insta::assert_snapshot!(ctx.config("build")
             .paths(&["alloc"])
             .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         ");
 
         insta::assert_snapshot!(ctx.config("doc")
             .paths(&["library", "core"])
             .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         ");
     }
 
@@ -1040,21 +1040,21 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("build")
                 .stage(2)
-                .paths(&["compiler/rustc", "library"])
+                .paths(&["compiler/redox", "library"])
                 .hosts(&[&host_target(), TEST_TRIPLE_1])
                 .targets(&[&host_target(), TEST_TRIPLE_1, TEST_TRIPLE_2])
             .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
         [build] llvm <target1>
-        [build] rustc 1 <host> -> std 1 <target1>
-        [build] rustc 1 <host> -> rustc 2 <target1>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 2 <host> -> std 2 <target1>
-        [build] rustc 1 <host> -> std 1 <target2>
-        [build] rustc 2 <host> -> std 2 <target2>
+        [build] redox 1 <host> -> std 1 <target1>
+        [build] redox 1 <host> -> redox 2 <target1>
+        [build] redox 2 <host> -> std 2 <host>
+        [build] redox 2 <host> -> std 2 <target1>
+        [build] redox 1 <host> -> std 1 <target2>
+        [build] redox 2 <host> -> std 2 <target2>
         ");
     }
 
@@ -1064,7 +1064,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("build")
                 .paths(&["cargo"])
-            .render_steps(), @"[build] rustc 0 <host> -> cargo 1 <host>");
+            .render_steps(), @"[build] redox 0 <host> -> cargo 1 <host>");
     }
 
     #[test]
@@ -1076,10 +1076,10 @@ mod snapshot {
                 .hosts(&[TEST_TRIPLE_1])
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> std 1 <target1>
-        [build] rustc 1 <host> -> cargo 2 <target1>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> std 1 <target1>
+        [build] redox 1 <host> -> cargo 2 <target1>
         ");
     }
 
@@ -1092,50 +1092,50 @@ mod snapshot {
     #[test]
     fn dist_baseline() {
         let ctx = TestCtx::new();
-        // Note that stdlib is uplifted, that is why `[dist] rustc 1 <host> -> std <host>` is in
+        // Note that stdlib is uplifted, that is why `[dist] redox 1 <host> -> std <host>` is in
         // the output.
         insta::assert_snapshot!(
             ctx
                 .config("dist")
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] redox 0 <host> -> UnstableBookGen 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> standalone 2 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> error-index 2 <host>
-        [doc] rustc 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> standalone 2 <host>
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] redox 1 <host> -> reference (book) 2 <host>
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <host>
+        [build] redox 0 <host> -> LintDocs 1 <host>
+        [doc] redox (book) <host>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
         [doc] embedded-book (book) <host>
         [doc] edition-guide (book) <host>
         [doc] style-guide (book) <host>
-        [doc] rustc 1 <host> -> releases 2 <host>
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [doc] redox 1 <host> -> releases 2 <host>
+        [build] redox 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[]
-        [dist] rustc 1 <host> -> json-docs 2 <host>
+        [doc] redox 1 <host> -> std 1 <host> crates=[]
+        [dist] redox 1 <host> -> json-docs 2 <host>
         [dist] mingw <host>
         [build] rustdoc 2 <host>
-        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
-        [dist] rustc <host>
-        [dist] rustc 1 <host> -> std 1 <host>
-        [dist] rustc 1 <host> -> rustc-dev 2 <host>
+        [build] redox 0 <host> -> GenerateCopyright 1 <host>
+        [dist] redox <host>
+        [dist] redox 1 <host> -> std 1 <host>
+        [dist] redox 1 <host> -> redox-dev 2 <host>
         [dist] src <>
         [dist] reproducible-artifacts <host>
         "
@@ -1147,49 +1147,49 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("dist")
-                .path("rustc-docs")
+                .path("redox-docs")
                 .args(&["--set", "build.compiler-docs=true"])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] redox 0 <host> -> UnstableBookGen 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> standalone 2 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [doc] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [doc] rustc 1 <host> -> Rustdoc 2 <host>
-        [doc] rustc 1 <host> -> Rustfmt 2 <host>
-        [build] rustc 1 <host> -> error-index 2 <host>
-        [doc] rustc 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> standalone 2 <host>
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [doc] redox 1 <host> -> Rustdoc 2 <host>
+        [doc] redox 1 <host> -> Rustfmt 2 <host>
+        [build] redox 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] redox 1 <host> -> reference (book) 2 <host>
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <host>
-        [doc] rustc 1 <host> -> Cargo 2 <host>
+        [build] redox 0 <host> -> LintDocs 1 <host>
+        [doc] redox (book) <host>
+        [doc] redox 1 <host> -> Cargo 2 <host>
         [doc] cargo (book) <host>
-        [doc] rustc 1 <host> -> Clippy 2 <host>
+        [doc] redox 1 <host> -> Clippy 2 <host>
         [doc] clippy (book) <host>
-        [doc] rustc 1 <host> -> Miri 2 <host>
+        [doc] redox 1 <host> -> Miri 2 <host>
         [doc] embedded-book (book) <host>
         [doc] edition-guide (book) <host>
         [doc] style-guide (book) <host>
-        [doc] rustc 1 <host> -> Tidy 2 <host>
-        [doc] rustc 1 <host> -> Bootstrap 2 <host>
-        [doc] rustc 1 <host> -> releases 2 <host>
-        [doc] rustc 1 <host> -> RunMakeSupport 2 <host>
-        [doc] rustc 1 <host> -> BuildHelper 2 <host>
-        [doc] rustc 1 <host> -> Compiletest 2 <host>
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [doc] redox 1 <host> -> Tidy 2 <host>
+        [doc] redox 1 <host> -> Bootstrap 2 <host>
+        [doc] redox 1 <host> -> releases 2 <host>
+        [doc] redox 1 <host> -> RunMakeSupport 2 <host>
+        [doc] redox 1 <host> -> BuildHelper 2 <host>
+        [doc] redox 1 <host> -> Compiletest 2 <host>
+        [build] redox 0 <host> -> RustInstaller 1 <host>
         "
         );
     }
@@ -1208,69 +1208,69 @@ mod snapshot {
                 "rust.lld=true",
             ])
             .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] redox 0 <host> -> UnstableBookGen 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> LldWrapper 1 <host>
-        [build] rustc 0 <host> -> WasmComponentLd 1 <host>
-        [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> LldWrapper 1 <host>
+        [build] redox 0 <host> -> WasmComponentLd 1 <host>
+        [build] redox 0 <host> -> LlvmBitcodeLinker 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> standalone 2 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> LldWrapper 2 <host>
-        [build] rustc 1 <host> -> WasmComponentLd 2 <host>
-        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
-        [build] rustc 1 <host> -> error-index 2 <host>
-        [doc] rustc 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> standalone 2 <host>
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> LldWrapper 2 <host>
+        [build] redox 1 <host> -> WasmComponentLd 2 <host>
+        [build] redox 1 <host> -> LlvmBitcodeLinker 2 <host>
+        [build] redox 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] redox 1 <host> -> reference (book) 2 <host>
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <host>
+        [build] redox 0 <host> -> LintDocs 1 <host>
+        [doc] redox (book) <host>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
         [doc] embedded-book (book) <host>
         [doc] edition-guide (book) <host>
         [doc] style-guide (book) <host>
-        [doc] rustc 1 <host> -> releases 2 <host>
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [doc] redox 1 <host> -> releases 2 <host>
+        [build] redox 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[]
-        [dist] rustc 1 <host> -> json-docs 2 <host>
+        [doc] redox 1 <host> -> std 1 <host> crates=[]
+        [dist] redox 1 <host> -> json-docs 2 <host>
         [dist] mingw <host>
         [build] rustdoc 2 <host>
-        [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <host>
-        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
-        [dist] rustc <host>
-        [dist] rustc 1 <host> -> std 1 <host>
-        [dist] rustc 1 <host> -> rustc-dev 2 <host>
-        [dist] rustc 1 <host> -> analysis 2 <host>
+        [build] redox 1 <host> -> rust-analyzer-proc-macro-srv 2 <host>
+        [build] redox 0 <host> -> GenerateCopyright 1 <host>
+        [dist] redox <host>
+        [dist] redox 1 <host> -> std 1 <host>
+        [dist] redox 1 <host> -> redox-dev 2 <host>
+        [dist] redox 1 <host> -> analysis 2 <host>
         [dist] src <>
-        [build] rustc 1 <host> -> cargo 2 <host>
-        [dist] rustc 1 <host> -> cargo 2 <host>
-        [build] rustc 1 <host> -> rust-analyzer 2 <host>
-        [dist] rustc 1 <host> -> rust-analyzer 2 <host>
-        [build] rustc 1 <host> -> rustfmt 2 <host>
-        [build] rustc 1 <host> -> cargo-fmt 2 <host>
-        [dist] rustc 1 <host> -> rustfmt 2 <host>
-        [build] rustc 1 <host> -> clippy-driver 2 <host>
-        [build] rustc 1 <host> -> cargo-clippy 2 <host>
-        [dist] rustc 1 <host> -> clippy 2 <host>
-        [build] rustc 1 <host> -> miri 2 <host>
-        [build] rustc 1 <host> -> cargo-miri 2 <host>
-        [dist] rustc 1 <host> -> miri 2 <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[]
-        [dist] rustc 2 <host> -> json-docs 3 <host>
-        [dist] rustc 1 <host> -> extended 2 <host>
+        [build] redox 1 <host> -> cargo 2 <host>
+        [dist] redox 1 <host> -> cargo 2 <host>
+        [build] redox 1 <host> -> rust-analyzer 2 <host>
+        [dist] redox 1 <host> -> rust-analyzer 2 <host>
+        [build] redox 1 <host> -> rustfmt 2 <host>
+        [build] redox 1 <host> -> cargo-fmt 2 <host>
+        [dist] redox 1 <host> -> rustfmt 2 <host>
+        [build] redox 1 <host> -> clippy-driver 2 <host>
+        [build] redox 1 <host> -> cargo-clippy 2 <host>
+        [dist] redox 1 <host> -> clippy 2 <host>
+        [build] redox 1 <host> -> miri 2 <host>
+        [build] redox 1 <host> -> cargo-miri 2 <host>
+        [dist] redox 1 <host> -> miri 2 <host>
+        [doc] redox 2 <host> -> std 2 <host> crates=[]
+        [dist] redox 2 <host> -> json-docs 3 <host>
+        [dist] redox 1 <host> -> extended 2 <host>
         [dist] reproducible-artifacts <host>
         ");
     }
@@ -1284,40 +1284,40 @@ mod snapshot {
                 .hosts(&[&host_target()])
                 .targets(&[&host_target(), TEST_TRIPLE_1])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] redox 0 <host> -> UnstableBookGen 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <host>
         [doc] unstable-book (book) <target1>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
-        [build] rustc 1 <host> -> std 1 <target1>
+        [build] redox 1 <host> -> std 1 <target1>
         [doc] book (book) <target1>
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
         [doc] book/2018-edition (book) <target1>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> standalone 2 <host>
-        [doc] rustc 1 <host> -> standalone 2 <target1>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> error-index 2 <host>
-        [doc] rustc 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> standalone 2 <host>
+        [doc] redox 1 <host> -> standalone 2 <target1>
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] redox 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
         [doc] nomicon (book) <target1>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <target1>
+        [doc] redox 1 <host> -> reference (book) 2 <host>
+        [doc] redox 1 <host> -> reference (book) 2 <target1>
         [doc] rustdoc (book) <host>
         [doc] rustdoc (book) <target1>
         [doc] rust-by-example (book) <host>
         [doc] rust-by-example (book) <target1>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <host>
+        [build] redox 0 <host> -> LintDocs 1 <host>
+        [doc] redox (book) <host>
         [doc] cargo (book) <host>
         [doc] cargo (book) <target1>
         [doc] clippy (book) <host>
@@ -1328,23 +1328,23 @@ mod snapshot {
         [doc] edition-guide (book) <target1>
         [doc] style-guide (book) <host>
         [doc] style-guide (book) <target1>
-        [doc] rustc 1 <host> -> releases 2 <host>
-        [doc] rustc 1 <host> -> releases 2 <target1>
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [doc] redox 1 <host> -> releases 2 <host>
+        [doc] redox 1 <host> -> releases 2 <target1>
+        [build] redox 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [dist] docs <target1>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[]
-        [dist] rustc 1 <host> -> json-docs 2 <host>
-        [doc] rustc 1 <host> -> std 1 <target1> crates=[]
-        [dist] rustc 1 <host> -> json-docs 2 <target1>
+        [doc] redox 1 <host> -> std 1 <host> crates=[]
+        [dist] redox 1 <host> -> json-docs 2 <host>
+        [doc] redox 1 <host> -> std 1 <target1> crates=[]
+        [dist] redox 1 <host> -> json-docs 2 <target1>
         [dist] mingw <host>
         [dist] mingw <target1>
         [build] rustdoc 2 <host>
-        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
-        [dist] rustc <host>
-        [dist] rustc 1 <host> -> std 1 <host>
-        [dist] rustc 1 <host> -> std 1 <target1>
-        [dist] rustc 1 <host> -> rustc-dev 2 <host>
+        [build] redox 0 <host> -> GenerateCopyright 1 <host>
+        [dist] redox <host>
+        [dist] redox 1 <host> -> std 1 <host>
+        [dist] redox 1 <host> -> std 1 <target1>
+        [dist] redox 1 <host> -> redox-dev 2 <host>
         [dist] src <>
         [dist] reproducible-artifacts <host>
         "
@@ -1360,53 +1360,53 @@ mod snapshot {
                 .hosts(&[&host_target(), TEST_TRIPLE_1])
                 .targets(&[&host_target()])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] redox 0 <host> -> UnstableBookGen 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> standalone 2 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> error-index 2 <host>
-        [doc] rustc 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> standalone 2 <host>
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> error-index 2 <host>
         [build] llvm <target1>
-        [build] rustc 1 <host> -> std 1 <target1>
-        [build] rustc 1 <host> -> rustc 2 <target1>
-        [build] rustc 1 <host> -> error-index 2 <target1>
-        [doc] rustc 1 <host> -> error-index 2 <target1>
+        [build] redox 1 <host> -> std 1 <target1>
+        [build] redox 1 <host> -> redox 2 <target1>
+        [build] redox 1 <host> -> error-index 2 <target1>
+        [doc] redox 1 <host> -> error-index 2 <target1>
         [doc] nomicon (book) <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] redox 1 <host> -> reference (book) 2 <host>
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <host>
-        [doc] rustc (book) <target1>
+        [build] redox 0 <host> -> LintDocs 1 <host>
+        [doc] redox (book) <host>
+        [doc] redox (book) <target1>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
         [doc] embedded-book (book) <host>
         [doc] edition-guide (book) <host>
         [doc] style-guide (book) <host>
-        [doc] rustc 1 <host> -> releases 2 <host>
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [doc] redox 1 <host> -> releases 2 <host>
+        [build] redox 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[]
-        [dist] rustc 1 <host> -> json-docs 2 <host>
+        [doc] redox 1 <host> -> std 1 <host> crates=[]
+        [dist] redox 1 <host> -> json-docs 2 <host>
         [dist] mingw <host>
         [build] rustdoc 2 <host>
-        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
-        [dist] rustc <host>
+        [build] redox 0 <host> -> GenerateCopyright 1 <host>
+        [dist] redox <host>
         [build] rustdoc 2 <target1>
-        [dist] rustc <target1>
-        [dist] rustc 1 <host> -> std 1 <host>
-        [dist] rustc 1 <host> -> rustc-dev 2 <host>
-        [dist] rustc 1 <host> -> rustc-dev 2 <target1>
+        [dist] redox <target1>
+        [dist] redox 1 <host> -> std 1 <host>
+        [dist] redox 1 <host> -> redox-dev 2 <host>
+        [dist] redox 1 <host> -> redox-dev 2 <target1>
         [dist] src <>
         [dist] reproducible-artifacts <host>
         [dist] reproducible-artifacts <target1>
@@ -1423,45 +1423,45 @@ mod snapshot {
                 .hosts(&[&host_target(), TEST_TRIPLE_1])
                 .targets(&[&host_target(), TEST_TRIPLE_1])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] redox 0 <host> -> UnstableBookGen 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <host>
         [doc] unstable-book (book) <target1>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
-        [build] rustc 1 <host> -> std 1 <target1>
+        [build] redox 1 <host> -> std 1 <target1>
         [doc] book (book) <target1>
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
         [doc] book/2018-edition (book) <target1>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> standalone 2 <host>
-        [doc] rustc 1 <host> -> standalone 2 <target1>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> error-index 2 <host>
-        [doc] rustc 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> standalone 2 <host>
+        [doc] redox 1 <host> -> standalone 2 <target1>
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] redox 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> error-index 2 <host>
         [build] llvm <target1>
-        [build] rustc 1 <host> -> rustc 2 <target1>
-        [build] rustc 1 <host> -> error-index 2 <target1>
-        [doc] rustc 1 <host> -> error-index 2 <target1>
+        [build] redox 1 <host> -> redox 2 <target1>
+        [build] redox 1 <host> -> error-index 2 <target1>
+        [doc] redox 1 <host> -> error-index 2 <target1>
         [doc] nomicon (book) <host>
         [doc] nomicon (book) <target1>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <target1>
+        [doc] redox 1 <host> -> reference (book) 2 <host>
+        [doc] redox 1 <host> -> reference (book) 2 <target1>
         [doc] rustdoc (book) <host>
         [doc] rustdoc (book) <target1>
         [doc] rust-by-example (book) <host>
         [doc] rust-by-example (book) <target1>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <host>
-        [doc] rustc (book) <target1>
+        [build] redox 0 <host> -> LintDocs 1 <host>
+        [doc] redox (book) <host>
+        [doc] redox (book) <target1>
         [doc] cargo (book) <host>
         [doc] cargo (book) <target1>
         [doc] clippy (book) <host>
@@ -1472,26 +1472,26 @@ mod snapshot {
         [doc] edition-guide (book) <target1>
         [doc] style-guide (book) <host>
         [doc] style-guide (book) <target1>
-        [doc] rustc 1 <host> -> releases 2 <host>
-        [doc] rustc 1 <host> -> releases 2 <target1>
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [doc] redox 1 <host> -> releases 2 <host>
+        [doc] redox 1 <host> -> releases 2 <target1>
+        [build] redox 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [dist] docs <target1>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[]
-        [dist] rustc 1 <host> -> json-docs 2 <host>
-        [doc] rustc 1 <host> -> std 1 <target1> crates=[]
-        [dist] rustc 1 <host> -> json-docs 2 <target1>
+        [doc] redox 1 <host> -> std 1 <host> crates=[]
+        [dist] redox 1 <host> -> json-docs 2 <host>
+        [doc] redox 1 <host> -> std 1 <target1> crates=[]
+        [dist] redox 1 <host> -> json-docs 2 <target1>
         [dist] mingw <host>
         [dist] mingw <target1>
         [build] rustdoc 2 <host>
-        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
-        [dist] rustc <host>
+        [build] redox 0 <host> -> GenerateCopyright 1 <host>
+        [dist] redox <host>
         [build] rustdoc 2 <target1>
-        [dist] rustc <target1>
-        [dist] rustc 1 <host> -> std 1 <host>
-        [dist] rustc 1 <host> -> std 1 <target1>
-        [dist] rustc 1 <host> -> rustc-dev 2 <host>
-        [dist] rustc 1 <host> -> rustc-dev 2 <target1>
+        [dist] redox <target1>
+        [dist] redox 1 <host> -> std 1 <host>
+        [dist] redox 1 <host> -> std 1 <target1>
+        [dist] redox 1 <host> -> redox-dev 2 <host>
+        [dist] redox 1 <host> -> redox-dev 2 <target1>
         [dist] src <>
         [dist] reproducible-artifacts <host>
         [dist] reproducible-artifacts <target1>
@@ -1508,22 +1508,22 @@ mod snapshot {
                 .hosts(&[])
                 .targets(&[TEST_TRIPLE_1])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] redox 0 <host> -> UnstableBookGen 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <target1>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <target1>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <target1>
         [doc] book (book) <target1>
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
         [doc] book/2018-edition (book) <target1>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> standalone 2 <target1>
-        [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] redox 1 <host> -> standalone 2 <target1>
+        [doc] redox 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [doc] nomicon (book) <target1>
-        [doc] rustc 1 <host> -> reference (book) 2 <target1>
+        [doc] redox 1 <host> -> reference (book) 2 <target1>
         [doc] rustdoc (book) <target1>
         [doc] rust-by-example (book) <target1>
         [doc] cargo (book) <target1>
@@ -1531,13 +1531,13 @@ mod snapshot {
         [doc] embedded-book (book) <target1>
         [doc] edition-guide (book) <target1>
         [doc] style-guide (book) <target1>
-        [doc] rustc 1 <host> -> releases 2 <target1>
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [doc] redox 1 <host> -> releases 2 <target1>
+        [build] redox 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
-        [doc] rustc 1 <host> -> std 1 <target1> crates=[]
-        [dist] rustc 1 <host> -> json-docs 2 <target1>
+        [doc] redox 1 <host> -> std 1 <target1> crates=[]
+        [dist] redox 1 <host> -> json-docs 2 <target1>
         [dist] mingw <target1>
-        [dist] rustc 1 <host> -> std 1 <target1>
+        [dist] redox 1 <host> -> std 1 <target1>
         ");
     }
 
@@ -1551,74 +1551,74 @@ mod snapshot {
                 .targets(&[TEST_TRIPLE_1])
                 .args(&["--set", "rust.channel=nightly", "--set", "build.extended=true"])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] redox 0 <host> -> UnstableBookGen 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <target1>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> WasmComponentLd 1 <host>
-        [build] rustc 1 <host> -> std 1 <target1>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> WasmComponentLd 1 <host>
+        [build] redox 1 <host> -> std 1 <target1>
         [doc] book (book) <target1>
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
         [doc] book/2018-edition (book) <target1>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> standalone 2 <target1>
-        [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] redox 1 <host> -> standalone 2 <target1>
+        [doc] redox 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] llvm <target1>
-        [build] rustc 1 <host> -> rustc 2 <target1>
-        [build] rustc 1 <host> -> WasmComponentLd 2 <target1>
-        [build] rustc 1 <host> -> error-index 2 <target1>
-        [doc] rustc 1 <host> -> error-index 2 <target1>
+        [build] redox 1 <host> -> redox 2 <target1>
+        [build] redox 1 <host> -> WasmComponentLd 2 <target1>
+        [build] redox 1 <host> -> error-index 2 <target1>
+        [doc] redox 1 <host> -> error-index 2 <target1>
         [doc] nomicon (book) <target1>
-        [doc] rustc 1 <host> -> reference (book) 2 <target1>
+        [doc] redox 1 <host> -> reference (book) 2 <target1>
         [doc] rustdoc (book) <target1>
         [doc] rust-by-example (book) <target1>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <target1>
+        [build] redox 0 <host> -> LintDocs 1 <host>
+        [doc] redox (book) <target1>
         [doc] cargo (book) <target1>
         [doc] clippy (book) <target1>
         [doc] embedded-book (book) <target1>
         [doc] edition-guide (book) <target1>
         [doc] style-guide (book) <target1>
-        [doc] rustc 1 <host> -> releases 2 <target1>
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [doc] redox 1 <host> -> releases 2 <target1>
+        [build] redox 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
-        [doc] rustc 1 <host> -> std 1 <target1> crates=[]
-        [dist] rustc 1 <host> -> json-docs 2 <target1>
+        [doc] redox 1 <host> -> std 1 <target1> crates=[]
+        [dist] redox 1 <host> -> json-docs 2 <target1>
         [dist] mingw <target1>
         [build] rustdoc 2 <target1>
-        [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <target1>
-        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
-        [dist] rustc <target1>
-        [dist] rustc 1 <host> -> std 1 <target1>
-        [dist] rustc 1 <host> -> rustc-dev 2 <target1>
-        [dist] rustc 1 <host> -> analysis 2 <target1>
+        [build] redox 1 <host> -> rust-analyzer-proc-macro-srv 2 <target1>
+        [build] redox 0 <host> -> GenerateCopyright 1 <host>
+        [dist] redox <target1>
+        [dist] redox 1 <host> -> std 1 <target1>
+        [dist] redox 1 <host> -> redox-dev 2 <target1>
+        [dist] redox 1 <host> -> analysis 2 <target1>
         [dist] src <>
-        [build] rustc 1 <host> -> cargo 2 <target1>
-        [dist] rustc 1 <host> -> cargo 2 <target1>
-        [build] rustc 1 <host> -> rust-analyzer 2 <target1>
-        [dist] rustc 1 <host> -> rust-analyzer 2 <target1>
-        [build] rustc 1 <host> -> rustfmt 2 <target1>
-        [build] rustc 1 <host> -> cargo-fmt 2 <target1>
-        [dist] rustc 1 <host> -> rustfmt 2 <target1>
-        [build] rustc 1 <host> -> clippy-driver 2 <target1>
-        [build] rustc 1 <host> -> cargo-clippy 2 <target1>
-        [dist] rustc 1 <host> -> clippy 2 <target1>
-        [build] rustc 1 <host> -> miri 2 <target1>
-        [build] rustc 1 <host> -> cargo-miri 2 <target1>
-        [dist] rustc 1 <host> -> miri 2 <target1>
-        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
-        [doc] rustc 2 <target1> -> std 2 <target1> crates=[]
-        [dist] rustc 2 <target1> -> json-docs 3 <target1>
-        [dist] rustc 1 <host> -> extended 2 <target1>
+        [build] redox 1 <host> -> cargo 2 <target1>
+        [dist] redox 1 <host> -> cargo 2 <target1>
+        [build] redox 1 <host> -> rust-analyzer 2 <target1>
+        [dist] redox 1 <host> -> rust-analyzer 2 <target1>
+        [build] redox 1 <host> -> rustfmt 2 <target1>
+        [build] redox 1 <host> -> cargo-fmt 2 <target1>
+        [dist] redox 1 <host> -> rustfmt 2 <target1>
+        [build] redox 1 <host> -> clippy-driver 2 <target1>
+        [build] redox 1 <host> -> cargo-clippy 2 <target1>
+        [dist] redox 1 <host> -> clippy 2 <target1>
+        [build] redox 1 <host> -> miri 2 <target1>
+        [build] redox 1 <host> -> cargo-miri 2 <target1>
+        [dist] redox 1 <host> -> miri 2 <target1>
+        [build] redox 1 <host> -> LlvmBitcodeLinker 2 <target1>
+        [doc] redox 2 <target1> -> std 2 <target1> crates=[]
+        [dist] redox 2 <target1> -> json-docs 3 <target1>
+        [dist] redox 1 <host> -> extended 2 <target1>
         [dist] reproducible-artifacts <target1>
         ");
     }
 
     /// Simulates e.g. the powerpc64 builder, which is fully cross-compiled from x64, but it does
-    /// not build docs. Crucially, it shouldn't build host stage 2 rustc.
+    /// not build docs. Crucially, it shouldn't build host stage 2 redox.
     ///
     /// This is a regression test for <https://github.com/rust-lang/rust/issues/138123>
     /// and <https://github.com/rust-lang/rust/issues/138004>.
@@ -1639,9 +1639,9 @@ mod snapshot {
             ])
             .get_steps();
 
-        // Make sure that we don't build stage2 host rustc
+        // Make sure that we don't build stage2 host redox
         steps.assert_no_match(|m| {
-            m.name == "rustc"
+            m.name == "redox"
                 && m.built_by.map(|b| b.stage) == Some(1)
                 && *m.target.triple == host_target()
         });
@@ -1651,36 +1651,36 @@ mod snapshot {
         [dist] mingw <target1>
         [build] llvm <host>
         [build] llvm <target1>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> WasmComponentLd 1 <host>
-        [build] rustc 1 <host> -> std 1 <target1>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <target1>
-        [build] rustc 1 <host> -> WasmComponentLd 2 <target1>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> WasmComponentLd 1 <host>
+        [build] redox 1 <host> -> std 1 <target1>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <target1>
+        [build] redox 1 <host> -> WasmComponentLd 2 <target1>
         [build] rustdoc 2 <target1>
-        [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <target1>
-        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
-        [dist] rustc <target1>
-        [dist] rustc 1 <host> -> std 1 <target1>
-        [dist] rustc 1 <host> -> rustc-dev 2 <target1>
-        [dist] rustc 1 <host> -> analysis 2 <target1>
+        [build] redox 1 <host> -> rust-analyzer-proc-macro-srv 2 <target1>
+        [build] redox 0 <host> -> GenerateCopyright 1 <host>
+        [build] redox 0 <host> -> RustInstaller 1 <host>
+        [dist] redox <target1>
+        [dist] redox 1 <host> -> std 1 <target1>
+        [dist] redox 1 <host> -> redox-dev 2 <target1>
+        [dist] redox 1 <host> -> analysis 2 <target1>
         [dist] src <>
-        [build] rustc 1 <host> -> cargo 2 <target1>
-        [dist] rustc 1 <host> -> cargo 2 <target1>
-        [build] rustc 1 <host> -> rust-analyzer 2 <target1>
-        [dist] rustc 1 <host> -> rust-analyzer 2 <target1>
-        [build] rustc 1 <host> -> rustfmt 2 <target1>
-        [build] rustc 1 <host> -> cargo-fmt 2 <target1>
-        [dist] rustc 1 <host> -> rustfmt 2 <target1>
-        [build] rustc 1 <host> -> clippy-driver 2 <target1>
-        [build] rustc 1 <host> -> cargo-clippy 2 <target1>
-        [dist] rustc 1 <host> -> clippy 2 <target1>
-        [build] rustc 1 <host> -> miri 2 <target1>
-        [build] rustc 1 <host> -> cargo-miri 2 <target1>
-        [dist] rustc 1 <host> -> miri 2 <target1>
-        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
-        [dist] rustc 1 <host> -> extended 2 <target1>
+        [build] redox 1 <host> -> cargo 2 <target1>
+        [dist] redox 1 <host> -> cargo 2 <target1>
+        [build] redox 1 <host> -> rust-analyzer 2 <target1>
+        [dist] redox 1 <host> -> rust-analyzer 2 <target1>
+        [build] redox 1 <host> -> rustfmt 2 <target1>
+        [build] redox 1 <host> -> cargo-fmt 2 <target1>
+        [dist] redox 1 <host> -> rustfmt 2 <target1>
+        [build] redox 1 <host> -> clippy-driver 2 <target1>
+        [build] redox 1 <host> -> cargo-clippy 2 <target1>
+        [dist] redox 1 <host> -> clippy 2 <target1>
+        [build] redox 1 <host> -> miri 2 <target1>
+        [build] redox 1 <host> -> cargo-miri 2 <target1>
+        [dist] redox 1 <host> -> miri 2 <target1>
+        [build] redox 1 <host> -> LlvmBitcodeLinker 2 <target1>
+        [dist] redox 1 <host> -> extended 2 <target1>
         [dist] reproducible-artifacts <target1>
         ");
     }
@@ -1695,47 +1695,47 @@ mod snapshot {
                 .config("dist")
                 .args(&["--set", "rust.codegen-backends=['llvm', 'cranelift']"])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] redox 0 <host> -> UnstableBookGen 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> rustc_codegen_cranelift 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> redox_codegen_cranelift 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> standalone 2 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
-        [build] rustc 1 <host> -> error-index 2 <host>
-        [doc] rustc 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> standalone 2 <host>
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> redox_codegen_cranelift 2 <host>
+        [build] redox 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] redox 1 <host> -> reference (book) 2 <host>
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <host>
+        [build] redox 0 <host> -> LintDocs 1 <host>
+        [doc] redox (book) <host>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
         [doc] embedded-book (book) <host>
         [doc] edition-guide (book) <host>
         [doc] style-guide (book) <host>
-        [doc] rustc 1 <host> -> releases 2 <host>
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [doc] redox 1 <host> -> releases 2 <host>
+        [build] redox 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[]
-        [dist] rustc 1 <host> -> json-docs 2 <host>
+        [doc] redox 1 <host> -> std 1 <host> crates=[]
+        [dist] redox 1 <host> -> json-docs 2 <host>
         [dist] mingw <host>
         [build] rustdoc 2 <host>
-        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
-        [dist] rustc <host>
-        [dist] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
-        [dist] rustc 1 <host> -> std 1 <host>
-        [dist] rustc 1 <host> -> rustc-dev 2 <host>
+        [build] redox 0 <host> -> GenerateCopyright 1 <host>
+        [dist] redox <host>
+        [dist] redox 1 <host> -> redox_codegen_cranelift 2 <host>
+        [dist] redox 1 <host> -> std 1 <host>
+        [dist] redox 1 <host> -> redox-dev 2 <host>
         [dist] src <>
         [dist] reproducible-artifacts <host>
         ");
@@ -1749,7 +1749,7 @@ mod snapshot {
                 .config("dist")
                 .path("bootstrap")
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [build] redox 0 <host> -> RustInstaller 1 <host>
         [dist] bootstrap <host>
         ");
     }
@@ -1764,49 +1764,49 @@ mod snapshot {
                 .targets(&[TEST_TRIPLE_1])
                 .args(&["--set", "build.local-rebuild=true"])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> std 0 <target1>
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
-        [dist] rustc 0 <host> -> std 0 <target1>
+        [build] redox 0 <host> -> std 0 <target1>
+        [build] redox 0 <host> -> RustInstaller 1 <host>
+        [dist] redox 0 <host> -> std 0 <target1>
         ");
     }
 
     #[test]
-    fn dist_rustc_docs() {
+    fn dist_redox_docs() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx
                 .config("dist")
-                .path("rustc-docs")
+                .path("redox-docs")
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] redox 0 <host> -> UnstableBookGen 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> standalone 2 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> error-index 2 <host>
-        [doc] rustc 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> standalone 2 <host>
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] redox 1 <host> -> reference (book) 2 <host>
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <host>
+        [build] redox 0 <host> -> LintDocs 1 <host>
+        [doc] redox (book) <host>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
         [doc] embedded-book (book) <host>
         [doc] edition-guide (book) <host>
         [doc] style-guide (book) <host>
-        [doc] rustc 1 <host> -> releases 2 <host>
-        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [doc] redox 1 <host> -> releases 2 <host>
+        [build] redox 0 <host> -> RustInstaller 1 <host>
         ");
     }
 
@@ -1816,16 +1816,16 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("compiler")
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (73 crates)");
+                .render_steps(), @"[check] redox 0 <host> -> redox 1 <host> (73 crates)");
     }
 
     #[test]
-    fn check_rustc_no_explicit_stage() {
+    fn check_redox_no_explicit_stage() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("check")
-                .path("rustc")
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (1 crates)");
+                .path("redox")
+                .render_steps(), @"[check] redox 0 <host> -> redox 1 <host> (1 crates)");
     }
 
     #[test]
@@ -1842,7 +1842,7 @@ mod snapshot {
             ctx.config("check")
                 .path("compiler")
                 .stage(1)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (73 crates)");
+                .render_steps(), @"[check] redox 0 <host> -> redox 1 <host> (73 crates)");
     }
 
     #[test]
@@ -1854,9 +1854,9 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc 1 <host> -> rustc 2 <host> (73 crates)
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [check] redox 1 <host> -> redox 2 <host> (73 crates)
         ");
     }
 
@@ -1869,21 +1869,21 @@ mod snapshot {
                 .hosts(&[TEST_TRIPLE_1])
                 .render_steps(), @"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc 1 <host> -> std 1 <target1>
-        [check] rustc 1 <host> -> rustc 2 <target1> (73 crates)
-        [check] rustc 1 <host> -> rustc 2 <target1>
-        [check] rustc 1 <host> -> Rustdoc 2 <target1>
-        [check] rustc 1 <host> -> rustc_codegen_cranelift 2 <target1>
-        [check] rustc 1 <host> -> rustc_codegen_gcc 2 <target1>
-        [check] rustc 1 <host> -> Clippy 2 <target1>
-        [check] rustc 1 <host> -> Miri 2 <target1>
-        [check] rustc 1 <host> -> CargoMiri 2 <target1>
-        [check] rustc 1 <host> -> Rustfmt 2 <target1>
-        [check] rustc 1 <host> -> RustAnalyzer 2 <target1>
-        [check] rustc 1 <host> -> TestFloatParse 2 <target1>
-        [check] rustc 1 <host> -> std 1 <target1>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [check] redox 1 <host> -> std 1 <target1>
+        [check] redox 1 <host> -> redox 2 <target1> (73 crates)
+        [check] redox 1 <host> -> redox 2 <target1>
+        [check] redox 1 <host> -> Rustdoc 2 <target1>
+        [check] redox 1 <host> -> redox_codegen_cranelift 2 <target1>
+        [check] redox 1 <host> -> redox_codegen_gcc 2 <target1>
+        [check] redox 1 <host> -> Clippy 2 <target1>
+        [check] redox 1 <host> -> Miri 2 <target1>
+        [check] redox 1 <host> -> CargoMiri 2 <target1>
+        [check] redox 1 <host> -> Rustfmt 2 <target1>
+        [check] redox 1 <host> -> RustAnalyzer 2 <target1>
+        [check] redox 1 <host> -> TestFloatParse 2 <target1>
+        [check] redox 1 <host> -> std 1 <target1>
         ");
     }
 
@@ -1895,8 +1895,8 @@ mod snapshot {
                 .path("library")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [check] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [check] redox 1 <host> -> std 1 <host>
         ");
     }
 
@@ -1916,8 +1916,8 @@ mod snapshot {
                 .stage(1)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [check] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [check] redox 1 <host> -> std 1 <host>
         ");
     }
 
@@ -1930,10 +1930,10 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [check] rustc 2 <host> -> std 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [check] redox 2 <host> -> std 2 <host>
         ");
     }
 
@@ -1946,18 +1946,18 @@ mod snapshot {
                 .targets(&[TEST_TRIPLE_1, TEST_TRIPLE_2])
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [check] rustc 1 <host> -> std 1 <target1>
-        [check] rustc 1 <host> -> std 1 <target2>
+        [build] redox 0 <host> -> redox 1 <host>
+        [check] redox 1 <host> -> std 1 <target1>
+        [check] redox 1 <host> -> std 1 <target2>
         ");
     }
 
-    /// Make sure that we don't check library when download-rustc is disabled
-    /// when `--skip-std-check-if-no-download-rustc` was passed.
+    /// Make sure that we don't check library when download-redox is disabled
+    /// when `--skip-std-check-if-no-download-redox` was passed.
     #[test]
-    fn check_library_skip_without_download_rustc() {
+    fn check_library_skip_without_download_redox() {
         let ctx = TestCtx::new();
-        let args = ["--set", "rust.download-rustc=false", "--skip-std-check-if-no-download-rustc"];
+        let args = ["--set", "rust.download-redox=false", "--skip-std-check-if-no-download-redox"];
         insta::assert_snapshot!(
             ctx.config("check")
                 .paths(&["library"])
@@ -1968,7 +1968,7 @@ mod snapshot {
             ctx.config("check")
                 .paths(&["library", "compiler"])
                 .args(&args)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (73 crates)");
+                .render_steps(), @"[check] redox 0 <host> -> redox 1 <host> (73 crates)");
     }
 
     #[test]
@@ -1978,8 +1978,8 @@ mod snapshot {
             ctx.config("check")
                 .path("miri")
                 .render_steps(), @r"
-        [check] rustc 0 <host> -> rustc 1 <host>
-        [check] rustc 0 <host> -> Miri 1 <host>
+        [check] redox 0 <host> -> redox 1 <host>
+        [check] redox 0 <host> -> Miri 1 <host>
         ");
     }
 
@@ -1998,8 +1998,8 @@ mod snapshot {
                 .path("miri")
                 .stage(1)
                 .render_steps(), @r"
-        [check] rustc 0 <host> -> rustc 1 <host>
-        [check] rustc 0 <host> -> Miri 1 <host>
+        [check] redox 0 <host> -> redox 1 <host>
+        [check] redox 0 <host> -> Miri 1 <host>
         ");
     }
 
@@ -2012,10 +2012,10 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc 1 <host> -> rustc 2 <host>
-        [check] rustc 1 <host> -> Miri 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [check] redox 1 <host> -> redox 2 <host>
+        [check] redox 1 <host> -> Miri 2 <host>
         ");
     }
 
@@ -2025,7 +2025,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("compiletest")
-                .render_steps(), @"[check] rustc 0 <host> -> Compiletest 1 <host>");
+                .render_steps(), @"[check] redox 0 <host> -> Compiletest 1 <host>");
     }
 
     #[test]
@@ -2033,10 +2033,10 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("check")
-                .path("rustc_codegen_cranelift")
+                .path("redox_codegen_cranelift")
                 .render_steps(), @r"
-        [check] rustc 0 <host> -> rustc 1 <host>
-        [check] rustc 0 <host> -> rustc_codegen_cranelift 1 <host>
+        [check] redox 0 <host> -> redox 1 <host>
+        [check] redox 0 <host> -> redox_codegen_cranelift 1 <host>
         ");
     }
 
@@ -2047,8 +2047,8 @@ mod snapshot {
             ctx.config("check")
                 .path("rust-analyzer")
                 .render_steps(), @r"
-        [check] rustc 0 <host> -> rustc 1 <host>
-        [check] rustc 0 <host> -> RustAnalyzer 1 <host>
+        [check] redox 0 <host> -> redox 1 <host>
+        [check] redox 0 <host> -> RustAnalyzer 1 <host>
         ");
     }
 
@@ -2058,7 +2058,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("run-make-support")
-                .render_steps(), @"[check] rustc 0 <host> -> RunMakeSupport 1 <host>");
+                .render_steps(), @"[check] redox 0 <host> -> RunMakeSupport 1 <host>");
     }
 
     fn prepare_test_config(ctx: &TestCtx) -> ConfigBuilder {
@@ -2079,19 +2079,19 @@ mod snapshot {
         insta::assert_snapshot!(
             prepare_test_config(&ctx)
                 .render_steps(), @"
-        [build] rustc 0 <host> -> Tidy 1 <host>
+        [build] redox 0 <host> -> Tidy 1 <host>
         [test] tidy <>
         [build] rustdoc 0 <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> Compiletest 1 <host>
         [test] compiletest-ui 1 <host>
         [test] compiletest-crashes 1 <host>
-        [build] rustc 0 <host> -> CoverageDump 1 <host>
+        [build] redox 0 <host> -> CoverageDump 1 <host>
         [test] compiletest-coverage 1 <host>
         [test] compiletest-coverage 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [test] compiletest-mir-opt 1 <host>
         [test] compiletest-codegen-llvm 1 <host>
         [test] compiletest-codegen-units 1 <host>
@@ -2103,53 +2103,53 @@ mod snapshot {
         [test] compiletest-rustdoc-html 1 <host>
         [test] compiletest-coverage-run-rustdoc 1 <host>
         [test] compiletest-pretty 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 0 <host> -> std 0 <host>
-        [test] rustc 0 <host> -> CrateLibrustc 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> std 0 <host>
+        [test] redox 0 <host> -> CrateLibredox 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
         [test] crate-bootstrap <host> src/tools/coverage-dump
         [test] crate-bootstrap <host> src/tools/jsondoclint
         [test] crate-bootstrap <host> src/tools/replace-version-placeholder
         [test] crate-bootstrap <host> tidyselftest
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] redox 0 <host> -> UnstableBookGen 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
-        [doc] rustc 0 <host> -> standalone 1 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 0 <host> -> error-index 1 <host>
-        [doc] rustc 0 <host> -> error-index 1 <host>
+        [doc] redox 0 <host> -> standalone 1 <host>
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] redox 0 <host> -> error-index 1 <host>
+        [doc] redox 0 <host> -> error-index 1 <host>
         [doc] nomicon (book) <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] redox 1 <host> -> reference (book) 2 <host>
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <host>
+        [build] redox 0 <host> -> LintDocs 1 <host>
+        [doc] redox (book) <host>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
         [doc] embedded-book (book) <host>
         [doc] edition-guide (book) <host>
         [doc] style-guide (book) <host>
-        [doc] rustc 0 <host> -> releases 1 <host>
-        [build] rustc 0 <host> -> Linkchecker 1 <host>
+        [doc] redox 0 <host> -> releases 1 <host>
+        [build] redox 0 <host> -> Linkchecker 1 <host>
         [test] link-check <host>
         [test] tier-check <host>
-        [test] rustc 0 <host> -> rust-analyzer 1 <host>
-        [build] rustc 0 <host> -> RustdocTheme 1 <host>
+        [test] redox 0 <host> -> rust-analyzer 1 <host>
+        [build] redox 0 <host> -> RustdocTheme 1 <host>
         [test] rustdoc-theme 1 <host>
         [test] compiletest-rustdoc-ui 1 <host>
-        [build] rustc 0 <host> -> JsonDocCk 1 <host>
-        [build] rustc 0 <host> -> JsonDocLint 1 <host>
+        [build] redox 0 <host> -> JsonDocCk 1 <host>
+        [build] redox 0 <host> -> JsonDocLint 1 <host>
         [test] compiletest-rustdoc-json 1 <host>
-        [doc] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> HtmlChecker 1 <host>
+        [doc] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> HtmlChecker 1 <host>
         [test] html-check <host>
-        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] redox 0 <host> -> RunMakeSupport 1 <host>
         [test] compiletest-run-make 1 <host>
-        [build] rustc 0 <host> -> cargo 1 <host>
+        [build] redox 0 <host> -> cargo 1 <host>
         [test] compiletest-run-make-cargo 1 <host>
         ");
     }
@@ -2160,7 +2160,7 @@ mod snapshot {
         let steps = ctx.config("test").arg("compiletest").render_steps();
         insta::assert_snapshot!(steps, @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
         [build] rustdoc 0 <host>
         ");
     }
@@ -2173,16 +2173,16 @@ mod snapshot {
                 .args(&["ui", "ui-fulldeps", "run-make", "rustdoc-html", "rustdoc-gui", "incremental"])
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> Compiletest 1 <host>
         [test] compiletest-ui 1 <host>
         [test] compiletest-ui-fulldeps 1 <host>
-        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] redox 0 <host> -> RunMakeSupport 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-run-make 1 <host>
         [test] compiletest-rustdoc-html 1 <host>
-        [build] rustc 0 <host> -> RustdocGUITest 1 <host>
+        [build] redox 0 <host> -> RustdocGUITest 1 <host>
         [test] rustdoc-gui 1 <host>
         [test] compiletest-incremental 1 <host>
         ");
@@ -2197,19 +2197,19 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 2 <host> -> std 2 <host>
+        [build] redox 0 <host> -> Compiletest 1 <host>
         [test] compiletest-ui 2 <host>
-        [build] rustc 2 <host> -> rustc 3 <host>
+        [build] redox 2 <host> -> redox 3 <host>
         [test] compiletest-ui-fulldeps 2 <host>
-        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] redox 0 <host> -> RunMakeSupport 1 <host>
         [build] rustdoc 2 <host>
         [test] compiletest-run-make 2 <host>
         [test] compiletest-rustdoc-html 2 <host>
-        [build] rustc 0 <host> -> RustdocGUITest 1 <host>
+        [build] redox 0 <host> -> RustdocGUITest 1 <host>
         [test] rustdoc-gui 2 <host>
         [test] compiletest-incremental 2 <host>
         ");
@@ -2226,26 +2226,26 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 0 <host> -> Compiletest 1 <host>
-        [build] rustc 1 <host> -> std 1 <target1>
-        [build] rustc 2 <host> -> std 2 <target1>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 2 <host> -> std 2 <host>
+        [build] redox 0 <host> -> Compiletest 1 <host>
+        [build] redox 1 <host> -> std 1 <target1>
+        [build] redox 2 <host> -> std 2 <target1>
         [test] compiletest-ui 2 <target1>
         [build] llvm <target1>
-        [build] rustc 2 <host> -> rustc 3 <target1>
+        [build] redox 2 <host> -> redox 3 <target1>
         [test] compiletest-ui-fulldeps 2 <target1>
-        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] redox 0 <host> -> RunMakeSupport 1 <host>
         [build] rustdoc 2 <host>
         [test] compiletest-run-make 2 <target1>
-        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] redox 1 <host> -> redox 2 <target1>
         [build] rustdoc 1 <host>
-        [build] rustc 0 <host> -> RustdocGUITest 1 <host>
+        [build] redox 0 <host> -> RustdocGUITest 1 <host>
         [test] rustdoc-gui 2 <target1>
         [test] compiletest-incremental 2 <target1>
-        [build] rustc 2 <target1> -> std 2 <target1>
+        [build] redox 2 <target1> -> std 2 <target1>
         [build] rustdoc 2 <target1>
         ");
     }
@@ -2257,82 +2257,82 @@ mod snapshot {
             prepare_test_config(&ctx)
                 .stage(2)
                 .render_steps(), @"
-        [build] rustc 0 <host> -> Tidy 1 <host>
+        [build] redox 0 <host> -> Tidy 1 <host>
         [test] tidy <>
         [build] rustdoc 0 <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 2 <host> -> std 2 <host>
+        [build] redox 0 <host> -> Compiletest 1 <host>
         [test] compiletest-ui 2 <host>
         [test] compiletest-crashes 2 <host>
-        [build] rustc 0 <host> -> CoverageDump 1 <host>
+        [build] redox 0 <host> -> CoverageDump 1 <host>
         [test] compiletest-coverage 2 <host>
         [test] compiletest-coverage 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
+        [build] redox 2 <host> -> std 2 <host>
         [test] compiletest-mir-opt 2 <host>
         [test] compiletest-codegen-llvm 2 <host>
         [test] compiletest-codegen-units 2 <host>
         [test] compiletest-assembly-llvm 2 <host>
         [test] compiletest-incremental 2 <host>
         [test] compiletest-debuginfo 2 <host>
-        [build] rustc 2 <host> -> rustc 3 <host>
+        [build] redox 2 <host> -> redox 3 <host>
         [test] compiletest-ui-fulldeps 2 <host>
         [build] rustdoc 2 <host>
         [test] compiletest-rustdoc-html 2 <host>
         [test] compiletest-coverage-run-rustdoc 2 <host>
         [test] compiletest-pretty 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 2 <host> -> std 2 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [build] rustdoc 1 <host>
-        [test] rustc 1 <host> -> CrateLibrustc 2 <host>
+        [test] redox 1 <host> -> CrateLibredox 2 <host>
         [test] crate-bootstrap <host> src/tools/coverage-dump
         [test] crate-bootstrap <host> src/tools/jsondoclint
         [test] crate-bootstrap <host> src/tools/replace-version-placeholder
         [test] crate-bootstrap <host> tidyselftest
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] redox 0 <host> -> UnstableBookGen 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
-        [doc] rustc 1 <host> -> standalone 2 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 1 <host> -> error-index 2 <host>
-        [doc] rustc 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> standalone 2 <host>
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] redox 1 <host> -> error-index 2 <host>
+        [doc] redox 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] redox 1 <host> -> reference (book) 2 <host>
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <host>
+        [build] redox 0 <host> -> LintDocs 1 <host>
+        [doc] redox (book) <host>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
         [doc] embedded-book (book) <host>
         [doc] edition-guide (book) <host>
         [doc] style-guide (book) <host>
-        [doc] rustc 1 <host> -> releases 2 <host>
-        [build] rustc 0 <host> -> Linkchecker 1 <host>
+        [doc] redox 1 <host> -> releases 2 <host>
+        [build] redox 0 <host> -> Linkchecker 1 <host>
         [test] link-check <host>
         [test] tier-check <host>
-        [test] rustc 1 <host> -> rust-analyzer 2 <host>
-        [doc] rustc (book) <host>
-        [test] rustc 1 <host> -> lint-docs 2 <host>
-        [build] rustc 0 <host> -> RustdocTheme 1 <host>
+        [test] redox 1 <host> -> rust-analyzer 2 <host>
+        [doc] redox (book) <host>
+        [test] redox 1 <host> -> lint-docs 2 <host>
+        [build] redox 0 <host> -> RustdocTheme 1 <host>
         [test] rustdoc-theme 2 <host>
         [test] compiletest-rustdoc-ui 2 <host>
-        [build] rustc 0 <host> -> JsonDocCk 1 <host>
-        [build] rustc 0 <host> -> JsonDocLint 1 <host>
+        [build] redox 0 <host> -> JsonDocCk 1 <host>
+        [build] redox 0 <host> -> JsonDocLint 1 <host>
         [test] compiletest-rustdoc-json 2 <host>
-        [doc] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 0 <host> -> HtmlChecker 1 <host>
+        [doc] redox 1 <host> -> redox 2 <host>
+        [build] redox 0 <host> -> HtmlChecker 1 <host>
         [test] html-check <host>
-        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] redox 0 <host> -> RunMakeSupport 1 <host>
         [test] compiletest-run-make 2 <host>
-        [build] rustc 1 <host> -> cargo 2 <host>
+        [build] redox 1 <host> -> cargo 2 <host>
         [test] compiletest-run-make-cargo 2 <host>
         ");
     }
@@ -2346,10 +2346,10 @@ mod snapshot {
                 .stage(1)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> std 0 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> std 0 <host>
         [build] rustdoc 0 <host>
-        [test] rustc 0 <host> -> CrateLibrustc 1 <host>
+        [test] redox 0 <host> -> CrateLibredox 1 <host>
         ");
     }
 
@@ -2362,12 +2362,12 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [build] rustdoc 1 <host>
-        [test] rustc 1 <host> -> CrateLibrustc 2 <host>
+        [test] redox 1 <host> -> CrateLibredox 2 <host>
         ");
     }
 
@@ -2388,16 +2388,16 @@ mod snapshot {
 
         let get_steps = |args: &[&str]| ctx.config("test").args(args).get_steps();
 
-        let rustc_metadata =
-            || StepMetadata::test("CrateLibrustc", host).built_by(Compiler::new(0, host));
+        let redox_metadata =
+            || StepMetadata::test("CrateLibredox", host).built_by(Compiler::new(0, host));
         // Ensure our test is valid, and `test::Rustc` would be run without the exclude.
-        get_steps(&[]).assert_contains(rustc_metadata());
+        get_steps(&[]).assert_contains(redox_metadata());
 
-        let steps = get_steps(&["--skip", "compiler/rustc_data_structures"]);
+        let steps = get_steps(&["--skip", "compiler/redox_data_structures"]);
 
-        // Ensure tests for rustc are not skipped.
-        steps.assert_contains(rustc_metadata());
-        steps.assert_contains_fuzzy(StepMetadata::build("rustc", host));
+        // Ensure tests for redox are not skipped.
+        steps.assert_contains(redox_metadata());
+        steps.assert_contains_fuzzy(StepMetadata::build("redox", host));
     }
 
     #[test]
@@ -2407,13 +2407,13 @@ mod snapshot {
             ctx.config("test")
                 .path("cargo")
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> cargo 1 <host>
+        [build] redox 0 <host> -> cargo 1 <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [build] rustdoc 1 <host>
         [build] rustdoc 0 <host>
-        [test] rustc 0 <host> -> cargo 1 <host>
+        [test] redox 0 <host> -> cargo 1 <host>
         ");
     }
 
@@ -2426,14 +2426,14 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> cargo 2 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> cargo 2 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 2 <host> -> std 2 <host>
         [build] rustdoc 2 <host>
         [build] rustdoc 1 <host>
-        [test] rustc 1 <host> -> cargo 2 <host>
+        [test] redox 1 <host> -> cargo 2 <host>
         ");
     }
 
@@ -2444,11 +2444,11 @@ mod snapshot {
             ctx.config("test")
                 .path("cargotest")
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> cargo 1 <host>
+        [build] redox 0 <host> -> cargo 1 <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 0 <host> -> CargoTest 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> CargoTest 1 <host>
         [build] rustdoc 1 <host>
         [test] cargotest 1 <host>
         ");
@@ -2462,7 +2462,7 @@ mod snapshot {
                 .path("tier-check")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
         [test] tier-check <host>
         ");
     }
@@ -2477,10 +2477,10 @@ mod snapshot {
                 .path("run-make")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> RunMakeSupport 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> Compiletest 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-run-make 1 <host>
         ");
@@ -2494,11 +2494,11 @@ mod snapshot {
                 .path("run-make-cargo")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 0 <host> -> Compiletest 1 <host>
-        [build] rustc 0 <host> -> cargo 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> RunMakeSupport 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> Compiletest 1 <host>
+        [build] redox 0 <host> -> cargo 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-run-make-cargo 1 <host>
         ");
@@ -2510,34 +2510,34 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("doc")
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] redox 0 <host> -> UnstableBookGen 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 0 <host>
-        [doc] rustc 0 <host> -> standalone 1 <host>
+        [doc] redox 0 <host> -> standalone 1 <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 0 <host> -> error-index 1 <host>
-        [doc] rustc 0 <host> -> error-index 1 <host>
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] redox 0 <host> -> error-index 1 <host>
+        [doc] redox 0 <host> -> error-index 1 <host>
         [doc] nomicon (book) <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [doc] redox 1 <host> -> reference (book) 2 <host>
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
-        [build] rustc 0 <host> -> LintDocs 1 <host>
-        [doc] rustc (book) <host>
+        [build] redox 0 <host> -> LintDocs 1 <host>
+        [doc] redox (book) <host>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
         [doc] embedded-book (book) <host>
         [doc] edition-guide (book) <host>
         [doc] style-guide (book) <host>
-        [doc] rustc 0 <host> -> releases 1 <host>
+        [doc] redox 0 <host> -> releases 1 <host>
         ");
     }
 
@@ -2549,9 +2549,9 @@ mod snapshot {
                 .path("library")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         ");
     }
 
@@ -2563,7 +2563,7 @@ mod snapshot {
                 .path("cargo")
                 .render_steps(), @r"
         [build] rustdoc 0 <host>
-        [doc] rustc 0 <host> -> Cargo 1 <host>
+        [doc] redox 0 <host> -> Cargo 1 <host>
         ");
     }
     #[test]
@@ -2575,10 +2575,10 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> Cargo 2 <host>
+        [doc] redox 1 <host> -> Cargo 2 <host>
         ");
     }
 
@@ -2590,9 +2590,9 @@ mod snapshot {
                 .path("core")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[core]
+        [doc] redox 1 <host> -> std 1 <host> crates=[core]
         ");
     }
 
@@ -2605,9 +2605,9 @@ mod snapshot {
                 .override_target_no_std(&host_target())
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[core]
+        [doc] redox 1 <host> -> std 1 <host> crates=[core]
         ");
     }
 
@@ -2620,9 +2620,9 @@ mod snapshot {
                 .override_target_no_std(&host_target())
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,core]
+        [doc] redox 1 <host> -> std 1 <host> crates=[alloc,core]
         ");
     }
 
@@ -2636,9 +2636,9 @@ mod snapshot {
                 .override_target_no_std(TEST_TRIPLE_1)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,core]
+        [doc] redox 1 <host> -> std 1 <target1> crates=[alloc,core]
         ");
     }
 
@@ -2659,7 +2659,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] rustdoc 0 <host>
         [build] llvm <host>
-        [doc] rustc 0 <host> -> rustc 1 <host>
+        [doc] redox 0 <host> -> redox 1 <host>
         ");
     }
 
@@ -2672,10 +2672,10 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> rustc 2 <host>
+        [doc] redox 1 <host> -> redox 2 <host>
         ");
     }
 
@@ -2695,7 +2695,7 @@ mod snapshot {
                 .stage(1)
                 .render_steps(), @r"
         [build] rustdoc 0 <host>
-        [doc] rustc 0 <host> -> Compiletest 1 <host>
+        [doc] redox 0 <host> -> Compiletest 1 <host>
         ");
     }
 
@@ -2708,10 +2708,10 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> Compiletest 2 <host>
+        [doc] redox 1 <host> -> Compiletest 2 <host>
         ");
     }
 
@@ -2724,10 +2724,10 @@ mod snapshot {
                 .path("reference")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
-        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> Rustbook 1 <host>
+        [doc] redox 1 <host> -> reference (book) 2 <host>
         ");
     }
 
@@ -2740,15 +2740,15 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 0 <host> -> clippy-driver 1 <host>
-        [build] rustc 0 <host> -> cargo-clippy 1 <host>
-        [clippy] rustc 1 <host> -> bootstrap 2 <host>
-        [clippy] rustc 1 <host> -> std 1 <host>
-        [clippy] rustc 1 <host> -> rustc 2 <host>
-        [check] rustc 1 <host> -> rustc 2 <host>
-        [clippy] rustc 1 <host> -> rustc_codegen_gcc 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> clippy-driver 1 <host>
+        [build] redox 0 <host> -> cargo-clippy 1 <host>
+        [clippy] redox 1 <host> -> bootstrap 2 <host>
+        [clippy] redox 1 <host> -> std 1 <host>
+        [clippy] redox 1 <host> -> redox 2 <host>
+        [check] redox 1 <host> -> redox 2 <host>
+        [clippy] redox 1 <host> -> redox_codegen_gcc 2 <host>
         ");
     }
 
@@ -2760,7 +2760,7 @@ mod snapshot {
                 .path("compiler")
                 .render_steps(), @r"
         [build] llvm <host>
-        [clippy] rustc 0 <host> -> rustc 1 <host>
+        [clippy] redox 0 <host> -> redox 1 <host>
         ");
     }
 
@@ -2773,11 +2773,11 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 0 <host> -> clippy-driver 1 <host>
-        [build] rustc 0 <host> -> cargo-clippy 1 <host>
-        [clippy] rustc 1 <host> -> rustc 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> clippy-driver 1 <host>
+        [build] redox 0 <host> -> cargo-clippy 1 <host>
+        [clippy] redox 1 <host> -> redox 2 <host>
         ");
     }
 
@@ -2789,10 +2789,10 @@ mod snapshot {
                 .path("std")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> clippy-driver 1 <host>
-        [build] rustc 0 <host> -> cargo-clippy 1 <host>
-        [clippy] rustc 1 <host> -> std 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> clippy-driver 1 <host>
+        [build] redox 0 <host> -> cargo-clippy 1 <host>
+        [clippy] redox 1 <host> -> std 1 <host>
         ");
     }
 
@@ -2805,12 +2805,12 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> clippy-driver 2 <host>
-        [build] rustc 1 <host> -> cargo-clippy 2 <host>
-        [clippy] rustc 2 <host> -> std 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> clippy-driver 2 <host>
+        [build] redox 1 <host> -> cargo-clippy 2 <host>
+        [clippy] redox 2 <host> -> std 2 <host>
         ");
     }
 
@@ -2823,8 +2823,8 @@ mod snapshot {
                 .stage(1)
                 .render_steps(), @r"
         [build] llvm <host>
-        [check] rustc 0 <host> -> rustc 1 <host>
-        [clippy] rustc 0 <host> -> miri 1 <host>
+        [check] redox 0 <host> -> redox 1 <host>
+        [clippy] redox 0 <host> -> miri 1 <host>
         ");
     }
 
@@ -2837,12 +2837,12 @@ mod snapshot {
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 0 <host> -> clippy-driver 1 <host>
-        [build] rustc 0 <host> -> cargo-clippy 1 <host>
-        [clippy] rustc 1 <host> -> miri 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [check] redox 1 <host> -> redox 2 <host>
+        [build] redox 0 <host> -> clippy-driver 1 <host>
+        [build] redox 0 <host> -> cargo-clippy 1 <host>
+        [clippy] redox 1 <host> -> miri 2 <host>
         ");
     }
 
@@ -2852,7 +2852,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("clippy")
                 .path("bootstrap")
-                .render_steps(), @"[clippy] rustc 0 <host> -> bootstrap 1 <host>");
+                .render_steps(), @"[clippy] redox 0 <host> -> bootstrap 1 <host>");
     }
 
     #[test]
@@ -2877,39 +2877,39 @@ mod snapshot {
                     normalize_host: false
                 }), @r"
         [build] llvm <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> rustc 1 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> UnstableBookGen 1 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> Rustbook 1 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> redox 1 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> UnstableBookGen 1 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> Rustbook 1 <x86_64-unknown-linux-gnu>
         [doc] unstable-book (book) <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
         [doc] book (book) <x86_64-unknown-linux-gnu>
         [doc] book/first-edition (book) <x86_64-unknown-linux-gnu>
         [doc] book/second-edition (book) <x86_64-unknown-linux-gnu>
         [doc] book/2018-edition (book) <x86_64-unknown-linux-gnu>
         [build] rustdoc 1 <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> standalone 2 <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> rustc 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> standalone 2 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> redox 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
         [doc] nomicon (book) <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> reference (book) 2 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> reference (book) 2 <x86_64-unknown-linux-gnu>
         [doc] rustdoc (book) <x86_64-unknown-linux-gnu>
         [doc] rust-by-example (book) <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> LintDocs 1 <x86_64-unknown-linux-gnu>
-        [doc] rustc (book) <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> LintDocs 1 <x86_64-unknown-linux-gnu>
+        [doc] redox (book) <x86_64-unknown-linux-gnu>
         [doc] cargo (book) <x86_64-unknown-linux-gnu>
         [doc] clippy (book) <x86_64-unknown-linux-gnu>
         [doc] embedded-book (book) <x86_64-unknown-linux-gnu>
         [doc] edition-guide (book) <x86_64-unknown-linux-gnu>
         [doc] style-guide (book) <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> releases 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> RustInstaller 1 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> releases 2 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> RustInstaller 1 <x86_64-unknown-linux-gnu>
         [dist] docs <x86_64-unknown-linux-gnu>
-        [dist] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
+        [dist] redox 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
         [build] rustdoc 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> GenerateCopyright 1 <x86_64-unknown-linux-gnu>
-        [dist] rustc <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> GenerateCopyright 1 <x86_64-unknown-linux-gnu>
+        [dist] redox <x86_64-unknown-linux-gnu>
         ");
     }
 
@@ -2936,34 +2936,34 @@ mod snapshot {
                     normalize_host: false
                 }), @r"
         [build] llvm <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> rustc 1 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> UnstableBookGen 1 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> Rustbook 1 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> redox 1 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> UnstableBookGen 1 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> Rustbook 1 <x86_64-unknown-linux-gnu>
         [doc] unstable-book (book) <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
         [doc] book (book) <x86_64-unknown-linux-gnu>
         [doc] book/first-edition (book) <x86_64-unknown-linux-gnu>
         [doc] book/second-edition (book) <x86_64-unknown-linux-gnu>
         [doc] book/2018-edition (book) <x86_64-unknown-linux-gnu>
         [build] rustdoc 1 <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> standalone 2 <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> rustc 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> standalone 2 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> redox 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
         [doc] nomicon (book) <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> reference (book) 2 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> reference (book) 2 <x86_64-unknown-linux-gnu>
         [doc] rustdoc (book) <x86_64-unknown-linux-gnu>
         [doc] rust-by-example (book) <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> LintDocs 1 <x86_64-unknown-linux-gnu>
-        [doc] rustc (book) <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> LintDocs 1 <x86_64-unknown-linux-gnu>
+        [doc] redox (book) <x86_64-unknown-linux-gnu>
         [doc] cargo (book) <x86_64-unknown-linux-gnu>
         [doc] clippy (book) <x86_64-unknown-linux-gnu>
         [doc] embedded-book (book) <x86_64-unknown-linux-gnu>
         [doc] edition-guide (book) <x86_64-unknown-linux-gnu>
         [doc] style-guide (book) <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> releases 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> RustInstaller 1 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> releases 2 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> RustInstaller 1 <x86_64-unknown-linux-gnu>
         [dist] docs <x86_64-unknown-linux-gnu>
         [dist] src <>
         ");
@@ -2993,8 +2993,8 @@ mod snapshot {
                     normalize_host: false
                 }), @r"
         [build] llvm <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> rustc 1 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> RustInstaller 1 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> redox 1 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> RustInstaller 1 <x86_64-unknown-linux-gnu>
         [dist] docs <x86_64-unknown-linux-gnu>
         [dist] src <>
         ");
@@ -3023,60 +3023,60 @@ mod snapshot {
                     normalize_host: false
                 }), @r"
         [build] llvm <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> rustc 1 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> WasmComponentLd 1 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> UnstableBookGen 1 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> Rustbook 1 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> redox 1 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> WasmComponentLd 1 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> UnstableBookGen 1 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> Rustbook 1 <x86_64-unknown-linux-gnu>
         [doc] unstable-book (book) <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
         [doc] book (book) <x86_64-unknown-linux-gnu>
         [doc] book/first-edition (book) <x86_64-unknown-linux-gnu>
         [doc] book/second-edition (book) <x86_64-unknown-linux-gnu>
         [doc] book/2018-edition (book) <x86_64-unknown-linux-gnu>
         [build] rustdoc 1 <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> standalone 2 <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> rustc 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> WasmComponentLd 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> standalone 2 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> redox 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> WasmComponentLd 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
         [doc] nomicon (book) <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> reference (book) 2 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> reference (book) 2 <x86_64-unknown-linux-gnu>
         [doc] rustdoc (book) <x86_64-unknown-linux-gnu>
         [doc] rust-by-example (book) <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> LintDocs 1 <x86_64-unknown-linux-gnu>
-        [doc] rustc (book) <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> LintDocs 1 <x86_64-unknown-linux-gnu>
+        [doc] redox (book) <x86_64-unknown-linux-gnu>
         [doc] cargo (book) <x86_64-unknown-linux-gnu>
         [doc] clippy (book) <x86_64-unknown-linux-gnu>
         [doc] embedded-book (book) <x86_64-unknown-linux-gnu>
         [doc] edition-guide (book) <x86_64-unknown-linux-gnu>
         [doc] style-guide (book) <x86_64-unknown-linux-gnu>
-        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> releases 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> RustInstaller 1 <x86_64-unknown-linux-gnu>
+        [doc] redox 1 <x86_64-unknown-linux-gnu> -> releases 2 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> RustInstaller 1 <x86_64-unknown-linux-gnu>
         [dist] docs <x86_64-unknown-linux-gnu>
-        [dist] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
+        [dist] redox 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
         [build] rustdoc 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> rust-analyzer-proc-macro-srv 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 0 <x86_64-unknown-linux-gnu> -> GenerateCopyright 1 <x86_64-unknown-linux-gnu>
-        [dist] rustc <x86_64-unknown-linux-gnu>
-        [dist] rustc 1 <x86_64-unknown-linux-gnu> -> rustc-dev 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> cargo 2 <x86_64-unknown-linux-gnu>
-        [dist] rustc 1 <x86_64-unknown-linux-gnu> -> cargo 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> rust-analyzer 2 <x86_64-unknown-linux-gnu>
-        [dist] rustc 1 <x86_64-unknown-linux-gnu> -> rust-analyzer 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> rustfmt 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> cargo-fmt 2 <x86_64-unknown-linux-gnu>
-        [dist] rustc 1 <x86_64-unknown-linux-gnu> -> rustfmt 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> clippy-driver 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> cargo-clippy 2 <x86_64-unknown-linux-gnu>
-        [dist] rustc 1 <x86_64-unknown-linux-gnu> -> clippy 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> miri 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> cargo-miri 2 <x86_64-unknown-linux-gnu>
-        [dist] rustc 1 <x86_64-unknown-linux-gnu> -> miri 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> rust-analyzer-proc-macro-srv 2 <x86_64-unknown-linux-gnu>
+        [build] redox 0 <x86_64-unknown-linux-gnu> -> GenerateCopyright 1 <x86_64-unknown-linux-gnu>
+        [dist] redox <x86_64-unknown-linux-gnu>
+        [dist] redox 1 <x86_64-unknown-linux-gnu> -> redox-dev 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> cargo 2 <x86_64-unknown-linux-gnu>
+        [dist] redox 1 <x86_64-unknown-linux-gnu> -> cargo 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> rust-analyzer 2 <x86_64-unknown-linux-gnu>
+        [dist] redox 1 <x86_64-unknown-linux-gnu> -> rust-analyzer 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> rustfmt 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> cargo-fmt 2 <x86_64-unknown-linux-gnu>
+        [dist] redox 1 <x86_64-unknown-linux-gnu> -> rustfmt 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> clippy-driver 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> cargo-clippy 2 <x86_64-unknown-linux-gnu>
+        [dist] redox 1 <x86_64-unknown-linux-gnu> -> clippy 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> miri 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> cargo-miri 2 <x86_64-unknown-linux-gnu>
+        [dist] redox 1 <x86_64-unknown-linux-gnu> -> miri 2 <x86_64-unknown-linux-gnu>
         [dist] src <>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> rustc_codegen_cranelift 2 <x86_64-unknown-linux-gnu>
-        [dist] rustc 1 <x86_64-unknown-linux-gnu> -> rustc_codegen_cranelift 2 <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> LlvmBitcodeLinker 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> redox_codegen_cranelift 2 <x86_64-unknown-linux-gnu>
+        [dist] redox 1 <x86_64-unknown-linux-gnu> -> redox_codegen_cranelift 2 <x86_64-unknown-linux-gnu>
+        [build] redox 1 <x86_64-unknown-linux-gnu> -> LlvmBitcodeLinker 2 <x86_64-unknown-linux-gnu>
         ");
     }
 
@@ -3090,11 +3090,11 @@ mod snapshot {
                 .get_steps()
                 .render(), @"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> miri 1 <host>
-        [build] rustc 0 <host> -> cargo-miri 1 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> miri 1 <host>
+        [build] redox 0 <host> -> cargo-miri 1 <host>
         [build] rustdoc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
         ");
     }
 
@@ -3108,14 +3108,14 @@ mod snapshot {
                 .get_steps()
                 .render(), @"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> miri 2 <host>
-        [build] rustc 1 <host> -> cargo-miri 2 <host>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 1 <host> -> std 1 <host>
+        [build] redox 1 <host> -> redox 2 <host>
+        [build] redox 1 <host> -> miri 2 <host>
+        [build] redox 1 <host> -> cargo-miri 2 <host>
         [build] rustdoc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 0 <host> -> cargo 1 <host>
+        [build] redox 2 <host> -> std 2 <host>
+        [build] redox 0 <host> -> cargo 1 <host>
         ");
     }
 
@@ -3130,10 +3130,10 @@ mod snapshot {
                 .targets(&[TEST_TRIPLE_1])
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> miri 1 <host>
-        [build] rustc 0 <host> -> cargo-miri 1 <host>
-        [run] rustc 0 <host> -> miri 1 <target1>
+        [build] redox 0 <host> -> redox 1 <host>
+        [build] redox 0 <host> -> miri 1 <host>
+        [build] redox 0 <host> -> cargo-miri 1 <host>
+        [run] redox 0 <host> -> miri 1 <target1>
         ");
     }
 }
@@ -3307,7 +3307,7 @@ fn normalize_target(target: TargetSelection, config: &RenderConfig) -> String {
 }
 
 fn render_compiler(compiler: Compiler, config: &RenderConfig) -> String {
-    format!("rustc {} <{}>", compiler.stage, normalize_target(compiler.host, config))
+    format!("redox {} <{}>", compiler.stage, normalize_target(compiler.host, config))
 }
 
 fn host_target() -> String {

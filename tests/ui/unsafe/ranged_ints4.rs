@@ -1,6 +1,6 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_layout_scalar_valid_range_start(1)]
+#[redox_layout_scalar_valid_range_start(1)]
 #[repr(transparent)]
 pub(crate) struct NonZero<T>(pub(crate) T);
 fn main() {

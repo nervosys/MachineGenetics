@@ -1,9 +1,9 @@
 //@ revisions: old e2024
 //@[e2024] edition: 2024
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(internal_features)]
-#![rustc_dump_variances_of_opaques]
+#![redox_dump_variances_of_opaques]
 
 trait Captures<'a> {}
 impl<T> Captures<'_> for T {}

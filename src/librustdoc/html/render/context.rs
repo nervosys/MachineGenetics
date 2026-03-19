@@ -6,15 +6,15 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, channel};
 
 use askama::Template;
-use rustc_ast::join_path_syms;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_hir::Attribute;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
-use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
-use rustc_span::edition::Edition;
-use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Symbol};
+use redox_ast::join_path_syms;
+use redox_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use redox_hir::Attribute;
+use redox_hir::attrs::AttributeKind;
+use redox_hir::def_id::{DefIdMap, LOCAL_CRATE};
+use redox_middle::ty::TyCtxt;
+use redox_session::Session;
+use redox_span::edition::Edition;
+use redox_span::{BytePos, FileName, RemapPathScopeComponents, Symbol};
 use tracing::info;
 
 use super::print_item::{full_path, print_item, print_item_path};

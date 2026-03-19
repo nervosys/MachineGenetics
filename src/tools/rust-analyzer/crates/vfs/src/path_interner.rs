@@ -4,7 +4,7 @@
 use std::hash::BuildHasherDefault;
 
 use indexmap::IndexSet;
-use rustc_hash::FxHasher;
+use redox_hash::FxHasher;
 
 use crate::{FileId, VfsPath};
 

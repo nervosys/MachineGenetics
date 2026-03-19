@@ -8,7 +8,7 @@
 use std::path::PathBuf;
 
 use run_make_support::{
-    cwd, has_extension, has_prefix, llvm_ar, llvm_bcanalyzer, path, rfs, rust_lib_name, rustc,
+    cwd, has_extension, has_prefix, llvm_ar, llvm_bcanalyzer, path, rfs, rust_lib_name, redox,
     shallow_find_files, static_lib_name,
 };
 
@@ -66,23 +66,23 @@ fn main() {
 
 #[track_caller]
 fn check_bitcode(instructions: LibBuild) {
-    let mut rustc = rustc();
-    rustc
+    let mut redox = redox();
+    redox
         .input(instructions.source)
         .output(&instructions.output)
         .opt_level("2")
         .codegen_units(1)
         .arg("-Clinker-plugin-lto");
     if instructions.emit_obj {
-        rustc.emit("obj");
+        redox.emit("obj");
     }
     if let Some(crate_type) = instructions.crate_type {
-        rustc.crate_type(crate_type);
+        redox.crate_type(crate_type);
     }
     if let Some(lto) = instructions.lto {
-        rustc.arg(format!("-Clto={lto}"));
+        redox.arg(format!("-Clto={lto}"));
     }
-    rustc.run();
+    redox.run();
 
     if instructions.output.extension().unwrap() != "o" {
         // Remove all potential leftover object files, then turn the output into an object file.

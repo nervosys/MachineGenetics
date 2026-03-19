@@ -42,21 +42,21 @@ pub use ty::*;
 
 use crate::db::HirDatabase;
 pub use crate::lower::ImplTraitIdx;
-pub use rustc_ast_ir::Mutability;
+pub use redox_ast_ir::Mutability;
 
-pub type Binder<'db, T> = rustc_type_ir::Binder<DbInterner<'db>, T>;
-pub type EarlyBinder<'db, T> = rustc_type_ir::EarlyBinder<DbInterner<'db>, T>;
-pub type Canonical<'db, T> = rustc_type_ir::Canonical<DbInterner<'db>, T>;
-pub type CanonicalVarValues<'db> = rustc_type_ir::CanonicalVarValues<DbInterner<'db>>;
-pub type CanonicalVarKind<'db> = rustc_type_ir::CanonicalVarKind<DbInterner<'db>>;
-pub type CanonicalQueryInput<'db, V> = rustc_type_ir::CanonicalQueryInput<DbInterner<'db>, V>;
-pub type AliasTy<'db> = rustc_type_ir::AliasTy<DbInterner<'db>>;
-pub type FnSig<'db> = rustc_type_ir::FnSig<DbInterner<'db>>;
-pub type PolyFnSig<'db> = Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>;
-pub type TypingMode<'db> = rustc_type_ir::TypingMode<DbInterner<'db>>;
-pub type TypeError<'db> = rustc_type_ir::error::TypeError<DbInterner<'db>>;
-pub type QueryResult<'db> = rustc_type_ir::solve::QueryResult<DbInterner<'db>>;
-pub type FxIndexMap<K, V> = rustc_type_ir::data_structures::IndexMap<K, V>;
+pub type Binder<'db, T> = redox_type_ir::Binder<DbInterner<'db>, T>;
+pub type EarlyBinder<'db, T> = redox_type_ir::EarlyBinder<DbInterner<'db>, T>;
+pub type Canonical<'db, T> = redox_type_ir::Canonical<DbInterner<'db>, T>;
+pub type CanonicalVarValues<'db> = redox_type_ir::CanonicalVarValues<DbInterner<'db>>;
+pub type CanonicalVarKind<'db> = redox_type_ir::CanonicalVarKind<DbInterner<'db>>;
+pub type CanonicalQueryInput<'db, V> = redox_type_ir::CanonicalQueryInput<DbInterner<'db>, V>;
+pub type AliasTy<'db> = redox_type_ir::AliasTy<DbInterner<'db>>;
+pub type FnSig<'db> = redox_type_ir::FnSig<DbInterner<'db>>;
+pub type PolyFnSig<'db> = Binder<'db, redox_type_ir::FnSig<DbInterner<'db>>>;
+pub type TypingMode<'db> = redox_type_ir::TypingMode<DbInterner<'db>>;
+pub type TypeError<'db> = redox_type_ir::error::TypeError<DbInterner<'db>>;
+pub type QueryResult<'db> = redox_type_ir::solve::QueryResult<DbInterner<'db>>;
+pub type FxIndexMap<K, V> = redox_type_ir::data_structures::IndexMap<K, V>;
 
 pub struct DefaultTypes<'db> {
     pub usize: Ty<'db>,
@@ -227,30 +227,30 @@ pub fn default_types<'a, 'db>(db: &'db dyn HirDatabase) -> &'a DefaultAny<'db> {
         let unit = create_ty(TyKind::Tuple(empty_tys));
         DefaultAny {
             types: DefaultTypes {
-                usize: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::Usize)),
-                u8: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U8)),
-                u16: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U16)),
-                u32: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U32)),
-                u64: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U64)),
-                u128: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U128)),
-                isize: create_ty(TyKind::Int(rustc_ast_ir::IntTy::Isize)),
-                i8: create_ty(TyKind::Int(rustc_ast_ir::IntTy::I8)),
-                i16: create_ty(TyKind::Int(rustc_ast_ir::IntTy::I16)),
-                i32: create_ty(TyKind::Int(rustc_ast_ir::IntTy::I32)),
-                i64: create_ty(TyKind::Int(rustc_ast_ir::IntTy::I64)),
-                i128: create_ty(TyKind::Int(rustc_ast_ir::IntTy::I128)),
-                f16: create_ty(TyKind::Float(rustc_ast_ir::FloatTy::F16)),
-                f32: create_ty(TyKind::Float(rustc_ast_ir::FloatTy::F32)),
-                f64: create_ty(TyKind::Float(rustc_ast_ir::FloatTy::F64)),
-                f128: create_ty(TyKind::Float(rustc_ast_ir::FloatTy::F128)),
+                usize: create_ty(TyKind::Uint(redox_ast_ir::UintTy::Usize)),
+                u8: create_ty(TyKind::Uint(redox_ast_ir::UintTy::U8)),
+                u16: create_ty(TyKind::Uint(redox_ast_ir::UintTy::U16)),
+                u32: create_ty(TyKind::Uint(redox_ast_ir::UintTy::U32)),
+                u64: create_ty(TyKind::Uint(redox_ast_ir::UintTy::U64)),
+                u128: create_ty(TyKind::Uint(redox_ast_ir::UintTy::U128)),
+                isize: create_ty(TyKind::Int(redox_ast_ir::IntTy::Isize)),
+                i8: create_ty(TyKind::Int(redox_ast_ir::IntTy::I8)),
+                i16: create_ty(TyKind::Int(redox_ast_ir::IntTy::I16)),
+                i32: create_ty(TyKind::Int(redox_ast_ir::IntTy::I32)),
+                i64: create_ty(TyKind::Int(redox_ast_ir::IntTy::I64)),
+                i128: create_ty(TyKind::Int(redox_ast_ir::IntTy::I128)),
+                f16: create_ty(TyKind::Float(redox_ast_ir::FloatTy::F16)),
+                f32: create_ty(TyKind::Float(redox_ast_ir::FloatTy::F32)),
+                f64: create_ty(TyKind::Float(redox_ast_ir::FloatTy::F64)),
+                f128: create_ty(TyKind::Float(redox_ast_ir::FloatTy::F128)),
                 unit,
                 bool: create_ty(TyKind::Bool),
                 char: create_ty(TyKind::Char),
                 str,
                 never: create_ty(TyKind::Never),
                 error: create_ty(TyKind::Error(ErrorGuaranteed)),
-                static_str_ref: create_ty(TyKind::Ref(statik, str, rustc_ast_ir::Mutability::Not)),
-                mut_unit_ptr: create_ty(TyKind::RawPtr(unit, rustc_ast_ir::Mutability::Mut)),
+                static_str_ref: create_ty(TyKind::Ref(statik, str, redox_ast_ir::Mutability::Not)),
+                mut_unit_ptr: create_ty(TyKind::RawPtr(unit, redox_ast_ir::Mutability::Mut)),
             },
             consts: DefaultConsts { error: create_const(ConstKind::Error(ErrorGuaranteed)) },
             regions: DefaultRegions {
@@ -271,8 +271,8 @@ pub fn default_types<'a, 'db>(db: &'db dyn HirDatabase) -> &'a DefaultAny<'db> {
                 clauses: create_clauses(&[]),
                 region_assumptions: create_region_assumptions(&[]),
             },
-            one_invariant: create_variances_of(&[rustc_type_ir::Variance::Invariant]),
-            one_covariant: create_variances_of(&[rustc_type_ir::Variance::Covariant]),
+            one_invariant: create_variances_of(&[redox_type_ir::Variance::Invariant]),
+            one_covariant: create_variances_of(&[redox_type_ir::Variance::Covariant]),
             coroutine_captures_by_ref_bound_var_kinds: create_bound_var_kinds(&[
                 BoundVarKind::Region(BoundRegionKind::ClosureEnv),
             ]),

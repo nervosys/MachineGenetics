@@ -5,12 +5,12 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::has_let_expr;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::{is_lint_allowed, is_wild, span_contains_comment};
-use rustc_ast::LitKind;
-use rustc_errors::Applicability;
-use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Pat, PatKind, QPath};
-use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty;
-use rustc_span::Spanned;
+use redox_ast::LitKind;
+use redox_errors::Applicability;
+use redox_hir::{Arm, BorrowKind, Expr, ExprKind, Pat, PatKind, QPath};
+use redox_lint::{LateContext, LintContext};
+use redox_middle::ty;
+use redox_span::Spanned;
 
 use super::MATCH_LIKE_MATCHES_MACRO;
 
@@ -205,7 +205,7 @@ fn find_bool_lit(ex: &Expr<'_>) -> Option<bool> {
             node: LitKind::Bool(b), ..
         }) => Some(b),
         ExprKind::Block(
-            rustc_hir::Block {
+            redox_hir::Block {
                 stmts: [],
                 expr: Some(exp),
                 ..
@@ -230,7 +230,7 @@ fn is_some_wild(pat_kind: PatKind<'_>) -> bool {
     match pat_kind {
         PatKind::TupleStruct(QPath::Resolved(_, path), [first, ..], _) if is_wild(first) => {
             let name = path.segments[0].ident;
-            name.name == rustc_span::sym::Some
+            name.name == redox_span::sym::Some
         },
         _ => false,
     }

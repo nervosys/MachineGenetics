@@ -1,6 +1,6 @@
 # Tests
 
-`rustc` has a built-in facility for building and running tests for a crate.
+`redox` has a built-in facility for building and running tests for a crate.
 More information about writing and running tests may be found in the [Testing
 Chapter] of the Rust Programming Language book.
 
@@ -18,7 +18,7 @@ Tests "pass" if they return without an error. They "fail" if they [panic], or
 return a type such as [`Result`] that implements the [`Termination`] trait
 with a non-zero value.
 
-By passing the [`--test` option] to `rustc`, the compiler will build the crate
+By passing the [`--test` option] to `redox`, the compiler will build the crate
 in a special mode to construct an executable that will run the tests in the
 crate. The `--test` flag will make the following changes:
 

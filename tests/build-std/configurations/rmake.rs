@@ -10,7 +10,7 @@ use std::thread;
 
 use run_make_support::serde_json::{self, Value};
 use run_make_support::tempfile::TempDir;
-use run_make_support::{cargo, rfs, rustc};
+use run_make_support::{cargo, rfs, redox};
 
 #[derive(Clone)]
 struct Task {
@@ -42,7 +42,7 @@ panic = "{panic}"
 fn main() {
     let mut targets = Vec::new();
     let all_targets =
-        rustc().args(&["--print=all-target-specs-json", "-Zunstable-options"]).run().stdout_utf8();
+        redox().args(&["--print=all-target-specs-json", "-Zunstable-options"]).run().stdout_utf8();
     let all_targets: HashMap<String, Value> = serde_json::from_str(&all_targets).unwrap();
     for (target, spec) in all_targets {
         let metadata = spec.as_object().unwrap()["metadata"].as_object().unwrap();

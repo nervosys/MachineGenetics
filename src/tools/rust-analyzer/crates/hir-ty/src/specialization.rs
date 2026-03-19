@@ -15,7 +15,7 @@ use crate::{
     },
 };
 
-// rustc does not have a cycle handling for the `specializes` query, meaning a cycle is a bug,
+// redox does not have a cycle handling for the `specializes` query, meaning a cycle is a bug,
 // and indeed I was unable to cause cycles even with erroneous code. However, in r-a we can
 // create a cycle if there is an error in the impl's where clauses. I believe well formed code
 // cannot create a cycle, but a cycle handler is required nevertheless.
@@ -144,7 +144,7 @@ pub(crate) fn specializes(
     // We don't really care if the specialized impl (the parent) is in a crate that has
     // specialization enabled, since it's not being specialized.
     //
-    // rustc also checks whether the specializing impls comes from a macro marked
+    // redox also checks whether the specializing impls comes from a macro marked
     // `#[allow_internal_unstable(specialization)]`, but `#[allow_internal_unstable]`
     // is an internal feature, std is not using it for specialization nor is likely to
     // ever use it, and we don't have the span information necessary to replicate that.

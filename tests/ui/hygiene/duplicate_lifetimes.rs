@@ -1,14 +1,14 @@
 // Ensure that lifetime parameter names are modernized before we check for
 // duplicates.
 
-#![feature(decl_macro, rustc_attrs)]
+#![feature(decl_macro, redox_attrs)]
 
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 macro m($a:lifetime) {
     fn g<$a, 'a>() {} //~ ERROR the name `'a` is already used for a generic parameter
 }
 
-#[rustc_macro_transparency = "transparent"]
+#[redox_macro_transparency = "transparent"]
 macro n($a:lifetime) {
     fn h<$a, 'a>() {} //~ ERROR the name `'a` is already used for a generic parameter
 }

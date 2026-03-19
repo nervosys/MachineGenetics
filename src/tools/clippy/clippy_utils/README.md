@@ -18,7 +18,7 @@ To use `clippy-utils` in your lint, add the following to your `Cargo.toml`:
 clippy_utils = "0.1.XY"
 ```
 
-`XY` is the version of the nightly toolchain above and can be determined with `rustc +nightly-YYYY-MM-DD -V`.
+`XY` is the version of the nightly toolchain above and can be determined with `redox +nightly-YYYY-MM-DD -V`.
 
 ## :warning: Stability :warning:
 

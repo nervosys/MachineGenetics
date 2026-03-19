@@ -2,10 +2,10 @@ use super::MISSING_SPIN_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::std_or_core;
-use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind};
-use rustc_lint::LateContext;
-use rustc_span::sym;
+use redox_errors::Applicability;
+use redox_hir::{Block, Expr, ExprKind};
+use redox_lint::LateContext;
+use redox_span::sym;
 
 fn unpack_cond<'tcx>(cond: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     match &cond.kind {

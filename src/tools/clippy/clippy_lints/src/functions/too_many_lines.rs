@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::SpanRangeExt;
-use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::FnKind;
-use rustc_lint::{LateContext, LintContext};
-use rustc_span::Span;
+use redox_hir as hir;
+use redox_hir::def_id::LocalDefId;
+use redox_hir::intravisit::FnKind;
+use redox_lint::{LateContext, LintContext};
+use redox_span::Span;
 
 use super::TOO_MANY_LINES;
 

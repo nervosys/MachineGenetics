@@ -5,7 +5,7 @@ effect within the compiler source code: it generates an
 [`ErrorGuaranteed`][errorguar].
 
 `ErrorGuaranteed` is a zero-sized type that is unconstructable outside of the
-[`rustc_errors`][rerrors] crate. It is generated whenever an error is reported
+[`redox_errors`][rerrors] crate. It is generated whenever an error is reported
 to the user, so that if your compiler code ever encounters a value of type
 `ErrorGuaranteed`, the compilation is _statically guaranteed to fail_. This is
 useful for avoiding unsoundness bugs because you can statically check that an
@@ -28,6 +28,6 @@ There are some important considerations about the usage of `ErrorGuaranteed`:
 Thankfully, in most cases, it should be statically impossible to abuse
 `ErrorGuaranteed`.
 
-[errorguar]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.ErrorGuaranteed.html
-[rerrors]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html
-[emit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/diagnostic/struct.Diag.html#method.emit
+[errorguar]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/struct.ErrorGuaranteed.html
+[rerrors]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/index.html
+[emit]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/diagnostic/struct.Diag.html#method.emit

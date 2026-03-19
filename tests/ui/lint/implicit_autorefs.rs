@@ -77,7 +77,7 @@ fn test_more_manual_deref(ptr: *const Test2) -> usize {
 
 unsafe fn test_no_attr(ptr: *mut ManuallyDrop<u8>) {
     // Should not warn, as `ManuallyDrop::write` is not
-    // annotated with `#[rustc_no_implicit_auto_ref]`
+    // annotated with `#[redox_no_implicit_auto_ref]`
     ptr.write(ManuallyDrop::new(1));
 }
 

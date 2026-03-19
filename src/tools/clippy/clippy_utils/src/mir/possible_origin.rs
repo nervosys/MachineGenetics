@@ -1,9 +1,9 @@
 use super::transitive_relation::TransitiveRelation;
 use crate::ty::is_copy;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_index::bit_set::DenseBitSet;
-use rustc_lint::LateContext;
-use rustc_middle::mir;
+use redox_data_structures::fx::FxHashMap;
+use redox_index::bit_set::DenseBitSet;
+use redox_lint::LateContext;
+use redox_middle::mir;
 
 /// Collect possible borrowed for every `&mut` local.
 /// For example, `_1 = &mut _2` generate _1: {_2,...}

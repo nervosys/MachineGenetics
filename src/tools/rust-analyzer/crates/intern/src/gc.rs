@@ -9,7 +9,7 @@ use std::{hash::Hash, marker::PhantomData, ops::ControlFlow};
 use dashmap::DashMap;
 use hashbrown::raw::RawTable;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use rustc_hash::{FxBuildHasher, FxHashSet};
+use redox_hash::{FxBuildHasher, FxHashSet};
 use triomphe::{Arc, ThinArc};
 
 use crate::{Internable, InternedRef, InternedSliceRef, SliceInternable};

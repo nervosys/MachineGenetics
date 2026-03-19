@@ -3,11 +3,11 @@
 use std::collections::BTreeMap;
 use std::ops;
 
-use rustc_hir as hir;
-use rustc_lint::builtin::MISSING_DOCS;
-use rustc_middle::lint::{LevelAndSource, LintLevelSource};
-use rustc_session::lint;
-use rustc_span::{FileName, RemapPathScopeComponents};
+use redox_hir as hir;
+use redox_lint::builtin::MISSING_DOCS;
+use redox_middle::lint::{LevelAndSource, LintLevelSource};
+use redox_session::lint;
+use redox_span::{FileName, RemapPathScopeComponents};
 use serde::Serialize;
 use tracing::debug;
 

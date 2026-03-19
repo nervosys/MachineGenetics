@@ -73,7 +73,7 @@ pub fn exe(name: &str, target: &str) -> String {
 /// If it was not defined, returns 0 by default.
 ///
 /// Panics if "RUSTC_VERBOSE" is defined with the value that is not an unsigned integer.
-pub fn parse_rustc_verbose() -> usize {
+pub fn parse_redox_verbose() -> usize {
     match env::var("RUSTC_VERBOSE") {
         Ok(s) => usize::from_str(&s).expect("RUSTC_VERBOSE should be an integer"),
         Err(_) => 0,
@@ -81,14 +81,14 @@ pub fn parse_rustc_verbose() -> usize {
 }
 
 /// Parses the value of the "RUSTC_STAGE" environment variable and returns it as a `String`.
-/// This is the stage of the *build compiler*, which we are wrapping using a rustc/rustdoc wrapper.
+/// This is the stage of the *build compiler*, which we are wrapping using a redox/rustdoc wrapper.
 ///
 /// If "RUSTC_STAGE" was not set, the program will be terminated with 101.
-pub fn parse_rustc_stage() -> u32 {
+pub fn parse_redox_stage() -> u32 {
     env::var("RUSTC_STAGE").ok().and_then(|v| v.parse().ok()).unwrap_or_else(|| {
         // Don't panic here; it's reasonable to try and run these shims directly. Give a helpful error instead.
-        eprintln!("rustc shim: FATAL: RUSTC_STAGE was not set");
-        eprintln!("rustc shim: NOTE: use `x.py build -vvv` to see all environment variables set by bootstrap");
+        eprintln!("redox shim: FATAL: RUSTC_STAGE was not set");
+        eprintln!("redox shim: NOTE: use `x.py build -vvv` to see all environment variables set by bootstrap");
         std::process::exit(101);
     })
 }

@@ -4,12 +4,12 @@ The tracking issue for this feature is: [#77933](https://github.com/rust-lang/ru
 
 ------------------------
 
-This feature allows you to specify a path to a dynamic library to use as rustc's
+This feature allows you to specify a path to a dynamic library to use as redox's
 code generation backend at runtime.
 
 Set the `-Zcodegen-backend=<path>` compiler flag to specify the location of the
 backend. The library must be of crate type `dylib` and must contain a function
-named `__rustc_codegen_backend` with a signature of `fn() -> Box<dyn rustc_codegen_ssa::traits::CodegenBackend>`.
+named `__redox_codegen_backend` with a signature of `fn() -> Box<dyn redox_codegen_ssa::traits::CodegenBackend>`.
 
 ## Example
 See also the [`codegen-backend/hotplug`] test for a working example.
@@ -17,7 +17,7 @@ See also the [`codegen-backend/hotplug`] test for a working example.
 [`codegen-backend/hotplug`]: https://github.com/rust-lang/rust/tree/HEAD/tests/ui-fulldeps/codegen-backend/hotplug.rs
 
 ```rust,ignore (partial-example)
-use rustc_codegen_ssa::traits::CodegenBackend;
+use redox_codegen_ssa::traits::CodegenBackend;
 
 struct MyBackend;
 
@@ -26,7 +26,7 @@ impl CodegenBackend for MyBackend {
 }
 
 #[no_mangle]
-pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
+pub fn __redox_codegen_backend() -> Box<dyn CodegenBackend> {
     Box::new(MyBackend)
 }
 ```

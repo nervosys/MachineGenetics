@@ -4,15 +4,15 @@
 //@ ignore-cross-compile (host-only)
 
 use run_make_support::object::read::{Object, ObjectSymbol};
-use run_make_support::{bin_name, dynamic_lib_name, object, rfs, rustc, static_lib_name};
+use run_make_support::{bin_name, dynamic_lib_name, object, rfs, redox, static_lib_name};
 
 fn main() {
     let staticlib_name = static_lib_name("a_lib");
     let cdylib_name = dynamic_lib_name("a_lib");
     let exe_name = bin_name("an_executable");
-    rustc().crate_type("cdylib").input("a_lib.rs").run();
-    rustc().crate_type("staticlib").input("a_lib.rs").run();
-    rustc().crate_type("bin").input("an_executable.rs").run();
+    redox().crate_type("cdylib").input("a_lib.rs").run();
+    redox().crate_type("staticlib").input("a_lib.rs").run();
+    redox().crate_type("bin").input("an_executable.rs").run();
 
     symbols_check_archive(&staticlib_name);
     symbols_check(&cdylib_name);
@@ -65,7 +65,7 @@ fn symbols_check(path: &str) {
         }
 
         if !name.contains("rust") {
-            // Assume that this symbol doesn't originate from rustc. This may
+            // Assume that this symbol doesn't originate from redox. This may
             // be wrong, but even if so symbol_check_archive will likely
             // catch it.
             continue;

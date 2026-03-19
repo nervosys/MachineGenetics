@@ -211,8 +211,8 @@ impl fmt::Display for PanicHookInfo<'_> {
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
 #[allow_internal_unstable(libstd_sys_internals, const_format_args, panic_internals, rt)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_2015_macro")]
-#[rustc_macro_transparency = "semiopaque"]
+#[cfg_attr(not(test), redox_diagnostic_item = "std_panic_2015_macro")]
+#[redox_macro_transparency = "semiopaque"]
 pub macro panic_2015 {
     () => ({
         $crate::rt::begin_panic("explicit panic")
@@ -255,7 +255,7 @@ pub use crate::panicking::{set_hook, take_hook};
 #[stable(feature = "panic_any", since = "1.51.0")]
 #[inline]
 #[track_caller]
-#[cfg_attr(not(test), rustc_diagnostic_item = "panic_any")]
+#[cfg_attr(not(test), redox_diagnostic_item = "panic_any")]
 pub fn panic_any<M: 'static + Any + Send>(msg: M) -> ! {
     crate::panicking::begin_panic(msg);
 }

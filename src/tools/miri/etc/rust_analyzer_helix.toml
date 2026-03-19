@@ -1,4 +1,4 @@
-[language-server.rust-analyzer.config.rustc]
+[language-server.rust-analyzer.config.redox]
 source = "discover"
 
 [language-server.rust-analyzer.config]
@@ -13,7 +13,7 @@ linkedProjects = [
 invocationStrategy = "once"
 overrideCommand = [
     "./miri",
-    "clippy", # make this `check` when working with a locally built rustc
+    "clippy", # make this `check` when working with a locally built redox
     "--message-format=json",
 ]
 

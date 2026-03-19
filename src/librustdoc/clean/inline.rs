@@ -3,17 +3,17 @@
 use std::iter::once;
 use std::sync::Arc;
 
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
-use rustc_hir::def::{DefKind, MacroKinds, Res};
-use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModDefId};
-use rustc_hir::{self as hir, Mutability, find_attr};
-use rustc_metadata::creader::{CStore, LoadedMacro};
-use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{Symbol, sym};
+use redox_data_structures::fx::FxHashSet;
+use redox_data_structures::thin_vec::{ThinVec, thin_vec};
+use redox_hir::def::{DefKind, MacroKinds, Res};
+use redox_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModDefId};
+use redox_hir::{self as hir, Mutability, find_attr};
+use redox_metadata::creader::{CStore, LoadedMacro};
+use redox_middle::ty::fast_reject::SimplifiedType;
+use redox_middle::ty::{self, TyCtxt};
+use redox_span::def_id::LOCAL_CRATE;
+use redox_span::hygiene::MacroKind;
+use redox_span::symbol::{Symbol, sym};
 use tracing::{debug, trace};
 
 use super::{Item, extract_cfg_from_attrs};
@@ -314,15 +314,15 @@ pub(super) fn build_function(cx: &mut DocContext<'_>, def_id: DefId) -> Box<clea
     let mut generics = clean_ty_generics(cx, def_id);
     let bound_vars = clean_bound_vars(sig.bound_vars(), cx);
 
-    // At the time of writing early & late-bound params are stored separately in rustc,
+    // At the time of writing early & late-bound params are stored separately in redox,
     // namely in `generics.params` and `bound_vars` respectively.
     //
     // To reestablish the original source code order of the generic parameters, we
     // need to manually sort them by their definition span after concatenation.
     //
     // See also:
-    // * https://rustc-dev-guide.rust-lang.org/bound-vars-and-params.html
-    // * https://rustc-dev-guide.rust-lang.org/what-does-early-late-bound-mean.html
+    // * https://redox-dev-guide.rust-lang.org/bound-vars-and-params.html
+    // * https://redox-dev-guide.rust-lang.org/what-does-early-late-bound-mean.html
     let has_early_bound_params = !generics.params.is_empty();
     let has_late_bound_params = !bound_vars.is_empty();
     generics.params.extend(bound_vars);
@@ -463,7 +463,7 @@ pub(crate) fn build_impl(
     // Do not inline compiler-internal items unless we're a compiler-internal crate.
     let is_compiler_internal = |did| {
         tcx.lookup_stability(did)
-            .is_some_and(|stab| stab.is_unstable() && stab.feature == sym::rustc_private)
+            .is_some_and(|stab| stab.is_unstable() && stab.feature == sym::redox_private)
     };
     let document_compiler_internal = is_compiler_internal(LOCAL_CRATE.as_def_id());
     let is_directly_public = |cx: &mut DocContext<'_>, did| {
@@ -739,7 +739,7 @@ fn build_module_items(
 pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
     if let Some(did) = did.as_local() {
         let hir_id = tcx.local_def_id_to_hir_id(did);
-        rustc_hir_pretty::id_to_string(&tcx, hir_id)
+        redox_hir_pretty::id_to_string(&tcx, hir_id)
     } else {
         tcx.rendered_const(did).clone()
     }

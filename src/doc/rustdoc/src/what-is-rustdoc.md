@@ -43,7 +43,7 @@ There are two problems with this: first, why does it
 think that our crate is named "lib"? Second, why does it not have any
 contents?
 
-The first problem is due to `rustdoc` trying to be helpful; like `rustc`,
+The first problem is due to `rustdoc` trying to be helpful; like `redox`,
 it assumes that our crate's name is the name of the file for the crate
 root. To fix this, we can pass in a command-line flag:
 

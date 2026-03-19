@@ -1,6 +1,6 @@
-//! Trait Resolution. See the [rustc-dev-guide] for more information on how this works.
+//! Trait Resolution. See the [redox-dev-guide] for more information on how this works.
 //!
-//! [rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
+//! [redox-dev-guide]: https://redox-dev-guide.rust-lang.org/traits/resolution.html
 
 use std::{
     cmp,
@@ -9,8 +9,8 @@ use std::{
 
 use hir_def::TraitId;
 use macros::{TypeFoldable, TypeVisitable};
-use rustc_type_ir::elaborate::Elaboratable;
-use rustc_type_ir::{
+use redox_type_ir::elaborate::Elaboratable;
+use redox_type_ir::{
     Upcast,
     solve::{Certainty, NoSolution, inspect},
 };

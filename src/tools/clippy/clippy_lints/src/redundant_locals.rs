@@ -1,15 +1,15 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::ty::needs_ordered_drop;
-use rustc_ast::Mutability;
-use rustc_hir::def::Res;
-use rustc_hir::{BindingMode, ByRef, ExprKind, HirId, LetStmt, Node, Pat, PatKind, QPath};
-use rustc_hir_typeck::expr_use_visitor::PlaceBase;
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::UpvarCapture;
-use rustc_session::declare_lint_pass;
-use rustc_span::DesugaringKind;
-use rustc_span::symbol::Ident;
+use redox_ast::Mutability;
+use redox_hir::def::Res;
+use redox_hir::{BindingMode, ByRef, ExprKind, HirId, LetStmt, Node, Pat, PatKind, QPath};
+use redox_hir_typeck::expr_use_visitor::PlaceBase;
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty::UpvarCapture;
+use redox_session::declare_lint_pass;
+use redox_span::DesugaringKind;
+use redox_span::symbol::Ident;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Redundant redefinitions of local bindings do not change behavior other than variable's lifetimes and are likely to be unintended.
     ///
-    /// These rebindings can be intentional to shorten the lifetimes of variables because they affect when the `Drop` implementation is called. Other than that, they do not affect your code's meaning but they _may_ affect `rustc`'s stack allocation.
+    /// These rebindings can be intentional to shorten the lifetimes of variables because they affect when the `Drop` implementation is called. Other than that, they do not affect your code's meaning but they _may_ affect `redox`'s stack allocation.
     ///
     /// ### Example
     /// ```no_run

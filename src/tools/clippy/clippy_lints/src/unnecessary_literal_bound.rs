@@ -1,14 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::MaybeResPath;
-use rustc_ast::ast::LitKind;
-use rustc_errors::Applicability;
-use rustc_hir::def::Res;
-use rustc_hir::intravisit::{FnKind, Visitor};
-use rustc_hir::{Body, Expr, ExprKind, FnDecl, FnRetTy, Lit, MutTy, Mutability, PrimTy, Ty, TyKind, intravisit};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
-use rustc_span::def_id::LocalDefId;
+use redox_ast::ast::LitKind;
+use redox_errors::Applicability;
+use redox_hir::def::Res;
+use redox_hir::intravisit::{FnKind, Visitor};
+use redox_hir::{Body, Expr, ExprKind, FnDecl, FnRetTy, Lit, MutTy, Mutability, PrimTy, Ty, TyKind, intravisit};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::Span;
+use redox_span::def_id::LocalDefId;
 
 declare_clippy_lint! {
     /// ### What it does

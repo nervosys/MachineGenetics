@@ -8,7 +8,7 @@
 use std::path::Path;
 
 use run_make_support::{
-    has_extension, has_prefix, llvm_filecheck, llvm_profdata, rfs, run, rustc, shallow_find_files,
+    has_extension, has_prefix, llvm_filecheck, llvm_profdata, rfs, run, redox, shallow_find_files,
 };
 
 fn run_test(cg_units: usize) {
@@ -18,15 +18,15 @@ fn run_test(cg_units: usize) {
     }
     rfs::create_dir_all(&path_prof_data_dir);
     let path_merged_profdata = path_prof_data_dir.join("merged.profdata");
-    rustc().input("opaque.rs").codegen_units(1).run();
-    rustc()
+    redox().input("opaque.rs").codegen_units(1).run();
+    redox()
         .input("interesting.rs")
         .profile_generate(&path_prof_data_dir)
         .opt()
         .crate_type("lib,cdylib")
         .codegen_units(cg_units)
         .run();
-    rustc()
+    redox()
         .input("main.rs")
         .arg("-Clto=thin")
         .opt()
@@ -36,7 +36,7 @@ fn run_test(cg_units: usize) {
         .run();
     run("main");
     llvm_profdata().merge().output(&path_merged_profdata).input(path_prof_data_dir).run();
-    rustc()
+    redox()
         .input("interesting.rs")
         .profile_use(&path_merged_profdata)
         .opt()
@@ -44,7 +44,7 @@ fn run_test(cg_units: usize) {
         .codegen_units(cg_units)
         .emit("link")
         .run();
-    rustc()
+    redox()
         .input("main.rs")
         .arg("-Clto=thin")
         .opt()

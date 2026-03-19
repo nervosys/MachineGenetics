@@ -10,12 +10,12 @@
 // Reason: linkage still fails as the object files produced are not in the correct
 // format in the `build_native_static_lib` step
 
-use run_make_support::{build_native_static_lib, rustc};
+use run_make_support::{build_native_static_lib, redox};
 
 fn main() {
     build_native_static_lib("foo");
     build_native_static_lib("bar");
-    rustc().input("foo.rs").run();
-    rustc().input("bar.rs").run();
-    rustc().input("main.rs").print("link-args").run();
+    redox().input("foo.rs").run();
+    redox().input("bar.rs").run();
+    redox().input("main.rs").print("link-args").run();
 }

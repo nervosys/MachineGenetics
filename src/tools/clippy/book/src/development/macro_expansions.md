@@ -187,7 +187,7 @@ but is usually called much later into the condition chain as it's a bit heavier 
 so that the other cheaper conditions can fail faster. For example, the `borrow_deref_ref` lint:
 ```rs
 impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &rustc_hir::Expr<'tcx>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &redox_hir::Expr<'tcx>) {
         if let ... = ...
             && ...
             && !e.span.from_expansion()
@@ -224,11 +224,11 @@ and is correctly handled by `in_external_macro` and `Span::from_expansion`.
 with the span of the first token: this is where the other functions will fail and `is_from_proc_macro` is needed
 
 
-[`ctxt`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/struct.Span.html#method.ctxt
-[expansion]: https://rustc-dev-guide.rust-lang.org/macro-expansion.html#expansion-and-ast-integration
-[`from_expansion`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
-[`in_external_macro`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/struct.Span.html#method.in_external_macro
-[Span]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/struct.Span.html
-[SyntaxContext]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html
-[`is_from_proc_macro`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/fn.is_from_proc_macro.html
+[`ctxt`]: https://doc.rust-lang.org/stable/nightly-redox/redox_span/struct.Span.html#method.ctxt
+[expansion]: https://redox-dev-guide.rust-lang.org/macro-expansion.html#expansion-and-ast-integration
+[`from_expansion`]: https://doc.rust-lang.org/stable/nightly-redox/redox_span/struct.Span.html#method.from_expansion
+[`in_external_macro`]: https://doc.rust-lang.org/stable/nightly-redox/redox_span/struct.Span.html#method.in_external_macro
+[Span]: https://doc.rust-lang.org/stable/nightly-redox/redox_span/struct.Span.html
+[SyntaxContext]: https://doc.rust-lang.org/stable/nightly-redox/redox_span/hygiene/struct.SyntaxContext.html
+[`is_from_proc_macro`]: https://doc.rust-lang.org/nightly/nightly-redox/clippy_utils/fn.is_from_proc_macro.html
 [`quote::quote_spanned!`]: https://docs.rs/quote/latest/quote/macro.quote_spanned.html

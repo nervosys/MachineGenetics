@@ -1,4 +1,4 @@
-// A basic smoke test to check that rustc supports linking to a rust dylib with
+// A basic smoke test to check that redox supports linking to a rust dylib with
 // --crate-type staticlib. bar is a dylib, on which foo is dependent - the native
 // static lib search paths are collected and used to compile foo.c, the final executable
 // which depends on both foo and bar.
@@ -9,11 +9,11 @@
 //@ ignore-wasm
 // Reason: WASM does not support dynamic libraries
 
-use run_make_support::{cc, is_windows_msvc, regex, run, rustc, static_lib_name};
+use run_make_support::{cc, is_windows_msvc, regex, run, redox, static_lib_name};
 
 fn main() {
-    rustc().arg("-Cprefer-dynamic").input("bar.rs").run();
-    let libs = rustc()
+    redox().arg("-Cprefer-dynamic").input("bar.rs").run();
+    let libs = redox()
         .input("foo.rs")
         .crate_type("staticlib")
         .print("native-static-libs")

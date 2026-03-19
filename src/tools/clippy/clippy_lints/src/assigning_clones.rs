@@ -5,13 +5,13 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{is_in_test, last_path_segment, local_is_initialized, sym};
-use rustc_errors::Applicability;
-use rustc_hir::{self as hir, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::mir;
-use rustc_middle::ty::{self, Instance, Mutability};
-use rustc_session::impl_lint_pass;
-use rustc_span::{Span, SyntaxContext};
+use redox_errors::Applicability;
+use redox_hir::{self as hir, Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::mir;
+use redox_middle::ty::{self, Instance, Mutability};
+use redox_session::impl_lint_pass;
+use redox_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does

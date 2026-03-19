@@ -3,9 +3,9 @@ use clippy_utils::macros::{is_panic, root_macro_call};
 use clippy_utils::res::MaybeDef;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{is_in_const_context, is_wild, peel_blocks_with_stmt};
-use rustc_hir::{Arm, Expr, PatKind};
-use rustc_lint::LateContext;
-use rustc_span::symbol::{kw, sym};
+use redox_hir::{Arm, Expr, PatKind};
+use redox_lint::LateContext;
+use redox_span::symbol::{kw, sym};
 
 use super::MATCH_WILD_ERR_ARM;
 
@@ -19,7 +19,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'
     if ex_ty.is_diag_item(cx, sym::Result) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, inner, _) = arm.pat.kind {
-                let path_str = rustc_hir_pretty::qpath_to_string(&cx.tcx, path);
+                let path_str = redox_hir_pretty::qpath_to_string(&cx.tcx, path);
                 if path_str == "Err" {
                     let mut matching_wild = inner.iter().any(is_wild);
                     let mut ident_bind_name = kw::Underscore;

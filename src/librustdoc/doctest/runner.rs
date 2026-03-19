@@ -1,8 +1,8 @@
 use std::fmt::Write;
 use std::time::Duration;
 
-use rustc_data_structures::fx::FxIndexSet;
-use rustc_span::edition::Edition;
+use redox_data_structures::fx::FxIndexSet;
+use redox_span::edition::Edition;
 
 use crate::doctest::{
     DocTestBuilder, GlobalTestOptions, IndividualTestOptions, RunnableDocTest, RustdocOptions,
@@ -84,7 +84,7 @@ impl DocTestRunner {
 #![allow(unused_extern_crates)]
 #![allow(internal_features)]
 #![feature(test)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 "
         .to_string();
 
@@ -164,7 +164,7 @@ mod __doctest_mod {{
     }}
 }}
 
-#[rustc_main]
+#[redox_main]
 fn main() -> std::process::ExitCode {{
 let tests = {{
     let mut tests = Vec::with_capacity({nb_tests});

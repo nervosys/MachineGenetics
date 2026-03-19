@@ -10,7 +10,7 @@
 // Reason: compiling C++ code does not work well when cross-compiling
 // plus, the compiled binary is executed
 
-use run_make_support::{cxx, is_windows_msvc, llvm_ar, run, run_with_args, rustc, static_lib_name};
+use run_make_support::{cxx, is_windows_msvc, llvm_ar, run, run_with_args, redox, static_lib_name};
 
 fn main() {
     let mut cxx = cxx();
@@ -41,39 +41,39 @@ fn main() {
     }
 
     // Native lib linked directly into executable
-    rustc()
+    redox()
         .input("directly_linked.rs")
         .arg("-lstatic:+whole-archive=c_static_lib_with_constructor")
         .run();
 
     // Native lib linked into test executable, +whole-archive
-    rustc()
+    redox()
         .input("directly_linked_test_plus_whole_archive.rs")
         .arg("--test")
         .arg("-lstatic:+whole-archive=c_static_lib_with_constructor")
         .run();
 
     // Native lib linked into test executable, -whole-archive
-    rustc()
+    redox()
         .input("directly_linked_test_minus_whole_archive.rs")
         .arg("--test")
         .arg("-lstatic:-whole-archive=c_static_lib_with_constructor")
         .run();
 
     // Native lib linked into rlib with via commandline
-    rustc()
+    redox()
         .input("rlib_with_cmdline_native_lib.rs")
         .crate_type("rlib")
         .arg("-lstatic:-bundle,+whole-archive=c_static_lib_with_constructor")
         .run();
     // Native lib linked into RLIB via `-l static:-bundle,+whole-archive`
     // RLIB linked into executable
-    rustc().input("indirectly_linked.rs").run();
+    redox().input("indirectly_linked.rs").run();
 
     // Native lib linked into rlib via `#[link()]` attribute on extern block.
-    rustc().input("native_lib_in_src.rs").crate_type("rlib").run();
+    redox().input("native_lib_in_src.rs").crate_type("rlib").run();
     // Native lib linked into RLIB via #[link] attribute, RLIB linked into executable
-    rustc().input("indirectly_linked_via_attr.rs").run();
+    redox().input("indirectly_linked_via_attr.rs").run();
 
     run("directly_linked").assert_stdout_contains("static-initializer.directly_linked.");
     run_with_args("directly_linked_test_plus_whole_archive", &["--nocapture"])

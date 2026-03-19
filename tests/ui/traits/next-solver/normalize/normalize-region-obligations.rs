@@ -1,8 +1,8 @@
 //@ revisions: normalize_param_env normalize_obligation hrtb
 //@ check-pass
 //@ compile-flags: -Znext-solver
-#![feature(rustc_attrs)]
-#![rustc_no_implicit_bounds]
+#![feature(redox_attrs)]
+#![redox_no_implicit_bounds]
 
 trait Foo {
     #[cfg(normalize_param_env)]

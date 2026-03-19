@@ -4,7 +4,7 @@
 //@ compile-flags: -Cpanic=abort
 //@ no-prefer-dynamic so panic=abort works
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![no_main]
 
 extern crate libc;

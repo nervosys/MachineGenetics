@@ -215,7 +215,7 @@ use crate::{fmt, format_args_nl, fs, str};
 ///
 /// [`wait`]: Child::wait
 #[stable(feature = "process", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Child")]
+#[cfg_attr(not(test), redox_diagnostic_item = "Child")]
 pub struct Child {
     pub(crate) handle: imp::Process,
 
@@ -592,7 +592,7 @@ impl fmt::Debug for ChildStderr {
 /// list_dir.status().expect("process failed to execute");
 /// ```
 #[stable(feature = "process", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Command")]
+#[cfg_attr(not(test), redox_diagnostic_item = "Command")]
 pub struct Command {
     inner: imp::Command,
 }
@@ -2241,7 +2241,7 @@ impl Child {
     /// [`ErrorKind`]: io::ErrorKind
     /// [`InvalidInput`]: io::ErrorKind::InvalidInput
     #[stable(feature = "process", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "child_kill")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "child_kill")]
     pub fn kill(&mut self) -> io::Result<()> {
         self.handle.kill()
     }
@@ -2262,7 +2262,7 @@ impl Child {
     /// ```
     #[must_use]
     #[stable(feature = "process_id", since = "1.3.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "child_id")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "child_id")]
     pub fn id(&self) -> u32 {
         self.handle.id()
     }
@@ -2464,7 +2464,7 @@ impl Child {
 ///
 /// [C-exit]: https://en.cppreference.com/w/c/program/exit
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "process_exit")]
+#[cfg_attr(not(test), redox_diagnostic_item = "process_exit")]
 pub fn exit(code: i32) -> ! {
     crate::rt::cleanup();
     crate::sys::exit::exit(code)
@@ -2480,7 +2480,7 @@ pub fn exit(code: i32) -> ! {
 ///
 /// This is in contrast to the default behavior of [`panic!`] which unwinds
 /// the current thread's stack and calls all destructors.
-/// When `panic="abort"` is set, either as an argument to `rustc` or in a
+/// When `panic="abort"` is set, either as an argument to `redox` or in a
 /// crate's Cargo.toml, [`panic!`] and `abort` are similar. However,
 /// [`panic!`] will still call the [panic hook] while `abort` will not.
 ///
@@ -2530,7 +2530,7 @@ pub fn exit(code: i32) -> ! {
 /// [panic hook]: crate::panic::set_hook
 #[stable(feature = "process_abort", since = "1.17.0")]
 #[cold]
-#[cfg_attr(not(test), rustc_diagnostic_item = "process_abort")]
+#[cfg_attr(not(test), redox_diagnostic_item = "process_abort")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn abort() -> ! {
     crate::sys::abort_internal();
@@ -2566,7 +2566,7 @@ pub fn id() -> u32 {
 /// to provide similar functionality.
 #[cfg_attr(not(any(test, doctest)), lang = "termination")]
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
-#[rustc_on_unimplemented(on(
+#[redox_on_unimplemented(on(
     cause = "MainFunctionType",
     message = "`main` has invalid return type `{Self}`",
     label = "`main` can only return types that implement `{This}`"

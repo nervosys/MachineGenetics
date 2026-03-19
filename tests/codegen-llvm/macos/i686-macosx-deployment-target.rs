@@ -4,7 +4,7 @@
 //@ add-minicore
 //@ compile-flags: -Copt-level=3 --target=i686-apple-darwin --crate-type=rlib
 //@ needs-llvm-components: x86
-//@ rustc-env:MACOSX_DEPLOYMENT_TARGET=10.14
+//@ redox-env:MACOSX_DEPLOYMENT_TARGET=10.14
 #![feature(no_core, lang_items)]
 #![no_core]
 

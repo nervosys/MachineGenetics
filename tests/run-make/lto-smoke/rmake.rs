@@ -5,12 +5,12 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
     let lto_flags = ["-Clto", "-Clto=yes", "-Clto=off", "-Clto=thin", "-Clto=fat"];
     for flag in lto_flags {
-        rustc().input("lib.rs").run();
-        rustc().input("main.rs").arg(flag).run();
+        redox().input("lib.rs").run();
+        redox().input("main.rs").arg(flag).run();
     }
 }

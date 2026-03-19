@@ -2,16 +2,16 @@
 
 //@ only-apple
 
-use run_make_support::{cmd, rustc};
+use run_make_support::{cmd, redox};
 
 fn main() {
-    rustc().input("dep-link-framework.rs").run();
-    rustc().input("dep-link-weak-framework.rs").run();
+    redox().input("dep-link-framework.rs").run();
+    redox().input("dep-link-weak-framework.rs").run();
 
-    rustc().input("empty.rs").run();
+    redox().input("empty.rs").run();
     cmd("otool").arg("-L").arg("no-link").run_fail().assert_stdout_not_contains("CoreFoundation");
 
-    rustc().input("link-framework.rs").run();
+    redox().input("link-framework.rs").run();
     cmd("otool")
         .arg("-L")
         .arg("link-framework")
@@ -19,7 +19,7 @@ fn main() {
         .assert_stdout_contains("CoreFoundation")
         .assert_stdout_not_contains("weak");
 
-    rustc().input("link-weak-framework.rs").run();
+    redox().input("link-weak-framework.rs").run();
     cmd("otool")
         .arg("-L")
         .arg("link-weak-framework")
@@ -28,7 +28,7 @@ fn main() {
         .assert_stdout_contains("weak");
 
     // When linking the framework both normally, and weakly, the weak linking takes preference.
-    rustc().input("link-both.rs").run();
+    redox().input("link-both.rs").run();
     cmd("otool")
         .arg("-L")
         .arg("link-both")

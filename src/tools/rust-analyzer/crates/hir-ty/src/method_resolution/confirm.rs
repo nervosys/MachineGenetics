@@ -6,7 +6,7 @@ use hir_def::{
     expr_store::path::{GenericArg as HirGenericArg, GenericArgs as HirGenericArgs},
     hir::{ExprId, generics::GenericParamDataRef},
 };
-use rustc_type_ir::{
+use redox_type_ir::{
     TypeFoldable,
     elaborate::elaborate,
     inherent::{BoundExistentialPredicates, IntoKind, Ty as _},

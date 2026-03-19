@@ -1,13 +1,13 @@
 use clippy_utils::res::MaybeDef as _;
 use hir::FnSig;
-use rustc_errors::Applicability;
-use rustc_hir::def::Res;
-use rustc_hir::def_id::DefIdSet;
-use rustc_hir::{self as hir, Attribute, QPath, find_attr};
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty::{self, Ty};
-use rustc_span::{Span, sym};
+use redox_errors::Applicability;
+use redox_hir::def::Res;
+use redox_hir::def_id::DefIdSet;
+use redox_hir::{self as hir, Attribute, QPath, find_attr};
+use redox_infer::infer::TyCtxtInferExt;
+use redox_lint::{LateContext, LintContext};
+use redox_middle::ty::{self, Ty};
+use redox_span::{Span, sym};
 
 use clippy_utils::attrs::is_proc_macro;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
@@ -15,8 +15,8 @@ use clippy_utils::source::snippet_indent;
 use clippy_utils::ty::is_must_use_ty;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{is_entrypoint_fn, return_ty, trait_ref_of_method};
-use rustc_span::Symbol;
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use redox_span::Symbol;
+use redox_trait_selection::error_reporting::InferCtxtErrorExt;
 
 use core::ops::ControlFlow;
 

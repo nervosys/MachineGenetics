@@ -1,8 +1,8 @@
-use rustc_abi::CanonAbi;
-use rustc_middle::mir;
-use rustc_middle::ty::Ty;
-use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
+use redox_abi::CanonAbi;
+use redox_middle::mir;
+use redox_middle::ty::Ty;
+use redox_span::Symbol;
+use redox_target::callconv::FnAbi;
 
 use super::{horizontal_bin_op, pmaddbw, pmulhrsw, pshufb, psign};
 use crate::*;

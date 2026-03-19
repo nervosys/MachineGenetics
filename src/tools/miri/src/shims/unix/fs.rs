@@ -10,10 +10,10 @@ use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{self, Path, PathBuf};
 use std::time::SystemTime;
 
-use rustc_abi::Size;
-use rustc_data_structures::either::Either;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_target::spec::Os;
+use redox_abi::Size;
+use redox_data_structures::either::Either;
+use redox_data_structures::fx::FxHashMap;
+use redox_target::spec::Os;
 
 use self::shims::time::system_time_to_duration;
 use crate::shims::files::FileHandle;

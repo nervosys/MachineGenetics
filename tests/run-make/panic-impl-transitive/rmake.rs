@@ -6,9 +6,9 @@
 // function in the crate.
 // See https://github.com/rust-lang/rust/pull/50338
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
-    rustc().input("panic-impl-provider.rs").run();
-    rustc().input("panic-impl-consumer.rs").panic("abort").emit("llvm-ir").run();
+    redox().input("panic-impl-provider.rs").run();
+    redox().input("panic-impl-consumer.rs").panic("abort").emit("llvm-ir").run();
 }

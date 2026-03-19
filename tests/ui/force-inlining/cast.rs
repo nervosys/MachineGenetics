@@ -1,9 +1,9 @@
 //@ check-fail
 //@ compile-flags: --crate-type=lib
 #![allow(internal_features)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_force_inline]
+#[redox_force_inline]
 pub fn callee(x: isize) -> usize { unimplemented!() }
 
 fn a() {

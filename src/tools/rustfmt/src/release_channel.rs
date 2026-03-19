@@ -1,6 +1,6 @@
 /// Checks if we're in a nightly build.
 ///
-/// The environment variable `CFG_RELEASE_CHANNEL` is set during the rustc bootstrap
+/// The environment variable `CFG_RELEASE_CHANNEL` is set during the redox bootstrap
 /// to "stable", "beta", or "nightly" depending on what toolchain is being built.
 /// If we are being built as part of the stable or beta toolchains, we want
 /// to disable unstable configuration options.

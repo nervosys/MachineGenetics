@@ -4,7 +4,7 @@ use std::{fmt, ops::ControlFlow};
 
 use intern::{Interned, InternedRef, InternedSliceRef, impl_internable};
 use macros::GenericTypeVisitable;
-use rustc_ast_ir::{FloatTy, IntTy, UintTy};
+use redox_ast_ir::{FloatTy, IntTy, UintTy};
 pub use tls_cache::clear_tls_solver_cache;
 pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 
@@ -17,10 +17,10 @@ use hir_def::{
     signatures::{FieldData, FnFlags, ImplFlags, StructFlags, TraitFlags},
 };
 use la_arena::Idx;
-use rustc_abi::{ReprFlags, ReprOptions};
-use rustc_hash::FxHashSet;
-use rustc_index::bit_set::DenseBitSet;
-use rustc_type_ir::{
+use redox_abi::{ReprFlags, ReprOptions};
+use redox_hash::FxHashSet;
+use redox_index::bit_set::DenseBitSet;
+use redox_type_ir::{
     AliasTermKind, AliasTyKind, BoundVar, CoroutineWitnessTypes, DebruijnIndex, EarlyBinder,
     FlagComputation, Flags, GenericArgKind, GenericTypeVisitable, ImplPolarity, InferTy, Interner,
     TraitRef, TypeFlags, TypeVisitableExt, UniverseIndex, Upcast, Variance,
@@ -96,9 +96,9 @@ macro_rules! interned_slice {
             pub fn new_from_iter<I, T>(_interner: DbInterner<'db>, args: I) -> T::Output
             where
                 I: IntoIterator<Item = T>,
-                T: ::rustc_type_ir::CollectAndApply<$ty_db, Self>,
+                T: ::redox_type_ir::CollectAndApply<$ty_db, Self>,
             {
-                ::rustc_type_ir::CollectAndApply::collect_and_apply(args.into_iter(), |g| {
+                ::redox_type_ir::CollectAndApply::collect_and_apply(args.into_iter(), |g| {
                     Self::new_from_slice(g)
                 })
             }
@@ -141,7 +141,7 @@ macro_rules! interned_slice {
             }
         }
 
-        impl<'db> rustc_type_ir::inherent::SliceLike for $name<'db> {
+        impl<'db> redox_type_ir::inherent::SliceLike for $name<'db> {
             type Item = $ty_db;
 
             type IntoIter = ::std::iter::Copied<::std::slice::Iter<'db, $ty_db>>;
@@ -166,7 +166,7 @@ macro_rules! interned_slice {
 
 
         impl<'db, V: $crate::next_solver::interner::WorldExposer>
-            rustc_type_ir::GenericTypeVisitable<V> for $name<'db>
+            redox_type_ir::GenericTypeVisitable<V> for $name<'db>
         {
             #[inline]
             fn generic_visit_with(&self, visitor: &mut V) {
@@ -227,25 +227,25 @@ pub(crate) use impl_stored_interned_slice;
 
 macro_rules! impl_foldable_for_interned_slice {
     ($name:ident) => {
-        impl<'db> ::rustc_type_ir::TypeVisitable<DbInterner<'db>> for $name<'db> {
-            fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
+        impl<'db> ::redox_type_ir::TypeVisitable<DbInterner<'db>> for $name<'db> {
+            fn visit_with<V: redox_type_ir::TypeVisitor<DbInterner<'db>>>(
                 &self,
                 visitor: &mut V,
             ) -> V::Result {
-                use rustc_ast_ir::visit::VisitorResult;
-                rustc_ast_ir::walk_visitable_list!(visitor, (*self).iter());
+                use redox_ast_ir::visit::VisitorResult;
+                redox_ast_ir::walk_visitable_list!(visitor, (*self).iter());
                 V::Result::output()
             }
         }
 
-        impl<'db> rustc_type_ir::TypeFoldable<DbInterner<'db>> for $name<'db> {
-            fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
+        impl<'db> redox_type_ir::TypeFoldable<DbInterner<'db>> for $name<'db> {
+            fn try_fold_with<F: redox_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
                 self,
                 folder: &mut F,
             ) -> Result<Self, F::Error> {
                 Self::new_from_iter(folder.cx(), self.iter().map(|it| it.try_fold_with(folder)))
             }
-            fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(
+            fn fold_with<F: redox_type_ir::TypeFolder<DbInterner<'db>>>(
                 self,
                 folder: &mut F,
             ) -> Self {
@@ -761,7 +761,7 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
     fn destructor(
         self,
         _interner: DbInterner<'db>,
-    ) -> Option<rustc_type_ir::solve::AdtDestructorKind> {
+    ) -> Option<redox_type_ir::solve::AdtDestructorKind> {
         // FIXME(next-solver)
         None
     }
@@ -822,7 +822,7 @@ impl std::ops::Deref for UnsizingParams {
     }
 }
 
-pub type PatternKind<'db> = rustc_type_ir::PatternKind<DbInterner<'db>>;
+pub type PatternKind<'db> = redox_type_ir::PatternKind<DbInterner<'db>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Pattern<'db> {
@@ -875,7 +875,7 @@ impl<'db> Flags for Pattern<'db> {
         }
     }
 
-    fn outer_exclusive_binder(&self) -> rustc_type_ir::DebruijnIndex {
+    fn outer_exclusive_binder(&self) -> redox_type_ir::DebruijnIndex {
         match self.inner() {
             PatternKind::Range { start, end } => {
                 start.outer_exclusive_binder().max(end.outer_exclusive_binder())
@@ -887,20 +887,20 @@ impl<'db> Flags for Pattern<'db> {
                 }
                 idx
             }
-            PatternKind::NotNull => rustc_type_ir::INNERMOST,
+            PatternKind::NotNull => redox_type_ir::INNERMOST,
         }
     }
 }
 
-impl<'db> rustc_type_ir::inherent::IntoKind for Pattern<'db> {
-    type Kind = rustc_type_ir::PatternKind<DbInterner<'db>>;
+impl<'db> redox_type_ir::inherent::IntoKind for Pattern<'db> {
+    type Kind = redox_type_ir::PatternKind<DbInterner<'db>>;
     fn kind(self) -> Self::Kind {
         *self.inner()
     }
 }
 
-impl<'db> rustc_type_ir::TypeVisitable<DbInterner<'db>> for Pattern<'db> {
-    fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
+impl<'db> redox_type_ir::TypeVisitable<DbInterner<'db>> for Pattern<'db> {
+    fn visit_with<V: redox_type_ir::TypeVisitor<DbInterner<'db>>>(
         &self,
         visitor: &mut V,
     ) -> V::Result {
@@ -908,7 +908,7 @@ impl<'db> rustc_type_ir::TypeVisitable<DbInterner<'db>> for Pattern<'db> {
     }
 }
 
-impl<'db, V: WorldExposer> rustc_type_ir::GenericTypeVisitable<V> for Pattern<'db> {
+impl<'db, V: WorldExposer> redox_type_ir::GenericTypeVisitable<V> for Pattern<'db> {
     fn generic_visit_with(&self, visitor: &mut V) {
         if visitor.on_interned(self.interned).is_continue() {
             self.kind().generic_visit_with(visitor);
@@ -916,25 +916,25 @@ impl<'db, V: WorldExposer> rustc_type_ir::GenericTypeVisitable<V> for Pattern<'d
     }
 }
 
-impl<'db> rustc_type_ir::TypeFoldable<DbInterner<'db>> for Pattern<'db> {
-    fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
+impl<'db> redox_type_ir::TypeFoldable<DbInterner<'db>> for Pattern<'db> {
+    fn try_fold_with<F: redox_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         Ok(Pattern::new(folder.cx(), self.kind().try_fold_with(folder)?))
     }
 
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
+    fn fold_with<F: redox_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
         Pattern::new(folder.cx(), self.kind().fold_with(folder))
     }
 }
 
-impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for Pattern<'db> {
-    fn relate<R: rustc_type_ir::relate::TypeRelation<DbInterner<'db>>>(
+impl<'db> redox_type_ir::relate::Relate<DbInterner<'db>> for Pattern<'db> {
+    fn relate<R: redox_type_ir::relate::TypeRelation<DbInterner<'db>>>(
         relation: &mut R,
         a: Self,
         b: Self,
-    ) -> rustc_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
+    ) -> redox_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
         let tcx = relation.cx();
         match (a.kind(), b.kind()) {
             (
@@ -1047,7 +1047,7 @@ impl<'db> Interner for DbInterner<'db> {
 
     fn mk_canonical_var_kinds(
         self,
-        kinds: &[rustc_type_ir::CanonicalVarKind<Self>],
+        kinds: &[redox_type_ir::CanonicalVarKind<Self>],
     ) -> Self::CanonicalVarKinds {
         CanonicalVars::new_from_slice(kinds)
     }
@@ -1056,7 +1056,7 @@ impl<'db> Interner for DbInterner<'db> {
 
     fn mk_external_constraints(
         self,
-        data: rustc_type_ir::solve::ExternalConstraintsData<Self>,
+        data: redox_type_ir::solve::ExternalConstraintsData<Self>,
     ) -> Self::ExternalConstraints {
         ExternalConstraints::new(self, data)
     }
@@ -1117,7 +1117,7 @@ impl<'db> Interner for DbInterner<'db> {
     fn mk_args_from_iter<I, T>(self, args: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: rustc_type_ir::CollectAndApply<Self::GenericArg, Self::GenericArgs>,
+        T: redox_type_ir::CollectAndApply<Self::GenericArg, Self::GenericArgs>,
     {
         GenericArgs::new_from_iter(self, args)
     }
@@ -1142,7 +1142,7 @@ impl<'db> Interner for DbInterner<'db> {
 
     fn with_global_cache<R>(
         self,
-        f: impl FnOnce(&mut rustc_type_ir::search_graph::GlobalCache<Self>) -> R,
+        f: impl FnOnce(&mut redox_type_ir::search_graph::GlobalCache<Self>) -> R,
     ) -> R {
         tls_cache::with_cache(self.db, f)
     }
@@ -1150,8 +1150,8 @@ impl<'db> Interner for DbInterner<'db> {
     fn canonical_param_env_cache_get_or_insert<R>(
         self,
         _param_env: Self::ParamEnv,
-        f: impl FnOnce() -> rustc_type_ir::CanonicalParamEnvCacheEntry<Self>,
-        from_entry: impl FnOnce(&rustc_type_ir::CanonicalParamEnvCacheEntry<Self>) -> R,
+        f: impl FnOnce() -> redox_type_ir::CanonicalParamEnvCacheEntry<Self>,
+        from_entry: impl FnOnce(&redox_type_ir::CanonicalParamEnvCacheEntry<Self>) -> R,
     ) -> R {
         from_entry(&f())
     }
@@ -1160,8 +1160,8 @@ impl<'db> Interner for DbInterner<'db> {
         panic!("evaluation shouldn't be concurrent yet")
     }
 
-    fn expand_abstract_consts<T: rustc_type_ir::TypeFoldable<Self>>(self, _: T) -> T {
-        unreachable!("only used by the old trait solver in rustc");
+    fn expand_abstract_consts<T: redox_type_ir::TypeFoldable<Self>>(self, _: T) -> T {
+        unreachable!("only used by the old trait solver in redox");
     }
 
     fn generics_of(self, def_id: Self::DefId) -> Self::GenericsOf {
@@ -1176,8 +1176,8 @@ impl<'db> Interner for DbInterner<'db> {
             SolverDefId::InternedOpaqueTyId(_def_id) => {
                 // FIXME(next-solver): track variances
                 //
-                // We compute them based on the only `Ty` level info in rustc,
-                // move `variances_of_opaque` into `rustc_next_trait_solver` for reuse.
+                // We compute them based on the only `Ty` level info in redox,
+                // move `variances_of_opaque` into `redox_next_trait_solver` for reuse.
                 return VariancesOf::new_from_iter(
                     self,
                     (0..self.generics_of(def_id).count()).map(|_| Variance::Invariant),
@@ -1204,7 +1204,7 @@ impl<'db> Interner for DbInterner<'db> {
         match def_id {
             SolverDefId::TypeAliasId(id) => self.db().ty(id.into()),
             SolverDefId::AdtId(id) => self.db().ty(id.into()),
-            // FIXME(next-solver): This uses the types of `query mir_borrowck` in rustc.
+            // FIXME(next-solver): This uses the types of `query mir_borrowck` in redox.
             //
             // We currently always use the type from HIR typeck which ignores regions. This
             // should be fine.
@@ -1225,7 +1225,7 @@ impl<'db> Interner for DbInterner<'db> {
         AdtDef::new(def_id.0, self)
     }
 
-    fn alias_ty_kind(self, alias: rustc_type_ir::AliasTy<Self>) -> AliasTyKind {
+    fn alias_ty_kind(self, alias: redox_type_ir::AliasTy<Self>) -> AliasTyKind {
         match alias.def_id {
             SolverDefId::InternedOpaqueTyId(_) => AliasTyKind::Opaque,
             SolverDefId::TypeAliasId(type_alias) => match type_alias.loc(self.db).container {
@@ -1243,8 +1243,8 @@ impl<'db> Interner for DbInterner<'db> {
 
     fn alias_term_kind(
         self,
-        alias: rustc_type_ir::AliasTerm<Self>,
-    ) -> rustc_type_ir::AliasTermKind {
+        alias: redox_type_ir::AliasTerm<Self>,
+    ) -> redox_type_ir::AliasTermKind {
         match alias.def_id {
             SolverDefId::InternedOpaqueTyId(_) => AliasTermKind::OpaqueTy,
             SolverDefId::TypeAliasId(type_alias) => match type_alias.loc(self.db).container {
@@ -1258,7 +1258,7 @@ impl<'db> Interner for DbInterner<'db> {
                 }
                 _ => AliasTermKind::FreeTy,
             },
-            // rustc creates an `AnonConst` for consts, and evaluates them with CTFE (normalizing projections
+            // redox creates an `AnonConst` for consts, and evaluates them with CTFE (normalizing projections
             // via selection, similar to ours `find_matching_impl()`, and not with the trait solver), so mimic it.
             SolverDefId::ConstId(_) => AliasTermKind::UnevaluatedConst,
             _ => unimplemented!("Unexpected alias: {:?}", alias.def_id),
@@ -1269,7 +1269,7 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
         args: Self::GenericArgs,
-    ) -> (rustc_type_ir::TraitRef<Self>, Self::GenericArgsSlice) {
+    ) -> (redox_type_ir::TraitRef<Self>, Self::GenericArgsSlice) {
         let trait_def_id = self.parent(def_id);
         let trait_generics = self.generics_of(trait_def_id);
         let trait_args =
@@ -1295,7 +1295,7 @@ impl<'db> Interner for DbInterner<'db> {
     fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: rustc_type_ir::CollectAndApply<Self::Ty, Self::Tys>,
+        T: redox_type_ir::CollectAndApply<Self::Ty, Self::Tys>,
     {
         Tys::new_from_iter(self, args)
     }
@@ -1353,11 +1353,11 @@ impl<'db> Interner for DbInterner<'db> {
     fn fn_sig(
         self,
         def_id: Self::FunctionId,
-    ) -> EarlyBinder<Self, rustc_type_ir::Binder<Self, rustc_type_ir::FnSig<Self>>> {
+    ) -> EarlyBinder<Self, redox_type_ir::Binder<Self, redox_type_ir::FnSig<Self>>> {
         self.db().callable_item_signature(def_id.0)
     }
 
-    fn coroutine_movability(self, def_id: Self::CoroutineId) -> rustc_ast_ir::Movability {
+    fn coroutine_movability(self, def_id: Self::CoroutineId) -> redox_ast_ir::Movability {
         // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
         // the current infer query, except with revealed opaques - is it rare enough to not matter?
         let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
@@ -1366,13 +1366,13 @@ impl<'db> Interner for DbInterner<'db> {
         match *expr {
             hir_def::hir::Expr::Closure { closure_kind, .. } => match closure_kind {
                 hir_def::hir::ClosureKind::Coroutine(movability) => match movability {
-                    hir_def::hir::Movability::Static => rustc_ast_ir::Movability::Static,
-                    hir_def::hir::Movability::Movable => rustc_ast_ir::Movability::Movable,
+                    hir_def::hir::Movability::Static => redox_ast_ir::Movability::Static,
+                    hir_def::hir::Movability::Movable => redox_ast_ir::Movability::Movable,
                 },
-                hir_def::hir::ClosureKind::Async => rustc_ast_ir::Movability::Static,
+                hir_def::hir::ClosureKind::Async => redox_ast_ir::Movability::Static,
                 _ => panic!("unexpected expression for a coroutine: {expr:?}"),
             },
-            hir_def::hir::Expr::Async { .. } => rustc_ast_ir::Movability::Static,
+            hir_def::hir::Expr::Async { .. } => redox_ast_ir::Movability::Static,
             _ => panic!("unexpected expression for a coroutine: {expr:?}"),
         }
     }
@@ -1465,7 +1465,7 @@ impl<'db> Interner for DbInterner<'db> {
         def_id: Self::TraitId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>> {
         let is_self = |ty: Ty<'db>| match ty.kind() {
-            rustc_type_ir::TyKind::Param(param) => param.index == 0,
+            redox_type_ir::TyKind::Param(param) => param.index == 0,
             _ => false,
         };
 
@@ -1474,8 +1474,8 @@ impl<'db> Interner for DbInterner<'db> {
                 .iter()
                 .copied()
                 .filter(move |p| match p.kind().skip_binder() {
-                    // rustc has the following assertion:
-                    // https://github.com/rust-lang/rust/blob/52618eb338609df44978b0ca4451ab7941fd1c7a/compiler/rustc_hir_analysis/src/hir_ty_lowering/bounds.rs#L525-L608
+                    // redox has the following assertion:
+                    // https://github.com/rust-lang/rust/blob/52618eb338609df44978b0ca4451ab7941fd1c7a/compiler/redox_hir_analysis/src/hir_ty_lowering/bounds.rs#L525-L608
                     ClauseKind::Trait(it) => is_self(it.self_ty()),
                     ClauseKind::TypeOutlives(it) => is_self(it.0),
                     ClauseKind::Projection(it) => is_self(it.self_ty()),
@@ -1493,8 +1493,8 @@ impl<'db> Interner for DbInterner<'db> {
     ) -> EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>> {
         fn is_self_or_assoc(ty: Ty<'_>) -> bool {
             match ty.kind() {
-                rustc_type_ir::TyKind::Param(param) => param.index == 0,
-                rustc_type_ir::TyKind::Alias(rustc_type_ir::AliasTyKind::Projection, alias) => {
+                redox_type_ir::TyKind::Param(param) => param.index == 0,
+                redox_type_ir::TyKind::Alias(redox_type_ir::AliasTyKind::Projection, alias) => {
                     is_self_or_assoc(alias.self_ty())
                 }
                 _ => false,
@@ -1511,7 +1511,7 @@ impl<'db> Interner for DbInterner<'db> {
                     ClauseKind::Projection(it) => is_self_or_assoc(it.self_ty()),
                     ClauseKind::HostEffect(it) => is_self_or_assoc(it.self_ty()),
                     // FIXME: Not sure is this correct to allow other clauses but we might replace
-                    // `generic_predicates_ns` query here with something closer to rustc's
+                    // `generic_predicates_ns` query here with something closer to redox's
                     // `implied_bounds_with_filter`, which is more granular lowering than this
                     // "lower at once and then filter" implementation.
                     _ => true,
@@ -1542,7 +1542,7 @@ impl<'db> Interner for DbInterner<'db> {
         _def_id: Self::DefId,
     ) -> EarlyBinder<
         Self,
-        impl IntoIterator<Item = rustc_type_ir::Binder<Self, rustc_type_ir::TraitRef<Self>>>,
+        impl IntoIterator<Item = redox_type_ir::Binder<Self, redox_type_ir::TraitRef<Self>>>,
     > {
         EarlyBinder::bind([unimplemented!()])
     }
@@ -1942,7 +1942,7 @@ impl<'db> Interner for DbInterner<'db> {
     fn impl_trait_ref(
         self,
         impl_id: Self::ImplId,
-    ) -> EarlyBinder<Self, rustc_type_ir::TraitRef<Self>> {
+    ) -> EarlyBinder<Self, redox_type_ir::TraitRef<Self>> {
         match impl_id {
             AnyImplId::ImplId(impl_id) => {
                 let db = self.db();
@@ -1956,7 +1956,7 @@ impl<'db> Interner for DbInterner<'db> {
         }
     }
 
-    fn impl_polarity(self, impl_id: Self::ImplId) -> rustc_type_ir::ImplPolarity {
+    fn impl_polarity(self, impl_id: Self::ImplId) -> redox_type_ir::ImplPolarity {
         let AnyImplId::ImplId(impl_id) = impl_id else {
             return ImplPolarity::Positive;
         };
@@ -1989,7 +1989,7 @@ impl<'db> Interner for DbInterner<'db> {
 
     fn trait_may_be_implemented_via_object(self, _trait_def_id: Self::TraitId) -> bool {
         // FIXME(next-solver): should check the `TraitFlags` for
-        // the `#[rustc_do_not_implement_via_object]` flag
+        // the `#[redox_do_not_implement_via_object]` flag
         true
     }
 
@@ -2044,12 +2044,12 @@ impl<'db> Interner for DbInterner<'db> {
 
         let maybe_unsizing_param_idx = |arg: GenericArg<'db>| match arg.kind() {
             GenericArgKind::Type(ty) => match ty.kind() {
-                rustc_type_ir::TyKind::Param(p) => Some(p.index),
+                redox_type_ir::TyKind::Param(p) => Some(p.index),
                 _ => None,
             },
             GenericArgKind::Lifetime(_) => None,
             GenericArgKind::Const(ct) => match ct.kind() {
-                rustc_type_ir::ConstKind::Param(p) => Some(p.index),
+                redox_type_ir::ConstKind::Param(p) => Some(p.index),
                 _ => None,
             },
         };
@@ -2083,10 +2083,10 @@ impl<'db> Interner for DbInterner<'db> {
         UnsizingParams(unsizing_params)
     }
 
-    fn anonymize_bound_vars<T: rustc_type_ir::TypeFoldable<Self>>(
+    fn anonymize_bound_vars<T: redox_type_ir::TypeFoldable<Self>>(
         self,
-        value: rustc_type_ir::Binder<Self, T>,
-    ) -> rustc_type_ir::Binder<Self, T> {
+        value: redox_type_ir::Binder<Self, T>,
+    ) -> redox_type_ir::Binder<Self, T> {
         struct Anonymize<'a, 'db> {
             interner: DbInterner<'db>,
             map: &'a mut FxIndexMap<BoundVar, BoundVarKind>,
@@ -2173,7 +2173,7 @@ impl<'db> Interner for DbInterner<'db> {
         _def_id: Self::DefId,
     ) -> EarlyBinder<
         Self,
-        impl IntoIterator<Item = rustc_type_ir::Binder<Self, rustc_type_ir::TraitRef<Self>>>,
+        impl IntoIterator<Item = redox_type_ir::Binder<Self, redox_type_ir::TraitRef<Self>>>,
     > {
         // FIXME(next-solver)
         EarlyBinder::bind([])
@@ -2193,7 +2193,7 @@ impl<'db> Interner for DbInterner<'db> {
 
     fn opt_alias_variances(
         self,
-        _kind: impl Into<rustc_type_ir::AliasTermKind>,
+        _kind: impl Into<redox_type_ir::AliasTermKind>,
         _def_id: Self::DefId,
     ) -> Option<Self::VariancesOf> {
         None
@@ -2261,15 +2261,15 @@ impl<'db> Interner for DbInterner<'db> {
         true
     }
 
-    type Probe = rustc_type_ir::solve::inspect::Probe<DbInterner<'db>>;
-    fn mk_probe(self, probe: rustc_type_ir::solve::inspect::Probe<Self>) -> Self::Probe {
+    type Probe = redox_type_ir::solve::inspect::Probe<DbInterner<'db>>;
+    fn mk_probe(self, probe: redox_type_ir::solve::inspect::Probe<Self>) -> Self::Probe {
         probe
     }
     fn evaluate_root_goal_for_proof_tree_raw(
         self,
-        canonical_goal: rustc_type_ir::solve::CanonicalInput<Self>,
-    ) -> (rustc_type_ir::solve::QueryResult<Self>, Self::Probe) {
-        rustc_next_trait_solver::solve::evaluate_root_goal_for_proof_tree_raw_provider::<
+        canonical_goal: redox_type_ir::solve::CanonicalInput<Self>,
+    ) -> (redox_type_ir::solve::QueryResult<Self>, Self::Probe) {
+        redox_next_trait_solver::solve::evaluate_root_goal_for_proof_tree_raw_provider::<
             SolverContext<'db>,
             Self,
         >(self, canonical_goal)
@@ -2282,7 +2282,7 @@ impl<'db> Interner for DbInterner<'db> {
         )
     }
 
-    fn const_of_item(self, def_id: Self::DefId) -> rustc_type_ir::EarlyBinder<Self, Self::Const> {
+    fn const_of_item(self, def_id: Self::DefId) -> redox_type_ir::EarlyBinder<Self, Self::Const> {
         let id = match def_id {
             SolverDefId::StaticId(id) => id.into(),
             SolverDefId::ConstId(id) => id.into(),
@@ -2298,7 +2298,7 @@ impl<'db> Interner for DbInterner<'db> {
 impl<'db> DbInterner<'db> {
     pub fn shift_bound_var_indices<T>(self, bound_vars: usize, value: T) -> T
     where
-        T: rustc_type_ir::TypeFoldable<Self>,
+        T: redox_type_ir::TypeFoldable<Self>,
     {
         let shift_bv = |bv: BoundVar| BoundVar::from_usize(bv.as_usize() + bound_vars);
         self.replace_escaping_bound_vars_uncached(
@@ -2325,7 +2325,7 @@ impl<'db> DbInterner<'db> {
         )
     }
 
-    pub fn replace_escaping_bound_vars_uncached<T: rustc_type_ir::TypeFoldable<DbInterner<'db>>>(
+    pub fn replace_escaping_bound_vars_uncached<T: redox_type_ir::TypeFoldable<DbInterner<'db>>>(
         self,
         value: T,
         delegate: impl BoundVarReplacerDelegate<'db>,
@@ -2338,7 +2338,7 @@ impl<'db> DbInterner<'db> {
         }
     }
 
-    pub fn replace_bound_vars_uncached<T: rustc_type_ir::TypeFoldable<DbInterner<'db>>>(
+    pub fn replace_bound_vars_uncached<T: redox_type_ir::TypeFoldable<DbInterner<'db>>>(
         self,
         value: Binder<'db, T>,
         delegate: impl BoundVarReplacerDelegate<'db>,
@@ -2380,8 +2380,8 @@ fn predicates_of(db: &dyn HirDatabase, def_id: SolverDefId) -> &GenericPredicate
 macro_rules! TrivialTypeTraversalImpls {
     ($($ty:ty,)+) => {
         $(
-            impl<'db> rustc_type_ir::TypeFoldable<DbInterner<'db>> for $ty {
-                fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
+            impl<'db> redox_type_ir::TypeFoldable<DbInterner<'db>> for $ty {
+                fn try_fold_with<F: redox_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
                     self,
                     _: &mut F,
                 ) -> ::std::result::Result<Self, F::Error> {
@@ -2389,7 +2389,7 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
 
                 #[inline]
-                fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(
+                fn fold_with<F: redox_type_ir::TypeFolder<DbInterner<'db>>>(
                     self,
                     _: &mut F,
                 ) -> Self {
@@ -2397,18 +2397,18 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
             }
 
-            impl<'db> rustc_type_ir::TypeVisitable<DbInterner<'db>> for $ty {
+            impl<'db> redox_type_ir::TypeVisitable<DbInterner<'db>> for $ty {
                 #[inline]
-                fn visit_with<F: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
+                fn visit_with<F: redox_type_ir::TypeVisitor<DbInterner<'db>>>(
                     &self,
                     _: &mut F)
                     -> F::Result
                 {
-                    <F::Result as rustc_ast_ir::visit::VisitorResult>::output()
+                    <F::Result as redox_ast_ir::visit::VisitorResult>::output()
                 }
             }
 
-            impl<V> rustc_type_ir::GenericTypeVisitable<V> for $ty {
+            impl<V> redox_type_ir::GenericTypeVisitable<V> for $ty {
                 #[inline]
                 fn generic_visit_with(&self, _visitor: &mut V) {}
             }
@@ -2560,7 +2560,7 @@ mod tls_cache {
 
     use super::DbInterner;
     use base_db::Nonce;
-    use rustc_type_ir::search_graph::GlobalCache;
+    use redox_type_ir::search_graph::GlobalCache;
     use salsa::Revision;
     use std::cell::RefCell;
 

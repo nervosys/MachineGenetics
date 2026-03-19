@@ -1,22 +1,22 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(staged_api)]
 #![stable(feature = "a", since = "1.0.0")]
 
-#[rustc_promotable]
+#[redox_promotable]
 #[stable(feature = "a", since = "1.0.0")]
-#[rustc_const_stable(feature = "a", since = "1.0.0")]
+#[redox_const_stable(feature = "a", since = "1.0.0")]
 pub const fn id<T>(x: &'static T) -> &'static T { x }
 
-#[rustc_promotable]
+#[redox_promotable]
 #[stable(feature = "a", since = "1.0.0")]
-#[rustc_const_stable(feature = "a", since = "1.0.0")]
+#[redox_const_stable(feature = "a", since = "1.0.0")]
 pub const fn new_string() -> String {
     String::new()
 }
 
-#[rustc_promotable]
+#[redox_promotable]
 #[stable(feature = "a", since = "1.0.0")]
-#[rustc_const_stable(feature = "a", since = "1.0.0")]
+#[redox_const_stable(feature = "a", since = "1.0.0")]
 pub const fn new_manually_drop<T>(t: T) -> std::mem::ManuallyDrop<T>  {
     std::mem::ManuallyDrop::new(t)
 }

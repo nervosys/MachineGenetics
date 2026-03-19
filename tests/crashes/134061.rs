@@ -1,4 +1,4 @@
 //@ known-bug: #134061
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 
 const x: () = |&'a

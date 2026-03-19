@@ -6,7 +6,7 @@ use std::mem;
 use ide::FileId;
 use ide_db::{FxHashMap, base_db::DbPanicContext};
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
+use redox_hash::FxHashSet;
 use smallvec::SmallVec;
 use stdx::iter_eq_by;
 use triomphe::Arc;

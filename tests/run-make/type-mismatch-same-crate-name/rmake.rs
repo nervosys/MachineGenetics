@@ -8,17 +8,17 @@
 // is only introduced as an indirect dependency and the type is accessed via a reexport.
 // See https://github.com/rust-lang/rust/pull/42826
 
-use run_make_support::{rust_lib_name, rustc};
+use run_make_support::{rust_lib_name, redox};
 
 fn main() {
-    rustc().crate_type("rlib").input("crateA.rs").metadata("-1").extra_filename("-1").run();
-    rustc().crate_type("rlib").input("crateA.rs").metadata("-2").extra_filename("-2").run();
-    rustc()
+    redox().crate_type("rlib").input("crateA.rs").metadata("-1").extra_filename("-1").run();
+    redox().crate_type("rlib").input("crateA.rs").metadata("-2").extra_filename("-2").run();
+    redox()
         .crate_type("rlib")
         .input("crateB.rs")
         .extern_("crateA", rust_lib_name("crateA-1"))
         .run();
-    rustc()
+    redox()
         .input("crateC.rs")
         .extern_("crateA", rust_lib_name("crateA-2"))
         .run_fail()

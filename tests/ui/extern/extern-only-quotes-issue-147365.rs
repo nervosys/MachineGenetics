@@ -1,4 +1,4 @@
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 
 // https://github.com/rust-lang/rust/issues/147365
 // Ensures we don't trigger debug assert by creating an empty Ident when determining whether

@@ -1,11 +1,11 @@
 //! A standalone binary for `proc-macro-srv`.
 //! Driver for proc macro server
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 #![cfg_attr(not(feature = "sysroot-abi"), allow(unused_crate_dependencies))]
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
 mod version;
 

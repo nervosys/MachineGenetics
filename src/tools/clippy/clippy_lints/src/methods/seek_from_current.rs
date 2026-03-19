@@ -1,8 +1,8 @@
-use rustc_ast::ast::{LitIntType, LitKind};
-use rustc_data_structures::packed::Pu128;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::LateContext;
+use redox_ast::ast::{LitIntType, LitKind};
+use redox_data_structures::packed::Pu128;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::LateContext;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;

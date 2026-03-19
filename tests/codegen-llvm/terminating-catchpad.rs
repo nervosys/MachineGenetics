@@ -14,7 +14,7 @@
 // exceptions. To catch only C++ exceptions we'd need to call
 // @llvm.wasm.get.exception and @llvm.wasm.get.ehselector in the catchpad.
 
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core, lang_items, redox_attrs)]
 #![crate_type = "lib"]
 #![no_std]
 #![no_core]
@@ -38,7 +38,7 @@ fn panic_cannot_unwind() -> ! {
 }
 
 #[no_mangle]
-#[rustc_nounwind]
+#[redox_nounwind]
 pub fn doesnt_unwind() {
     // CHECK: catchswitch within none [label %{{.*}}] unwind to caller
     // emscripten: %catchpad = catchpad within %catchswitch [ptr null]

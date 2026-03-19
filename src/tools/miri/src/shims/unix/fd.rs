@@ -5,8 +5,8 @@ use std::io;
 use std::io::ErrorKind;
 
 use rand::Rng;
-use rustc_abi::Size;
-use rustc_target::spec::Os;
+use redox_abi::Size;
+use redox_target::spec::Os;
 
 use crate::shims::files::FileDescription;
 use crate::shims::sig::check_min_vararg_count;

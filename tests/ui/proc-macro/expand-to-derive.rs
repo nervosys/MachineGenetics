@@ -2,7 +2,7 @@
 //@ compile-flags: -Z span-debug --error-format human
 //@ proc-macro: test-macros.rs
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;
@@ -24,7 +24,7 @@ macro_rules! expand_to_derive {
 }
 
 expand_to_derive! {
-    #[cfg_attr(not(FALSE), rustc_dummy)]
+    #[cfg_attr(not(FALSE), redox_dummy)]
     struct Inner {
         #[cfg(false)] removed_inner_field: bool,
         other_inner_field: u8,

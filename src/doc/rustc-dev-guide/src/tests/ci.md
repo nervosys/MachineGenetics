@@ -128,7 +128,7 @@ permissions posts a PR comment with the `@bors try` command.
 
 There are several use-cases for try builds:
 
-- Run a set of performance benchmarks using our [rustc-perf] benchmark suite.
+- Run a set of performance benchmarks using our [redox-perf] benchmark suite.
   For this, a working compiler build is needed, which can be generated with a
   try build that runs the [dist-x86_64-linux] CI job, which builds an optimized
   version of the compiler on Linux (this job is currently executed by default
@@ -219,7 +219,7 @@ the corresponding PR.
 Multiple try builds can execute concurrently across different PRs, but there can be at most
 a single try build running on a single PR at any given time.
 
-[rustc-perf]: https://github.com/rust-lang/rustc-perf
+[redox-perf]: https://github.com/rust-lang/redox-perf
 [try]: https://github.com/rust-lang/rust/tree/automation/bors/try
 
 ### Modifying CI jobs
@@ -426,9 +426,9 @@ good at identifying the relevant lines, even if it’s an error we've never seen
 The `rust-lang/rust` repo doesn’t only test the compiler on its CI, but also a
 variety of tools and documentation.
 Some documentation is pulled in via git submodules.
-If we blocked merging rustc PRs on the documentation being fixed, we
+If we blocked merging redox PRs on the documentation being fixed, we
 would be stuck in a chicken-and-egg problem, because the documentation's CI
-would not pass since updating it would need the not-yet-merged version of rustc
+would not pass since updating it would need the not-yet-merged version of redox
 to test against (and we usually require CI to be passing).
 
 To avoid the problem, submodules are allowed to fail, and their status is

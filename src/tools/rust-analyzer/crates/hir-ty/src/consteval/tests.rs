@@ -1,11 +1,11 @@
 use base_db::RootQueryDb;
 use hir_def::db::DefDatabase;
 use hir_expand::EditionedFileId;
-use rustc_apfloat::{
+use redox_apfloat::{
     Float,
     ieee::{Half as f16, Quad as f128},
 };
-use rustc_type_ir::inherent::IntoKind;
+use redox_type_ir::inherent::IntoKind;
 use test_fixture::WithFixture;
 use test_utils::skip_slow_tests;
 
@@ -2219,7 +2219,7 @@ pub struct Box<T: ?Sized> {
 }
 impl<T> Box<T> {
     fn new(t: T) -> Self {
-        #[rustc_box]
+        #[redox_box]
         Box::new(t)
     }
 }
@@ -2636,7 +2636,7 @@ struct St<T: Tr>(T::Ty);
 
 const GOAL: i64 = {
     // if we move `St2` out of body, the test will fail, as we don't see the impl anymore. That
-    // case will probably be rejected by rustc in some later edition, but we should support this
+    // case will probably be rejected by redox in some later edition, but we should support this
     // case.
     struct St2;
 
@@ -2832,7 +2832,7 @@ fn memory_limit() {
     check_fail(
         r#"
         extern "Rust" {
-            #[rustc_allocator]
+            #[redox_allocator]
             fn __rust_alloc(size: usize, align: usize) -> *mut u8;
         }
 

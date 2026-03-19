@@ -7,11 +7,11 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
-    rustc().input("lib.rs").arg("-Clto=fat").opt_level("3").incremental("inc-fat").run();
-    rustc().input("lib.rs").arg("-Clto=fat").opt_level("3").incremental("inc-fat").run();
-    rustc().input("lib.rs").arg("-Clto=thin").opt_level("3").incremental("inc-thin").run();
-    rustc().input("lib.rs").arg("-Clto=thin").opt_level("3").incremental("inc-thin").run();
+    redox().input("lib.rs").arg("-Clto=fat").opt_level("3").incremental("inc-fat").run();
+    redox().input("lib.rs").arg("-Clto=fat").opt_level("3").incremental("inc-fat").run();
+    redox().input("lib.rs").arg("-Clto=thin").opt_level("3").incremental("inc-thin").run();
+    redox().input("lib.rs").arg("-Clto=thin").opt_level("3").incremental("inc-thin").run();
 }

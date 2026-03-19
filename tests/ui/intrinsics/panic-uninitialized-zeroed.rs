@@ -8,7 +8,7 @@
 //@ edition:2024
 
 #![allow(deprecated, invalid_value, unreachable_code)]
-#![feature(never_type, rustc_private)]
+#![feature(never_type, redox_private)]
 
 use std::{
     mem::{self, MaybeUninit, ManuallyDrop},

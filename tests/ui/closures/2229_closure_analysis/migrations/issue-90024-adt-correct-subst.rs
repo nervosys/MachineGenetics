@@ -1,4 +1,4 @@
-// Test that rustc doesn't ICE as in #90024.
+// Test that redox doesn't ICE as in #90024.
 //@ check-pass
 // edition=2018
 

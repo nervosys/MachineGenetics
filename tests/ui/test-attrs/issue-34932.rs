@@ -1,7 +1,7 @@
 //@ run-pass
 //@ compile-flags:--test
 #![cfg(false)] // This test should be configured away
-#![feature(rustc_attrs)] // Test that this is allowed on stable/beta
+#![feature(redox_attrs)] // Test that this is allowed on stable/beta
 #![feature(iter_arith_traits)] // Test that this is not unused
 #![deny(unused_features)]
 

@@ -1,6 +1,6 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 pub fn foo<const Y: usize>(x: usize, z: usize) -> [usize; 3] {
     [x, Y, z]
 }

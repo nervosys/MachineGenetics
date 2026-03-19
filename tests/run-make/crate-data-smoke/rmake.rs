@@ -1,19 +1,19 @@
-use run_make_support::{bin_name, rust_lib_name, rustc, target};
+use run_make_support::{bin_name, rust_lib_name, redox, target};
 
 fn main() {
-    rustc()
+    redox()
         .target(target())
         .print("crate-name")
         .input("crate.rs")
         .run()
         .assert_stdout_equals("foo");
-    rustc()
+    redox()
         .target(target())
         .print("file-names")
         .input("crate.rs")
         .run()
         .assert_stdout_equals(bin_name("foo"));
-    rustc()
+    redox()
         .target(target())
         .print("file-names")
         .crate_type("lib")
@@ -21,20 +21,20 @@ fn main() {
         .input("crate.rs")
         .run()
         .assert_stdout_equals(bin_name("foo"));
-    rustc()
+    redox()
         .target(target())
         .print("file-names")
         .arg("--test")
         .input("lib.rs")
         .run()
         .assert_stdout_equals(bin_name("mylib"));
-    rustc()
+    redox()
         .target(target())
         .print("file-names")
         .input("lib.rs")
         .run()
         .assert_stdout_equals(rust_lib_name("mylib"));
-    rustc()
+    redox()
         .target(target())
         .print("file-names")
         .input("rlib.rs")

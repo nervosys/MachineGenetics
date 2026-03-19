@@ -1,7 +1,7 @@
 //@compile-flags: --test
 //@revisions: default enabled
-//@[enabled] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/check_incompatible_msrv_in_tests/enabled
-//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/check_incompatible_msrv_in_tests/default
+//@[enabled] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/check_incompatible_msrv_in_tests/enabled
+//@[default] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/check_incompatible_msrv_in_tests/default
 
 #![warn(clippy::incompatible_msrv)]
 #![feature(custom_inner_attributes)]

@@ -6,9 +6,9 @@
 //@ compile-flags: -Zquery-dep-graph
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![crate_type = "bin"]
-#![rustc_partition_reused(module = "main", cfg = "rpass2")]
+#![redox_partition_reused(module = "main", cfg = "rpass2")]
 
 extern crate a;
 

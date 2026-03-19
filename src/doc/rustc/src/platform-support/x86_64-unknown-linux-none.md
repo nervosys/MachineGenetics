@@ -21,7 +21,7 @@ You can use `-Crelocation-model=static` to create a position-dependent binary th
 
 ## Building the target
 
-The target can be built by enabling it for a `rustc` build:
+The target can be built by enabling it for a `redox` build:
 
 ```toml
 [build]

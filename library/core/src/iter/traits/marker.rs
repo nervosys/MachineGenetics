@@ -9,7 +9,7 @@ use crate::num::NonZero;
 /// be lifetime-dependent.
 #[unstable(issue = "none", feature = "trusted_fused")]
 #[doc(hidden)]
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 pub unsafe trait TrustedFused {}
 
 /// An iterator that always continues to yield `None` when exhausted.
@@ -25,7 +25,7 @@ pub unsafe trait TrustedFused {}
 ///
 /// [`Fuse`]: crate::iter::Fuse
 #[stable(feature = "fused", since = "1.26.0")]
-#[rustc_unsafe_specialization_marker]
+#[redox_unsafe_specialization_marker]
 // FIXME: this should be a #[marker] and have another blanket impl for T: TrustedFused
 // but that ICEs iter::Fuse specializations.
 #[lang = "fused_iterator"]
@@ -62,7 +62,7 @@ impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 /// This trait must only be implemented when the contract is upheld. Consumers
 /// of this trait must inspect [`Iterator::size_hint()`]’s upper bound.
 #[unstable(feature = "trusted_len", issue = "37572")]
-#[rustc_unsafe_specialization_marker]
+#[redox_unsafe_specialization_marker]
 pub unsafe trait TrustedLen: Iterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -86,7 +86,7 @@ unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}
 /// [`try_fold()`]: Iterator::try_fold
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 pub unsafe trait InPlaceIterable {
     /// The product of one-to-many item expansions that happen throughout the iterator pipeline.
     /// E.g. [[u8; 4]; 4].iter().flatten().flatten() would have a `EXPAND_BY` of 16.
@@ -112,5 +112,5 @@ pub unsafe trait InPlaceIterable {
 /// invariants of all methods are upheld. See the [`Step`] trait's documentation
 /// for details. Consumers are free to rely on the invariants in unsafe code.
 #[unstable(feature = "trusted_step", issue = "85731")]
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 pub unsafe trait TrustedStep: Step + Copy {}

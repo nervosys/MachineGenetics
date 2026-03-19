@@ -6,10 +6,10 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
-    rustc().input("a.rs").run();
-    rustc().input("b.rs").run();
-    rustc().input("c.rs").run();
+    redox().input("a.rs").run();
+    redox().input("b.rs").run();
+    redox().input("c.rs").run();
 }

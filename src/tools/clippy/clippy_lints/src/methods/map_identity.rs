@@ -3,10 +3,10 @@ use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{is_expr_untyped_identity_function, is_mutable, path_to_local_with_projections};
-use rustc_errors::Applicability;
-use rustc_hir::{self as hir, ExprKind, Node, PatKind};
-use rustc_lint::{LateContext, LintContext};
-use rustc_span::{Span, Symbol, sym};
+use redox_errors::Applicability;
+use redox_hir::{self as hir, ExprKind, Node, PatKind};
+use redox_lint::{LateContext, LintContext};
+use redox_span::{Span, Symbol, sym};
 
 use super::MAP_IDENTITY;
 

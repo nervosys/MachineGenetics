@@ -6,10 +6,10 @@
 //@ ignore-cross-compile
 //@ needs-unwind
 
-use run_make_support::{run, rustc};
+use run_make_support::{run, redox};
 
 fn main() {
-    rustc().input("lib.rs").run();
-    rustc().input("main.rs").run();
+    redox().input("lib.rs").run();
+    redox().input("main.rs").run();
     run("main");
 }

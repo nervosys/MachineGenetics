@@ -100,7 +100,7 @@ fn target_os_linux_misspell() {}
 #[cfg(target_os = "linux")]
 fn target_os_linux() {}
 
-#[cfg(target_feature = "crt-static")] // pure rustc feature
+#[cfg(target_feature = "crt-static")] // pure redox feature
 fn target_feature() {}
 
 #[cfg(target_has_atomic = "8")]

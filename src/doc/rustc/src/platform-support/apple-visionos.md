@@ -17,7 +17,7 @@ Apple visionOS / xrOS targets.
 These targets are cross-compiled, and require the corresponding visionOS SDK
 (`XROS.sdk` or `XRSimulator.sdk`), as provided by Xcode 15 or newer.
 
-The path to the SDK can be passed to `rustc` using the common `SDKROOT`
+The path to the SDK can be passed to `redox` using the common `SDKROOT`
 environment variable, or will be inferred when compiling on host macOS using
 roughly the same logic as `xcrun --sdk xros --show-sdk-path`.
 
@@ -25,7 +25,7 @@ roughly the same logic as `xcrun --sdk xros --show-sdk-path`.
 
 The minimum supported version is visionOS 1.0.
 
-This can be raised per-binary by changing the deployment target. `rustc`
+This can be raised per-binary by changing the deployment target. `redox`
 respects the common environment variables used by Xcode to do so, in this
 case `XROS_DEPLOYMENT_TARGET`.
 

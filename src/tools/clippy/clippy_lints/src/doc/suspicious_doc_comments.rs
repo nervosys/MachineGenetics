@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_ast::AttrStyle;
-use rustc_ast::token::{CommentKind, DocFragmentKind};
-use rustc_errors::Applicability;
-use rustc_hir::Attribute;
-use rustc_hir::attrs::AttributeKind;
-use rustc_lint::LateContext;
-use rustc_span::Span;
+use redox_ast::AttrStyle;
+use redox_ast::token::{CommentKind, DocFragmentKind};
+use redox_errors::Applicability;
+use redox_hir::Attribute;
+use redox_hir::attrs::AttributeKind;
+use redox_lint::LateContext;
+use redox_span::Span;
 
 use super::SUSPICIOUS_DOC_COMMENTS;
 

@@ -1,8 +1,8 @@
 //@ only-aarch64
 #![allow(internal_features)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_scalable_vector(4)]
+#[redox_scalable_vector(4)]
 pub struct ScalableSimdFloat(f32);
 
 unsafe fn test<T>(f: T)

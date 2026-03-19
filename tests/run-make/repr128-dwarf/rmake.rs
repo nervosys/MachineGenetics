@@ -10,12 +10,12 @@ use std::rc::Rc;
 use gimli::read::DebuggingInformationEntry;
 use gimli::{AttributeValue, EndianRcSlice, Reader, RunTimeEndian};
 use object::{Object, ObjectSection};
-use run_make_support::{gimli, object, rfs, rustc};
+use run_make_support::{gimli, object, rfs, redox};
 
 fn main() {
     let output = PathBuf::from("repr128");
-    let mut rustc = rustc();
-    rustc.input("main.rs").output(&output).arg("-Cdebuginfo=2").run();
+    let mut redox = redox();
+    redox.input("main.rs").output(&output).arg("-Cdebuginfo=2").run();
     // Mach-O uses packed debug info
     let dsym_location = output
         .with_extension("dSYM")

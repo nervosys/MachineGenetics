@@ -1559,7 +1559,7 @@ pub fn lasx_xvsll_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslli_b<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -1568,7 +1568,7 @@ pub fn lasx_xvslli_b<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslli_h<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -1577,7 +1577,7 @@ pub fn lasx_xvslli_h<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslli_w<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -1586,7 +1586,7 @@ pub fn lasx_xvslli_w<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslli_d<const IMM6: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -1623,7 +1623,7 @@ pub fn lasx_xvsra_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrai_b<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -1632,7 +1632,7 @@ pub fn lasx_xvsrai_b<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrai_h<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -1641,7 +1641,7 @@ pub fn lasx_xvsrai_h<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrai_w<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -1650,7 +1650,7 @@ pub fn lasx_xvsrai_w<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrai_d<const IMM6: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -1687,7 +1687,7 @@ pub fn lasx_xvsrar_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrari_b<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -1696,7 +1696,7 @@ pub fn lasx_xvsrari_b<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrari_h<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -1705,7 +1705,7 @@ pub fn lasx_xvsrari_h<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrari_w<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -1714,7 +1714,7 @@ pub fn lasx_xvsrari_w<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrari_d<const IMM6: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -1751,7 +1751,7 @@ pub fn lasx_xvsrl_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrli_b<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -1760,7 +1760,7 @@ pub fn lasx_xvsrli_b<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrli_h<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -1769,7 +1769,7 @@ pub fn lasx_xvsrli_h<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrli_w<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -1778,7 +1778,7 @@ pub fn lasx_xvsrli_w<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrli_d<const IMM6: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -1815,7 +1815,7 @@ pub fn lasx_xvsrlr_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrlri_b<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -1824,7 +1824,7 @@ pub fn lasx_xvsrlri_b<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrlri_h<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -1833,7 +1833,7 @@ pub fn lasx_xvsrlri_h<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrlri_w<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -1842,7 +1842,7 @@ pub fn lasx_xvsrlri_w<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrlri_d<const IMM6: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -1879,7 +1879,7 @@ pub fn lasx_xvbitclr_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbitclri_b<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -1888,7 +1888,7 @@ pub fn lasx_xvbitclri_b<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbitclri_h<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -1897,7 +1897,7 @@ pub fn lasx_xvbitclri_h<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbitclri_w<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -1906,7 +1906,7 @@ pub fn lasx_xvbitclri_w<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbitclri_d<const IMM6: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -1943,7 +1943,7 @@ pub fn lasx_xvbitset_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbitseti_b<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -1952,7 +1952,7 @@ pub fn lasx_xvbitseti_b<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbitseti_h<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -1961,7 +1961,7 @@ pub fn lasx_xvbitseti_h<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbitseti_w<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -1970,7 +1970,7 @@ pub fn lasx_xvbitseti_w<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbitseti_d<const IMM6: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -2007,7 +2007,7 @@ pub fn lasx_xvbitrev_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbitrevi_b<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -2016,7 +2016,7 @@ pub fn lasx_xvbitrevi_b<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbitrevi_h<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -2025,7 +2025,7 @@ pub fn lasx_xvbitrevi_h<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbitrevi_w<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2034,7 +2034,7 @@ pub fn lasx_xvbitrevi_w<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbitrevi_d<const IMM6: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -2071,7 +2071,7 @@ pub fn lasx_xvadd_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvaddi_bu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2080,7 +2080,7 @@ pub fn lasx_xvaddi_bu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvaddi_hu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2089,7 +2089,7 @@ pub fn lasx_xvaddi_hu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvaddi_wu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2098,7 +2098,7 @@ pub fn lasx_xvaddi_wu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvaddi_du<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2135,7 +2135,7 @@ pub fn lasx_xvsub_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsubi_bu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2144,7 +2144,7 @@ pub fn lasx_xvsubi_bu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsubi_hu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2153,7 +2153,7 @@ pub fn lasx_xvsubi_hu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsubi_wu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2162,7 +2162,7 @@ pub fn lasx_xvsubi_wu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsubi_du<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2199,7 +2199,7 @@ pub fn lasx_xvmax_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaxi_b<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2208,7 +2208,7 @@ pub fn lasx_xvmaxi_b<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaxi_h<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2217,7 +2217,7 @@ pub fn lasx_xvmaxi_h<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaxi_w<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2226,7 +2226,7 @@ pub fn lasx_xvmaxi_w<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaxi_d<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2263,7 +2263,7 @@ pub fn lasx_xvmax_du(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaxi_bu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2272,7 +2272,7 @@ pub fn lasx_xvmaxi_bu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaxi_hu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2281,7 +2281,7 @@ pub fn lasx_xvmaxi_hu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaxi_wu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2290,7 +2290,7 @@ pub fn lasx_xvmaxi_wu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmaxi_du<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2327,7 +2327,7 @@ pub fn lasx_xvmin_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmini_b<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2336,7 +2336,7 @@ pub fn lasx_xvmini_b<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmini_h<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2345,7 +2345,7 @@ pub fn lasx_xvmini_h<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmini_w<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2354,7 +2354,7 @@ pub fn lasx_xvmini_w<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmini_d<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2391,7 +2391,7 @@ pub fn lasx_xvmin_du(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmini_bu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2400,7 +2400,7 @@ pub fn lasx_xvmini_bu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmini_hu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2409,7 +2409,7 @@ pub fn lasx_xvmini_hu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmini_wu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2418,7 +2418,7 @@ pub fn lasx_xvmini_wu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvmini_du<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2455,7 +2455,7 @@ pub fn lasx_xvseq_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvseqi_b<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2464,7 +2464,7 @@ pub fn lasx_xvseqi_b<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvseqi_h<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2473,7 +2473,7 @@ pub fn lasx_xvseqi_h<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvseqi_w<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2482,7 +2482,7 @@ pub fn lasx_xvseqi_w<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvseqi_d<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2519,7 +2519,7 @@ pub fn lasx_xvslt_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslti_b<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2528,7 +2528,7 @@ pub fn lasx_xvslti_b<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslti_h<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2537,7 +2537,7 @@ pub fn lasx_xvslti_h<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslti_w<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2546,7 +2546,7 @@ pub fn lasx_xvslti_w<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslti_d<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2583,7 +2583,7 @@ pub fn lasx_xvslt_du(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslti_bu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2592,7 +2592,7 @@ pub fn lasx_xvslti_bu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslti_hu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2601,7 +2601,7 @@ pub fn lasx_xvslti_hu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslti_wu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2610,7 +2610,7 @@ pub fn lasx_xvslti_wu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslti_du<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2647,7 +2647,7 @@ pub fn lasx_xvsle_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslei_b<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2656,7 +2656,7 @@ pub fn lasx_xvslei_b<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslei_h<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2665,7 +2665,7 @@ pub fn lasx_xvslei_h<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslei_w<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2674,7 +2674,7 @@ pub fn lasx_xvslei_w<const IMM_S5: i32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslei_d<const IMM_S5: i32>(a: m256i) -> m256i {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2711,7 +2711,7 @@ pub fn lasx_xvsle_du(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslei_bu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2720,7 +2720,7 @@ pub fn lasx_xvslei_bu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslei_hu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2729,7 +2729,7 @@ pub fn lasx_xvslei_hu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslei_wu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2738,7 +2738,7 @@ pub fn lasx_xvslei_wu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvslei_du<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2747,7 +2747,7 @@ pub fn lasx_xvslei_du<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsat_b<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -2756,7 +2756,7 @@ pub fn lasx_xvsat_b<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsat_h<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -2765,7 +2765,7 @@ pub fn lasx_xvsat_h<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsat_w<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2774,7 +2774,7 @@ pub fn lasx_xvsat_w<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsat_d<const IMM6: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -2783,7 +2783,7 @@ pub fn lasx_xvsat_d<const IMM6: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsat_bu<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -2792,7 +2792,7 @@ pub fn lasx_xvsat_bu<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsat_hu<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -2801,7 +2801,7 @@ pub fn lasx_xvsat_hu<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsat_wu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2810,7 +2810,7 @@ pub fn lasx_xvsat_wu<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsat_du<const IMM6: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -3407,7 +3407,7 @@ pub fn lasx_xvmod_du(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvrepl128vei_b<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -3416,7 +3416,7 @@ pub fn lasx_xvrepl128vei_b<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvrepl128vei_h<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -3425,7 +3425,7 @@ pub fn lasx_xvrepl128vei_h<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvrepl128vei_w<const IMM2: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM2, 2);
@@ -3434,7 +3434,7 @@ pub fn lasx_xvrepl128vei_w<const IMM2: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvrepl128vei_d<const IMM1: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM1, 1);
@@ -3646,7 +3646,7 @@ pub fn lasx_xvand_v(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvandi_b<const IMM8: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -3662,7 +3662,7 @@ pub fn lasx_xvor_v(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvori_b<const IMM8: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -3678,7 +3678,7 @@ pub fn lasx_xvnor_v(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvnori_b<const IMM8: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -3694,7 +3694,7 @@ pub fn lasx_xvxor_v(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvxori_b<const IMM8: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -3710,7 +3710,7 @@ pub fn lasx_xvbitsel_v(a: m256i, b: m256i, c: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbitseli_b<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -3719,7 +3719,7 @@ pub fn lasx_xvbitseli_b<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvshuf4i_b<const IMM8: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -3728,7 +3728,7 @@ pub fn lasx_xvshuf4i_b<const IMM8: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvshuf4i_h<const IMM8: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -3737,7 +3737,7 @@ pub fn lasx_xvshuf4i_h<const IMM8: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvshuf4i_w<const IMM8: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -4236,7 +4236,7 @@ pub fn lasx_xvreplve_d(a: m256i, b: i32) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvpermi_w<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -4336,7 +4336,7 @@ pub fn lasx_xvmuh_du(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsllwil_h_b<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -4345,7 +4345,7 @@ pub fn lasx_xvsllwil_h_b<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsllwil_w_h<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -4354,7 +4354,7 @@ pub fn lasx_xvsllwil_w_h<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsllwil_d_w<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -4363,7 +4363,7 @@ pub fn lasx_xvsllwil_d_w<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsllwil_hu_bu<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -4372,7 +4372,7 @@ pub fn lasx_xvsllwil_hu_bu<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsllwil_wu_hu<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -4381,7 +4381,7 @@ pub fn lasx_xvsllwil_wu_hu<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsllwil_du_wu<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -4600,7 +4600,7 @@ pub fn lasx_xvssrlrn_wu_d(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvfrstpi_b<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -4609,7 +4609,7 @@ pub fn lasx_xvfrstpi_b<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvfrstpi_h<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -4632,7 +4632,7 @@ pub fn lasx_xvfrstp_h(a: m256i, b: m256i, c: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvshuf4i_d<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -4641,7 +4641,7 @@ pub fn lasx_xvshuf4i_d<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbsrl_v<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -4650,7 +4650,7 @@ pub fn lasx_xvbsrl_v<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvbsll_v<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -4659,7 +4659,7 @@ pub fn lasx_xvbsll_v<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvextrins_b<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -4668,7 +4668,7 @@ pub fn lasx_xvextrins_b<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvextrins_h<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -4677,7 +4677,7 @@ pub fn lasx_xvextrins_h<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvextrins_w<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -4686,7 +4686,7 @@ pub fn lasx_xvextrins_w<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvextrins_d<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -5031,7 +5031,7 @@ pub fn lasx_xvfrintrm_d(a: m256d) -> m256d {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lasx_xvld<const IMM_S12: i32>(mem_addr: *const i8) -> m256i {
     static_assert_simm_bits!(IMM_S12, 12);
@@ -5040,7 +5040,7 @@ pub unsafe fn lasx_xvld<const IMM_S12: i32>(mem_addr: *const i8) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lasx_xvst<const IMM_S12: i32>(a: m256i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S12, 12);
@@ -5049,7 +5049,7 @@ pub unsafe fn lasx_xvst<const IMM_S12: i32>(a: m256i, mem_addr: *mut i8) {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lasx_xvstelm_b<const IMM_S8: i32, const IMM4: u32>(a: m256i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
@@ -5059,7 +5059,7 @@ pub unsafe fn lasx_xvstelm_b<const IMM_S8: i32, const IMM4: u32>(a: m256i, mem_a
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lasx_xvstelm_h<const IMM_S8: i32, const IMM3: u32>(a: m256i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
@@ -5069,7 +5069,7 @@ pub unsafe fn lasx_xvstelm_h<const IMM_S8: i32, const IMM3: u32>(a: m256i, mem_a
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lasx_xvstelm_w<const IMM_S8: i32, const IMM2: u32>(a: m256i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
@@ -5079,7 +5079,7 @@ pub unsafe fn lasx_xvstelm_w<const IMM_S8: i32, const IMM2: u32>(a: m256i, mem_a
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2, 3)]
+#[redox_legacy_const_generics(2, 3)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lasx_xvstelm_d<const IMM_S8: i32, const IMM1: u32>(a: m256i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
@@ -5089,7 +5089,7 @@ pub unsafe fn lasx_xvstelm_d<const IMM_S8: i32, const IMM1: u32>(a: m256i, mem_a
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvinsve0_w<const IMM3: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -5098,7 +5098,7 @@ pub fn lasx_xvinsve0_w<const IMM3: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvinsve0_d<const IMM2: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM2, 2);
@@ -5107,7 +5107,7 @@ pub fn lasx_xvinsve0_d<const IMM2: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvpickve_w<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -5116,7 +5116,7 @@ pub fn lasx_xvpickve_w<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvpickve_d<const IMM2: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM2, 2);
@@ -5174,7 +5174,7 @@ pub fn lasx_xvorn_v(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvldi<const IMM_S13: i32>() -> m256i {
     static_assert_simm_bits!(IMM_S13, 13);
@@ -5204,7 +5204,7 @@ pub fn lasx_xvextl_qu_du(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvinsgr2vr_w<const IMM3: u32>(a: m256i, b: i32) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -5213,7 +5213,7 @@ pub fn lasx_xvinsgr2vr_w<const IMM3: u32>(a: m256i, b: i32) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvinsgr2vr_d<const IMM2: u32>(a: m256i, b: i64) -> m256i {
     static_assert_uimm_bits!(IMM2, 2);
@@ -5341,7 +5341,7 @@ pub fn lasx_vext2xv_du_bu(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvpermi_q<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -5350,7 +5350,7 @@ pub fn lasx_xvpermi_q<const IMM8: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvpermi_d<const IMM8: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -5366,7 +5366,7 @@ pub fn lasx_xvperm_w(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lasx_xvldrepl_b<const IMM_S12: i32>(mem_addr: *const i8) -> m256i {
     static_assert_simm_bits!(IMM_S12, 12);
@@ -5375,7 +5375,7 @@ pub unsafe fn lasx_xvldrepl_b<const IMM_S12: i32>(mem_addr: *const i8) -> m256i 
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lasx_xvldrepl_h<const IMM_S11: i32>(mem_addr: *const i8) -> m256i {
     static_assert_simm_bits!(IMM_S11, 11);
@@ -5384,7 +5384,7 @@ pub unsafe fn lasx_xvldrepl_h<const IMM_S11: i32>(mem_addr: *const i8) -> m256i 
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lasx_xvldrepl_w<const IMM_S10: i32>(mem_addr: *const i8) -> m256i {
     static_assert_simm_bits!(IMM_S10, 10);
@@ -5393,7 +5393,7 @@ pub unsafe fn lasx_xvldrepl_w<const IMM_S10: i32>(mem_addr: *const i8) -> m256i 
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lasx_xvldrepl_d<const IMM_S9: i32>(mem_addr: *const i8) -> m256i {
     static_assert_simm_bits!(IMM_S9, 9);
@@ -5402,7 +5402,7 @@ pub unsafe fn lasx_xvldrepl_d<const IMM_S9: i32>(mem_addr: *const i8) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvpickve2gr_w<const IMM3: u32>(a: m256i) -> i32 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -5411,7 +5411,7 @@ pub fn lasx_xvpickve2gr_w<const IMM3: u32>(a: m256i) -> i32 {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvpickve2gr_wu<const IMM3: u32>(a: m256i) -> u32 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -5420,7 +5420,7 @@ pub fn lasx_xvpickve2gr_wu<const IMM3: u32>(a: m256i) -> u32 {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvpickve2gr_d<const IMM2: u32>(a: m256i) -> i64 {
     static_assert_uimm_bits!(IMM2, 2);
@@ -5429,7 +5429,7 @@ pub fn lasx_xvpickve2gr_d<const IMM2: u32>(a: m256i) -> i64 {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvpickve2gr_du<const IMM2: u32>(a: m256i) -> u64 {
     static_assert_uimm_bits!(IMM2, 2);
@@ -6194,7 +6194,7 @@ pub fn lasx_xvexth_qu_du(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvrotri_b<const IMM3: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM3, 3);
@@ -6203,7 +6203,7 @@ pub fn lasx_xvrotri_b<const IMM3: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvrotri_h<const IMM4: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -6212,7 +6212,7 @@ pub fn lasx_xvrotri_h<const IMM4: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvrotri_w<const IMM5: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6221,7 +6221,7 @@ pub fn lasx_xvrotri_w<const IMM5: u32>(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvrotri_d<const IMM6: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -6237,7 +6237,7 @@ pub fn lasx_xvextl_q_d(a: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrlni_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -6246,7 +6246,7 @@ pub fn lasx_xvsrlni_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrlni_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6255,7 +6255,7 @@ pub fn lasx_xvsrlni_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrlni_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -6264,7 +6264,7 @@ pub fn lasx_xvsrlni_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrlni_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM7, 7);
@@ -6273,7 +6273,7 @@ pub fn lasx_xvsrlni_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrlrni_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -6282,7 +6282,7 @@ pub fn lasx_xvsrlrni_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrlrni_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6291,7 +6291,7 @@ pub fn lasx_xvsrlrni_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrlrni_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -6300,7 +6300,7 @@ pub fn lasx_xvsrlrni_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrlrni_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM7, 7);
@@ -6309,7 +6309,7 @@ pub fn lasx_xvsrlrni_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlni_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -6318,7 +6318,7 @@ pub fn lasx_xvssrlni_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlni_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6327,7 +6327,7 @@ pub fn lasx_xvssrlni_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlni_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -6336,7 +6336,7 @@ pub fn lasx_xvssrlni_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlni_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM7, 7);
@@ -6345,7 +6345,7 @@ pub fn lasx_xvssrlni_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlni_bu_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -6354,7 +6354,7 @@ pub fn lasx_xvssrlni_bu_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlni_hu_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6363,7 +6363,7 @@ pub fn lasx_xvssrlni_hu_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlni_wu_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -6372,7 +6372,7 @@ pub fn lasx_xvssrlni_wu_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlni_du_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM7, 7);
@@ -6381,7 +6381,7 @@ pub fn lasx_xvssrlni_du_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlrni_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -6390,7 +6390,7 @@ pub fn lasx_xvssrlrni_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlrni_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6399,7 +6399,7 @@ pub fn lasx_xvssrlrni_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlrni_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -6408,7 +6408,7 @@ pub fn lasx_xvssrlrni_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlrni_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM7, 7);
@@ -6417,7 +6417,7 @@ pub fn lasx_xvssrlrni_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlrni_bu_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -6426,7 +6426,7 @@ pub fn lasx_xvssrlrni_bu_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlrni_hu_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6435,7 +6435,7 @@ pub fn lasx_xvssrlrni_hu_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlrni_wu_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -6444,7 +6444,7 @@ pub fn lasx_xvssrlrni_wu_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrlrni_du_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM7, 7);
@@ -6453,7 +6453,7 @@ pub fn lasx_xvssrlrni_du_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrani_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -6462,7 +6462,7 @@ pub fn lasx_xvsrani_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrani_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6471,7 +6471,7 @@ pub fn lasx_xvsrani_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrani_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -6480,7 +6480,7 @@ pub fn lasx_xvsrani_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrani_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM7, 7);
@@ -6489,7 +6489,7 @@ pub fn lasx_xvsrani_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrarni_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -6498,7 +6498,7 @@ pub fn lasx_xvsrarni_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrarni_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6507,7 +6507,7 @@ pub fn lasx_xvsrarni_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrarni_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -6516,7 +6516,7 @@ pub fn lasx_xvsrarni_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvsrarni_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM7, 7);
@@ -6525,7 +6525,7 @@ pub fn lasx_xvsrarni_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrani_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -6534,7 +6534,7 @@ pub fn lasx_xvssrani_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrani_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6543,7 +6543,7 @@ pub fn lasx_xvssrani_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrani_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -6552,7 +6552,7 @@ pub fn lasx_xvssrani_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrani_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM7, 7);
@@ -6561,7 +6561,7 @@ pub fn lasx_xvssrani_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrani_bu_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -6570,7 +6570,7 @@ pub fn lasx_xvssrani_bu_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrani_hu_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6579,7 +6579,7 @@ pub fn lasx_xvssrani_hu_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrani_wu_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -6588,7 +6588,7 @@ pub fn lasx_xvssrani_wu_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrani_du_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM7, 7);
@@ -6597,7 +6597,7 @@ pub fn lasx_xvssrani_du_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrarni_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -6606,7 +6606,7 @@ pub fn lasx_xvssrarni_b_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrarni_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6615,7 +6615,7 @@ pub fn lasx_xvssrarni_h_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrarni_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -6624,7 +6624,7 @@ pub fn lasx_xvssrarni_w_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrarni_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM7, 7);
@@ -6633,7 +6633,7 @@ pub fn lasx_xvssrarni_d_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrarni_bu_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -6642,7 +6642,7 @@ pub fn lasx_xvssrarni_bu_h<const IMM4: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrarni_hu_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6651,7 +6651,7 @@ pub fn lasx_xvssrarni_hu_w<const IMM5: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrarni_wu_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
@@ -6660,7 +6660,7 @@ pub fn lasx_xvssrarni_wu_d<const IMM6: u32>(a: m256i, b: m256i) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrarni_du_q<const IMM7: u32>(a: m256i, b: m256i) -> m256i {
     static_assert_uimm_bits!(IMM7, 7);
@@ -7047,7 +7047,7 @@ pub fn lasx_xvfcmp_sun_s(a: m256, b: m256) -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvpickve_d_f<const IMM2: u32>(a: m256d) -> m256d {
     static_assert_uimm_bits!(IMM2, 2);
@@ -7056,7 +7056,7 @@ pub fn lasx_xvpickve_d_f<const IMM2: u32>(a: m256d) -> m256d {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvpickve_w_f<const IMM3: u32>(a: m256) -> m256 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -7065,7 +7065,7 @@ pub fn lasx_xvpickve_w_f<const IMM3: u32>(a: m256) -> m256 {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvrepli_b<const IMM_S10: i32>() -> m256i {
     static_assert_simm_bits!(IMM_S10, 10);
@@ -7074,7 +7074,7 @@ pub fn lasx_xvrepli_b<const IMM_S10: i32>() -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvrepli_d<const IMM_S10: i32>() -> m256i {
     static_assert_simm_bits!(IMM_S10, 10);
@@ -7083,7 +7083,7 @@ pub fn lasx_xvrepli_d<const IMM_S10: i32>() -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvrepli_h<const IMM_S10: i32>() -> m256i {
     static_assert_simm_bits!(IMM_S10, 10);
@@ -7092,7 +7092,7 @@ pub fn lasx_xvrepli_h<const IMM_S10: i32>() -> m256i {
 
 #[inline]
 #[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(0)]
+#[redox_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvrepli_w<const IMM_S10: i32>() -> m256i {
     static_assert_simm_bits!(IMM_S10, 10);

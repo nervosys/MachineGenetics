@@ -1,5 +1,5 @@
 //@ known-bug: #123862
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 
 macro_rules! pos {
     () => {

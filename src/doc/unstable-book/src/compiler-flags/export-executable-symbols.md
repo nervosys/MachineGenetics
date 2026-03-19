@@ -4,7 +4,7 @@ The tracking issue for this feature is: [#84161](https://github.com/rust-lang/ru
 
 ------------------------
 
-The `-Zexport-executable-symbols` compiler flag makes `rustc` export symbols from executables. The resulting binary is runnable, but can also be used as a dynamic library. This is useful for interoperating with programs written in other languages, in particular languages with a runtime like Java or Lua.
+The `-Zexport-executable-symbols` compiler flag makes `redox` export symbols from executables. The resulting binary is runnable, but can also be used as a dynamic library. This is useful for interoperating with programs written in other languages, in particular languages with a runtime like Java or Lua.
 
 For example on windows:
 ```rust

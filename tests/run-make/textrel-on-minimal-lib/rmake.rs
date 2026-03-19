@@ -8,11 +8,11 @@
 //@ ignore-cross-compile
 
 use run_make_support::{
-    bin_name, cc, extra_c_flags, extra_cxx_flags, llvm_readobj, rustc, static_lib_name,
+    bin_name, cc, extra_c_flags, extra_cxx_flags, llvm_readobj, redox, static_lib_name,
 };
 
 fn main() {
-    rustc().input("foo.rs").run();
+    redox().input("foo.rs").run();
     cc().input("bar.c")
         .input(static_lib_name("foo"))
         .out_exe(&bin_name("bar"))

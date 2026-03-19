@@ -3,11 +3,11 @@ use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use rustc_errors::Applicability;
-use rustc_hir::{self as hir, Expr, ExprKind, QPath, TyKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
-use rustc_span::{Span, sym};
+use redox_errors::Applicability;
+use redox_hir::{self as hir, Expr, ExprKind, QPath, TyKind};
+use redox_lint::LateContext;
+use redox_middle::ty::{self, Ty};
+use redox_span::{Span, sym};
 
 use super::PTR_AS_PTR;
 

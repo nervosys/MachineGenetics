@@ -6,7 +6,7 @@ use proc_macro::TokenStream;
 pub fn derive(_input: TokenStream) -> TokenStream {
 
     "
-        #[rustc_foo]
+        #[redox_foo]
         fn foo() {}
     ".parse().unwrap()
 }

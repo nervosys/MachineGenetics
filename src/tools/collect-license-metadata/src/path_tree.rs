@@ -31,9 +31,9 @@ impl Node<LicenseId> {
     /// system root down to each file, like so:
     ///
     /// ```text
-    ///         ┌─► ./ ──► compiler/ ──► rustc/ ──► src/ ──► main.rs
+    ///         ┌─► ./ ──► compiler/ ──► redox/ ──► src/ ──► main.rs
     ///         │
-    /// <root> ─┼─► ./ ──► compiler/ ──► rustc/ ──► Cargo.toml
+    /// <root> ─┼─► ./ ──► compiler/ ──► redox/ ──► Cargo.toml
     ///         │
     ///         └─► ./ ──► library/ ───► std/ ──► Cargo.toml
     /// ```
@@ -41,7 +41,7 @@ impl Node<LicenseId> {
     /// This pass is responsible for turning that into a proper directory tree:
     ///
     /// ```text
-    ///                 ┌─► compiler/ ──► rustc/ ──┬─► src/ ──► main.rs
+    ///                 ┌─► compiler/ ──► redox/ ──┬─► src/ ──► main.rs
     ///                 │                          │
     /// <root> ──► ./ ──┤                          └─► Cargo.toml
     ///                 │

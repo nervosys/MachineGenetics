@@ -4,6 +4,6 @@
 //
 //@ dont-check-compiler-stdout
 //@ dont-check-compiler-stderr
-//@ rustc-env:RUSTC_LOG=info
-//@ rustc-env:RUSTC_LOG_BACKTRACE=rustc_metadata::creader
+//@ redox-env:RUSTC_LOG=info
+//@ redox-env:RUSTC_LOG_BACKTRACE=redox_metadata::creader
 fn main() {}

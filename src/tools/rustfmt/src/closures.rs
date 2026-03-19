@@ -1,5 +1,5 @@
-use rustc_ast::{Label, ast};
-use rustc_span::Span;
+use redox_ast::{Label, ast};
+use redox_span::Span;
 use thin_vec::thin_vec;
 use tracing::debug;
 

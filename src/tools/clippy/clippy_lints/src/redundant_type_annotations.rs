@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_lint_allowed;
-use rustc_ast::LitKind;
-use rustc_hir as hir;
-use rustc_hir::def::DefKind;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::Ty;
-use rustc_session::declare_lint_pass;
+use redox_ast::LitKind;
+use redox_hir as hir;
+use redox_hir::def::DefKind;
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::Ty;
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -131,7 +131,7 @@ fn extract_primty(ty_kind: &hir::TyKind<'_>) -> Option<hir::PrimTy> {
 }
 
 impl LateLintPass<'_> for RedundantTypeAnnotations {
-    fn check_local<'tcx>(&mut self, cx: &LateContext<'tcx>, local: &'tcx rustc_hir::LetStmt<'tcx>) {
+    fn check_local<'tcx>(&mut self, cx: &LateContext<'tcx>, local: &'tcx redox_hir::LetStmt<'tcx>) {
         if !is_lint_allowed(cx, REDUNDANT_TYPE_ANNOTATIONS, local.hir_id)
             // type annotation part
             && !local.span.from_expansion()

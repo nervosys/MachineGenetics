@@ -2,7 +2,7 @@
 // where the longer region has multiple non-local lower bounds without any postdominating one.
 //@ compile-flags:-Zverbose-internals
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::cell::Cell;
 
@@ -32,7 +32,7 @@ fn establish_relationships<'a, 'b, 'c, F>(
 
 fn demand_y<'x, 'y>(_cell_x: Cell<&'x u32>, _cell_y: Cell<&'y u32>, _y: &'y u32) {}
 
-#[rustc_regions]
+#[redox_regions]
 fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
     //~vv ERROR lifetime may not live long enough
     //~v ERROR lifetime may not live long enough

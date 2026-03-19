@@ -131,13 +131,13 @@ impl Command {
         sh.change_dir(miri_dir()?);
         let new_commit = sh.read_file("rust-version")?.trim().to_owned();
         let current_commit = {
-            let rustc_info = cmd!(sh, "rustc +miri --version -v").read();
-            if let Ok(rustc_info) = rustc_info {
-                let metadata = rustc_version::version_meta_for(&rustc_info)?;
+            let redox_info = cmd!(sh, "redox +miri --version -v").read();
+            if let Ok(redox_info) = redox_info {
+                let metadata = redox_version::version_meta_for(&redox_info)?;
                 Some(
                     metadata
                         .commit_hash
-                        .ok_or_else(|| anyhow!("rustc metadata did not contain commit hash"))?,
+                        .ok_or_else(|| anyhow!("redox metadata did not contain commit hash"))?,
                 )
             } else {
                 None
@@ -153,7 +153,7 @@ impl Command {
         // Install and setup new toolchain.
         cmd!(sh, "rustup toolchain uninstall miri").run()?;
 
-        cmd!(sh, "rustup-toolchain-install-master -n miri -c cargo -c rust-src -c rustc-dev -c llvm-tools -c rustfmt -c clippy {flags...} -- {new_commit}")
+        cmd!(sh, "rustup-toolchain-install-master -n miri -c cargo -c rust-src -c redox-dev -c llvm-tools -c rustfmt -c clippy {flags...} -- {new_commit}")
             .run()
             .context("Failed to run rustup-toolchain-install-master. If it is not installed, run 'cargo install rustup-toolchain-install-master'.")?;
         cmd!(sh, "rustup override set miri").run()?;

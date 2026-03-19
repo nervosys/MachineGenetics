@@ -1,8 +1,8 @@
 use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::higher::has_let_expr;
-use rustc_hir::{Block, Expr};
-use rustc_lint::LateContext;
+use redox_hir::{Block, Expr};
+use redox_lint::LateContext;
 
 use super::IF_SAME_THEN_ELSE;
 

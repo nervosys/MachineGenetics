@@ -2,9 +2,9 @@
 
 use std::task::Poll;
 
-use rustc_abi::ExternAbi;
-use rustc_span::Span;
-use rustc_target::spec::BinaryFormat;
+use redox_abi::ExternAbi;
+use redox_span::Span;
+use redox_target::spec::BinaryFormat;
 
 use crate::*;
 

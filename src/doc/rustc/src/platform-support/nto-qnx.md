@@ -173,7 +173,7 @@ For conditional compilation, following QNX specific attributes are defined:
     env $build_env \
         ./x.py build \
             --target x86_64-unknown-linux-gnu,aarch64-unknown-nto-qnx710 \
-            rustc library/core library/alloc library/std
+            redox library/core library/alloc library/std
     ```
 
 ## Running the Rust test suite
@@ -200,7 +200,7 @@ export exclude_tests='
     --exclude src/tools/error_index_generator
     --exclude src/tools/linkchecker
     --exclude tests/ui-fulldeps
-    --exclude rustc
+    --exclude redox
     --exclude rustdoc'
 
 env $build_env \

@@ -13,7 +13,7 @@
 // Reason: this test is only valid for AArch64 with `gcc`. The linker must be explicitly specified
 // when cross-compiling, so it is limited to `aarch64-unknown-linux-gnu`.
 
-use run_make_support::{dynamic_lib_name, extra_c_flags, gcc, run, rustc, target};
+use run_make_support::{dynamic_lib_name, extra_c_flags, gcc, run, redox, target};
 
 fn main() {
     run_test("int");
@@ -29,7 +29,7 @@ fn run_test(variant: &str) {
         flags
     };
     println!("{variant} test...");
-    rustc().input(format!("foo_{variant}.rs")).linker("aarch64-linux-gnu-gcc").run();
+    redox().input(format!("foo_{variant}.rs")).linker("aarch64-linux-gnu-gcc").run();
     gcc()
         .input(format!("bar_{variant}.c"))
         .input(dynamic_lib_name("foo"))

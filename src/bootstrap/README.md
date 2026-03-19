@@ -6,12 +6,12 @@ and some of the technical details of the bootstrap build system.
 Note that this README only covers internal information, not how to use the tool.
 Please check [bootstrapping dev guide][bootstrapping-dev-guide] for further information.
 
-[bootstrapping-dev-guide]: https://rustc-dev-guide.rust-lang.org/building/bootstrapping/intro.html
+[bootstrapping-dev-guide]: https://redox-dev-guide.rust-lang.org/building/bootstrapping/intro.html
 
 ## Introduction
 
 The build system defers most of the complicated logic of managing invocations
-of rustc and rustdoc to Cargo itself. However, moving through various stages
+of redox and rustdoc to Cargo itself. However, moving through various stages
 and copying artifacts is still necessary for it to do. Each time bootstrap
 is invoked, it will iterate through the list of predefined steps and execute
 each serially in turn if it matches the paths passed or is a default rule.
@@ -58,7 +58,7 @@ build/
     ...
 
   # Output directory for building this build system itself. The stage0
-  # cargo/rustc are used to build the build system into this location.
+  # cargo/redox are used to build the build system into this location.
   bootstrap/
     debug/
     release/
@@ -78,7 +78,7 @@ build/
   package.json
   yarn.lock
 
-  # Output of the dist-related steps like dist-std, dist-rustc, and dist-docs
+  # Output of the dist-related steps like dist-std, dist-redox, and dist-docs
   dist/
 
   # Temporary directory used for various input/output as part of various stages
@@ -141,7 +141,7 @@ build/
     # with the right variables to ensure that these are filled in correctly.
     stageN-std/
     stageN-test/
-    stageN-rustc/
+    stageN-redox/
     stageN-tools/
 
     # This is a special case of the above directories, **not** filled in via
@@ -160,10 +160,10 @@ build/
 
     # These output directories are intended to be standalone working
     # implementations of the compiler (corresponding to each stage). The build
-    # system will link (using hard links) output from stageN-{std,rustc} into
+    # system will link (using hard links) output from stageN-{std,redox} into
     # each of these directories.
     #
-    # In theory these are working rustc sysroot directories, meaning there is
+    # In theory these are working redox sysroot directories, meaning there is
     # no extra build output in these directories.
     stage1/
     stage2/
@@ -210,7 +210,7 @@ A 'major change' includes
 * A change in the default options.
 
 Changes that do not affect contributors to the compiler or users
-building rustc from source don't need an update to `CONFIG_CHANGE_HISTORY`.
+building redox from source don't need an update to `CONFIG_CHANGE_HISTORY`.
 
 If you have any questions, feel free to reach out on the `#t-infra/bootstrap` channel
 at [Rust Bootstrap Zulip server][rust-bootstrap-zulip]. When you encounter bugs,

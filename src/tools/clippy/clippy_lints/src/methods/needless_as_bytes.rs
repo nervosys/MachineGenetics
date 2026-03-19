@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::sugg::Sugg;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, LangItem};
-use rustc_lint::LateContext;
-use rustc_span::{Span, Symbol};
+use redox_errors::Applicability;
+use redox_hir::{Expr, LangItem};
+use redox_lint::LateContext;
+use redox_span::{Span, Symbol};
 
 use super::NEEDLESS_AS_BYTES;
 

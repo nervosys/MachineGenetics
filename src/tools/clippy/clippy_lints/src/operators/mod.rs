@@ -30,9 +30,9 @@ pub(crate) mod arithmetic_side_effects;
 
 use clippy_config::Conf;
 use clippy_utils::msrvs::Msrv;
-use rustc_hir::{Body, Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use redox_hir::{Body, Expr, ExprKind, UnOp};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

@@ -1,4 +1,4 @@
-//! Interface with `rustc_pattern_analysis`.
+//! Interface with `redox_pattern_analysis`.
 
 use std::{cell::LazyCell, fmt};
 
@@ -6,12 +6,12 @@ use hir_def::{
     EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId, attrs::AttrFlags,
 };
 use intern::sym;
-use rustc_pattern_analysis::{
+use redox_pattern_analysis::{
     IndexVec, PatCx, PrivateUninhabitedField,
     constructor::{Constructor, ConstructorSet, VariantVisibility},
     usefulness::{PlaceValidity, UsefulnessReport, compute_match_usefulness},
 };
-use rustc_type_ir::inherent::{AdtDef, IntoKind};
+use redox_type_ir::inherent::{AdtDef, IntoKind};
 use smallvec::{SmallVec, smallvec};
 use stdx::never;
 
@@ -30,11 +30,11 @@ use Constructor::*;
 
 // Re-export r-a-specific versions of all these types.
 pub(crate) type DeconstructedPat<'a, 'db> =
-    rustc_pattern_analysis::pat::DeconstructedPat<MatchCheckCtx<'a, 'db>>;
+    redox_pattern_analysis::pat::DeconstructedPat<MatchCheckCtx<'a, 'db>>;
 pub(crate) type MatchArm<'a, 'b, 'db> =
-    rustc_pattern_analysis::MatchArm<'b, MatchCheckCtx<'a, 'db>>;
+    redox_pattern_analysis::MatchArm<'b, MatchCheckCtx<'a, 'db>>;
 pub(crate) type WitnessPat<'a, 'db> =
-    rustc_pattern_analysis::pat::WitnessPat<MatchCheckCtx<'a, 'db>>;
+    redox_pattern_analysis::pat::WitnessPat<MatchCheckCtx<'a, 'db>>;
 
 /// [Constructor] uses this in unimplemented variants.
 /// It allows porting match expressions from upstream algorithm without losing semantics.
@@ -59,7 +59,7 @@ impl EnumVariantContiguousIndex {
     }
 }
 
-impl rustc_pattern_analysis::Idx for EnumVariantContiguousIndex {
+impl redox_pattern_analysis::Idx for EnumVariantContiguousIndex {
     fn new(idx: usize) -> Self {
         EnumVariantContiguousIndex(idx)
     }
@@ -318,7 +318,7 @@ impl<'a, 'db> PatCx for MatchCheckCtx<'a, 'db> {
 
     fn ctor_arity(
         &self,
-        ctor: &rustc_pattern_analysis::constructor::Constructor<Self>,
+        ctor: &redox_pattern_analysis::constructor::Constructor<Self>,
         ty: &Self::Ty,
     ) -> usize {
         match ctor {
@@ -349,7 +349,7 @@ impl<'a, 'db> PatCx for MatchCheckCtx<'a, 'db> {
 
     fn ctor_sub_tys(
         &self,
-        ctor: &rustc_pattern_analysis::constructor::Constructor<Self>,
+        ctor: &redox_pattern_analysis::constructor::Constructor<Self>,
         ty: &Self::Ty,
     ) -> impl ExactSizeIterator<Item = (Self::Ty, PrivateUninhabitedField)> {
         let single = |ty| smallvec![(ty, PrivateUninhabitedField(false))];
@@ -407,7 +407,7 @@ impl<'a, 'db> PatCx for MatchCheckCtx<'a, 'db> {
     fn ctors_for_ty(
         &self,
         ty: &Self::Ty,
-    ) -> Result<rustc_pattern_analysis::constructor::ConstructorSet<Self>, Self::Error> {
+    ) -> Result<redox_pattern_analysis::constructor::ConstructorSet<Self>, Self::Error> {
         let cx = self;
 
         // Unhandled types are treated as non-exhaustive. Being explicit here instead of falling
@@ -508,7 +508,7 @@ impl<'a, 'db> PatCx for MatchCheckCtx<'a, 'db> {
         _deref_pat: &DeconstructedPat<'a, 'db>,
         _normal_pat: &DeconstructedPat<'a, 'db>,
     ) {
-        // FIXME(deref_patterns): This could report an error comparable to the one in rustc.
+        // FIXME(deref_patterns): This could report an error comparable to the one in redox.
     }
 }
 

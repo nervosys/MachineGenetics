@@ -582,7 +582,7 @@ fn get_doc_base_urls(
         }
         CrateOrigin::Lang(_) => return (None, None),
         CrateOrigin::Rustc { name: _ } => {
-            (Some(format!("https://doc.rust-lang.org/{channel}/nightly-rustc/")), None)
+            (Some(format!("https://doc.rust-lang.org/{channel}/nightly-redox/")), None)
         }
         CrateOrigin::Local { repo: _, name: _ } => {
             // FIXME: These should not attempt to link to docs.rs!

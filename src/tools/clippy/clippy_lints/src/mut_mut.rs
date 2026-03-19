@@ -2,12 +2,12 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::higher;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Applicability;
-use rustc_hir::{self as hir, AmbigArg, BorrowKind, Expr, ExprKind, HirId, Mutability, TyKind, intravisit};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
+use redox_data_structures::fx::FxHashSet;
+use redox_errors::Applicability;
+use redox_hir::{self as hir, AmbigArg, BorrowKind, Expr, ExprKind, HirId, Mutability, TyKind, intravisit};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty;
+use redox_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

@@ -1,9 +1,9 @@
 //@ run-pass
 
 #![deny(rust_2021_incompatible_closure_captures)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(unused)]
-#[rustc_insignificant_dtor]
+#[redox_insignificant_dtor]
 
 struct InsignificantDropPoint {
     x: i32,

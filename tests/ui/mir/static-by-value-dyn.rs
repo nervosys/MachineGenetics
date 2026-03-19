@@ -1,7 +1,7 @@
 //! Regression test for #121176
 //! KnownPanicsLint used to assert ABI compatibility in the interpreter,
 //! which ICEs with unsized statics.
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 
 use std::fmt::Debug;
 

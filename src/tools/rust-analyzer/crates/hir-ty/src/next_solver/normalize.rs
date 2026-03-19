@@ -1,5 +1,5 @@
-use rustc_next_trait_solver::placeholder::BoundVarReplacer;
-use rustc_type_ir::{
+use redox_next_trait_solver::placeholder::BoundVarReplacer;
+use redox_type_ir::{
     AliasRelationDirection, FallibleTypeFolder, Flags, Interner, TermKind, TypeFoldable,
     TypeFolder, TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
     inherent::{IntoKind, Term as _},

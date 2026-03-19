@@ -1,0 +1,13 @@
+[package]
+name = "redox_hir_id"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+redox_data_structures = { path = "../redox_data_structures" }
+redox_index = { path = "../redox_index" }
+redox_macros = { path = "../redox_macros" }
+redox_serialize = { path = "../redox_serialize" }
+redox_span = { path = "../redox_span" }
+# tidy-alphabetical-end

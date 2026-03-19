@@ -12,7 +12,7 @@ enum State {
 #[allow(missing_debug_implementations)]
 #[repr(C)]
 pub struct Storage<T> {
-    // This field must be first, for correctness of `#[rustc_align_static]`
+    // This field must be first, for correctness of `#[redox_align_static]`
     val: UnsafeCell<T>,
     state: Cell<State>,
 }

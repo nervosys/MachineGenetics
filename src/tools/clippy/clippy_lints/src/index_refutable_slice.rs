@@ -6,16 +6,16 @@ use clippy_utils::is_lint_allowed;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::ty::is_copy;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::HirId;
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::nested_filter;
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
-use rustc_span::symbol::Ident;
+use redox_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_hir::HirId;
+use redox_hir::intravisit::{self, Visitor};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::hir::nested_filter;
+use redox_session::impl_lint_pass;
+use redox_span::Span;
+use redox_span::symbol::Ident;
 
 declare_clippy_lint! {
     /// ### What it does

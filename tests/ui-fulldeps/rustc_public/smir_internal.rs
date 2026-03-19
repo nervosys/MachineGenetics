@@ -7,27 +7,27 @@
 //@ ignore-remote
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_driver;
-extern crate rustc_interface;
-extern crate rustc_middle;
+extern crate redox_driver;
+extern crate redox_interface;
+extern crate redox_middle;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
-use rustc_middle::ty::TyCtxt;
-use rustc_public::rustc_internal;
+use redox_middle::ty::TyCtxt;
+use redox_public::redox_internal;
 use std::io::Write;
 use std::ops::ControlFlow;
 
 const CRATE_NAME: &str = "input";
 
 fn test_translation(tcx: TyCtxt<'_>) -> ControlFlow<()> {
-    let main_fn = rustc_public::entry_fn().unwrap();
+    let main_fn = redox_public::entry_fn().unwrap();
     let body = main_fn.expect_body();
     let orig_ty = body.locals()[0].ty;
-    let rustc_ty = rustc_internal::internal(tcx, &orig_ty);
-    assert!(rustc_ty.is_unit());
+    let redox_ty = redox_internal::internal(tcx, &orig_ty);
+    assert!(redox_ty.is_unit());
     ControlFlow::Continue(())
 }
 
@@ -39,7 +39,7 @@ fn main() {
     let path = "internal_input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),
         path.to_string(),

@@ -2,10 +2,10 @@
 use std::ffi::OsStr;
 
 use run_make_support::regex::Regex;
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 fn main() {
-    rustc().input("foo.rs").emit("llvm-ir").codegen_units(2).run();
+    redox().input("foo.rs").emit("llvm-ir").codegen_units(2).run();
     let re = Regex::new(r"\bcall\b").unwrap();
     let mut nb_ll = 0;
     rfs::read_dir_entries(".", |path| {

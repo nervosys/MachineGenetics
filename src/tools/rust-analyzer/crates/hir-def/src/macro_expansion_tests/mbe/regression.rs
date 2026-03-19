@@ -21,9 +21,9 @@ macro_rules! vec {
     );
     ($($x:expr),+ $(,)?) => (
         $crate::__rust_force_expr!(<[_]>::into_vec(
-            // This rustc_box is not required, but it produces a dramatic improvement in compile
+            // This redox_box is not required, but it produces a dramatic improvement in compile
             // time when constructing arrays with many elements.
-            #[rustc_box]
+            #[redox_box]
             $crate::boxed::Box::new([$($x),+])
         ))
     );
@@ -51,9 +51,9 @@ macro_rules! vec {
     );
     ($($x:expr),+ $(,)?) => (
         $crate::__rust_force_expr!(<[_]>::into_vec(
-            // This rustc_box is not required, but it produces a dramatic improvement in compile
+            // This redox_box is not required, but it produces a dramatic improvement in compile
             // time when constructing arrays with many elements.
-            #[rustc_box]
+            #[redox_box]
             $crate::boxed::Box::new([$($x),+])
         ))
     );
@@ -67,7 +67,7 @@ macro_rules! __rust_force_expr {
 
 fn main() {
     $crate::__rust_force_expr!($crate:: vec:: Vec:: new());
-    $crate::__rust_force_expr!(<[_]>:: into_vec(#[rustc_box]$crate:: boxed:: Box:: new([1u32, 2])));
+    $crate::__rust_force_expr!(<[_]>:: into_vec(#[redox_box]$crate:: boxed:: Box:: new([1u32, 2])));
     /* error: expected Expr */$crate::__rust_force_expr!($crate:: vec:: from_elem((a.), $n));
 }
 "#]],
@@ -83,7 +83,7 @@ macro_rules! __rust_force_expr {
 
 fn main() {
     __rust_force_expr!(crate:: vec:: Vec:: new());
-    __rust_force_expr!(<[_]>:: into_vec(#[rustc_box] crate:: boxed:: Box:: new([1u32, 2])));
+    __rust_force_expr!(<[_]>:: into_vec(#[redox_box] crate:: boxed:: Box:: new([1u32, 2])));
     __rust_force_expr/*+errors*/!(crate:: vec:: from_elem((a.), $n));
 }
 "#,
@@ -96,7 +96,7 @@ macro_rules! __rust_force_expr {
 
 fn main() {
     (crate ::vec::Vec::new());
-    (<[_]>::into_vec(#[rustc_box] crate ::boxed::Box::new([1u32, 2])));
+    (<[_]>::into_vec(#[redox_box] crate ::boxed::Box::new([1u32, 2])));
     /* error: expected Expr *//* parse error: expected field name or number */
 /* parse error: expected expression */
 /* parse error: expected R_PAREN */
@@ -1011,7 +1011,7 @@ macro_rules! with_std {
 fn eager_regression_15403() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! format_args {}
 
@@ -1021,7 +1021,7 @@ fn main() {
 
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! format_args {}
 
@@ -1038,7 +1038,7 @@ builtin #format_args ("{}", line.1.);
 fn eager_regression_154032() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! format_args {}
 
@@ -1048,7 +1048,7 @@ fn main() {
 
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! format_args {}
 
@@ -1072,11 +1072,11 @@ builtin #format_args ("{}", &[0 2]);
 fn eager_concat_line() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! concat {}
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! line {}
 
@@ -1086,11 +1086,11 @@ fn main() {
 
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! concat {}
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! line {}
 
@@ -1106,7 +1106,7 @@ fn main() {
 fn eager_concat_bytes_panic() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! concat_bytes {}
 
@@ -1116,7 +1116,7 @@ fn main() {
 
 "#,
         expect![[r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! concat_bytes {}
 

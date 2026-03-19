@@ -1,7 +1,7 @@
 //! Manages a pool of addresses that can be reused.
 
 use rand::Rng;
-use rustc_abi::{Align, Size};
+use redox_abi::{Align, Size};
 
 use crate::concurrency::VClock;
 use crate::helpers::ToUsize as _;

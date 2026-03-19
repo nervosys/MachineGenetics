@@ -1,11 +1,11 @@
-// Test that rustdoc will properly canonicalize the target spec json path just like rustc.
+// Test that rustdoc will properly canonicalize the target spec json path just like redox.
 //@ needs-llvm-components: x86
 
-use run_make_support::{cwd, rustc, rustdoc};
+use run_make_support::{cwd, redox, rustdoc};
 
 fn main() {
     let out_dir = "rustdoc-target-spec-json-path";
-    rustc()
+    redox()
         .arg("-Zunstable-options")
         .crate_type("lib")
         .input("dummy_core.rs")

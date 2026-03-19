@@ -2,13 +2,13 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{get_parent_expr, is_no_std_crate};
-use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
-use rustc_middle::ty::{self, Ty};
-use rustc_span::sym;
+use redox_errors::Applicability;
+use redox_hir::def_id::DefId;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::LateContext;
+use redox_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use redox_middle::ty::{self, Ty};
+use redox_span::sym;
 
 use super::CAST_SLICE_FROM_RAW_PARTS;
 

@@ -5,15 +5,15 @@ use clippy_utils::source::{HasSession, snippet_with_applicability};
 use clippy_utils::ty::{implements_trait, is_slice_like};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{higher, peel_blocks_with_stmt, span_contains_comment};
-use rustc_ast::ast::LitKind;
-use rustc_ast::{RangeLimits, UnOp};
-use rustc_data_structures::packed::Pu128;
-use rustc_errors::Applicability;
-use rustc_hir::QPath::Resolved;
-use rustc_hir::def::Res;
-use rustc_hir::{Expr, ExprKind, Pat};
-use rustc_lint::LateContext;
-use rustc_span::{Spanned, sym};
+use redox_ast::ast::LitKind;
+use redox_ast::{RangeLimits, UnOp};
+use redox_data_structures::packed::Pu128;
+use redox_errors::Applicability;
+use redox_hir::QPath::Resolved;
+use redox_hir::def::Res;
+use redox_hir::{Expr, ExprKind, Pat};
+use redox_lint::LateContext;
+use redox_span::{Spanned, sym};
 
 use super::MANUAL_SLICE_FILL;
 
@@ -90,8 +90,8 @@ fn sugg<'tcx>(
     cx: &LateContext<'tcx>,
     body: &'tcx Expr<'_>,
     expr: &'tcx Expr<'_>,
-    slice_span: rustc_span::Span,
-    assignval_span: rustc_span::Span,
+    slice_span: redox_span::Span,
+    assignval_span: redox_span::Span,
 ) {
     let mut app = if span_contains_comment(cx.sess().source_map(), body.span) {
         Applicability::MaybeIncorrect // Comments may be informational.

@@ -48,7 +48,7 @@ pub fn _bextr2_u64(a: u64, control: u64) -> u64 {
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(andn))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _andn_u64(a: u64, b: u64) -> u64 {
     !a & b
 }
@@ -61,7 +61,7 @@ pub const fn _andn_u64(a: u64, b: u64) -> u64 {
 #[cfg_attr(test, assert_instr(blsi))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _blsi_u64(x: u64) -> u64 {
     x & x.wrapping_neg()
 }
@@ -74,7 +74,7 @@ pub const fn _blsi_u64(x: u64) -> u64 {
 #[cfg_attr(test, assert_instr(blsmsk))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _blsmsk_u64(x: u64) -> u64 {
     x ^ (x.wrapping_sub(1_u64))
 }
@@ -89,7 +89,7 @@ pub const fn _blsmsk_u64(x: u64) -> u64 {
 #[cfg_attr(test, assert_instr(blsr))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _blsr_u64(x: u64) -> u64 {
     x & (x.wrapping_sub(1))
 }
@@ -103,7 +103,7 @@ pub const fn _blsr_u64(x: u64) -> u64 {
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _tzcnt_u64(x: u64) -> u64 {
     x.trailing_zeros() as u64
 }
@@ -117,7 +117,7 @@ pub const fn _tzcnt_u64(x: u64) -> u64 {
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_tzcnt_64(x: u64) -> i64 {
     x.trailing_zeros() as i64
 }

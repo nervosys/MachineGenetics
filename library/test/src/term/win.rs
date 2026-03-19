@@ -105,7 +105,7 @@ impl<T: Write + Send + 'static> WinConsole<T> {
             // handle also sets them for stderr, since they go to the same
             // terminal! Admittedly, this is fragile, since stderr could be
             // redirected to a different console. This is good enough for
-            // rustc though. See #13400.
+            // redox though. See #13400.
             let out = GetStdHandle(STD_OUTPUT_HANDLE);
             SetConsoleTextAttribute(out, accum);
         }

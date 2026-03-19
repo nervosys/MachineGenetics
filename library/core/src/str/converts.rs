@@ -84,8 +84,8 @@ use crate::{mem, ptr};
 /// assert_eq!("💖", sparkle_heart);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_str_from_utf8_shared", since = "1.63.0")]
-#[rustc_diagnostic_item = "str_from_utf8"]
+#[redox_const_stable(feature = "const_str_from_utf8_shared", since = "1.63.0")]
+#[redox_diagnostic_item = "str_from_utf8"]
 pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     // FIXME(const-hack): This should use `?` again, once it's `const`
     match run_utf8_validation(v) {
@@ -130,8 +130,8 @@ pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// See the docs for [`Utf8Error`] for more details on the kinds of
 /// errors that can be returned.
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
-#[rustc_const_stable(feature = "const_str_from_utf8", since = "1.87.0")]
-#[rustc_diagnostic_item = "str_from_utf8_mut"]
+#[redox_const_stable(feature = "const_str_from_utf8", since = "1.87.0")]
+#[redox_diagnostic_item = "str_from_utf8_mut"]
 pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     // FIXME(const-hack): This should use `?` again, once it's `const`
     match run_utf8_validation(v) {
@@ -173,8 +173,8 @@ pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_str_from_utf8_unchecked", since = "1.55.0")]
-#[rustc_diagnostic_item = "str_from_utf8_unchecked"]
+#[redox_const_stable(feature = "const_str_from_utf8_unchecked", since = "1.55.0")]
+#[redox_diagnostic_item = "str_from_utf8_unchecked"]
 pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
     // SAFETY: the caller must guarantee that the bytes `v` are valid UTF-8.
     // Also relies on `&str` and `&[u8]` having the same layout.
@@ -203,8 +203,8 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 #[inline]
 #[must_use]
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
-#[rustc_const_stable(feature = "const_str_from_utf8_unchecked_mut", since = "1.83.0")]
-#[rustc_diagnostic_item = "str_from_utf8_unchecked_mut"]
+#[redox_const_stable(feature = "const_str_from_utf8_unchecked_mut", since = "1.83.0")]
+#[redox_diagnostic_item = "str_from_utf8_unchecked_mut"]
 pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
     // SAFETY: the caller must guarantee that the bytes `v`
     // are valid UTF-8, thus the cast to `*mut str` is safe.

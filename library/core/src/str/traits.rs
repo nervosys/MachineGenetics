@@ -23,7 +23,7 @@ impl Ord for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl const PartialEq for str {
     #[inline]
     fn eq(&self, other: &str) -> bool {
@@ -32,7 +32,7 @@ impl const PartialEq for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl const Eq for str {}
 
 /// Implements comparison operations on strings.
@@ -51,7 +51,7 @@ impl PartialOrd for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 impl<I> const ops::Index<I> for str
 where
     I: [const] SliceIndex<str>,
@@ -65,7 +65,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 impl<I> const ops::IndexMut<I> for str
 where
     I: [const] SliceIndex<str>,
@@ -89,7 +89,7 @@ where
 ///
 /// Equivalent to `&self[0 .. len]` or `&mut self[0 .. len]`.
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for ops::RangeFull {
     type Output = str;
     #[inline]
@@ -154,7 +154,7 @@ unsafe impl const SliceIndex<str> for ops::RangeFull {
 /// // &s[3 .. 100];
 /// ```
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for ops::Range<usize> {
     type Output = str;
     #[inline]
@@ -259,7 +259,7 @@ unsafe impl const SliceIndex<str> for ops::Range<usize> {
 }
 
 #[unstable(feature = "new_range_api", issue = "125687")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for range::Range<usize> {
     type Output = str;
     #[inline]
@@ -431,7 +431,7 @@ unsafe impl SliceIndex<str> for (ops::Bound<usize>, ops::Bound<usize>) {
 /// Panics if `end` does not point to the starting byte offset of a
 /// character (as defined by `is_char_boundary`), or if `end > len`.
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for ops::RangeTo<usize> {
     type Output = str;
     #[inline]
@@ -500,7 +500,7 @@ unsafe impl const SliceIndex<str> for ops::RangeTo<usize> {
 /// Panics if `begin` does not point to the starting byte offset of
 /// a character (as defined by `is_char_boundary`), or if `begin > len`.
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for ops::RangeFrom<usize> {
     type Output = str;
     #[inline]
@@ -556,7 +556,7 @@ unsafe impl const SliceIndex<str> for ops::RangeFrom<usize> {
 }
 
 #[unstable(feature = "new_range_api", issue = "125687")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for range::RangeFrom<usize> {
     type Output = str;
     #[inline]
@@ -628,7 +628,7 @@ unsafe impl const SliceIndex<str> for range::RangeFrom<usize> {
 /// to the ending byte offset of a character (`end + 1` is either a starting
 /// byte offset or equal to `len`), if `begin > end`, or if `end >= len`.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for ops::RangeInclusive<usize> {
     type Output = str;
     #[inline]
@@ -686,7 +686,7 @@ unsafe impl const SliceIndex<str> for ops::RangeInclusive<usize> {
 }
 
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for range::RangeInclusive<usize> {
     type Output = str;
     #[inline]
@@ -732,7 +732,7 @@ unsafe impl const SliceIndex<str> for range::RangeInclusive<usize> {
 /// (`end + 1` is either a starting byte offset as defined by
 /// `is_char_boundary`, or equal to `len`), or if `end >= len`.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
     type Output = str;
     #[inline]
@@ -778,7 +778,7 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 /// (`last + 1` is either a starting byte offset as defined by
 /// `is_char_boundary`, or equal to `len`), or if `last >= len`.
 #[stable(feature = "new_range_to_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[redox_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for range::RangeToInclusive<usize> {
     type Output = str;
     #[inline]
@@ -879,7 +879,7 @@ unsafe impl const SliceIndex<str> for range::RangeToInclusive<usize> {
 /// assert!(Point::from_str("(1 2)").is_err());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 pub const trait FromStr: Sized {
     /// The associated error which can be returned from parsing.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -904,7 +904,7 @@ pub const trait FromStr: Sized {
     /// assert_eq!(5, x);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "from_str_method"]
+    #[redox_diagnostic_item = "from_str_method"]
     fn from_str(s: &str) -> Result<Self, Self::Err>;
 }
 

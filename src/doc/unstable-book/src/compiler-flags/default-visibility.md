@@ -5,7 +5,7 @@ The tracking issue for this feature is: https://github.com/rust-lang/rust/issues
 ------------------------
 
 This flag can be used to override the target's
-[`default_visibility`](https://doc.rust-lang.org/beta/nightly-rustc/rustc_target/spec/struct.TargetOptions.html#structfield.default_visibility)
+[`default_visibility`](https://doc.rust-lang.org/beta/nightly-redox/redox_target/spec/struct.TargetOptions.html#structfield.default_visibility)
 setting.
 
 This option only affects building of shared objects and should have no effect on executables.

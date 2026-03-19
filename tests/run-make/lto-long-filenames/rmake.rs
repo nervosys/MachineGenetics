@@ -9,7 +9,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 // This test make sure we don't get such following error:
 // error: could not write output to generated_large_large_large_large_large_large_large_large_large_large_large_large_large_large_large_large_large_crate_name.generated_large_large_large_large_large_large_large_large_large_large_large_large_large_large_large_large_large_crate_name.9384edb61bfd127c-cgu.0.rcgu.o: File name too long
@@ -24,7 +24,7 @@ fn main() {
     rfs::write(aux_file, "#![crate_type = \"rlib\"]\n");
 
     for flag in lto_flags {
-        rustc().input(aux_file).arg(flag).run();
-        rustc().input("main.rs").arg(flag).run();
+        redox().input(aux_file).arg(flag).run();
+        redox().input("main.rs").arg(flag).run();
     }
 }

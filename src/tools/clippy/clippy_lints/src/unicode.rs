@@ -2,12 +2,12 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::macros::span_is_local;
 use clippy_utils::source::snippet;
-use rustc_ast::ast::LitKind;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, HirId};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
+use redox_ast::ast::LitKind;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind, HirId};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::Span;
 use unicode_normalization::UnicodeNormalization;
 
 declare_clippy_lint! {

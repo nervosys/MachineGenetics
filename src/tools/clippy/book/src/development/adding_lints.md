@@ -213,9 +213,9 @@ Let's start by opening the new file created in the `clippy_lints` crate at
 is. This file has already imported some initial things we will need:
 
 ```rust
-use rustc_lint::{EarlyLintPass, EarlyContext};
-use rustc_session::declare_lint_pass;
-use rustc_ast::ast::*;
+use redox_lint::{EarlyLintPass, EarlyContext};
+use redox_session::declare_lint_pass;
+use redox_ast::ast::*;
 ```
 
 The next step is to update the lint declaration. Lints are declared using the
@@ -246,7 +246,7 @@ declare_clippy_lint! {
   browser, run `cargo dev serve`.
 * The `#[clippy::version]` attribute will be rendered as part of the lint
   documentation. The value should be set to the current Rust version that the
-  lint is developed in, it can be retrieved by running `rustc -vV` in the
+  lint is developed in, it can be retrieved by running `redox -vV` in the
   rust-clippy directory. The version is listed under *release*. (Use the version
   without the `-nightly`) suffix.
 * `FOO_FUNCTIONS` is the name of our lint. Be sure to follow the [lint naming
@@ -310,7 +310,7 @@ We have to make this decision with every new Clippy lint. It boils down to using
 either [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass].
 
 `EarlyLintPass` runs before type checking and
-[HIR](https://rustc-dev-guide.rust-lang.org/hir.html) lowering, while `LateLintPass`
+[HIR](https://redox-dev-guide.rust-lang.org/hir.html) lowering, while `LateLintPass`
 runs after these stages, providing access to type information. The `cargo dev new_lint` command
 defaults to the recommended `LateLintPass`, but you can specify `--pass=early` if your lint
 only needs AST level analysis.
@@ -319,8 +319,8 @@ Since we don't need type information for checking the function name, we used
 `--pass=early` when running the new lint automation and all the imports were
 added accordingly.
 
-[early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html
-[late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html
+[early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/trait.EarlyLintPass.html
+[late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/trait.LateLintPass.html
 
 ## Emitting a lint
 
@@ -368,14 +368,14 @@ impl EarlyLintPass for FooFunctions {
 
 Running our UI test should now produce output that contains the lint message.
 
-According to [the rustc-dev-guide], the text should be matter of fact and avoid
+According to [the redox-dev-guide], the text should be matter of fact and avoid
 capitalization and periods, unless multiple sentences are needed. When code or
 an identifier must appear in a message or label, it should be surrounded with
 single grave accents \`.
 
-[check_fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html#method.check_fn
+[check_fn]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/trait.EarlyLintPass.html#method.check_fn
 [diagnostics]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/diagnostics.rs
-[the rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/diagnostics.html
+[the redox-dev-guide]: https://redox-dev-guide.rust-lang.org/diagnostics.html
 
 ## Adding the lint logic
 
@@ -436,9 +436,9 @@ implementation is not violating any Clippy lints itself.
 That should be it for the lint implementation. Running `cargo test` should now
 pass.
 
-[fn_kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/visit/enum.FnKind.html
-[`FnKind::Fn`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/visit/enum.FnKind.html#variant.Fn
-[ident]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html
+[fn_kind]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/visit/enum.FnKind.html
+[`FnKind::Fn`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/visit/enum.FnKind.html#variant.Fn
+[ident]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/symbol/struct.Ident.html
 
 ## Specifying the lint's minimum supported Rust version (MSRV)
 
@@ -525,7 +525,7 @@ define_Conf! {
 }
 ```
 
-[`clippy_utils::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_config/msrvs/index.html
+[`clippy_utils::msrvs`]: https://doc.rust-lang.org/nightly/nightly-redox/clippy_config/msrvs/index.html
 
 Afterwards update the documentation for the book as described in [Adding configuration to a lint](#adding-configuration-to-a-lint).
 
@@ -550,7 +550,7 @@ you are implementing your lint.
 ## Print HIR lint
 
 To implement a lint, it's helpful to first understand the internal
-representation that rustc uses. Clippy has the `#[clippy::dump]` attribute that
+representation that redox uses. Clippy has the `#[clippy::dump]` attribute that
 prints the [_High-Level Intermediate Representation (HIR)_] of the item,
 statement, or expression that the attribute is attached to. To attach the
 attribute to expressions you often need to enable
@@ -559,7 +559,7 @@ attribute to expressions you often need to enable
 [Here][print_hir_example] you can find an example, just select _Tools_ and run
 _Clippy_.
 
-[_High-Level Intermediate Representation (HIR)_]: https://rustc-dev-guide.rust-lang.org/hir.html
+[_High-Level Intermediate Representation (HIR)_]: https://redox-dev-guide.rust-lang.org/hir.html
 [print_hir_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2024&gist=daf14db3a7f39ca467cd1b86c34b9afb
 
 ## Documentation
@@ -768,36 +768,36 @@ Here are some pointers to things you are likely going to need for every lint:
 * [`Applicability`][applicability]
 * [Common tools for writing lints](common_tools_writing_lints.md) helps with
   common operations
-* [The rustc-dev-guide][rustc-dev-guide] explains a lot of internal compiler
+* [The redox-dev-guide][redox-dev-guide] explains a lot of internal compiler
   concepts
-* [The nightly rustc docs][nightly_docs] which has been linked to throughout
+* [The nightly redox docs][nightly_docs] which has been linked to throughout
   this guide
 
 For `EarlyLintPass` lints:
 
 * [`EarlyLintPass`][early_lint_pass]
-* [`rustc_ast::ast`][ast]
+* [`redox_ast::ast`][ast]
 
 For `LateLintPass` lints:
 
 * [`LateLintPass`][late_lint_pass]
 * [`Ty::TyKind`][ty]
 
-While most of Clippy's lint utils are documented, most of rustc's internals lack
+While most of Clippy's lint utils are documented, most of redox's internals lack
 documentation currently. This is unfortunate, but in most cases you can probably
 get away with copying things from existing similar lints. If you are stuck,
 don't hesitate to ask on [Zulip] or in the issue/PR.
 
-[utils]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/index.html
-[`implements_trait`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/ty/fn.implements_trait.html
-[`snippet`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/source/fn.snippet.html
+[utils]: https://doc.rust-lang.org/nightly/nightly-redox/clippy_utils/index.html
+[`implements_trait`]: https://doc.rust-lang.org/nightly/nightly-redox/clippy_utils/ty/fn.implements_trait.html
+[`snippet`]: https://doc.rust-lang.org/nightly/nightly-redox/clippy_utils/source/fn.snippet.html
 [let-chains]: https://github.com/rust-lang/rust/pull/94927
-[from_expansion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
-[in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html#method.in_external_macro
-[span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
-[applicability]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/enum.Applicability.html
-[rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/
-[nightly_docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
-[ast]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html
-[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/sty/index.html
+[from_expansion]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/struct.Span.html#method.from_expansion
+[in_external_macro]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/struct.Span.html#method.in_external_macro
+[span]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/struct.Span.html
+[applicability]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/enum.Applicability.html
+[redox-dev-guide]: https://redox-dev-guide.rust-lang.org/
+[nightly_docs]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/
+[ast]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast/ast/index.html
+[ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/sty/index.html
 [Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/clippy

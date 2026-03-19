@@ -6,10 +6,10 @@
 //@ ignore-cross-compile
 // Reason: rustdoc fails to find the "foo" crate
 
-use run_make_support::{cwd, rustc, rustdoc};
+use run_make_support::{cwd, redox, rustdoc};
 
 fn main() {
-    rustc().cfg(r#"feature="bar""#).crate_type("lib").input("foo.rs").run();
+    redox().cfg(r#"feature="bar""#).crate_type("lib").input("foo.rs").run();
     rustdoc()
         .arg("--test")
         .arg("--cfg")

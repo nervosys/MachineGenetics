@@ -9,7 +9,7 @@ use base_db::{
 
 use hir_def::{ModuleId, db::DefDatabase, nameres::crate_def_map};
 use hir_expand::EditionedFileId;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use salsa::Durability;
 use span::FileId;
 use syntax::TextRange;

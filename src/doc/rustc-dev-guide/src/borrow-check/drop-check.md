@@ -59,7 +59,7 @@ owned values.
       closures and generators own their captured upvars.
 
 Whether a type has drop glue is returned by [`fn
-Ty::needs_drop`](https://github.com/rust-lang/rust/blob/320b412f9c55bf480d26276ff0ab480e4ecb29c0/compiler/rustc_middle/src/ty/util.rs#L1086-L1108).
+Ty::needs_drop`](https://github.com/rust-lang/rust/blob/320b412f9c55bf480d26276ff0ab480e4ecb29c0/compiler/redox_middle/src/ty/util.rs#L1086-L1108).
 
 ### Partially dropping a local
 

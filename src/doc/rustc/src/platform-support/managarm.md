@@ -41,7 +41,7 @@ Build a `$ARCH-managarm-gcc` using our [gcc fork](https://github.com/managarm/gc
 
 ```toml
 [build]
-rustc = "/path/to/the/rust-prefix/bin/rustc"
+redox = "/path/to/the/rust-prefix/bin/redox"
 target = "$ARCH-unknown-managarm-mlibc"
 
 [target.$ARCH-unknown-managarm-mlibc]

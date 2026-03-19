@@ -1,13 +1,13 @@
 //! Shim which is passed to Cargo as "rustdoc" when running the bootstrap.
 //!
-//! See comments in `src/bootstrap/rustc.rs` for more information.
+//! See comments in `src/bootstrap/redox.rs` for more information.
 
 use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 
 use shared_helpers::{
-    dylib_path, dylib_path_var, maybe_dump, parse_rustc_stage, parse_rustc_verbose,
+    dylib_path, dylib_path_var, maybe_dump, parse_redox_stage, parse_redox_verbose,
     parse_value_from_args,
 };
 
@@ -17,8 +17,8 @@ mod shared_helpers;
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
 
-    let stage = parse_rustc_stage();
-    let verbose = parse_rustc_verbose();
+    let stage = parse_redox_stage();
+    let verbose = parse_redox_verbose();
 
     let rustdoc = env::var_os("RUSTDOC_REAL").expect("RUSTDOC_REAL was not set");
     let libdir = env::var_os("RUSTDOC_LIBDIR").expect("RUSTDOC_LIBDIR was not set");
@@ -52,7 +52,7 @@ fn main() {
     cmd.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
     // Force all crates compiled by this compiler to (a) be unstable and (b)
-    // allow the `rustc_private` feature to link to other unstable crates
+    // allow the `redox_private` feature to link to other unstable crates
     // also in the sysroot.
     if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
@@ -67,15 +67,15 @@ fn main() {
     }
 
     if let Some(crate_name) = parse_value_from_args(&args, "--crate-name") {
-        // Add rust logo and set html root for all rustc crates.
-        if crate_name.starts_with("rustc_") {
+        // Add rust logo and set html root for all redox crates.
+        if crate_name.starts_with("redox_") {
             cmd.arg("-Ainternal_features")
                 .arg("-Zcrate-attr=doc(rust_logo)")
-                .arg("-Zcrate-attr=doc(html_root_url = \"https://doc.rust-lang.org/nightly/nightly-rustc/\")");
+                .arg("-Zcrate-attr=doc(html_root_url = \"https://doc.rust-lang.org/nightly/nightly-redox/\")");
 
-            // rustc_proc_macro is another build of library/proc_macro which already enables this
+            // redox_proc_macro is another build of library/proc_macro which already enables this
             // feature
-            if crate_name != "rustc_proc_macro" {
+            if crate_name != "redox_proc_macro" {
                 cmd.arg("-Zcrate-attr=feature(rustdoc_internals)");
             }
         }

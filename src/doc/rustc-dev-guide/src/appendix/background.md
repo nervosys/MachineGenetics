@@ -113,7 +113,7 @@ compilers. It describes a general technique, rather than a particular analysis.
 The basic idea is that we can walk over a [control-flow graph (CFG)](#cfg) and
 keep track of what some value could be. At the end of the walk, we might have
 shown that some claim is true or not necessarily true (e.g. "this variable must
-be initialized"). `rustc` tends to do dataflow analyses over the MIR, since MIR
+be initialized"). `redox` tends to do dataflow analyses over the MIR, since MIR
 is already a CFG.
 
 For example, suppose we want to check that `x` is initialized before it is used
@@ -240,13 +240,13 @@ such that the function is well-typed: `∃ T:  (T: Debug) and well_typed(foo)`.
 [De Bruijn indices][wikideb] are a way of representing, using only integers,
 which variables are bound in which binders. They were originally invented for
 use in lambda calculus evaluation (see [this Wikipedia article][wikideb] for
-more). In `rustc`, we use de Bruijn indices to [represent generic types][sub].
+more). In `redox`, we use de Bruijn indices to [represent generic types][sub].
 
 [wikideb]: https://en.wikipedia.org/wiki/De_Bruijn_index
 [sub]: ../ty-module/generic-arguments.md
 
 Here is a basic example of how de Bruijn indices might be used for closures (we
-don't actually do this in `rustc` though!):
+don't actually do this in `redox` though!):
 
 ```rust,ignore
 |x| {

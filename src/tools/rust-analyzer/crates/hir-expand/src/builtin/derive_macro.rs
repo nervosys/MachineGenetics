@@ -4,7 +4,7 @@ use either::Either;
 use intern::sym;
 use itertools::{Itertools, izip};
 use parser::SyntaxKind;
-use rustc_hash::FxHashSet;
+use redox_hash::FxHashSet;
 use span::{Edition, Span};
 use stdx::never;
 use syntax_bridge::DocCommentDesugarMode;
@@ -351,11 +351,11 @@ fn parse_adt_from_syntax(
 
     // For a generic parameter `T`, when shorthand associated type `T::Assoc` appears in field
     // types (of any variant for enums), we generate trait bound for it. It sounds reasonable to
-    // also generate trait bound for qualified associated type `<T as Trait>::Assoc`, but rustc
+    // also generate trait bound for qualified associated type `<T as Trait>::Assoc`, but redox
     // does not do that for some unknown reason.
     //
-    // See the analogous function in rustc [find_type_parameters()] and rust-lang/rust#50730.
-    // [find_type_parameters()]: https://github.com/rust-lang/rust/blob/1.70.0/compiler/rustc_builtin_macros/src/deriving/generic/mod.rs#L378
+    // See the analogous function in redox [find_type_parameters()] and rust-lang/rust#50730.
+    // [find_type_parameters()]: https://github.com/rust-lang/rust/blob/1.70.0/compiler/redox_builtin_macros/src/deriving/generic/mod.rs#L378
 
     // It's cumbersome to deal with the distinct structures of ADTs, so let's just get untyped
     // `SyntaxNode` that contains fields and look for descendant `ast::PathType`s. Of note is that

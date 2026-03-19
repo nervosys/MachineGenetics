@@ -3,7 +3,7 @@
 //@ revisions:rpass1 rpass2
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 
 #[cfg(rpass1)]
@@ -19,7 +19,7 @@ extern crate a;
 use a::A;
 use b::B;
 
-//? #[rustc_clean(label="typeck", cfg="rpass2")]
+//? #[redox_clean(label="typeck", cfg="rpass2")]
 pub fn main() {
     A + B;
 }

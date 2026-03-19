@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![cfg_attr(true, feature(rustc_attrs))]
-#![rustc_dummy]
+#![cfg_attr(true, feature(redox_attrs))]
+#![redox_dummy]
 
 fn main() {}

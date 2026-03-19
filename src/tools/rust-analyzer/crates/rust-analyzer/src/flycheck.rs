@@ -15,7 +15,7 @@ use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
 use project_model::TargetDirectoryConfig;
 use project_model::project_json;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use serde::Deserialize as _;
 use serde_derive::Deserialize;
 
@@ -426,7 +426,7 @@ struct FlycheckActor {
 enum DiagnosticsReceived {
     /// We started a flycheck, but we haven't seen any diagnostics yet.
     NotYet,
-    /// We received a non-zero number of diagnostics from rustc or clippy (via
+    /// We received a non-zero number of diagnostics from redox or clippy (via
     /// cargo or custom check command). This means there were errors or
     /// warnings.
     AtLeastOne,
@@ -978,7 +978,7 @@ enum CheckMessage {
     /// A message from `cargo check`, including details like the path
     /// to the relevant `Cargo.toml`.
     CompilerArtifact(cargo_metadata::Artifact),
-    /// A diagnostic message from rustc itself.
+    /// A diagnostic message from redox itself.
     Diagnostic { diagnostic: Diagnostic, package_id: Option<PackageSpecifier> },
 }
 

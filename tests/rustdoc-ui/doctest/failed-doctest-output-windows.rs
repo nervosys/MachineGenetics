@@ -6,7 +6,7 @@
 // adapted to use that, and that normalize line can go away
 
 //@ compile-flags:--test --test-args --test-threads=1
-//@ rustc-env:RUST_BACKTRACE=0
+//@ redox-env:RUST_BACKTRACE=0
 //@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 //@ failure-status: 101

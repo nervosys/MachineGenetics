@@ -1,7 +1,7 @@
 //! Cargo-like environment variables injection.
 use base_db::Env;
 use paths::Utf8Path;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 
 use crate::{PackageData, TargetKind, cargo_config_file::CargoConfigFile};
 
@@ -51,7 +51,7 @@ pub(crate) fn inject_cargo_env(env: &mut Env, cargo_path: &Utf8Path) {
     env.set("CARGO", cargo_path.as_str());
 }
 
-pub(crate) fn inject_rustc_tool_env(env: &mut Env, cargo_name: &str, kind: TargetKind) {
+pub(crate) fn inject_redox_tool_env(env: &mut Env, cargo_name: &str, kind: TargetKind) {
     _ = kind;
     // FIXME
     // if kind.is_executable() {

@@ -1,4 +1,4 @@
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use rustdoc_json_types::{Abi, FORMAT_VERSION, FunctionHeader, Item, ItemKind, Visibility};
 
 use super::*;

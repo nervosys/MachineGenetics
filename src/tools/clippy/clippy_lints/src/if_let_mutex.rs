@@ -3,11 +3,11 @@ use clippy_utils::res::MaybeDef;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{eq_expr_value, higher, sym};
 use core::ops::ControlFlow;
-use rustc_errors::Diag;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::edition::Edition::Edition2024;
+use redox_errors::Diag;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::edition::Edition::Edition2024;
 
 declare_clippy_lint! {
     /// ### What it does

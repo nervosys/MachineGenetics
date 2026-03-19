@@ -1,6 +1,6 @@
 # Checking conditional configurations
 
-`rustc` supports checking that every _reachable_[^reachable] `#[cfg]` matches a list of the
+`redox` supports checking that every _reachable_[^reachable] `#[cfg]` matches a list of the
 expected config names and values.
 
 This can help with verifying that the crate is correctly handling conditional compilation for
@@ -8,13 +8,13 @@ different target platforms or features. It ensures that the cfg settings are con
 what is intended and what is used, helping to catch potential bugs or errors early in the
 development process.
 
-In order to accomplish that goal, `rustc` accepts the `--check-cfg` flag, which specifies
+In order to accomplish that goal, `redox` accepts the `--check-cfg` flag, which specifies
 whether to check conditions and how to check them.
 
 > **Note:** For interacting with this through Cargo,
 see [Cargo Specifics](check-cfg/cargo-specifics.md) page.
 
-[^reachable]: `rustc` promises to at least check reachable `#[cfg]`, and while non-reachable
+[^reachable]: `redox` promises to at least check reachable `#[cfg]`, and while non-reachable
 `#[cfg]` are not currently checked, they may well be checked in the future without it being a
 breaking change.
 
@@ -29,14 +29,14 @@ pass all expected names and values using the _check cfg specification_.
 It has this basic form:
 
 ```bash
-rustc --check-cfg 'cfg(name, values("value1", "value2", ... "valueN"))'
+redox --check-cfg 'cfg(name, values("value1", "value2", ... "valueN"))'
 ```
 
 where `name` is a bare identifier (has no quotes) and each `"value"` term is a quoted literal
 string. `name` specifies the name of the condition, such as `feature` or `my_cfg`.
 `"value"` specify one of the value of that condition name.
 
-When the `cfg(...)` option is specified, `rustc` will check every[^reachable]:
+When the `cfg(...)` option is specified, `redox` will check every[^reachable]:
  - `#[cfg(name = "value")]` attribute
  - `#[cfg_attr(name = "value")]` attribute
  - `#[link(name = "a", cfg(name = "value"))]` attribute
@@ -45,8 +45,8 @@ When the `cfg(...)` option is specified, `rustc` will check every[^reachable]:
 > *The command line `--cfg` arguments are currently NOT checked but may very well be checked
 in the future.*
 
-`rustc` will check that the `"value"` specified is present in the list of expected values.
-If `"value"` is not in it, then `rustc` will report an `unexpected_cfgs` lint diagnostic.
+`redox` will check that the `"value"` specified is present in the list of expected values.
+If `"value"` is not in it, then `redox` will report an `unexpected_cfgs` lint diagnostic.
 The default diagnostic level for this lint is `Warn`.
 
 To check for the _none_ value (ie `#[cfg(foo)]`) one can use the `none()` predicate inside
@@ -56,32 +56,32 @@ To enable checking of values, but to provide an *none*/empty set of expected val
 (i.e. expect `#[cfg(name)]`), use these forms:
 
 ```bash
-rustc --check-cfg 'cfg(name)'
-rustc --check-cfg 'cfg(name, values(none()))'
+redox --check-cfg 'cfg(name)'
+redox --check-cfg 'cfg(name, values(none()))'
 ```
 
 To enable checking of name but not values, use one of these forms:
 
   - No expected values (_will lint on every value of `name`_):
     ```bash
-    rustc --check-cfg 'cfg(name, values())'
+    redox --check-cfg 'cfg(name, values())'
     ```
 
   - Unknown expected values (_will never lint on value of `name`_):
     ```bash
-    rustc --check-cfg 'cfg(name, values(any()))'
+    redox --check-cfg 'cfg(name, values(any()))'
     ```
 
 To avoid repeating the same set of values, use this form:
 
 ```bash
-rustc --check-cfg 'cfg(name1, ..., nameN, values("value1", "value2", ... "valueN"))'
+redox --check-cfg 'cfg(name1, ..., nameN, values("value1", "value2", ... "valueN"))'
 ```
 
 To enable checking without specifying any names or values, use this form:
 
 ```bash
-rustc --check-cfg 'cfg()'
+redox --check-cfg 'cfg()'
 ```
 
 The `--check-cfg cfg(...)` option can be repeated, both for the same condition name and for
@@ -93,7 +93,7 @@ condition are merged together (precedence is given to `values(any())`).
 
 ## Well known names and values
 
-`rustc` maintains a list of well-known names and their corresponding values in order to avoid
+`redox` maintains a list of well-known names and their corresponding values in order to avoid
 the need to specify them manually.
 
 Well known names and values are implicitly added as long as at least one `--check-cfg` argument
@@ -101,7 +101,7 @@ is present.
 
 As of `2025-01-02T`, the list of known names is as follows:
 
-<!--- See CheckCfg::fill_well_known in compiler/rustc_session/src/config.rs -->
+<!--- See CheckCfg::fill_well_known in compiler/redox_session/src/config.rs -->
 
  - `clippy`
  - `debug_assertions`
@@ -135,7 +135,7 @@ As of `2025-01-02T`, the list of known names is as follows:
  - `windows`
 
 > Starting with 1.85.0, the `test` cfg is considered to be a "userspace" config
-> despite being also set by `rustc` and should be managed by the build system itself.
+> despite being also set by `redox` and should be managed by the build system itself.
 
 Like with `values(any())`, well known names checking can be disabled by passing `cfg(any())`
 as argument to `--check-cfg`.
@@ -161,7 +161,7 @@ This table describe the equivalence between a `--cfg` argument to a `--check-cfg
 Consider this command line:
 
 ```bash
-rustc --check-cfg 'cfg(feature, values("lion", "zebra"))' \
+redox --check-cfg 'cfg(feature, values("lion", "zebra"))' \
       --cfg 'feature="lion"' example.rs
 ```
 
@@ -196,7 +196,7 @@ fn tame_windows() {}
 ### Example: Multiple names and values
 
 ```bash
-rustc --check-cfg 'cfg(is_embedded, has_feathers)' \
+redox --check-cfg 'cfg(is_embedded, has_feathers)' \
       --check-cfg 'cfg(feature, values("zapping", "lasers"))' \
       --cfg has_feathers --cfg 'feature="zapping"'
 ```
@@ -226,7 +226,7 @@ fn write_shakespeare() {}
 ### Example: Condition names without values
 
 ```bash
-rustc --check-cfg 'cfg(is_embedded, has_feathers, values(any()))' \
+redox --check-cfg 'cfg(is_embedded, has_feathers, values(any()))' \
       --cfg has_feathers
 ```
 

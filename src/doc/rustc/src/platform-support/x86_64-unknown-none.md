@@ -20,14 +20,14 @@ in environments, such as kernels, which may need to avoid the use of such
 registers or which may have special considerations about the use of such
 registers (e.g. saving and restoring them to avoid breaking userspace code
 using the same registers). You can change code generation to use additional CPU
-features via the `-C target-feature=` codegen options to rustc, or via the
+features via the `-C target-feature=` codegen options to redox, or via the
 `#[target_feature]` mechanism within Rust code.
 
 By default, code generated with this target should run on any `x86_64`
 hardware; enabling additional target features may raise this baseline.
 
 Code generated with this target will use the `kernel` code model by default.
-You can change this using the `-C code-model=` option to rustc.
+You can change this using the `-C code-model=` option to redox.
 
 On `x86_64-unknown-none`, `extern "C"` uses the [standard System V calling
 convention](https://gitlab.com/x86-psABIs/x86-64-ABI), without red zones.
@@ -54,7 +54,7 @@ Starting with Rust 1.62, precompiled artifacts are provided via `rustup`:
 ```text
 # install cross-compile toolchain
 rustup target add x86_64-unknown-none
-# target flag may be used with any cargo or rustc command
+# target flag may be used with any cargo or redox command
 cargo build --target x86_64-unknown-none
 ```
 

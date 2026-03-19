@@ -2,10 +2,10 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::MacroCall;
 use clippy_utils::source::{SpanRangeExt, expand_past_previous_comma};
 use clippy_utils::sym;
-use rustc_ast::{FormatArgs, FormatArgsPiece};
-use rustc_errors::Applicability;
-use rustc_lint::{LateContext, LintContext};
-use rustc_span::BytePos;
+use redox_ast::{FormatArgs, FormatArgsPiece};
+use redox_errors::Applicability;
+use redox_lint::{LateContext, LintContext};
+use redox_span::BytePos;
 
 use super::{PRINT_WITH_NEWLINE, WRITE_WITH_NEWLINE};
 

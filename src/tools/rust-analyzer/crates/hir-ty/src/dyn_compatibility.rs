@@ -7,8 +7,8 @@ use hir_def::{
     TypeOrConstParamId, TypeParamId, hir::generics::LocalTypeOrConstParamId,
     nameres::crate_def_map, signatures::TraitFlags,
 };
-use rustc_hash::FxHashSet;
-use rustc_type_ir::{
+use redox_hash::FxHashSet;
+use redox_type_ir::{
     AliasTyKind, ClauseKind, PredicatePolarity, TypeSuperVisitable as _, TypeVisitable as _,
     Upcast, elaborate, inherent::IntoKind,
 };
@@ -32,7 +32,7 @@ pub enum DynCompatibilityViolation {
     Method(FunctionId, MethodViolationCode),
     AssocConst(ConstId),
     GAT(TypeAliasId),
-    // This doesn't exist in rustc, but added for better visualization
+    // This doesn't exist in redox, but added for better visualization
     HasNonCompatibleSuperTrait(TraitId),
 }
 
@@ -105,7 +105,7 @@ where
         cb(DynCompatibilityViolation::SelfReferential)?;
     }
 
-    // rustc checks for non-lifetime binders here, but we don't support HRTB yet
+    // redox checks for non-lifetime binders here, but we don't support HRTB yet
 
     let trait_data = trait_.trait_items(db);
     for (_, assoc_item) in &trait_data.items {
@@ -138,12 +138,12 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
     let predicates = GenericPredicates::query_explicit(db, def);
     // FIXME: We should use `explicit_predicates_of` here, which hasn't been implemented to
     // rust-analyzer yet
-    // https://github.com/rust-lang/rust/blob/ddaf12390d3ffb7d5ba74491a48f3cd528e5d777/compiler/rustc_hir_analysis/src/collect/predicates_of.rs#L490
+    // https://github.com/rust-lang/rust/blob/ddaf12390d3ffb7d5ba74491a48f3cd528e5d777/compiler/redox_hir_analysis/src/collect/predicates_of.rs#L490
     elaborate::elaborate(interner, predicates.iter_identity_copied()).any(|pred| {
         match pred.kind().skip_binder() {
             ClauseKind::Trait(trait_pred) => {
                 if sized == trait_pred.def_id().0
-                    && let rustc_type_ir::TyKind::Param(param_ty) =
+                    && let redox_type_ir::TyKind::Param(param_ty) =
                         trait_pred.trait_ref.self_ty().kind()
                     && param_ty.index == 0
                 {
@@ -157,7 +157,7 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
     })
 }
 
-// rustc gathers all the spans that references `Self` for error rendering,
+// redox gathers all the spans that references `Self` for error rendering,
 // but we don't have good way to render such locations.
 // So, just return single boolean value for existence of such `Self` reference
 fn predicates_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
@@ -178,13 +178,13 @@ fn bounds_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
         })
         .any(|bounds| {
             bounds.skip_binder().iter().any(|pred| match pred.skip_binder() {
-                rustc_type_ir::ExistentialPredicate::Trait(it) => it.args.iter().any(|arg| {
+                redox_type_ir::ExistentialPredicate::Trait(it) => it.args.iter().any(|arg| {
                     contains_illegal_self_type_reference(db, trait_, &arg, AllowSelfProjection::Yes)
                 }),
-                rustc_type_ir::ExistentialPredicate::Projection(it) => it.args.iter().any(|arg| {
+                redox_type_ir::ExistentialPredicate::Projection(it) => it.args.iter().any(|arg| {
                     contains_illegal_self_type_reference(db, trait_, &arg, AllowSelfProjection::Yes)
                 }),
-                rustc_type_ir::ExistentialPredicate::AutoTrait(_) => false,
+                redox_type_ir::ExistentialPredicate::AutoTrait(_) => false,
             })
         })
 }
@@ -214,7 +214,7 @@ fn predicate_references_self<'db>(
     }
 }
 
-fn contains_illegal_self_type_reference<'db, T: rustc_type_ir::TypeVisitable<DbInterner<'db>>>(
+fn contains_illegal_self_type_reference<'db, T: redox_type_ir::TypeVisitable<DbInterner<'db>>>(
     db: &'db dyn HirDatabase,
     trait_: TraitId,
     t: &T,
@@ -226,18 +226,18 @@ fn contains_illegal_self_type_reference<'db, T: rustc_type_ir::TypeVisitable<DbI
         super_traits: Option<SmallVec<[TraitId; 4]>>,
         allow_self_projection: AllowSelfProjection,
     }
-    impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for IllegalSelfTypeVisitor<'db> {
+    impl<'db> redox_type_ir::TypeVisitor<DbInterner<'db>> for IllegalSelfTypeVisitor<'db> {
         type Result = ControlFlow<()>;
 
         fn visit_ty(
             &mut self,
-            ty: <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
+            ty: <DbInterner<'db> as redox_type_ir::Interner>::Ty,
         ) -> Self::Result {
             let interner = DbInterner::new_no_crate(self.db);
             match ty.kind() {
-                rustc_type_ir::TyKind::Param(param) if param.index == 0 => ControlFlow::Break(()),
-                rustc_type_ir::TyKind::Param(_) => ControlFlow::Continue(()),
-                rustc_type_ir::TyKind::Alias(AliasTyKind::Projection, proj) => {
+                redox_type_ir::TyKind::Param(param) if param.index == 0 => ControlFlow::Break(()),
+                redox_type_ir::TyKind::Param(_) => ControlFlow::Continue(()),
+                redox_type_ir::TyKind::Alias(AliasTyKind::Projection, proj) => {
                     match self.allow_self_projection {
                         AllowSelfProjection::Yes => {
                             let trait_ = proj.trait_def_id(interner);
@@ -373,7 +373,7 @@ where
         }) = pred
             && let trait_data = db.trait_signature(pred_trait_ref.def_id.0)
             && trait_data.flags.contains(TraitFlags::AUTO)
-            && let rustc_type_ir::TyKind::Param(ParamTy { index: 0, .. }) =
+            && let redox_type_ir::TyKind::Param(ParamTy { index: 0, .. }) =
                 pred_trait_ref.self_ty().kind()
         {
             continue;
@@ -392,7 +392,7 @@ fn receiver_is_dispatchable<'db>(
     db: &dyn HirDatabase,
     trait_: TraitId,
     func: FunctionId,
-    sig: &EarlyBinder<'db, Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>>,
+    sig: &EarlyBinder<'db, Binder<'db, redox_type_ir::FnSig<DbInterner<'db>>>>,
 ) -> bool {
     let sig = sig.instantiate_identity();
 
@@ -403,10 +403,10 @@ fn receiver_is_dispatchable<'db>(
         local_id: LocalTypeOrConstParamId::from_raw(la_arena::RawIdx::from_u32(0)),
     });
     let self_param_ty =
-        Ty::new(interner, rustc_type_ir::TyKind::Param(ParamTy { index: 0, id: self_param_id }));
+        Ty::new(interner, redox_type_ir::TyKind::Param(ParamTy { index: 0, id: self_param_id }));
 
     // `self: Self` can't be dispatched on, but this is already considered dyn-compatible
-    // See rustc's comment on https://github.com/rust-lang/rust/blob/3f121b9461cce02a703a0e7e450568849dfaa074/compiler/rustc_trait_selection/src/traits/object_safety.rs#L433-L437
+    // See redox's comment on https://github.com/rust-lang/rust/blob/3f121b9461cce02a703a0e7e450568849dfaa074/compiler/redox_trait_selection/src/traits/object_safety.rs#L433-L437
     if sig.inputs().iter().next().is_some_and(|p| *p.skip_binder() == self_param_ty) {
         return true;
     }
@@ -472,7 +472,7 @@ fn receiver_is_dispatchable<'db>(
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
     // the receiver is dispatchable iff the obligation holds
     let res = next_trait_solve_in_ctxt(&infcx, goal);
-    res.map_or(false, |res| matches!(res.1, rustc_type_ir::solve::Certainty::Yes))
+    res.map_or(false, |res| matches!(res.1, redox_type_ir::solve::Certainty::Yes))
 }
 
 fn receiver_for_self_ty<'db>(
@@ -490,18 +490,18 @@ fn receiver_for_self_ty<'db>(
 
 fn contains_illegal_impl_trait_in_trait<'db>(
     db: &'db dyn HirDatabase,
-    sig: &EarlyBinder<'db, Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>>,
+    sig: &EarlyBinder<'db, Binder<'db, redox_type_ir::FnSig<DbInterner<'db>>>>,
 ) -> Option<MethodViolationCode> {
     struct OpaqueTypeCollector(FxHashSet<InternedOpaqueTyId>);
 
-    impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for OpaqueTypeCollector {
+    impl<'db> redox_type_ir::TypeVisitor<DbInterner<'db>> for OpaqueTypeCollector {
         type Result = ControlFlow<()>;
 
         fn visit_ty(
             &mut self,
-            ty: <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
+            ty: <DbInterner<'db> as redox_type_ir::Interner>::Ty,
         ) -> Self::Result {
-            if let rustc_type_ir::TyKind::Alias(AliasTyKind::Opaque, op) = ty.kind() {
+            if let redox_type_ir::TyKind::Alias(AliasTyKind::Opaque, op) = ty.kind() {
                 let id = match op.def_id {
                     SolverDefId::InternedOpaqueTyId(id) => id,
                     _ => unreachable!(),
@@ -516,7 +516,7 @@ fn contains_illegal_impl_trait_in_trait<'db>(
     let mut visitor = OpaqueTypeCollector(FxHashSet::default());
     _ = ret.visit_with(&mut visitor);
 
-    // Since we haven't implemented RPITIT in proper way like rustc yet,
+    // Since we haven't implemented RPITIT in proper way like redox yet,
     // just check whether `ret` contains RPIT for now
     for opaque_ty in visitor.0 {
         let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty);

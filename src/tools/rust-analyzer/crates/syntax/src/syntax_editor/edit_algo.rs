@@ -7,7 +7,7 @@ use std::{
 };
 
 use rowan::TextRange;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use stdx::format_to;
 
 use crate::{
@@ -150,7 +150,7 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
     // Map change targets to the correct syntax nodes
     let tree_mutator = TreeMutator::new(&root);
     let mut changed_elements = vec![];
-    let mut changed_elements_set = rustc_hash::FxHashSet::default();
+    let mut changed_elements_set = redox_hash::FxHashSet::default();
     let mut deduplicate_node = |node_or_token: &mut SyntaxElement| {
         let node;
         let node = match node_or_token {

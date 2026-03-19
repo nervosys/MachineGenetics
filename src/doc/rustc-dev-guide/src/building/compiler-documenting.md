@@ -1,7 +1,7 @@
 # Building documentation
 
 This chapter describes how to build documentation of toolchain components,
-like the standard library (std) or the compiler (rustc).
+like the standard library (std) or the compiler (redox).
 
 - Document everything
 
@@ -33,7 +33,7 @@ like the standard library (std) or the compiler (rustc).
 
   See [the nightly docs index page](https://doc.rust-lang.org/nightly/) for a full list of books.
 
-- Document internal rustc items
+- Document internal redox items
 
   Compiler documentation is not built by default.
   To create it by default with `x doc`, modify `bootstrap.toml`:
@@ -47,4 +47,4 @@ like the standard library (std) or the compiler (rustc).
 
   NOTE: The documentation for the compiler is found at [this link].
 
-[this link]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
+[this link]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/

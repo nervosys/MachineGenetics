@@ -6,16 +6,16 @@
 //@ ignore-remote
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
-extern crate rustc_public;
-extern crate rustc_span;
+extern crate redox_driver;
+extern crate redox_interface;
+extern crate redox_public;
+extern crate redox_span;
 
-use rustc_public::{
+use redox_public::{
     ty::{Abi, ForeignItemKind},
     *,
 };
@@ -57,7 +57,7 @@ fn main() {
     let path = "foreign_input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),

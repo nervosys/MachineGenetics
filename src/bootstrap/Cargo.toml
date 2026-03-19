@@ -19,8 +19,8 @@ path = "src/bin/main.rs"
 test = false
 
 [[bin]]
-name = "rustc"
-path = "src/bin/rustc.rs"
+name = "redox"
+path = "src/bin/redox.rs"
 test = false
 
 [[bin]]

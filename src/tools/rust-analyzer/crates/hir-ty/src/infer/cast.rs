@@ -1,9 +1,9 @@
 //! Type cast logic. Basically coercion + additional casts.
 
 use hir_def::{AdtId, hir::ExprId, signatures::TraitFlags};
-use rustc_ast_ir::Mutability;
-use rustc_hash::FxHashSet;
-use rustc_type_ir::{
+use redox_ast_ir::Mutability;
+use redox_hash::FxHashSet;
+use redox_type_ir::{
     InferTy, TypeVisitableExt, UintTy, elaborate,
     error::TypeError,
     inherent::{AdtDef, BoundExistentialPredicates as _, IntoKind, Ty as _},
@@ -159,7 +159,7 @@ impl<'db> CastCheck<'db> {
                 (Some(t_from), Some(t_cast)) => (t_from, t_cast),
                 (None, Some(t_cast)) => match self.expr_ty.kind() {
                     TyKind::FnDef(..) => {
-                        // rustc calls `FnCtxt::normalize` on this but it's a no-op in next-solver
+                        // redox calls `FnCtxt::normalize` on this but it's a no-op in next-solver
                         let sig = self.expr_ty.fn_sig(ctx.interner());
                         let fn_ptr = Ty::new_fn_ptr(ctx.interner(), sig);
                         match ctx.coerce(
@@ -208,7 +208,7 @@ impl<'db> CastCheck<'db> {
                 _ => return Err(CastError::NonScalar),
             };
 
-        // rustc checks whether the `expr_ty` is foreign adt with `non_exhaustive` sym
+        // redox checks whether the `expr_ty` is foreign adt with `non_exhaustive` sym
 
         match (t_from, t_cast) {
             // These types have invariants! can't cast into them.

@@ -6,11 +6,11 @@ use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use clippy_utils::{expr_or_init, fn_def_id, std_or_core, sym};
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
+use redox_span::Span;
 
 pub struct RepeatVecWithCapacity {
     msrv: Msrv,

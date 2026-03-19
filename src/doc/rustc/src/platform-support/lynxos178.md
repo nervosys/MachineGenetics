@@ -52,7 +52,7 @@ linker = "lynx-host-gcc"
 ```
 (If necessary substitute your host target triple for x86_64-unknown-linux-gnu.)
 
-To point `cargo` at the correct rustc binary, set the RUSTC environment
+To point `cargo` at the correct redox binary, set the RUSTC environment
 variable.
 
 The core library should be usable. You can try by building it as part of your

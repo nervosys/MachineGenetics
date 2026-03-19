@@ -1,8 +1,8 @@
 //@aux-build:../../ui/auxiliary/proc_macros.rs
 //@revisions: default default_exp ord_within
-//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default
-//@[default_exp] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default_exp
-//@[ord_within] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_within
+//@[default] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default
+//@[default_exp] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default_exp
+//@[ord_within] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_within
 
 #![allow(dead_code)]
 #![warn(clippy::arbitrary_source_item_ordering)]

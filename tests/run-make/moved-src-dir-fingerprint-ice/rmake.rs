@@ -1,5 +1,5 @@
 // A SourceFile created during compilation may have a relative
-// path (e.g. if rustc itself is invoked with a relative path).
+// path (e.g. if redox itself is invoked with a relative path).
 // When we write out crate metadata, we convert all relative paths
 // to absolute paths using the current working directory.
 // However, the working directory was previously not included in the crate hash.
@@ -14,7 +14,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{rfs, rust_lib_name, rustc};
+use run_make_support::{rfs, rust_lib_name, redox};
 
 fn main() {
     rfs::create_dir("incr");
@@ -24,12 +24,12 @@ fn main() {
     rfs::rename("main.rs", "first_src/main.rs");
     // Build from "first_src"
     std::env::set_current_dir("first_src").unwrap();
-    rustc().input("my_lib.rs").incremental("incr").crate_type("lib").run();
-    rustc().input("main.rs").incremental("incr").extern_("my_lib", rust_lib_name("my_lib")).run();
+    redox().input("my_lib.rs").incremental("incr").crate_type("lib").run();
+    redox().input("main.rs").incremental("incr").extern_("my_lib", rust_lib_name("my_lib")).run();
     std::env::set_current_dir("..").unwrap();
     rfs::rename("first_src", "second_src");
     std::env::set_current_dir("second_src").unwrap();
     // Build from "second_src" - the output and incremental directory remain identical
-    rustc().input("my_lib.rs").incremental("incr").crate_type("lib").run();
-    rustc().input("main.rs").incremental("incr").extern_("my_lib", rust_lib_name("my_lib")).run();
+    redox().input("my_lib.rs").incremental("incr").crate_type("lib").run();
+    redox().input("main.rs").incremental("incr").extern_("my_lib", rust_lib_name("my_lib")).run();
 }

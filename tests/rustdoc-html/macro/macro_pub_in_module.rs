@@ -3,7 +3,7 @@
 //@ build-aux-docs
 
 //! See issue #74355
-#![feature(decl_macro, no_core, rustc_attrs)]
+#![feature(decl_macro, no_core, redox_attrs)]
 #![crate_name = "krate"]
 #![no_core]
 
@@ -20,20 +20,20 @@ pub mod inner {
     //@ !has krate/macro.test.html
     //@ !has krate/inner/macro.test.html
     //@ !has krate/attr.test.html
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro test($item:item) {}
 
     //@ has krate/inner/derive.Clone.html
     //@ !has krate/inner/macro.Clone.html
     //@ !has krate/macro.Clone.html
     //@ !has krate/derive.Clone.html
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro Clone($item:item) {}
 
     // Make sure the logic is not affected by re-exports.
     mod unrenamed {
         //@ !has krate/macro.unrenamed.html
-        #[rustc_macro_transparency = "semiopaque"]
+        #[redox_macro_transparency = "semiopaque"]
         pub macro unrenamed() {}
     }
     //@ has krate/inner/macro.unrenamed.html

@@ -29,22 +29,22 @@
 //
 //     let _ = repro!(b + c);
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_ast;
-extern crate rustc_ast_pretty;
-extern crate rustc_parse;
-extern crate rustc_session;
-extern crate rustc_span;
+extern crate redox_ast;
+extern crate redox_ast_pretty;
+extern crate redox_parse;
+extern crate redox_session;
+extern crate redox_span;
 
 use std::mem;
 use std::process::ExitCode;
 
 use parser::parse_expr;
-use rustc_ast::ast::{Expr, ExprKind};
-use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast_pretty::pprust;
-use rustc_session::parse::ParseSess;
+use redox_ast::ast::{Expr, ExprKind};
+use redox_ast::mut_visit::{self, MutVisitor};
+use redox_ast_pretty::pprust;
+use redox_session::parse::ParseSess;
 
 // Every parenthesis in the following expressions is re-inserted by the
 // pretty-printer.
@@ -195,7 +195,7 @@ fn main() -> ExitCode {
         );
     };
 
-    rustc_span::create_default_session_globals_then(|| {
+    redox_span::create_default_session_globals_then(|| {
         let psess = &ParseSess::new();
 
         for &source_code in EXPRS {

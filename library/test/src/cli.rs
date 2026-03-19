@@ -315,7 +315,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
 }
 
 fn is_nightly() -> bool {
-    // Whether the current rustc version should allow unstable features
+    // Whether the current redox version should allow unstable features
     let enable_unstable_features = cfg!(enable_unstable_features);
 
     // The runtime override for unstable features

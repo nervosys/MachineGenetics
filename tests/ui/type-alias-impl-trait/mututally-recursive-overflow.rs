@@ -2,17 +2,17 @@
 //@ build-fail
 //~^^ ERROR overflow evaluating the requirement `<() as B>::Assoc == _`
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(impl_trait_in_assoc_type)]
 
-#[rustc_coinductive]
+#[redox_coinductive]
 trait A {
     type Assoc;
 
     fn test() -> Self::Assoc;
 }
 
-#[rustc_coinductive]
+#[redox_coinductive]
 trait B {
     type Assoc;
 

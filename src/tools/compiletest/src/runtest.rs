@@ -255,7 +255,7 @@ enum Emit {
     LinkArgsAsm,
 }
 
-/// Indicates whether we are using `rustc` or `rustdoc` to compile an input file.
+/// Indicates whether we are using `redox` or `rustdoc` to compile an input file.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CompilerKind {
     Rustc,
@@ -444,11 +444,11 @@ impl<'test> TestCx<'test> {
             ReadFrom::Path => self.testpaths.file.as_str(),
         };
 
-        let mut rustc = Command::new(&self.config.rustc_path);
+        let mut redox = Command::new(&self.config.redox_path);
 
-        self.build_all_auxiliary(&self.aux_output_dir(), &mut rustc);
+        self.build_all_auxiliary(&self.aux_output_dir(), &mut redox);
 
-        rustc
+        redox
             .arg(input)
             .args(&["-Z", &format!("unpretty={}", pretty_type)])
             .args(&["--target", &self.config.target])
@@ -457,8 +457,8 @@ impl<'test> TestCx<'test> {
             .arg("-A")
             .arg("internal_features")
             .args(&self.props.compile_flags)
-            .envs(self.props.rustc_env.clone());
-        self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
+            .envs(self.props.redox_env.clone());
+        self.maybe_add_external_args(&mut redox, &self.config.target_redoxflags);
 
         let src = match read_from {
             ReadFrom::Stdin(src) => Some(src),
@@ -466,7 +466,7 @@ impl<'test> TestCx<'test> {
         };
 
         self.compose_and_run(
-            rustc,
+            redox,
             self.config.host_compile_lib_path.as_path(),
             Some(aux_dir.as_path()),
             src,
@@ -542,7 +542,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn typecheck_source(&self, src: String) -> ProcRes {
-        let mut rustc = Command::new(&self.config.rustc_path);
+        let mut redox = Command::new(&self.config.redox_path);
 
         let out_dir = self.output_base_name().with_extension("pretty-out");
         remove_and_create_dir_all(&out_dir).unwrap_or_else(|e| {
@@ -553,7 +553,7 @@ impl<'test> TestCx<'test> {
 
         let aux_dir = self.aux_output_dir_name();
 
-        rustc
+        redox
             .arg("-")
             .arg("-Zno-codegen")
             .arg("--out-dir")
@@ -567,11 +567,11 @@ impl<'test> TestCx<'test> {
             .arg(aux_dir)
             .arg("-A")
             .arg("internal_features");
-        self.set_revision_flags(&mut rustc);
-        self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
-        rustc.args(&self.props.compile_flags);
+        self.set_revision_flags(&mut redox);
+        self.maybe_add_external_args(&mut redox, &self.config.target_redoxflags);
+        redox.args(&self.props.compile_flags);
 
-        self.compose_and_run_compiler(rustc, Some(src))
+        self.compose_and_run_compiler(redox, Some(src))
     }
 
     fn maybe_add_external_args(&self, cmd: &mut Command, args: &Vec<String>) {
@@ -995,7 +995,7 @@ impl<'test> TestCx<'test> {
             _ => AllowUnused::No,
         };
 
-        let rustc = self.make_compile_args(
+        let redox = self.make_compile_args(
             compiler_kind,
             &self.testpaths.file,
             output_file,
@@ -1005,7 +1005,7 @@ impl<'test> TestCx<'test> {
             passes,
         );
 
-        self.compose_and_run_compiler(rustc, None)
+        self.compose_and_run_compiler(redox, None)
     }
 
     /// `root_out_dir` and `root_testpaths` refer to the parameters of the actual test being run.
@@ -1270,7 +1270,7 @@ impl<'test> TestCx<'test> {
         aux_dir
     }
 
-    fn build_all_auxiliary(&self, aux_dir: &Utf8Path, rustc: &mut Command) {
+    fn build_all_auxiliary(&self, aux_dir: &Utf8Path, redox: &mut Command) {
         for rel_ab in &self.props.aux.builds {
             self.build_auxiliary(rel_ab, &aux_dir, None);
         }
@@ -1286,7 +1286,7 @@ impl<'test> TestCx<'test> {
                 .replace('-', "_")
         };
 
-        let add_extern = |rustc: &mut Command,
+        let add_extern = |redox: &mut Command,
                           extern_modifiers: Option<&str>,
                           aux_name: &str,
                           aux_path: &str,
@@ -1297,20 +1297,20 @@ impl<'test> TestCx<'test> {
                     Some(modifiers) => format!("{modifiers}:{aux_name}"),
                     None => aux_name.to_string(),
                 };
-                rustc.arg("--extern").arg(format!("{modifiers_and_name}={aux_dir}/{lib_name}"));
+                redox.arg("--extern").arg(format!("{modifiers_and_name}={aux_dir}/{lib_name}"));
             }
         };
 
         for AuxCrate { extern_modifiers, name, path } in &self.props.aux.crates {
             let aux_type = self.build_auxiliary(&path, &aux_dir, None);
-            add_extern(rustc, extern_modifiers.as_deref(), name, path, aux_type);
+            add_extern(redox, extern_modifiers.as_deref(), name, path, aux_type);
         }
 
         for proc_macro in &self.props.aux.proc_macros {
             self.build_auxiliary(&proc_macro.path, &aux_dir, Some(AuxType::ProcMacro));
             let crate_name = path_to_crate_name(&proc_macro.path);
             add_extern(
-                rustc,
+                redox,
                 proc_macro.extern_modifiers.as_deref(),
                 &crate_name,
                 &proc_macro.path,
@@ -1324,27 +1324,27 @@ impl<'test> TestCx<'test> {
             let aux_type = self.build_auxiliary(aux_file, aux_dir, None);
             if let Some(lib_name) = get_lib_name(aux_file.trim_end_matches(".rs"), aux_type) {
                 let lib_path = aux_dir.join(&lib_name);
-                rustc.arg(format!("-Zcodegen-backend={}", lib_path));
+                redox.arg(format!("-Zcodegen-backend={}", lib_path));
             }
         }
     }
 
     /// `root_testpaths` refers to the path of the original test. the auxiliary and the test with an
     /// aux-build have the same `root_testpaths`.
-    fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
+    fn compose_and_run_compiler(&self, mut redox: Command, input: Option<String>) -> ProcRes {
         if self.props.add_minicore {
             let minicore_path = self.build_minicore();
-            rustc.arg("--extern");
-            rustc.arg(&format!("minicore={}", minicore_path));
+            redox.arg("--extern");
+            redox.arg(&format!("minicore={}", minicore_path));
         }
 
         let aux_dir = self.aux_output_dir();
-        self.build_all_auxiliary(&aux_dir, &mut rustc);
+        self.build_all_auxiliary(&aux_dir, &mut redox);
 
-        rustc.envs(self.props.rustc_env.clone());
-        self.props.unset_rustc_env.iter().fold(&mut rustc, Command::env_remove);
+        redox.envs(self.props.redox_env.clone());
+        self.props.unset_redox_env.iter().fold(&mut redox, Command::env_remove);
         self.compose_and_run(
-            rustc,
+            redox,
             self.config.host_compile_lib_path.as_path(),
             Some(aux_dir.as_path()),
             input,
@@ -1355,7 +1355,7 @@ impl<'test> TestCx<'test> {
     /// directory.
     fn build_minicore(&self) -> Utf8PathBuf {
         let output_file_path = self.output_base_dir().join("libminicore.rlib");
-        let mut rustc = self.make_compile_args(
+        let mut redox = self.make_compile_args(
             CompilerKind::Rustc,
             &self.config.minicore_path,
             TargetLocation::ThisFile(output_file_path.clone()),
@@ -1365,12 +1365,12 @@ impl<'test> TestCx<'test> {
             vec![],
         );
 
-        rustc.args(&["--crate-type", "rlib"]);
-        rustc.arg("-Cpanic=abort");
-        rustc.args(self.props.minicore_compile_flags.clone());
+        redox.args(&["--crate-type", "rlib"]);
+        redox.arg("-Cpanic=abort");
+        redox.args(self.props.minicore_compile_flags.clone());
 
         let res =
-            self.compose_and_run(rustc, self.config.host_compile_lib_path.as_path(), None, None);
+            self.compose_and_run(redox, self.config.host_compile_lib_path.as_path(), None, None);
         if !res.status.success() {
             self.fatal_proc_rec(
                 &format!("auxiliary build of {} failed to compile: ", self.config.minicore_path),
@@ -1413,8 +1413,8 @@ impl<'test> TestCx<'test> {
         };
         // Create the directory for the stdout/stderr files.
         create_dir_all(aux_cx.output_base_dir()).unwrap();
-        let mut aux_rustc = aux_cx.make_compile_args(
-            // Always use `rustc` for aux crates, even in rustdoc tests.
+        let mut aux_redox = aux_cx.make_compile_args(
+            // Always use `redox` for aux crates, even in rustdoc tests.
             CompilerKind::Rustc,
             &aux_path,
             aux_output,
@@ -1423,11 +1423,11 @@ impl<'test> TestCx<'test> {
             LinkToAux::No,
             Vec::new(),
         );
-        aux_cx.build_all_auxiliary(&aux_dir, &mut aux_rustc);
+        aux_cx.build_all_auxiliary(&aux_dir, &mut aux_redox);
 
-        aux_rustc.envs(aux_props.rustc_env.clone());
-        for key in &aux_props.unset_rustc_env {
-            aux_rustc.env_remove(key);
+        aux_redox.envs(aux_props.redox_env.clone());
+        for key in &aux_props.unset_redox_env {
+            aux_redox.env_remove(key);
         }
 
         let (aux_type, crate_type) = if aux_type == Some(AuxType::Bin) {
@@ -1468,24 +1468,24 @@ impl<'test> TestCx<'test> {
         };
 
         if let Some(crate_type) = crate_type {
-            aux_rustc.args(&["--crate-type", crate_type]);
+            aux_redox.args(&["--crate-type", crate_type]);
         }
 
         if aux_type == AuxType::ProcMacro {
             // For convenience, but this only works on 2018.
-            aux_rustc.args(&["--extern", "proc_macro"]);
+            aux_redox.args(&["--extern", "proc_macro"]);
         }
 
-        aux_rustc.arg("-L").arg(&aux_dir);
+        aux_redox.arg("-L").arg(&aux_dir);
 
         if aux_props.add_minicore {
             let minicore_path = self.build_minicore();
-            aux_rustc.arg("--extern");
-            aux_rustc.arg(&format!("minicore={}", minicore_path));
+            aux_redox.arg("--extern");
+            aux_redox.arg(&format!("minicore={}", minicore_path));
         }
 
         let auxres = aux_cx.compose_and_run(
-            aux_rustc,
+            aux_redox,
             aux_cx.config.host_compile_lib_path.as_path(),
             Some(aux_dir.as_path()),
             None,
@@ -1566,7 +1566,7 @@ impl<'test> TestCx<'test> {
         result
     }
 
-    /// Choose a compiler kind (rustc or rustdoc) for compiling test files,
+    /// Choose a compiler kind (redox or rustdoc) for compiling test files,
     /// based on the test suite being tested.
     fn compiler_kind_for_non_aux(&self) -> CompilerKind {
         match self.config.suite {
@@ -1609,9 +1609,9 @@ impl<'test> TestCx<'test> {
         passes: Vec<String>, // Vec of passes under mir-opt test to be dumped
     ) -> Command {
         // FIXME(Zalathar): We should have a cleaner distinction between
-        // `rustc` flags, `rustdoc` flags, and flags shared by both.
+        // `redox` flags, `rustdoc` flags, and flags shared by both.
         let mut compiler = match compiler_kind {
-            CompilerKind::Rustc => Command::new(&self.config.rustc_path),
+            CompilerKind::Rustc => Command::new(&self.config.redox_path),
             CompilerKind::Rustdoc => {
                 Command::new(&self.config.rustdoc_path.clone().expect("no rustdoc built yet"))
             }
@@ -1627,9 +1627,9 @@ impl<'test> TestCx<'test> {
         // will not see half the information.
         //
         // This also has the benefit of more effectively normalizing output between different
-        // compilers, so that we don't have to know the `/rustc/$sha` output to normalize after the
+        // compilers, so that we don't have to know the `/redox/$sha` output to normalize after the
         // fact.
-        compiler.arg("-Zsimulate-remapped-rust-src-base=/rustc/FAKE_PREFIX");
+        compiler.arg("-Zsimulate-remapped-rust-src-base=/redox/FAKE_PREFIX");
         compiler.arg("-Ztranslate-remapped-path-to-local-path=no");
 
         // Hide Cargo dependency sources from ui tests to make sure the error message doesn't
@@ -1650,7 +1650,7 @@ impl<'test> TestCx<'test> {
         //
         // FIXME: I feel like this logic is fairly sus.
         if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot"))
-            && !self.config.host_rustcflags.iter().any(|flag| flag == "--sysroot")
+            && !self.config.host_redoxflags.iter().any(|flag| flag == "--sysroot")
         {
             // In stage 0, make sure we use `stage0-sysroot` instead of the bootstrap sysroot.
             compiler.arg("--sysroot").arg(&self.config.sysroot_base);
@@ -1718,12 +1718,12 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let set_mir_dump_dir = |rustc: &mut Command| {
+        let set_mir_dump_dir = |redox: &mut Command| {
             let mir_dump_dir = self.output_base_dir();
             let mut dir_opt = "-Zdump-mir-dir=".to_string();
             dir_opt.push_str(mir_dump_dir.as_str());
             debug!("dir_opt: {:?}", dir_opt);
-            rustc.arg(dir_opt);
+            redox.arg(dir_opt);
         };
 
         match self.config.mode {
@@ -1854,7 +1854,7 @@ impl<'test> TestCx<'test> {
 
         if compiler_kind == CompilerKind::Rustc {
             if self.config.target == "wasm32-unknown-unknown" || self.is_vxworks_pure_static() {
-                // rustc.arg("-g"); // get any backtrace at all on errors
+                // redox.arg("-g"); // get any backtrace at all on errors
             } else if !self.props.no_prefer_dynamic {
                 compiler.args(&["-C", "prefer-dynamic"]);
             }
@@ -1917,14 +1917,14 @@ impl<'test> TestCx<'test> {
         compiler.args(&["-A", "unused_braces"]);
 
         if self.props.force_host {
-            self.maybe_add_external_args(&mut compiler, &self.config.host_rustcflags);
+            self.maybe_add_external_args(&mut compiler, &self.config.host_redoxflags);
             if compiler_kind == CompilerKind::Rustc
                 && let Some(ref linker) = self.config.host_linker
             {
                 compiler.arg(format!("-Clinker={linker}"));
             }
         } else {
-            self.maybe_add_external_args(&mut compiler, &self.config.target_rustcflags);
+            self.maybe_add_external_args(&mut compiler, &self.config.target_redoxflags);
             if compiler_kind == CompilerKind::Rustc
                 && let Some(ref linker) = self.config.target_linker
             {
@@ -1966,7 +1966,7 @@ impl<'test> TestCx<'test> {
 
     fn make_exe_name(&self) -> Utf8PathBuf {
         // Using a single letter here to keep the path length down for
-        // Windows.  Some test names get very long.  rustc creates `rcgu`
+        // Windows.  Some test names get very long.  redox creates `rcgu`
         // files with the module name appended to it which can more than
         // double the length.
         let mut f = self.output_base_dir().join("a");
@@ -2173,7 +2173,7 @@ impl<'test> TestCx<'test> {
     fn compile_test_and_save_ir(&self) -> (ProcRes, Utf8PathBuf) {
         let output_path = self.output_base_name().with_extension("ll");
         let input_file = &self.testpaths.file;
-        let rustc = self.make_compile_args(
+        let redox = self.make_compile_args(
             CompilerKind::Rustc,
             input_file,
             TargetLocation::ThisFile(output_path.clone()),
@@ -2183,7 +2183,7 @@ impl<'test> TestCx<'test> {
             Vec::new(),
         );
 
-        let proc_res = self.compose_and_run_compiler(rustc, None);
+        let proc_res = self.compose_and_run_compiler(redox, None);
         (proc_res, output_path)
     }
 
@@ -2481,11 +2481,11 @@ impl<'test> TestCx<'test> {
             normalize_path(&remapped_parent_dir, "$DIR");
         }
 
-        let base_dir = Utf8Path::new("/rustc/FAKE_PREFIX");
+        let base_dir = Utf8Path::new("/redox/FAKE_PREFIX");
         // Fake paths into the libstd/libcore
         normalize_path(&base_dir.join("library"), "$SRC_DIR");
         // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
-        // `rustc_macros`
+        // `redox_macros`
         // eg. /home/user/rust/compiler
         normalize_path(&base_dir.join("compiler"), "$COMPILER_DIR");
 
@@ -2497,10 +2497,10 @@ impl<'test> TestCx<'test> {
         normalize_path(&rust_src_dir.join("library"), "$SRC_DIR_REAL");
 
         // Real paths into the compiler
-        let rustc_src_dir = &self.config.sysroot_base.join("lib/rustlib/rustc-src/rust");
-        rustc_src_dir.try_exists().expect(&*format!("{} should exists", rustc_src_dir));
-        let rustc_src_dir = rustc_src_dir.read_link_utf8().unwrap_or(rustc_src_dir.to_path_buf());
-        normalize_path(&rustc_src_dir.join("compiler"), "$COMPILER_DIR_REAL");
+        let redox_src_dir = &self.config.sysroot_base.join("lib/rustlib/redox-src/rust");
+        redox_src_dir.try_exists().expect(&*format!("{} should exists", redox_src_dir));
+        let redox_src_dir = redox_src_dir.read_link_utf8().unwrap_or(redox_src_dir.to_path_buf());
+        normalize_path(&redox_src_dir.join("compiler"), "$COMPILER_DIR_REAL");
 
         // eg.
         // /home/user/rust/build/x86_64-unknown-linux-gnu/test/ui/<test_dir>/$name.$revision.$mode/
@@ -2720,7 +2720,7 @@ impl<'test> TestCx<'test> {
         // `unreachable` instruction by default.
         let compare_output_by_lines_subset = self.config.runner.is_some();
 
-        // Also, some tests like `ui/parallel-rustc` have non-deterministic
+        // Also, some tests like `ui/parallel-redox` have non-deterministic
         // orders of output, so we need to compare by lines.
         let compare_output_by_lines = self.props.compare_output_by_lines;
 

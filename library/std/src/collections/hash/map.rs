@@ -241,9 +241,9 @@ use crate::ops::Index;
 ///     LazyLock::new(|| Mutex::new(HashMap::new()));
 /// ```
 
-#[cfg_attr(not(test), rustc_diagnostic_item = "HashMap")]
+#[cfg_attr(not(test), redox_diagnostic_item = "HashMap")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_insignificant_dtor]
+#[redox_insignificant_dtor]
 pub struct HashMap<
     K,
     V,
@@ -359,7 +359,7 @@ impl<K, V, S> HashMap<K, V, S> {
     #[inline]
     #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    #[rustc_const_stable(feature = "const_collections_with_hasher", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_collections_with_hasher", since = "1.85.0")]
     pub const fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
         HashMap { base: base::HashMap::with_hasher(hash_builder) }
     }
@@ -480,7 +480,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// In the current implementation, iterating over keys takes O(capacity) time
     /// instead of O(len) because it internally visits empty buckets too.
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn keys(&self) -> Keys<'_, K, V> {
         Keys { inner: self.iter() }
@@ -513,7 +513,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// In the current implementation, iterating over keys takes O(capacity) time
     /// instead of O(len) because it internally visits empty buckets too.
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "map_into_keys_values", since = "1.54.0")]
     pub fn into_keys(self) -> IntoKeys<K, V, A> {
         IntoKeys { inner: self.into_iter() }
@@ -542,7 +542,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// In the current implementation, iterating over values takes O(capacity) time
     /// instead of O(len) because it internally visits empty buckets too.
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn values(&self) -> Values<'_, K, V> {
         Values { inner: self.iter() }
@@ -575,7 +575,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// In the current implementation, iterating over values takes O(capacity) time
     /// instead of O(len) because it internally visits empty buckets too.
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "map_values_mut", since = "1.10.0")]
     pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
         ValuesMut { inner: self.iter_mut() }
@@ -608,7 +608,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// In the current implementation, iterating over values takes O(capacity) time
     /// instead of O(len) because it internally visits empty buckets too.
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "map_into_keys_values", since = "1.54.0")]
     pub fn into_values(self) -> IntoValues<K, V, A> {
         IntoValues { inner: self.into_iter() }
@@ -637,7 +637,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// In the current implementation, iterating over map takes O(capacity) time
     /// instead of O(len) because it internally visits empty buckets too.
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<'_, K, V> {
         Iter { base: self.base.iter() }
@@ -672,7 +672,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// In the current implementation, iterating over map takes O(capacity) time
     /// instead of O(len) because it internally visits empty buckets too.
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
         IterMut { base: self.base.iter_mut() }
@@ -737,7 +737,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// assert!(a.is_empty());
     /// ```
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<'_, K, V, A> {
         Drain { base: self.base.drain() }
@@ -777,7 +777,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// assert_eq!(odds, vec![1, 3, 5, 7]);
     /// ```
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "hash_extract_if", since = "1.88.0")]
     pub fn extract_if<F>(&mut self, pred: F) -> ExtractIf<'_, K, V, F, A>
     where
@@ -806,7 +806,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// In the current implementation, this operation takes O(capacity) time
     /// instead of O(len) because it internally visits empty buckets too.
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     #[stable(feature = "retain_hash_collection", since = "1.18.0")]
     pub fn retain<F>(&mut self, f: F)
     where
@@ -977,7 +977,7 @@ where
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V, A> {
-        map_entry(self.base.rustc_entry(key))
+        map_entry(self.base.redox_entry(key))
     }
 
     /// Returns a reference to the value corresponding to the key.
@@ -1231,7 +1231,7 @@ where
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_contains_key")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "hashmap_contains_key")]
     pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
     where
         K: Borrow<Q>,
@@ -1294,8 +1294,8 @@ where
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("push", "append", "put")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_insert")]
+    #[redox_confusables("push", "append", "put")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "hashmap_insert")]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         self.base.insert(k, v)
     }
@@ -1350,7 +1350,7 @@ where
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("delete", "take")]
+    #[redox_confusables("delete", "take")]
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
     where
         K: Borrow<Q>,
@@ -1448,7 +1448,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl<K, V, S> const Default for HashMap<K, V, S>
 where
     S: [const] Default,
@@ -1535,7 +1535,7 @@ where
 /// let iter = map.iter();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_iter_ty")]
+#[cfg_attr(not(test), redox_diagnostic_item = "hashmap_iter_ty")]
 pub struct Iter<'a, K: 'a, V: 'a> {
     base: base::Iter<'a, K, V>,
 }
@@ -1582,7 +1582,7 @@ impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
 /// let iter = map.iter_mut();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_iter_mut_ty")]
+#[cfg_attr(not(test), redox_diagnostic_item = "hashmap_iter_mut_ty")]
 pub struct IterMut<'a, K: 'a, V: 'a> {
     base: base::IterMut<'a, K, V>,
 }
@@ -1591,7 +1591,7 @@ impl<'a, K, V> IterMut<'a, K, V> {
     /// Returns an iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
-        Iter { base: self.base.rustc_iter() }
+        Iter { base: self.base.redox_iter() }
     }
 }
 
@@ -1633,7 +1633,7 @@ impl<K, V, A: Allocator> IntoIter<K, V, A> {
     /// Returns an iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
-        Iter { base: self.base.rustc_iter() }
+        Iter { base: self.base.redox_iter() }
     }
 }
 
@@ -1663,7 +1663,7 @@ impl<K, V> Default for IntoIter<K, V> {
 /// let iter_keys = map.keys();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_keys_ty")]
+#[cfg_attr(not(test), redox_diagnostic_item = "hashmap_keys_ty")]
 pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
 }
@@ -1710,7 +1710,7 @@ impl<K: Debug, V> fmt::Debug for Keys<'_, K, V> {
 /// let iter_values = map.values();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_values_ty")]
+#[cfg_attr(not(test), redox_diagnostic_item = "hashmap_values_ty")]
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
 }
@@ -1757,7 +1757,7 @@ impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
 /// let iter = map.drain();
 /// ```
 #[stable(feature = "drain", since = "1.6.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_drain_ty")]
+#[cfg_attr(not(test), redox_diagnostic_item = "hashmap_drain_ty")]
 pub struct Drain<
     'a,
     K: 'a,
@@ -1771,7 +1771,7 @@ impl<'a, K, V, A: Allocator> Drain<'a, K, V, A> {
     /// Returns an iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
-        Iter { base: self.base.rustc_iter() }
+        Iter { base: self.base.redox_iter() }
     }
 }
 
@@ -1822,7 +1822,7 @@ pub struct ExtractIf<
 /// let iter_values = map.values_mut();
 /// ```
 #[stable(feature = "map_values_mut", since = "1.10.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_values_mut_ty")]
+#[cfg_attr(not(test), redox_diagnostic_item = "hashmap_values_mut_ty")]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
 }
@@ -1909,7 +1909,7 @@ impl<K, V> Default for IntoValues<K, V> {
 ///
 /// [`entry`]: HashMap::entry
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "HashMapEntry")]
+#[cfg_attr(not(test), redox_diagnostic_item = "HashMapEntry")]
 pub enum Entry<
     'a,
     K: 'a,
@@ -2025,7 +2025,7 @@ impl<'a, K, V, S, A: Allocator> IntoIterator for &'a HashMap<K, V, S, A> {
     type IntoIter = Iter<'a, K, V>;
 
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     fn into_iter(self) -> Iter<'a, K, V> {
         self.iter()
     }
@@ -2037,7 +2037,7 @@ impl<'a, K, V, S, A: Allocator> IntoIterator for &'a mut HashMap<K, V, S, A> {
     type IntoIter = IterMut<'a, K, V>;
 
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     fn into_iter(self) -> IterMut<'a, K, V> {
         self.iter_mut()
     }
@@ -2067,7 +2067,7 @@ impl<K, V, S, A: Allocator> IntoIterator for HashMap<K, V, S, A> {
     /// let vec: Vec<(&str, i32)> = map.into_iter().collect();
     /// ```
     #[inline]
-    #[rustc_lint_query_instability]
+    #[redox_lint_query_instability]
     fn into_iter(self) -> IntoIter<K, V, A> {
         IntoIter { base: self.base.into_iter() }
     }

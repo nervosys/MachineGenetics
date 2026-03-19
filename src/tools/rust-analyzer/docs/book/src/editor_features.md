@@ -165,7 +165,7 @@ If needed, you can set different values for different platforms:
 ### Compiler feedback from external commands
 
 Instead of relying on the built-in `cargo check`, you can configure Code
-to run a command in the background and use the `$rustc-watch` problem
+to run a command in the background and use the `$redox-watch` problem
 matcher to generate inline error markers from its output.
 
 To do this you need to create a new [VS Code
@@ -182,7 +182,7 @@ add the following to `.vscode/tasks.json`:
     "group": "build",
     "type": "shell",
     "command": "cargo watch",
-    "problemMatcher": "$rustc-watch",
+    "problemMatcher": "$redox-watch",
     "isBackground": true
 }
 ```

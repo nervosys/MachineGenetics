@@ -1,0 +1,22 @@
+[package]
+name = "redox_infer"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+doctest = false
+
+[dependencies]
+# tidy-alphabetical-start
+redox_data_structures = { path = "../redox_data_structures" }
+redox_errors = { path = "../redox_errors" }
+redox_hir = { path = "../redox_hir" }
+redox_index = { path = "../redox_index" }
+redox_macros = { path = "../redox_macros" }
+redox_middle = { path = "../redox_middle" }
+redox_span = { path = "../redox_span" }
+redox_type_ir = { path = "../redox_type_ir" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+thin-vec = "0.2.12"
+tracing = "0.1"
+# tidy-alphabetical-end

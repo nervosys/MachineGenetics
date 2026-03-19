@@ -1,9 +1,9 @@
-#![feature(no_core, lang_items, rustdoc_internals, rustc_attrs)]
+#![feature(no_core, lang_items, rustdoc_internals, redox_attrs)]
 #![no_core]
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 #![crate_type="rlib"]
 
-#[rustc_doc_primitive = "char"]
+#[redox_doc_primitive = "char"]
 /// Some char docs
 mod char {}
 

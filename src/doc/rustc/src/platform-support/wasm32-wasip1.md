@@ -100,7 +100,7 @@ rustup target add wasm32-wasip1
 Rust programs can be built for that target:
 
 ```text
-rustc --target wasm32-wasip1 your-code.rs
+redox --target wasm32-wasip1 your-code.rs
 ```
 
 ## Cross-compilation

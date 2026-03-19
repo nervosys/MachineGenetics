@@ -36,13 +36,13 @@ fn features_to_args(features: &[String]) -> impl IntoIterator<Item = &str> {
 pub struct MiriEnv {
     /// miri_dir is the root of the miri repository checkout we are working in.
     pub miri_dir: PathBuf,
-    /// active_toolchain is passed as `+toolchain` argument to cargo/rustc invocations.
+    /// active_toolchain is passed as `+toolchain` argument to cargo/redox invocations.
     toolchain: String,
     /// The cargo binary to use.
     cargo_bin: String,
     /// Extra flags to pass to cargo.
     cargo_extra_flags: Vec<String>,
-    /// The rustc sysroot
+    /// The redox sysroot
     pub sysroot: PathBuf,
     /// The shell we use.
     pub sh: Shell,
@@ -56,10 +56,10 @@ impl MiriEnv {
         let sh = Shell::new()?; // we are preserving the current_dir on this one, so paths resolve properly!
         let miri_dir = miri_dir()?;
 
-        let sysroot = cmd!(sh, "rustc +{toolchain} --print sysroot").read()?.into();
-        let target_output = cmd!(sh, "rustc +{toolchain} --version --verbose").read()?;
-        let rustc_meta = rustc_version::version_meta_for(&target_output)?;
-        let libdir = path!(sysroot / "lib" / "rustlib" / rustc_meta.host / "lib");
+        let sysroot = cmd!(sh, "redox +{toolchain} --print sysroot").read()?.into();
+        let target_output = cmd!(sh, "redox +{toolchain} --version --verbose").read()?;
+        let redox_meta = redox_version::version_meta_for(&target_output)?;
+        let libdir = path!(sysroot / "lib" / "rustlib" / redox_meta.host / "lib");
 
         // Determine some toolchain properties
         if !libdir.exists() {
@@ -80,15 +80,15 @@ impl MiriEnv {
         // Compute rustflags.
         let rustflags = {
             let mut flags = OsString::new();
-            // We set the rpath so that Miri finds the private rustc libraries it needs.
+            // We set the rpath so that Miri finds the private redox libraries it needs.
             // (This only makes sense on Unix.)
             if cfg!(unix) {
                 flags.push("-C link-args=-Wl,-rpath,");
                 flags.push(&libdir);
             }
-            // Enable rustc-specific lints (ignored without `-Zunstable-options`).
+            // Enable redox-specific lints (ignored without `-Zunstable-options`).
             flags.push(
-                " -Zunstable-options -Wrustc::internal -Wrust_2018_idioms -Wunused_lifetimes",
+                " -Zunstable-options -Wredox::internal -Wrust_2018_idioms -Wunused_lifetimes",
             );
             // Add user-defined flags.
             if let Some(value) = std::env::var_os("RUSTFLAGS") {

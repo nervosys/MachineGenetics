@@ -8,10 +8,10 @@
 // of the test where the flags are defined in the rust file itself.
 // See https://github.com/rust-lang/rust/issues/99427
 
-use run_make_support::{regex, rustc};
+use run_make_support::{regex, redox};
 
 fn main() {
-    let out = rustc()
+    let out = redox()
         .input("empty.rs")
         .arg("-Zunstable-options")
         .arg("-lstatic=l1")
@@ -23,7 +23,7 @@ fn main() {
         .print("link-args")
         .run_unchecked()
         .stdout_utf8();
-    let out2 = rustc().input("attribute.rs").print("link-args").run_unchecked().stdout_utf8();
+    let out2 = redox().input("attribute.rs").print("link-args").run_unchecked().stdout_utf8();
     let re = regex::Regex::new("l1.*a1.*l2.*a2.*d1.*a3").unwrap();
     assert!(re.is_match(&out));
     assert!(re.is_match(&out2));

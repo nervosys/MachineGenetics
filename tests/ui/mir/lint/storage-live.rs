@@ -1,11 +1,11 @@
 //@ compile-flags: -Zlint-mir -Ztreat-err-as-bug
 //@ failure-status: 101
 //@ normalize-stderr: "note: .*\n\n" -> ""
-//@ normalize-stderr: "thread 'rustc'.*panicked.*\n" -> ""
+//@ normalize-stderr: "thread 'redox'.*panicked.*\n" -> ""
 //@ normalize-stderr: "storage_live\[....\]" -> "storage_live[HASH]"
 //@ normalize-stderr: "(delayed at [^:]+):\d+:\d+ - " -> "$1:LL:CC - "
-//@ normalize-stderr: "/rustc(?:-dev)?/[a-z0-9.]+/" -> ""
-//@ rustc-env:RUST_BACKTRACE=0
+//@ normalize-stderr: "/redox(?:-dev)?/[a-z0-9.]+/" -> ""
+//@ redox-env:RUST_BACKTRACE=0
 
 #![feature(custom_mir, core_intrinsics)]
 

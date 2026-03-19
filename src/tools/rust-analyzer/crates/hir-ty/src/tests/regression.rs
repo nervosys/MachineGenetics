@@ -198,7 +198,7 @@ fn infer_std_crash_2() {
 
 #[test]
 fn infer_std_crash_3() {
-    // taken from rustc
+    // taken from redox
     check_infer(
         r#"
         pub fn compute() {
@@ -222,7 +222,7 @@ fn infer_std_crash_3() {
 
 #[test]
 fn infer_std_crash_4() {
-    // taken from rustc
+    // taken from redox
     check_infer(
         r#"
         pub fn primitive_type() {
@@ -246,7 +246,7 @@ fn infer_std_crash_4() {
 
 #[test]
 fn infer_std_crash_5() {
-    // taken from rustc
+    // taken from redox
     check_infer(
         r#"
         //- minicore: iterator
@@ -306,7 +306,7 @@ fn infer_std_crash_5() {
 
 #[test]
 fn infer_nested_generics_crash() {
-    // another crash found typechecking rustc
+    // another crash found typechecking redox
     check_infer(
         r#"
         struct Canonical<V> {
@@ -1933,7 +1933,7 @@ fn test() {
 }
 
 #[test]
-fn rustc_test_issue_52437() {
+fn redox_test_issue_52437() {
     check_types(
         r#"
     //- minicore: sized

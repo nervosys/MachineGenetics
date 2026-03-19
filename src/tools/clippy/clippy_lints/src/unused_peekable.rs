@@ -2,12 +2,12 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::ty::peel_and_count_ty_refs;
 use clippy_utils::{fn_def_id, peel_ref_operators, sym};
-use rustc_ast::Mutability;
-use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{Block, Expr, ExprKind, HirId, LetStmt, Node, PatKind, PathSegment, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::nested_filter::OnlyBodies;
-use rustc_session::declare_lint_pass;
+use redox_ast::Mutability;
+use redox_hir::intravisit::{Visitor, walk_expr};
+use redox_hir::{Block, Expr, ExprKind, HirId, LetStmt, Node, PatKind, PathSegment, StmtKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::hir::nested_filter::OnlyBodies;
+use redox_session::declare_lint_pass;
 use std::ops::ControlFlow;
 
 declare_clippy_lint! {

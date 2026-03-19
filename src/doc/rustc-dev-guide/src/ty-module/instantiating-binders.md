@@ -47,7 +47,7 @@ The `Universe` tracks which binder the placeholder originated from, and the `Bou
 Equality of placeholders is determined solely by whether the universes are equal and the `BoundVar`s are equal.
 See the [chapter on Placeholders and Universes][ch_placeholders_universes] for more information.
 
-When talking with other rustc devs or seeing `Debug` formatted `Ty`/`Const`/`Region`s, `Placeholder` will often be written as `'!UNIVERSE_BOUNDVARS`.
+When talking with other redox devs or seeing `Debug` formatted `Ty`/`Const`/`Region`s, `Placeholder` will often be written as `'!UNIVERSE_BOUNDVARS`.
 For example, given some type `for<'a> fn(&'a u32, for<'b> fn(&'b &'a u32))`,
 after instantiating both binders (assuming the `Universe` in the current `InferCtxt` was `U0` beforehand),
 the type of `&'b &'a u32` would be represented as `&'!2_0 &!1_0 u32`.
@@ -85,7 +85,7 @@ where
 Given these trait implementations, `u32: Bar` should _not_ hold.
 `&'a u32` only implements `Other<'a>` when the lifetime of the borrow and the lifetime on the trait are equal.
 However, if we only used `ReBound` and did not have placeholders, it may be easy to accidentally believe that trait bound does hold.
-To explain this, let's walk through an example of trying to prove `u32: Bar` in a world where rustc did not have placeholders:
+To explain this, let's walk through an example of trying to prove `u32: Bar` in a world where redox did not have placeholders:
 - We start by trying to prove `u32: Bar`
 - We find the `impl<T> Bar for T` impl, we would wind up instantiating the `EarlyBinder` with `u32` (note: this is not _quite_ accurate as we first instantiate the binder with an inference variable that we then infer to be `u32` but that distinction is not super important here)
 - There is a where clause `for<'a> &'^0 T: Trait` on the impl, as we instantiated the early binder with `u32` we actually have to prove `for<'a> &'^0 u32: Trait`
@@ -166,15 +166,15 @@ That makes this operation the `Binder` equivalent to `EarlyBinder`'s `instantiat
 As a concrete example, accessing the signature of a function we are type checking will be represented as `EarlyBinder<Binder<FnSig>>`.
 As we are already "inside" of these binders, we would call `instantiate_identity` followed by `liberate_late_bound_regions`.
 
-[`liberate_late_bound_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.liberate_late_bound_regions
+[`liberate_late_bound_regions`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.liberate_late_bound_regions
 [representing-types]: param-ty-const-regions.md
-[`BoundRegionKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.BoundRegionKind.html
-[`enter_forall`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/struct.InferCtxt.html#method.enter_forall
+[`BoundRegionKind`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.BoundRegionKind.html
+[`enter_forall`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/infer/struct.InferCtxt.html#method.enter_forall
 [ch_placeholders_universes]: ../borrow-check/region-inference/placeholders-and-universes.md
-[`instantiate_binder_with_fresh_vars`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/struct.InferCtxt.html#method.instantiate_binder_with_fresh_vars
-[`InferCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/struct.InferCtxt.html
-[`EarlyBinder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.EarlyBinder.html
-[`Binder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.Binder.html
-[`Placeholder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Placeholder.html
-[`Universe`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.UniverseIndex.html
-[`BoundVar`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.BoundVar.html
+[`instantiate_binder_with_fresh_vars`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/infer/struct.InferCtxt.html#method.instantiate_binder_with_fresh_vars
+[`InferCtxt`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/infer/struct.InferCtxt.html
+[`EarlyBinder`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.EarlyBinder.html
+[`Binder`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.Binder.html
+[`Placeholder`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Placeholder.html
+[`Universe`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.UniverseIndex.html
+[`BoundVar`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.BoundVar.html

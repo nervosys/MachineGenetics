@@ -4,10 +4,10 @@ thread_local! {
     //~| ERROR: `#[used(linker)]` is currently unstable [E0658]
     //~| ERROR: `#[used]` attribute cannot be used on constants
 
-    #[rustc_dummy = 17]
+    #[redox_dummy = 17]
     pub static FOO: () = ();
 
-    #[cfg_attr(true, rustc_dummy = 17)]
+    #[cfg_attr(true, redox_dummy = 17)]
     pub static BAR: () = ();
 
     #[used(linker)]

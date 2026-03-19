@@ -227,7 +227,7 @@ pub use thin::ThinBox;
 #[lang = "owned_box"]
 #[fundamental]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_insignificant_dtor]
+#[redox_insignificant_dtor]
 #[doc(search_unbox)]
 // The declaration of the `Box` struct must be kept in sync with the
 // compiler or ICEs will happen.
@@ -241,7 +241,7 @@ pub struct Box<
 // The is a separate function to avoid doing it in every generic version, but it
 // looks small to the mir inliner (particularly in panic=abort) so leave it to
 // the backend to decide whether pulling it in everywhere is worth doing.
-#[rustc_no_mir_inline]
+#[redox_no_mir_inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[cfg(not(no_global_oom_handling))]
 fn box_new_uninit(layout: Layout) -> *mut u8 {
@@ -258,7 +258,7 @@ fn box_new_uninit(layout: Layout) -> *mut u8 {
 #[unstable(feature = "liballoc_internals", issue = "none")]
 #[inline(always)]
 #[cfg(not(no_global_oom_handling))]
-#[rustc_diagnostic_item = "box_assume_init_into_vec_unsafe"]
+#[redox_diagnostic_item = "box_assume_init_into_vec_unsafe"]
 pub fn box_assume_init_into_vec_unsafe<T, const N: usize>(
     b: Box<MaybeUninit<[T; N]>>,
 ) -> crate::vec::Vec<T> {
@@ -279,7 +279,7 @@ impl<T> Box<T> {
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    #[rustc_diagnostic_item = "box_new"]
+    #[redox_diagnostic_item = "box_new"]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn new(x: T) -> Self {
         // This is `Box::new_uninit` but inlined to avoid build time regressions.
@@ -1742,8 +1742,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [`as_mut_ptr`]: Self::as_mut_ptr
     /// [`as_ptr`]: Self::as_ptr
     #[unstable(feature = "box_as_ptr", issue = "129090")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
+    #[redox_never_returns_null_ptr]
+    #[redox_as_ptr]
     #[inline]
     pub fn as_mut_ptr(b: &mut Self) -> *mut T {
         // This is a primitive deref, not going through `DerefMut`, and therefore not materializing
@@ -1791,8 +1791,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [`as_mut_ptr`]: Self::as_mut_ptr
     /// [`as_ptr`]: Self::as_ptr
     #[unstable(feature = "box_as_ptr", issue = "129090")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
+    #[redox_never_returns_null_ptr]
+    #[redox_as_ptr]
     #[inline]
     pub fn as_ptr(b: &Self) -> *const T {
         // This is a primitive deref, not going through `DerefMut`, and therefore not materializing

@@ -1,8 +1,8 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 macro_rules! check {
     ($expr: expr) => (
-        #[rustc_dummy = $expr]
+        #[redox_dummy = $expr]
         use main as _;
     );
 }

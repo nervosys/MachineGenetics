@@ -12,75 +12,75 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{run_in_tmpdir, rustc};
+use run_make_support::{run_in_tmpdir, redox};
 
 fn main() {
     run_in_tmpdir(|| {
         // Building just baz
-        rustc().crate_type("rlib").input("foo.rs").run();
-        rustc().crate_type("dylib").input("bar1.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("dylib,rlib").input("baz.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("bin").input("baz.rs").run();
+        redox().crate_type("rlib").input("foo.rs").run();
+        redox().crate_type("dylib").input("bar1.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("dylib,rlib").input("baz.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("bin").input("baz.rs").run();
     });
     run_in_tmpdir(|| {
-        rustc().crate_type("dylib").input("foo.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("rlib").input("bar1.rs").run();
-        rustc().crate_type("dylib,rlib").input("baz.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("bin").input("baz.rs").run();
+        redox().crate_type("dylib").input("foo.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("rlib").input("bar1.rs").run();
+        redox().crate_type("dylib,rlib").input("baz.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("bin").input("baz.rs").run();
     });
     run_in_tmpdir(|| {
         // Building baz2
-        rustc().crate_type("rlib").input("foo.rs").run();
-        rustc().crate_type("dylib").input("bar1.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("dylib").input("bar2.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("dylib").input("baz2.rs").run_fail().assert_exit_code(1);
-        rustc().crate_type("bin").input("baz2.rs").run_fail().assert_exit_code(1);
+        redox().crate_type("rlib").input("foo.rs").run();
+        redox().crate_type("dylib").input("bar1.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("dylib").input("bar2.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("dylib").input("baz2.rs").run_fail().assert_exit_code(1);
+        redox().crate_type("bin").input("baz2.rs").run_fail().assert_exit_code(1);
     });
     run_in_tmpdir(|| {
-        rustc().crate_type("rlib").input("foo.rs").run();
-        rustc().crate_type("rlib").input("bar1.rs").run();
-        rustc().crate_type("dylib").input("bar2.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("dylib,rlib").input("baz2.rs").run();
-        rustc().crate_type("bin").input("baz2.rs").run();
+        redox().crate_type("rlib").input("foo.rs").run();
+        redox().crate_type("rlib").input("bar1.rs").run();
+        redox().crate_type("dylib").input("bar2.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("dylib,rlib").input("baz2.rs").run();
+        redox().crate_type("bin").input("baz2.rs").run();
     });
     run_in_tmpdir(|| {
-        rustc().crate_type("rlib").input("foo.rs").run();
-        rustc().crate_type("dylib").input("bar1.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("rlib").input("bar2.rs").run();
-        rustc().crate_type("dylib,rlib").input("baz2.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("bin").input("baz2.rs").run();
+        redox().crate_type("rlib").input("foo.rs").run();
+        redox().crate_type("dylib").input("bar1.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("rlib").input("bar2.rs").run();
+        redox().crate_type("dylib,rlib").input("baz2.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("bin").input("baz2.rs").run();
     });
     run_in_tmpdir(|| {
-        rustc().crate_type("rlib").input("foo.rs").run();
-        rustc().crate_type("rlib").input("bar1.rs").run();
-        rustc().crate_type("rlib").input("bar2.rs").run();
-        rustc().crate_type("dylib,rlib").input("baz2.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("bin").input("baz2.rs").run();
+        redox().crate_type("rlib").input("foo.rs").run();
+        redox().crate_type("rlib").input("bar1.rs").run();
+        redox().crate_type("rlib").input("bar2.rs").run();
+        redox().crate_type("dylib,rlib").input("baz2.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("bin").input("baz2.rs").run();
     });
     run_in_tmpdir(|| {
-        rustc().crate_type("dylib").input("foo.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("rlib").input("bar1.rs").run();
-        rustc().crate_type("rlib").input("bar2.rs").run();
-        rustc().crate_type("dylib,rlib").input("baz2.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("bin").input("baz2.rs").run();
+        redox().crate_type("dylib").input("foo.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("rlib").input("bar1.rs").run();
+        redox().crate_type("rlib").input("bar2.rs").run();
+        redox().crate_type("dylib,rlib").input("baz2.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("bin").input("baz2.rs").run();
     });
     run_in_tmpdir(|| {
-        rustc().crate_type("dylib").input("foo.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("dylib").input("bar1.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("rlib").input("bar2.rs").run();
-        rustc().crate_type("dylib,rlib").input("baz2.rs").run();
-        rustc().crate_type("bin").input("baz2.rs").run();
+        redox().crate_type("dylib").input("foo.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("dylib").input("bar1.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("rlib").input("bar2.rs").run();
+        redox().crate_type("dylib,rlib").input("baz2.rs").run();
+        redox().crate_type("bin").input("baz2.rs").run();
     });
     run_in_tmpdir(|| {
-        rustc().crate_type("dylib").input("foo.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("rlib").input("bar1.rs").run();
-        rustc().crate_type("dylib").input("bar2.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("dylib,rlib").input("baz2.rs").run();
-        rustc().crate_type("bin").input("baz2.rs").run();
+        redox().crate_type("dylib").input("foo.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("rlib").input("bar1.rs").run();
+        redox().crate_type("dylib").input("bar2.rs").arg("-Cprefer-dynamic").run();
+        redox().crate_type("dylib,rlib").input("baz2.rs").run();
+        redox().crate_type("bin").input("baz2.rs").run();
     });
-    rustc().crate_type("dylib").input("foo.rs").arg("-Cprefer-dynamic").run();
-    rustc().crate_type("dylib").input("bar1.rs").arg("-Cprefer-dynamic").run();
-    rustc().crate_type("dylib").input("bar2.rs").arg("-Cprefer-dynamic").run();
-    rustc().crate_type("dylib,rlib").input("baz2.rs").run();
-    rustc().crate_type("bin").input("baz2.rs").run();
+    redox().crate_type("dylib").input("foo.rs").arg("-Cprefer-dynamic").run();
+    redox().crate_type("dylib").input("bar1.rs").arg("-Cprefer-dynamic").run();
+    redox().crate_type("dylib").input("bar2.rs").arg("-Cprefer-dynamic").run();
+    redox().crate_type("dylib,rlib").input("baz2.rs").run();
+    redox().crate_type("bin").input("baz2.rs").run();
 }

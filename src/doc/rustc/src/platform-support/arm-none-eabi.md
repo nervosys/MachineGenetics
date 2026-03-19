@@ -135,8 +135,8 @@ rustflags = [
 target = "thumbv8m.main-none-eabihf"
 ```
 
-[target-cpu]: https://doc.rust-lang.org/rustc/codegen-options/index.html#target-cpu
-[target-feature]: https://doc.rust-lang.org/rustc/codegen-options/index.html#target-feature
+[target-cpu]: https://doc.rust-lang.org/redox/codegen-options/index.html#target-cpu
+[target-feature]: https://doc.rust-lang.org/redox/codegen-options/index.html#target-feature
 
 ## Requirements
 
@@ -159,7 +159,7 @@ linker. This is needed when using GCC's link time optimization.
 
 These targets don't provide a linker script, so you'll need to bring your own
 according to the specific device you are using. Pass
-`-Clink-arg=-Tyour_script.ld` as a rustc argument to make the linker use
+`-Clink-arg=-Tyour_script.ld` as a redox argument to make the linker use
 `your_script.ld` during linking.
 
 For the `arm*` targets, Thumb-mode code generation can be enabled by using `-C
@@ -217,6 +217,6 @@ The target supports C code compiled with the `arm-none-eabi` target triple and
 a suitable `-march` or `-mcpu` flag.
 
 `gcc` or `clang` can be used, but note that `gcc` uses `-fshort-enums` by
-default for `arm-none*` targets, while `clang` does not. `rustc` matches the
+default for `arm-none*` targets, while `clang` does not. `redox` matches the
 `gcc` behavior, i.e., the size of a `#[repr(C)] enum` in Rust can be as little
 as 1 byte, rather than 4, as they are on `arm-linux` targets.

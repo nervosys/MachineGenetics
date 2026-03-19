@@ -67,7 +67,7 @@ macro_rules! int_impl {
         /// ```
         ///
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[doc(alias = "popcount")]
         #[doc(alias = "popcnt")]
         #[must_use = "this returns the result of the operation, \
@@ -83,7 +83,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.count_zeros(), 1);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -105,7 +105,7 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("[`ilog2`]: ", stringify!($SelfT), "::ilog2")]
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -123,7 +123,7 @@ macro_rules! int_impl {
         /// assert_eq!(n.trailing_zeros(), 2);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -141,7 +141,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(n.leading_ones(), ", stringify!($BITS), ");")]
         /// ```
         #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
-        #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
+        #[redox_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -159,7 +159,7 @@ macro_rules! int_impl {
         /// assert_eq!(n.trailing_ones(), 2);
         /// ```
         #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
-        #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
+        #[redox_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -264,7 +264,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(n.cast_unsigned(), ", stringify!($UnsignedT), "::MAX);")]
         /// ```
         #[stable(feature = "integer_sign_cast", since = "1.87.0")]
-        #[rustc_const_stable(feature = "integer_sign_cast", since = "1.87.0")]
+        #[redox_const_stable(feature = "integer_sign_cast", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -291,7 +291,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(n.rotate_left(1024), n);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -319,7 +319,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(n.rotate_right(1024), n);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -339,7 +339,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(m, ", $swapped, ");")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -360,7 +360,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(0, 0", stringify!($SelfT), ".reverse_bits());")]
         /// ```
         #[stable(feature = "reverse_bits", since = "1.37.0")]
-        #[rustc_const_stable(feature = "reverse_bits", since = "1.37.0")]
+        #[redox_const_stable(feature = "reverse_bits", since = "1.37.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -386,7 +386,7 @@ macro_rules! int_impl {
         /// }
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_conversions", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_conversions", since = "1.32.0")]
         #[must_use]
         #[inline]
         pub const fn from_be(x: Self) -> Self {
@@ -418,7 +418,7 @@ macro_rules! int_impl {
         /// }
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_conversions", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_conversions", since = "1.32.0")]
         #[must_use]
         #[inline]
         pub const fn from_le(x: Self) -> Self {
@@ -454,7 +454,7 @@ macro_rules! int_impl {
         /// }
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_conversions", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_conversions", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -491,7 +491,7 @@ macro_rules! int_impl {
         /// }
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_conversions", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_conversions", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -516,7 +516,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
+        #[redox_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -546,7 +546,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX - 2).strict_add(3);")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -575,7 +575,7 @@ macro_rules! int_impl {
         #[doc = concat!("[`checked_add`]: ", stringify!($SelfT), "::checked_add")]
         #[doc = concat!("[`wrapping_add`]: ", stringify!($SelfT), "::wrapping_add")]
         #[stable(feature = "unchecked_math", since = "1.79.0")]
-        #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
+        #[redox_const_stable(feature = "unchecked_math", since = "1.79.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -606,7 +606,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add_unsigned(3), None);")]
         /// ```
         #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
-        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[redox_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -636,7 +636,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX - 2).strict_add_unsigned(3);")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -656,7 +656,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 2).checked_sub(3), None);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
+        #[redox_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -686,7 +686,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MIN + 2).strict_sub(3);")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -715,7 +715,7 @@ macro_rules! int_impl {
         #[doc = concat!("[`checked_sub`]: ", stringify!($SelfT), "::checked_sub")]
         #[doc = concat!("[`wrapping_sub`]: ", stringify!($SelfT), "::wrapping_sub")]
         #[stable(feature = "unchecked_math", since = "1.79.0")]
-        #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
+        #[redox_const_stable(feature = "unchecked_math", since = "1.79.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -746,7 +746,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 2).checked_sub_unsigned(3), None);")]
         /// ```
         #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
-        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[redox_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -776,7 +776,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MIN + 2).strict_sub_unsigned(3);")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -796,7 +796,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
+        #[redox_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -826,7 +826,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MAX.strict_mul(2);")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -855,7 +855,7 @@ macro_rules! int_impl {
         #[doc = concat!("[`checked_mul`]: ", stringify!($SelfT), "::checked_mul")]
         #[doc = concat!("[`wrapping_mul`]: ", stringify!($SelfT), "::wrapping_mul")]
         #[stable(feature = "unchecked_math", since = "1.79.0")]
-        #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
+        #[redox_const_stable(feature = "unchecked_math", since = "1.79.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -887,7 +887,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((1", stringify!($SelfT), ").checked_div(0), None);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_checked_int_div", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_checked_int_div", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -933,7 +933,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (1", stringify!($SelfT), ").strict_div(0);")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -954,7 +954,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);")]
         /// ```
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1000,7 +1000,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (1", stringify!($SelfT), ").strict_div_euclid(0);")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1080,7 +1080,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[redox_inherit_overflow_checks]
         pub const fn div_exact(self, rhs: Self) -> Option<Self> {
             if self % rhs != 0 {
                 None
@@ -1127,7 +1127,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.checked_rem(-1), None);")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_checked_int_div", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_checked_int_div", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1172,7 +1172,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_rem(-1);")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1193,7 +1193,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);")]
         /// ```
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1238,7 +1238,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_rem_euclid(-1);")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1257,7 +1257,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.checked_neg(), None);")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
+        #[redox_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1276,7 +1276,7 @@ macro_rules! int_impl {
         ///
         #[doc = concat!("[`checked_neg`]: ", stringify!($SelfT), "::checked_neg")]
         #[stable(feature = "unchecked_neg", since = "1.93.0")]
-        #[rustc_const_stable(feature = "unchecked_neg", since = "1.93.0")]
+        #[redox_const_stable(feature = "unchecked_neg", since = "1.93.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1316,7 +1316,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_neg();")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1337,7 +1337,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".checked_shl(", stringify!($BITS_MINUS_ONE), "), Some(0));")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
+        #[redox_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1372,7 +1372,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = 0x1", stringify!($SelfT), ".strict_shl(129);")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1393,7 +1393,7 @@ macro_rules! int_impl {
         ///
         #[doc = concat!("[`checked_shl`]: ", stringify!($SelfT), "::checked_shl")]
         #[stable(feature = "unchecked_shifts", since = "1.93.0")]
-        #[rustc_const_stable(feature = "unchecked_shifts", since = "1.93.0")]
+        #[redox_const_stable(feature = "unchecked_shifts", since = "1.93.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1432,7 +1432,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((-13_", stringify!($SelfT), ").unbounded_shl(1).unbounded_shl(", stringify!($BITS_MINUS_ONE), "), 0);")]
         /// ```
         #[stable(feature = "unbounded_shifts", since = "1.87.0")]
-        #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
+        #[redox_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1516,7 +1516,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".checked_shr(128), None);")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
+        #[redox_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1551,7 +1551,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = 0x10", stringify!($SelfT), ".strict_shr(128);")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1572,7 +1572,7 @@ macro_rules! int_impl {
         ///
         #[doc = concat!("[`checked_shr`]: ", stringify!($SelfT), "::checked_shr")]
         #[stable(feature = "unchecked_shifts", since = "1.93.0")]
-        #[rustc_const_stable(feature = "unchecked_shifts", since = "1.93.0")]
+        #[redox_const_stable(feature = "unchecked_shifts", since = "1.93.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1613,7 +1613,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((-13_", stringify!($SelfT), ").unbounded_shr(1).unbounded_shr(", stringify!($BITS_MINUS_ONE), "), -1);")]
         /// ```
         #[stable(feature = "unbounded_shifts", since = "1.87.0")]
-        #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
+        #[redox_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1698,7 +1698,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.checked_abs(), None);")]
         /// ```
         #[stable(feature = "no_panic_abs", since = "1.13.0")]
-        #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
+        #[redox_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1731,7 +1731,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_abs();")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1756,7 +1756,7 @@ macro_rules! int_impl {
         /// ```
 
         #[stable(feature = "no_panic_pow", since = "1.34.0")]
-        #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
+        #[redox_const_stable(feature = "const_int_pow", since = "1.50.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1802,7 +1802,7 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MAX.strict_pow(2);")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
-        #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
+        #[redox_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1837,7 +1837,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_isqrt(), Some(3));")]
         /// ```
         #[stable(feature = "isqrt", since = "1.84.0")]
-        #[rustc_const_stable(feature = "isqrt", since = "1.84.0")]
+        #[redox_const_stable(feature = "isqrt", since = "1.84.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1887,7 +1887,7 @@ macro_rules! int_impl {
         /// ```
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
+        #[redox_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1905,7 +1905,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.saturating_add_unsigned(100), ", stringify!($SelfT), "::MAX);")]
         /// ```
         #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
-        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[redox_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1929,7 +1929,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.saturating_sub(-1), ", stringify!($SelfT), "::MAX);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
+        #[redox_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1947,7 +1947,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.saturating_sub_unsigned(100), ", stringify!($SelfT), "::MIN);")]
         /// ```
         #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
-        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[redox_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1973,7 +1973,7 @@ macro_rules! int_impl {
         /// ```
 
         #[stable(feature = "saturating_neg", since = "1.45.0")]
-        #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
+        #[redox_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1994,7 +1994,7 @@ macro_rules! int_impl {
         /// ```
 
         #[stable(feature = "saturating_neg", since = "1.45.0")]
-        #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
+        #[redox_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2017,7 +2017,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.saturating_mul(10), ", stringify!($SelfT), "::MIN);")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
+        #[redox_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2048,7 +2048,7 @@ macro_rules! int_impl {
         ///
         /// ```
         #[stable(feature = "saturating_div", since = "1.58.0")]
-        #[rustc_const_stable(feature = "saturating_div", since = "1.58.0")]
+        #[redox_const_stable(feature = "saturating_div", since = "1.58.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2071,7 +2071,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(3), ", stringify!($SelfT), "::MIN);")]
         /// ```
         #[stable(feature = "no_panic_pow", since = "1.34.0")]
-        #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
+        #[redox_const_stable(feature = "const_int_pow", since = "1.50.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2093,7 +2093,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.wrapping_add(2), ", stringify!($SelfT), "::MIN + 1);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -2111,7 +2111,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.wrapping_add_unsigned(2), ", stringify!($SelfT), "::MIN + 1);")]
         /// ```
         #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
-        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[redox_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -2129,7 +2129,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((-2", stringify!($SelfT), ").wrapping_sub(", stringify!($SelfT), "::MAX), ", stringify!($SelfT), "::MAX);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -2147,7 +2147,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((-2", stringify!($SelfT), ").wrapping_sub_unsigned(", stringify!($UnsignedT), "::MAX), -1);")]
         /// ```
         #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
-        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[redox_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -2165,7 +2165,7 @@ macro_rules! int_impl {
         /// assert_eq!(11i8.wrapping_mul(12), -124);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -2191,7 +2191,7 @@ macro_rules! int_impl {
         /// assert_eq!((-128i8).wrapping_div(-1), -128);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[rustc_const_stable(feature = "const_wrapping_int_methods", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_wrapping_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2217,7 +2217,7 @@ macro_rules! int_impl {
         /// assert_eq!((-128i8).wrapping_div_euclid(-1), -128);
         /// ```
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2243,7 +2243,7 @@ macro_rules! int_impl {
         /// assert_eq!((-128i8).wrapping_rem(-1), 0);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[rustc_const_stable(feature = "const_wrapping_int_methods", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_wrapping_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2268,7 +2268,7 @@ macro_rules! int_impl {
         /// assert_eq!((-128i8).wrapping_rem_euclid(-1), 0);
         /// ```
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2291,7 +2291,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.wrapping_neg(), ", stringify!($SelfT), "::MIN);")]
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -2324,7 +2324,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(5_", stringify!($SelfT), ".wrapping_shl(1025), 10);")]
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -2361,7 +2361,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(10_", stringify!($SelfT), ".wrapping_shr(1025), 5);")]
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -2389,7 +2389,7 @@ macro_rules! int_impl {
         /// assert_eq!((-128i8).wrapping_abs() as u8, 128);
         /// ```
         #[stable(feature = "no_panic_abs", since = "1.13.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[allow(unused_attributes)]
@@ -2414,7 +2414,7 @@ macro_rules! int_impl {
         /// assert_eq!((-128i8).unsigned_abs(), 128u8);
         /// ```
         #[stable(feature = "unsigned_abs", since = "1.51.0")]
-        #[rustc_const_stable(feature = "unsigned_abs", since = "1.51.0")]
+        #[redox_const_stable(feature = "unsigned_abs", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2434,7 +2434,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".wrapping_pow(0), 1);")]
         /// ```
         #[stable(feature = "no_panic_pow", since = "1.34.0")]
-        #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
+        #[redox_const_stable(feature = "const_int_pow", since = "1.50.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2491,7 +2491,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (", stringify!($SelfT), "::MIN, true));")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -2574,7 +2574,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).overflowing_add_unsigned(3), (", stringify!($SelfT), "::MIN, true));")]
         /// ```
         #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
-        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[redox_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2597,7 +2597,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.overflowing_sub(1), (", stringify!($SelfT), "::MAX, true));")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -2681,7 +2681,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 2).overflowing_sub_unsigned(3), (", stringify!($SelfT), "::MAX, true));")]
         /// ```
         #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
-        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[redox_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2703,7 +2703,7 @@ macro_rules! int_impl {
         /// assert_eq!(1_000_000_000i32.overflowing_mul(10), (1410065408, true));
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -2730,7 +2730,7 @@ macro_rules! int_impl {
         /// assert_eq!(1_000_000_000i32.widening_mul(-10), (2884901888, -3));
         /// ```
         #[unstable(feature = "widening_mul", issue = "152016")]
-        #[rustc_const_unstable(feature = "widening_mul", issue = "152016")]
+        #[redox_const_unstable(feature = "widening_mul", issue = "152016")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2766,7 +2766,7 @@ macro_rules! int_impl {
         )]
         /// ```
         #[unstable(feature = "signed_bigint_helpers", issue = "151989")]
-        #[rustc_const_unstable(feature = "signed_bigint_helpers", issue = "151989")]
+        #[redox_const_unstable(feature = "signed_bigint_helpers", issue = "151989")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2803,7 +2803,7 @@ macro_rules! int_impl {
         )]
         /// ```
         #[unstable(feature = "signed_bigint_helpers", issue = "151989")]
-        #[rustc_const_unstable(feature = "signed_bigint_helpers", issue = "151989")]
+        #[redox_const_unstable(feature = "signed_bigint_helpers", issue = "151989")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2828,7 +2828,7 @@ macro_rules! int_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_overflowing_int_methods", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_overflowing_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
@@ -2857,7 +2857,7 @@ macro_rules! int_impl {
         /// ```
         #[inline]
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
@@ -2886,7 +2886,7 @@ macro_rules! int_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_overflowing_int_methods", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_overflowing_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
@@ -2914,7 +2914,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));")]
         /// ```
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2942,7 +2942,7 @@ macro_rules! int_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[allow(unused_attributes)]
@@ -2968,7 +2968,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".overflowing_shl(", stringify!($BITS_MINUS_ONE), "), (0, false));")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2989,7 +2989,7 @@ macro_rules! int_impl {
         /// assert_eq!(0x10i32.overflowing_shr(36), (0x1, true));
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3013,7 +3013,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN).overflowing_abs(), (", stringify!($SelfT), "::MIN, true));")]
         /// ```
         #[stable(feature = "no_panic_abs", since = "1.13.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3034,7 +3034,7 @@ macro_rules! int_impl {
         /// assert_eq!(3i8.overflowing_pow(5), (-13, true));
         /// ```
         #[stable(feature = "no_panic_pow", since = "1.34.0")]
-        #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
+        #[redox_const_stable(feature = "const_int_pow", since = "1.50.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3077,11 +3077,11 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".pow(0), 1);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
+        #[redox_const_stable(feature = "const_int_pow", since = "1.50.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[redox_inherit_overflow_checks]
         pub const fn pow(self, mut exp: u32) -> Self {
             if exp == 0 {
                 return 1;
@@ -3134,7 +3134,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".isqrt(), 3);")]
         /// ```
         #[stable(feature = "isqrt", since = "1.84.0")]
-        #[rustc_const_stable(feature = "isqrt", since = "1.84.0")]
+        #[redox_const_stable(feature = "isqrt", since = "1.84.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3175,7 +3175,7 @@ macro_rules! int_impl {
         /// assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
         /// ```
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3219,7 +3219,7 @@ macro_rules! int_impl {
         /// ```
         #[doc(alias = "modulo", alias = "mod")]
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
+        #[redox_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3352,7 +3352,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[redox_inherit_overflow_checks]
         pub const fn next_multiple_of(self, rhs: Self) -> Self {
             // This would otherwise fail when calculating `r` when self == T::MIN.
             if rhs == -1 {
@@ -3438,7 +3438,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".ilog(5), 1);")]
         /// ```
         #[stable(feature = "int_log", since = "1.67.0")]
-        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
+        #[redox_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3464,7 +3464,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".ilog2(), 1);")]
         /// ```
         #[stable(feature = "int_log", since = "1.67.0")]
-        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
+        #[redox_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3489,7 +3489,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".ilog10(), 1);")]
         /// ```
         #[stable(feature = "int_log", since = "1.67.0")]
-        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
+        #[redox_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3517,7 +3517,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_ilog(5), Some(1));")]
         /// ```
         #[stable(feature = "int_log", since = "1.67.0")]
-        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
+        #[redox_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3541,7 +3541,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_ilog2(), Some(1));")]
         /// ```
         #[stable(feature = "int_log", since = "1.67.0")]
-        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
+        #[redox_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3565,7 +3565,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_ilog10(), Some(1));")]
         /// ```
         #[stable(feature = "int_log", since = "1.67.0")]
-        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
+        #[redox_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3595,14 +3595,14 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((-10", stringify!($SelfT), ").abs(), 10);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[allow(unused_attributes)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[redox_inherit_overflow_checks]
         pub const fn abs(self) -> Self {
-            // Note that the #[rustc_inherit_overflow_checks] and #[inline]
+            // Note that the #[redox_inherit_overflow_checks] and #[inline]
             // above mean that the overflow semantics of the subtraction
             // depend on the crate we're being called from.
             if self.is_negative() {
@@ -3627,7 +3627,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.abs_diff(", stringify!($SelfT), "::MAX), ", stringify!($UnsignedT), "::MAX);")]
         /// ```
         #[stable(feature = "int_abs_diff", since = "1.60.0")]
-        #[rustc_const_stable(feature = "int_abs_diff", since = "1.60.0")]
+        #[redox_const_stable(feature = "int_abs_diff", since = "1.60.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3666,7 +3666,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((-10", stringify!($SelfT), ").signum(), -1);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_sign", since = "1.47.0")]
+        #[redox_const_stable(feature = "const_int_sign", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -3690,7 +3690,7 @@ macro_rules! int_impl {
         /// ```
         #[must_use]
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[inline(always)]
         pub const fn is_positive(self) -> bool { self > 0 }
 
@@ -3705,7 +3705,7 @@ macro_rules! int_impl {
         /// ```
         #[must_use]
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[redox_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[inline(always)]
         pub const fn is_negative(self) -> bool { self < 0 }
 
@@ -3721,7 +3721,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(bytes, ", $be_bytes, ");")]
         /// ```
         #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-        #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+        #[redox_const_stable(feature = "const_int_conversion", since = "1.44.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3741,7 +3741,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(bytes, ", $le_bytes, ");")]
         /// ```
         #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-        #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+        #[redox_const_stable(feature = "const_int_conversion", since = "1.44.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3775,7 +3775,7 @@ macro_rules! int_impl {
         /// );
         /// ```
         #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-        #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+        #[redox_const_stable(feature = "const_int_conversion", since = "1.44.0")]
         #[allow(unnecessary_transmutes)]
         // SAFETY: const sound because integers are plain old datatypes so we can always
         // transmute them to arrays of bytes
@@ -3810,7 +3810,7 @@ macro_rules! int_impl {
         /// }
         /// ```
         #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-        #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+        #[redox_const_stable(feature = "const_int_conversion", since = "1.44.0")]
         #[must_use]
         #[inline]
         pub const fn from_be_bytes(bytes: [u8; size_of::<Self>()]) -> Self {
@@ -3839,7 +3839,7 @@ macro_rules! int_impl {
         /// }
         /// ```
         #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-        #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+        #[redox_const_stable(feature = "const_int_conversion", since = "1.44.0")]
         #[must_use]
         #[inline]
         pub const fn from_le_bytes(bytes: [u8; size_of::<Self>()]) -> Self {
@@ -3879,7 +3879,7 @@ macro_rules! int_impl {
         /// }
         /// ```
         #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-        #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+        #[redox_const_stable(feature = "const_int_conversion", since = "1.44.0")]
         #[allow(unnecessary_transmutes)]
         #[must_use]
         // SAFETY: const sound because integers are plain old datatypes so we can always
@@ -3896,10 +3896,10 @@ macro_rules! int_impl {
         /// Returns the smallest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline(always)]
-        #[rustc_promotable]
-        #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
+        #[redox_promotable]
+        #[redox_const_stable(feature = "const_min_value", since = "1.32.0")]
         #[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on this type")]
-        #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_min_value")]
+        #[redox_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_min_value")]
         pub const fn min_value() -> Self {
             Self::MIN
         }
@@ -3910,10 +3910,10 @@ macro_rules! int_impl {
         /// Returns the largest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline(always)]
-        #[rustc_promotable]
-        #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
+        #[redox_promotable]
+        #[redox_const_stable(feature = "const_max_value", since = "1.32.0")]
         #[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on this type")]
-        #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_max_value")]
+        #[redox_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_max_value")]
         pub const fn max_value() -> Self {
             Self::MAX
         }

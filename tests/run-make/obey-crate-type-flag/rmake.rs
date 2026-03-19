@@ -8,15 +8,15 @@
 use std::path::Path;
 
 use run_make_support::{
-    cwd, dynamic_lib_name, has_extension, rfs, rust_lib_name, rustc, shallow_find_files,
+    cwd, dynamic_lib_name, has_extension, rfs, rust_lib_name, redox, shallow_find_files,
 };
 
 fn main() {
-    rustc().input("test.rs").run();
+    redox().input("test.rs").run();
     assert!(Path::new(&dynamic_lib_name("test")).exists());
     assert!(Path::new(&rust_lib_name("test")).exists());
 
     rfs::remove_file(rust_lib_name("test"));
-    rustc().crate_type("dylib").input("test.rs").run();
+    redox().crate_type("dylib").input("test.rs").run();
     assert!(shallow_find_files(cwd(), |path| { has_extension(path, "rlib") }).is_empty());
 }

@@ -82,7 +82,7 @@ where
     /// assert_eq!(DropGuard::dismiss(guard), "Nori likes chicken");
     /// ```
     #[unstable(feature = "drop_guard", issue = "144426")]
-    #[rustc_const_unstable(feature = "const_drop_guard", issue = "none")]
+    #[redox_const_unstable(feature = "const_drop_guard", issue = "none")]
     #[inline]
     pub const fn dismiss(guard: Self) -> T
     where
@@ -108,7 +108,7 @@ where
 }
 
 #[unstable(feature = "drop_guard", issue = "144426")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T, F> const Deref for DropGuard<T, F>
 where
     F: FnOnce(T),
@@ -121,7 +121,7 @@ where
 }
 
 #[unstable(feature = "drop_guard", issue = "144426")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T, F> const DerefMut for DropGuard<T, F>
 where
     F: FnOnce(T),
@@ -132,7 +132,7 @@ where
 }
 
 #[unstable(feature = "drop_guard", issue = "144426")]
-#[rustc_const_unstable(feature = "const_drop_guard", issue = "none")]
+#[redox_const_unstable(feature = "const_drop_guard", issue = "none")]
 impl<T, F> const Drop for DropGuard<T, F>
 where
     F: [const] FnOnce(T),

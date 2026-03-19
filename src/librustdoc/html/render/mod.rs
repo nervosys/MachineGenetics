@@ -50,17 +50,17 @@ use std::{fs, str};
 use askama::Template;
 use indexmap::IndexMap;
 use itertools::Either;
-use rustc_ast::join_path_syms;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, DefIdSet};
-use rustc_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, StableSince};
-use rustc_middle::ty::print::PrintTraitRefExt;
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::DUMMY_SP;
-use rustc_span::symbol::{Symbol, sym};
+use redox_ast::join_path_syms;
+use redox_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use redox_hir as hir;
+use redox_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
+use redox_hir::def::DefKind;
+use redox_hir::def_id::{DefId, DefIdSet};
+use redox_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, StableSince};
+use redox_middle::ty::print::PrintTraitRefExt;
+use redox_middle::ty::{self, TyCtxt};
+use redox_span::DUMMY_SP;
+use redox_span::symbol::{Symbol, sym};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
@@ -859,7 +859,7 @@ fn short_item_info(
 
     if let Some(depr @ Deprecation { note, since, suggestion: _ }) = item.deprecation(cx.tcx()) {
         // We display deprecation messages for #[deprecated], but only display
-        // the future-deprecation messages for rustc versions.
+        // the future-deprecation messages for redox versions.
         let mut message = match since {
             DeprecatedSince::RustcVersion(version) => {
                 if depr.is_in_effect() {
@@ -886,12 +886,12 @@ fn short_item_info(
         extra_info.push(ShortItemInfo::Deprecation { message });
     }
 
-    // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
+    // Render unstable items. But don't render "redox_private" crates (internal compiler crates).
     // Those crates are permanently unstable so it makes no sense to render "unstable" everywhere.
     if let Some((StabilityLevel::Unstable { reason: _, issue, .. }, feature)) = item
         .stability(cx.tcx())
         .as_ref()
-        .filter(|stab| stab.feature != sym::rustc_private)
+        .filter(|stab| stab.feature != sym::redox_private)
         .map(|stab| (stab.level, stab.feature))
     {
         let tracking = if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue)
@@ -2418,7 +2418,7 @@ pub(crate) fn small_url_encode(s: String) -> String {
 }
 
 fn get_id_for_impl(tcx: TyCtxt<'_>, impl_id: ItemId) -> String {
-    use rustc_middle::ty::print::with_forced_trimmed_paths;
+    use redox_middle::ty::print::with_forced_trimmed_paths;
     let (type_, trait_) = match impl_id {
         ItemId::Auto { trait_, for_ } => {
             let ty = tcx.type_of(for_).skip_binder();
@@ -2791,7 +2791,7 @@ fn render_call_locations<W: fmt::Write>(
         // will use that directly. We use DUMMY_SP as a placeholder.
         // Note: DUMMY_SP is safe here because href_from_span won't be called
         // for scraped examples.
-        let file_span = rustc_span::DUMMY_SP;
+        let file_span = redox_span::DUMMY_SP;
 
         let mut decoration_info = FxIndexMap::default();
         decoration_info.insert("highlight focus", vec![byte_ranges.remove(0)]);
@@ -2985,7 +2985,7 @@ fn repr_attribute<'tcx>(
         // – in case all fields are 1-ZST fields — at least one field is public and visible.
         let is_public = 'is_public: {
             // `#[repr(transparent)]` can only be applied to structs and single-variant enums.
-            let var = adt.variant(rustc_abi::FIRST_VARIANT); // the first and only variant
+            let var = adt.variant(redox_abi::FIRST_VARIANT); // the first and only variant
 
             if !is_visible(var.def_id) {
                 break 'is_public false;
@@ -3041,8 +3041,8 @@ fn repr_attribute<'tcx>(
     if let Some(int) = repr.int {
         let prefix = if int.is_signed() { 'i' } else { 'u' };
         let int = match int {
-            rustc_abi::IntegerType::Pointer(_) => format!("{prefix}size"),
-            rustc_abi::IntegerType::Fixed(int, _) => {
+            redox_abi::IntegerType::Pointer(_) => format!("{prefix}size"),
+            redox_abi::IntegerType::Fixed(int, _) => {
                 format!("{prefix}{}", int.size().bytes() * 8)
             }
         };

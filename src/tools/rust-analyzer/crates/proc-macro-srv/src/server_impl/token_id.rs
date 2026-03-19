@@ -6,7 +6,7 @@ use std::{
 };
 
 use intern::Symbol;
-use rustc_proc_macro::bridge::server;
+use redox_proc_macro::bridge::server;
 
 use crate::{
     ProcMacroClientHandle,

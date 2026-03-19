@@ -2,8 +2,8 @@ use base_db::target::TargetData;
 use either::Either;
 use hir_def::{HasModule, db::DefDatabase};
 use project_model::{Sysroot, toolchain_info::QueryConfig};
-use rustc_hash::FxHashMap;
-use rustc_type_ir::inherent::GenericArgs as _;
+use redox_hash::FxHashMap;
+use redox_type_ir::inherent::GenericArgs as _;
 use syntax::ToSmolStr;
 use test_fixture::WithFixture;
 use triomphe::Arc;
@@ -431,7 +431,7 @@ fn return_position_impl_trait() {
         }
         fn unwrap_fut<T>(inp: impl Future<Output = T>) -> Poll<T> {
             // In a normal test we could use `loop {}` or `panic!()` here,
-            // but rustc actually runs this code.
+            // but redox actually runs this code.
             let pinned = pin!(inp);
             struct EmptyWaker;
             impl Wake for EmptyWaker {

@@ -28,7 +28,7 @@ use crate::{mem, panic, sys};
 
 // This function is needed by the panic runtime.
 #[cfg(not(test))]
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 fn __rust_abort() {
     crate::process::abort();
 }
@@ -99,14 +99,14 @@ fn handle_rt_panic<T>(e: Box<dyn Any + Send>) -> T {
 // for more info.
 //
 // The `sigpipe` parameter to this function gets its value via the code that
-// rustc generates to invoke `fn lang_start()`. The reason we have `sigpipe` for
+// redox generates to invoke `fn lang_start()`. The reason we have `sigpipe` for
 // all platforms and not only Unix, is because std is not allowed to have `cfg`
 // directives as this high level. See the module docs in
 // `src/tools/tidy/src/pal.rs` for more info. On all other platforms, `sigpipe`
 // has a value, but its value is ignored.
 //
 // Even though it is an `u8`, it only ever has 4 values. These are documented in
-// `compiler/rustc_session/src/config/sigpipe.rs`.
+// `compiler/redox_session/src/config/sigpipe.rs`.
 #[cfg_attr(test, allow(dead_code))]
 unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     // Remember the main thread ID to give it the correct name.

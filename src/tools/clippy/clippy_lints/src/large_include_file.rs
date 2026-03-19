@@ -3,10 +3,10 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::sym;
-use rustc_ast::{AttrArgs, AttrItemKind, AttrKind, Attribute, LitKind};
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use redox_ast::{AttrArgs, AttrItemKind, AttrKind, Attribute, LitKind};
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -87,7 +87,7 @@ impl LateLintPass<'_> for LargeIncludeFile {
 impl EarlyLintPass for LargeIncludeFile {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
         if !attr.span.from_expansion()
-            // Currently, rustc limits the usage of macro at the top-level of attributes,
+            // Currently, redox limits the usage of macro at the top-level of attributes,
             // so we don't need to recurse into each level.
             && let AttrKind::Normal(ref item) = attr.kind
             && let Some(doc) = attr.doc_str()

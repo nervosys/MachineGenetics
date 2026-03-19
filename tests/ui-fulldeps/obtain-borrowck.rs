@@ -5,9 +5,9 @@
 //@ ignore-stage1 (requires matching sysroot built with in-tree compiler)
 // ignore-tidy-linelength
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-//! This program implements a rustc driver that retrieves MIR bodies with
+//! This program implements a redox driver that retrieves MIR bodies with
 //! borrowck information. This cannot be done in a straightforward way because
 //! `get_bodies_with_borrowck_facts`–the function for retrieving MIR bodies with
 //! borrowck facts–can panic if the bodies are stolen before it is invoked.
@@ -18,46 +18,46 @@
 //! `optimized_mir` and pulls out the MIR bodies with the borrowck information
 //! from the thread local storage.
 
-extern crate rustc_borrowck;
-extern crate rustc_data_structures;
-extern crate rustc_driver;
-extern crate rustc_hir;
-extern crate rustc_interface;
-extern crate rustc_middle;
-extern crate rustc_session;
+extern crate redox_borrowck;
+extern crate redox_data_structures;
+extern crate redox_driver;
+extern crate redox_hir;
+extern crate redox_interface;
+extern crate redox_middle;
+extern crate redox_session;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::process::ExitCode;
 use std::thread_local;
 
-use rustc_borrowck::consumers::{self, BodyWithBorrowckFacts, ConsumerOptions};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_driver::Compilation;
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::LocalDefId;
-use rustc_interface::Config;
-use rustc_interface::interface::Compiler;
-use rustc_middle::queries::mir_borrowck::ProvidedValue;
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::util::Providers;
-use rustc_session::Session;
+use redox_borrowck::consumers::{self, BodyWithBorrowckFacts, ConsumerOptions};
+use redox_data_structures::fx::FxHashMap;
+use redox_driver::Compilation;
+use redox_hir::def::DefKind;
+use redox_hir::def_id::LocalDefId;
+use redox_interface::Config;
+use redox_interface::interface::Compiler;
+use redox_middle::queries::mir_borrowck::ProvidedValue;
+use redox_middle::ty::TyCtxt;
+use redox_middle::util::Providers;
+use redox_session::Session;
 
 fn main() -> ExitCode {
-    rustc_driver::catch_with_exit_code(move || {
-        let mut rustc_args: Vec<_> = std::env::args().collect();
+    redox_driver::catch_with_exit_code(move || {
+        let mut redox_args: Vec<_> = std::env::args().collect();
         // We must pass -Zpolonius so that the borrowck information is computed.
-        rustc_args.push("-Zpolonius".to_owned());
+        redox_args.push("-Zpolonius".to_owned());
         let mut callbacks = CompilerCalls::default();
         // Call the Rust compiler with our callbacks.
-        rustc_driver::run_compiler(&rustc_args, &mut callbacks);
+        redox_driver::run_compiler(&redox_args, &mut callbacks);
     })
 }
 
 #[derive(Default)]
 pub struct CompilerCalls;
 
-impl rustc_driver::Callbacks for CompilerCalls {
+impl redox_driver::Callbacks for CompilerCalls {
     // In this callback we override the mir_borrowck query.
     fn config(&mut self, config: &mut Config) {
         assert!(config.override_queries.is_none());
@@ -81,8 +81,8 @@ impl rustc_driver::Callbacks for CompilerCalls {
         for id in crate_items.trait_items() {
             if matches!(tcx.def_kind(id.owner_id), DefKind::AssocFn) {
                 let trait_item = tcx.hir_trait_item(id);
-                if let rustc_hir::TraitItemKind::Fn(_, trait_fn) = &trait_item.kind {
-                    if let rustc_hir::TraitFn::Provided(_) = trait_fn {
+                if let redox_hir::TraitItemKind::Fn(_, trait_fn) = &trait_item.kind {
+                    if let redox_hir::TraitFn::Provided(_) = trait_fn {
                         bodies.push(trait_item.owner_id);
                     }
                 }
@@ -142,7 +142,7 @@ fn mir_borrowck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ProvidedValue<'t
         }
     });
     let mut providers = Providers::default();
-    rustc_borrowck::provide(&mut providers.queries);
+    redox_borrowck::provide(&mut providers.queries);
     let original_mir_borrowck = providers.queries.mir_borrowck;
     original_mir_borrowck(tcx, def_id)
 }

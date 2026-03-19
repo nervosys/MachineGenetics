@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_dummy = b"ﬃ.rs"] //~ ERROR non-ASCII character in byte string literal
+#[redox_dummy = b"ﬃ.rs"] //~ ERROR non-ASCII character in byte string literal
 fn main() {}

@@ -46,4 +46,4 @@ expect-test = "1.4.0"
 jemalloc = []
 
 [package.metadata.rust-analyzer]
-rustc_private = true
+redox_private = true

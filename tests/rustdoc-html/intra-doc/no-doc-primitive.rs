@@ -1,9 +1,9 @@
-// Crate tree without a `rustc_doc_primitive` module for primitive type linked to by a doc link.
+// Crate tree without a `redox_doc_primitive` module for primitive type linked to by a doc link.
 
 #![deny(rustdoc::broken_intra_doc_links)]
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core, lang_items, redox_attrs)]
 #![no_core]
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 #![crate_type = "rlib"]
 
 

@@ -2,10 +2,10 @@
 //!
 //! It is mainly a `HirDatabase` for semantic analysis, plus a `SymbolsDatabase`, for fuzzy search.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
 extern crate self as ide_db;
 
@@ -70,7 +70,7 @@ use hir::{
 use triomphe::Arc;
 
 use crate::line_index::LineIndex;
-pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
+pub use redox_hash::{FxHashMap, FxHashSet, FxHasher};
 
 pub use ::line_index;
 

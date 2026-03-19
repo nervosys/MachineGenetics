@@ -5,8 +5,8 @@ use std::hash::Hash;
 use hir_def::ConstParamId;
 use intern::{Interned, InternedRef, impl_internable};
 use macros::{GenericTypeVisitable, TypeFoldable, TypeVisitable};
-use rustc_ast_ir::visit::VisitorResult;
-use rustc_type_ir::{
+use redox_ast_ir::visit::VisitorResult;
+use redox_type_ir::{
     BoundVar, BoundVarIndexKind, ConstVid, DebruijnIndex, FlagComputation, Flags,
     GenericTypeVisitable, InferConst, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, WithCachedTypeInfo,
@@ -21,8 +21,8 @@ use crate::{
 
 use super::{BoundVarKind, DbInterner, ErrorGuaranteed, GenericArgs, Placeholder, Ty};
 
-pub type ConstKind<'db> = rustc_type_ir::ConstKind<DbInterner<'db>>;
-pub type UnevaluatedConst<'db> = rustc_type_ir::UnevaluatedConst<DbInterner<'db>>;
+pub type ConstKind<'db> = redox_type_ir::ConstKind<DbInterner<'db>>;
+pub type UnevaluatedConst<'db> = redox_type_ir::UnevaluatedConst<DbInterner<'db>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Const<'db> {
@@ -190,7 +190,7 @@ impl<'db> ValueConst<'db> {
     }
 }
 
-impl<'db> rustc_type_ir::inherent::ValueConst<DbInterner<'db>> for ValueConst<'db> {
+impl<'db> redox_type_ir::inherent::ValueConst<DbInterner<'db>> for ValueConst<'db> {
     fn ty(self) -> Ty<'db> {
         self.ty
     }
@@ -260,7 +260,7 @@ impl std::fmt::Debug for Valtree<'_> {
 )]
 pub struct ExprConst;
 
-impl rustc_type_ir::inherent::ParamLike for ParamConst {
+impl redox_type_ir::inherent::ParamLike for ParamConst {
     fn index(self) -> u32 {
         self.index
     }
@@ -283,7 +283,7 @@ impl<'db, V: super::WorldExposer> GenericTypeVisitable<V> for Const<'db> {
 }
 
 impl<'db> TypeVisitable<DbInterner<'db>> for Const<'db> {
-    fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
+    fn visit_with<V: redox_type_ir::TypeVisitor<DbInterner<'db>>>(
         &self,
         visitor: &mut V,
     ) -> V::Result {
@@ -292,7 +292,7 @@ impl<'db> TypeVisitable<DbInterner<'db>> for Const<'db> {
 }
 
 impl<'db> TypeSuperVisitable<DbInterner<'db>> for Const<'db> {
-    fn super_visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
+    fn super_visit_with<V: redox_type_ir::TypeVisitor<DbInterner<'db>>>(
         &self,
         visitor: &mut V,
     ) -> V::Result {
@@ -311,19 +311,19 @@ impl<'db> TypeSuperVisitable<DbInterner<'db>> for Const<'db> {
 }
 
 impl<'db> TypeFoldable<DbInterner<'db>> for Const<'db> {
-    fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
+    fn try_fold_with<F: redox_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         folder.try_fold_const(self)
     }
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
+    fn fold_with<F: redox_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
         folder.fold_const(self)
     }
 }
 
 impl<'db> TypeSuperFoldable<DbInterner<'db>> for Const<'db> {
-    fn try_super_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
+    fn try_super_fold_with<F: redox_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
@@ -340,7 +340,7 @@ impl<'db> TypeSuperFoldable<DbInterner<'db>> for Const<'db> {
         };
         if kind != self.kind() { Ok(Const::new(folder.cx(), kind)) } else { Ok(self) }
     }
-    fn super_fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(
+    fn super_fold_with<F: redox_type_ir::TypeFolder<DbInterner<'db>>>(
         self,
         folder: &mut F,
     ) -> Self {
@@ -360,26 +360,26 @@ impl<'db> TypeSuperFoldable<DbInterner<'db>> for Const<'db> {
 }
 
 impl<'db> Relate<DbInterner<'db>> for Const<'db> {
-    fn relate<R: rustc_type_ir::relate::TypeRelation<DbInterner<'db>>>(
+    fn relate<R: redox_type_ir::relate::TypeRelation<DbInterner<'db>>>(
         relation: &mut R,
         a: Self,
         b: Self,
-    ) -> rustc_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
+    ) -> redox_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
         relation.consts(a, b)
     }
 }
 
 impl<'db> Flags for Const<'db> {
-    fn flags(&self) -> rustc_type_ir::TypeFlags {
+    fn flags(&self) -> redox_type_ir::TypeFlags {
         self.inner().flags
     }
 
-    fn outer_exclusive_binder(&self) -> rustc_type_ir::DebruijnIndex {
+    fn outer_exclusive_binder(&self) -> redox_type_ir::DebruijnIndex {
         self.inner().outer_exclusive_binder
     }
 }
 
-impl<'db> rustc_type_ir::inherent::Const<DbInterner<'db>> for Const<'db> {
+impl<'db> redox_type_ir::inherent::Const<DbInterner<'db>> for Const<'db> {
     fn new_infer(interner: DbInterner<'db>, var: InferConst) -> Self {
         Const::new(interner, ConstKind::Infer(var))
     }
@@ -405,14 +405,14 @@ impl<'db> rustc_type_ir::inherent::Const<DbInterner<'db>> for Const<'db> {
 
     fn new_placeholder(
         interner: DbInterner<'db>,
-        param: <DbInterner<'db> as rustc_type_ir::Interner>::PlaceholderConst,
+        param: <DbInterner<'db> as redox_type_ir::Interner>::PlaceholderConst,
     ) -> Self {
         Const::new(interner, ConstKind::Placeholder(param))
     }
 
     fn new_unevaluated(
         interner: DbInterner<'db>,
-        uv: rustc_type_ir::UnevaluatedConst<DbInterner<'db>>,
+        uv: redox_type_ir::UnevaluatedConst<DbInterner<'db>>,
     ) -> Self {
         Const::new(interner, ConstKind::Unevaluated(uv))
     }
@@ -431,7 +431,7 @@ pub struct BoundConst {
     pub var: BoundVar,
 }
 
-impl<'db> rustc_type_ir::inherent::BoundVarLike<DbInterner<'db>> for BoundConst {
+impl<'db> redox_type_ir::inherent::BoundVarLike<DbInterner<'db>> for BoundConst {
     fn var(self) -> BoundVar {
         self.var
     }
@@ -444,40 +444,40 @@ impl<'db> rustc_type_ir::inherent::BoundVarLike<DbInterner<'db>> for BoundConst 
 impl<'db> PlaceholderLike<DbInterner<'db>> for PlaceholderConst {
     type Bound = BoundConst;
 
-    fn universe(self) -> rustc_type_ir::UniverseIndex {
+    fn universe(self) -> redox_type_ir::UniverseIndex {
         self.universe
     }
 
-    fn var(self) -> rustc_type_ir::BoundVar {
+    fn var(self) -> redox_type_ir::BoundVar {
         self.bound.var
     }
 
-    fn with_updated_universe(self, ui: rustc_type_ir::UniverseIndex) -> Self {
+    fn with_updated_universe(self, ui: redox_type_ir::UniverseIndex) -> Self {
         Placeholder { universe: ui, bound: self.bound }
     }
 
-    fn new(ui: rustc_type_ir::UniverseIndex, var: BoundConst) -> Self {
+    fn new(ui: redox_type_ir::UniverseIndex, var: BoundConst) -> Self {
         Placeholder { universe: ui, bound: var }
     }
-    fn new_anon(ui: rustc_type_ir::UniverseIndex, var: rustc_type_ir::BoundVar) -> Self {
+    fn new_anon(ui: redox_type_ir::UniverseIndex, var: redox_type_ir::BoundVar) -> Self {
         Placeholder { universe: ui, bound: BoundConst { var } }
     }
 }
 
 impl<'db> Relate<DbInterner<'db>> for ExprConst {
-    fn relate<R: rustc_type_ir::relate::TypeRelation<DbInterner<'db>>>(
+    fn relate<R: redox_type_ir::relate::TypeRelation<DbInterner<'db>>>(
         _relation: &mut R,
         a: Self,
         b: Self,
-    ) -> rustc_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
+    ) -> redox_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
         // Ensure we get back to this when we fill in the fields
         let ExprConst = b;
         Ok(a)
     }
 }
 
-impl<'db> rustc_type_ir::inherent::ExprConst<DbInterner<'db>> for ExprConst {
-    fn args(self) -> <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs {
+impl<'db> redox_type_ir::inherent::ExprConst<DbInterner<'db>> for ExprConst {
+    fn args(self) -> <DbInterner<'db> as redox_type_ir::Interner>::GenericArgs {
         // Ensure we get back to this when we fill in the fields
         let ExprConst = self;
         GenericArgs::default()

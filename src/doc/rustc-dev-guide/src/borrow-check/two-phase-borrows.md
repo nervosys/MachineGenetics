@@ -73,11 +73,11 @@ The activation points are found using the [`GatherBorrows`] visitor. The
 [`BorrowData`] then holds both the reservation and activation points for the
 borrow.
 
-[`AutoBorrow`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/adjustment/enum.AutoBorrow.html
-[converted]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/cx/expr/trait.ToBorrowKind.html#method.to_borrow_kind
-[`BorrowKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.BorrowKind.html
-[`GatherBorrows`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/borrow_set/struct.GatherBorrows.html
-[`BorrowData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/borrow_set/struct.BorrowData.html
+[`AutoBorrow`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/adjustment/enum.AutoBorrow.html
+[converted]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_build/thir/cx/expr/trait.ToBorrowKind.html#method.to_borrow_kind
+[`BorrowKind`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/enum.BorrowKind.html
+[`GatherBorrows`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_borrowck/borrow_set/struct.GatherBorrows.html
+[`BorrowData`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_borrowck/borrow_set/struct.BorrowData.html
 
 ## Checking two-phase borrows
 
@@ -95,6 +95,6 @@ following exceptions:
    by using the [`Dominators`] for the MIR graph.
 4. After the activation point, the two-phase borrow acts as a mutable borrow.
 
-[check]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/struct.MirBorrowckCtxt.html#method.check_activations
-[`Dominators`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/graph/dominators/struct.Dominators.html
-[`is_active`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/path_utils/fn.is_active.html
+[check]: https://doc.rust-lang.org/nightly/nightly-redox/redox_borrowck/struct.MirBorrowckCtxt.html#method.check_activations
+[`Dominators`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_data_structures/graph/dominators/struct.Dominators.html
+[`is_active`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_borrowck/path_utils/fn.is_active.html

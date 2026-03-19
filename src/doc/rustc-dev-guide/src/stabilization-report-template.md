@@ -109,7 +109,7 @@ todo!()
 >
 > See, e.g., this breakdown of the major parts of async closures:
 >
-> - <https://rustc-dev-guide.rust-lang.org/coroutine-closures.html>
+> - <https://redox-dev-guide.rust-lang.org/coroutine-closures.html>
 
 *TODO*
 

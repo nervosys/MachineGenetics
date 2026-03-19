@@ -65,7 +65,7 @@ impl Message {
 
 #[test]
 fn lint_message_convention() {
-    // disable the test inside the rustc test suite
+    // disable the test inside the redox test suite
     if option_env!("RUSTC_TEST_SUITE").is_some() {
         return;
     }
@@ -110,8 +110,8 @@ fn lint_message_convention() {
     eprintln!(
         "\n\n\nLint message should not start with a capital letter and should not have punctuation at the end of the message unless multiple sentences are needed."
     );
-    eprintln!("Check out the rustc-dev-guide for more information:");
-    eprintln!("https://rustc-dev-guide.rust-lang.org/diagnostics.html#diagnostic-structure\n\n\n");
+    eprintln!("Check out the redox-dev-guide for more information:");
+    eprintln!("https://redox-dev-guide.rust-lang.org/diagnostics.html#diagnostic-structure\n\n\n");
 
     assert!(bad_tests.is_empty());
 }

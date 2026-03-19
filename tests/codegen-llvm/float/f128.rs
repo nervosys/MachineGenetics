@@ -3,9 +3,9 @@
 // Emscripten aligns f128 to 8 bytes, not 16.
 //@ revisions: x86-sse x86-nosse bit32 bit64 emscripten
 //@[x86-sse] only-x86
-//@[x86-sse] only-rustc_abi-x86-sse2
+//@[x86-sse] only-redox_abi-x86-sse2
 //@[x86-nosse] only-x86
-//@[x86-nosse] ignore-rustc_abi-x86-sse2
+//@[x86-nosse] ignore-redox_abi-x86-sse2
 //@[bit32] ignore-x86
 //@[bit32] ignore-emscripten
 //@[bit32] only-32bit

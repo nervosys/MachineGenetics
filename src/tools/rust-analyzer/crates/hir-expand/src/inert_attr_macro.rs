@@ -1,6 +1,6 @@
 //! Builtin attributes resolved by nameres.
 //!
-//! The actual definitions were copied from rustc's `compiler/rustc_feature/src/builtin_attrs.rs`.
+//! The actual definitions were copied from redox's `compiler/redox_feature/src/builtin_attrs.rs`.
 //!
 //! It was last synchronized with upstream commit c3def263a44e07e09ae6d57abfc8650227fb4972.
 //!
@@ -11,7 +11,7 @@
 use std::sync::OnceLock;
 
 use intern::Symbol;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 
 pub struct BuiltinAttribute {
     pub name: &'static str,
@@ -79,9 +79,9 @@ macro_rules! gated {
     };
 }
 
-macro_rules! rustc_attr {
+macro_rules! redox_attr {
     (TEST, $attr:ident, $typ:expr, $tpl:expr, $duplicate:expr $(, @only_local: $only_local:expr)? $(,)?) => {
-        rustc_attr!(
+        redox_attr!(
             $attr,
             $typ,
             $tpl,
@@ -90,7 +90,7 @@ macro_rules! rustc_attr {
             concat!(
                 "the `#[",
                 stringify!($attr),
-                "]` attribute is just used for rustc unit tests \
+                "]` attribute is just used for redox unit tests \
                 and will never be stable",
             ),
         )
@@ -107,7 +107,7 @@ macro_rules! experimental {
     };
 }
 
-/// Attributes that have a special meaning to rustc or rustdoc.
+/// Attributes that have a special meaning to redox or rustdoc.
 #[rustfmt::skip]
 pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
@@ -341,13 +341,13 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         unstable, Normal,
         template!(List: r#"feature = "name", reason = "...", issue = "N""#), DuplicatesOk,
     ),
-    ungated!(rustc_const_unstable, Normal, template!(List: r#"feature = "name""#), DuplicatesOk),
+    ungated!(redox_const_unstable, Normal, template!(List: r#"feature = "name""#), DuplicatesOk),
     ungated!(
-        rustc_const_stable, Normal,
+        redox_const_stable, Normal,
         template!(List: r#"feature = "name""#), DuplicatesOk, @only_local: true,
     ),
     ungated!(
-        rustc_default_body_unstable, Normal,
+        redox_default_body_unstable, Normal,
         template!(List: r#"feature = "name", reason = "...", issue = "N""#), DuplicatesOk
     ),
     gated!(
@@ -355,16 +355,16 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         "allow_internal_unstable side-steps feature gating and stability checks",
     ),
     gated!(
-        rustc_allow_const_fn_unstable, Normal,
+        redox_allow_const_fn_unstable, Normal,
         template!(Word, List: "feat1, feat2, ..."), DuplicatesOk,
-        "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
+        "redox_allow_const_fn_unstable side-steps feature gating and stability checks"
     ),
     gated!(
         allow_internal_unsafe, Normal, template!(Word), WarnFollowing,
         "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
-    rustc_attr!(rustc_allowed_through_unstable_modules, Normal, template!(Word), WarnFollowing,
-    "rustc_allowed_through_unstable_modules special cases accidental stabilizations of stable items \
+    redox_attr!(redox_allowed_through_unstable_modules, Normal, template!(Word), WarnFollowing,
+    "redox_allowed_through_unstable_modules special cases accidental stabilizations of stable items \
     through unstable paths"),
 
     // ==========================================================================
@@ -381,11 +381,11 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes: Runtime related:
     // ==========================================================================
 
-    rustc_attr!(rustc_allocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
-    rustc_attr!(rustc_nounwind, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
-    rustc_attr!(rustc_reallocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
-    rustc_attr!(rustc_deallocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
-    rustc_attr!(rustc_allocator_zeroed, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    redox_attr!(redox_allocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    redox_attr!(redox_nounwind, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    redox_attr!(redox_reallocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    redox_attr!(redox_deallocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    redox_attr!(redox_allocator_zeroed, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
     gated!(
         default_lib_allocator, Normal, template!(Word), WarnFollowing, allocator_internals,
         experimental!(default_lib_allocator),
@@ -418,22 +418,22 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         linkage, Normal, template!(NameValueStr: "external|internal|..."), ErrorPreceding, @only_local: true,
         "the `linkage` attribute is experimental and not portable across platforms",
     ),
-    rustc_attr!(
-        rustc_std_internal_symbol, Normal, template!(Word), WarnFollowing, @only_local: true, INTERNAL_UNSTABLE
+    redox_attr!(
+        redox_std_internal_symbol, Normal, template!(Word), WarnFollowing, @only_local: true, INTERNAL_UNSTABLE
     ),
 
     // ==========================================================================
     // Internal attributes, Macro related:
     // ==========================================================================
 
-    rustc_attr!(
-        rustc_builtin_macro, Normal,
+    redox_attr!(
+        redox_builtin_macro, Normal,
         template!(Word, List: "name, /*opt*/ attributes(name1, name2, ...)"), ErrorFollowing,
         IMPL_DETAIL,
     ),
-    rustc_attr!(rustc_proc_macro_decls, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
-    rustc_attr!(
-        rustc_macro_transparency, Normal,
+    redox_attr!(redox_proc_macro_decls, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
+    redox_attr!(
+        redox_macro_transparency, Normal,
         template!(NameValueStr: "transparent|semiopaque|opaque"), ErrorFollowing,
         "used internally for testing macro hygiene",
     ),
@@ -442,8 +442,8 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes, Diagnostics related:
     // ==========================================================================
 
-    rustc_attr!(
-        rustc_on_unimplemented, Normal,
+    redox_attr!(
+        redox_on_unimplemented, Normal,
         template!(
             List: r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#,
             NameValueStr: "message"
@@ -451,69 +451,69 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorFollowing,
         INTERNAL_UNSTABLE
     ),
-    rustc_attr!(
-        rustc_confusables, Normal,
+    redox_attr!(
+        redox_confusables, Normal,
         template!(List: r#""name1", "name2", ..."#),
         ErrorFollowing,
         INTERNAL_UNSTABLE,
     ),
     // Enumerates "identity-like" conversion methods to suggest on type mismatch.
-    rustc_attr!(
-        rustc_conversion_suggestion, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
+    redox_attr!(
+        redox_conversion_suggestion, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
     ),
     // Prevents field reads in the marked trait or method to be considered
     // during dead code analysis.
-    rustc_attr!(
-        rustc_trivial_field_reads, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
+    redox_attr!(
+        redox_trivial_field_reads, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
     ),
-    // Used by the `rustc::potential_query_instability` lint to warn methods which
+    // Used by the `redox::potential_query_instability` lint to warn methods which
     // might not be stable during incremental compilation.
-    rustc_attr!(rustc_lint_query_instability, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
-    // Used by the `rustc::untracked_query_information` lint to warn methods which
+    redox_attr!(redox_lint_query_instability, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
+    // Used by the `redox::untracked_query_information` lint to warn methods which
     // might break incremental compilation.
-    rustc_attr!(rustc_lint_untracked_query_information, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
-    // Used by the `rustc::bad_opt_access` lint to identify `DebuggingOptions` and `CodegenOptions`
+    redox_attr!(redox_lint_untracked_query_information, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
+    // Used by the `redox::bad_opt_access` lint to identify `DebuggingOptions` and `CodegenOptions`
     // types (as well as any others in future).
-    rustc_attr!(rustc_lint_opt_ty, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
-    // Used by the `rustc::bad_opt_access` lint on fields
+    redox_attr!(redox_lint_opt_ty, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
+    // Used by the `redox::bad_opt_access` lint on fields
     // types (as well as any others in future).
-    rustc_attr!(rustc_lint_opt_deny_field_access, Normal, template!(List: "message"), WarnFollowing, INTERNAL_UNSTABLE),
+    redox_attr!(redox_lint_opt_deny_field_access, Normal, template!(List: "message"), WarnFollowing, INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Const related:
     // ==========================================================================
 
-    rustc_attr!(rustc_promotable, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
-    rustc_attr!(
-        rustc_legacy_const_generics, Normal, template!(List: "N"), ErrorFollowing,
+    redox_attr!(redox_promotable, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    redox_attr!(
+        redox_legacy_const_generics, Normal, template!(List: "N"), ErrorFollowing,
         INTERNAL_UNSTABLE
     ),
     // Do not const-check this function's body. It will always get replaced during CTFE via `hook_special_const_fn`.
-    rustc_attr!(
-        rustc_do_not_const_check, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
+    redox_attr!(
+        redox_do_not_const_check, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
     ),
     // Ensure the argument to this function is &&str during const-check.
-    rustc_attr!(
-        rustc_const_panic_str, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
+    redox_attr!(
+        redox_const_panic_str, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
     ),
 
     // ==========================================================================
     // Internal attributes, Layout related:
     // ==========================================================================
 
-    rustc_attr!(
-        rustc_layout_scalar_valid_range_start, Normal, template!(List: "value"), ErrorFollowing,
-        "the `#[rustc_layout_scalar_valid_range_start]` attribute is just used to enable \
+    redox_attr!(
+        redox_layout_scalar_valid_range_start, Normal, template!(List: "value"), ErrorFollowing,
+        "the `#[redox_layout_scalar_valid_range_start]` attribute is just used to enable \
         niche optimizations in libcore and libstd and will never be stable",
     ),
-    rustc_attr!(
-        rustc_layout_scalar_valid_range_end, Normal, template!(List: "value"), ErrorFollowing,
-        "the `#[rustc_layout_scalar_valid_range_end]` attribute is just used to enable \
+    redox_attr!(
+        redox_layout_scalar_valid_range_end, Normal, template!(List: "value"), ErrorFollowing,
+        "the `#[redox_layout_scalar_valid_range_end]` attribute is just used to enable \
         niche optimizations in libcore and libstd and will never be stable",
     ),
-    rustc_attr!(
-        rustc_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,
-        "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable \
+    redox_attr!(
+        redox_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,
+        "the `#[redox_nonnull_optimization_guaranteed]` attribute is just used to enable \
         niche optimizations in libcore and libstd and will never be stable",
     ),
 
@@ -524,48 +524,48 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         lang, Normal, template!(NameValueStr: "name"), DuplicatesOk, @only_local: true, lang_items,
         "language items are subject to change",
     ),
-    rustc_attr!(
-        rustc_pass_by_value, Normal, template!(Word), ErrorFollowing,
-        "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
+    redox_attr!(
+        redox_pass_by_value, Normal, template!(Word), ErrorFollowing,
+        "#[redox_pass_by_value] is used to mark types that must be passed by value instead of reference."
     ),
-    rustc_attr!(
-        rustc_never_returns_null_ptr, Normal, template!(Word), ErrorFollowing,
-        "#[rustc_never_returns_null_ptr] is used to mark functions returning non-null pointers."
+    redox_attr!(
+        redox_never_returns_null_ptr, Normal, template!(Word), ErrorFollowing,
+        "#[redox_never_returns_null_ptr] is used to mark functions returning non-null pointers."
     ),
-    rustc_attr!(
-        rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, @only_local: true,
-        "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
+    redox_attr!(
+        redox_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, @only_local: true,
+        "#![redox_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
     ),
-    rustc_attr!(
-        rustc_coinductive, AttributeType::Normal, template!(Word), WarnFollowing, @only_local: true,
-        "#![rustc_coinductive] changes a trait to be coinductive, allowing cycles in the trait solver."
+    redox_attr!(
+        redox_coinductive, AttributeType::Normal, template!(Word), WarnFollowing, @only_local: true,
+        "#![redox_coinductive] changes a trait to be coinductive, allowing cycles in the trait solver."
     ),
-    rustc_attr!(
-        rustc_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: true,
-        "#[rustc_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
+    redox_attr!(
+        redox_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: true,
+        "#[redox_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
     ),
-    rustc_attr!(
-        rustc_deny_explicit_impl,
+    redox_attr!(
+        redox_deny_explicit_impl,
         AttributeType::Normal,
         template!(List: "implement_via_object = (true|false)"),
         ErrorFollowing,
         @only_local: true,
-        "#[rustc_deny_explicit_impl] enforces that a trait can have no user-provided impls"
+        "#[redox_deny_explicit_impl] enforces that a trait can have no user-provided impls"
     ),
-    rustc_attr!(
-        rustc_has_incoherent_inherent_impls, AttributeType::Normal, template!(Word), ErrorFollowing,
-        "#[rustc_has_incoherent_inherent_impls] allows the addition of incoherent inherent impls for \
-         the given type by annotating all impl items with #[rustc_allow_incoherent_impl]."
+    redox_attr!(
+        redox_has_incoherent_inherent_impls, AttributeType::Normal, template!(Word), ErrorFollowing,
+        "#[redox_has_incoherent_inherent_impls] allows the addition of incoherent inherent impls for \
+         the given type by annotating all impl items with #[redox_allow_incoherent_impl]."
     ),
-    rustc_attr!(
-        rustc_box, AttributeType::Normal, template!(Word), ErrorFollowing,
-        "#[rustc_box] allows creating boxes \
+    redox_attr!(
+        redox_box, AttributeType::Normal, template!(Word), ErrorFollowing,
+        "#[redox_box] allows creating boxes \
         and it is only intended to be used in `alloc`."
     ),
 
     BuiltinAttribute {
-        // name: sym::rustc_diagnostic_item,
-        name: "rustc_diagnostic_item",
+        // name: sym::redox_diagnostic_item,
+        name: "redox_diagnostic_item",
         // FIXME: This can be `true` once we always use `tcx.is_diagnostic_item`.
         // only_local: false,
         // type_: Normal,
@@ -573,137 +573,137 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         // duplicates: ErrorFollowing,
         // gate: Gated(
             // Stability::Unstable,
-            // sym::rustc_attrs,
+            // sym::redox_attrs,
             // "diagnostic items compiler internal support for linting",
-            // cfg_fn!(rustc_attrs),
+            // cfg_fn!(redox_attrs),
         // ),
     },
     gated!(
         // Used in resolve:
         prelude_import, Normal, template!(Word), WarnFollowing,
-        "`#[prelude_import]` is for use by rustc only",
+        "`#[prelude_import]` is for use by redox only",
     ),
     gated!(
-        rustc_paren_sugar, Normal, template!(Word), WarnFollowing, unboxed_closures,
+        redox_paren_sugar, Normal, template!(Word), WarnFollowing, unboxed_closures,
         "unboxed_closures are still evolving",
     ),
-    rustc_attr!(
-        rustc_inherit_overflow_checks, Normal, template!(Word), WarnFollowing, @only_local: true,
-        "the `#[rustc_inherit_overflow_checks]` attribute is just used to control \
+    redox_attr!(
+        redox_inherit_overflow_checks, Normal, template!(Word), WarnFollowing, @only_local: true,
+        "the `#[redox_inherit_overflow_checks]` attribute is just used to control \
         overflow checking behavior of several libcore functions that are inlined \
         across crates and will never be stable",
     ),
-    rustc_attr!(
-        rustc_reservation_impl, Normal,
+    redox_attr!(
+        redox_reservation_impl, Normal,
         template!(NameValueStr: "reservation message"), ErrorFollowing,
-        "the `#[rustc_reservation_impl]` attribute is internally used \
+        "the `#[redox_reservation_impl]` attribute is internally used \
          for reserving for `for<T> From<!> for T` impl"
     ),
-    rustc_attr!(
-        rustc_test_marker, Normal, template!(NameValueStr: "name"), WarnFollowing,
-        "the `#[rustc_test_marker]` attribute is used internally to track tests",
+    redox_attr!(
+        redox_test_marker, Normal, template!(NameValueStr: "name"), WarnFollowing,
+        "the `#[redox_test_marker]` attribute is used internally to track tests",
     ),
-    rustc_attr!(
-        rustc_unsafe_specialization_marker, Normal, template!(Word), WarnFollowing,
-        "the `#[rustc_unsafe_specialization_marker]` attribute is used to check specializations"
+    redox_attr!(
+        redox_unsafe_specialization_marker, Normal, template!(Word), WarnFollowing,
+        "the `#[redox_unsafe_specialization_marker]` attribute is used to check specializations"
     ),
-    rustc_attr!(
-        rustc_specialization_trait, Normal, template!(Word), WarnFollowing,
-        "the `#[rustc_specialization_trait]` attribute is used to check specializations"
+    redox_attr!(
+        redox_specialization_trait, Normal, template!(Word), WarnFollowing,
+        "the `#[redox_specialization_trait]` attribute is used to check specializations"
     ),
-    rustc_attr!(
-        rustc_main, Normal, template!(Word), WarnFollowing,
-        "the `#[rustc_main]` attribute is used internally to specify test entry point function",
+    redox_attr!(
+        redox_main, Normal, template!(Word), WarnFollowing,
+        "the `#[redox_main]` attribute is used internally to specify test entry point function",
     ),
-    rustc_attr!(
-        rustc_skip_array_during_method_dispatch, Normal, template!(Word), WarnFollowing,
-        "the `#[rustc_skip_array_during_method_dispatch]` attribute is used to exclude a trait \
+    redox_attr!(
+        redox_skip_array_during_method_dispatch, Normal, template!(Word), WarnFollowing,
+        "the `#[redox_skip_array_during_method_dispatch]` attribute is used to exclude a trait \
         from method dispatch when the receiver is an array, for compatibility in editions < 2021."
     ),
-    rustc_attr!(
-        rustc_must_implement_one_of, Normal, template!(List: "function1, function2, ..."), ErrorFollowing,
-        "the `#[rustc_must_implement_one_of]` attribute is used to change minimal complete \
+    redox_attr!(
+        redox_must_implement_one_of, Normal, template!(List: "function1, function2, ..."), ErrorFollowing,
+        "the `#[redox_must_implement_one_of]` attribute is used to change minimal complete \
         definition of a trait, it's currently in experimental form and should be changed before \
         being exposed outside of the std"
     ),
-    rustc_attr!(
-        rustc_doc_primitive, Normal, template!(NameValueStr: "primitive name"), ErrorFollowing,
-        r#"`rustc_doc_primitive` is a rustc internal attribute"#,
+    redox_attr!(
+        redox_doc_primitive, Normal, template!(NameValueStr: "primitive name"), ErrorFollowing,
+        r#"`redox_doc_primitive` is a redox internal attribute"#,
     ),
-    rustc_attr!(
-        rustc_safe_intrinsic, Normal, template!(Word), WarnFollowing,
-        "the `#[rustc_safe_intrinsic]` attribute is used internally to mark intrinsics as safe"
+    redox_attr!(
+        redox_safe_intrinsic, Normal, template!(Word), WarnFollowing,
+        "the `#[redox_safe_intrinsic]` attribute is used internally to mark intrinsics as safe"
     ),
-    rustc_attr!(
-        rustc_intrinsic, Normal, template!(Word), ErrorFollowing,
-        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics with function bodies",
+    redox_attr!(
+        redox_intrinsic, Normal, template!(Word), ErrorFollowing,
+        "the `#[redox_intrinsic]` attribute is used to declare intrinsics with function bodies",
     ),
-    rustc_attr!(
-        rustc_no_mir_inline, Normal, template!(Word), WarnFollowing,
-        "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
+    redox_attr!(
+        redox_no_mir_inline, Normal, template!(Word), WarnFollowing,
+        "#[redox_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
     ),
-    rustc_attr!(
-        rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing,
-        "the `#[rustc_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
+    redox_attr!(
+        redox_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing,
+        "the `#[redox_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
     ),
 
-    rustc_attr!(
-        rustc_deprecated_safe_2024, Normal, template!(Word), WarnFollowing,
-        "the `#[rustc_safe_intrinsic]` marks functions as unsafe in Rust 2024",
+    redox_attr!(
+        redox_deprecated_safe_2024, Normal, template!(Word), WarnFollowing,
+        "the `#[redox_safe_intrinsic]` marks functions as unsafe in Rust 2024",
     ),
 
     // ==========================================================================
     // Internal attributes, Testing:
     // ==========================================================================
 
-    rustc_attr!(TEST, rustc_effective_visibility, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_outlives, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_capture_analysis, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_insignificant_dtor, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_strict_coherence, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_variance, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_variance_of_opaques, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_hidden_type_of_opaques, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_layout, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
-    rustc_attr!(TEST, rustc_abi, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
-    rustc_attr!(TEST, rustc_regions, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_dump_user_args, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_evaluate_where_clauses, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(
-        TEST, rustc_if_this_changed, Normal, template!(Word, List: "DepNode"), DuplicatesOk
+    redox_attr!(TEST, redox_effective_visibility, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_outlives, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_capture_analysis, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_insignificant_dtor, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_strict_coherence, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_variance, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_variance_of_opaques, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_hidden_type_of_opaques, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_layout, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
+    redox_attr!(TEST, redox_abi, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
+    redox_attr!(TEST, redox_regions, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_dump_user_args, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_evaluate_where_clauses, Normal, template!(Word), WarnFollowing),
+    redox_attr!(
+        TEST, redox_if_this_changed, Normal, template!(Word, List: "DepNode"), DuplicatesOk
     ),
-    rustc_attr!(
-        TEST, rustc_then_this_would_need, Normal, template!(List: "DepNode"), DuplicatesOk
+    redox_attr!(
+        TEST, redox_then_this_would_need, Normal, template!(List: "DepNode"), DuplicatesOk
     ),
-    rustc_attr!(
-        TEST, rustc_clean, Normal,
+    redox_attr!(
+        TEST, redox_clean, Normal,
         template!(List: r#"cfg = "...", /*opt*/ label = "...", /*opt*/ except = "...""#),
         DuplicatesOk,
     ),
-    rustc_attr!(
-        TEST, rustc_partition_reused, Normal,
+    redox_attr!(
+        TEST, redox_partition_reused, Normal,
         template!(List: r#"cfg = "...", module = "...""#), DuplicatesOk,
     ),
-    rustc_attr!(
-        TEST, rustc_partition_codegened, Normal,
+    redox_attr!(
+        TEST, redox_partition_codegened, Normal,
         template!(List: r#"cfg = "...", module = "...""#), DuplicatesOk,
     ),
-    rustc_attr!(
-        TEST, rustc_expected_cgu_reuse, Normal,
+    redox_attr!(
+        TEST, redox_expected_cgu_reuse, Normal,
         template!(List: r#"cfg = "...", module = "...", kind = "...""#), DuplicatesOk,
     ),
-    rustc_attr!(TEST, rustc_symbol_name, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_def_path, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_mir, Normal, template!(List: "arg1, arg2, ..."), DuplicatesOk),
+    redox_attr!(TEST, redox_symbol_name, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_def_path, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_mir, Normal, template!(List: "arg1, arg2, ..."), DuplicatesOk),
     gated!(
         custom_mir, Normal, template!(List: r#"dialect = "...", phase = "...""#),
         ErrorFollowing, "the `#[custom_mir]` attribute is just used for the Rust test suite",
     ),
-    rustc_attr!(TEST, rustc_dump_program_clauses, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_dump_env_program_clauses, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_object_lifetime_default, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_dump_vtable, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_dummy, Normal, template!(Word /* doesn't matter*/), DuplicatesOk),
+    redox_attr!(TEST, redox_dump_program_clauses, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_dump_env_program_clauses, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_object_lifetime_default, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_dump_vtable, Normal, template!(Word), WarnFollowing),
+    redox_attr!(TEST, redox_dummy, Normal, template!(Word /* doesn't matter*/), DuplicatesOk),
     gated!(
         omit_gdb_pretty_printer_section, Normal, template!(Word), WarnFollowing,
         "the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite",

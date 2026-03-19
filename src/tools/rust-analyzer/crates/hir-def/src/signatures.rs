@@ -10,7 +10,7 @@ use hir_expand::{
 };
 use intern::{Symbol, sym};
 use la_arena::{Arena, Idx};
-use rustc_abi::{IntegerType, ReprOptions};
+use redox_abi::{IntegerType, ReprOptions};
 use syntax::{
     AstNode, NodeOrToken, SyntaxNodePtr, T,
     ast::{self, HasGenericParams, HasName, HasVisibility, IsString},
@@ -54,7 +54,7 @@ bitflags! {
     pub struct StructFlags: u8 {
         /// Indicates whether this struct has `#[repr]`.
         const HAS_REPR = 1 << 0;
-        /// Indicates whether the struct has a `#[rustc_has_incoherent_inherent_impls]` attribute.
+        /// Indicates whether the struct has a `#[redox_has_incoherent_inherent_impls]` attribute.
         const RUSTC_HAS_INCOHERENT_INHERENT_IMPLS = 1 << 1;
         /// Indicates whether the struct has a `#[fundamental]` attribute.
         const FUNDAMENTAL      = 1 << 2;
@@ -187,7 +187,7 @@ bitflags! {
     pub struct EnumFlags: u8 {
         /// Indicates whether this enum has `#[repr]`.
         const HAS_REPR = 1 << 0;
-        /// Indicates whether the enum has a `#[rustc_has_incoherent_inherent_impls]` attribute.
+        /// Indicates whether the enum has a `#[redox_has_incoherent_inherent_impls]` attribute.
         const RUSTC_HAS_INCOHERENT_INHERENT_IMPLS  = 1 << 1;
     }
 }
@@ -658,7 +658,7 @@ impl FunctionSignature {
     pub fn is_intrinsic(db: &dyn DefDatabase, id: FunctionId) -> bool {
         let data = db.function_signature(id);
         data.flags.contains(FnFlags::RUSTC_INTRINSIC)
-            // Keep this around for a bit until extern "rustc-intrinsic" abis are no longer used
+            // Keep this around for a bit until extern "redox-intrinsic" abis are no longer used
             || match &data.abi {
                 Some(abi) => *abi == sym::rust_dash_intrinsic,
                 None => match id.lookup(db).container {
@@ -1003,10 +1003,10 @@ impl EnumVariants {
             .find_map(|(id, name, _)| if *id == variant_id { Some(name.clone()) } else { None })
     }
 
-    // [Adopted from rustc](https://github.com/rust-lang/rust/blob/bd53aa3bf7a24a70d763182303bd75e5fc51a9af/compiler/rustc_middle/src/ty/adt.rs#L446-L448)
+    // [Adopted from redox](https://github.com/rust-lang/rust/blob/bd53aa3bf7a24a70d763182303bd75e5fc51a9af/compiler/redox_middle/src/ty/adt.rs#L446-L448)
     pub fn is_payload_free(&self, db: &dyn DefDatabase) -> bool {
         self.variants.iter().all(|&(v, _, _)| {
-            // The condition check order is slightly modified from rustc
+            // The condition check order is slightly modified from redox
             // to improve performance by early returning with relatively fast checks
             let variant = v.fields(db);
             if !variant.fields().is_empty() {

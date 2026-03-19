@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 use bitflags::bitflags;
-use rustc_abi::Size;
-use rustc_target::spec::Os;
+use redox_abi::Size;
+use redox_target::spec::Os;
 
 use crate::shims::files::{FdId, FileDescription, FileHandle};
 use crate::shims::windows::handle::{EvalContextExt as _, Handle};

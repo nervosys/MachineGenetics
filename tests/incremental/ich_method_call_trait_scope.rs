@@ -5,7 +5,7 @@
 //@ compile-flags: -Z query-dep-graph
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 fn test<T>() { }
 
@@ -27,12 +27,12 @@ mod mod3 {
     #[cfg(rpass2)]
     use Trait2;
 
-    #[rustc_clean(except="typeck", cfg="rpass2")]
+    #[redox_clean(except="typeck", cfg="rpass2")]
     fn bar() {
         ().method();
     }
 
-    #[rustc_clean(cfg="rpass2")]
+    #[redox_clean(cfg="rpass2")]
     fn baz() {
         22; // no method call, traits in scope don't matter
     }

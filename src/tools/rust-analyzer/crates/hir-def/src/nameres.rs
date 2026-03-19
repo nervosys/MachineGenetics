@@ -68,7 +68,7 @@ use hir_expand::{
 };
 use intern::Symbol;
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use span::{Edition, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
 use syntax::{AstNode, SmolStr, SyntaxNode, ToSmolStr, ast};
@@ -145,7 +145,7 @@ impl std::hash::Hash for LocalDefMap {
 
 impl LocalDefMap {
     pub(crate) const EMPTY: &Self =
-        &Self { extern_prelude: FxIndexMap::with_hasher(rustc_hash::FxBuildHasher) };
+        &Self { extern_prelude: FxIndexMap::with_hasher(redox_hash::FxBuildHasher) };
 
     fn shrink_to_fit(&mut self) {
         let Self { extern_prelude } = self;
@@ -217,8 +217,8 @@ struct DefMapCrateData {
     registered_tools: Vec<Symbol>,
     /// Unstable features of Rust enabled with `#![feature(A, B)]`.
     unstable_features: FxHashSet<Symbol>,
-    /// `#[rustc_coherence_is_core]`
-    rustc_coherence_is_core: bool,
+    /// `#[redox_coherence_is_core]`
+    redox_coherence_is_core: bool,
     no_core: bool,
     no_std: bool,
 
@@ -234,7 +234,7 @@ impl DefMapCrateData {
             fn_proc_macro_mapping_back: FxHashMap::default(),
             registered_tools: PREDEFINED_TOOLS.iter().map(|it| Symbol::intern(it)).collect(),
             unstable_features: FxHashSet::default(),
-            rustc_coherence_is_core: false,
+            redox_coherence_is_core: false,
             no_core: false,
             no_std: false,
             edition,
@@ -249,7 +249,7 @@ impl DefMapCrateData {
             fn_proc_macro_mapping_back,
             registered_tools,
             unstable_features,
-            rustc_coherence_is_core: _,
+            redox_coherence_is_core: _,
             no_core: _,
             no_std: _,
             edition: _,
@@ -558,8 +558,8 @@ impl DefMap {
         self.data.unstable_features.contains(feature)
     }
 
-    pub fn is_rustc_coherence_is_core(&self) -> bool {
-        self.data.rustc_coherence_is_core
+    pub fn is_redox_coherence_is_core(&self) -> bool {
+        self.data.redox_coherence_is_core
     }
 
     pub fn is_no_std(&self) -> bool {
@@ -617,7 +617,7 @@ impl DefMap {
     }
 
     pub fn recursion_limit(&self) -> u32 {
-        // 128 is the default in rustc
+        // 128 is the default in redox
         self.data.recursion_limit.unwrap_or(128)
     }
 
@@ -842,12 +842,12 @@ pub(crate) fn macro_styles_from_id(db: &dyn DefDatabase, macro_id: MacroId) -> M
     }
 }
 
-/// Quoted from [rustc]:
+/// Quoted from [redox]:
 /// Macro namespace is separated into two sub-namespaces, one for bang macros and
 /// one for attribute-like macros (attributes, derives).
 /// We ignore resolutions from one sub-namespace when searching names in scope for another.
 ///
-/// [rustc]: https://github.com/rust-lang/rust/blob/1.69.0/compiler/rustc_resolve/src/macros.rs#L75
+/// [redox]: https://github.com/rust-lang/rust/blob/1.69.0/compiler/redox_resolve/src/macros.rs#L75
 fn sub_namespace_match(
     db: &dyn DefDatabase,
     macro_id: MacroId,

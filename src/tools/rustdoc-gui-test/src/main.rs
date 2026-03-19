@@ -39,7 +39,7 @@ fn main() -> Result<(), ()> {
                 .arg(&config.out_dir)
                 .env("RUSTC_BOOTSTRAP", "1")
                 .env("RUSTDOC", &config.rustdoc)
-                .env("RUSTC", &config.rustc)
+                .env("RUSTC", &config.redox)
                 .current_dir(path);
 
             if let Some(librs) = find_librs(entry.path()) {

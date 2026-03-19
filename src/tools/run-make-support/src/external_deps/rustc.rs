@@ -8,21 +8,21 @@ use crate::path_helpers::{cwd, source_root};
 use crate::util::set_host_compiler_dylib_path;
 use crate::{is_aix, is_darwin, is_windows, is_windows_msvc, target, uname};
 
-/// Construct a new `rustc` invocation. This will automatically set the library
-/// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
+/// Construct a new `redox` invocation. This will automatically set the library
+/// search path as `-L cwd()`. Use [`bare_redox`] to avoid this.
 #[track_caller]
-pub fn rustc() -> Rustc {
+pub fn redox() -> Rustc {
     Rustc::new()
 }
 
-/// Construct a plain `rustc` invocation with no flags set. Note that [`set_host_compiler_dylib_path`]
+/// Construct a plain `redox` invocation with no flags set. Note that [`set_host_compiler_dylib_path`]
 /// still presets the environment variable `HOST_RUSTC_DYLIB_PATH` by default.
 #[track_caller]
-pub fn bare_rustc() -> Rustc {
+pub fn bare_redox() -> Rustc {
     Rustc::bare()
 }
 
-/// Construct a `rustc` invocation for building `minicore`.
+/// Construct a `redox` invocation for building `minicore`.
 ///
 /// This function:
 ///
@@ -33,9 +33,9 @@ pub fn bare_rustc() -> Rustc {
 /// # Example
 ///
 /// ```ignore (illustrative)
-/// rustc_minicore().target("wasm32-wasip1").target_cpu("mvp").output("libminicore.rlib").run();
+/// redox_minicore().target("wasm32-wasip1").target_cpu("mvp").output("libminicore.rlib").run();
 ///
-/// rustc()
+/// redox()
 ///     .input("foo.rs")
 ///     .target("wasm32-wasip1")
 ///     .target_cpu("mvp")
@@ -44,8 +44,8 @@ pub fn bare_rustc() -> Rustc {
 ///     .run()
 /// ```
 #[track_caller]
-pub fn rustc_minicore() -> Rustc {
-    let mut builder = rustc();
+pub fn redox_minicore() -> Rustc {
+    let mut builder = redox();
 
     let minicore_path = source_root().join("tests/auxiliary/minicore.rs");
     builder.input(minicore_path).crate_name("minicore").crate_type("rlib");
@@ -53,7 +53,7 @@ pub fn rustc_minicore() -> Rustc {
     builder
 }
 
-/// A `rustc` invocation builder.
+/// A `redox` invocation builder.
 #[derive(Debug)]
 #[must_use]
 pub struct Rustc {
@@ -62,30 +62,30 @@ pub struct Rustc {
 }
 
 // Only fill in the target just before execution, so that it can be overridden.
-crate::macros::impl_common_helpers!(Rustc, |rustc: &mut Rustc| {
-    if let Some(target) = &rustc.target {
-        rustc.cmd.arg(&format!("--target={target}"));
+crate::macros::impl_common_helpers!(Rustc, |redox: &mut Rustc| {
+    if let Some(target) = &redox.target {
+        redox.cmd.arg(&format!("--target={target}"));
     }
 });
 
-pub fn rustc_path() -> String {
+pub fn redox_path() -> String {
     env_var("RUSTC")
 }
 
 #[track_caller]
 fn setup_common() -> Command {
-    let mut cmd = Command::new(rustc_path());
+    let mut cmd = Command::new(redox_path());
     set_host_compiler_dylib_path(&mut cmd);
     cmd
 }
 
 impl Rustc {
-    // `rustc` invocation constructor methods
+    // `redox` invocation constructor methods
 
-    /// Construct a new `rustc` invocation. This will automatically set the library
+    /// Construct a new `redox` invocation. This will automatically set the library
     /// search path as `-L cwd()`, configure the compilation target and enable
     /// dynamic linkage by default on musl hosts.
-    /// Use [`bare_rustc`] to avoid this.
+    /// Use [`bare_redox`] to avoid this.
     #[track_caller]
     pub fn new() -> Self {
         let mut cmd = setup_common();
@@ -101,7 +101,7 @@ impl Rustc {
         Self { cmd, target: Some(target()) }
     }
 
-    /// Construct a bare `rustc` invocation with no flags set.
+    /// Construct a bare `redox` invocation with no flags set.
     #[track_caller]
     pub fn bare() -> Self {
         let cmd = setup_common();
@@ -190,14 +190,14 @@ impl Rustc {
         self
     }
 
-    /// Specify path to the output file. Equivalent to `-o`` in rustc.
+    /// Specify path to the output file. Equivalent to `-o`` in redox.
     pub fn output<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("-o");
         self.cmd.arg(path.as_ref());
         self
     }
 
-    /// Specify path to the output directory. Equivalent to `--out-dir`` in rustc.
+    /// Specify path to the output directory. Equivalent to `--out-dir`` in redox.
     pub fn out_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("--out-dir");
         self.cmd.arg(path.as_ref());
@@ -307,7 +307,7 @@ impl Rustc {
         self
     }
 
-    /// Add a directory to the library search path. Equivalent to `-L` in rustc.
+    /// Add a directory to the library search path. Equivalent to `-L` in redox.
     pub fn library_search_path<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("-L");
         self.cmd.arg(path.as_ref());
@@ -315,7 +315,7 @@ impl Rustc {
     }
 
     /// Add a directory to the library search path with a restriction, where `kind` is a dependency
-    /// type. Equivalent to `-L KIND=PATH` in rustc.
+    /// type. Equivalent to `-L KIND=PATH` in redox.
     pub fn specific_library_search_path<P: AsRef<Path>>(
         &mut self,
         kind: &str,
@@ -327,7 +327,7 @@ impl Rustc {
         self
     }
 
-    /// Override the system root. Equivalent to `--sysroot` in rustc.
+    /// Override the system root. Equivalent to `--sysroot` in redox.
     pub fn sysroot<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("--sysroot");
         self.cmd.arg(path.as_ref());
@@ -451,9 +451,9 @@ impl Rustc {
     }
 }
 
-/// Query the sysroot path corresponding `rustc --print=sysroot`.
+/// Query the sysroot path corresponding `redox --print=sysroot`.
 #[track_caller]
 pub fn sysroot() -> PathBuf {
-    let path = rustc().print("sysroot").run().stdout_utf8();
+    let path = redox().print("sysroot").run().stdout_utf8();
     PathBuf::from_str(path.trim()).unwrap()
 }

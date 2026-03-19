@@ -1,9 +1,9 @@
 //@aux-build:../../ui/auxiliary/proc_macros.rs
 //@revisions: default ord_within ord_in_2 ord_in_3
-//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default
-//@[ord_within] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_within
-//@[ord_in_2] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_in_2
-//@[ord_in_3] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_in_3
+//@[default] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default
+//@[ord_within] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_within
+//@[ord_in_2] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_in_2
+//@[ord_in_3] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_in_3
 //@compile-flags: --test
 
 #![allow(dead_code)]

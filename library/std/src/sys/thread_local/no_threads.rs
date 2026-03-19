@@ -9,7 +9,7 @@ use crate::ptr;
 #[allow_internal_unstable(thread_local_internals)]
 #[allow_internal_unsafe]
 #[unstable(feature = "thread_local_internals", issue = "none")]
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 pub macro thread_local_inner {
     // used to generate the `LocalKey` value for const-initialized thread locals
     (@key $t:ty, $(#[$align_attr:meta])*, const $init:expr) => {{
@@ -42,7 +42,7 @@ pub macro thread_local_inner {
 }
 
 #[allow(missing_debug_implementations)]
-#[repr(transparent)] // Required for correctness of `#[rustc_align_static]`
+#[repr(transparent)] // Required for correctness of `#[redox_align_static]`
 pub struct EagerStorage<T> {
     pub value: T,
 }
@@ -60,7 +60,7 @@ enum State {
 #[allow(missing_debug_implementations)]
 #[repr(C)]
 pub struct LazyStorage<T> {
-    // This field must be first, for correctness of `#[rustc_align_static]`
+    // This field must be first, for correctness of `#[redox_align_static]`
     value: UnsafeCell<MaybeUninit<T>>,
     state: Cell<State>,
 }
@@ -119,7 +119,7 @@ impl<T> LazyStorage<T> {
 // SAFETY: the target doesn't have threads.
 unsafe impl<T> Sync for LazyStorage<T> {}
 
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 pub(crate) macro local_pointer {
     () => {},
     ($vis:vis static $name:ident; $($rest:tt)*) => {

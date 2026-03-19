@@ -1,6 +1,6 @@
 #![feature(intrinsics)]
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 unsafe fn foo();
 //~^ ERROR E0093
 

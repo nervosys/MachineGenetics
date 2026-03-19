@@ -10,56 +10,56 @@
 #![feature(formatting_options)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![feature(test)]
 #![feature(trim_prefix_suffix)]
 #![recursion_limit = "256"]
-#![warn(rustc::internal)]
+#![warn(redox::internal)]
 // tidy-alphabetical-end
 
 // N.B. these need `extern crate` even in 2018 edition
 // because they're loaded implicitly from the sysroot.
 // The reason they're loaded from the sysroot is because
-// the rustdoc artifacts aren't stored in rustc's cargo target directory.
-// So if `rustc` was specified in Cargo.toml, this would spuriously rebuild crates.
+// the rustdoc artifacts aren't stored in redox's cargo target directory.
+// So if `redox` was specified in Cargo.toml, this would spuriously rebuild crates.
 //
 // Dependencies listed in Cargo.toml do not need `extern crate`.
 
-extern crate rustc_abi;
-extern crate rustc_ast;
-extern crate rustc_ast_pretty;
-extern crate rustc_attr_parsing;
-extern crate rustc_data_structures;
-extern crate rustc_driver;
-extern crate rustc_errors;
-extern crate rustc_feature;
-extern crate rustc_hir;
-extern crate rustc_hir_analysis;
-extern crate rustc_hir_pretty;
-extern crate rustc_index;
-extern crate rustc_infer;
-extern crate rustc_interface;
-extern crate rustc_lexer;
-extern crate rustc_lint;
-extern crate rustc_lint_defs;
-extern crate rustc_log;
-extern crate rustc_macros;
-extern crate rustc_metadata;
-extern crate rustc_middle;
-extern crate rustc_parse;
-extern crate rustc_passes;
-extern crate rustc_resolve;
-extern crate rustc_serialize;
-extern crate rustc_session;
-extern crate rustc_span;
-extern crate rustc_target;
-extern crate rustc_trait_selection;
+extern crate redox_abi;
+extern crate redox_ast;
+extern crate redox_ast_pretty;
+extern crate redox_attr_parsing;
+extern crate redox_data_structures;
+extern crate redox_driver;
+extern crate redox_errors;
+extern crate redox_feature;
+extern crate redox_hir;
+extern crate redox_hir_analysis;
+extern crate redox_hir_pretty;
+extern crate redox_index;
+extern crate redox_infer;
+extern crate redox_interface;
+extern crate redox_lexer;
+extern crate redox_lint;
+extern crate redox_lint_defs;
+extern crate redox_log;
+extern crate redox_macros;
+extern crate redox_metadata;
+extern crate redox_middle;
+extern crate redox_parse;
+extern crate redox_passes;
+extern crate redox_resolve;
+extern crate redox_serialize;
+extern crate redox_session;
+extern crate redox_span;
+extern crate redox_target;
+extern crate redox_trait_selection;
 extern crate test;
 
-/// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
+/// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/redox/src/main.rs
 /// and https://github.com/rust-lang/rust/pull/146627 for why we need this.
 ///
-/// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `rustc` crates
+/// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `redox` crates
 /// above, instead of via Cargo as you'd normally do. This is currently needed for LTO due to
 /// https://github.com/rust-lang/cc-rs/issues/1613.
 #[cfg(feature = "jemalloc")]
@@ -70,12 +70,12 @@ use std::io::{self, IsTerminal};
 use std::path::Path;
 use std::process::ExitCode;
 
-use rustc_errors::DiagCtxtHandle;
-use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_interface::interface;
-use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
-use rustc_session::{EarlyDiagCtxt, getopts};
+use redox_errors::DiagCtxtHandle;
+use redox_hir::def_id::LOCAL_CRATE;
+use redox_interface::interface;
+use redox_middle::ty::TyCtxt;
+use redox_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
+use redox_session::{EarlyDiagCtxt, getopts};
 use tracing::info;
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_VERSION;
@@ -94,7 +94,7 @@ use crate::formats::cache::Cache;
 /// Commas between elements are required (even if the expression is a block).
 macro_rules! map {
     ($( $key: expr => $val: expr ),* $(,)*) => {{
-        let mut map = ::rustc_data_structures::fx::FxIndexMap::default();
+        let mut map = ::redox_data_structures::fx::FxIndexMap::default();
         $( map.insert($key, $val); )*
         map
     }}
@@ -125,43 +125,43 @@ mod visit_lib;
 pub fn main() -> ExitCode {
     let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
-    rustc_driver::install_ice_hook(
+    redox_driver::install_ice_hook(
         "https://github.com/rust-lang/rust/issues/new\
     ?labels=C-bug%2C+I-ICE%2C+T-rustdoc&template=ice.md",
         |_| (),
     );
 
-    // When using CI artifacts with `download-rustc`, tracing is unconditionally built
+    // When using CI artifacts with `download-redox`, tracing is unconditionally built
     // with `--features=static_max_level_info`, which disables almost all rustdoc logging. To avoid
     // this, compile our own version of `tracing` that logs all levels.
     // NOTE: this compiles both versions of tracing unconditionally, because
     // - The compile time hit is not that bad, especially compared to rustdoc's incremental times, and
-    // - Otherwise, there's no warning that logging is being ignored when `download-rustc` is enabled
+    // - Otherwise, there's no warning that logging is being ignored when `download-redox` is enabled
 
     crate::init_logging(&early_dcx);
-    match rustc_log::init_logger(rustc_log::LoggerConfig::from_env("RUSTDOC_LOG")) {
+    match redox_log::init_logger(redox_log::LoggerConfig::from_env("RUSTDOC_LOG")) {
         Ok(()) => {}
-        // With `download-rustc = true` there are definitely 2 distinct tracing crates in the
+        // With `download-redox = true` there are definitely 2 distinct tracing crates in the
         // dependency graph: one in the downloaded sysroot and one built just now as a dependency of
         // rustdoc. So the sysroot's tracing is definitely not yet initialized here.
         //
         // But otherwise, depending on link style, there may or may not be 2 tracing crates in play.
         // The one we just initialized in `crate::init_logging` above is rustdoc's direct dependency
-        // on tracing. When rustdoc is built by x.py using Cargo, rustc_driver's and rustc_log's
+        // on tracing. When rustdoc is built by x.py using Cargo, redox_driver's and redox_log's
         // tracing dependency is distinct from this one and also needs to be initialized (using the
         // same RUSTDOC_LOG environment variable for both). Other build systems may use just a
-        // single tracing crate throughout the rustc and rustdoc build.
+        // single tracing crate throughout the redox and rustdoc build.
         //
-        // The reason initializing 2 tracings does not show double logging when `download-rustc =
-        // false` and `debug_logging = true` is because all rustc logging goes only to its version
+        // The reason initializing 2 tracings does not show double logging when `download-redox =
+        // false` and `debug_logging = true` is because all redox logging goes only to its version
         // of tracing (the one in the sysroot) and all of rustdoc's logging only goes to its version
         // (the one in Cargo.toml).
-        Err(rustc_log::Error::AlreadyInit(_)) => {}
+        Err(redox_log::Error::AlreadyInit(_)) => {}
         Err(error) => early_dcx.early_fatal(error.to_string()),
     }
 
-    rustc_driver::catch_with_exit_code(|| {
-        let at_args = rustc_driver::args::raw_args(&early_dcx);
+    redox_driver::catch_with_exit_code(|| {
+        let at_args = redox_driver::args::raw_args(&early_dcx);
         main_args(&mut early_dcx, &at_args);
     })
 }
@@ -197,9 +197,9 @@ fn init_logging(early_dcx: &EarlyDiagCtxt) {
 }
 
 fn opts() -> Vec<RustcOptGroup> {
-    use rustc_session::config::OptionKind::{Flag, FlagMulti, Multi, Opt};
-    use rustc_session::config::OptionStability::{Stable, Unstable};
-    use rustc_session::config::make_opt as opt;
+    use redox_session::config::OptionKind::{Flag, FlagMulti, Multi, Opt};
+    use redox_session::config::OptionStability::{Stable, Unstable};
+    use redox_session::config::make_opt as opt;
 
     vec![
         opt(Stable, FlagMulti, "h", "help", "show this help message", ""),
@@ -218,9 +218,9 @@ fn opts() -> Vec<RustcOptGroup> {
         opt(Stable, Opt, "", "crate-name", "specify the name of this crate", "NAME"),
         make_crate_type_option(),
         opt(Stable, Multi, "L", "library-path", "directory to add to crate search path", "DIR"),
-        opt(Stable, Multi, "", "cfg", "pass a --cfg to rustc", ""),
-        opt(Stable, Multi, "", "check-cfg", "pass a --check-cfg to rustc", ""),
-        opt(Stable, Multi, "", "extern", "pass an --extern to rustc", "NAME[=PATH]"),
+        opt(Stable, Multi, "", "cfg", "pass a --cfg to redox", ""),
+        opt(Stable, Multi, "", "check-cfg", "pass a --check-cfg to redox", ""),
+        opt(Stable, Multi, "", "extern", "pass an --extern to redox", "NAME[=PATH]"),
         opt(
             Unstable,
             Multi,
@@ -238,7 +238,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "give precedence to `--extern-html-root-url`, not `html_root_url`",
             "",
         ),
-        opt(Stable, Multi, "C", "codegen", "pass a codegen option to rustc", "OPT[=VALUE]"),
+        opt(Stable, Multi, "C", "codegen", "pass a codegen option to redox", "OPT[=VALUE]"),
         opt(Stable, FlagMulti, "", "document-private-items", "document private items", ""),
         opt(
             Unstable,
@@ -509,7 +509,7 @@ fn opts() -> Vec<RustcOptGroup> {
             Opt,
             "",
             "test-builder",
-            "The rustc-like binary to use as the test builder",
+            "The redox-like binary to use as the test builder",
             "PATH",
         ),
         opt(
@@ -780,7 +780,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     // the compiler with @empty_file as argv[0] and no more arguments.
     let at_args = at_args.get(1..).unwrap_or_default();
 
-    let args = rustc_driver::args::arg_expand_all(early_dcx, at_args);
+    let args = redox_driver::args::arg_expand_all(early_dcx, at_args);
 
     let mut options = getopts::Options::new();
     for option in opts() {
@@ -810,7 +810,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
         config::InputMode::NoInputMergeFinalize => {
             return wrap_return(
                 dcx,
-                rustc_span::create_session_globals_then(options.edition, &[], None, || {
+                redox_span::create_session_globals_then(options.edition, &[], None, || {
                     run_merge_finalize(render_options)
                         .map_err(|e| format!("could not write merged cross-crate info: {e}"))
                 }),
@@ -850,7 +850,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     let run_check = options.run_check;
 
     // First, parse the crate and extract all relevant information.
-    info!("starting to run rustc");
+    info!("starting to run redox");
 
     // Interpret the input file as a rust source file, passing it through the
     // compiler all the way through the analysis passes. The rustdoc output is
@@ -876,12 +876,12 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
         }
 
         if sess.opts.describe_lints {
-            rustc_driver::describe_lints(sess, registered_lints);
+            redox_driver::describe_lints(sess, registered_lints);
             return;
         }
 
-        let krate = rustc_interface::passes::parse(sess);
-        rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
+        let krate = redox_interface::passes::parse(sess);
+        redox_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
             if sess.dcx().has_errors().is_some() {
                 sess.dcx().fatal("Compilation failed, aborting rustdoc");
             }
@@ -890,7 +890,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 .time("run_global_ctxt", || {
                     core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
                 });
-            info!("finished with rustc");
+            info!("finished with redox");
 
             if let Some(options) = scrape_examples_options {
                 return scrape_examples::run(krate, render_opts, cache, tcx, options, bin_crate);
@@ -907,13 +907,13 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
                 if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
                     for lint in &delayed_lints.lints {
-                        rustc_hir_analysis::emit_delayed_lint(lint, tcx);
+                        redox_hir_analysis::emit_delayed_lint(lint, tcx);
                     }
                 }
             }
 
             if render_opts.dep_info().is_some() {
-                rustc_interface::passes::write_dep_info(tcx);
+                redox_interface::passes::write_dep_info(tcx);
             }
 
             if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {

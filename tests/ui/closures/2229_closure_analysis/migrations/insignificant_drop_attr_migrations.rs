@@ -3,12 +3,12 @@
 
 #![deny(rust_2021_incompatible_closure_captures)]
 //~^ NOTE: the lint level is defined here
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(unused)]
 
 use std::sync::Mutex;
 
-    #[rustc_insignificant_dtor]
+    #[redox_insignificant_dtor]
 struct InsignificantDropPoint {
     x: i32,
     y: Mutex<i32>,
@@ -24,7 +24,7 @@ impl Drop for SigDrop {
     fn drop(&mut self) {}
 }
 
-#[rustc_insignificant_dtor]
+#[redox_insignificant_dtor]
 struct GenericStruct<T>(T, T);
 
 impl<T> Drop for GenericStruct<T> {

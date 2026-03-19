@@ -1,7 +1,7 @@
 #![feature(intrinsics)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 fn size_of<T>();
 //~^ ERROR E0308
 

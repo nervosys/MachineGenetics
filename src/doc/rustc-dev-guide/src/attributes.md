@@ -5,11 +5,11 @@ Attributes come in two types: *inert* (or *built-in*) and *active* (*non-builtin
 ## Builtin/inert attributes
 
 These attributes are defined in the compiler itself, in
-[`compiler/rustc_feature/src/builtin_attrs.rs`][builtin_attrs].
+[`compiler/redox_feature/src/builtin_attrs.rs`][builtin_attrs].
 
 Examples include `#[allow]` and `#[macro_use]`.
 
-[builtin_attrs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_feature/builtin_attrs/index.html
+[builtin_attrs]: https://doc.rust-lang.org/nightly/nightly-redox/redox_feature/builtin_attrs/index.html
 
 These attributes have several important characteristics:
 * They are always in scope, and do not participate in typical path-based resolution.
@@ -39,8 +39,8 @@ Definitions of non-builtin attributes take two forms:
 
 These definitions exist to allow the macros to participate in typical path-based resolution - they
 can be imported, re-exported, and renamed just like any other item definition. However, the body of
-the definition is empty. Instead, the macro is annotated with the `#[rustc_builtin_macro]`
-attribute, which tells the compiler to run a corresponding function in `rustc_builtin_macros`.
+the definition is empty. Instead, the macro is annotated with the `#[redox_builtin_macro]`
+attribute, which tells the compiler to run a corresponding function in `redox_builtin_macros`.
 
 All non-builtin attributes have the following characteristics:
 * Like all other definitions (e.g. structs), they must be brought into scope via an import.

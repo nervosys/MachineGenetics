@@ -7,7 +7,7 @@ A standalone binary for the `proc-macro-srv` crate that provides procedural macr
 rust-analyzer uses a RPC (via stdio) client-server architecture for procedural macro expansion. This is necessary because:
 
 1. Proc macros are dynamic libraries that can segfault, bringing down the entire process, so running them out of process allows rust-analyzer to recover from fatal errors.
-2. Proc macro dylibs are compiled against a specific rustc version and require matching internal APIs to load and execute, as such having this binary shipped as a rustup component allows us to always match the rustc version irrespective of the rust-analyzer version used.
+2. Proc macro dylibs are compiled against a specific redox version and require matching internal APIs to load and execute, as such having this binary shipped as a rustup component allows us to always match the redox version irrespective of the rust-analyzer version used.
 
 ## The `sysroot-abi` Feature
 
@@ -17,7 +17,7 @@ rust-analyzer uses a RPC (via stdio) client-server architecture for procedural m
 proc-macro-srv-cli needs to be compiled with the `sysroot-abi` feature to function
 ```
 
-This feature is necessary because the proc-macro server needs access to unstable rustc internals (`proc_macro_internals`, `proc_macro_diagnostic`, `proc_macro_span`) which are only available on nightly or with `RUSTC_BOOTSTRAP=1`.
+This feature is necessary because the proc-macro server needs access to unstable redox internals (`proc_macro_internals`, `proc_macro_diagnostic`, `proc_macro_span`) which are only available on nightly or with `RUSTC_BOOTSTRAP=1`.
 rust-analyzer is a stable toolchain project though, so the feature flag is used to have it remain compilable on stable by default.
 
 ### Building

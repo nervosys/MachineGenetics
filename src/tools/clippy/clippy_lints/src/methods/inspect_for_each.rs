@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
-use rustc_hir as hir;
-use rustc_lint::LateContext;
-use rustc_span::{Span, sym};
+use redox_hir as hir;
+use redox_lint::LateContext;
+use redox_span::{Span, sym};
 
 use super::INSPECT_FOR_EACH;
 

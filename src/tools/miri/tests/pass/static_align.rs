@@ -5,10 +5,10 @@ use std::cell::Cell;
 
 // When a static uses `align(N)`, its address should be a multiple of `N`.
 
-#[rustc_align_static(256)]
+#[redox_align_static(256)]
 static FOO: u64 = 0;
 
-#[rustc_align_static(512)]
+#[redox_align_static(512)]
 static BAR: u64 = 0;
 
 struct HasDrop(*const HasDrop);
@@ -20,14 +20,14 @@ impl Drop for HasDrop {
 }
 
 thread_local! {
-    #[rustc_align_static(4096)]
+    #[redox_align_static(4096)]
     static LOCAL: u64 = 0;
 
     #[allow(unused_mut, reason = "test attribute handling")]
-    #[cfg_attr(true, rustc_align_static(4096))]
+    #[cfg_attr(true, redox_align_static(4096))]
     static CONST_LOCAL: u64 = const { 0 };
 
-    #[cfg_attr(any(true), cfg_attr(true, rustc_align_static(4096)))]
+    #[cfg_attr(any(true), cfg_attr(true, redox_align_static(4096)))]
     #[allow(unused_mut, reason = "test attribute handling")]
     static HASDROP_LOCAL: Cell<HasDrop> = Cell::new(HasDrop(core::ptr::null()));
 
@@ -35,7 +35,7 @@ thread_local! {
     #[allow(unused_mut, reason = "test attribute handling")]
     #[cfg_attr(all(),
       cfg_attr(any(true),
-      cfg_attr(true, rustc_align_static(4096))))]
+      cfg_attr(true, redox_align_static(4096))))]
     #[allow(unused_mut, reason = "test attribute handling")]
     /// I love doc comments.
     static HASDROP_CONST_LOCAL: Cell<HasDrop> = const { Cell::new(HasDrop(core::ptr::null())) };
@@ -44,11 +44,11 @@ thread_local! {
     #[cfg_attr(false,)]
     #[cfg_attr(
         true,
-        rustc_align_static(32),
+        redox_align_static(32),
         cfg_attr(true, allow(non_upper_case_globals, reason = "test attribute handling")),
         cfg_attr(false,)
     )]
-    #[cfg_attr(false, rustc_align_static(0))]
+    #[cfg_attr(false, redox_align_static(0))]
     static more_attr_testing: u64 = 0;
 }
 

@@ -3,7 +3,7 @@
 
 use run_make_support::external_deps::c_cxx_compiler::cc;
 use run_make_support::external_deps::llvm::llvm_ar;
-use run_make_support::{bare_rustc, diff};
+use run_make_support::{bare_redox, diff};
 
 fn main() {
     let cwd = std::env::current_dir().unwrap().to_str().unwrap().to_owned();
@@ -11,7 +11,7 @@ fn main() {
     cc().arg("-c").arg("-mmacosx-version-min=15.5").output("foo.o").input("foo.c").run();
     llvm_ar().obj_to_ar().output_input("libfoo.a", "foo.o").run();
 
-    let warnings = bare_rustc()
+    let warnings = bare_redox()
         .arg("-L")
         .arg(format!("native={cwd}"))
         .arg("-lstatic=foo")
@@ -23,7 +23,7 @@ fn main() {
 
     diff()
         .expected_file("warnings.txt")
-        .actual_text("(rustc -W linker-info)", &warnings)
+        .actual_text("(redox -W linker-info)", &warnings)
         .normalize(r"\(.*/rmake_out/", "(TEST_DIR/")
         .run()
 }

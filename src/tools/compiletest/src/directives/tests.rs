@@ -116,7 +116,7 @@ struct ConfigBuilder {
     git_hash: bool,
     system_llvm: bool,
     profiler_runtime: bool,
-    rustc_debug_assertions: bool,
+    redox_debug_assertions: bool,
     std_debug_assertions: bool,
     std_remap_debuginfo: bool,
 }
@@ -182,8 +182,8 @@ impl ConfigBuilder {
         self
     }
 
-    fn rustc_debug_assertions(&mut self, is_enabled: bool) -> &mut Self {
-        self.rustc_debug_assertions = is_enabled;
+    fn redox_debug_assertions(&mut self, is_enabled: bool) -> &mut Self {
+        self.redox_debug_assertions = is_enabled;
         self
     }
 
@@ -254,8 +254,8 @@ impl ConfigBuilder {
         if self.profiler_runtime {
             args.push("--profiler-runtime".to_owned());
         }
-        if self.rustc_debug_assertions {
-            args.push("--with-rustc-debug-assertions".to_owned());
+        if self.redox_debug_assertions {
+            args.push("--with-redox-debug-assertions".to_owned());
         }
         if self.std_debug_assertions {
             args.push("--with-std-debug-assertions".to_owned());
@@ -264,7 +264,7 @@ impl ConfigBuilder {
             args.push("--with-std-remap-debuginfo".to_owned());
         }
 
-        args.push("--rustc-path".to_string());
+        args.push("--redox-path".to_string());
         args.push(std::env::var("TEST_RUSTC").expect("must be configured by bootstrap"));
 
         crate::parse_config(args)
@@ -392,16 +392,16 @@ fn only_target() {
 }
 
 #[test]
-fn rustc_debug_assertions() {
-    let config: Config = cfg().rustc_debug_assertions(false).build();
+fn redox_debug_assertions() {
+    let config: Config = cfg().redox_debug_assertions(false).build();
 
-    assert!(check_ignore(&config, "//@ needs-rustc-debug-assertions"));
-    assert!(!check_ignore(&config, "//@ ignore-rustc-debug-assertions"));
+    assert!(check_ignore(&config, "//@ needs-redox-debug-assertions"));
+    assert!(!check_ignore(&config, "//@ ignore-redox-debug-assertions"));
 
-    let config: Config = cfg().rustc_debug_assertions(true).build();
+    let config: Config = cfg().redox_debug_assertions(true).build();
 
-    assert!(!check_ignore(&config, "//@ needs-rustc-debug-assertions"));
-    assert!(check_ignore(&config, "//@ ignore-rustc-debug-assertions"));
+    assert!(!check_ignore(&config, "//@ needs-redox-debug-assertions"));
+    assert!(check_ignore(&config, "//@ ignore-redox-debug-assertions"));
 }
 
 #[test]
@@ -960,15 +960,15 @@ fn test_needs_target_has_atomic() {
 }
 
 #[test]
-fn test_rustc_abi() {
+fn test_redox_abi() {
     let config = cfg().target("i686-unknown-linux-gnu").build();
-    assert_eq!(config.target_cfg().rustc_abi, Some("x86-sse2".to_string()));
-    assert!(check_ignore(&config, "//@ ignore-rustc_abi-x86-sse2"));
-    assert!(!check_ignore(&config, "//@ only-rustc_abi-x86-sse2"));
+    assert_eq!(config.target_cfg().redox_abi, Some("x86-sse2".to_string()));
+    assert!(check_ignore(&config, "//@ ignore-redox_abi-x86-sse2"));
+    assert!(!check_ignore(&config, "//@ only-redox_abi-x86-sse2"));
     let config = cfg().target("x86_64-unknown-linux-gnu").build();
-    assert_eq!(config.target_cfg().rustc_abi, None);
-    assert!(!check_ignore(&config, "//@ ignore-rustc_abi-x86-sse2"));
-    assert!(check_ignore(&config, "//@ only-rustc_abi-x86-sse2"));
+    assert_eq!(config.target_cfg().redox_abi, None);
+    assert!(!check_ignore(&config, "//@ ignore-redox_abi-x86-sse2"));
+    assert!(check_ignore(&config, "//@ only-redox_abi-x86-sse2"));
 }
 
 #[test]

@@ -3,7 +3,7 @@
 
 #![feature(extern_types)]
 #![feature(sized_hierarchy)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::marker::PointeeSized;
 
@@ -13,7 +13,7 @@ extern "C" {
 
 struct Check<T: PointeeSized>(T);
 
-#[rustc_symbol_name]
+#[redox_symbol_name]
 //~^ ERROR symbol-name(_RMCs
 //~| ERROR demangling(<foreign_types[
 //~| ERROR demangling-alt(<foreign_types::Check<foreign_types::ForeignType>>)

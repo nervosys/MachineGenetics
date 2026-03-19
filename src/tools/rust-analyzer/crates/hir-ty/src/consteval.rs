@@ -12,7 +12,7 @@ use hir_def::{
     hir::{Expr, ExprId, Literal},
 };
 use hir_expand::Lookup;
-use rustc_type_ir::inherent::IntoKind;
+use redox_type_ir::inherent::IntoKind;
 use triomphe::Arc;
 
 use crate::{
@@ -31,7 +31,7 @@ use crate::{
 use super::mir::{interpret_mir, lower_to_mir, pad16};
 
 pub fn unknown_const<'db>(_ty: Ty<'db>) -> Const<'db> {
-    Const::new(DbInterner::conjure(), rustc_type_ir::ConstKind::Error(ErrorGuaranteed))
+    Const::new(DbInterner::conjure(), redox_type_ir::ConstKind::Error(ErrorGuaranteed))
 }
 
 pub fn unknown_const_as_generic<'db>(ty: Ty<'db>) -> GenericArg<'db> {
@@ -99,9 +99,9 @@ pub fn intern_const_ref<'a>(
                     BuiltinUint::U128 => Box::new((i).to_le_bytes()),
                     BuiltinUint::Usize => Box::new((i as usize).to_le_bytes()),
                 },
-                _ => return Const::new(interner, rustc_type_ir::ConstKind::Error(ErrorGuaranteed)),
+                _ => return Const::new(interner, redox_type_ir::ConstKind::Error(ErrorGuaranteed)),
             };
-            rustc_type_ir::ConstKind::Value(ValueConst::new(
+            redox_type_ir::ConstKind::Value(ValueConst::new(
                 ty,
                 ConstBytes { memory, memory_map: MemoryMap::default() },
             ))
@@ -120,9 +120,9 @@ pub fn intern_const_ref<'a>(
                     BuiltinUint::U128 => Box::new((i as u128).to_le_bytes()),
                     BuiltinUint::Usize => Box::new((i as usize).to_le_bytes()),
                 },
-                _ => return Const::new(interner, rustc_type_ir::ConstKind::Error(ErrorGuaranteed)),
+                _ => return Const::new(interner, redox_type_ir::ConstKind::Error(ErrorGuaranteed)),
             };
-            rustc_type_ir::ConstKind::Value(ValueConst::new(
+            redox_type_ir::ConstKind::Value(ValueConst::new(
                 ty,
                 ConstBytes { memory, memory_map: MemoryMap::default() },
             ))
@@ -139,9 +139,9 @@ pub fn intern_const_ref<'a>(
                     BuiltinInt::I128 => Box::new((i).to_le_bytes()),
                     BuiltinInt::Isize => Box::new((i as isize).to_le_bytes()),
                 },
-                _ => return Const::new(interner, rustc_type_ir::ConstKind::Error(ErrorGuaranteed)),
+                _ => return Const::new(interner, redox_type_ir::ConstKind::Error(ErrorGuaranteed)),
             };
-            rustc_type_ir::ConstKind::Value(ValueConst::new(
+            redox_type_ir::ConstKind::Value(ValueConst::new(
                 ty,
                 ConstBytes { memory, memory_map: MemoryMap::default() },
             ))
@@ -165,23 +165,23 @@ pub fn intern_const_ref<'a>(
                 },
                 _ => unreachable!(),
             };
-            rustc_type_ir::ConstKind::Value(ValueConst::new(
+            redox_type_ir::ConstKind::Value(ValueConst::new(
                 ty,
                 ConstBytes { memory, memory_map: MemoryMap::default() },
             ))
         }
-        Literal::Bool(b) if ty.is_bool() => rustc_type_ir::ConstKind::Value(ValueConst::new(
+        Literal::Bool(b) if ty.is_bool() => redox_type_ir::ConstKind::Value(ValueConst::new(
             ty,
             ConstBytes { memory: Box::new([*b as u8]), memory_map: MemoryMap::default() },
         )),
-        Literal::Char(c) if ty.is_char() => rustc_type_ir::ConstKind::Value(ValueConst::new(
+        Literal::Char(c) if ty.is_char() => redox_type_ir::ConstKind::Value(ValueConst::new(
             ty,
             ConstBytes {
                 memory: (*c as u32).to_le_bytes().into(),
                 memory_map: MemoryMap::default(),
             },
         )),
-        Literal::String(symbol) if ty.is_str() => rustc_type_ir::ConstKind::Value(ValueConst::new(
+        Literal::String(symbol) if ty.is_str() => redox_type_ir::ConstKind::Value(ValueConst::new(
             ty,
             ConstBytes {
                 memory: symbol.as_str().as_bytes().into(),
@@ -189,14 +189,14 @@ pub fn intern_const_ref<'a>(
             },
         )),
         Literal::ByteString(items) if ty.as_slice().is_some_and(|ty| ty.is_u8()) => {
-            rustc_type_ir::ConstKind::Value(ValueConst::new(
+            redox_type_ir::ConstKind::Value(ValueConst::new(
                 ty,
                 ConstBytes { memory: items.clone(), memory_map: MemoryMap::default() },
             ))
         }
         // FIXME
-        Literal::CString(_items) => rustc_type_ir::ConstKind::Error(ErrorGuaranteed),
-        _ => rustc_type_ir::ConstKind::Error(ErrorGuaranteed),
+        Literal::CString(_items) => redox_type_ir::ConstKind::Error(ErrorGuaranteed),
+        _ => redox_type_ir::ConstKind::Error(ErrorGuaranteed),
     };
     Const::new(interner, kind)
 }
@@ -210,11 +210,11 @@ pub fn usize_const<'db>(db: &'db dyn HirDatabase, value: Option<u128>, krate: Cr
             None => {
                 return Const::new(
                     DbInterner::new_no_crate(db),
-                    rustc_type_ir::ConstKind::Error(ErrorGuaranteed),
+                    redox_type_ir::ConstKind::Error(ErrorGuaranteed),
                 );
             }
         },
-        Ty::new_uint(DbInterner::new_no_crate(db), rustc_type_ir::UintTy::Usize),
+        Ty::new_uint(DbInterner::new_no_crate(db), redox_type_ir::UintTy::Usize),
         krate,
     )
 }

@@ -1,6 +1,6 @@
 //@ proc-macro: test-macros.rs
 //@ compile-flags: -Z proc-macro-backtrace
-//@ rustc-env:RUST_BACKTRACE=0
+//@ redox-env:RUST_BACKTRACE=0
 //@ normalize-stderr: "thread '.*' \(0x[[:xdigit:]]+\) panicked " -> ""
 //@ normalize-stderr: "note:.*RUST_BACKTRACE=1.*\n" -> ""
 //@ needs-unwind proc macro panics to report errors

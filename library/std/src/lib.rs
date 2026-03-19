@@ -87,7 +87,7 @@
 //! # Contributing changes to the documentation
 //!
 //! Check out the Rust contribution guidelines [here](
-//! https://rustc-dev-guide.rust-lang.org/contributing.html#writing-documentation).
+//! https://redox-dev-guide.rust-lang.org/contributing.html#writing-documentation).
 //! The source for this documentation can be found on
 //! [GitHub](https://github.com/rust-lang/rust) in the 'library/std/' directory.
 //! To contribute changes, make sure you read the guidelines first, then submit
@@ -224,7 +224,7 @@
             `#![no_std]` or overriding this warning by enabling this feature."
     )
 )]
-#![rustc_preserve_ub_checks]
+#![redox_preserve_ub_checks]
 #![doc(
     html_playground_url = "https://play.rust-lang.org/",
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
@@ -304,7 +304,7 @@
 #![feature(never_type)]
 #![feature(optimize_attribute)]
 #![feature(prelude_import)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]

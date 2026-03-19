@@ -1,7 +1,7 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 #[derive(Debug)]
-#[rustc_layout_scalar_valid_range_start(2)]
+#[redox_layout_scalar_valid_range_start(2)]
 struct NonZeroAndOneU8(u8);
 
 fn main() {

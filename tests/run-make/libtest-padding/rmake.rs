@@ -11,10 +11,10 @@
 //@ needs-unwind
 // Reason: #[bench] requires -Z panic-abort-tests
 
-use run_make_support::{diff, run_with_args, rustc};
+use run_make_support::{diff, run_with_args, redox};
 
 fn main() {
-    rustc().arg("--test").input("tests.rs").run();
+    redox().arg("--test").input("tests.rs").run();
     let out = run_with_args("tests", &["--test-threads=1"]).stdout_utf8();
     diff()
         .expected_file("test.stdout")

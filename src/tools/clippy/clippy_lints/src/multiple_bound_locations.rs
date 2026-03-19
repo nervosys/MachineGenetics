@@ -1,9 +1,9 @@
-use rustc_ast::visit::FnKind;
-use rustc_ast::{Fn, NodeId, WherePredicateKind};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
+use redox_ast::visit::FnKind;
+use redox_ast::{Fn, NodeId, WherePredicateKind};
+use redox_data_structures::fx::FxHashMap;
+use redox_lint::{EarlyContext, EarlyLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::Span;
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::SpanRangeExt;

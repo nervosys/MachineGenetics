@@ -3,14 +3,14 @@ use clippy_utils::macros::{FormatArgsStorage, find_format_arg_expr, is_format_ma
 use clippy_utils::source::{snippet_indent, walk_span_to_context};
 use clippy_utils::visitors::{for_each_local_assignment, for_each_value_source};
 use core::ops::ControlFlow;
-use rustc_ast::{FormatArgs, FormatArgumentKind};
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{Visitor, walk_body, walk_expr};
-use rustc_hir::{Expr, ExprKind, HirId, HirIdSet, LetStmt, MatchSource, Node, PatKind, QPath, TyKind};
-use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty;
-use rustc_span::Span;
+use redox_ast::{FormatArgs, FormatArgumentKind};
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::intravisit::{Visitor, walk_body, walk_expr};
+use redox_hir::{Expr, ExprKind, HirId, HirIdSet, LetStmt, MatchSource, Node, PatKind, QPath, TyKind};
+use redox_lint::{LateContext, LintContext};
+use redox_middle::ty;
+use redox_span::Span;
 
 use super::LET_UNIT_VALUE;
 

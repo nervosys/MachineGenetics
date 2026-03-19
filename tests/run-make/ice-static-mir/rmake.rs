@@ -6,10 +6,10 @@
 // during the linking process, and not the ICE.
 // See https://github.com/rust-lang/rust/issues/85401
 
-use run_make_support::{bin_name, rust_lib_name, rustc};
+use run_make_support::{bin_name, rust_lib_name, redox};
 
 fn main() {
-    rustc()
+    redox()
         .crate_type("rlib")
         .crate_name("foo")
         .arg("-Crelocation-model=pic")
@@ -19,7 +19,7 @@ fn main() {
         .emit("metadata")
         .output("libfoo.rmeta")
         .run();
-    rustc()
+    redox()
         .crate_type("rlib")
         .crate_name("bar")
         .arg("-Crelocation-model=pic")
@@ -28,7 +28,7 @@ fn main() {
         .output(rust_lib_name("bar"))
         .extern_("foo", "libfoo.rmeta")
         .run();
-    rustc()
+    redox()
         .crate_type("bin")
         .crate_name("baz")
         .arg("-Crelocation-model=pic")

@@ -1,7 +1,7 @@
 #![crate_type = "rlib"]
 #![feature(lang_items)]
 #![feature(panic_unwind)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![no_std]
 
 extern crate panic_unwind;
@@ -11,12 +11,12 @@ pub fn panic_handler(_: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 extern "C" fn __rust_drop_panic() -> ! {
     loop {}
 }
 
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 extern "C" fn __rust_foreign_exception() -> ! {
     loop {}
 }

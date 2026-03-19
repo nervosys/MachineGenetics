@@ -9,36 +9,36 @@ use core::ptr::{self, Alignment, NonNull};
 use core::{cmp, hint};
 
 unsafe extern "Rust" {
-    // These are the magic symbols to call the global allocator. rustc generates
+    // These are the magic symbols to call the global allocator. redox generates
     // them to call the global allocator if there is a `#[global_allocator]` attribute
     // (the code expanding that attribute macro generates those functions), or to call
     // the default implementations in std (`__rdl_alloc` etc. in `library/std/src/alloc.rs`)
     // otherwise.
-    #[rustc_allocator]
-    #[rustc_nounwind]
-    #[rustc_std_internal_symbol]
-    #[rustc_allocator_zeroed_variant = "__rust_alloc_zeroed"]
+    #[redox_allocator]
+    #[redox_nounwind]
+    #[redox_std_internal_symbol]
+    #[redox_allocator_zeroed_variant = "__rust_alloc_zeroed"]
     fn __rust_alloc(size: usize, align: Alignment) -> *mut u8;
-    #[rustc_deallocator]
-    #[rustc_nounwind]
-    #[rustc_std_internal_symbol]
+    #[redox_deallocator]
+    #[redox_nounwind]
+    #[redox_std_internal_symbol]
     fn __rust_dealloc(ptr: NonNull<u8>, size: usize, align: Alignment);
-    #[rustc_reallocator]
-    #[rustc_nounwind]
-    #[rustc_std_internal_symbol]
+    #[redox_reallocator]
+    #[redox_nounwind]
+    #[redox_std_internal_symbol]
     fn __rust_realloc(
         ptr: NonNull<u8>,
         old_size: usize,
         align: Alignment,
         new_size: usize,
     ) -> *mut u8;
-    #[rustc_allocator_zeroed]
-    #[rustc_nounwind]
-    #[rustc_std_internal_symbol]
+    #[redox_allocator_zeroed]
+    #[redox_nounwind]
+    #[redox_std_internal_symbol]
     fn __rust_alloc_zeroed(size: usize, align: Alignment) -> *mut u8;
 
-    #[rustc_nounwind]
-    #[rustc_std_internal_symbol]
+    #[redox_nounwind]
+    #[redox_std_internal_symbol]
     fn __rust_no_alloc_shim_is_unstable_v2();
 }
 
@@ -326,7 +326,7 @@ impl Global {
     // SAFETY: Same as `Allocator::allocate`
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     const fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
         core::intrinsics::const_eval_select(
             (layout, zeroed),
@@ -338,7 +338,7 @@ impl Global {
     // SAFETY: Same as `Allocator::deallocate`
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     const unsafe fn deallocate_impl(&self, ptr: NonNull<u8>, layout: Layout) {
         core::intrinsics::const_eval_select(
             (ptr, layout),
@@ -350,7 +350,7 @@ impl Global {
     // SAFETY: Same as `Allocator::grow`
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     const unsafe fn grow_impl(
         &self,
         ptr: NonNull<u8>,
@@ -368,7 +368,7 @@ impl Global {
     // SAFETY: Same as `Allocator::shrink`
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     const unsafe fn shrink_impl(
         &self,
         ptr: NonNull<u8>,
@@ -384,7 +384,7 @@ impl Global {
 
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     const fn alloc_impl_const(layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
             0 => Ok(NonNull::slice_from_raw_parts(layout.dangling_ptr(), 0)),
@@ -403,7 +403,7 @@ impl Global {
 
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     const fn deallocate_impl_const(ptr: NonNull<u8>, layout: Layout) {
         if layout.size() != 0 {
             // SAFETY: We checked for nonzero size; other preconditions must be upheld by caller.
@@ -415,7 +415,7 @@ impl Global {
 
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     const fn grow_shrink_impl_const(
         &self,
         ptr: NonNull<u8>,
@@ -440,7 +440,7 @@ impl Global {
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[redox_const_unstable(feature = "const_heap", issue = "79597")]
 unsafe impl const Allocator for Global {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -502,10 +502,10 @@ unsafe impl const Allocator for Global {
 
 #[cfg(not(no_global_oom_handling))]
 unsafe extern "Rust" {
-    // This is the magic symbol to call the global alloc error handler. rustc generates
+    // This is the magic symbol to call the global alloc error handler. redox generates
     // it to call `__rg_oom` if there is a `#[alloc_error_handler]`, or to call the
     // default implementations below (`__rdl_alloc_error_handler`) otherwise.
-    #[rustc_std_internal_symbol]
+    #[redox_std_internal_symbol]
     fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
 }
 
@@ -535,7 +535,7 @@ unsafe extern "Rust" {
 /// [The panic handler]: https://doc.rust-lang.org/reference/runtime.html#the-panic_handler-attribute
 /// [no_std]: https://doc.rust-lang.org/reference/names/preludes.html#the-no_std-attribute
 #[stable(feature = "global_alloc", since = "1.28.0")]
-#[rustc_const_unstable(feature = "const_alloc_error", issue = "92523")]
+#[redox_const_unstable(feature = "const_alloc_error", issue = "92523")]
 #[cfg(not(no_global_oom_handling))]
 #[cold]
 #[optimize(size)]
@@ -567,7 +567,7 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
 pub mod __alloc_error_handler {
     // called via generated `__rust_alloc_error_handler` if there is no
     // `#[alloc_error_handler]`.
-    #[rustc_std_internal_symbol]
+    #[redox_std_internal_symbol]
     pub unsafe fn __rdl_alloc_error_handler(size: usize, _align: usize) -> ! {
         core::panicking::panic_nounwind_fmt(
             format_args!("memory allocation of {size} bytes failed"),

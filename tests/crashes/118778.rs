@@ -1,6 +1,6 @@
 //@ known-bug: #118778
 //@ edition:2021
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]

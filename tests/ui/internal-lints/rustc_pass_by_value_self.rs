@@ -4,11 +4,11 @@
 //
 // Considering that all other `internal-lints` are tested here
 // this seems like the cleaner solution though.
-#![feature(rustc_attrs)]
-#![deny(rustc::disallowed_pass_by_ref)]
+#![feature(redox_attrs)]
+#![deny(redox::disallowed_pass_by_ref)]
 #![allow(unused)]
 
-#[rustc_pass_by_value]
+#[redox_pass_by_value]
 struct TyCtxt<'tcx> {
     inner: &'tcx (),
 }
@@ -22,7 +22,7 @@ struct TyS<'tcx> {
     inner: &'tcx (),
 }
 
-#[rustc_pass_by_value]
+#[redox_pass_by_value]
 type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 impl<'tcx> TyS<'tcx> {
@@ -30,14 +30,14 @@ impl<'tcx> TyS<'tcx> {
     fn by_ref(self: &Ty<'tcx>) {} //~ ERROR passing `Ty<'tcx>` by reference
 }
 
-#[rustc_pass_by_value]
+#[redox_pass_by_value]
 struct Foo;
 
 impl Foo {
     fn with_ref(&self) {} //~ ERROR passing `Foo` by reference
 }
 
-#[rustc_pass_by_value]
+#[redox_pass_by_value]
 struct WithParameters<T, const N: usize, M = u32> {
     slice: [T; N],
     m: M,

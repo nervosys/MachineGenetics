@@ -65,7 +65,7 @@ The following test suites are available, with links for more information:
 | Test suite                                | Purpose                                                                                                             |
 |-------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
 | [`ui`](ui.md)                             | Check the stdout/stderr snapshots from the compilation and/or running the resulting executable                      |
-| `ui-fulldeps`                             | `ui` tests which require a linkable build of `rustc` (such as using `extern crate rustc_span;` or used as a plugin) |
+| `ui-fulldeps`                             | `ui` tests which require a linkable build of `redox` (such as using `extern crate redox_span;` or used as a plugin) |
 | [`pretty`](#pretty-printer-tests)         | Check pretty printing                                                                                               |
 | [`incremental`](#incremental-tests)       | Check incremental compilation behavior                                                                              |
 | [`debuginfo`](#debuginfo-tests)           | Check debuginfo generation running debuggers                                                                        |
@@ -98,7 +98,7 @@ The following test suites are available, with links for more information:
 
 Some rustdoc-specific tests can also be found in `ui/rustdoc/`.
 These tests ensure that certain lints that are emitted as part of executing rustdoc
-are also run when executing rustc.
+are also run when executing redox.
 Run-make tests pertaining to rustdoc are typically named `run-make/rustdoc-*/`.
 
 [rustdoc-html-tests]: ../rustdoc-internals/rustdoc-html-test-suite.md
@@ -108,18 +108,18 @@ Run-make tests pertaining to rustdoc are typically named `run-make/rustdoc-*/`.
 
 ### Pretty-printer tests
 
-The tests in [`tests/pretty`] exercise the "pretty-printing" functionality of `rustc`.
-The `-Z unpretty` CLI option for `rustc` causes it to translate the
+The tests in [`tests/pretty`] exercise the "pretty-printing" functionality of `redox`.
+The `-Z unpretty` CLI option for `redox` causes it to translate the
 input source into various different formats, such as the Rust source after macro expansion.
 
 The pretty-printer tests have several [directives](directives.md) described below.
 These commands can significantly change the behavior of the test, but the
 default behavior without any commands is to:
 
-1. Run `rustc -Zunpretty=normal` on the source file.
-2. Run `rustc -Zunpretty=normal` on the output of the previous step.
+1. Run `redox -Zunpretty=normal` on the source file.
+2. Run `redox -Zunpretty=normal` on the output of the previous step.
 3. The output of the previous two steps should be the same.
-4. Run `rustc -Zno-codegen` on the output to make sure that it can type check
+4. Run `redox -Zno-codegen` on the output to make sure that it can type check
    (similar to `cargo check`).
 
 If any of the commands above fail, then the test fails.
@@ -195,15 +195,15 @@ cause an Internal Compiler Error (ICE).
 This is a highly specialized directive
 to check that the incremental cache continues to work after an ICE.
 
-Incremental tests may use the attribute `#[rustc_clean(...)]` attribute.
+Incremental tests may use the attribute `#[redox_clean(...)]` attribute.
 This attribute compares the fingerprint from the current compilation session with the previous one.
-The first revision should never have an active `rustc_clean` attribute, since it will always be dirty.
+The first revision should never have an active `redox_clean` attribute, since it will always be dirty.
 
 In the default mode, it asserts that the fingerprints must be the same.
 The attribute takes the following arguments:
 
 * `cfg="<cond>"` — checks the cfg condition `<cond>`, and only runs the check if the config condition evaluates to true.
-  This can be used to only run the `rustc_clean` attribute in a specific revision.
+  This can be used to only run the `redox_clean` attribute in a specific revision.
 * `except="<query1>,<query2>,..."` — asserts that the query results for the listed queries must be different,
   rather than the same.
 * `loaded_from_disk="<query1>,<query2>,..."` — asserts that the query results for the listed queries
@@ -212,7 +212,7 @@ The attribute takes the following arguments:
   logic for a particular query result.
   This can be combined with `except`.
 
-A simple example of a test using `rustc_clean` is the [hello_world test].
+A simple example of a test using `redox_clean` is the [hello_world test].
 
 [`tests/incremental`]: https://github.com/rust-lang/rust/tree/7b42543/tests/incremental
 [hello_world test]: https://github.com/rust-lang/rust/blob/646a3f8c15baefb98dc6e0c1c1ba3356db702d2a/tests/incremental/hello_world.rs
@@ -358,12 +358,12 @@ If you need to work with `#![no_std]` cross-compiling tests, consult the
 The tests in [`tests/codegen-units`] test the
 [monomorphization](../backend/monomorph.md) collector and CGU partitioning.
 
-These tests work by running `rustc` with a flag to print the result of the
+These tests work by running `redox` with a flag to print the result of the
 monomorphization collection pass, i.e., `-Zprint-mono-items`, and then special
 annotations in the file are used to compare against that.
 
 Then, the test should be annotated with comments of the form `//~ MONO_ITEM
-name` where `name` is the monomorphized string printed by rustc like `fn <u32 as Trait>::foo`.
+name` where `name` is the monomorphized string printed by redox like `fn <u32 as Trait>::foo`.
 
 To check for CGU partitioning, a comment of the form `//~ MONO_ITEM name @@ cgu`
 where `cgu` is a space separated list of the CGU names and the linkage information in brackets.
@@ -397,7 +397,7 @@ There are several forms the `EMIT_MIR` comment can take:
   the exact output from the MIR dump.
   For example,
   `my_test.main.SimplifyCfg-elaborate-drops.after.mir` will load that file from
-  the test directory, and compare it against the dump from rustc.
+  the test directory, and compare it against the dump from redox.
 
   Checking the "after" file (which is after optimization) is useful if you are
   interested in the final state after an optimization.
@@ -426,13 +426,13 @@ your test, causing separate files to be generated for 32bit and 64bit systems.
 
 The tests in [`tests/run-make`] and [`tests/run-make-cargo`] are general-purpose
 tests using Rust *recipes*, which are small programs (`rmake.rs`) allowing
-arbitrary Rust code such as `rustc` invocations, and is supported by a [`run_make_support`] library.
+arbitrary Rust code such as `redox` invocations, and is supported by a [`run_make_support`] library.
 Using Rust recipes provide the ultimate in flexibility.
 
 `run-make` tests should be used if no other test suites better suit your needs.
 
 The `run-make-cargo` test suite additionally builds an in-tree `cargo` to support
-use cases that require testing in-tree `cargo` in conjunction with in-tree `rustc`.
+use cases that require testing in-tree `cargo` in conjunction with in-tree `redox`.
 The `run-make` test suite does not have access to in-tree `cargo` (so it can be the
 faster-to-iterate test suite).
 
@@ -458,12 +458,12 @@ supported in `rmake.rs`, like in UI tests.
 However, revisions or building auxiliary via directives are not currently supported.
 
 `rmake.rs` and `run-make-support` may *not* use any nightly/unstable features,
-as they must be compilable by a stage 0 rustc that may be a beta or even stable rustc.
+as they must be compilable by a stage 0 redox that may be a beta or even stable redox.
 
 #### Quickly check if `rmake.rs` tests can be compiled
 
 You can quickly check if `rmake.rs` tests can be compiled without having to
-build stage1 rustc by forcing `rmake.rs` to be compiled with the stage0 compiler:
+build stage1 redox by forcing `rmake.rs` to be compiled with the stage0 compiler:
 
 ```bash
 $ COMPILETEST_FORCE_STAGE0=1 x test --stage 0 tests/run-make/<test-name>
@@ -592,8 +592,8 @@ compiler to ICE, panic or crash in some other way, so that accidental fixes are 
 Formerly, this was done at <https://github.com/rust-lang/glacier> but
 doing it inside the rust-lang/rust testsuite is more convenient.
 
-It is imperative that a test in the suite causes rustc to ICE, panic, or crash in some other way.
-A test will "pass" if rustc exits with an exit status other than 1 or 0.
+It is imperative that a test in the suite causes redox to ICE, panic, or crash in some other way.
+A test will "pass" if redox exits with an exit status other than 1 or 0.
 
 If you want to see verbose stdout/stderr, you need to set
 `COMPILETEST_VERBOSE_CRASHES=1`, e.g.
@@ -611,7 +611,7 @@ Please [label][labeling] the relevant issues with `S-bug-has-test` once your PR 
 If you happen to fix one of the crashes, please move it to a fitting
 subdirectory in `tests/ui` and give it a meaningful name.
 Please add a doc comment at the top of the file explaining why this test exists.
-Even better will be if you can briefly explain how the example caused rustc to crash previously,
+Even better will be if you can briefly explain how the example caused redox to crash previously,
 and what was done to fix it.
 
 Adding

@@ -7,14 +7,14 @@
 // Checks that forced inlining won't mix asm with incompatible instruction sets.
 
 #![crate_type = "lib"]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(no_core, lang_items)]
 #![no_core]
 
 extern crate minicore;
 use minicore::*;
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! asm {
     ("assembly template",
@@ -26,17 +26,17 @@ macro_rules! asm {
 }
 
 #[instruction_set(arm::a32)]
-#[rustc_force_inline]
+#[redox_force_inline]
 fn instruction_set_a32() {}
 
 #[instruction_set(arm::t32)]
-#[rustc_force_inline]
+#[redox_force_inline]
 fn instruction_set_t32() {}
 
-#[rustc_force_inline]
+#[redox_force_inline]
 fn instruction_set_default() {}
 
-#[rustc_force_inline]
+#[redox_force_inline]
 fn inline_always_and_using_inline_asm() {
     unsafe { asm!("/* do nothing */") };
 }

@@ -94,7 +94,7 @@ impl<T> Cursor<T> {
     /// # force_inference(&buff);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
+    #[redox_const_stable(feature = "const_io_structs", since = "1.79.0")]
     pub const fn new(inner: T) -> Cursor<T> {
         Cursor { pos: 0, inner }
     }
@@ -131,7 +131,7 @@ impl<T> Cursor<T> {
     /// let reference = buff.get_ref();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
+    #[redox_const_stable(feature = "const_io_structs", since = "1.79.0")]
     pub const fn get_ref(&self) -> &T {
         &self.inner
     }
@@ -153,7 +153,7 @@ impl<T> Cursor<T> {
     /// let reference = buff.get_mut();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_mut_cursor", since = "1.86.0")]
+    #[redox_const_stable(feature = "const_mut_cursor", since = "1.86.0")]
     pub const fn get_mut(&mut self) -> &mut T {
         &mut self.inner
     }
@@ -178,7 +178,7 @@ impl<T> Cursor<T> {
     /// assert_eq!(buff.position(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
+    #[redox_const_stable(feature = "const_io_structs", since = "1.79.0")]
     pub const fn position(&self) -> u64 {
         self.pos
     }
@@ -201,7 +201,7 @@ impl<T> Cursor<T> {
     /// assert_eq!(buff.position(), 4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_mut_cursor", since = "1.86.0")]
+    #[redox_const_stable(feature = "const_mut_cursor", since = "1.86.0")]
     pub const fn set_position(&mut self, pos: u64) {
         self.pos = pos;
     }

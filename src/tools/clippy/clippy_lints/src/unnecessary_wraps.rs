@@ -6,16 +6,16 @@ use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{contains_return, return_ty};
-use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionSome, ResultOk};
-use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, ExprKind, FnDecl, Impl, ItemKind, Node};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
-use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::sym;
+use redox_errors::Applicability;
+use redox_hir::LangItem::{OptionSome, ResultOk};
+use redox_hir::intravisit::FnKind;
+use redox_hir::{Body, ExprKind, FnDecl, Impl, ItemKind, Node};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty;
+use redox_session::impl_lint_pass;
+use redox_span::Span;
+use redox_span::def_id::LocalDefId;
+use redox_span::symbol::sym;
 
 declare_clippy_lint! {
     /// ### What it does

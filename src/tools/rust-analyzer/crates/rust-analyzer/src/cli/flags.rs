@@ -108,9 +108,9 @@ xflags::xflags! {
         }
 
         /// Run unit tests of the project using mir interpreter
-        cmd rustc-tests {
+        cmd redox-tests {
             /// Directory with Cargo.toml.
-            required rustc_repo: PathBuf
+            required redox_repo: PathBuf
 
             /// Only run tests with filter as substring
             optional --filter path: String
@@ -275,7 +275,7 @@ pub struct RunTests {
 
 #[derive(Debug)]
 pub struct RustcTests {
-    pub rustc_repo: PathBuf,
+    pub redox_repo: PathBuf,
 
     pub filter: Option<String>,
 }

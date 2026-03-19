@@ -1,7 +1,7 @@
-use rustc_abi::CanonAbi;
-use rustc_middle::ty::Ty;
-use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
+use redox_abi::CanonAbi;
+use redox_middle::ty::Ty;
+use redox_span::Symbol;
+use redox_target::callconv::FnAbi;
 
 use self::shims::unix::linux::mem::EvalContextExt as _;
 use self::shims::unix::linux_like::epoll::EvalContextExt as _;

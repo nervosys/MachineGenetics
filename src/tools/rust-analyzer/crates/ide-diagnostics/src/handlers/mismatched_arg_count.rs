@@ -430,7 +430,7 @@ fn main() {
     fn legacy_const_generics() {
         check_diagnostics(
             r#"
-#[rustc_legacy_const_generics(1, 3)]
+#[redox_legacy_const_generics(1, 3)]
 fn mixed<const N1: &'static str, const N2: bool>(
     _a: u8,
     _b: i8,
@@ -441,7 +441,7 @@ fn f() {
     mixed::<"", true>(0, -1);
 }
 
-#[rustc_legacy_const_generics(1, 3)]
+#[redox_legacy_const_generics(1, 3)]
 fn b<const N1: u8, const N2: u8>(
     _a: u8,
     _b: u8,

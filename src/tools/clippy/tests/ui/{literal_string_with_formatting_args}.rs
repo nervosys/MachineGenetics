@@ -17,7 +17,7 @@
 //             "[/app/example.rs:2:5] \"something\" = ",
 //             Cooked,
 //         ),
-//         span: /rustc/eb54a50837ad4bcc9842924f27e7287ca66e294c/library/std/src/macros.rs:365:35: 365:58 (#4),
+//         span: /redox/eb54a50837ad4bcc9842924f27e7287ca66e294c/library/std/src/macros.rs:365:35: 365:58 (#4),
 //     },
 // ),
 // ```

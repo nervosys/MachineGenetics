@@ -1,12 +1,12 @@
 //! Trait solving error diagnosis and reporting.
 //!
-//! This code isn't used by rust-analyzer (it should, but then it'll probably be better to re-port it from rustc).
+//! This code isn't used by rust-analyzer (it should, but then it'll probably be better to re-port it from redox).
 //! It's only there because without it, debugging trait solver errors is a nightmare.
 
 use std::{fmt::Debug, ops::ControlFlow};
 
-use rustc_next_trait_solver::solve::{GoalEvaluation, SolverDelegateEvalExt};
-use rustc_type_ir::{
+use redox_next_trait_solver::solve::{GoalEvaluation, SolverDelegateEvalExt};
+use redox_type_ir::{
     AliasRelationDirection, AliasTermKind, HostEffectPredicate, Interner, PredicatePolarity,
     error::ExpectedFound,
     inherent::{IntoKind, Span as _},
@@ -618,12 +618,12 @@ impl<'db> NextSolverError<'db> {
 
 mod wf {
     use hir_def::{GeneralConstId, ItemContainerId};
-    use rustc_type_ir::inherent::{
+    use redox_type_ir::inherent::{
         AdtDef, BoundExistentialPredicates, GenericArgs as _, IntoKind, SliceLike, Term as _,
         Ty as _,
     };
-    use rustc_type_ir::lang_items::SolverTraitLangItem;
-    use rustc_type_ir::{
+    use redox_type_ir::lang_items::SolverTraitLangItem;
+    use redox_type_ir::{
         Interner, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     };
     use tracing::{debug, instrument};
@@ -774,7 +774,7 @@ mod wf {
                 self.out.reserve(implicit_bounds.len());
                 for implicit_bound in implicit_bounds {
                     let cause = ObligationCause::new();
-                    let outlives = Binder::dummy(rustc_type_ir::OutlivesPredicate(
+                    let outlives = Binder::dummy(redox_type_ir::OutlivesPredicate(
                         explicit_bound,
                         implicit_bound,
                     ));
@@ -823,10 +823,10 @@ mod wf {
                 }
 
                 // Can only infer to `TyKind::Int(_) | TyKind::Uint(_)`.
-                TyKind::Infer(rustc_type_ir::IntVar(_)) => {}
+                TyKind::Infer(redox_type_ir::IntVar(_)) => {}
 
                 // Can only infer to `TyKind::Float(_)`.
-                TyKind::Infer(rustc_type_ir::FloatVar(_)) => {}
+                TyKind::Infer(redox_type_ir::FloatVar(_)) => {}
 
                 TyKind::Slice(subty) => {
                     self.require_sized(subty);
@@ -866,13 +866,13 @@ mod wf {
                 }
 
                 TyKind::Alias(
-                    rustc_type_ir::Projection | rustc_type_ir::Opaque | rustc_type_ir::Free,
+                    redox_type_ir::Projection | redox_type_ir::Opaque | redox_type_ir::Free,
                     data,
                 ) => {
                     let obligations = self.nominal_obligations(data.def_id, data.args);
                     self.out.extend(obligations);
                 }
-                TyKind::Alias(rustc_type_ir::Inherent, _data) => {
+                TyKind::Alias(redox_type_ir::Inherent, _data) => {
                     return;
                 }
 
@@ -912,7 +912,7 @@ mod wf {
                             self.recursion_depth,
                             self.param_env,
                             Binder::dummy(PredicateKind::Clause(ClauseKind::TypeOutlives(
-                                rustc_type_ir::OutlivesPredicate(rty, r),
+                                redox_type_ir::OutlivesPredicate(rty, r),
                             ))),
                         ));
                     }
@@ -1137,11 +1137,11 @@ mod wf {
             .iter()
             .map(|predicate| predicate.with_self_ty(interner, erased_self_ty));
 
-        rustc_type_ir::elaborate::elaborate(interner, predicates)
+        redox_type_ir::elaborate::elaborate(interner, predicates)
             .filter_map(|pred| {
                 debug!(?pred);
                 match pred.kind().skip_binder() {
-                    ClauseKind::TypeOutlives(rustc_type_ir::OutlivesPredicate(ref t, ref r)) => {
+                    ClauseKind::TypeOutlives(redox_type_ir::OutlivesPredicate(ref t, ref r)) => {
                         // Search for a bound of the form `erased_self_ty
                         // : 'a`, but be wary of something like `for<'a>
                         // erased_self_ty : 'a` (we interpret a

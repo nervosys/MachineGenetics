@@ -13,7 +13,7 @@ fn main() {
     //~^ modulo_one
 
     10 % 2;
-    // also caught by rustc
+    // also caught by redox
     i32::MIN % (-1);
     //~^ modulo_one
 
@@ -31,7 +31,7 @@ fn main() {
 
     // NOT caught by lint
     5 % STATIC_NEG_ONE;
-    // also caught by rustc
+    // also caught by redox
     INT_MIN % NEG_ONE;
     //~^ modulo_one
 

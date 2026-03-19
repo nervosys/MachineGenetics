@@ -11,8 +11,8 @@
 // from causing an ICE during MIR borrowck, we stash goals which depend on
 // inference variables and then reprove them at the end of HIR typeck.
 
-#![feature(rustc_attrs)]
-#![rustc_no_implicit_bounds]
+#![feature(redox_attrs)]
+#![redox_no_implicit_bounds]
 trait Trait<T> {}
 impl<T> Trait<T> for () {}
 

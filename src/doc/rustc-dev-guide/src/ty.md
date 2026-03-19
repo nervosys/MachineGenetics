@@ -6,21 +6,21 @@ It also defines the
 
 ## `ty::Ty`
 
-When we talk about how rustc represents types, we usually refer to a type called `Ty`.
+When we talk about how redox represents types, we usually refer to a type called `Ty`.
 There are quite a few modules and types for `Ty` in the compiler ([Ty documentation][ty]).
 
-[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
+[ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/index.html
 
-The specific `Ty` we are referring to is [`rustc_middle::ty::Ty`][ty_ty] (and not
-[`rustc_hir::Ty`][hir_ty]).
+The specific `Ty` we are referring to is [`redox_middle::ty::Ty`][ty_ty] (and not
+[`redox_hir::Ty`][hir_ty]).
 The distinction is important, so we will discuss it first before going into the details of `ty::Ty`.
 
-[ty_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
-[hir_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Ty.html
+[ty_ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html
+[hir_ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/struct.Ty.html
 
-## `rustc_hir::Ty` vs `ty::Ty`
+## `redox_hir::Ty` vs `ty::Ty`
 
-The HIR in rustc can be thought of as the high-level intermediate representation.
+The HIR in redox can be thought of as the high-level intermediate representation.
 It is more or less the AST (see [this chapter](hir.md)) as it represents the
 syntax that the user wrote, and is obtained after parsing and some *desugaring*. It has a
 representation of types, but in reality it reflects more of what the user wrote, that is, what they
@@ -28,7 +28,7 @@ wrote so as to represent that type.
 
 In contrast, `ty::Ty` represents the semantics of a type, that is, the *meaning* of what the user
 wrote.
-For example, `rustc_hir::Ty` would record the fact that a user used the name `u32` twice
+For example, `redox_hir::Ty` would record the fact that a user used the name `u32` twice
 in their program, but the `ty::Ty` would record the fact that both usages refer to the same type.
 
 **Example: `fn foo(x: u32) → u32 { x }`**
@@ -41,7 +41,7 @@ there would be two distinct type instances because these
 are occurring in two different places in the program.
 That is, they have two different [`Span`s][span] (locations).
 
-[span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
+[span]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/struct.Span.html
 
 **Example: `fn foo(x: &u32) -> &u32`**
 
@@ -56,19 +56,19 @@ In the HIR level, these things are not spelled out and you can say the picture i
 However, at the `ty::Ty` level, these details are added and it is complete.
 Moreover, we will have
 exactly one `ty::Ty` for a given type, like `u32`, and that `ty::Ty` is used for all `u32`s in the
-whole program, not a specific usage, unlike `rustc_hir::Ty`.
+whole program, not a specific usage, unlike `redox_hir::Ty`.
 
 Here is a summary:
 
-| [`rustc_hir::Ty`][hir_ty] | [`ty::Ty`][ty_ty] |
+| [`redox_hir::Ty`][hir_ty] | [`ty::Ty`][ty_ty] |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Describe the *syntax* of a type: what the user wrote (with some desugaring).  | Describe the *semantics* of a type: the meaning of what the user wrote. |
-| Each `rustc_hir::Ty` has its own spans corresponding to the appropriate place in the program. | Doesn’t correspond to a single place in the user’s program. |
-| `rustc_hir::Ty` has generics and lifetimes; however, some of those lifetimes are special markers like [`LifetimeKind::Implicit`][implicit]. | `ty::Ty` has the full type, including generics and lifetimes, even if the user left them out |
-| `fn foo(x: u32) -> u32 { }` - Two `rustc_hir::Ty` representing each usage of `u32`, each has its own `Span`s, and `rustc_hir::Ty` doesn’t tell us that both are the same type | `fn foo(x: u32) -> u32 { }` - One `ty::Ty` for all instances of `u32` throughout the program, and `ty::Ty` tells us that both usages of `u32` mean the same type. |
-| `fn foo(x: &u32) -> &u32 { }` - Two `rustc_hir::Ty` again. Lifetimes for the references show up in the `rustc_hir::Ty`s using a special marker, [`LifetimeKind::Implicit`][implicit]. | `fn foo(x: &u32) -> &u32 { }`- A single `ty::Ty`. The `ty::Ty` has the hidden lifetime param. |
+| Each `redox_hir::Ty` has its own spans corresponding to the appropriate place in the program. | Doesn’t correspond to a single place in the user’s program. |
+| `redox_hir::Ty` has generics and lifetimes; however, some of those lifetimes are special markers like [`LifetimeKind::Implicit`][implicit]. | `ty::Ty` has the full type, including generics and lifetimes, even if the user left them out |
+| `fn foo(x: u32) -> u32 { }` - Two `redox_hir::Ty` representing each usage of `u32`, each has its own `Span`s, and `redox_hir::Ty` doesn’t tell us that both are the same type | `fn foo(x: u32) -> u32 { }` - One `ty::Ty` for all instances of `u32` throughout the program, and `ty::Ty` tells us that both usages of `u32` mean the same type. |
+| `fn foo(x: &u32) -> &u32 { }` - Two `redox_hir::Ty` again. Lifetimes for the references show up in the `redox_hir::Ty`s using a special marker, [`LifetimeKind::Implicit`][implicit]. | `fn foo(x: &u32) -> &u32 { }`- A single `ty::Ty`. The `ty::Ty` has the hidden lifetime param. |
 
-[implicit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.LifetimeKind.html#variant.Implicit
+[implicit]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/hir/enum.LifetimeKind.html#variant.Implicit
 
 **Order**
 
@@ -79,12 +79,12 @@ figure out what the `ty::Ty` of everything is and we also check if the type of s
 ambiguous.
 The `ty::Ty` is then used for type checking while making sure everything has the expected type.
 The [`hir_ty_lowering` module][hir_ty_lowering] is where the code responsible for
-lowering a `rustc_hir::Ty` to a `ty::Ty` is located.
+lowering a `redox_hir::Ty` to a `ty::Ty` is located.
 The main routine used is `lower_ty`.
 This occurs during the type-checking phase, but also in other parts of the compiler that want to ask
 questions like "what argument types does this function expect?"
 
-[hir_ty_lowering]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/hir_ty_lowering/index.html
+[hir_ty_lowering]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_analysis/hir_ty_lowering/index.html
 
 **How semantics drive the two instances of `Ty`**
 
@@ -101,7 +101,7 @@ we determine that they semantically are the same type and that’s the `ty::Ty` 
 Consider another example: `fn foo<T>(x: T) -> u32`.
 Suppose that someone invokes `foo::<u32>(0)`.
 This means that `T` and `u32` (in this invocation) actually turns out to be the same type, so we
-would eventually end up with the same `ty::Ty` in the end, but we have distinct `rustc_hir::Ty`.
+would eventually end up with the same `ty::Ty` in the end, but we have distinct `redox_hir::Ty`.
 (This is a bit over-simplified, though, since during type checking, we would check the function
 generically and would still have a `T` distinct from `u32`.
 Later, when doing code generation,
@@ -122,7 +122,7 @@ mod b {
 ```
 
 Here the type `X` will vary depending on context, clearly.
-If you look at the `rustc_hir::Ty`,
+If you look at the `redox_hir::Ty`,
 you will get back that `X` is an alias in both cases (though it will be mapped via name resolution
 to distinct aliases).
 But if you look at the `ty::Ty` signature, it will be either `fn(u32) -> u32`
@@ -130,7 +130,7 @@ or `fn(i32) -> i32` (with type aliases fully expanded).
 
 ## `ty::Ty` implementation
 
-[`rustc_middle::ty::Ty`][ty_ty] is actually a wrapper around
+[`redox_middle::ty::Ty`][ty_ty] is actually a wrapper around
 [`Interned<WithCachedTypeInfo<TyKind>>`][tykind].
 You can ignore `Interned` in general; you will basically never access it explicitly.
 We always hide them within `Ty` and skip over it via `Deref` impls or methods.
@@ -144,12 +144,12 @@ Finally, [`Interned`](./memory.md) allows the `ty::Ty` to be a thin pointer-like
 type.
 This allows us to do cheap comparisons for equality, along with the other benefits of interning.
 
-[tykind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html
+[tykind]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html
 
 ## Allocating and working with types
 
 To allocate a new type, you can use the various `new_*` methods defined on
-[`Ty`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html).
+[`Ty`](https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html).
 These have names that correspond mostly to the various kinds of types.
 For example:
 
@@ -164,7 +164,7 @@ Types are always canonicalized and interned (so we never allocate exactly the sa
 You can also find various common types in the `tcx` itself by accessing its fields:
 `tcx.types.bool`, `tcx.types.char`, etc. (See [`CommonTypes`] for more.)
 
-[`CommonTypes`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.CommonTypes.html
+[`CommonTypes`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.CommonTypes.html
 
 <!-- N.B: This section is linked from the type comparison internal lint. -->
 ## Comparing types
@@ -221,7 +221,7 @@ inference variables using [`fresh_args_for_item`].
 This can be used to answer questions like "can `Vec<T>` for any `T` be unified with `Vec<u32>`?".
 
 [type-inference]: ./type-inference.md#creating-an-inference-context
-[`fresh_args_for_item`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.fresh_substs_for_item
+[`fresh_args_for_item`]: https://doc.rust-lang.org/beta/nightly-redox/redox_infer/infer/struct.InferCtxt.html#method.fresh_substs_for_item
 
 ## `ty::TyKind` Variants
 
@@ -274,16 +274,16 @@ Here is a sampling:
 - [**And many more**...][kindvars]
 
 [wikiadt]: https://en.wikipedia.org/wiki/Algebraic_data_type
-[kindadt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html#variant.Adt
-[kindforeign]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html#variant.Foreign
-[kindstr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html#variant.Str
-[kindslice]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html#variant.Slice
-[kindarray]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html#variant.Array
-[kindrawptr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html#variant.RawPtr
-[kindref]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html#variant.Ref
-[kindparam]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html#variant.Param
-[kinderr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html#variant.Error
-[kindvars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html#variants
+[kindadt]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html#variant.Adt
+[kindforeign]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html#variant.Foreign
+[kindstr]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html#variant.Str
+[kindslice]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html#variant.Slice
+[kindarray]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html#variant.Array
+[kindrawptr]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html#variant.RawPtr
+[kindref]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html#variant.Ref
+[kindparam]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html#variant.Param
+[kinderr]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html#variant.Error
+[kindvars]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/ty_kind/enum.TyKind.html#variants
 
 ## Import conventions
 
@@ -325,11 +325,11 @@ This will make a note that you expect
 compilation to yield an error -- if, however, compilation should succeed, then it will trigger a
 compiler bug report.
 
-[`delayed_bug`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.delayed_bug
-[`span_delayed_bug`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.span_delayed_bug
+[`delayed_bug`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/struct.DiagCtxt.html#method.delayed_bug
+[`span_delayed_bug`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/struct.DiagCtxt.html#method.span_delayed_bug
 
 For added safety, it's not actually possible to produce a `TyKind::Error` value
-outside of [`rustc_middle::ty`][ty]; there is a private member of
+outside of [`redox_middle::ty`][ty]; there is a private member of
 `TyKind::Error` that prevents it from being constructable elsewhere.
 Instead,
 one should use the [`Ty::new_error`][terr] or [`Ty::new_error_with_message`][terrmsg] methods.
@@ -338,8 +338,8 @@ or call `span_delayed_bug` before returning an interned `Ty` of kind `Error`.
 If you were already planning to use [`span_delayed_bug`], then you can just pass the
 span and message to [`ty_error_with_message`][terrmsg] instead to avoid a redundant delayed bug.
 
-[terr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.new_error
-[terrmsg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.new_error_with_message
+[terr]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html#method.new_error
+[terrmsg]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html#method.new_error_with_message
 
 
 ## `TyKind` variant shorthand syntax

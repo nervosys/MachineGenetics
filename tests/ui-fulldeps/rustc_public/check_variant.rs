@@ -7,22 +7,22 @@
 //@ ignore-remote
 //@ edition: 2024
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
+extern crate redox_driver;
+extern crate redox_interface;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
 use std::io::Write;
 use std::ops::ControlFlow;
 
-use rustc_public::CrateItem;
-use rustc_public::crate_def::CrateDef;
-use rustc_public::mir::{AggregateKind, Rvalue, Statement, StatementKind};
-use rustc_public::ty::{IntTy, RigidTy, Ty};
+use redox_public::CrateItem;
+use redox_public::crate_def::CrateDef;
+use redox_public::mir::{AggregateKind, Rvalue, Statement, StatementKind};
+use redox_public::ty::{IntTy, RigidTy, Ty};
 
 const CRATE_NAME: &str = "crate_variant_ty";
 
@@ -96,7 +96,7 @@ fn check_adt_poly2() {
 }
 
 fn get_fn(name: &str) -> CrateItem {
-    rustc_public::all_local_items().into_iter().find(|it| it.trimmed_name().eq(name)).unwrap()
+    redox_public::all_local_items().into_iter().find(|it| it.trimmed_name().eq(name)).unwrap()
 }
 
 fn check_statement_is_aggregate_assign(
@@ -125,7 +125,7 @@ fn main() {
     let path = "defs_ty_input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

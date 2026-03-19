@@ -1,33 +1,33 @@
-//! Util methods for [`rustc_middle::ty`]
+//! Util methods for [`redox_middle::ty`]
 
 #![allow(clippy::module_name_repetitions)]
 
 use core::ops::ControlFlow;
-use rustc_abi::VariantIdx;
-use rustc_ast::ast::Mutability;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, FnDecl, LangItem, find_attr};
-use rustc_hir_analysis::lower_ty;
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_lint::LateContext;
-use rustc_middle::mir::ConstValue;
-use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::traits::EvaluationResult;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
-use rustc_middle::ty::layout::ValidityRequirement;
-use rustc_middle::ty::{
+use redox_abi::VariantIdx;
+use redox_ast::ast::Mutability;
+use redox_data_structures::fx::{FxHashMap, FxHashSet};
+use redox_hir as hir;
+use redox_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use redox_hir::def_id::DefId;
+use redox_hir::{Expr, FnDecl, LangItem, find_attr};
+use redox_hir_analysis::lower_ty;
+use redox_infer::infer::TyCtxtInferExt;
+use redox_lint::LateContext;
+use redox_middle::mir::ConstValue;
+use redox_middle::mir::interpret::Scalar;
+use redox_middle::traits::EvaluationResult;
+use redox_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
+use redox_middle::ty::layout::ValidityRequirement;
+use redox_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
     GenericArgKind, GenericArgsRef, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
-use rustc_span::symbol::Ident;
-use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
-use rustc_trait_selection::traits::{Obligation, ObligationCause};
+use redox_span::symbol::Ident;
+use redox_span::{DUMMY_SP, Span, Symbol};
+use redox_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use redox_trait_selection::traits::query::normalize::QueryNormalizeExt;
+use redox_trait_selection::traits::{Obligation, ObligationCause};
 use std::collections::hash_map::Entry;
 use std::debug_assert_matches;
 use std::{iter, mem};
@@ -39,7 +39,7 @@ use crate::sym;
 mod type_certainty;
 pub use type_certainty::expr_type_is_certain;
 
-/// Lower a [`hir::Ty`] to a [`rustc_middle::ty::Ty`].
+/// Lower a [`hir::Ty`] to a [`redox_middle::ty::Ty`].
 pub fn ty_from_hir_ty<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
     cx.maybe_typeck_results()
         .filter(|results| results.hir_owner == hir_ty.hir_id.owner)
@@ -881,7 +881,7 @@ pub fn adt_and_variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<
 /// Comes up with an "at least" guesstimate for the type's size, not taking into
 /// account the layout of type parameters.
 pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
-    use rustc_middle::ty::layout::LayoutOf;
+    use redox_middle::ty::layout::LayoutOf;
     match (cx.layout_of(ty).map(|layout| layout.size.bytes()), ty.kind()) {
         (Ok(size), _) => size,
         (Err(_), ty::Tuple(list)) => list.iter().map(|t| approx_ty_size(cx, t)).sum(),

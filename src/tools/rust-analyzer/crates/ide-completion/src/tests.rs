@@ -56,7 +56,7 @@ struct Tuple(u32);
 struct Unit;
 #[macro_export]
 macro_rules! makro {}
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro Clone {}
 fn function() {}
 union Union { field: i32 }

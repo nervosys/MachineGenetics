@@ -3,11 +3,11 @@
 //@ build-pass
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![crate_type = "rlib"]
 
-#![rustc_partition_codegened(module="issue_49595-tests", cfg="cfail2")]
-#![rustc_partition_codegened(module="issue_49595-lit_test", cfg="cfail3")]
+#![redox_partition_codegened(module="issue_49595-tests", cfg="cfail2")]
+#![redox_partition_codegened(module="issue_49595-lit_test", cfg="cfail3")]
 
 mod tests {
     #[cfg_attr(not(cfail1), test)]

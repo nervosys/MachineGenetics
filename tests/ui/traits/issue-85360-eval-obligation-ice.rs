@@ -1,6 +1,6 @@
 //@ edition: 2021
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use core::any::Any;
 use core::marker::PhantomData;
@@ -13,7 +13,7 @@ fn main() {
     //~^ ERROR evaluate(Binder { value: TraitPredicate(<MaskedStorage<GenericComp2<Pos>> as std::marker::Sized>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
 }
 
-#[rustc_evaluate_where_clauses]
+#[redox_evaluate_where_clauses]
 fn test<T: Sized>(_: T) {}
 
 fn make<T>() -> T {

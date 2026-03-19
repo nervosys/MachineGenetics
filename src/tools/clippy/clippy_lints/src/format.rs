@@ -2,13 +2,13 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::{FormatArgsStorage, find_format_arg_expr, root_macro_call_first_node};
 use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::sugg::Sugg;
-use rustc_ast::{FormatArgsPiece, FormatOptions, FormatTrait};
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
-use rustc_span::{Span, sym};
+use redox_ast::{FormatArgsPiece, FormatOptions, FormatTrait};
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty;
+use redox_session::impl_lint_pass;
+use redox_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does

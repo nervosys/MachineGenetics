@@ -1,5 +1,5 @@
 #![feature(staged_api)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(rustdoc_internals)]
 
 #![stable(feature = "core", since = "1.6.0")]
@@ -85,7 +85,7 @@ pub mod stable_later {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules = "use stable path instead"]
+#[redox_allowed_through_unstable_modules = "use stable path instead"]
 pub mod stable_earlier1 {
     //@ has stability/stable_earlier1/struct.StableInUnstable.html \
     //      '//div[@class="main-heading"]//span[@class="since"]' '1.0.0'
@@ -156,7 +156,7 @@ pub trait UnstableTraitWithStableMethod {
 
 //@ has stability/primitive.i32.html \
 //      '//div[@class="main-heading"]//span[@class="since"]' '1.0.0'
-#[rustc_doc_primitive = "i32"]
+#[redox_doc_primitive = "i32"]
 //
 /// `i32` is always stable in 1.0, even if you look at it from core.
 #[stable(feature = "rust1", since = "1.0.0")]

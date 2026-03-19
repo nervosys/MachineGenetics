@@ -226,7 +226,7 @@ Use `cargo bless` to automatically generate the `.fixed` file after running
 the tests.
 
 [`rustfix`]: https://github.com/rust-lang/cargo/tree/master/crates/rustfix
-[`span_lint_and_sugg`]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_sugg.html
+[`span_lint_and_sugg`]: https://doc.rust-lang.org/beta/nightly-redox/clippy_utils/diagnostics/fn.span_lint_and_sugg.html
 
 ## Testing Manually
 

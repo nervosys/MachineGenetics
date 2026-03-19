@@ -1,6 +1,6 @@
 # `rust-lang/rust` Licenses
 
-The `rustc` compiler source and standard library are dual licensed under the [Apache License v2.0](https://github.com/rust-lang/rust/blob/HEAD/LICENSE-APACHE) and the [MIT License](https://github.com/rust-lang/rust/blob/HEAD/LICENSE-MIT) unless otherwise specified.
+The `redox` compiler source and standard library are dual licensed under the [Apache License v2.0](https://github.com/rust-lang/rust/blob/HEAD/LICENSE-APACHE) and the [MIT License](https://github.com/rust-lang/rust/blob/HEAD/LICENSE-MIT) unless otherwise specified.
 
 Detailed licensing information is available in the [COPYRIGHT document](https://github.com/rust-lang/rust/blob/HEAD/COPYRIGHT) of the `rust-lang/rust` repository.
 
@@ -31,7 +31,7 @@ itself to be licensed under the GPL.
 
 ## Porting
 
-Contributions to rustc, especially around platform and compiler intrinsics, often include porting
+Contributions to redox, especially around platform and compiler intrinsics, often include porting
 over work from other projects, mainly LLVM and GCC.
 
 Some general rules apply:

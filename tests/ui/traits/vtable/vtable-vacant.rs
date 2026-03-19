@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(negative_impls)]
 
 // B --> A
@@ -16,11 +16,11 @@ trait B: A {
 struct S;
 impl !Send for S {}
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl A for S {}
 //~^ error vtable
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl B for S {}
 //~^ error vtable
 

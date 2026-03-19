@@ -4,7 +4,7 @@
 //@ needs-subprocess
 //@ ignore-haiku
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 extern crate libc;
 

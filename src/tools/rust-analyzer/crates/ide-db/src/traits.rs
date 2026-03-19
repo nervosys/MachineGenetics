@@ -2,7 +2,7 @@
 
 use crate::{RootDatabase, defs::Definition};
 use hir::{AsAssocItem, Semantics, db::HirDatabase};
-use rustc_hash::FxHashSet;
+use redox_hash::FxHashSet;
 use syntax::{AstNode, ast};
 
 /// Given the `impl` block, attempts to find the trait this `impl` corresponds to.

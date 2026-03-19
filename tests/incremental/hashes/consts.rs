@@ -11,7 +11,7 @@
 //@ ignore-backends: gcc
 
 #![allow(warnings)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![crate_type="rlib"]
 
 
@@ -20,8 +20,8 @@
 const CONST_VISIBILITY: u8 = 0;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="cfail3")]
 pub const CONST_VISIBILITY: u8 = 0;
 
 
@@ -30,8 +30,8 @@ pub const CONST_VISIBILITY: u8 = 0;
 const CONST_CHANGE_TYPE_1: i32 = 0;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,type_of")]
-#[rustc_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,type_of")]
+#[redox_clean(cfg="cfail3")]
 const CONST_CHANGE_TYPE_1: u32 = 0;
 
 
@@ -40,14 +40,14 @@ const CONST_CHANGE_TYPE_1: u32 = 0;
 const CONST_CHANGE_TYPE_2: Option<u32> = None;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,type_of")]
-#[rustc_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,type_of")]
+#[redox_clean(cfg="cfail3")]
 const CONST_CHANGE_TYPE_2: Option<u64> = None;
 
 
 // Change value between simple literals
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_1: i16 = {
     #[cfg(cfail1)]
     { 1 }
@@ -58,8 +58,8 @@ const CONST_CHANGE_VALUE_1: i16 = {
 
 
 // Change value between expressions
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_2: i16 = {
     #[cfg(cfail1)]
     { 1 + 1 }
@@ -68,8 +68,8 @@ const CONST_CHANGE_VALUE_2: i16 = {
     { 1 + 2 }
 };
 
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_3: i16 = {
     #[cfg(cfail1)]
     { 2 + 3 }
@@ -78,8 +78,8 @@ const CONST_CHANGE_VALUE_3: i16 = {
     { 2 * 3 }
 };
 
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_4: i16 = {
     #[cfg(cfail1)]
     { 1 + 2 * 3 }
@@ -100,11 +100,11 @@ mod const_change_type_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedType2 as Type;
 
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,type_of")]
-    #[rustc_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,type_of")]
+    #[redox_clean(cfg="cfail3")]
     const CONST_CHANGE_TYPE_INDIRECTLY_1: Type = Type;
 
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,type_of")]
-    #[rustc_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,type_of")]
+    #[redox_clean(cfg="cfail3")]
     const CONST_CHANGE_TYPE_INDIRECTLY_2: Option<Type> = None;
 }

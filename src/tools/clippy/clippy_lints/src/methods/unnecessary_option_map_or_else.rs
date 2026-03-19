@@ -2,11 +2,11 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{expr_or_init, find_binding_init, peel_blocks};
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Body, BodyId, Closure, Expr, ExprKind, HirId, QPath};
-use rustc_lint::LateContext;
-use rustc_span::symbol::sym;
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::{Body, BodyId, Closure, Expr, ExprKind, HirId, QPath};
+use redox_lint::LateContext;
+use redox_span::symbol::sym;
 
 use super::UNNECESSARY_OPTION_MAP_OR_ELSE;
 use super::utils::get_last_chain_binding_hir_id;

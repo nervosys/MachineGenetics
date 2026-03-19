@@ -18,14 +18,14 @@
 //!   Linux x86/x86_64 and to subtract time spent tracing from the timestamps in the trace file
 //!
 //! Depending on the tracing-chrome crate from crates.io is unfortunately not possible, since it
-//! depends on `tracing_core` which conflicts with rustc_private's `tracing_core` (meaning it would
+//! depends on `tracing_core` which conflicts with redox_private's `tracing_core` (meaning it would
 //! not be possible to use the [ChromeLayer] in a context that expects a [Layer] from
-//! rustc_private's `tracing_core` version).
+//! redox_private's `tracing_core` version).
 #![allow(warnings)]
 #![cfg(feature = "tracing")]
 
-use rustc_log::tracing_core::{field::Field, span, Event, Subscriber};
-use rustc_log::tracing_subscriber::{
+use redox_log::tracing_core::{field::Field, span, Event, Subscriber};
+use redox_log::tracing_subscriber::{
     self,
     layer::Context,
     registry::{LookupSpan, SpanRef},

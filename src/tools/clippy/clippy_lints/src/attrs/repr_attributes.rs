@@ -1,7 +1,7 @@
-use rustc_hir::attrs::ReprAttr;
-use rustc_hir::{Attribute, find_attr};
-use rustc_lint::LateContext;
-use rustc_span::Span;
+use redox_hir::attrs::ReprAttr;
+use redox_hir::{Attribute, find_attr};
+use redox_lint::LateContext;
+use redox_span::Span;
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};

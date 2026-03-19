@@ -2,7 +2,7 @@
 // <https://github.com/rust-lang/rust/issues/69264>.
 
 //@ compile-flags:-Z unstable-options --remap-path-prefix={{src-base}}=remapped_path
-//@ rustc-env:RUST_BACKTRACE=0
+//@ redox-env:RUST_BACKTRACE=0
 
 #![deny(rustdoc::invalid_html_tags)]
 

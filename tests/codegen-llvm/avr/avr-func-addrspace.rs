@@ -17,7 +17,7 @@
 extern crate minicore;
 use minicore::*;
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
 
 pub static mut STORAGE_FOO: fn(&usize, &mut u32) -> Result<(), ()> = arbitrary_black_box;

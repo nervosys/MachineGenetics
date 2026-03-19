@@ -7,12 +7,12 @@ use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::{snippet_indent, snippet_with_applicability};
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{eq_expr_value, if_sequence, sym};
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Node, StmtKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::print::with_forced_trimmed_paths;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Block, Expr, ExprKind, Node, StmtKind, UnOp};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::print::with_forced_trimmed_paths;
+use redox_session::{declare_lint_pass, declare_tool_lint};
+use redox_span::Span;
 
 declare_tool_lint! {
     /// ### What it does

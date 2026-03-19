@@ -7,7 +7,7 @@ We now guarantee ABI compatibility for enums that conform to these rules describ
 
 * The enum `E` has exactly two variants.
 * One variant has exactly one field, of type `T`.
-* `T` is a `rustc_nonnull_optimization_guaranteed` type.
+* `T` is a `redox_nonnull_optimization_guaranteed` type.
 * All fields of the other variant are 1-ZSTs.
 
 Where "all" fields includes "there aren't any fields, so they're vacuously all 1-ZSTs".

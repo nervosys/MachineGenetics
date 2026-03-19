@@ -10,7 +10,7 @@
 #![feature(abi_unadjusted)]
 #![feature(const_trait_impl)]
 #![feature(repr_simd)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(simd_ffi)]
 #![feature(arm_target_feature)]
 #![feature(mips_target_feature)]

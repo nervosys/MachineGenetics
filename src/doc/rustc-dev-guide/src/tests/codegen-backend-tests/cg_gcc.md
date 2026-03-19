@@ -3,7 +3,7 @@
 We run a subset of the compiler test suite with the GCC codegen backend on our CI, to help find changes that could break the integration of this backend with the compiler.
 
 If you encounter any bugs or problems with the GCC codegen backend in general, don't hesitate to open issues on the
-[`rustc_codegen_gcc` repository](https://github.com/rust-lang/rustc_codegen_gcc).
+[`redox_codegen_gcc` repository](https://github.com/rust-lang/redox_codegen_gcc).
 
 Note that the backend currently only supports the `x86_64-unknown-linux-gnu` target.
 
@@ -33,7 +33,7 @@ If fixing a compiler test that fails with the GCC backend is non-trivial, you ca
 ## Choosing which codegen backends are built
 
 The `rust.codegen-backends = [...]` bootstrap option affects which codegen backends will be built and
-included in the sysroot of the produced `rustc`.
+included in the sysroot of the produced `redox`.
 To use the GCC codegen backend, `"gcc"` has to be included in this array in `bootstrap.toml`:
 
 ```toml
@@ -49,10 +49,10 @@ For example:
 ```
 
 The first backend in the `codegen-backends` array will determine which backend will be used as the
-*default backend* of the built `rustc`.
+*default backend* of the built `redox`.
 This also determines which backend will be used to compile the
 stage 1 standard library (or anything built in stage 2+).
-To produce `rustc` that uses the GCC backend
+To produce `redox` that uses the GCC backend
 by default, you can thus put `"gcc"` as the first element of this array:
 
 ```bash
@@ -80,7 +80,7 @@ if there are no local changes to the GCC sources and the given host target is av
 ## Providing your own GCC
 
 There are cases where you will want to provide your own `libgccjit.so` file.
-One such case is when you want to cross-compile `rustc` to another target since GCC is not a multi-target compiler.
+One such case is when you want to cross-compile `redox` to another target since GCC is not a multi-target compiler.
 To support this use case, there is the bootstrap option `gcc.libgccjit-libs-dir`.
 This option overrides `gcc.download-ci-gcc`, meaning `libgccjit.so` won't be downloaded or built locally by bootstrap.
 The directory structure of this directory is `<host>/<target>/libgccjit.so`, for instance:
@@ -104,7 +104,7 @@ In addition to running the compiler's test suites using the GCC codegen backend,
 Now you do that using the following command:
 
 ```text
-./x test rustc_codegen_gcc
+./x test redox_codegen_gcc
 ```
 
 The backend needs to be [enabled](#choosing-which-codegen-backends-are-built) for this to work.

@@ -25,7 +25,7 @@ In all other aspects the target is equivalent to `x86_64-unknown-linux-gnu`.
 
 ## Building the target
 
-The target can be built by enabling it for a rustc build:
+The target can be built by enabling it for a redox build:
 
 ```toml
 [build]
@@ -43,7 +43,7 @@ $ rustup target add x86_64-unknown-linux-gnuasan
 and then compiling with the target:
 
 ```sh
-$ rustc foo.rs --target x86_64-unknown-linux-gnuasan
+$ redox foo.rs --target x86_64-unknown-linux-gnuasan
 ```
 
 ## Testing

@@ -21,7 +21,7 @@
 //@ error-pattern: allocated by main thread
 //@ ignore-backends: gcc
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 extern crate libc;
 
 use std::mem;

@@ -1,20 +1,20 @@
-#![feature(rustc_private)]
+#![feature(redox_private)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
-// warn on rustc internal lints
-#![warn(rustc::internal)]
+// warn on redox internal lints
+#![warn(redox::internal)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
-extern crate rustc_driver;
-extern crate rustc_interface;
-extern crate rustc_session;
-extern crate rustc_span;
+extern crate redox_driver;
+extern crate redox_interface;
+extern crate redox_session;
+extern crate redox_span;
 
-/// See docs in <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs>
+/// See docs in <https://github.com/rust-lang/rust/blob/HEAD/compiler/redox/src/main.rs>
 /// and <https://github.com/rust-lang/rust/pull/146627> for why we need this.
 ///
-/// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `rustc` crates
+/// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `redox` crates
 /// above, instead of via Cargo as you'd normally do. This is currently needed for LTO due to
 /// <https://github.com/rust-lang/cc-rs/issues/1613>.
 #[cfg(feature = "jemalloc")]
@@ -22,11 +22,11 @@ extern crate tikv_jemalloc_sys as _;
 
 use clippy_utils::sym;
 use declare_clippy_lint::LintListBuilder;
-use rustc_interface::interface;
-use rustc_session::EarlyDiagCtxt;
-use rustc_session::config::ErrorOutputType;
-use rustc_session::parse::ParseSess;
-use rustc_span::symbol::Symbol;
+use redox_interface::interface;
+use redox_session::EarlyDiagCtxt;
+use redox_session::config::ErrorOutputType;
+use redox_session::parse::ParseSess;
+use redox_span::symbol::Symbol;
 
 use std::env;
 use std::fs::read_to_string;
@@ -112,7 +112,7 @@ fn track_files(psess: &mut ParseSess) {
 }
 
 struct DefaultCallbacks;
-impl rustc_driver::Callbacks for DefaultCallbacks {}
+impl redox_driver::Callbacks for DefaultCallbacks {}
 
 /// This is different from `DefaultCallbacks` that it will inform Cargo to track the value of
 /// `CLIPPY_ARGS` environment variable.
@@ -120,7 +120,7 @@ struct RustcCallbacks {
     clippy_args_var: Option<String>,
 }
 
-impl rustc_driver::Callbacks for RustcCallbacks {
+impl redox_driver::Callbacks for RustcCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         let clippy_args_var = self.clippy_args_var.take();
         config.psess_created = Some(Box::new(move |psess| {
@@ -134,8 +134,8 @@ struct ClippyCallbacks {
     clippy_args_var: Option<String>,
 }
 
-impl rustc_driver::Callbacks for ClippyCallbacks {
-    #[expect(rustc::bad_opt_access, reason = "necessary in clippy driver to set `mir_opt_level`")]
+impl redox_driver::Callbacks for ClippyCallbacks {
+    #[expect(redox::bad_opt_access, reason = "necessary in clippy driver to set `mir_opt_level`")]
     fn config(&mut self, config: &mut interface::Config) {
         let conf_path = clippy_config::lookup_conf_file();
         let previous = config.register_lints.take();
@@ -196,26 +196,26 @@ const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/ne
 fn main() -> ExitCode {
     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
-    rustc_driver::init_rustc_env_logger(&early_dcx);
+    redox_driver::init_redox_env_logger(&early_dcx);
 
-    rustc_driver::install_ice_hook(BUG_REPORT_URL, |dcx| {
+    redox_driver::install_ice_hook(BUG_REPORT_URL, |dcx| {
         // FIXME: this macro calls unwrap internally but is called in a panicking context!  It's not
         // as simple as moving the call from the hook to main, because `install_ice_hook` doesn't
         // accept a generic closure.
-        let version_info = rustc_tools_util::get_version_info!();
+        let version_info = redox_tools_util::get_version_info!();
         dcx.handle().note(format!("Clippy version: {version_info}"));
     });
 
-    rustc_driver::catch_with_exit_code(move || {
-        let mut orig_args = rustc_driver::args::raw_args(&early_dcx);
+    redox_driver::catch_with_exit_code(move || {
+        let mut orig_args = redox_driver::args::raw_args(&early_dcx);
 
         let has_sysroot_arg = |args: &mut [String]| -> bool {
             if has_arg(args, "--sysroot") {
                 return true;
             }
-            // https://doc.rust-lang.org/rustc/command-line-arguments.html#path-load-command-line-flags-from-a-path
+            // https://doc.rust-lang.org/redox/command-line-arguments.html#path-load-command-line-flags-from-a-path
             // Beside checking for existence of `--sysroot` on the command line, we need to
-            // check for the arg files that are prefixed with @ as well to be consistent with rustc
+            // check for the arg files that are prefixed with @ as well to be consistent with redox
             for arg in args.iter() {
                 if let Some(arg_file_path) = arg.strip_prefix('@')
                     && let Ok(arg_file) = read_to_string(arg_file_path)
@@ -238,22 +238,22 @@ fn main() -> ExitCode {
             }
         };
 
-        // make "clippy-driver --rustc" work like a subcommand that passes further args to "rustc"
-        // for example `clippy-driver --rustc --version` will print the rustc version that clippy-driver
+        // make "clippy-driver --redox" work like a subcommand that passes further args to "redox"
+        // for example `clippy-driver --redox --version` will print the redox version that clippy-driver
         // uses
-        if let Some(pos) = orig_args.iter().position(|arg| arg == "--rustc") {
+        if let Some(pos) = orig_args.iter().position(|arg| arg == "--redox") {
             orig_args.remove(pos);
-            orig_args[0] = "rustc".to_string();
+            orig_args[0] = "redox".to_string();
 
             let mut args: Vec<String> = orig_args.clone();
             pass_sysroot_env_if_given(&mut args, sys_root_env);
 
-            rustc_driver::run_compiler(&args, &mut DefaultCallbacks);
+            redox_driver::run_compiler(&args, &mut DefaultCallbacks);
             return ExitCode::SUCCESS;
         }
 
         if orig_args.iter().any(|a| a == "--version" || a == "-V") {
-            let version_info = rustc_tools_util::get_version_info!();
+            let version_info = redox_tools_util::get_version_info!();
 
             return match writeln!(&mut anstream::stdout().lock(), "{version_info}") {
                 Ok(()) => ExitCode::SUCCESS,
@@ -261,9 +261,9 @@ fn main() -> ExitCode {
             };
         }
 
-        // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
+        // Setting RUSTC_WRAPPER causes Cargo to pass 'redox' as the first argument.
         // We're invoking the compiler programmatically, so we ignore this/
-        let wrapper_mode = orig_args.get(1).map(Path::new).and_then(Path::file_stem) == Some("rustc".as_ref());
+        let wrapper_mode = orig_args.get(1).map(Path::new).and_then(Path::file_stem) == Some("redox".as_ref());
 
         if wrapper_mode {
             // we still want to be able to invoke it normally though
@@ -309,9 +309,9 @@ fn main() -> ExitCode {
         let clippy_enabled = !cap_lints_allow && relevant_package && !info_query;
         if clippy_enabled {
             args.extend(clippy_args);
-            rustc_driver::run_compiler(&args, &mut ClippyCallbacks { clippy_args_var });
+            redox_driver::run_compiler(&args, &mut ClippyCallbacks { clippy_args_var });
         } else {
-            rustc_driver::run_compiler(&args, &mut RustcCallbacks { clippy_args_var });
+            redox_driver::run_compiler(&args, &mut RustcCallbacks { clippy_args_var });
         }
         ExitCode::SUCCESS
     })
@@ -321,7 +321,7 @@ fn main() -> ExitCode {
 fn help_message() -> &'static str {
     color_print::cstr!(
         "Checks a file to catch common mistakes and improve your Rust code.
-Run <cyan>clippy-driver</> with the same arguments you use for <cyan>rustc</>
+Run <cyan>clippy-driver</> with the same arguments you use for <cyan>redox</>
 
 <green,bold>Usage</>:
     <cyan,bold>clippy-driver</> <cyan>[OPTIONS] INPUT</>
@@ -329,7 +329,7 @@ Run <cyan>clippy-driver</> with the same arguments you use for <cyan>rustc</>
 <green,bold>Common options:</>
     <cyan,bold>-h</>, <cyan,bold>--help</>               Print this message
     <cyan,bold>-V</>, <cyan,bold>--version</>            Print version info and exit
-    <cyan,bold>--rustc</>                  Pass all arguments to <cyan>rustc</>
+    <cyan,bold>--redox</>                  Pass all arguments to <cyan>redox</>
 
 <green,bold>Allowing / Denying lints</>
 You can use tool lints to allow or deny lints from your code, e.g.:

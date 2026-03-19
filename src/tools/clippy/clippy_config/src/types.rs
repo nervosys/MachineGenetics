@@ -1,11 +1,11 @@
 use clippy_utils::paths::{PathNS, find_crates, lookup_path};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diag};
-use rustc_hir::PrimTy;
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefIdMap;
-use rustc_middle::ty::TyCtxt;
-use rustc_span::{Span, Symbol};
+use redox_data_structures::fx::FxHashMap;
+use redox_errors::{Applicability, Diag};
+use redox_hir::PrimTy;
+use redox_hir::def::DefKind;
+use redox_hir::def_id::DefIdMap;
+use redox_middle::ty::TyCtxt;
+use redox_span::{Span, Symbol};
 use serde::de::{self, Deserializer, Visitor};
 use serde::{Deserialize, Serialize, ser};
 use std::collections::HashMap;

@@ -15,10 +15,10 @@ graphs and desugaring), you may enjoy the
 
 ## Introduction to MIR
 
-MIR is defined in the [`compiler/rustc_middle/src/mir/`][mir] module, but much of the code
-that manipulates it is found in [`compiler/rustc_mir_build`][mirmanip_build],
-[`compiler/rustc_mir_transform`][mirmanip_transform], and
-[`compiler/rustc_mir_dataflow`][mirmanip_dataflow].
+MIR is defined in the [`compiler/redox_middle/src/mir/`][mir] module, but much of the code
+that manipulates it is found in [`compiler/redox_mir_build`][mirmanip_build],
+[`compiler/redox_mir_transform`][mirmanip_transform], and
+[`compiler/redox_mir_dataflow`][mirmanip_dataflow].
 
 [RFC 1211]: https://rust-lang.github.io/rfcs/1211-mir.html
 
@@ -83,7 +83,7 @@ This is the MIR format for the `main` function.
 MIR shown by above link is optimized.
 Some statements like `StorageLive` are removed in optimization.
 This happens because the compiler notices the value is never accessed in the code.
-We can use `rustc [filename].rs -Z mir-opt-level=0 --emit mir` to view unoptimized MIR.
+We can use `redox [filename].rs -Z mir-opt-level=0 --emit mir` to view unoptimized MIR.
 This requires the nightly toolchain.
 
 
@@ -220,7 +220,7 @@ over the overflow checks.)
 
 ## MIR data types
 
-The MIR data types are defined in the [`compiler/rustc_middle/src/mir/`][mir]
+The MIR data types are defined in the [`compiler/redox_middle/src/mir/`][mir]
 module. Each of the key concepts mentioned in the previous section
 maps in a fairly straightforward way to a Rust type.
 
@@ -330,24 +330,24 @@ belongs to it.
 See the const-eval WG's [docs on promotion](https://github.com/rust-lang/const-eval/blob/master/promotion.md).
 
 
-[mir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html
-[mirmanip_build]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/index.html
-[mirmanip_transform]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/index.html
-[mirmanip_dataflow]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/index.html
-[`Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Body.html
+[mir]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/index.html
+[mirmanip_build]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_build/index.html
+[mirmanip_transform]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/index.html
+[mirmanip_dataflow]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_dataflow/index.html
+[`Body`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/struct.Body.html
 [newtype'd]: ../appendix/glossary.html#newtype
-[basicblocks]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Body.html#structfield.basic_blocks
-[`BasicBlock`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlock.html
-[`BasicBlockData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlockData.html
-[`Statement`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Statement.html
-[`Terminator`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/terminator/struct.Terminator.html
-[`Local`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Local.html
-[localdecls]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Body.html#structfield.local_decls
-[`RETURN_PLACE`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/constant.RETURN_PLACE.html
-[`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Place.html
-[`ProjectionElem`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.ProjectionElem.html
-[`ProjectionElem::Deref`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.ProjectionElem.html#variant.Deref
-[`Rvalue`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.Rvalue.html
-[`Operand`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.Operand.html
-[`mir::Constant`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.Const.html
-[`ty::Const`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Const.html
+[basicblocks]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/struct.Body.html#structfield.basic_blocks
+[`BasicBlock`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/struct.BasicBlock.html
+[`BasicBlockData`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/struct.BasicBlockData.html
+[`Statement`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/struct.Statement.html
+[`Terminator`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/terminator/struct.Terminator.html
+[`Local`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/struct.Local.html
+[localdecls]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/struct.Body.html#structfield.local_decls
+[`RETURN_PLACE`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/constant.RETURN_PLACE.html
+[`Place`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/struct.Place.html
+[`ProjectionElem`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/enum.ProjectionElem.html
+[`ProjectionElem::Deref`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/enum.ProjectionElem.html#variant.Deref
+[`Rvalue`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/enum.Rvalue.html
+[`Operand`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/enum.Operand.html
+[`mir::Constant`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/enum.Const.html
+[`ty::Const`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Const.html

@@ -1,0 +1,20 @@
+[package]
+name = "redox_query_impl"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+measureme = "12.0.1"
+redox_abi = { path = "../redox_abi" }
+redox_data_structures = { path = "../redox_data_structures" }
+redox_errors = { path = "../redox_errors" }
+redox_hir = { path = "../redox_hir" }
+redox_index = { path = "../redox_index" }
+redox_macros = { path = "../redox_macros" }
+redox_middle = { path = "../redox_middle" }
+redox_serialize = { path = "../redox_serialize" }
+redox_span = { path = "../redox_span" }
+redox_thread_pool = { path = "../redox_thread_pool" }
+tracing = "0.1"
+# tidy-alphabetical-end

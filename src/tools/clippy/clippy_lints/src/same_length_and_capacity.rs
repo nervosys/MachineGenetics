@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::{eq_expr_value, sym};
-use rustc_hir::{Expr, ExprKind, LangItem, QPath};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::symbol::sym as rustc_sym;
+use redox_hir::{Expr, ExprKind, LangItem, QPath};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::symbol::sym as redox_sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -82,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
             && eq_expr_value(cx, &args[1], &args[2])
         {
             let middle_ty = cx.typeck_results().node_type(ty.hir_id);
-            if middle_ty.is_diag_item(cx, rustc_sym::Vec) {
+            if middle_ty.is_diag_item(cx, redox_sym::Vec) {
                 span_lint_and_help(
                     cx,
                     SAME_LENGTH_AND_CAPACITY,

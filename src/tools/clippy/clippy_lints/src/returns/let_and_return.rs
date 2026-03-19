@@ -5,11 +5,11 @@ use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{binary_expr_needs_parentheses, fn_def_id, span_contains_non_whitespace};
 use core::ops::ControlFlow;
-use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, PatKind, StmtKind};
-use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty::GenericArgKind;
-use rustc_span::edition::Edition;
+use redox_errors::Applicability;
+use redox_hir::{Block, Expr, PatKind, StmtKind};
+use redox_lint::{LateContext, LintContext};
+use redox_middle::ty::GenericArgKind;
+use redox_span::edition::Edition;
 
 use super::LET_AND_RETURN;
 

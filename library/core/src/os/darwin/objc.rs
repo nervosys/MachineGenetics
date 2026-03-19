@@ -73,13 +73,13 @@ pub type SEL = *mut objc_selector;
 ///
 /// let string_class = objc::class!("NSString");
 /// ```
-#[allow_internal_unstable(rustc_attrs)]
+#[allow_internal_unstable(redox_attrs)]
 pub macro class($classname:expr) {{
     // Since static Objective-C class references actually end up with multiple definitions
     // across dylib boundaries, we only expose the value of the static and don't provide a way to
     // get the address of or a reference to the static.
     unsafe extern "C" {
-        #[rustc_objc_class = $classname]
+        #[redox_objc_class = $classname]
         safe static VAL: $crate::os::darwin::objc::Class;
     }
     VAL
@@ -100,13 +100,13 @@ pub macro class($classname:expr) {{
 /// let alloc_sel = objc::selector!("alloc");
 /// let init_sel = objc::selector!("initWithCString:encoding:");
 /// ```
-#[allow_internal_unstable(rustc_attrs)]
+#[allow_internal_unstable(redox_attrs)]
 pub macro selector($methname:expr) {{
     // Since static Objective-C selector references actually end up with multiple definitions
     // across dylib boundaries, we only expose the value of the static and don't provide a way to
     // get the address of or a reference to the static.
     unsafe extern "C" {
-        #[rustc_objc_selector = $methname]
+        #[redox_objc_selector = $methname]
         safe static VAL: $crate::os::darwin::objc::SEL;
     }
     VAL

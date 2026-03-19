@@ -16,7 +16,7 @@ fn normalize(mut symbol: &str) -> String {
         symbol = &symbol[idx + 1..];
     }
 
-    let mut symbol = rustc_demangle::demangle(symbol).to_string();
+    let mut symbol = redox_demangle::demangle(symbol).to_string();
     symbol = match symbol.rfind("::h") {
         Some(i) => symbol[..i].to_string(),
         None => symbol.to_string(),

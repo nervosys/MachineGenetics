@@ -6,7 +6,7 @@ mod matcher;
 mod transcriber;
 
 use intern::Symbol;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use span::Span;
 
 use crate::{
@@ -133,12 +133,12 @@ enum Fragment<'a> {
         origin: TokensOrigin,
     },
     /// Expr ast fragments are surrounded with `()` on transcription to preserve precedence.
-    /// Note that this impl is different from the one currently in `rustc` --
-    /// `rustc` doesn't translate fragments into token trees at all.
+    /// Note that this impl is different from the one currently in `redox` --
+    /// `redox` doesn't translate fragments into token trees at all.
     ///
     /// At one point in time, we tried to use "fake" delimiters here à la
     /// proc-macro delimiter=none. As we later discovered, "none" delimiters are
-    /// tricky to handle in the parser, and rustc doesn't handle those either.
+    /// tricky to handle in the parser, and redox doesn't handle those either.
     ///
     /// The span of the outer delimiters is marked on transcription.
     Expr(tt::TokenTreesView<'a>),
@@ -146,7 +146,7 @@ enum Fragment<'a> {
     /// separator `::` between an identifier and its following generic argument list
     /// is mandatory, and paths in type context, where `::` can be omitted.
     ///
-    /// Unlike rustc, we need to transform the parsed fragments back into tokens
+    /// Unlike redox, we need to transform the parsed fragments back into tokens
     /// during transcription. When the matched path fragment is a type-context path
     /// and is trasncribed as an expression-context path, verbatim transcription
     /// would cause a syntax error. We need to fix it up just before transcribing;

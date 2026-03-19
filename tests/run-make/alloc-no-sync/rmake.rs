@@ -2,10 +2,10 @@
 // when the unstable no_sync feature is turned on.
 // See https://github.com/rust-lang/rust/pull/84266
 
-use run_make_support::{rustc, source_root};
+use run_make_support::{redox, source_root};
 
 fn main() {
-    rustc()
+    redox()
         .edition("2024")
         .arg("-Dwarnings")
         .crate_type("rlib")

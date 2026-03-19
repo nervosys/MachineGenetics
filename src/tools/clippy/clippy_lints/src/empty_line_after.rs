@@ -4,13 +4,13 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{SpanRangeExt, snippet_indent};
 use clippy_utils::tokenize_with_text;
 use itertools::Itertools;
-use rustc_ast::token::CommentKind;
-use rustc_ast::{AssocItemKind, AttrKind, AttrStyle, Attribute, Crate, Item, ItemKind, ModKind, NodeId};
-use rustc_errors::{Applicability, Diag, SuggestionStyle};
-use rustc_lexer::TokenKind;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, kw, sym};
+use redox_ast::token::CommentKind;
+use redox_ast::{AssocItemKind, AttrKind, AttrStyle, Attribute, Crate, Item, ItemKind, ModKind, NodeId};
+use redox_errors::{Applicability, Diag, SuggestionStyle};
+use redox_lexer::TokenKind;
+use redox_lint::{EarlyContext, EarlyLintPass, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, kw, sym};
 
 declare_clippy_lint! {
     /// ### What it does

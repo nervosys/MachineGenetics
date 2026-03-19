@@ -10,14 +10,14 @@ use std::{io, iter};
 use ::serde::de::{self, Deserializer, Error as _};
 use ::serde::ser::{SerializeSeq, Serializer};
 use ::serde::{Deserialize, Serialize};
-use rustc_ast::join_path_syms;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::find_attr;
-use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::DefId;
-use rustc_span::sym;
-use rustc_span::symbol::{Symbol, kw};
+use redox_ast::join_path_syms;
+use redox_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use redox_data_structures::thin_vec::ThinVec;
+use redox_hir::find_attr;
+use redox_middle::ty::TyCtxt;
+use redox_span::def_id::DefId;
+use redox_span::sym;
+use redox_span::symbol::{Symbol, kw};
 use stringdex::internals as stringdex_internals;
 use tracing::instrument;
 
@@ -1954,7 +1954,7 @@ pub(crate) fn get_function_type_for_search(
                 cache.paths.get(&def_id).or_else(|| cache.external_paths.get(&def_id))
         {
             let path = clean::Path {
-                res: rustc_hir::def::Res::Def(rustc_hir::def::DefKind::Trait, def_id),
+                res: redox_hir::def::Res::Def(redox_hir::def::DefKind::Trait, def_id),
                 segments: path
                     .iter()
                     .map(|name| clean::PathSegment {
@@ -2017,7 +2017,7 @@ fn get_index_type_id(
     clean_type: &clean::Type,
     rgen: &mut FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)>,
 ) -> Option<RenderTypeId> {
-    use rustc_hir::def::{DefKind, Res};
+    use redox_hir::def::{DefKind, Res};
     match *clean_type {
         clean::Type::Path { ref path, .. } => Some(RenderTypeId::DefId(path.def_id())),
         clean::DynTrait(ref bounds, _) => {

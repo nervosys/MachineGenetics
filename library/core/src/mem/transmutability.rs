@@ -85,9 +85,9 @@ use crate::marker::ConstParamTy_;
 #[unstable(feature = "transmutability", issue = "99571")]
 #[unstable_feature_bound(transmutability)]
 #[lang = "transmute_trait"]
-#[rustc_deny_explicit_impl]
-#[rustc_dyn_incompatible_trait]
-#[rustc_coinductive]
+#[redox_deny_explicit_impl]
+#[redox_dyn_incompatible_trait]
+#[redox_coinductive]
 pub unsafe trait TransmuteFrom<Src, const ASSUME: Assume = { Assume::NOTHING }>
 where
     Src: ?Sized,

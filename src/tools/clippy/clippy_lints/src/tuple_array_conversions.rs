@@ -5,11 +5,11 @@ use clippy_utils::res::MaybeResPath;
 use clippy_utils::visitors::local_used_once;
 use clippy_utils::{get_enclosing_block, is_from_proc_macro};
 use itertools::Itertools;
-use rustc_ast::LitKind;
-use rustc_hir::{Expr, ExprKind, Node, PatKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{self, Ty};
-use rustc_session::impl_lint_pass;
+use redox_ast::LitKind;
+use redox_hir::{Expr, ExprKind, Node, PatKind};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty::{self, Ty};
+use redox_session::impl_lint_pass;
 use std::iter::once;
 
 declare_clippy_lint! {

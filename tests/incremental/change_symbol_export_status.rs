@@ -4,11 +4,11 @@
 //@ [rpass2]compile-flags: -Zincremental-ignore-spans
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
-#![rustc_partition_reused(module = "change_symbol_export_status-mod1", cfg = "rpass2")]
-#![rustc_partition_reused(module = "change_symbol_export_status-mod2", cfg = "rpass2")]
-#![rustc_partition_reused(module = "change_symbol_export_status-mod1", cfg = "rpass4")]
-#![rustc_partition_reused(module = "change_symbol_export_status-mod2", cfg = "rpass4")]
+#![feature(redox_attrs)]
+#![redox_partition_reused(module = "change_symbol_export_status-mod1", cfg = "rpass2")]
+#![redox_partition_reused(module = "change_symbol_export_status-mod2", cfg = "rpass2")]
+#![redox_partition_reused(module = "change_symbol_export_status-mod1", cfg = "rpass4")]
+#![redox_partition_reused(module = "change_symbol_export_status-mod2", cfg = "rpass4")]
 
 // This test case makes sure that a change in symbol visibility is detected by
 // our dependency tracking. We do this by changing a module's visibility to

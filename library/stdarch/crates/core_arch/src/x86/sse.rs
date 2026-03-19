@@ -18,7 +18,7 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(addss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_add_ss(a: __m128, b: __m128) -> __m128 {
     unsafe { simd_insert!(a, 0, _mm_cvtss_f32(a) + _mm_cvtss_f32(b)) }
 }
@@ -31,7 +31,7 @@ pub const fn _mm_add_ss(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(addps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_add_ps(a: __m128, b: __m128) -> __m128 {
     unsafe { simd_add(a, b) }
 }
@@ -44,7 +44,7 @@ pub const fn _mm_add_ps(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(subss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_sub_ss(a: __m128, b: __m128) -> __m128 {
     unsafe { simd_insert!(a, 0, _mm_cvtss_f32(a) - _mm_cvtss_f32(b)) }
 }
@@ -57,7 +57,7 @@ pub const fn _mm_sub_ss(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(subps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_sub_ps(a: __m128, b: __m128) -> __m128 {
     unsafe { simd_sub(a, b) }
 }
@@ -70,7 +70,7 @@ pub const fn _mm_sub_ps(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(mulss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mul_ss(a: __m128, b: __m128) -> __m128 {
     unsafe { simd_insert!(a, 0, _mm_cvtss_f32(a) * _mm_cvtss_f32(b)) }
 }
@@ -83,7 +83,7 @@ pub const fn _mm_mul_ss(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(mulps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mul_ps(a: __m128, b: __m128) -> __m128 {
     unsafe { simd_mul(a, b) }
 }
@@ -96,7 +96,7 @@ pub const fn _mm_mul_ps(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(divss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_div_ss(a: __m128, b: __m128) -> __m128 {
     unsafe { simd_insert!(a, 0, _mm_cvtss_f32(a) / _mm_cvtss_f32(b)) }
 }
@@ -109,7 +109,7 @@ pub const fn _mm_div_ss(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(divps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_div_ps(a: __m128, b: __m128) -> __m128 {
     unsafe { simd_div(a, b) }
 }
@@ -249,7 +249,7 @@ pub fn _mm_max_ps(a: __m128, b: __m128) -> __m128 {
     assert_instr(andps)
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_and_ps(a: __m128, b: __m128) -> __m128 {
     unsafe {
         let a: __m128i = mem::transmute(a);
@@ -273,7 +273,7 @@ pub const fn _mm_and_ps(a: __m128, b: __m128) -> __m128 {
     assert_instr(andnps)
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_andnot_ps(a: __m128, b: __m128) -> __m128 {
     unsafe {
         let a: __m128i = mem::transmute(a);
@@ -294,7 +294,7 @@ pub const fn _mm_andnot_ps(a: __m128, b: __m128) -> __m128 {
     assert_instr(orps)
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_or_ps(a: __m128, b: __m128) -> __m128 {
     unsafe {
         let a: __m128i = mem::transmute(a);
@@ -315,7 +315,7 @@ pub const fn _mm_or_ps(a: __m128, b: __m128) -> __m128 {
     assert_instr(xorps)
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_xor_ps(a: __m128, b: __m128) -> __m128 {
     unsafe {
         let a: __m128i = mem::transmute(a);
@@ -878,7 +878,7 @@ pub fn _mm_cvtt_ss2si(a: __m128) -> i32 {
 // No point in using assert_instrs. In Unix x86_64 calling convention this is a
 // no-op, and on msvc it's just a `mov`.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtss_f32(a: __m128) -> f32 {
     unsafe { simd_extract!(a, 0) }
 }
@@ -894,7 +894,7 @@ pub const fn _mm_cvtss_f32(a: __m128) -> f32 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtsi2ss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtsi32_ss(a: __m128, b: i32) -> __m128 {
     unsafe { simd_insert!(a, 0, b as f32) }
 }
@@ -918,7 +918,7 @@ pub fn _mm_cvt_si2ss(a: __m128, b: i32) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set_ss(a: f32) -> __m128 {
     __m128([a, 0.0, 0.0, 0.0])
 }
@@ -930,7 +930,7 @@ pub const fn _mm_set_ss(a: f32) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(shufps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set1_ps(a: f32) -> __m128 {
     f32x4::splat(a).as_m128()
 }
@@ -942,7 +942,7 @@ pub const fn _mm_set1_ps(a: f32) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(shufps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set_ps1(a: f32) -> __m128 {
     _mm_set1_ps(a)
 }
@@ -970,7 +970,7 @@ pub const fn _mm_set_ps1(a: f32) -> __m128 {
 #[target_feature(enable = "sse")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
     __m128([d, c, b, a])
 }
@@ -997,7 +997,7 @@ pub const fn _mm_set_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
     assert_instr(movaps)
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_setr_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
     __m128([a, b, c, d])
 }
@@ -1009,7 +1009,7 @@ pub const fn _mm_setr_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(xorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_setzero_ps() -> __m128 {
     const { unsafe { mem::zeroed() } }
 }
@@ -1039,9 +1039,9 @@ pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(shufps, MASK = 3))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_shuffle_ps<const MASK: i32>(a: __m128, b: __m128) -> __m128 {
     static_assert_uimm_bits!(MASK, 8);
     unsafe {
@@ -1066,7 +1066,7 @@ pub const fn _mm_shuffle_ps<const MASK: i32>(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(unpckhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_unpackhi_ps(a: __m128, b: __m128) -> __m128 {
     unsafe { simd_shuffle!(a, b, [2, 6, 3, 7]) }
 }
@@ -1079,7 +1079,7 @@ pub const fn _mm_unpackhi_ps(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(unpcklps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_unpacklo_ps(a: __m128, b: __m128) -> __m128 {
     unsafe { simd_shuffle!(a, b, [0, 4, 1, 5]) }
 }
@@ -1092,7 +1092,7 @@ pub const fn _mm_unpacklo_ps(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movhlps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
     // TODO; figure why this is a different instruction on msvc?
     unsafe { simd_shuffle!(a, b, [6, 7, 2, 3]) }
@@ -1106,7 +1106,7 @@ pub const fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movlhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
     unsafe { simd_shuffle!(a, b, [0, 1, 4, 5]) }
 }
@@ -1121,7 +1121,7 @@ pub const fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movmskps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_movemask_ps(a: __m128) -> i32 {
     // Propagate the highest bit to the rest, because simd_bitmask
     // requires all-1 or all-0.
@@ -1141,7 +1141,7 @@ pub const fn _mm_movemask_ps(a: __m128) -> i32 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_load_ss(p: *const f32) -> __m128 {
     __m128([*p, 0.0, 0.0, 0.0])
 }
@@ -1157,7 +1157,7 @@ pub const unsafe fn _mm_load_ss(p: *const f32) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_load1_ps(p: *const f32) -> __m128 {
     let a = *p;
     __m128([a, a, a, a])
@@ -1170,7 +1170,7 @@ pub const unsafe fn _mm_load1_ps(p: *const f32) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_load_ps1(p: *const f32) -> __m128 {
     _mm_load1_ps(p)
 }
@@ -1195,7 +1195,7 @@ pub const unsafe fn _mm_load_ps1(p: *const f32) -> __m128 {
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_load_ps(p: *const f32) -> __m128 {
     *(p as *const __m128)
 }
@@ -1213,7 +1213,7 @@ pub const unsafe fn _mm_load_ps(p: *const f32) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movups))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadu_ps(p: *const f32) -> __m128 {
     // Note: Using `*p` would require `f32` alignment, but `movups` has no
     // alignment restrictions.
@@ -1254,7 +1254,7 @@ pub const unsafe fn _mm_loadu_ps(p: *const f32) -> __m128 {
     assert_instr(movaps)
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_loadr_ps(p: *const f32) -> __m128 {
     let a = _mm_load_ps(p);
     simd_shuffle!(a, a, [3, 2, 1, 0])
@@ -1269,7 +1269,7 @@ pub const unsafe fn _mm_loadr_ps(p: *const f32) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_store_ss(p: *mut f32, a: __m128) {
     *p = simd_extract!(a, 0);
 }
@@ -1300,7 +1300,7 @@ pub const unsafe fn _mm_store_ss(p: *mut f32, a: __m128) {
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_store1_ps(p: *mut f32, a: __m128) {
     let b: __m128 = simd_shuffle!(a, a, [0, 0, 0, 0]);
     *(p as *mut __m128) = b;
@@ -1316,7 +1316,7 @@ pub const unsafe fn _mm_store1_ps(p: *mut f32, a: __m128) {
     assert_instr(movaps)
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_store_ps1(p: *mut f32, a: __m128) {
     _mm_store1_ps(p, a);
 }
@@ -1340,7 +1340,7 @@ pub const unsafe fn _mm_store_ps1(p: *mut f32, a: __m128) {
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_store_ps(p: *mut f32, a: __m128) {
     *(p as *mut __m128) = a;
 }
@@ -1356,7 +1356,7 @@ pub const unsafe fn _mm_store_ps(p: *mut f32, a: __m128) {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movups))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storeu_ps(p: *mut f32, a: __m128) {
     ptr::copy_nonoverlapping(
         ptr::addr_of!(a) as *const u8,
@@ -1389,7 +1389,7 @@ pub const unsafe fn _mm_storeu_ps(p: *mut f32, a: __m128) {
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const unsafe fn _mm_storer_ps(p: *mut f32, a: __m128) {
     let b: __m128 = simd_shuffle!(a, a, [3, 2, 1, 0]);
     *(p as *mut __m128) = b;
@@ -1408,7 +1408,7 @@ pub const unsafe fn _mm_storer_ps(p: *mut f32, a: __m128) {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_move_ss(a: __m128, b: __m128) -> __m128 {
     unsafe { simd_shuffle!(a, b, [4, 1, 2, 3]) }
 }
@@ -1936,7 +1936,7 @@ pub const _MM_HINT_ET1: i32 = 6;
 #[cfg_attr(test, assert_instr(prefetcht1, STRATEGY = _MM_HINT_T1))]
 #[cfg_attr(test, assert_instr(prefetcht2, STRATEGY = _MM_HINT_T2))]
 #[cfg_attr(test, assert_instr(prefetchnta, STRATEGY = _MM_HINT_NTA))]
-#[rustc_legacy_const_generics(1)]
+#[redox_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_prefetch<const STRATEGY: i32>(p: *const i8) {
     static_assert_uimm_bits!(STRATEGY, 3);
@@ -1956,7 +1956,7 @@ pub fn _mm_prefetch<const STRATEGY: i32>(p: *const i8) {
 #[inline]
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_undefined_ps() -> __m128 {
     const { unsafe { mem::zeroed() } }
 }
@@ -1968,7 +1968,7 @@ pub const fn _mm_undefined_ps() -> __m128 {
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _MM_TRANSPOSE4_PS(
     row0: &mut __m128,
     row1: &mut __m128,

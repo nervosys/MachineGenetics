@@ -175,7 +175,7 @@ hello_fuchsia/
 ### Targeting Fuchsia with a compiler built from source
 
 An alternative to the first workflow is to target Fuchsia by using
-`rustc` built from source.
+`redox` built from source.
 
 Before building Rust for Fuchsia, you'll need a clang toolchain that supports
 Fuchsia as well. A recent version (14+) of clang should be sufficient to compile
@@ -245,7 +245,7 @@ Finally, the Rust compiler can be built and installed:
 (source config-env.sh && ./x.py install)
 ```
 
-Once `rustc` is installed, we can create a new working directory to work from,
+Once `redox` is installed, we can create a new working directory to work from,
 `hello_fuchsia` along with `hello_fuchsia/src`:
 
 ```sh
@@ -278,7 +278,7 @@ hello_fuchsia/
     ┗━ hello_fuchsia.rs
 ```
 
-Using your freshly installed `rustc`, you can compile a binary for Fuchsia using
+Using your freshly installed `redox`, you can compile a binary for Fuchsia using
 the following options:
 
 * `--target x86_64-unknown-fuchsia`/`--target aarch64-unknown-fuchsia`: Targets the Fuchsia
@@ -295,7 +295,7 @@ Putting it all together:
 TARGET_ARCH="<x86_64-unknown-fuchsia|aarch64-unknown-fuchsia>"
 ARCH="<x64|aarch64>"
 
-rustc \
+redox \
     --target ${TARGET_ARCH} \
     -Lnative=${SDK_PATH}/arch/${ARCH}/lib \
     -Lnative=${SDK_PATH}/arch/${ARCH}/sysroot/lib \
@@ -318,7 +318,7 @@ Before moving on, double check your directory structure:
 **Current directory structure**
 ```txt
 hello_fuchsia/
-┣━ src/                         (if using rustc)
+┣━ src/                         (if using redox)
 ┃   ┗━ hello_fuchsia.rs         ...
 ┣━ bin/                         ...
 ┃  ┗━ hello_fuchsia             ...
@@ -371,7 +371,7 @@ meta/package=pkg/meta/package
 meta/hello_fuchsia.cm=pkg/meta/hello_fuchsia.cm
 ```
 
-**`pkg/hello_fuchsia.manifest` if using rustc**
+**`pkg/hello_fuchsia.manifest` if using redox**
 ```txt
 bin/hello_fuchsia=bin/hello_fuchsia
 lib/ld.so.1=<SDK_PATH>/arch/x64/sysroot/dist/lib/ld.so.1
@@ -528,7 +528,7 @@ structure will look like:
 **Final directory structure**
 ```txt
 hello_fuchsia/
-┣━ src/                         (if using rustc)
+┣━ src/                         (if using redox)
 ┃   ┗━ hello_fuchsia.rs         ...
 ┣━ bin/                         ...
 ┃  ┗━ hello_fuchsia             ...
@@ -631,8 +631,8 @@ this would look like `cargo test --target x86_64-unknown-fuchsia --no-run`, and 
 binary path found from the line `Executable unittests src/main.rs (target/x86_64-unknown-fuchsia/debug/deps/hello_fuchsia-<HASH>)`
 into `pkg/hello_fuchsia.manifest`.
 
-* If using the compiled `rustc`, you can simply pass `--test`
-to the `rustc` invocation and then repackage and rerun the Fuchsia package.
+* If using the compiled `redox`, you can simply pass `--test`
+to the `redox` invocation and then repackage and rerun the Fuchsia package.
 
 The test harness will run the applicable unit tests.
 
@@ -712,11 +712,11 @@ run the full `tests/ui` test suite:
     test tests/ui                                                             \
     --target x86_64-unknown-fuchsia                                           \
     --run=always                                                              \
-    --test-args --target-rustcflags                                           \
+    --test-args --target-redoxflags                                           \
     --test-args -Lnative=${SDK_PATH}/arch/{x64|arm64}/sysroot/lib             \
-    --test-args --target-rustcflags                                           \
+    --test-args --target-redoxflags                                           \
     --test-args -Lnative=${SDK_PATH}/arch/{x64|arm64}/lib                     \
-    --test-args --target-rustcflags                                           \
+    --test-args --target-redoxflags                                           \
     --test-args -Clink-arg=--undefined-version                                \
     --test-args --remote-test-client                                          \
     --test-args src/ci/docker/scripts/fuchsia-test-runner.py                  \
@@ -728,9 +728,9 @@ Rust toolchain with `-Cpanic=abort`, you need to tell `x.py` to compile test
 binaries with `panic=abort` as well:
 
 ```sh
-    --test-args --target-rustcflags                                           \
+    --test-args --target-redoxflags                                           \
     --test-args -Cpanic=abort                                                 \
-    --test-args --target-rustcflags                                           \
+    --test-args --target-redoxflags                                           \
     --test-args -Zpanic_abort_tests                                           \
 ```
 
@@ -888,7 +888,7 @@ you don't have it downloaded. Now is a good time to set any desired breakpoints,
 like `b main`.
 
 Next, we have to tell `x.py` not to optimize or strip debug symbols from our
-test suite binaries. We can do this by passing some new arguments to `rustc`
+test suite binaries. We can do this by passing some new arguments to `redox`
 through our `x.py` invocation. The full invocation is:
 
 ```sh
@@ -900,17 +900,17 @@ through our `x.py` invocation. The full invocation is:
     test tests/${TEST}                                                        \
     --target x86_64-unknown-fuchsia                                           \
     --run=always                                                              \
-    --test-args --target-rustcflags                                           \
+    --test-args --target-redoxflags                                           \
     --test-args -Lnative=${SDK_PATH}/arch/{x64|arm64}/sysroot/lib             \
-    --test-args --target-rustcflags                                           \
+    --test-args --target-redoxflags                                           \
     --test-args -Lnative=${SDK_PATH}/arch/{x64|arm64}/lib                     \
-    --test-args --target-rustcflags                                           \
+    --test-args --target-redoxflags                                           \
     --test-args -Clink-arg=--undefined-version                                \
-    --test-args --target-rustcflags                                           \
+    --test-args --target-redoxflags                                           \
     --test-args -Cdebuginfo=2                                                 \
-    --test-args --target-rustcflags                                           \
+    --test-args --target-redoxflags                                           \
     --test-args -Copt-level=0                                                 \
-    --test-args --target-rustcflags                                           \
+    --test-args --target-redoxflags                                           \
     --test-args -Cstrip=none                                                  \
     --test-args --remote-test-client                                          \
     --test-args src/ci/docker/scripts/fuchsia-test-runner.py                  \

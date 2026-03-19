@@ -123,8 +123,8 @@ impl_zeroable_primitive!(
 /// only for concrete types.
 #[stable(feature = "generic_nonzero", since = "1.79.0")]
 #[repr(transparent)]
-#[rustc_nonnull_optimization_guaranteed]
-#[rustc_diagnostic_item = "NonZero"]
+#[redox_nonnull_optimization_guaranteed]
+#[redox_diagnostic_item = "NonZero"]
 pub struct NonZero<T: ZeroablePrimitive>(T::NonZeroInner);
 
 macro_rules! impl_nonzero_fmt {
@@ -205,7 +205,7 @@ impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}
 unsafe impl<T> TrivialClone for NonZero<T> where T: ZeroablePrimitive {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<T> const PartialEq for NonZero<T>
 where
     T: ZeroablePrimitive + [const] PartialEq,
@@ -225,11 +225,11 @@ where
 impl<T> StructuralPartialEq for NonZero<T> where T: ZeroablePrimitive + StructuralPartialEq {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<T> const Eq for NonZero<T> where T: ZeroablePrimitive + [const] Eq {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<T> const PartialOrd for NonZero<T>
 where
     T: ZeroablePrimitive + [const] PartialOrd,
@@ -261,7 +261,7 @@ where
 }
 
 #[stable(feature = "nonzero", since = "1.28.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[redox_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<T> const Ord for NonZero<T>
 where
     // FIXME(const_hack): the T: ~const Destruct should be inferred from the Self: ~const Destruct.
@@ -307,7 +307,7 @@ where
 }
 
 #[stable(feature = "from_nonzero", since = "1.31.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<NonZero<T>> for T
 where
     T: ZeroablePrimitive,
@@ -320,7 +320,7 @@ where
 }
 
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl<T> const BitOr for NonZero<T>
 where
     T: ZeroablePrimitive + [const] BitOr<Output = T>,
@@ -335,7 +335,7 @@ where
 }
 
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl<T> const BitOr<T> for NonZero<T>
 where
     T: ZeroablePrimitive + [const] BitOr<Output = T>,
@@ -350,7 +350,7 @@ where
 }
 
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl<T> const BitOr<NonZero<T>> for T
 where
     T: ZeroablePrimitive + [const] BitOr<Output = T>,
@@ -365,7 +365,7 @@ where
 }
 
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl<T> const BitOrAssign for NonZero<T>
 where
     T: ZeroablePrimitive,
@@ -378,7 +378,7 @@ where
 }
 
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+#[redox_const_unstable(feature = "const_ops", issue = "143802")]
 impl<T> const BitOrAssign<T> for NonZero<T>
 where
     T: ZeroablePrimitive,
@@ -396,7 +396,7 @@ where
 {
     /// Creates a non-zero if the given value is not zero.
     #[stable(feature = "nonzero", since = "1.28.0")]
-    #[rustc_const_stable(feature = "const_nonzero_int_methods", since = "1.47.0")]
+    #[redox_const_stable(feature = "const_nonzero_int_methods", since = "1.47.0")]
     #[must_use]
     #[inline]
     pub const fn new(n: T) -> Option<Self> {
@@ -412,7 +412,7 @@ where
     ///
     /// The value must not be zero.
     #[stable(feature = "nonzero", since = "1.28.0")]
-    #[rustc_const_stable(feature = "nonzero", since = "1.28.0")]
+    #[redox_const_stable(feature = "nonzero", since = "1.28.0")]
     #[must_use]
     #[inline]
     #[track_caller]
@@ -476,7 +476,7 @@ where
 
     /// Returns the contained value as a primitive type.
     #[stable(feature = "nonzero", since = "1.28.0")]
-    #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
+    #[redox_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
     #[inline]
     pub const fn get(self) -> T {
         // Rustc can set range metadata only if it loads `self` from
@@ -602,7 +602,7 @@ macro_rules! nonzero_integer {
             /// # }
             /// ```
             #[stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
-            #[rustc_const_stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
+            #[redox_const_stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -632,7 +632,7 @@ macro_rules! nonzero_integer {
             /// # }
             /// ```
             #[stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
-            #[rustc_const_stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
+            #[redox_const_stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -773,7 +773,7 @@ macro_rules! nonzero_integer {
             /// ```
             ///
             #[stable(feature = "non_zero_count_ones", since = "1.86.0")]
-            #[rustc_const_stable(feature = "non_zero_count_ones", since = "1.86.0")]
+            #[redox_const_stable(feature = "non_zero_count_ones", since = "1.86.0")]
             #[doc(alias = "popcount")]
             #[doc(alias = "popcnt")]
             #[must_use = "this returns the result of the operation, \
@@ -1061,7 +1061,7 @@ macro_rules! nonzero_integer {
             /// # }
             /// ```
             #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-            #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+            #[redox_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1100,7 +1100,7 @@ macro_rules! nonzero_integer {
             /// # }
             /// ```
             #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-            #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+            #[redox_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1178,7 +1178,7 @@ macro_rules! nonzero_integer {
             /// # }
             /// ```
             #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-            #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+            #[redox_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1226,7 +1226,7 @@ macro_rules! nonzero_integer {
             /// # }
             /// ```
             #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-            #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+            #[redox_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1477,7 +1477,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
     // Impls for unsigned nonzero types only.
     (unsigned $Int:ty) => {
         #[stable(feature = "nonzero_div", since = "1.51.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+        #[redox_const_unstable(feature = "const_ops", issue = "143802")]
         impl const Div<NonZero<$Int>> for $Int {
             type Output = $Int;
 
@@ -1496,7 +1496,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
         }
 
         #[stable(feature = "nonzero_div_assign", since = "1.79.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+        #[redox_const_unstable(feature = "const_ops", issue = "143802")]
         impl const DivAssign<NonZero<$Int>> for $Int {
             /// Same as `self /= other.get()`, but because `other` is a `NonZero<_>`,
             /// there's never a runtime check for division-by-zero.
@@ -1510,7 +1510,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
         }
 
         #[stable(feature = "nonzero_div", since = "1.51.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+        #[redox_const_unstable(feature = "const_ops", issue = "143802")]
         impl const Rem<NonZero<$Int>> for $Int {
             type Output = $Int;
 
@@ -1524,7 +1524,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
         }
 
         #[stable(feature = "nonzero_div_assign", since = "1.79.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+        #[redox_const_unstable(feature = "const_ops", issue = "143802")]
         impl const RemAssign<NonZero<$Int>> for $Int {
             /// This operation satisfies `n % d == n - (n / d) * d`, and cannot panic.
             #[inline]
@@ -1551,7 +1551,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
             /// assert_eq!(three.div_ceil(two), two);
             /// ```
             #[stable(feature = "unsigned_nonzero_div_ceil", since = "1.92.0")]
-            #[rustc_const_stable(feature = "unsigned_nonzero_div_ceil", since = "1.92.0")]
+            #[redox_const_stable(feature = "unsigned_nonzero_div_ceil", since = "1.92.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1565,7 +1565,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
     // Impls for signed nonzero types only.
     (signed $Int:ty) => {
         #[stable(feature = "signed_nonzero_neg", since = "1.71.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+        #[redox_const_unstable(feature = "const_ops", issue = "143802")]
         impl const Neg for NonZero<$Int> {
             type Output = Self;
 
@@ -1578,7 +1578,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
 
         forward_ref_unop! { impl Neg, neg for NonZero<$Int>,
         #[stable(feature = "signed_nonzero_neg", since = "1.71.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "143802")] }
+        #[redox_const_unstable(feature = "const_ops", issue = "143802")] }
     };
 }
 
@@ -1639,7 +1639,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # }
         /// ```
         #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-        #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+        #[redox_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1678,7 +1678,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # }
         /// ```
         #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-        #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+        #[redox_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1749,7 +1749,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # }
         /// ```
         #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-        #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+        #[redox_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1784,7 +1784,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # }
         /// ```
         #[stable(feature = "int_log", since = "1.67.0")]
-        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
+        #[redox_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1813,7 +1813,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # }
         /// ```
         #[stable(feature = "int_log", since = "1.67.0")]
-        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
+        #[redox_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1844,7 +1844,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # }
         /// ```
         #[stable(feature = "num_midpoint", since = "1.85.0")]
-        #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
+        #[redox_const_stable(feature = "num_midpoint", since = "1.85.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[doc(alias = "average_floor")]
@@ -1879,7 +1879,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// ```
         #[must_use]
         #[stable(feature = "nonzero_is_power_of_two", since = "1.59.0")]
-        #[rustc_const_stable(feature = "nonzero_is_power_of_two", since = "1.59.0")]
+        #[redox_const_stable(feature = "nonzero_is_power_of_two", since = "1.59.0")]
         #[inline]
         pub const fn is_power_of_two(self) -> bool {
             // LLVM 11 normalizes `unchecked_sub(x, 1) & x == 0` to the implementation seen here.
@@ -1907,7 +1907,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # }
         /// ```
         #[stable(feature = "isqrt", since = "1.84.0")]
-        #[rustc_const_stable(feature = "isqrt", since = "1.84.0")]
+        #[redox_const_stable(feature = "isqrt", since = "1.84.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1934,7 +1934,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[doc = concat!("assert_eq!(n.cast_signed(), NonZero::new(-1", stringify!($Sint), ").unwrap());")]
         /// ```
         #[stable(feature = "integer_sign_cast", since = "1.87.0")]
-        #[rustc_const_stable(feature = "integer_sign_cast", since = "1.87.0")]
+        #[redox_const_stable(feature = "integer_sign_cast", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -2033,7 +2033,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # }
         /// ```
         #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-        #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+        #[redox_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2064,7 +2064,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # }
         /// ```
         #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-        #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+        #[redox_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2099,7 +2099,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # }
         /// ```
         #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-        #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+        #[redox_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2136,7 +2136,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # }
         /// ```
         #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-        #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+        #[redox_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2168,7 +2168,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # }
         /// ```
         #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-        #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+        #[redox_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2200,7 +2200,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # }
         /// ```
         #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-        #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+        #[redox_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2230,7 +2230,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[must_use]
         #[inline]
         #[stable(feature = "nonzero_negation_ops", since = "1.71.0")]
-        #[rustc_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
+        #[redox_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
         pub const fn is_positive(self) -> bool {
             self.get().is_positive()
         }
@@ -2256,7 +2256,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[must_use]
         #[inline]
         #[stable(feature = "nonzero_negation_ops", since = "1.71.0")]
-        #[rustc_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
+        #[redox_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
         pub const fn is_negative(self) -> bool {
             self.get().is_negative()
         }
@@ -2282,7 +2282,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// ```
         #[inline]
         #[stable(feature = "nonzero_negation_ops", since = "1.71.0")]
-        #[rustc_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
+        #[redox_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
         pub const fn checked_neg(self) -> Option<Self> {
             if let Some(result) = self.get().checked_neg() {
                 // SAFETY: negation of nonzero cannot yield zero values.
@@ -2314,7 +2314,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// ```
         #[inline]
         #[stable(feature = "nonzero_negation_ops", since = "1.71.0")]
-        #[rustc_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
+        #[redox_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
         pub const fn overflowing_neg(self) -> (Self, bool) {
             let (result, overflow) = self.get().overflowing_neg();
             // SAFETY: negation of nonzero cannot yield zero values.
@@ -2347,7 +2347,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// ```
         #[inline]
         #[stable(feature = "nonzero_negation_ops", since = "1.71.0")]
-        #[rustc_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
+        #[redox_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
         pub const fn saturating_neg(self) -> Self {
             if let Some(result) = self.checked_neg() {
                 return result;
@@ -2379,7 +2379,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// ```
         #[inline]
         #[stable(feature = "nonzero_negation_ops", since = "1.71.0")]
-        #[rustc_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
+        #[redox_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
         pub const fn wrapping_neg(self) -> Self {
             let result = self.get().wrapping_neg();
             // SAFETY: negation of nonzero cannot yield zero values.
@@ -2398,7 +2398,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[doc = concat!("assert_eq!(n.cast_unsigned(), NonZero::<", stringify!($Uint), ">::MAX);")]
         /// ```
         #[stable(feature = "integer_sign_cast", since = "1.87.0")]
-        #[rustc_const_stable(feature = "integer_sign_cast", since = "1.87.0")]
+        #[redox_const_stable(feature = "integer_sign_cast", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]

@@ -9,7 +9,7 @@ use hir_expand::{AstId, MacroCallId, attrs::AttrId, name::Name};
 use indexmap::map::Entry;
 use itertools::Itertools;
 use la_arena::Idx;
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use span::Edition;
 use stdx::format_to;

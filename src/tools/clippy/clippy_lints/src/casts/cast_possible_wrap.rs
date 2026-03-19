@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
-use rustc_errors::Applicability;
-use rustc_hir::Expr;
-use rustc_lint::LateContext;
-use rustc_middle::ty::Ty;
+use redox_errors::Applicability;
+use redox_hir::Expr;
+use redox_lint::LateContext;
+use redox_middle::ty::Ty;
 
 use super::{CAST_POSSIBLE_WRAP, utils};
 

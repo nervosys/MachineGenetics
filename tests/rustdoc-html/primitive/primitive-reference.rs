@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 //@ has foo/index.html
 //@ has - '//h2[@id="primitives"]' 'Primitive Types'
@@ -15,7 +15,7 @@
 //@ count - '//*[@class="impl"]' 1
 //@ has - '//*[@id="impl-Foo%3C%26A%3E-for-%26B"]/*[@class="code-header"]' \
 //        'impl<A, B> Foo<&A> for &B'
-#[rustc_doc_primitive = "reference"]
+#[redox_doc_primitive = "reference"]
 /// this is a test!
 mod reference {}
 

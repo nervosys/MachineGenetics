@@ -12,7 +12,7 @@ use ide_db::{LineIndexDatabase, line_index::WideEncoding};
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace};
 use lsp_types::lsif;
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use stdx::format_to;
 use vfs::{AbsPathBuf, Vfs};
 

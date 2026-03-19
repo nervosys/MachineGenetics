@@ -3,7 +3,7 @@
 //@[tree]compile-flags: -Zmiri-tree-borrows
 
 // WARNING: If you would ever want to modify this test,
-// please consider modifying rustc's async drop test at
+// please consider modifying redox's async drop test at
 // `tests/ui/async-await/async-drop/async-drop-initial.rs`.
 
 #![feature(async_drop, impl_trait_in_assoc_type)]

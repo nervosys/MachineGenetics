@@ -7,12 +7,12 @@
 //@ ignore-backends: gcc
 
 #![crate_type = "lib"]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(no_core, lang_items)]
 #![feature(isa_attribute)]
 #![no_core]
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! asm {
     ("assembly template",

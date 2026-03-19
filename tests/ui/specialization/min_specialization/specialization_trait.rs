@@ -1,9 +1,9 @@
-// Test that `rustc_specialization_trait` requires always applicable impls.
+// Test that `redox_specialization_trait` requires always applicable impls.
 
 #![feature(min_specialization)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 trait SpecMarker {
     fn f();
 }

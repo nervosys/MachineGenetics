@@ -16,7 +16,7 @@ fn init_compiler_benchmarks(
 ) -> CmdBuilder {
     // Run rustc-perf benchmarks
     // Benchmark using profile_local with eprintln, which essentially just means
-    // don't actually benchmark -- just make sure we run rustc a bunch of times.
+    // don't actually benchmark -- just make sure we run redox a bunch of times.
     let mut cmd = cmd(&[
         env.cargo_stage_0().as_str(),
         "run",
@@ -27,7 +27,7 @@ fn init_compiler_benchmarks(
         "--",
         "profile_local",
         "eprintln",
-        env.rustc_stage_2().as_str(),
+        env.redox_stage_2().as_str(),
         "--id",
         "Test",
         "--cargo",
@@ -39,14 +39,14 @@ fn init_compiler_benchmarks(
         "--exact-match",
         crates.join(",").as_str(),
     ])
-    .env("RUSTC", env.rustc_stage_0().as_str())
+    .env("RUSTC", env.redox_stage_0().as_str())
     .env("RUSTC_BOOTSTRAP", "1")
-    .workdir(&env.rustc_perf_dir());
+    .workdir(&env.redox_perf_dir());
 
     // This propagates cargo configs to `rustc-perf --cargo-config`,
     // which is particularly useful when the environment is air-gapped,
     // and you want to use the default set of training crates vendored
-    // in the rustc-src tarball.
+    // in the redox-src tarball.
     for config in env.benchmark_cargo_config() {
         cmd = cmd.arg("--cargo-config").arg(config);
     }
@@ -107,7 +107,7 @@ pub fn llvm_benchmarks(env: &Environment) -> CmdBuilder {
     init_compiler_benchmarks(env, &["Debug", "Opt"], &["Full"], LLVM_PGO_CRATES)
 }
 
-pub fn rustc_benchmarks(env: &Environment) -> CmdBuilder {
+pub fn redox_benchmarks(env: &Environment) -> CmdBuilder {
     init_compiler_benchmarks(env, &["Check", "Debug", "Opt"], &["All"], RUSTC_PGO_CRATES)
 }
 
@@ -138,28 +138,28 @@ pub fn gather_llvm_profiles(
 
 pub struct RustcPGOProfile(pub Utf8PathBuf);
 
-pub fn gather_rustc_profiles(
+pub fn gather_redox_profiles(
     env: &Environment,
     profile_root: &Utf8Path,
 ) -> anyhow::Result<RustcPGOProfile> {
-    log::info!("Running benchmarks with PGO instrumented rustc");
+    log::info!("Running benchmarks with PGO instrumented redox");
 
     // The profile data is written into a single filepath that is being repeatedly merged when each
-    // rustc invocation ends. Empirically, this can result in some profiling data being lost. That's
+    // redox invocation ends. Empirically, this can result in some profiling data being lost. That's
     // why we override the profile path to include the PID. This will produce many more profiling
-    // files, but the resulting profile will produce a slightly faster rustc binary.
+    // files, but the resulting profile will produce a slightly faster redox binary.
     let profile_template = profile_root.join("default_%m_%p.profraw");
 
-    // Here we're profiling the `rustc` frontend, so we also include `Check`.
+    // Here we're profiling the `redox` frontend, so we also include `Check`.
     // The benchmark set includes various stress tests that put the frontend under pressure.
     with_log_group("Running benchmarks", || {
-        rustc_benchmarks(env)
+        redox_benchmarks(env)
             .env("LLVM_PROFILE_FILE", profile_template.as_str())
             .run()
-            .context("Cannot gather rustc PGO profiles")
+            .context("Cannot gather redox PGO profiles")
     })?;
 
-    let merged_profile = env.artifact_dir().join("rustc-pgo.profdata");
+    let merged_profile = env.artifact_dir().join("redox-pgo.profdata");
     log::info!("Merging Rustc PGO profiles to {merged_profile}");
 
     let llvm_profdata = if env.build_llvm() { LlvmProfdata::Target } else { LlvmProfdata::Host };

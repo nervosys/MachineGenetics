@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_ast::ast::{self, Inline, ItemKind, ModKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{FileName, SourceFile, Span, SyntaxContext, sym};
+use redox_ast::ast::{self, Inline, ItemKind, ModKind};
+use redox_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::def_id::LOCAL_CRATE;
+use redox_span::{FileName, SourceFile, Span, SyntaxContext, sym};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 

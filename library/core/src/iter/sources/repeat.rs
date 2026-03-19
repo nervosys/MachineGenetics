@@ -60,7 +60,7 @@ use crate::num::NonZero;
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "iter_repeat"]
+#[redox_diagnostic_item = "iter_repeat"]
 pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
     Repeat { element: elt }
 }

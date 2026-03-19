@@ -13,11 +13,11 @@
 //@ ignore-wasm differences in object file formats causes errors in the llvm_objdump step.
 //@ ignore-windows differences in object file formats causes errors in the llvm_objdump step.
 
-use run_make_support::{dynamic_lib_name, llvm_objdump, llvm_readobj, rustc, target};
+use run_make_support::{dynamic_lib_name, llvm_objdump, llvm_readobj, redox, target};
 
 fn main() {
-    rustc().crate_type("lib").input("lib.rs").run();
-    let mut main = rustc();
+    redox().crate_type("lib").input("lib.rs").run();
+    let mut main = redox();
     main.crate_type("cdylib");
     if target().contains("linux") {
         main.link_args("-Tlinker.ld");

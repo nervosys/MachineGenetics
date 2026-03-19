@@ -2,7 +2,7 @@
 // in a lint.
 #![allow(deprecated)]
 #![deny(invalid_value)]
-#![feature(never_type, rustc_attrs)]
+#![feature(never_type, redox_attrs)]
 
 use std::mem::{self, MaybeUninit};
 use std::ptr::NonNull;
@@ -16,8 +16,8 @@ struct RefPair((&'static i32, i32));
 struct Wrap<T> { wrapped: T }
 enum WrapEnum<T> { Wrapped(T) }
 
-#[rustc_layout_scalar_valid_range_start(0)]
-#[rustc_layout_scalar_valid_range_end(128)]
+#[redox_layout_scalar_valid_range_start(0)]
+#[redox_layout_scalar_valid_range_end(128)]
 #[repr(transparent)]
 pub(crate) struct NonBig(u64);
 
@@ -43,8 +43,8 @@ enum TwoUninhabited {
     B(Void),
 }
 
-#[rustc_layout_scalar_valid_range_start(254)]
-#[rustc_layout_scalar_valid_range_end(1)]
+#[redox_layout_scalar_valid_range_start(254)]
+#[redox_layout_scalar_valid_range_end(1)]
 pub(crate) struct WrapAroundRange(u8);
 
 #[allow(unused)]
@@ -137,12 +137,12 @@ fn main() {
         let _val: WrapAroundRange = mem::zeroed();
         let _val: WrapAroundRange = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
-        // Things where 0 is okay due to rustc implementation details,
+        // Things where 0 is okay due to redox implementation details,
         // but that are not guaranteed to keep working.
         let _val: Result<i32, i32> = mem::zeroed();
         let _val: Result<i32, i32> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
-        // Some things that happen to be UB-free due to rustc implementation details,
+        // Some things that happen to be UB-free due to redox implementation details,
         // but are not guaranteed to keep working.
         let _val: OneFruit = mem::zeroed();
         let _val: OneFruit = mem::uninitialized();

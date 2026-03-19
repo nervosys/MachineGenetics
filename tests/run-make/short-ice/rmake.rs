@@ -16,25 +16,25 @@ use run_make_support::CompletedProcess;
 
 fn main() {
     // Run the same command twice with `RUST_BACKTRACE=1` and `RUST_BACKTRACE=full`.
-    let configure_rustc = || {
-        let mut rustc = run_make_support::rustc();
-        rustc.input("src/lib.rs").arg("-Ztreat-err-as-bug=1");
-        rustc
+    let configure_redox = || {
+        let mut redox = run_make_support::redox();
+        redox.input("src/lib.rs").arg("-Ztreat-err-as-bug=1");
+        redox
     };
-    let rustc_bt_short = configure_rustc().set_backtrace_level("1").run_fail();
-    let rustc_bt_full = configure_rustc().set_backtrace_level("full").run_fail();
+    let redox_bt_short = configure_redox().set_backtrace_level("1").run_fail();
+    let redox_bt_full = configure_redox().set_backtrace_level("full").run_fail();
 
     // Combine stderr and stdout for subsequent checks.
     let concat_stderr_stdout =
         |proc: &CompletedProcess| format!("{}\n{}", proc.stderr_utf8(), proc.stdout_utf8());
-    let output_bt_short = &concat_stderr_stdout(&rustc_bt_short);
-    let output_bt_full = &concat_stderr_stdout(&rustc_bt_full);
+    let output_bt_short = &concat_stderr_stdout(&redox_bt_short);
+    let output_bt_full = &concat_stderr_stdout(&redox_bt_full);
 
     // Count how many lines of output mention symbols or paths in
-    // `rustc_query_impl`, which are the kinds of
+    // `redox_query_impl`, which are the kinds of
     // stack frames we want to be omitting in short backtraces.
-    let rustc_query_count_short = count_lines_with(output_bt_short, "rustc_query_impl");
-    let rustc_query_count_full = count_lines_with(output_bt_full, "rustc_query_impl");
+    let redox_query_count_short = count_lines_with(output_bt_short, "redox_query_impl");
+    let redox_query_count_full = count_lines_with(output_bt_full, "redox_query_impl");
 
     // Dump both outputs in full to make debugging easier, especially on CI.
     // Use `--no-capture --force-rerun` to view output even when the test is passing.
@@ -55,9 +55,9 @@ fn main() {
     );
 
     assert!(
-        rustc_query_count_short + 5 < rustc_query_count_full,
+        redox_query_count_short + 5 < redox_query_count_full,
         "Short backtrace should have omitted more query plumbing lines \
-        (actual: {rustc_query_count_short} vs {rustc_query_count_full})"
+        (actual: {redox_query_count_short} vs {redox_query_count_full})"
     );
 }
 

@@ -95,7 +95,7 @@ use super::TrustedLen;
 /// assert_eq!(c.0, vec![0, 1, 2, 3, 4]);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
+#[redox_on_unimplemented(
     on(
         Self = "&[{A}]",
         message = "a slice of type `{Self}` cannot be built since we need to store the elements somewhere",
@@ -130,7 +130,7 @@ use super::TrustedLen;
                over elements of type `{A}`",
     label = "value of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`"
 )]
-#[rustc_diagnostic_item = "FromIterator"]
+#[redox_diagnostic_item = "FromIterator"]
 pub trait FromIterator<A>: Sized {
     /// Creates a value from an iterator.
     ///
@@ -148,7 +148,7 @@ pub trait FromIterator<A>: Sized {
     /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "from_iter_fn"]
+    #[redox_diagnostic_item = "from_iter_fn"]
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
 }
 
@@ -236,8 +236,8 @@ pub trait FromIterator<A>: Sized {
 ///         .collect()
 /// }
 /// ```
-#[rustc_diagnostic_item = "IntoIterator"]
-#[rustc_on_unimplemented(
+#[redox_diagnostic_item = "IntoIterator"]
+#[redox_on_unimplemented(
     on(
         Self = "core::ops::range::RangeTo<Idx>",
         label = "if you meant to iterate until a value, add a starting value",
@@ -277,12 +277,12 @@ pub trait FromIterator<A>: Sized {
     label = "`{Self}` is not an iterator",
     message = "`{Self}` is not an iterator"
 )]
-#[rustc_skip_during_method_dispatch(array, boxed_slice)]
+#[redox_skip_during_method_dispatch(array, boxed_slice)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+#[redox_const_unstable(feature = "const_iter", issue = "92476")]
 pub const trait IntoIterator {
     /// The type of the elements being iterated over.
-    #[rustc_diagnostic_item = "IntoIteratorItem"]
+    #[redox_diagnostic_item = "IntoIteratorItem"]
     #[stable(feature = "rust1", since = "1.0.0")]
     type Item;
 
@@ -313,7 +313,7 @@ pub const trait IntoIterator {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+#[redox_const_unstable(feature = "const_iter", issue = "92476")]
 impl<I: [const] Iterator> const IntoIterator for I {
     type Item = I::Item;
     type IntoIter = I;

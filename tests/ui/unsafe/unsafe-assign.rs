@@ -1,8 +1,8 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(unused,dead_code)]
 
 fn nested_field() {
-    #[rustc_layout_scalar_valid_range_start(1)]
+    #[redox_layout_scalar_valid_range_start(1)]
     struct NonZero<T>(T);
 
     let mut foo = unsafe { NonZero((1,)) };
@@ -11,7 +11,7 @@ fn nested_field() {
 }
 
 fn block() {
-    #[rustc_layout_scalar_valid_range_start(1)]
+    #[redox_layout_scalar_valid_range_start(1)]
     struct NonZero<T>(T);
 
     let mut foo = unsafe { NonZero((1,)) };

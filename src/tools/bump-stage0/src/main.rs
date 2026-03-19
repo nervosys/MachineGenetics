@@ -7,8 +7,8 @@ use indexmap::IndexMap;
 use sha2::{Digest, Sha256};
 
 const PATH: &str = "src/stage0";
-const COMPILER_COMPONENTS: &[&str] = &["rustc", "rust-std", "cargo", "clippy-preview"];
-const RUSTFMT_COMPONENTS: &[&str] = &["rustfmt-preview", "rustc"];
+const COMPILER_COMPONENTS: &[&str] = &["redox", "rust-std", "cargo", "clippy-preview"];
+const RUSTFMT_COMPONENTS: &[&str] = &["rustfmt-preview", "redox"];
 
 struct Tool {
     config: Stage0Config,

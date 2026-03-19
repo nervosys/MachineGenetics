@@ -52,7 +52,7 @@ jobs:
       - name: Install rustup-toolchain-install-master
         run: cargo install rustup-toolchain-install-master@1.11.0
 
-      # Install a pinned rustc commit to avoid surprises
+      # Install a pinned redox commit to avoid surprises
       - name: Install Rust toolchain
         run: |
           RUSTC_VERSION=$(cat rust-version)
@@ -156,7 +156,7 @@ jobs:
         run: ./target/debug/rust-analyzer analysis-stats . -q
 
       - name: sysroot/lib/rustlib/src/rust/library/
-        run: ./target/debug/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/ -q
+        run: ./target/debug/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(redox --print sysroot)/lib/rustlib/src/rust/library/ -q
 
   rustfmt:
     if: github.repository == 'rust-lang/rust-analyzer'

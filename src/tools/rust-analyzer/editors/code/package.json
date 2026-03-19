@@ -533,9 +533,9 @@
                             "type": "string"
                         },
                         "default": [
-                            "$rustc"
+                            "$redox"
                         ],
-                        "markdownDescription": "Problem matchers to use for `rust-analyzer.run` command, eg `[\"$rustc\", \"$rust-panic\"]`."
+                        "markdownDescription": "Problem matchers to use for `rust-analyzer.run` command, eg `[\"$redox\", \"$rust-panic\"]`."
                     },
                     "rust-analyzer.runnables.askBeforeUpdateTest": {
                         "type": "boolean",
@@ -702,7 +702,7 @@
                         "const": "auto",
                         "description": "Optional source file mappings passed to the debug engine.",
                         "default": {
-                            "/rustc/<id>": "${env:USERPROFILE}/.rustup/toolchains/<toolchain-id>/lib/rustlib/src/rust"
+                            "/redox/<id>": "${env:USERPROFILE}/.rustup/toolchains/<toolchain-id>/lib/rustlib/src/rust"
                         }
                     },
                     "rust-analyzer.debug.buildBeforeRestart": {
@@ -731,12 +731,12 @@
                 "title": "Diagnostics",
                 "properties": {
                     "rust-analyzer.diagnostics.previewRustcOutput": {
-                        "markdownDescription": "Whether to show the main part of the rendered rustc output of a diagnostic message.",
+                        "markdownDescription": "Whether to show the main part of the rendered redox output of a diagnostic message.",
                         "default": false,
                         "type": "boolean"
                     },
                     "rust-analyzer.diagnostics.useRustcErrorCode": {
-                        "markdownDescription": "Whether to show diagnostics using the original rustc error code. If this is false, all rustc diagnostics will have the code 'rustc(Click for full compiler diagnostics)'",
+                        "markdownDescription": "Whether to show diagnostics using the original redox error code. If this is false, all redox diagnostics will have the code 'redox(Click for full compiler diagnostics)'",
                         "default": false,
                         "type": "boolean"
                     }
@@ -958,7 +958,7 @@
                 "title": "Cargo",
                 "properties": {
                     "rust-analyzer.cargo.extraEnv": {
-                        "markdownDescription": "Extra environment variables that will be set when running cargo, rustc\nor other commands within the workspace. Useful for setting RUSTFLAGS.",
+                        "markdownDescription": "Extra environment variables that will be set when running cargo, redox\nor other commands within the workspace. Useful for setting RUSTFLAGS.",
                         "default": {},
                         "type": "object"
                     }
@@ -1014,7 +1014,7 @@
                 "title": "Cargo",
                 "properties": {
                     "rust-analyzer.cargo.sysroot": {
-                        "markdownDescription": "Relative path to the sysroot, or \"discover\" to try to automatically find it via\n\"rustc --print sysroot\".\n\nUnsetting this disables sysroot loading.\n\nThis option does not take effect until rust-analyzer is restarted.",
+                        "markdownDescription": "Relative path to the sysroot, or \"discover\" to try to automatically find it via\n\"redox --print sysroot\".\n\nUnsetting this disables sysroot loading.\n\nThis option does not take effect until rust-analyzer is restarted.",
                         "default": "discover",
                         "type": [
                             "null",
@@ -1549,7 +1549,7 @@
                 "title": "Diagnostics",
                 "properties": {
                     "rust-analyzer.diagnostics.remapPrefix": {
-                        "markdownDescription": "Map of prefixes to be substituted when parsing diagnostic file paths. This should be the\nreverse mapping of what is passed to `rustc` as `--remap-path-prefix`.",
+                        "markdownDescription": "Map of prefixes to be substituted when parsing diagnostic file paths. This should be the\nreverse mapping of what is passed to `redox` as `--remap-path-prefix`.",
                         "default": {},
                         "type": "object"
                     }
@@ -2923,7 +2923,7 @@
                 "title": "Runnables",
                 "properties": {
                     "rust-analyzer.runnables.extraTestBinaryArgs": {
-                        "markdownDescription": "Additional arguments to be passed through Cargo to launched tests, benchmarks, or\ndoc-tests.\n\nUnless the launched target uses a\n[custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),\nthey will end up being interpreted as options to\n[`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).",
+                        "markdownDescription": "Additional arguments to be passed through Cargo to launched tests, benchmarks, or\ndoc-tests.\n\nUnless the launched target uses a\n[custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),\nthey will end up being interpreted as options to\n[`redox`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/redox/tests/index.html#cli-arguments).",
                         "default": [
                             "--nocapture"
                         ],
@@ -2963,8 +2963,8 @@
             {
                 "title": "Rustc",
                 "properties": {
-                    "rust-analyzer.rustc.source": {
-                        "markdownDescription": "Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private\nprojects, or \"discover\" to try to automatically find it if the `rustc-dev` component\nis installed.\n\nAny project which uses rust-analyzer with the rustcPrivate\ncrates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.\n\nThis option does not take effect until rust-analyzer is restarted.",
+                    "rust-analyzer.redox.source": {
+                        "markdownDescription": "Path to the Cargo.toml of the rust compiler workspace, for usage in redox_private\nprojects, or \"discover\" to try to automatically find it if the `redox-dev` component\nis installed.\n\nAny project which uses rust-analyzer with the redoxPrivate\ncrates must set `[package.metadata.rust-analyzer] redox_private=true` to use it.\n\nThis option does not take effect until rust-analyzer is restarted.",
                         "default": null,
                         "type": [
                             "null",
@@ -3258,7 +3258,7 @@
         },
         "problemPatterns": [
             {
-                "name": "rustc",
+                "name": "redox",
                 "patterns": [
                     {
                         "regexp": "^(warning|warn|error)(?:\\[(.*?)\\])?: (.*)$",
@@ -3275,7 +3275,7 @@
                 ]
             },
             {
-                "name": "rustc-json",
+                "name": "redox-json",
                 "patterns": [
                     {
                         "regexp": "^.*\"message\":{\"message\":\"([^\"]*).*?\"file_name\":\"([^\"]+).*?\"line_start\":(\\d+).*?\"line_end\":(\\d+).*?\"column_start\":(\\d+).*?\"column_end\":(\\d+).*}$",
@@ -3332,24 +3332,24 @@
         ],
         "problemMatchers": [
             {
-                "name": "rustc",
-                "owner": "rustc",
-                "source": "rustc",
+                "name": "redox",
+                "owner": "redox",
+                "source": "redox",
                 "fileLocation": [
                     "autoDetect",
                     "${workspaceRoot}"
                 ],
-                "pattern": "$rustc"
+                "pattern": "$redox"
             },
             {
-                "name": "rustc-json",
-                "owner": "rustc",
-                "source": "rustc",
+                "name": "redox-json",
+                "owner": "redox",
+                "source": "redox",
                 "fileLocation": [
                     "autoDetect",
                     "${workspaceRoot}"
                 ],
-                "pattern": "$rustc-json"
+                "pattern": "$redox-json"
             },
             {
                 "name": "rust-panic",
@@ -3362,9 +3362,9 @@
                 "pattern": "$rust-panic"
             },
             {
-                "name": "rustc-watch",
-                "owner": "rustc",
-                "source": "rustc",
+                "name": "redox-watch",
+                "owner": "redox",
+                "source": "redox",
                 "fileLocation": [
                     "autoDetect",
                     "${workspaceRoot}"
@@ -3373,7 +3373,7 @@
                     "beginsPattern": "^\\[Running\\b",
                     "endsPattern": "^\\[Finished running\\b"
                 },
-                "pattern": "$rustc"
+                "pattern": "$redox"
             }
         ],
         "semanticTokenTypes": [

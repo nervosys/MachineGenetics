@@ -8,19 +8,19 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet;
 use clippy_utils::usage::is_potentially_local_place;
 use clippy_utils::{can_use_if_let_chains, higher, sym};
-use rustc_abi::FieldIdx;
-use rustc_errors::Applicability;
-use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
-use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, UnOp};
-use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, Place, PlaceWithHirId};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::nested_filter;
-use rustc_middle::hir::place::ProjectionKind;
-use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::impl_lint_pass;
-use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, Symbol};
+use redox_abi::FieldIdx;
+use redox_errors::Applicability;
+use redox_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
+use redox_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, UnOp};
+use redox_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, Place, PlaceWithHirId};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::hir::nested_filter;
+use redox_middle::hir::place::ProjectionKind;
+use redox_middle::mir::FakeReadCause;
+use redox_middle::ty::{self, Ty, TyCtxt};
+use redox_session::impl_lint_pass;
+use redox_span::def_id::LocalDefId;
+use redox_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does

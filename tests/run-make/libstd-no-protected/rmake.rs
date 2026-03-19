@@ -8,14 +8,14 @@ use run_make_support::object::Endianness;
 use run_make_support::object::read::archive::ArchiveFile;
 use run_make_support::object::read::elf::{FileHeader as _, SectionHeader as _};
 use run_make_support::rfs::read;
-use run_make_support::{has_prefix, has_suffix, object, path, rustc, shallow_find_files, target};
+use run_make_support::{has_prefix, has_suffix, object, path, redox, shallow_find_files, target};
 
 type FileHeader = run_make_support::object::elf::FileHeader64<Endianness>;
 type SymbolTable<'data> = run_make_support::object::read::elf::SymbolTable<'data, FileHeader>;
 
 fn main() {
     // Find libstd-...rlib
-    let sysroot_libs_dir = rustc().print("target-libdir").target(target()).run().stdout_utf8();
+    let sysroot_libs_dir = redox().print("target-libdir").target(target()).run().stdout_utf8();
     let mut libs = shallow_find_files(sysroot_libs_dir.trim(), |path| {
         has_prefix(path, "libstd-") && has_suffix(path, ".rlib")
     });

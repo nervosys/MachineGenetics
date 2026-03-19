@@ -256,9 +256,9 @@ fn main() {
     fn no_missing_unsafe_diagnostic_with_safe_intrinsic() {
         check_diagnostics(
             r#"
-#[rustc_intrinsic]
+#[redox_intrinsic]
 pub fn bitreverse(x: u32) -> u32; // Safe intrinsic
-#[rustc_intrinsic]
+#[redox_intrinsic]
 pub unsafe fn floorf32(x: f32) -> f32; // Unsafe intrinsic
 
 fn main() {
@@ -275,7 +275,7 @@ fn main() {
         check_diagnostics(
             r#"
 extern "rust-intrinsic" {
-    #[rustc_safe_intrinsic]
+    #[redox_safe_intrinsic]
     pub fn bitreverse(x: u32) -> u32; // Safe intrinsic
     pub fn floorf32(x: f32) -> f32; // Unsafe intrinsic
 }
@@ -293,10 +293,10 @@ fn main() {
     fn no_missing_unsafe_diagnostic_with_deprecated_safe_2024() {
         check_diagnostics(
             r#"
-#[rustc_deprecated_safe_2024]
+#[redox_deprecated_safe_2024]
 fn set_var() {}
 
-#[rustc_deprecated_safe_2024(audit_that = "something")]
+#[redox_deprecated_safe_2024(audit_that = "something")]
 fn set_var2() {}
 
 fn main() {
@@ -667,17 +667,17 @@ fn main() {
     }
 
     #[test]
-    fn rustc_deprecated_safe_2024() {
+    fn redox_deprecated_safe_2024() {
         check_diagnostics(
             r#"
 //- /ed2021.rs crate:ed2021 edition:2021
-#[rustc_deprecated_safe_2024]
+#[redox_deprecated_safe_2024]
 unsafe fn deprecated_safe() -> u8 {
     0
 }
 
 //- /ed2024.rs crate:ed2024 edition:2024
-#[rustc_deprecated_safe_2024]
+#[redox_deprecated_safe_2024]
 unsafe fn deprecated_safe() -> u8 {
     0
 }
@@ -1072,7 +1072,7 @@ fn test() {
     fn naked_asm_is_safe() {
         check_diagnostics(
             r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! naked_asm { () => {} }
 
 #[unsafe(naked)]

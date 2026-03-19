@@ -10,7 +10,7 @@ pub(crate) fn assert_eq_rt<T: PartialEq + Debug>(a: &T, b: &T) {
 macro_rules! assert_eq_const {
     ($a:expr, $b:expr $(,)?) => {{
         #[inline(always)]
-        #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+        #[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
         const fn assert_eq_ct<T: [const] PartialEq>(a: &T, b: &T) {
             assert!(a == b, concat!("`", stringify!($a), "` != `", stringify!($b), "`"));
         }

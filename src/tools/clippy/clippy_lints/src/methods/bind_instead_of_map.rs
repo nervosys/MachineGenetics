@@ -3,12 +3,12 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::visitors::find_all_ret_expressions;
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{LangItem, QPath};
-use rustc_lint::LateContext;
-use rustc_span::Span;
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use redox_hir::{LangItem, QPath};
+use redox_lint::LateContext;
+use redox_span::Span;
 
 pub(super) fn check_and_then_some(
     cx: &LateContext<'_>,

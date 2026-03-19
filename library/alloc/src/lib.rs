@@ -182,7 +182,7 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(optimize_attribute)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(slice_internals)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
@@ -190,7 +190,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(with_negative_coherence)]
-#![rustc_preserve_ub_checks]
+#![redox_preserve_ub_checks]
 // tidy-alphabetical-end
 //
 // Rustdoc features:

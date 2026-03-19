@@ -12,7 +12,7 @@ pub(crate) struct Config {
     pub(crate) jobs: String,
     pub(crate) test_args: Vec<PathBuf>,
     pub(crate) goml_files: Vec<PathBuf>,
-    pub(crate) rustc: PathBuf,
+    pub(crate) redox: PathBuf,
     pub(crate) rustdoc: PathBuf,
     pub(crate) verbose: bool,
 }
@@ -65,7 +65,7 @@ impl Config {
             jobs: matches.opt_str("jobs").unwrap(),
             goml_files: matches.opt_strs("goml-file").iter().map(PathBuf::from).collect(),
             test_args: matches.opt_strs("test-arg").iter().map(PathBuf::from).collect(),
-            rustc: env::var("RUSTC").map(PathBuf::from).unwrap(),
+            redox: env::var("RUSTC").map(PathBuf::from).unwrap(),
             rustdoc: env::var("RUSTDOC").map(PathBuf::from).unwrap(),
             verbose: matches.opt_present("verbose"),
         }

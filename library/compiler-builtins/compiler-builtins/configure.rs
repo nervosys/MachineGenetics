@@ -68,40 +68,40 @@ impl Target {
 
 pub fn configure_aliases(target: &Target) {
     // To compile builtins-test-intrinsics for thumb targets, where there is no libc
-    println!("cargo::rustc-check-cfg=cfg(thumb)");
+    println!("cargo::redox-check-cfg=cfg(thumb)");
     if target.triple_split[0].starts_with("thumb") {
-        println!("cargo:rustc-cfg=thumb")
+        println!("cargo:redox-cfg=thumb")
     }
 
     // compiler-rt `cfg`s away some intrinsics for thumbv6m and thumbv8m.base because
     // these targets do not have full Thumb-2 support but only original Thumb-1.
     // We have to cfg our code accordingly.
-    println!("cargo::rustc-check-cfg=cfg(thumb_1)");
+    println!("cargo::redox-check-cfg=cfg(thumb_1)");
     if target.triple_split[0] == "thumbv6m" || target.triple_split[0] == "thumbv8m.base" {
-        println!("cargo:rustc-cfg=thumb_1")
+        println!("cargo:redox-cfg=thumb_1")
     }
 
     // Config shorthands
-    println!("cargo:rustc-check-cfg=cfg(x86_no_sse)");
+    println!("cargo:redox-check-cfg=cfg(x86_no_sse)");
     if target.arch == "x86" && !target.features.iter().any(|f| f == "sse") {
         // Shorthand to detect i586 targets
-        println!("cargo:rustc-cfg=x86_no_sse");
+        println!("cargo:redox-cfg=x86_no_sse");
     }
 
     /* Not all backends support `f16` and `f128` to the same level on all architectures, so we
      * need to disable things if the compiler may crash. See configuration at:
-     * * https://github.com/rust-lang/rust/blob/c65dccabacdfd6c8a7f7439eba13422fdd89b91e/compiler/rustc_codegen_llvm/src/llvm_util.rs#L367-L432
-     * * https://github.com/rust-lang/rustc_codegen_gcc/blob/4b5c44b14166083eef8d71f15f5ea1f53fc976a0/src/lib.rs#L496-L507
-     * * https://github.com/rust-lang/rustc_codegen_cranelift/blob/c713ffab3c6e28ab4b4dd4e392330f786ea657ad/src/lib.rs#L196-L226
+     * * https://github.com/rust-lang/rust/blob/c65dccabacdfd6c8a7f7439eba13422fdd89b91e/compiler/redox_codegen_llvm/src/llvm_util.rs#L367-L432
+     * * https://github.com/rust-lang/redox_codegen_gcc/blob/4b5c44b14166083eef8d71f15f5ea1f53fc976a0/src/lib.rs#L496-L507
+     * * https://github.com/rust-lang/redox_codegen_cranelift/blob/c713ffab3c6e28ab4b4dd4e392330f786ea657ad/src/lib.rs#L196-L226
      */
 
-    println!("cargo::rustc-check-cfg=cfg(f16_enabled)");
+    println!("cargo::redox-check-cfg=cfg(f16_enabled)");
     if target.reliable_f16 {
-        println!("cargo::rustc-cfg=f16_enabled");
+        println!("cargo::redox-cfg=f16_enabled");
     }
 
-    println!("cargo::rustc-check-cfg=cfg(f128_enabled)");
+    println!("cargo::redox-check-cfg=cfg(f128_enabled)");
     if target.reliable_f128 {
-        println!("cargo::rustc-cfg=f128_enabled");
+        println!("cargo::redox-cfg=f128_enabled");
     }
 }

@@ -1,21 +1,21 @@
-//! Module for inferring the variance of type and lifetime parameters. See the [rustc dev guide]
+//! Module for inferring the variance of type and lifetime parameters. See the [redox dev guide]
 //! chapter for more info.
 //!
-//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/variance.html
+//! [redox dev guide]: https://redox-dev-guide.rust-lang.org/variance.html
 //!
-//! The implementation here differs from rustc. Rustc does a crate wide fixpoint resolution
+//! The implementation here differs from redox. Rustc does a crate wide fixpoint resolution
 //! as the algorithm for determining variance is a fixpoint computation with potential cycles that
 //! need to be resolved. rust-analyzer does not want a crate-wide analysis though as that would hurt
 //! incrementality too much and as such our query is based on a per item basis.
 //!
 //! This does unfortunately run into the issue that we can run into query cycles which salsa
 //! currently does not allow to be resolved via a fixpoint computation. This will likely be resolved
-//! by the next salsa version. If not, we will likely have to adapt and go with the rustc approach
+//! by the next salsa version. If not, we will likely have to adapt and go with the redox approach
 //! while installing firewall per item queries to prevent invalidation issues.
 
 use hir_def::{AdtId, GenericDefId, GenericParamId, VariantId, signatures::StructFlags};
-use rustc_ast_ir::Mutability;
-use rustc_type_ir::{
+use redox_ast_ir::Mutability;
+use redox_type_ir::{
     Variance,
     inherent::{AdtDef, IntoKind},
 };
@@ -385,7 +385,7 @@ mod tests {
         AdtId, GenericDefId, ModuleDefId, hir::generics::GenericParamDataRef, src::HasSource,
     };
     use itertools::Itertools;
-    use rustc_type_ir::Variance;
+    use redox_type_ir::Variance;
     use stdx::format_to;
     use syntax::{AstNode, ast::HasName};
     use test_fixture::WithFixture;
@@ -411,7 +411,7 @@ struct Covariant<A> {
     }
 
     #[test]
-    fn rustc_test_variance_types() {
+    fn redox_test_variance_types() {
         check(
             r#"
 //- minicore: cell
@@ -475,7 +475,7 @@ struct Other<'a> {
     }
 
     #[test]
-    fn rustc_test_variance_associated_consts() {
+    fn redox_test_variance_associated_consts() {
         // FIXME: Should be invariant
         check(
             r#"
@@ -494,7 +494,7 @@ struct Foo<T: Trait> { //~ ERROR [T: o]
     }
 
     #[test]
-    fn rustc_test_variance_associated_types() {
+    fn redox_test_variance_associated_types() {
         check(
             r#"
 trait Trait<'a> {
@@ -521,7 +521,7 @@ struct Bar<'a, T : Trait<'a>> { //~ ERROR ['a: o, T: o]
     }
 
     #[test]
-    fn rustc_test_variance_associated_types2() {
+    fn redox_test_variance_associated_types2() {
         // FIXME: RPITs have variance, but we can't treat them as their own thing right now
         check(
             r#"
@@ -536,7 +536,7 @@ fn make() -> *const dyn Foo<Bar = &'static u32> {}
     }
 
     #[test]
-    fn rustc_test_variance_trait_bounds() {
+    fn redox_test_variance_trait_bounds() {
         check(
             r#"
 trait Getter<T> {
@@ -578,7 +578,7 @@ struct TestBox<U,T:Getter<U>+Setter<U>> { //~ ERROR [U: *, T: +]
     }
 
     #[test]
-    fn rustc_test_variance_trait_matching() {
+    fn redox_test_variance_trait_matching() {
         check(
             r#"
 
@@ -613,7 +613,7 @@ fn pick<'b, G>(get: &'b G, if_odd: &'b i32) -> i32
     }
 
     #[test]
-    fn rustc_test_variance_trait_object_bound() {
+    fn redox_test_variance_trait_object_bound() {
         check(
             r#"
 enum Option<T> {
@@ -635,7 +635,7 @@ struct TOption<'a> { //~ ERROR ['a: +]
     }
 
     #[test]
-    fn rustc_test_variance_types_bounds() {
+    fn redox_test_variance_types_bounds() {
         check(
             r#"
 //- minicore: send
@@ -684,7 +684,7 @@ struct TestObject<A, R> { //~ ERROR [A: o, R: o]
     }
 
     #[test]
-    fn rustc_test_variance_unused_region_param() {
+    fn redox_test_variance_unused_region_param() {
         check(
             r#"
 struct SomeStruct<'a> { x: u32 } //~ ERROR parameter `'a` is never used
@@ -700,7 +700,7 @@ trait SomeTrait<'a> { fn foo(&self); } // OK on traits.
     }
 
     #[test]
-    fn rustc_test_variance_unused_type_param() {
+    fn redox_test_variance_unused_type_param() {
         check(
             r#"
 //- minicore: sized
@@ -734,7 +734,7 @@ struct DoubleNothing<T> {
     }
 
     #[test]
-    fn rustc_test_variance_use_contravariant_struct1() {
+    fn redox_test_variance_use_contravariant_struct1() {
         check(
             r#"
 struct SomeStruct<T>(fn(T));
@@ -752,7 +752,7 @@ fn foo<'min,'max>(v: SomeStruct<&'max ()>)
     }
 
     #[test]
-    fn rustc_test_variance_use_contravariant_struct2() {
+    fn redox_test_variance_use_contravariant_struct2() {
         check(
             r#"
 struct SomeStruct<T>(fn(T));
@@ -770,7 +770,7 @@ fn bar<'min,'max>(v: SomeStruct<&'min ()>)
     }
 
     #[test]
-    fn rustc_test_variance_use_covariant_struct1() {
+    fn redox_test_variance_use_covariant_struct1() {
         check(
             r#"
 struct SomeStruct<T>(T);
@@ -788,7 +788,7 @@ fn foo<'min,'max>(v: SomeStruct<&'min ()>)
     }
 
     #[test]
-    fn rustc_test_variance_use_covariant_struct2() {
+    fn redox_test_variance_use_covariant_struct2() {
         check(
             r#"
 struct SomeStruct<T>(T);
@@ -806,7 +806,7 @@ fn foo<'min,'max>(v: SomeStruct<&'max ()>)
     }
 
     #[test]
-    fn rustc_test_variance_use_invariant_struct1() {
+    fn redox_test_variance_use_invariant_struct1() {
         check(
             r#"
 struct SomeStruct<T>(*mut T);

@@ -7,7 +7,7 @@
 //@ revisions:rpass1 rpass2
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::vec::Vec;
 

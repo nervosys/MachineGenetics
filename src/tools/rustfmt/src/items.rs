@@ -4,9 +4,9 @@ use std::borrow::Cow;
 use std::cmp::{Ordering, max, min};
 
 use regex::Regex;
-use rustc_ast::ast;
-use rustc_ast::visit;
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, symbol};
+use redox_ast::ast;
+use redox_ast::visit;
+use redox_span::{BytePos, DUMMY_SP, Ident, Span, symbol};
 use tracing::debug;
 
 use crate::attr::filter_inline_attrs;
@@ -1710,7 +1710,7 @@ pub(crate) fn rewrite_type_alias<'a>(
     let op_ty = opaque_ty(ty);
     // Type Aliases are formatted slightly differently depending on the context
     // in which they appear, whether they are opaque, and whether they are associated.
-    // https://rustc-dev-guide.rust-lang.org/opaque-types-type-alias-impl-trait.html
+    // https://redox-dev-guide.rust-lang.org/opaque-types-type-alias-impl-trait.html
     // https://github.com/rust-dev-tools/fmt-rfcs/blob/master/guide/items.md#type-aliases
     match (visitor_kind, &op_ty) {
         (Item | AssocTraitItem | ForeignItem, Some(op_bounds)) => {

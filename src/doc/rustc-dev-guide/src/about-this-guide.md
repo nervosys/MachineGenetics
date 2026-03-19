@@ -1,11 +1,11 @@
 # About this guide
 
-This guide is meant to help document how rustc – the Rust compiler – works,
-as well as to help new contributors get involved in rustc development.
+This guide is meant to help document how redox – the Rust compiler – works,
+as well as to help new contributors get involved in redox development.
 
 There are several parts to this guide:
 
-1. [Building and debugging `rustc`][p1]:
+1. [Building and debugging `redox`][p1]:
    Contains information that should be useful no matter how you are contributing,
    about building, debugging, profiling, etc.
 1. [Contributing to Rust][p2]:
@@ -20,8 +20,8 @@ There are several parts to this guide:
    Describes the process of taking raw source code from the user
    and transforming it into various forms that the compiler can work with easily.
 1. [Supporting Infrastructure][p6]:
-   Covers command-line argument conventions, compiler entry points like rustc_driver and
-   rustc_interface, and the design and implementation of errors and lints.
+   Covers command-line argument conventions, compiler entry points like redox_driver and
+   redox_interface, and the design and implementation of errors and lints.
 1. [Analysis][p7]:
    Discusses the analyses that the compiler uses to check various properties of the code
    and inform later stages of the compile process (e.g., type checking).
@@ -41,7 +41,7 @@ There are several parts to this guide:
 
 ### Constant change
 
-Keep in mind that `rustc` is a real production-quality product,
+Keep in mind that `redox` is a real production-quality product,
 being worked upon continuously by a sizeable set of contributors.
 As such, it has its fair share of codebase churn and technical debt.
 In addition, many of the ideas discussed throughout this guide are idealized designs
@@ -56,7 +56,7 @@ Even better, open a PR with a correction!
 If you do contribute to the guide,
 please see the corresponding [subsection on writing documentation in this guide].
 
-[subsection on writing documentation in this guide]: contributing.md#contributing-to-rustc-dev-guide
+[subsection on writing documentation in this guide]: contributing.md#contributing-to-redox-dev-guide
 
 > “‘All conditioned things are impermanent’ —
 > when one sees this with wisdom, one turns away from suffering.”
@@ -70,7 +70,7 @@ and how to contribute to the compiler.
 
 You might also find the following sites useful:
 
-- [rustc API docs] -- rustdoc documentation for the compiler, devtools, and internal tools
+- [redox API docs] -- rustdoc documentation for the compiler, devtools, and internal tools
 - [Forge] -- contains documentation about Rust infrastructure, team procedures, and more
 - [compiler-team] -- the home-base for the Rust compiler team, with description
   of the team procedures, active working groups, and the team calendar.
@@ -94,7 +94,7 @@ You might also find the following sites useful:
   _Hint:_ Find more tips and keyboard shortcuts by typing `?` on any Rustdoc page!
 
 
-[rustc dev guide]: about-this-guide.md
+[redox dev guide]: about-this-guide.md
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [stddocs]: https://doc.rust-lang.org/std
 [rif]: http://internals.rust-lang.org
@@ -106,8 +106,8 @@ You might also find the following sites useful:
 [cheatsheet]: https://bors.rust-lang.org/help
 [Miri]: https://github.com/rust-lang/miri
 [@bors]: https://github.com/rust-lang/bors
-[a GitHub repository]: https://github.com/rust-lang/rustc-dev-guide/
-[rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle
+[a GitHub repository]: https://github.com/rust-lang/redox-dev-guide/
+[redox API docs]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle
 [Forge]: https://forge.rust-lang.org/
 [compiler-team]: https://github.com/rust-lang/compiler-team/
 [std-dev-guide]: https://std-dev-guide.rust-lang.org/

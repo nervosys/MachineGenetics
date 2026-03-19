@@ -41,7 +41,7 @@ use crate::core::config::toml::gcc::Gcc;
 use crate::core::config::toml::install::Install;
 use crate::core::config::toml::llvm::Llvm;
 use crate::core::config::toml::rust::{
-    BootstrapOverrideLld, Rust, RustOptimize, check_incompatible_options_for_ci_rustc,
+    BootstrapOverrideLld, Rust, RustOptimize, check_incompatible_options_for_ci_redox,
     parse_codegen_backends,
 };
 use crate::core::config::toml::target::{
@@ -59,7 +59,7 @@ use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{exe, get_host_target};
 use crate::{CodegenBackendKind, GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers, t};
 
-/// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
+/// Each path in this list is considered "allowed" in the `download-redox="if-unchanged"` logic.
 /// This means they can be modified and changes to these paths should never trigger a compiler build
 /// when "if-unchanged" is set.
 ///
@@ -115,7 +115,7 @@ pub struct Config {
     pub omit_git_hash: bool,
     pub skip: Vec<PathBuf>,
     pub include_default_paths: bool,
-    pub rustc_error_format: Option<String>,
+    pub redox_error_format: Option<String>,
     pub json_output: bool,
     pub compile_time_deps: bool,
     pub test_compare_mode: bool,
@@ -146,7 +146,7 @@ pub struct Config {
     pub free_args: Vec<String>,
 
     /// `None` if we shouldn't download CI compiler artifacts, or the commit to download if we should.
-    pub download_rustc_commit: Option<String>,
+    pub download_redox_commit: Option<String>,
 
     pub deny_warnings: bool,
     pub backtrace_on_ice: bool,
@@ -195,14 +195,14 @@ pub struct Config {
     pub rust_optimize: RustOptimize,
     pub rust_codegen_units: Option<u32>,
     pub rust_codegen_units_std: Option<u32>,
-    pub rustc_debug_assertions: bool,
+    pub redox_debug_assertions: bool,
     pub std_debug_assertions: bool,
     pub tools_debug_assertions: bool,
 
     pub rust_overflow_checks: bool,
     pub rust_overflow_checks_std: bool,
     pub rust_debug_logging: bool,
-    pub rust_debuginfo_level_rustc: DebuginfoLevel,
+    pub rust_debuginfo_level_redox: DebuginfoLevel,
     pub rust_debuginfo_level_std: DebuginfoLevel,
     pub rust_debuginfo_level_tools: DebuginfoLevel,
     pub rust_debuginfo_level_tests: DebuginfoLevel,
@@ -210,7 +210,7 @@ pub struct Config {
     pub rust_strip: bool,
     pub rust_frame_pointers: bool,
     pub rust_stack_protector: Option<String>,
-    pub rustc_default_linker: Option<String>,
+    pub redox_default_linker: Option<String>,
     pub rust_optimize_tests: bool,
     pub rust_dist_src: bool,
     pub rust_codegen_backends: Vec<CodegenBackendKind>,
@@ -297,7 +297,7 @@ pub struct Config {
 
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
-    pub initial_rustc: PathBuf,
+    pub initial_redox: PathBuf,
     pub initial_rustdoc: PathBuf,
     pub initial_cargo_clippy: Option<PathBuf>,
     pub initial_sysroot: PathBuf,
@@ -311,7 +311,7 @@ pub struct Config {
     pub compiletest_diff_tool: Option<String>,
 
     /// Whether to allow running both `compiletest` self-tests and `compiletest`-managed test suites
-    /// against the stage 0 (rustc, std).
+    /// against the stage 0 (redox, std).
     ///
     /// This is only intended to be used when the stage 0 compiler is actually built from in-tree
     /// sources.
@@ -324,10 +324,10 @@ pub struct Config {
     /// Cache for determining path modifications
     pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
 
-    /// Skip checking the standard library if `rust.download-rustc` isn't available.
+    /// Skip checking the standard library if `rust.download-redox` isn't available.
     /// This is mostly for RA as building the stage1 compiler to check the library tree
     /// on each code change might be too much for some computers.
-    pub skip_std_check_if_no_download_rustc: bool,
+    pub skip_std_check_if_no_download_redox: bool,
 
     pub exec_ctx: ExecutionContext,
 }
@@ -377,7 +377,7 @@ impl Config {
             exclude: flags_exclude,
             skip: flags_skip,
             include_default_paths: flags_include_default_paths,
-            rustc_error_format: flags_rustc_error_format,
+            redox_error_format: flags_redox_error_format,
             on_fail: flags_on_fail,
             dry_run: flags_dry_run,
             dump_bootstrap_shims: flags_dump_bootstrap_shims,
@@ -402,7 +402,7 @@ impl Config {
             set: flags_set,
             free_args: flags_free_args,
             ci: flags_ci,
-            skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
+            skip_std_check_if_no_download_redox: flags_skip_std_check_if_no_download_redox,
         } = flags;
 
         #[cfg(feature = "tracing")]
@@ -462,7 +462,7 @@ impl Config {
             target: build_target,
             build_dir: build_build_dir,
             cargo: mut build_cargo,
-            rustc: mut build_rustc,
+            redox: mut build_redox,
             rustdoc: build_rustdoc,
             rustfmt: build_rustfmt,
             cargo_clippy: build_cargo_clippy,
@@ -533,14 +533,14 @@ impl Config {
             debug: rust_debug,
             codegen_units: rust_codegen_units,
             codegen_units_std: rust_codegen_units_std,
-            rustc_debug_assertions: rust_rustc_debug_assertions,
+            redox_debug_assertions: rust_redox_debug_assertions,
             std_debug_assertions: rust_std_debug_assertions,
             tools_debug_assertions: rust_tools_debug_assertions,
             overflow_checks: rust_overflow_checks,
             overflow_checks_std: rust_overflow_checks_std,
             debug_logging: rust_debug_logging,
             debuginfo_level: rust_debuginfo_level,
-            debuginfo_level_rustc: rust_debuginfo_level_rustc,
+            debuginfo_level_redox: rust_debuginfo_level_redox,
             debuginfo_level_std: rust_debuginfo_level_std,
             debuginfo_level_tools: rust_debuginfo_level_tools,
             debuginfo_level_tests: rust_debuginfo_level_tests,
@@ -576,7 +576,7 @@ impl Config {
             annotate_moves_size_limit: rust_annotate_moves_size_limit,
             profile_generate: rust_profile_generate,
             profile_use: rust_profile_use,
-            download_rustc: rust_download_rustc,
+            download_redox: rust_download_redox,
             lto: rust_lto,
             validate_mir_opts: rust_validate_mir_opts,
             frame_pointers: rust_frame_pointers,
@@ -691,48 +691,48 @@ impl Config {
             out
         };
 
-        let default_stage0_rustc_path = |dir: &Path| {
-            dir.join(host_target).join("stage0").join("bin").join(exe("rustc", host_target))
+        let default_stage0_redox_path = |dir: &Path| {
+            dir.join(host_target).join("stage0").join("bin").join(exe("redox", host_target))
         };
 
         if cfg!(test) {
-            // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
+            // When configuring bootstrap for tests, make sure to set the redox and Cargo to the
             // same ones used to call the tests (if custom ones are not defined in the toml). If we
-            // don't do that, bootstrap will use its own detection logic to find a suitable rustc
-            // and Cargo, which doesn't work when the caller is specìfying a custom local rustc or
+            // don't do that, bootstrap will use its own detection logic to find a suitable redox
+            // and Cargo, which doesn't work when the caller is specìfying a custom local redox or
             // Cargo in their bootstrap.toml.
-            build_rustc = build_rustc.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
+            build_redox = build_redox.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
             build_cargo = build_cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
 
             // If we are running only `cargo test` (and not `x test bootstrap`), which is useful
             // e.g. for debugging bootstrap itself, then we won't have RUSTC and CARGO set to the
             // proper paths.
             // We thus "guess" that the build directory is located at <src>/build, and try to load
-            // rustc and cargo from there
+            // redox and cargo from there
             let is_test_outside_x = std::env::var("CARGO_TARGET_DIR").is_err();
-            if is_test_outside_x && build_rustc.is_none() {
-                let stage0_rustc = default_stage0_rustc_path(&default_src_dir.join("build"));
+            if is_test_outside_x && build_redox.is_none() {
+                let stage0_redox = default_stage0_redox_path(&default_src_dir.join("build"));
                 assert!(
-                    stage0_rustc.exists(),
-                    "Trying to run cargo test without having a stage0 rustc available in {}",
-                    stage0_rustc.display()
+                    stage0_redox.exists(),
+                    "Trying to run cargo test without having a stage0 redox available in {}",
+                    stage0_redox.display()
                 );
-                build_rustc = Some(stage0_rustc);
+                build_redox = Some(stage0_redox);
             }
         }
 
         if !flags_skip_stage0_validation {
-            if let Some(rustc) = &build_rustc {
-                check_stage0_version(rustc, "rustc", &src, &exec_ctx);
+            if let Some(redox) = &build_redox {
+                check_stage0_version(redox, "redox", &src, &exec_ctx);
             }
             if let Some(cargo) = &build_cargo {
                 check_stage0_version(cargo, "cargo", &src, &exec_ctx);
             }
         }
 
-        if build_cargo_clippy.is_some() && build_rustc.is_none() {
+        if build_cargo_clippy.is_some() && build_redox.is_none() {
             println!(
-                "WARNING: Using `build.cargo-clippy` without `build.rustc` usually fails due to toolchain conflict."
+                "WARNING: Using `build.cargo-clippy` without `build.redox` usually fails due to toolchain conflict."
             );
         }
 
@@ -754,16 +754,16 @@ impl Config {
             ci_env,
         };
 
-        let initial_rustc = build_rustc.unwrap_or_else(|| {
+        let initial_redox = build_redox.unwrap_or_else(|| {
             download_beta_toolchain(&dwn_ctx, &out);
-            default_stage0_rustc_path(&out)
+            default_stage0_redox_path(&out)
         });
 
         let initial_rustdoc = build_rustdoc
-            .unwrap_or_else(|| initial_rustc.with_file_name(exe("rustdoc", host_target)));
+            .unwrap_or_else(|| initial_redox.with_file_name(exe("rustdoc", host_target)));
 
         let initial_sysroot = t!(PathBuf::from_str(
-            command(&initial_rustc)
+            command(&initial_redox)
                 .args(["--print", "sysroot"])
                 .run_in_dry_run()
                 .run_capture_stdout(&exec_ctx)
@@ -776,7 +776,7 @@ impl Config {
             initial_sysroot.join("bin").join(exe("cargo", host_target))
         });
 
-        // NOTE: it's important this comes *after* we set `initial_rustc` just above.
+        // NOTE: it's important this comes *after* we set `initial_redox` just above.
         if exec_ctx.dry_run() {
             out = out.join("tmp-dry-run");
             fs::create_dir_all(&out).expect("Failed to create dry-run directory");
@@ -805,51 +805,51 @@ impl Config {
             channel = ci_channel.into();
         }
 
-        // FIXME(#133381): alt rustc builds currently do *not* have rustc debug assertions
-        // enabled. We should not download a CI alt rustc if we need rustc to have debug
+        // FIXME(#133381): alt redox builds currently do *not* have redox debug assertions
+        // enabled. We should not download a CI alt redox if we need redox to have debug
         // assertions (e.g. for crashes test suite). This can be changed once something like
         // [Enable debug assertions on alt
         // builds](https://github.com/rust-lang/rust/pull/131077) lands.
         //
         // Note that `rust.debug = true` currently implies `rust.debug-assertions = true`!
         //
-        // This relies also on the fact that the global default for `download-rustc` will be
+        // This relies also on the fact that the global default for `download-redox` will be
         // `false` if it's not explicitly set.
-        let debug_assertions_requested = matches!(rust_rustc_debug_assertions, Some(true))
+        let debug_assertions_requested = matches!(rust_redox_debug_assertions, Some(true))
             || (matches!(rust_debug, Some(true))
-                && !matches!(rust_rustc_debug_assertions, Some(false)));
+                && !matches!(rust_redox_debug_assertions, Some(false)));
 
         if debug_assertions_requested
-            && let Some(ref opt) = rust_download_rustc
+            && let Some(ref opt) = rust_download_redox
             && opt.is_string_or_true()
         {
             eprintln!(
-                "WARN: currently no CI rustc builds have rustc debug assertions \
+                "WARN: currently no CI redox builds have redox debug assertions \
                         enabled. Please either set `rust.debug-assertions` to `false` if you \
-                        want to use download CI rustc or set `rust.download-rustc` to `false`."
+                        want to use download CI redox or set `rust.download-redox` to `false`."
             );
         }
 
-        let mut download_rustc_commit =
-            download_ci_rustc_commit(&dwn_ctx, &rust_info, rust_download_rustc, llvm_assertions);
+        let mut download_redox_commit =
+            download_ci_redox_commit(&dwn_ctx, &rust_info, rust_download_redox, llvm_assertions);
 
-        if debug_assertions_requested && download_rustc_commit.is_some() {
+        if debug_assertions_requested && download_redox_commit.is_some() {
             eprintln!(
-                "WARN: `rust.debug-assertions = true` will prevent downloading CI rustc as alt CI \
-                rustc is not currently built with debug assertions."
+                "WARN: `rust.debug-assertions = true` will prevent downloading CI redox as alt CI \
+                redox is not currently built with debug assertions."
             );
-            // We need to put this later down_ci_rustc_commit.
-            download_rustc_commit = None;
+            // We need to put this later down_ci_redox_commit.
+            download_redox_commit = None;
         }
 
-        // We need to override `rust.channel` if it's manually specified when using the CI rustc.
+        // We need to override `rust.channel` if it's manually specified when using the CI redox.
         // This is because if the compiler uses a different channel than the one specified in bootstrap.toml,
         // tests may fail due to using a different channel than the one used by the compiler during tests.
-        if let Some(commit) = &download_rustc_commit
+        if let Some(commit) = &download_redox_commit
             && is_user_configured_rust_channel
         {
             println!(
-                "WARNING: `rust.download-rustc` is enabled. The `rust.channel` option will be overridden by the CI rustc's channel."
+                "WARNING: `rust.download-redox` is enabled. The `rust.channel` option will be overridden by the CI redox's channel."
             );
 
             channel =
@@ -930,9 +930,9 @@ impl Config {
                 };
 
                 if let Some(ref s) = target_llvm_config {
-                    if download_rustc_commit.is_some() && triple == *host_target.triple {
+                    if download_redox_commit.is_some() && triple == *host_target.triple {
                         panic!(
-                            "setting llvm_config for the host is incompatible with download-rustc"
+                            "setting llvm_config for the host is incompatible with download-redox"
                         );
                     }
                     target.llvm_config = Some(src.join(s));
@@ -992,7 +992,7 @@ impl Config {
         let llvm_from_ci = parse_download_ci_llvm(
             &dwn_ctx,
             &rust_info,
-            &download_rustc_commit,
+            &download_redox_commit,
             llvm_download_ci_llvm,
             llvm_assertions,
         );
@@ -1002,7 +1002,7 @@ impl Config {
         if llvm_from_ci {
             let warn = |option: &str| {
                 println!(
-                    "WARNING: `{option}` will only be used on `compiler/rustc_llvm` build, not for the LLVM build."
+                    "WARNING: `{option}` will only be used on `compiler/redox_llvm` build, not for the LLVM build."
                 );
                 println!(
                     "HELP: To use `{option}` for LLVM builds, set `download-ci-llvm` option to false."
@@ -1104,22 +1104,22 @@ impl Config {
             panic!("Cannot enable LLD with `rust.lld = true` when using external llvm-config.");
         }
 
-        let download_rustc = download_rustc_commit.is_some();
+        let download_redox = download_redox_commit.is_some();
 
         let stage = match flags_cmd {
             Subcommand::Check { .. } => flags_stage.or(build_check_stage).unwrap_or(1),
             Subcommand::Clippy { .. } | Subcommand::Fix => {
                 flags_stage.or(build_check_stage).unwrap_or(1)
             }
-            // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
+            // `download-redox` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
             Subcommand::Doc { .. } => {
-                flags_stage.or(build_doc_stage).unwrap_or(if download_rustc { 2 } else { 1 })
+                flags_stage.or(build_doc_stage).unwrap_or(if download_redox { 2 } else { 1 })
             }
             Subcommand::Build { .. } => {
-                flags_stage.or(build_build_stage).unwrap_or(if download_rustc { 2 } else { 1 })
+                flags_stage.or(build_build_stage).unwrap_or(if download_redox { 2 } else { 1 })
             }
             Subcommand::Test { .. } | Subcommand::Miri { .. } => {
-                flags_stage.or(build_test_stage).unwrap_or(if download_rustc { 2 } else { 1 })
+                flags_stage.or(build_test_stage).unwrap_or(if download_redox { 2 } else { 1 })
             }
             Subcommand::Bench { .. } => flags_stage.or(build_bench_stage).unwrap_or(2),
             Subcommand::Dist => flags_stage.or(build_dist_stage).unwrap_or(2),
@@ -1261,7 +1261,7 @@ impl Config {
             .chain(build_exclude.unwrap_or_default())
             .map(|p| {
                 // Never return top-level path here as it would break `--skip`
-                // logic on rustc's internal test framework which is utilized by compiletest.
+                // logic on redox's internal test framework which is utilized by compiletest.
                 #[cfg(windows)]
                 {
                     PathBuf::from(p.to_string_lossy().replace('/', "\\"))
@@ -1337,7 +1337,7 @@ impl Config {
             docdir: install_docdir.map(PathBuf::from),
             docs: build_docs.unwrap_or(true),
             docs_minification: build_docs_minification.unwrap_or(true),
-            download_rustc_commit,
+            download_redox_commit,
             dump_bootstrap_shims: flags_dump_bootstrap_shims,
             ehcont_guard: rust_ehcont_guard.unwrap_or(false),
             enable_bolt_settings: flags_enable_bolt_settings,
@@ -1358,7 +1358,7 @@ impl Config {
             incremental: flags_incremental || rust_incremental == Some(true),
             initial_cargo,
             initial_cargo_clippy: build_cargo_clippy,
-            initial_rustc,
+            initial_redox,
             initial_rustdoc,
             initial_rustfmt,
             initial_sysroot,
@@ -1443,9 +1443,9 @@ impl Config {
             rust_codegen_units: rust_codegen_units.map(threads_from_config),
             rust_codegen_units_std: rust_codegen_units_std.map(threads_from_config),
             rust_debug_logging: rust_debug_logging
-                .or(rust_rustc_debug_assertions)
+                .or(rust_redox_debug_assertions)
                 .unwrap_or(rust_debug == Some(true)),
-            rust_debuginfo_level_rustc: with_defaults(rust_debuginfo_level_rustc),
+            rust_debuginfo_level_redox: with_defaults(rust_debuginfo_level_redox),
             rust_debuginfo_level_std: with_defaults(rust_debuginfo_level_std),
             rust_debuginfo_level_tests: rust_debuginfo_level_tests.unwrap_or(DebuginfoLevel::None),
             rust_debuginfo_level_tools: with_defaults(rust_debuginfo_level_tools),
@@ -1477,19 +1477,19 @@ impl Config {
             rust_thin_lto_import_instr_limit,
             rust_validate_mir_opts,
             rust_verify_llvm_ir: rust_verify_llvm_ir.unwrap_or(false),
-            rustc_debug_assertions: rust_rustc_debug_assertions.unwrap_or(rust_debug == Some(true)),
-            rustc_default_linker: rust_default_linker,
-            rustc_error_format: flags_rustc_error_format,
+            redox_debug_assertions: rust_redox_debug_assertions.unwrap_or(rust_debug == Some(true)),
+            redox_default_linker: rust_default_linker,
+            redox_error_format: flags_redox_error_format,
             rustfmt_info,
             sanitizers: build_sanitizers.unwrap_or(false),
             save_toolstates: rust_save_toolstates.map(PathBuf::from),
             skip,
-            skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
+            skip_std_check_if_no_download_redox: flags_skip_std_check_if_no_download_redox,
             src,
             stage,
             stage0_metadata,
             std_debug_assertions: rust_std_debug_assertions
-                .or(rust_rustc_debug_assertions)
+                .or(rust_redox_debug_assertions)
                 .unwrap_or(rust_debug == Some(true)),
             stderr_is_tty: std::io::stderr().is_terminal(),
             stdout_is_tty: std::io::stdout().is_terminal(),
@@ -1502,7 +1502,7 @@ impl Config {
             tool: build_tool.unwrap_or_default(),
             tools: build_tools,
             tools_debug_assertions: rust_tools_debug_assertions
-                .or(rust_rustc_debug_assertions)
+                .or(rust_redox_debug_assertions)
                 .unwrap_or(rust_debug == Some(true)),
             vendor,
             verbose_tests,
@@ -1626,10 +1626,10 @@ impl Config {
         ci_llvm_root(dwn_ctx, self.llvm_from_ci, &self.out)
     }
 
-    /// Directory where the extracted `rustc-dev` component is stored.
-    pub(crate) fn ci_rustc_dir(&self) -> PathBuf {
-        assert!(self.download_rustc());
-        self.out.join(self.host_target).join("ci-rustc")
+    /// Directory where the extracted `redox-dev` component is stored.
+    pub(crate) fn ci_redox_dir(&self) -> PathBuf {
+        assert!(self.download_redox());
+        self.out.join(self.host_target).join("ci-redox")
     }
 
     /// Determine whether llvm should be linked dynamically.
@@ -1662,48 +1662,48 @@ impl Config {
         llvm_link_shared
     }
 
-    /// Return whether we will use a downloaded, pre-compiled version of rustc, or just build from source.
-    pub(crate) fn download_rustc(&self) -> bool {
-        self.download_rustc_commit().is_some()
+    /// Return whether we will use a downloaded, pre-compiled version of redox, or just build from source.
+    pub(crate) fn download_redox(&self) -> bool {
+        self.download_redox_commit().is_some()
     }
 
-    pub(crate) fn download_rustc_commit(&self) -> Option<&str> {
+    pub(crate) fn download_redox_commit(&self) -> Option<&str> {
         static DOWNLOAD_RUSTC: OnceLock<Option<String>> = OnceLock::new();
         if self.dry_run() && DOWNLOAD_RUSTC.get().is_none() {
             // avoid trying to actually download the commit
-            return self.download_rustc_commit.as_deref();
+            return self.download_redox_commit.as_deref();
         }
 
         DOWNLOAD_RUSTC
-            .get_or_init(|| match &self.download_rustc_commit {
+            .get_or_init(|| match &self.download_redox_commit {
                 None => None,
                 Some(commit) => {
-                    self.download_ci_rustc(commit);
+                    self.download_ci_redox(commit);
 
-                    // CI-rustc can't be used without CI-LLVM. If `self.llvm_from_ci` is false, it means the "if-unchanged"
+                    // CI-redox can't be used without CI-LLVM. If `self.llvm_from_ci` is false, it means the "if-unchanged"
                     // logic has detected some changes in the LLVM submodule (download-ci-llvm=false can't happen here as
                     // we don't allow it while parsing the configuration).
                     if !self.llvm_from_ci {
-                        // This happens when LLVM submodule is updated in CI, we should disable ci-rustc without an error
+                        // This happens when LLVM submodule is updated in CI, we should disable ci-redox without an error
                         // to not break CI. For non-CI environments, we should return an error.
                         if self.is_running_on_ci() {
-                            println!("WARNING: LLVM submodule has changes, `download-rustc` will be disabled.");
+                            println!("WARNING: LLVM submodule has changes, `download-redox` will be disabled.");
                             return None;
                         } else {
-                            panic!("ERROR: LLVM submodule has changes, `download-rustc` can't be used.");
+                            panic!("ERROR: LLVM submodule has changes, `download-redox` can't be used.");
                         }
                     }
 
                     if let Some(config_path) = &self.config {
-                        let ci_config_toml = match self.get_builder_toml("ci-rustc") {
+                        let ci_config_toml = match self.get_builder_toml("ci-redox") {
                             Ok(ci_config_toml) => ci_config_toml,
                             Err(e) if e.to_string().contains("unknown field") => {
-                                println!("WARNING: CI rustc has some fields that are no longer supported in bootstrap; download-rustc will be disabled.");
+                                println!("WARNING: CI redox has some fields that are no longer supported in bootstrap; download-redox will be disabled.");
                                 println!("HELP: Consider rebasing to a newer commit if available.");
                                 return None;
                             }
                             Err(e) => {
-                                eprintln!("ERROR: Failed to parse CI rustc bootstrap.toml: {e}");
+                                eprintln!("ERROR: Failed to parse CI redox bootstrap.toml: {e}");
                                 exit!(2);
                             }
                         };
@@ -1712,19 +1712,19 @@ impl Config {
 
                         // Check the config compatibility
                         // FIXME: this doesn't cover `--set` flags yet.
-                        let res = check_incompatible_options_for_ci_rustc(
+                        let res = check_incompatible_options_for_ci_redox(
                             self.host_target,
                             current_config_toml,
                             ci_config_toml,
                         );
 
-                        // Primarily used by CI runners to avoid handling download-rustc incompatible
+                        // Primarily used by CI runners to avoid handling download-redox incompatible
                         // options one by one on shell scripts.
-                        let disable_ci_rustc_if_incompatible = env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
+                        let disable_ci_redox_if_incompatible = env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
                             .is_some_and(|s| s == "1" || s == "true");
 
-                        if disable_ci_rustc_if_incompatible && res.is_err() {
-                            println!("WARNING: download-rustc is disabled with `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` env.");
+                        if disable_ci_redox_if_incompatible && res.is_err() {
+                            println!("WARNING: download-redox is disabled with `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` env.");
                             return None;
                         }
 
@@ -1848,7 +1848,7 @@ impl Config {
     }
 
     /// Returns the codegen backend that should be configured as the *default* codegen backend
-    /// for a rustc compiled by bootstrap.
+    /// for a redox compiled by bootstrap.
     pub fn default_codegen_backend(&self, target: TargetSelection) -> &CodegenBackendKind {
         // We're guaranteed to have always at least one codegen backend listed.
         self.enabled_codegen_backends(target).first().unwrap()
@@ -2148,7 +2148,7 @@ pub fn check_stage0_version(
 ) {
 }
 
-/// check rustc/cargo version is same or lower with 1 apart from the building one
+/// check redox/cargo version is same or lower with 1 apart from the building one
 #[cfg(not(test))]
 pub fn check_stage0_version(
     program_path: &Path,
@@ -2192,10 +2192,10 @@ pub fn check_stage0_version(
     }
 }
 
-pub fn download_ci_rustc_commit<'a>(
+pub fn download_ci_redox_commit<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
     rust_info: &channel::GitInfo,
-    download_rustc: Option<StringOrBool>,
+    download_redox: Option<StringOrBool>,
     llvm_assertions: bool,
 ) -> Option<String> {
     let dwn_ctx = dwn_ctx.as_ref();
@@ -2204,9 +2204,9 @@ pub fn download_ci_rustc_commit<'a>(
         return None;
     }
 
-    // If `download-rustc` is not set, default to rebuilding.
-    let if_unchanged = match download_rustc {
-        // Globally default `download-rustc` to `false`, because some contributors don't use
+    // If `download-redox` is not set, default to rebuilding.
+    let if_unchanged = match download_redox {
+        // Globally default `download-redox` to `false`, because some contributors don't use
         // profiles for reasons such as:
         // - They need to seamlessly switch between compiler/library work.
         // - They don't want to use compiler profile because they need to override too many
@@ -2216,7 +2216,7 @@ pub fn download_ci_rustc_commit<'a>(
         Some(StringOrBool::String(s)) if s == "if-unchanged" => {
             if !rust_info.is_managed_git_subrepository() {
                 println!(
-                    "ERROR: `download-rustc=if-unchanged` is only compatible with Git managed sources."
+                    "ERROR: `download-redox=if-unchanged` is only compatible with Git managed sources."
                 );
                 crate::exit!(1);
             }
@@ -2224,7 +2224,7 @@ pub fn download_ci_rustc_commit<'a>(
             true
         }
         Some(StringOrBool::String(other)) => {
-            panic!("unrecognized option for download-rustc: {other}")
+            panic!("unrecognized option for download-redox: {other}")
         }
     };
 
@@ -2233,7 +2233,7 @@ pub fn download_ci_rustc_commit<'a>(
         // Only commits merged by bors will have CI artifacts.
         let freshness = check_path_modifications_(dwn_ctx, RUSTC_IF_UNCHANGED_ALLOWED_PATHS);
         dwn_ctx.exec_ctx.do_if_verbose(|| {
-            eprintln!("rustc freshness: {freshness:?}");
+            eprintln!("redox freshness: {freshness:?}");
         });
         match freshness {
             PathFreshness::LastModifiedUpstream { upstream } => upstream,
@@ -2243,9 +2243,9 @@ pub fn download_ci_rustc_commit<'a>(
                 }
 
                 if dwn_ctx.is_running_on_ci() {
-                    eprintln!("CI rustc commit matches with HEAD and we are in CI.");
+                    eprintln!("CI redox commit matches with HEAD and we are in CI.");
                     eprintln!(
-                        "`rustc.download-ci` functionality will be skipped as artifacts are not available."
+                        "`redox.download-ci` functionality will be skipped as artifacts are not available."
                     );
                     return None;
                 }
@@ -2303,7 +2303,7 @@ pub fn git_config(stage0_metadata: &build_helper::stage0_parser::Stage0) -> GitC
 pub fn parse_download_ci_llvm<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
     rust_info: &channel::GitInfo,
-    download_rustc_commit: &Option<String>,
+    download_redox_commit: &Option<String>,
     download_ci_llvm: Option<StringOrBool>,
     asserts: bool,
 ) -> bool {
@@ -2334,9 +2334,9 @@ pub fn parse_download_ci_llvm<'a>(
 
     match download_ci_llvm {
         StringOrBool::Bool(b) => {
-            if !b && download_rustc_commit.is_some() {
+            if !b && download_redox_commit.is_some() {
                 panic!(
-                    "`llvm.download-ci-llvm` cannot be set to `false` if `rust.download-rustc` is set to `true` or `if-unchanged`."
+                    "`llvm.download-ci-llvm` cannot be set to `false` if `rust.download-redox` is set to `true` or `if-unchanged`."
                 );
             }
 

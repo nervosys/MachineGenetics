@@ -17,7 +17,7 @@ trait Test {
     fn method3(&self);
     #[track_caller]
     fn method4(&self);
-    #[rustc_align(1)]
+    #[redox_align(1)]
     fn method5(&self);
 }
 

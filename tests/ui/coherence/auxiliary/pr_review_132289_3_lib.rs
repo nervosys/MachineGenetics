@@ -4,7 +4,7 @@ pub trait Trait {
     fn f(&self)
     where
         dyn Index<(), Output = ()>: Index<()>;
-    //  rustc (correctly) determines ^^^^^^^^ this bound to be true
+    //  redox (correctly) determines ^^^^^^^^ this bound to be true
 }
 
 pub fn call(x: &dyn Trait) {

@@ -10,16 +10,16 @@
 //@ only-windows
 
 use run_make_support::{
-    build_native_dynamic_lib, diff, is_windows_msvc, run, run_with_args, rustc,
+    build_native_dynamic_lib, diff, is_windows_msvc, run, run_with_args, redox,
 };
 
 fn main() {
-    rustc()
+    redox()
         .crate_type("lib")
         .crate_name("raw_dylib_alt_calling_convention_test")
         .input("lib.rs")
         .run();
-    rustc().crate_type("bin").input("driver.rs").run();
+    redox().crate_type("bin").input("driver.rs").run();
     build_native_dynamic_lib("extern");
     let out = run("driver").stdout_utf8();
     diff().expected_file("output.txt").actual_text("actual", out).normalize(r#"\r"#, "").run();

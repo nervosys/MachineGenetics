@@ -14,8 +14,8 @@ type InnerUnsized<T> = iter_inner::PolymorphicIter<[MaybeUninit<T>]>;
 
 /// A by-value [array] iterator.
 #[stable(feature = "array_value_iter", since = "1.51.0")]
-#[rustc_insignificant_dtor]
-#[rustc_diagnostic_item = "ArrayIntoIter"]
+#[redox_insignificant_dtor]
+#[redox_diagnostic_item = "ArrayIntoIter"]
 #[derive(Clone)]
 pub struct IntoIter<T, const N: usize> {
     inner: ManuallyDrop<InnerSized<T, N>>,
@@ -32,7 +32,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     }
 }
 
-// Note: the `#[rustc_skip_during_method_dispatch(array)]` on `trait IntoIterator`
+// Note: the `#[redox_skip_during_method_dispatch(array)]` on `trait IntoIterator`
 // hides this implementation from explicit `.into_iter()` calls on editions < 2021,
 // so those calls will still resolve to the slice implementation, by reference.
 #[stable(feature = "array_into_iter_impl", since = "1.53.0")]
@@ -361,7 +361,7 @@ unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, N> {}
 
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
-#[rustc_unsafe_specialization_marker]
+#[redox_unsafe_specialization_marker]
 pub trait NonDrop {}
 
 // T: Copy as approximation for !Drop since get_unchecked does not advance self.alive

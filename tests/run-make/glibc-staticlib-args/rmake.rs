@@ -4,10 +4,10 @@
 //@ only-linux
 //@ ignore-cross-compile
 
-use run_make_support::{bin_name, cc, extra_c_flags, extra_cxx_flags, run, rustc, static_lib_name};
+use run_make_support::{bin_name, cc, extra_c_flags, extra_cxx_flags, run, redox, static_lib_name};
 
 fn main() {
-    rustc().input("library.rs").crate_type("staticlib").run();
+    redox().input("library.rs").crate_type("staticlib").run();
     cc().input("program.c")
         .arg(static_lib_name("library"))
         .out_exe("program")

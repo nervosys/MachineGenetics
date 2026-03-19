@@ -1,7 +1,7 @@
 //@ needs-asm-support
 
 // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(fn_align)]
 
 #![crate_type = "lib"]
@@ -25,7 +25,7 @@ extern "C" fn example2() {
 
 #[repr(C)]
 //~^ ERROR attribute should be applied to a struct, enum, or union [E0517]
-#[rustc_align(16)]
+#[redox_align(16)]
 #[unsafe(naked)]
 extern "C" fn example3() {
     //~^ NOTE not a struct, enum, or union

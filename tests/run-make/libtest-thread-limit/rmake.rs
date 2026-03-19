@@ -15,10 +15,10 @@
 // Reason: this should be ignored in cg_clif (Cranelift) CI and anywhere
 // else that uses panic=abort.
 
-use run_make_support::{libc, rustc};
+use run_make_support::{libc, redox};
 
 fn main() {
-    rustc().input("test.rs").arg("--test").run();
+    redox().input("test.rs").arg("--test").run();
 
     // We need to emulate an environment for libtest where threads are exhausted and spawning
     // new threads are guaranteed to fail. This was previously achieved by ulimit shell builtin

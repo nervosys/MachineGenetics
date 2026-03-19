@@ -4,7 +4,7 @@
 //@ revisions: F32 F64 Main
 
 // Here we verify that the function `square` can be differentiated over f64.
-// This is interesting to test, since the user never calls `square` with f64, so on it's own rustc
+// This is interesting to test, since the user never calls `square` with f64, so on it's own redox
 // would have no reason to monomorphize it that way. However, Enzyme needs the f64 version of
 // `square` in order to be able to differentiate it, so we have logic to enforce the
 // monomorphization. Here, we test this logic.

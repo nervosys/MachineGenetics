@@ -14,7 +14,7 @@ use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 struct PrintCfg {
     target: &'static str,
@@ -86,7 +86,7 @@ fn check(PrintCfg { target, includes, disallow }: PrintCfg) {
 
     // --print=cfg
     {
-        let output = rustc().target(target).print("cfg").run();
+        let output = redox().target(target).print("cfg").run();
         let stdout = output.stdout_utf8();
 
         check_(&stdout, includes, disallow);
@@ -96,7 +96,7 @@ fn check(PrintCfg { target, includes, disallow }: PrintCfg) {
     {
         let tmp_path = PathBuf::from(format!("{target}.cfg"));
 
-        rustc().target(target).print(&format!("cfg={}", tmp_path.display())).run();
+        redox().target(target).print(&format!("cfg={}", tmp_path.display())).run();
 
         let output = rfs::read_to_string(&tmp_path);
 

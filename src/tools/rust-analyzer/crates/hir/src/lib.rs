@@ -17,10 +17,10 @@
 //! from the ide with completions, hovers, etc. It is a (soft, internal) boundary:
 //! <https://www.tedinski.com/2018/02/06/system-boundaries.html>.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 #![recursion_limit = "512"]
 
-extern crate ra_ap_rustc_type_ir as rustc_type_ir;
+extern crate ra_ap_redox_type_ir as redox_type_ir;
 
 mod attrs;
 mod from_id;
@@ -98,8 +98,8 @@ use hir_ty::{
     traits::{self, is_inherent_impl_coherent, structurally_normalize_ty},
 };
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
-use rustc_type_ir::{
+use redox_hash::FxHashSet;
+use redox_type_ir::{
     AliasTyKind, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitor, fast_reject,
     inherent::{AdtDef, GenericArgs as _, IntoKind, SliceLike, Term as _, Ty as _},
@@ -1622,28 +1622,28 @@ impl Enum {
             self.id.lookup(db).container.krate(db),
             match EnumSignature::variant_body_type(db, self.id) {
                 layout::IntegerType::Pointer(sign) => match sign {
-                    true => Ty::new_int(interner, rustc_type_ir::IntTy::Isize),
-                    false => Ty::new_uint(interner, rustc_type_ir::UintTy::Usize),
+                    true => Ty::new_int(interner, redox_type_ir::IntTy::Isize),
+                    false => Ty::new_uint(interner, redox_type_ir::UintTy::Usize),
                 },
                 layout::IntegerType::Fixed(i, sign) => match sign {
                     true => Ty::new_int(
                         interner,
                         match i {
-                            layout::Integer::I8 => rustc_type_ir::IntTy::I8,
-                            layout::Integer::I16 => rustc_type_ir::IntTy::I16,
-                            layout::Integer::I32 => rustc_type_ir::IntTy::I32,
-                            layout::Integer::I64 => rustc_type_ir::IntTy::I64,
-                            layout::Integer::I128 => rustc_type_ir::IntTy::I128,
+                            layout::Integer::I8 => redox_type_ir::IntTy::I8,
+                            layout::Integer::I16 => redox_type_ir::IntTy::I16,
+                            layout::Integer::I32 => redox_type_ir::IntTy::I32,
+                            layout::Integer::I64 => redox_type_ir::IntTy::I64,
+                            layout::Integer::I128 => redox_type_ir::IntTy::I128,
                         },
                     ),
                     false => Ty::new_uint(
                         interner,
                         match i {
-                            layout::Integer::I8 => rustc_type_ir::UintTy::U8,
-                            layout::Integer::I16 => rustc_type_ir::UintTy::U16,
-                            layout::Integer::I32 => rustc_type_ir::UintTy::U32,
-                            layout::Integer::I64 => rustc_type_ir::UintTy::U64,
-                            layout::Integer::I128 => rustc_type_ir::UintTy::U128,
+                            layout::Integer::I8 => redox_type_ir::UintTy::U8,
+                            layout::Integer::I16 => redox_type_ir::UintTy::U16,
+                            layout::Integer::I32 => redox_type_ir::UintTy::U32,
+                            layout::Integer::I64 => redox_type_ir::UintTy::U64,
+                            layout::Integer::I128 => redox_type_ir::UintTy::U128,
                         },
                     ),
                 },
@@ -1751,8 +1751,8 @@ impl Variant {
             layout::Variants::Multiple { variants, .. } => Layout(
                 {
                     let lookup = self.id.lookup(db);
-                    let rustc_enum_variant_idx = RustcEnumVariantIdx(lookup.index as usize);
-                    Arc::new(variants[rustc_enum_variant_idx].clone())
+                    let redox_enum_variant_idx = RustcEnumVariantIdx(lookup.index as usize);
+                    Arc::new(variants[redox_enum_variant_idx].clone())
                 },
                 db.target_data_layout(parent_enum.krate(db).into()).unwrap(),
             ),
@@ -4494,14 +4494,14 @@ pub enum Variance {
     Invariant,
 }
 
-impl From<rustc_type_ir::Variance> for Variance {
+impl From<redox_type_ir::Variance> for Variance {
     #[inline]
-    fn from(value: rustc_type_ir::Variance) -> Self {
+    fn from(value: redox_type_ir::Variance) -> Self {
         match value {
-            rustc_type_ir::Variance::Covariant => Variance::Covariant,
-            rustc_type_ir::Variance::Invariant => Variance::Invariant,
-            rustc_type_ir::Variance::Contravariant => Variance::Contravariant,
-            rustc_type_ir::Variance::Bivariant => Variance::Bivariant,
+            redox_type_ir::Variance::Covariant => Variance::Covariant,
+            redox_type_ir::Variance::Invariant => Variance::Invariant,
+            redox_type_ir::Variance::Contravariant => Variance::Contravariant,
+            redox_type_ir::Variance::Bivariant => Variance::Bivariant,
         }
     }
 }
@@ -4579,7 +4579,7 @@ impl TypeParam {
         let ty = generic_arg_from_param(db, self.id.into())?;
         let resolver = self.id.parent().resolver(db);
         match ty.kind() {
-            rustc_type_ir::GenericArgKind::Type(it) if !it.is_ty_error() => {
+            redox_type_ir::GenericArgKind::Type(it) if !it.is_ty_error() => {
                 Some(Type::new_with_resolver_inner(db, &resolver, it))
             }
             _ => None,
@@ -5049,9 +5049,9 @@ impl<'db> Closure<'db> {
             AnyClosureId::CoroutineClosureId(_id) => {
                 // FIXME: Infer kind for coroutine closures.
                 match self.subst.as_coroutine_closure().kind() {
-                    rustc_type_ir::ClosureKind::Fn => FnTrait::AsyncFn,
-                    rustc_type_ir::ClosureKind::FnMut => FnTrait::AsyncFnMut,
-                    rustc_type_ir::ClosureKind::FnOnce => FnTrait::AsyncFnOnce,
+                    redox_type_ir::ClosureKind::Fn => FnTrait::AsyncFn,
+                    redox_type_ir::ClosureKind::FnMut => FnTrait::AsyncFnMut,
+                    redox_type_ir::ClosureKind::FnOnce => FnTrait::AsyncFnOnce,
                 }
             }
         }
@@ -5451,7 +5451,7 @@ impl<'db> Type<'db> {
     }
 
     pub fn is_usize(&self) -> bool {
-        matches!(self.ty.kind(), TyKind::Uint(rustc_type_ir::UintTy::Usize))
+        matches!(self.ty.kind(), TyKind::Uint(redox_type_ir::UintTy::Usize))
     }
 
     pub fn is_float(&self) -> bool {
@@ -5878,13 +5878,13 @@ impl<'db> Type<'db> {
             .into_iter()
             .flat_map(|(_, substs)| substs.iter())
             .filter_map(move |arg| match arg.kind() {
-                rustc_type_ir::GenericArgKind::Type(ty) => {
+                redox_type_ir::GenericArgKind::Type(ty) => {
                     Some(format_smolstr!("{}", ty.display(db, display_target)))
                 }
-                rustc_type_ir::GenericArgKind::Const(const_) => {
+                redox_type_ir::GenericArgKind::Const(const_) => {
                     Some(format_smolstr!("{}", const_.display(db, display_target)))
                 }
-                rustc_type_ir::GenericArgKind::Lifetime(_) => None,
+                redox_type_ir::GenericArgKind::Lifetime(_) => None,
             })
     }
 
@@ -6339,10 +6339,10 @@ impl<'db> TypeNs<'db> {
         let trait_ref =
             hir_ty::next_solver::TraitRef::new_from_args(infcx.interner, trait_.id.into(), args);
 
-        let pred_kind = rustc_type_ir::Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-            rustc_type_ir::ClauseKind::Trait(rustc_type_ir::TraitPredicate {
+        let pred_kind = redox_type_ir::Binder::dummy(redox_type_ir::PredicateKind::Clause(
+            redox_type_ir::ClauseKind::Trait(redox_type_ir::TraitPredicate {
                 trait_ref,
-                polarity: rustc_type_ir::PredicatePolarity::Positive,
+                polarity: redox_type_ir::PredicatePolarity::Positive,
             }),
         ));
         let predicate = hir_ty::next_solver::Predicate::new(infcx.interner, pred_kind);
@@ -6352,11 +6352,11 @@ impl<'db> TypeNs<'db> {
             predicate,
         );
         let res = hir_ty::traits::next_trait_solve_in_ctxt(&infcx, goal);
-        res.map_or(false, |res| matches!(res.1, rustc_type_ir::solve::Certainty::Yes))
+        res.map_or(false, |res| matches!(res.1, redox_type_ir::solve::Certainty::Yes))
     }
 
     pub fn is_bool(&self) -> bool {
-        matches!(self.ty.kind(), rustc_type_ir::TyKind::Bool)
+        matches!(self.ty.kind(), redox_type_ir::TyKind::Bool)
     }
 }
 

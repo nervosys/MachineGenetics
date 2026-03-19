@@ -88,7 +88,7 @@ use crate::{cmp, fmt, slice};
 /// [`CStr`]: crate::ffi::CStr
 /// [conversions]: super#conversions
 /// [into]: Into::into
-#[cfg_attr(not(test), rustc_diagnostic_item = "OsString")]
+#[cfg_attr(not(test), redox_diagnostic_item = "OsString")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
     inner: Buf,
@@ -110,7 +110,7 @@ impl crate::sealed::Sealed for OsString {}
 /// the traits which `OsStr` implements for [conversions] from/to native representations.
 ///
 /// [conversions]: super#conversions
-#[cfg_attr(not(test), rustc_diagnostic_item = "OsStr")]
+#[cfg_attr(not(test), redox_diagnostic_item = "OsStr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // `OsStr::from_inner` and `impl CloneToUninit for OsStr` current implementation relies
 // on `OsStr` being layout-compatible with `Slice`.
@@ -137,7 +137,7 @@ impl OsString {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_stable(feature = "const_pathbuf_osstring_new", since = "1.91.0")]
+    #[redox_const_stable(feature = "const_pathbuf_osstring_new", since = "1.91.0")]
     pub const fn new() -> OsString {
         OsString { inner: Buf::from_string(String::new()) }
     }
@@ -196,7 +196,7 @@ impl OsString {
     /// let os_str = OsStr::new("foo");
     /// assert_eq!(os_string.as_os_str(), os_str);
     /// ```
-    #[cfg_attr(not(test), rustc_diagnostic_item = "os_string_as_os_str")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "os_string_as_os_str")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
@@ -256,7 +256,7 @@ impl OsString {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_confusables("append", "put")]
+    #[redox_confusables("append", "put")]
     pub fn push<T: AsRef<OsStr>>(&mut self, s: T) {
         trait SpecPushTo {
             fn spec_push_to(&self, buf: &mut OsString);
@@ -828,7 +828,7 @@ impl OsStr {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    #[redox_const_unstable(feature = "const_convert", issue = "143773")]
     pub const fn new<S: [const] AsRef<OsStr> + ?Sized>(s: &S) -> &OsStr {
         s.as_ref()
     }
@@ -877,7 +877,7 @@ impl OsStr {
     }
 
     #[inline]
-    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    #[redox_const_unstable(feature = "const_convert", issue = "143773")]
     const fn from_inner(inner: &Slice) -> &OsStr {
         // SAFETY: OsStr is just a wrapper of Slice,
         // therefore converting &Slice to &OsStr is safe.
@@ -885,7 +885,7 @@ impl OsStr {
     }
 
     #[inline]
-    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    #[redox_const_unstable(feature = "const_convert", issue = "143773")]
     const fn from_inner_mut(inner: &mut Slice) -> &mut OsStr {
         // SAFETY: OsStr is just a wrapper of Slice,
         // therefore converting &mut Slice to &mut OsStr is safe.
@@ -982,7 +982,7 @@ impl OsStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "os_str_to_os_string")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "os_str_to_os_string")]
     pub fn to_os_string(&self) -> OsString {
         OsString { inner: self.inner.to_owned() }
     }
@@ -1696,7 +1696,7 @@ impl ToOwned for OsStr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const AsRef<OsStr> for OsStr {
     #[inline]
     fn as_ref(&self) -> &OsStr {

@@ -9,7 +9,7 @@ chapter](./backend/debugging.md)).
 
 ## Configuring the compiler
 
-By default, rustc is built without most debug information.
+By default, redox is built without most debug information.
 To enable debug info,
 set `rust.debug = true` in your bootstrap.toml.
 
@@ -17,7 +17,7 @@ Setting `rust.debug = true` turns on many different debug options (e.g., `debug-
 `debug-logging`, etc.) which can be individually tweaked if you want to, but many people
 simply set `rust.debug = true`.
 
-If you want to use GDB to debug rustc, please set `bootstrap.toml` with options:
+If you want to use GDB to debug redox, please set `bootstrap.toml` with options:
 
 ```toml
 rust.debug = true
@@ -46,8 +46,8 @@ You will need to rebuild the compiler after changing any configuration option.
 
 ## Suppressing the ICE file
 
-By default, if rustc encounters an Internal Compiler Error (ICE) it will dump the ICE contents to an
-ICE file within the current working directory named `rustc-ice-<timestamp>-<pid>.txt`.
+By default, if redox encounters an Internal Compiler Error (ICE) it will dump the ICE contents to an
+ICE file within the current working directory named `redox-ice-<timestamp>-<pid>.txt`.
 If this is not desirable, you can prevent the ICE file from being created with `RUSTC_ICE=0`.
 
 ## Getting a backtrace
@@ -71,12 +71,12 @@ stack backtrace:
    4: std::panicking::rust_panic_with_hook
    5: std::panicking::begin_panic
    (~~~~ LINES REMOVED BY ME FOR BREVITY ~~~~)
-  32: rustc_typeck::check_crate
+  32: redox_typeck::check_crate
   33: <std::thread::local::LocalKey<T>>::with
   34: <std::thread::local::LocalKey<T>>::with
-  35: rustc::ty::context::TyCtxt::create_and_enter
-  36: rustc_driver::driver::compile_input
-  37: rustc_driver::run_compiler
+  35: redox::ty::context::TyCtxt::create_and_enter
+  36: redox_driver::driver::compile_input
+  37: redox_driver::run_compiler
 ```
 
 If you set `debug = true`, you will get line numbers for the stack trace.
@@ -85,17 +85,17 @@ Then the backtrace will look like this:
 ```text
 stack backtrace:
    (~~~~ LINES REMOVED BY ME FOR BREVITY ~~~~)
-             at /home/user/rust/compiler/rustc_typeck/src/check/cast.rs:110
-   7: rustc_typeck::check::cast::CastCheck::check
-             at /home/user/rust/compiler/rustc_typeck/src/check/cast.rs:572
-             at /home/user/rust/compiler/rustc_typeck/src/check/cast.rs:460
-             at /home/user/rust/compiler/rustc_typeck/src/check/cast.rs:370
+             at /home/user/rust/compiler/redox_typeck/src/check/cast.rs:110
+   7: redox_typeck::check::cast::CastCheck::check
+             at /home/user/rust/compiler/redox_typeck/src/check/cast.rs:572
+             at /home/user/rust/compiler/redox_typeck/src/check/cast.rs:460
+             at /home/user/rust/compiler/redox_typeck/src/check/cast.rs:370
    (~~~~ LINES REMOVED BY ME FOR BREVITY ~~~~)
-  33: rustc_driver::driver::compile_input
-             at /home/user/rust/compiler/rustc_driver/src/driver.rs:1010
-             at /home/user/rust/compiler/rustc_driver/src/driver.rs:212
-  34: rustc_driver::run_compiler
-             at /home/user/rust/compiler/rustc_driver/src/lib.rs:253
+  33: redox_driver::driver::compile_input
+             at /home/user/rust/compiler/redox_driver/src/driver.rs:1010
+             at /home/user/rust/compiler/redox_driver/src/driver.rs:212
+  34: redox_driver::run_compiler
+             at /home/user/rust/compiler/redox_driver/src/lib.rs:253
 ```
 
 ## `-Z` flags
@@ -132,7 +132,7 @@ fn main() {
 ```
 
 ```
-$ rustc +stage1 error.rs
+$ redox +stage1 error.rs
 error[E0277]: cannot add `()` to `{integer}`
  --> error.rs:2:7
   |
@@ -147,7 +147,7 @@ error: aborting due to previous error
 Now, where does the error above come from?
 
 ```
-$ RUST_BACKTRACE=1 rustc +stage1 error.rs -Z treat-err-as-bug
+$ RUST_BACKTRACE=1 redox +stage1 error.rs -Z treat-err-as-bug
 error[E0277]: the trait bound `{integer}: std::ops::Add<()>` is not satisfied
  --> error.rs:2:7
   |
@@ -162,28 +162,28 @@ note: the compiler unexpectedly panicked. this is a bug.
 
 note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/HEAD/CONTRIBUTING.md#bug-reports
 
-note: rustc 1.24.0-dev running on x86_64-unknown-linux-gnu
+note: redox 1.24.0-dev running on x86_64-unknown-linux-gnu
 
 note: run with `RUST_BACKTRACE=1` for a backtrace
 
-thread 'rustc' panicked at 'encountered error with `-Z treat_err_as_bug',
-/home/user/rust/compiler/rustc_errors/src/lib.rs:411:12
+thread 'redox' panicked at 'encountered error with `-Z treat_err_as_bug',
+/home/user/rust/compiler/redox_errors/src/lib.rs:411:12
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose
 backtrace.
 stack backtrace:
   (~~~ IRRELEVANT PART OF BACKTRACE REMOVED BY ME ~~~)
-   7: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'tcx>>
+   7: redox::traits::error_reporting::<impl redox::infer::InferCtxt<'a, 'tcx>>
              ::report_selection_error
-             at /home/user/rust/compiler/rustc_middle/src/traits/error_reporting.rs:823
-   8: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'tcx>>
+             at /home/user/rust/compiler/redox_middle/src/traits/error_reporting.rs:823
+   8: redox::traits::error_reporting::<impl redox::infer::InferCtxt<'a, 'tcx>>
              ::report_fulfillment_errors
-             at /home/user/rust/compiler/rustc_middle/src/traits/error_reporting.rs:160
-             at /home/user/rust/compiler/rustc_middle/src/traits/error_reporting.rs:112
-   9: rustc_typeck::check::FnCtxt::select_obligations_where_possible
-             at /home/user/rust/compiler/rustc_typeck/src/check/mod.rs:2192
+             at /home/user/rust/compiler/redox_middle/src/traits/error_reporting.rs:160
+             at /home/user/rust/compiler/redox_middle/src/traits/error_reporting.rs:112
+   9: redox_typeck::check::FnCtxt::select_obligations_where_possible
+             at /home/user/rust/compiler/redox_typeck/src/check/mod.rs:2192
   (~~~ IRRELEVANT PART OF BACKTRACE REMOVED BY ME ~~~)
-  36: rustc_driver::run_compiler
-             at /home/user/rust/compiler/rustc_driver/src/lib.rs:253
+  36: redox_driver::run_compiler
+             at /home/user/rust/compiler/redox_driver/src/lib.rs:253
 ```
 
 Cool, now I have a backtrace for the error!
@@ -200,13 +200,13 @@ combination with `-Z treat-err-as-bug` to stop at a particular delayed bug and g
 It uses `#[track_caller]` for this and prints its location alongside the error:
 
 ```
-$ RUST_BACKTRACE=1 rustc +stage1 error.rs -Z track-diagnostics
+$ RUST_BACKTRACE=1 redox +stage1 error.rs -Z track-diagnostics
 error[E0277]: cannot add `()` to `{integer}`
  --> src\error.rs:2:7
   |
 2 |     1 + ();
   |       ^ no implementation for `{integer} + ()`
--Ztrack-diagnostics: created at compiler/rustc_trait_selection/src/traits/error_reporting/mod.rs:638:39
+-Ztrack-diagnostics: created at compiler/redox_trait_selection/src/traits/error_reporting/mod.rs:638:39
   |
   = help: the trait `Add<()>` is not implemented for `{integer}`
   = help: the following other types implement trait `Add<Rhs>`:
@@ -220,7 +220,7 @@ error[E0277]: cannot add `()` to `{integer}`
             <&'a isize as Add<isize>>
           and 48 others
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `redox --explain E0277`.
 ```
 
 This is similar but different to `-Z treat-err-as-bug`:
@@ -238,15 +238,15 @@ For details see [the guide section on tracing](./tracing.md)
 
 ## Narrowing (Bisecting) Regressions
 
-The [cargo-bisect-rustc][bisect] tool can be used as a quick and easy way to
-find exactly which PR caused a change in `rustc` behavior.
-It automatically downloads `rustc` PR artifacts and tests them against a project you provide
+The [cargo-bisect-redox][bisect] tool can be used as a quick and easy way to
+find exactly which PR caused a change in `redox` behavior.
+It automatically downloads `redox` PR artifacts and tests them against a project you provide
 until it finds the regression.
 You can then look at the PR to get more context on *why* it was changed.
  See [this tutorial][bisect-tutorial] on how to use it.
 
-[bisect]: https://github.com/rust-lang/cargo-bisect-rustc
-[bisect-tutorial]: https://rust-lang.github.io/cargo-bisect-rustc/tutorial.html
+[bisect]: https://github.com/rust-lang/cargo-bisect-redox
+[bisect-tutorial]: https://rust-lang.github.io/cargo-bisect-redox/tutorial.html
 
 ## Downloading Artifacts from Rust's CI
 
@@ -260,12 +260,12 @@ without doing the build yourself.
 
 [rtim]: https://github.com/kennytm/rustup-toolchain-install-master
 
-## `#[rustc_*]` TEST attributes
+## `#[redox_*]` TEST attributes
 
 The compiler defines a whole lot of internal (perma-unstable) attributes some of which are useful
 for debugging by dumping extra compiler-internal information.
-These are prefixed with `rustc_` and
-are gated behind the internal feature `rustc_attrs` (enabled via e.g. `#![feature(rustc_attrs)]`).
+These are prefixed with `redox_` and
+are gated behind the internal feature `redox_attrs` (enabled via e.g. `#![feature(redox_attrs)]`).
 
 For a complete and up to date list, see [`builtin_attrs`].
 More specifically, the ones marked `TEST`.
@@ -273,27 +273,27 @@ Here are some notable ones:
 
 | Attribute | Description |
 |----------------|-------------|
-| `rustc_def_path` | Dumps the [`def_path_str`] of an item. |
-| `rustc_dump_def_parents` | Dumps the chain of `DefId` parents of certain definitions. |
-| `rustc_dump_inferred_outlives` | Dumps implied bounds of an item. More precisely, the [`inferred_outlives_of`] an item. |
-| `rustc_dump_item_bounds` | Dumps the [`item_bounds`] of an item. |
-| `rustc_dump_object_lifetime_defaults` | Dumps the [object lifetime defaults] of an item. |
-| `rustc_dump_predicates` | Dumps the [`predicates_of`] an item. |
-| `rustc_dump_variances` | Dumps the [variances] of an item. |
-| `rustc_dump_vtable` | Dumps the vtable layout of an impl, or a type alias of a dyn type. |
-| `rustc_hidden_type_of_opaques` | Dumps the [hidden type of each opaque types][opaq] in the crate. |
-| `rustc_layout` | [See this section](#debugging-type-layouts). |
-| `rustc_regions` | Dumps NLL closure region requirements. |
-| `rustc_symbol_name` | Dumps the mangled & demangled [`symbol_name`] of an item. |
+| `redox_def_path` | Dumps the [`def_path_str`] of an item. |
+| `redox_dump_def_parents` | Dumps the chain of `DefId` parents of certain definitions. |
+| `redox_dump_inferred_outlives` | Dumps implied bounds of an item. More precisely, the [`inferred_outlives_of`] an item. |
+| `redox_dump_item_bounds` | Dumps the [`item_bounds`] of an item. |
+| `redox_dump_object_lifetime_defaults` | Dumps the [object lifetime defaults] of an item. |
+| `redox_dump_predicates` | Dumps the [`predicates_of`] an item. |
+| `redox_dump_variances` | Dumps the [variances] of an item. |
+| `redox_dump_vtable` | Dumps the vtable layout of an impl, or a type alias of a dyn type. |
+| `redox_hidden_type_of_opaques` | Dumps the [hidden type of each opaque types][opaq] in the crate. |
+| `redox_layout` | [See this section](#debugging-type-layouts). |
+| `redox_regions` | Dumps NLL closure region requirements. |
+| `redox_symbol_name` | Dumps the mangled & demangled [`symbol_name`] of an item. |
 
 Right below you can find elaborate explainers on a selected few.
 
-[`builtin_attrs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_feature/src/builtin_attrs.rs
-[`def_path_str`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.def_path_str
-[`inferred_outlives_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.inferred_outlives_of
-[`item_bounds`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.item_bounds
-[`predicates_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.predicates_of
-[`symbol_name`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.symbol_name
+[`builtin_attrs`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_feature/src/builtin_attrs.rs
+[`def_path_str`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.def_path_str
+[`inferred_outlives_of`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.inferred_outlives_of
+[`item_bounds`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.item_bounds
+[`predicates_of`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.predicates_of
+[`symbol_name`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.symbol_name
 [object lifetime defaults]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
 [opaq]: ./opaque-types-impl-trait-inference.md
 [variances]: ./variance.md
@@ -302,7 +302,7 @@ Right below you can find elaborate explainers on a selected few.
 [formatting-graphviz-output]: #formatting-graphviz-output
 
 Some compiler options for debugging specific features yield graphviz graphs -
-e.g. the `#[rustc_mir(borrowck_graphviz_postflow="suffix.dot")]` attribute
+e.g. the `#[redox_mir(borrowck_graphviz_postflow="suffix.dot")]` attribute
 on a function dumps various borrow-checker dataflow graphs in conjunction with
 `-Zdump-mir-dataflow`.
 
@@ -316,14 +316,14 @@ $ firefox maybe_init_suffix.pdf # Or your favorite pdf viewer
 
 ### Debugging type layouts
 
-The internal attribute `#[rustc_layout]` can be used to dump the [`Layout`] of
+The internal attribute `#[redox_layout]` can be used to dump the [`Layout`] of
 the type it is attached to.
 For example:
 
 ```rust
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_layout(debug)]
+#[redox_layout(debug)]
 type T<'a> = &'a u32;
 ```
 
@@ -372,10 +372,10 @@ error: layout_of(&'a u32) = Layout {
 error: aborting due to previous error
 ```
 
-[`Layout`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_public/abi/struct.Layout.html
+[`Layout`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_public/abi/struct.Layout.html
 
 
-## Configuring CodeLLDB for debugging `rustc`
+## Configuring CodeLLDB for debugging `redox`
 
 If you are using VSCode, and have edited your `bootstrap.toml` to request debugging
 level 1 or 2 for the parts of the code you're interested in, then you should be
@@ -394,9 +394,9 @@ from the directory where it is built (does not have to be "installed"):
         "request": "launch",
         "name": "Launch",
         "args": [],  // array of string command-line arguments to pass to compiler
-        "program": "${workspaceFolder}/build/host/stage1/bin/rustc",
+        "program": "${workspaceFolder}/build/host/stage1/bin/redox",
         "windows": {  // applicable if using windows
-            "program": "${workspaceFolder}/build/host/stage1/bin/rustc.exe"
+            "program": "${workspaceFolder}/build/host/stage1/bin/redox.exe"
         },
         "cwd": "${workspaceFolder}",  // current working directory at program start
         "stopOnEntry": false,

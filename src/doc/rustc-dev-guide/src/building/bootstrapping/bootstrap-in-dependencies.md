@@ -18,8 +18,8 @@ warning: unexpected `cfg` condition name: `bootstrap`
   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
            [lints.rust]
            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)'] }
-  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(bootstrap)");` to the top of the `build.rs`
-  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+  = help: or consider adding `println!("cargo::redox-check-cfg=cfg(bootstrap)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/redox/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
   = note: `#[warn(unexpected_cfgs)]` on by default
 ```
 

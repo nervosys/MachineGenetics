@@ -140,7 +140,7 @@ case of `enum`s.
 
 [MIR]: ./index.html
 [HIR]: ../hir.html
-[THIR]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/index.html
+[THIR]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_build/thir/index.html
 
-[`rustc_mir_build::thir::cx::expr`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/cx/expr/index.html
-[`mir_built`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.mir_built.html
+[`redox_mir_build::thir::cx::expr`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_build/thir/cx/expr/index.html
+[`mir_built`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/fn.mir_built.html

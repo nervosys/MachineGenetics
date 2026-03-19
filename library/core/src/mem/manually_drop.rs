@@ -157,7 +157,7 @@ use crate::ptr;
 #[lang = "manually_drop"]
 #[derive(Copy, Clone, Debug, Default)]
 #[repr(transparent)]
-#[rustc_pub_transparent]
+#[redox_pub_transparent]
 pub struct ManuallyDrop<T: ?Sized> {
     value: MaybeDangling<T>,
 }
@@ -179,7 +179,7 @@ impl<T> ManuallyDrop<T> {
     /// ```
     #[must_use = "if you don't need the wrapper, you can use `mem::forget` instead"]
     #[stable(feature = "manually_drop", since = "1.20.0")]
-    #[rustc_const_stable(feature = "const_manually_drop", since = "1.32.0")]
+    #[redox_const_stable(feature = "const_manually_drop", since = "1.32.0")]
     #[inline(always)]
     pub const fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value: MaybeDangling::new(value) }
@@ -197,7 +197,7 @@ impl<T> ManuallyDrop<T> {
     /// let _: Box<()> = ManuallyDrop::into_inner(x); // This drops the `Box`.
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
-    #[rustc_const_stable(feature = "const_manually_drop", since = "1.32.0")]
+    #[redox_const_stable(feature = "const_manually_drop", since = "1.32.0")]
     #[inline(always)]
     pub const fn into_inner(slot: ManuallyDrop<T>) -> T {
         // Cannot use `MaybeDangling::into_inner` as that does not yet have the desired semantics.
@@ -222,7 +222,7 @@ impl<T> ManuallyDrop<T> {
     ///
     #[must_use = "if you don't need the value, you can use `ManuallyDrop::drop` instead"]
     #[stable(feature = "manually_drop_take", since = "1.42.0")]
-    #[rustc_const_unstable(feature = "const_manually_drop_take", issue = "148773")]
+    #[redox_const_unstable(feature = "const_manually_drop_take", issue = "148773")]
     #[inline]
     pub const unsafe fn take(slot: &mut ManuallyDrop<T>) -> T {
         // SAFETY: we are reading from a reference, which is guaranteed
@@ -256,7 +256,7 @@ impl<T: ?Sized> ManuallyDrop<T> {
     /// [pinned]: crate::pin
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+    #[redox_const_unstable(feature = "const_drop_in_place", issue = "109342")]
     pub const unsafe fn drop(slot: &mut ManuallyDrop<T>)
     where
         T: [const] Destruct,
@@ -269,7 +269,7 @@ impl<T: ?Sized> ManuallyDrop<T> {
 }
 
 #[stable(feature = "manually_drop", since = "1.20.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const Deref for ManuallyDrop<T> {
     type Target = T;
     #[inline(always)]
@@ -279,7 +279,7 @@ impl<T: ?Sized> const Deref for ManuallyDrop<T> {
 }
 
 #[stable(feature = "manually_drop", since = "1.20.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const DerefMut for ManuallyDrop<T> {
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut T {

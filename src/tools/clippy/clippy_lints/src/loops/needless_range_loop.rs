@@ -4,16 +4,16 @@ use clippy_utils::source::snippet;
 use clippy_utils::ty::has_iter_method;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{SpanlessEq, contains_name, higher, is_integer_const, peel_hir_expr_while, sugg};
-use rustc_ast::ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{BinOpKind, BorrowKind, Closure, Expr, ExprKind, HirId, Mutability, Pat, PatKind, QPath};
-use rustc_lint::LateContext;
-use rustc_middle::middle::region;
-use rustc_middle::ty::{self, Ty};
-use rustc_span::symbol::{Symbol, sym};
+use redox_ast::ast;
+use redox_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::intravisit::{Visitor, walk_expr};
+use redox_hir::{BinOpKind, BorrowKind, Closure, Expr, ExprKind, HirId, Mutability, Pat, PatKind, QPath};
+use redox_lint::LateContext;
+use redox_middle::middle::region;
+use redox_middle::ty::{self, Ty};
+use redox_span::symbol::{Symbol, sym};
 use std::{iter, mem};
 
 /// Checks for looping over a range and then indexing a sequence with it.

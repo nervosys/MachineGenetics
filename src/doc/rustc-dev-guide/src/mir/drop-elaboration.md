@@ -102,7 +102,7 @@ the "drop glue" or "drop shim" for the type of the dropped place. The drop
 glue for a type calls the `Drop` impl for that type (if one exists), and then
 recursively calls the drop glue for all fields of that type.
 
-## Drop elaboration in `rustc`
+## Drop elaboration in `redox`
 
 The approach described above is more expensive than necessary. One can imagine
 a few optimizations:
@@ -114,7 +114,7 @@ a few optimizations:
 - If a set of paths are only dropped or moved from via a shared prefix, those
   paths can share a single drop flag.
 
-A subset of these are implemented in `rustc`.
+A subset of these are implemented in `redox`.
 
 In the compiler, drop elaboration is split across several modules. The pass
 itself is defined [here][drops-transform], but the [main logic][drops] is
@@ -188,6 +188,6 @@ known to be uninitialized) to run these checks.
 
 [RFC 320]: https://rust-lang.github.io/rfcs/0320-nonzeroing-dynamic-drop.html
 [reference-drop]: https://doc.rust-lang.org/reference/destructors.html
-[drops]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_mir_transform/src/elaborate_drops.rs
-[drops-shim]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_mir_transform/src/shim.rs
-[drops-transform]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_mir_transform/src/elaborate_drops.rs
+[drops]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_mir_transform/src/elaborate_drops.rs
+[drops-shim]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_mir_transform/src/shim.rs
+[drops-transform]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_mir_transform/src/elaborate_drops.rs

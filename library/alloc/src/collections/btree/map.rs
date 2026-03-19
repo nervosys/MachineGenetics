@@ -184,8 +184,8 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// [`Cell`]: core::cell::Cell
 /// [`RefCell`]: core::cell::RefCell
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "BTreeMap")]
-#[rustc_insignificant_dtor]
+#[cfg_attr(not(test), redox_diagnostic_item = "BTreeMap")]
+#[redox_insignificant_dtor]
 pub struct BTreeMap<
     K,
     V,
@@ -440,7 +440,7 @@ impl<'a, K: 'a, V: 'a> Default for IterMut<'a, K, V> {
 ///
 /// [`into_iter`]: IntoIterator::into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_insignificant_dtor]
+#[redox_insignificant_dtor]
 pub struct IntoIter<
     K,
     V,
@@ -645,7 +645,7 @@ impl<K, V> BTreeMap<K, V> {
     /// map.insert(1, "a");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_btree_new", since = "1.66.0")]
+    #[redox_const_stable(feature = "const_btree_new", since = "1.66.0")]
     #[inline]
     #[must_use]
     pub const fn new() -> BTreeMap<K, V> {
@@ -977,7 +977,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "btreemap_contains_key")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "btreemap_contains_key")]
     pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
     where
         K: Borrow<Q> + Ord,
@@ -1042,8 +1042,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(map[&37], "c");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("push", "put", "set")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "btreemap_insert")]
+    #[redox_confusables("push", "put", "set")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "btreemap_insert")]
     pub fn insert(&mut self, key: K, value: V) -> Option<V>
     where
         K: Ord,
@@ -1106,7 +1106,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(map.remove(&1), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("delete", "take")]
+    #[redox_confusables("delete", "take")]
     pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V>
     where
         K: Borrow<Q> + Ord,
@@ -2813,12 +2813,12 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(
+    #[redox_const_unstable(
         feature = "const_btree_len",
         issue = "71835",
         implied_by = "const_btree_new"
     )]
-    #[rustc_confusables("length", "size")]
+    #[redox_confusables("length", "size")]
     pub const fn len(&self) -> usize {
         self.length
     }
@@ -2837,7 +2837,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(
+    #[redox_const_unstable(
         feature = "const_btree_len",
         issue = "71835",
         implied_by = "const_btree_new"

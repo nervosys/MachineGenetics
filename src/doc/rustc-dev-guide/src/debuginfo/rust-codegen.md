@@ -1,22 +1,22 @@
 # Rust Codegen
 
 The first phase in debug info generation requires Rust to inspect the MIR of the program and
-communicate it to LLVM. This is primarily done in [`rustc_codegen_llvm/debuginfo`][llvm_di], though
-some type-name processing exists in [`rustc_codegen_ssa/debuginfo`][ssa_di]. Rust communicates to
+communicate it to LLVM. This is primarily done in [`redox_codegen_llvm/debuginfo`][llvm_di], though
+some type-name processing exists in [`redox_codegen_ssa/debuginfo`][ssa_di]. Rust communicates to
 LLVM via the `DIBuilder` API - a thin wrapper around LLVM's internals that exists in
-[rustc_llvm][rustc_llvm].
+[redox_llvm][redox_llvm].
 
-[llvm_di]: https://github.com/rust-lang/rust/tree/main/compiler/rustc_codegen_llvm/src/debuginfo
-[ssa_di]: https://github.com/rust-lang/rust/tree/main/compiler/rustc_codegen_ssa/src/debuginfo
-[rustc_llvm]: https://github.com/rust-lang/rust/tree/main/compiler/rustc_llvm
+[llvm_di]: https://github.com/rust-lang/rust/tree/main/compiler/redox_codegen_llvm/src/debuginfo
+[ssa_di]: https://github.com/rust-lang/rust/tree/main/compiler/redox_codegen_ssa/src/debuginfo
+[redox_llvm]: https://github.com/rust-lang/rust/tree/main/compiler/redox_llvm
 
 # Type Information
 
 Type information typically consists of the type name, size, alignment, as well as things like
 fields, generic parameters, and storage modifiers if they are relevant. Much of this work happens in
-[rustc_codegen_llvm/src/debuginfo/metadata][di_metadata].
+[redox_codegen_llvm/src/debuginfo/metadata][di_metadata].
 
-[di_metadata]: https://github.com/rust-lang/rust/blob/main/compiler/rustc_codegen_llvm/src/debuginfo/metadata.rs
+[di_metadata]: https://github.com/rust-lang/rust/blob/main/compiler/redox_codegen_llvm/src/debuginfo/metadata.rs
 
 It is important to keep in mind that the goal is not necessarily "represent types exactly how they
 appear in Rust", rather it is to represent them in a way that allows debuggers to most accurately
@@ -65,7 +65,7 @@ format of the target. Each format has different semantics and limitations, as su
 slightly different debug info in some cases. This is gated by calls to
 [`cpp_like_debuginfo`][cpp_like].
 
-[cpp_like]: https://github.com/rust-lang/rust/blob/main/compiler/rustc_codegen_ssa/src/debuginfo/type_names.rs#L813
+[cpp_like]: https://github.com/rust-lang/rust/blob/main/compiler/redox_codegen_ssa/src/debuginfo/type_names.rs#L813
 
 ### Naming
 
@@ -120,9 +120,9 @@ not currently output nodes for [type aliases in the source code][type_aliases].
 
 ### Enums
 
-Enum DI nodes are generated in [rustc_codegen_llvm/src/debuginfo/metadata/enums][di_metadata_enums]
+Enum DI nodes are generated in [redox_codegen_llvm/src/debuginfo/metadata/enums][di_metadata_enums]
 
-[di_metadata_enums]: https://github.com/rust-lang/rust/tree/main/compiler/rustc_codegen_llvm/src/debuginfo/metadata/enums
+[di_metadata_enums]: https://github.com/rust-lang/rust/tree/main/compiler/redox_codegen_llvm/src/debuginfo/metadata/enums
 
 #### DWARF
 

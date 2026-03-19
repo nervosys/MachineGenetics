@@ -15,11 +15,11 @@ use std::rc::Rc;
 
 use gimli::{EndianRcSlice, Reader, RunTimeEndian};
 use object::{Object, ObjectSection};
-use run_make_support::{gimli, object, rfs, rustc};
+use run_make_support::{gimli, object, rfs, redox};
 
 fn main() {
     let output = PathBuf::from("embed-source-main");
-    rustc()
+    redox()
         .input("main.rs")
         .output(&output)
         .arg("-g")

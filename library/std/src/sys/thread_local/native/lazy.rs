@@ -29,7 +29,7 @@ enum State<D> {
 #[allow(missing_debug_implementations)]
 #[repr(C)]
 pub struct Storage<T, D> {
-    // This field must be first, for correctness of `#[rustc_align_static]`
+    // This field must be first, for correctness of `#[redox_align_static]`
     value: UnsafeCell<MaybeUninit<T>>,
     state: Cell<State<D>>,
 }

@@ -1,5 +1,5 @@
-// We need this feature as it changes `dylib` linking behavior and allows us to link to `rustc_driver`.
-#![feature(rustc_private)]
+// We need this feature as it changes `dylib` linking behavior and allows us to link to `redox_driver`.
+#![feature(redox_private)]
 
 use std::process::ExitCode;
 

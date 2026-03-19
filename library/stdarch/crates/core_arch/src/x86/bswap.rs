@@ -10,7 +10,7 @@ use stdarch_test::assert_instr;
 #[inline]
 #[cfg_attr(test, assert_instr(bswap))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _bswap(x: i32) -> i32 {
     x.swap_bytes()
 }

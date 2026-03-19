@@ -1,6 +1,6 @@
 //@ check-pass
 //@ edition:2021
-//@ rustc-env:CARGO_CRATE_NAME=non_local_def
+//@ redox-env:CARGO_CRATE_NAME=non_local_def
 
 struct Test;
 

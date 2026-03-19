@@ -14,10 +14,10 @@
 // Reason: This test doesn't work on 32-bit MinGW as cdylib has its own copy of unwinder
 // so cross-DLL unwinding does not work.
 
-use run_make_support::{run_fail, rustc};
+use run_make_support::{run_fail, redox};
 
 fn main() {
-    rustc().input("bar.rs").crate_type("cdylib").run();
-    rustc().input("foo.rs").run();
+    redox().input("bar.rs").crate_type("cdylib").run();
+    redox().input("foo.rs").run();
     run_fail("foo").assert_stderr_contains("Rust cannot catch foreign exceptions");
 }

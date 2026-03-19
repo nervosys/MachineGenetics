@@ -35,7 +35,7 @@ DOCKER_SCRIPT=x86_64-gnu-llvm3.sh ./src/ci/docker/run.sh x86_64-gnu-llvm-21
 
 ## Local Development
 
-Refer to the [dev guide](https://rustc-dev-guide.rust-lang.org/tests/docker.html) for more information on testing locally.
+Refer to the [dev guide](https://redox-dev-guide.rust-lang.org/tests/docker.html) for more information on testing locally.
 
 ## Filesystem layout
 
@@ -175,7 +175,7 @@ For targets: `arm-unknown-linux-gnueabi`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = arm
 - Target options > Architecture level = armv6 -- (+)
 - Target options > Floating point = software (no FPU) -- (\*)
@@ -192,7 +192,7 @@ For targets: `arm-unknown-linux-gnueabihf`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = arm
 - Target options > Architecture level = armv6 -- (+)
 - Target options > Use specific FPU = vfp -- (+)
@@ -211,7 +211,7 @@ For targets: `armv7-unknown-linux-gnueabihf`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = arm
 - Target options > Suffix to the arch-part = v7
 - Target options > Architecture level = armv7-a -- (+)
@@ -256,7 +256,7 @@ For targets: `loongarch64-unknown-linux-gnu`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = loongarch
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
@@ -272,7 +272,7 @@ For targets: `loongarch64-unknown-linux-musl`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = loongarch
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
@@ -288,7 +288,7 @@ For targets: `mips-unknown-linux-gnu`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = mips
 - Target options > ABI = o32
 - Target options > Endianness = Big endian
@@ -308,7 +308,7 @@ For targets: `mipsel-unknown-linux-gnu`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = mips
 - Target options > ABI = o32
 - Target options > Endianness = Little endian
@@ -328,7 +328,7 @@ For targets: `mips64-unknown-linux-gnuabi64`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = mips
 - Target options > ABI = n64
 - Target options > Endianness = Big endian
@@ -347,7 +347,7 @@ For targets: `mips64el-unknown-linux-gnuabi64`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = mips
 - Target options > ABI = n64
 - Target options > Endianness = Little endian
@@ -366,7 +366,7 @@ For targets: `powerpc-unknown-linux-gnu`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = powerpc
 - Target options > Emit assembly for CPU = powerpc -- pure 32-bit PowerPC
 - Operating System > Target OS = linux
@@ -382,7 +382,7 @@ For targets: `powerpc64-unknown-linux-gnu`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = powerpc
 - Target options > Bitness = 64-bit
 - Target options > Emit assembly for CPU = power4 -- (+)
@@ -402,7 +402,7 @@ For targets: `powerpc64-unknown-linux-musl`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = powerpc
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
@@ -418,7 +418,7 @@ For targets: `powerpc64le-unknown-linux-gnu`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = powerpc
 - Target options > Bitness = 64-bit
 - Target options > Endianness = Little endian
@@ -435,7 +435,7 @@ For targets: `powerpc64le-unknown-linux-musl`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = powerpc
 - Target options > Bitness = 64-bit
 - Target options > Endianness = Little endian
@@ -452,7 +452,7 @@ For targets: `riscv64-unknown-linux-gnu`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = riscv
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
@@ -468,7 +468,7 @@ For targets: `s390x-unknown-linux-gnu`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/redox
 - Target options > Target Architecture = s390
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux

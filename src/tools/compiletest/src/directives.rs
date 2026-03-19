@@ -101,10 +101,10 @@ pub(crate) struct TestProps {
     /// Auxiliary crates that should be built and made available to this test.
     pub(crate) aux: AuxProps,
     // Environment settings to use for compiling
-    pub rustc_env: Vec<(String, String)>,
+    pub redox_env: Vec<(String, String)>,
     // Environment variables to unset prior to compiling.
-    // Variables are unset before applying 'rustc_env'.
-    pub unset_rustc_env: Vec<String>,
+    // Variables are unset before applying 'redox_env'.
+    pub unset_redox_env: Vec<String>,
     // Environment settings to use during execution
     pub exec_env: Vec<(String, String)>,
     // Environment variables to unset prior to execution.
@@ -191,7 +191,7 @@ pub(crate) struct TestProps {
     pub stderr_per_bitwidth: bool,
     // The MIR opt to unit test, if any
     pub mir_unit_test: Option<String>,
-    // Whether to tell `rustc` to remap the "src base" directory to a fake
+    // Whether to tell `redox` to remap the "src base" directory to a fake
     // directory.
     pub remap_src_base: bool,
     /// Extra flags to pass to `llvm-cov` when producing coverage reports.
@@ -238,9 +238,9 @@ mod directives {
     pub const PROC_MACRO: &'static str = "proc-macro";
     pub const AUX_CODEGEN_BACKEND: &'static str = "aux-codegen-backend";
     pub const EXEC_ENV: &'static str = "exec-env";
-    pub const RUSTC_ENV: &'static str = "rustc-env";
+    pub const RUSTC_ENV: &'static str = "redox-env";
     pub const UNSET_EXEC_ENV: &'static str = "unset-exec-env";
-    pub const UNSET_RUSTC_ENV: &'static str = "unset-rustc-env";
+    pub const UNSET_RUSTC_ENV: &'static str = "unset-redox-env";
     pub const FORBID_OUTPUT: &'static str = "forbid-output";
     pub const CHECK_TEST_LINE_NUMBERS_MATCH: &'static str = "check-test-line-numbers-match";
     pub const IGNORE_PASS: &'static str = "ignore-pass";
@@ -275,11 +275,11 @@ impl TestProps {
             pp_exact: None,
             aux: Default::default(),
             revisions: vec![],
-            rustc_env: vec![
+            redox_env: vec![
                 ("RUSTC_ICE".to_string(), "0".to_string()),
                 ("RUST_BACKTRACE".to_string(), "short".to_string()),
             ],
-            unset_rustc_env: vec![("RUSTC_LOG_COLOR".to_string())],
+            unset_redox_env: vec![("RUSTC_LOG_COLOR".to_string())],
             exec_env: vec![],
             unset_exec_env: vec![],
             build_aux_docs: false,
@@ -341,7 +341,7 @@ impl TestProps {
     pub fn from_file(testfile: &Utf8Path, revision: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
         props.load_from(testfile, revision, config);
-        props.exec_env.push(("RUSTC".to_string(), config.rustc_path.to_string()));
+        props.exec_env.push(("RUSTC".to_string(), config.redox_path.to_string()));
 
         match (props.pass_mode, props.fail_mode) {
             (None, None) if config.mode == TestMode::Ui => props.fail_mode = Some(FailMode::Check),
@@ -389,7 +389,7 @@ impl TestProps {
             // we don't want to pollute anything with backtrace-files
             // also turn off backtraces in order to save some execution
             // time on the tests; we only need to know IF it crashes
-            self.rustc_env = vec![
+            self.redox_env = vec![
                 ("RUST_BACKTRACE".to_string(), "0".to_string()),
                 ("RUSTC_ICE".to_string(), "0".to_string()),
             ];
@@ -405,7 +405,7 @@ impl TestProps {
 
         if let Some(edition) = self.edition.or(config.edition) {
             // The edition is added at the start, since flags from //@compile-flags must be passed
-            // to rustc last.
+            // to redox last.
             self.compile_flags.insert(0, format!("--edition={edition}"));
         }
     }

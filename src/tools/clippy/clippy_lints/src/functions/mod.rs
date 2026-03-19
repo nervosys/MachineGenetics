@@ -12,14 +12,14 @@ mod too_many_lines;
 use clippy_config::Conf;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::paths::{PathNS, lookup_path_str};
-use rustc_ast::{self as ast, visit};
-use rustc_hir as hir;
-use rustc_hir::intravisit;
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
-use rustc_middle::ty::TyCtxt;
-use rustc_session::{declare_lint_pass, impl_lint_pass};
-use rustc_span::Span;
-use rustc_span::def_id::{DefIdSet, LocalDefId};
+use redox_ast::{self as ast, visit};
+use redox_hir as hir;
+use redox_hir::intravisit;
+use redox_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use redox_middle::ty::TyCtxt;
+use redox_session::{declare_lint_pass, impl_lint_pass};
+use redox_span::Span;
+use redox_span::def_id::{DefIdSet, LocalDefId};
 
 declare_clippy_lint! {
     /// ### What it does

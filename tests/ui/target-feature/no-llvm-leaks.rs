@@ -8,18 +8,18 @@
 //@ build-pass
 #![no_core]
 #![crate_type = "rlib"]
-#![feature(intrinsics, rustc_attrs, no_core, staged_api)]
+#![feature(intrinsics, redox_attrs, no_core, staged_api)]
 #![stable(feature = "test", since = "1.0.0")]
 
 extern crate minicore;
 use minicore::*;
 
 #[stable(feature = "test", since = "1.0.0")]
-#[rustc_const_stable(feature = "test", since = "1.0.0")]
-#[rustc_intrinsic]
+#[redox_const_stable(feature = "test", since = "1.0.0")]
+#[redox_intrinsic]
 const unsafe fn unreachable() -> !;
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! cfg {
     ($($cfg:tt)*) => {};
 }
@@ -41,7 +41,7 @@ macro_rules! assert {
 
 #[cfg(target_arch = "aarch64")]
 fn check_aarch64() {
-    // These checks that the rustc feature name is used, not the LLVM feature.
+    // These checks that the redox feature name is used, not the LLVM feature.
 
     assert!(cfg!(target_feature = "neon"));
     // #[expect(unexpected_cfgs)] except that 32-bit arm actually use fp-armv8
@@ -58,7 +58,7 @@ fn check_aarch64() {
 
 #[cfg(target_arch = "x86_64")]
 fn check_x86_64() {
-    // This checks that the rustc feature name is used, not the LLVM feature.
+    // This checks that the redox feature name is used, not the LLVM feature.
     assert!(cfg!(target_feature = "rdrand"));
     #[expect(unexpected_cfgs)]
     { assert!(cfg!(not(target_feature = "rdrnd"))); }

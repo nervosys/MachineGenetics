@@ -12,14 +12,14 @@
 //@ ignore-cross-compile
 //@ ignore-wasm
 
-use run_make_support::{is_windows_msvc, rustc};
+use run_make_support::{is_windows_msvc, redox};
 
 fn main() {
     // build supporting crate
-    rustc().input("bar.rs").crate_type("rlib").arg("-lbar_cli").run();
+    redox().input("bar.rs").crate_type("rlib").arg("-lbar_cli").run();
 
     // build main crate as staticlib
-    let output = rustc()
+    let output = redox()
         .input("foo.rs")
         .crate_type("staticlib")
         .arg("-lfoo_cli")

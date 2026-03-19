@@ -1,17 +1,17 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::{is_range_full, sym};
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem, QPath};
-use rustc_lint::LateContext;
-use rustc_span::Span;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind, LangItem, QPath};
+use redox_lint::LateContext;
+use redox_span::Span;
 
 use super::CLEAR_WITH_DRAIN;
 
 // Add `String` here when it is added to diagnostic items
-const ACCEPTABLE_TYPES_WITH_ARG: [rustc_span::Symbol; 2] = [sym::Vec, sym::VecDeque];
+const ACCEPTABLE_TYPES_WITH_ARG: [redox_span::Symbol; 2] = [sym::Vec, sym::VecDeque];
 
-const ACCEPTABLE_TYPES_WITHOUT_ARG: [rustc_span::Symbol; 3] = [sym::BinaryHeap, sym::HashMap, sym::HashSet];
+const ACCEPTABLE_TYPES_WITHOUT_ARG: [redox_span::Symbol; 3] = [sym::BinaryHeap, sym::HashMap, sym::HashSet];
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span, arg: Option<&Expr<'_>>) {
     if let Some(arg) = arg {
@@ -26,7 +26,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span
     }
 }
 
-fn match_acceptable_type(cx: &LateContext<'_>, expr: &Expr<'_>, types: &[rustc_span::Symbol]) -> bool {
+fn match_acceptable_type(cx: &LateContext<'_>, expr: &Expr<'_>, types: &[redox_span::Symbol]) -> bool {
     let expr_ty = cx.typeck_results().expr_ty(expr).peel_refs();
     types.iter().any(|&ty| expr_ty.is_diag_item(cx, ty))
     // String type is a lang item but not a diagnostic item for now so we need a separate check

@@ -167,8 +167,8 @@ impl Expr {
     // Implementation is based on
     // - https://doc.rust-lang.org/reference/expressions.html#expression-precedence
     // - https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
-    // - rustc source, including, but not limited to
-    //   - https://github.com/rust-lang/rust/blob/b6852428a8ea9728369b64b9964cad8e258403d3/compiler/rustc_ast/src/util/parser.rs#L296
+    // - redox source, including, but not limited to
+    //   - https://github.com/rust-lang/rust/blob/b6852428a8ea9728369b64b9964cad8e258403d3/compiler/redox_ast/src/util/parser.rs#L296
 
     /// Returns `true` if `self` would need to be wrapped in parentheses given that its parent is `parent`.
     pub fn needs_parens_in(&self, parent: &SyntaxNode) -> bool {

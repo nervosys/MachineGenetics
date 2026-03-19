@@ -7,15 +7,15 @@
 //! Note that `hir_def` is a work in progress, so not all of the above is
 //! actually true.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_parse_format;
+extern crate redox_parse_format;
 
 #[cfg(not(feature = "in-rust-tree"))]
-extern crate ra_ap_rustc_parse_format as rustc_parse_format;
+extern crate ra_ap_redox_parse_format as redox_parse_format;
 
-extern crate ra_ap_rustc_abi as rustc_abi;
+extern crate ra_ap_redox_abi as redox_abi;
 
 pub mod db;
 
@@ -47,7 +47,7 @@ pub mod import_map;
 pub mod visibility;
 
 use intern::{Interned, Symbol};
-pub use rustc_abi as layout;
+pub use redox_abi as layout;
 use thin_vec::ThinVec;
 use triomphe::Arc;
 
@@ -96,7 +96,7 @@ use crate::{
     signatures::{EnumVariants, InactiveEnumVariantCode, VariantFields},
 };
 
-type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
+type FxIndexMap<K, V> = indexmap::IndexMap<K, V, redox_hash::FxBuildHasher>;
 /// A wrapper around three booleans
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub struct FindPathConfig {
@@ -1002,7 +1002,7 @@ pub trait HasModule {
     }
 }
 
-// In theory this impl should work out for us, but rustc thinks it collides with all the other
+// In theory this impl should work out for us, but redox thinks it collides with all the other
 // manual impls that do not have a ModuleId container...
 // impl<N, ItemId, Data> HasModule for ItemId
 // where
@@ -1027,7 +1027,7 @@ where
     }
 }
 
-// Technically this does not overlap with the above, but rustc currently forbids this, hence why we
+// Technically this does not overlap with the above, but redox currently forbids this, hence why we
 // need to write the 3 impls manually instead
 // impl<N, ItemId> HasModule for ItemId
 // where

@@ -2,13 +2,13 @@
 
 //@ pp-exact
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 fn main() {
-    #![rustc_dummy("hi", 1, 2, 1.012, pi = 3.14, bye, name("John"))]
-    #[rustc_dummy = 8]
+    #![redox_dummy("hi", 1, 2, 1.012, pi = 3.14, bye, name("John"))]
+    #[redox_dummy = 8]
     fn f() {}
 
-    #[rustc_dummy(1, 2, 3)]
+    #[redox_dummy(1, 2, 3)]
     fn g() {}
 }

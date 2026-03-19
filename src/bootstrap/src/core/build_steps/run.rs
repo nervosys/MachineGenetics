@@ -160,7 +160,7 @@ impl Step for Miri {
 
         // # Run miri.
         // Running it via `cargo run` as that figures out the right dylib path.
-        // add_rustc_lib_path does not add the path that contains librustc_driver-<...>.so.
+        // add_redox_lib_path does not add the path that contains libredox_driver-<...>.so.
         let mut miri = tool::prepare_tool_cargo(
             builder,
             compilers.build_compiler(),
@@ -171,8 +171,8 @@ impl Step for Miri {
             SourceType::InTree,
             &[],
         );
-        miri.add_rustc_lib_path(builder);
-        miri.arg("--").arg("--target").arg(target.rustc_target_arg());
+        miri.add_redox_lib_path(builder);
+        miri.arg("--").arg("--target").arg(target.redox_target_arg());
 
         // miri tests need to know about the stage sysroot
         miri.arg("--sysroot").arg(miri_sysroot);

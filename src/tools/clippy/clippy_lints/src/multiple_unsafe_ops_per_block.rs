@@ -2,15 +2,15 @@ use clippy_utils::desugar_await;
 use clippy_utils::diagnostics::span_lint_and_then;
 use hir::def::{DefKind, Res};
 use hir::{BlockCheckMode, ExprKind, QPath, UnOp};
-use rustc_ast::{BorrowKind, Mutability};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
-use rustc_hir::intravisit::{Visitor, walk_body, walk_expr};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, TyCtxt, TypeckResults};
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
+use redox_ast::{BorrowKind, Mutability};
+use redox_data_structures::fx::FxHashMap;
+use redox_hir as hir;
+use redox_hir::intravisit::{Visitor, walk_body, walk_expr};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::hir::nested_filter;
+use redox_middle::ty::{self, TyCtxt, TypeckResults};
+use redox_session::declare_lint_pass;
+use redox_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -115,7 +115,7 @@ impl<'tcx> UnsafeExprCollector<'tcx> {
         };
         collector.visit_block(block);
         #[allow(
-            rustc::potential_query_instability,
+            redox::potential_query_instability,
             reason = "span ordering only needed inside the one expression being walked"
         )]
         let mut unsafe_ops = collector

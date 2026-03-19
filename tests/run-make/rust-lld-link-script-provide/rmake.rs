@@ -5,10 +5,10 @@
 //@ needs-rust-lld
 //@ only-x86_64-unknown-linux-gnu
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
-    rustc()
+    redox()
         .input("main.rs")
         .arg("-Clinker-features=+lld")
         .arg("-Clink-self-contained=+linker")

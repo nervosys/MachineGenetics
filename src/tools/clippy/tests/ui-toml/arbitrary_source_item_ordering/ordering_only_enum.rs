@@ -1,6 +1,6 @@
 //@aux-build:../../ui/auxiliary/proc_macros.rs
 //@revisions: only_enum
-//@[only_enum] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/only_enum
+//@[only_enum] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/only_enum
 
 #![allow(dead_code)]
 #![warn(clippy::arbitrary_source_item_ordering)]

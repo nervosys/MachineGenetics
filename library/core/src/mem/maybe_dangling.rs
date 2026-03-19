@@ -67,7 +67,7 @@ use crate::{mem, ptr};
 /// [`as_ref`]: MaybeDangling::as_ref
 /// [`ManuallyDrop`]: crate::mem::ManuallyDrop
 #[repr(transparent)]
-#[rustc_pub_transparent]
+#[redox_pub_transparent]
 #[derive(Debug, Copy, Clone, Default)]
 #[lang = "maybe_dangling"]
 pub struct MaybeDangling<P: ?Sized>(P);

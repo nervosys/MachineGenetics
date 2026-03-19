@@ -20,7 +20,7 @@
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(std_internals)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![panic_runtime]
 #![feature(panic_runtime)]
 #![allow(internal_features)]
@@ -84,15 +84,15 @@ cfg_select! {
 unsafe extern "C" {
     /// Handler in std called when a panic object is dropped outside of
     /// `catch_unwind`.
-    #[rustc_std_internal_symbol]
+    #[redox_std_internal_symbol]
     fn __rust_drop_panic() -> !;
 
     /// Handler in std called when a foreign exception is caught.
-    #[rustc_std_internal_symbol]
+    #[redox_std_internal_symbol]
     fn __rust_foreign_exception() -> !;
 }
 
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 #[allow(improper_ctypes_definitions)]
 pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static) {
     unsafe { Box::into_raw(imp::cleanup(payload)) }
@@ -100,7 +100,7 @@ pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any
 
 // Entry point for raising an exception, just delegates to the platform-specific
 // implementation.
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 pub unsafe fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32 {
     unsafe {
         let payload = Box::from_raw(payload.take_box());

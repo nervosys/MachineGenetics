@@ -7,17 +7,17 @@
 // Reason: this test is specific to linux, considering compilation is targeted
 // towards linux architectures only.
 
-use run_make_support::{assert_count_is, llvm_components_contain, rfs, rustc};
+use run_make_support::{assert_count_is, llvm_components_contain, rfs, redox};
 
 fn main() {
     // Most targets are happy with default alignment -- take i686 for example.
     if llvm_components_contain("x86") {
-        rustc().target("i686-unknown-linux-gnu").emit("llvm-ir").input("min_global_align.rs").run();
+        redox().target("i686-unknown-linux-gnu").emit("llvm-ir").input("min_global_align.rs").run();
         assert_count_is(3, rfs::read_to_string("min_global_align.ll"), "align 1");
     }
     // SystemZ requires even alignment for PC-relative addressing.
     if llvm_components_contain("systemz") {
-        rustc()
+        redox()
             .target("s390x-unknown-linux-gnu")
             .emit("llvm-ir")
             .input("min_global_align.rs")

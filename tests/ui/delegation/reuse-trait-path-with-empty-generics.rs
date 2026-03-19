@@ -1,4 +1,4 @@
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
 

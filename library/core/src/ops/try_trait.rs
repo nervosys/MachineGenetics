@@ -114,7 +114,7 @@ use crate::ops::ControlFlow;
 /// }
 /// ```
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-#[rustc_on_unimplemented(
+#[redox_on_unimplemented(
     on(
         all(from_desugaring = "TryBlock"),
         message = "a `try` block must return `Result` or `Option` \
@@ -129,7 +129,7 @@ use crate::ops::ControlFlow;
 )]
 #[doc(alias = "?")]
 #[lang = "Try"]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[redox_const_unstable(feature = "const_try", issue = "74935")]
 pub const trait Try: [const] FromResidual {
     /// The type of the value produced by `?` when *not* short-circuiting.
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
@@ -224,7 +224,7 @@ pub const trait Try: [const] FromResidual {
 /// Every `Try` type needs to be recreatable from its own associated
 /// `Residual` type, but can also have additional `FromResidual` implementations
 /// to support interconversion with other `Try` types.
-#[rustc_on_unimplemented(
+#[redox_on_unimplemented(
     on(
         all(
             from_desugaring = "QuestionMark",
@@ -304,9 +304,9 @@ pub const trait Try: [const] FromResidual {
         parent_label = "this function should return `Result` or `Option` to accept `?`"
     ),
 )]
-#[rustc_diagnostic_item = "FromResidual"]
+#[redox_diagnostic_item = "FromResidual"]
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[redox_const_unstable(feature = "const_try", issue = "74935")]
 pub const trait FromResidual<R = <Self as Try>::Residual> {
     /// Constructs the type from a compatible `Residual` type.
     ///
@@ -360,7 +360,7 @@ where
 /// and in the other direction,
 /// `<Result<Infallible, E> as Residual<T>>::TryType = Result<T, E>`.
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-#[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
+#[redox_const_unstable(feature = "const_try_residual", issue = "91285")]
 pub const trait Residual<O>: Sized {
     /// The "return" type of this meta-function.
     #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
@@ -373,7 +373,7 @@ pub const trait Residual<O>: Sized {
 /// but importantly not on the contextual type the way it would be if
 /// we called `<_ as FromResidual>::from_residual(r)` directly.
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-#[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
+#[redox_const_unstable(feature = "const_try_residual", issue = "91285")]
 // needs to be `pub` to avoid `private type` errors
 #[expect(unreachable_pub)]
 #[inline] // FIXME: force would be nice, but fails -- see #148915
@@ -403,7 +403,7 @@ pub(crate) struct Wrapped<T, A, F: FnMut(A) -> T> {
     f: F,
     p: PhantomData<(T, A)>,
 }
-#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
+#[redox_const_unstable(feature = "const_never_short_circuit", issue = "none")]
 impl<T, A, F: [const] FnMut(A) -> T + [const] Destruct> const FnOnce<(A,)> for Wrapped<T, A, F> {
     type Output = NeverShortCircuit<T>;
 
@@ -411,7 +411,7 @@ impl<T, A, F: [const] FnMut(A) -> T + [const] Destruct> const FnOnce<(A,)> for W
         self.call_mut(args)
     }
 }
-#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
+#[redox_const_unstable(feature = "const_never_short_circuit", issue = "none")]
 impl<T, A, F: [const] FnMut(A) -> T> const FnMut<(A,)> for Wrapped<T, A, F> {
     extern "rust-call" fn call_mut(&mut self, (args,): (A,)) -> Self::Output {
         NeverShortCircuit((self.f)(args))
@@ -439,7 +439,7 @@ impl<T> NeverShortCircuit<T> {
 
 pub(crate) enum NeverShortCircuitResidual {}
 
-#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
+#[redox_const_unstable(feature = "const_never_short_circuit", issue = "none")]
 impl<T> const Try for NeverShortCircuit<T> {
     type Output = T;
     type Residual = NeverShortCircuitResidual;
@@ -454,14 +454,14 @@ impl<T> const Try for NeverShortCircuit<T> {
         NeverShortCircuit(x)
     }
 }
-#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
+#[redox_const_unstable(feature = "const_never_short_circuit", issue = "none")]
 impl<T> const FromResidual for NeverShortCircuit<T> {
     #[inline]
     fn from_residual(never: NeverShortCircuitResidual) -> Self {
         match never {}
     }
 }
-#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
+#[redox_const_unstable(feature = "const_never_short_circuit", issue = "none")]
 impl<T: [const] Destruct> const Residual<T> for NeverShortCircuitResidual {
     type TryType = NeverShortCircuit<T>;
 }

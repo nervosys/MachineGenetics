@@ -1,30 +1,30 @@
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![deny(warnings)]
 
-extern crate rustc_codegen_ssa;
-extern crate rustc_data_structures;
-extern crate rustc_driver;
-extern crate rustc_errors;
-extern crate rustc_hir;
-extern crate rustc_metadata;
-extern crate rustc_middle;
-extern crate rustc_session;
-extern crate rustc_span;
-extern crate rustc_symbol_mangling;
-extern crate rustc_target;
+extern crate redox_codegen_ssa;
+extern crate redox_data_structures;
+extern crate redox_driver;
+extern crate redox_errors;
+extern crate redox_hir;
+extern crate redox_metadata;
+extern crate redox_middle;
+extern crate redox_session;
+extern crate redox_span;
+extern crate redox_symbol_mangling;
+extern crate redox_target;
 
 use std::any::Any;
 
-use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::{CompiledModules, CrateInfo};
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
-use rustc_session::config::OutputFilenames;
+use redox_codegen_ssa::traits::CodegenBackend;
+use redox_codegen_ssa::{CompiledModules, CrateInfo};
+use redox_data_structures::fx::FxIndexMap;
+use redox_metadata::EncodedMetadata;
+use redox_middle::dep_graph::{WorkProduct, WorkProductId};
+use redox_middle::ty::TyCtxt;
+use redox_session::Session;
+use redox_session::config::OutputFilenames;
 
 struct TheBackend;
 
@@ -63,8 +63,8 @@ impl CodegenBackend for TheBackend {
     ) {
         use std::io::Write;
 
-        use rustc_session::config::{CrateType, OutFileName};
-        use rustc_session::output::out_filename;
+        use redox_session::config::{CrateType, OutFileName};
+        use redox_session::output::out_filename;
 
         let crate_name = crate_info.local_crate_name;
         for &crate_type in sess.opts.crate_types.iter() {
@@ -86,8 +86,8 @@ impl CodegenBackend for TheBackend {
     }
 }
 
-/// This is the entrypoint for a hot plugged rustc_codegen_llvm
+/// This is the entrypoint for a hot plugged redox_codegen_llvm
 #[no_mangle]
-pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
+pub fn __redox_codegen_backend() -> Box<dyn CodegenBackend> {
     Box::new(TheBackend)
 }

@@ -2,7 +2,7 @@
 //!
 //! The function [`delay()`] is removed, as it is not necessary to trigger the
 //! wrong behavior and would require some additional lang items.
-#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, intrinsics, redox_attrs)]
 #![no_core]
 #![no_main]
 #![allow(internal_features)]

@@ -4,14 +4,14 @@ use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{SpanlessEq, get_parent_expr, sym};
-use rustc_ast::LitKind;
-use rustc_errors::Applicability;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{BinOpKind, Closure, Expr, ExprKind, QPath};
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_span::{Span, Symbol};
+use redox_ast::LitKind;
+use redox_errors::Applicability;
+use redox_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use redox_hir::def_id::DefId;
+use redox_hir::{BinOpKind, Closure, Expr, ExprKind, QPath};
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_span::{Span, Symbol};
 
 use super::MANUAL_IS_VARIANT_AND;
 

@@ -4,11 +4,11 @@
 // that have wrapper functions which should be used.
 
 #![crate_type = "lib"]
-#![feature(rustc_private)]
-#![deny(rustc::bad_opt_access)]
+#![feature(redox_private)]
+#![deny(redox::bad_opt_access)]
 
-extern crate rustc_session;
-use rustc_session::Session;
+extern crate redox_session;
+use redox_session::Session;
 
 pub fn access_bad_option(sess: Session) {
     let _ = sess.opts.cg.split_debuginfo;

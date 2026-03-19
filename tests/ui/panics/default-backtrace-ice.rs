@@ -1,9 +1,9 @@
-//@ unset-rustc-env:RUST_BACKTRACE
+//@ unset-redox-env:RUST_BACKTRACE
 //@ compile-flags:-Z treat-err-as-bug=1
 //@ failure-status:101
 //@ ignore-msvc
 //@ normalize-stderr: "note: .*" -> ""
-//@ normalize-stderr: "thread 'rustc' .*" -> ""
+//@ normalize-stderr: "thread 'redox' .*" -> ""
 //@ normalize-stderr: " +\d+:.*__rust_begin_short_backtrace.*" -> "(begin_short_backtrace)"
 //@ normalize-stderr: " +\d+:.*__rust_end_short_backtrace.*" -> "(end_short_backtrace)"
 //@ normalize-stderr: " +\d+:.*\n" -> ""

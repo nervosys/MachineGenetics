@@ -449,7 +449,7 @@ pub trait PermissionsExt {
 
     /// Creates a new instance from the given mode permission bits.
     #[stable(feature = "fs_ext", since = "1.1.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "permissions_from_mode")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "permissions_from_mode")]
     fn from_mode(mode: u32) -> Self;
 }
 

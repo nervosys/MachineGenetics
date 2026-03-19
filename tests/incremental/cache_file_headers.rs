@@ -7,13 +7,13 @@
 
 // The `l33t haxx0r` Rust compiler is known to produce incr. comp. artifacts
 // that are outrageously incompatible with just about anything, even itself:
-//@[rpass1] rustc-env:RUSTC_FORCE_RUSTC_VERSION="l33t haxx0r rustc 2.1 LTS"
+//@[rpass1] redox-env:RUSTC_FORCE_RUSTC_VERSION="l33t haxx0r redox 2.1 LTS"
 
 //@ revisions:rpass1 rpass2
 //@ compile-flags: -Z query-dep-graph
 
-#![feature(rustc_attrs)]
-#![rustc_partition_codegened(module="cache_file_headers", cfg="rpass2")]
+#![feature(redox_attrs)]
+#![redox_partition_codegened(module="cache_file_headers", cfg="rpass2")]
 
 fn main() {
     // empty

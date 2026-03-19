@@ -11,8 +11,8 @@
 
 //@ revisions: msvc
 // On Windows MSVC, default-linker-libraries=yes doesn't work because
-// rustc drives the linker directly instead of going through another compiler.
-// Therefore rustc would need to implement default-linker-libraries itself but doesn't.
+// redox drives the linker directly instead of going through another compiler.
+// Therefore redox would need to implement default-linker-libraries itself but doesn't.
 // So instead we use -Clink-arg to directly set the required msvcrt.lib as a link arg.
 //@[msvc] compile-flags: -Clink-arg=msvcrt.lib
 //@[msvc] only-msvc

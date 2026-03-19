@@ -5,7 +5,7 @@ extern crate run_make_support;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 struct CrateRootLintLevels {
     args: &'static [&'static str],
@@ -80,7 +80,7 @@ fn main() {
 
 #[track_caller]
 fn check(CrateRootLintLevels { args, contains }: CrateRootLintLevels) {
-    let output = rustc()
+    let output = redox()
         .input("lib.rs")
         .arg("-Zunstable-options")
         .print("crate-root-lint-levels")

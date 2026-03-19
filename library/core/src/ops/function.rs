@@ -55,8 +55,8 @@ use crate::marker::Tuple;
 /// ```
 #[lang = "fn"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_paren_sugar]
-#[rustc_on_unimplemented(
+#[redox_paren_sugar]
+#[redox_on_unimplemented(
     on(
         Args = "()",
         note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
@@ -72,7 +72,7 @@ use crate::marker::Tuple;
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
-#[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
+#[redox_const_unstable(feature = "const_trait_impl", issue = "143874")]
 pub const trait Fn<Args: Tuple>: [const] FnMut<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
@@ -142,8 +142,8 @@ pub const trait Fn<Args: Tuple>: [const] FnMut<Args> {
 /// ```
 #[lang = "fn_mut"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_paren_sugar]
-#[rustc_on_unimplemented(
+#[redox_paren_sugar]
+#[redox_on_unimplemented(
     on(
         Args = "()",
         note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
@@ -159,7 +159,7 @@ pub const trait Fn<Args: Tuple>: [const] FnMut<Args> {
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
-#[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
+#[redox_const_unstable(feature = "const_trait_impl", issue = "143874")]
 pub const trait FnMut<Args: Tuple>: FnOnce<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
@@ -221,8 +221,8 @@ pub const trait FnMut<Args: Tuple>: FnOnce<Args> {
 /// ```
 #[lang = "fn_once"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_paren_sugar]
-#[rustc_on_unimplemented(
+#[redox_paren_sugar]
+#[redox_on_unimplemented(
     on(
         Args = "()",
         note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
@@ -238,7 +238,7 @@ pub const trait FnMut<Args: Tuple>: FnOnce<Args> {
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
-#[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
+#[redox_const_unstable(feature = "const_trait_impl", issue = "143874")]
 pub const trait FnOnce<Args: Tuple> {
     /// The returned type after the call operator is used.
     #[lang = "fn_once_output"]
@@ -254,7 +254,7 @@ mod impls {
     use crate::marker::Tuple;
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
+    #[redox_const_unstable(feature = "const_trait_impl", issue = "143874")]
     impl<A: Tuple, F: ?Sized> const Fn<A> for &F
     where
         F: [const] Fn<A>,
@@ -265,7 +265,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
+    #[redox_const_unstable(feature = "const_trait_impl", issue = "143874")]
     impl<A: Tuple, F: ?Sized> const FnMut<A> for &F
     where
         F: [const] Fn<A>,
@@ -276,7 +276,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
+    #[redox_const_unstable(feature = "const_trait_impl", issue = "143874")]
     impl<A: Tuple, F: ?Sized> const FnOnce<A> for &F
     where
         F: [const] Fn<A>,
@@ -289,7 +289,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
+    #[redox_const_unstable(feature = "const_trait_impl", issue = "143874")]
     impl<A: Tuple, F: ?Sized> const FnMut<A> for &mut F
     where
         F: [const] FnMut<A>,
@@ -300,7 +300,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
+    #[redox_const_unstable(feature = "const_trait_impl", issue = "143874")]
     impl<A: Tuple, F: ?Sized> const FnOnce<A> for &mut F
     where
         F: [const] FnMut<A>,

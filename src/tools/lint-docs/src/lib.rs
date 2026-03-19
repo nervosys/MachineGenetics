@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use rustc_literal_escaper::unescape_str;
+use redox_literal_escaper::unescape_str;
 use walkdir::WalkDir;
 
 mod groups;
@@ -15,9 +15,9 @@ mod groups;
 /// format is `(level, [(old_name, new_name), ...])`.
 ///
 /// Note: This hard-coded list is a temporary hack. The intent is in the
-/// future to have `rustc` expose this information in some way (like a `-Z`
+/// future to have `redox` expose this information in some way (like a `-Z`
 /// flag spitting out JSON). Also, this does not yet support changing the
-/// level of the lint, which will be more difficult to support, since rustc
+/// level of the lint, which will be more difficult to support, since redox
 /// currently does not track that historical information.
 static RENAMES: &[(Level, &[(&str, &str)])] = &[
     (
@@ -53,14 +53,14 @@ pub struct LintExtractor<'a> {
     pub src_path: &'a Path,
     /// Path where to save the output.
     pub out_path: &'a Path,
-    /// Path to the `rustc` executable.
-    pub rustc_path: &'a Path,
+    /// Path to the `redox` executable.
+    pub redox_path: &'a Path,
     /// The target arch to build the docs for.
-    pub rustc_target: &'a str,
-    /// The target linker overriding `rustc`'s default
-    pub rustc_linker: Option<&'a str>,
-    /// Stage of the compiler that builds the docs (the stage of `rustc_path`).
-    pub build_rustc_stage: u32,
+    pub redox_target: &'a str,
+    /// The target linker overriding `redox`'s default
+    pub redox_linker: Option<&'a str>,
+    /// Stage of the compiler that builds the docs (the stage of `redox_path`).
+    pub build_redox_stage: u32,
     /// Verbose output.
     pub verbose: bool,
     /// Validate the style and the code example.
@@ -232,14 +232,14 @@ impl<'a> LintExtractor<'a> {
                         } else if let Some(text) =
                             line.strip_prefix("#[cfg_attr(not(bootstrap), doc = \"")
                         {
-                            if self.build_rustc_stage >= 1 {
+                            if self.build_redox_stage >= 1 {
                                 let buf = parse_doc_string(text);
                                 doc_lines.push(buf);
                             }
                         } else if let Some(text) =
                             line.strip_prefix("#[cfg_attr(bootstrap, doc = \"")
                         {
-                            if self.build_rustc_stage == 0 {
+                            if self.build_redox_stage == 0 {
                                 let buf = parse_doc_string(text);
                                 doc_lines.push(buf);
                             }
@@ -285,7 +285,7 @@ impl<'a> LintExtractor<'a> {
                 }
             };
             // These lints are specifically undocumented. This should be reserved
-            // for internal rustc-lints only.
+            // for internal redox-lints only.
             if name == "deprecated_in_future" {
                 continue;
             }
@@ -464,7 +464,7 @@ impl<'a> LintExtractor<'a> {
         }
         fs::write(&tempfile, source)
             .map_err(|e| format!("failed to write {}: {}", tempfile.display(), e))?;
-        let mut cmd = Command::new(self.rustc_path);
+        let mut cmd = Command::new(self.redox_path);
         let edition = options
             .iter()
             .filter_map(|opt| opt.strip_prefix("edition"))
@@ -475,8 +475,8 @@ impl<'a> LintExtractor<'a> {
         // Just in case this is an unstable edition.
         cmd.arg("-Zunstable-options");
         cmd.arg("--error-format=json");
-        cmd.arg("--target").arg(self.rustc_target);
-        if let Some(target_linker) = self.rustc_linker {
+        cmd.arg("--target").arg(self.redox_target);
+        if let Some(target_linker) = self.redox_linker {
             cmd.arg(format!("-Clinker={target_linker}"));
         }
         if options.contains(&"test") {

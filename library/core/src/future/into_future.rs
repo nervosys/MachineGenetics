@@ -99,7 +99,7 @@ use crate::future::Future;
 /// }
 /// ```
 #[stable(feature = "into_future", since = "1.64.0")]
-#[rustc_diagnostic_item = "IntoFuture"]
+#[redox_diagnostic_item = "IntoFuture"]
 #[diagnostic::on_unimplemented(
     label = "`{Self}` is not a future",
     message = "`{Self}` is not a future",

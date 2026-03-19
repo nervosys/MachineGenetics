@@ -5,10 +5,10 @@ use clippy_utils::res::MaybeDef;
 use clippy_utils::ty::implements_trait_with_env;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{fulfill_or_allowed, is_doc_hidden, is_inside_always_const_context, method_chain_args, return_ty};
-use rustc_hir::{BodyId, FnSig, OwnerId, Safety};
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_span::{Span, sym};
+use redox_hir::{BodyId, FnSig, OwnerId, Safety};
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_span::{Span, sym};
 use std::ops::ControlFlow;
 
 pub fn check(

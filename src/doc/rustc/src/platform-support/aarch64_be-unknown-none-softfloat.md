@@ -20,7 +20,7 @@ as kernels, which may need to avoid the use of such registers or which may have
 special considerations about the use of such registers (e.g. saving and
 restoring them to avoid breaking userspace code using the same registers). You
 can change code generation to use additional CPU features via the
-`-C target-feature=` codegen options to rustc, or via the `#[target_feature]`
+`-C target-feature=` codegen options to redox, or via the `#[target_feature]`
 mechanism within Rust code.
 
 By default, code generated with the soft-float target should run on any

@@ -17,7 +17,7 @@ Target triples:
 This target supports all of core, alloc, std and test. This is automatically
 tested every night on private infrastructure hosted by the maintainer. Host
 tools may also work, though it is not guaranteed. Last known success built
-version of rustc with host tools (x86_64) is 1.91.0.
+version of redox with host tools (x86_64) is 1.91.0.
 
 Those targets follow Windows calling convention for extern "C".
 
@@ -43,7 +43,7 @@ similar.
 ## Testing
 
 Created binaries work fine on Windows or Wine using native hardware. Remote
-testing is possible using the `remote-test-server` described [here](https://rustc-dev-guide.rust-lang.org/tests/running.html#running-tests-on-a-remote-machine).
+testing is possible using the `remote-test-server` described [here](https://redox-dev-guide.rust-lang.org/tests/running.html#running-tests-on-a-remote-machine).
 
 ## Cross-compilation toolchains and C code
 

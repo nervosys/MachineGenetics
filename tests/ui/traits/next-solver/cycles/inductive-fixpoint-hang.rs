@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver
-#![feature(rustc_attrs)]
-#![rustc_no_implicit_bounds]
+#![feature(redox_attrs)]
+#![redox_no_implicit_bounds]
 
 // This currently hangs if we do not erase constraints from
 // overflow.

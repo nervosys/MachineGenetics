@@ -14,13 +14,13 @@ use std::io::{BufWriter, Write, stdout};
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use rustc_hir::def_id::{DefId, DefIdSet};
-use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
-use rustc_span::def_id::LOCAL_CRATE;
+use redox_hir::def_id::{DefId, DefIdSet};
+use redox_middle::ty::TyCtxt;
+use redox_session::Session;
+use redox_span::def_id::LOCAL_CRATE;
 use rustdoc_json_types as types;
 // It's important to use the FxHashMap from rustdoc_json_types here, instead of
-// the one from rustc_data_structures, as they're different types due to sysroots.
+// the one from redox_data_structures, as they're different types due to sysroots.
 // See #110051 and #127456 for details
 use rustdoc_json_types::FxHashMap;
 use tracing::{debug, trace};
@@ -84,7 +84,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                         // HACK(hkmatsumoto): For impls of primitive types, we index them
                         // regardless of whether they're local. This is because users can
                         // document primitive items in an arbitrary crate by using
-                        // `rustc_doc_primitive`.
+                        // `redox_doc_primitive`.
                         let mut is_primitive_impl = false;
                         if let clean::types::ItemKind::ImplItem(ref impl_) = item.kind
                             && impl_.trait_.is_none()
@@ -341,7 +341,7 @@ fn serialize_and_write<T: Write>(
 // because we have access to `static_assert_size` here.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use rustc_data_structures::static_assert_size;
+    use redox_data_structures::static_assert_size;
 
     use super::types::*;
     // tidy-alphabetical-start

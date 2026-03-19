@@ -70,9 +70,9 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 /// [null pointer optimization]: crate::option#representation
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(1)]
-#[rustc_nonnull_optimization_guaranteed]
-#[rustc_diagnostic_item = "NonNull"]
+#[redox_layout_scalar_valid_range_start(1)]
+#[redox_nonnull_optimization_guaranteed]
+#[redox_diagnostic_item = "NonNull"]
 pub struct NonNull<T: PointeeSized> {
     // Remember to use `.as_ptr()` instead of `.pointer`, as field projecting to
     // this is banned by <https://github.com/rust-lang/compiler-team/issues/807>.
@@ -96,7 +96,7 @@ impl<T: Sized> NonNull<T> {
     ///
     /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[stable(feature = "nonnull_provenance", since = "1.89.0")]
-    #[rustc_const_stable(feature = "nonnull_provenance", since = "1.89.0")]
+    #[redox_const_stable(feature = "nonnull_provenance", since = "1.89.0")]
     #[must_use]
     #[inline]
     pub const fn without_provenance(addr: NonZero<usize>) -> Self {
@@ -124,7 +124,7 @@ impl<T: Sized> NonNull<T> {
     /// // initializing it first! The pointer is not null but isn't valid either!
     /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[rustc_const_stable(feature = "const_nonnull_dangling", since = "1.36.0")]
+    #[redox_const_stable(feature = "const_nonnull_dangling", since = "1.36.0")]
     #[must_use]
     #[inline]
     pub const fn dangling() -> Self {
@@ -227,7 +227,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// let ptr = unsafe { NonNull::<u32>::new_unchecked(std::ptr::null_mut()) };
     /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[rustc_const_stable(feature = "const_nonnull_new_unchecked", since = "1.25.0")]
+    #[redox_const_stable(feature = "const_nonnull_new_unchecked", since = "1.25.0")]
     #[inline]
     #[track_caller]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
@@ -264,7 +264,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// }
     /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[rustc_const_stable(feature = "const_nonnull_new", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_nonnull_new", since = "1.85.0")]
     #[inline]
     pub const fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
@@ -277,7 +277,7 @@ impl<T: PointeeSized> NonNull<T> {
 
     /// Converts a reference to a `NonNull` pointer.
     #[stable(feature = "non_null_from_ref", since = "1.89.0")]
-    #[rustc_const_stable(feature = "non_null_from_ref", since = "1.89.0")]
+    #[redox_const_stable(feature = "non_null_from_ref", since = "1.89.0")]
     #[inline]
     pub const fn from_ref(r: &T) -> Self {
         // SAFETY: A reference cannot be null.
@@ -286,7 +286,7 @@ impl<T: PointeeSized> NonNull<T> {
 
     /// Converts a mutable reference to a `NonNull` pointer.
     #[stable(feature = "non_null_from_ref", since = "1.89.0")]
-    #[rustc_const_stable(feature = "non_null_from_ref", since = "1.89.0")]
+    #[redox_const_stable(feature = "non_null_from_ref", since = "1.89.0")]
     #[inline]
     pub const fn from_mut(r: &mut T) -> Self {
         // SAFETY: A mutable reference cannot be null.
@@ -394,8 +394,8 @@ impl<T: PointeeSized> NonNull<T> {
     /// assert_eq!(x_value, 2);
     /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[rustc_const_stable(feature = "const_nonnull_as_ptr", since = "1.32.0")]
-    #[rustc_never_returns_null_ptr]
+    #[redox_const_stable(feature = "const_nonnull_as_ptr", since = "1.32.0")]
+    #[redox_never_returns_null_ptr]
     #[must_use]
     #[inline(always)]
     pub const fn as_ptr(self) -> *mut T {
@@ -434,7 +434,7 @@ impl<T: PointeeSized> NonNull<T> {
     ///
     /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[rustc_const_stable(feature = "const_nonnull_as_ref", since = "1.73.0")]
+    #[redox_const_stable(feature = "const_nonnull_as_ref", since = "1.73.0")]
     #[must_use]
     #[inline(always)]
     pub const unsafe fn as_ref<'a>(&self) -> &'a T {
@@ -472,7 +472,7 @@ impl<T: PointeeSized> NonNull<T> {
     ///
     /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[rustc_const_stable(feature = "const_ptr_as_ref", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_ptr_as_ref", since = "1.83.0")]
     #[must_use]
     #[inline(always)]
     pub const unsafe fn as_mut<'a>(&mut self) -> &'a mut T {
@@ -495,7 +495,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// let raw_ptr: *mut i8 = casted_ptr.as_ptr();
     /// ```
     #[stable(feature = "nonnull_cast", since = "1.27.0")]
-    #[rustc_const_stable(feature = "const_nonnull_cast", since = "1.36.0")]
+    #[redox_const_stable(feature = "const_nonnull_cast", since = "1.36.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -571,7 +571,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[redox_const_stable(feature = "non_null_convenience", since = "1.80.0")]
     pub const unsafe fn offset(self, count: isize) -> Self
     where
         T: Sized,
@@ -597,7 +597,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[redox_const_stable(feature = "non_null_convenience", since = "1.80.0")]
     pub const unsafe fn byte_offset(self, count: isize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `offset` and `byte_offset` has
         // the same safety contract.
@@ -647,7 +647,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[redox_const_stable(feature = "non_null_convenience", since = "1.80.0")]
     pub const unsafe fn add(self, count: usize) -> Self
     where
         T: Sized,
@@ -673,7 +673,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[redox_const_stable(feature = "non_null_convenience", since = "1.80.0")]
     pub const unsafe fn byte_add(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `add` and `byte_add` has the same
         // safety contract.
@@ -724,7 +724,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[redox_const_stable(feature = "non_null_convenience", since = "1.80.0")]
     pub const unsafe fn sub(self, count: usize) -> Self
     where
         T: Sized,
@@ -755,7 +755,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[redox_const_stable(feature = "non_null_convenience", since = "1.80.0")]
     pub const unsafe fn byte_sub(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `sub` and `byte_sub` has the same
         // safety contract.
@@ -853,7 +853,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[redox_const_stable(feature = "non_null_convenience", since = "1.80.0")]
     pub const unsafe fn offset_from(self, origin: NonNull<T>) -> isize
     where
         T: Sized,
@@ -874,7 +874,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[redox_const_stable(feature = "non_null_convenience", since = "1.80.0")]
     pub const unsafe fn byte_offset_from<U: ?Sized>(self, origin: NonNull<U>) -> isize {
         // SAFETY: the caller must uphold the safety contract for `byte_offset_from`.
         unsafe { self.as_ptr().byte_offset_from(origin.as_ptr()) }
@@ -944,7 +944,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
-    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
+    #[redox_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
     pub const unsafe fn offset_from_unsigned(self, subtracted: NonNull<T>) -> usize
     where
         T: Sized,
@@ -966,7 +966,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
-    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
+    #[redox_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
     pub const unsafe fn byte_offset_from_unsigned<U: ?Sized>(self, origin: NonNull<U>) -> usize {
         // SAFETY: the caller must uphold the safety contract for `byte_offset_from_unsigned`.
         unsafe { self.as_ptr().byte_offset_from_unsigned(origin.as_ptr()) }
@@ -981,7 +981,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[redox_const_stable(feature = "non_null_convenience", since = "1.80.0")]
     pub const unsafe fn read(self) -> T
     where
         T: Sized,
@@ -1022,7 +1022,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[redox_const_stable(feature = "non_null_convenience", since = "1.80.0")]
     pub const unsafe fn read_unaligned(self) -> T
     where
         T: Sized,
@@ -1042,7 +1042,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     pub const unsafe fn copy_to(self, dest: NonNull<T>, count: usize)
     where
         T: Sized,
@@ -1062,7 +1062,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     pub const unsafe fn copy_to_nonoverlapping(self, dest: NonNull<T>, count: usize)
     where
         T: Sized,
@@ -1082,7 +1082,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     pub const unsafe fn copy_from(self, src: NonNull<T>, count: usize)
     where
         T: Sized,
@@ -1102,7 +1102,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     pub const unsafe fn copy_from_nonoverlapping(self, src: NonNull<T>, count: usize)
     where
         T: Sized,
@@ -1118,7 +1118,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place()
     #[inline(always)]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+    #[redox_const_unstable(feature = "const_drop_in_place", issue = "109342")]
     pub const unsafe fn drop_in_place(self)
     where
         T: [const] Destruct,
@@ -1136,7 +1136,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_ptr_write", since = "1.83.0")]
     pub const unsafe fn write(self, val: T)
     where
         T: Sized,
@@ -1155,7 +1155,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[doc(alias = "memset")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_ptr_write", since = "1.83.0")]
     pub const unsafe fn write_bytes(self, val: u8, count: usize)
     where
         T: Sized,
@@ -1196,7 +1196,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_ptr_write", since = "1.83.0")]
     pub const unsafe fn write_unaligned(self, val: T)
     where
         T: Sized,
@@ -1213,7 +1213,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// [`ptr::replace`]: crate::ptr::replace()
     #[inline(always)]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_inherent_ptr_replace", since = "1.88.0")]
+    #[redox_const_stable(feature = "const_inherent_ptr_replace", since = "1.88.0")]
     pub const unsafe fn replace(self, src: T) -> T
     where
         T: Sized,
@@ -1231,7 +1231,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// [`ptr::swap`]: crate::ptr::swap()
     #[inline(always)]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
+    #[redox_const_stable(feature = "const_swap", since = "1.85.0")]
     pub const unsafe fn swap(self, with: NonNull<T>)
     where
         T: Sized,
@@ -1442,7 +1442,7 @@ impl<T> NonNull<[T]> {
     /// (Note that this example artificially demonstrates a use of this method,
     /// but `let slice = NonNull::from(&x[..]);` would be a better way to write code like this.)
     #[stable(feature = "nonnull_slice_from_raw_parts", since = "1.70.0")]
-    #[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
     #[must_use]
     #[inline]
     pub const fn slice_from_raw_parts(data: NonNull<T>, len: usize) -> Self {
@@ -1466,7 +1466,7 @@ impl<T> NonNull<[T]> {
     /// assert_eq!(slice.len(), 3);
     /// ```
     #[stable(feature = "slice_ptr_len_nonnull", since = "1.63.0")]
-    #[rustc_const_stable(feature = "const_slice_ptr_len_nonnull", since = "1.63.0")]
+    #[redox_const_stable(feature = "const_slice_ptr_len_nonnull", since = "1.63.0")]
     #[must_use]
     #[inline]
     pub const fn len(self) -> usize {
@@ -1484,7 +1484,7 @@ impl<T> NonNull<[T]> {
     /// assert!(!slice.is_empty());
     /// ```
     #[stable(feature = "slice_ptr_is_empty_nonnull", since = "1.79.0")]
-    #[rustc_const_stable(feature = "const_slice_ptr_is_empty_nonnull", since = "1.79.0")]
+    #[redox_const_stable(feature = "const_slice_ptr_is_empty_nonnull", since = "1.79.0")]
     #[must_use]
     #[inline]
     pub const fn is_empty(self) -> bool {
@@ -1523,7 +1523,7 @@ impl<T> NonNull<[T]> {
     #[inline]
     #[must_use]
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
-    #[rustc_never_returns_null_ptr]
+    #[redox_never_returns_null_ptr]
     pub const fn as_mut_ptr(self) -> *mut T {
         self.as_non_null_ptr().as_ptr()
     }
@@ -1659,7 +1659,7 @@ impl<T> NonNull<[T]> {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
-    #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+    #[redox_const_unstable(feature = "const_index", issue = "143775")]
     #[inline]
     pub const unsafe fn get_unchecked_mut<I>(self, index: I) -> NonNull<I::Output>
     where
@@ -1748,7 +1748,7 @@ impl<T: PointeeSized> hash::Hash for NonNull<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: PointeeSized> const From<Unique<T>> for NonNull<T> {
     #[inline]
     fn from(unique: Unique<T>) -> Self {
@@ -1757,7 +1757,7 @@ impl<T: PointeeSized> const From<Unique<T>> for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: PointeeSized> const From<&mut T> for NonNull<T> {
     /// Converts a `&mut T` to a `NonNull<T>`.
     ///
@@ -1769,7 +1769,7 @@ impl<T: PointeeSized> const From<&mut T> for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: PointeeSized> const From<&T> for NonNull<T> {
     /// Converts a `&T` to a `NonNull<T>`.
     ///

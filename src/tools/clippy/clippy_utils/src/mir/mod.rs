@@ -1,13 +1,13 @@
 use std::iter;
 
-use rustc_data_structures::either::Either;
-use rustc_hir::{Expr, HirId};
-use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{
+use redox_data_structures::either::Either;
+use redox_hir::{Expr, HirId};
+use redox_index::bit_set::DenseBitSet;
+use redox_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
+use redox_middle::mir::{
     BasicBlock, Body, InlineAsmOperand, Local, Location, Place, START_BLOCK, StatementKind, TerminatorKind, traversal,
 };
-use rustc_middle::ty::TyCtxt;
+use redox_middle::ty::TyCtxt;
 
 mod possible_borrower;
 pub use possible_borrower::PossibleBorrowerMap;
@@ -179,7 +179,7 @@ pub fn local_assignments(mir: &Body<'_>, local: Local) -> Vec<Location> {
 }
 
 // `is_local_assignment` is based on `is_place_assignment`:
-// https://github.com/rust-lang/rust/blob/b7413511dc85ec01ef4b91785f86614589ac6103/compiler/rustc_middle/src/mir/visit.rs#L1350
+// https://github.com/rust-lang/rust/blob/b7413511dc85ec01ef4b91785f86614589ac6103/compiler/redox_middle/src/mir/visit.rs#L1350
 fn is_local_assignment(mir: &Body<'_>, local: Local, location: Location) -> bool {
     match mir.stmt_at(location) {
         Either::Left(statement) => {

@@ -10,18 +10,18 @@
 //@ ignore-beta
 //@ ignore-stable
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![crate_type = "lib"]
 
-extern crate rustc_errors;
-extern crate rustc_macros;
-extern crate rustc_session;
-extern crate rustc_span;
+extern crate redox_errors;
+extern crate redox_macros;
+extern crate redox_session;
+extern crate redox_span;
 extern crate core;
 
-use rustc_errors::{Applicability, DiagMessage};
-use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::Span;
+use redox_errors::{Applicability, DiagMessage};
+use redox_macros::{Diagnostic, Subdiagnostic};
+use redox_span::Span;
 
 struct NotIntoDiagArg;
 

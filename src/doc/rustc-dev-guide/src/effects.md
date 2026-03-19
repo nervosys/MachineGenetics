@@ -18,9 +18,9 @@ On the other hand, `T: const Tr` bounds do not change meaning across contexts,
 therefore they will result in `HostEffect(T: Tr, const)` being added to
 `predicates_of`, and not `const_conditions`.
 
-[`HostEffectPredicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/predicate/struct.HostEffectPredicate.html
-[`predicates_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.predicates_of
-[`const_conditions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.const_conditions
+[`HostEffectPredicate`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_type_ir/predicate/struct.HostEffectPredicate.html
+[`predicates_of`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.predicates_of
+[`const_conditions`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.const_conditions
 
 ## The `const_conditions` query
 
@@ -105,11 +105,11 @@ Both of these need to consider `const_conditions` when in const contexts.
 In MIR, as part of const checking, `const_conditions` of items that are called
 are revalidated again in [`Checker::revalidate_conditional_constness`].
 
-[`compare_method_predicate_entailment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
-[`compare_type_predicate_entailment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_type_predicate_entailment.html
-[`FnCtxt::enforce_context_effects`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html#method.enforce_context_effects
-[`wfcheck::check_impl`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/wfcheck/fn.check_impl.html
-[`Checker::revalidate_conditional_constness`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/check_consts/check/struct.Checker.html#method.revalidate_conditional_constness
+[`compare_method_predicate_entailment`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
+[`compare_type_predicate_entailment`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_analysis/check/compare_impl_item/fn.compare_type_predicate_entailment.html
+[`FnCtxt::enforce_context_effects`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/fn_ctxt/struct.FnCtxt.html#method.enforce_context_effects
+[`wfcheck::check_impl`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_analysis/check/wfcheck/fn.check_impl.html
+[`Checker::revalidate_conditional_constness`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_const_eval/check_consts/check/struct.Checker.html#method.revalidate_conditional_constness
 
 ## `explicit_implied_const_bounds` on associated types and traits
 
@@ -136,10 +136,10 @@ These bounds are checked in [`compare_impl_item::check_type_bounds`] for HIR
 typeck, [`evaluate_host_effect_from_item_bounds`] in the old solver and
 [`consider_additional_alias_assumptions`] in the new solver.
 
-[`explicit_item_bounds`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.explicit_item_bounds
-[`compare_impl_item::check_type_bounds`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.check_type_bounds.html
-[`evaluate_host_effect_from_item_bounds`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/effects/fn.evaluate_host_effect_from_item_bounds.html
-[`consider_additional_alias_assumptions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_next_trait_solver/solve/assembly/trait.GoalKind.html#tymethod.consider_additional_alias_assumptions
+[`explicit_item_bounds`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html#method.explicit_item_bounds
+[`compare_impl_item::check_type_bounds`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_analysis/check/compare_impl_item/fn.check_type_bounds.html
+[`evaluate_host_effect_from_item_bounds`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/traits/effects/fn.evaluate_host_effect_from_item_bounds.html
+[`consider_additional_alias_assumptions`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_next_trait_solver/solve/assembly/trait.GoalKind.html#tymethod.consider_additional_alias_assumptions
 
 ## Proving `HostEffectPredicate`s
 
@@ -154,14 +154,14 @@ In general, we can prove a `HostEffect` predicate when either of these condition
   are satisfied, or `Destruct` is implemented in const contexts if the type can
   be dropped at compile time.
 
-[old solver]: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_trait_selection/traits/effects.rs.html
-[new trait solver]: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_next_trait_solver/solve/effect_goals.rs.html
+[old solver]: https://doc.rust-lang.org/nightly/nightly-redox/src/redox_trait_selection/traits/effects.rs.html
+[new trait solver]: https://doc.rust-lang.org/nightly/nightly-redox/src/redox_next_trait_solver/solve/effect_goals.rs.html
 
 ## More on const traits
 
 To be expanded later.
 
-### The `#[rustc_non_const_trait_method]` attribute
+### The `#[redox_non_const_trait_method]` attribute
 
 This is intended for internal (standard library) usage only.
 With this attribute applied to a trait method, the compiler will not check the default body of this

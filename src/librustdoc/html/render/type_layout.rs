@@ -1,11 +1,11 @@
 use std::fmt;
 
 use askama::Template;
-use rustc_abi::{Primitive, TagEncoding, Variants};
-use rustc_hir::def_id::DefId;
-use rustc_middle::ty::layout::LayoutError;
-use rustc_middle::{span_bug, ty};
-use rustc_span::symbol::Symbol;
+use redox_abi::{Primitive, TagEncoding, Variants};
+use redox_hir::def_id::DefId;
+use redox_middle::ty::layout::LayoutError;
+use redox_middle::{span_bug, ty};
+use redox_span::symbol::Symbol;
 
 use crate::html::render::Context;
 

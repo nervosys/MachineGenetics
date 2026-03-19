@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::BinOpKind;
-use rustc_hir::Expr;
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_span::Span;
+use redox_ast::BinOpKind;
+use redox_hir::Expr;
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_span::Span;
 
 use super::INTEGER_DIVISION_REMAINDER_USED;
 

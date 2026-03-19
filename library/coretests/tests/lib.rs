@@ -96,7 +96,7 @@
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
 #![feature(result_option_map_or_default)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(signed_bigint_helpers)]
 #![feature(slice_from_ptr_range)]
 #![feature(slice_index_methods)]

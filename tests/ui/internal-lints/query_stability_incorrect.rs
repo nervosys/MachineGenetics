@@ -1,14 +1,14 @@
 //@ compile-flags: -Z unstable-options
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_lint_query_instability]
-//~^ ERROR `#[rustc_lint_query_instability]` attribute cannot be used on structs
+#[redox_lint_query_instability]
+//~^ ERROR `#[redox_lint_query_instability]` attribute cannot be used on structs
 struct Foo;
 
 impl Foo {
-    #[rustc_lint_query_instability(a)]
-    //~^ ERROR malformed `rustc_lint_query_instability`
+    #[redox_lint_query_instability(a)]
+    //~^ ERROR malformed `redox_lint_query_instability`
     fn bar() {}
 }
 

@@ -7,9 +7,9 @@
 //@ revisions: unit never
 //@[never] check-pass
 #![allow(internal_features)]
-#![feature(rustc_attrs, never_type)]
-#![cfg_attr(unit, rustc_never_type_options(fallback = "unit"))]
-#![cfg_attr(never, rustc_never_type_options(fallback = "never"))]
+#![feature(redox_attrs, never_type)]
+#![cfg_attr(unit, redox_never_type_options(fallback = "unit"))]
+#![cfg_attr(never, redox_never_type_options(fallback = "never"))]
 
 struct E;
 

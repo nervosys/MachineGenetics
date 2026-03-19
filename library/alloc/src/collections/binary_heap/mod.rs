@@ -270,7 +270,7 @@ use crate::vec::{self, Vec};
 /// [peek]: BinaryHeap::peek
 /// [peek\_mut]: BinaryHeap::peek_mut
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "BinaryHeap")]
+#[cfg_attr(not(test), redox_diagnostic_item = "BinaryHeap")]
 pub struct BinaryHeap<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
@@ -509,7 +509,7 @@ impl<T> BinaryHeap<T> {
     /// heap.push(4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_binary_heap_constructor", since = "1.80.0")]
+    #[redox_const_stable(feature = "const_binary_heap_constructor", since = "1.80.0")]
     #[must_use]
     pub const fn new() -> BinaryHeap<T> {
         BinaryHeap { data: vec![] }
@@ -743,7 +743,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// occurs when capacity is exhausted and needs a resize. The resize cost
     /// has been amortized in the previous figures.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("append", "put")]
+    #[redox_confusables("append", "put")]
     pub fn push(&mut self, item: T) {
         let old_len = self.len();
         self.data.push(item);
@@ -1096,7 +1096,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "binaryheap_iter")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "binaryheap_iter")]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter { iter: self.data.iter() }
     }
@@ -1408,7 +1408,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("length", "size")]
+    #[redox_confusables("length", "size")]
     pub fn len(&self) -> usize {
         self.data.len()
     }

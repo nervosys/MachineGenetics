@@ -8,11 +8,11 @@
 //@ ignore-cross-compile
 
 use run_make_support::{
-    has_extension, has_prefix, invalid_utf8_contains, llvm_profdata, run, rustc, shallow_find_files,
+    has_extension, has_prefix, invalid_utf8_contains, llvm_profdata, run, redox, shallow_find_files,
 };
 
 fn main() {
-    rustc().profile_generate("profdata").opt().input("foo.rs").output("foo").run();
+    redox().profile_generate("profdata").opt().input("foo.rs").output("foo").run();
     run("foo");
     // The profdata filename is a long sequence of numbers, fetch it by prefix and extension
     // to keep the test working even if the filename changes.
@@ -21,7 +21,7 @@ fn main() {
     });
     let profdata_file = profdata_files.get(0).unwrap();
     llvm_profdata().merge().output("merged.profdata").input(profdata_file).run();
-    rustc()
+    redox()
         .profile_use("merged.profdata")
         .opt()
         .input("foo.rs")

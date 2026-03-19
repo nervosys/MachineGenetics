@@ -84,7 +84,7 @@ $ rustup target add wasm32-unknown-emscripten
 and then compiling with the target:
 
 ```sh
-$ rustc foo.rs --target wasm32-unknown-emscripten
+$ redox foo.rs --target wasm32-unknown-emscripten
 $ file foo.wasm
 ```
 

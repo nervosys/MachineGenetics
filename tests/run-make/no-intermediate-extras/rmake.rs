@@ -7,10 +7,10 @@
 
 use std::fs;
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
-    rustc().crate_type("rlib").arg("--test").input("foo.rs").run();
+    redox().crate_type("rlib").arg("--test").input("foo.rs").run();
     assert!(
         fs::remove_file("foo.bc").is_err(),
         "An unwanted .bc file was created by run-make/no-intermediate-extras."

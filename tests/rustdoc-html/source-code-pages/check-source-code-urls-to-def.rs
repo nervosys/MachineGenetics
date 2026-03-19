@@ -2,7 +2,7 @@
 //@ aux-build:source_code.rs
 //@ build-aux-docs
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 #![crate_name = "foo"]
 
@@ -67,5 +67,5 @@ pub fn foo4() {
 }
 
 //@ has - '//pre[@class="rust"]//a[@href="../../foo/primitive.bool.html"]' 'bool'
-#[rustc_doc_primitive = "bool"]
+#[redox_doc_primitive = "bool"]
 mod whatever {}

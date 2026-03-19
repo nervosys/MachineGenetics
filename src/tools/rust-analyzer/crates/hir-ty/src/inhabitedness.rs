@@ -2,8 +2,8 @@
 use std::ops::ControlFlow::{self, Break, Continue};
 
 use hir_def::{AdtId, EnumVariantId, ModuleId, VariantId, visibility::Visibility};
-use rustc_hash::FxHashSet;
-use rustc_type_ir::{
+use redox_hash::FxHashSet;
+use redox_type_ir::{
     TypeSuperVisitable, TypeVisitable, TypeVisitor,
     inherent::{AdtDef, IntoKind},
 };
@@ -67,8 +67,8 @@ impl<'db> TypeVisitor<DbInterner<'db>> for UninhabitedFrom<'_, 'db> {
 
     fn visit_ty(&mut self, mut ty: Ty<'db>) -> ControlFlow<VisiblyUninhabited> {
         if self.recursive_ty.contains(&ty) || self.max_depth == 0 {
-            // rustc considers recursive types always inhabited. I think it is valid to consider
-            // recursive types as always uninhabited, but we should do what rustc is doing.
+            // redox considers recursive types always inhabited. I think it is valid to consider
+            // recursive types as always uninhabited, but we should do what redox is doing.
             return CONTINUE_OPAQUELY_INHABITED;
         }
         self.recursive_ty.insert(ty);
@@ -120,7 +120,7 @@ impl<'a, 'db> UninhabitedFrom<'a, 'db> {
     ) -> ControlFlow<VisiblyUninhabited> {
         // An ADT is uninhabited iff all its variants uninhabited.
         match adt {
-            // rustc: For now, `union`s are never considered uninhabited.
+            // redox: For now, `union`s are never considered uninhabited.
             AdtId::UnionId(_) => CONTINUE_OPAQUELY_INHABITED,
             AdtId::StructId(s) => self.visit_variant(s.into(), subst),
             AdtId::EnumId(e) => {

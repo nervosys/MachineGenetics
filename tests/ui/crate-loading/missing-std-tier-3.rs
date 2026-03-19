@@ -2,7 +2,7 @@
 
 //@ compile-flags: --target m68k-unknown-linux-gnu
 //@ needs-llvm-components: m68k
-//@ rustc-env:CARGO_CRATE_NAME=foo
+//@ redox-env:CARGO_CRATE_NAME=foo
 //@ ignore-backends: gcc
 #![feature(no_core)]
 #![no_core]

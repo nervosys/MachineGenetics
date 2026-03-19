@@ -3,11 +3,11 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use rustc_ast::util::parser::ExprPrecedence;
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use redox_ast::util::parser::ExprPrecedence;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind, UnOp};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

@@ -6,7 +6,7 @@ use hir_def::{
     EnumId, EnumVariantId, FunctionId, Lookup, TraitId, attrs::AttrFlags, lang_item::LangItems,
 };
 use intern::sym;
-use rustc_abi::TargetDataLayout;
+use redox_abi::TargetDataLayout;
 use span::Edition;
 
 use crate::{
@@ -106,7 +106,7 @@ pub fn is_fn_unsafe_to_call(
             let is_intrinsic_block = block.abi(db) == Some(sym::rust_dash_intrinsic);
             if is_intrinsic_block {
                 // legacy intrinsics
-                // extern "rust-intrinsic" intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
+                // extern "rust-intrinsic" intrinsics are unsafe unless they have the redox_safe_intrinsic attribute
                 if AttrFlags::query(db, func.into()).contains(AttrFlags::RUSTC_SAFE_INTRINSIC) {
                     Unsafety::Safe
                 } else {

@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 
 // test that ordinary fat pointer operations work.
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::sync::atomic;
 use std::sync::atomic::Ordering::SeqCst;

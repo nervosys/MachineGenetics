@@ -5,7 +5,7 @@ use crate::marker::Tuple;
 ///
 /// All `async fn` and functions returning futures implement this trait.
 #[stable(feature = "async_closure", since = "1.85.0")]
-#[rustc_paren_sugar]
+#[redox_paren_sugar]
 #[must_use = "async closures are lazy and do nothing unless called"]
 #[lang = "async_fn"]
 pub trait AsyncFn<Args: Tuple>: AsyncFnMut<Args> {
@@ -18,7 +18,7 @@ pub trait AsyncFn<Args: Tuple>: AsyncFnMut<Args> {
 ///
 /// All `async fn` and functions returning futures implement this trait.
 #[stable(feature = "async_closure", since = "1.85.0")]
-#[rustc_paren_sugar]
+#[redox_paren_sugar]
 #[must_use = "async closures are lazy and do nothing unless called"]
 #[lang = "async_fn_mut"]
 pub trait AsyncFnMut<Args: Tuple>: AsyncFnOnce<Args> {
@@ -38,7 +38,7 @@ pub trait AsyncFnMut<Args: Tuple>: AsyncFnOnce<Args> {
 ///
 /// All `async fn` and functions returning futures implement this trait.
 #[stable(feature = "async_closure", since = "1.85.0")]
-#[rustc_paren_sugar]
+#[redox_paren_sugar]
 #[must_use = "async closures are lazy and do nothing unless called"]
 #[lang = "async_fn_once"]
 pub trait AsyncFnOnce<Args: Tuple> {

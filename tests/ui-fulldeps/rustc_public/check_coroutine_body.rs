@@ -6,25 +6,25 @@
 //@ ignore-remote
 //@ edition: 2024
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
+extern crate redox_driver;
+extern crate redox_interface;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
 use std::io::Write;
 use std::ops::ControlFlow;
 
-use rustc_public::mir::Body;
-use rustc_public::ty::{RigidTy, TyKind};
+use redox_public::mir::Body;
+use redox_public::ty::{RigidTy, TyKind};
 
 const CRATE_NAME: &str = "crate_coroutine_body";
 
 fn test_coroutine_body() -> ControlFlow<()> {
-    let crate_items = rustc_public::all_local_items();
+    let crate_items = redox_public::all_local_items();
     if let Some(body) = crate_items.iter().find_map(|item| {
         let item_ty = item.ty();
         if let TyKind::RigidTy(RigidTy::Coroutine(def, ..)) = &item_ty.kind() {
@@ -69,7 +69,7 @@ fn main() {
     let path = "coroutine_body.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "-Cpanic=abort".to_string(),
         "--edition".to_string(),
         "2024".to_string(),

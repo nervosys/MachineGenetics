@@ -27,7 +27,7 @@ pub(crate) fn handle_failed_output(
     std::process::exit(1)
 }
 
-/// Set the runtime library paths as needed for running the host compilers (rustc/rustdoc/etc).
+/// Set the runtime library paths as needed for running the host compilers (redox/rustdoc/etc).
 pub(crate) fn set_host_compiler_dylib_path(cmd: &mut Command) {
     let ld_lib_path_envvar = env_var("LD_LIB_PATH_ENVVAR");
     cmd.env(&ld_lib_path_envvar, {

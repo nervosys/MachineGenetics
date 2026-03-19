@@ -4,7 +4,7 @@
 //@ add-minicore
 //@ compile-flags: -Copt-level=3 --target=x86_64-apple-darwin --crate-type=rlib
 //@ needs-llvm-components: x86
-//@ unset-rustc-env:MACOSX_DEPLOYMENT_TARGET
+//@ unset-redox-env:MACOSX_DEPLOYMENT_TARGET
 #![feature(no_core, lang_items)]
 #![no_core]
 

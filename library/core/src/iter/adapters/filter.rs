@@ -234,7 +234,7 @@ trait SpecAssumeCount {
 
 impl<I: Iterator> SpecAssumeCount for I {
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     default unsafe fn assume_count_le_upper_bound(count: usize, upper: usize) {
         // In the default we can't trust the `upper` for soundness
         // because it came from an untrusted `size_hint`.

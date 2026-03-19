@@ -4,20 +4,20 @@ use std::time::Duration;
 use std::{cmp, iter};
 
 use rand::RngCore;
-use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
-use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
-use rustc_hir::Safety;
-use rustc_hir::def::{DefKind, Namespace};
-use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::middle::dependency_format::Linkage;
-use rustc_middle::middle::exported_symbols::ExportedSymbol;
-use rustc_middle::ty::layout::{LayoutOf, MaybeResult, TyAndLayout};
-use rustc_middle::ty::{self, IntTy, Ty, TyCtxt, UintTy};
-use rustc_session::config::CrateType;
-use rustc_span::{Span, Symbol};
-use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::spec::Os;
+use redox_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
+use redox_data_structures::fx::{FxBuildHasher, FxHashSet};
+use redox_hir::Safety;
+use redox_hir::def::{DefKind, Namespace};
+use redox_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
+use redox_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use redox_middle::middle::dependency_format::Linkage;
+use redox_middle::middle::exported_symbols::ExportedSymbol;
+use redox_middle::ty::layout::{LayoutOf, MaybeResult, TyAndLayout};
+use redox_middle::ty::{self, IntTy, Ty, TyCtxt, UintTy};
+use redox_session::config::CrateType;
+use redox_span::{Span, Symbol};
+use redox_symbol_mangling::mangle_internal_symbol;
+use redox_target::spec::Os;
 
 use crate::*;
 
@@ -1113,13 +1113,13 @@ impl ToU64 for usize {
 }
 
 /// Enters a [tracing::info_span] only if the "tracing" feature is enabled, otherwise does nothing.
-/// This calls [rustc_const_eval::enter_trace_span] with [MiriMachine] as the first argument, which
+/// This calls [redox_const_eval::enter_trace_span] with [MiriMachine] as the first argument, which
 /// will in turn call [MiriMachine::enter_trace_span], which takes care of determining at compile
 /// time whether to trace or not (and supposedly the call is compiled out if tracing is disabled).
-/// Look at [rustc_const_eval::enter_trace_span] for complete documentation, examples and tips.
+/// Look at [redox_const_eval::enter_trace_span] for complete documentation, examples and tips.
 #[macro_export]
 macro_rules! enter_trace_span {
     ($($tt:tt)*) => {
-        rustc_const_eval::enter_trace_span!($crate::MiriMachine<'static>, $($tt)*)
+        redox_const_eval::enter_trace_span!($crate::MiriMachine<'static>, $($tt)*)
     };
 }

@@ -3,7 +3,7 @@
 #![allow(unused, clippy::duplicated_attributes)]
 #![warn(clippy::useless_attribute)]
 #![warn(unreachable_pub)]
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 #[allow(dead_code)]
 //~^ useless_attribute
@@ -145,7 +145,7 @@ pub mod unknown_namespace {
     pub mod some_module {
         pub struct SomeType;
     }
-    #[allow(rustc::non_glob_import_of_type_ir_inherent)]
+    #[allow(redox::non_glob_import_of_type_ir_inherent)]
     use some_module::SomeType;
 }
 

@@ -7,7 +7,7 @@ opaque types when defining their hidden types
 These restrictions are implemented in borrow checking ([Source][source-borrowck-opaque])
 as it is the final step opaque types inference.
 
-[source-borrowck-opaque]: https://github.com/rust-lang/rust/blob/435b5255148617128f0a9b17bacd3cc10e032b23/compiler/rustc_borrowck/src/region_infer/opaque_types.rs
+[source-borrowck-opaque]: https://github.com/rust-lang/rust/blob/435b5255148617128f0a9b17bacd3cc10e032b23/compiler/redox_borrowck/src/region_infer/opaque_types.rs
 
 ## Background: type and const generic arguments
 For type arguments, two restrictions are necessary: each type argument must be
@@ -178,7 +178,7 @@ When the opaque type is defined in a closure/coroutine/inline-const body, univer
 are "external" to the closure are not allowed in the opaque type arguments.
 External regions are defined in [`RegionClassification::External`][source-external-region]
 
-[source-external-region]: https://github.com/rust-lang/rust/blob/caf730043232affb6b10d1393895998cb4968520/compiler/rustc_borrowck/src/universal_regions.rs#L201.
+[source-external-region]: https://github.com/rust-lang/rust/blob/caf730043232affb6b10d1393895998cb4968520/compiler/redox_borrowck/src/universal_regions.rs#L201.
 
 Example: (This one happens to compile in the current nightly but more practical examples are
 already rejected with confusing errors.)
@@ -240,7 +240,7 @@ and async blocks that further demonstrates this issue and is attributed to the
 [hack of `replace_opaque_types_with_inference_vars`][source-replace-opaques],
 which is applied to futures only.
 
-[source-replace-opaques]: https://github.com/rust-lang/rust/blob/9cf18e98f82d85fa41141391d54485b8747da46f/compiler/rustc_hir_typeck/src/closure.rs#L743
+[source-replace-opaques]: https://github.com/rust-lang/rust/blob/9cf18e98f82d85fa41141391d54485b8747da46f/compiler/redox_hir_typeck/src/closure.rs#L743
 
 ```rust
 type Opaque<'x> = impl Sized + 'x;

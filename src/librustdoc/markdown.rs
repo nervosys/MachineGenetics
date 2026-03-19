@@ -13,7 +13,7 @@ use std::fs::{File, create_dir_all, read_to_string};
 use std::io::prelude::*;
 use std::path::Path;
 
-use rustc_span::edition::Edition;
+use redox_span::edition::Edition;
 
 use crate::config::RenderOptions;
 use crate::html::escape::Escape;

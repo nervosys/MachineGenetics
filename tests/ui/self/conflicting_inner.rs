@@ -2,7 +2,7 @@
 //@ revisions: default feature
 #![cfg_attr(feature, feature(arbitrary_self_types))]
 
-// This test aims to be like the IndexVec within rustc, and conflicts
+// This test aims to be like the IndexVec within redox, and conflicts
 // over its into_iter().
 
 #[allow(dead_code)]

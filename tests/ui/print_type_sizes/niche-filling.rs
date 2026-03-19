@@ -15,14 +15,14 @@
 //  ^-- needed because `--pass check` does not emit the output needed.
 //      FIXME: consider using an attribute instead of side-effects.
 #![allow(dead_code)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::num::NonZero;
 
 pub enum MyOption<T> { None, Some(T) }
 
-#[rustc_layout_scalar_valid_range_start(0)]
-#[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
+#[redox_layout_scalar_valid_range_start(0)]
+#[redox_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
 pub struct MyNotNegativeOne {
   _i: i32,
 }

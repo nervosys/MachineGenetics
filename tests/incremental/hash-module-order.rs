@@ -10,17 +10,17 @@
 // a proc-macro (e.g. producing the module via `quote!`)
 // but we use `-Z incremental-ignore-spans` for simplicity
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 #[cfg(rpass1)]
-#[rustc_clean(cfg="rpass1",except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="rpass1",except="opt_hir_owner_nodes")]
 mod foo {
     struct First;
     struct Second;
 }
 
 #[cfg(rpass2)]
-#[rustc_clean(cfg="rpass2",except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="rpass2",except="opt_hir_owner_nodes")]
 mod foo {
     struct Second;
     struct First;

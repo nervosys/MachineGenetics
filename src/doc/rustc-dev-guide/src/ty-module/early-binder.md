@@ -12,7 +12,7 @@ fn main() {
 
 When type checking `main` we cannot just naively look at the return type of `foo` and assign the type `T` to the variable `c`, The function `main` does not define any generic parameters, `T` is completely meaningless in this context. More generally whenever an item introduces (binds) generic parameters, when accessing types inside the item from outside, the generic parameters must be instantiated with values from the outer item.
 
-In rustc we track this via the [`EarlyBinder`] type, the return type of `foo` is represented as an `EarlyBinder<Ty>` with the only way to access `Ty` being to provide arguments for any generic parameters `Ty` might be using. This is implemented via the [`EarlyBinder::instantiate`] method which discharges the binder returning the inner value with all the generic parameters replaced by the provided arguments.
+In redox we track this via the [`EarlyBinder`] type, the return type of `foo` is represented as an `EarlyBinder<Ty>` with the only way to access `Ty` being to provide arguments for any generic parameters `Ty` might be using. This is implemented via the [`EarlyBinder::instantiate`] method which discharges the binder returning the inner value with all the generic parameters replaced by the provided arguments.
 
 To go back to our example, when type checking `main` the return type of `foo` would be represented as `EarlyBinder(T/#0)`. Then, because we called the function with `i32, u128` for the generic arguments, we would call `EarlyBinder::instantiate` on the return type with `[i32, u128]` for the args. This would result in an instantiated return type of `i32` that we can use as the type of the local `c`.
 
@@ -52,10 +52,10 @@ example, if the index is out of bounds or the index of a lifetime corresponds to
 These sorts of errors are caught earlier in the compiler during name resolution where we disallow references
 to generics parameters introduced by items that should not be nameable by the inner item. 
 
-[`FieldDef::ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.FieldDef.html#method.ty
-[field_def_ty_src]: https://github.com/rust-lang/rust/blob/44d679b9021f03a79133021b94e6d23e9b55b3ab/compiler/rustc_middle/src/ty/mod.rs#L1421-L1426
-[`EarlyBinder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.EarlyBinder.html
-[`EarlyBinder::instantiate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.EarlyBinder.html#method.instantiate
+[`FieldDef::ty`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.FieldDef.html#method.ty
+[field_def_ty_src]: https://github.com/rust-lang/rust/blob/44d679b9021f03a79133021b94e6d23e9b55b3ab/compiler/redox_middle/src/ty/mod.rs#L1421-L1426
+[`EarlyBinder`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.EarlyBinder.html
+[`EarlyBinder::instantiate`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.EarlyBinder.html#method.instantiate
 
 ---
 
@@ -72,5 +72,5 @@ When constructing a `Ty` to represent the `b` parameter's type we need to get th
 
 The `EarlyBinder` type provides an [`instantiate_identity`] function for discharging the binder when you are "already inside of it". This is effectively a more performant version of writing `EarlyBinder::instantiate(GenericArgs::identity_for_item(..))`. Conceptually this discharges the binder by instantiating it with placeholders in the root universe (we will talk about what this means in the next few chapters). In practice though it simply returns the inner value with no modification taking place.
 
-[`type_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.type_of
-[`instantiate_identity`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.EarlyBinder.html#method.instantiate_identity
+[`type_of`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html#method.type_of
+[`instantiate_identity`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/type.EarlyBinder.html#method.instantiate_identity

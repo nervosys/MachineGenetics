@@ -235,11 +235,11 @@ impl GlobalState {
                     message.push_str(err);
                     message.push_str("\n\n");
                 }
-                if let ProjectWorkspaceKind::Cargo { rustc: Err(Some(err)), .. } = &ws.kind {
+                if let ProjectWorkspaceKind::Cargo { redox: Err(Some(err)), .. } = &ws.kind {
                     status.health |= lsp_ext::Health::Warning;
                     format_to!(
                         message,
-                        "Failed loading rustc_private crates for workspace `{}`: ",
+                        "Failed loading redox_private crates for workspace `{}`: ",
                         ws.manifest_or_root()
                     );
                     message.push_str(err);

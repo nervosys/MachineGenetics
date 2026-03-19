@@ -16,13 +16,13 @@
 //[sparc_feature_v8plus,sparc_cpu_v9_feature_v8plus]~? NOTE this feature is not stably supported; its behavior can change in the future
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items)]
+#![feature(no_core, redox_attrs, lang_items)]
 #![no_core]
 
 extern crate minicore;
 use minicore::*;
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! compile_error {
     () => {};
 }

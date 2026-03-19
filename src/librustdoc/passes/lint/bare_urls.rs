@@ -6,10 +6,10 @@ use std::mem;
 use std::sync::LazyLock;
 
 use regex::Regex;
-use rustc_errors::{Applicability, DiagDecorator};
-use rustc_hir::HirId;
-use rustc_resolve::rustdoc::pulldown_cmark::{Event, Parser, Tag};
-use rustc_resolve::rustdoc::source_span_for_markdown_range;
+use redox_errors::{Applicability, DiagDecorator};
+use redox_hir::HirId;
+use redox_resolve::rustdoc::pulldown_cmark::{Event, Parser, Tag};
+use redox_resolve::rustdoc::source_span_for_markdown_range;
 use tracing::trace;
 
 use crate::clean::*;

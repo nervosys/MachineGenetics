@@ -2,7 +2,7 @@
 //@ compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicitly enabled)
 
-// Regression test for an ICE when trying to bootstrap rustc
+// Regression test for an ICE when trying to bootstrap redox
 // with #125343. An ambiguous goal returned a `TypeOutlives`
 // constraint referencing an inference variable. This inference
 // variable was created inside of the goal, causing it to be

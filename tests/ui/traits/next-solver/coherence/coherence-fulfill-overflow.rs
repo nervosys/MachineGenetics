@@ -1,7 +1,7 @@
 //@ compile-flags: -Znext-solver=coherence
 
-#![feature(rustc_attrs)]
-#![rustc_no_implicit_bounds]
+#![feature(redox_attrs)]
+#![redox_no_implicit_bounds]
 #![recursion_limit = "10"]
 
 trait Trait {}

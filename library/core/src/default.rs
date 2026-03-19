@@ -101,9 +101,9 @@ use crate::ascii::Char as AsciiChar;
 ///     bar: f32,
 /// }
 /// ```
-#[rustc_diagnostic_item = "Default"]
+#[redox_diagnostic_item = "Default"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 pub const trait Default: Sized {
     /// Returns the "default value" for a type.
     ///
@@ -135,12 +135,12 @@ pub const trait Default: Sized {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "default_fn"]
+    #[redox_diagnostic_item = "default_fn"]
     fn default() -> Self;
 }
 
 /// Derive macro generating an impl of the trait `Default`.
-#[rustc_builtin_macro(Default, attributes(default))]
+#[redox_builtin_macro(Default, attributes(default))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics)]
 pub macro Default($item:item) {
@@ -150,7 +150,7 @@ pub macro Default($item:item) {
 macro_rules! default_impl {
     ($t:ty, $v:expr, $doc:tt) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_default", issue = "143894")]
+        #[redox_const_unstable(feature = "const_default", issue = "143894")]
         impl const Default for $t {
             #[inline(always)]
             #[doc = $doc]

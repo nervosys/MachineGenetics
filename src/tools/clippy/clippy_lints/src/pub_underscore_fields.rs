@@ -3,9 +3,9 @@ use clippy_config::types::PubUnderscoreFieldsBehaviour;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
-use rustc_hir::{FieldDef, Item, ItemKind, LangItem};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use redox_hir::{FieldDef, Item, ItemKind, LangItem};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

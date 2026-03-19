@@ -12,7 +12,7 @@ Notably, there isn't always a clean ordering between these tasks.
 For example, macro expansion relies on name resolution to resolve the names of macros and imports.
 And parsing requires macro expansion, which in turn may require parsing the output of the macro.
 
-[AST]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
+[AST]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/index.html
 [macro expansion]: ./macro-expansion.md
 [feature-gate checking]: ./feature-gate-check.md
 [lexing, parsing]: ./the-parser.md

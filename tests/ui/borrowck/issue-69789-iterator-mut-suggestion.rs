@@ -1,4 +1,4 @@
-// Regression test for #69789: rustc generated an invalid suggestion
+// Regression test for #69789: redox generated an invalid suggestion
 // when `&` reference from `&mut` iterator is mutated.
 
 fn main() {

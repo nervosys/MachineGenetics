@@ -1,11 +1,11 @@
 use crate::internal_paths;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{is_lint_allowed, method_calls, sym};
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_lint_defs::declare_tool_lint;
-use rustc_session::declare_lint_pass;
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_lint::{LateContext, LateLintPass};
+use redox_lint_defs::declare_tool_lint;
+use redox_session::declare_lint_pass;
 
 declare_tool_lint! {
     /// ### What it does

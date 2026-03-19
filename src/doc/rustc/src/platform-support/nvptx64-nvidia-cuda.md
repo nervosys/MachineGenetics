@@ -37,7 +37,7 @@ While the compiler accepts `#[target_feature(enable = "ptx80", enable = "sm_89")
 A `no_std` crate containing one or more functions with `extern "ptx-kernel"` can be compiled to PTX using a command like the following.
 
 ```console
-$ RUSTFLAGS='-Ctarget-cpu=sm_89' cargo +nightly rustc --target=nvptx64-nvidia-cuda -Zbuild-std=core --crate-type=cdylib
+$ RUSTFLAGS='-Ctarget-cpu=sm_89' cargo +nightly redox --target=nvptx64-nvidia-cuda -Zbuild-std=core --crate-type=cdylib
 ```
 
 Intrinsics in `core::arch::nvptx` may use `#[cfg(target_feature = "...")]`, thus it's necessary to use `-Zbuild-std=core` with appropriate `RUSTFLAGS`. The following components are needed for this workflow:

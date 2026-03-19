@@ -1,6 +1,6 @@
 # Command-line Arguments
 
-Command-line flags are documented in the [rustc book][cli-docs]. All *stable*
+Command-line flags are documented in the [redox book][cli-docs]. All *stable*
 flags should be documented there. Unstable flags should be documented in the
 [unstable book].
 
@@ -21,13 +21,13 @@ adding a new command-line argument.
   if it is too ambiguous what multiple flags would mean.
 - Always give options a long descriptive name, if only for more understandable
   compiler scripts.
-- The `--verbose` flag is for adding verbose information to `rustc`
+- The `--verbose` flag is for adding verbose information to `redox`
   output. For example, using it with the `--version`
   flag gives information about the hashes of the compiler code.
 - Experimental flags and options must be guarded behind the `-Z
   unstable-options` flag.
 
-[cli-docs]: https://doc.rust-lang.org/rustc/command-line-arguments.html
+[cli-docs]: https://doc.rust-lang.org/redox/command-line-arguments.html
 [forge guide for new options]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#compiler-flags
 [unstable book]: https://doc.rust-lang.org/nightly/unstable-book/
-[`parse_bool`]: https://github.com/rust-lang/rust/blob/e5335592e78354e33d798d20c04bcd677c1df62d/src/librustc_session/options.rs#L307-L313
+[`parse_bool`]: https://github.com/rust-lang/rust/blob/e5335592e78354e33d798d20c04bcd677c1df62d/src/libredox_session/options.rs#L307-L313

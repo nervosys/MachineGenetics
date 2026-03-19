@@ -2,7 +2,7 @@
 //@ compile-flags:-Zverbose-internals
 
 #![allow(warnings)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::fmt::Debug;
 
@@ -12,7 +12,7 @@ fn with_signature<'a, T, F>(x: Box<T>, op: F) -> Box<dyn Debug + 'a>
     op(x)
 }
 
-#[rustc_regions]
+#[redox_regions]
 fn no_region<'a, T>(x: Box<T>) -> Box<dyn Debug + 'a>
 where
     T: Debug,

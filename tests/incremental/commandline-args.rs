@@ -4,11 +4,11 @@
 //@ revisions:rpass1 rpass2 rpass3 rpass4
 //@ compile-flags: -Z query-dep-graph
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#![rustc_partition_codegened(module="commandline_args", cfg="rpass2")]
-#![rustc_partition_reused(module="commandline_args", cfg="rpass3")]
-#![rustc_partition_codegened(module="commandline_args", cfg="rpass4")]
+#![redox_partition_codegened(module="commandline_args", cfg="rpass2")]
+#![redox_partition_reused(module="commandline_args", cfg="rpass3")]
+#![redox_partition_codegened(module="commandline_args", cfg="rpass4")]
 
 // Between revisions 1 and 2, we are changing the debuginfo-level, which should
 // invalidate the cache. Between revisions 2 and 3, we are adding `--diagnostic-width`

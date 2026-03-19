@@ -3,7 +3,7 @@
 //@ compile-flags: --crate-type=rlib --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx900
 //@ needs-llvm-components: amdgpu
 //@ add-minicore
-#![feature(intrinsics, no_core, rustc_attrs)]
+#![feature(intrinsics, no_core, redox_attrs)]
 #![no_core]
 
 extern crate minicore;
@@ -14,8 +14,8 @@ pub struct DispatchPacket {
     pub workgroup_size_x: u16, // and more
 }
 
-#[rustc_intrinsic]
-#[rustc_nounwind]
+#[redox_intrinsic]
+#[redox_nounwind]
 fn amdgpu_dispatch_ptr() -> *const ();
 
 // CHECK-LABEL: @get_dispatch_data

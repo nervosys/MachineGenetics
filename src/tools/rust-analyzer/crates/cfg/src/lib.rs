@@ -1,9 +1,9 @@
 //! cfg defines conditional compiling options, `cfg` attribute parser and evaluator
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
 mod cfg_expr;
 mod dnf;
@@ -12,7 +12,7 @@ mod tests;
 
 use std::fmt;
 
-use rustc_hash::FxHashSet;
+use redox_hash::FxHashSet;
 
 use intern::{Symbol, sym};
 

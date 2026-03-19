@@ -3,8 +3,8 @@
 ## Testing the dependency graph
 
 There are various ways to write tests against the dependency graph.  The
-simplest mechanisms are the `#[rustc_if_this_changed]` and
-`#[rustc_then_this_would_need]` annotations. These are used in [ui] tests to test
+simplest mechanisms are the `#[redox_if_this_changed]` and
+`#[redox_then_this_would_need]` annotations. These are used in [ui] tests to test
 whether the expected set of paths exist in the dependency graph.
 
 [`tests/ui/dep-graph/dep-graph-caller-callee.rs`]: https://github.com/rust-lang/rust/blob/HEAD/tests/ui/dep-graph/dep-graph-caller-callee.rs
@@ -14,10 +14,10 @@ As an example, see [`tests/ui/dep-graph/dep-graph-caller-callee.rs`], or the
 tests below.
 
 ```rust,ignore
-#[rustc_if_this_changed]
+#[redox_if_this_changed]
 fn foo() { }
 
-#[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
+#[redox_then_this_would_need(TypeckTables)] //~ ERROR OK
 fn bar() { foo(); }
 ```
 
@@ -30,7 +30,7 @@ stderr, associated to this line.
 You could also add the lines
 
 ```rust,ignore
-#[rustc_then_this_would_need(TypeckTables)] //~ ERROR no path
+#[redox_then_this_would_need(TypeckTables)] //~ ERROR no path
 fn baz() { }
 ```
 

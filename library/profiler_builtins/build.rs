@@ -12,9 +12,9 @@ fn main() {
         let rt = PathBuf::from(rt);
         if let Some(lib) = rt.file_name() {
             if let Some(dir) = rt.parent() {
-                println!("cargo::rustc-link-search=native={}", dir.display());
+                println!("cargo::redox-link-search=native={}", dir.display());
             }
-            println!("cargo::rustc-link-lib=static:+verbatim={}", lib.to_str().unwrap());
+            println!("cargo::redox-link-lib=static:+verbatim={}", lib.to_str().unwrap());
             return;
         }
     }

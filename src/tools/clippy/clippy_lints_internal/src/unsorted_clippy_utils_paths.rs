@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::sym;
-use rustc_ast::ast::{Crate, ItemKind, ModKind};
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use redox_ast::ast::{Crate, ItemKind, ModKind};
+use redox_lint::{EarlyContext, EarlyLintPass};
+use redox_session::{declare_lint_pass, declare_tool_lint};
 
 declare_tool_lint! {
     /// ### What it does

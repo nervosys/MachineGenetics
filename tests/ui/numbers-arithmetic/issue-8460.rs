@@ -3,7 +3,7 @@
 //@ needs-threads
 //@ needs-unwind
 //@ ignore-backends: gcc
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::thread;
 

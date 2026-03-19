@@ -7,12 +7,12 @@ fn tracing_infinite_repeat() {
     check_diagnostics_with_disabled(
         r#"
 //- /core.rs crate:core
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! concat {
 ($($e:expr),* $(,)?) => {{ /* compiler built-in */ }};
 }
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! file {
 () => {
@@ -21,13 +21,13 @@ macro_rules! file {
 }
 #[allow_internal_unsafe]
 #[allow_internal_unstable(fmt_internals)]
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! format_args {
 ($fmt:expr) => {{ /* compiler built-in */ }};
 ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
 }
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! line {
 () => {

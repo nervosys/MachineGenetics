@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use hir_def::db::DefDatabase;
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use syntax::ToSmolStr;
 use test_fixture::WithFixture;
 
@@ -259,7 +259,7 @@ trait Baz : Bar<Self> {
 }
 
 #[test]
-fn rustc_issue_19538() {
+fn redox_issue_19538() {
     check_dyn_compatibility(
         r#"
 //- minicore: dispatch_from_dyn
@@ -274,7 +274,7 @@ trait Bar: Foo {}
 }
 
 #[test]
-fn rustc_issue_22040() {
+fn redox_issue_22040() {
     check_dyn_compatibility(
         r#"
 //- minicore: fmt, eq, dispatch_from_dyn
@@ -289,7 +289,7 @@ trait Expr: Debug + PartialEq {
 }
 
 #[test]
-fn rustc_issue_102762() {
+fn redox_issue_102762() {
     check_dyn_compatibility(
         r#"
 //- minicore: future, send, sync, dispatch_from_dyn, deref
@@ -321,7 +321,7 @@ pub trait Fetcher: Send + Sync {
 }
 
 #[test]
-fn rustc_issue_102933() {
+fn redox_issue_102933() {
     check_dyn_compatibility(
         r#"
 //- minicore: future, dispatch_from_dyn, deref
@@ -359,7 +359,7 @@ pub trait B2: Service<Response = i32> + B1 {
 }
 
 #[test]
-fn rustc_issue_106247() {
+fn redox_issue_106247() {
     check_dyn_compatibility(
         r#"
 //- minicore: sync, dispatch_from_dyn

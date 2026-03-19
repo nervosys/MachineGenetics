@@ -5,7 +5,7 @@
     lang_items,
     negative_impls,
     no_core,
-    rustc_attrs
+    redox_attrs
 )]
 #![allow(incomplete_features)]
 #![no_std]

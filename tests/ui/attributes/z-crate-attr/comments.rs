@@ -1,5 +1,5 @@
 //@ check-pass
-//@ compile-flags: -Zcrate-attr=/*hi-there*/feature(rustc_attrs)
+//@ compile-flags: -Zcrate-attr=/*hi-there*/feature(redox_attrs)
 
-#[rustc_dummy]
+#[redox_dummy]
 fn main() {}

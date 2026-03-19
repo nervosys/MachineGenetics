@@ -18,14 +18,14 @@ use hir_expand::{InFile, mod_path::path, name::Name};
 use intern::sym;
 use la_arena::ArenaMap;
 use macros::GenericTypeVisitable;
-use rustc_abi::TargetDataLayout;
-use rustc_apfloat::{
+use redox_abi::TargetDataLayout;
+use redox_apfloat::{
     Float,
     ieee::{Half as f16, Quad as f128},
 };
-use rustc_ast_ir::Mutability;
-use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_type_ir::{
+use redox_ast_ir::Mutability;
+use redox_hash::{FxHashMap, FxHashSet};
+use redox_type_ir::{
     AliasTyKind,
     inherent::{AdtDef, GenericArgs as _, IntoKind, Region as _, SliceLike, Ty as _},
 };
@@ -1188,19 +1188,19 @@ impl<'db> Evaluator<'db> {
                 }
                 if let TyKind::Float(f) = ty.kind() {
                     match f {
-                        rustc_type_ir::FloatTy::F16 => {
+                        redox_type_ir::FloatTy::F16 => {
                             let c = -from_bytes!(f16, u16, c);
                             Owned(u16::try_from(c.to_bits()).unwrap().to_le_bytes().into())
                         }
-                        rustc_type_ir::FloatTy::F32 => {
+                        redox_type_ir::FloatTy::F32 => {
                             let c = -from_bytes!(f32, c);
                             Owned(c.to_le_bytes().into())
                         }
-                        rustc_type_ir::FloatTy::F64 => {
+                        redox_type_ir::FloatTy::F64 => {
                             let c = -from_bytes!(f64, c);
                             Owned(c.to_le_bytes().into())
                         }
-                        rustc_type_ir::FloatTy::F128 => {
+                        redox_type_ir::FloatTy::F128 => {
                             let c = -from_bytes!(f128, u128, c);
                             Owned(c.to_bits().to_le_bytes().into())
                         }
@@ -1257,7 +1257,7 @@ impl<'db> Evaluator<'db> {
                 }
                 if let TyKind::Float(f) = ty.kind() {
                     match f {
-                        rustc_type_ir::FloatTy::F16 => {
+                        redox_type_ir::FloatTy::F16 => {
                             let l = from_bytes!(f16, u16, lc);
                             let r = from_bytes!(f16, u16, rc);
                             match op {
@@ -1290,7 +1290,7 @@ impl<'db> Evaluator<'db> {
                                 ),
                             }
                         }
-                        rustc_type_ir::FloatTy::F32 => {
+                        redox_type_ir::FloatTy::F32 => {
                             let l = from_bytes!(f32, lc);
                             let r = from_bytes!(f32, rc);
                             match op {
@@ -1318,7 +1318,7 @@ impl<'db> Evaluator<'db> {
                                 ),
                             }
                         }
-                        rustc_type_ir::FloatTy::F64 => {
+                        redox_type_ir::FloatTy::F64 => {
                             let l = from_bytes!(f64, lc);
                             let r = from_bytes!(f64, rc);
                             match op {
@@ -1346,7 +1346,7 @@ impl<'db> Evaluator<'db> {
                                 ),
                             }
                         }
-                        rustc_type_ir::FloatTy::F128 => {
+                        redox_type_ir::FloatTy::F128 => {
                             let l = from_bytes!(f128, u128, lc);
                             let r = from_bytes!(f128, u128, rc);
                             match op {
@@ -1570,15 +1570,15 @@ impl<'db> Evaluator<'db> {
                     };
                     let value = self.eval_operand(operand, locals)?.get(self)?;
                     let value = match ty {
-                        rustc_type_ir::FloatTy::F32 => {
+                        redox_type_ir::FloatTy::F32 => {
                             let value = value.try_into().unwrap();
                             f32::from_le_bytes(value) as f64
                         }
-                        rustc_type_ir::FloatTy::F64 => {
+                        redox_type_ir::FloatTy::F64 => {
                             let value = value.try_into().unwrap();
                             f64::from_le_bytes(value)
                         }
-                        rustc_type_ir::FloatTy::F16 | rustc_type_ir::FloatTy::F128 => {
+                        redox_type_ir::FloatTy::F16 | redox_type_ir::FloatTy::F128 => {
                             not_supported!("unstable floating point type f16 and f128");
                         }
                     };
@@ -1608,15 +1608,15 @@ impl<'db> Evaluator<'db> {
                     };
                     let value = self.eval_operand(operand, locals)?.get(self)?;
                     let value = match ty {
-                        rustc_type_ir::FloatTy::F32 => {
+                        redox_type_ir::FloatTy::F32 => {
                             let value = value.try_into().unwrap();
                             f32::from_le_bytes(value) as f64
                         }
-                        rustc_type_ir::FloatTy::F64 => {
+                        redox_type_ir::FloatTy::F64 => {
                             let value = value.try_into().unwrap();
                             f64::from_le_bytes(value)
                         }
-                        rustc_type_ir::FloatTy::F16 | rustc_type_ir::FloatTy::F128 => {
+                        redox_type_ir::FloatTy::F16 | redox_type_ir::FloatTy::F128 => {
                             not_supported!("unstable floating point type f16 and f128");
                         }
                     };
@@ -1624,9 +1624,9 @@ impl<'db> Evaluator<'db> {
                         not_supported!("invalid float to float cast");
                     };
                     match target_ty {
-                        rustc_type_ir::FloatTy::F32 => Owned((value as f32).to_le_bytes().to_vec()),
-                        rustc_type_ir::FloatTy::F64 => Owned(value.to_le_bytes().to_vec()),
-                        rustc_type_ir::FloatTy::F16 | rustc_type_ir::FloatTy::F128 => {
+                        redox_type_ir::FloatTy::F32 => Owned((value as f32).to_le_bytes().to_vec()),
+                        redox_type_ir::FloatTy::F64 => Owned(value.to_le_bytes().to_vec()),
+                        redox_type_ir::FloatTy::F16 | redox_type_ir::FloatTy::F128 => {
                             not_supported!("unstable floating point type f16 and f128");
                         }
                     }
@@ -1640,9 +1640,9 @@ impl<'db> Evaluator<'db> {
                         not_supported!("invalid int to float cast");
                     };
                     match target_ty {
-                        rustc_type_ir::FloatTy::F32 => Owned((value as f32).to_le_bytes().to_vec()),
-                        rustc_type_ir::FloatTy::F64 => Owned((value as f64).to_le_bytes().to_vec()),
-                        rustc_type_ir::FloatTy::F16 | rustc_type_ir::FloatTy::F128 => {
+                        redox_type_ir::FloatTy::F32 => Owned((value as f32).to_le_bytes().to_vec()),
+                        redox_type_ir::FloatTy::F64 => Owned((value as f64).to_le_bytes().to_vec()),
+                        redox_type_ir::FloatTy::F16 | redox_type_ir::FloatTy::F128 => {
                             not_supported!("unstable floating point type f16 and f128");
                         }
                     }
@@ -1837,18 +1837,18 @@ impl<'db> Evaluator<'db> {
                 };
                 let mut discriminant = self.const_eval_discriminant(enum_variant_id)?;
                 let lookup = enum_variant_id.lookup(self.db);
-                let rustc_enum_variant_idx = RustcEnumVariantIdx(lookup.index as usize);
-                let variant_layout = variants[rustc_enum_variant_idx].clone();
+                let redox_enum_variant_idx = RustcEnumVariantIdx(lookup.index as usize);
+                let variant_layout = variants[redox_enum_variant_idx].clone();
                 let have_tag = match tag_encoding {
                     TagEncoding::Direct => true,
                     TagEncoding::Niche { untagged_variant, niche_variants: _, niche_start } => {
-                        if *untagged_variant == rustc_enum_variant_idx {
+                        if *untagged_variant == redox_enum_variant_idx {
                             false
                         } else {
                             discriminant = (variants
                                 .iter_enumerated()
                                 .filter(|(it, _)| it != untagged_variant)
-                                .position(|(it, _)| it == rustc_enum_variant_idx)
+                                .position(|(it, _)| it == redox_enum_variant_idx)
                                 .unwrap() as i128)
                                 .wrapping_add(*niche_start as i128);
                             true
@@ -2363,7 +2363,7 @@ impl<'db> Evaluator<'db> {
         // FIXME: support indirect references
         let layout = self.layout(ty)?;
         let my_size = self.size_of_sized(ty, locals, "value to patch address")?;
-        use rustc_type_ir::TyKind;
+        use redox_type_ir::TyKind;
         match ty.kind() {
             TyKind::Ref(_, t, _) => {
                 let size = self.size_align_of(t, locals)?;
@@ -2485,7 +2485,7 @@ impl<'db> Evaluator<'db> {
     ) -> Result<'db, Option<StackFrame>> {
         let id = from_bytes!(usize, bytes.get(self)?);
         let next_ty = self.vtable_map.ty(id)?;
-        use rustc_type_ir::TyKind;
+        use redox_type_ir::TyKind;
         match next_ty.kind() {
             TyKind::FnDef(def, generic_args) => {
                 self.exec_fn_def(def.0, generic_args, destination, args, locals, target_bb, span)
@@ -3010,7 +3010,7 @@ pub fn render_const_using_debug_impl<'db>(
     // a1 = &[""]
     let a1 = evaluator.heap_allocate(evaluator.ptr_size() * 2, evaluator.ptr_size())?;
     // a2 = &[::core::fmt::ArgumentV1::new(&(THE_CONST), ::core::fmt::Debug::fmt)]
-    // FIXME: we should call the said function, but since its name is going to break in the next rustc version
+    // FIXME: we should call the said function, but since its name is going to break in the next redox version
     // and its ABI doesn't break yet, we put it in memory manually.
     let a2 = evaluator.heap_allocate(evaluator.ptr_size() * 2, evaluator.ptr_size())?;
     evaluator.write_memory(a2, &data.addr.to_bytes())?;

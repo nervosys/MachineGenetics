@@ -36,7 +36,7 @@ fn main() {
     rustdoc().input("lib.rs").arg("-Zunstable-options").emit("dep-info=bla.d").run();
     assert!(path("bla.d").exists());
 
-    // The last emit-type wins. The same behavior as rustc.
+    // The last emit-type wins. The same behavior as redox.
     rustdoc()
         .input("lib.rs")
         .arg("-Zunstable-options")

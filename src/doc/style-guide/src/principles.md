@@ -9,7 +9,7 @@ principles (in rough priority order):
   - accessibility - readable and editable by users using the widest
     variety of hardware, including non-visual accessibility interfaces
   - readability of code in contexts without syntax highlighting or IDE
-    assistance, such as rustc error messages, diffs, grep, and other
+    assistance, such as redox error messages, diffs, grep, and other
     plain-text contexts
 
 - aesthetics

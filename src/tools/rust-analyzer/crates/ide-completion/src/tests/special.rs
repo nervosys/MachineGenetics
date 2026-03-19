@@ -87,7 +87,7 @@ pub mod prelude {
 }
 
 mod macros {
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! concat { }
 }
@@ -388,7 +388,7 @@ fn does_not_complete_non_fn_macros() {
     check_no_kw(
         r#"
 mod m {
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro Clone {}
 }
 
@@ -399,7 +399,7 @@ fn f() {m::$0}
     check_no_kw(
         r#"
 mod m {
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro bench {}
 }
 
@@ -814,7 +814,7 @@ fn f() {
 }
 
 //- /core.rs crate:core
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 #[lang = "u8"]
 impl u8 {
     pub const MAX: Self = 255;

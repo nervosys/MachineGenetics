@@ -9,7 +9,7 @@
 #![crate_type = "lib"]
 //@ test-mir-pass: GVN
 #![allow(internal_features)]
-#![feature(core_intrinsics, custom_mir, rustc_attrs)]
+#![feature(core_intrinsics, custom_mir, redox_attrs)]
 
 use std::intrinsics::mir::*;
 
@@ -55,7 +55,7 @@ fn set_discriminant(v: &mut Value) -> Value {
 }
 
 #[inline(never)]
-#[rustc_nounwind]
+#[redox_nounwind]
 fn get<T>(v: &T) -> &T {
     v
 }

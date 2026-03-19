@@ -1,15 +1,15 @@
 //! This module contains code to canonicalize values into a `Canonical<'db, T>`.
 //!
 //! For an overview of what canonicalization is and how it fits into
-//! rustc, check out the [chapter in the rustc dev guide][c].
+//! redox, check out the [chapter in the redox dev guide][c].
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
-use rustc_hash::FxHashMap;
-use rustc_index::Idx;
-use rustc_type_ir::InferTy::{self, FloatVar, IntVar, TyVar};
-use rustc_type_ir::inherent::{Const as _, IntoKind as _, Region as _, Ty as _};
-use rustc_type_ir::{
+use redox_hash::FxHashMap;
+use redox_index::Idx;
+use redox_type_ir::InferTy::{self, FloatVar, IntVar, TyVar};
+use redox_type_ir::inherent::{Const as _, IntoKind as _, Region as _, Ty as _};
+use redox_type_ir::{
     BoundVar, BoundVarIndexKind, DebruijnIndex, Flags, InferConst, RegionKind, TyVid, TypeFlags,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
 };
@@ -61,7 +61,7 @@ impl<'db> InferCtxt<'db> {
     /// with a mapping M that maps `'?0` to `'static`.
     ///
     /// To get a good understanding of what is happening here, check
-    /// out the [chapter in the rustc dev guide][c].
+    /// out the [chapter in the redox dev guide][c].
     ///
     /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#canonicalizing-the-query
     pub fn canonicalize_query<V>(
@@ -103,7 +103,7 @@ impl<'db> InferCtxt<'db> {
     /// reference to `'static` alone.
     ///
     /// To get a good understanding of what is happening here, check
-    /// out the [chapter in the rustc dev guide][c].
+    /// out the [chapter in the redox dev guide][c].
     ///
     /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#canonicalizing-the-query-result
     pub fn canonicalize_response<V>(&self, value: V) -> Canonical<'db, V>

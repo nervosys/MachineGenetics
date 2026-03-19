@@ -1,8 +1,8 @@
 //@ edition: 2024
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(internal_features)]
-#![rustc_dump_variances_of_opaques]
+#![redox_dump_variances_of_opaques]
 
 use std::ops::Deref;
 

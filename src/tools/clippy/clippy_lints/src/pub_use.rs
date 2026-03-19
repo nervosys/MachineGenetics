@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_ast::ast::{Item, ItemKind, VisibilityKind};
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
+use redox_ast::ast::{Item, ItemKind, VisibilityKind};
+use redox_lint::{EarlyContext, EarlyLintPass};
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

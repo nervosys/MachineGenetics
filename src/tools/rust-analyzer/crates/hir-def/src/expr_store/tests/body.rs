@@ -503,7 +503,7 @@ fn f(a: i32, b: u32) -> String {
 
 #[test]
 fn destructuring_assignment_tuple_macro() {
-    // This is a funny one. `let m!()() = Bar()` is an error in rustc, because `m!()()` isn't a valid pattern,
+    // This is a funny one. `let m!()() = Bar()` is an error in redox, because `m!()()` isn't a valid pattern,
     // but in destructuring assignment it is valid, because `m!()()` is a valid expression, and destructuring
     // assignments start their lives as expressions. So we have to do the same.
 

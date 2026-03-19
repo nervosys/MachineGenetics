@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-# tidy-alphabetical-start
-  "compiler/rustc",
+  # tidy-alphabetical-start
+  "compiler/redox",
   "src/build_helper",
   "src/rustc-std-workspace/rustc-std-workspace-alloc",
   "src/rustc-std-workspace/rustc-std-workspace-core",
@@ -46,21 +46,21 @@ members = [
   "src/tools/unstable-book-gen",
   "src/tools/wasm-component-ld",
   "src/tools/x",
-# tidy-alphabetical-end
+  # tidy-alphabetical-end
 ]
 
 exclude = [
   "build",
-  "compiler/rustc_codegen_cranelift",
-  "compiler/rustc_codegen_gcc",
+  "compiler/redox_codegen_cranelift",
+  "compiler/redox_codegen_gcc",
   "src/bootstrap",
   "tests/rustdoc-gui",
   # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
   "obj",
 ]
 
-[profile.release.package.rustc_thread_pool]
-# The rustc fork of Rayon has deadlock detection code which intermittently
+[profile.release.package.redox_thread_pool]
+# The redox fork of Rayon has deadlock detection code which intermittently
 # causes overflows in the CI (see https://github.com/rust-lang/rust/issues/90227)
 # so we turn overflow checks off for now.
 # FIXME: This workaround should be removed once #90227 is fixed.
@@ -68,7 +68,7 @@ overflow-checks = false
 
 # These are very thin wrappers around executing lld with the right binary name.
 # Basically nothing within them can go wrong without having been explicitly logged anyway.
-# We ship these in every rustc tarball and even after compression they add up
+# We ship these in every redox tarball and even after compression they add up
 # to around 0.6MB of data every user needs to download (and 15MB on disk).
 [profile.release.package.lld-wrapper]
 debug = 0
@@ -92,4 +92,3 @@ codegen-units = 1
 # If you want to use a crate with local modifications, you can set a path or git dependency here.
 # For git dependencies, also add your source to ALLOWED_SOURCES in src/tools/tidy/src/extdeps.rs.
 #[patch.crates-io]
-

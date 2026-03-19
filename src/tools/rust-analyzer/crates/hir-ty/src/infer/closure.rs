@@ -9,7 +9,7 @@ use hir_def::{
     hir::{ClosureKind, ExprId, PatId},
     type_ref::TypeRefId,
 };
-use rustc_type_ir::{
+use redox_type_ir::{
     ClosureArgs, ClosureArgsParts, CoroutineArgs, CoroutineArgsParts, CoroutineClosureArgs,
     CoroutineClosureArgsParts, Interner, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor,
@@ -107,9 +107,9 @@ impl<'db> InferenceContext<'_, 'db> {
                             (
                                 Vec::new(),
                                 match kind {
-                                    rustc_type_ir::ClosureKind::Fn => FnTrait::Fn,
-                                    rustc_type_ir::ClosureKind::FnMut => FnTrait::FnMut,
-                                    rustc_type_ir::ClosureKind::FnOnce => FnTrait::FnOnce,
+                                    redox_type_ir::ClosureKind::Fn => FnTrait::Fn,
+                                    redox_type_ir::ClosureKind::FnMut => FnTrait::FnMut,
+                                    redox_type_ir::ClosureKind::FnOnce => FnTrait::FnOnce,
                                 },
                             ),
                         );
@@ -131,7 +131,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     parent_args: parent_args.as_slice(),
                     closure_kind_ty: Ty::from_closure_kind(
                         interner,
-                        expected_kind.unwrap_or(rustc_type_ir::ClosureKind::Fn),
+                        expected_kind.unwrap_or(redox_type_ir::ClosureKind::Fn),
                     ),
                     closure_sig_as_fn_ptr_ty: sig_ty,
                     tupled_upvars_ty,
@@ -150,13 +150,13 @@ impl<'db> InferenceContext<'_, 'db> {
                 // and yield `()`.
                 let bound_return_ty = bound_sig.skip_binder().output();
                 let bound_yield_ty = self.types.types.unit;
-                // rustc uses a special lang item type for the resume ty. I don't believe this can cause us problems.
+                // redox uses a special lang item type for the resume ty. I don't believe this can cause us problems.
                 let resume_ty = self.types.types.unit;
 
                 // FIXME: Infer the kind later if needed.
                 let closure_kind_ty = Ty::from_closure_kind(
                     interner,
-                    expected_kind.unwrap_or(rustc_type_ir::ClosureKind::Fn),
+                    expected_kind.unwrap_or(redox_type_ir::ClosureKind::Fn),
                 );
 
                 // FIXME: Infer captures later.
@@ -227,12 +227,12 @@ impl<'db> InferenceContext<'_, 'db> {
         ty
     }
 
-    fn fn_trait_kind_from_def_id(&self, trait_id: TraitId) -> Option<rustc_type_ir::ClosureKind> {
+    fn fn_trait_kind_from_def_id(&self, trait_id: TraitId) -> Option<redox_type_ir::ClosureKind> {
         match trait_id {
-            _ if self.lang_items.Fn == Some(trait_id) => Some(rustc_type_ir::ClosureKind::Fn),
-            _ if self.lang_items.FnMut == Some(trait_id) => Some(rustc_type_ir::ClosureKind::FnMut),
+            _ if self.lang_items.Fn == Some(trait_id) => Some(redox_type_ir::ClosureKind::Fn),
+            _ if self.lang_items.FnMut == Some(trait_id) => Some(redox_type_ir::ClosureKind::FnMut),
             _ if self.lang_items.FnOnce == Some(trait_id) => {
-                Some(rustc_type_ir::ClosureKind::FnOnce)
+                Some(redox_type_ir::ClosureKind::FnOnce)
             }
             _ => None,
         }
@@ -241,14 +241,14 @@ impl<'db> InferenceContext<'_, 'db> {
     fn async_fn_trait_kind_from_def_id(
         &self,
         trait_id: TraitId,
-    ) -> Option<rustc_type_ir::ClosureKind> {
+    ) -> Option<redox_type_ir::ClosureKind> {
         match trait_id {
-            _ if self.lang_items.AsyncFn == Some(trait_id) => Some(rustc_type_ir::ClosureKind::Fn),
+            _ if self.lang_items.AsyncFn == Some(trait_id) => Some(redox_type_ir::ClosureKind::Fn),
             _ if self.lang_items.AsyncFnMut == Some(trait_id) => {
-                Some(rustc_type_ir::ClosureKind::FnMut)
+                Some(redox_type_ir::ClosureKind::FnMut)
             }
             _ if self.lang_items.AsyncFnOnce == Some(trait_id) => {
-                Some(rustc_type_ir::ClosureKind::FnOnce)
+                Some(redox_type_ir::ClosureKind::FnOnce)
             }
             _ => None,
         }
@@ -260,9 +260,9 @@ impl<'db> InferenceContext<'_, 'db> {
         &mut self,
         expected_ty: Ty<'db>,
         closure_kind: ClosureKind,
-    ) -> (Option<PolyFnSig<'db>>, Option<rustc_type_ir::ClosureKind>) {
+    ) -> (Option<PolyFnSig<'db>>, Option<redox_type_ir::ClosureKind>) {
         match expected_ty.kind() {
-            TyKind::Alias(rustc_type_ir::Opaque, AliasTy { def_id, args, .. }) => self
+            TyKind::Alias(redox_type_ir::Opaque, AliasTy { def_id, args, .. }) => self
                 .deduce_closure_signature_from_predicates(
                     expected_ty,
                     closure_kind,
@@ -282,7 +282,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     .and_then(|did| self.fn_trait_kind_from_def_id(did.0));
                 (sig, kind)
             }
-            TyKind::Infer(rustc_type_ir::TyVar(vid)) => self
+            TyKind::Infer(redox_type_ir::TyVar(vid)) => self
                 .deduce_closure_signature_from_predicates(
                     Ty::new_var(self.interner(), self.table.infer_ctxt.root_var(vid)),
                     closure_kind,
@@ -291,7 +291,7 @@ impl<'db> InferenceContext<'_, 'db> {
             TyKind::FnPtr(sig_tys, hdr) => match closure_kind {
                 ClosureKind::Closure => {
                     let expected_sig = sig_tys.with(hdr);
-                    (Some(expected_sig), Some(rustc_type_ir::ClosureKind::Fn))
+                    (Some(expected_sig), Some(redox_type_ir::ClosureKind::Fn))
                 }
                 ClosureKind::Coroutine(_) | ClosureKind::Async => (None, None),
             },
@@ -304,11 +304,11 @@ impl<'db> InferenceContext<'_, 'db> {
         expected_ty: Ty<'db>,
         closure_kind: ClosureKind,
         predicates: impl DoubleEndedIterator<Item = Predicate<'db>>,
-    ) -> (Option<PolyFnSig<'db>>, Option<rustc_type_ir::ClosureKind>) {
+    ) -> (Option<PolyFnSig<'db>>, Option<redox_type_ir::ClosureKind>) {
         let mut expected_sig = None;
         let mut expected_kind = None;
 
-        for pred in rustc_type_ir::elaborate::elaborate(
+        for pred in redox_type_ir::elaborate::elaborate(
             self.interner(),
             // Reverse the obligations here, since `elaborate_*` uses a stack,
             // and we want to keep inference generally in the same order of
@@ -417,12 +417,12 @@ impl<'db> InferenceContext<'_, 'db> {
                     match (expected_kind, found_kind) {
                         (None, _) => expected_kind = Some(found_kind),
                         (
-                            Some(rustc_type_ir::ClosureKind::FnMut),
-                            rustc_type_ir::ClosureKind::Fn,
-                        ) => expected_kind = Some(rustc_type_ir::ClosureKind::Fn),
+                            Some(redox_type_ir::ClosureKind::FnMut),
+                            redox_type_ir::ClosureKind::Fn,
+                        ) => expected_kind = Some(redox_type_ir::ClosureKind::Fn),
                         (
-                            Some(rustc_type_ir::ClosureKind::FnOnce),
-                            rustc_type_ir::ClosureKind::Fn | rustc_type_ir::ClosureKind::FnMut,
+                            Some(redox_type_ir::ClosureKind::FnOnce),
+                            redox_type_ir::ClosureKind::Fn | redox_type_ir::ClosureKind::FnMut,
                         ) => expected_kind = Some(found_kind),
                         _ => {}
                     }
@@ -535,7 +535,7 @@ impl<'db> InferenceContext<'_, 'db> {
         // but none of them would be useful, since async closures return
         // concrete anonymous future types, and their futures are not coerced
         // into any other type within the body of the async closure.
-        let TyKind::Infer(rustc_type_ir::TyVar(return_vid)) =
+        let TyKind::Infer(redox_type_ir::TyVar(return_vid)) =
             projection.skip_binder().term.expect_type().kind()
         else {
             return None;
@@ -674,7 +674,7 @@ impl<'db> InferenceContext<'_, 'db> {
         // Create a `PolyFnSig`. Note the oddity that late bound
         // regions appearing free in `expected_sig` are now bound up
         // in this binder we are creating.
-        assert!(!expected_sig.skip_binder().has_vars_bound_above(rustc_type_ir::INNERMOST));
+        assert!(!expected_sig.skip_binder().has_vars_bound_above(redox_type_ir::INNERMOST));
         let bound_sig = expected_sig.map_bound(|sig| {
             self.interner().mk_fn_sig(
                 sig.inputs().iter().copied(),

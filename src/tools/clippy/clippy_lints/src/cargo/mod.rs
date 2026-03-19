@@ -8,11 +8,11 @@ use cargo_metadata::MetadataCommand;
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_lint_allowed;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::hir_id::CRATE_HIR_ID;
-use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_session::impl_lint_pass;
-use rustc_span::DUMMY_SP;
+use redox_data_structures::fx::FxHashSet;
+use redox_hir::hir_id::CRATE_HIR_ID;
+use redox_lint::{LateContext, LateLintPass, Lint};
+use redox_session::impl_lint_pass;
+use redox_span::DUMMY_SP;
 
 declare_clippy_lint! {
     /// ### What it does

@@ -1,0 +1,25 @@
+[package]
+name = "redox_const_eval"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+either = "1"
+redox_abi = { path = "../redox_abi" }
+redox_apfloat = "0.2.0"
+redox_ast = { path = "../redox_ast" }
+redox_data_structures = { path = "../redox_data_structures" }
+redox_errors = { path = "../redox_errors" }
+redox_hir = { path = "../redox_hir" }
+redox_index = { path = "../redox_index" }
+redox_infer = { path = "../redox_infer" }
+redox_macros = { path = "../redox_macros" }
+redox_middle = { path = "../redox_middle" }
+redox_mir_dataflow = { path = "../redox_mir_dataflow" }
+redox_session = { path = "../redox_session" }
+redox_span = { path = "../redox_span" }
+redox_target = { path = "../redox_target" }
+redox_trait_selection = { path = "../redox_trait_selection" }
+tracing = "0.1"
+# tidy-alphabetical-end

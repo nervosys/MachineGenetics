@@ -3,10 +3,10 @@
 //@ ignore-cross-compile
 //@ needs-unwind (test file contains #[should_panic] test)
 
-use run_make_support::{cmd, diff, rustc, serde_json};
+use run_make_support::{cmd, diff, redox, serde_json};
 
 fn main() {
-    rustc().arg("--test").input("f.rs").run();
+    redox().arg("--test").input("f.rs").run();
 
     run_tests(&[], "output-default.json");
     run_tests(&["--show-output"], "output-stdout-success.json");

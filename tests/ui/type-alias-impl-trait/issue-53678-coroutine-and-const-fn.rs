@@ -1,4 +1,4 @@
-#![feature(coroutines, coroutine_trait, rustc_attrs, const_async_blocks)]
+#![feature(coroutines, coroutine_trait, redox_attrs, const_async_blocks)]
 #![feature(type_alias_impl_trait)]
 
 //@ check-pass

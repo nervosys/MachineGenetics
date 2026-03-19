@@ -7,7 +7,7 @@
 #![crate_type = "lib"]
 #![feature(c_variadic)]
 
-// Check that the assembly that rustc generates matches what clang emits.
+// Check that the assembly that redox generates matches what clang emits.
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn variadic(a: f64, mut args: ...) -> f64 {

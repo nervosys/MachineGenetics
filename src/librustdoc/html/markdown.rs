@@ -3,11 +3,11 @@
 //! This module implements markdown formatting through the pulldown-cmark library.
 //!
 //! ```
-//! #![feature(rustc_private)]
+//! #![feature(redox_private)]
 //!
-//! extern crate rustc_span;
+//! extern crate redox_span;
 //!
-//! use rustc_span::edition::Edition;
+//! use redox_span::edition::Edition;
 //! use rustdoc::html::markdown::{HeadingOffset, IdMap, Markdown, ErrorCodes};
 //!
 //! let s = "My *markdown* _text_";
@@ -36,17 +36,17 @@ use std::str::{self, CharIndices};
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Weak};
 
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::{Diag, DiagMessage};
-use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::TyCtxt;
-pub(crate) use rustc_resolve::rustdoc::main_body_opts;
-use rustc_resolve::rustdoc::may_be_doc_link;
-use rustc_resolve::rustdoc::pulldown_cmark::{
+use redox_data_structures::fx::{FxHashMap, FxIndexMap};
+use redox_errors::{Diag, DiagMessage};
+use redox_hir::def_id::LocalDefId;
+use redox_middle::ty::TyCtxt;
+pub(crate) use redox_resolve::rustdoc::main_body_opts;
+use redox_resolve::rustdoc::may_be_doc_link;
+use redox_resolve::rustdoc::pulldown_cmark::{
     self, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, html,
 };
-use rustc_span::edition::Edition;
-use rustc_span::{Span, Symbol};
+use redox_span::edition::Edition;
+use redox_span::{Span, Symbol};
 use tracing::{debug, trace};
 
 use crate::clean::RenderedLink;
@@ -813,7 +813,7 @@ impl<'tcx> ExtraInfo<'tcx> {
             crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
             self.tcx.local_def_id_to_hir_id(self.def_id),
             self.sp,
-            rustc_errors::DiagDecorator(|lint| {
+            redox_errors::DiagDecorator(|lint| {
                 lint.primary_message(msg);
                 f(lint);
             }),

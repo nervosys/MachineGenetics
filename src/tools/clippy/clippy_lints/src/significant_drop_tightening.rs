@@ -2,17 +2,17 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{indent_of, snippet};
 use clippy_utils::{expr_or_init, get_builtin_attr, peel_hir_expr_unary, sym};
-use rustc_ast::BindingMode;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{self as hir, HirId};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{GenericArgKind, Ty};
-use rustc_session::impl_lint_pass;
-use rustc_span::symbol::Ident;
-use rustc_span::{DUMMY_SP, Span};
+use redox_ast::BindingMode;
+use redox_data_structures::fx::{FxHashMap, FxIndexMap};
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::intravisit::{Visitor, walk_expr};
+use redox_hir::{self as hir, HirId};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty::{GenericArgKind, Ty};
+use redox_session::impl_lint_pass;
+use redox_span::symbol::Ident;
+use redox_span::{DUMMY_SP, Span};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
@@ -180,7 +180,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
             }
         }
         match ty.kind() {
-            rustc_middle::ty::Adt(a, b) => {
+            redox_middle::ty::Adt(a, b) => {
                 for f in a.all_fields() {
                     let ty = f.ty(self.cx.tcx, b);
                     if self.has_sig_drop_attr(ty, depth) {
@@ -196,10 +196,10 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
                 }
                 false
             },
-            rustc_middle::ty::Array(ty, _)
-            | rustc_middle::ty::RawPtr(ty, _)
-            | rustc_middle::ty::Ref(_, ty, _)
-            | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(*ty, depth),
+            redox_middle::ty::Array(ty, _)
+            | redox_middle::ty::RawPtr(ty, _)
+            | redox_middle::ty::Ref(_, ty, _)
+            | redox_middle::ty::Slice(ty) => self.has_sig_drop_attr(*ty, depth),
             _ => false,
         }
     }

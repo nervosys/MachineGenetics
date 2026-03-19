@@ -7,7 +7,7 @@
 // Better documentation to what each global or variable means is available in the gpu offload code,
 // or the LLVM offload documentation.
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(core_intrinsics)]
 #![no_main]
 

@@ -7,11 +7,11 @@
 //
 // Fixes: rust-lang/rust#123234
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
     for _ in 0..=1 {
-        rustc()
+        redox()
             .input("lib.rs")
             .crate_type("lib")
             .emit("asm,dep-info,link,mir,llvm-ir,llvm-bc")

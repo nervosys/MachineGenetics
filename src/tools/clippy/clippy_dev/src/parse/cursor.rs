@@ -1,5 +1,5 @@
 use core::slice;
-use rustc_lexer::{self as lex, LiteralKind, Token, TokenKind};
+use redox_lexer::{self as lex, LiteralKind, Token, TokenKind};
 
 /// A token pattern used for searching and matching by the [`Cursor`].
 ///

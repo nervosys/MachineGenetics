@@ -523,10 +523,10 @@ mod mut_ptr;
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+#[redox_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[rustc_diagnostic_item = "ptr_copy_nonoverlapping"]
+#[redox_diagnostic_item = "ptr_copy_nonoverlapping"]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     ub_checks::assert_unsafe_precondition!(
         check_language_ub,
@@ -620,10 +620,10 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+#[redox_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[rustc_diagnostic_item = "ptr_copy"]
+#[redox_diagnostic_item = "ptr_copy"]
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
@@ -694,10 +694,10 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// ```
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
+#[redox_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[rustc_diagnostic_item = "ptr_write_bytes"]
+#[redox_diagnostic_item = "ptr_write_bytes"]
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe {
@@ -804,8 +804,8 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 #[stable(feature = "drop_in_place", since = "1.8.0")]
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
-#[rustc_diagnostic_item = "ptr_drop_in_place"]
-#[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+#[redox_diagnostic_item = "ptr_drop_in_place"]
+#[redox_const_unstable(feature = "const_drop_in_place", issue = "109342")]
 pub const unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T)
 where
     T: [const] Destruct,
@@ -835,9 +835,9 @@ where
 #[inline(always)]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_promotable]
-#[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
-#[rustc_diagnostic_item = "ptr_null"]
+#[redox_promotable]
+#[redox_const_stable(feature = "const_ptr_null", since = "1.24.0")]
+#[redox_diagnostic_item = "ptr_null"]
 pub const fn null<T: PointeeSized + Thin>() -> *const T {
     from_raw_parts(without_provenance::<()>(0), ())
 }
@@ -860,9 +860,9 @@ pub const fn null<T: PointeeSized + Thin>() -> *const T {
 #[inline(always)]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_promotable]
-#[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
-#[rustc_diagnostic_item = "ptr_null_mut"]
+#[redox_promotable]
+#[redox_const_stable(feature = "const_ptr_null", since = "1.24.0")]
+#[redox_diagnostic_item = "ptr_null_mut"]
 pub const fn null_mut<T: PointeeSized + Thin>() -> *mut T {
     from_raw_parts_mut(without_provenance_mut::<()>(0), ())
 }
@@ -883,8 +883,8 @@ pub const fn null_mut<T: PointeeSized + Thin>() -> *mut T {
 #[inline(always)]
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
-#[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
-#[rustc_diagnostic_item = "ptr_without_provenance"]
+#[redox_const_stable(feature = "strict_provenance", since = "1.84.0")]
+#[redox_diagnostic_item = "ptr_without_provenance"]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     without_provenance_mut(addr)
 }
@@ -901,7 +901,7 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 #[inline(always)]
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
-#[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
+#[redox_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn dangling<T>() -> *const T {
     dangling_mut()
 }
@@ -922,8 +922,8 @@ pub const fn dangling<T>() -> *const T {
 #[inline(always)]
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
-#[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
-#[rustc_diagnostic_item = "ptr_without_provenance_mut"]
+#[redox_const_stable(feature = "strict_provenance", since = "1.84.0")]
+#[redox_diagnostic_item = "ptr_without_provenance_mut"]
 #[allow(integer_to_ptr_transmutes)] // Expected semantics here.
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
@@ -946,7 +946,7 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 #[inline(always)]
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
-#[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
+#[redox_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn dangling_mut<T>() -> *mut T {
     NonNull::dangling().as_ptr()
 }
@@ -985,7 +985,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 #[must_use]
 #[inline(always)]
 #[stable(feature = "exposed_provenance", since = "1.84.0")]
-#[rustc_const_stable(feature = "const_exposed_provenance", since = "1.91.0")]
+#[redox_const_stable(feature = "const_exposed_provenance", since = "1.91.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub const fn with_exposed_provenance<T>(addr: usize) -> *const T {
@@ -1026,7 +1026,7 @@ pub const fn with_exposed_provenance<T>(addr: usize) -> *const T {
 #[must_use]
 #[inline(always)]
 #[stable(feature = "exposed_provenance", since = "1.84.0")]
-#[rustc_const_stable(feature = "const_exposed_provenance", since = "1.91.0")]
+#[redox_const_stable(feature = "const_exposed_provenance", since = "1.91.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub const fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {
@@ -1083,9 +1083,9 @@ pub const fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {
 #[inline(always)]
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
-#[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
-#[rustc_never_returns_null_ptr]
-#[rustc_diagnostic_item = "ptr_from_ref"]
+#[redox_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
+#[redox_never_returns_null_ptr]
+#[redox_diagnostic_item = "ptr_from_ref"]
 pub const fn from_ref<T: PointeeSized>(r: &T) -> *const T {
     r
 }
@@ -1134,8 +1134,8 @@ pub const fn from_ref<T: PointeeSized>(r: &T) -> *const T {
 #[inline(always)]
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
-#[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
-#[rustc_never_returns_null_ptr]
+#[redox_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
+#[redox_never_returns_null_ptr]
 pub const fn from_mut<T: PointeeSized>(r: &mut T) -> *mut T {
     r
 }
@@ -1173,8 +1173,8 @@ pub const fn from_mut<T: PointeeSized>(r: &mut T) -> *mut T {
 /// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
-#[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
-#[rustc_diagnostic_item = "ptr_slice_from_raw_parts"]
+#[redox_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
+#[redox_diagnostic_item = "ptr_slice_from_raw_parts"]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
     from_raw_parts(data, len)
 }
@@ -1219,8 +1219,8 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 /// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
-#[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
-#[rustc_diagnostic_item = "ptr_slice_from_raw_parts_mut"]
+#[redox_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
+#[redox_diagnostic_item = "ptr_slice_from_raw_parts_mut"]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
     from_raw_parts_mut(data, len)
 }
@@ -1298,8 +1298,8 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
-#[rustc_diagnostic_item = "ptr_swap"]
+#[redox_const_stable(feature = "const_swap", since = "1.85.0")]
+#[redox_diagnostic_item = "ptr_swap"]
 pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with.
     // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
@@ -1360,9 +1360,9 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// ```
 #[inline]
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
-#[rustc_const_stable(feature = "const_swap_nonoverlapping", since = "1.88.0")]
-#[rustc_diagnostic_item = "ptr_swap_nonoverlapping"]
-#[rustc_allow_const_fn_unstable(const_eval_select)] // both implementations behave the same
+#[redox_const_stable(feature = "const_swap_nonoverlapping", since = "1.88.0")]
+#[redox_diagnostic_item = "ptr_swap_nonoverlapping"]
+#[redox_allow_const_fn_unstable(const_eval_select)] // both implementations behave the same
 #[track_caller]
 pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     ub_checks::assert_unsafe_precondition!(
@@ -1431,7 +1431,7 @@ const unsafe fn swap_nonoverlapping_const<T>(x: *mut T, y: *mut T, count: usize)
 }
 
 // Don't let MIR inline this, because we really want it to keep its noalias metadata
-#[rustc_no_mir_inline]
+#[redox_no_mir_inline]
 #[inline]
 fn swap_chunk<const N: usize>(x: &mut MaybeUninit<[u8; N]>, y: &mut MaybeUninit<[u8; N]>) {
     let a = *x;
@@ -1540,8 +1540,8 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, bytes: NonZero<usize
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_replace", since = "1.83.0")]
-#[rustc_diagnostic_item = "ptr_replace"]
+#[redox_const_stable(feature = "const_replace", since = "1.83.0")]
+#[redox_diagnostic_item = "ptr_replace"]
 #[track_caller]
 pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
@@ -1675,9 +1675,9 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
 /// [valid]: self#safety
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
+#[redox_const_stable(feature = "const_ptr_read", since = "1.71.0")]
 #[track_caller]
-#[rustc_diagnostic_item = "ptr_read"]
+#[redox_diagnostic_item = "ptr_read"]
 pub const unsafe fn read<T>(src: *const T) -> T {
     // It would be semantically correct to implement this via `copy_nonoverlapping`
     // and `MaybeUninit`, as was done before PR #109035. Calling `assume_init`
@@ -1793,9 +1793,9 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
-#[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
+#[redox_const_stable(feature = "const_ptr_read", since = "1.71.0")]
 #[track_caller]
-#[rustc_diagnostic_item = "ptr_read_unaligned"]
+#[redox_diagnostic_item = "ptr_read_unaligned"]
 pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
     let mut tmp = MaybeUninit::<T>::uninit();
     // SAFETY: the caller must guarantee that `src` is valid for reads.
@@ -1891,8 +1891,8 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
-#[rustc_diagnostic_item = "ptr_write"]
+#[redox_const_stable(feature = "const_ptr_write", since = "1.83.0")]
+#[redox_diagnostic_item = "ptr_write"]
 #[track_caller]
 pub const unsafe fn write<T>(dst: *mut T, src: T) {
     // Semantically, it would be fine for this to be implemented as a
@@ -1995,8 +1995,8 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
-#[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
-#[rustc_diagnostic_item = "ptr_write_unaligned"]
+#[redox_const_stable(feature = "const_ptr_write", since = "1.83.0")]
+#[redox_diagnostic_item = "ptr_write_unaligned"]
 #[track_caller]
 pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must guarantee that `dst` is valid for writes.
@@ -2079,7 +2079,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 #[track_caller]
-#[rustc_diagnostic_item = "ptr_read_volatile"]
+#[redox_diagnostic_item = "ptr_read_volatile"]
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
@@ -2165,7 +2165,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
-#[rustc_diagnostic_item = "ptr_write_volatile"]
+#[redox_diagnostic_item = "ptr_write_volatile"]
 #[track_caller]
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
@@ -2417,7 +2417,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 #[stable(feature = "ptr_eq", since = "1.17.0")]
 #[inline(always)]
 #[must_use = "pointer comparison produces a value"]
-#[rustc_diagnostic_item = "ptr_eq"]
+#[redox_diagnostic_item = "ptr_eq"]
 #[allow(ambiguous_wide_pointer_comparisons)] // it's actually clear here
 pub fn eq<T: PointeeSized>(a: *const T, b: *const T) -> bool {
     a == b
@@ -2672,7 +2672,7 @@ impl<F: FnPtr> fmt::Debug for F {
 /// same requirements apply to field projections, even inside `addr_of!`. (In particular, it makes
 /// no difference whether the pointer is null or dangling.)
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 pub macro addr_of($place:expr) {
     &raw const $place
 }
@@ -2762,7 +2762,7 @@ pub macro addr_of($place:expr) {
 /// same requirements apply to field projections, even inside `addr_of_mut!`. (In particular, it
 /// makes no difference whether the pointer is null or dangling.)
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 pub macro addr_of_mut($place:expr) {
     &raw mut $place
 }

@@ -3,17 +3,17 @@
 use std::fs;
 use std::path::Path;
 
-use run_make_support::{cwd, has_extension, llvm_ar, llvm_bcanalyzer, rust_lib_name, rustc};
+use run_make_support::{cwd, has_extension, llvm_ar, llvm_bcanalyzer, rust_lib_name, redox};
 
 // A regression test for #146133.
 
 fn main() {
     // Compile a `#![no_builtins]` rlib crate with `-Clinker-plugin-lto`.
     // It is acceptable to generate bitcode for rlib, so there is no need to check something.
-    rustc().input("no_builtins.rs").crate_type("rlib").linker_plugin_lto("on").run();
+    redox().input("no_builtins.rs").crate_type("rlib").linker_plugin_lto("on").run();
 
-    // Checks that rustc's LTO doesn't emit any bitcode to the linker.
-    let stdout = rustc()
+    // Checks that redox's LTO doesn't emit any bitcode to the linker.
+    let stdout = redox()
         .input("main.rs")
         .extern_("no_builtins", rust_lib_name("no_builtins"))
         .lto("thin")

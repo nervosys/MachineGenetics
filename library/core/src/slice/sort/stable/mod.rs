@@ -33,7 +33,7 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], is_less
     }
 
     // Instrumenting the standard library showed that 90+% of the calls to sort
-    // by rustc are either of size 0 or 1.
+    // by redox are either of size 0 or 1.
     let len = v.len();
     if intrinsics::likely(len < 2) {
         return;

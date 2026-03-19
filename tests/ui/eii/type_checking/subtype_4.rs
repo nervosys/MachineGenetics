@@ -4,11 +4,11 @@
 // Tests whether it's ok when giving the right types.
 #![feature(extern_item_impls)]
 #![feature(decl_macro)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(eii_internals)]
 
 #[eii_declaration(bar)]
-#[rustc_builtin_macro(eii_shared_macro)]
+#[redox_builtin_macro(eii_shared_macro)]
 macro foo() {}
 
 unsafe extern "Rust" {

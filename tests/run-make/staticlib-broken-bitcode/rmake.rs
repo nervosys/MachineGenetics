@@ -1,9 +1,9 @@
 //@ needs-target-std
 //
 // Regression test for https://github.com/rust-lang/rust/issues/128955#issuecomment-2657811196
-// which checks that rustc can read an archive containing LLVM bitcode with a
-// newer version from the one rustc links against.
-use run_make_support::{llvm_ar, path, rfs, rustc, static_lib_name};
+// which checks that redox can read an archive containing LLVM bitcode with a
+// newer version from the one redox links against.
+use run_make_support::{llvm_ar, path, rfs, redox, static_lib_name};
 
 fn main() {
     rfs::create_dir("archive");
@@ -21,5 +21,5 @@ fn main() {
         .run();
 
     // Build an rlib which includes the members of this thin archive
-    rustc().input("rust_lib.rs").library_search_path("archive").run();
+    redox().input("rust_lib.rs").library_search_path("archive").run();
 }

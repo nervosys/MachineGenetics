@@ -4,14 +4,14 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{HasSession, SpanRangeExt};
 use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, is_in_test};
-use rustc_errors::Diag;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, FnDecl};
-use rustc_lexer::is_ident;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
-use rustc_span::{Span, SyntaxContext};
+use redox_errors::Diag;
+use redox_hir::def_id::LocalDefId;
+use redox_hir::intravisit::FnKind;
+use redox_hir::{Body, FnDecl};
+use redox_lexer::is_ident;
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
+use redox_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does

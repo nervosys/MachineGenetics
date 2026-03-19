@@ -8,7 +8,7 @@
     ),
     feature(abort_unwind)
 )]
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![feature(f16)]
 #![feature(float_gamma)]
 #![feature(float_erf)]
@@ -48,7 +48,7 @@
     clippy::len_zero,
     clippy::collapsible_match,
     // We are not implementing queries here so it's fine
-    rustc::potential_query_instability,
+    redox::potential_query_instability,
 )]
 #![warn(
     rust_2018_idioms,
@@ -59,26 +59,26 @@
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 
-// The rustc crates we need
-extern crate rustc_abi;
-extern crate rustc_apfloat;
-extern crate rustc_ast;
-extern crate rustc_codegen_ssa;
-extern crate rustc_const_eval;
-extern crate rustc_data_structures;
-extern crate rustc_errors;
-extern crate rustc_hir;
-extern crate rustc_index;
-extern crate rustc_log;
-extern crate rustc_middle;
-extern crate rustc_session;
-extern crate rustc_span;
-extern crate rustc_symbol_mangling;
-extern crate rustc_target;
-// Linking `rustc_driver` pulls in the required  object code as the rest of the rustc crates are
+// The redox crates we need
+extern crate redox_abi;
+extern crate redox_apfloat;
+extern crate redox_ast;
+extern crate redox_codegen_ssa;
+extern crate redox_const_eval;
+extern crate redox_data_structures;
+extern crate redox_errors;
+extern crate redox_hir;
+extern crate redox_index;
+extern crate redox_log;
+extern crate redox_middle;
+extern crate redox_session;
+extern crate redox_span;
+extern crate redox_symbol_mangling;
+extern crate redox_target;
+// Linking `redox_driver` pulls in the required  object code as the rest of the redox crates are
 // shipped only as rmeta files.
 #[allow(unused_extern_crates)]
-extern crate rustc_driver;
+extern crate redox_driver;
 
 mod alloc;
 mod alloc_addresses;
@@ -100,12 +100,12 @@ pub mod sym;
 // Establish a "crate-wide prelude": we often import `crate::*`.
 // Make all those symbols available in the same place as our own.
 #[doc(no_inline)]
-pub use rustc_const_eval::interpret::*;
+pub use redox_const_eval::interpret::*;
 // Resolve ambiguity.
 #[doc(no_inline)]
-pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
-use rustc_log::tracing::{self, info, trace};
-use rustc_middle::{bug, span_bug};
+pub use redox_const_eval::interpret::{self, AllocMap, Provenance as _};
+use redox_log::tracing::{self, info, trace};
+use redox_middle::{bug, span_bug};
 
 #[cfg(all(feature = "native-lib", unix))]
 pub mod native_lib {
@@ -170,7 +170,7 @@ pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::TlsData;
 pub use crate::shims::unwind::{CatchUnwindData, EvalContextExt as _};
 
-/// Insert rustc arguments at the beginning of the argument list that Miri wants to be
+/// Insert redox arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.
 /// Also disable the MIR pass that inserts an alignment check on every pointer dereference. Miri
 /// does that too, and with a better error message.

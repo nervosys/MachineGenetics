@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use run_make_support::{rfs, rustc, wasmparser};
+use run_make_support::{rfs, redox, wasmparser};
 use wasmparser::ExternalKind::*;
 
 fn main() {
@@ -15,9 +15,9 @@ fn main() {
 fn test(args: &[&str]) {
     eprintln!("running with {args:?}");
 
-    rustc().input("bar.rs").target("wasm32-wasip1").args(args).run();
-    rustc().input("foo.rs").target("wasm32-wasip1").args(args).run();
-    rustc().input("main.rs").target("wasm32-wasip1").args(args).run();
+    redox().input("bar.rs").target("wasm32-wasip1").args(args).run();
+    redox().input("foo.rs").target("wasm32-wasip1").args(args).run();
+    redox().input("main.rs").target("wasm32-wasip1").args(args).run();
 
     verify_exports(Path::new("foo.wasm"), &[("foo", Func), ("FOO", Global), ("memory", Memory)]);
     verify_exports(

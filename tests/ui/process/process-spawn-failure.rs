@@ -14,7 +14,7 @@
 //@ ignore-watchos no 'ps'
 //@ ignore-visionos no 'ps'
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 use std::process::Command;
 

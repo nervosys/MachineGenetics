@@ -4,10 +4,10 @@
 //@ ignore-cross-compile
 
 use run_make_support::rfs::remove_file;
-use run_make_support::{cc, extra_c_flags, run, rustc, static_lib_name};
+use run_make_support::{cc, extra_c_flags, run, redox, static_lib_name};
 
 fn main() {
-    rustc().input("foo.rs").run();
+    redox().input("foo.rs").run();
     cc().input("bar.c").input(static_lib_name("foo")).out_exe("bar").args(extra_c_flags()).run();
     run("bar");
     remove_file(static_lib_name("foo"));

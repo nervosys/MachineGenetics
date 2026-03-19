@@ -1,4 +1,4 @@
-// Check that rustc accepts various version info flags.
+// Check that redox accepts various version info flags.
 //@ dont-check-compiler-stdout
 //@ revisions: version verbose-version long-verbose-version
 //@ check-pass

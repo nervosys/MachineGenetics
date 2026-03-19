@@ -7,20 +7,20 @@
 //@ build-pass
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![crate_type="rlib"]
 
-#![rustc_expected_cgu_reuse(module="cgu_invalidated_via_import-foo",
+#![redox_expected_cgu_reuse(module="cgu_invalidated_via_import-foo",
                             cfg="cfail2",
                             kind="no")]
-#![rustc_expected_cgu_reuse(module="cgu_invalidated_via_import-foo",
+#![redox_expected_cgu_reuse(module="cgu_invalidated_via_import-foo",
                             cfg="cfail3",
                             kind="pre-lto")] // Should be "post-lto", see issue #119076
 
-#![rustc_expected_cgu_reuse(module="cgu_invalidated_via_import-bar",
+#![redox_expected_cgu_reuse(module="cgu_invalidated_via_import-bar",
                             cfg="cfail2",
                             kind="pre-lto")]
-#![rustc_expected_cgu_reuse(module="cgu_invalidated_via_import-bar",
+#![redox_expected_cgu_reuse(module="cgu_invalidated_via_import-bar",
                             cfg="cfail3",
                             kind="pre-lto")] // Should be "post-lto", see issue #119076
 

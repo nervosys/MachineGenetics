@@ -2,7 +2,7 @@
 
 The `rust-lang/rust` git repository depends on several other repos in the `rust-lang` organization.
 There are three main ways we use dependencies:
-1. As a Cargo dependency through crates.io (e.g. `rustc-rayon`)
+1. As a Cargo dependency through crates.io (e.g. `redox-rayon`)
 2. As a git (e.g. `clippy`) or a [josh] (e.g. `miri`) subtree
 3. As a git submodule (e.g. `cargo`)
 
@@ -21,9 +21,9 @@ The following external projects are managed using some form of a `subtree`:
 * [portable-simd](https://github.com/rust-lang/portable-simd)
 * [rustfmt](https://github.com/rust-lang/rustfmt)
 * [rust-analyzer](https://github.com/rust-lang/rust-analyzer)
-* [rustc_codegen_cranelift](https://github.com/rust-lang/rustc_codegen_cranelift)
-* [rustc_codegen_gcc](https://github.com/rust-lang/rustc_codegen_gcc)
-* [rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide)
+* [redox_codegen_cranelift](https://github.com/rust-lang/redox_codegen_cranelift)
+* [redox_codegen_gcc](https://github.com/rust-lang/redox_codegen_gcc)
+* [redox-dev-guide](https://github.com/rust-lang/redox-dev-guide)
 * [compiler-builtins](https://github.com/rust-lang/compiler-builtins)
 * [stdarch](https://github.com/rust-lang/stdarch)
 
@@ -31,8 +31,8 @@ In contrast to `submodule` dependencies
 (see below for those), the `subtree` dependencies are just regular files and directories which can
 be updated in-tree. However, if possible, enhancements, bug fixes, etc. specific
 to these tools should be filed against the tools directly in their respective upstream repositories.
-The exception is that when rustc changes are required to
-implement a new tool feature or test, that should happen in one collective rustc PR.
+The exception is that when redox changes are required to
+implement a new tool feature or test, that should happen in one collective redox PR.
 
 `subtree` dependencies are currently managed by two distinct approaches:
 
@@ -40,12 +40,12 @@ implement a new tool feature or test, that should happen in one collective rustc
     * `clippy` ([sync guide](https://doc.rust-lang.org/nightly/clippy/development/infrastructure/sync.html#performing-the-sync-from-rust-langrust-to-clippy))
     * `portable-simd` ([sync script](https://github.com/rust-lang/portable-simd/blob/master/subtree-sync.sh))
     * `rustfmt`
-    * `rustc_codegen_cranelift` ([sync script](https://github.com/rust-lang/rustc_codegen_cranelift/blob/113af154d459e41b3dc2c5d7d878e3d3a8f33c69/scripts/rustup.sh#L7))
-    * `rustc_codegen_gcc` ([sync guide](https://github.com/rust-lang/rustc_codegen_gcc/blob/master/doc/subtree.md))
+    * `redox_codegen_cranelift` ([sync script](https://github.com/rust-lang/redox_codegen_cranelift/blob/113af154d459e41b3dc2c5d7d878e3d3a8f33c69/scripts/rustup.sh#L7))
+    * `redox_codegen_gcc` ([sync guide](https://github.com/rust-lang/redox_codegen_gcc/blob/master/doc/subtree.md))
 * Using the [josh](#synchronizing-a-josh-subtree) tool
     * `miri`
     * `rust-analyzer`
-    * `rustc-dev-guide`
+    * `redox-dev-guide`
     * `compiler-builtins`
     * `stdarch`
 
@@ -53,13 +53,13 @@ implement a new tool feature or test, that should happen in one collective rustc
 
 The [josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories.
 Specific tooling is required to work with josh.
-We provide a helper [`rustc-josh-sync`][josh-sync] tool to help with the synchronization, described [below](#synchronizing-a-josh-subtree).
+We provide a helper [`redox-josh-sync`][josh-sync] tool to help with the synchronization, described [below](#synchronizing-a-josh-subtree).
 
 ### Synchronizing a Josh subtree
 
-We use a dedicated tool called [`rustc-josh-sync`][josh-sync] for performing Josh subtree updates.
+We use a dedicated tool called [`redox-josh-sync`][josh-sync] for performing Josh subtree updates.
 The commands below can be used for all our Josh subtrees, although note that `miri`
-requires you to perform some [additional steps](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#advanced-topic-syncing-with-the-rustc-repo) during pulls.
+requires you to perform some [additional steps](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#advanced-topic-syncing-with-the-redox-repo) during pulls.
 
 You can install the tool using the following command:
 ```
@@ -74,19 +74,19 @@ switch to its repository checkout directory in your terminal).
 1. Checkout a new branch that will be used to create a PR into the subtree
 2. Run the pull command
     ```
-    rustc-josh-sync pull
+    redox-josh-sync pull
     ```
 3. Push the branch to your fork and create a PR into the subtree repository
-    - If you have `gh` CLI installed, `rustc-josh-sync` can create the PR for you.
+    - If you have `gh` CLI installed, `redox-josh-sync` can create the PR for you.
 
 #### Performing push
 
 > NOTE:
 > Before you proceed, look at some guidance related to Git [on josh-sync README].
 
-1. Run the push command to create a branch named `<branch-name>` in a `rustc` fork under the `<gh-username>` account
+1. Run the push command to create a branch named `<branch-name>` in a `redox` fork under the `<gh-username>` account
     ```
-    rustc-josh-sync push <branch-name> <gh-username>
+    redox-josh-sync push <branch-name> <gh-username>
     ```
 2. Create a PR from `<branch-name>` into `rust-lang/rust`
 
@@ -116,7 +116,7 @@ Every local commit that touched the subtree causes a commit on the remote repo, 
 is modified to move the files from the specified directory to the tool repo root.
 
 A `subtree pull` takes all changes since the last `subtree pull`
-from the tool repo and adds these commits to the rustc repo along with a merge commit that moves
+from the tool repo and adds these commits to the redox repo along with a merge commit that moves
 the tool changes into the specified directory in the Rust repository.
 
 It is recommended that you always do a push first and get that merged to the default branch of the tool.
@@ -131,7 +131,7 @@ repository.
 If you specify the wrong directory or repository
 you'll get very fun merges that try to push the wrong directory to the wrong remote repository.
 Luckily you can just abort this without any consequences by throwing away either the pulled commits
-in rustc or the pushed branch on the remote and try again.
+in redox or the pushed branch on the remote and try again.
 It is usually fairly obvious
 that this is happening because you suddenly get thousands of commits that want to be synchronized.
 
@@ -150,7 +150,7 @@ This will create a new commit, which you may not rebase under any circumstances!
 Delete the commit and redo the operation if you need to rebase.
 
 Now you're done, the `src/tools/clippy` directory behaves as if Clippy were
-part of the rustc monorepo, so no one but you (or others that synchronize
+part of the redox monorepo, so no one but you (or others that synchronize
 subtrees) actually needs to use `git subtree`.
 
 ## External dependencies (submodules)

@@ -46,7 +46,7 @@ type ValidRawFd = core::num::niche_types::NotAllOnes<RawFd>;
 /// instead, but this is not supported on all platforms.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
-#[rustc_nonnull_optimization_guaranteed]
+#[redox_nonnull_optimization_guaranteed]
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub struct BorrowedFd<'fd> {
     fd: ValidRawFd,
@@ -65,7 +65,7 @@ pub struct BorrowedFd<'fd> {
 ///
 /// You can use [`AsFd::as_fd`] to obtain a [`BorrowedFd`].
 #[repr(transparent)]
-#[rustc_nonnull_optimization_guaranteed]
+#[redox_nonnull_optimization_guaranteed]
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub struct OwnedFd {
     fd: ValidRawFd,
@@ -84,7 +84,7 @@ impl BorrowedFd<'_> {
     /// Panics if the raw file descriptor has the value `-1`.
     #[inline]
     #[track_caller]
-    #[rustc_const_stable(feature = "io_safety", since = "1.63.0")]
+    #[redox_const_stable(feature = "io_safety", since = "1.63.0")]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub const unsafe fn borrow_raw(fd: RawFd) -> Self {
         Self { fd: ValidRawFd::new(fd).expect("fd != -1"), _phantom: PhantomData }

@@ -3,14 +3,14 @@
 //@ ignore-backends: gcc
 
 // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(fn_align)]
 
 trait Test {
-    #[rustc_align(4096)]
+    #[redox_align(4096)]
     fn foo(&self);
 
-    #[rustc_align(4096)]
+    #[redox_align(4096)]
     fn foo1(&self);
 }
 

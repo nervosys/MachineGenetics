@@ -16,7 +16,7 @@
 
 
 #![allow(warnings)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![crate_type="rlib"]
 
 pub struct Foo;
@@ -28,13 +28,13 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,associated_item_def_ids")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,associated_item_def_ids")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,associated_item_def_ids")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,associated_item_def_ids")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail6")]
     pub fn method_name2() { }
 }
 
@@ -53,15 +53,15 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,promoted_mir,typeck")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,promoted_mir,typeck")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,promoted_mir,typeck")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,promoted_mir,typeck")]
+    #[redox_clean(cfg="cfail6")]
     pub fn method_body() {
         println!("Hello, world!");
     }
@@ -84,15 +84,15 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
+    #[redox_clean(cfg="cfail6")]
     #[inline]
     pub fn method_body_inlined() {
         println!("Hello, world!");
@@ -111,15 +111,15 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
+    #[redox_clean(cfg="cfail6")]
     fn     method_privacy() { }
 }
 
@@ -140,21 +140,21 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(
+    #[redox_clean(
         cfg="cfail2",
         except="opt_hir_owner_nodes,fn_sig,generics_of,typeck,associated_item,optimized_mir",
     )]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(
         cfg="cfail5",
         except="opt_hir_owner_nodes,fn_sig,generics_of,typeck,associated_item,optimized_mir",
     )]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail6")]
     pub fn method_selfness(&self) { }
 }
 
@@ -169,15 +169,15 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,typeck,optimized_mir")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,typeck,optimized_mir")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,typeck,optimized_mir")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,typeck,optimized_mir")]
+    #[redox_clean(cfg="cfail6")]
     pub fn method_selfmutness(&mut self) { }
 }
 
@@ -190,19 +190,19 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,associated_item_def_ids")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,associated_item_def_ids")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,associated_item_def_ids")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,associated_item_def_ids")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5")]
+    #[redox_clean(cfg="cfail6")]
     pub fn add_method_to_impl1(&self) { }
 
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail6")]
     pub fn add_method_to_impl2(&self) { }
 }
 
@@ -219,15 +219,15 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,typeck,optimized_mir")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,typeck,optimized_mir")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,typeck,optimized_mir")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,typeck,optimized_mir")]
+    #[redox_clean(cfg="cfail6")]
     pub fn add_method_parameter(&self, _: i32) { }
 }
 
@@ -244,15 +244,15 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
+    #[redox_clean(cfg="cfail6")]
     pub fn change_method_parameter_name(&self, b: i64) { }
 }
 
@@ -269,15 +269,15 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,optimized_mir,typeck")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,optimized_mir,typeck")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,optimized_mir,typeck")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,optimized_mir,typeck")]
+    #[redox_clean(cfg="cfail6")]
     pub fn change_method_return_type(&self) -> u32 { 0 }
 }
 
@@ -295,15 +295,15 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5")]
+    #[redox_clean(cfg="cfail6")]
     #[inline]
     pub fn make_method_inline(&self) -> u8 { 0 }
 }
@@ -321,15 +321,15 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
+    #[redox_clean(cfg="cfail6")]
     pub fn change_method_parameter_order(&self, b: i64, a: i64) { }
 }
 
@@ -346,15 +346,15 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,typeck")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,typeck")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,typeck")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,typeck")]
+    #[redox_clean(cfg="cfail6")]
     pub unsafe fn make_method_unsafe(&self) { }
 }
 
@@ -371,15 +371,15 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,typeck")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,typeck")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,typeck")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,typeck")]
+    #[redox_clean(cfg="cfail6")]
     pub extern "C" fn make_method_extern(&self) { }
 }
 
@@ -396,15 +396,15 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,typeck")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,typeck")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,typeck")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,typeck")]
+    #[redox_clean(cfg="cfail6")]
     pub extern "system" fn change_method_calling_convention(&self) { }
 }
 
@@ -430,10 +430,10 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
     // Warning: Note that `typeck` are coming up clean here.
     // The addition or removal of lifetime parameters that don't
@@ -444,10 +444,10 @@ impl Foo {
     // if we lower generics before the body, then the `HirId` for
     // things in the body will be affected. So if you start to see
     // `typeck` appear dirty, that might be the cause. -nmatsakis
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,generics_of")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,generics_of")]
+    #[redox_clean(cfg="cfail6")]
     pub fn add_lifetime_parameter_to_method<'a>(&self) { }
 }
 
@@ -479,10 +479,10 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
     // Warning: Note that `typeck` are coming up clean here.
     // The addition or removal of type parameters that don't appear in
@@ -493,16 +493,16 @@ impl Foo {
     // generics before the body, then the `HirId` for things in the
     // body will be affected. So if you start to see `typeck`
     // appear dirty, that might be the cause. -nmatsakis
-    #[rustc_clean(
+    #[redox_clean(
         cfg="cfail2",
         except="opt_hir_owner_nodes,generics_of,predicates_of,type_of",
     )]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(
         cfg="cfail5",
         except="opt_hir_owner_nodes,generics_of,predicates_of,type_of",
     )]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail6")]
     pub fn add_type_parameter_to_method<T>(&self) { }
 }
 
@@ -525,21 +525,21 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(
+    #[redox_clean(
         cfg="cfail2",
         except="opt_hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig"
     )]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(
         cfg="cfail5",
         except="opt_hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig"
     )]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail6")]
     pub fn add_lifetime_bound_to_lifetime_param_of_method<'a, 'b: 'a>(&self) { }
 }
 
@@ -571,10 +571,10 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
     // Warning: Note that `typeck` are coming up clean here.
     // The addition or removal of bounds that don't appear in the
@@ -585,16 +585,16 @@ impl Foo {
     // generics before the body, then the `HirId` for things in the
     // body will be affected. So if you start to see `typeck`
     // appear dirty, that might be the cause. -nmatsakis
-    #[rustc_clean(
+    #[redox_clean(
         cfg="cfail2",
         except="opt_hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig"
     )]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(
         cfg="cfail5",
         except="opt_hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig"
     )]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail6")]
     pub fn add_lifetime_bound_to_type_param_of_method<'a, T: 'a>(&self) { }
 }
 
@@ -620,10 +620,10 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
     // Warning: Note that `typeck` are coming up clean here.
     // The addition or removal of bounds that don't appear in the
@@ -634,10 +634,10 @@ impl Foo {
     // generics before the body, then the `HirId` for things in the
     // body will be affected. So if you start to see `typeck`
     // appear dirty, that might be the cause. -nmatsakis
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,predicates_of")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,predicates_of")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,predicates_of")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,predicates_of")]
+    #[redox_clean(cfg="cfail6")]
     pub fn add_trait_bound_to_type_param_of_method<T: Clone>(&self) { }
 }
 
@@ -655,15 +655,15 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5")]
+#[redox_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5")]
+    #[redox_clean(cfg="cfail6")]
     #[unsafe(no_mangle)]
     pub fn add_no_mangle_to_method(&self) { }
 }
@@ -679,21 +679,21 @@ impl Bar<u32> {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,generics_of")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,generics_of")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes,generics_of")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes,generics_of")]
+#[redox_clean(cfg="cfail6")]
 impl<T> Bar<T> {
-    #[rustc_clean(
+    #[redox_clean(
         cfg="cfail2",
         except="generics_of,fn_sig,typeck,type_of,optimized_mir"
     )]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(
         cfg="cfail5",
         except="generics_of,fn_sig,typeck,type_of,optimized_mir"
     )]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail6")]
     pub fn add_type_parameter_to_impl(&self) { }
 }
 
@@ -706,15 +706,15 @@ impl Bar<u32> {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="cfail6")]
 impl Bar<u64> {
-    #[rustc_clean(cfg="cfail2", except="fn_sig,optimized_mir,typeck")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="fn_sig,optimized_mir,typeck")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2", except="fn_sig,optimized_mir,typeck")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5", except="fn_sig,optimized_mir,typeck")]
+    #[redox_clean(cfg="cfail6")]
     pub fn change_impl_self_type(&self) { }
 }
 
@@ -727,15 +727,15 @@ impl<T> Bar<T> {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="cfail6")]
 impl<T: 'static> Bar<T> {
-    #[rustc_clean(cfg="cfail2")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5")]
+    #[redox_clean(cfg="cfail6")]
     pub fn add_lifetime_bound_to_impl_parameter(&self) { }
 }
 
@@ -748,15 +748,15 @@ impl<T> Bar<T> {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail6")]
+#[redox_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="cfail3")]
+#[redox_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
+#[redox_clean(cfg="cfail6")]
 impl<T: Clone> Bar<T> {
-    #[rustc_clean(cfg="cfail2")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5")]
-    #[rustc_clean(cfg="cfail6")]
+    #[redox_clean(cfg="cfail2")]
+    #[redox_clean(cfg="cfail3")]
+    #[redox_clean(cfg="cfail5")]
+    #[redox_clean(cfg="cfail6")]
     pub fn add_trait_bound_to_impl_parameter(&self) { }
 }
 

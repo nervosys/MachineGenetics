@@ -1,7 +1,7 @@
 //! Pretty printing of macros output.
 
 use base_db::Crate;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use syntax::NodeOrToken;
 use syntax::{SyntaxNode, ast::make};
 

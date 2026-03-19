@@ -1,7 +1,7 @@
 //@ compile-flags: -C no-prepopulate-passes -Copt-level=0
 // 32-bit x86 returns `f32` and `f64` differently to avoid the x87 stack.
 //@ revisions: x86 other
-//@[x86] only-rustc_abi-x86-sse2
+//@[x86] only-redox_abi-x86-sse2
 //@[other] ignore-x86
 
 #![crate_type = "lib"]

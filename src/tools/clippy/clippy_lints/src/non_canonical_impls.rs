@@ -2,14 +2,14 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_from_proc_macro, last_path_segment, std_or_core};
-use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, LangItem, UnOp};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{TyCtxt, TypeckResults};
-use rustc_session::impl_lint_pass;
-use rustc_span::sym;
-use rustc_span::symbol::kw;
+use redox_errors::Applicability;
+use redox_hir::def_id::DefId;
+use redox_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, LangItem, UnOp};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty::{TyCtxt, TypeckResults};
+use redox_session::impl_lint_pass;
+use redox_span::sym;
+use redox_span::symbol::kw;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -269,7 +269,7 @@ fn check_partial_ord_on_ord<'tcx>(
     // Fix #12683, allow [`needless_return`] here
     else if block.expr.is_none()
         && let Some(stmt) = block.stmts.first()
-        && let rustc_hir::StmtKind::Semi(Expr {
+        && let redox_hir::StmtKind::Semi(Expr {
             kind: ExprKind::Ret(Some(ret)),
             ..
         }) = stmt.kind

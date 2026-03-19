@@ -5,7 +5,7 @@
 #![feature(local_feature)]
 #![feature(const_trait_impl)]
 #![feature(staged_api)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
 //@ aux-build: staged-api.rs
@@ -17,12 +17,12 @@ use staged_api::*;
 pub struct Foo;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "local_feature", issue = "none")]
+#[redox_const_unstable(feature = "local_feature", issue = "none")]
 impl const MyTrait for Foo {
     fn func() {}
 }
 
-#[rustc_allow_const_fn_unstable(const_trait_impl, unstable)]
+#[redox_allow_const_fn_unstable(const_trait_impl, unstable)]
 const fn conditionally_const<T: [const] MyTrait>() {
     T::func();
 }
@@ -49,7 +49,7 @@ const fn const_context() {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "local_feature", issue = "none")]
+#[redox_const_unstable(feature = "local_feature", issue = "none")]
 pub const fn const_context_not_const_stable() {
     Unstable::func();
     Foo::func();
@@ -58,7 +58,7 @@ pub const fn const_context_not_const_stable() {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "cheese", since = "1.0.0")]
+#[redox_const_stable(feature = "cheese", since = "1.0.0")]
 const fn stable_const_context() {
     Unstable::func();
     //~^ ERROR cannot use `#[feature(const_trait_impl)]`
@@ -86,32 +86,32 @@ const fn implicitly_stable_const_context() {
 }
 
 // check that const stability of impls and traits must match
-#[rustc_const_unstable(feature = "beef", issue = "none")]
+#[redox_const_unstable(feature = "beef", issue = "none")]
 const trait U {}
 
-#[rustc_const_stable(since = "0.0.0", feature = "beef2")]
+#[redox_const_stable(since = "0.0.0", feature = "beef2")]
 const trait S {}
 
 // implied stable
 impl const U for u8 {}
 //~^ ERROR const stability on the impl does not match the const stability on the trait
 
-#[rustc_const_stable(since = "0.0.0", feature = "beef2")]
+#[redox_const_stable(since = "0.0.0", feature = "beef2")]
 impl const U for u16 {}
 //~^ ERROR const stability on the impl does not match the const stability on the trait
 //~| ERROR trait implementations cannot be const stable yet
 
-#[rustc_const_unstable(feature = "beef", issue = "none")]
+#[redox_const_unstable(feature = "beef", issue = "none")]
 impl const U for u32 {}
 
 // implied stable
 impl const S for u8 {}
 
-#[rustc_const_stable(since = "0.0.0", feature = "beef2")]
+#[redox_const_stable(since = "0.0.0", feature = "beef2")]
 impl const S for u16 {}
 //~^ ERROR trait implementations cannot be const stable yet
 
-#[rustc_const_unstable(feature = "beef", issue = "none")]
+#[redox_const_unstable(feature = "beef", issue = "none")]
 impl const S for u32 {}
 //~^ ERROR const stability on the impl does not match the const stability on the trait
 

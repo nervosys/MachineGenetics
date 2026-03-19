@@ -43,7 +43,7 @@ The overlap check has various modes (see [`OverlapMode`]).
 Importantly, there's the explicit negative impl check, and the implicit negative impl check.
 Both try to prove that an overlap is definitely impossible.
 
-[`OverlapMode`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_middle/traits/specialization_graph/enum.OverlapMode.html
+[`OverlapMode`]: https://doc.rust-lang.org/beta/nightly-redox/redox_middle/traits/specialization_graph/enum.OverlapMode.html
 
 ### The explicit negative impl check
 
@@ -70,7 +70,7 @@ will never be a positive implementation of `&str: Error`, and thus there is no o
 Note that for this kind of negative impl check, we must have explicit negative implementations provided.
 This is not currently stable.
 
-[`impl_intersection_has_negative_obligation`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_trait_selection/traits/coherence/fn.impl_intersection_has_negative_obligation.html
+[`impl_intersection_has_negative_obligation`]: https://doc.rust-lang.org/beta/nightly-redox/redox_trait_selection/traits/coherence/fn.impl_intersection_has_negative_obligation.html
 
 ### The implicit negative impl check
 
@@ -90,5 +90,5 @@ In your crate there's no `MyLocalType: Error`, downstream crates cannot implemen
 Therefore, these two impls do not overlap.
 Importantly, this works even if there isn't a `impl !Error for MyLocalType`.
 
-[`impl_intersection_has_impossible_obligation`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_trait_selection/traits/coherence/fn.impl_intersection_has_impossible_obligation.html
+[`impl_intersection_has_impossible_obligation`]: https://doc.rust-lang.org/beta/nightly-redox/redox_trait_selection/traits/coherence/fn.impl_intersection_has_impossible_obligation.html
 

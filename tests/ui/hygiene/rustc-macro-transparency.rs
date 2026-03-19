@@ -1,16 +1,16 @@
-#![feature(decl_macro, rustc_attrs)]
+#![feature(decl_macro, redox_attrs)]
 
-#[rustc_macro_transparency = "transparent"]
+#[redox_macro_transparency = "transparent"]
 macro transparent() {
     struct Transparent;
     let transparent = 0;
 }
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 macro semiopaque() {
     struct SemiOpaque;
     let semiopaque = 0;
 }
-#[rustc_macro_transparency = "opaque"]
+#[redox_macro_transparency = "opaque"]
 macro opaque() {
     struct Opaque;
     let opaque = 0;

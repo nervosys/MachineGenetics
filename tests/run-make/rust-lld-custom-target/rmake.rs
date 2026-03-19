@@ -8,14 +8,14 @@
 //@ needs-rust-lld
 //@ only-x86_64-unknown-linux-gnu
 
-use run_make_support::linker::{assert_rustc_doesnt_use_lld, assert_rustc_uses_lld};
-use run_make_support::rustc;
+use run_make_support::linker::{assert_redox_doesnt_use_lld, assert_redox_uses_lld};
+use run_make_support::redox;
 
 fn main() {
     // Compile to a custom target spec with rust-lld enabled by default. We'll check that by asking
     // the linker to display its version number with a link-arg.
-    assert_rustc_uses_lld(
-        rustc()
+    assert_redox_uses_lld(
+        redox()
             .crate_type("cdylib")
             .target("custom-target.json")
             .arg("-Zunstable-options")
@@ -23,8 +23,8 @@ fn main() {
     );
 
     // But it can also be disabled via linker features.
-    assert_rustc_doesnt_use_lld(
-        rustc()
+    assert_redox_doesnt_use_lld(
+        redox()
             .crate_type("cdylib")
             .target("custom-target.json")
             .arg("-Clinker-features=-lld")

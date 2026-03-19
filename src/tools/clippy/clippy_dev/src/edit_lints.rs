@@ -5,7 +5,7 @@ use crate::utils::{
     expect_action, try_rename_dir, try_rename_file, walk_dir_no_dot_or_target,
 };
 use core::mem;
-use rustc_lexer::TokenKind;
+use redox_lexer::TokenKind;
 use std::collections::hash_map::Entry;
 use std::ffi::OsString;
 use std::fs;
@@ -47,7 +47,7 @@ pub fn deprecate<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, name
 pub fn uplift<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_name: &'env str, new_name: &'env str) {
     let mut data = cx.parse_lint_decls();
 
-    update_rename_targets(&mut data, old_name, LintName::new_rustc(new_name));
+    update_rename_targets(&mut data, old_name, LintName::new_redox(new_name));
 
     let Entry::Occupied(mut lint) = data.lints.entry(old_name) else {
         eprintln!("error: failed to find lint `{old_name}`");
@@ -56,7 +56,7 @@ pub fn uplift<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
     let Lint::Active(prev_lint) = mem::replace(
         lint.get_mut(),
         Lint::Renamed(RenamedLint {
-            new_name: LintName::new_rustc(new_name),
+            new_name: LintName::new_redox(new_name),
             version: cx.str_buf.alloc_display(cx.arena, clippy_version.rust_display()),
         }),
     ) else {
@@ -192,7 +192,7 @@ fn remove_lint_declaration(name: &str, lint: &ActiveLint<'_>, data: &LintData<'_
 
 /// Updates all renames to the old name to be renames to the new name.
 ///
-/// This is needed because rustc doesn't allow a lint to be renamed to a lint that has
+/// This is needed because redox doesn't allow a lint to be renamed to a lint that has
 /// also been renamed.
 fn update_rename_targets<'cx>(data: &mut LintData<'cx>, old_name: &str, new_name: LintName<'cx>) {
     let old_name = LintName::new_clippy(old_name);

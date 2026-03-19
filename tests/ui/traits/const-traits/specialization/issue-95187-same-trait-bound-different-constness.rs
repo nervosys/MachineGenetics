@@ -4,11 +4,11 @@
 
 //@ check-pass
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(min_specialization)]
 #![feature(const_trait_impl)]
 
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 trait Specialize {}
 
 const trait Foo {}

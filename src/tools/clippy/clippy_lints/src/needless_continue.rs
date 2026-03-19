@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher;
 use clippy_utils::source::{indent_of, snippet_block, snippet_with_context};
-use rustc_ast::Label;
-use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, HirId, LoopSource, StmtKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::declare_lint_pass;
-use rustc_span::{ExpnKind, Span};
+use redox_ast::Label;
+use redox_errors::Applicability;
+use redox_hir::{Block, Expr, ExprKind, HirId, LoopSource, StmtKind};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::declare_lint_pass;
+use redox_span::{ExpnKind, Span};
 
 declare_clippy_lint! {
     /// ### What it does

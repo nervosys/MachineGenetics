@@ -4,13 +4,13 @@
 
 //@ pp-exact
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 fn main() {
-    #![rustc_dummy]
-    #[rustc_dummy]
+    #![redox_dummy]
+    #[redox_dummy]
     fn f() {}
 
-    #[rustc_dummy]
+    #[redox_dummy]
     fn g() {}
 }

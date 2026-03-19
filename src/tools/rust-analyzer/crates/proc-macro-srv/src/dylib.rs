@@ -3,7 +3,7 @@
 mod proc_macros;
 mod version;
 
-use rustc_proc_macro::bridge;
+use redox_proc_macro::bridge;
 use std::{fmt, fs, io, time::SystemTime};
 use temp_dir::TempDir;
 
@@ -140,7 +140,7 @@ fn invalid_data_err(e: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> i
 }
 
 fn is_derive_registrar_symbol(symbol: &str) -> bool {
-    const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
+    const NEW_REGISTRAR_SYMBOL: &str = "_redox_proc_macro_decls_";
     symbol.contains(NEW_REGISTRAR_SYMBOL)
 }
 

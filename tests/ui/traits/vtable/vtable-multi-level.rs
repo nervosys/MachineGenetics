@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 //   O --> G --> C --> A
 //     \     \     \-> B
@@ -71,63 +71,63 @@ trait O: G + N {
 
 struct S;
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl A for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl B for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl C for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl D for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl E for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl F for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl G for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl H for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl I for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl J for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl K for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl L for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl M for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl N for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl O for S {}
 //~^ ERROR vtable entries
 

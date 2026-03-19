@@ -2,15 +2,15 @@ use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir};
 use clippy_utils::get_parent_expr;
 use clippy_utils::sugg::Sugg;
 use hir::Param;
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::intravisit::{Visitor as HirVisitor, Visitor};
-use rustc_hir::{ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, ExprKind, intravisit as hir_visit};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::nested_filter;
-use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
-use rustc_span::ExpnKind;
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_hir::intravisit::{Visitor as HirVisitor, Visitor};
+use redox_hir::{ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, ExprKind, intravisit as hir_visit};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::hir::nested_filter;
+use redox_middle::ty;
+use redox_session::declare_lint_pass;
+use redox_span::ExpnKind;
 use std::ops::ControlFlow;
 
 declare_clippy_lint! {

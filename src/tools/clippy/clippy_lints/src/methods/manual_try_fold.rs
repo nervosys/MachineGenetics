@@ -4,11 +4,11 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LintContext};
-use rustc_span::{Span, sym};
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LintContext};
+use redox_span::{Span, sym};
 
 use super::MANUAL_TRY_FOLD;
 

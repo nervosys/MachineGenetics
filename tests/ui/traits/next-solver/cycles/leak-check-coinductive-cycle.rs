@@ -1,8 +1,8 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_coinductive]
+#[redox_coinductive]
 trait Trait<T> {}
 impl<'a, 'b, T> Trait<T> for (&'a (), &'b ())
 where

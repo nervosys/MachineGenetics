@@ -7,14 +7,14 @@
 
 #![crate_type = "lib"]
 #![allow(internal_features)]
-#![feature(rustc_attrs, link_llvm_intrinsics)]
+#![feature(redox_attrs, link_llvm_intrinsics)]
 
-#[rustc_scalable_vector(16)]
+#[redox_scalable_vector(16)]
 #[allow(non_camel_case_types)]
 #[repr(transparent)]
 pub struct svbool_t(bool);
 
-#[rustc_scalable_vector(4)]
+#[redox_scalable_vector(4)]
 #[allow(non_camel_case_types)]
 #[repr(transparent)]
 pub struct svbool4_t(bool);

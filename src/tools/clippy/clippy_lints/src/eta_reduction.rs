@@ -4,18 +4,18 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
 use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate};
-use rustc_abi::ExternAbi;
-use rustc_errors::Applicability;
-use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind, find_attr};
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
-use rustc_middle::ty::{
+use redox_abi::ExternAbi;
+use redox_errors::Applicability;
+use redox_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind, find_attr};
+use redox_infer::infer::TyCtxtInferExt;
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::adjustment::{Adjust, DerefAdjustKind};
+use redox_middle::ty::{
     self, Binder, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, Ty, TypeVisitableExt, TypeckResults,
 };
-use rustc_session::declare_lint_pass;
-use rustc_span::symbol::sym;
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt as _;
+use redox_session::declare_lint_pass;
+use redox_span::symbol::sym;
+use redox_trait_selection::error_reporting::InferCtxtErrorExt as _;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -324,7 +324,7 @@ fn check_sig<'tcx>(closure_sig: FnSig<'tcx>, call_sig: FnSig<'tcx>) -> bool {
 /// This walks through both signatures and checks for any time a late-bound region is expected by an
 /// `impl Fn` type, but the target signature does not have a late-bound region in the same position.
 ///
-/// This is needed because rustc is unable to late bind early-bound regions in a function signature.
+/// This is needed because redox is unable to late bind early-bound regions in a function signature.
 fn has_late_bound_to_non_late_bound_regions(from_sig: FnSig<'_>, to_sig: FnSig<'_>) -> bool {
     fn check_region(from_region: Region<'_>, to_region: Region<'_>) -> bool {
         from_region.is_bound() && !to_region.is_bound()

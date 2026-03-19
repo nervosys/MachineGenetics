@@ -1,6 +1,6 @@
 # Editions
 
-This chapter gives an overview of how Edition support works in rustc.
+This chapter gives an overview of how Edition support works in redox.
 This assumes that you are familiar with what Editions are (see the [Edition Guide]).
 
 [Edition Guide]: https://doc.rust-lang.org/edition-guide/
@@ -16,9 +16,9 @@ edition, though you should be careful about whether you check the global session
 As an alternative to the `at_least_rust_20xx` convenience methods, the [`Edition`] type also
 supports comparisons for doing range checks, such as `span.edition() >= Edition::Edition2021`.
 
-[`Session::edition`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html#method.edition
-[`Session::at_least_rust_2021`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html#method.at_least_rust_2021
-[`Edition`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/edition/enum.Edition.html
+[`Session::edition`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_session/struct.Session.html#method.edition
+[`Session::at_least_rust_2021`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_session/struct.Session.html#method.at_least_rust_2021
+[`Edition`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/edition/enum.Edition.html
 
 ### Adding a new edition
 
@@ -112,9 +112,9 @@ For example, the deprecated `start...end` pattern syntax emits the
 [`ellipsis_inclusive_range_patterns`] lint on editions before 2021, and in 2021 is an hard error via
 the `emit_err` method.
 
-[`Lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.Lexer.html
-[`ParseSess::edition`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/struct.ParseSess.html#structfield.edition
-[`ellipsis_inclusive_range_patterns`]: https://doc.rust-lang.org/nightly/rustc/lints/listing/warn-by-default.html#ellipsis-inclusive-range-patterns
+[`Lexer`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_parse/lexer/struct.Lexer.html
+[`ParseSess::edition`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_session/parse/struct.ParseSess.html#structfield.edition
+[`ellipsis_inclusive_range_patterns`]: https://doc.rust-lang.org/nightly/redox/lints/listing/warn-by-default.html#ellipsis-inclusive-range-patterns
 
 ### Keywords
 
@@ -132,9 +132,9 @@ An additional option to consider is the `k#` prefix which was introduced in [RFC
 This allows the use of a keyword in editions *before* the edition where the keyword is introduced.
 This is currently not implemented.
 
-[`Symbol::is_used_keyword_conditional`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html#method.is_used_keyword_conditional
-[`keyword_idents`]: https://doc.rust-lang.org/nightly/rustc/lints/listing/allowed-by-default.html#keyword-idents
-[`KeywordIdents`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/builtin/struct.KeywordIdents.html
+[`Symbol::is_used_keyword_conditional`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/symbol/struct.Symbol.html#method.is_used_keyword_conditional
+[`keyword_idents`]: https://doc.rust-lang.org/nightly/redox/lints/listing/allowed-by-default.html#keyword-idents
+[`KeywordIdents`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/builtin/struct.KeywordIdents.html
 [RFC 3101]: https://rust-lang.github.io/rfcs/3101-reserved_prefixes.html
 
 ### Edition hygiene
@@ -221,9 +221,9 @@ You may consider switching an `Allow` to `Warn` several years after the edition 
 This will only show up for the relatively small number of stragglers who have not updated to the new
 edition.
 
-[`keyword_idents`]: https://doc.rust-lang.org/nightly/rustc/lints/listing/allowed-by-default.html#keyword-idents
-[`FutureIncompatibilityReason::EditionError`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/enum.FutureIncompatibilityReason.html#variant.EditionError
-[`FutureIncompatibilityReason::EditionSemanticsChange`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/enum.FutureIncompatibilityReason.html#variant.EditionSemanticsChange
+[`keyword_idents`]: https://doc.rust-lang.org/nightly/redox/lints/listing/allowed-by-default.html#keyword-idents
+[`FutureIncompatibilityReason::EditionError`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint_defs/enum.FutureIncompatibilityReason.html#variant.EditionError
+[`FutureIncompatibilityReason::EditionSemanticsChange`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint_defs/enum.FutureIncompatibilityReason.html#variant.EditionSemanticsChange
 
 ### Edition-specific lints
 
@@ -271,8 +271,8 @@ This should generally be used sparingly, as there are other options:
   handled by the migration.
   Switching to `Warn` only impacted a few stragglers who did not update.
 
-[`ellipsis_inclusive_range_patterns`]: https://doc.rust-lang.org/nightly/rustc/lints/listing/warn-by-default.html#ellipsis-inclusive-range-patterns
-[`anonymous_parameters`]: https://doc.rust-lang.org/nightly/rustc/lints/listing/warn-by-default.html#anonymous-parameters
+[`ellipsis_inclusive_range_patterns`]: https://doc.rust-lang.org/nightly/redox/lints/listing/warn-by-default.html#ellipsis-inclusive-range-patterns
+[`anonymous_parameters`]: https://doc.rust-lang.org/nightly/redox/lints/listing/warn-by-default.html#anonymous-parameters
 
 ### Lints and stability
 
@@ -322,7 +322,7 @@ in 2021.
 
 [`core::prelude`]: https://doc.rust-lang.org/core/prelude/index.html
 [`std::prelude`]: https://doc.rust-lang.org/std/prelude/index.html
-[`rust_2021_prelude_collisions`]: https://doc.rust-lang.org/nightly/rustc/lints/listing/allowed-by-default.html#rust-2021-prelude-collisions
+[`rust_2021_prelude_collisions`]: https://doc.rust-lang.org/nightly/redox/lints/listing/allowed-by-default.html#rust-2021-prelude-collisions
 
 ### Customized language behavior
 
@@ -333,7 +333,7 @@ The downside is that this requires special handling in the compiler to be able t
 the old and new signatures or behaviors should be used.
 
 One example is the change in method resolution for [`into_iter()` of arrays][into-iter].
-This was implemented with the `#[rustc_skip_array_during_method_dispatch]` attribute on the
+This was implemented with the `#[redox_skip_array_during_method_dispatch]` attribute on the
 `IntoIterator` trait which then tells the compiler to consider an alternate trait resolution choice
 based on the edition.
 
@@ -341,13 +341,13 @@ Another example is the [`panic!` macro changes][panic-macro].
 This required defining multiple panic macros, and having the built-in panic macro implementation
 determine the appropriate way to expand it.
 This also included the [`non_fmt_panics`] [migration lint] to adjust old code to the new form, which
-required the `rustc_diagnostic_item` attribute to detect the usage of the panic macro.
+required the `redox_diagnostic_item` attribute to detect the usage of the panic macro.
 
 In general it is recommended to avoid these special cases except for very high value situations.
 
 [into-iter]: https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html
 [panic-macro]: https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html
-[`non_fmt_panics`]: https://doc.rust-lang.org/nightly/rustc/lints/listing/warn-by-default.html#non-fmt-panics
+[`non_fmt_panics`]: https://doc.rust-lang.org/nightly/redox/lints/listing/warn-by-default.html#non-fmt-panics
 
 ### Migrating the standard library edition
 
@@ -374,7 +374,7 @@ After the edition team has given the go-ahead, the process for stabilizing an ed
 - Update [`LATEST_STABLE_EDITION`].
 - Update [`Edition::is_stable`].
 - Hunt and find any document that refers to edition by number, and update it:
-    - [`--edition` flag](https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustc/src/command-line-arguments.md#--edition-specify-the-edition-to-use)
+    - [`--edition` flag](https://github.com/rust-lang/rust/blob/HEAD/src/doc/redox/src/command-line-arguments.md#--edition-specify-the-edition-to-use)
     - [Rustdoc attributes](https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustdoc/src/write-documentation/documentation-tests.md#attributes)
 - Clean up any tests that use the `//@ edition` header to remove the `-Zunstable-options` flag to ensure they are indeed stable. Note: Ideally this should be automated, see [#133582].
 - Bless any tests that change.
@@ -382,6 +382,6 @@ After the edition team has given the go-ahead, the process for stabilizing an ed
 
 See [example for 2024](https://github.com/rust-lang/rust/pull/133349).
 
-[`LATEST_STABLE_EDITION`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/edition/constant.LATEST_STABLE_EDITION.html
-[`Edition::is_stable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/edition/enum.Edition.html#method.is_stable
+[`LATEST_STABLE_EDITION`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/edition/constant.LATEST_STABLE_EDITION.html
+[`Edition::is_stable`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/edition/enum.Edition.html#method.is_stable
 [#133582]: https://github.com/rust-lang/rust/issues/133582

@@ -2,15 +2,15 @@ use super::{Attribute, UNNECESSARY_CLIPPY_CFG};
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
 use clippy_utils::source::SpanRangeExt;
 use itertools::Itertools;
-use rustc_ast::AttrStyle;
-use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, Level};
-use rustc_span::sym;
+use redox_ast::AttrStyle;
+use redox_errors::Applicability;
+use redox_lint::{EarlyContext, Level};
+use redox_span::sym;
 
 pub(super) fn check(
     cx: &EarlyContext<'_>,
-    cfg_attr: &rustc_ast::MetaItem,
-    behind_cfg_attr: &rustc_ast::MetaItem,
+    cfg_attr: &redox_ast::MetaItem,
+    behind_cfg_attr: &redox_ast::MetaItem,
     attr: &Attribute,
 ) {
     if cfg_attr.has_name(sym::clippy)

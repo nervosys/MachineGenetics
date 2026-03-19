@@ -27,7 +27,7 @@ type ValidRawSocket = core::num::niche_types::NotAllOnes<RawSocket>;
 /// socket, which is then borrowed under the same lifetime.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
-#[rustc_nonnull_optimization_guaranteed]
+#[redox_nonnull_optimization_guaranteed]
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub struct BorrowedSocket<'socket> {
     socket: ValidRawSocket,
@@ -43,7 +43,7 @@ pub struct BorrowedSocket<'socket> {
 /// argument or returned as an owned value, and it never has the value
 /// `INVALID_SOCKET`.
 #[repr(transparent)]
-#[rustc_nonnull_optimization_guaranteed]
+#[redox_nonnull_optimization_guaranteed]
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub struct OwnedSocket {
     socket: ValidRawSocket,
@@ -59,7 +59,7 @@ impl BorrowedSocket<'_> {
     /// `INVALID_SOCKET`.
     #[inline]
     #[track_caller]
-    #[rustc_const_stable(feature = "io_safety", since = "1.63.0")]
+    #[redox_const_stable(feature = "io_safety", since = "1.63.0")]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub const unsafe fn borrow_raw(socket: RawSocket) -> Self {
         Self { socket: ValidRawSocket::new(socket).expect("socket != -1"), _phantom: PhantomData }

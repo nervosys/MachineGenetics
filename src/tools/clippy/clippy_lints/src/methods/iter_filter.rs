@@ -1,18 +1,18 @@
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::ty::get_iterator_item_ty;
 use hir::ExprKind;
-use rustc_lint::{LateContext, LintContext};
+use redox_lint::{LateContext, LintContext};
 
 use super::{ITER_FILTER_IS_OK, ITER_FILTER_IS_SOME};
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline};
 use clippy_utils::{get_parent_expr, peel_blocks, span_contains_comment, sym};
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::QPath;
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, Symbol};
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_hir::QPath;
+use redox_span::Span;
+use redox_span::symbol::{Ident, Symbol};
 
 ///
 /// Returns true if the expression is a method call to `method_name`

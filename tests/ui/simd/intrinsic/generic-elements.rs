@@ -5,7 +5,7 @@
     repr_simd,
     intrinsics,
     core_intrinsics,
-    rustc_attrs,
+    redox_attrs,
     adt_const_params,
     unsized_const_params
 )]
@@ -13,7 +13,7 @@
 
 use std::intrinsics::simd::{simd_extract, simd_insert, simd_shuffle};
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
 
 #[repr(simd)]

@@ -61,7 +61,7 @@ pub fn abort_internal() -> ! {
 // pre-link args for the target specification, so keep that in sync.
 // Note: contrary to the `__rust_abort` in `crate::rt`, this uses `no_mangle`
 //       because it is actually used from C code. Because symbols annotated with
-//       #[rustc_std_internal_symbol] get mangled, this will not lead to linker
+//       #[redox_std_internal_symbol] get mangled, this will not lead to linker
 //       conflicts.
 #[cfg(not(test))]
 #[unsafe(no_mangle)]

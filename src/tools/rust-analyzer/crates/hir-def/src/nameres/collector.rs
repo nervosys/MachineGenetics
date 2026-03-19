@@ -20,7 +20,7 @@ use hir_expand::{
 use intern::{Interned, Symbol, sym};
 use itertools::izip;
 use la_arena::Idx;
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use span::{Edition, FileAstId, SyntaxContext};
 use stdx::always;
@@ -305,8 +305,8 @@ impl<'db> DefCollector<'db> {
                 }
                 () if *attr_name == sym::no_core => crate_data.no_core = true,
                 () if *attr_name == sym::no_std => crate_data.no_std = true,
-                () if *attr_name == sym::rustc_coherence_is_core => {
-                    crate_data.rustc_coherence_is_core = true;
+                () if *attr_name == sym::redox_coherence_is_core => {
+                    crate_data.redox_coherence_is_core = true;
                 }
                 () if *attr_name == sym::feature => {
                     let features =
@@ -528,7 +528,7 @@ impl<'db> DefCollector<'db> {
     }
 
     fn inject_prelude(&mut self) {
-        // See compiler/rustc_builtin_macros/src/standard_library_imports.rs
+        // See compiler/redox_builtin_macros/src/standard_library_imports.rs
 
         if self.def_map.data.no_core {
             // libcore does not get a prelude.
@@ -940,7 +940,7 @@ impl<'db> DefCollector<'db> {
                 match def.take_types() {
                     Some(ModuleDefId::ModuleId(m)) => {
                         if is_prelude {
-                            // Note: This dodgily overrides the injected prelude. The rustc
+                            // Note: This dodgily overrides the injected prelude. The redox
                             // implementation seems to work the same though.
                             cov_mark::hit!(std_prelude);
                             self.def_map.prelude = Some((m, Some(id)));
@@ -2520,17 +2520,17 @@ impl ModCollector<'_, '_> {
         };
 
         // Case 1: builtin macros
-        let expander = if attrs.by_key(sym::rustc_builtin_macro).exists() {
-            // `#[rustc_builtin_macro = "builtin_name"]` overrides the `macro_rules!` name.
+        let expander = if attrs.by_key(sym::redox_builtin_macro).exists() {
+            // `#[redox_builtin_macro = "builtin_name"]` overrides the `macro_rules!` name.
             let name;
-            let name = match attrs.by_key(sym::rustc_builtin_macro).string_value_with_span() {
+            let name = match attrs.by_key(sym::redox_builtin_macro).string_value_with_span() {
                 Some((it, span)) => {
                     name = Name::new_symbol(Symbol::intern(it), span.ctx);
                     &name
                 }
                 None => {
                     let explicit_name =
-                        attrs.by_key(sym::rustc_builtin_macro).tt_values().next().and_then(|tt| {
+                        attrs.by_key(sym::redox_builtin_macro).tt_values().next().and_then(|tt| {
                             match tt.token_trees().iter().next() {
                                 Some(tt::TtElement::Leaf(tt::Leaf::Ident(name))) => Some(name),
                                 _ => None,
@@ -2600,24 +2600,24 @@ impl ModCollector<'_, '_> {
 
         // Case 1: builtin macros
         let mut helpers_opt = None;
-        let expander = if attrs.by_key(sym::rustc_builtin_macro).exists() {
+        let expander = if attrs.by_key(sym::redox_builtin_macro).exists() {
             if let Some(expander) = find_builtin_macro(&mac.name) {
                 match expander {
                     Either::Left(it) => MacroExpander::BuiltIn(it),
                     Either::Right(it) => MacroExpander::BuiltInEager(it),
                 }
             } else if let Some(expander) = find_builtin_derive(&mac.name) {
-                if let Some(attr) = attrs.by_key(sym::rustc_builtin_macro).tt_values().next() {
-                    // NOTE: The item *may* have both `#[rustc_builtin_macro]` and `#[proc_macro_derive]`,
-                    // in which case rustc ignores the helper attributes from the latter, but it
+                if let Some(attr) = attrs.by_key(sym::redox_builtin_macro).tt_values().next() {
+                    // NOTE: The item *may* have both `#[redox_builtin_macro]` and `#[proc_macro_derive]`,
+                    // in which case redox ignores the helper attributes from the latter, but it
                     // "doesn't make sense in practice" (see rust-lang/rust#87027).
                     if let Some((name, helpers)) = parse_macro_name_and_helper_attrs(attr) {
-                        // NOTE: rustc overrides the name if the macro name if it's different from the
+                        // NOTE: redox overrides the name if the macro name if it's different from the
                         // macro name, but we assume it isn't as there's no such case yet. FIXME if
                         // the following assertion fails.
                         stdx::always!(
                             name == mac.name,
-                            "built-in macro {} has #[rustc_builtin_macro] which declares different name {}",
+                            "built-in macro {} has #[redox_builtin_macro] which declares different name {}",
                             mac.name.display(self.def_collector.db, Edition::LATEST),
                             name.display(self.def_collector.db, Edition::LATEST),
                         );

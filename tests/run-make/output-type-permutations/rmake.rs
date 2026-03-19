@@ -1,4 +1,4 @@
-// In 2014, rustc's output flags were reworked to be a lot more modular.
+// In 2014, redox's output flags were reworked to be a lot more modular.
 // This test uses these output flags in an expansive variety of combinations
 // and syntax styles, checking that compilation is successful and that output
 // files are exactly what is expected, no more, no less.
@@ -10,7 +10,7 @@
 use std::path::PathBuf;
 
 use run_make_support::{
-    bin_name, dynamic_lib_name, filename_not_in_denylist, rfs, rust_lib_name, rustc,
+    bin_name, dynamic_lib_name, filename_not_in_denylist, rfs, rust_lib_name, redox,
     shallow_find_files, static_lib_name,
 };
 
@@ -18,15 +18,15 @@ use run_make_support::{
 // `must_exist`: output files which must be found - if any are absent, the test fails
 // `can_exist`: optional output files which will not trigger a failure
 // `dir`: the name of the directory where the test happens
-// `rustc_invocation`: the rustc command being tested
+// `redox_invocation`: the redox command being tested
 // Any unexpected output files not listed in `must_exist` or `can_exist` will cause a failure.
 #[track_caller]
-fn assert_expected_output_files(expectations: Expectations, rustc_invocation: impl Fn()) {
+fn assert_expected_output_files(expectations: Expectations, redox_invocation: impl Fn()) {
     let Expectations { expected_files: must_exist, allowed_files: can_exist, test_dir: dir } =
         expectations;
 
     rfs::create_dir(&dir);
-    rustc_invocation();
+    redox_invocation();
     for file in must_exist {
         rfs::remove_file(PathBuf::from(&dir).join(&file));
     }
@@ -84,7 +84,7 @@ fn main() {
             test_dir: "three-crates".to_string(),
         },
         || {
-            rustc()
+            redox()
                 .input("foo.rs")
                 .out_dir("three-crates")
                 .crate_type("rlib,dylib,staticlib")
@@ -99,7 +99,7 @@ fn main() {
             test_dir: "bin-crate".to_string(),
         },
         || {
-            rustc().input("foo.rs").crate_type("bin").out_dir("bin-crate").run();
+            redox().input("foo.rs").crate_type("bin").out_dir("bin-crate").run();
         },
     );
 
@@ -110,7 +110,7 @@ fn main() {
             test_dir: "all-emit".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("asm,llvm-ir,llvm-bc,obj,link").out_dir("all-emit").run();
+            redox().input("foo.rs").emit("asm,llvm-ir,llvm-bc,obj,link").out_dir("all-emit").run();
         },
     );
 
@@ -121,7 +121,7 @@ fn main() {
             test_dir: "asm-emit".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("asm").output("asm-emit/foo").run();
+            redox().input("foo.rs").emit("asm").output("asm-emit/foo").run();
         },
     );
     assert_expected_output_files(
@@ -131,7 +131,7 @@ fn main() {
             test_dir: "asm-emit2".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("asm=asm-emit2/foo").run();
+            redox().input("foo.rs").emit("asm=asm-emit2/foo").run();
         },
     );
     assert_expected_output_files(
@@ -141,7 +141,7 @@ fn main() {
             test_dir: "asm-emit3".to_string(),
         },
         || {
-            rustc().input("foo.rs").arg("--emit=asm=asm-emit3/foo").run();
+            redox().input("foo.rs").arg("--emit=asm=asm-emit3/foo").run();
         },
     );
 
@@ -152,7 +152,7 @@ fn main() {
             test_dir: "llvm-ir-emit".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("llvm-ir").output("llvm-ir-emit/foo").run();
+            redox().input("foo.rs").emit("llvm-ir").output("llvm-ir-emit/foo").run();
         },
     );
     assert_expected_output_files(
@@ -162,7 +162,7 @@ fn main() {
             test_dir: "llvm-ir-emit2".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("llvm-ir=llvm-ir-emit2/foo").run();
+            redox().input("foo.rs").emit("llvm-ir=llvm-ir-emit2/foo").run();
         },
     );
     assert_expected_output_files(
@@ -172,7 +172,7 @@ fn main() {
             test_dir: "llvm-ir-emit3".to_string(),
         },
         || {
-            rustc().input("foo.rs").arg("--emit=llvm-ir=llvm-ir-emit3/foo").run();
+            redox().input("foo.rs").arg("--emit=llvm-ir=llvm-ir-emit3/foo").run();
         },
     );
 
@@ -183,7 +183,7 @@ fn main() {
             test_dir: "llvm-bc-emit".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("llvm-bc").output("llvm-bc-emit/foo").run();
+            redox().input("foo.rs").emit("llvm-bc").output("llvm-bc-emit/foo").run();
         },
     );
     assert_expected_output_files(
@@ -193,7 +193,7 @@ fn main() {
             test_dir: "llvm-bc-emit2".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("llvm-bc=llvm-bc-emit2/foo").run();
+            redox().input("foo.rs").emit("llvm-bc=llvm-bc-emit2/foo").run();
         },
     );
     assert_expected_output_files(
@@ -203,7 +203,7 @@ fn main() {
             test_dir: "llvm-bc-emit3".to_string(),
         },
         || {
-            rustc().input("foo.rs").arg("--emit=llvm-bc=llvm-bc-emit3/foo").run();
+            redox().input("foo.rs").arg("--emit=llvm-bc=llvm-bc-emit3/foo").run();
         },
     );
 
@@ -214,7 +214,7 @@ fn main() {
             test_dir: "obj-emit".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("obj").output("obj-emit/foo").run();
+            redox().input("foo.rs").emit("obj").output("obj-emit/foo").run();
         },
     );
     assert_expected_output_files(
@@ -224,7 +224,7 @@ fn main() {
             test_dir: "obj-emit2".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("obj=obj-emit2/foo").run();
+            redox().input("foo.rs").emit("obj=obj-emit2/foo").run();
         },
     );
     assert_expected_output_files(
@@ -234,7 +234,7 @@ fn main() {
             test_dir: "obj-emit3".to_string(),
         },
         || {
-            rustc().input("foo.rs").arg("--emit=obj=obj-emit3/foo").run();
+            redox().input("foo.rs").arg("--emit=obj=obj-emit3/foo").run();
         },
     );
 
@@ -245,7 +245,7 @@ fn main() {
             test_dir: "link-emit".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("link").output("link-emit/".to_owned() + &bin_foo).run();
+            redox().input("foo.rs").emit("link").output("link-emit/".to_owned() + &bin_foo).run();
         },
     );
     assert_expected_output_files(
@@ -255,7 +255,7 @@ fn main() {
             test_dir: "link-emit2".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit(&format!("link=link-emit2/{bin_foo}")).run();
+            redox().input("foo.rs").emit(&format!("link=link-emit2/{bin_foo}")).run();
         },
     );
     assert_expected_output_files(
@@ -265,7 +265,7 @@ fn main() {
             test_dir: "link-emit3".to_string(),
         },
         || {
-            rustc().input("foo.rs").arg(&format!("--emit=link=link-emit3/{bin_foo}")).run();
+            redox().input("foo.rs").arg(&format!("--emit=link=link-emit3/{bin_foo}")).run();
         },
     );
 
@@ -276,7 +276,7 @@ fn main() {
             test_dir: "rlib".to_string(),
         },
         || {
-            rustc().crate_type("rlib").input("foo.rs").output("rlib/foo").run();
+            redox().crate_type("rlib").input("foo.rs").output("rlib/foo").run();
         },
     );
     assert_expected_output_files(
@@ -286,7 +286,7 @@ fn main() {
             test_dir: "rlib2".to_string(),
         },
         || {
-            rustc().crate_type("rlib").input("foo.rs").emit("link=rlib2/foo").run();
+            redox().crate_type("rlib").input("foo.rs").emit("link=rlib2/foo").run();
         },
     );
     assert_expected_output_files(
@@ -296,7 +296,7 @@ fn main() {
             test_dir: "rlib3".to_string(),
         },
         || {
-            rustc().crate_type("rlib").input("foo.rs").arg("--emit=link=rlib3/foo").run();
+            redox().crate_type("rlib").input("foo.rs").arg("--emit=link=rlib3/foo").run();
         },
     );
 
@@ -318,7 +318,7 @@ fn main() {
             test_dir: "dylib".to_string(),
         },
         || {
-            rustc()
+            redox()
                 .crate_type("dylib")
                 .input("foo.rs")
                 .output("dylib/".to_owned() + &bin_foo)
@@ -343,7 +343,7 @@ fn main() {
             test_dir: "dylib2".to_string(),
         },
         || {
-            rustc()
+            redox()
                 .crate_type("dylib")
                 .input("foo.rs")
                 .emit(&format!("link=dylib2/{bin_foo}"))
@@ -368,7 +368,7 @@ fn main() {
             test_dir: "dylib3".to_string(),
         },
         || {
-            rustc()
+            redox()
                 .crate_type("dylib")
                 .input("foo.rs")
                 .arg(&format!("--emit=link=dylib3/{bin_foo}"))
@@ -383,7 +383,7 @@ fn main() {
             test_dir: "staticlib".to_string(),
         },
         || {
-            rustc().crate_type("staticlib").input("foo.rs").output("staticlib/foo").run();
+            redox().crate_type("staticlib").input("foo.rs").output("staticlib/foo").run();
         },
     );
     assert_expected_output_files(
@@ -393,7 +393,7 @@ fn main() {
             test_dir: "staticlib2".to_string(),
         },
         || {
-            rustc().crate_type("staticlib").input("foo.rs").emit("link=staticlib2/foo").run();
+            redox().crate_type("staticlib").input("foo.rs").emit("link=staticlib2/foo").run();
         },
     );
     assert_expected_output_files(
@@ -403,7 +403,7 @@ fn main() {
             test_dir: "staticlib3".to_string(),
         },
         || {
-            rustc().crate_type("staticlib").input("foo.rs").arg("--emit=link=staticlib3/foo").run();
+            redox().crate_type("staticlib").input("foo.rs").arg("--emit=link=staticlib3/foo").run();
         },
     );
 
@@ -414,7 +414,7 @@ fn main() {
             test_dir: "bincrate".to_string(),
         },
         || {
-            rustc()
+            redox()
                 .crate_type("bin")
                 .input("foo.rs")
                 .output("bincrate/".to_owned() + &bin_foo)
@@ -428,7 +428,7 @@ fn main() {
             test_dir: "bincrate2".to_string(),
         },
         || {
-            rustc()
+            redox()
                 .crate_type("bin")
                 .input("foo.rs")
                 .emit(&format!("link=bincrate2/{bin_foo}"))
@@ -442,7 +442,7 @@ fn main() {
             test_dir: "bincrate3".to_string(),
         },
         || {
-            rustc()
+            redox()
                 .crate_type("bin")
                 .input("foo.rs")
                 .arg(&format!("--emit=link=bincrate3/{bin_foo}"))
@@ -457,7 +457,7 @@ fn main() {
             test_dir: "rlib-ir".to_string(),
         },
         || {
-            rustc()
+            redox()
                 .input("foo.rs")
                 .emit("llvm-ir=rlib-ir/ir")
                 .emit("link")
@@ -474,7 +474,7 @@ fn main() {
             test_dir: "staticlib-all".to_string(),
         },
         || {
-            rustc()
+            redox()
                 .input("foo.rs")
                 .emit("asm=staticlib-all/asm")
                 .emit("llvm-ir=staticlib-all/ir")
@@ -492,7 +492,7 @@ fn main() {
             test_dir: "staticlib-all2".to_string(),
         },
         || {
-            rustc()
+            redox()
                 .input("foo.rs")
                 .arg("--emit=asm=staticlib-all2/asm")
                 .arg("--emit")
@@ -513,7 +513,7 @@ fn main() {
             test_dir: "staticlib-all3".to_string(),
         },
         || {
-            rustc()
+            redox()
                 .input("foo.rs")
                 .emit("asm,llvm-ir,llvm-bc,obj,link")
                 .crate_type("staticlib")
@@ -532,7 +532,7 @@ fn main() {
         },
         || {
             rfs::rename("staticlib-all3/bar.bc", "rlib-emits/foo.bc");
-            rustc()
+            redox()
                 .input("foo.rs")
                 .emit("llvm-bc,link")
                 .crate_type("rlib")

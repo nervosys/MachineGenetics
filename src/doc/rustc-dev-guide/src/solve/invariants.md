@@ -36,7 +36,7 @@ If this invariant is broken, MIR typeck ends up failing with an ICE.
 
 TODO: this invariant is formulated in a weird way and needs to be elaborated.
 Pretty much: I would like this check to only fail if there's a solver bug:
-<https://github.com/rust-lang/rust/blob/2ffeb4636b4ae376f716dc4378a7efb37632dc2d/compiler/rustc_trait_selection/src/solve/eval_ctxt.rs#L391-L407>.
+<https://github.com/rust-lang/rust/blob/2ffeb4636b4ae376f716dc4378a7efb37632dc2d/compiler/redox_trait_selection/src/solve/eval_ctxt.rs#L391-L407>.
 We should readd this check and see where it breaks :3
 
 If we prove some goal/equate types/whatever, apply the resulting inference constraints,

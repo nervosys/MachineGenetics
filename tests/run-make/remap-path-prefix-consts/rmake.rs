@@ -1,18 +1,18 @@
 //@ ignore-cross-compile (relocations in generic ELF against `arm-unknown-linux-gnueabihf`)
 //@ needs-target-std
 
-use run_make_support::{bin_name, cwd, run, rustc};
+use run_make_support::{bin_name, cwd, run, redox};
 
 fn main() {
     // No remapping - relative paths
     {
         let runner_bin = bin_name("runner-no-remap-rel-paths");
 
-        let mut location_caller = rustc();
+        let mut location_caller = redox();
         location_caller.crate_type("lib").input("location-caller.rs");
         location_caller.run();
 
-        let mut runner = rustc();
+        let mut runner = redox();
         runner.crate_type("bin").input("runner.rs").output(&runner_bin);
         runner.run();
 
@@ -23,11 +23,11 @@ fn main() {
     {
         let runner_bin = bin_name("runner-no-remap-abs-paths");
 
-        let mut location_caller = rustc();
+        let mut location_caller = redox();
         location_caller.crate_type("lib").input(cwd().join("location-caller.rs"));
         location_caller.run();
 
-        let mut runner = rustc();
+        let mut runner = redox();
         runner.crate_type("bin").input(cwd().join("runner.rs")).output(&runner_bin);
         runner.run();
 
@@ -38,11 +38,11 @@ fn main() {
     {
         let runner_bin = bin_name("runner-no-remap-mixed-paths");
 
-        let mut location_caller = rustc();
+        let mut location_caller = redox();
         location_caller.crate_type("lib").input(cwd().join("location-caller.rs"));
         location_caller.run();
 
-        let mut runner = rustc();
+        let mut runner = redox();
         runner.crate_type("bin").input("runner.rs").output(&runner_bin);
         runner.run();
 
@@ -53,14 +53,14 @@ fn main() {
     {
         let runner_bin = bin_name("runner-remap-cwd");
 
-        let mut location_caller = rustc();
+        let mut location_caller = redox();
         location_caller
             .crate_type("lib")
             .remap_path_prefix(cwd(), "/remapped")
             .input(cwd().join("location-caller.rs"));
         location_caller.run();
 
-        let mut runner = rustc();
+        let mut runner = redox();
         runner
             .crate_type("bin")
             .remap_path_prefix(cwd(), "/remapped")
@@ -75,14 +75,14 @@ fn main() {
     {
         let runner_bin = bin_name("runner-remap-cwd-only-dep");
 
-        let mut location_caller = rustc();
+        let mut location_caller = redox();
         location_caller
             .crate_type("lib")
             .remap_path_prefix(cwd(), "/remapped")
             .input(cwd().join("location-caller.rs"));
         location_caller.run();
 
-        let mut runner = rustc();
+        let mut runner = redox();
         runner.crate_type("bin").input(cwd().join("runner.rs")).output(&runner_bin);
         runner.run();
 
@@ -93,7 +93,7 @@ fn main() {
     {
         let runner_bin = bin_name("runner-remap-cwd-diff-scope");
 
-        let mut location_caller = rustc();
+        let mut location_caller = redox();
         location_caller
             .crate_type("lib")
             .remap_path_prefix(cwd(), "/remapped")
@@ -101,7 +101,7 @@ fn main() {
             .input(cwd().join("location-caller.rs"));
         location_caller.run();
 
-        let mut runner = rustc();
+        let mut runner = redox();
         runner
             .crate_type("bin")
             .remap_path_prefix(cwd(), "/remapped")

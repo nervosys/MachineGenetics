@@ -1,11 +1,11 @@
 use super::TRANSMUTE_INT_TO_NON_ZERO;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
-use rustc_errors::Applicability;
-use rustc_hir::Expr;
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
-use rustc_span::symbol::sym;
+use redox_errors::Applicability;
+use redox_hir::Expr;
+use redox_lint::LateContext;
+use redox_middle::ty::{self, Ty};
+use redox_span::symbol::sym;
 
 /// Checks for `transmute_int_to_non_zero` lint.
 /// Returns `true` if it's triggered, otherwise returns `false`.

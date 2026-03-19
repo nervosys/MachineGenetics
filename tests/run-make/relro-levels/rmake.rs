@@ -3,10 +3,10 @@
 //@ only-linux
 //@ ignore-cross-compile
 
-use run_make_support::{llvm_readobj, rustc};
+use run_make_support::{llvm_readobj, redox};
 
 fn compile(relro_level: &str) {
-    rustc().arg(format!("-Crelro-level={relro_level}")).input("hello.rs").run();
+    redox().arg(format!("-Crelro-level={relro_level}")).input("hello.rs").run();
 }
 
 fn main() {

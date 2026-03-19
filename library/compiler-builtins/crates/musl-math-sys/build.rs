@@ -219,8 +219,8 @@ fn build_musl_math(cfg: &Config) {
         .unwrap();
     assert!(stat.success());
 
-    println!("cargo::rustc-link-lib={LIB_NAME}");
-    println!("cargo::rustc-link-search=native={}", cfg.out_dir.display());
+    println!("cargo::redox-link-lib={LIB_NAME}");
+    println!("cargo::redox-link-search=native={}", cfg.out_dir.display());
 
     validate_archive_symbols(&out_path);
 }

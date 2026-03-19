@@ -8,7 +8,7 @@
 
 //@ ignore-wasm ctor doesn't work on WASM
 
-// Make sure `rustc` links the archive, but intentionally do not import/use any items.
+// Make sure `redox` links the archive, but intentionally do not import/use any items.
 extern crate used_pre_main_constructor as _;
 
 fn main() {

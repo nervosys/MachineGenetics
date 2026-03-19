@@ -1,14 +1,14 @@
 //@ run-pass
 //@ compile-flags: --test
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 #![allow(dead_code)]
 
 mod a {
     fn b() {
         (|| {
-            #[rustc_main]
+            #[redox_main]
             fn c() { panic!(); }
         })();
     }

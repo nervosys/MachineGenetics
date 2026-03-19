@@ -3247,7 +3247,7 @@ fn ambiguous_float_literal() {
     check(
         r#"
 //- /core.rs crate:core
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 
 impl i32 {
     pub fn int_method(self) {}
@@ -3284,7 +3284,7 @@ fn ambiguous_float_literal_in_ambiguous_method_call() {
     check(
         r#"
 //- /core.rs crate:core
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 
 impl i32 {
     pub fn int_method(self) {}

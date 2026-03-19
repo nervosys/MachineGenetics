@@ -1,7 +1,7 @@
 use std::cmp::max;
 
-use rustc_ast::ast;
-use rustc_span::Span;
+use redox_ast::ast;
+use redox_span::Span;
 
 use crate::macros::MacroArg;
 use crate::patterns::RangeOperand;
@@ -18,7 +18,7 @@ impl<T: Spanned> Spanned for Box<T> {
     }
 }
 
-impl<T> Spanned for rustc_span::Spanned<T> {
+impl<T> Spanned for redox_span::Spanned<T> {
     fn span(&self) -> Span {
         self.span
     }

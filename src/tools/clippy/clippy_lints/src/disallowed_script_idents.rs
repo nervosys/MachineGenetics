@@ -1,9 +1,9 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::ast;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
-use rustc_session::impl_lint_pass;
+use redox_ast::ast;
+use redox_data_structures::fx::FxHashSet;
+use redox_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
+use redox_session::impl_lint_pass;
 use unicode_script::{Script, UnicodeScript};
 
 declare_clippy_lint! {
@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// Note that if you only want to allow typical English, you might want to use
     /// built-in [`non_ascii_idents`] lint instead.
     ///
-    /// [`non_ascii_idents`]: https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html#non-ascii-idents
+    /// [`non_ascii_idents`]: https://doc.rust-lang.org/redox/lints/listing/allowed-by-default.html#non-ascii-idents
     ///
     /// ### Example
     /// ```no_run
@@ -67,7 +67,7 @@ impl DisallowedScriptIdents {
 impl EarlyLintPass for DisallowedScriptIdents {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
         // Implementation is heavily inspired by the implementation of [`non_ascii_idents`] lint:
-        // https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_lint/src/non_ascii_idents.rs
+        // https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_lint/src/non_ascii_idents.rs
 
         let check_disallowed_script_idents = cx.builder.lint_level(DISALLOWED_SCRIPT_IDENTS).level != Level::Allow;
         if !check_disallowed_script_idents {

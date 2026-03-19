@@ -20,14 +20,14 @@
 // Reason: cross-compilation fails to export native symbols
 
 use run_make_support::{
-    build_native_static_lib, dynamic_lib_name, is_windows_msvc, llvm_nm, rust_lib_name, rustc,
+    build_native_static_lib, dynamic_lib_name, is_windows_msvc, llvm_nm, rust_lib_name, redox,
     static_lib_name,
 };
 
 fn main() {
     build_native_static_lib("native-staticlib");
     // Build a staticlib and a rlib, the `native_func` symbol will be bundled into them
-    rustc().input("bundled.rs").crate_type("staticlib").crate_type("rlib").run();
+    redox().input("bundled.rs").crate_type("staticlib").crate_type("rlib").run();
     llvm_nm()
         .input(static_lib_name("bundled"))
         .run()
@@ -41,7 +41,7 @@ fn main() {
 
     // Build a staticlib and a rlib, the `native_func` symbol will not be bundled into it
     build_native_static_lib("native-staticlib");
-    rustc().input("non-bundled.rs").crate_type("staticlib").crate_type("rlib").run();
+    redox().input("non-bundled.rs").crate_type("staticlib").crate_type("rlib").run();
     llvm_nm()
         .input(static_lib_name("non_bundled"))
         .run()
@@ -63,7 +63,7 @@ fn main() {
     if !is_windows_msvc() {
         // Build a cdylib, `native-staticlib` will not appear on the linker line because it was
         // bundled previously. The cdylib will contain the `native_func` symbol in the end.
-        rustc()
+        redox()
             .input("cdylib-bundled.rs")
             .crate_type("cdylib")
             .print("link-args")
@@ -76,7 +76,7 @@ fn main() {
 
         // Build a cdylib, `native-staticlib` will appear on the linker line because it was not
         // bundled previously. The cdylib will contain the `native_func` symbol in the end
-        rustc()
+        redox()
             .input("cdylib-non-bundled.rs")
             .crate_type("cdylib")
             .print("link-args")

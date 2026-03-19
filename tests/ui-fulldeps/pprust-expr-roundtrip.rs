@@ -19,27 +19,27 @@
 //    and parser. So if all combinations of exprs involving `if` work correctly, then combinations
 //    using `while`, `if let`, and so on will likely work as well.
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_ast;
-extern crate rustc_ast_pretty;
-extern crate rustc_parse;
-extern crate rustc_session;
-extern crate rustc_span;
+extern crate redox_ast;
+extern crate redox_ast_pretty;
+extern crate redox_parse;
+extern crate redox_session;
+extern crate redox_span;
 extern crate thin_vec;
 
-// Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
+// Necessary to pull in object code as the rest of the redox crates are shipped only as rmeta
 // files.
 #[allow(unused_extern_crates)]
-extern crate rustc_driver;
+extern crate redox_driver;
 
 use parser::parse_expr;
-use rustc_ast::mut_visit::MutVisitor;
-use rustc_ast::*;
-use rustc_ast_pretty::pprust;
-use rustc_session::parse::ParseSess;
-use rustc_span::symbol::Ident;
-use rustc_span::{DUMMY_SP, Spanned};
+use redox_ast::mut_visit::MutVisitor;
+use redox_ast::*;
+use redox_ast_pretty::pprust;
+use redox_session::parse::ParseSess;
+use redox_span::symbol::Ident;
+use redox_span::{DUMMY_SP, Spanned};
 use thin_vec::{thin_vec, ThinVec};
 
 // Helper functions for building exprs
@@ -214,7 +214,7 @@ impl MutVisitor for AddParens {
 }
 
 fn main() {
-    rustc_span::create_default_session_globals_then(|| run());
+    redox_span::create_default_session_globals_then(|| run());
 }
 
 fn run() {

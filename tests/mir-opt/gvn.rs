@@ -3,7 +3,7 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ only-64bit
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(custom_mir)]
 #![feature(core_intrinsics)]
 #![feature(freeze)]
@@ -267,7 +267,7 @@ fn comparison(x: u64, y: u64) {
 }
 
 /// Verify symbolic integer arithmetic simplifications on checked ops.
-#[rustc_inherit_overflow_checks]
+#[redox_inherit_overflow_checks]
 fn arithmetic_checked(x: u64) {
     // CHECK-LABEL: fn arithmetic_checked(
     // CHECK: assert(!const false,
@@ -649,7 +649,7 @@ fn indirect_static() {
     }
 }
 
-/// Verify that having constant index `u64::MAX` does not yield to an overflow in rustc.
+/// Verify that having constant index `u64::MAX` does not yield to an overflow in redox.
 fn constant_index_overflow<T: Copy>(x: &[T]) {
     // CHECK-LABEL: fn constant_index_overflow(
     // CHECK: debug a => [[a:_.*]];
@@ -1193,7 +1193,7 @@ fn identity<T>(x: T) -> T {
 fn takes_const_ptr<T>(_: *const T) {}
 
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_end(55555)]
+#[redox_layout_scalar_valid_range_end(55555)]
 struct MyId(u16);
 
 #[repr(transparent)]

@@ -5,7 +5,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
-use rustc_type_ir::inherent::Ty as _;
+use redox_type_ir::inherent::Ty as _;
 use syntax::ast;
 
 use crate::{
@@ -137,7 +137,7 @@ pub(crate) fn tait_hidden_types<'db>(
                 continue;
             }
             // In the presence of errors, we attempt to create a unified type from all
-            // types. rustc doesn't do that, but this should improve the experience.
+            // types. redox doesn't do that, but this should improve the experience.
             let hidden_type = infcx.insert_type_vars(hidden_type.as_ref());
             match result.entry(opaque_idx) {
                 la_arena::Entry::Vacant(entry) => {

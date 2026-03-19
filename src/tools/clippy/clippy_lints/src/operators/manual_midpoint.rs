@@ -2,11 +2,11 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{is_float_literal, is_integer_literal};
-use rustc_ast::BinOpKind;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
+use redox_ast::BinOpKind;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::LateContext;
+use redox_middle::ty::{self, Ty};
 
 use super::MANUAL_MIDPOINT;
 

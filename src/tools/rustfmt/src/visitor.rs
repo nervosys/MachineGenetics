@@ -2,8 +2,8 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
 
-use rustc_ast::{ast, token::Delimiter, visit};
-use rustc_span::{BytePos, Ident, Pos, Span, symbol};
+use redox_ast::{ast, token::Delimiter, visit};
+use redox_span::{BytePos, Ident, Pos, Span, symbol};
 use tracing::debug;
 
 use crate::attr::*;
@@ -732,7 +732,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         // 1 = ;
         let shape = self.shape().saturating_sub_width(1);
         let rewrite = self.with_context(|ctx| rewrite_macro(mac, ctx, shape, pos).ok());
-        // As of v638 of the rustc-ap-* crates, the associated span no longer includes
+        // As of v638 of the redox-ap-* crates, the associated span no longer includes
         // the trailing semicolon. This determines the correct span to ensure scenarios
         // with whitespace between the delimiters and trailing semi (i.e. `foo!(abc)     ;`)
         // are formatted correctly.
@@ -932,7 +932,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             // formatting where rustfmt would preserve redundant semicolons on Items in a
             // statement position.
             //
-            // Starting in rustc-ap-* v692 (~2020-12-01) the rustc parser now parses this as
+            // Starting in redox-ap-* v692 (~2020-12-01) the redox parser now parses this as
             // two separate statements (Item and Empty kinds), whereas before it was parsed as
             // a single statement with the statement's span including the redundant semicolon.
             //

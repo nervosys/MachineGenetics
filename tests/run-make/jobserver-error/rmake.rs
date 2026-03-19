@@ -12,17 +12,17 @@
 
 #![deny(warnings)]
 
-use run_make_support::{diff, rustc};
+use run_make_support::{diff, redox};
 
 fn main() {
-    let out = rustc()
+    let out = redox()
         .stdin_buf(("fn main() {}").as_bytes())
         .env("MAKEFLAGS", "--jobserver-auth=1000,1000")
         .run_fail()
         .stderr_utf8();
     diff().expected_file("cannot_open_fd.stderr").actual_text("actual", out).run();
 
-    let out = rustc()
+    let out = redox()
         .stdin_buf(("fn main() {}").as_bytes())
         .input("-")
         .env("MAKEFLAGS", "--jobserver-auth=3,3")

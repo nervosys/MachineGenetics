@@ -1,12 +1,12 @@
 //! In certain situations, rust automatically inserts derefs as necessary: for
 //! example, field accesses `foo.bar` still work when `foo` is actually a
 //! reference to a type with the field `bar`. This is an approximation of the
-//! logic in rustc (which lives in rustc_hir_analysis/check/autoderef.rs).
+//! logic in redox (which lives in redox_hir_analysis/check/autoderef.rs).
 
 use std::fmt;
 
 use hir_def::{TraitId, TypeAliasId};
-use rustc_type_ir::inherent::{IntoKind, Ty as _};
+use redox_type_ir::inherent::{IntoKind, Ty as _};
 use tracing::debug;
 
 use crate::{

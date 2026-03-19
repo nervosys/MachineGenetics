@@ -1,0 +1,23 @@
+[package]
+name = "redox_attr_parsing"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+redox_abi = { path = "../redox_abi" }
+redox_ast = { path = "../redox_ast" }
+redox_ast_pretty = { path = "../redox_ast_pretty" }
+redox_data_structures = { path = "../redox_data_structures" }
+redox_errors = { path = "../redox_errors" }
+redox_feature = { path = "../redox_feature" }
+redox_hir = { path = "../redox_hir" }
+redox_lexer = { path = "../redox_lexer" }
+redox_macros = { path = "../redox_macros" }
+redox_parse = { path = "../redox_parse" }
+redox_parse_format = { path = "../redox_parse_format" }
+redox_session = { path = "../redox_session" }
+redox_span = { path = "../redox_span" }
+redox_target = { path = "../redox_target" }
+thin-vec = "0.2.12"
+# tidy-alphabetical-end

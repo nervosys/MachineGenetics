@@ -1,4 +1,4 @@
-//! Reading proc-macro rustc version information from binary data
+//! Reading proc-macro redox version information from binary data
 
 use std::io::{self, Read};
 
@@ -14,11 +14,11 @@ pub struct RustCInfo {
     pub commit: Option<String>,
     #[allow(dead_code)]
     pub date: Option<String>,
-    // something like "rustc 1.58.1 (db9d1b20b 2022-01-20)"
+    // something like "redox 1.58.1 (db9d1b20b 2022-01-20)"
     pub version_string: String,
 }
 
-/// Read rustc dylib information
+/// Read redox dylib information
 pub fn read_dylib_info(obj: &object::File<'_>) -> io::Result<RustCInfo> {
     macro_rules! err {
         ($e:literal) => {
@@ -29,8 +29,8 @@ pub fn read_dylib_info(obj: &object::File<'_>) -> io::Result<RustCInfo> {
     let ver_str = read_version(obj)?;
     let mut items = ver_str.split_whitespace();
     let tag = items.next().ok_or_else(|| err!("version format error"))?;
-    if tag != "rustc" {
-        return Err(err!("no rustc tag"));
+    if tag != "redox" {
+        return Err(err!("no redox tag"));
     }
 
     let version_part = items.next().ok_or_else(|| err!("no version string"))?;
@@ -71,7 +71,7 @@ pub fn read_dylib_info(obj: &object::File<'_>) -> io::Result<RustCInfo> {
     Ok(RustCInfo { version, channel, commit, date, version_string: ver_str })
 }
 
-/// This is used inside read_version() to locate the ".rustc" section
+/// This is used inside read_version() to locate the ".redox" section
 /// from a proc macro crate's binary file.
 fn read_section<'a>(obj: &object::File<'a>, section_name: &str) -> io::Result<&'a [u8]> {
     obj.section_by_name(section_name)
@@ -80,10 +80,10 @@ fn read_section<'a>(obj: &object::File<'a>, section_name: &str) -> io::Result<&'
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
-/// Check the version of rustc that was used to compile a proc macro crate's
+/// Check the version of redox that was used to compile a proc macro crate's
 /// binary file.
 ///
-/// A proc macro crate binary's ".rustc" section has following byte layout:
+/// A proc macro crate binary's ".redox" section has following byte layout:
 /// * [b'r',b'u',b's',b't',0,0,0,5] is the first 8 bytes
 /// * ff060000 734e6150 is followed, it's the snappy format magic bytes,
 ///   means bytes from here (including this sequence) are compressed in
@@ -94,7 +94,7 @@ fn read_section<'a>(obj: &object::File<'a>, section_name: &str) -> io::Result<&'
 /// following layout:
 /// * [b'r',b'u',b's',b't',0,0,0,5] is the first 8 bytes(again)
 /// * [crate root bytes] next 8 bytes (4 in old versions) is to store
-///   crate root position, according to rustc's source code comment
+///   crate root position, according to redox's source code comment
 /// * [length byte] next 1 byte tells us how many bytes we should read next
 ///   for the version string's utf8 bytes
 /// * [version string bytes encoded in utf8] <- GET THIS BOI
@@ -103,28 +103,28 @@ fn read_section<'a>(obj: &object::File<'a>, section_name: &str) -> io::Result<&'
 /// Check this issue for more about the bytes layout:
 /// <https://github.com/rust-lang/rust-analyzer/issues/6174>
 pub fn read_version(obj: &object::File<'_>) -> io::Result<String> {
-    let dot_rustc = read_section(obj, ".rustc")?;
+    let dot_redox = read_section(obj, ".redox")?;
 
     // check if magic is valid
-    if &dot_rustc[0..4] != b"rust" {
+    if &dot_redox[0..4] != b"rust" {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("unknown metadata magic, expected `rust`, found `{:?}`", &dot_rustc[0..4]),
+            format!("unknown metadata magic, expected `rust`, found `{:?}`", &dot_redox[0..4]),
         ));
     }
-    let version = u32::from_be_bytes([dot_rustc[4], dot_rustc[5], dot_rustc[6], dot_rustc[7]]);
+    let version = u32::from_be_bytes([dot_redox[4], dot_redox[5], dot_redox[6], dot_redox[7]]);
     // Last version with breaking changes is:
     // https://github.com/rust-lang/rust/commit/b94cfefc860715fb2adf72a6955423d384c69318
     let (mut metadata_portion, bytes_before_version) = match version {
         8 => {
-            let len_bytes = &dot_rustc[8..12];
+            let len_bytes = &dot_redox[8..12];
             let data_len = u32::from_be_bytes(len_bytes.try_into().unwrap()) as usize;
-            (&dot_rustc[12..data_len + 12], 13)
+            (&dot_redox[12..data_len + 12], 13)
         }
         9 | 10 => {
-            let len_bytes = &dot_rustc[8..16];
+            let len_bytes = &dot_redox[8..16];
             let data_len = u64::from_le_bytes(len_bytes.try_into().unwrap()) as usize;
-            (&dot_rustc[16..data_len + 12], 17)
+            (&dot_redox[16..data_len + 12], 17)
         }
         _ => {
             return Err(io::Error::new(
@@ -161,7 +161,7 @@ fn test_version_check() {
     assert_eq!(
         info.version_string,
         crate::RUSTC_VERSION_STRING,
-        "sysroot ABI mismatch: dylib rustc version (read from .rustc section): {:?} != proc-macro-srv version (read from 'rustc --version'): {:?}",
+        "sysroot ABI mismatch: dylib redox version (read from .redox section): {:?} != proc-macro-srv version (read from 'redox --version'): {:?}",
         info.version_string,
         crate::RUSTC_VERSION_STRING,
     );

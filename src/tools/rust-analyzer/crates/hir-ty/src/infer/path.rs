@@ -6,7 +6,7 @@ use hir_def::{
     resolver::{ResolveValueResult, TypeNs, ValueNs},
 };
 use hir_expand::name::Name;
-use rustc_type_ir::inherent::{SliceLike, Ty as _};
+use redox_type_ir::inherent::{SliceLike, Ty as _};
 use stdx::never;
 
 use crate::{

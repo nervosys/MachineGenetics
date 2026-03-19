@@ -15,7 +15,7 @@ The default threshold is 65536 bytes (64KB) if not specified.
 ## Example
 
 ```sh
-rustc -Ccode-model=medium -Zlarge-data-threshold=1024 main.rs
+redox -Ccode-model=medium -Zlarge-data-threshold=1024 main.rs
 ```
 
 This sets the threshold to 1KB, meaning only data smaller than 1024 bytes will

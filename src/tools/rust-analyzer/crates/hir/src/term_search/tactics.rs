@@ -16,8 +16,8 @@ use hir_ty::{
     next_solver::{DbInterner, Ty},
 };
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
-use rustc_type_ir::inherent::Ty as _;
+use redox_hash::FxHashSet;
+use redox_type_ir::inherent::Ty as _;
 
 use crate::{
     Adt, AssocItem, GenericDef, GenericParam, HasAttrs, HasVisibility, Impl, ModuleDef, ScopeDef,

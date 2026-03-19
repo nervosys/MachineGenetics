@@ -2,16 +2,16 @@
 
 use std::path::Path;
 
-use run_make_support::{rfs, rustc, wasmparser};
+use run_make_support::{rfs, redox, wasmparser};
 
 fn main() {
-    rustc().input("foo.rs").target("wasm32-wasip1").run();
+    redox().input("foo.rs").target("wasm32-wasip1").run();
     verify_symbols(Path::new("foo.wasm"));
-    rustc().input("foo.rs").target("wasm32-wasip1").arg("-Clto").run();
+    redox().input("foo.rs").target("wasm32-wasip1").arg("-Clto").run();
     verify_symbols(Path::new("foo.wasm"));
-    rustc().input("foo.rs").target("wasm32-wasip1").opt().run();
+    redox().input("foo.rs").target("wasm32-wasip1").opt().run();
     verify_symbols(Path::new("foo.wasm"));
-    rustc().input("foo.rs").target("wasm32-wasip1").arg("-Clto").opt().run();
+    redox().input("foo.rs").target("wasm32-wasip1").arg("-Clto").opt().run();
     verify_symbols(Path::new("foo.wasm"));
 }
 

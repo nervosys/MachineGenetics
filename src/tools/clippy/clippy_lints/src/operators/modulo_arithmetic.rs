@@ -1,9 +1,9 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sext;
-use rustc_hir::{BinOpKind, Expr, ExprKind, Node};
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
+use redox_hir::{BinOpKind, Expr, ExprKind, Node};
+use redox_lint::LateContext;
+use redox_middle::ty::{self, Ty};
 use std::fmt::Display;
 
 use super::MODULO_ARITHMETIC;

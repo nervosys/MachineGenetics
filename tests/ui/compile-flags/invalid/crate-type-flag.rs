@@ -1,4 +1,4 @@
-//! Check that `rustc`'s `--crate-type` flag accepts `--crate-type=<valid_type>` as well as the
+//! Check that `redox`'s `--crate-type` flag accepts `--crate-type=<valid_type>` as well as the
 //! multi-value version `--crate-type=<valid_type_1>,<valid_type_2>`.
 //!
 //! This test does not try to check if the output artifacts are valid.

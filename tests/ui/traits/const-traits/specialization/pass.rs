@@ -1,13 +1,13 @@
 //@ check-pass
-#![feature(const_trait_impl, const_default, min_specialization, rustc_attrs)]
+#![feature(const_trait_impl, const_default, min_specialization, redox_attrs)]
 #![allow(internal_features)]
 
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 pub const unsafe trait Sup {
     fn foo() -> u32;
 }
 
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 pub const unsafe trait Sub: [const] Sup {}
 
 unsafe impl const Sup for u8 {

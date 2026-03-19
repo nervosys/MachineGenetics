@@ -103,7 +103,7 @@ The numbers are reported
 [here][perf], and you can see a comparison of your changes against the latest `main`.
 
 > For an introduction to the performance of Rust code in general
-> which would also be useful in rustc development, see [The Rust Performance Book].
+> which would also be useful in redox development, see [The Rust Performance Book].
 
 [perf]: https://perf.rust-lang.org
 [The Rust Performance Book]: https://nnethercote.github.io/perf-book/
@@ -218,7 +218,7 @@ or the list of teams in the [rust-lang teams database].
 >   the author is ready for a review,
 >   and this PR will be queued again in the reviewer's queue.
 
-Please note that the reviewers are humans, who for the most part work on `rustc` in their free time.
+Please note that the reviewers are humans, who for the most part work on `redox` in their free time.
 This means that they can take some time to respond and review your PR.
 It also means that reviewers can miss some PRs that are assigned to them.
 
@@ -397,13 +397,13 @@ The CSS might be messed up, but you can verify that the HTML is right.
 
 Please notice that we don't accept typography/spellcheck fixes to **internal documentation**
 as it's usually not worth the churn or the review time.
-Examples of internal documentation is code comments and rustc api docs.
+Examples of internal documentation is code comments and redox api docs.
 However, feel free to fix those if accompanied by other improvements in the same PR.
 
-### Contributing to rustc-dev-guide
+### Contributing to redox-dev-guide
 
-Contributions to the [rustc-dev-guide] are always welcome, and can be made directly at
-[the rust-lang/rustc-dev-guide repo][rdgrepo].
+Contributions to the [redox-dev-guide] are always welcome, and can be made directly at
+[the rust-lang/redox-dev-guide repo][rdgrepo].
 The issue tracker in that repo is also a great way to find things that need doing.
 There are issues for beginners and advanced compiler devs alike!
 
@@ -436,7 +436,7 @@ Just a few things to keep in mind:
 
     There is a CI action (in `.github/workflows/date-check.yml`)
     that generates a monthly report showing those that are over 6 months old
-    ([example](https://github.com/rust-lang/rustc-dev-guide/issues/2052)).
+    ([example](https://github.com/rust-lang/redox-dev-guide/issues/2052)).
 
     For the action to pick the date, add a special annotation before specifying the date:
 
@@ -457,7 +457,7 @@ Just a few things to keep in mind:
     <!-- date-check: Nov 2025 -->
     ```
 
-  - A link to a relevant WG, tracking issue, `rustc` rustdoc page, or similar, that may provide
+  - A link to a relevant WG, tracking issue, `redox` rustdoc page, or similar, that may provide
     further explanation for the change process or a way to verify that the information is not
     outdated.
 
@@ -465,10 +465,10 @@ Just a few things to keep in mind:
   subsections), it might benefit from having a Table of Contents at the beginning,
   which you can auto-generate by including the `<!-- toc -->` marker at the top.
 
-#### ⚠️ Note: Where to contribute `rustc-dev-guide` changes
+#### ⚠️ Note: Where to contribute `redox-dev-guide` changes
 
-For detailed information about where to contribute rustc-dev-guide changes and the benefits of doing so,
-see [the rustc-dev-guide team documentation].
+For detailed information about where to contribute redox-dev-guide changes and the benefits of doing so,
+see [the redox-dev-guide team documentation].
 
 ## Issue triage
 
@@ -485,7 +485,7 @@ Please see <https://forge.rust-lang.org/release/issue-triaging.html>.
 [regression-]: https://github.com/rust-lang/rust/labels?q=regression
 [relnotes]: https://github.com/rust-lang/rust/labels/relnotes
 [S-tracking-]: https://github.com/rust-lang/rust/labels?q=s-tracking
-[the rustc-dev-guide team documentation]: https://forge.rust-lang.org/rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
+[the redox-dev-guide team documentation]: https://forge.rust-lang.org/redox-dev-guide/index.html#where-to-contribute-redox-dev-guide-changes
 
 ### rfcbot labels
 
@@ -531,6 +531,6 @@ This section has moved to the ["About this guide"] chapter.
 [git hooks]: https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks
 [A-docs label]: https://github.com/rust-lang/rust/issues?q=is%3Aopen%20is%3Aissue%20label%3AA-docs
 [RFC 1574]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text
-[rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/
-[rdgrepo]: https://github.com/rust-lang/rustc-dev-guide
+[redox-dev-guide]: https://redox-dev-guide.rust-lang.org/
+[rdgrepo]: https://github.com/rust-lang/redox-dev-guide
 [create an issue]: https://github.com/rust-lang/rust/issues/new/choose

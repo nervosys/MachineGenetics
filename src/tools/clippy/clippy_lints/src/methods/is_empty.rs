@@ -3,8 +3,8 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{is_assert_macro, root_macro_call};
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::{find_binding_init, get_parent_expr, is_inside_always_const_context};
-use rustc_hir::{Expr, HirId, find_attr};
-use rustc_lint::{LateContext, LintContext};
+use redox_hir::{Expr, HirId, find_attr};
+use redox_lint::{LateContext, LintContext};
 
 use super::CONST_IS_EMPTY;
 

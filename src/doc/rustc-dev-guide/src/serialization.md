@@ -1,6 +1,6 @@
-# Serialization in rustc
+# Serialization in redox
 
-rustc has to [serialize] and deserialize various data during compilation.
+redox has to [serialize] and deserialize various data during compilation.
 Specifically:
 
 - "Crate metadata", consisting mainly of query outputs, are serialized
@@ -12,13 +12,13 @@ Specifically:
 - [`CrateInfo`] is serialized to `JSON` when the `-Z no-link` flag is used, and
   deserialized from `JSON` when the `-Z link-only` flag is used.
 
-[`CrateInfo`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/struct.CrateInfo.html
+[`CrateInfo`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_codegen_ssa/struct.CrateInfo.html
 [persist incremental compilation results]: queries/incremental-compilation-in-detail.md#the-real-world-how-persistence-makes-everything-complicated
 [serialize]: https://en.wikipedia.org/wiki/Serialization
 
 ## The `Encodable` and `Decodable` traits
 
-The [`rustc_serialize`] crate defines two traits for types which can be serialized:
+The [`redox_serialize`] crate defines two traits for types which can be serialized:
 
 ```rust,ignore
 pub trait Encodable<S: Encoder> {
@@ -40,9 +40,9 @@ forward deserialization to the fields of the struct or enum. For a
 struct those impls look something like this:
 
 ```rust,ignore
-#![feature(rustc_private)]
-extern crate rustc_serialize;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+#![feature(redox_private)]
+extern crate redox_serialize;
+use redox_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 struct MyStruct {
     int: u32,
@@ -69,11 +69,11 @@ impl<D: Decoder> Decodable<D> for MyStruct {
     }
 }
 ```
-[`rustc_serialize`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_serialize/index.html
+[`redox_serialize`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_serialize/index.html
 
 ## Encoding and Decoding arena allocated types
 
-rustc has a lot of [arena allocated types].
+redox has a lot of [arena allocated types].
 Deserializing these types isn't possible without access to the arena that they need to be allocated on.
 The [`TyDecoder`] and [`TyEncoder`] traits are subtraits of [`Decoder`] and [`Encoder`] that allow access to a [`TyCtxt`].
 
@@ -92,7 +92,7 @@ an implementation.
 
 Decoding the actual `arena` allocated type is harder, because some of the
 implementations can't be written due to the [orphan rules]. To work around this,
-the [`RefDecodable`] trait is defined in [`rustc_middle`]. This can then be
+the [`RefDecodable`] trait is defined in [`redox_middle`]. This can then be
 implemented for any type. The `TyDecodable` macro will call `RefDecodable` to
 decode references, but various generic code needs types to actually be
 `Decodable` with a specific decoder.
@@ -101,49 +101,49 @@ For interned types instead of manually implementing `RefDecodable`, using a new
 type wrapper, like [`ty::Predicate`] and manually implementing `Encodable` and
 `Decodable` may be simpler.
 
-[`Decodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_serialize/trait.Decodable.html
-[`Decoder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_serialize/trait.Decoder.html
-[`Encodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_serialize/trait.Encodable.html
-[`Encoder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_serialize/trait.Encoder.html
-[`RefDecodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/codec/trait.RefDecodable.html
-[`rustc_middle`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/index.html
-[`ty::Predicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/predicate/struct.Predicate.html
-[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
-[`TyDecodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_macros/derive.TyDecodable.html
-[`TyDecoder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/codec/trait.TyDecoder.html
-[`TyEncodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_macros/derive.TyEncodable.html
-[`TyEncoder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/codec/trait.TyEncoder.html
+[`Decodable`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_serialize/trait.Decodable.html
+[`Decoder`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_serialize/trait.Decoder.html
+[`Encodable`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_serialize/trait.Encodable.html
+[`Encoder`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_serialize/trait.Encoder.html
+[`RefDecodable`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/codec/trait.RefDecodable.html
+[`redox_middle`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/index.html
+[`ty::Predicate`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/predicate/struct.Predicate.html
+[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TyCtxt.html
+[`TyDecodable`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_macros/derive.TyDecodable.html
+[`TyDecoder`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/codec/trait.TyDecoder.html
+[`TyEncodable`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_macros/derive.TyEncodable.html
+[`TyEncoder`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/codec/trait.TyEncoder.html
 [arena allocated types]: memory.md
 [derives]: #derive-macros
 [orphan rules]:https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
 
 ## Derive macros
 
-The [`rustc_macros`] crate defines various derives to help implement `Decodable`
+The [`redox_macros`] crate defines various derives to help implement `Decodable`
 and `Encodable`.
 
 - The `Encodable` and `Decodable` macros generate implementations that apply to
   all `Encoders` and `Decoders`. These should be used in crates that don't
-  depend on [`rustc_middle`], or that have to be serialized by a type that does
+  depend on [`redox_middle`], or that have to be serialized by a type that does
   not implement `TyEncoder`.
 - [`MetadataEncodable`] generates implementations that
-  only allow decoding by [`rustc_metadata::rmeta::encoder::EncodeContext`].
+  only allow decoding by [`redox_metadata::rmeta::encoder::EncodeContext`].
 - [`BlobDecodable`] and [`LazyDecodable`] serve as the decoding counterparts to
   `MetadataEncodable`. They generate implementations that decode with the
-  metadata blob decoders in `rustc_metadata::rmeta`; use `BlobDecodable` when
+  metadata blob decoders in `redox_metadata::rmeta`; use `BlobDecodable` when
   the type has no lazy metadata handles, and `LazyDecodable` when it does.
 - `TyEncodable` and `TyDecodable` generate implementation that apply to any
   `TyEncoder` or `TyDecoder`. These should be used for types that are only
   serialized in crate metadata and/or the incremental cache, which is most
-  serializable types in `rustc_middle`.
+  serializable types in `redox_middle`.
 
-[`BlobDecodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_macros/derive.BlobDecodable.html
-[`LazyDecodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_macros/derive.LazyDecodable.html
-[`MetadataEncodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_macros/derive.MetadataEncodable.html
-[`rustc_macros`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_macros
-[`rustc_metadata::rmeta`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/index.html
-[`rustc_metadata::rmeta::encoder::EncodeContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/encoder/struct.EncodeContext.html
-[`rustc_middle`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_middle
+[`BlobDecodable`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_macros/derive.BlobDecodable.html
+[`LazyDecodable`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_macros/derive.LazyDecodable.html
+[`MetadataEncodable`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_macros/derive.MetadataEncodable.html
+[`redox_macros`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/redox_macros
+[`redox_metadata::rmeta`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_metadata/rmeta/index.html
+[`redox_metadata::rmeta::encoder::EncodeContext`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_metadata/rmeta/encoder/struct.EncodeContext.html
+[`redox_middle`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/redox_middle
 
 ## Shorthands
 
@@ -174,9 +174,9 @@ The `LazyArray<[T]>` and `LazyTable<I, T>` types provide some functionality over
 first time. Instead the query system itself is the main way of caching these
 results.
 
-[`LazyArray<T>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/struct.LazyValue.html
-[`LazyTable<I, T>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/struct.LazyValue.html
-[`LazyValue<T>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/struct.LazyValue.html
+[`LazyArray<T>`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_metadata/rmeta/struct.LazyValue.html
+[`LazyTable<I, T>`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_metadata/rmeta/struct.LazyValue.html
+[`LazyValue<T>`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_metadata/rmeta/struct.LazyValue.html
 
 ## Specialization
 

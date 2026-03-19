@@ -1,4 +1,4 @@
-#![feature(rustc_attrs, sized_hierarchy)]
+#![feature(redox_attrs, sized_hierarchy)]
 use std::marker::PointeeSized;
 
 // Test for a particular corner case where the evaluation
@@ -37,7 +37,7 @@ struct C {
     b: Option<Box<B>>,
 }
 
-#[rustc_evaluate_where_clauses]
+#[redox_evaluate_where_clauses]
 fn test<X: PointeeSized + Send>() {}
 
 fn main() {

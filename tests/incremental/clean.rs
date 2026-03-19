@@ -3,7 +3,7 @@
 //@ ignore-backends: gcc
 
 #![allow(warnings)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 // Sanity check for the dirty-clean system. Give the opposite
 // annotations that we expect to see, so that we check that errors are
@@ -26,7 +26,7 @@ mod x {
 mod y {
     use x;
 
-    #[rustc_clean(
+    #[redox_clean(
         except="opt_hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig",
         cfg="cfail2",
     )]
@@ -42,7 +42,7 @@ mod y {
 }
 
 mod z {
-    #[rustc_clean(except="typeck", cfg="cfail2")]
+    #[redox_clean(except="typeck", cfg="cfail2")]
     pub fn z() {
         //[cfail2]~^ ERROR `typeck(z)` should be dirty but is not
     }

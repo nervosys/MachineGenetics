@@ -8,7 +8,7 @@
 This section is about debugging compiler bugs in code generation (e.g. why the
 compiler generated some piece of code or crashed in LLVM).
 LLVM is a big project that probably needs to have its own debugging document,
-but following are some tips that are important in a rustc context.
+but following are some tips that are important in a redox context.
 
 ### Minimize the example
 
@@ -39,7 +39,7 @@ If you are encountering these, it is a good idea to try using a compiler with LL
 assertions enabled - either an "alt" nightly or a compiler you build yourself
 by setting `llvm.assertions = true` in your bootstrap.toml - and see whether anything turns up.
 
-The rustc build process builds the LLVM tools into `build/host/llvm/bin`.
+The redox build process builds the LLVM tools into `build/host/llvm/bin`.
 They can be called directly.
 These tools include:
  * [`llc`], which compiles bitcode (`.bc` files) to executable code; this can be used to
@@ -55,20 +55,20 @@ These tools include:
 By default, the Rust build system does not check for changes to the LLVM source code or
 its build configuration settings.
 So, if you need to rebuild the LLVM that is linked
-into `rustc`, first delete the file `.llvm-stamp`, which should be located
+into `redox`, first delete the file `.llvm-stamp`, which should be located
 in `build/host/llvm/`.
 
-The default rustc compilation pipeline has multiple codegen units, which is
+The default redox compilation pipeline has multiple codegen units, which is
 hard to replicate manually and means that LLVM is called multiple times in
 parallel.  If you can get away with it (i.e. if it doesn't make your bug
-disappear), passing `-C codegen-units=1` to rustc will make debugging easier.
+disappear), passing `-C codegen-units=1` to redox will make debugging easier.
 
 ### Get your hands on raw LLVM input
 
-For rustc to generate LLVM IR, you need to pass the `--emit=llvm-ir` flag.
+For redox to generate LLVM IR, you need to pass the `--emit=llvm-ir` flag.
 If you are building via cargo,
 use the `RUSTFLAGS` environment variable (e.g. `RUSTFLAGS='--emit=llvm-ir'`).
-This causes rustc to spit out LLVM IR into the target directory.
+This causes redox to spit out LLVM IR into the target directory.
 
 `cargo llvm-ir [options] path` spits out the LLVM IR for a particular function at `path`.
 (`cargo install cargo-asm` installs `cargo asm` and `cargo llvm-ir`).
@@ -80,25 +80,25 @@ Also, debug info in LLVM IR can clutter the output a lot:
 `RUSTFLAGS="-C save-temps"` outputs LLVM bitcode at
 different stages during compilation, which is sometimes useful.
 The output LLVM bitcode will be in `.bc` files in the compiler's output directory, set via the
-`--out-dir DIR` argument to `rustc`.
+`--out-dir DIR` argument to `redox`.
 
  * If you are hitting an assertion failure or segmentation fault from the LLVM
-   backend when invoking `rustc` itself, it is a good idea to try passing each
+   backend when invoking `redox` itself, it is a good idea to try passing each
    of these `.bc` files to the `llc` command, and see if you get the same failure.
    (LLVM developers often prefer a bug reduced to a `.bc` file over one
    that uses a Rust crate for its minimized reproduction.)
 
  * To get human readable versions of the LLVM bitcode, one just needs to convert
    the bitcode (`.bc`) files to `.ll` files using `llvm-dis`, which should be in
-   the target local compilation of rustc.
+   the target local compilation of redox.
 
 
-Note that rustc emits different IR depending on whether `-O` is enabled, even
-without LLVM's optimizations, so if you want to play with the IR rustc emits,
+Note that redox emits different IR depending on whether `-O` is enabled, even
+without LLVM's optimizations, so if you want to play with the IR redox emits,
 you should:
 
 ```bash
-$ rustc +local my-file.rs --emit=llvm-ir -O -C no-prepopulate-passes \
+$ redox +local my-file.rs --emit=llvm-ir -O -C no-prepopulate-passes \
     -C codegen-units=1
 $ OPT=build/$TRIPLE/llvm/bin/opt
 $ $OPT -S -O2 < my-file.ll > my
@@ -106,7 +106,7 @@ $ $OPT -S -O2 < my-file.ll > my
 
 If you just want to get the LLVM IR during the LLVM pipeline, to e.g. see which
 IR causes an optimization-time assertion to fail, or to see when LLVM performs
-a particular optimization, you can pass the rustc flag `-C
+a particular optimization, you can pass the redox flag `-C
 llvm-args=-print-after-all`, and possibly add `-C
 llvm-args='-filter-print-funcs=EXACT_FUNCTION_NAME` (e.g.  `-C
 llvm-args='-filter-print-funcs=_ZN11collections3str21_$LT$impl$u20$str$GT$\
@@ -156,11 +156,11 @@ pass was run or skipped.  Setting the limit to an index of -1 (e.g.,
 their corresponding index values.
 
 If you want to play with the optimization pipeline, you can use the [`opt`] tool
-from `./build/host/llvm/bin/` with the LLVM IR emitted by rustc.
+from `./build/host/llvm/bin/` with the LLVM IR emitted by redox.
 
 When investigating the implementation of LLVM itself, you should be
 aware of its [internal debug infrastructure][llvm-debug].
-This is provided in LLVM Debug builds, which you enable for rustc
+This is provided in LLVM Debug builds, which you enable for redox
 LLVM builds by changing this setting in the bootstrap.toml:
 ```
 # Indicates whether the LLVM assertions are enabled or not
@@ -172,11 +172,11 @@ llvm.optimize = false
 The quick summary is:
  * Setting `assertions=true` enables coarse-grain debug messaging.
    * beyond that, setting `optimize=false` enables fine-grain debug messaging.
- * `LLVM_DEBUG(dbgs() << msg)` in LLVM is like `debug!(msg)` in `rustc`.
+ * `LLVM_DEBUG(dbgs() << msg)` in LLVM is like `debug!(msg)` in `redox`.
  * The `-debug` option turns on all messaging; it is like setting the
-   environment variable `RUSTC_LOG=debug` in `rustc`.
+   environment variable `RUSTC_LOG=debug` in `redox`.
  * The `-debug-only=<pass1>,<pass2>` variant is more selective; it is like
-   setting the environment variable `RUSTC_LOG=path1,path2` in `rustc`.
+   setting the environment variable `RUSTC_LOG=path1,path2` in `redox`.
 
 [llvm-debug]: https://llvm.org/docs/ProgrammersManual.html#the-llvm-debug-macro-and-debug-option
 
@@ -203,7 +203,7 @@ tutorial above):
 - The `-C no-prepopulate-passes` will avoid pre-populate the LLVM pass
   manager with a list of passes.
   This will allow you to view the LLVM
-  IR that rustc generates, not the LLVM IR after optimizations.
+  IR that redox generates, not the LLVM IR after optimizations.
 - The `-C passes=val` option allows you to supply a space separated list of extra LLVM passes to run
 - The `-C save-temps` option saves all temporary output files during compilation
 - The `-Z print-llvm-passes` option will print out LLVM optimization passes being run
@@ -231,7 +231,7 @@ Go to [llvm.godbolt.org](https://llvm.godbolt.org).
       selects the target, `-mcpu=` selects the CPU, etc.
     - Commands like `llc -march=help` output all architectures available, which
       is useful because sometimes the Rust arch names and the LLVM names do not match.
-    - If you have compiled rustc yourself somewhere, in the target directory
+    - If you have compiled redox yourself somewhere, in the target directory
       you have binaries for `llc`, `opt`, etc.
 
 4. If you want to optimize the LLVM-IR, you can use `opt` to see how the LLVM
@@ -250,7 +250,7 @@ find that it has already been reported and fixed in LLVM, but we haven't
 gotten the fix yet (or perhaps you are familiar enough with LLVM to fix it yourself).
 
 In that case, we can sometimes opt to port the fix for the bug
-directly to our own LLVM fork, so that rustc can use it more easily.
+directly to our own LLVM fork, so that redox can use it more easily.
 Our fork of LLVM is maintained in [rust-lang/llvm-project].
 Once you've landed the fix there, you'll also need to land a PR modifying
 our submodule commits -- ask around on Zulip for help.

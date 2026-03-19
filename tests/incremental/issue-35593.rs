@@ -5,8 +5,8 @@
 //@ compile-flags: -Z query-dep-graph
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
-#![rustc_partition_reused(module="issue_35593", cfg="rpass2")]
+#![feature(redox_attrs)]
+#![redox_partition_reused(module="issue_35593", cfg="rpass2")]
 
 fn main() {
     println!("hello world");

@@ -6,7 +6,7 @@
 // https://github.com/rust-lang/rust/issues/124635
 
 #![crate_name = "foo"]
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 extern crate issue_76736_1;
 extern crate issue_76736_2;

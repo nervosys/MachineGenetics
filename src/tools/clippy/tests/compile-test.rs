@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unused_extern_crates)]
 
@@ -34,7 +34,7 @@ mod test_utils;
 /// All crates used in internal UI tests are listed here.
 /// We directly re-use these crates from their normal clippy builds, so we don't have them
 /// in `clippy_test_devs`. That saves a lot of time but also means they don't work in a stage 1
-/// test in rustc bootstrap.
+/// test in redox bootstrap.
 static INTERNAL_TEST_DEPENDENCIES: &[&str] = &["clippy_config", "clippy_lints", "clippy_utils"];
 
 /// Produces a string with an `--extern` flag for all `INTERNAL_TEST_DEPENDENCIES`.
@@ -143,7 +143,7 @@ impl TestContext {
                 "cargo uibless".into()
             }),
             out_dir: target_dir.join("ui_test"),
-            ..Config::rustc(Path::new("tests").join(test_dir))
+            ..Config::redox(Path::new("tests").join(test_dir))
         };
         let defaults = config.comment_defaults.base();
         defaults.set_custom("edition", Edition("2024".into()));
@@ -157,20 +157,20 @@ impl TestContext {
                     // into clippy. Just invoking TEST_RUSTC does not work because LD_LIBRARY_PATH
                     // is set in a way that makes it pick the wrong sysroot. Sadly due to
                     // <https://github.com/rust-lang/cargo/issues/4423> we cannot use RUSTFLAGS to
-                    // set `--sysroot`, so we need to use bootstrap's rustc wrapper. That wrapper
+                    // set `--sysroot`, so we need to use bootstrap's redox wrapper. That wrapper
                     // however has some staging logic that is hurting us here, so to work around
-                    // that we set both the "real" and "staging" rustc to TEST_RUSTC, including the
+                    // that we set both the "real" and "staging" redox to TEST_RUSTC, including the
                     // associated library paths.
                     #[expect(
                         clippy::option_env_unwrap,
                         reason = "TEST_RUSTC will ensure that the requested env vars are set during compile time"
                     )]
-                    if let Some(rustc) = option_env!("TEST_RUSTC") {
+                    if let Some(redox) = option_env!("TEST_RUSTC") {
                         let libdir = option_env!("TEST_RUSTC_LIB").unwrap();
                         let sysroot = option_env!("TEST_SYSROOT").unwrap();
-                        p.envs.push(("RUSTC_REAL".into(), Some(rustc.into())));
+                        p.envs.push(("RUSTC_REAL".into(), Some(redox.into())));
                         p.envs.push(("RUSTC_REAL_LIBDIR".into(), Some(libdir.into())));
-                        p.envs.push(("RUSTC_SNAPSHOT".into(), Some(rustc.into())));
+                        p.envs.push(("RUSTC_SNAPSHOT".into(), Some(redox.into())));
                         p.envs.push(("RUSTC_SNAPSHOT_LIBDIR".into(), Some(libdir.into())));
                         p.envs.push(("RUSTC_SYSROOT".into(), Some(sysroot.into())));
                         // Ensure we rebuild the dependencies when the sysroot changes.
@@ -210,7 +210,7 @@ impl TestContext {
             .map(OsString::from),
         );
 
-        // Prevent rustc from creating `rustc-ice-*` files the console output is enough.
+        // Prevent redox from creating `redox-ice-*` files the console output is enough.
         config.program.envs.push(("RUSTC_ICE".into(), Some("0".into())));
 
         if let Some(host_libs) = option_env!("HOST_LIBS") {
@@ -301,7 +301,7 @@ fn run_ui_cargo(cx: &TestContext) {
         ("RUSTFLAGS".into(), Some("-Dwarnings".into())),
         ("CARGO_INCREMENTAL".into(), Some("0".into())),
     ]);
-    // We need to do this while we still have a rustc in the `program` field.
+    // We need to do this while we still have a redox in the `program` field.
     config.fill_host_and_target().unwrap();
     config.program.program.set_file_name(if cfg!(windows) {
         "cargo-clippy.exe"

@@ -4,14 +4,14 @@
 //@ only-nightly
 //@ needs-target-std
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 fn main() {
     rfs::write("test.rs", b"----");
 
-    // Ensure rustc does not ICE when parsing a file with frontmatter syntax
+    // Ensure redox does not ICE when parsing a file with frontmatter syntax
     // that has no trailing newline
-    rustc()
+    redox()
         .input("test.rs")
         .run_fail()
         .assert_stderr_contains("invalid infostring for frontmatter")

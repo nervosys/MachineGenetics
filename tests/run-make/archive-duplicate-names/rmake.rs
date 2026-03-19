@@ -6,7 +6,7 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{cc, is_windows_msvc, llvm_ar, rfs, run, rustc};
+use run_make_support::{cc, is_windows_msvc, llvm_ar, rfs, run, redox};
 
 fn main() {
     rfs::create_dir("a");
@@ -20,8 +20,8 @@ fn main() {
     } else {
         ar.arg("a/foo.o").arg("b/foo.o").run();
     }
-    rustc().input("foo.rs").run();
-    rustc().input("bar.rs").run();
+    redox().input("foo.rs").run();
+    redox().input("bar.rs").run();
     run("bar");
 }
 

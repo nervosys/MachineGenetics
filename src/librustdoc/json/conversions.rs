@@ -2,19 +2,19 @@
 //! the `clean` types but with some fields removed or stringified to simplify the output and not
 //! expose unstable compiler internals.
 
-use rustc_abi::ExternAbi;
-use rustc_ast::ast;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir as hir;
-use rustc_hir::attrs::{self, DeprecatedSince, DocAttribute, DocInline, HideOrShow};
-use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{HeaderSafety, Safety};
-use rustc_metadata::rendered_const;
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::{bug, ty};
-use rustc_span::{Pos, Symbol, kw, sym};
+use redox_abi::ExternAbi;
+use redox_ast::ast;
+use redox_data_structures::fx::FxHashSet;
+use redox_data_structures::thin_vec::ThinVec;
+use redox_hir as hir;
+use redox_hir::attrs::{self, DeprecatedSince, DocAttribute, DocInline, HideOrShow};
+use redox_hir::def::CtorKind;
+use redox_hir::def_id::DefId;
+use redox_hir::{HeaderSafety, Safety};
+use redox_metadata::rendered_const;
+use redox_middle::ty::TyCtxt;
+use redox_middle::{bug, ty};
+use redox_span::{Pos, Symbol, kw, sym};
 use rustdoc_json_types::*;
 
 use crate::clean::{self, ItemId};
@@ -158,7 +158,7 @@ where
 impl FromClean<clean::Span> for Option<Span> {
     fn from_clean(span: &clean::Span, renderer: &JsonRenderer<'_>) -> Self {
         match span.filename(renderer.sess()) {
-            rustc_span::FileName::Real(name) => {
+            redox_span::FileName::Real(name) => {
                 if let Some(local_path) = name.into_local_path() {
                     let hi = span.hi(renderer.sess());
                     let lo = span.lo(renderer.sess());
@@ -300,7 +300,7 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             ItemEnum::Function(from_clean_function(m, false, header.unwrap(), renderer))
         }
         ImplItem(i) => ItemEnum::Impl(i.into_json(renderer)),
-        StaticItem(s) => ItemEnum::Static(from_clean_static(s, rustc_hir::Safety::Safe, renderer)),
+        StaticItem(s) => ItemEnum::Static(from_clean_static(s, redox_hir::Safety::Safe, renderer)),
         ForeignStaticItem(s, safety) => ItemEnum::Static(from_clean_static(s, *safety, renderer)),
         ForeignTypeItem => ItemEnum::ExternType,
         TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_json(renderer)),
@@ -391,8 +391,8 @@ impl FromClean<clean::Union> for Union {
     }
 }
 
-impl FromClean<rustc_hir::FnHeader> for FunctionHeader {
-    fn from_clean(header: &rustc_hir::FnHeader, renderer: &JsonRenderer<'_>) -> Self {
+impl FromClean<redox_hir::FnHeader> for FunctionHeader {
+    fn from_clean(header: &redox_hir::FnHeader, renderer: &JsonRenderer<'_>) -> Self {
         let is_unsafe = match header.safety {
             HeaderSafety::SafeTargetFeatures => {
                 // The type system's internal implementation details consider
@@ -533,12 +533,12 @@ impl FromClean<clean::GenericBound> for GenericBound {
     }
 }
 
-impl FromClean<rustc_hir::TraitBoundModifiers> for TraitBoundModifier {
+impl FromClean<redox_hir::TraitBoundModifiers> for TraitBoundModifier {
     fn from_clean(
-        modifiers: &rustc_hir::TraitBoundModifiers,
+        modifiers: &redox_hir::TraitBoundModifiers,
         _renderer: &JsonRenderer<'_>,
     ) -> Self {
-        use rustc_hir as hir;
+        use redox_hir as hir;
         let hir::TraitBoundModifiers { constness, polarity } = modifiers;
         match (constness, polarity) {
             (hir::BoundConstness::Never, hir::BoundPolarity::Positive) => TraitBoundModifier::None,
@@ -745,7 +745,7 @@ impl FromClean<clean::Impl> for Impl {
 pub(crate) fn from_clean_function(
     clean::Function { decl, generics }: &clean::Function,
     has_body: bool,
-    header: rustc_hir::FnHeader,
+    header: redox_hir::FnHeader,
     renderer: &JsonRenderer<'_>,
 ) -> Function {
     Function {
@@ -793,7 +793,7 @@ impl FromClean<clean::Discriminant> for Discriminant {
         let tcx = renderer.tcx;
         Discriminant {
             // expr is only none if going through the inlining path, which gets
-            // `rustc_middle` types, not `rustc_hir`, but because JSON never inlines
+            // `redox_middle` types, not `redox_hir`, but because JSON never inlines
             // the expr is always some.
             expr: disr.expr(tcx).unwrap(),
             value: disr.value(tcx, false),
@@ -826,9 +826,9 @@ impl FromClean<clean::ProcMacro> for ProcMacro {
     }
 }
 
-impl FromClean<rustc_span::hygiene::MacroKind> for MacroKind {
-    fn from_clean(kind: &rustc_span::hygiene::MacroKind, _renderer: &JsonRenderer<'_>) -> Self {
-        use rustc_span::hygiene::MacroKind::*;
+impl FromClean<redox_span::hygiene::MacroKind> for MacroKind {
+    fn from_clean(kind: &redox_span::hygiene::MacroKind, _renderer: &JsonRenderer<'_>) -> Self {
+        use redox_span::hygiene::MacroKind::*;
         match kind {
             Bang => MacroKind::Bang,
             Attr => MacroKind::Attr,
@@ -846,7 +846,7 @@ impl FromClean<clean::TypeAlias> for TypeAlias {
 
 fn from_clean_static(
     stat: &clean::Static,
-    safety: rustc_hir::Safety,
+    safety: redox_hir::Safety,
     renderer: &JsonRenderer<'_>,
 ) -> Static {
     let tcx = renderer.tcx;
@@ -939,7 +939,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
         AK::NonExhaustive(_) => Attribute::NonExhaustive,
         AK::AutomaticallyDerived(_) => Attribute::AutomaticallyDerived,
         AK::Doc(d) => {
-            fn toggle_attr(ret: &mut Vec<Attribute>, name: &str, v: &Option<rustc_span::Span>) {
+            fn toggle_attr(ret: &mut Vec<Attribute>, name: &str, v: &Option<redox_span::Span>) {
                 if v.is_some() {
                     ret.push(Attribute::Other(format!("#[doc({name})]")));
                 }
@@ -948,7 +948,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
             fn name_value_attr(
                 ret: &mut Vec<Attribute>,
                 name: &str,
-                v: &Option<(Symbol, rustc_span::Span)>,
+                v: &Option<(Symbol, redox_span::Span)>,
             ) {
                 if let Some((v, _)) = v {
                     // We use `as_str` and debug display to have characters escaped and `"`
@@ -1053,7 +1053,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
 }
 
 fn other_attr(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Attribute {
-    let mut s = rustc_hir_pretty::attribute_to_string(&tcx, attr);
+    let mut s = redox_hir_pretty::attribute_to_string(&tcx, attr);
     assert_eq!(s.pop(), Some('\n'));
     Attribute::Other(s)
 }
@@ -1078,9 +1078,9 @@ fn repr_attr(tcx: TyCtxt<'_>, def_id: DefId) -> Attribute {
     Attribute::Repr(AttributeRepr { kind, align, packed, int })
 }
 
-fn format_integer_type(it: rustc_abi::IntegerType) -> String {
-    use rustc_abi::Integer::*;
-    use rustc_abi::IntegerType::*;
+fn format_integer_type(it: redox_abi::IntegerType) -> String {
+    use redox_abi::Integer::*;
+    use redox_abi::IntegerType::*;
     match it {
         Pointer(true) => "isize",
         Pointer(false) => "usize",
@@ -1098,13 +1098,13 @@ fn format_integer_type(it: rustc_abi::IntegerType) -> String {
     .to_owned()
 }
 
-pub(super) fn target(sess: &rustc_session::Session) -> Target {
+pub(super) fn target(sess: &redox_session::Session) -> Target {
     // Build a set of which features are enabled on this target
     let globally_enabled_features: FxHashSet<&str> =
         sess.unstable_target_features.iter().map(|name| name.as_str()).collect();
 
     // Build a map of target feature stability by feature name
-    use rustc_target::target_features::Stability;
+    use redox_target::target_features::Stability;
     let feature_stability: FxHashMap<&str, Stability> = sess
         .target
         .rust_target_features()

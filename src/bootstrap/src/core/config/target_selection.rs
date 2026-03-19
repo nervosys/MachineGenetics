@@ -53,7 +53,7 @@ impl TargetSelection {
         }
     }
 
-    pub fn rustc_target_arg(&self) -> &str {
+    pub fn redox_target_arg(&self) -> &str {
         self.file.as_ref().unwrap_or(&self.triple)
     }
 

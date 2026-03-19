@@ -6,18 +6,18 @@
 //@ ignore-remote
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
-extern crate rustc_public;
+extern crate redox_driver;
+extern crate redox_interface;
+extern crate redox_public;
 
 use mir::{TerminatorKind::*, mono::Instance};
-use rustc_public::mir::mono::InstanceKind;
-use rustc_public::ty::{RigidTy, Ty, TyKind, UintTy};
-use rustc_public::*;
+use redox_public::mir::mono::InstanceKind;
+use redox_public::ty::{RigidTy, Ty, TyKind, UintTy};
+use redox_public::*;
 use std::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -26,7 +26,7 @@ const CRATE_NAME: &str = "input";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
-    let entry = rustc_public::entry_fn().unwrap();
+    let entry = redox_public::entry_fn().unwrap();
     let main_fn = Instance::try_from(entry).unwrap();
     assert_eq!(main_fn.name(), "input::main");
     assert_eq!(main_fn.trimmed_name(), "main");
@@ -109,7 +109,7 @@ fn main() {
     let path = "defs_input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

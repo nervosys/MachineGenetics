@@ -4,11 +4,11 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::ty_from_hir_ty;
 use clippy_utils::{SpanlessEq, is_in_const_context, is_integer_literal, sym};
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind, QPath};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty;
+use redox_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

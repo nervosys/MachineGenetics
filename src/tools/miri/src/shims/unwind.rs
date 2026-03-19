@@ -4,7 +4,7 @@
 //! - An implementation of `catch_unwind` that pushes the invoked stack frame with
 //!   some extra metadata derived from the panic-catching arguments of `catch_unwind`.
 //! - A hack in `libpanic_unwind` that calls the `miri_start_unwind` intrinsic instead of the
-//!   target-native panic runtime. (This lives in the rustc repo.)
+//!   target-native panic runtime. (This lives in the redox repo.)
 //! - An implementation of `miri_start_unwind` that stores its argument (the panic payload), and
 //!   then immediately returns, but on the *unwind* edge (not the normal return edge), thus
 //!   initiating unwinding.
@@ -12,9 +12,9 @@
 //!   gets popped *during unwinding*, we take the panic payload and store it according to the extra
 //!   metadata we remembered when pushing said frame.
 
-use rustc_abi::ExternAbi;
-use rustc_middle::mir;
-use rustc_target::spec::PanicStrategy;
+use redox_abi::ExternAbi;
+use redox_middle::mir;
+use redox_target::spec::PanicStrategy;
 
 use crate::*;
 

@@ -8,7 +8,7 @@ that we want to examine has a [diagnostic item][diagnostic_items],
 
 ## Using Diagnostic Items
 
-As explained in the [Rust Compiler Development Guide][rustc_dev_guide], diagnostic items
+As explained in the [Rust Compiler Development Guide][redox_dev_guide], diagnostic items
 are introduced for identifying types via [Symbols][symbol].
 
 For instance, if we want to examine whether an expression implements
@@ -19,8 +19,8 @@ the symbol of the trait in question:
 ```rust
 use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;
-use rustc_hir::Expr;
-use rustc_lint::{LateContext, LateLintPass};
+use redox_hir::Expr;
+use redox_lint::{LateContext, LateLintPass};
 
 impl LateLintPass<'_> for CheckIteratorTraitLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
@@ -54,8 +54,8 @@ we can check that the `Ty` of the `expr` implements the trait:
 
 ```rust
 use clippy_utils::ty::implements_trait;
-use rustc_hir::Expr;
-use rustc_lint::{LateContext, LateLintPass};
+use redox_hir::Expr;
+use redox_lint::{LateContext, LateLintPass};
 
 impl LateLintPass<'_> for CheckDropTraitLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
@@ -81,8 +81,8 @@ Below, we check if the given `expr` implements [`core::iter::Step`](https://doc.
 ```rust
 use clippy_utils::paths;
 use clippy_utils::ty::implements_trait;
-use rustc_hir::Expr;
-use rustc_lint::{LateContext, LateLintPass};
+use redox_hir::Expr;
+use redox_lint::{LateContext, LateLintPass};
 
 impl LateLintPass<'_> for CheckIterStep {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
@@ -114,7 +114,7 @@ have access to all the primitive types, such as `Ty::new_char`,
 such as slices, tuples, and references out of these basic building blocks.
 
 For trait checking, it is not enough to create the types, we need to convert
-them into [GenericArg]. In rustc, a generic is an entity that the compiler
+them into [GenericArg]. In redox, a generic is an entity that the compiler
 understands and has three kinds, type, const and lifetime. By calling
 `.into()` on a constructed [Ty], we wrap the type into a generic which can
 then be used by the query system to decide whether the specialized trait
@@ -124,7 +124,7 @@ The following code demonstrates how to do this:
 
 ```rust
 
-use rustc_middle::ty::Ty;
+use redox_middle::ty::Ty;
 use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;
 
@@ -139,19 +139,19 @@ if implements_trait(cx, ty, borrow_id, &[generic_param]) {
 
 In essence, the [Ty] struct allows us to create types programmatically in a
 representation that can be used by the compiler and the query engine. We then
-use the `rustc_middle::Ty` of the type we are interested in, and query the
+use the `redox_middle::Ty` of the type we are interested in, and query the
 compiler to see if it indeed implements the trait we are interested in.
 
 
-[DefId]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
-[diagnostic_items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html
-[lang_items]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/lang_items/struct.LanguageItems.html
+[DefId]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/def_id/struct.DefId.html
+[diagnostic_items]: https://redox-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html
+[lang_items]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir/lang_items/struct.LanguageItems.html
 [paths]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/paths.rs
-[rustc_dev_guide]: https://rustc-dev-guide.rust-lang.org/
-[symbol]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html
-[symbol_index]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_span/symbol/sym/index.html
-[TyCtxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
-[Ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
+[redox_dev_guide]: https://redox-dev-guide.rust-lang.org/
+[symbol]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/symbol/struct.Symbol.html
+[symbol_index]: https://doc.rust-lang.org/beta/nightly-redox/redox_span/symbol/sym/index.html
+[TyCtxt]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/context/struct.TyCtxt.html
+[Ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html
 [rust]: https://github.com/rust-lang/rust
-[new_slice]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.new_slice
-[GenericArg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.GenericArg.html
+[new_slice]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Ty.html#method.new_slice
+[GenericArg]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.GenericArg.html

@@ -35,7 +35,7 @@ pub struct m64x2([i64; 2]);
 #[repr(simd)]
 pub struct m64x4([i64; 4]);
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 unsafe fn simd_bitmask<V, B>(mask: V) -> B;
 
 // CHECK-LABEL: bitmask_m8x16

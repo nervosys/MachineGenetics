@@ -3,7 +3,7 @@
 //@ ignore-backends: gcc
 
 #![allow(warnings)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 fn main() { }
 
@@ -22,7 +22,7 @@ mod x {
 mod y {
     use x;
 
-    #[rustc_clean(cfg="rpass2")]
+    #[redox_clean(cfg="rpass2")]
     pub fn yyyy() {
         x::xxxx();
     }
@@ -31,7 +31,7 @@ mod y {
 mod z {
     use y;
 
-    #[rustc_clean(cfg="rpass2")]
+    #[redox_clean(cfg="rpass2")]
     pub fn z() {
         y::yyyy();
     }

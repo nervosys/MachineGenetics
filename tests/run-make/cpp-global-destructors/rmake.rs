@@ -13,10 +13,10 @@
 // Not exercised in full CI, but sgx technically supports std.
 //@ ignore-sgx
 
-use run_make_support::{build_native_static_lib_cxx, run, rustc};
+use run_make_support::{build_native_static_lib_cxx, run, redox};
 
 fn main() {
     build_native_static_lib_cxx("foo");
-    rustc().input("foo.rs").arg("-lfoo").extra_rs_cxx_flags().run();
+    redox().input("foo.rs").arg("-lfoo").extra_rs_cxx_flags().run();
     run("foo");
 }

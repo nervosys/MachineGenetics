@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::is_copy;
 use itertools::Itertools;
-use rustc_lint::LateContext;
-use rustc_middle::ty::Ty;
-use rustc_span::{Span, Symbol};
+use redox_lint::LateContext;
+use redox_middle::ty::Ty;
+use redox_span::{Span, Symbol};
 use std::fmt;
 
 use super::WRONG_SELF_CONVENTION;

@@ -25,7 +25,7 @@ This allows the generated code to run in environments, such as kernels, which
 may need to avoid the use of such registers or which may have special considerations
 about the use of such registers (e.g. saving and restoring them to avoid breaking
 userspace code using the same registers). You can change code generation to use
-additional CPU features via the `-C target-feature=` codegen options to rustc, or
+additional CPU features via the `-C target-feature=` codegen options to redox, or
 via the `#[target_feature]` mechanism within Rust code.
 
 By default, code generated with the soft-float target should run on any
@@ -33,7 +33,7 @@ LoongArch hardware, with the hard-float target additionally requiring an FPU;
 enabling additional target features may raise this baseline.
 
 Code generated with the targets will use the `medium` code model by default.
-You can change this using the `-C code-model=` option to rustc.
+You can change this using the `-C code-model=` option to redox.
 
 On `loongarch*-unknown-none*`, `extern "C"` uses the [architecture's standard calling convention][lapcs].
 
@@ -72,7 +72,7 @@ The `loongarch32-unknown-none*` targets are Tier 3, so you must build the Rust
 compiler from source to use them.
 
 ```sh
-# target flag may be used with any cargo or rustc command
+# target flag may be used with any cargo or redox command
 cargo build --target loongarch32-unknown-none
 cargo build --target loongarch32-unknown-none-softfloat
 ```
@@ -85,7 +85,7 @@ Starting with Rust 1.74, precompiled artifacts are provided via `rustup`:
 # install cross-compile toolchain
 rustup target add loongarch64-unknown-none
 rustup target add loongarch64-unknown-none-softfloat
-# target flag may be used with any cargo or rustc command
+# target flag may be used with any cargo or redox command
 cargo build --target loongarch64-unknown-none
 cargo build --target loongarch64-unknown-none-softfloat
 ```

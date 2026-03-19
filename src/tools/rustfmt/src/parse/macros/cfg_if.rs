@@ -1,10 +1,10 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use rustc_ast::ast;
-use rustc_ast::token::TokenKind;
-use rustc_parse::exp;
-use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
-use rustc_span::symbol::kw;
+use redox_ast::ast;
+use redox_ast::token::TokenKind;
+use redox_parse::exp;
+use redox_parse::parser::{AllowConstBlockItems, ForceCollect};
+use redox_span::symbol::kw;
 
 use crate::parse::macros::build_stream_parser;
 use crate::parse::session::ParseSess;
@@ -49,7 +49,7 @@ fn parse_cfg_if_inner<'a>(
             // to the opening brace.
             // See also https://github.com/rust-lang/rust/pull/79433
             parser
-                .parse_attribute(rustc_parse::parser::attr::InnerAttrPolicy::Permitted)
+                .parse_attribute(redox_parse::parser::attr::InnerAttrPolicy::Permitted)
                 .map_err(|e| {
                     e.cancel();
                     "Failed to parse attributes"

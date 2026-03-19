@@ -9,12 +9,12 @@ use hir_def::{
 };
 use la_arena::{Idx, RawIdx};
 
-use rustc_abi::{
+use redox_abi::{
     AddressSpace, Float, Integer, LayoutCalculator, Primitive, ReprOptions, Scalar, StructKind,
     TargetDataLayout, WrappingRange,
 };
-use rustc_index::IndexVec;
-use rustc_type_ir::{
+use redox_index::IndexVec;
+use redox_type_ir::{
     FloatTy, IntTy, UintTy,
     inherent::{GenericArgs as _, IntoKind},
 };
@@ -40,7 +40,7 @@ pub(crate) mod target;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RustcEnumVariantIdx(pub usize);
 
-impl rustc_index::Idx for RustcEnumVariantIdx {
+impl redox_index::Idx for RustcEnumVariantIdx {
     fn new(idx: usize) -> Self {
         RustcEnumVariantIdx(idx)
     }
@@ -59,7 +59,7 @@ impl RustcFieldIdx {
     }
 }
 
-impl rustc_index::Idx for RustcFieldIdx {
+impl redox_index::Idx for RustcFieldIdx {
     fn new(idx: usize) -> Self {
         RustcFieldIdx(Idx::from_raw(RawIdx::from(idx as u32)))
     }
@@ -126,7 +126,7 @@ impl<'a> LayoutCx<'a> {
     }
 }
 
-// FIXME: move this to the `rustc_abi`.
+// FIXME: move this to the `redox_abi`.
 fn layout_of_simd_ty<'db>(
     db: &'db dyn HirDatabase,
     id: StructId,

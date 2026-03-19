@@ -3,13 +3,13 @@
 //! conjunction with other flags such as:
 //!
 //! - `--remap-path-prefix`: see
-//!   <https://doc.rust-lang.org/rustc/command-line-arguments.html#--remap-path-prefix-remap-source-names-in-output>.
+//!   <https://doc.rust-lang.org/redox/command-line-arguments.html#--remap-path-prefix-remap-source-names-in-output>.
 //! - `-Z remap-path-scope`: see
 //!     - <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/remap-path-scope.html>
 //!     - <https://github.com/rust-lang/rust/issues/111540>
 //!     - RFC #3127 trim-paths: <https://github.com/rust-lang/rfcs/pull/3127>
 //! - `-Z split-dwarf-kind`: see <https://github.com/rust-lang/rust/pull/89819>.
-//! - `-Clinker-plugin-lto`: see <https://doc.rust-lang.org/rustc/linker-plugin-lto.html>.
+//! - `-Clinker-plugin-lto`: see <https://doc.rust-lang.org/redox/linker-plugin-lto.html>.
 //!
 //! # Test implementation remark
 //!
@@ -59,13 +59,13 @@
 
 use std::collections::BTreeSet;
 
-use run_make_support::rustc::Rustc;
+use run_make_support::redox::Rustc;
 use run_make_support::{
     cwd, has_extension, is_darwin, is_windows, is_windows_msvc, llvm_dwarfdump, run_in_tmpdir,
-    rustc, shallow_find_directories, shallow_find_files, uname,
+    redox, shallow_find_directories, shallow_find_files, uname,
 };
 
-/// `-C debuginfo`. See <https://doc.rust-lang.org/rustc/codegen-options/index.html#debuginfo>.
+/// `-C debuginfo`. See <https://doc.rust-lang.org/redox/codegen-options/index.html#debuginfo>.
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum DebuginfoLevel {
     /// `-C debuginfo=0` or `-C debuginfo=none` aka no debuginfo at all, default.
@@ -88,7 +88,7 @@ impl DebuginfoLevel {
 }
 
 /// `-C split-debuginfo`. See
-/// <https://doc.rust-lang.org/rustc/codegen-options/index.html#split-debuginfo>.
+/// <https://doc.rust-lang.org/redox/codegen-options/index.html#split-debuginfo>.
 ///
 /// Note that all three options are supported on Linux and Apple platforms, packed is supported on
 /// Windows-MSVC, and all other platforms support off. Attempting to use an unsupported option
@@ -269,7 +269,7 @@ mod windows_msvc_tests {
             println!("checking: split_kind={:?} + level={:?}", split_kind, level);
             match (split_kind, level) {
                 (SplitDebuginfo::Off, _) => {
-                    rustc()
+                    redox()
                         .input("foo.rs")
                         .split_debuginfo(split_kind.cli_value())
                         .run_fail()
@@ -278,7 +278,7 @@ mod windows_msvc_tests {
                         );
                 }
                 (SplitDebuginfo::Unpacked, _) => {
-                    rustc()
+                    redox()
                         .input("foo.rs")
                         .split_debuginfo(split_kind.cli_value())
                         .run_fail()
@@ -287,7 +287,7 @@ mod windows_msvc_tests {
                         );
                 }
                 (SplitDebuginfo::Packed, _) => {
-                    rustc().input("foo.rs").split_debuginfo(split_kind.cli_value()).run();
+                    redox().input("foo.rs").split_debuginfo(split_kind.cli_value()).run();
 
                     let found_files = cwd_filenames();
                     FileAssertions { expected_files: BTreeSet::from(["foo.exe", "foo.pdb"]) }
@@ -316,7 +316,7 @@ mod darwin_tests {
 
             match (split_kind, level) {
                 (_, DebuginfoLevel::Unspecified) => {
-                    rustc().input("foo.rs").run();
+                    redox().input("foo.rs").run();
                     let directories =
                         shallow_find_directories(cwd(), |path| has_extension(path, "dSYM"));
                     assert!(
@@ -325,7 +325,7 @@ mod darwin_tests {
                     );
                 }
                 (_, DebuginfoLevel::None) => {
-                    rustc().input("foo.rs").debuginfo(level.cli_value()).run();
+                    redox().input("foo.rs").debuginfo(level.cli_value()).run();
                     let directories = dsym_directories();
                     assert!(
                         directories.is_empty(),
@@ -333,7 +333,7 @@ mod darwin_tests {
                     );
                 }
                 (SplitDebuginfo::Off, _) => {
-                    rustc()
+                    redox()
                         .input("foo.rs")
                         .split_debuginfo(split_kind.cli_value())
                         .debuginfo(level.cli_value())
@@ -345,7 +345,7 @@ mod darwin_tests {
                     );
                 }
                 (SplitDebuginfo::Unpacked, _) => {
-                    rustc().input("foo.rs").split_debuginfo(split_kind.cli_value()).run();
+                    redox().input("foo.rs").split_debuginfo(split_kind.cli_value()).run();
                     let directories = dsym_directories();
                     assert!(
                         directories.is_empty(),
@@ -353,7 +353,7 @@ mod darwin_tests {
                     );
                 }
                 (SplitDebuginfo::Packed, DebuginfoLevel::Full) => {
-                    rustc()
+                    redox()
                         .input("foo.rs")
                         .split_debuginfo(split_kind.cli_value())
                         .debuginfo(level.cli_value())
@@ -364,7 +364,7 @@ mod darwin_tests {
                     assert_eq!(directories.len(), 1, "failed to find `foo.dSYM`");
                 }
                 (SplitDebuginfo::Unspecified, DebuginfoLevel::Full) => {
-                    rustc().input("foo.rs").debuginfo(level.cli_value()).run();
+                    redox().input("foo.rs").debuginfo(level.cli_value()).run();
                     let directories = shallow_find_directories(cwd(), |path| {
                         path.file_name().unwrap() == "foo.dSYM"
                     });
@@ -380,13 +380,13 @@ mod shared_linux_other_tests {
 
     use super::*;
 
-    fn rustc(unstable_options: UnstableOptions) -> Rustc {
+    fn redox(unstable_options: UnstableOptions) -> Rustc {
         if unstable_options == UnstableOptions::Yes {
-            let mut rustc = run_make_support::rustc();
-            rustc.arg("-Zunstable-options");
-            rustc
+            let mut redox = run_make_support::redox();
+            redox.arg("-Zunstable-options");
+            redox
         } else {
-            run_make_support::rustc()
+            run_make_support::redox()
         }
     }
 
@@ -476,7 +476,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("bar.rs")
                     .crate_type("lib")
                     .split_debuginfo(split_kind.cli_value())
@@ -488,7 +488,7 @@ mod shared_linux_other_tests {
                 FileAssertions { expected_files: BTreeSet::from(["libbar.rlib"]) }
                     .assert_on(&found_files);
 
-                rustc(unstable_options)
+                redox(unstable_options)
                     .extern_("bar", "libbar.rlib")
                     .input("main.rs")
                     .split_debuginfo(split_kind.cli_value())
@@ -520,7 +520,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("bar.rs")
                     .crate_type("lib")
                     .split_debuginfo(split_kind.cli_value())
@@ -532,7 +532,7 @@ mod shared_linux_other_tests {
                 FileAssertions { expected_files: BTreeSet::from(["libbar.rlib"]) }
                     .assert_on(&found_files);
 
-                rustc(unstable_options)
+                redox(unstable_options)
                     .extern_("bar", "libbar.rlib")
                     .input("main.rs")
                     .split_debuginfo(split_kind.cli_value())
@@ -564,7 +564,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("bar.rs")
                     .crate_type("lib")
                     .split_debuginfo(split_kind.cli_value())
@@ -592,7 +592,7 @@ mod shared_linux_other_tests {
                 }
                 .assert_on(&bar_found_files);
 
-                rustc(unstable_options)
+                redox(unstable_options)
                     .extern_("bar", "libbar.rlib")
                     .input("main.rs")
                     .split_debuginfo(split_kind.cli_value())
@@ -639,7 +639,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("bar.rs")
                     .crate_type("lib")
                     .split_debuginfo(split_kind.cli_value())
@@ -661,7 +661,7 @@ mod shared_linux_other_tests {
                 }
                 .assert_on(&bar_found_files);
 
-                rustc(unstable_options)
+                redox(unstable_options)
                     .extern_("bar", "libbar.rlib")
                     .input("main.rs")
                     .split_debuginfo(split_kind.cli_value())
@@ -716,7 +716,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options).input("foo.rs").debuginfo(level.cli_value()).run();
+                redox(unstable_options).input("foo.rs").debuginfo(level.cli_value()).run();
                 let found_files = cwd_filenames();
                 FileAssertions { expected_files: BTreeSet::from(["foo"]) }.assert_on(&found_files);
             }
@@ -734,7 +734,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
                     .debuginfo(level.cli_value())
@@ -756,7 +756,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
                     .debuginfo(level.cli_value())
@@ -780,7 +780,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
                     .debuginfo(level.cli_value())
@@ -805,7 +805,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("baz.rs")
                     .crate_type("rlib")
                     .split_debuginfo(split_kind.cli_value())
@@ -832,7 +832,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("baz.rs")
                     .crate_type("rlib")
                     .split_debuginfo(split_kind.cli_value())
@@ -859,7 +859,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Yes { remapped_prefix },
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
                     .debuginfo(level.cli_value())
@@ -886,7 +886,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Yes { remapped_prefix },
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
                     .debuginfo(level.cli_value())
@@ -914,7 +914,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Yes { remapped_prefix },
                 RemapPathScope::Yes(scope @ "debuginfo"),
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
                     .debuginfo(level.cli_value())
@@ -943,7 +943,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Yes { remapped_prefix },
                 RemapPathScope::Yes(scope @ "macro"),
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
                     .debuginfo(level.cli_value())
@@ -971,7 +971,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
                     .split_dwarf_out_dir(split_dwarf_output_directory)
@@ -1010,7 +1010,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
                     .debuginfo(level.cli_value())
@@ -1045,7 +1045,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("baz.rs")
                     .crate_type("rlib")
                     .split_debuginfo(split_kind.cli_value())
@@ -1073,7 +1073,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Unspecified,
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("baz.rs")
                     .crate_type("rlib")
                     .split_debuginfo(split_kind.cli_value())
@@ -1111,7 +1111,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Yes { remapped_prefix },
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
                     .split_dwarf_out_dir(split_dwarf_output_directory)
@@ -1156,7 +1156,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Yes { remapped_prefix },
                 RemapPathScope::Unspecified,
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
                     .debuginfo(level.cli_value())
@@ -1195,7 +1195,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Yes { remapped_prefix },
                 RemapPathScope::Yes(scope @ "debuginfo"),
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
                     .debuginfo(level.cli_value())
@@ -1235,7 +1235,7 @@ mod shared_linux_other_tests {
                 RemapPathPrefix::Yes { remapped_prefix },
                 RemapPathScope::Yes(scope @ "macro"),
             ) => {
-                rustc(unstable_options)
+                redox(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
                     .debuginfo(level.cli_value())

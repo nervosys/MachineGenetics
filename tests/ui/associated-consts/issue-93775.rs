@@ -1,6 +1,6 @@
-//@ ignore-rustc-debug-assertions
+//@ ignore-redox-debug-assertions
 // Similar to stress testing, the test case requires a larger call stack,
-// so we ignore rustc's debug assertions.
+// so we ignore redox's debug assertions.
 
 // Regression for #93775, needs build-pass to test it.
 

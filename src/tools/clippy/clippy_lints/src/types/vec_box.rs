@@ -1,14 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::last_path_segment;
 use clippy_utils::source::snippet;
-use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, GenericArg, LangItem, QPath, TyKind};
-use rustc_hir_analysis::lower_ty;
-use rustc_lint::LateContext;
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_span::symbol::sym;
+use redox_errors::Applicability;
+use redox_hir::def_id::DefId;
+use redox_hir::{self as hir, GenericArg, LangItem, QPath, TyKind};
+use redox_hir_analysis::lower_ty;
+use redox_lint::LateContext;
+use redox_middle::ty::TypeVisitableExt;
+use redox_middle::ty::layout::LayoutOf;
+use redox_span::symbol::sym;
 
 use super::VEC_BOX;
 

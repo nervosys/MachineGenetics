@@ -1,8 +1,8 @@
 //@ignore-target: apple
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #[warn(clippy::main_recursion)]
 #[allow(unconditional_recursion)]
-#[rustc_main]
+#[redox_main]
 fn a() {
     a();
     //~^ main_recursion

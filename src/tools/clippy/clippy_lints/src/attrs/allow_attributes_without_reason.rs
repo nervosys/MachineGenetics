@@ -1,10 +1,10 @@
 use super::{ALLOW_ATTRIBUTES_WITHOUT_REASON, Attribute};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
-use rustc_ast::{MetaItemInner, MetaItemKind};
-use rustc_lint::{EarlyContext, LintContext};
-use rustc_span::sym;
-use rustc_span::symbol::Symbol;
+use redox_ast::{MetaItemInner, MetaItemKind};
+use redox_lint::{EarlyContext, LintContext};
+use redox_span::sym;
+use redox_span::symbol::Symbol;
 
 pub(super) fn check<'cx>(cx: &EarlyContext<'cx>, name: Symbol, items: &[MetaItemInner], attr: &'cx Attribute) {
     // Check if the reason is present

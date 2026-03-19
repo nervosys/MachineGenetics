@@ -1,9 +1,9 @@
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, IntTy, UintTy};
-use rustc_span::Span;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind};
+use redox_lint::LateContext;
+use redox_middle::ty::layout::LayoutOf;
+use redox_middle::ty::{self, IntTy, UintTy};
+use redox_span::Span;
 
 use clippy_utils::comparisons;
 use clippy_utils::comparisons::Rel;

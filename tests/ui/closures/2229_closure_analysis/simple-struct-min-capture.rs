@@ -1,6 +1,6 @@
 //@ edition:2021
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 // Test to ensure that min analysis meets capture kind for all paths captured.
 
@@ -20,7 +20,7 @@ fn main() {
     //
     // Requirements met when p is captured via MutBorrow
     //
-    let mut c = #[rustc_capture_analysis]
+    let mut c = #[redox_capture_analysis]
         //~^ ERROR: attributes on expressions are experimental
         //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
         //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date

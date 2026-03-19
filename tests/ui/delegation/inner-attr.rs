@@ -3,6 +3,6 @@
 
 fn a() {}
 
-reuse a as b { #![rustc_dummy] self } //~ ERROR an inner attribute is not permitted in this context
+reuse a as b { #![redox_dummy] self } //~ ERROR an inner attribute is not permitted in this context
 
 fn main() {}

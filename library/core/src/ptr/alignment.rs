@@ -251,7 +251,7 @@ impl fmt::Debug for Alignment {
 }
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const TryFrom<NonZero<usize>> for Alignment {
     type Error = num::TryFromIntError;
 
@@ -262,7 +262,7 @@ impl const TryFrom<NonZero<usize>> for Alignment {
 }
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const TryFrom<usize> for Alignment {
     type Error = num::TryFromIntError;
 
@@ -273,7 +273,7 @@ impl const TryFrom<usize> for Alignment {
 }
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<Alignment> for NonZero<usize> {
     #[inline]
     fn from(align: Alignment) -> NonZero<usize> {
@@ -282,7 +282,7 @@ impl const From<Alignment> for NonZero<usize> {
 }
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<Alignment> for usize {
     #[inline]
     fn from(align: Alignment) -> usize {
@@ -316,7 +316,7 @@ impl hash::Hash for Alignment {
 
 /// Returns [`Alignment::MIN`], which is valid for any type.
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl const Default for Alignment {
     fn default() -> Alignment {
         Alignment::MIN

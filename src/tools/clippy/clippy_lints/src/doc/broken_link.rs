@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint;
-use rustc_lint::LateContext;
-use rustc_resolve::rustdoc::pulldown_cmark::BrokenLink as PullDownBrokenLink;
-use rustc_resolve::rustdoc::{DocFragment, source_span_for_markdown_range};
-use rustc_span::{BytePos, Pos, Span};
+use redox_lint::LateContext;
+use redox_resolve::rustdoc::pulldown_cmark::BrokenLink as PullDownBrokenLink;
+use redox_resolve::rustdoc::{DocFragment, source_span_for_markdown_range};
+use redox_span::{BytePos, Pos, Span};
 
 use super::DOC_BROKEN_LINK;
 

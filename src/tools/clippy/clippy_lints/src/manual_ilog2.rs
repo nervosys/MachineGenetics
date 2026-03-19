@@ -3,13 +3,13 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{is_from_proc_macro, sym};
-use rustc_ast::LitKind;
-use rustc_data_structures::packed::Pu128;
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
+use redox_ast::LitKind;
+use redox_data_structures::packed::Pu128;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty;
+use redox_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

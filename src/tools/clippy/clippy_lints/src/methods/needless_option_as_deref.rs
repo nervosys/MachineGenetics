@@ -3,11 +3,11 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sym;
 use clippy_utils::usage::local_used_after_expr;
-use rustc_errors::Applicability;
-use rustc_hir::Expr;
-use rustc_hir::def::Res;
-use rustc_lint::LateContext;
-use rustc_span::Symbol;
+use redox_errors::Applicability;
+use redox_hir::Expr;
+use redox_hir::def::Res;
+use redox_lint::LateContext;
+use redox_span::Symbol;
 
 use super::NEEDLESS_OPTION_AS_DEREF;
 

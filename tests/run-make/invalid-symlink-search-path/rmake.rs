@@ -9,13 +9,13 @@
 //@ needs-symlink
 //Reason: symlink requires elevated permission in Windows
 
-use run_make_support::{path, rfs, rustc};
+use run_make_support::{path, rfs, redox};
 
 fn main() {
     // We create two libs: `bar` which depends on `foo`. We need to compile `foo` first.
     rfs::create_dir("out");
     rfs::create_dir("out/foo");
-    rustc()
+    redox()
         .input("in/foo/lib.rs")
         .crate_name("foo")
         .crate_type("lib")
@@ -26,7 +26,7 @@ fn main() {
     rfs::symlink_file(path("out/foo/libfoo.rlib"), path("out/bar/deps/libfoo.rlib"));
 
     // Check that the invalid symlink does not cause an ICE
-    rustc()
+    redox()
         .input("in/bar/lib.rs")
         .library_search_path("dependency=out/bar/deps")
         .run_fail()

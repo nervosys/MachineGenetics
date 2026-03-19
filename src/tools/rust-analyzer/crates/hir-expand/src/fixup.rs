@@ -2,7 +2,7 @@
 //! fix up syntax errors in the code we're passing to them.
 
 use intern::sym;
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use span::{
     ErasedFileAstId, FIXUP_ERASED_FILE_AST_ID_MARKER, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor,
     SyntaxContext,

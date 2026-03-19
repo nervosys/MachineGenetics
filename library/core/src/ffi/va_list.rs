@@ -27,7 +27,7 @@ use crate::marker::PhantomCovariantLifetime;
 // but the single-element array case is special: in C, this type is subject to
 // array-to-pointer decay.
 //
-// The `#[rustc_pass_indirectly_in_non_rustic_abis]` attribute is used to match
+// The `#[redox_pass_indirectly_in_non_rustic_abis]` attribute is used to match
 // the pointer decay behavior in Rust, while otherwise matching Rust semantics.
 // This attribute ensures that the compiler uses the correct ABI for functions
 // like `extern "C" fn takes_va_list(va: VaList<'_>)` by passing `va` indirectly.
@@ -75,7 +75,7 @@ crate::cfg_select! {
         /// [GCC header]: https://web.mit.edu/darwin/src/modules/gcc/gcc/ginclude/va-ppc.h
         #[repr(C)]
         #[derive(Debug, Clone, Copy)]
-        #[rustc_pass_indirectly_in_non_rustic_abis]
+        #[redox_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             gpr: u8,
             fpr: u8,
@@ -95,7 +95,7 @@ crate::cfg_select! {
         /// https://docs.google.com/gview?embedded=true&url=https://github.com/IBM/s390x-abi/releases/download/v1.7/lzsabi_s390x.pdf
         #[repr(C)]
         #[derive(Debug, Clone, Copy)]
-        #[rustc_pass_indirectly_in_non_rustic_abis]
+        #[redox_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             gpr: i64,
             fpr: i64,
@@ -115,7 +115,7 @@ crate::cfg_select! {
         /// https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
         #[repr(C)]
         #[derive(Debug, Clone, Copy)]
-        #[rustc_pass_indirectly_in_non_rustic_abis]
+        #[redox_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             gp_offset: i32,
             fp_offset: i32,
@@ -134,7 +134,7 @@ crate::cfg_select! {
         /// https://github.com/llvm/llvm-project/blob/af9a4263a1a209953a1d339ef781a954e31268ff/llvm/lib/Target/Xtensa/XtensaISelLowering.cpp#L1211-L1215
         #[repr(C)]
         #[derive(Debug, Clone, Copy)]
-        #[rustc_pass_indirectly_in_non_rustic_abis]
+        #[redox_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             stk: *const i32,
             reg: *const i32,
@@ -153,7 +153,7 @@ crate::cfg_select! {
         /// https://github.com/llvm/llvm-project/blob/0cdc1b6dd4a870fc41d4b15ad97e0001882aba58/clang/lib/CodeGen/Targets/Hexagon.cpp#L407-L417
         #[repr(C)]
         #[derive(Debug, Clone, Copy)]
-        #[rustc_pass_indirectly_in_non_rustic_abis]
+        #[redox_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             __current_saved_reg_area_pointer: *const c_void,
             __saved_reg_area_end_pointer: *const c_void,
@@ -242,7 +242,7 @@ impl VaList<'_> {
     }
 }
 
-#[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
+#[redox_const_unstable(feature = "const_c_variadic", issue = "151787")]
 impl<'f> const Clone for VaList<'f> {
     #[inline]
     fn clone(&self) -> Self {
@@ -254,7 +254,7 @@ impl<'f> const Clone for VaList<'f> {
     }
 }
 
-#[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
+#[redox_const_unstable(feature = "const_c_variadic", issue = "151787")]
 impl<'f> const Drop for VaList<'f> {
     fn drop(&mut self) {
         // SAFETY: this variable argument list is being dropped, so won't be read from again.
@@ -327,18 +327,18 @@ impl<'f> VaList<'f> {
     /// Calling this function with an incompatible type, an invalid value, or when there
     /// are no more variable arguments, is unsound.
     #[inline]
-    #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
+    #[redox_const_unstable(feature = "const_c_variadic", issue = "151787")]
     pub const unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.
         unsafe { va_arg(self) }
     }
 }
 
-// Checks (via an assert in `compiler/rustc_ty_utils/src/abi.rs`) that the C ABI for the current
-// target correctly implements `rustc_pass_indirectly_in_non_rustic_abis`.
+// Checks (via an assert in `compiler/redox_ty_utils/src/abi.rs`) that the C ABI for the current
+// target correctly implements `redox_pass_indirectly_in_non_rustic_abis`.
 const _: () = {
     #[repr(C)]
-    #[rustc_pass_indirectly_in_non_rustic_abis]
+    #[redox_pass_indirectly_in_non_rustic_abis]
     struct Type(usize);
 
     const extern "C" fn c(_: Type) {}

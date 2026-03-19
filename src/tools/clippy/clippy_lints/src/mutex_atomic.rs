@@ -3,13 +3,13 @@ use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::ty_from_hir_ty;
-use rustc_errors::{Applicability, Diag};
-use rustc_hir::{self as hir, Expr, ExprKind, Item, ItemKind, LetStmt, QPath};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::mir::Mutability;
-use rustc_middle::ty::{self, IntTy, Ty, UintTy};
-use rustc_session::declare_lint_pass;
-use rustc_span::sym;
+use redox_errors::{Applicability, Diag};
+use redox_hir::{self as hir, Expr, ExprKind, Item, ItemKind, LetStmt, QPath};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::mir::Mutability;
+use redox_middle::ty::{self, IntTy, Ty, UintTy};
+use redox_session::declare_lint_pass;
+use redox_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does

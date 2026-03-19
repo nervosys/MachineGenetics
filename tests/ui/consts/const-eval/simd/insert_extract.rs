@@ -1,6 +1,6 @@
 //@ run-pass
 #![feature(repr_simd)]
-#![feature(intrinsics, core_intrinsics, rustc_attrs)]
+#![feature(intrinsics, core_intrinsics, redox_attrs)]
 #![feature(staged_api)]
 #![stable(feature = "foo", since = "1.3.37")]
 #![allow(non_camel_case_types)]

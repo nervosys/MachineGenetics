@@ -1,13 +1,13 @@
 //@ edition:2021
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 // Test to ensure Index projections are handled properly during capture analysis
 // The array should be moved in entirety, even though only some elements are used.
 fn arrays() {
     let arr: [String; 5] = [format!("A"), format!("B"), format!("C"), format!("D"), format!("E")];
 
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -36,7 +36,7 @@ struct Point {
 fn structs() {
     let mut p = Point { x: 10, y: 10, id: String::new() };
 
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -57,7 +57,7 @@ fn structs() {
 fn tuples() {
     let mut t = (10, String::new(), (String::new(), 42));
 
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date

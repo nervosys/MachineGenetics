@@ -23,7 +23,7 @@ Trusty uses the ELF file format.
 
 ## Building the target
 
-The targets can be built by enabling them for a `rustc` build, for example:
+The targets can be built by enabling them for a `redox` build, for example:
 
 ```toml
 [build]

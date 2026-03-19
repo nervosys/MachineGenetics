@@ -1,6 +1,6 @@
 //@revisions: left right
 #![feature(core_intrinsics)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 use std::intrinsics::typed_swap_nonoverlapping;
 use std::ptr::addr_of_mut;

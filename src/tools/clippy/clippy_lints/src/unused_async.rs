@@ -1,17 +1,17 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_def_id_trait_method;
 use clippy_utils::usage::is_todo_unimplemented_stub;
-use rustc_hir::def::DefKind;
-use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
-use rustc_hir::{
+use redox_hir::def::DefKind;
+use redox_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
+use redox_hir::{
     Body, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, Defaultness, Expr, ExprKind, FnDecl, HirId, Node,
     TraitItem, YieldSource,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::nested_filter;
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
-use rustc_span::def_id::{LocalDefId, LocalDefIdSet};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::hir::nested_filter;
+use redox_session::impl_lint_pass;
+use redox_span::Span;
+use redox_span::def_id::{LocalDefId, LocalDefIdSet};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -143,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
         }
     }
 
-    fn check_path(&mut self, cx: &LateContext<'tcx>, path: &rustc_hir::Path<'tcx>, hir_id: HirId) {
+    fn check_path(&mut self, cx: &LateContext<'tcx>, path: &redox_hir::Path<'tcx>, hir_id: HirId) {
         // Find paths to local async functions that aren't immediately called.
         // E.g. `async fn f() {}; let x = f;`
         // Depending on how `x` is used, f's asyncness might be required despite not having any `await`

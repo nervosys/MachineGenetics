@@ -1,9 +1,9 @@
 //@ compile-flags: --crate-type=lib
 //@ only-aarch64
 #![allow(internal_features)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_scalable_vector(2)]
+#[redox_scalable_vector(2)]
 struct ValidI64(i64);
 
 struct Struct {

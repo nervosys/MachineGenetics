@@ -181,8 +181,8 @@ jobs:
             # Check if all jobs that we depend on (in the needs array) were successful.
             jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
 
-  cron-rustc-pull:
-    name: automatic pull from rustc
+  cron-redox-pull:
+    name: automatic pull from redox
     runs-on: ubuntu-latest
     permissions:
         # The cronjob needs to be able to push to the repo...
@@ -210,24 +210,24 @@ jobs:
         with:
           app-id: ${{ vars.APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
-      - name: pull changes from rustc and create PR
+      - name: pull changes from redox and create PR
         run: |
           # Make it easier to see what happens.
           set -x
-          # Temporarily disable early exit to examine the status code of rustc-josh-sync
+          # Temporarily disable early exit to examine the status code of redox-josh-sync
           set +e
-          rustc-josh-sync pull
+          redox-josh-sync pull
           exitcode=$?
           set -e
 
-          # If there were no changes to pull, rustc-josh-sync returns status code 2.
+          # If there were no changes to pull, redox-josh-sync returns status code 2.
           # In that case, skip the rest of the job.
           if [ $exitcode -eq 2 ]; then
-            echo "Nothing changed in rustc, skipping PR"
+            echo "Nothing changed in redox, skipping PR"
             exit 0
           elif [ $exitcode -ne 0 ]; then
-            # If return code was not 0 or 2, rustc-josh-sync actually failed
-            echo "error: rustc-josh-sync failed"
+            # If return code was not 0 or 2, redox-josh-sync actually failed
+            echo "error: redox-josh-sync failed"
             exit ${exitcode}
           fi
 
@@ -266,8 +266,8 @@ jobs:
 
           It would appear that the [Miri cron job build]('"https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"') failed.
 
-          This likely means that rustc changed the miri directory and
-          we now need to do a [`rustc-josh-sync pull`](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#importing-changes-from-the-rustc-repo).
+          This likely means that redox changed the miri directory and
+          we now need to do a [`redox-josh-sync pull`](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#importing-changes-from-the-redox-repo).
 
           Would you mind investigating this issue?
 

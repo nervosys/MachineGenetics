@@ -1087,7 +1087,7 @@ pub use self::unsafe_pinned::UnsafePinned;
 #[lang = "pin"]
 #[fundamental]
 #[repr(transparent)]
-#[rustc_pub_transparent]
+#[redox_pub_transparent]
 #[derive(Copy, Clone)]
 pub struct Pin<Ptr> {
     pointer: Ptr,
@@ -1176,7 +1176,7 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     /// let mut pinned: Pin<&mut u8> = Pin::new(&mut val);
     /// ```
     #[inline(always)]
-    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn new(pointer: Ptr) -> Pin<Ptr> {
         // SAFETY: the value pointed to is `Unpin`, and so has no requirements
@@ -1204,8 +1204,8 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     /// assert_eq!(*r, 5);
     /// ```
     #[inline(always)]
-    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
-    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
+    #[redox_allow_const_fn_unstable(const_precise_live_drops)]
+    #[redox_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
     pub const fn into_inner(pin: Pin<Ptr>) -> Ptr {
         pin.pointer
@@ -1342,7 +1342,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// [`pin` module docs]: self
     #[lang = "new_unchecked"]
     #[inline(always)]
-    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const unsafe fn new_unchecked(pointer: Ptr) -> Pin<Ptr> {
         Pin { pointer }
@@ -1357,7 +1357,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// ruled out by the contract of `Pin::new_unchecked`.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    #[redox_const_unstable(feature = "const_convert", issue = "143773")]
     pub const fn as_ref(&self) -> Pin<&Ptr::Target>
     where
         Ptr: [const] Deref,
@@ -1370,7 +1370,7 @@ impl<Ptr: Deref> Pin<Ptr> {
 // These methods being in a `Ptr: DerefMut` impl block concerns semver stability.
 // Currently, calling e.g. `.set()` on a `Pin<&T>` sees that `Ptr: DerefMut`
 // doesn't hold, and goes to check for a `.set()` method on `T`. But, if the
-// `where Ptr: DerefMut` bound is moved to the method, rustc sees the impl block
+// `where Ptr: DerefMut` bound is moved to the method, redox sees the impl block
 // as a valid candidate, and doesn't go on to check other candidates when it
 // sees that the bound on the method.
 impl<Ptr: DerefMut> Pin<Ptr> {
@@ -1405,7 +1405,7 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     /// ```
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    #[redox_const_unstable(feature = "const_convert", issue = "143773")]
     pub const fn as_mut(&mut self) -> Pin<&mut Ptr::Target>
     where
         Ptr: [const] DerefMut,
@@ -1424,7 +1424,7 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     #[stable(feature = "pin_deref_mut", since = "1.84.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline(always)]
-    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    #[redox_const_unstable(feature = "const_convert", issue = "143773")]
     pub const fn as_deref_mut(self: Pin<&mut Self>) -> Pin<&mut Ptr::Target>
     where
         Ptr: [const] DerefMut,
@@ -1506,8 +1506,8 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
     /// instead.
     #[inline(always)]
-    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
-    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
+    #[redox_allow_const_fn_unstable(const_precise_live_drops)]
+    #[redox_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
     pub const unsafe fn into_inner_unchecked(pin: Pin<Ptr>) -> Ptr {
         pin.pointer
@@ -1563,7 +1563,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// ["pinning projections"]: self#projections-and-structural-pinning
     #[inline(always)]
     #[must_use]
-    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn get_ref(self) -> &'a T {
         self.pointer
@@ -1574,7 +1574,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// Converts this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
     #[inline(always)]
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn into_ref(self) -> Pin<&'a T> {
         Pin { pointer: self.pointer }
@@ -1592,7 +1592,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[inline(always)]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
-    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_pin", since = "1.84.0")]
     pub const fn get_mut(self) -> &'a mut T
     where
         T: Unpin,
@@ -1613,7 +1613,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[inline(always)]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
-    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_pin", since = "1.84.0")]
     pub const unsafe fn get_unchecked_mut(self) -> &'a mut T {
         self.pointer
     }
@@ -1656,7 +1656,7 @@ impl<T: ?Sized> Pin<&'static T> {
     /// This is safe because `T` is borrowed immutably for the `'static` lifetime, which
     /// never ends.
     #[stable(feature = "pin_static_ref", since = "1.61.0")]
-    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_pin", since = "1.84.0")]
     pub const fn static_ref(r: &'static T) -> Pin<&'static T> {
         // SAFETY: The 'static borrow guarantees the data will not be
         // moved/invalidated until it gets dropped (which is never).
@@ -1670,7 +1670,7 @@ impl<T: ?Sized> Pin<&'static mut T> {
     /// This is safe because `T` is borrowed for the `'static` lifetime, which
     /// never ends.
     #[stable(feature = "pin_static_ref", since = "1.61.0")]
-    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_pin", since = "1.84.0")]
     pub const fn static_mut(r: &'static mut T) -> Pin<&'static mut T> {
         // SAFETY: The 'static borrow guarantees the data will not be
         // moved/invalidated until it gets dropped (which is never).
@@ -1679,7 +1679,7 @@ impl<T: ?Sized> Pin<&'static mut T> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<Ptr: [const] Deref> const Deref for Pin<Ptr> {
     type Target = Ptr::Target;
     fn deref(&self) -> &Ptr::Target {
@@ -1714,15 +1714,15 @@ mod helper {
     }
 
     #[unstable(feature = "pin_derefmut_internals", issue = "none")]
-    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-    #[rustc_diagnostic_item = "PinDerefMutHelper"]
+    #[redox_const_unstable(feature = "const_convert", issue = "143773")]
+    #[redox_diagnostic_item = "PinDerefMutHelper"]
     pub const trait PinDerefMutHelper {
         type Target: ?Sized;
         fn deref_mut(&mut self) -> &mut Self::Target;
     }
 
     #[unstable(feature = "pin_derefmut_internals", issue = "none")]
-    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    #[redox_const_unstable(feature = "const_convert", issue = "143773")]
     impl<Ptr: [const] super::DerefMut> const PinDerefMutHelper for PinHelper<Ptr>
     where
         Ptr::Target: crate::marker::Unpin,
@@ -1737,7 +1737,7 @@ mod helper {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 #[cfg(not(doc))]
 impl<Ptr> const DerefMut for Pin<Ptr>
 where
@@ -1763,7 +1763,7 @@ where
 ///
 /// [fundamental]: ../../reference/items/implementations.html#r-items.impl.trait.fundamental
 #[stable(feature = "pin", since = "1.33.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 #[cfg(doc)]
 impl<Ptr> const DerefMut for Pin<Ptr>
 where
@@ -2025,9 +2025,9 @@ unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 ///
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
 #[stable(feature = "pin_macro", since = "1.68.0")]
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 #[allow_internal_unstable(super_let)]
-#[rustc_diagnostic_item = "pin_macro"]
+#[redox_diagnostic_item = "pin_macro"]
 // `super` gets removed by rustfmt
 #[rustfmt::skip]
 pub macro pin($value:expr $(,)?) {

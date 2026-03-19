@@ -106,7 +106,7 @@ manually edit `rust-toolchain`:
  [toolchain]
 -channel = "nightly-2025-04-02"
 +channel = "nightly-$LATEST_NIGHTLY_DATE"
- components = ["llvm-tools", "rustc-dev"]
+ components = ["llvm-tools", "redox-dev"]
 ```
 
 Substituting `$LATEST_NIGHTLY_DATE` with the latest nightly date.

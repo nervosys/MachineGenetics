@@ -8,11 +8,11 @@ use clippy_utils::sugg::{Sugg, make_binop};
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{get_parent_expr, is_from_proc_macro};
-use rustc_ast::LitKind;
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, PatKind};
-use rustc_lint::LateContext;
-use rustc_span::{Span, sym};
+use redox_ast::LitKind;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind, PatKind};
+use redox_lint::LateContext;
+use redox_span::{Span, sym};
 
 use super::UNNECESSARY_MAP_OR;
 

@@ -8,9 +8,9 @@ use hir_def::{
     signatures::TraitFlags,
 };
 use hir_expand::name::Name;
-use rustc_ast_ir::Mutability;
-use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_type_ir::{
+use redox_ast_ir::Mutability;
+use redox_hash::{FxHashMap, FxHashSet};
+use redox_type_ir::{
     InferTy, TypeVisitableExt, Upcast, Variance,
     elaborate::{self, supertrait_def_ids},
     fast_reject::{DeepRejectCtxt, TreatParams, simplify_type},
@@ -1753,7 +1753,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
     /// We want to only accept trait methods if they were hold even if the
     /// opaque types were rigid. To handle this, we both check that for trait
     /// candidates the goal were to hold even when treating opaques as rigid,
-    /// see `rustc_trait_selection::solve::OpaqueTypesJank`.
+    /// see `redox_trait_selection::solve::OpaqueTypesJank`.
     ///
     /// We also check that all opaque types encountered as self types in the
     /// autoderef chain don't get constrained when applying the candidate.

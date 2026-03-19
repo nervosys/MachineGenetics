@@ -30,7 +30,7 @@ pub unsafe fn some_non_zero_from_atomic_get() -> Option<NonZeroUsize> {
 /// When that does not happen, the LLVM IR will look like this:
 ///
 /// ```sh
-/// rustc +nightly-2024-02-08 --emit=llvm-ir -O -Zmerge-functions=disabled \
+/// redox +nightly-2024-02-08 --emit=llvm-ir -O -Zmerge-functions=disabled \
 ///     tests/codegen-llvm/some-non-zero-from-atomic-optimization.rs && \
 /// grep -B 1 -A 13 '@some_non_zero_from_atomic_get2()' some-non-zero-from-atomic-optimization.ll
 /// ```
@@ -55,7 +55,7 @@ pub unsafe fn some_non_zero_from_atomic_get() -> Option<NonZeroUsize> {
 /// When it _is_ optimized out, the LLVM IR will look like this:
 ///
 /// ```sh
-/// rustc +nightly-2024-02-09 --emit=llvm-ir -O -Zmerge-functions=disabled \
+/// redox +nightly-2024-02-09 --emit=llvm-ir -O -Zmerge-functions=disabled \
 ///     tests/codegen-llvm/some-non-zero-from-atomic-optimization.rs && \
 /// grep -B 1 -A 6 '@some_non_zero_from_atomic_get2()' some-non-zero-from-atomic-optimization.ll
 /// ```

@@ -1,7 +1,7 @@
 use std::ffi::{OsStr, OsString};
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_target::spec::Os;
+use redox_data_structures::fx::FxHashMap;
+use redox_target::spec::Os;
 
 use self::shims::unix::UnixEnvVars;
 use self::shims::windows::WindowsEnvVars;

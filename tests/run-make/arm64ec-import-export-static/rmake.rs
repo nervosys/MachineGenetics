@@ -7,9 +7,9 @@
 //@ needs-llvm-components: aarch64
 //@ only-windows
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
-    rustc().input("export.rs").target("aarch64-pc-windows-msvc").panic("abort").run();
-    rustc().input("import.rs").target("aarch64-pc-windows-msvc").panic("abort").run();
+    redox().input("export.rs").target("aarch64-pc-windows-msvc").panic("abort").run();
+    redox().input("import.rs").target("aarch64-pc-windows-msvc").panic("abort").run();
 }

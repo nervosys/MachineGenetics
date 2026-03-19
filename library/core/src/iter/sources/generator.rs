@@ -20,7 +20,7 @@
 /// ```
 #[unstable(feature = "iter_macro", issue = "142269", reason = "generators are unstable")]
 #[allow_internal_unstable(coroutines, iter_from_coroutine)]
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro iter($($t:tt)*) {
     /* compiler-builtin */
 }

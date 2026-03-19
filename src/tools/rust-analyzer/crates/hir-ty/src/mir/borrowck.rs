@@ -7,8 +7,8 @@ use std::iter;
 
 use hir_def::{DefWithBodyId, HasModule};
 use la_arena::ArenaMap;
-use rustc_hash::FxHashMap;
-use rustc_type_ir::inherent::GenericArgs as _;
+use redox_hash::FxHashMap;
+use redox_type_ir::inherent::GenericArgs as _;
 use stdx::never;
 use triomphe::Arc;
 

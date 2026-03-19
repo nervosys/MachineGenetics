@@ -11,8 +11,8 @@
 //!
 //! # References
 //!
-//! This is partially adapted from `rustc_codegen_cranelift`:
-//! <https://github.com/rust-lang/rust/blob/c0b5cc9003f6464c11ae1c0662c6a7e06f6f5cab/compiler/rustc_codegen_cranelift/example/mini_core.rs>.
+//! This is partially adapted from `redox_codegen_cranelift`:
+//! <https://github.com/rust-lang/rust/blob/c0b5cc9003f6464c11ae1c0662c6a7e06f6f5cab/compiler/redox_codegen_cranelift/example/mini_core.rs>.
 // ignore-tidy-linelength
 
 #![feature(
@@ -22,7 +22,7 @@
     auto_traits,
     freeze_impls,
     negative_impls,
-    rustc_attrs,
+    redox_attrs,
     decl_macro,
     f16,
     f128,
@@ -63,7 +63,7 @@ pub trait MetaSized: PointeeSized {}
 pub trait Sized: MetaSized {}
 
 #[lang = "destruct"]
-#[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
+#[redox_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
 pub trait Destruct: PointeeSized {}
 
 #[lang = "legacy_receiver"]
@@ -127,16 +127,16 @@ pub struct ManuallyDrop<T: PointeeSized> {
 impl<T: Copy + PointeeSized> Copy for ManuallyDrop<T> {}
 
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(1)]
-#[rustc_nonnull_optimization_guaranteed]
+#[redox_layout_scalar_valid_range_start(1)]
+#[redox_nonnull_optimization_guaranteed]
 pub struct NonNull<T: ?Sized> {
     pointer: *const T,
 }
 impl<T: ?Sized> Copy for NonNull<T> {}
 
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(1)]
-#[rustc_nonnull_optimization_guaranteed]
+#[redox_layout_scalar_valid_range_start(1)]
+#[redox_nonnull_optimization_guaranteed]
 pub struct NonZero<T>(T);
 
 pub struct Unique<T: ?Sized> {
@@ -155,31 +155,31 @@ impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
 pub trait Tuple {}
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
 }
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
 }
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
 }
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro cfg_select($($tt:tt)*) {
     /* compiler built-in */
 }
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! concat {
     ($($e:expr),* $(,)?) => {
         /* compiler built-in */
     };
 }
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! stringify {
     ($($t:tt)*) => {
@@ -278,23 +278,23 @@ trait Drop {
 }
 
 pub mod mem {
-    #[rustc_nounwind]
-    #[rustc_intrinsic]
+    #[redox_nounwind]
+    #[redox_intrinsic]
     pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
 
-    #[rustc_nounwind]
-    #[rustc_intrinsic]
+    #[redox_nounwind]
+    #[redox_intrinsic]
     pub const fn size_of<T>() -> usize;
-    #[rustc_nounwind]
-    #[rustc_intrinsic]
+    #[redox_nounwind]
+    #[redox_intrinsic]
     pub const fn align_of<T>() -> usize;
 }
 
 pub mod ptr {
     #[inline]
-    #[rustc_diagnostic_item = "ptr_write_volatile"]
+    #[redox_diagnostic_item = "ptr_write_volatile"]
     pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
-        #[rustc_intrinsic]
+        #[redox_intrinsic]
         pub unsafe fn volatile_store<T>(dst: *mut T, val: T);
 
         unsafe { volatile_store(dst, src) };
@@ -324,7 +324,7 @@ pub trait ConstParamTy_ {}
 
 pub enum SimdAlign {
     // These values must match the compiler's `SimdAlign` defined in
-    // `rustc_middle/src/ty/consts/int.rs`!
+    // `redox_middle/src/ty/consts/int.rs`!
     Unaligned = 0,
     Element = 1,
     Vector = 2,

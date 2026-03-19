@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{GenericArg, Item, ItemKind, QPath, Ty, TyKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::GenericParamDefKind;
-use rustc_session::declare_lint_pass;
+use redox_data_structures::fx::FxHashMap;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::{GenericArg, Item, ItemKind, QPath, Ty, TyKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::GenericParamDefKind;
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

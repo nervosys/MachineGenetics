@@ -71,7 +71,7 @@ pub const _SIDD_UNIT_MASK: i32 = 0b0100_0000;
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistrm, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpistrm<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -259,7 +259,7 @@ pub fn _mm_cmpistrm<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpistri<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -274,7 +274,7 @@ pub fn _mm_cmpistri<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpistrz<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -289,7 +289,7 @@ pub fn _mm_cmpistrz<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpistrc<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -304,7 +304,7 @@ pub fn _mm_cmpistrc<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpistrs<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -318,7 +318,7 @@ pub fn _mm_cmpistrs<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpistro<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -333,7 +333,7 @@ pub fn _mm_cmpistro<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[redox_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpistra<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -347,7 +347,7 @@ pub fn _mm_cmpistra<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestrm, IMM8 = 0))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpestrm<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -436,7 +436,7 @@ pub fn _mm_cmpestrm<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpestri<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -451,7 +451,7 @@ pub fn _mm_cmpestri<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpestrz<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -466,7 +466,7 @@ pub fn _mm_cmpestrz<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpestrc<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -481,7 +481,7 @@ pub fn _mm_cmpestrc<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpestrs<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -496,7 +496,7 @@ pub fn _mm_cmpestrs<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpestro<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -512,7 +512,7 @@ pub fn _mm_cmpestro<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
-#[rustc_legacy_const_generics(4)]
+#[redox_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cmpestra<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -563,7 +563,7 @@ pub fn _mm_crc32_u32(crc: u32, v: u32) -> u32 {
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpgtq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cmpgt_epi64(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_gt::<_, i64x2>(a.as_i64x2(), b.as_i64x2())) }
 }

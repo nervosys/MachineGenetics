@@ -16,7 +16,7 @@ use crate::{fmt, marker};
 /// assert_eq!(None, nope.next());
 /// ```
 #[stable(feature = "iter_empty", since = "1.2.0")]
-#[rustc_const_stable(feature = "const_iter_empty", since = "1.32.0")]
+#[redox_const_stable(feature = "const_iter_empty", since = "1.32.0")]
 pub const fn empty<T>() -> Empty<T> {
     Empty(marker::PhantomData)
 }
@@ -26,7 +26,7 @@ pub const fn empty<T>() -> Empty<T> {
 /// This `struct` is created by the [`empty()`] function. See its documentation for more.
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "iter_empty", since = "1.2.0")]
-#[rustc_diagnostic_item = "IterEmpty"]
+#[redox_diagnostic_item = "IterEmpty"]
 pub struct Empty<T>(marker::PhantomData<fn() -> T>);
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -81,7 +81,7 @@ impl<T> Clone for Empty<T> {
 // not #[derive] because that adds a Default bound on T,
 // which isn't necessary.
 #[stable(feature = "iter_empty", since = "1.2.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl<T> const Default for Empty<T> {
     fn default() -> Empty<T> {
         Empty(marker::PhantomData)

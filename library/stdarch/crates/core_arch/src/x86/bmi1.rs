@@ -46,7 +46,7 @@ pub fn _bextr2_u32(a: u32, control: u32) -> u32 {
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(andn))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _andn_u32(a: u32, b: u32) -> u32 {
     !a & b
 }
@@ -58,7 +58,7 @@ pub const fn _andn_u32(a: u32, b: u32) -> u32 {
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(blsi))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _blsi_u32(x: u32) -> u32 {
     x & x.wrapping_neg()
 }
@@ -70,7 +70,7 @@ pub const fn _blsi_u32(x: u32) -> u32 {
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(blsmsk))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _blsmsk_u32(x: u32) -> u32 {
     x ^ (x.wrapping_sub(1_u32))
 }
@@ -84,7 +84,7 @@ pub const fn _blsmsk_u32(x: u32) -> u32 {
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(blsr))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _blsr_u32(x: u32) -> u32 {
     x & (x.wrapping_sub(1))
 }
@@ -98,7 +98,7 @@ pub const fn _blsr_u32(x: u32) -> u32 {
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]
 #[stable(feature = "simd_x86_updates", since = "1.82.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _tzcnt_u16(x: u16) -> u16 {
     x.trailing_zeros() as u16
 }
@@ -112,7 +112,7 @@ pub const fn _tzcnt_u16(x: u16) -> u16 {
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _tzcnt_u32(x: u32) -> u32 {
     x.trailing_zeros()
 }
@@ -126,7 +126,7 @@ pub const fn _tzcnt_u32(x: u32) -> u32 {
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+#[redox_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_tzcnt_32(x: u32) -> i32 {
     x.trailing_zeros() as i32
 }

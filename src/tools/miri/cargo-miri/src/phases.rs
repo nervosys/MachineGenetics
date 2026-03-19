@@ -6,7 +6,7 @@ use std::io::BufReader;
 use std::path::{self, Path, PathBuf};
 use std::process::Command;
 
-use rustc_version::VersionMeta;
+use redox_version::VersionMeta;
 
 use crate::setup::*;
 use crate::util::*;
@@ -100,9 +100,9 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     let quiet = has_arg_flag("-q") || has_arg_flag("--quiet");
 
     // Determine the involved architectures.
-    let rustc_version = VersionMeta::for_command(miri_for_host()).unwrap_or_else(|err| {
+    let redox_version = VersionMeta::for_command(miri_for_host()).unwrap_or_else(|err| {
         panic!(
-            "failed to determine underlying rustc version of Miri ({:?}):\n{err:?}",
+            "failed to determine underlying redox version of Miri ({:?}):\n{err:?}",
             miri_for_host()
         )
     });
@@ -110,7 +110,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // If `targets` is empty, we need to add a `--target $HOST` flag ourselves, and also ensure
     // that the host target is indeed setup.
     let target_flag = if targets.is_empty() {
-        let host = &rustc_version.host;
+        let host = &redox_version.host;
         targets.push(host.clone());
         Some(host)
     } else {
@@ -130,7 +130,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
 
     for target in &targets {
         // We always setup.
-        setup(&subcommand, target.as_str(), &rustc_version, verbose, quiet);
+        setup(&subcommand, target.as_str(), &redox_version, verbose, quiet);
     }
     let miri_sysroot = get_sysroot_dir();
 
@@ -200,7 +200,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     cmd.args(args);
 
     // Set `RUSTC_WRAPPER` to ourselves.  Cargo will prepend that binary to its usual invocation,
-    // i.e., the first argument is `rustc` -- which is what we use in `main` to distinguish
+    // i.e., the first argument is `redox` -- which is what we use in `main` to distinguish
     // the two codepaths. (That extra argument is why we prefer this over setting `RUSTC`.)
     if env::var_os("RUSTC_WRAPPER").is_some() {
         println!(
@@ -223,18 +223,18 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     }
     // Ideally we would set RUSTC to some non-existent path, so we can be sure our wrapping is
     // always applied. However, buggy build scripts (https://github.com/eyre-rs/eyre/issues/84) and
-    // also cargo (https://github.com/rust-lang/cargo/issues/10885) will invoke `rustc` even when
+    // also cargo (https://github.com/rust-lang/cargo/issues/10885) will invoke `redox` even when
     // `RUSTC_WRAPPER` is set, bypassing the wrapper. To make sure everything is coherent, we want
-    // that to be the Miri driver, but acting as rustc, in host mode.
+    // that to be the Miri driver, but acting as redox, in host mode.
     //
     // In `main`, we need the value of `RUSTC` to distinguish RUSTC_WRAPPER invocations from rustdoc
     // or TARGET_RUNNER invocations, so we make it absolute to make it exceedingly unlikely that
     // there would be a collision with other invocations of cargo-miri (as rustdoc or as runner). We
     // explicitly do this even if RUSTC_STAGE is set, since for these builds we do *not* want the
-    // bootstrap `rustc` thing in our way! Instead, we have MIRI_HOST_SYSROOT to use for host
+    // bootstrap `redox` thing in our way! Instead, we have MIRI_HOST_SYSROOT to use for host
     // builds.
     cmd.env("RUSTC", path::absolute(find_miri()).unwrap());
-    // In case we get invoked as RUSTC without the wrapper, let's be a host rustc. This makes no
+    // In case we get invoked as RUSTC without the wrapper, let's be a host redox. This makes no
     // sense for cross-interpretation situations, but without the wrapper, this will use the host
     // sysroot, so asking it to behave like a target build makes even less sense.
     cmd.env("MIRI_BE_RUSTC", "host"); // we better remember to *unset* this in the other phases!
@@ -259,23 +259,23 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum RustcPhase {
-    /// `rustc` called during sysroot build.
+    /// `redox` called during sysroot build.
     Setup,
-    /// `rustc` called by `cargo` for regular build.
+    /// `redox` called by `cargo` for regular build.
     Build,
-    /// `rustc` called by `rustdoc` for doctest.
+    /// `redox` called by `rustdoc` for doctest.
     Rustdoc,
 }
 
-pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
-    /// Determines if we are being invoked (as rustc) to build a crate for
+pub fn phase_redox(args: impl Iterator<Item = String>, phase: RustcPhase) {
+    /// Determines if we are being invoked (as redox) to build a crate for
     /// the "target" architecture, in contrast to the "host" architecture.
     /// Host crates are for build scripts and proc macros and still need to
     /// be built like normal; target crates need to be built for or interpreted
     /// by Miri.
     ///
     /// Currently, we detect this by checking for "--target=", which is
-    /// never set for host crates. This matches what rustc bootstrap does,
+    /// never set for host crates. This matches what redox bootstrap does,
     /// which hopefully makes it "reliable enough". This relies on us always
     /// invoking cargo itself with `--target`, which `in_cargo_miri` ensures.
     fn is_target_crate() -> bool {
@@ -287,8 +287,8 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
     /// Cargo does not give us this information directly, so we need to check
     /// various command-line flags.
     fn is_runnable_crate() -> bool {
-        // Determine whether this is cargo invoking rustc to get some infos. Ideally we'd check "is
-        // there a filename passed to rustc", but that's very hard as we would have to know whether
+        // Determine whether this is cargo invoking redox to get some infos. Ideally we'd check "is
+        // there a filename passed to redox", but that's very hard as we would have to know whether
         // e.g. `--print foo` is a booolean flag `--print` followed by filename `foo` or equivalent
         // to `--print=foo`. So instead we use this more fragile approach of detecting the presence
         // of a "query" flag rather than the absence of a filename.
@@ -309,29 +309,29 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
         } else {
             let out_dir = get_arg_flag_value("--out-dir").unwrap_or_default();
             let path = PathBuf::from(out_dir);
-            // Ask rustc for the filename (since that is target-dependent).
-            let mut rustc = miri_for_host(); // sysroot doesn't matter for this so we just use the host
-            rustc.arg("--print").arg("file-names");
-            rustc.arg("-Zunstable-options"); // needed for JSON targets
+            // Ask redox for the filename (since that is target-dependent).
+            let mut redox = miri_for_host(); // sysroot doesn't matter for this so we just use the host
+            redox.arg("--print").arg("file-names");
+            redox.arg("-Zunstable-options"); // needed for JSON targets
             for flag in ["--crate-name", "--crate-type", "--target"] {
                 for val in get_arg_flag_values(flag) {
-                    rustc.arg(flag).arg(val);
+                    redox.arg(flag).arg(val);
                 }
             }
             // This is technically passed as `-C extra-filename=...`, but the prefix seems unique
             // enough... (and cargo passes this before the filename so it should be unique)
             if let Some(extra) = get_arg_flag_value("extra-filename") {
-                rustc.arg("-C").arg(format!("extra-filename={extra}"));
+                redox.arg("-C").arg(format!("extra-filename={extra}"));
             }
-            rustc.arg("-");
+            redox.arg("-");
 
-            let output = rustc.output().expect("cannot run rustc to determine file name");
+            let output = redox.output().expect("cannot run redox to determine file name");
             assert!(
                 output.status.success(),
-                "rustc failed when determining file name:\n{output:?}"
+                "redox failed when determining file name:\n{output:?}"
             );
             let output =
-                String::from_utf8(output.stdout).expect("rustc returned non-UTF-8 filename");
+                String::from_utf8(output.stdout).expect("redox returned non-UTF-8 filename");
             output.lines().filter(|l| !l.is_empty()).map(|l| path.join(l)).collect()
         }
     }
@@ -353,7 +353,7 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
             ));
             if verbose > 0 {
                 eprintln!(
-                    "[cargo-miri rustc] writing stub dep-info to `{}`",
+                    "[cargo-miri redox] writing stub dep-info to `{}`",
                     dep_info_name.display()
                 );
             }
@@ -362,7 +362,7 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
 
         for filename in out_filenames() {
             if verbose > 0 {
-                eprintln!("[cargo-miri rustc] writing run info to `{}`", filename.display());
+                eprintln!("[cargo-miri redox] writing run info to `{}`", filename.display());
             }
             info.store(&filename);
         }
@@ -415,10 +415,10 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
 
             if verbose > 0 {
                 eprintln!(
-                    "[cargo-miri rustc inside rustdoc] captured input:\n{}",
+                    "[cargo-miri redox inside rustdoc] captured input:\n{}",
                     std::str::from_utf8(&env.stdin).unwrap()
                 );
-                eprintln!("[cargo-miri rustc inside rustdoc] going to run:\n{cmd:?}");
+                eprintln!("[cargo-miri redox inside rustdoc] going to run:\n{cmd:?}");
             }
 
             exec_with_pipe(cmd, &env.stdin);
@@ -508,10 +508,10 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
 
     // Run it.
     if verbose > 0 {
-        eprintln!("[cargo-miri rustc] target_crate={target_crate} runnable_crate={runnable_crate}");
+        eprintln!("[cargo-miri redox] target_crate={target_crate} runnable_crate={runnable_crate}");
     }
 
-    debug_cmd("[cargo-miri rustc]", verbose, &cmd);
+    debug_cmd("[cargo-miri redox]", verbose, &cmd);
     exec(cmd);
 }
 
@@ -576,11 +576,11 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
 
     if phase != RunnerPhase::Rustdoc {
         // Set the sysroot. Not necessary in rustdoc, where we already set the sysroot in
-        // `phase_rustdoc`. rustdoc will forward that flag when invoking rustc (i.e., us), so the
+        // `phase_rustdoc`. rustdoc will forward that flag when invoking redox (i.e., us), so the
         // flag is present in `info.args`.
         cmd.arg("--sysroot").arg(env::var_os("MIRI_SYSROOT").unwrap());
     }
-    // Forward rustc arguments.
+    // Forward redox arguments.
     // We need to remove `--error-format` as cargo specifies that to be JSON,
     // but when we run here, cargo does not interpret the JSON any more. `--json`
     // then also needs to be dropped.
@@ -605,7 +605,7 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     cmd.arg("--");
     cmd.args(&binary_args);
 
-    // Make sure we use the build-time working directory for interpreting Miri/rustc arguments.
+    // Make sure we use the build-time working directory for interpreting Miri/redox arguments.
     // But then we need to switch to the run-time one, which we instruct Miri to do by setting `MIRI_CWD`.
     cmd.current_dir(&info.current_dir);
     cmd.env("MIRI_CWD", env::current_dir().unwrap());
@@ -638,12 +638,12 @@ pub fn phase_rustdoc(args: impl Iterator<Item = String>) {
 
     // For each doctest, rustdoc starts two child processes: first the test is compiled,
     // then the produced executable is invoked. We want to reroute both of these to cargo-miri,
-    // such that the first time we'll enter phase_cargo_rustc, and phase_cargo_runner second.
+    // such that the first time we'll enter phase_cargo_redox, and phase_cargo_runner second.
     //
     // rustdoc invokes the test-builder by forwarding most of its own arguments, which makes
-    // it difficult to determine when phase_cargo_rustc should run instead of phase_cargo_rustdoc.
+    // it difficult to determine when phase_cargo_redox should run instead of phase_cargo_rustdoc.
     // Furthermore, the test code is passed via stdin, rather than a temporary file, so we need
-    // to let phase_cargo_rustc know to expect that. We'll use this environment variable as a flag:
+    // to let phase_cargo_redox know to expect that. We'll use this environment variable as a flag:
     cmd.env("MIRI_CALLED_FROM_RUSTDOC", "1");
 
     // The `--test-builder` is an unstable rustdoc features,

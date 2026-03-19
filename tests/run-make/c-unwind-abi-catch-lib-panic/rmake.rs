@@ -8,7 +8,7 @@
 //@ needs-unwind
 // Reason: this test exercises unwinding a panic
 
-use run_make_support::{cc, is_windows_msvc, llvm_ar, run, rustc, static_lib_name};
+use run_make_support::{cc, is_windows_msvc, llvm_ar, run, redox, static_lib_name};
 
 fn main() {
     // Compile `add.c` into an object file.
@@ -19,9 +19,9 @@ fn main() {
     };
 
     // Compile `panic.rs` into an object file.
-    // Note that we invoke `rustc` directly, so we may emit an object rather
+    // Note that we invoke `redox` directly, so we may emit an object rather
     // than an archive. We'll do that later.
-    rustc().emit("obj").input("panic.rs").run();
+    redox().emit("obj").input("panic.rs").run();
 
     // Now, create an archive using these two objects.
     if is_windows_msvc() {
@@ -31,6 +31,6 @@ fn main() {
     };
 
     // Compile `main.rs`, which will link into our library, and run it.
-    rustc().input("main.rs").run();
+    redox().input("main.rs").run();
     run("main");
 }

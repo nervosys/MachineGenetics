@@ -14,8 +14,8 @@
 //! munmap shim which would partially unmap a region of address space previously mapped by mmap will
 //! report UB.
 
-use rustc_abi::Size;
-use rustc_target::spec::Os;
+use redox_abi::Size;
+use redox_target::spec::Os;
 
 use crate::*;
 

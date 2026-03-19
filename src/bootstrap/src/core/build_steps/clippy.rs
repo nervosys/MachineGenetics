@@ -15,7 +15,7 @@
 
 use build_helper::exit;
 
-use super::compile::{ArtifactKeepMode, run_cargo, rustc_cargo, std_cargo};
+use super::compile::{ArtifactKeepMode, run_cargo, redox_cargo, std_cargo};
 use super::tool::{SourceType, prepare_tool_cargo};
 use crate::builder::{Builder, ShouldRun};
 use crate::core::build_steps::check::{CompilerForCheck, prepare_compiler_for_check};
@@ -226,7 +226,7 @@ impl Step for Std {
 /// Lints the compiler.
 ///
 /// This will build Clippy with the `build_compiler` and use it to lint
-/// in-tree rustc.
+/// in-tree redox.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     build_compiler: CompilerForCheck,
@@ -257,7 +257,7 @@ impl Step for Rustc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("rustc-main").path("compiler")
+        run.crate_or_deps("redox-main").path("compiler")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -284,7 +284,7 @@ impl Step for Rustc {
             Kind::Clippy,
         );
 
-        rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
+        redox_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
         self.build_compiler.configure_cargo(&mut cargo);
 
         // Explicitly pass -p for all compiler crates -- this will force cargo
@@ -306,7 +306,7 @@ impl Step for Rustc {
             builder,
             cargo,
             lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
-            &build_stamp::librustc_stamp(builder, build_compiler, target),
+            &build_stamp::libredox_stamp(builder, build_compiler, target),
             vec![],
             ArtifactKeepMode::OnlyRmeta,
         );
@@ -314,7 +314,7 @@ impl Step for Rustc {
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
-            StepMetadata::clippy("rustc", self.target)
+            StepMetadata::clippy("redox", self.target)
                 .built_by(self.build_compiler.build_compiler()),
         )
     }
@@ -341,7 +341,7 @@ impl Step for CodegenGcc {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("rustc_codegen_gcc")
+        run.alias("redox_codegen_gcc")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -360,7 +360,7 @@ impl Step for CodegenGcc {
             Mode::Codegen,
             target,
             Kind::Clippy,
-            "compiler/rustc_codegen_gcc",
+            "compiler/redox_codegen_gcc",
             SourceType::InTree,
             &[],
         );
@@ -368,14 +368,14 @@ impl Step for CodegenGcc {
 
         let _guard = builder.msg(
             Kind::Clippy,
-            "rustc_codegen_gcc",
+            "redox_codegen_gcc",
             Mode::ToolRustcPrivate,
             build_compiler,
             target,
         );
 
         let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, Mode::Codegen, target))
-            .with_prefix("rustc_codegen_gcc-check");
+            .with_prefix("redox_codegen_gcc-check");
 
         let args = lint_args(builder, &self.config, &[]);
         run_cargo(builder, cargo, args.clone(), &stamp, vec![], ArtifactKeepMode::OnlyRmeta);
@@ -387,19 +387,19 @@ impl Step for CodegenGcc {
             Mode::Codegen,
             target,
             Kind::Clippy,
-            "compiler/rustc_codegen_gcc",
+            "compiler/redox_codegen_gcc",
             SourceType::InTree,
             &[],
         );
         self.build_compiler.configure_cargo(&mut cargo);
-        println!("Now running clippy on `rustc_codegen_gcc` with `--no-default-features`");
+        println!("Now running clippy on `redox_codegen_gcc` with `--no-default-features`");
         cargo.arg("--no-default-features");
         run_cargo(builder, cargo, args, &stamp, vec![], ArtifactKeepMode::OnlyRmeta);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
-            StepMetadata::clippy("rustc_codegen_gcc", self.target)
+            StepMetadata::clippy("redox_codegen_gcc", self.target)
                 .built_by(self.build_compiler.build_compiler()),
         )
     }
@@ -489,7 +489,7 @@ macro_rules! lint_any {
 }
 
 // Note: we use ToolTarget instead of ToolBootstrap here, to allow linting in-tree host tools
-// using the in-tree Clippy. Because Mode::ToolBootstrap would always use stage 0 rustc/Clippy.
+// using the in-tree Clippy. Because Mode::ToolBootstrap would always use stage 0 redox/Clippy.
 lint_any!(
     Bootstrap, "src/bootstrap", "bootstrap", Mode::ToolTarget;
     BuildHelper, "src/build_helper", "build_helper", Mode::ToolTarget;
@@ -546,9 +546,9 @@ impl Step for CI {
         }
 
         // We want to check in-tree source using in-tree clippy. However, if we naively did
-        // a stage 2 `x clippy ci`, it would *build* a stage 2 rustc, in order to lint stage 2
+        // a stage 2 `x clippy ci`, it would *build* a stage 2 redox, in order to lint stage 2
         // std, which is wasteful.
-        // So we want to lint stage 2 [bootstrap/rustc/...], but only stage 1 std rustc_codegen_gcc.
+        // So we want to lint stage 2 [bootstrap/redox/...], but only stage 1 std redox_codegen_gcc.
         // We thus construct the compilers in this step manually, to optimize the number of
         // steps that get built.
 
@@ -583,7 +583,7 @@ impl Step for CI {
             forbid: vec![],
         };
         builder.ensure(Std::from_build_compiler(
-            // This will be the stage 1 compiler, to avoid building rustc stage 2 just to lint std
+            // This will be the stage 1 compiler, to avoid building redox stage 2 just to lint std
             builder.compiler(1, self.target),
             self.target,
             self.config.merge(&library_clippy_cfg),
@@ -610,7 +610,7 @@ impl Step for CI {
             ],
             forbid: vec![],
         };
-        // This will lint stage 2 rustc using stage 1 Clippy
+        // This will lint stage 2 redox using stage 1 Clippy
         builder.ensure(Rustc::new(
             builder,
             self.target,
@@ -618,17 +618,17 @@ impl Step for CI {
             vec![],
         ));
 
-        let rustc_codegen_gcc = LintConfig {
+        let redox_codegen_gcc = LintConfig {
             allow: vec![],
             warn: vec![],
             deny: vec!["warnings".into()],
             forbid: vec![],
         };
-        // This will check stage 2 rustc
+        // This will check stage 2 redox
         builder.ensure(CodegenGcc::new(
             builder,
             self.target,
-            self.config.merge(&rustc_codegen_gcc),
+            self.config.merge(&redox_codegen_gcc),
         ));
     }
 }

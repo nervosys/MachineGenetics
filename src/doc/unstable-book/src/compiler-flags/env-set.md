@@ -15,7 +15,7 @@ When retrieving an environment variable value, the one specified by `--env-set` 
 precedence. For example, if you want have `PATH=a` in your environment and pass:
 
 ```bash
-rustc --env-set PATH=env
+redox --env-set PATH=env
 ```
 
 Then you will have:
@@ -40,6 +40,6 @@ and then on next compilation:
 `X` value is different (not set) so the code will be re-compiled.
 
 Please note that on Windows, environment variables are case insensitive but case
-preserving whereas `rustc`'s environment variables are case sensitive. For example,
+preserving whereas `redox`'s environment variables are case sensitive. For example,
 having `Path` in your environment (case insensitive) is different than using
-`rustc --env-set Path=...` (case sensitive).
+`redox --env-set Path=...` (case sensitive).

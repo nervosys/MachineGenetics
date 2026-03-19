@@ -1,15 +1,15 @@
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![deny(clippy::disallowed_methods)]
 
-extern crate rustc_errors;
-extern crate rustc_hir;
-extern crate rustc_lint;
-extern crate rustc_middle;
+extern crate redox_errors;
+extern crate redox_hir;
+extern crate redox_lint;
+extern crate redox_middle;
 
-use rustc_errors::{DiagDecorator, DiagMessage, MultiSpan};
-use rustc_hir::hir_id::HirId;
-use rustc_lint::{Lint, LintContext};
-use rustc_middle::ty::TyCtxt;
+use redox_errors::{DiagDecorator, DiagMessage, MultiSpan};
+use redox_hir::hir_id::HirId;
+use redox_lint::{Lint, LintContext};
+use redox_middle::ty::TyCtxt;
 
 pub fn a(cx: impl LintContext, lint: &'static Lint, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
     cx.span_lint(lint, span, |lint| {

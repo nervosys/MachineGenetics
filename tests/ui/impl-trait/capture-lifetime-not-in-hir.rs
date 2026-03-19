@@ -1,5 +1,5 @@
-#![feature(rustc_attrs)]
-#![rustc_dump_variances_of_opaques]
+#![feature(redox_attrs)]
+#![redox_dump_variances_of_opaques]
 
 trait Bar<'a> {
     type Assoc: From<()>;

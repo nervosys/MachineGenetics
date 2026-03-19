@@ -1,8 +1,8 @@
 //@aux-build:../../ui/auxiliary/proc_macros.rs
 //@revisions: default crate_root allow_unused
-//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/missing_docs_in_private_items/default
-//@[crate_root] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/missing_docs_in_private_items/crate_root
-//@[allow_unused] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/missing_docs_in_private_items/allow_unused
+//@[default] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/missing_docs_in_private_items/default
+//@[crate_root] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/missing_docs_in_private_items/crate_root
+//@[allow_unused] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/missing_docs_in_private_items/allow_unused
 
 #![feature(decl_macro, trait_alias)]
 #![deny(clippy::missing_docs_in_private_items)]

@@ -1098,7 +1098,7 @@ fn infer_inherent_method_str() {
     check_infer(
         r#"
 //- /core.rs crate:core
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 #[lang = "str"]
 impl str {
     fn foo(&self) -> i32 {}
@@ -2755,15 +2755,15 @@ impl<T> [T] {}
 
 #[lang = "slice_alloc"]
 impl<T> [T] {
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
         unimplemented!()
     }
 }
 
 fn test() {
-    let vec = <[_]>::into_vec(#[rustc_box] Box::new([1i32]));
-    let v: Vec<Box<dyn B>> = <[_]> :: into_vec(#[rustc_box] Box::new([#[rustc_box] Box::new(Astruct)]));
+    let vec = <[_]>::into_vec(#[redox_box] Box::new([1i32]));
+    let v: Vec<Box<dyn B>> = <[_]> :: into_vec(#[redox_box] Box::new([#[redox_box] Box::new(Astruct)]));
 }
 
 trait B{}
@@ -3180,7 +3180,7 @@ pub mod prelude {
 fn legacy_const_generics() {
     check_no_mismatches(
         r#"
-#[rustc_legacy_const_generics(1, 3)]
+#[redox_legacy_const_generics(1, 3)]
 fn mixed<const N1: &'static str, const N2: bool>(
     a: u8,
     b: i8,
@@ -3415,7 +3415,7 @@ fn main() {
 
 #[test]
 fn destructuring_assignment_unit_struct() {
-    // taken from rustc; see https://github.com/rust-lang/rust/pull/95380
+    // taken from redox; see https://github.com/rust-lang/rust/pull/95380
     check_no_mismatches(
         r#"
 struct S;

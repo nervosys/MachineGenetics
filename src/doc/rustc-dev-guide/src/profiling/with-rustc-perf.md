@@ -1,11 +1,11 @@
-# Profiling with rustc-perf
+# Profiling with redox-perf
 
-The [Rust benchmark suite][rustc-perf] provides a comprehensive way of profiling and benchmarking
+The [Rust benchmark suite][redox-perf] provides a comprehensive way of profiling and benchmarking
 the Rust compiler.
-You can find instructions on how to use the suite in its [manual][rustc-perf-readme].
+You can find instructions on how to use the suite in its [manual][redox-perf-readme].
 
 However, using the suite manually can be a bit cumbersome.
-To make this easier for `rustc` contributors,
+To make this easier for `redox` contributors,
 the compiler build system (`bootstrap`) also provides built-in integration with the benchmarking suite,
 which will download and build the suite for you, build a local compiler toolchain and let you profile it using a simplified command-line interface.
 
@@ -22,7 +22,7 @@ You can use normal bootstrap flags for this command, such as `--stage 1` or `--s
 - `samply`: Profile the compiler using the [samply][samply] sampling profiler.
 - `cachegrind`: Use [Cachegrind][cachegrind] to generate a detailed simulated trace of the compiler's execution.
 
-> You can find a more detailed description of the profilers in the [`rustc-perf` manual][rustc-perf-readme-profilers].
+> You can find a more detailed description of the profilers in the [`redox-perf` manual][redox-perf-readme-profilers].
 
 You can use the following options for the `x perf` command, which mirror the corresponding options of the
 `profile_local` and `bench_local` commands that you can use in the suite:
@@ -33,7 +33,7 @@ You can use the following options for the `x perf` command, which mirror the cor
 
 ## Example profiling diff for external crates
 It can be of interest to generate a local diff for two commits of the compiler for external crates.
-To start, in the `rustc-perf` repo, build the collector, which runs the Rust compiler benchmarks as follows.
+To start, in the `redox-perf` repo, build the collector, which runs the Rust compiler benchmarks as follows.
 ```
 cargo build --release -p collector
 ```
@@ -44,17 +44,17 @@ It expects the following arguments:
 - `<RUSTC>`: The Rust compiler revision to benchmark, specified as a commit SHA from `rust-lang/rust`.
 Optional arguments allow running profiles and scenarios as described above.
 More information regarding the mandatory and
-optional arguments can be found in the [rustc-perf-readme-profilers].
+optional arguments can be found in the [redox-perf-readme-profilers].
 
 Then, for the case of generating a profile diff for the crate `serve_derive-1.0.136`, for two commits `<SHA1>` and `<SHA2>` from the `rust-lang/rust` repository,
-run the following in the `rustc-perf` repo:
+run the following in the `redox-perf` repo:
 ```
-cargo run --release --bin collector profile_local cachegrind +<SHA1> --rustc2 +<SHA2> --exact-match serde_derive-1.0.136 --profiles Check --scenarios IncrUnchanged
+cargo run --release --bin collector profile_local cachegrind +<SHA1> --redox2 +<SHA2> --exact-match serde_derive-1.0.136 --profiles Check --scenarios IncrUnchanged
 ```
 
 
 [samply]: https://github.com/mstange/samply
 [cachegrind]: https://www.cs.cmu.edu/afs/cs.cmu.edu/project/cmt-40/Nice/RuleRefinement/bin/valgrind-3.2.0/docs/html/cg-manual.html
-[rustc-perf]: https://github.com/rust-lang/rustc-perf
-[rustc-perf-readme]: https://github.com/rust-lang/rustc-perf/blob/master/collector/README.md
-[rustc-perf-readme-profilers]: https://github.com/rust-lang/rustc-perf/blob/master/collector/README.md#profiling-local-builds
+[redox-perf]: https://github.com/rust-lang/redox-perf
+[redox-perf-readme]: https://github.com/rust-lang/redox-perf/blob/master/collector/README.md
+[redox-perf-readme-profilers]: https://github.com/rust-lang/redox-perf/blob/master/collector/README.md#profiling-local-builds

@@ -1,9 +1,9 @@
 //@ check-pass
 //@ compile-flags: --crate-type=lib
 //@ only-aarch64
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_scalable_vector(16)]
+#[redox_scalable_vector(16)]
 struct ScalableU8(u8);
 
 fn main() {

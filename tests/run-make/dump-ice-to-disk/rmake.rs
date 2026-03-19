@@ -1,4 +1,4 @@
-//! This test checks if Internal Compilation Error (ICE) dump files `rustc-ice*.txt` work as
+//! This test checks if Internal Compilation Error (ICE) dump files `redox-ice*.txt` work as
 //! expected.
 //!
 //! - Basic sanity checks on a default ICE dump.
@@ -33,7 +33,7 @@ use std::cell::OnceCell;
 use std::path::{Path, PathBuf};
 
 use run_make_support::{
-    cwd, filename_contains, has_extension, has_prefix, rfs, run_in_tmpdir, rustc,
+    cwd, filename_contains, has_extension, has_prefix, rfs, run_in_tmpdir, redox,
     shallow_find_files,
 };
 
@@ -71,10 +71,10 @@ fn assert_ice_len_equals(left: &IceDump, right: &IceDump) {
 }
 
 fn find_ice_dumps_in_dir<P: AsRef<Path>>(dir: P) -> Vec<PathBuf> {
-    shallow_find_files(dir, |path| has_prefix(path, "rustc-ice") && has_extension(path, "txt"))
+    shallow_find_files(dir, |path| has_prefix(path, "redox-ice") && has_extension(path, "txt"))
 }
 
-// Assert only one `rustc-ice*.txt` ICE file exists, and extract the ICE message from the ICE file.
+// Assert only one `redox-ice*.txt` ICE file exists, and extract the ICE message from the ICE file.
 #[track_caller]
 fn extract_exactly_one_ice_file<P: AsRef<Path>>(name: &'static str, dir: P) -> IceDump {
     let ice_files = find_ice_dumps_in_dir(dir);
@@ -88,13 +88,13 @@ fn main() {
     // Establish baseline ICE message.
     let default_ice_dump = OnceCell::new();
     run_in_tmpdir(|| {
-        rustc().env("RUSTC_ICE", cwd()).input("lib.rs").arg("-Ztreat-err-as-bug=1").run_fail();
+        redox().env("RUSTC_ICE", cwd()).input("lib.rs").arg("-Ztreat-err-as-bug=1").run_fail();
         let dump = extract_exactly_one_ice_file("baseline", cwd());
         // Ensure that the ICE dump path doesn't contain `:`, because they cause problems on
         // Windows.
         assert!(!filename_contains(&dump.path, ":"), "{} contains `:`", dump.path.display());
         // Some of the expected strings in an ICE file should appear.
-        assert!(dump.message.contains("thread 'rustc' panicked at"));
+        assert!(dump.message.contains("thread 'redox' panicked at"));
         assert!(dump.message.contains("stack backtrace:"));
         default_ice_dump.set(dump).unwrap();
     });
@@ -111,7 +111,7 @@ fn main() {
 #[track_caller]
 fn test_backtrace_short(baseline: &IceDump) {
     run_in_tmpdir(|| {
-        rustc()
+        redox()
             .env("RUSTC_ICE", cwd())
             .input("lib.rs")
             .env("RUST_BACKTRACE", "short")
@@ -126,7 +126,7 @@ fn test_backtrace_short(baseline: &IceDump) {
 #[track_caller]
 fn test_backtrace_full(baseline: &IceDump) {
     run_in_tmpdir(|| {
-        rustc()
+        redox()
             .env("RUSTC_ICE", cwd())
             .input("lib.rs")
             .env("RUST_BACKTRACE", "full")
@@ -141,7 +141,7 @@ fn test_backtrace_full(baseline: &IceDump) {
 #[track_caller]
 fn test_backtrace_disabled(baseline: &IceDump) {
     run_in_tmpdir(|| {
-        rustc()
+        redox()
             .env("RUSTC_ICE", cwd())
             .input("lib.rs")
             .env("RUST_BACKTRACE", "0")
@@ -157,7 +157,7 @@ fn test_backtrace_disabled(baseline: &IceDump) {
 fn test_ice_dump_disabled() {
     // The ICE dump is explicitly disabled. Therefore, this should produce no files.
     run_in_tmpdir(|| {
-        rustc().env("RUSTC_ICE", "0").input("lib.rs").arg("-Ztreat-err-as-bug=1").run_fail();
+        redox().env("RUSTC_ICE", "0").input("lib.rs").arg("-Ztreat-err-as-bug=1").run_fail();
         let ice_files = find_ice_dumps_in_dir(cwd());
         assert!(ice_files.is_empty(), "there should be no ICE files if `RUSTC_ICE=0` is set");
     });
@@ -173,7 +173,7 @@ fn test_metrics_dir(baseline: &IceDump) {
 fn test_flag_only(baseline: &IceDump) {
     run_in_tmpdir(|| {
         let metrics_arg = format!("-Zmetrics-dir={}", cwd().display());
-        rustc()
+        redox()
             .env_remove("RUSTC_ICE") // prevent interference from environment
             .input("lib.rs")
             .arg("-Ztreat-err-as-bug=1")
@@ -190,7 +190,7 @@ fn test_flag_and_env(baseline: &IceDump) {
         let metrics_arg = format!("-Zmetrics-dir={}", cwd().display());
         let real_dir = cwd().join("actually_put_ice_here");
         rfs::create_dir(&real_dir);
-        rustc()
+        redox()
             .input("lib.rs")
             .env("RUSTC_ICE", &real_dir)
             .arg("-Ztreat-err-as-bug=1")

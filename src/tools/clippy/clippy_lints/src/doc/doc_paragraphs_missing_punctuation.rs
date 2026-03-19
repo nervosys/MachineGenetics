@@ -1,8 +1,8 @@
-use rustc_errors::Applicability;
-use rustc_lint::LateContext;
-use rustc_resolve::rustdoc::main_body_opts;
+use redox_errors::Applicability;
+use redox_lint::LateContext;
+use redox_resolve::rustdoc::main_body_opts;
 
-use rustc_resolve::rustdoc::pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
+use redox_resolve::rustdoc::pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 
 use super::{DOC_PARAGRAPHS_MISSING_PUNCTUATION, Fragments};
 

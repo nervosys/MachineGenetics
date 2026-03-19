@@ -1,0 +1,24 @@
+[package]
+name = "redox_index"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+redox_index_macros = { path = "../redox_index_macros" }
+redox_macros = { path = "../redox_macros", optional = true }
+redox_serialize = { path = "../redox_serialize", optional = true }
+smallvec = { version = "1.8.1", optional = true }
+# tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+default = ["nightly"]
+nightly = [
+    "dep:redox_macros",
+    "dep:redox_serialize",
+    "dep:smallvec",
+    "redox_index_macros/nightly",
+]
+redox_randomized_layouts = []
+# tidy-alphabetical-end

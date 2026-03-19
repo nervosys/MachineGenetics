@@ -91,7 +91,7 @@ fn#0:MacroCall[BE8F, 0]@30..32#ROOT2024# main#0:MacroCall[BE8F, 0]@33..37#ROOT20
 fn eager_expands_with_unresolved_within() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! concat {}
 macro_rules! identity {
@@ -105,7 +105,7 @@ fn main(foo: ()) {
 }
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! concat {}
 macro_rules! identity {
@@ -125,7 +125,7 @@ fn main(foo: ()) {
 fn concat_spans() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! concat {}
 macro_rules! identity {
@@ -135,7 +135,7 @@ macro_rules! identity {
 }
 
 fn main(foo: ()) {
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! concat {}
     macro_rules! identity {
@@ -151,7 +151,7 @@ fn main(foo: ()) {
 
 "#,
         expect![[r##"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 #[macro_export]
 macro_rules! concat {}
 macro_rules! identity {
@@ -161,7 +161,7 @@ macro_rules! identity {
 }
 
 fn main(foo: ()) {
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! concat {}
     macro_rules! identity {
@@ -1388,26 +1388,26 @@ ok!();
 fn test_underscore_not_greedily() {
     check(
         r#"
-// `_` overlaps with `$a:ident` but rustc matches it under the `_` token.
+// `_` overlaps with `$a:ident` but redox matches it under the `_` token.
 macro_rules! m1 {
     ($($a:ident)* _) => { ok!(); }
 }
 m1![a b c d _];
 
-// `_ => ou` overlaps with `$a:expr => $b:ident` but rustc matches it under `_ => $c:expr`.
+// `_ => ou` overlaps with `$a:expr => $b:ident` but redox matches it under `_ => $c:expr`.
 macro_rules! m2 {
     ($($a:expr => $b:ident)* _ => $c:expr) => { ok!(); }
 }
 m2![a => b c => d _ => ou]
 "#,
         expect![[r#"
-// `_` overlaps with `$a:ident` but rustc matches it under the `_` token.
+// `_` overlaps with `$a:ident` but redox matches it under the `_` token.
 macro_rules! m1 {
     ($($a:ident)* _) => { ok!(); }
 }
 ok!();
 
-// `_ => ou` overlaps with `$a:expr => $b:ident` but rustc matches it under `_ => $c:expr`.
+// `_ => ou` overlaps with `$a:expr => $b:ident` but redox matches it under `_ => $c:expr`.
 macro_rules! m2 {
     ($($a:expr => $b:ident)* _ => $c:expr) => { ok!(); }
 }

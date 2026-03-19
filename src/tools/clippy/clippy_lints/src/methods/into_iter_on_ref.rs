@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::ty::has_iter_method;
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_lint::LateContext;
+use redox_middle::ty::{self, Ty};
+use redox_span::Span;
+use redox_span::symbol::{Symbol, sym};
 
 use super::INTO_ITER_ON_REF;
 

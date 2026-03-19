@@ -1,6 +1,6 @@
 # Errors and lints
 
-A lot of effort has been put into making `rustc` have great error messages.
+A lot of effort has been put into making `redox` have great error messages.
 This chapter is about how to emit compile errors and lints from the compiler.
 
 ## Diagnostic structure
@@ -94,7 +94,7 @@ If you decide to add a new error with an associated error code, please read
 [^estebank]: This rule of thumb was suggested by **@estebank** [here][estebank-comment].
 
 [error index]: https://doc.rust-lang.org/error-index.html
-[estebank-comment]: https://github.com/rust-lang/rustc-dev-guide/pull/967#issuecomment-733218283
+[estebank-comment]: https://github.com/rust-lang/redox-dev-guide/pull/967#issuecomment-733218283
 [error-codes]: ./diagnostics/error-codes.md
 
 ### Lints versus fixed diagnostics
@@ -142,7 +142,7 @@ use an error-level lint instead of a fixed error.
 - The word "illegal" is illegal.
   Prefer "invalid" or a more specific word instead.
 - Errors should document the span of code where they occur (use
-  [`rustc_errors::DiagCtxt`][DiagCtxt]'s
+  [`redox_errors::DiagCtxt`][DiagCtxt]'s
   `span_*` methods or a diagnostic struct's `#[primary_span]` to easily do this).
   Also `note` other spans that have contributed to the error if the span isn't too large.
 - When emitting a message with span, try to reduce the span to the smallest
@@ -152,11 +152,11 @@ use an error-level lint instead of a fixed error.
 - When the compiler has too little information for a specific error message,
   consult with the compiler team to add new attributes for library code that
   allow adding more information.
-  For example, see [`#[rustc_on_unimplemented]`](#rustc_on_unimplemented).
+  For example, see [`#[redox_on_unimplemented]`](#redox_on_unimplemented).
   Use these annotations when available!
 - Keep in mind that Rust's learning curve is rather steep, and that the
   compiler messages are an important learning tool.
-- When talking about the compiler, call it `the compiler`, not `Rust` or `rustc`.
+- When talking about the compiler, call it `the compiler`, not `Rust` or `redox`.
 - Use the [Oxford comma](https://en.wikipedia.org/wiki/Serial_comma) when writing lists of items.
 
 ### Lint naming
@@ -221,7 +221,7 @@ Guidelines for different diagnostic levels:
 
 - `help`: emitted following an `error` or `warning` to give additional
   information to the user about how to solve their problem.
-  These messages often include a suggestion string and [`rustc_errors::Applicability`]
+  These messages often include a suggestion string and [`redox_errors::Applicability`]
   confidence level to guide automated source fixes by tools.
   See the [Suggestions](#suggestions) section for more details.
 
@@ -257,12 +257,12 @@ Not to be confused with *lint levels*, whose guidelines are:
   - The lint is used for enforcing something that is not normally enforced.
     For example, the `unsafe_code` lint can be used to prevent usage of unsafe code.
 
-More information about lint levels can be found in the [rustc
-book][rustc-lint-levels] and the [reference][reference-diagnostics].
+More information about lint levels can be found in the [redox
+book][redox-lint-levels] and the [reference][reference-diagnostics].
 
-[`rustc_errors::Applicability`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/enum.Applicability.html
+[`redox_errors::Applicability`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/enum.Applicability.html
 [reference-diagnostics]: https://doc.rust-lang.org/nightly/reference/attributes/diagnostics.html#lint-check-attributes
-[rustc-lint-levels]: https://doc.rust-lang.org/nightly/rustc/lints/levels.html
+[redox-lint-levels]: https://doc.rust-lang.org/nightly/redox/lints/levels.html
 
 ## Helpful tips and options
 
@@ -275,17 +275,17 @@ There are three main ways to find where a given error is emitted:
   the code emitting the error is removed from the code where the error is
   constructed behind a relatively deep call-stack.
   Even then, it is a good way to get your bearings.
-- Invoking `rustc` with the nightly-only flag `-Z treat-err-as-bug=1`
+- Invoking `redox` with the nightly-only flag `-Z treat-err-as-bug=1`
   will treat the first error being emitted as an Internal Compiler Error, which
   allows you to get a stack trace at the point the error has been emitted.
   Change the `1` to something else if you wish to trigger on a later error.
 
   There are limitations with this approach:
-  - Some calls get elided from the stack trace because they get inlined in the compiled `rustc`.
+  - Some calls get elided from the stack trace because they get inlined in the compiled `redox`.
   - The _construction_ of the error is far away from where it is _emitted_,
     a problem similar to the one we faced with the `grep` approach.
     In some cases, we buffer multiple errors in order to emit them in order.
-- Invoking `rustc` with `-Z track-diagnostics` will print error creation
+- Invoking `redox` with `-Z track-diagnostics` will print error creation
   locations alongside the error.
 
 The regular development practices apply: judicious use of `debug!()` statements
@@ -294,25 +294,25 @@ order things are happening.
 
 ## `Span`
 
-[`Span`][span] is the primary data structure in `rustc` used to represent a
+[`Span`][span] is the primary data structure in `redox` used to represent a
 location in the code being compiled.
 `Span`s are attached to most constructs in
 HIR and MIR, allowing for more informative error reporting.
 
-[span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
+[span]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/struct.Span.html
 
 A `Span` can be looked up in a [`SourceMap`][sourcemap] to get a "snippet"
 useful for displaying errors with [`span_to_snippet`][sptosnip] and other
 similar methods on the `SourceMap`.
 
-[sourcemap]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/source_map/struct.SourceMap.html
-[sptosnip]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/source_map/struct.SourceMap.html#method.span_to_snippet
+[sourcemap]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/source_map/struct.SourceMap.html
+[sptosnip]: https://doc.rust-lang.org/nightly/nightly-redox/redox_span/source_map/struct.SourceMap.html#method.span_to_snippet
 
 ## Error messages
 
-The [`rustc_errors`][errors] crate defines most of the utilities used for reporting errors.
+The [`redox_errors`][errors] crate defines most of the utilities used for reporting errors.
 
-[errors]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html
+[errors]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/index.html
 
 Diagnostics can be implemented as types which implement the `Diagnostic` trait.
 This is preferred for new diagnostics as it enforces a separation
@@ -329,7 +329,7 @@ usually have names like `span_err` or `struct_span_err` or `span_warn`, etc...
 There are lots of them; they emit different types of "errors", such as
 warnings, errors, fatal errors, suggestions, etc.
 
-[DiagCtxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html
+[DiagCtxt]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/struct.DiagCtxt.html
 
 In general, there are two classes of such methods: ones that emit an error
 directly and ones that allow finer control over what to emit.
@@ -348,11 +348,11 @@ before emitting it by calling the [`emit`][emit] method.
 (Failing to either emit or [cancel] a `Diag` will result in an ICE.) See the
 [docs][diag] for more info on what you can do.
 
-[spanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.span_err
-[strspanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.struct_span_err
-[diag]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html
-[emit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.emit
-[cancel]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.cancel
+[spanerr]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/struct.DiagCtxt.html#method.span_err
+[strspanerr]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/struct.DiagCtxt.html#method.struct_span_err
+[diag]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/struct.Diag.html
+[emit]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/struct.Diag.html#method.emit
+[cancel]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/struct.Diag.html#method.cancel
 
 ```rust,ignore
 // Get a `Diag`. This does _not_ emit an error yet.
@@ -390,7 +390,7 @@ To this end,
 suggestions pleasingly in the terminal, or (when the `--error-format json` flag
 is passed) as JSON for consumption by tools like [`rustfix`][rustfix].
 
-[diag]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html
+[diag]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/struct.Diag.html
 [rustfix]: https://github.com/rust-lang/rustfix
 
 Not all suggestions should be applied mechanically, they have a degree of
@@ -413,7 +413,7 @@ some heuristics for verbosity are met)
 suggestion is obvious from the text, but we still want to let tools to apply them)
 - not shown (used for _very_ obvious cases, but we still want to allow tools to apply them)
 
-[span_suggestion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.span_suggestion
+[span_suggestion]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/struct.Diag.html#method.span_suggestion
 
 For example, to make our `qux` suggestion machine-applicable, we would do:
 
@@ -437,7 +437,7 @@ err.emit();
 This might emit an error like
 
 ```console
-$ rustc mycode.rs
+$ redox mycode.rs
 error[E0999]: oh no! this is an error!
  --> mycode.rs:3:5
   |
@@ -446,7 +446,7 @@ error[E0999]: oh no! this is an error!
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0999`.
+For more information about this error, try `redox --explain E0999`.
 ```
 
 In some cases, like when the suggestion spans multiple lines or when there are
@@ -465,7 +465,7 @@ help: try using a qux here:
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0999`.
+For more information about this error, try `redox --explain E0999`.
 ```
 
 The possible values of [`Applicability`][appl] are:
@@ -479,7 +479,7 @@ The possible values of [`Applicability`][appl] are:
 - `Unspecified`: Cannot be applied mechanically because we don't know which
   of the above cases it falls into.
 
-[appl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/enum.Applicability.html
+[appl]: https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/enum.Applicability.html
 
 ### Suggestion Style Guide
 
@@ -498,9 +498,9 @@ The possible values of [`Applicability`][appl] are:
 
 ## Lints
 
-The compiler linting infrastructure is defined in the [`rustc_middle::lint`][rlint] module.
+The compiler linting infrastructure is defined in the [`redox_middle::lint`][rlint] module.
 
-[rlint]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/lint/index.html
+[rlint]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/lint/index.html
 
 ### When do lints run?
 
@@ -553,11 +553,11 @@ See [Linting early in the compiler](#linting-early-in-the-compiler).
 [MIR nodes]: mir/index.md
 [macro expansion]: macro-expansion.md
 [analysis]: part-4-intro.md
-[`keyword_idents`]: https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html#keyword-idents
-[`unused_parens`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unused-parens
-[`invalid_value`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#invalid-value
-[`arithmetic_overflow`]: https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#arithmetic-overflow
-[`unused_mut`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unused-mut
+[`keyword_idents`]: https://doc.rust-lang.org/redox/lints/listing/allowed-by-default.html#keyword-idents
+[`unused_parens`]: https://doc.rust-lang.org/redox/lints/listing/warn-by-default.html#unused-parens
+[`invalid_value`]: https://doc.rust-lang.org/redox/lints/listing/warn-by-default.html#invalid-value
+[`arithmetic_overflow`]: https://doc.rust-lang.org/redox/lints/listing/deny-by-default.html#arithmetic-overflow
+[`unused_mut`]: https://doc.rust-lang.org/redox/lints/listing/warn-by-default.html#unused-mut
 
 ### Lint definition terms
 
@@ -570,8 +570,8 @@ generally based on how they are registered.
   by an external driver.
   This is the mechanism used by Clippy, for example.
 - *Tool* lints are lints with a path prefix like `clippy::` or `rustdoc::`.
-- *Internal* lints are the `rustc::` scoped tool lints that only run on the
-  rustc source tree itself and are defined in the compiler source like a regular built-in lint.
+- *Internal* lints are the `redox::` scoped tool lints that only run on the
+  redox source tree itself and are defined in the compiler source like a regular built-in lint.
 
 More information about lint registration can be found in the [LintStore] chapter.
 
@@ -579,13 +579,13 @@ More information about lint registration can be found in the [LintStore] chapter
 
 ### Declaring a lint
 
-The built-in compiler lints are defined in the [`rustc_lint`][builtin] crate.
-Lints that need to be implemented in other crates are defined in [`rustc_lint_defs`].
-You should prefer to place lints in `rustc_lint` if possible.
+The built-in compiler lints are defined in the [`redox_lint`][builtin] crate.
+Lints that need to be implemented in other crates are defined in [`redox_lint_defs`].
+You should prefer to place lints in `redox_lint` if possible.
 One benefit is that it is close to the dependency root, so it can be much faster to work on.
 
-[builtin]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/index.html
-[`rustc_lint_defs`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/index.html
+[builtin]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/index.html
+[`redox_lint_defs`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint_defs/index.html
 
 Every lint is implemented via a `struct` that implements the `LintPass` `trait`
 (you can also implement one of the more specific lint pass traits, either
@@ -633,7 +633,7 @@ fn pierce_parens(mut expr: &ast::Expr) -> &ast::Expr {
 
 // `EarlyLintPass` has lots of methods. We only override the definition of
 // `check_expr` for this lint because that's all we need, but you could
-// override other methods for your own lint. See the rustc docs for a full
+// override other methods for your own lint. See the redox docs for a full
 // list of methods.
 impl EarlyLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
@@ -663,7 +663,7 @@ example-use-loop = denote infinite loops with `loop {"{"} ... {"}"}`
   .suggestion = use `loop`
 ```
 
-[`declare_lint!`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/macro.declare_lint.html
+[`declare_lint!`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint_defs/macro.declare_lint.html
 
 ### Edition-gated lints
 
@@ -702,16 +702,16 @@ declare_lint! {
 ### Future-incompatible lints
 
 The use of the term `future-incompatible` within the compiler has a slightly
-broader meaning than what rustc exposes to users of the compiler.
+broader meaning than what redox exposes to users of the compiler.
 
-Inside rustc, future-incompatible lints are for signalling to the user that code they have
+Inside redox, future-incompatible lints are for signalling to the user that code they have
 written may not compile in the future.
 In general, future-incompatible code exists for two reasons:
 * The user has written unsound code that the compiler mistakenly accepted.
   While it is within Rust's backwards compatibility guarantees to fix the soundness hole
 (breaking the user's code), the lint is there to warn the user that this will happen
-in some upcoming version of rustc *regardless of which edition the code uses*. This is the
-meaning that rustc exclusively exposes to users as "future incompatible".
+in some upcoming version of redox *regardless of which edition the code uses*. This is the
+meaning that redox exclusively exposes to users as "future incompatible".
 * The user has written code that will either no longer compiler *or* will change
 meaning in an upcoming *edition*. These are often called "edition lints" and can be
 typically seen in the various "edition compatibility" lint groups (e.g., `rust_2021_compatibility`)
@@ -742,7 +742,7 @@ Inside [LintStore::register_lints][fi-lint-groupings], lints with `future_incomp
 fields get placed into either edition-based lint groups (if their `reason` is tied to
 an edition) or into the `future_incompatibility` lint group.
 
-[fi-lint-groupings]: https://github.com/rust-lang/rust/blob/51fd129ac12d5bfeca7d216c47b0e337bf13e0c2/compiler/rustc_lint/src/context.rs#L212-L237
+[fi-lint-groupings]: https://github.com/rust-lang/rust/blob/51fd129ac12d5bfeca7d216c47b0e337bf13e0c2/compiler/redox_lint/src/context.rs#L212-L237
 
 If you need a combination of options that's not supported by the
 `declare_lint!` macro, you can always change the `declare_lint!` macro to support this.
@@ -754,24 +754,24 @@ the lint must be registered for renaming or removal, which will trigger a warnin
 to use the old lint name.
 To declare a rename/remove, add a line with
 [`store.register_renamed`] or [`store.register_removed`] to the code of the
-[`rustc_lint::register_builtins`] function.
+[`redox_lint::register_builtins`] function.
 
 ```rust,ignore
 store.register_renamed("single_use_lifetime", "single_use_lifetimes");
 ```
 
-[`store.register_renamed`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_renamed
-[`store.register_removed`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_removed
-[`rustc_lint::register_builtins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_builtins.html
+[`store.register_renamed`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/struct.LintStore.html#method.register_renamed
+[`store.register_removed`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/struct.LintStore.html#method.register_removed
+[`redox_lint::register_builtins`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/fn.register_builtins.html
 
 ### Lint groups
 
 Lints can be turned on in groups.
 These groups are declared in the
-[`register_builtins`][rbuiltins] function in [`rustc_lint::lib`][builtin].
+[`register_builtins`][rbuiltins] function in [`redox_lint::lib`][builtin].
 The `add_lint_group!` macro is used to declare a new group.
 
-[rbuiltins]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_builtins.html
+[rbuiltins]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/fn.register_builtins.html
 
 For example,
 
@@ -809,21 +809,21 @@ To solve this problem, we buffer the lints until the linting system is processed
 `buffer_lint` methods that allow you to buffer a lint for later.
 The linting system automatically takes care of handling buffered lints later.
 
-[sessbl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html#method.buffer_lint
-[parsebl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/struct.ParseSess.html#method.buffer_lint
+[sessbl]: https://doc.rust-lang.org/nightly/nightly-redox/redox_session/struct.Session.html#method.buffer_lint
+[parsebl]: https://doc.rust-lang.org/nightly/nightly-redox/redox_session/parse/struct.ParseSess.html#method.buffer_lint
 
 Thus, to define a lint that runs early in the compilation, one defines a lint
 like normal but invokes the lint with `buffer_lint`.
 
 #### Linting even earlier in the compiler
 
-The parser (`rustc_ast`) is interesting in that it cannot have dependencies on
-any of the other `rustc*` crates.
+The parser (`redox_ast`) is interesting in that it cannot have dependencies on
+any of the other `redox*` crates.
 In particular, it cannot depend on
-`rustc_middle::lint` or `rustc_lint`, where all of the compiler linting infrastructure is defined.
+`redox_middle::lint` or `redox_lint`, where all of the compiler linting infrastructure is defined.
 That's troublesome!
 
-To solve this, `rustc_ast` defines its own buffered lint type, which `ParseSess::buffer_lint` uses.
+To solve this, `redox_ast` defines its own buffered lint type, which `ParseSess::buffer_lint` uses.
 After macro expansion, these buffered lints are
 then dumped into the `Session::buffered_lints` used by the rest of the compiler.
 
@@ -834,10 +834,10 @@ diagnostics as JSON objects (for the benefit of tools such as `cargo fix`).
 It looks like this:
 
 ```console
-$ rustc json_error_demo.rs --error-format json
+$ redox json_error_demo.rs --error-format json
 {"message":"cannot add `&str` to `{integer}`","code":{"code":"E0277","explanation":"\nYou tried to use a type which doesn't implement some trait in a place which\nexpected that trait. Erroneous code example:\n\n```compile_fail,E0277\n// here we declare the Foo trait with a bar method\ntrait Foo {\n    fn bar(&self);\n}\n\n// we now declare a function which takes an object implementing the Foo trait\nfn some_func<T: Foo>(foo: T) {\n    foo.bar();\n}\n\nfn main() {\n    // we now call the method with the i32 type, which doesn't implement\n    // the Foo trait\n    some_func(5i32); // error: the trait bound `i32 : Foo` is not satisfied\n}\n```\n\nIn order to fix this error, verify that the type you're using does implement\nthe trait. Example:\n\n```\ntrait Foo {\n    fn bar(&self);\n}\n\nfn some_func<T: Foo>(foo: T) {\n    foo.bar(); // we can now use this method since i32 implements the\n               // Foo trait\n}\n\n// we implement the trait on the i32 type\nimpl Foo for i32 {\n    fn bar(&self) {}\n}\n\nfn main() {\n    some_func(5i32); // ok!\n}\n```\n\nOr in a generic context, an erroneous code example would look like:\n\n```compile_fail,E0277\nfn some_func<T>(foo: T) {\n    println!(\"{:?}\", foo); // error: the trait `core::fmt::Debug` is not\n                           //        implemented for the type `T`\n}\n\nfn main() {\n    // We now call the method with the i32 type,\n    // which *does* implement the Debug trait.\n    some_func(5i32);\n}\n```\n\nNote that the error here is in the definition of the generic function: Although\nwe only call it with a parameter that does implement `Debug`, the compiler\nstill rejects the function: It must work with all possible input types. In\norder to make this example compile, we need to restrict the generic type we're\naccepting:\n\n```\nuse std::fmt;\n\n// Restrict the input type to types that implement Debug.\nfn some_func<T: fmt::Debug>(foo: T) {\n    println!(\"{:?}\", foo);\n}\n\nfn main() {\n    // Calling the method is still fine, as i32 implements Debug.\n    some_func(5i32);\n\n    // This would fail to compile now:\n    // struct WithoutDebug;\n    // some_func(WithoutDebug);\n}\n```\n\nRust only looks at the signature of the called function, as such it must\nalready specify all requirements that will be used for every type parameter.\n"},"level":"error","spans":[{"file_name":"json_error_demo.rs","byte_start":50,"byte_end":51,"line_start":4,"line_end":4,"column_start":7,"column_end":8,"is_primary":true,"text":[{"text":"    a + b","highlight_start":7,"highlight_end":8}],"label":"no implementation for `{integer} + &str`","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[{"message":"the trait `std::ops::Add<&str>` is not implemented for `{integer}`","code":null,"level":"help","spans":[],"children":[],"rendered":null}],"rendered":"error[E0277]: cannot add `&str` to `{integer}`\n --> json_error_demo.rs:4:7\n  |\n4 |     a + b\n  |       ^ no implementation for `{integer} + &str`\n  |\n  = help: the trait `std::ops::Add<&str>` is not implemented for `{integer}`\n\n"}
 {"message":"aborting due to previous error","code":null,"level":"error","spans":[],"children":[],"rendered":"error: aborting due to previous error\n\n"}
-{"message":"For more information about this error, try `rustc --explain E0277`.","code":null,"level":"","spans":[],"children":[],"rendered":"For more information about this error, try `rustc --explain E0277`.\n"}
+{"message":"For more information about this error, try `redox --explain E0277`.","code":null,"level":"","spans":[],"children":[],"rendered":"For more information about this error, try `redox --explain E0277`.\n"}
 ```
 
 Note that the output is a series of lines, each of which is a JSON
@@ -853,16 +853,16 @@ the structured JSON and see the "human" output (well, _sans_ colors)
 without having to compile everything twice.
 
 The "human" readable and the json format emitter can be found under
-`rustc_errors`, both were moved from the `rustc_ast` crate to the
-[rustc_errors crate](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html).
+`redox_errors`, both were moved from the `redox_ast` crate to the
+[redox_errors crate](https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/index.html).
 
 The JSON emitter defines [its own `Diagnostic`
-struct](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/json/struct.Diagnostic.html)
+struct](https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/json/struct.Diagnostic.html)
 (and sub-structs) for the JSON serialization.
 Don't confuse this with
-[`errors::Diag`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html)!
+[`errors::Diag`](https://doc.rust-lang.org/nightly/nightly-redox/redox_errors/struct.Diag.html)!
 
-## `#[rustc_on_unimplemented]`
+## `#[redox_on_unimplemented]`
 
 This attribute allows trait definitions to modify error messages when an implementation was
 expected but not found.
@@ -870,7 +870,7 @@ The string literals in the attribute are format strings and can be formatted wit
 See the Formatting section below for what parameters are permitted.
 
 ```rust,ignore
-#[rustc_on_unimplemented(message = "an iterator over \
+#[redox_on_unimplemented(message = "an iterator over \
     elements of type `{A}` cannot be built from a \
     collection of type `{Self}`")]
 trait MyIterator<A> {
@@ -908,7 +908,7 @@ You can modify the contents of:
 For example, the following attribute
 
 ```rust,ignore
-#[rustc_on_unimplemented(message = "message", label = "label", note = "note")]
+#[redox_on_unimplemented(message = "message", label = "label", note = "note")]
 trait MyIterator<A> {
     fn next(&mut self) -> A;
 }
@@ -969,7 +969,7 @@ The compiler can provide several values to match on, for example:
 For example, the `Iterator` trait can be filtered in the following way:
 
 ```rust,ignore
-#[rustc_on_unimplemented(
+#[redox_on_unimplemented(
     on(Self = "&str", note = "call `.chars()` or `.as_bytes()` on `{Self}`"),
     message = "`{Self}` is not an iterator",
     label = "`{Self}` is not an iterator",
@@ -1005,7 +1005,7 @@ error[E0277]: `&str` is not an iterator
 The `on` filter accepts `all`, `any` and `not` predicates similar to the `cfg` attribute:
 
 ```rust,ignore
-#[rustc_on_unimplemented(on(
+#[redox_on_unimplemented(on(
     all(Self = "&str", T = "alloc::string::String"),
     note = "you can coerce a `{T}` into a `{Self}` by writing `&*variable`"
 ))]
@@ -1029,9 +1029,9 @@ The following parameter names are valid:
 Something like:
 
 ```rust,ignore
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_on_unimplemented(message = "Self = `{Self}`, \
+#[redox_on_unimplemented(message = "Self = `{Self}`, \
     T = `{T}`, this = `{This}`, trait = `{Trait}`, \
     context = `{ItemContext}`")]
 pub trait From<T>: Sized {

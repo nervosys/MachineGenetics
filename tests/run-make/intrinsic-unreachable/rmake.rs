@@ -9,11 +9,11 @@
 //@ ignore-windows
 // Reason: Because of Windows exception handling, the code is not necessarily any shorter.
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 fn main() {
-    rustc().opt().emit("asm").input("exit-ret.rs").run();
-    rustc().opt().emit("asm").input("exit-unreachable.rs").run();
+    redox().opt().emit("asm").input("exit-ret.rs").run();
+    redox().opt().emit("asm").input("exit-unreachable.rs").run();
     assert!(
         rfs::read_to_string("exit-unreachable.s").lines().count()
             < rfs::read_to_string("exit-ret.s").lines().count()

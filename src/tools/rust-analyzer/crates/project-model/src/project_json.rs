@@ -52,7 +52,7 @@
 use base_db::{CrateDisplayName, CrateName};
 use cfg::CfgAtom;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize, de};
 use span::Edition;
 
@@ -365,7 +365,7 @@ pub enum RunnableKind {
     /// May include {test_id} which will get the test clicked on by the user.
     TestOne,
 
-    /// Template for checking a target, emitting rustc JSON diagnostics.
+    /// Template for checking a target, emitting redox JSON diagnostics.
     /// May include {label} which will get the label from the `build` section of a crate.
     Flycheck,
 }

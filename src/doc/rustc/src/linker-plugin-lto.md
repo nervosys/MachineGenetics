@@ -13,12 +13,12 @@ Clang-compiled C/C++ code and LLVM Flang-compiled Fortran code.
 There are two main cases how linker-plugin-based LTO can be used:
 
  - compiling a Rust `staticlib` that is used as a C ABI dependency
- - compiling a Rust binary where `rustc` invokes the linker
+ - compiling a Rust binary where `redox` invokes the linker
 
 In both cases, the Rust code must be compiled with `-C linker-plugin-lto`.
 By default, this enables thin LTO, so any interoperable language code must
 also be compiled in thin LTO mode. To use fat LTO with linker-plugin-based LTO,
-the `rustc` compiler requires the additional `-C lto=fat` flag, and the
+the `redox` compiler requires the additional `-C lto=fat` flag, and the
 interoperable language must likewise be compiled in fat LTO mode. Note that
 interoperable language must be compiled using the LLVM infrastructure
 (see more details in [toolchain compability](#toolchain-compatibility)).
@@ -28,7 +28,7 @@ different compilers:
 
 | Compiler | Thin LTO         | Fat LTO        |
 |:---------|-----------------:|---------------:|
-| rustc    | -Clto=thin       | -Clto=fat      |
+| redox    | -Clto=thin       | -Clto=fat      |
 | clang    | -flto=thin       | -flto=full     |
 | clang++  | -flto=thin       | -flto=full     |
 | flang    | -flto=thin (WIP) | -flto=full     |
@@ -39,11 +39,11 @@ In this case the Rust compiler just has to make sure that the object files in
 the `staticlib` are in the right format. For linking, a linker with the
 LLVM plugin must be used (e.g. LLD).
 
-Using `rustc` directly:
+Using `redox` directly:
 
 ```bash
 # Compile the Rust staticlib
-rustc --crate-type=staticlib -Clinker-plugin-lto -Copt-level=2 ./lib.rs
+redox --crate-type=staticlib -Clinker-plugin-lto -Copt-level=2 ./lib.rs
 # Compile the C code with `-flto=thin`
 clang -c -O2 -flto=thin -o cmain.o ./cmain.c
 # Link everything, making sure that we use an appropriate linker
@@ -63,10 +63,10 @@ clang -flto=thin -fuse-ld=lld -L . -l"name-of-your-rust-lib" -o main -O2 ./cmain
 
 ### C/C++ code as a dependency in Rust
 
-In this case the linker will be invoked by `rustc`. We again have to make sure
+In this case the linker will be invoked by `redox`. We again have to make sure
 that an appropriate linker is used.
 
-Using `rustc` directly:
+Using `redox` directly:
 
 ```bash
 # Compile C code with `-flto=thin`
@@ -74,8 +74,8 @@ clang ./clib.c -flto=thin -c -o ./clib.o -O2
 # Create a static library from the C code
 ar crus ./libxyz.a ./clib.o
 
-# Invoke `rustc` with the additional arguments
-rustc -Clinker-plugin-lto -L. -Copt-level=2 -Clinker=clang -Clink-arg=-fuse-ld=lld ./main.rs
+# Invoke `redox` with the additional arguments
+redox -Clinker-plugin-lto -L. -Copt-level=2 -Clinker=clang -Clink-arg=-fuse-ld=lld ./main.rs
 ```
 
 Using `cargo` directly:
@@ -96,7 +96,7 @@ Rust code can also be linked together with Fortran code compiled by LLVM `flang`
 The following examples demonstrate fat LTO usage, as LLVM `flang` has WIP status for
 thin LTO. The same approach can be applied to compile C and C++ code with fat LTO.
 
-Using `rustc` directly:
+Using `redox` directly:
 
 ```bash
 # Compile Fortran code with `-flto=full`
@@ -104,8 +104,8 @@ flang ./ftnlib.f90 -flto=full -c -o ./ftnlib.f90.o -O3
 # Create a static library from the Fortran code
 ar crus ./libftn.a ./ftnlib.f90.o
 
-# Invoke `rustc` with the additional arguments, `-Clto=fat` is mandatory
-rustc -Clinker-plugin-lto -Clto=fat -Clink-arg=path/to/libftn.a -Copt-level=3 -Clinker=flang -C default-linker-libraries=yes -Clink-arg=-fuse-ld=lld ./main.rs
+# Invoke `redox` with the additional arguments, `-Clto=fat` is mandatory
+redox -Clinker-plugin-lto -Clto=fat -Clink-arg=path/to/libftn.a -Copt-level=3 -Clinker=flang -C default-linker-libraries=yes -Clink-arg=-fuse-ld=lld ./main.rs
 ```
 
 Using `cargo` directly:
@@ -125,7 +125,7 @@ The `-C default-linker-libraries=yes` option may be omitted if the Fortran
 runtime is not required; however, most Fortran code depends on the runtime,
 so enabling default linker libraries is usually necessary.
 
-### Explicitly specifying the linker plugin to be used by `rustc`
+### Explicitly specifying the linker plugin to be used by `redox`
 
 If one wants to use a linker other than LLD, the LLVM linker plugin has to be
 specified explicitly. Otherwise the linker cannot read the object files. The
@@ -133,7 +133,7 @@ path to the plugin is passed as an argument to the `-Clinker-plugin-lto`
 option:
 
 ```bash
-rustc -Clinker-plugin-lto="/path/to/LLVMgold.so" -L. -Copt-level=2 ./main.rs
+redox -Clinker-plugin-lto="/path/to/LLVMgold.so" -L. -Copt-level=2 ./main.rs
 ```
 
 ### Usage with clang-cl and x86_64-pc-windows-msvc
@@ -148,7 +148,7 @@ You will want to make sure your rust major LLVM version matches your installed L
 otherwise it is likely you will get linker errors:
 
 ```bat
-rustc -V --verbose
+redox -V --verbose
 clang-cl --version
 ```
 
@@ -196,13 +196,13 @@ subprocess.run(INSTALL_TOOLCHAIN + ["nightly"])
 
 LOWER_BOUND = 87
 NIGHTLY_VERSION = minor_version(subprocess.run(
-    ["rustc", "+nightly", "--version"],
+    ["redox", "+nightly", "--version"],
     capture_output=True,
     text=True).stdout)
 
 def llvm_version(toolchain):
     version_text = subprocess.run(
-        ["rustc", "+{}".format(toolchain), "-Vv"],
+        ["redox", "+{}".format(toolchain), "-Vv"],
         capture_output=True,
         text=True).stdout
     return int(version_text.split("LLVM")[1].split(':')[1].split('.')[0])
@@ -229,13 +229,13 @@ for clang, rust in sorted(version_map.items()):
 -->
 
 In order for this kind of LTO to work, the LLVM linker plugin must be able to
-handle the LLVM bitcode produced by `rustc` and by compilers of all
+handle the LLVM bitcode produced by `redox` and by compilers of all
 interoperable languages. A good rule of thumb is to use an LLVM linker plugin
 whose version is at least as new as the newest compiler involved.
 
-Best results are achieved by using a `rustc` and LLVM compilers that are based
-on the exact same version of LLVM. One can use `rustc -vV` in order to view
-the LLVM used by a given `rustc` version. Note that the version number given
+Best results are achieved by using a `redox` and LLVM compilers that are based
+on the exact same version of LLVM. One can use `redox -vV` in order to view
+the LLVM used by a given `redox` version. Note that the version number given
 here is only an approximation as Rust sometimes uses unstable revisions of
 LLVM. However, the approximation is usually reliable.
 

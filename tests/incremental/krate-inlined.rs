@@ -7,8 +7,8 @@
 //@ ignore-backends: gcc
 
 #![allow(warnings)]
-#![feature(rustc_attrs)]
-#![rustc_partition_reused(module = "krate_inlined-x", cfg = "rpass2")]
+#![feature(redox_attrs)]
+#![redox_partition_reused(module = "krate_inlined-x", cfg = "rpass2")]
 
 fn main() {
     x::method();

@@ -7,21 +7,21 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{is_darwin, is_windows, rustc};
+use run_make_support::{is_darwin, is_windows, redox};
 
 fn main() {
-    rustc().input("bar.rs").run();
+    redox().input("bar.rs").run();
 
-    let mut rustc_foo = rustc();
-    rustc_foo.input("foo.rs");
-    let mut rustc_foo_panic = rustc();
-    rustc_foo_panic.input("foo.rs").panic("abort");
+    let mut redox_foo = redox();
+    redox_foo.input("foo.rs");
+    let mut redox_foo_panic = redox();
+    redox_foo_panic.input("foo.rs").panic("abort");
 
     if !is_darwin() && !is_windows() {
-        rustc_foo.arg("-Clink-args=-Wl,--no-undefined");
-        rustc_foo_panic.arg("-Clink-args=-Wl,--no-undefined");
+        redox_foo.arg("-Clink-args=-Wl,--no-undefined");
+        redox_foo_panic.arg("-Clink-args=-Wl,--no-undefined");
     }
 
-    rustc_foo.run();
-    rustc_foo_panic.run();
+    redox_foo.run();
+    redox_foo_panic.run();
 }

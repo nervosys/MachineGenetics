@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/15896
 
-// Regression test for #15896. It used to ICE rustc.
+// Regression test for #15896. It used to ICE redox.
 
 fn main() {
     enum R { REB(()) }

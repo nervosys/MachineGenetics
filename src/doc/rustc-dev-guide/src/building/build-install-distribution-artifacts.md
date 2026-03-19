@@ -21,7 +21,7 @@ by building from source. If so, you want to run this command:
    discussed in [here][create-rustup-toolchain].
 
    For example, if the toolchain you created is called "foo", you would then
-   invoke it with `rustc +foo ...` (where ... represents the rest of the arguments).
+   invoke it with `redox +foo ...` (where ... represents the rest of the arguments).
 
 Instead of installing Rust (and tools in your config file) globally, you can set `DESTDIR`
 environment variable to change the installation path. If you want to set installation paths

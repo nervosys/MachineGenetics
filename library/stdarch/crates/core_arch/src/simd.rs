@@ -3,14 +3,14 @@
 #![allow(non_camel_case_types)]
 
 #[inline(always)]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(crate) const unsafe fn simd_imax<T: Copy>(a: T, b: T) -> T {
     let mask: T = crate::intrinsics::simd::simd_gt(a, b);
     crate::intrinsics::simd::simd_select(mask, a, b)
 }
 
 #[inline(always)]
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(crate) const unsafe fn simd_imin<T: Copy>(a: T, b: T) -> T {
     let mask: T = crate::intrinsics::simd::simd_lt(a, b);
     crate::intrinsics::simd::simd_select(mask, a, b)
@@ -51,7 +51,7 @@ impl<T: SimdElement, const N: usize> Simd<T, N> {
     }
 
     #[inline]
-    #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+    #[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
     pub(crate) const fn splat(value: T) -> Self {
         unsafe { crate::intrinsics::simd::simd_splat(value) }
     }
@@ -59,7 +59,7 @@ impl<T: SimdElement, const N: usize> Simd<T, N> {
     /// Extract the element at position `index`. Note that `index` is not a constant so this
     /// operation is not efficient on most platforms. Use for testing only.
     #[inline]
-    #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+    #[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
     pub(crate) const fn extract_dyn(&self, index: usize) -> T {
         assert!(index < N);
         // SAFETY: self is a vector, T its element type.
@@ -85,7 +85,7 @@ impl<T: SimdElement, const N: usize> Clone for Simd<T, N> {
     }
 }
 
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 impl<T: SimdElement, const N: usize> const crate::cmp::PartialEq for Simd<T, N> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -179,7 +179,7 @@ impl<T: SimdElement, const N: usize> SimdM<T, N> {
     }
 
     #[inline]
-    #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+    #[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
     pub(crate) const fn splat(value: bool) -> Self {
         unsafe { crate::intrinsics::simd::simd_splat(value) }
     }
@@ -203,7 +203,7 @@ impl<T: SimdElement, const N: usize> Clone for SimdM<T, N> {
     }
 }
 
-#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+#[redox_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 impl<T: SimdElement, const N: usize> const crate::cmp::PartialEq for SimdM<T, N> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {

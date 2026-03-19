@@ -1,9 +1,9 @@
 #[doc = include_str!("panic.md")]
 #[macro_export]
-#[rustc_builtin_macro(core_panic)]
+#[redox_builtin_macro(core_panic)]
 #[allow_internal_unstable(edition_panic)]
 #[stable(feature = "core", since = "1.6.0")]
-#[rustc_diagnostic_item = "core_panic_macro"]
+#[redox_diagnostic_item = "core_panic_macro"]
 macro_rules! panic {
     // Expands to either `$crate::panic::panic_2015` or `$crate::panic::panic_2021`
     // depending on the edition of the caller.
@@ -37,7 +37,7 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "assert_eq_macro"]
+#[redox_diagnostic_item = "assert_eq_macro"]
 #[allow_internal_unstable(panic_internals)]
 macro_rules! assert_eq {
     ($left:expr, $right:expr $(,)?) => {
@@ -93,7 +93,7 @@ macro_rules! assert_eq {
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
-#[rustc_diagnostic_item = "assert_ne_macro"]
+#[redox_diagnostic_item = "assert_ne_macro"]
 #[allow_internal_unstable(panic_internals)]
 macro_rules! assert_ne {
     ($left:expr, $right:expr $(,)?) => {
@@ -166,7 +166,7 @@ macro_rules! assert_ne {
 /// ```
 #[stable(feature = "assert_matches", since = "1.95.0")]
 #[allow_internal_unstable(panic_internals)]
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 pub macro assert_matches {
     ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
         match $left {
@@ -229,8 +229,8 @@ pub macro assert_matches {
 /// };
 /// ```
 #[stable(feature = "cfg_select", since = "1.95.0")]
-#[rustc_diagnostic_item = "cfg_select"]
-#[rustc_builtin_macro]
+#[redox_diagnostic_item = "cfg_select"]
+#[redox_builtin_macro]
 pub macro cfg_select($($tt:tt)*) {
     /* compiler built-in */
 }
@@ -281,7 +281,7 @@ pub macro cfg_select($($tt:tt)*) {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "debug_assert_macro"]
+#[redox_diagnostic_item = "debug_assert_macro"]
 #[allow_internal_unstable(edition_panic)]
 macro_rules! debug_assert {
     ($($arg:tt)*) => {
@@ -312,7 +312,7 @@ macro_rules! debug_assert {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "debug_assert_eq_macro"]
+#[redox_diagnostic_item = "debug_assert_eq_macro"]
 macro_rules! debug_assert_eq {
     ($($arg:tt)*) => {
         if $crate::cfg!(debug_assertions) {
@@ -342,7 +342,7 @@ macro_rules! debug_assert_eq {
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
-#[rustc_diagnostic_item = "debug_assert_ne_macro"]
+#[redox_diagnostic_item = "debug_assert_ne_macro"]
 macro_rules! debug_assert_ne {
     ($($arg:tt)*) => {
         if $crate::cfg!(debug_assertions) {
@@ -393,7 +393,7 @@ macro_rules! debug_assert_ne {
 /// ```
 #[stable(feature = "assert_matches", since = "1.95.0")]
 #[allow_internal_unstable(assert_matches)]
-#[rustc_macro_transparency = "semiopaque"]
+#[redox_macro_transparency = "semiopaque"]
 pub macro debug_assert_matches($($arg:tt)*) {
     if $crate::cfg!(debug_assertions) {
         $crate::assert_matches!($($arg)*);
@@ -421,7 +421,7 @@ pub macro debug_assert_matches($($arg:tt)*) {
 /// ```
 #[macro_export]
 #[stable(feature = "matches_macro", since = "1.42.0")]
-#[rustc_diagnostic_item = "matches_macro"]
+#[redox_diagnostic_item = "matches_macro"]
 #[allow_internal_unstable(non_exhaustive_omitted_patterns_lint, stmt_expr_attributes)]
 macro_rules! matches {
     ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
@@ -598,7 +598,7 @@ macro_rules! r#try {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "write_macro"]
+#[redox_diagnostic_item = "write_macro"]
 macro_rules! write {
     ($dst:expr, $($arg:tt)*) => {
         $dst.write_fmt($crate::format_args!($($arg)*))
@@ -635,7 +635,7 @@ macro_rules! write {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "writeln_macro"]
+#[redox_diagnostic_item = "writeln_macro"]
 #[allow_internal_unstable(format_args_nl)]
 macro_rules! writeln {
     ($dst:expr $(,)?) => {
@@ -702,10 +702,10 @@ macro_rules! writeln {
 /// }
 /// ```
 #[macro_export]
-#[rustc_builtin_macro(unreachable)]
+#[redox_builtin_macro(unreachable)]
 #[allow_internal_unstable(edition_panic)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "unreachable_macro"]
+#[redox_diagnostic_item = "unreachable_macro"]
 macro_rules! unreachable {
     // Expands to either `$crate::panic::unreachable_2015` or `$crate::panic::unreachable_2021`
     // depending on the edition of the caller.
@@ -790,7 +790,7 @@ macro_rules! unreachable {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "unimplemented_macro"]
+#[redox_diagnostic_item = "unimplemented_macro"]
 #[allow_internal_unstable(panic_internals)]
 macro_rules! unimplemented {
     () => {
@@ -870,7 +870,7 @@ macro_rules! unimplemented {
 /// ```
 #[macro_export]
 #[stable(feature = "todo_macro", since = "1.40.0")]
-#[rustc_diagnostic_item = "todo_macro"]
+#[redox_diagnostic_item = "todo_macro"]
 #[allow_internal_unstable(panic_internals)]
 macro_rules! todo {
     () => {
@@ -922,7 +922,7 @@ pub(crate) mod builtin {
     /// compile_error!("Either feature \"foo\" or \"bar\" must be enabled for this crate.");
     /// ```
     #[stable(feature = "compile_error_macro", since = "1.20.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! compile_error {
         ($msg:expr $(,)?) => {{ /* compiler built-in */ }};
@@ -987,10 +987,10 @@ pub(crate) mod builtin {
     /// [extended]: ../reference/destructors.html#temporary-lifetime-extension
     /// [Reference]: ../reference/destructors.html#extending-based-on-expressions
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "format_args_macro"]
+    #[redox_diagnostic_item = "format_args_macro"]
     #[allow_internal_unsafe]
     #[allow_internal_unstable(fmt_internals, fmt_arguments_from_str)]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! format_args {
         ($fmt:expr) => {{ /* compiler built-in */ }};
@@ -1004,7 +1004,7 @@ pub(crate) mod builtin {
     /// This macro will be removed once `format_args` is allowed in const contexts.
     #[unstable(feature = "const_format_args", issue = "none")]
     #[allow_internal_unstable(fmt_internals, fmt_arguments_from_str)]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! const_format_args {
         ($fmt:expr) => {{ /* compiler built-in */ }};
@@ -1019,7 +1019,7 @@ pub(crate) mod builtin {
                   language use and is subject to change"
     )]
     #[allow_internal_unstable(fmt_internals, fmt_arguments_from_str)]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[doc(hidden)]
     #[macro_export]
     macro_rules! format_args_nl {
@@ -1061,9 +1061,9 @@ pub(crate) mod builtin {
     /// error: what's that?!
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
-    #[rustc_diagnostic_item = "env_macro"] // useful for external lints
+    #[redox_diagnostic_item = "env_macro"] // useful for external lints
     macro_rules! env {
         ($name:expr $(,)?) => {{ /* compiler built-in */ }};
         ($name:expr, $error_msg:expr $(,)?) => {{ /* compiler built-in */ }};
@@ -1094,9 +1094,9 @@ pub(crate) mod builtin {
     /// println!("the secret key might be: {key:?}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
-    #[rustc_diagnostic_item = "option_env_macro"] // useful for external lints
+    #[redox_diagnostic_item = "option_env_macro"] // useful for external lints
     macro_rules! option_env {
         ($name:expr $(,)?) => {{ /* compiler built-in */ }};
     }
@@ -1122,7 +1122,7 @@ pub(crate) mod builtin {
     /// # }
     /// ```
     #[unstable(feature = "concat_bytes", issue = "87555")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! concat_bytes {
         ($($e:literal),+ $(,)?) => {{ /* compiler built-in */ }};
@@ -1144,8 +1144,8 @@ pub(crate) mod builtin {
     /// assert_eq!(s, "test10btrue");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
-    #[rustc_diagnostic_item = "macro_concat"]
+    #[redox_builtin_macro]
+    #[redox_diagnostic_item = "macro_concat"]
     #[macro_export]
     macro_rules! concat {
         ($($e:expr),* $(,)?) => {{ /* compiler built-in */ }};
@@ -1170,7 +1170,7 @@ pub(crate) mod builtin {
     /// println!("defined on line: {current_line}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! line {
         () => {
@@ -1209,7 +1209,7 @@ pub(crate) mod builtin {
     /// assert_ne!(b, c);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! column {
         () => {
@@ -1247,7 +1247,7 @@ pub(crate) mod builtin {
     /// println!("defined in file: {this_file}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! file {
         () => {
@@ -1271,7 +1271,7 @@ pub(crate) mod builtin {
     /// assert_eq!(one_plus_one, "1 + 1");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! stringify {
         ($($t:tt)*) => {
@@ -1312,9 +1312,9 @@ pub(crate) mod builtin {
     ///
     /// Compiling 'main.rs' and running the resulting binary will print "adiós".
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
-    #[rustc_diagnostic_item = "include_str_macro"]
+    #[redox_diagnostic_item = "include_str_macro"]
     macro_rules! include_str {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
@@ -1352,9 +1352,9 @@ pub(crate) mod builtin {
     ///
     /// Compiling 'main.rs' and running the resulting binary will print "adiós".
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
-    #[rustc_diagnostic_item = "include_bytes_macro"]
+    #[redox_diagnostic_item = "include_bytes_macro"]
     macro_rules! include_bytes {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
@@ -1377,7 +1377,7 @@ pub(crate) mod builtin {
     /// test::foo();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! module_path {
         () => {
@@ -1410,7 +1410,7 @@ pub(crate) mod builtin {
     /// };
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! cfg {
         ($($cfg:tt)*) => {
@@ -1479,9 +1479,9 @@ pub(crate) mod builtin {
     /// Compiling 'main.rs' and running the resulting binary will print
     /// "🙈🙊🙉🙈🙊🙉".
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
-    #[rustc_diagnostic_item = "include_macro"] // useful for external lints
+    #[redox_diagnostic_item = "include_macro"] // useful for external lints
     macro_rules! include {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
@@ -1547,9 +1547,9 @@ pub(crate) mod builtin {
     /// more efficient if we have more output floats marked as `Dual` than input floats.
     /// Related information can also be found under the term "Vector-Jacobian product" (VJP).
     #[unstable(feature = "autodiff", issue = "124509")]
-    #[allow_internal_unstable(rustc_attrs)]
+    #[allow_internal_unstable(redox_attrs)]
     #[allow_internal_unstable(core_intrinsics)]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro autodiff_forward($item:item) {
         /* compiler built-in */
     }
@@ -1620,9 +1620,9 @@ pub(crate) mod builtin {
     ///
     /// Related information can also be found under the term "Jacobian-Vector Product" (JVP).
     #[unstable(feature = "autodiff", issue = "124509")]
-    #[allow_internal_unstable(rustc_attrs)]
+    #[allow_internal_unstable(redox_attrs)]
     #[allow_internal_unstable(core_intrinsics)]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro autodiff_reverse($item:item) {
         /* compiler built-in */
     }
@@ -1675,9 +1675,9 @@ pub(crate) mod builtin {
     /// assert!(a + b == 30, "a = {}, b = {}", a, b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
-    #[rustc_diagnostic_item = "assert_macro"]
+    #[redox_diagnostic_item = "assert_macro"]
     #[allow_internal_unstable(
         core_intrinsics,
         panic_internals,
@@ -1695,7 +1695,7 @@ pub(crate) mod builtin {
         issue = "29598",
         reason = "`log_syntax!` is not stable enough for use and is subject to change"
     )]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! log_syntax {
         ($($arg:tt)*) => {
@@ -1709,7 +1709,7 @@ pub(crate) mod builtin {
         issue = "29598",
         reason = "`trace_macros` is not stable enough for use and is subject to change"
     )]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[macro_export]
     macro_rules! trace_macros {
         (true) => {{ /* compiler built-in */ }};
@@ -1722,7 +1722,7 @@ pub(crate) mod builtin {
     ///
     /// [the reference]: ../../../reference/attributes/derive.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro derive($item:item) {
         /* compiler built-in */
     }
@@ -1734,7 +1734,7 @@ pub(crate) mod builtin {
     ///
     /// [the reference]: ../../../reference/attributes/derive.html
     #[unstable(feature = "derive_const", issue = "118304")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro derive_const($item:item) {
         /* compiler built-in */
     }
@@ -1745,8 +1745,8 @@ pub(crate) mod builtin {
     ///
     /// [the reference]: ../../../reference/attributes/testing.html#the-test-attribute
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow_internal_unstable(test, rustc_attrs, coverage_attribute)]
-    #[rustc_builtin_macro]
+    #[allow_internal_unstable(test, redox_attrs, coverage_attribute)]
+    #[redox_builtin_macro]
     pub macro test($item:item) {
         /* compiler built-in */
     }
@@ -1757,8 +1757,8 @@ pub(crate) mod builtin {
         issue = "50297",
         reason = "`bench` is a part of custom test frameworks which are unstable"
     )]
-    #[allow_internal_unstable(test, rustc_attrs, coverage_attribute)]
-    #[rustc_builtin_macro]
+    #[allow_internal_unstable(test, redox_attrs, coverage_attribute)]
+    #[redox_builtin_macro]
     pub macro bench($item:item) {
         /* compiler built-in */
     }
@@ -1769,8 +1769,8 @@ pub(crate) mod builtin {
         issue = "50297",
         reason = "custom test frameworks are an unstable feature"
     )]
-    #[allow_internal_unstable(test, rustc_attrs)]
-    #[rustc_builtin_macro]
+    #[allow_internal_unstable(test, redox_attrs)]
+    #[redox_builtin_macro]
     pub macro test_case($item:item) {
         /* compiler built-in */
     }
@@ -1779,8 +1779,8 @@ pub(crate) mod builtin {
     ///
     /// See also [`std::alloc::GlobalAlloc`](../../../std/alloc/trait.GlobalAlloc.html).
     #[stable(feature = "global_allocator", since = "1.28.0")]
-    #[allow_internal_unstable(rustc_attrs, ptr_alignment_type)]
-    #[rustc_builtin_macro]
+    #[allow_internal_unstable(redox_attrs, ptr_alignment_type)]
+    #[redox_builtin_macro]
     pub macro global_allocator($item:item) {
         /* compiler built-in */
     }
@@ -1792,7 +1792,7 @@ pub(crate) mod builtin {
     /// invoked on a reference to the return value.
     #[unstable(feature = "contracts", issue = "128044")]
     #[allow_internal_unstable(contracts_internals)]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro contracts_ensures($item:item) {
         /* compiler built-in */
     }
@@ -1804,7 +1804,7 @@ pub(crate) mod builtin {
     /// function's formal parameters
     #[unstable(feature = "contracts", issue = "128044")]
     #[allow_internal_unstable(contracts_internals)]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro contracts_requires($item:item) {
         /* compiler built-in */
     }
@@ -1813,8 +1813,8 @@ pub(crate) mod builtin {
     ///
     /// See also [`std::alloc::handle_alloc_error`](../../../std/alloc/fn.handle_alloc_error.html).
     #[unstable(feature = "alloc_error_handler", issue = "51540")]
-    #[allow_internal_unstable(rustc_attrs)]
-    #[rustc_builtin_macro]
+    #[allow_internal_unstable(redox_attrs)]
+    #[redox_builtin_macro]
     pub macro alloc_error_handler($item:item) {
         /* compiler built-in */
     }
@@ -1825,7 +1825,7 @@ pub(crate) mod builtin {
         issue = "64797",
         reason = "`cfg_accessible` is not fully implemented"
     )]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro cfg_accessible($item:item) {
         /* compiler built-in */
     }
@@ -1836,7 +1836,7 @@ pub(crate) mod builtin {
         issue = "82679",
         reason = "`cfg_eval` is a recently implemented feature"
     )]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro cfg_eval($($tt:tt)*) {
         /* compiler built-in */
     }
@@ -1850,7 +1850,7 @@ pub(crate) mod builtin {
         issue = "63063",
         reason = "`type_alias_impl_trait` has open design concerns"
     )]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro define_opaque($($tt:tt)*) {
         /* compiler built-in */
     }
@@ -1883,7 +1883,7 @@ pub(crate) mod builtin {
     // Note that the macro is in a different module than the `From` trait,
     // to avoid triggering an unstable feature being used if someone imports
     // `std::convert::From`.
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[unstable(feature = "derive_from", issue = "144889")]
     pub macro From($item: item) {
         /* compiler built-in */
@@ -1892,8 +1892,8 @@ pub(crate) mod builtin {
     /// Externally Implementable Item: Defines an attribute macro that can override the item
     /// this is applied to.
     #[unstable(feature = "extern_item_impls", issue = "125418")]
-    #[rustc_builtin_macro]
-    #[allow_internal_unstable(eii_internals, decl_macro, rustc_attrs)]
+    #[redox_builtin_macro]
+    #[allow_internal_unstable(eii_internals, decl_macro, redox_attrs)]
     pub macro eii($item:item) {
         /* compiler built-in */
     }
@@ -1901,15 +1901,15 @@ pub(crate) mod builtin {
     /// Unsafely Externally Implementable Item: Defines an unsafe attribute macro that can override
     /// the item this is applied to.
     #[unstable(feature = "extern_item_impls", issue = "125418")]
-    #[rustc_builtin_macro]
-    #[allow_internal_unstable(eii_internals, decl_macro, rustc_attrs)]
+    #[redox_builtin_macro]
+    #[allow_internal_unstable(eii_internals, decl_macro, redox_attrs)]
     pub macro unsafe_eii($item:item) {
         /* compiler built-in */
     }
 
     /// Impl detail of EII
     #[unstable(feature = "eii_internals", issue = "none")]
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro eii_declaration($item:item) {
         /* compiler built-in */
     }

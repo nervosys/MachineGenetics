@@ -1,5 +1,5 @@
 //@ignore-target: windows # Windows uses a different unwinding mechanism
-#![feature(core_intrinsics, panic_unwind, rustc_attrs)]
+#![feature(core_intrinsics, panic_unwind, redox_attrs)]
 #![allow(internal_features)]
 
 //! Unwinding using `_Unwind_RaiseException`
@@ -79,7 +79,7 @@ fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
         }
     }
 
-    #[rustc_nounwind]
+    #[redox_nounwind]
     fn do_catch<F: FnOnce() -> R, R>(data: *mut u8, payload: *mut u8) {
         unsafe {
             let obj = rust_panic_cleanup(payload);

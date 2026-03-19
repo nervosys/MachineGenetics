@@ -1,7 +1,7 @@
 //@ edition:2021
 //@ check-pass
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(dropping_references)]
 
 fn main() {

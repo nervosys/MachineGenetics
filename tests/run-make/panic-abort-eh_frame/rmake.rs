@@ -11,10 +11,10 @@
 // FIXME(Oneirical): the DW_CFA symbol appears on Windows-gnu, because uwtable
 // is forced to true on Windows targets (see #128136).
 
-use run_make_support::{llvm_objdump, rustc};
+use run_make_support::{llvm_objdump, redox};
 
 fn main() {
-    rustc()
+    redox()
         .input("foo.rs")
         .crate_type("lib")
         .emit("obj=foo.o")

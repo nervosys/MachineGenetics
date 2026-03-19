@@ -3,7 +3,7 @@
 //@ ignore-spirv
 //@ reference: attributes.codegen.naked.body
 
-#![feature(asm_unwind, linkage, rustc_attrs)]
+#![feature(asm_unwind, linkage, redox_attrs)]
 #![crate_type = "lib"]
 
 use std::arch::{asm, naked_asm};
@@ -227,9 +227,9 @@ pub extern "C" fn compatible_linkage() {
     naked_asm!("", options(raw));
 }
 
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 #[unsafe(naked)]
-pub extern "C" fn rustc_std_internal_symbol() {
+pub extern "C" fn redox_std_internal_symbol() {
     naked_asm!("", options(raw));
 }
 

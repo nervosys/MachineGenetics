@@ -1,8 +1,8 @@
-use rustc_ast::ast;
-use rustc_ast::token;
-use rustc_ast::tokenstream::TokenStream;
-use rustc_parse::exp;
-use rustc_span::symbol;
+use redox_ast::ast;
+use redox_ast::token;
+use redox_ast::tokenstream::TokenStream;
+use redox_parse::exp;
+use redox_span::symbol;
 
 use crate::rewrite::RewriteContext;
 
@@ -35,7 +35,7 @@ pub(crate) fn parse_lazy_static(
         // Parse a `lazy_static!` item.
         // FIXME: These `eat_*` calls should be converted to `parse_or` to avoid
         // silently formatting malformed lazy-statics.
-        let vis = parse_or!(parse_visibility, rustc_parse::parser::FollowedByType::No);
+        let vis = parse_or!(parse_visibility, redox_parse::parser::FollowedByType::No);
         let _ = parser.eat_keyword(exp!(Static));
         let _ = parser.eat_keyword(exp!(Ref));
         let id = parse_or!(parse_ident);

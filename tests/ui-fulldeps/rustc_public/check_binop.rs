@@ -5,20 +5,20 @@
 //@ ignore-cross-compile
 //@ ignore-remote
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_hir;
-extern crate rustc_middle;
+extern crate redox_hir;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
+extern crate redox_driver;
+extern crate redox_interface;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
-use rustc_public::mir::mono::Instance;
-use rustc_public::mir::visit::{Location, MirVisitor};
-use rustc_public::mir::{LocalDecl, Rvalue, Statement, StatementKind, Terminator, TerminatorKind};
-use rustc_public::ty::{RigidTy, TyKind};
+use redox_public::mir::mono::Instance;
+use redox_public::mir::visit::{Location, MirVisitor};
+use redox_public::mir::{LocalDecl, Rvalue, Statement, StatementKind, Terminator, TerminatorKind};
+use redox_public::ty::{RigidTy, TyKind};
 use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::io::Write;
@@ -27,7 +27,7 @@ use std::ops::ControlFlow;
 /// This function tests that we can correctly get type information from binary operations.
 fn test_binops() -> ControlFlow<()> {
     // Find items in the local crate.
-    let items = rustc_public::all_local_items();
+    let items = redox_public::all_local_items();
     let mut instances =
         items.into_iter().map(|item| Instance::try_from(item).unwrap()).collect::<Vec<_>>();
     while let Some(instance) = instances.pop() {
@@ -81,7 +81,7 @@ impl<'a> MirVisitor for Visitor<'a> {
 fn main() {
     let path = "binop_input.rs";
     generate_input(&path).unwrap();
-    let args = &["rustc".to_string(), "--crate-type=lib".to_string(), path.to_string()];
+    let args = &["redox".to_string(), "--crate-type=lib".to_string(), path.to_string()];
     run!(args, test_binops).unwrap();
 }
 

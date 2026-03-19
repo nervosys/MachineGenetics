@@ -8,11 +8,11 @@
 
 //@ only-unix Windows sysroots seem to not expose this dependency
 //@ ignore-emscripten neither does Emscripten
-//@ revisions: default rustc_private_enabled
+//@ revisions: default redox_private_enabled
 
-// Enabling `rustc_private` should `std`'s dependencies accessible, so they should show up
+// Enabling `redox_private` should `std`'s dependencies accessible, so they should show up
 // in diagnostics. NB: not all diagnostics are affected by this.
-#![cfg_attr(rustc_private_enabled, feature(rustc_private))]
+#![cfg_attr(redox_private_enabled, feature(redox_private))]
 #![crate_type = "lib"]
 
 trait Trait { type Bar; }
@@ -21,7 +21,7 @@ trait Trait { type Bar; }
 // present in diagnostics (it is a dependency of the compiler).
 type AssociatedTy = dyn Trait<ExpressionStack = i32, Bar = i32>;
 //~^ ERROR associated type `ExpressionStack` not found
-//[rustc_private_enabled]~| NOTE there is an associated type `ExpressionStack` in the trait `gimli::read::op::EvaluationStorage`
+//[redox_private_enabled]~| NOTE there is an associated type `ExpressionStack` in the trait `gimli::read::op::EvaluationStorage`
 
 // Attempt to get a suggestion for `hashbrown::Equivalent`
 trait Trait2<K>: Equivalent<K> {}

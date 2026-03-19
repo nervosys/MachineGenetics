@@ -8,7 +8,7 @@
 #![no_std]
 #![panic_runtime]
 #![feature(panic_runtime)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 pub struct DropMe;
 
@@ -20,7 +20,7 @@ pub fn test(_: DropMe) {
     unreachable!();
 }
 
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 pub unsafe extern "C" fn rust_eh_personality(
     _version: i32,
     _actions: i32,

@@ -13,8 +13,8 @@ method, e.g. `our_fancy_method`, by performing a pattern match on
 the [`ExprKind`] that we can access from `expr.kind`:
 
 ```rust
-use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass};
+use redox_hir as hir;
+use redox_lint::{LateContext, LateLintPass};
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::sym;
 
@@ -42,7 +42,7 @@ matching with `MethodCall` in case the reader wishes to explore more.
 
 New symbols such as `our_fancy_method` need to be added to the `clippy_utils::sym` module.
 This module extends the list of symbols already provided by the compiler crates
-in `rustc_span::sym`.
+in `redox_span::sym`.
 
 If a trait defines only one method (such as the `std::ops::Deref` trait, which only has the `deref()` method),
 one might be tempted to omit the method name check. This would work, but is not always advisable because:
@@ -67,8 +67,8 @@ Let us take a look at how we might check for the implementation of
 ```rust
 use clippy_utils::{return_ty, sym};
 use clippy_utils::res::MaybeDef;
-use rustc_hir::{ImplItem, ImplItemKind};
-use rustc_lint::{LateContext, LateLintPass};
+use redox_hir::{ImplItem, ImplItemKind};
+use redox_lint::{LateContext, LateLintPass};
 
 impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
@@ -87,8 +87,8 @@ impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
 }
 ```
 
-[`check_impl_item`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_lint/trait.LateLintPass.html#method.check_impl_item
-[`ExprKind`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_hir/hir/enum.ExprKind.html
-[`ImplItem`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_hir/hir/struct.ImplItem.html
-[`LateLintPass`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_lint/trait.LateLintPass.html
-[`MethodCall`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_hir/hir/enum.ExprKind.html#variant.MethodCall
+[`check_impl_item`]: https://doc.rust-lang.org/stable/nightly-redox/redox_lint/trait.LateLintPass.html#method.check_impl_item
+[`ExprKind`]: https://doc.rust-lang.org/beta/nightly-redox/redox_hir/hir/enum.ExprKind.html
+[`ImplItem`]: https://doc.rust-lang.org/stable/nightly-redox/redox_hir/hir/struct.ImplItem.html
+[`LateLintPass`]: https://doc.rust-lang.org/stable/nightly-redox/redox_lint/trait.LateLintPass.html
+[`MethodCall`]: https://doc.rust-lang.org/beta/nightly-redox/redox_hir/hir/enum.ExprKind.html#variant.MethodCall

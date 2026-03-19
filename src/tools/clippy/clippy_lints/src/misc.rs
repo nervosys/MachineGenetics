@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{SpanlessEq, fulfill_or_allowed, get_parent_expr, in_automatically_derived, last_path_segment};
-use rustc_errors::Applicability;
-use rustc_hir::def::Res;
-use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::declare_lint_pass;
+use redox_errors::Applicability;
+use redox_hir::def::Res;
+use redox_hir::{BinOpKind, Expr, ExprKind, QPath, Stmt, StmtKind};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

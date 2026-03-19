@@ -25,7 +25,7 @@ Functions using the `"gpu-kernel"` calling convention are kernel entrypoints and
 
 ## Building the target
 
-The target is included in rustc.
+The target is included in redox.
 
 ## Building Rust programs
 
@@ -66,7 +66,7 @@ lto = true # LTO must be explicitly enabled for now
 lto = true
 ```
 
-The target-cpu must be from the list [supported by LLVM] (or printed with `rustc --target amdgcn-amd-amdhsa --print target-cpus`).
+The target-cpu must be from the list [supported by LLVM] (or printed with `redox --target amdgcn-amd-amdhsa --print target-cpus`).
 The GPU version on the current system can be found e.g. with [`rocminfo`].
 For a GPU series that has xnack support but the target GPU has not, the `-xnack-support` target-feature needs to be enabled.
 I.e. if the ISA info as printed with [`rocminfo`] says something about `xnack-`, e.g. `gfx1010:xnack-`, add `-Ctarget-feature=-xnack-support` to the rustflags.

@@ -1,6 +1,6 @@
 //! Read `.cargo/config.toml` as a TOML table
 use paths::{AbsPath, Utf8Path, Utf8PathBuf};
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use toml::{
     Spanned,
     de::{DeTable, DeValue},

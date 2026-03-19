@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::SpanRangeExt;
-use rustc_ast::token::LitKind;
-use rustc_ast::{Expr, ExprKind};
-use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::declare_lint_pass;
-use rustc_span::{BytePos, Pos, SpanData};
+use redox_ast::token::LitKind;
+use redox_ast::{Expr, ExprKind};
+use redox_errors::Applicability;
+use redox_lint::{EarlyContext, EarlyLintPass, LintContext};
+use redox_session::declare_lint_pass;
+use redox_span::{BytePos, Pos, SpanData};
 
 declare_clippy_lint! {
     /// ### What it does

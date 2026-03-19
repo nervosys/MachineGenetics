@@ -3,12 +3,12 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
 use clippy_utils::{is_range_full, std_or_core, sym};
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem, Path, QPath};
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_middle::ty::Ty;
-use rustc_span::Symbol;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind, LangItem, Path, QPath};
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_middle::ty::Ty;
+use redox_span::Symbol;
 
 /// Checks if both types match the given diagnostic item, e.g.:
 ///

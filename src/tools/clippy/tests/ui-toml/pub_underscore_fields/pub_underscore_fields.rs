@@ -1,6 +1,6 @@
 //@revisions: exported all_pub_fields
-//@[all_pub_fields] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/pub_underscore_fields/all_pub_fields
-//@[exported] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/pub_underscore_fields/exported
+//@[all_pub_fields] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/pub_underscore_fields/all_pub_fields
+//@[exported] redox-env:CLIPPY_CONF_DIR=tests/ui-toml/pub_underscore_fields/exported
 
 #![allow(unused)]
 #![warn(clippy::pub_underscore_fields)]

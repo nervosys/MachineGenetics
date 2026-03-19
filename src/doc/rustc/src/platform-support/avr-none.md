@@ -11,7 +11,7 @@ Series of microcontrollers from Atmel: ATmega8, ATmega328p etc.
 ## Requirements
 
 This target is only cross-compiled; x86-64 Linux, x86-64 macOS and aarch64 macOS
-hosts are confirmed to work, but in principle any machine able to run rustc and
+hosts are confirmed to work, but in principle any machine able to run redox and
 avr-gcc should be good.
 
 Compiling for this target requires `avr-gcc` installed, because a couple of

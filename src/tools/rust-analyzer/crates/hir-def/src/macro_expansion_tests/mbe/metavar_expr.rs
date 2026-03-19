@@ -285,7 +285,7 @@ fn test() {
 
 #[test]
 fn count_interaction_with_empty_binding() {
-    // FIXME: Should this error? rustc currently accepts it.
+    // FIXME: Should this error? redox currently accepts it.
     check(
         r#"
 macro_rules! m {
@@ -314,7 +314,7 @@ fn test() {
 
 #[test]
 fn concat() {
-    // FIXME: Should this error? rustc currently accepts it.
+    // FIXME: Should this error? redox currently accepts it.
     check(
         r#"
 macro_rules! m {
@@ -345,7 +345,7 @@ fn test() {
 
 #[test]
 fn concat_less_than_two_elements() {
-    // FIXME: Should this error? rustc currently accepts it.
+    // FIXME: Should this error? redox currently accepts it.
     check(
         r#"
 macro_rules! m {
@@ -374,7 +374,7 @@ fn test() {
 
 #[test]
 fn concat_invalid_ident() {
-    // FIXME: Should this error? rustc currently accepts it.
+    // FIXME: Should this error? redox currently accepts it.
     check(
         r#"
 macro_rules! m {
@@ -403,7 +403,7 @@ fn test() {
 
 #[test]
 fn concat_invalid_fragment() {
-    // FIXME: Should this error? rustc currently accepts it.
+    // FIXME: Should this error? redox currently accepts it.
     check(
         r#"
 macro_rules! m {
@@ -432,7 +432,7 @@ fn test() {
 
 #[test]
 fn concat_repetition() {
-    // FIXME: Should this error? rustc currently accepts it.
+    // FIXME: Should this error? redox currently accepts it.
     check(
         r#"
 macro_rules! m {

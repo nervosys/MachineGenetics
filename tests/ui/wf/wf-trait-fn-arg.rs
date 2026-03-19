@@ -4,7 +4,7 @@
 
 // Check that we test WF conditions for fn arguments in a trait definition.
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
 

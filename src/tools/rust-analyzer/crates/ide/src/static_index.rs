@@ -568,7 +568,7 @@ struct VendoredLibrary(i32);
         check_all_ranges(
             r#"
 //- minicore:derive
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 //^^^^^^^^^^^^^^^^^^^
 pub macro Copy {}
         //^^^^

@@ -706,7 +706,7 @@ impl dyn Error {
     /// Attempts to downcast the box to a concrete type.
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error>> {
         if self.is::<T>() {
             unsafe {
@@ -723,7 +723,7 @@ impl dyn Error + Send {
     /// Attempts to downcast the box to a concrete type.
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error + Send>> {
         let err: Box<dyn Error> = self;
         <dyn Error>::downcast(err).map_err(|s| unsafe {
@@ -737,7 +737,7 @@ impl dyn Error + Send + Sync {
     /// Attempts to downcast the box to a concrete type.
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<Self>> {
         let err: Box<dyn Error> = self;
         <dyn Error>::downcast(err).map_err(|s| unsafe {

@@ -1,5 +1,5 @@
 //@ run-pass
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 // The shim that is generated for a function annotated with `#[track_caller]` should not inherit
 // attributes that modify its symbol name. Failing to remove these attributes from the shim
@@ -15,7 +15,7 @@ pub fn foo() {}
 #[track_caller]
 pub fn bar() {}
 
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 #[track_caller]
 pub fn baz() {}
 

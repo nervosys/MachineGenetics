@@ -12,23 +12,23 @@
 //@ ignore-beta
 //@ ignore-stable
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![crate_type = "lib"]
 
-extern crate rustc_span;
-use rustc_span::symbol::Ident;
-use rustc_span::Span;
+extern crate redox_span;
+use redox_span::symbol::Ident;
+use redox_span::Span;
 
-extern crate rustc_macros;
-use rustc_macros::{Diagnostic, Subdiagnostic};
+extern crate redox_macros;
+use redox_macros::{Diagnostic, Subdiagnostic};
 
-extern crate rustc_middle;
-use rustc_middle::ty::Ty;
+extern crate redox_middle;
+use redox_middle::ty::Ty;
 
-extern crate rustc_errors;
-use rustc_errors::{Applicability, DiagMessage, ErrCode, MultiSpan};
+extern crate redox_errors;
+use redox_errors::{Applicability, DiagMessage, ErrCode, MultiSpan};
 
-extern crate rustc_session;
+extern crate redox_session;
 
 extern crate core;
 

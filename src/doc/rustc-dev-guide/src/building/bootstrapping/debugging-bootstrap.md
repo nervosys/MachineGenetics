@@ -9,7 +9,7 @@ Bootstrap has extensive unstructured logging. Most of it is gated behind the `--
 If you want to see verbose output of executed Cargo commands and other kinds of detailed logs, pass `-v` or `-vv` when invoking bootstrap. Note that the logs are unstructured and may be overwhelming.
 
 ```
-$ ./x dist rustc --dry-run -vv
+$ ./x dist redox --dry-run -vv
 learning about cargo
 running: RUSTC_BOOTSTRAP="1" "/home/jyn/src/rust2/build/x86_64-unknown-linux-gnu/stage0/bin/cargo" "metadata" "--format-version" "1" "--no-deps" "--manifest-path" "/home/jyn/src/rust2/Cargo.toml" (failure_mode=Exit) (created at src/bootstrap/src/core/metadata.rs:81:25, executed at src/bootstrap/src/core/metadata.rs:92:50)
 running: RUSTC_BOOTSTRAP="1" "/home/jyn/src/rust2/build/x86_64-unknown-linux-gnu/stage0/bin/cargo" "metadata" "--format-version" "1" "--no-deps" "--manifest-path" "/home/jyn/src/rust2/library/Cargo.toml" (failure_mode=Exit) (created at src/bootstrap/src/core/metadata.rs:81:25, executed at src/bootstrap/src/core/metadata.rs:92:50)

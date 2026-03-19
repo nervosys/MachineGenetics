@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{is_expn_of, peel_blocks, sym};
-use rustc_ast::ast::LitKind;
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::{Span, Spanned};
+use redox_ast::ast::LitKind;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::{Span, Spanned};
 
 declare_clippy_lint! {
     /// ### What it does

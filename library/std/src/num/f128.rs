@@ -47,7 +47,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powf(self, n: f128) -> f128 {
@@ -79,7 +79,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp(self) -> f128 {
@@ -109,7 +109,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp2(self) -> f128 {
@@ -154,7 +154,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn ln(self) -> f128 {
@@ -201,7 +201,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log(self, base: f128) -> f128 {
@@ -244,7 +244,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log2(self) -> f128 {
@@ -287,7 +287,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log10(self) -> f128 {
@@ -321,7 +321,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn cbrt(self) -> f128 {
@@ -359,7 +359,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn hypot(self, other: f128) -> f128 {
@@ -388,7 +388,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sin(self) -> f128 {
@@ -417,7 +417,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn cos(self) -> f128 {
@@ -448,7 +448,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn tan(self) -> f128 {
@@ -484,7 +484,7 @@ impl f128 {
     /// ```
     #[inline]
     #[doc(alias = "arcsin")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn asin(self) -> f128 {
@@ -520,7 +520,7 @@ impl f128 {
     /// ```
     #[inline]
     #[doc(alias = "arccos")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn acos(self) -> f128 {
@@ -555,7 +555,7 @@ impl f128 {
     /// ```
     #[inline]
     #[doc(alias = "arctan")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn atan(self) -> f128 {
@@ -604,7 +604,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn atan2(self, other: f128) -> f128 {
@@ -641,7 +641,7 @@ impl f128 {
     /// ```
     #[inline]
     #[doc(alias = "sincos")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     pub fn sin_cos(self) -> (f128, f128) {
         (self.sin(), self.cos())
@@ -675,7 +675,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp_m1(self) -> f128 {
@@ -725,7 +725,7 @@ impl f128 {
     #[inline]
     #[doc(alias = "log1p")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     pub fn ln_1p(self) -> f128 {
         cmath::log1pf128(self)
@@ -760,7 +760,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sinh(self) -> f128 {
@@ -796,7 +796,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn cosh(self) -> f128 {
@@ -832,7 +832,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn tanh(self) -> f128 {
@@ -863,7 +863,7 @@ impl f128 {
     /// ```
     #[inline]
     #[doc(alias = "arcsinh")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn asinh(self) -> f128 {
@@ -896,7 +896,7 @@ impl f128 {
     /// ```
     #[inline]
     #[doc(alias = "arccosh")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn acosh(self) -> f128 {
@@ -931,7 +931,7 @@ impl f128 {
     /// ```
     #[inline]
     #[doc(alias = "arctanh")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn atanh(self) -> f128 {
@@ -964,7 +964,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     // #[unstable(feature = "float_gamma", issue = "99842")]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -1000,7 +1000,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     // #[unstable(feature = "float_gamma", issue = "99842")]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -1041,7 +1041,7 @@ impl f128 {
     /// assert!((within_standard_deviations(3.0) - 99.730).abs() < 0.01);
     /// # }
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "f128", issue = "116909")]
     // #[unstable(feature = "float_erf", issue = "136321")]
@@ -1075,7 +1075,7 @@ impl f128 {
     /// assert!(abs_difference <= f128::EPSILON);
     /// # }
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "f128", issue = "116909")]
     // #[unstable(feature = "float_erf", issue = "136321")]

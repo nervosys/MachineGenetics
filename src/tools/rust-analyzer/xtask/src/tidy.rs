@@ -241,7 +241,7 @@ impl TidyDocs {
             return;
         }
 
-        if is_ported_from_rustc(path, &["crates/hir-ty/src/next_solver"]) {
+        if is_ported_from_redox(path, &["crates/hir-ty/src/next_solver"]) {
             return;
         }
 
@@ -300,7 +300,7 @@ fn is_exclude_dir(p: &Path, dirs_to_exclude: &[&str]) -> bool {
         .any(|it| dirs_to_exclude.contains(&it))
 }
 
-fn is_ported_from_rustc(p: &Path, dirs_to_exclude: &[&str]) -> bool {
+fn is_ported_from_redox(p: &Path, dirs_to_exclude: &[&str]) -> bool {
     let p = p.strip_prefix(project_root()).unwrap();
     dirs_to_exclude.iter().any(|exclude| p.starts_with(exclude))
 }

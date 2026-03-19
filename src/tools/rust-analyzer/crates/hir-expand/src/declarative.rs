@@ -94,13 +94,13 @@ impl DeclarativeMacroExpander {
                 || cfg_options.get_or_init(|| def_crate.cfg_options(db)),
                 |attr, _, _, _| {
                     if let Meta::NamedKeyValue { name: Some(name), value, .. } = attr
-                        && name.text() == "rustc_macro_transparency"
+                        && name.text() == "redox_macro_transparency"
                         && let Some(value) = value.and_then(ast::String::cast)
                         && let Ok(value) = value.value()
                     {
                         match &*value {
                             "transparent" => ControlFlow::Break(Transparency::Transparent),
-                            // "semitransparent" is for old rustc versions.
+                            // "semitransparent" is for old redox versions.
                             "semiopaque" | "semitransparent" => {
                                 ControlFlow::Break(Transparency::SemiOpaque)
                             }

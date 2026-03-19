@@ -3,7 +3,7 @@
 use hir_def::LifetimeParamId;
 use intern::{Interned, InternedRef, Symbol, impl_internable};
 use macros::GenericTypeVisitable;
-use rustc_type_ir::{
+use redox_type_ir::{
     BoundVar, BoundVarIndexKind, DebruijnIndex, Flags, GenericTypeVisitable, INNERMOST, RegionVid,
     TypeFlags, TypeFoldable, TypeVisitable,
     inherent::{IntoKind, PlaceholderLike, SliceLike},
@@ -20,7 +20,7 @@ use super::{
     interner::{BoundVarKind, DbInterner, Placeholder},
 };
 
-pub type RegionKind<'db> = rustc_type_ir::RegionKind<DbInterner<'db>>;
+pub type RegionKind<'db> = redox_type_ir::RegionKind<DbInterner<'db>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Region<'db> {
@@ -210,7 +210,7 @@ pub struct BoundRegion {
     pub kind: BoundRegionKind,
 }
 
-impl rustc_type_ir::inherent::ParamLike for EarlyParamRegion {
+impl redox_type_ir::inherent::ParamLike for EarlyParamRegion {
     fn index(self) -> u32 {
         self.index
     }
@@ -223,7 +223,7 @@ impl std::fmt::Debug for EarlyParamRegion {
     }
 }
 
-impl<'db> rustc_type_ir::inherent::BoundVarLike<DbInterner<'db>> for BoundRegion {
+impl<'db> redox_type_ir::inherent::BoundVarLike<DbInterner<'db>> for BoundRegion {
     fn var(self) -> BoundVar {
         self.var
     }
@@ -277,7 +277,7 @@ impl<'db> IntoKind for Region<'db> {
 }
 
 impl<'db> TypeVisitable<DbInterner<'db>> for Region<'db> {
-    fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
+    fn visit_with<V: redox_type_ir::TypeVisitor<DbInterner<'db>>>(
         &self,
         visitor: &mut V,
     ) -> V::Result {
@@ -286,33 +286,33 @@ impl<'db> TypeVisitable<DbInterner<'db>> for Region<'db> {
 }
 
 impl<'db> TypeFoldable<DbInterner<'db>> for Region<'db> {
-    fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
+    fn try_fold_with<F: redox_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         folder.try_fold_region(self)
     }
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
+    fn fold_with<F: redox_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
         folder.fold_region(self)
     }
 }
 
 impl<'db> Relate<DbInterner<'db>> for Region<'db> {
-    fn relate<R: rustc_type_ir::relate::TypeRelation<DbInterner<'db>>>(
+    fn relate<R: redox_type_ir::relate::TypeRelation<DbInterner<'db>>>(
         relation: &mut R,
         a: Self,
         b: Self,
-    ) -> rustc_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
+    ) -> redox_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
         relation.regions(a, b)
     }
 }
 
 impl<'db> Flags for Region<'db> {
-    fn flags(&self) -> rustc_type_ir::TypeFlags {
+    fn flags(&self) -> redox_type_ir::TypeFlags {
         self.type_flags()
     }
 
-    fn outer_exclusive_binder(&self) -> rustc_type_ir::DebruijnIndex {
+    fn outer_exclusive_binder(&self) -> redox_type_ir::DebruijnIndex {
         match &self.inner() {
             RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn), _) => debruijn.shifted_in(1),
             _ => INNERMOST,
@@ -320,10 +320,10 @@ impl<'db> Flags for Region<'db> {
     }
 }
 
-impl<'db> rustc_type_ir::inherent::Region<DbInterner<'db>> for Region<'db> {
+impl<'db> redox_type_ir::inherent::Region<DbInterner<'db>> for Region<'db> {
     fn new_bound(
         interner: DbInterner<'db>,
-        debruijn: rustc_type_ir::DebruijnIndex,
+        debruijn: redox_type_ir::DebruijnIndex,
         var: BoundRegion,
     ) -> Self {
         Region::new(interner, RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn), var))
@@ -331,8 +331,8 @@ impl<'db> rustc_type_ir::inherent::Region<DbInterner<'db>> for Region<'db> {
 
     fn new_anon_bound(
         interner: DbInterner<'db>,
-        debruijn: rustc_type_ir::DebruijnIndex,
-        var: rustc_type_ir::BoundVar,
+        debruijn: redox_type_ir::DebruijnIndex,
+        var: redox_type_ir::BoundVar,
     ) -> Self {
         Region::new(
             interner,
@@ -343,7 +343,7 @@ impl<'db> rustc_type_ir::inherent::Region<DbInterner<'db>> for Region<'db> {
         )
     }
 
-    fn new_canonical_bound(interner: DbInterner<'db>, var: rustc_type_ir::BoundVar) -> Self {
+    fn new_canonical_bound(interner: DbInterner<'db>, var: redox_type_ir::BoundVar) -> Self {
         Region::new(
             interner,
             RegionKind::ReBound(
@@ -359,7 +359,7 @@ impl<'db> rustc_type_ir::inherent::Region<DbInterner<'db>> for Region<'db> {
 
     fn new_placeholder(
         interner: DbInterner<'db>,
-        var: <DbInterner<'db> as rustc_type_ir::Interner>::PlaceholderRegion,
+        var: <DbInterner<'db> as redox_type_ir::Interner>::PlaceholderRegion,
     ) -> Self {
         Region::new(interner, RegionKind::RePlaceholder(var))
     }
@@ -368,23 +368,23 @@ impl<'db> rustc_type_ir::inherent::Region<DbInterner<'db>> for Region<'db> {
 impl<'db> PlaceholderLike<DbInterner<'db>> for PlaceholderRegion {
     type Bound = BoundRegion;
 
-    fn universe(self) -> rustc_type_ir::UniverseIndex {
+    fn universe(self) -> redox_type_ir::UniverseIndex {
         self.universe
     }
 
-    fn var(self) -> rustc_type_ir::BoundVar {
+    fn var(self) -> redox_type_ir::BoundVar {
         self.bound.var
     }
 
-    fn with_updated_universe(self, ui: rustc_type_ir::UniverseIndex) -> Self {
+    fn with_updated_universe(self, ui: redox_type_ir::UniverseIndex) -> Self {
         Placeholder { universe: ui, bound: self.bound }
     }
 
-    fn new(ui: rustc_type_ir::UniverseIndex, bound: Self::Bound) -> Self {
+    fn new(ui: redox_type_ir::UniverseIndex, bound: Self::Bound) -> Self {
         Placeholder { universe: ui, bound }
     }
 
-    fn new_anon(ui: rustc_type_ir::UniverseIndex, var: rustc_type_ir::BoundVar) -> Self {
+    fn new_anon(ui: redox_type_ir::UniverseIndex, var: redox_type_ir::BoundVar) -> Self {
         Placeholder { universe: ui, bound: BoundRegion { var, kind: BoundRegionKind::Anon } }
     }
 }

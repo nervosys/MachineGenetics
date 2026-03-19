@@ -1,5 +1,5 @@
 use crate::common::{
-    Config, KNOWN_CRATE_TYPES, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer, query_rustc_output,
+    Config, KNOWN_CRATE_TYPES, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer, query_redox_output,
 };
 use crate::directives::{DirectiveLine, IgnoreDecision};
 
@@ -177,9 +177,9 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored if LLVM wasn't build with zstd for ELF section compression or LLVM is not the default codegen backend",
         },
         Need {
-            name: "needs-rustc-debug-assertions",
-            condition: config.with_rustc_debug_assertions,
-            ignore_reason: "ignored if rustc wasn't built with debug assertions",
+            name: "needs-redox-debug-assertions",
+            condition: config.with_redox_debug_assertions,
+            ignore_reason: "ignored if redox wasn't built with debug assertions",
         },
         Need {
             name: "needs-std-debug-assertions",
@@ -448,7 +448,7 @@ fn llvm_has_zstd(config: &Config) -> bool {
 
     // The compiler already knows whether LLVM was built with zstd or not,
     // so compiletest can just ask the compiler.
-    let output = query_rustc_output(
+    let output = query_redox_output(
         config,
         &["-Zunstable-options", "--print=backend-has-zstd"],
         Default::default(),

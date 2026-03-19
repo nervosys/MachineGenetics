@@ -2,7 +2,7 @@
 
 use std::mem;
 
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use vfs::VfsPath;
 
 /// Holds the set of in-memory documents.

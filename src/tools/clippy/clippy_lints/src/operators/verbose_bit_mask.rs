@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
-use rustc_ast::ast::LitKind;
-use rustc_data_structures::packed::Pu128;
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::LateContext;
+use redox_ast::ast::LitKind;
+use redox_data_structures::packed::Pu128;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind};
+use redox_lint::LateContext;
 
 use super::VERBOSE_BIT_MASK;
 

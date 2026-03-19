@@ -6,20 +6,20 @@ use clippy_utils::ty::{adjust_derefs_manually_drop, implements_trait, is_manuall
 use clippy_utils::{
     DefinedTy, ExprUseNode, expr_use_ctxt, get_parent_expr, is_block_like, is_from_proc_macro, is_lint_allowed, sym,
 };
-use rustc_ast::util::parser::ExprPrecedence;
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
-use rustc_hir::{
+use redox_ast::util::parser::ExprPrecedence;
+use redox_data_structures::fx::FxIndexMap;
+use redox_errors::Applicability;
+use redox_hir::def_id::DefId;
+use redox_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
+use redox_hir::{
     self as hir, AmbigArg, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, Item, MatchSource, Mutability,
     Node, OwnerId, Pat, PatKind, Path, QPath, TyKind, UnOp,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
-use rustc_session::impl_lint_pass;
-use rustc_span::{Span, Symbol};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use redox_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
+use redox_session::impl_lint_pass;
+use redox_span::{Span, Symbol};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -1090,7 +1090,7 @@ impl<'tcx> Dereferencing<'tcx> {
             },
             State::DerefedBorrow(state) => {
                 // Do not suggest removing a non-mandatory `&` in `&*rawptr` in an `unsafe` context,
-                // as this may make rustc trigger its `dangerous_implicit_autorefs` lint.
+                // as this may make redox trigger its `dangerous_implicit_autorefs` lint.
                 if let ExprKind::AddrOf(BorrowKind::Ref, _, subexpr) = data.first_expr.kind
                     && let ExprKind::Unary(UnOp::Deref, subsubexpr) = subexpr.kind
                     && cx.typeck_results().expr_ty_adjusted(subsubexpr).is_raw_ptr()

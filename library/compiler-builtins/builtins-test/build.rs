@@ -112,7 +112,7 @@ fn main() {
             Feature::NoSysF16 => ("no-sys-f16", "using apfloat fallback for f16"),
         };
         println!("cargo:warning={warning}");
-        println!("cargo:rustc-cfg=feature=\"{name}\"");
+        println!("cargo:redox-cfg=feature=\"{name}\"");
     }
 
     builtins_configure::configure_aliases(&target);

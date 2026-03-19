@@ -64,7 +64,7 @@ mod for_windows {
         // SAFETY: pretty much everything below is unsafe
         unsafe {
             // Enable the Windows Error Reporting dialog which msys disables,
-            // so we can JIT debug rustc
+            // so we can JIT debug redox
             let mode = SetErrorMode(THREAD_ERROR_MODE::default());
             SetErrorMode(mode & !SEM_NOGPFAULTERRORBOX);
 

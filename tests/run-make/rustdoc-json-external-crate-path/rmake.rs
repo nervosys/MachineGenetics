@@ -1,7 +1,7 @@
 use std::path;
 
 use run_make_support::rustdoc_json_types::{Crate, ItemEnum, Path, Type, TypeAlias};
-use run_make_support::{cwd, rfs, rust_lib_name, rustc, rustdoc, serde_json};
+use run_make_support::{cwd, rfs, rust_lib_name, redox, rustdoc, serde_json};
 
 #[track_caller]
 fn canonicalize(p: &path::Path) -> path::PathBuf {
@@ -9,9 +9,9 @@ fn canonicalize(p: &path::Path) -> path::PathBuf {
 }
 
 fn main() {
-    rustc().input("trans_dep.rs").edition("2024").crate_type("lib").run();
+    redox().input("trans_dep.rs").edition("2024").crate_type("lib").run();
 
-    rustc()
+    redox()
         .input("dep.rs")
         .edition("2024")
         .crate_type("lib")

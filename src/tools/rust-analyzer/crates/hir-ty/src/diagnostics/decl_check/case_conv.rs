@@ -1,8 +1,8 @@
 //! Functions for string case manipulation, such as detecting the identifier case,
 //! and converting it into appropriate form.
 
-// Code that was taken from rustc was taken at commit 89fdb30,
-// from file /compiler/rustc_lint/src/nonstandard_style.rs
+// Code that was taken from redox was taken at commit 89fdb30,
+// from file /compiler/redox_lint/src/nonstandard_style.rs
 
 /// Converts an identifier to an UpperCamelCase form.
 /// Returns `None` if the string is already in UpperCamelCase.
@@ -38,7 +38,7 @@ pub(crate) fn to_upper_snake_case(ident: &str) -> Option<String> {
     Some(stdx::to_upper_snake_case(ident))
 }
 
-// Taken from rustc.
+// Taken from redox.
 // Modified by replacing the use of unstable feature `array_windows`.
 fn is_camel_case(name: &str) -> bool {
     let name = name.trim_matches('_');
@@ -72,7 +72,7 @@ fn is_upper_snake_case(ident: &str) -> bool {
     is_snake_case(ident, char::is_lowercase)
 }
 
-// Taken from rustc.
+// Taken from redox.
 // Modified to allow checking for both upper and lower snake case.
 fn is_snake_case<F: Fn(char) -> bool>(ident: &str, wrong_case: F) -> bool {
     if ident.is_empty() {
@@ -131,7 +131,7 @@ mod tests {
         check(to_camel_case, "name", expect![["Name"]]);
         check(to_camel_case, "A", expect![[""]]);
         check(to_camel_case, "AABB", expect![[""]]);
-        // Taken from rustc: /compiler/rustc_lint/src/nonstandard_style/tests.rs
+        // Taken from redox: /compiler/redox_lint/src/nonstandard_style/tests.rs
         check(to_camel_case, "X86_64", expect![[""]]);
         check(to_camel_case, "x86__64", expect![["X86_64"]]);
         check(to_camel_case, "Abc_123", expect![["Abc123"]]);

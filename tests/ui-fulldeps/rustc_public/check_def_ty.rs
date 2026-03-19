@@ -7,19 +7,19 @@
 //@ ignore-remote
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
-extern crate rustc_public;
-extern crate rustc_public_bridge;
+extern crate redox_driver;
+extern crate redox_interface;
+extern crate redox_public;
+extern crate redox_public_bridge;
 
-use rustc_public::ty::VariantIdx;
-use rustc_public::ty::{ForeignItemKind, RigidTy, Ty};
-use rustc_public::*;
-use rustc_public_bridge::IndexedVal;
+use redox_public::ty::VariantIdx;
+use redox_public::ty::{ForeignItemKind, RigidTy, Ty};
+use redox_public::*;
+use redox_public_bridge::IndexedVal;
 use std::io::Write;
 use std::ops::ControlFlow;
 
@@ -27,7 +27,7 @@ const CRATE_NAME: &str = "crate_def_ty";
 
 /// Test if we can retrieve type information from different definitions.
 fn test_def_tys() -> ControlFlow<()> {
-    let items = rustc_public::all_local_items();
+    let items = redox_public::all_local_items();
     for item in &items {
         // Type from crate items.
         let ty = item.ty();
@@ -47,7 +47,7 @@ fn test_def_tys() -> ControlFlow<()> {
         }
     }
 
-    let foreign_items = rustc_public::local_crate().foreign_modules();
+    let foreign_items = redox_public::local_crate().foreign_modules();
     for item in foreign_items[0].module().items() {
         // Type from foreign items.
         let ty = item.ty();
@@ -86,7 +86,7 @@ fn main() {
     let path = "defs_ty_input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

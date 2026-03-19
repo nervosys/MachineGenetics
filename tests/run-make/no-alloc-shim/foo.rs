@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![no_std]
 #![no_main]
 
@@ -37,7 +37,7 @@ unsafe impl GlobalAlloc for Alloc {
 }
 
 #[cfg(not(check_feature_gate))]
-#[rustc_std_internal_symbol]
+#[redox_std_internal_symbol]
 fn __rust_no_alloc_shim_is_unstable_v2() {}
 
 #[no_mangle]

@@ -4,18 +4,18 @@
 //@ ignore-cross-compile
 //@ ignore-remote
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_driver;
-extern crate rustc_interface;
+extern crate redox_driver;
+extern crate redox_interface;
 
-use rustc_interface::interface;
+use redox_interface::interface;
 
 struct TestCalls<'a> {
     count: &'a mut u32,
 }
 
-impl rustc_driver::Callbacks for TestCalls<'_> {
+impl redox_driver::Callbacks for TestCalls<'_> {
     fn config(&mut self, _config: &mut interface::Config) {
         *self.count *= 2;
     }
@@ -24,8 +24,8 @@ impl rustc_driver::Callbacks for TestCalls<'_> {
 fn main() {
     let mut count = 1;
     let args = vec!["compiler-calls".to_string(), "foo.rs".to_string()];
-    rustc_driver::catch_fatal_errors(|| -> interface::Result<()> {
-        rustc_driver::run_compiler(&args, &mut TestCalls { count: &mut count });
+    redox_driver::catch_fatal_errors(|| -> interface::Result<()> {
+        redox_driver::run_compiler(&args, &mut TestCalls { count: &mut count });
         Ok(())
     })
     .ok();

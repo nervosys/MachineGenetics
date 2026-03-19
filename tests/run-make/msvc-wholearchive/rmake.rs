@@ -7,11 +7,11 @@
 
 use std::path::PathBuf;
 
-use run_make_support::{cc, cmd, env_var, extra_linker_flags, rustc};
+use run_make_support::{cc, cmd, env_var, extra_linker_flags, redox};
 
 fn main() {
     // Build the staticlib
-    rustc().crate_type("staticlib").input("static.rs").output("static.lib").run();
+    redox().crate_type("staticlib").input("static.rs").output("static.lib").run();
     // Build an empty object to pass to the linker.
     cc().input("c.c").output("c.obj").args(["-c"]).run();
 

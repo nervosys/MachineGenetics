@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-disable-isolation
-//@rustc-env: RUST_BACKTRACE=1
+//@redox-env: RUST_BACKTRACE=1
 
 use std::backtrace::Backtrace;
 

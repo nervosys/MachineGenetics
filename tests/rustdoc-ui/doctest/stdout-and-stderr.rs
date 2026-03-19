@@ -12,7 +12,7 @@
 //@ normalize-stdout: "ran in \d+\.\d+s" -> "ran in $$TIME"
 //@ normalize-stdout: "compilation took \d+\.\d+s" -> "compilation took $$TIME"
 //@ failure-status: 101
-//@ rustc-env:RUST_BACKTRACE=0
+//@ redox-env:RUST_BACKTRACE=0
 
 //! ```
 //! println!("######## from a DOC TEST ########");

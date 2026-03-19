@@ -5,7 +5,7 @@
 //@ [i686_apple_darwin] needs-llvm-components: x86
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core, lang_items, redox_attrs)]
 #![no_core]
 
 extern crate minicore;
@@ -14,7 +14,7 @@ use minicore::*;
 #[no_mangle]
 pub fn get_class() -> *mut () {
     unsafe extern "C" {
-        #[rustc_objc_class = "MyClass"]
+        #[redox_objc_class = "MyClass"]
         safe static VAL: *mut ();
     }
     VAL
@@ -24,7 +24,7 @@ pub fn get_class() -> *mut () {
 pub fn get_class_again() -> *mut () {
     // Codegen should de-duplicate this class with the one from get_class above.
     unsafe extern "C" {
-        #[rustc_objc_class = "MyClass"]
+        #[redox_objc_class = "MyClass"]
         safe static VAL: *mut ();
     }
     VAL
@@ -33,7 +33,7 @@ pub fn get_class_again() -> *mut () {
 #[no_mangle]
 pub fn get_selector() -> *mut () {
     unsafe extern "C" {
-        #[rustc_objc_selector = "myMethod"]
+        #[redox_objc_selector = "myMethod"]
         safe static VAL: *mut ();
     }
     VAL
@@ -43,7 +43,7 @@ pub fn get_selector() -> *mut () {
 pub fn get_selector_again() -> *mut () {
     // Codegen should de-duplicate this selector with the one from get_selector above.
     unsafe extern "C" {
-        #[rustc_objc_selector = "myMethod"]
+        #[redox_objc_selector = "myMethod"]
         safe static VAL: *mut ();
     }
     VAL
@@ -52,7 +52,7 @@ pub fn get_selector_again() -> *mut () {
 #[no_mangle]
 pub fn get_other_class() -> *mut () {
     unsafe extern "C" {
-        #[rustc_objc_class = "OtherClass"]
+        #[redox_objc_class = "OtherClass"]
         safe static VAL: *mut ();
     }
     VAL
@@ -61,7 +61,7 @@ pub fn get_other_class() -> *mut () {
 #[no_mangle]
 pub fn get_other_selector() -> *mut () {
     unsafe extern "C" {
-        #[rustc_objc_selector = "otherMethod"]
+        #[redox_objc_selector = "otherMethod"]
         safe static VAL: *mut ();
     }
     VAL

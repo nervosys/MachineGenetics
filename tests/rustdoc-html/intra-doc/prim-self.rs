@@ -1,7 +1,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 #![allow(incomplete_features)] // inherent_associated_types
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(no_core)]
 #![feature(rustdoc_internals)]
 #![feature(inherent_associated_types)]
@@ -25,7 +25,7 @@ impl usize {
     pub type ME = usize;
 }
 
-#[rustc_doc_primitive = "usize"]
+#[redox_doc_primitive = "usize"]
 /// This has some docs.
 mod usize {}
 

@@ -6,11 +6,11 @@ use clippy_utils::ty::get_field_by_name;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures};
 use clippy_utils::{ExprUseNode, expr_use_ctxt, sym};
 use core::ops::ControlFlow;
-use rustc_errors::Applicability;
-use rustc_hir::{BindingMode, BorrowKind, ByRef, ClosureKind, Expr, ExprKind, Mutability, Node, PatKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use redox_errors::Applicability;
+use redox_hir::{BindingMode, BorrowKind, ByRef, ClosureKind, Expr, ExprKind, Mutability, Node, PatKind};
+use redox_lint::LateContext;
+use redox_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use redox_span::{DUMMY_SP, Span, Symbol};
 
 use super::MANUAL_INSPECT;
 

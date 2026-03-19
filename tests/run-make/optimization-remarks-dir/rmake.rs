@@ -8,11 +8,11 @@
 
 use run_make_support::{
     has_extension, has_prefix, invalid_utf8_contains, invalid_utf8_not_contains, not_contains,
-    rustc, shallow_find_files,
+    redox, shallow_find_files,
 };
 
 fn main() {
-    rustc()
+    redox()
         .opt()
         .input("foo.rs")
         .crate_type("lib")
@@ -25,7 +25,7 @@ fn main() {
     for file in all_remark_files {
         invalid_utf8_contains(file, "inline")
     }
-    rustc()
+    redox()
         .opt()
         .input("foo.rs")
         .crate_type("lib")

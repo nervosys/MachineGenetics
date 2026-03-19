@@ -1,6 +1,6 @@
 //@ dont-require-annotations: NOTE
 
-#![feature(coroutines, negative_impls, rustc_attrs, stmt_expr_attributes)]
+#![feature(coroutines, negative_impls, redox_attrs, stmt_expr_attributes)]
 
 macro_rules! type_combinations {
     (
@@ -60,7 +60,7 @@ fn main() {
         // NOT OK (we need to agree with MIR borrowck)
         insignificant_dtor => {
             #[derive(Default)]
-            #[rustc_insignificant_dtor]
+            #[redox_insignificant_dtor]
             pub struct Client;
             impl Drop for Client {
                 fn drop(&mut self) {}

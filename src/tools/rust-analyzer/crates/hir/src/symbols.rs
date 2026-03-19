@@ -20,7 +20,7 @@ use hir_ty::{
     display::{HirDisplay, hir_display_with_store},
 };
 use intern::Symbol;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, ToSmolStr, ast::HasName};
 
 use crate::{Crate, HasCrate, Module, ModuleDef, Semantics};

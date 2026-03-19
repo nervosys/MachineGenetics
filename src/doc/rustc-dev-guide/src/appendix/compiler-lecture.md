@@ -3,7 +3,7 @@
 These are videos where various experts explain different parts of the compiler:
 
 ## General
-- [January 2019: Tom Tromey discusses debugging support in rustc](https://www.youtube.com/watch?v=elBxMRSNYr4)
+- [January 2019: Tom Tromey discusses debugging support in redox](https://www.youtube.com/watch?v=elBxMRSNYr4)
 - [June 2019: Responsive compilers - Nicholas Matsakis - PLISS 2019](https://www.youtube.com/watch?v=N6b44kMS6OM)
 - [June 2019: Things I Learned (TIL) - Nicholas Matsakis - PLISS 2019](https://www.youtube.com/watch?v=LIYkT3p5gTs)
 - [October 2022: Rustc Explore](https://www.youtube.com/playlist?list=PL85XCvVPmGQj3-MujOJ0jcoSqQ6Yi6Rkk)
@@ -20,7 +20,7 @@ These are videos where various experts explain different parts of the compiler:
 - [July 2015: Felix Klock - Rust: A type system you didn't know you wanted - Curry On](https://www.youtube.com/watch?v=Q7lQCgnNWU0)
 - [November 2016: Felix Klock - Subtyping in Rust and Clarke's Third Law](https://www.youtube.com/watch?v=fI4RG_uq-WU)
 - [February 2019: Universes and Lifetimes](https://www.youtube.com/watch?v=iV1Z0xYXkck)
-- [April 2019: Representing types in rustc](https://www.youtube.com/watch?v=c01TsOsr3-c)
+- [April 2019: Representing types in redox](https://www.youtube.com/watch?v=c01TsOsr3-c)
 - [March 2019: RFC #2229 Disjoint Field Capture plan](https://www.youtube.com/watch?v=UTXOptVMuIc)
 
 ## Closures
@@ -30,12 +30,12 @@ These are videos where various experts explain different parts of the compiler:
 
 ## Chalk
 - [July 2018: Coherence in Chalk by Sunjay Varma - Bay Area Rust Meetup](https://www.youtube.com/watch?v=rZqS4bLPL24)
-- [March 2019: rustc-chalk integration overview](https://www.youtube.com/watch?v=MBWtbDifPeU)
+- [March 2019: redox-chalk integration overview](https://www.youtube.com/watch?v=MBWtbDifPeU)
 - [April 2019: How the chalk-engine crate works](https://www.youtube.com/watch?v=Ny2928cGDoM)
 - [May 2019: How the chalk-engine crate works 2](https://www.youtube.com/watch?v=hmV66tB79LM)
 
 ## Polonius
-- [March 2019: Polonius-rustc walkthrough](https://www.youtube.com/watch?v=i5KdU0ieb_A)
+- [March 2019: Polonius-redox walkthrough](https://www.youtube.com/watch?v=i5KdU0ieb_A)
 - [May 2019: Polonius WG: Initialization and move tracking](https://www.youtube.com/watch?v=ilv9V-328HI)
 
 ## Miri

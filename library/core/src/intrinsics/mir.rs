@@ -1,14 +1,14 @@
 //! Rustc internal tooling for hand-writing MIR.
 //!
-//! If for some reasons you are not writing rustc tests and have found yourself considering using
+//! If for some reasons you are not writing redox tests and have found yourself considering using
 //! this feature, turn back. This is *exceptionally* unstable. There is no attempt at all to make
-//! anything work besides those things which the rustc test suite happened to need. If you make a
+//! anything work besides those things which the redox test suite happened to need. If you make a
 //! typo you'll probably ICE. Really, this is not the solution to your problems. Consider instead
 //! supporting the [stable MIR project group](https://github.com/rust-lang/project-stable-mir).
 //!
 //! The documentation for this module describes how to use this feature. If you are interested in
 //! hacking on the implementation, most of that documentation lives at
-//! `rustc_mir_build/src/build/custom/mod.rs`.
+//! `redox_mir_build/src/build/custom/mod.rs`.
 //!
 //! Typical usage will look like this:
 //!
@@ -45,7 +45,7 @@
 //! "runtime", phase = "optimized")]` if you don't.
 //!
 //! [dialect docs]:
-//!     https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.MirPhase.html
+//!     https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/enum.MirPhase.html
 //!
 //! The input to the [`mir!`] macro is:
 //!
@@ -200,7 +200,7 @@
 //!
 //! error: aborting due to 1 previous error
 //!
-//! For more information about this error, try `rustc --explain E0381`.
+//! For more information about this error, try `redox --explain E0381`.
 //! ```
 //!
 //! # Syntax
@@ -296,7 +296,7 @@
 /// Type representing basic blocks.
 ///
 /// All terminators will have this type as a return type. It helps achieve some type safety.
-#[rustc_diagnostic_item = "mir_basic_block"]
+#[redox_diagnostic_item = "mir_basic_block"]
 pub enum BasicBlock {
     /// A non-cleanup basic block.
     Normal,
@@ -305,7 +305,7 @@ pub enum BasicBlock {
 }
 
 /// The reason we are terminating the process during unwinding.
-#[rustc_diagnostic_item = "mir_unwind_terminate_reason"]
+#[redox_diagnostic_item = "mir_unwind_terminate_reason"]
 pub enum UnwindTerminateReason {
     /// Unwinding is just not possible given the ABI of this function.
     Abi,
@@ -318,7 +318,7 @@ pub use UnwindTerminateReason::{Abi as ReasonAbi, InCleanup as ReasonInCleanup};
 
 macro_rules! define {
     ($name:literal, $( #[ $meta:meta ] )* fn $($sig:tt)*) => {
-        #[rustc_diagnostic_item = $name]
+        #[redox_diagnostic_item = $name]
         #[inline]
         $( #[ $meta ] )*
         pub fn $($sig)* { panic!() }
@@ -513,7 +513,7 @@ define!(
 ///
 /// See the module documentation for syntax details. This macro is not magic - it only transforms
 /// your MIR into something that is easier to parse in the compiler.
-#[rustc_macro_transparency = "transparent"]
+#[redox_macro_transparency = "transparent"]
 pub macro mir {
     {
         $(type RET = $ret_ty:ty ;)?

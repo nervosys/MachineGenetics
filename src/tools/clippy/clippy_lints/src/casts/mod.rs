@@ -30,9 +30,9 @@ mod zero_ptr;
 use clippy_config::Conf;
 use clippy_utils::is_hir_ty_cfg_dependant;
 use clippy_utils::msrvs::{self, Msrv};
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use redox_hir::{Expr, ExprKind};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -955,7 +955,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         ptr_cast_constness::check_null_ptr_cast_method(cx, expr);
     }
 
-    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &rustc_hir::Body<'tcx>) {
+    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &redox_hir::Body<'tcx>) {
         needless_type_cast::check(cx, body);
     }
 }

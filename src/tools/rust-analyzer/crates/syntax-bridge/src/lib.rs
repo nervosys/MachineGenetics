@@ -1,14 +1,14 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
 use std::{collections::VecDeque, fmt, hash::Hash};
 
 use intern::Symbol;
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use span::{Edition, Span, SpanAnchor, SpanMap, SyntaxContext};
 use stdx::{format_to, never};
 use syntax::{
@@ -130,7 +130,7 @@ where
     convert_tokens(&mut c)
 }
 
-// The following items are what `rustc` macro can be parsed into :
+// The following items are what `redox` macro can be parsed into :
 // link: https://github.com/rust-lang/rust/blob/9ebf47851a357faa4cd97f4b1dc7835f6376e639/src/libsyntax/ext/expand.rs#L141
 // * Expr(Box<ast::Expr>)                     -> token_tree_to_expr
 // * Pat(Box<ast::Pat>)                       -> token_tree_to_pat
@@ -1018,7 +1018,7 @@ impl TtTreeSink<'_> {
     }
 
     fn merge_spans(a: Span, b: Span) -> Span {
-        // We don't do what rustc does exactly, rustc does something clever when the spans have different syntax contexts
+        // We don't do what redox does exactly, redox does something clever when the spans have different syntax contexts
         // but this runs afoul of our separation between `span` and `hir-expand`.
         Span {
             range: if a.ctx == b.ctx && a.anchor == b.anchor {

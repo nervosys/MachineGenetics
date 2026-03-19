@@ -1,17 +1,17 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir;
-use rustc_abi::ExternAbi;
-use rustc_hir::def::DefKind;
-use rustc_hir::{Body, FnDecl, HirId, HirIdSet, Node, Pat, PatKind, intravisit};
-use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
-use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::kw;
+use redox_abi::ExternAbi;
+use redox_hir::def::DefKind;
+use redox_hir::{Body, FnDecl, HirId, HirIdSet, Node, Pat, PatKind, intravisit};
+use redox_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::mir::FakeReadCause;
+use redox_middle::ty::layout::LayoutOf;
+use redox_middle::ty::{self, TraitRef, Ty, TyCtxt};
+use redox_session::impl_lint_pass;
+use redox_span::Span;
+use redox_span::def_id::LocalDefId;
+use redox_span::symbol::kw;
 
 pub struct BoxedLocal {
     too_large_for_stack: u64,

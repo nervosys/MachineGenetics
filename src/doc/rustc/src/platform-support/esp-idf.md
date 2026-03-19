@@ -29,7 +29,7 @@ It is recommended to use the latest ESP-IDF stable release if possible.
 
 ## Building the target
 
-The target can be built by enabling it for a `rustc` build. The `build-std` feature is required to build the standard library for ESP-IDF. `ldproxy` is also required for linking, it can be installed from crates.io.
+The target can be built by enabling it for a `redox` build. The `build-std` feature is required to build the standard library for ESP-IDF. `ldproxy` is also required for linking, it can be installed from crates.io.
 
 ```toml
 [build]

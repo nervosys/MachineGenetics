@@ -1,6 +1,6 @@
 //! Provides the `extern static` that this platform expects.
 
-use rustc_target::spec::Os;
+use redox_target::spec::Os;
 
 use crate::*;
 

@@ -55,7 +55,7 @@ target = [
 
 Rust does not yet ship pre-compiled artifacts for VxWorks.
 
-The easiest way to build and test programs for VxWorks is to use the shipped rustc and cargo in VxWorks workbench, following the official windriver guidelines.
+The easiest way to build and test programs for VxWorks is to use the shipped redox and cargo in VxWorks workbench, following the official windriver guidelines.
 
 ## Cross-compilation toolchains and C code
 

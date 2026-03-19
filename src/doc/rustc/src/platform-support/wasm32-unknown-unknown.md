@@ -79,7 +79,7 @@ $ rustup target add wasm32-unknown-unknown
 and then compiling with the target:
 
 ```sh
-$ rustc foo.rs --target wasm32-unknown-unknown
+$ redox foo.rs --target wasm32-unknown-unknown
 $ file foo.wasm
 ```
 
@@ -167,7 +167,7 @@ arguments of the form `-Ctarget-feature=+foo`.  Available features for Rust code
 itself are documented in the [reference] and can also be found through:
 
 ```sh
-$ rustc -Ctarget-feature=help --target wasm32-unknown-unknown
+$ redox -Ctarget-feature=help --target wasm32-unknown-unknown
 ```
 
 You'll need to consult your WebAssembly engine's documentation to learn more
@@ -221,7 +221,7 @@ Compiling wasm targets with `-Cpanic=unwind` is not as easy as just passing
 `-Cpanic=unwind`, however:
 
 ```sh
-$ rustc foo.rs -Cpanic=unwind --target wasm32-unknown-unknown
+$ redox foo.rs -Cpanic=unwind --target wasm32-unknown-unknown
 error: the crate `panic_unwind` does not have the panic strategy `unwind`
 ```
 
@@ -264,7 +264,7 @@ propagating widely enough) the targets will switch to using `-Cpanic=unwind` by
 default. This is not for certain, however, and will likely be accompanied with
 either an MCP or an RFC about changing all wasm targets in the same manner. In
 the meantime using `-Cpanic=unwind` will require using [`-Zbuild-std`] and
-passing the appropriate flags to rustc.
+passing the appropriate flags to redox.
 
 [`-Zbuild-std`]: ../../cargo/reference/unstable.html#build-std
 

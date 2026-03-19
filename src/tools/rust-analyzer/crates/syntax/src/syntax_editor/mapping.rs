@@ -3,7 +3,7 @@
 //! [`SyntaxMappingBuilder`] should be used to create mappings to add to a `SyntaxEditor`
 
 use itertools::Itertools;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 
 use crate::{SyntaxElement, SyntaxNode};
 

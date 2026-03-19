@@ -14,7 +14,7 @@ fn derive_helpers() {
 pub fn my_derive() {}
 
 //- /lib.rs crate:lib deps:mac
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro derive($item:item) {}
 
 #[derive(mac::MyDerive)]
@@ -78,7 +78,7 @@ pub struct Foo(#[m$0] i32);
 pub fn my_derive() {}
 
 //- /lib.rs crate:lib deps:mac
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro derive($item:item) {}
 
 #[derive(mac::MyDerive)]
@@ -1577,7 +1577,7 @@ extern crate dep;
 fn builtin_macro_completed_only_as_its_kind() {
     check(
         r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro define_opaque($($tt:tt)*) {
     /* compiler built-in */
 }

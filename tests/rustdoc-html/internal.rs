@@ -1,6 +1,6 @@
 //@ compile-flags: -Z force-unstable-if-unmarked
 
-// Check that the unstable marker is not added for "rustc_private".
+// Check that the unstable marker is not added for "redox_private".
 
 //@ !matches internal/index.html \
 //      '//*[@class="desc docblock-short"]/span[@class="stab unstable"]' \

@@ -4,11 +4,11 @@ use std::path::{Component, Path, PathBuf};
 use std::{fmt, fs};
 
 use askama::Template;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
-use rustc_span::{FileName, RealFileName, RemapPathScopeComponents};
+use redox_data_structures::fx::{FxHashSet, FxIndexMap};
+use redox_hir::def_id::LOCAL_CRATE;
+use redox_middle::ty::TyCtxt;
+use redox_session::Session;
+use redox_span::{FileName, RealFileName, RemapPathScopeComponents};
 use tracing::info;
 
 use super::render::Context;
@@ -168,7 +168,7 @@ impl SourceCollector<'_, '_> {
     fn emit_source(
         &mut self,
         file: &RealFileName,
-        file_span: rustc_span::Span,
+        file_span: redox_span::Span,
     ) -> Result<(), Error> {
         let p = if let Some(local_path) = file.local_path() {
             local_path.to_path_buf()
@@ -328,7 +328,7 @@ pub(crate) enum SourceContext<'a> {
 pub(crate) fn print_src(
     mut writer: impl fmt::Write,
     s: &str,
-    file_span: rustc_span::Span,
+    file_span: redox_span::Span,
     context: &Context<'_>,
     root_path: &str,
     decoration_info: &highlight::DecorationInfo,

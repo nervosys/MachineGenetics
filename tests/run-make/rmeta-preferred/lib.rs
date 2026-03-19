@@ -1,5 +1,5 @@
 // Test that using rlibs and rmeta dep crates work together. Specifically, that
-// there can be both an rmeta and an rlib file and rustc will prefer the rmeta
+// there can be both an rmeta and an rlib file and redox will prefer the rmeta
 // file.
 //
 // This behavior is simply making sure this doesn't accidentally change; in this

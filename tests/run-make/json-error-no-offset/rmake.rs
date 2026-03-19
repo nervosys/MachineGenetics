@@ -5,10 +5,10 @@
 // and this test checks that the measurements appearing in the standard error are correct.
 // See https://github.com/rust-lang/rust/issues/35164
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
-    rustc()
+    redox()
         .input("main.rs")
         .error_format("json")
         .run()

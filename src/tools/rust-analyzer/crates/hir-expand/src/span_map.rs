@@ -45,7 +45,7 @@ impl SpanMap {
             // FIXME: Is it correct for us to only take the span at the start? This feels somewhat
             // wrong. The context will be right, but the range could be considered wrong. See
             // https://github.com/rust-lang/rust/issues/23480, we probably want to fetch the span at
-            // the start and end, then merge them like rustc does in `Span::to
+            // the start and end, then merge them like redox does in `Span::to
             Self::ExpansionSpanMap(span_map) => span_map.span_at(range.start()),
             Self::RealSpanMap(span_map) => span_map.span_for_range(range),
         }

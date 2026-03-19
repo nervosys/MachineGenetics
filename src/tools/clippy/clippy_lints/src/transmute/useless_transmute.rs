@@ -1,10 +1,10 @@
 use super::USELESS_TRANSMUTE;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::sugg;
-use rustc_errors::Applicability;
-use rustc_hir::Expr;
-use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use redox_errors::Applicability;
+use redox_hir::Expr;
+use redox_lint::LateContext;
+use redox_middle::ty::{self, Ty, TypeVisitableExt};
 
 /// Checks for `useless_transmute` lint.
 /// Returns `true` if it's triggered, otherwise returns `false`.
@@ -49,7 +49,7 @@ pub(super) fn check<'tcx>(
             true
         },
         (ty::Int(_) | ty::Uint(_), ty::RawPtr(_, _)) => {
-            // Handled by the upstream rustc `integer_to_ptr_transmutes` lint
+            // Handled by the upstream redox `integer_to_ptr_transmutes` lint
             true
         },
         _ => false,

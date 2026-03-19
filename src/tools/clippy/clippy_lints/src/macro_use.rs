@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{self as hir, AmbigArg, find_attr};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
-use rustc_span::edition::Edition;
+use redox_data_structures::fx::FxHashSet;
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::{self as hir, AmbigArg, find_attr};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::Span;
+use redox_span::edition::Edition;
 use std::collections::BTreeMap;
 
 declare_clippy_lint! {

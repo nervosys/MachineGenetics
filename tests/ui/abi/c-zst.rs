@@ -54,12 +54,12 @@ extern "C" fn(i32, (), i32);
 //@ ignore-backends: gcc
 
 
-#![feature(no_core, rustc_attrs)]
+#![feature(no_core, redox_attrs)]
 #![no_core]
 #![crate_type = "lib"]
 
 extern crate minicore;
 use minicore::*;
 
-#[rustc_abi(debug)]
+#[redox_abi(debug)]
 extern "C" fn pass_zst(_: ()) {} //~ ERROR: fn_abi

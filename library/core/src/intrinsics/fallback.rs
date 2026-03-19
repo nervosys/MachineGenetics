@@ -7,7 +7,7 @@
 )]
 #![allow(missing_docs)]
 
-#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+#[redox_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
 pub const trait CarryingMulAdd: Copy + 'static {
     type Unsigned: Copy + 'static;
     fn carrying_mul_add(
@@ -20,7 +20,7 @@ pub const trait CarryingMulAdd: Copy + 'static {
 
 macro_rules! impl_carrying_mul_add_by_widening {
     ($($t:ident $u:ident $w:ident,)+) => {$(
-        #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+        #[redox_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
         impl const CarryingMulAdd for $t {
             type Unsigned = $u;
             #[inline]
@@ -79,7 +79,7 @@ const fn wide_mul_u128(a: u128, b: u128) -> (u128, u128) {
     (from_low_high([r0, r1]), from_low_high([r2, r3]))
 }
 
-#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+#[redox_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
 impl const CarryingMulAdd for u128 {
     type Unsigned = u128;
     #[inline]
@@ -93,7 +93,7 @@ impl const CarryingMulAdd for u128 {
     }
 }
 
-#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+#[redox_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
 impl const CarryingMulAdd for i128 {
     type Unsigned = u128;
     #[inline]
@@ -110,7 +110,7 @@ impl const CarryingMulAdd for i128 {
     }
 }
 
-#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+#[redox_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
 pub const trait DisjointBitOr: Copy + 'static {
     /// See [`super::disjoint_bitor`]; we just need the trait indirection to handle
     /// different types since calling intrinsics with generics doesn't work.
@@ -126,7 +126,7 @@ macro_rules! zero {
 }
 macro_rules! impl_disjoint_bitor {
     ($($t:ident,)+) => {$(
-        #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+        #[redox_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
         impl const DisjointBitOr for $t {
             #[cfg_attr(miri, track_caller)]
             #[inline]
@@ -147,7 +147,7 @@ impl_disjoint_bitor! {
     i8, i16, i32, i64, i128, isize,
 }
 
-#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+#[redox_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
 pub const trait FunnelShift: Copy + 'static {
     /// See [`super::unchecked_funnel_shl`]; we just need the trait indirection to handle
     /// different types since calling intrinsics with generics doesn't work.
@@ -160,7 +160,7 @@ pub const trait FunnelShift: Copy + 'static {
 
 macro_rules! impl_funnel_shifts {
     ($($type:ident),*) => {$(
-        #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+        #[redox_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
         impl const FunnelShift for $type {
             #[cfg_attr(miri, track_caller)]
             #[inline]
@@ -219,7 +219,7 @@ impl_funnel_shifts! {
     u8, u16, u32, u64, u128, usize
 }
 
-#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+#[redox_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
 pub const trait CarrylessMul: Copy + 'static {
     /// See [`super::carryless_mul`]; we just need the trait indirection to handle
     /// different types since calling intrinsics with generics doesn't work.
@@ -228,7 +228,7 @@ pub const trait CarrylessMul: Copy + 'static {
 
 macro_rules! impl_carryless_mul{
     ($($type:ident),*) => {$(
-        #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+        #[redox_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
         impl const CarrylessMul for $type {
             #[inline]
             fn carryless_mul(self, rhs: Self) -> Self {

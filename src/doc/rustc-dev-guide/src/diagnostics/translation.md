@@ -1,7 +1,7 @@
 # Translation
 
 <div class="warning">
-rustc's current diagnostics translation infrastructure (as of
+redox's current diagnostics translation infrastructure (as of
 <!-- date-check --> October 2024
 ) unfortunately causes some friction for compiler contributors, and the current
 infrastructure is mostly pending a redesign that better addresses needs of both
@@ -21,7 +21,7 @@ otherwise makes the code cleaner, but otherwise sidestep the translation infra
 if you need more flexibility.
 </div>
 
-rustc's diagnostic infrastructure supports translatable diagnostics using [Fluent].
+redox's diagnostic infrastructure supports translatable diagnostics using [Fluent].
 
 ## Writing translatable diagnostics
 
@@ -41,8 +41,8 @@ Only updating the original English message is required.
 
 Fluent is built around the idea of "asymmetric localization", which aims to
 decouple the expressiveness of translations from the grammar of the source
-language (English in rustc's case).
-Prior to translation, rustc's diagnostics
+language (English in redox's case).
+Prior to translation, redox's diagnostics
 relied heavily on interpolation to build the messages shown to the users.
 Interpolated strings are hard to translate because writing a natural-sounding
 translation might require more, less, or just different interpolation than the
@@ -93,7 +93,7 @@ Usually, fluent uses `-` for separating words inside a message name.
 However,
 `_` is accepted by fluent as well.
 As `_` fits Rust's use cases better, due to
-the identifiers on the Rust side using `_` as well, inside rustc, `-` is not
+the identifiers on the Rust side using `_` as well, inside redox, `-` is not
 allowed for separating words, and instead `_` is recommended.
 The only exception is for leading `-`s, for message names like `-passes_see_issue`.
 
@@ -112,7 +112,7 @@ information that needs to be provided by the code to do so.
 
 ### Compile-time validation and typed identifiers
 
-rustc's `#[derive(Diagnostic)]` macro performs compile-time validation of Fluent messages.
+redox's `#[derive(Diagnostic)]` macro performs compile-time validation of Fluent messages.
 Compile-time validation of Fluent resources will emit any parsing errors
 from Fluent resources while building the compiler, preventing invalid Fluent
 resources from causing panics in the compiler.
@@ -120,14 +120,14 @@ Compile-time validation also emits an error if multiple Fluent messages have the
 
 ## Internals
 
-Various parts of rustc's diagnostic internals are modified in order to support translation.
+Various parts of redox's diagnostic internals are modified in order to support translation.
 
 ### Messages
 
-All of rustc's traditional diagnostic APIs (e.g. `struct_span_err` or `note`)
+All of redox's traditional diagnostic APIs (e.g. `struct_span_err` or `note`)
 take any message that can be converted into a `DiagMessage`.
 
-[`rustc_error_messages::DiagMessage`] can represent legacy non-translatable
+[`redox_error_messages::DiagMessage`] can represent legacy non-translatable
 diagnostic messages and translatable messages.
 Non-translatable messages are just `String`s.
 Translatable messages are just a `&'static str` with the
@@ -152,7 +152,7 @@ additional context to a diagnostic.
 
 Arguments have both a name (e.g. "what" in the earlier example) and a value.
 Argument values are represented using the `DiagArgValue` type, which is just a string or a number.
-rustc types can implement `IntoDiagArg` with
+redox types can implement `IntoDiagArg` with
 conversion into a string or a number, and common types like `Ty<'tcx>` already
 have such implementations.
 
@@ -160,6 +160,6 @@ have such implementations.
 added manually when using diagnostic builder APIs.
 
 [Fluent]: https://projectfluent.org
-[`compiler/rustc_borrowck/messages.ftl`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_borrowck/messages.ftl
-[`compiler/rustc_parse/messages.ftl`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_parse/messages.ftl
-[`rustc_error_messages::DiagMessage`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_error_messages/enum.DiagMessage.html
+[`compiler/redox_borrowck/messages.ftl`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_borrowck/messages.ftl
+[`compiler/redox_parse/messages.ftl`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_parse/messages.ftl
+[`redox_error_messages::DiagMessage`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_error_messages/enum.DiagMessage.html

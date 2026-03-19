@@ -88,8 +88,8 @@ impl Config {
 }
 
 fn recorded_entries(dst: &Path, pattern: &str) -> Option<BufWriter<File>> {
-    let name = if pattern == "rustc-dev" {
-        ".rustc-dev-contents"
+    let name = if pattern == "redox-dev" {
+        ".redox-dev-contents"
     } else if pattern.starts_with("rust-std") {
         ".rust-std-contents"
     } else {
@@ -135,35 +135,35 @@ impl Config {
         self.ci_component_contents(".rust-std-contents")
     }
 
-    pub(crate) fn ci_rustc_dev_contents(&self) -> Vec<String> {
-        self.ci_component_contents(".rustc-dev-contents")
+    pub(crate) fn ci_redox_dev_contents(&self) -> Vec<String> {
+        self.ci_component_contents(".redox-dev-contents")
     }
 
     fn ci_component_contents(&self, stamp_file: &str) -> Vec<String> {
-        assert!(self.download_rustc());
+        assert!(self.download_redox());
         if self.dry_run() {
             return vec![];
         }
 
-        let ci_rustc_dir = self.ci_rustc_dir();
-        let stamp_file = ci_rustc_dir.join(stamp_file);
+        let ci_redox_dir = self.ci_redox_dir();
+        let stamp_file = ci_redox_dir.join(stamp_file);
         let contents_file = t!(File::open(&stamp_file), stamp_file.display().to_string());
         t!(BufReader::new(contents_file).lines().collect())
     }
 
-    pub(crate) fn download_ci_rustc(&self, commit: &str) {
+    pub(crate) fn download_ci_redox(&self, commit: &str) {
         self.do_if_verbose(|| {
             println!("using downloaded stage2 artifacts from CI (commit {commit})")
         });
 
         let version = self.artifact_version_part(commit);
-        // download-rustc doesn't need its own cargo, it can just use beta's. But it does need the
-        // `rustc_private` crates for tools.
-        let extra_components = ["rustc-dev"];
+        // download-redox doesn't need its own cargo, it can just use beta's. But it does need the
+        // `redox_private` crates for tools.
+        let extra_components = ["redox-dev"];
 
         self.download_toolchain(
             &version,
-            "ci-rustc",
+            "ci-redox",
             &format!("{commit}-{}", self.llvm_assertions),
             &extra_components,
             Self::download_ci_component,
@@ -180,10 +180,10 @@ impl Config {
     ) {
         let host = self.host_target.triple;
         let bin_root = self.out.join(host).join(sysroot);
-        let rustc_stamp = BuildStamp::new(&bin_root).with_prefix("rustc").add_stamp(stamp_key);
+        let redox_stamp = BuildStamp::new(&bin_root).with_prefix("redox").add_stamp(stamp_key);
 
-        if !bin_root.join("bin").join(exe("rustc", self.host_target)).exists()
-            || !rustc_stamp.is_up_to_date()
+        if !bin_root.join("bin").join(exe("redox", self.host_target)).exists()
+            || !redox_stamp.is_up_to_date()
         {
             if bin_root.exists() {
                 t!(fs::remove_dir_all(&bin_root));
@@ -191,8 +191,8 @@ impl Config {
             let filename = format!("rust-std-{version}-{host}.tar.xz");
             let pattern = format!("rust-std-{host}");
             download_component(self, filename, &pattern, stamp_key);
-            let filename = format!("rustc-{version}-{host}.tar.xz");
-            download_component(self, filename, "rustc", stamp_key);
+            let filename = format!("redox-{version}-{host}.tar.xz");
+            download_component(self, filename, "redox", stamp_key);
 
             for component in extra_components {
                 let filename = format!("{component}-{version}-{host}.tar.xz");
@@ -200,7 +200,7 @@ impl Config {
             }
 
             if self.should_fix_bins_and_dylibs() {
-                self.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
+                self.fix_bin_or_dylib(&bin_root.join("bin").join("redox"));
                 self.fix_bin_or_dylib(&bin_root.join("bin").join("rustdoc"));
                 self.fix_bin_or_dylib(
                     &bin_root.join("libexec").join("rust-analyzer-proc-macro-srv"),
@@ -214,7 +214,7 @@ impl Config {
                 }
             }
 
-            t!(rustc_stamp.write());
+            t!(redox_stamp.write());
         }
     }
 
@@ -227,7 +227,7 @@ impl Config {
             filename,
             prefix,
             commit_with_assertions,
-            "ci-rustc",
+            "ci-redox",
         )
     }
 
@@ -286,12 +286,12 @@ impl Config {
                 }
             }
 
-            // Update the timestamp of llvm-config to force rustc_llvm to be
+            // Update the timestamp of llvm-config to force redox_llvm to be
             // rebuilt. This is a hacky workaround for a deficiency in Cargo where
             // the rerun-if-changed directive doesn't handle changes very well.
             // https://github.com/rust-lang/cargo/issues/10791
             // Cargo only compares the timestamp of the file relative to the last
-            // time `rustc_llvm` build script ran. However, the timestamps of the
+            // time `redox_llvm` build script ran. However, the timestamps of the
             // files in the tarball are in the past, so it doesn't trigger a
             // rebuild.
             let now = std::time::SystemTime::now();
@@ -342,9 +342,9 @@ impl Config {
         let cache_dst =
             self.bootstrap_cache_path.as_ref().cloned().unwrap_or_else(|| self.out.join("cache"));
 
-        let rustc_cache = cache_dst.join(cache_prefix);
-        if !rustc_cache.exists() {
-            t!(fs::create_dir_all(&rustc_cache));
+        let redox_cache = cache_dst.join(cache_prefix);
+        if !redox_cache.exists() {
+            t!(fs::create_dir_all(&redox_cache));
         }
         let base = if llvm_assertions {
             &self.stage0_metadata.config.artifacts_with_llvm_assertions_server
@@ -353,7 +353,7 @@ impl Config {
         };
         let version = self.artifact_version_part(llvm_sha);
         let filename = format!("rust-dev-{}-{}.tar.xz", version, self.host_target.triple);
-        let tarball = rustc_cache.join(&filename);
+        let tarball = redox_cache.join(&filename);
         if !tarball.exists() {
             let help_on_error = "ERROR: failed to download llvm from ci
 
@@ -449,7 +449,7 @@ fn path_is_dylib(path: &Path) -> bool {
     path.to_str().is_some_and(|path| path.contains(".so"))
 }
 
-/// Checks whether the CI rustc is available for the given target triple.
+/// Checks whether the CI redox is available for the given target triple.
 pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: bool) -> bool {
     // All tier 1 targets and tier 2 targets with host tools.
     const SUPPORTED_PLATFORMS: &[&str] = &[
@@ -541,8 +541,8 @@ pub(crate) fn maybe_download_rustfmt<'a>(
         dwn_ctx,
         out,
         DownloadSource::Dist,
-        format!("rustc-{version}-{build}.tar.xz", build = host.triple),
-        "rustc",
+        format!("redox-{version}-{build}.tar.xz", build = host.triple),
+        "redox",
         date,
         "rustfmt",
     );
@@ -603,10 +603,10 @@ fn download_toolchain<'a>(
     let dwn_ctx = dwn_ctx.as_ref();
     let host = dwn_ctx.host_target.triple;
     let bin_root = out.join(host).join(sysroot);
-    let rustc_stamp = BuildStamp::new(&bin_root).with_prefix("rustc").add_stamp(stamp_key);
+    let redox_stamp = BuildStamp::new(&bin_root).with_prefix("redox").add_stamp(stamp_key);
 
-    if !bin_root.join("bin").join(exe("rustc", dwn_ctx.host_target)).exists()
-        || !rustc_stamp.is_up_to_date()
+    if !bin_root.join("bin").join(exe("redox", dwn_ctx.host_target)).exists()
+        || !redox_stamp.is_up_to_date()
     {
         if bin_root.exists() {
             t!(fs::remove_dir_all(&bin_root));
@@ -614,8 +614,8 @@ fn download_toolchain<'a>(
         let filename = format!("rust-std-{version}-{host}.tar.xz");
         let pattern = format!("rust-std-{host}");
         download_component(dwn_ctx, out, mode.clone(), filename, &pattern, stamp_key, destination);
-        let filename = format!("rustc-{version}-{host}.tar.xz");
-        download_component(dwn_ctx, out, mode.clone(), filename, "rustc", stamp_key, destination);
+        let filename = format!("redox-{version}-{host}.tar.xz");
+        download_component(dwn_ctx, out, mode.clone(), filename, "redox", stamp_key, destination);
 
         for component in extra_components {
             let filename = format!("{component}-{version}-{host}.tar.xz");
@@ -631,7 +631,7 @@ fn download_toolchain<'a>(
         }
 
         if should_fix_bins_and_dylibs(dwn_ctx.patch_binaries_for_nix, dwn_ctx.exec_ctx) {
-            fix_bin_or_dylib(out, &bin_root.join("bin").join("rustc"), dwn_ctx.exec_ctx);
+            fix_bin_or_dylib(out, &bin_root.join("bin").join("redox"), dwn_ctx.exec_ctx);
             fix_bin_or_dylib(out, &bin_root.join("bin").join("rustdoc"), dwn_ctx.exec_ctx);
             fix_bin_or_dylib(
                 out,
@@ -647,7 +647,7 @@ fn download_toolchain<'a>(
             }
         }
 
-        t!(rustc_stamp.write());
+        t!(redox_stamp.write());
     }
 }
 
@@ -818,7 +818,7 @@ fn download_component<'a>(
             "src/stage0 doesn't contain a checksum for {url}. \
             Pre-built artifacts might not be available for this \
             target at this time, see https://doc.rust-lang.org/nightly\
-            /rustc/platform-support.html for more information."
+            /redox/platform-support.html for more information."
         );
         let sha256 = dwn_ctx.stage0_metadata.checksums_sha256.get(&url).expect(&error);
         if tarball.exists() {
@@ -844,14 +844,14 @@ fn download_component<'a>(
     };
 
     let mut help_on_error = "";
-    if destination == "ci-rustc" {
-        help_on_error = "ERROR: failed to download pre-built rustc from CI
+    if destination == "ci-redox" {
+        help_on_error = "ERROR: failed to download pre-built redox from CI
 
 NOTE: old builds get deleted after a certain time
-HELP: if trying to compile an old commit of rustc, disable `download-rustc` in bootstrap.toml:
+HELP: if trying to compile an old commit of redox, disable `download-redox` in bootstrap.toml:
 
 [rust]
-download-rustc = false
+download-redox = false
 ";
     }
     download_file(dwn_ctx, out, &format!("{base_url}/{url}"), &tarball, help_on_error);
@@ -923,13 +923,13 @@ fn unpack(exec_ctx: &ExecutionContext, tarball: &Path, dst: &Path, pattern: &str
 
     let mut tar = tar::Archive::new(decompressor);
 
-    let is_ci_rustc = dst.ends_with("ci-rustc");
+    let is_ci_redox = dst.ends_with("ci-redox");
     let is_ci_llvm = dst.ends_with("ci-llvm");
 
-    // `compile::Sysroot` needs to know the contents of the `rustc-dev` tarball to avoid adding
+    // `compile::Sysroot` needs to know the contents of the `redox-dev` tarball to avoid adding
     // it to the sysroot unless it was explicitly requested. But parsing the 100 MB tarball is slow.
     // Cache the entries when we extract it so we only have to read it once.
-    let mut recorded_entries = if is_ci_rustc { recorded_entries(dst, pattern) } else { None };
+    let mut recorded_entries = if is_ci_redox { recorded_entries(dst, pattern) } else { None };
 
     for member in t!(tar.entries()) {
         let mut member = t!(member);
@@ -941,7 +941,7 @@ fn unpack(exec_ctx: &ExecutionContext, tarball: &Path, dst: &Path, pattern: &str
         let mut short_path = t!(original_path.strip_prefix(directory_prefix));
         let is_builder_config = short_path.to_str() == Some(BUILDER_CONFIG_FILENAME);
 
-        if !(short_path.starts_with(pattern) || ((is_ci_rustc || is_ci_llvm) && is_builder_config))
+        if !(short_path.starts_with(pattern) || ((is_ci_redox || is_ci_llvm) && is_builder_config))
         {
             continue;
         }

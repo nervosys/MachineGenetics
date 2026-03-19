@@ -4,14 +4,14 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
 use clippy_utils::{SpanlessEq, sym};
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::ExprKind::Assign;
-use rustc_hir::def_id::DefId;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_hir::ExprKind::Assign;
+use redox_hir::def_id::DefId;
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
+use redox_span::Span;
+use redox_span::symbol::Symbol;
 
 const ACCEPTABLE_METHODS: [Symbol; 5] = [
     sym::binaryheap_iter,
@@ -215,8 +215,8 @@ fn check_to_owned(
 
 fn make_sugg(
     cx: &LateContext<'_>,
-    key_pat: &rustc_hir::Pat<'_>,
-    value_pat: &rustc_hir::Pat<'_>,
+    key_pat: &redox_hir::Pat<'_>,
+    value_pat: &redox_hir::Pat<'_>,
     left_expr: &hir::Expr<'_>,
     filter_body: &hir::Body<'_>,
 ) -> Option<String> {

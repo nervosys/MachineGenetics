@@ -56,7 +56,7 @@ mem = []
 mangled-names = []
 
 # Only used in the compiler's build system
-rustc-dep-of-std = ["compiler-builtins", "dep:core"]
+redox-dep-of-std = ["compiler-builtins", "dep:core"]
 
 # This makes certain traits and function specializations public that
 # are not normally public but are required by the `builtins-test`

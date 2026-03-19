@@ -6,7 +6,7 @@
 // contains control flow.
 
 #![feature(abi_gpu_kernel)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(core_intrinsics)]
 #![no_main]
 

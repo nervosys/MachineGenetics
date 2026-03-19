@@ -83,7 +83,7 @@ where
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     fn count(self) -> usize {
         let a_count = match self.a {
             Some(a) => a.count(),

@@ -10,7 +10,7 @@
 //@ [loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
 //@ [loongarch64] needs-llvm-components: loongarch
 
-#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, intrinsics, redox_attrs)]
 #![crate_type = "lib"]
 #![no_std]
 #![no_core]
@@ -18,7 +18,7 @@
 extern crate minicore;
 use minicore::*;
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> Ordering;
 
 // ^^^^^ core

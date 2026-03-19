@@ -8,7 +8,7 @@ use hir::sym;
 use ide::{Cancellable, Crate, FileId, RunnableKind, TestId};
 use project_model::project_json::Runnable;
 use project_model::{CargoFeatures, ManifestPath, TargetKind};
-use rustc_hash::FxHashSet;
+use redox_hash::FxHashSet;
 use triomphe::Arc;
 use vfs::AbsPathBuf;
 

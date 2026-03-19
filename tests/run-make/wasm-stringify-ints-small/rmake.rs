@@ -1,10 +1,10 @@
 //@ only-wasm32-wasip1
 #![deny(warnings)]
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 fn main() {
-    rustc()
+    redox()
         .input("foo.rs")
         .target("wasm32-wasip1")
         .arg("-Clto")

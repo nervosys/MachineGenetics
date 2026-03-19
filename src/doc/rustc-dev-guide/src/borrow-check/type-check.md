@@ -1,7 +1,7 @@
 # The MIR type-check
 
 A key component of the borrow check is the
-[MIR type-check](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/type_check/index.html).
+[MIR type-check](https://doc.rust-lang.org/nightly/nightly-redox/redox_borrowck/type_check/index.html).
 This check walks the MIR and does a complete "type check" -- the same
 kind you might find in any other language. In the process of doing
 this type-check, we also uncover the region constraints that apply to
@@ -57,8 +57,8 @@ constraints again.
 
 After the MIR type-check, all user type annotations get discarded, as they aren't needed anymore.
 
-[annot]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.CanonicalUserTypeAnnotation.html
-[proj]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.UserTypeProjection.html
-[decl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.LocalDecl.html
-[stmt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.StatementKind.html#variant.AscribeUserType
-[inf]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.CanonicalUserTypeAnnotation.html#structfield.inferred_ty
+[annot]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.CanonicalUserTypeAnnotation.html
+[proj]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/struct.UserTypeProjection.html
+[decl]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/struct.LocalDecl.html
+[stmt]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/mir/enum.StatementKind.html#variant.AscribeUserType
+[inf]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.CanonicalUserTypeAnnotation.html#structfield.inferred_ty

@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use rustc_hash::FxHashSet;
+use redox_hash::FxHashSet;
 use salsa::{Durability, Setter as _};
 use triomphe::Arc;
 use vfs::FileId;

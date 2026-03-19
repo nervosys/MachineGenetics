@@ -3,14 +3,14 @@
 
 use run_make_support::llvm::llvm_bin_dir;
 use run_make_support::{
-    cmd, env_var, has_extension, llvm_filecheck, rustc, shallow_find_files, source_root,
+    cmd, env_var, has_extension, llvm_filecheck, redox, shallow_find_files, source_root,
 };
 
 fn main() {
     // `-Ccodegen-units=16 -Copt-level=2` is used here to trigger thin LTO
     // across codegen units to test deduplication of the named metadata
     // (see `LLVMRustPrepareThinLTOImport` for details).
-    rustc()
+    redox()
         .emit("link,obj")
         .arg("-")
         .arg("-Csave-temps")

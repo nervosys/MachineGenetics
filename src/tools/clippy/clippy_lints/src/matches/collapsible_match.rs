@@ -5,13 +5,13 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{IntoSpan, SpanRangeExt, snippet};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{SpanlessEq, get_ref_operators, is_unit_expr, peel_blocks_with_stmt, peel_ref_operators};
-use rustc_ast::BorrowKind;
-use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatExpr, PatExprKind, PatKind};
-use rustc_lint::LateContext;
-use rustc_span::symbol::Ident;
-use rustc_span::{BytePos, Span};
+use redox_ast::BorrowKind;
+use redox_errors::{Applicability, MultiSpan};
+use redox_hir::LangItem::OptionNone;
+use redox_hir::{Arm, Expr, ExprKind, HirId, Pat, PatExpr, PatExprKind, PatKind};
+use redox_lint::LateContext;
+use redox_span::symbol::Ident;
+use redox_span::{BytePos, Span};
 
 use crate::collapsible_if::{parens_around, peel_parens};
 

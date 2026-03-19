@@ -16,7 +16,7 @@ of these as just "lints."
 First, we have the lint declarations themselves,
 and this is where the name and default lint level and other metadata come from.
 These are normally defined by way of the [`declare_lint!`] macro,
-which boils down to a static with type [`&rustc_lint_defs::Lint`]
+which boils down to a static with type [`&redox_lint_defs::Lint`]
 (although this may change in the future,
 as the macro is somewhat unwieldy to add new fields to,
 like all macros).
@@ -38,16 +38,16 @@ lints are emitted as part of other work (e.g., type checking, etc.).
 
 ### High-level overview
 
-In [`rustc_interface::run_compiler`],
+In [`redox_interface::run_compiler`],
 the [`LintStore`] is created,
 and all lints are registered.
 
 There are three 'sources' of lints:
 
-* internal lints: lints only used by the rustc codebase
+* internal lints: lints only used by the redox codebase
 * builtin lints: lints built into the compiler and not provided by some outside
   source
-* `rustc_interface::Config`[`register_lints`]: lints passed into the compiler
+* `redox_interface::Config`[`register_lints`]: lints passed into the compiler
   during construction
 
 Lints are registered via the [`LintStore::register_lint`] function. This should
@@ -66,32 +66,32 @@ they can keep track of state internally.
 #### Internal lints
 
 These are lints used just by the compiler or drivers like `clippy`. They can be
-found in [`rustc_lint::internal`].
+found in [`redox_lint::internal`].
 
 An example of such a lint is the check that lint passes are implemented using
 the `declare_lint_pass!` macro and not by hand. This is accomplished with the
 `LINT_PASS_IMPL_WITHOUT_MACRO` lint.
 
-Registration of these lints happens in the [`rustc_lint::register_internals`]
+Registration of these lints happens in the [`redox_lint::register_internals`]
 function which is called when constructing a new lint store inside
-[`rustc_lint::new_lint_store`].
+[`redox_lint::new_lint_store`].
 
 #### Builtin Lints
 
 These are primarily described in two places,
-`rustc_lint_defs::builtin` and `rustc_lint::builtin`.
+`redox_lint_defs::builtin` and `redox_lint::builtin`.
 Often the first provides the definitions for the lints themselves,
 and the latter provides the lint pass definitions (and implementations),
 but this is not always true.
 
 The builtin lint registration happens in
-the [`rustc_lint::register_builtins`] function.
+the [`redox_lint::register_builtins`] function.
 Just like with internal lints,
-this happens inside of [`rustc_lint::new_lint_store`].
+this happens inside of [`redox_lint::new_lint_store`].
 
 #### Driver lints
 
-These are the lints provided by drivers via the `rustc_interface::Config`
+These are the lints provided by drivers via the `redox_interface::Config`
 [`register_lints`] field, which is a callback. Drivers should, if finding it
 already set, call the function currently set within the callback they add. The
 best way for drivers to get access to this is by overriding the
@@ -110,15 +110,15 @@ Ideally, we'd not have to do this, since it adds to the complexity of
 understanding the code. However, with the current type-erased lint store
 approach, it is beneficial to do so for performance reasons.
 
-[`LintStore`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html
-[`LintStore::register_lint`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_lints
-[`rustc_lint::register_builtins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_builtins.html
-[`rustc_lint::register_internals`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_internals.html
-[`rustc_lint::new_lint_store`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.new_lint_store.html
-[`declare_lint!`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/macro.declare_lint.html
-[`declare_tool_lint!`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/macro.declare_tool_lint.html
-[`register_lints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Config.html#structfield.register_lints
-[`&rustc_lint_defs::Lint`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/struct.Lint.html
-[`Session`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html
-[`rustc_interface::run_compiler`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/index.html#reexport.run_compiler
-[`rustc_lint::internal`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/internal/index.html
+[`LintStore`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/struct.LintStore.html
+[`LintStore::register_lint`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/struct.LintStore.html#method.register_lints
+[`redox_lint::register_builtins`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/fn.register_builtins.html
+[`redox_lint::register_internals`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/fn.register_internals.html
+[`redox_lint::new_lint_store`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/fn.new_lint_store.html
+[`declare_lint!`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_session/macro.declare_lint.html
+[`declare_tool_lint!`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_session/macro.declare_tool_lint.html
+[`register_lints`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_interface/interface/struct.Config.html#structfield.register_lints
+[`&redox_lint_defs::Lint`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint_defs/struct.Lint.html
+[`Session`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_session/struct.Session.html
+[`redox_interface::run_compiler`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_interface/index.html#reexport.run_compiler
+[`redox_lint::internal`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_lint/internal/index.html

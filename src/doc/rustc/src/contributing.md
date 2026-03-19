@@ -1,12 +1,12 @@
-# Contributing to rustc
+# Contributing to redox
 
-We'd love to have your help improving `rustc`! To that end, we've written [a
-whole book][rustc_dev_guide] on its
+We'd love to have your help improving `redox`! To that end, we've written [a
+whole book][redox_dev_guide] on its
 internals, how it works, and how to get started working on it. To learn
 more, you'll want to check that out.
 
 If you would like to contribute to _this_ book, you can find its source in the
-rustc source at [src/doc/rustc][rustc_book].
+redox source at [src/doc/redox][redox_book].
 
-[rustc_dev_guide]: https://rustc-dev-guide.rust-lang.org/
-[rustc_book]: https://github.com/rust-lang/rust/tree/HEAD/src/doc/rustc
+[redox_dev_guide]: https://redox-dev-guide.rust-lang.org/
+[redox_book]: https://github.com/rust-lang/rust/tree/HEAD/src/doc/redox

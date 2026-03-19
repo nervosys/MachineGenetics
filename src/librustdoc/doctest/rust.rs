@@ -5,15 +5,15 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use proc_macro2::{TokenStream, TokenTree};
-use rustc_attr_parsing::eval_config_entry;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_hir::{self as hir, Attribute, CRATE_HIR_ID, intravisit};
-use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::TyCtxt;
-use rustc_resolve::rustdoc::span_of_fragments;
-use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span};
+use redox_attr_parsing::eval_config_entry;
+use redox_hir::attrs::AttributeKind;
+use redox_hir::def_id::{CRATE_DEF_ID, LocalDefId};
+use redox_hir::{self as hir, Attribute, CRATE_HIR_ID, intravisit};
+use redox_middle::hir::nested_filter;
+use redox_middle::ty::TyCtxt;
+use redox_resolve::rustdoc::span_of_fragments;
+use redox_span::source_map::SourceMap;
+use redox_span::{BytePos, DUMMY_SP, FileName, Pos, Span};
 
 use super::{DocTestVisitor, ScrapedDocTest};
 use crate::clean::{Attributes, CfgInfo, extract_cfg_from_attrs};
@@ -224,7 +224,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for HirCollector<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'_>) {
         let name = match &item.kind {
             hir::ItemKind::Impl(impl_) => {
-                Some(rustc_hir_pretty::id_to_string(&self.tcx, impl_.self_ty.hir_id))
+                Some(redox_hir_pretty::id_to_string(&self.tcx, impl_.self_ty.hir_id))
             }
             _ => item.kind.ident().map(|ident| ident.to_string()),
         };

@@ -3,14 +3,14 @@
 //@ ignore-wasm64
 // ignore-tidy-linelength
 
-use run_make_support::{diff, rust_lib_name, rustc};
+use run_make_support::{diff, rust_lib_name, redox};
 
 fn main() {
-    rustc().input("dependency-1.rs").run();
-    rustc().input("dependency-2.rs").extra_filename("2").metadata("2").run();
-    rustc().input("dep-2-reexport.rs").extern_("dependency", rust_lib_name("dependency2")).run();
+    redox().input("dependency-1.rs").run();
+    redox().input("dependency-2.rs").extra_filename("2").metadata("2").run();
+    redox().input("dep-2-reexport.rs").extern_("dependency", rust_lib_name("dependency2")).run();
 
-    let out = rustc()
+    let out = redox()
         .input("multiple-dep-versions.rs")
         .extern_("dependency", rust_lib_name("dependency"))
         .extern_("dep_2_reexport", rust_lib_name("foo"))
@@ -30,6 +30,6 @@ fn main() {
     }
     diff()
         .expected_file("multiple-dep-versions.stderr")
-        .actual_text("(rustc)", &lines.join("\n"))
+        .actual_text("(redox)", &lines.join("\n"))
         .run();
 }

@@ -14,8 +14,8 @@ use hir_def::{
 };
 use hir_def::{FunctionId, hir::ClosureKind};
 use hir_expand::name::Name;
-use rustc_ast_ir::Mutability;
-use rustc_type_ir::{
+use redox_ast_ir::Mutability;
+use redox_type_ir::{
     CoroutineArgs, CoroutineArgsParts, InferTy, Interner,
     inherent::{AdtDef, GenericArgs as _, IntoKind, Ty as _},
 };
@@ -126,7 +126,7 @@ impl<'db> InferenceContext<'_, 'db> {
         expr: ExprId,
         is_read: ExprIsRead,
     ) -> bool {
-        // rustc does the place expr check first, but since we are feeding
+        // redox does the place expr check first, but since we are feeding
         // readness of the `expr` as a given value, we just can short-circuit
         // the place expr check if it's true(see codes and comments below)
         if is_read == ExprIsRead::Yes {
@@ -142,7 +142,7 @@ impl<'db> InferenceContext<'_, 'db> {
             return true;
         }
 
-        // rustc queries parent hir node of `expr` here and determine whether
+        // redox queries parent hir node of `expr` here and determine whether
         // the current `expr` is read of value per its parent.
         // But since we don't have hir node, we cannot follow such "bottom-up"
         // method.
@@ -763,7 +763,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
                 if is_destructuring_assignment && self.diverges.is_always() {
                     // Ordinary assignments always return `()`, even when they diverge.
-                    // However, rustc lowers destructuring assignments into blocks, and blocks return `!` if they have no tail
+                    // However, redox lowers destructuring assignments into blocks, and blocks return `!` if they have no tail
                     // expression and they diverge. Therefore, we have to do the same here, even though we don't lower destructuring
                     // assignments into blocks.
                     self.table.new_maybe_never_var()
@@ -1238,7 +1238,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 CoroutineArgsParts {
                     parent_args: parent_args.as_slice(),
                     kind_ty: self.types.types.unit,
-                    // rustc uses a special lang item type for the resume ty. I don't believe this can cause us problems.
+                    // redox uses a special lang item type for the resume ty. I don't believe this can cause us problems.
                     resume_ty: self.types.types.unit,
                     yield_ty: self.types.types.unit,
                     return_ty: inner_ty,
@@ -1544,7 +1544,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 if let Some(expr) = tail {
                     this.infer_expr_coerce(expr, expected, ExprIsRead::Yes)
                 } else {
-                    // Citing rustc: if there is no explicit tail expression,
+                    // Citing redox: if there is no explicit tail expression,
                     // that is typically equivalent to a tail expression
                     // of `()` -- except if the block diverges. In that
                     // case, there is no value supplied from the tail

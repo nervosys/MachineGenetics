@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_hir::{
+use redox_hir::{
     Body, Expr, ExprKind, FnDecl, LetExpr, LocalSource, Mutability, Pat, PatKind, Stmt, StmtKind, intravisit,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
-use rustc_span::def_id::LocalDefId;
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty;
+use redox_session::declare_lint_pass;
+use redox_span::Span;
+use redox_span::def_id::LocalDefId;
 
 declare_clippy_lint! {
     /// ### What it does

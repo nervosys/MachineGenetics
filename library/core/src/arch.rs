@@ -20,7 +20,7 @@ pub use crate::core_arch::arch::*;
 /// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
 /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
 #[stable(feature = "asm", since = "1.59.0")]
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
 }
@@ -33,7 +33,7 @@ pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
 /// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
 /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
 #[stable(feature = "naked_functions", since = "1.88.0")]
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
 }
@@ -46,7 +46,7 @@ pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?)
 /// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
 /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
 #[stable(feature = "global_asm", since = "1.59.0")]
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
 }

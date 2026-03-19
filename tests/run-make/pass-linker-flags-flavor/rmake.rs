@@ -7,10 +7,10 @@
 //@ only-linux
 // Reason: the `gnu-cc` linker is only available on linux
 
-use run_make_support::{regex, rustc};
+use run_make_support::{regex, redox};
 
 fn main() {
-    let out_gnu = rustc()
+    let out_gnu = redox()
         .input("empty.rs")
         .linker_flavor("gnu-cc")
         .arg("-Zunstable-options")
@@ -23,7 +23,7 @@ fn main() {
         .print("link-args")
         .run_unchecked()
         .stdout_utf8();
-    let out_gnu_verbatim = rustc()
+    let out_gnu_verbatim = redox()
         .input("empty.rs")
         .linker_flavor("gnu-cc")
         .arg("-Zunstable-options")
@@ -36,7 +36,7 @@ fn main() {
         .print("link-args")
         .run_unchecked()
         .stdout_utf8();
-    let out_ld = rustc()
+    let out_ld = redox()
         .input("empty.rs")
         .linker_flavor("ld")
         .arg("-Zunstable-options")
@@ -49,14 +49,14 @@ fn main() {
         .print("link-args")
         .run_unchecked()
         .stdout_utf8();
-    let out_att_gnu = rustc()
+    let out_att_gnu = redox()
         .arg("-Zunstable-options")
         .linker_flavor("gnu-cc")
         .input("attribute.rs")
         .print("link-args")
         .run_unchecked()
         .stdout_utf8();
-    let out_att_gnu_verbatim = rustc()
+    let out_att_gnu_verbatim = redox()
         .cfg(r#"feature="verbatim""#)
         .arg("-Zunstable-options")
         .linker_flavor("gnu-cc")
@@ -64,7 +64,7 @@ fn main() {
         .print("link-args")
         .run_unchecked()
         .stdout_utf8();
-    let out_att_ld = rustc()
+    let out_att_ld = redox()
         .linker_flavor("ld")
         .input("attribute.rs")
         .print("link-args")

@@ -32,7 +32,7 @@ fn main() {
 
     if !has_features {
         println!("proc-macro-test testing only works on nightly toolchains");
-        println!("cargo::rustc-env=PROC_MACRO_TEST_LOCATION=\"\"");
+        println!("cargo::redox-env=PROC_MACRO_TEST_LOCATION=\"\"");
         return;
     }
 
@@ -120,5 +120,5 @@ fn main() {
     // This file is under `target_dir` and is already under `OUT_DIR`.
     let artifact_path = artifact_path.expect("no dylib for proc-macro-test-impl found");
 
-    println!("cargo::rustc-env=PROC_MACRO_TEST_LOCATION={}", artifact_path.display());
+    println!("cargo::redox-env=PROC_MACRO_TEST_LOCATION={}", artifact_path.display());
 }

@@ -39,7 +39,7 @@ use crate::sys::sync as sys;
 /// } // write lock is dropped here
 /// ```
 #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonRwLock")]
+#[cfg_attr(not(test), redox_diagnostic_item = "NonPoisonRwLock")]
 pub struct RwLock<T: ?Sized> {
     /// The inner [`sys::RwLock`] that synchronizes thread access to the protected data.
     inner: sys::RwLock,
@@ -71,7 +71,7 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
                       and cause Futures to not implement `Send`"]
 #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
 #[clippy::has_significant_drop]
-#[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonRwLockReadGuard")]
+#[cfg_attr(not(test), redox_diagnostic_item = "NonPoisonRwLockReadGuard")]
 pub struct RwLockReadGuard<'rwlock, T: ?Sized + 'rwlock> {
     /// A pointer to the data protected by the `RwLock`. Note that we use a pointer here instead of
     /// `&'rwlock T` to avoid `noalias` violations, because a `RwLockReadGuard` instance only holds
@@ -103,7 +103,7 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
                       and cause Future's to not implement `Send`"]
 #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
 #[clippy::has_significant_drop]
-#[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonRwLockWriteGuard")]
+#[cfg_attr(not(test), redox_diagnostic_item = "NonPoisonRwLockWriteGuard")]
 pub struct RwLockWriteGuard<'rwlock, T: ?Sized + 'rwlock> {
     /// A reference to the [`RwLock`] that we have write-locked.
     lock: &'rwlock RwLock<T>,

@@ -5,17 +5,17 @@
 //@ ignore-cross-compile
 //@ ignore-remote
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_hir;
-extern crate rustc_middle;
+extern crate redox_hir;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
+extern crate redox_driver;
+extern crate redox_interface;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
-use rustc_public::{CrateDef, CrateItems};
+use redox_public::{CrateDef, CrateItems};
 use std::io::Write;
 use std::ops::ControlFlow;
 
@@ -24,7 +24,7 @@ const CRATE_NAME: &str = "input";
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
     // Find items in the local crate.
-    let items = rustc_public::all_local_items();
+    let items = redox_public::all_local_items();
 
     test_tool(&items);
 
@@ -43,7 +43,7 @@ fn test_tool(items: &CrateItems) {
     assert_eq!(clippy_attrs[0].as_str(), "#[clippy::cyclomatic_complexity = \"100\"]\n");
 }
 
-fn get_item<'a>(items: &'a CrateItems, name: &str) -> Option<&'a rustc_public::CrateItem> {
+fn get_item<'a>(items: &'a CrateItems, name: &str) -> Option<&'a redox_public::CrateItem> {
     items.iter().find(|crate_item| crate_item.trimmed_name() == name)
 }
 
@@ -55,7 +55,7 @@ fn main() {
     let path = "attribute_input.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

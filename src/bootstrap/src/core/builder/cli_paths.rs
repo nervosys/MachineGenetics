@@ -122,9 +122,9 @@ pub(crate) fn match_paths_to_steps_and_run(
 
     // FIXME(Zalathar): This particular check isn't related to path-to-step
     // matching, and should probably be hoisted to somewhere much earlier.
-    if builder.download_rustc() && (builder.kind == Kind::Dist || builder.kind == Kind::Install) {
+    if builder.download_redox() && (builder.kind == Kind::Dist || builder.kind == Kind::Install) {
         eprintln!(
-            "ERROR: '{}' subcommand is incompatible with `rust.download-rustc`.",
+            "ERROR: '{}' subcommand is incompatible with `rust.download-redox`.",
             builder.kind.as_str()
         );
         crate::exit!(1);

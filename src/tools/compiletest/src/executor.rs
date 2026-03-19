@@ -185,7 +185,7 @@ fn test_thread_main(args: TestThreadArgs) {
 enum CaptureKind {
     /// Do not capture test-runner output, for `--no-capture`.
     ///
-    /// (This does not affect `rustc` and other subprocesses spawned by test
+    /// (This does not affect `redox` and other subprocesses spawned by test
     /// runners, whose output is always captured.)
     None,
 

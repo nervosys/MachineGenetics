@@ -4,13 +4,13 @@ use clippy_utils::{
     binary_expr_needs_parentheses, is_from_proc_macro, leaks_droppable_temporary_with_limited_lifetime,
     span_contains_cfg, span_find_starting_semi, sym,
 };
-use rustc_ast::MetaItemInner;
-use rustc_errors::Applicability;
-use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, Expr, ExprKind, HirId, LangItem, MatchSource, StmtKind};
-use rustc_lint::{LateContext, Level, LintContext};
-use rustc_middle::ty::{self, Ty};
-use rustc_span::{BytePos, Pos, Span};
+use redox_ast::MetaItemInner;
+use redox_errors::Applicability;
+use redox_hir::intravisit::FnKind;
+use redox_hir::{Body, Expr, ExprKind, HirId, LangItem, MatchSource, StmtKind};
+use redox_lint::{LateContext, Level, LintContext};
+use redox_middle::ty::{self, Ty};
+use redox_span::{BytePos, Pos, Span};
 use std::borrow::Cow;
 use std::fmt::Display;
 
@@ -174,7 +174,7 @@ fn check_final_expr<'tcx>(
                 return;
             }
 
-            // Returns may be used to turn an expression into a statement in rustc's AST.
+            // Returns may be used to turn an expression into a statement in redox's AST.
             // This allows the addition of attributes, like `#[allow]` (See: clippy#9361)
             // `#[expect(clippy::needless_return)]` needs to be handled separately to
             // actually fulfill the expectation (clippy::#12998)

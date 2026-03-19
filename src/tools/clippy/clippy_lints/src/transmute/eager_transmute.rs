@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{eq_expr_value, path_to_local_with_projections, sym};
-use rustc_abi::WrappingRange;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Node};
-use rustc_lint::LateContext;
-use rustc_middle::ty::Ty;
+use redox_abi::WrappingRange;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind, Node};
+use redox_lint::LateContext;
+use redox_middle::ty::Ty;
 
 use super::EAGER_TRANSMUTE;
 

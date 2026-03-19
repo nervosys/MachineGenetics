@@ -8,7 +8,7 @@
 use std::process::Command;
 
 use run_make_support::regex::Regex;
-use run_make_support::{cmd, llvm_readobj, run_with_args, rustc, target};
+use run_make_support::{cmd, llvm_readobj, run_with_args, redox, target};
 
 // Minimum major versions supporting -static-pie
 const GCC_VERSION: u32 = 8;
@@ -47,7 +47,7 @@ fn test(compiler: &str) {
         return;
     }
 
-    rustc()
+    redox()
         .input("test-aslr.rs")
         .linker(compiler)
         .arg("-Clinker-flavor=gcc")

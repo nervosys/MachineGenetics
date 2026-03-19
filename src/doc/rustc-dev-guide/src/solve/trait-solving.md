@@ -1,7 +1,7 @@
 # Trait solving (new)
 
 This chapter describes how trait solving works with the new WIP solver located in
-[`rustc_trait_selection/solve`][solve]. Feel free to also look at the docs for
+[`redox_trait_selection/solve`][solve]. Feel free to also look at the docs for
 [the current solver](../traits/resolution.md) and [the chalk solver](../traits/chalk.md).
 
 ## Core concepts
@@ -38,9 +38,9 @@ which does not have any nested goals. Therefore `Vec<T>: Clone` holds.
 The trait solver can either return success, ambiguity or an error as a [`CanonicalResponse`].
 For success and ambiguity it also returns constraints inference and region constraints.
 
-[solve]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/solve/index.html
-[`Goal`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/canonical/ir/solve/struct.Goal.html
-[`Predicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Predicate.html
-[`Candidate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_next_trait_solver/solve/assembly/struct.Candidate.html
-[`CandidateSource`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/canonical/ir/solve/enum.CandidateSource.html
-[`CanonicalResponse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/solve/type.CanonicalResponse.html
+[solve]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/solve/index.html
+[`Goal`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/canonical/ir/solve/struct.Goal.html
+[`Predicate`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.Predicate.html
+[`Candidate`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_next_trait_solver/solve/assembly/struct.Candidate.html
+[`CandidateSource`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/canonical/ir/solve/enum.CandidateSource.html
+[`CanonicalResponse`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_trait_selection/traits/solve/type.CanonicalResponse.html

@@ -6,25 +6,25 @@
 //@ ignore-remote
 //@ edition: 2021
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_middle;
+extern crate redox_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
+extern crate redox_driver;
+extern crate redox_interface;
 #[macro_use]
-extern crate rustc_public;
+extern crate redox_public;
 
 use std::io::Write;
 use std::ops::ControlFlow;
 
-use rustc_public::mir::{Body, ConstOperand, Operand, TerminatorKind};
-use rustc_public::ty::{FnDef, RigidTy, TyKind};
+use redox_public::mir::{Body, ConstOperand, Operand, TerminatorKind};
+use redox_public::ty::{FnDef, RigidTy, TyKind};
 
 const CRATE_NAME: &str = "crate_closure_body";
 
 fn test_closure_body() -> ControlFlow<()> {
-    let crate_items = rustc_public::all_local_items();
+    let crate_items = redox_public::all_local_items();
     for item in crate_items {
         let item_ty = item.ty();
         match &item_ty.kind() {
@@ -58,7 +58,7 @@ fn main() {
     let path = "closure_body.rs";
     generate_input(&path).unwrap();
     let args = &[
-        "rustc".to_string(),
+        "redox".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

@@ -8,10 +8,10 @@
 //@ ignore-cross-compile
 
 use run_make_support::object::Object;
-use run_make_support::{bin_name, is_darwin, object, rustc};
+use run_make_support::{bin_name, is_darwin, object, redox};
 
 fn main() {
-    rustc()
+    redox()
         .arg("-Ctarget-feature=-crt-static")
         .arg("-Zexport-executable-symbols")
         .input("main.rs")

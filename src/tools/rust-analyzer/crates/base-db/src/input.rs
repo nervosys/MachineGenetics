@@ -15,7 +15,7 @@ use dashmap::DashMap;
 use dashmap::mapref::entry::Entry;
 use intern::Symbol;
 use la_arena::{Arena, Idx, RawIdx};
-use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet, FxHasher};
+use redox_hash::{FxBuildHasher, FxHashMap, FxHashSet, FxHasher};
 use salsa::{Durability, Setter};
 use span::Edition;
 use triomphe::Arc;
@@ -190,7 +190,7 @@ impl ops::Deref for CrateName {
 /// Origin of the crates.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CrateOrigin {
-    /// Crates that are from the rustc workspace.
+    /// Crates that are from the redox workspace.
     Rustc { name: Symbol },
     /// Crates that are workspace members.
     Local { repo: Option<String>, name: Option<Symbol> },

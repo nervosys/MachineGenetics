@@ -8,7 +8,7 @@ A collection of lints to catch common mistakes and improve your
 [There are over 800 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
 
 Lints are divided into categories, each with a default [lint
-level](https://doc.rust-lang.org/rustc/lints/levels.html). You can choose how
+level](https://doc.rust-lang.org/redox/lints/levels.html). You can choose how
 much Clippy is supposed to ~~annoy~~ help you by changing the lint level by
 category.
 

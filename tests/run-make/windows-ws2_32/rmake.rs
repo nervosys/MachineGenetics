@@ -4,11 +4,11 @@
 
 use run_make_support::object::read::Object;
 use run_make_support::object::{self};
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 fn main() {
-    rustc().input("empty.rs").run();
-    rustc().input("tcp.rs").run();
+    redox().input("empty.rs").run();
+    redox().input("tcp.rs").run();
 
     assert!(!links_ws2_32("empty.exe"));
     assert!(links_ws2_32("tcp.exe"));

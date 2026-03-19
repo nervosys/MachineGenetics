@@ -5,7 +5,7 @@
 //@ ignore-watchos `Command::uid/gid` requires fork, which is prohibited
 //@ needs-subprocess
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 fn main() {
     #[cfg(unix)]

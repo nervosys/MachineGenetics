@@ -17,7 +17,7 @@ Cross-compiling programs does not require any additional software beyond the too
 
 ## Building the target
 
-The target can be built by enabling it for a `rustc` build.
+The target can be built by enabling it for a `redox` build.
 
 ```toml
 [build]
@@ -47,4 +47,4 @@ This target can be cross-compiled from any host.
 
 ## Testing
 
-Currently there is no support to run the rustc test suite for this target.
+Currently there is no support to run the redox test suite for this target.

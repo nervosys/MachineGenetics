@@ -5,9 +5,9 @@ This section talks about how to profile the compiler and find out where it spend
 Depending on what you're trying to measure, there are several different approaches:
 
 - If you want to see if a PR improves or regresses compiler performance,
-  see the [rustc-perf chapter](tests/perf.md) for requesting a benchmarking run.
+  see the [redox-perf chapter](tests/perf.md) for requesting a benchmarking run.
 
-- If you want a medium-to-high level overview of where `rustc` is spending its time:
+- If you want a medium-to-high level overview of where `redox` is spending its time:
   - The `-Z self-profile` flag and [measureme](https://github.com/rust-lang/measureme) tools offer a query-based approach to profiling.
     See [their docs](https://github.com/rust-lang/measureme/blob/master/summarize/README.md) for more information.
 
@@ -25,14 +25,14 @@ Depending on what you're trying to measure, there are several different approach
   you are using.
   - For Windows, read our [WPA guide](profiling/wpa-profiling.md).
 
-## Optimizing rustc's bootstrap times with `cargo-llvm-lines`
+## Optimizing redox's bootstrap times with `cargo-llvm-lines`
 
 Using [cargo-llvm-lines](https://github.com/dtolnay/cargo-llvm-lines) you can count the
 number of lines of LLVM IR across all instantiations of a generic function.
-Since most of the time compiling rustc is spent in LLVM, the idea is that by
-reducing the amount of code passed to LLVM, compiling rustc gets faster.
+Since most of the time compiling redox is spent in LLVM, the idea is that by
+reducing the amount of code passed to LLVM, compiling redox gets faster.
 
-To use `cargo-llvm-lines` together with somewhat custom rustc build process, you can use
+To use `cargo-llvm-lines` together with somewhat custom redox build process, you can use
 `-C save-temps` to obtain required LLVM IR.
 The option preserves temporary work products created during compilation.
 Among those is LLVM IR that represents an input to the
@@ -46,20 +46,20 @@ cargo install cargo-llvm-lines
 
 # Do a clean before every run, to not mix in the results from previous runs.
 ./x clean
-env RUSTFLAGS=-Csave-temps ./x build --stage 0 compiler/rustc
+env RUSTFLAGS=-Csave-temps ./x build --stage 0 compiler/redox
 
-# Single crate, e.g., rustc_middle. (Relies on the glob support of your shell.)
+# Single crate, e.g., redox_middle. (Relies on the glob support of your shell.)
 # Convert unoptimized LLVM bitcode into a human readable LLVM assembly accepted by cargo-llvm-lines.
-for f in build/x86_64-unknown-linux-gnu/stage0-rustc/x86_64-unknown-linux-gnu/release/deps/rustc_middle-*.no-opt.bc; do
+for f in build/x86_64-unknown-linux-gnu/stage0-redox/x86_64-unknown-linux-gnu/release/deps/redox_middle-*.no-opt.bc; do
   ./build/x86_64-unknown-linux-gnu/llvm/bin/llvm-dis "$f"
 done
-cargo llvm-lines --files ./build/x86_64-unknown-linux-gnu/stage0-rustc/x86_64-unknown-linux-gnu/release/deps/rustc_middle-*.ll > llvm-lines-middle.txt
+cargo llvm-lines --files ./build/x86_64-unknown-linux-gnu/stage0-redox/x86_64-unknown-linux-gnu/release/deps/redox_middle-*.ll > llvm-lines-middle.txt
 
 # Specify all crates of the compiler.
-for f in build/x86_64-unknown-linux-gnu/stage0-rustc/x86_64-unknown-linux-gnu/release/deps/*.no-opt.bc; do
+for f in build/x86_64-unknown-linux-gnu/stage0-redox/x86_64-unknown-linux-gnu/release/deps/*.no-opt.bc; do
   ./build/x86_64-unknown-linux-gnu/llvm/bin/llvm-dis "$f"
 done
-cargo llvm-lines --files ./build/x86_64-unknown-linux-gnu/stage0-rustc/x86_64-unknown-linux-gnu/release/deps/*.ll > llvm-lines.txt
+cargo llvm-lines --files ./build/x86_64-unknown-linux-gnu/stage0-redox/x86_64-unknown-linux-gnu/release/deps/*.ll > llvm-lines.txt
 ```
 
 Example output for the compiler:
@@ -75,23 +75,23 @@ Example output for the compiler:
     466854 (1.0%)     8863 (0.6%)  core::ptr::swap_nonoverlapping_one
     412736 (0.9%)     1780 (0.1%)  hashbrown::raw::RawTable<T>::resize
     367776 (0.8%)     2554 (0.2%)  alloc::raw_vec::RawVec<T,A>::grow_amortized
-    367507 (0.8%)      643 (0.0%)  rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+    367507 (0.8%)      643 (0.0%)  redox_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
     355882 (0.8%)     6332 (0.4%)  alloc::alloc::box_free
     354556 (0.8%)    14213 (0.9%)  core::ptr::write
     354361 (0.8%)     3590 (0.2%)  core::iter::traits::iterator::Iterator::fold
-    347761 (0.8%)     3873 (0.2%)  rustc_middle::ty::context::tls::set_tlv
+    347761 (0.8%)     3873 (0.2%)  redox_middle::ty::context::tls::set_tlv
     337534 (0.7%)     2377 (0.2%)  alloc::raw_vec::RawVec<T,A>::allocate_in
     331690 (0.7%)     3192 (0.2%)  hashbrown::raw::RawTable<T>::find
-    328756 (0.7%)     3978 (0.3%)  rustc_middle::ty::context::tls::with_context_opt
-    326903 (0.7%)      642 (0.0%)  rustc_query_system::query::plumbing::try_execute_query
+    328756 (0.7%)     3978 (0.3%)  redox_middle::ty::context::tls::with_context_opt
+    326903 (0.7%)      642 (0.0%)  redox_query_system::query::plumbing::try_execute_query
 ```
 
 Since this doesn't seem to work with incremental compilation or `./x check`,
-you will be compiling rustc _a lot_.
+you will be compiling redox _a lot_.
 I recommend changing a few settings in `bootstrap.toml` to make it bearable:
 ```
 # A debug build takes _a third_ as long on my machine,
-# but compiling more than stage0 rustc becomes unbearably slow.
+# but compiling more than stage0 redox becomes unbearably slow.
 rust.optimize = false
 
 # We can't use incremental anyway, so we disable it for a little speed boost.

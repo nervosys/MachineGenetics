@@ -2,11 +2,11 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::ty::{has_non_owning_mutable_access, implements_trait};
 use clippy_utils::{is_mutable, path_to_local_with_projections, sym};
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, Node, PatKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::Instance;
-use rustc_span::Span;
+use redox_errors::Applicability;
+use redox_hir::{Expr, Node, PatKind};
+use redox_lint::LateContext;
+use redox_middle::ty::Instance;
+use redox_span::Span;
 
 use super::DOUBLE_ENDED_ITERATOR_LAST;
 

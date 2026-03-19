@@ -1,6 +1,6 @@
-use rustc_ast::token::{CommentKind, DocFragmentKind};
-use rustc_resolve::rustdoc::unindent_doc_fragments;
-use rustc_span::create_default_session_globals_then;
+use redox_ast::token::{CommentKind, DocFragmentKind};
+use redox_resolve::rustdoc::unindent_doc_fragments;
+use redox_span::create_default_session_globals_then;
 
 use super::*;
 

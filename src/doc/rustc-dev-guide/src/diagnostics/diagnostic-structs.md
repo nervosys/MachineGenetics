@@ -1,5 +1,5 @@
 # Diagnostic and subdiagnostic structs
-rustc has two diagnostic traits that can be used to create diagnostics:
+redox has two diagnostic traits that can be used to create diagnostics:
 `Diagnostic` and `Subdiagnostic`.
 
 For simple diagnostics,
@@ -253,8 +253,8 @@ of `Subdiagnostic` that looks like the following:
 
 ```rust
 impl<'tcx> Subdiagnostic for ExpectedReturnTypeLabel<'tcx> {
-    fn add_to_diag(self, diag: &mut rustc_errors::Diagnostic) {
-        use rustc_errors::{Applicability, IntoDiagArg};
+    fn add_to_diag(self, diag: &mut redox_errors::Diagnostic) {
+        use redox_errors::{Applicability, IntoDiagArg};
         match self {
             ExpectedReturnTypeLabel::Unit { span } => {
                 diag.span_label(span, "expected `()` because of default return type")
@@ -352,9 +352,9 @@ to multipart suggestions)
   - _Applied to any field._
   - Prevents the field from being provided as a diagnostic argument.
 
-[defn]: https://github.com/rust-lang/rust/blob/6201eabde85db854c1ebb57624be5ec699246b50/compiler/rustc_hir_analysis/src/errors.rs#L68-L77
-[use]: https://github.com/rust-lang/rust/blob/f1112099eba41abadb6f921df7edba70affe92c5/compiler/rustc_hir_analysis/src/collect.rs#L823-L827
+[defn]: https://github.com/rust-lang/rust/blob/6201eabde85db854c1ebb57624be5ec699246b50/compiler/redox_hir_analysis/src/errors.rs#L68-L77
+[use]: https://github.com/rust-lang/rust/blob/f1112099eba41abadb6f921df7edba70affe92c5/compiler/redox_hir_analysis/src/collect.rs#L823-L827
 
-[subdiag_defn]: https://github.com/rust-lang/rust/blob/f1112099eba41abadb6f921df7edba70affe92c5/compiler/rustc_hir_analysis/src/errors.rs#L221-L234
-[subdiag_use_1]: https://github.com/rust-lang/rust/blob/f1112099eba41abadb6f921df7edba70affe92c5/compiler/rustc_hir_analysis/src/check/fn_ctxt/suggestions.rs#L670-L674
-[subdiag_use_2]: https://github.com/rust-lang/rust/blob/f1112099eba41abadb6f921df7edba70affe92c5/compiler/rustc_hir_analysis/src/check/fn_ctxt/suggestions.rs#L704-L707
+[subdiag_defn]: https://github.com/rust-lang/rust/blob/f1112099eba41abadb6f921df7edba70affe92c5/compiler/redox_hir_analysis/src/errors.rs#L221-L234
+[subdiag_use_1]: https://github.com/rust-lang/rust/blob/f1112099eba41abadb6f921df7edba70affe92c5/compiler/redox_hir_analysis/src/check/fn_ctxt/suggestions.rs#L670-L674
+[subdiag_use_2]: https://github.com/rust-lang/rust/blob/f1112099eba41abadb6f921df7edba70affe92c5/compiler/redox_hir_analysis/src/check/fn_ctxt/suggestions.rs#L704-L707

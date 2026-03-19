@@ -3,17 +3,17 @@ use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::{expr_type_is_certain, has_drop};
 use clippy_utils::{in_automatically_derived, is_inside_always_const_context, is_lint_allowed, peel_blocks};
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::{
     BinOpKind, BlockCheckMode, Expr, ExprKind, HirId, HirIdMap, ItemKind, LocalSource, Node, PatKind, Stmt, StmtKind,
     StructTailExpr, UnsafeSource, is_range_literal,
 };
-use rustc_infer::infer::TyCtxtInferExt as _;
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use redox_infer::infer::TyCtxtInferExt as _;
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::Span;
+use redox_trait_selection::error_reporting::InferCtxtErrorExt;
 use std::ops::Deref;
 
 declare_clippy_lint! {
@@ -93,11 +93,11 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
         check_unnecessary_operation(cx, stmt);
     }
 
-    fn check_block(&mut self, _: &LateContext<'tcx>, _: &'tcx rustc_hir::Block<'tcx>) {
+    fn check_block(&mut self, _: &LateContext<'tcx>, _: &'tcx redox_hir::Block<'tcx>) {
         self.local_bindings.push(Vec::default());
     }
 
-    fn check_block_post(&mut self, cx: &LateContext<'tcx>, _: &'tcx rustc_hir::Block<'tcx>) {
+    fn check_block_post(&mut self, cx: &LateContext<'tcx>, _: &'tcx redox_hir::Block<'tcx>) {
         for hir_id in self.local_bindings.pop().unwrap() {
             if let Some(span) = self.underscore_bindings.swap_remove(&hir_id) {
                 span_lint_hir(
@@ -121,7 +121,7 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
 impl NoEffect {
     fn check_no_effect(&mut self, cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
         if let StmtKind::Semi(expr) = stmt.kind {
-            // Covered by rustc `path_statements` lint
+            // Covered by redox `path_statements` lint
             if matches!(expr.kind, ExprKind::Path(_)) {
                 return true;
             }
@@ -216,7 +216,7 @@ fn is_operator_overridden(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             // No need to check type of `lhs` and `rhs`
             // because if the operator is overridden, at least one operand is ADT type
 
-            // reference: rust/compiler/rustc_middle/src/ty/typeck_results.rs: `is_method_call`.
+            // reference: rust/compiler/redox_middle/src/ty/typeck_results.rs: `is_method_call`.
             // use this function to check whether operator is overridden in `ExprKind::{Binary, Unary}`.
             cx.typeck_results().is_method_call(expr)
         },

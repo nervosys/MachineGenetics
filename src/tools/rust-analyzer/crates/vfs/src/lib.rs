@@ -55,7 +55,7 @@ pub use crate::{
 use indexmap::{IndexMap, map::Entry};
 pub use paths::{AbsPath, AbsPathBuf};
 
-use rustc_hash::FxHasher;
+use redox_hash::FxHasher;
 use stdx::hash_once;
 use tracing::{Level, span};
 

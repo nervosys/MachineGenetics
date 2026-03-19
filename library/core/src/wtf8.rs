@@ -125,7 +125,7 @@ impl CodePoint {
 /// if they’re not in a surrogate pair.
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
-#[rustc_has_incoherent_inherent_impls]
+#[redox_has_incoherent_inherent_impls]
 #[doc(hidden)]
 pub struct Wtf8 {
     bytes: [u8],

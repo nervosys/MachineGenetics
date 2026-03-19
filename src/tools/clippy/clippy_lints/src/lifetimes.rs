@@ -3,28 +3,28 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::{is_from_proc_macro, trait_ref_of_method};
 use itertools::Itertools;
-use rustc_ast::visit::{try_visit, walk_list};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_errors::Applicability;
-use rustc_hir::FnRetTy::Return;
-use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
-use rustc_hir::intravisit::{
+use redox_ast::visit::{try_visit, walk_list};
+use redox_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use redox_errors::Applicability;
+use redox_hir::FnRetTy::Return;
+use redox_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
+use redox_hir::intravisit::{
     Visitor, VisitorExt, walk_fn_decl, walk_generic_args, walk_generics, walk_impl_item_ref, walk_param_bound,
     walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty, walk_where_predicate,
 };
-use rustc_hir::{
+use redox_hir::{
     AmbigArg, BodyId, FnDecl, FnPtrTy, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind,
     Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeKind, LifetimeParamKind, Node,
     PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereBoundPredicate, WherePredicate,
     WherePredicateKind, lang_items,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::nested_filter as middle_nested_filter;
-use rustc_middle::ty::TyCtxt;
-use rustc_session::impl_lint_pass;
-use rustc_span::Span;
-use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{Ident, kw};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::hir::nested_filter as middle_nested_filter;
+use redox_middle::ty::TyCtxt;
+use redox_session::impl_lint_pass;
+use redox_span::Span;
+use redox_span::def_id::LocalDefId;
+use redox_span::symbol::{Ident, kw};
 use std::ops::ControlFlow;
 
 declare_clippy_lint! {
@@ -610,7 +610,7 @@ where
     }
 
     // `visit_where_bound_predicate` is based on:
-    // https://github.com/rust-lang/rust/blob/864cee3ea383cc8254ba394ba355e648faa9cfa5/compiler/rustc_hir/src/intravisit.rs#L936-L939
+    // https://github.com/rust-lang/rust/blob/864cee3ea383cc8254ba394ba355e648faa9cfa5/compiler/redox_hir/src/intravisit.rs#L936-L939
     fn visit_where_bound_predicate(
         &mut self,
         hir_id: HirId,

@@ -76,10 +76,10 @@ fn integration_test() {
         // we need to kind of switch around our logic here:
         // if we find a panic, everything is fine, if we don't panic, SOMETHING is broken about our testing
 
-        // the repo basically just contains a span_delayed_bug that forces rustc/clippy to panic:
+        // the repo basically just contains a span_delayed_bug that forces redox/clippy to panic:
         /*
-           #![feature(rustc_attrs)]
-           #[rustc_error(delayed_bug_from_inside_query)]
+           #![feature(redox_attrs)]
+           #[redox_error(delayed_bug_from_inside_query)]
            fn main() {}
         */
 
@@ -110,8 +110,8 @@ fn integration_test() {
         panic!("error: E0463");
     } else if stderr.contains("E0514") {
         panic!("incompatible crate versions");
-    } else if stderr.contains("failed to run `rustc` to learn about target-specific information") {
-        panic!("couldn't find librustc_driver, consider setting `LD_LIBRARY_PATH`");
+    } else if stderr.contains("failed to run `redox` to learn about target-specific information") {
+        panic!("couldn't find libredox_driver, consider setting `LD_LIBRARY_PATH`");
     } else {
         assert!(
             !stderr.contains("toolchain") || !stderr.contains("is not installed"),

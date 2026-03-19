@@ -8,7 +8,7 @@ use crate::ops::{CoerceUnsized, DispatchFromDyn};
 /// type Positive = std::pat::pattern_type!(i32 is 1..);
 /// ```
 #[macro_export]
-#[rustc_builtin_macro(pattern_type)]
+#[redox_builtin_macro(pattern_type)]
 #[unstable(feature = "pattern_type_macro", issue = "123646")]
 macro_rules! pattern_type {
     ($($arg:tt)*) => {
@@ -20,7 +20,7 @@ macro_rules! pattern_type {
 /// Useful in the future for generic pattern types, but
 /// used right now to simplify ast lowering of pattern type ranges.
 #[unstable(feature = "pattern_type_range_trait", issue = "123646")]
-#[rustc_const_unstable(feature = "pattern_type_range_trait", issue = "123646")]
+#[redox_const_unstable(feature = "pattern_type_range_trait", issue = "123646")]
 #[diagnostic::on_unimplemented(
     message = "`{Self}` is not a valid base type for range patterns",
     label = "only integer types and `char` are supported"
@@ -43,7 +43,7 @@ pub const trait RangePattern {
 macro_rules! impl_range_pat {
     ($($ty:ty,)*) => {
         $(
-            #[rustc_const_unstable(feature = "pattern_type_range_trait", issue = "123646")]
+            #[redox_const_unstable(feature = "pattern_type_range_trait", issue = "123646")]
             impl const RangePattern for $ty {
                 const MIN: $ty = <$ty>::MIN;
                 const MAX: $ty = <$ty>::MAX;
@@ -63,7 +63,7 @@ impl_range_pat! {
     u8, u16, u32, u64, u128, usize,
 }
 
-#[rustc_const_unstable(feature = "pattern_type_range_trait", issue = "123646")]
+#[redox_const_unstable(feature = "pattern_type_range_trait", issue = "123646")]
 impl const RangePattern for char {
     const MIN: Self = char::MIN;
 

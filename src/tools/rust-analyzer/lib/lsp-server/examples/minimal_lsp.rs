@@ -67,7 +67,7 @@
 
 use std::{error::Error, io::Write};
 
-use rustc_hash::FxHashMap; // fast hash map
+use redox_hash::FxHashMap; // fast hash map
 use std::process::Stdio;
 use toolchain::command; // clippy-approved wrapper
 

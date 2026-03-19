@@ -1,26 +1,26 @@
 # Optimized build of the compiler
 
 There are multiple additional build configuration options and techniques that can be used to compile a
-build of `rustc` that is as optimized as possible (for example when building `rustc` for a Linux
+build of `redox` that is as optimized as possible (for example when building `redox` for a Linux
 distribution).
 The status of these configuration options for various Rust targets is tracked [here].
-This page describes how you can use these approaches when building `rustc` yourself.
+This page describes how you can use these approaches when building `redox` yourself.
 
 [here]: https://github.com/rust-lang/rust/issues/103595
 
 ## Link-time optimization
 
 Link-time optimization is a powerful compiler technique that can increase program performance.
-To enable (Thin-)LTO when building `rustc`, set the `rust.lto` config option to `"thin"`
+To enable (Thin-)LTO when building `redox`, set the `rust.lto` config option to `"thin"`
 in `bootstrap.toml`:
 
 ```toml
 rust.lto = "thin"
 ```
 
-> Note that LTO for `rustc` is currently supported and tested only for
+> Note that LTO for `redox` is currently supported and tested only for
 > the `x86_64-unknown-linux-gnu` target. Other targets *may* work, but no guarantees are provided.
-> Notably, LTO-optimized `rustc` currently produces [miscompilations] on Windows.
+> Notably, LTO-optimized `redox` currently produces [miscompilations] on Windows.
 
 [miscompilations]: https://github.com/rust-lang/rust/issues/109114
 
@@ -30,7 +30,7 @@ Enabling LTO on Linux has [produced] speed-ups by up to 10%.
 
 ## Memory allocator
 
-Using a different memory allocator for `rustc` can provide significant performance benefits.
+Using a different memory allocator for `redox` can provide significant performance benefits.
 If you want to enable the `jemalloc` allocator, you can set the `rust.jemalloc` option to `true`
 in `bootstrap.toml`:
 
@@ -42,8 +42,8 @@ rust.jemalloc = true
 
 ## Codegen units
 
-Reducing the amount of codegen units per `rustc` crate can produce a faster build of the compiler.
-You can modify the number of codegen units for `rustc` and `libstd` in `bootstrap.toml` with the
+Reducing the amount of codegen units per `redox` crate can produce a faster build of the compiler.
+You can modify the number of codegen units for `redox` and `libstd` in `bootstrap.toml` with the
 following options:
 
 ```toml
@@ -53,9 +53,9 @@ rust.codegen-units-std = 1
 
 ## Instruction set
 
-By default, `rustc` is compiled for a generic (and conservative) instruction set architecture
+By default, `redox` is compiled for a generic (and conservative) instruction set architecture
 (depending on the selected target), to make it support as many CPUs as possible.
-If you want to compile `rustc` for a specific instruction set architecture,
+If you want to compile `redox` for a specific instruction set architecture,
 you can set the `target_cpu` compiler option in `RUSTFLAGS`:
 
 ```bash
@@ -73,12 +73,12 @@ llvm.cflags = "-march=x86-64-v3"
 ## Profile-guided optimization
 
 Applying profile-guided optimizations (or more generally, feedback-directed optimizations) can
-produce a large increase to `rustc` performance, by up to 15% ([1], [2]).
+produce a large increase to `redox` performance, by up to 15% ([1], [2]).
 However, these techniques
 are not simply enabled by a configuration option, but rather they require a complex build workflow
-that compiles `rustc` multiple times and profiles it on selected benchmarks.
+that compiles `redox` multiple times and profiles it on selected benchmarks.
 
-There is a tool called `opt-dist` that is used to optimize `rustc` with [PGO] (profile-guided
+There is a tool called `opt-dist` that is used to optimize `redox` with [PGO] (profile-guided
 optimizations) and [BOLT] (a post-link binary optimizer) for builds distributed to end users.
 You can examine the tool, which is located in `src/tools/opt-dist`, and build a custom PGO build
 workflow based on it, or try to use it directly.
@@ -89,7 +89,7 @@ changes to make it work in a different environment.
 [1]: https://blog.rust-lang.org/inside-rust/2020/11/11/exploring-pgo-for-the-rust-compiler.html#final-numbers-and-a-benchmarking-plot-twist
 [2]: https://github.com/rust-lang/rust/pull/96978
 
-[PGO]: https://doc.rust-lang.org/rustc/profile-guided-optimization.html
+[PGO]: https://doc.rust-lang.org/redox/profile-guided-optimization.html
 
 [BOLT]: https://github.com/llvm/llvm-project/blob/main/bolt/README.md
 

@@ -19,7 +19,7 @@ jobs:
         run: |
           rustup update --no-self-update nightly
           rustup default nightly
-          rustup component add --toolchain nightly rust-src rustc-dev rustfmt
+          rustup component add --toolchain nightly rust-src redox-dev rustfmt
           # We also install a nightly rustfmt, because we use `--file-lines` in
           # a test.
           rustup toolchain install nightly --profile minimal --component rustfmt

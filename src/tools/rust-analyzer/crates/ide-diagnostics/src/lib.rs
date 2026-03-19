@@ -23,10 +23,10 @@
 //! There are also a couple of ad-hoc diagnostics implemented directly here, we
 //! don't yet have a great pattern for how to do them properly.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_driver as _;
+extern crate redox_driver as _;
 
 mod handlers {
     pub(crate) mod await_outside_of_async;
@@ -127,7 +127,7 @@ impl DiagnosticCode {
                 String::from("https://doc.rust-lang.org/stable/reference/")
             }
             DiagnosticCode::RustcLint(e) => {
-                format!("https://doc.rust-lang.org/rustc/?search={e}")
+                format!("https://doc.rust-lang.org/redox/?search={e}")
             }
             DiagnosticCode::Clippy(e) => {
                 format!("https://rust-lang.github.io/rust-clippy/master/#/{e}")
@@ -536,7 +536,7 @@ fn handle_diag_from_macros(
             let macro_call = sema.db.lookup_intern_macro_call(expansion.into());
             // We don't want to show diagnostics for non-local macros at all, but proc macros authors
             // seem to rely on being able to emit non-warning-free code, so we don't want to show warnings
-            // for them even when the proc macro comes from the same workspace (in rustc that's not a
+            // for them even when the proc macro comes from the same workspace (in redox that's not a
             // problem because it doesn't have the concept of workspaces, and proc macros always reside
             // in a different crate).
             !Crate::from(macro_call.def.krate).origin(sema.db).is_local()

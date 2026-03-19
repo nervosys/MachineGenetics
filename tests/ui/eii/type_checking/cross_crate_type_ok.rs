@@ -4,7 +4,7 @@
 // Tests whether calling EIIs works with the declaration in another crate.
 #![feature(extern_item_impls)]
 #![feature(decl_macro)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(eii_internals)]
 
 extern crate cross_crate_eii_declaration;

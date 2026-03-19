@@ -1,7 +1,7 @@
 [book]
 title = "Rust Compiler Development Guide"
 authors = ["The Rust Project Developers"]
-description = "A guide to developing the Rust compiler (rustc)"
+description = "A guide to developing the Rust compiler (redox)"
 
 [build]
 create-missing = false
@@ -10,8 +10,8 @@ create-missing = false
 command = "mdbook-mermaid"
 
 [output.html]
-git-repository-url = "https://github.com/rust-lang/rustc-dev-guide"
-edit-url-template = "https://github.com/rust-lang/rustc-dev-guide/edit/main/{path}"
+git-repository-url = "https://github.com/rust-lang/redox-dev-guide"
+edit-url-template = "https://github.com/rust-lang/redox-dev-guide/edit/main/{path}"
 additional-js = [
   "mermaid.min.js",
   "mermaid-init.js",
@@ -45,7 +45,7 @@ exclude = [
     # Similarly 500 is sometimes returned here.
     "github\\.com/rust-lang/rust/pulls\\?q=.*",
     # 401 is returned here for unknown reason
-    "github\\.com/wesleywiser/rustc-bootstrap-wpa-analysis",
+    "github\\.com/wesleywiser/redox-bootstrap-wpa-analysis",
     # Handle: connection closed before message completed
     "microsoft\\.com/en-us/research/publication/",
     # 500 is returned for HEAD request
@@ -79,7 +79,7 @@ warning-policy = "error"
 "/implementing_new_features.html" = "implementing-new-features.html"
 "/miri.html" = "const-eval/interpret.html"
 "/profiling/with_perf.html" = "with-perf.html"
-"/profiling/with_rustc_perf.html" = "with-rustc-perf.html"
+"/profiling/with_redox_perf.html" = "with-rustc-perf.html"
 "/profiling/wpa_profiling.html" = "wpa-profiling.html"
 "/stabilization_guide.html" = "stabilization-guide.html"
 "/stabilization_report_template.html" = "stabilization-report-template.html"

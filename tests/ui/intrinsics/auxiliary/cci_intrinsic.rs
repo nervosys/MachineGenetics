@@ -1,7 +1,7 @@
 #![feature(intrinsics, adt_const_params)]
 
 mod rusti {
-    #[rustc_intrinsic]
+    #[redox_intrinsic]
     pub unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 }
 

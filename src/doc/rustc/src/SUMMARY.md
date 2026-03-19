@@ -1,6 +1,6 @@
 # The Rustc Book
 
-- [What is rustc?](what-is-rustc.md)
+- [What is redox?](what-is-redox.md)
 - [Command-line Arguments](command-line-arguments.md)
     - [Print Options](command-line-arguments/print-options.md)
     - [Codegen Options](codegen-options/index.md)
@@ -27,7 +27,7 @@
 - [Exploit Mitigations](exploit-mitigations.md)
 - [Symbol Mangling](symbol-mangling/index.md)
     - [v0 Symbol Format](symbol-mangling/v0.md)
-- [Contributing to `rustc`](contributing.md)
+- [Contributing to `redox`](contributing.md)
 
 --------
 

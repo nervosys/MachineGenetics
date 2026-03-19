@@ -5,7 +5,7 @@
 //@ ignore-remote
 //
 //@ revisions: only-remap remap-unremap
-//@ compile-flags: -Z simulate-remapped-rust-src-base=/rustc-dev/xyz
+//@ compile-flags: -Z simulate-remapped-rust-src-base=/redox-dev/xyz
 //@ [remap-unremap]compile-flags: -Ztranslate-remapped-path-to-local-path=yes
 
 // The $SRC_DIR*.rs:LL:COL normalisation doesn't kick in automatically
@@ -13,11 +13,11 @@
 // so we have to do it ourselves.
 //@ normalize-stderr: ".rs:\d+:\d+" -> ".rs:LL:COL"
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_ast;
+extern crate redox_ast;
 
-use rustc_ast::visit::Visitor;
+use redox_ast::visit::Visitor;
 
 struct MyStruct;
 struct NotAValidResultType;

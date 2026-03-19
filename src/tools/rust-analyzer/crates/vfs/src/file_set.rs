@@ -6,7 +6,7 @@ use std::fmt;
 
 use fst::{IntoStreamer, Streamer};
 use indexmap::IndexMap;
-use rustc_hash::{FxBuildHasher, FxHashMap};
+use redox_hash::{FxBuildHasher, FxHashMap};
 
 use crate::{AnchoredPath, FileId, Vfs, VfsPath};
 

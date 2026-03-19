@@ -741,7 +741,7 @@ fn hello(it: &&[impl T]) {
                 ..DISABLED_CONFIG
             },
             r#"
-#![rustc_coherence_is_core]
+#![redox_coherence_is_core]
 
 trait ToOwned {
     type Owned;

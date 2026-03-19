@@ -6,10 +6,10 @@
 // to the expected output.
 // See https://github.com/rust-lang/rust/issues/68839
 
-use run_make_support::{diff, rustc};
+use run_make_support::{diff, redox};
 
 fn main() {
-    rustc()
+    redox()
         .emit("metadata,dep-info")
         .crate_type("lib")
         .input("dash-separated.rs")

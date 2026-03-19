@@ -234,7 +234,7 @@ impl<'t> Parser<'t> {
 
     /// Emit error with the `message`
     /// FIXME: this should be much more fancy and support
-    /// structured errors with spans and notes, like rustc
+    /// structured errors with spans and notes, like redox
     /// does.
     pub(crate) fn error<T: Into<String>>(&mut self, message: T) {
         let msg = message.into();

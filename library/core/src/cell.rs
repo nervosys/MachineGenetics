@@ -305,10 +305,10 @@ pub use once::OnceCell;
 /// ```
 ///
 /// See the [module-level documentation](self) for more.
-#[rustc_diagnostic_item = "Cell"]
+#[redox_diagnostic_item = "Cell"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
-#[rustc_pub_transparent]
+#[redox_pub_transparent]
 pub struct Cell<T: ?Sized> {
     value: UnsafeCell<T>,
 }
@@ -333,7 +333,7 @@ impl<T: Copy> Clone for Cell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl<T: [const] Default> const Default for Cell<T> {
     /// Creates a `Cell<T>`, with the `Default` value for T.
     #[inline]
@@ -390,7 +390,7 @@ impl<T: Ord + Copy> Ord for Cell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<T> for Cell<T> {
     /// Creates a new `Cell<T>` containing the given value.
     fn from(t: T) -> Cell<T> {
@@ -409,7 +409,7 @@ impl<T> Cell<T> {
     /// let c = Cell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cell_new", since = "1.24.0")]
+    #[redox_const_stable(feature = "const_cell_new", since = "1.24.0")]
     #[inline]
     pub const fn new(value: T) -> Cell<T> {
         Cell { value: UnsafeCell::new(value) }
@@ -428,8 +428,8 @@ impl<T> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cell_traits", issue = "147787")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_const_unstable(feature = "const_cell_traits", issue = "147787")]
+    #[redox_should_not_be_called_on_const_items]
     pub const fn set(&self, val: T)
     where
         T: [const] Destruct,
@@ -461,7 +461,7 @@ impl<T> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "move_cell", since = "1.17.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn swap(&self, other: &Self) {
         // This function documents that it *will* panic, and intrinsics::is_nonoverlapping doesn't
         // do the check in const, so trying to use it here would be inviting unnecessary fragility.
@@ -504,9 +504,9 @@ impl<T> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "move_cell", since = "1.17.0")]
-    #[rustc_const_stable(feature = "const_cell", since = "1.88.0")]
-    #[rustc_confusables("swap")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_const_stable(feature = "const_cell", since = "1.88.0")]
+    #[redox_confusables("swap")]
+    #[redox_should_not_be_called_on_const_items]
     pub const fn replace(&self, val: T) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
         // but `Cell` is `!Sync` so this won't happen.
@@ -526,8 +526,8 @@ impl<T> Cell<T> {
     /// assert_eq!(five, 5);
     /// ```
     #[stable(feature = "move_cell", since = "1.17.0")]
-    #[rustc_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
-    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[redox_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
+    #[redox_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_inner(self) -> T {
         self.value.into_inner()
     }
@@ -547,8 +547,8 @@ impl<T: Copy> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cell", since = "1.88.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_const_stable(feature = "const_cell", since = "1.88.0")]
+    #[redox_should_not_be_called_on_const_items]
     pub const fn get(&self) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
         // but `Cell` is `!Sync` so this won't happen.
@@ -568,8 +568,8 @@ impl<T: Copy> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "cell_update", since = "1.88.0")]
-    #[rustc_const_unstable(feature = "const_cell_traits", issue = "147787")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_const_unstable(feature = "const_cell_traits", issue = "147787")]
+    #[redox_should_not_be_called_on_const_items]
     pub const fn update(&self, f: impl [const] FnOnce(T) -> T)
     where
         // FIXME(const-hack): `Copy` should imply `const Destruct`
@@ -594,9 +594,9 @@ impl<T: ?Sized> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "cell_as_ptr", since = "1.12.0")]
-    #[rustc_const_stable(feature = "const_cell_as_ptr", since = "1.32.0")]
-    #[rustc_as_ptr]
-    #[rustc_never_returns_null_ptr]
+    #[redox_const_stable(feature = "const_cell_as_ptr", since = "1.32.0")]
+    #[redox_as_ptr]
+    #[redox_never_returns_null_ptr]
     pub const fn as_ptr(&self) -> *mut T {
         self.value.get()
     }
@@ -625,7 +625,7 @@ impl<T: ?Sized> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
-    #[rustc_const_stable(feature = "const_cell", since = "1.88.0")]
+    #[redox_const_stable(feature = "const_cell", since = "1.88.0")]
     pub const fn get_mut(&mut self) -> &mut T {
         self.value.get_mut()
     }
@@ -645,7 +645,7 @@ impl<T: ?Sized> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "as_cell", since = "1.37.0")]
-    #[rustc_const_stable(feature = "const_cell", since = "1.88.0")]
+    #[redox_const_stable(feature = "const_cell", since = "1.88.0")]
     pub const fn from_mut(t: &mut T) -> &Cell<T> {
         // SAFETY: `&mut` ensures unique access.
         unsafe { &*(t as *mut T as *const Cell<T>) }
@@ -667,7 +667,7 @@ impl<T: Default> Cell<T> {
     /// assert_eq!(c.into_inner(), 0);
     /// ```
     #[stable(feature = "move_cell", since = "1.17.0")]
-    #[rustc_const_unstable(feature = "const_cell_traits", issue = "147787")]
+    #[redox_const_unstable(feature = "const_cell_traits", issue = "147787")]
     pub const fn take(&self) -> T
     where
         T: [const] Default,
@@ -728,7 +728,7 @@ impl<T> Cell<[T]> {
     /// assert_eq!(slice_cell.len(), 3);
     /// ```
     #[stable(feature = "as_cell", since = "1.37.0")]
-    #[rustc_const_stable(feature = "const_cell", since = "1.88.0")]
+    #[redox_const_stable(feature = "const_cell", since = "1.88.0")]
     pub const fn as_slice_of_cells(&self) -> &[Cell<T>] {
         // SAFETY: `Cell<T>` has the same memory layout as `T`.
         unsafe { &*(self as *const Cell<[T]> as *const [Cell<T>]) }
@@ -748,7 +748,7 @@ impl<T, const N: usize> Cell<[T; N]> {
     /// let array_cell: &[Cell<i32>; 3] = cell_array.as_array_of_cells();
     /// ```
     #[stable(feature = "as_array_of_cells", since = "1.91.0")]
-    #[rustc_const_stable(feature = "as_array_of_cells", since = "1.91.0")]
+    #[redox_const_stable(feature = "as_array_of_cells", since = "1.91.0")]
     pub const fn as_array_of_cells(&self) -> &[Cell<T>; N] {
         // SAFETY: `Cell<T>` has the same memory layout as `T`.
         unsafe { &*(self as *const Cell<[T; N]> as *const [Cell<T>; N]) }
@@ -844,7 +844,7 @@ impl<T: CloneFromCell> Cell<T> {
 /// A mutable memory location with dynamically checked borrow rules
 ///
 /// See the [module-level documentation](self) for more.
-#[rustc_diagnostic_item = "RefCell"]
+#[redox_diagnostic_item = "RefCell"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefCell<T: ?Sized> {
     borrow: Cell<BorrowCounter>,
@@ -966,7 +966,7 @@ impl<T> RefCell<T> {
     /// let c = RefCell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_refcell_new", since = "1.24.0")]
+    #[redox_const_stable(feature = "const_refcell_new", since = "1.24.0")]
     #[inline]
     pub const fn new(value: T) -> RefCell<T> {
         RefCell {
@@ -989,8 +989,8 @@ impl<T> RefCell<T> {
     /// let five = c.into_inner();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
-    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[redox_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
+    #[redox_allow_const_fn_unstable(const_precise_live_drops)]
     #[inline]
     pub const fn into_inner(self) -> T {
         // Since this function takes `self` (the `RefCell`) by value, the
@@ -1019,9 +1019,9 @@ impl<T> RefCell<T> {
     #[inline]
     #[stable(feature = "refcell_replace", since = "1.24.0")]
     #[track_caller]
-    #[rustc_confusables("swap")]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_confusables("swap")]
+    #[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
+    #[redox_should_not_be_called_on_const_items]
     pub const fn replace(&self, t: T) -> T {
         mem::replace(&mut self.borrow_mut(), t)
     }
@@ -1045,7 +1045,7 @@ impl<T> RefCell<T> {
     #[inline]
     #[stable(feature = "refcell_replace_swap", since = "1.35.0")]
     #[track_caller]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn replace_with<F: FnOnce(&mut T) -> T>(&self, f: F) -> T {
         let mut_borrow = &mut *self.borrow_mut();
         let replacement = f(mut_borrow);
@@ -1074,8 +1074,8 @@ impl<T> RefCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "refcell_swap", since = "1.24.0")]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
+    #[redox_should_not_be_called_on_const_items]
     pub const fn swap(&self, other: &Self) {
         mem::swap(&mut *self.borrow_mut(), &mut *other.borrow_mut())
     }
@@ -1116,8 +1116,8 @@ impl<T: ?Sized> RefCell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     #[track_caller]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
+    #[redox_should_not_be_called_on_const_items]
     pub const fn borrow(&self) -> Ref<'_, T> {
         match self.try_borrow() {
             Ok(b) => b,
@@ -1153,8 +1153,8 @@ impl<T: ?Sized> RefCell<T> {
     #[stable(feature = "try_borrow", since = "1.13.0")]
     #[inline]
     #[cfg_attr(feature = "debug_refcell", track_caller)]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
+    #[redox_should_not_be_called_on_const_items]
     pub const fn try_borrow(&self) -> Result<Ref<'_, T>, BorrowError> {
         match BorrowRef::new(&self.borrow) {
             Some(b) => {
@@ -1216,8 +1216,8 @@ impl<T: ?Sized> RefCell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     #[track_caller]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
+    #[redox_should_not_be_called_on_const_items]
     pub const fn borrow_mut(&self) -> RefMut<'_, T> {
         match self.try_borrow_mut() {
             Ok(b) => b,
@@ -1250,8 +1250,8 @@ impl<T: ?Sized> RefCell<T> {
     #[stable(feature = "try_borrow", since = "1.13.0")]
     #[inline]
     #[cfg_attr(feature = "debug_refcell", track_caller)]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
+    #[redox_should_not_be_called_on_const_items]
     pub const fn try_borrow_mut(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
         match BorrowRefMut::new(&self.borrow) {
             Some(b) => {
@@ -1286,9 +1286,9 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "cell_as_ptr", since = "1.12.0")]
-    #[rustc_as_ptr]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
+    #[redox_as_ptr]
+    #[redox_never_returns_null_ptr]
+    #[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
     pub const fn as_ptr(&self) -> *mut T {
         self.value.get()
     }
@@ -1326,7 +1326,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
+    #[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
     pub const fn get_mut(&mut self) -> &mut T {
         self.value.get_mut()
     }
@@ -1353,7 +1353,7 @@ impl<T: ?Sized> RefCell<T> {
     /// assert!(c.try_borrow().is_ok());
     /// ```
     #[unstable(feature = "cell_leak", issue = "69099")]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
+    #[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
     pub const fn undo_leak(&mut self) -> &mut T {
         *self.borrow.get_mut() = UNUSED;
         self.get_mut()
@@ -1388,7 +1388,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "borrow_state", since = "1.37.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
+    #[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
     pub const unsafe fn try_borrow_unguarded(&self) -> Result<&T, BorrowError> {
         if !is_writing(self.borrow.get()) {
             // SAFETY: We check that nobody is actively writing now, but it is
@@ -1460,7 +1460,7 @@ impl<T: Clone> Clone for RefCell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl<T: [const] Default> const Default for RefCell<T> {
     /// Creates a `RefCell<T>`, with the `Default` value for T.
     #[inline]
@@ -1538,7 +1538,7 @@ impl<T: ?Sized + Ord> Ord for RefCell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<T> for RefCell<T> {
     /// Creates a new `RefCell<T>` containing the given value.
     fn from(t: T) -> RefCell<T> {
@@ -1578,7 +1578,7 @@ impl<'b> BorrowRef<'b> {
     }
 }
 
-#[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
+#[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
 impl const Drop for BorrowRef<'_> {
     #[inline]
     fn drop(&mut self) {
@@ -1588,7 +1588,7 @@ impl const Drop for BorrowRef<'_> {
     }
 }
 
-#[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
+#[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
 impl const Clone for BorrowRef<'_> {
     #[inline]
     fn clone(&self) -> Self {
@@ -1610,7 +1610,7 @@ impl const Clone for BorrowRef<'_> {
 /// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_not_suspend = "holding a Ref across suspend points can cause BorrowErrors"]
-#[rustc_diagnostic_item = "RefCellRef"]
+#[redox_diagnostic_item = "RefCellRef"]
 pub struct Ref<'b, T: ?Sized + 'b> {
     // NB: we use a pointer instead of `&'b T` to avoid `noalias` violations, because a
     // `Ref` argument doesn't hold immutability for its whole scope, only until it drops.
@@ -1620,7 +1620,7 @@ pub struct Ref<'b, T: ?Sized + 'b> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const Deref for Ref<'_, T> {
     type Target = T;
 
@@ -1646,7 +1646,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     #[stable(feature = "cell_extras", since = "1.15.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
+    #[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
     pub const fn clone(orig: &Ref<'b, T>) -> Ref<'b, T> {
         Ref { value: orig.value, borrow: orig.borrow.clone() }
     }
@@ -1810,7 +1810,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// assert!(cell.try_borrow_mut().is_err());
     /// ```
     #[unstable(feature = "cell_leak", issue = "69099")]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
+    #[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
     pub const fn leak(orig: Ref<'b, T>) -> &'b T {
         // By forgetting this Ref we ensure that the borrow counter in the RefCell can't go back to
         // UNUSED within the lifetime `'b`. Resetting the reference tracking state would require a
@@ -2029,7 +2029,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// assert!(cell.try_borrow_mut().is_err());
     /// ```
     #[unstable(feature = "cell_leak", issue = "69099")]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
+    #[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
     pub const fn leak(mut orig: RefMut<'b, T>) -> &'b mut T {
         // By forgetting this BorrowRefMut we ensure that the borrow counter in the RefCell can't
         // go back to UNUSED within the lifetime `'b`. Resetting the reference tracking state would
@@ -2046,7 +2046,7 @@ struct BorrowRefMut<'b> {
     borrow: &'b Cell<BorrowCounter>,
 }
 
-#[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
+#[redox_const_unstable(feature = "const_ref_cell", issue = "137844")]
 impl const Drop for BorrowRefMut<'_> {
     #[inline]
     fn drop(&mut self) {
@@ -2093,7 +2093,7 @@ impl<'b> BorrowRefMut<'b> {
 /// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_not_suspend = "holding a RefMut across suspend points can cause BorrowErrors"]
-#[rustc_diagnostic_item = "RefCellRefMut"]
+#[redox_diagnostic_item = "RefCellRefMut"]
 pub struct RefMut<'b, T: ?Sized + 'b> {
     // NB: we use a pointer instead of `&'b mut T` to avoid `noalias` violations, because a
     // `RefMut` argument doesn't hold exclusivity for its whole scope, only until it drops.
@@ -2104,7 +2104,7 @@ pub struct RefMut<'b, T: ?Sized + 'b> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const Deref for RefMut<'_, T> {
     type Target = T;
 
@@ -2116,7 +2116,7 @@ impl<T: ?Sized> const Deref for RefMut<'_, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const DerefMut for RefMut<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
@@ -2319,7 +2319,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 #[lang = "unsafe_cell"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
-#[rustc_pub_transparent]
+#[redox_pub_transparent]
 pub struct UnsafeCell<T: ?Sized> {
     value: T,
 }
@@ -2341,7 +2341,7 @@ impl<T> UnsafeCell<T> {
     /// let uc = UnsafeCell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_unsafe_cell_new", since = "1.32.0")]
+    #[redox_const_stable(feature = "const_unsafe_cell_new", since = "1.32.0")]
     #[inline(always)]
     pub const fn new(value: T) -> UnsafeCell<T> {
         UnsafeCell { value }
@@ -2360,8 +2360,8 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
-    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[redox_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
+    #[redox_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_inner(self) -> T {
         self.value
     }
@@ -2390,7 +2390,7 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[inline]
     #[unstable(feature = "unsafe_cell_access", issue = "136327")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub const unsafe fn replace(&self, value: T) -> T {
         // SAFETY: pointer comes from `&self` so naturally satisfies invariants.
         unsafe { ptr::replace(self.get(), value) }
@@ -2413,7 +2413,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "unsafe_cell_from_mut", since = "1.84.0")]
-    #[rustc_const_stable(feature = "unsafe_cell_from_mut", since = "1.84.0")]
+    #[redox_const_stable(feature = "unsafe_cell_from_mut", since = "1.84.0")]
     pub const fn from_mut(value: &mut T) -> &mut UnsafeCell<T> {
         // SAFETY: `UnsafeCell<T>` has the same memory layout as `T` due to #[repr(transparent)].
         unsafe { &mut *(value as *mut T as *mut UnsafeCell<T>) }
@@ -2436,10 +2436,10 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_unsafecell_get", since = "1.32.0")]
-    #[rustc_as_ptr]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_const_stable(feature = "const_unsafecell_get", since = "1.32.0")]
+    #[redox_as_ptr]
+    #[redox_never_returns_null_ptr]
+    #[redox_should_not_be_called_on_const_items]
     pub const fn get(&self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
         // #[repr(transparent)]. This exploits std's special status, there is
@@ -2464,7 +2464,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "unsafe_cell_get_mut", since = "1.50.0")]
-    #[rustc_const_stable(feature = "const_unsafecell_get_mut", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_unsafecell_get_mut", since = "1.83.0")]
     pub const fn get_mut(&mut self) -> &mut T {
         &mut self.value
     }
@@ -2498,8 +2498,8 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
-    #[rustc_const_stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
-    #[rustc_diagnostic_item = "unsafe_cell_raw_get"]
+    #[redox_const_stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
+    #[redox_diagnostic_item = "unsafe_cell_raw_get"]
     pub const fn raw_get(this: *const Self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
         // #[repr(transparent)]. This exploits std's special status, there is
@@ -2529,7 +2529,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// ```
     #[inline]
     #[unstable(feature = "unsafe_cell_access", issue = "136327")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub const unsafe fn as_ref_unchecked(&self) -> &T {
         // SAFETY: pointer comes from `&self` so naturally satisfies ptr-to-ref invariants.
         unsafe { self.get().as_ref_unchecked() }
@@ -2558,7 +2558,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[inline]
     #[unstable(feature = "unsafe_cell_access", issue = "136327")]
     #[allow(clippy::mut_from_ref)]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub const unsafe fn as_mut_unchecked(&self) -> &mut T {
         // SAFETY: pointer comes from `&self` so naturally satisfies ptr-to-ref invariants.
         unsafe { self.get().as_mut_unchecked() }
@@ -2566,7 +2566,7 @@ impl<T: ?Sized> UnsafeCell<T> {
 }
 
 #[stable(feature = "unsafe_cell_default", since = "1.10.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl<T: [const] Default> const Default for UnsafeCell<T> {
     /// Creates an `UnsafeCell`, with the `Default` value for T.
     fn default() -> UnsafeCell<T> {
@@ -2575,7 +2575,7 @@ impl<T: [const] Default> const Default for UnsafeCell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<T> for UnsafeCell<T> {
     /// Creates a new `UnsafeCell<T>` containing the given value.
     fn from(t: T) -> UnsafeCell<T> {
@@ -2610,8 +2610,8 @@ impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafeCell<U>> for UnsafeCell<T> 
 /// See [`UnsafeCell`] for details.
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 #[repr(transparent)]
-#[rustc_diagnostic_item = "SyncUnsafeCell"]
-#[rustc_pub_transparent]
+#[redox_diagnostic_item = "SyncUnsafeCell"]
+#[redox_pub_transparent]
 pub struct SyncUnsafeCell<T: ?Sized> {
     value: UnsafeCell<T>,
 }
@@ -2629,7 +2629,7 @@ impl<T> SyncUnsafeCell<T> {
 
     /// Unwraps the value, consuming the cell.
     #[inline]
-    #[rustc_const_unstable(feature = "sync_unsafe_cell", issue = "95439")]
+    #[redox_const_unstable(feature = "sync_unsafe_cell", issue = "95439")]
     pub const fn into_inner(self) -> T {
         self.value.into_inner()
     }
@@ -2644,9 +2644,9 @@ impl<T: ?Sized> SyncUnsafeCell<T> {
     /// when casting to `&mut T`, and ensure that there are no mutations
     /// or mutable aliases going on when casting to `&T`
     #[inline]
-    #[rustc_as_ptr]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_as_ptr]
+    #[redox_never_returns_null_ptr]
+    #[redox_should_not_be_called_on_const_items]
     pub const fn get(&self) -> *mut T {
         self.value.get()
     }
@@ -2673,7 +2673,7 @@ impl<T: ?Sized> SyncUnsafeCell<T> {
 }
 
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl<T: [const] Default> const Default for SyncUnsafeCell<T> {
     /// Creates an `SyncUnsafeCell`, with the `Default` value for T.
     fn default() -> SyncUnsafeCell<T> {
@@ -2682,7 +2682,7 @@ impl<T: [const] Default> const Default for SyncUnsafeCell<T> {
 }
 
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<T> for SyncUnsafeCell<T> {
     /// Creates a new `SyncUnsafeCell<T>` containing the given value.
     fn from(t: T) -> SyncUnsafeCell<T> {

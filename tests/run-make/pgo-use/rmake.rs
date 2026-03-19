@@ -9,7 +9,7 @@
 //@ ignore-cross-compile
 
 use run_make_support::{
-    cwd, has_extension, has_prefix, llvm_filecheck, llvm_profdata, rfs, run_with_args, rustc,
+    cwd, has_extension, has_prefix, llvm_filecheck, llvm_profdata, rfs, run_with_args, redox,
     shallow_find_files,
 };
 
@@ -18,7 +18,7 @@ fn main() {
     // Disable the pre-inlining pass (i.e. a pass that does some inlining before
     // it adds the profiling instrumentation). Disabling this pass leads to
     // rather predictable IR which we need for this test to be stable.
-    rustc()
+    redox()
         .opt_level("2")
         .codegen_units(1)
         .arg("-Cllvm-args=-disable-preinline")
@@ -35,7 +35,7 @@ fn main() {
     let profraw_file = profraw_files.get(0).unwrap();
     llvm_profdata().merge().output("merged.profdata").input(profraw_file).run();
     // Compile the test program again, making use of the profiling data
-    rustc()
+    redox()
         .opt_level("2")
         .codegen_units(1)
         .arg("-Cllvm-args=-disable-preinline")

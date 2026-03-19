@@ -1,6 +1,6 @@
 //@ run-pass
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 #[cfg(any(
     target_os = "aix",

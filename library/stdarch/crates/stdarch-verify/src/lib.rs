@@ -110,18 +110,18 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
                 quote! { None }
             };
 
-            let required_const = find_required_const("rustc_args_required_const", &f.attrs);
+            let required_const = find_required_const("redox_args_required_const", &f.attrs);
             let mut legacy_const_generics =
-                find_required_const("rustc_legacy_const_generics", &f.attrs);
+                find_required_const("redox_legacy_const_generics", &f.attrs);
             if !required_const.is_empty() && !legacy_const_generics.is_empty() {
                 panic!(
-                    "Can't have both #[rustc_args_required_const] and \
-                     #[rustc_legacy_const_generics]"
+                    "Can't have both #[redox_args_required_const] and \
+                     #[redox_legacy_const_generics]"
                 );
             }
 
             // The list of required consts, used to verify the arguments, comes from either the
-            // `rustc_args_required_const` or the `rustc_legacy_const_generics` attribute.
+            // `redox_args_required_const` or the `redox_legacy_const_generics` attribute.
             let required_const = if required_const.is_empty() {
                 legacy_const_generics.clone()
             } else {

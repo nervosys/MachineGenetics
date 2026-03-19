@@ -3,14 +3,14 @@ use std::ops::ControlFlow;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::sym;
-use rustc_ast::ast::LitKind;
-use rustc_errors::Applicability;
-use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{Arm, Expr, ExprKind, LangItem, PatExpr, PatExprKind, PatKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use redox_ast::ast::LitKind;
+use redox_errors::Applicability;
+use redox_hir::intravisit::{Visitor, walk_expr};
+use redox_hir::{Arm, Expr, ExprKind, LangItem, PatExpr, PatExprKind, PatKind};
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_span::Span;
+use redox_span::symbol::Symbol;
 
 use super::MATCH_STR_CASE_MISMATCH;
 

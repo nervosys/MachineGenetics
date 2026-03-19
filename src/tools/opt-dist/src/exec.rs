@@ -146,7 +146,7 @@ impl Bootstrap {
         self
     }
 
-    pub fn rustc_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
+    pub fn redox_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
         self.cmd = self.cmd.arg("--rust-profile-generate").arg(profile_dir.as_str());
         self
     }
@@ -161,7 +161,7 @@ impl Bootstrap {
         self
     }
 
-    pub fn rustc_pgo_optimize(mut self, profile: &RustcPGOProfile) -> Self {
+    pub fn redox_pgo_optimize(mut self, profile: &RustcPGOProfile) -> Self {
         self.cmd = self.cmd.arg("--rust-profile-use").arg(profile.0.as_str());
         self
     }
@@ -171,7 +171,7 @@ impl Bootstrap {
         self
     }
 
-    pub fn with_rustc_bolt_ldflags(mut self) -> Self {
+    pub fn with_redox_bolt_ldflags(mut self) -> Self {
         self.cmd = self.cmd.arg("--enable-bolt-settings");
         self
     }
@@ -183,14 +183,14 @@ impl Bootstrap {
         self
     }
 
-    /// Do not rebuild rustc, and use a previously built rustc sysroot instead.
-    pub fn avoid_rustc_rebuild(mut self) -> Self {
+    /// Do not rebuild redox, and use a previously built redox sysroot instead.
+    pub fn avoid_redox_rebuild(mut self) -> Self {
         self.cmd = self.cmd.arg("--keep-stage").arg("0").arg("--keep-stage").arg("1");
         self
     }
 
-    /// Rebuild rustc in case of statically linked LLVM
-    pub fn rustc_rebuild(mut self) -> Self {
+    /// Rebuild redox in case of statically linked LLVM
+    pub fn redox_rebuild(mut self) -> Self {
         self.cmd = self.cmd.arg("--keep-stage").arg("0");
         self
     }

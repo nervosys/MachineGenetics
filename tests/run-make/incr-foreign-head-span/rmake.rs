@@ -7,16 +7,16 @@
 
 //@ needs-target-std
 
-use run_make_support::{rfs, rust_lib_name, rustc};
+use run_make_support::{rfs, rust_lib_name, redox};
 
 fn main() {
-    rustc().input("first_crate.rs").incremental("incr").crate_type("lib").run();
-    rustc()
+    redox().input("first_crate.rs").incremental("incr").crate_type("lib").run();
+    redox()
         .input("second_crate.rs")
         .incremental("incr")
         .extern_("first_crate", rust_lib_name("first_crate"))
         .crate_type("lib")
         .run();
     rfs::remove_file("first_crate.rs");
-    rustc().input("second_crate.rs").incremental("incr").cfg("second_run").crate_type("lib").run();
+    redox().input("second_crate.rs").incremental("incr").cfg("second_run").crate_type("lib").run();
 }

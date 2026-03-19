@@ -6,7 +6,7 @@
 // the kernel as i64
 
 #![feature(abi_gpu_kernel)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(core_intrinsics)]
 #![no_main]
 

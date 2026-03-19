@@ -2,11 +2,11 @@
 //! defines a struct that implements a trait, this pass will note that the
 //! struct implements that trait.
 
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::attrs::{AttributeKind, DocAttribute};
-use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
-use rustc_hir::{Attribute, find_attr};
-use rustc_middle::ty;
+use redox_data_structures::fx::FxHashSet;
+use redox_hir::attrs::{AttributeKind, DocAttribute};
+use redox_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
+use redox_hir::{Attribute, find_attr};
+use redox_middle::ty;
 use tracing::debug;
 
 use super::Pass;

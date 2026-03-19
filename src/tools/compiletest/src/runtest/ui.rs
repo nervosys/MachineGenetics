@@ -81,7 +81,7 @@ impl TestCx<'_> {
                 }
             }
         } else if self.props.run_rustfix {
-            // Apply suggestions from rustc to the code itself
+            // Apply suggestions from redox to the code itself
             let unfixed_code = self.load_expected_output_from_path(&self.testpaths.file).unwrap();
             let suggestions = get_suggestions_from_json(
                 &rustfix_input,
@@ -226,7 +226,7 @@ impl TestCx<'_> {
         if self.props.run_rustfix && self.config.compare_mode.is_none() {
             // And finally, compile the fixed code and make sure it both
             // succeeds and has no diagnostics.
-            let mut rustc = self.make_compile_args(
+            let mut redox = self.make_compile_args(
                 self.compiler_kind_for_non_aux(),
                 &self.expected_output_path(UI_FIXED),
                 TargetLocation::ThisFile(self.make_exe_name()),
@@ -249,11 +249,11 @@ impl TestCx<'_> {
                 // replace `revision-name-with-dashes` -> `revision_name_with_underscore`
                 let crate_name = crate_name.replace('.', "__");
                 let crate_name = crate_name.replace('-', "_");
-                rustc.arg("--crate-name");
-                rustc.arg(crate_name);
+                redox.arg("--crate-name");
+                redox.arg(crate_name);
             }
 
-            let res = self.compose_and_run_compiler(rustc, None);
+            let res = self.compose_and_run_compiler(redox, None);
             if !res.status.success() {
                 self.fatal_proc_rec("failed to compile fixed code", &res);
             }

@@ -9,12 +9,12 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{cc, extra_c_flags, run, rustc, static_lib_name};
+use run_make_support::{cc, extra_c_flags, run, redox, static_lib_name};
 
 fn main() {
     let libbar_path = static_lib_name("bar");
-    rustc().input("foo.rs").crate_type("rlib").run();
-    rustc()
+    redox().input("foo.rs").crate_type("rlib").run();
+    redox()
         .input("bar.rs")
         .crate_type("staticlib")
         .arg("-Clto")

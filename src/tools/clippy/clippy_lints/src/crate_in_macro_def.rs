@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use rustc_ast::ast::{AttrKind, Attribute, Item, ItemKind};
-use rustc_ast::token::{Token, TokenKind};
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
-use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::symbol::sym;
-use rustc_span::{Span, kw};
+use redox_ast::ast::{AttrKind, Attribute, Item, ItemKind};
+use redox_ast::token::{Token, TokenKind};
+use redox_ast::tokenstream::{TokenStream, TokenTree};
+use redox_errors::Applicability;
+use redox_lint::{EarlyContext, EarlyLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::symbol::sym;
+use redox_span::{Span, kw};
 
 declare_clippy_lint! {
     /// ### What it does

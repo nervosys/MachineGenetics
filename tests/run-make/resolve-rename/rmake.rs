@@ -7,11 +7,11 @@
 // the renamed library.
 // See https://github.com/rust-lang/rust/pull/49253
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 fn main() {
-    rustc().extra_filename("-hash").input("foo.rs").run();
-    rustc().input("bar.rs").run();
+    redox().extra_filename("-hash").input("foo.rs").run();
+    redox().input("bar.rs").run();
     rfs::rename("libfoo-hash.rlib", "libfoo-another-hash.rlib");
-    rustc().input("baz.rs").run();
+    redox().input("baz.rs").run();
 }

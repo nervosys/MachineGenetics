@@ -9,11 +9,11 @@
 // listed above. If any new targets are added, please double-check their respective llvm components
 // are specified above.
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 // The target used below doesn't support atomic CAS operations. Verify that's the case
 fn main() {
-    rustc()
+    redox()
         .print("cfg")
         .target("thumbv6m-none-eabi")
         .run()

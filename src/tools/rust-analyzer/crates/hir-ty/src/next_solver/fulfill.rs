@@ -4,12 +4,12 @@ mod errors;
 
 use std::ops::ControlFlow;
 
-use rustc_hash::FxHashSet;
-use rustc_next_trait_solver::{
+use redox_hash::FxHashSet;
+use redox_next_trait_solver::{
     delegate::SolverDelegate,
     solve::{GoalEvaluation, GoalStalledOn, HasChanged, SolverDelegateEvalExt},
 };
-use rustc_type_ir::{
+use redox_type_ir::{
     Interner, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     inherent::{IntoKind, Span as _},
     solve::{Certainty, NoSolution},

@@ -371,7 +371,7 @@ At *some point* during type checking an error should be emitted for this code as
 
 If the lifetime `'a` were late bound then this becomes difficult to check. When naming `foo` we do not know what lifetime should be used as part of the `T: Trait<'a>` trait bound as it has not yet been instantiated. When coercing the function item type to a function pointer we have no way of tracking the `String: Trait<'a>` trait bound that must be proven when calling the function. 
 
-If the lifetime `'a` is early bound (which it is in the current implementation in rustc), then the trait bound can be checked when naming the function `foo`. Requiring parameters used in where clauses to be early bound gives a natural place to check where clauses defined on the function.
+If the lifetime `'a` is early bound (which it is in the current implementation in redox), then the trait bound can be checked when naming the function `foo`. Requiring parameters used in where clauses to be early bound gives a natural place to check where clauses defined on the function.
 
 Finally, we do not require lifetimes to be early bound if they are used in *implied bounds*, for example:
 ```rust

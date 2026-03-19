@@ -1,9 +1,9 @@
 //@ run-pass
-#![feature(rustc_attrs, staged_api)]
+#![feature(redox_attrs, staged_api)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(since="1.0.0", feature = "mep")]
+#[redox_const_stable(since="1.0.0", feature = "mep")]
 const fn takes_fn_ptr(_: fn()) {}
 
 const FN: fn() = || ();

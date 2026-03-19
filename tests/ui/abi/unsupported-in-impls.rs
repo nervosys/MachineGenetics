@@ -8,7 +8,7 @@
 // Here we test that an unsupported ABI in various impl-related positions will be rejected,
 // both in the original declarations and the actual implementations.
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 //@ compile-flags: --crate-type lib
 
 pub struct FnPtrBearer {

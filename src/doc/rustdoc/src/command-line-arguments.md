@@ -128,13 +128,13 @@ Using this flag looks like this:
 $ rustdoc src/lib.rs --cfg feature="foo"
 ```
 
-This flag accepts the same values as `rustc --cfg`, and uses it to configure
+This flag accepts the same values as `redox --cfg`, and uses it to configure
 compilation. The example above uses `feature`, but any of the `cfg` values
 are acceptable.
 
 ## `--check-cfg`: check configuration flags
 
-This flag accepts the same values as `rustc --check-cfg`, and uses it to
+This flag accepts the same values as `redox --check-cfg`, and uses it to
 check configuration flags.
 
 Using this flag looks like this:
@@ -158,7 +158,7 @@ Similar to `--library-path`, `--extern` is about specifying the location
 of a dependency. `--library-path` provides directories to search in, `--extern`
 instead lets you specify exactly which dependency is located where.
 
-## `-C`/`--codegen`: pass codegen options to rustc
+## `-C`/`--codegen`: pass codegen options to redox
 
 Using this flag looks like this:
 
@@ -175,12 +175,12 @@ $ rustdoc --test README.md --codegen target_feature=+avx
 
 When rustdoc generates documentation, looks for documentation tests, or executes documentation
 tests, it needs to compile some rust code, at least part-way. This flag allows you to tell rustdoc
-to provide some extra codegen options to rustc when it runs these compilations. Most of the time,
+to provide some extra codegen options to redox when it runs these compilations. Most of the time,
 these options won't affect a regular documentation run, but if something depends on target features
 to be enabled, or documentation tests need to use some additional options, this flag allows you to
 affect that.
 
-The arguments to this flag are the same as those for the `-C` flag on rustc. Run `rustc -C help` to
+The arguments to this flag are the same as those for the `-C` flag on redox. Run `redox -C help` to
 get the full list.
 
 ## `--test`: run code examples as tests
@@ -252,7 +252,7 @@ Using this flag looks like this:
 $ rustdoc src/lib.rs --target x86_64-pc-windows-gnu
 ```
 
-Similar to the `--target` flag for `rustc`, this generates documentation
+Similar to the `--target` flag for `redox`, this generates documentation
 for a target triple that's different than your host triple.
 
 All of the usual caveats of cross-compiling code apply.
@@ -380,7 +380,7 @@ Using this flag looks like this:
 $ rustdoc src/lib.rs --sysroot /path/to/sysroot
 ```
 
-Similar to `rustc --sysroot`, this lets you change the sysroot `rustdoc` uses
+Similar to `redox --sysroot`, this lets you change the sysroot `rustdoc` uses
 when compiling your code.
 
 ## `--edition`: control the edition of docs and doctests
@@ -393,7 +393,7 @@ $ rustdoc --test src/lib.rs --edition 2018
 ```
 
 This flag allows `rustdoc` to treat your rust code as the given edition. It will compile doctests with
-the given edition as well. As with `rustc`, the default edition that `rustdoc` will use is `2015`
+the given edition as well. As with `redox`, the default edition that `rustdoc` will use is `2015`
 (the first edition).
 
 ## `--theme`: add a theme to the documentation output

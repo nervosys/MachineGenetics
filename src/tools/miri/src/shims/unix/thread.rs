@@ -1,4 +1,4 @@
-use rustc_abi::ExternAbi;
+use redox_abi::ExternAbi;
 
 use crate::*;
 

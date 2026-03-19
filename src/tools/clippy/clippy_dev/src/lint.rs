@@ -19,7 +19,7 @@ pub fn run<'a>(path: &str, edition: &str, args: impl Iterator<Item = &'a String>
                 .args(["--edition", edition])
                 .arg(path)
                 .args(args)
-                // Prevent rustc from creating `rustc-ice-*` files the console output is enough.
+                // Prevent redox from creating `redox-ice-*` files the console output is enough.
                 .env("RUSTC_ICE", "0"),
         );
     } else {
@@ -36,7 +36,7 @@ pub fn run<'a>(path: &str, edition: &str, args: impl Iterator<Item = &'a String>
             Command::new(exe)
                 .arg("clippy")
                 .args(args)
-                // Prevent rustc from creating `rustc-ice-*` files the console output is enough.
+                // Prevent redox from creating `redox-ice-*` files the console output is enough.
                 .env("RUSTC_ICE", "0")
                 .current_dir(path),
         );

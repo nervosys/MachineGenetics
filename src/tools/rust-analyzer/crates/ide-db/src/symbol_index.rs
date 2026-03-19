@@ -658,7 +658,7 @@ impl Query {
 mod tests {
 
     use expect_test::expect_file;
-    use rustc_hash::FxHashSet;
+    use redox_hash::FxHashSet;
     use salsa::Setter;
     use test_fixture::{WORKSPACE, WithFixture};
 

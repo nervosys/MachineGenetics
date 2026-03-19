@@ -9,7 +9,7 @@
 
 //@ ignore-cross-compile
 //@ needs-dynamic-linking
-//@ only-nightly (requires unstable rustc flag)
+//@ only-nightly (requires unstable redox flag)
 
 // This test trips a check in the MSVC linker for an outdated processor:
 // "LNK1322: cannot avoid potential ARM hazard (Cortex-A53 MPCore processor bug #843419)"
@@ -20,14 +20,14 @@
 
 #![deny(warnings)]
 
-use run_make_support::{dynamic_lib_name, rfs, rust_lib_name, rustc};
+use run_make_support::{dynamic_lib_name, rfs, rust_lib_name, redox};
 
 // Synthesize a function that will have a large (`n`) number of functions
 // MIR-inlined into it. When combined with a proc-macro, all of these inline
-// callsites will have the same span, forcing rustc to use the DWARF
+// callsites will have the same span, forcing redox to use the DWARF
 // discriminator to distinguish between them. LLVM's capacity to store that
 // discriminator is not infinite (currently it allocates 12 bits for a
-// maximum value of 4096) so if this function gets big enough rustc's error
+// maximum value of 4096) so if this function gets big enough redox's error
 // handling path will be exercised.
 fn generate_program(n: u32) -> String {
     let mut program = String::from("pub type BigType = Vec<Vec<String>>;\n\n");
@@ -46,13 +46,13 @@ fn main() {
     // around 1500 to be less sensitive.
     rfs::write("generated.rs", generate_program(1500));
 
-    rustc()
+    redox()
         .input("proc.rs")
         .crate_type("proc-macro")
         .edition("2024")
         .arg("-Cdebuginfo=line-tables-only")
         .run();
-    rustc()
+    redox()
         .extern_("proc", dynamic_lib_name("proc"))
         .input("other.rs")
         .crate_type("rlib")
@@ -60,7 +60,7 @@ fn main() {
         .opt_level("3")
         .arg("-Cdebuginfo=line-tables-only")
         .run();
-    rustc()
+    redox()
         .extern_("other", rust_lib_name("other"))
         .input("main.rs")
         .edition("2024")

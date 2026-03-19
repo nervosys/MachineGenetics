@@ -169,7 +169,7 @@ unsafe fn avx2_pshufb(bytes: Simd<u8, 32>, idxs: Simd<u8, 32>) -> Simd<u8, 32> {
 }
 
 /// This sets up a call to an architecture-specific function, and in doing so
-/// it persuades rustc that everything is the correct size. Which it is.
+/// it persuades redox that everything is the correct size. Which it is.
 /// This would not be needed if one could convince Rust that, by matching on N,
 /// N is that value, and thus it would be valid to substitute e.g. 16.
 ///

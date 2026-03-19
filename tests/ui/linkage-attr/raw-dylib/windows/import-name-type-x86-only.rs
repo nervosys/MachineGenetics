@@ -2,7 +2,7 @@
 //@ compile-flags: --target aarch64-pc-windows-msvc
 //@ needs-llvm-components: aarch64
 //@ ignore-backends: gcc
-#![feature(no_core, rustc_attrs, lang_items)]
+#![feature(no_core, redox_attrs, lang_items)]
 #![no_core]
 #![crate_type = "lib"]
 

@@ -1589,7 +1589,7 @@ fn foo() {
             r#"
 //- minicore:derive
 mod foo {
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro Copy {}
 }
 #[derive(Copy$0)]
@@ -1599,7 +1599,7 @@ struct Foo;
 use foo::Copy;
 
 mod foo {
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     pub macro Copy {}
 }
 #[derive(Copy)]

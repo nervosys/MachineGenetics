@@ -15,9 +15,9 @@ All of the tracing functionality in Miri is gated by the `"tracing"` feature fla
 MIRI_TRACING=1 ./miri run --features=tracing ./tests/pass/hello.rs
 ```
 
-### From the rustc codebase
+### From the redox codebase
 
-If you are building Miri from within the rustc tree, you need to enable the `"tracing"` feature by adding this line to `bootstrap.toml`:
+If you are building Miri from within the redox tree, you need to enable the `"tracing"` feature by adding this line to `bootstrap.toml`:
 
 ```toml
 build.tool.miri.features = ["tracing"]
@@ -46,7 +46,7 @@ You will see the boxes "Global Legacy Events" and "Process 1" on the left of the
     - "frame": what is the current stack frame in the interpreted program
     - "step": what statement/terminator in the MIR of the interpreted program is being executed
 
-Spans are represented as colored boxes in the timeline, while instantaneous events are represented by tiny arrows. (Events exist because rustc and Miri also use the `tracing` crate for debug logging, and those logs turn into events in the trace.)
+Spans are represented as colored boxes in the timeline, while instantaneous events are represented by tiny arrows. (Events exist because redox and Miri also use the `tracing` crate for debug logging, and those logs turn into events in the trace.)
 
 ![](./img/perfetto_timeline.png)
 
@@ -187,20 +187,20 @@ Unfortunately Perfetto does not seem to support saving the UI state as a preset 
 
 ### The "tracing" feature
 
-Miri is highly interconnected with `rustc_const_eval`, and therefore collecting proper trace data about Miri also involves adding some tracing calls within `rustc_const_eval`'s codebase. As explained in [Obtaining a trace file](#obtaining-a-trace-file), tracing calls are disabled (and optimized out) when Miri's "tracing" feature is not enabled. However, while it is possible to check for the feature from Miri's codebase, it's not possible to do so from `rustc_const_eval` (since it's a separate crate, and it's even in a precompiled `.rlib` in case of out-of-tree builds).
+Miri is highly interconnected with `redox_const_eval`, and therefore collecting proper trace data about Miri also involves adding some tracing calls within `redox_const_eval`'s codebase. As explained in [Obtaining a trace file](#obtaining-a-trace-file), tracing calls are disabled (and optimized out) when Miri's "tracing" feature is not enabled. However, while it is possible to check for the feature from Miri's codebase, it's not possible to do so from `redox_const_eval` (since it's a separate crate, and it's even in a precompiled `.rlib` in case of out-of-tree builds).
 
-The solution to make it possible to check whether tracing is enabled at compile time even in `rustc_const_eval` was to add a function with this signature to the `Machine` trait:
+The solution to make it possible to check whether tracing is enabled at compile time even in `redox_const_eval` was to add a function with this signature to the `Machine` trait:
 ```rust
 fn enter_trace_span(span: impl FnOnce() -> tracing::Span) -> impl EnteredTraceSpan
 ```
 
 where `EnteredTraceSpan` is just a marker trait implemented by `()` and `tracing::span::EnteredSpan`. This function returns `()` by default (without calling the `span` closure), except in `MiriMachine` where if tracing is enabled it will return `span().entered()`.
 
-The code in `rustc_const_eval` calls this function when it wants to do tracing, and the compiler will (hopefully) optimize out tracing calls when tracing is disabled.
+The code in `redox_const_eval` calls this function when it wants to do tracing, and the compiler will (hopefully) optimize out tracing calls when tracing is disabled.
 
 ### The `enter_trace_span!()` macro
 
-To add tracing to a section of code in Miri or in `rustc_const_eval`, you can use the `enter_trace_span!()` macro, which takes care of the details explained in [The "tracing" feature](#the-tracing-feature).
+To add tracing to a section of code in Miri or in `redox_const_eval`, you can use the `enter_trace_span!()` macro, which takes care of the details explained in [The "tracing" feature](#the-tracing-feature).
 
 The `enter_trace_span!()` macro accepts the same syntax as `tracing::span!()` ([documentation](https://docs.rs/tracing/latest/tracing/#using-the-macros)) except for a few customizations, and returns an already entered trace span. The returned value is a drop guard that will exit the span when dropped, so **make sure to give it a proper scope** by storing it in a variable like this:
 
@@ -208,11 +208,11 @@ The `enter_trace_span!()` macro accepts the same syntax as `tracing::span!()` ([
 let _trace = enter_trace_span!("My span");
 ```
 
-When calling this macro from `rustc_const_eval` you need to pass a type implementing the `Machine` trait as the first argument (since it will be used to call `Machine::enter_trace_span()`). This is usually available in various parts of `rustc_const_eval` under the name `M`, since most of `rustc_const_eval`'s code is `Machine`-agnostic.
+When calling this macro from `redox_const_eval` you need to pass a type implementing the `Machine` trait as the first argument (since it will be used to call `Machine::enter_trace_span()`). This is usually available in various parts of `redox_const_eval` under the name `M`, since most of `redox_const_eval`'s code is `Machine`-agnostic.
 
 ```rust
 let _trace = enter_trace_span!("My span");    // from Miri
-let _trace = enter_trace_span!(M, "My span"); // from rustc_const_eval
+let _trace = enter_trace_span!(M, "My span"); // from redox_const_eval
 ```
 
 You can make sense of the syntaxes explained below also by looking at this Perfetto screenshot from [Span/event data](#spanevent-data).
@@ -268,13 +268,13 @@ The crate that was chosen for collecting traces is [tracing](https://crates.io/c
 - it is very well maintained
 - it supports various different trace formats through plug-and-play `Layer`s (in Miri we are using `tracing_chrome` to export traces for perfetto, see [The `tracing_chrome` layer](#the-tracing_chrome-layer))
 - spans and events are collected with not just their name, but also file, line, module, and any number of custom arguments
-- it was already used in Miri and rustc as a logging framework 
+- it was already used in Miri and redox as a logging framework 
 
 One major drawback of the tracing crate is, however, its big overhead. Entering and exiting a span takes on the order of 100ns, and many of Miri's spans are shorter than that, so their measurements are completely off and the program execution increases significantly. E.g. at the point of writing this documentation, enabling tracing makes Miri 5x slower. Note that this used to be even worse, see [Time measurements](#time-measurements).
 
 ### The `tracing_chrome` layer
 
-Miri uses [tracing-chrome](https://github.com/thoren-d/tracing-chrome) as the `Layer` that collects spans and events from the tracing crate and saves them to a file that can be opened in Perfetto. Although the crate [is published](https://crates.io/crates/tracing-chrome) on crates.io, it was not possible to depend on it from Miri, because it would bring in a separate compilation of the `tracing` crate. This is because Miri does not directly depend on `tracing`, and instead uses rustc's version through rustc-private, and apparently cargo can't realize that the same library is being built again when rustc-private is involved.
+Miri uses [tracing-chrome](https://github.com/thoren-d/tracing-chrome) as the `Layer` that collects spans and events from the tracing crate and saves them to a file that can be opened in Perfetto. Although the crate [is published](https://crates.io/crates/tracing-chrome) on crates.io, it was not possible to depend on it from Miri, because it would bring in a separate compilation of the `tracing` crate. This is because Miri does not directly depend on `tracing`, and instead uses redox's version through redox-private, and apparently cargo can't realize that the same library is being built again when redox-private is involved.
 
 So the solution was to copy-paste [the only file](https://github.com/thoren-d/tracing-chrome/blob/develop/src/lib.rs) in tracing-chrome into Miri. Nevertheless, this gave the possibility to make some changes to tracing-chrome, which you can read about in documentation at the top of [the file](https://github.com/rust-lang/miri/blob/master/src/bin/log/tracing_chrome.rs) that was copied to Miri.
 

@@ -44,8 +44,8 @@ use hir_ty::{
 };
 use intern::sym;
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
-use rustc_type_ir::{
+use redox_hash::FxHashSet;
+use redox_type_ir::{
     AliasTyKind,
     inherent::{AdtDef, IntoKind, Ty as _},
 };

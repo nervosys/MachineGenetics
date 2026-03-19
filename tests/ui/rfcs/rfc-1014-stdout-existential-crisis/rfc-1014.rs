@@ -3,7 +3,7 @@
 //@ run-pass
 //@ ignore-sgx no libc
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 #[cfg(windows)]
 fn close_stdout() {

@@ -3,8 +3,8 @@
 use std::cmp;
 
 use itertools::Itertools;
-use rustc_ast::ast;
-use rustc_span::{BytePos, Span};
+use redox_ast::ast;
+use redox_span::{BytePos, Span};
 
 use crate::comment::combine_strs_with_missing_comments;
 use crate::config::lists::*;

@@ -28,7 +28,7 @@ use crate::{
 #[cfg(test)]
 thread_local! {
     /// This is used to test `hir_segment_to_ast_segment()`. It's a hack, but it makes testing much easier.
-    pub(super) static SEGMENT_LOWERING_MAP: std::cell::RefCell<rustc_hash::FxHashMap<ast::PathSegment, usize>> = std::cell::RefCell::default();
+    pub(super) static SEGMENT_LOWERING_MAP: std::cell::RefCell<redox_hash::FxHashMap<ast::PathSegment, usize>> = std::cell::RefCell::default();
 }
 
 /// Converts an `ast::Path` to `Path`. Works with use trees.
@@ -208,8 +208,8 @@ pub(super) fn lower_path(
     }
 
     // handle local_inner_macros :
-    // Basically, even in rustc it is quite hacky:
-    // https://github.com/rust-lang/rust/blob/614f273e9388ddd7804d5cbc80b8865068a3744e/src/librustc_resolve/macros.rs#L456
+    // Basically, even in redox it is quite hacky:
+    // https://github.com/rust-lang/rust/blob/614f273e9388ddd7804d5cbc80b8865068a3744e/src/libredox_resolve/macros.rs#L456
     // We follow what it did anyway :)
     if segments.len() == 1
         && kind == PathKind::Plain

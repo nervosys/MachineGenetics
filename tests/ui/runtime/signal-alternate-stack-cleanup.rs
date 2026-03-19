@@ -10,7 +10,7 @@
 //@ ignore-nto no SA_ONSTACK
 
 #![allow(function_casts_as_integer)]
-#![feature(rustc_private)]
+#![feature(redox_private)]
 extern crate libc;
 
 use libc::*;

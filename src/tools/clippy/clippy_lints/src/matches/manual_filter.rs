@@ -3,10 +3,10 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::visitors::contains_unsafe_block;
 
-use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatKind};
-use rustc_lint::LateContext;
-use rustc_span::{SyntaxContext, sym};
+use redox_hir::LangItem::OptionNone;
+use redox_hir::{Arm, Expr, ExprKind, HirId, Pat, PatKind};
+use redox_lint::LateContext;
+use redox_span::{SyntaxContext, sym};
 
 use super::MANUAL_FILTER;
 use super::manual_utils::{SomeExpr, check_with};

@@ -1,4 +1,4 @@
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 //@ known-bug: #133613
 
 struct Wrapper<'a>();

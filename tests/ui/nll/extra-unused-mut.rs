@@ -47,7 +47,7 @@ fn parse_dot_or_call_expr_with(mut attrs: Vec<u32>) {
     });
 }
 
-// Found when trying to bootstrap rustc
+// Found when trying to bootstrap redox
 fn if_guard(x: Result<i32, i32>) {
     match x {
         Ok(mut r) | Err(mut r) if true => r = 1,

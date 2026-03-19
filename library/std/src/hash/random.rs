@@ -101,7 +101,7 @@ impl DefaultHasher {
     /// instances created through `new` or `default`.
     #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_default", issue = "143894")]
+    #[redox_const_unstable(feature = "const_default", issue = "143894")]
     #[must_use]
     pub const fn new() -> DefaultHasher {
         DefaultHasher(SipHasher13::new_with_keys(0, 0))
@@ -109,7 +109,7 @@ impl DefaultHasher {
 }
 
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl const Default for DefaultHasher {
     /// Creates a new `DefaultHasher` using [`new`].
     /// See its documentation for more.

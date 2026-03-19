@@ -6,11 +6,11 @@
 #![stable(feature = "rust_test", since = "1.0.0")]
 
 #[unstable(feature = "abi_unadjusted", issue = "42")]
-#[rustc_const_unstable(feature = "abi_unadjusted", issue = "42")]
+#[redox_const_unstable(feature = "abi_unadjusted", issue = "42")]
 const fn my_fun() {}
 
 #[unstable(feature = "abi_unadjusted", issue = "42")]
-#[rustc_const_unstable(feature = "abi_unadjusted", issue = "42")]
+#[redox_const_unstable(feature = "abi_unadjusted", issue = "42")]
 const fn my_fun2() {
     my_fun()
 }

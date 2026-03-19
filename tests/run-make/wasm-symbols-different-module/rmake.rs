@@ -3,7 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
-use run_make_support::{rfs, rustc, wasmparser};
+use run_make_support::{rfs, redox, wasmparser};
 
 fn main() {
     test_file("foo.rs", &[("a", &["foo"]), ("b", &["foo"])]);
@@ -22,7 +22,7 @@ fn test_file(file: &str, expected_imports: &[(&str, &[&str])]) {
 fn test(file: &str, args: &[&str], expected_imports: &[(&str, &[&str])]) {
     println!("test {file:?} {args:?} for {expected_imports:?}");
 
-    rustc().input(file).target("wasm32-wasip1").args(args).run();
+    redox().input(file).target("wasm32-wasip1").args(args).run();
 
     let file = rfs::read(Path::new(file).with_extension("wasm"));
 

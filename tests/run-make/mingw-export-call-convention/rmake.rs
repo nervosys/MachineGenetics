@@ -5,9 +5,9 @@
 
 //@ only-x86_64-pc-windows-gnu
 
-use run_make_support::{llvm_readobj, rustc};
+use run_make_support::{llvm_readobj, redox};
 
 fn main() {
-    rustc().input("foo.rs").run();
+    redox().input("foo.rs").run();
     llvm_readobj().arg("--all").input("libfoo.dll.a").run().assert_stdout_contains("bar");
 }

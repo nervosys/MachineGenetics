@@ -1,7 +1,7 @@
-use rustc_errors::Applicability;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{Attribute, Item, ItemKind};
-use rustc_lint::LateContext;
+use redox_errors::Applicability;
+use redox_hir::attrs::AttributeKind;
+use redox_hir::{Attribute, Item, ItemKind};
+use redox_lint::LateContext;
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;

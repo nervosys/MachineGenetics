@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
-use rustc_abi::ExternAbi;
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
-use rustc_hir::{self as hir, AmbigArg, GenericParamKind, TyKind};
-use rustc_lint::LateContext;
-use rustc_span::Span;
+use redox_abi::ExternAbi;
+use redox_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
+use redox_hir::{self as hir, AmbigArg, GenericParamKind, TyKind};
+use redox_lint::LateContext;
+use redox_span::Span;
 
 use super::TYPE_COMPLEXITY;
 

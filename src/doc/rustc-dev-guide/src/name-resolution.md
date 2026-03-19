@@ -10,7 +10,7 @@ how this is actually done and more.
 In fact, we don't do full name resolution during macro expansion -- we only
 resolve imports and macros at that time. This is required to know what to even
 expand. Later, after we have the whole AST, we do full name resolution to
-resolve all names in the crate. This happens in [`rustc_resolve::late`][late].
+resolve all names in the crate. This happens in [`redox_resolve::late`][late].
 Unlike during macro expansion, in this late expansion, we only need to try to
 resolve a name once, since no new names can be added. If we fail to resolve a
 name, then it is a compiler error.
@@ -24,7 +24,7 @@ that module. On the other hand, in a function body scope, failure requires that 
 name be absent from the block we are in, all outer scopes, and the global
 scope.
 
-[late]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/late/index.html
+[late]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/late/index.html
 
 ## Basics
 
@@ -58,12 +58,12 @@ A successful run of the second phase ([`Resolver::resolve_crate`]) creates kind
 of an index the rest of the compilation may use to ask about the present names
 (through the `hir::lowering::Resolver` interface).
 
-The name resolution lives in the [`rustc_resolve`] crate, with the bulk in
+The name resolution lives in the [`redox_resolve`] crate, with the bulk in
 `lib.rs` and some helpers or symbol-type specific logic in the other modules.
 
-[`Resolver::resolve_crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/struct.Resolver.html#method.resolve_crate
-[`ResolverAstLoweringExt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/trait.ResolverAstLoweringExt.html
-[`rustc_resolve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/index.html
+[`Resolver::resolve_crate`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/struct.Resolver.html#method.resolve_crate
+[`ResolverAstLoweringExt`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_ast_lowering/trait.ResolverAstLoweringExt.html
+[`redox_resolve`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/index.html
 
 ## Namespaces
 
@@ -97,7 +97,7 @@ an abstraction of a scope. Every time the set of visible names potentially chang
 a new [`Rib`] is pushed onto a stack. The places where this can happen include for
 example:
 
-[`Rib`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/late/struct.Rib.html
+[`Rib`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/late/struct.Rib.html
 
 * The obvious places ‒ curly braces enclosing a block, function boundaries,
   modules.
@@ -112,7 +112,7 @@ what names are usable ‒ if there are nested functions (not closures),
 the inner one can't access parameters and local bindings of the outer one,
 even though they should be visible by ordinary scoping rules. An example:
 
-[`ribs`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/late/struct.LateResolutionVisitor.html#structfield.ribs
+[`ribs`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/late/struct.LateResolutionVisitor.html#structfield.ribs
 
 ```rust
 fn do_something<T: Default>(val: T) { // <- New rib in both types and values (1)
@@ -155,26 +155,26 @@ Therefore, the resolution is performed in multiple stages.
 
 ## Speculative crate loading
 
-To give useful errors, rustc suggests importing paths into scope if they're
+To give useful errors, redox suggests importing paths into scope if they're
 not found. How does it do this? It looks through every module of every crate
 and looks for possible matches. This even includes crates that haven't yet
 been loaded!
 
 Eagerly loading crates to include import suggestions that haven't yet been
 loaded is called _speculative crate loading_, because any errors it encounters
-shouldn't be reported: [`rustc_resolve`] decided to load them, not the user. The function
+shouldn't be reported: [`redox_resolve`] decided to load them, not the user. The function
 that does this is [`lookup_import_candidates`] and lives in
-[`rustc_resolve::diagnostics`].
+[`redox_resolve::diagnostics`].
 
-[`rustc_resolve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/index.html
-[`lookup_import_candidates`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/struct.Resolver.html#method.lookup_import_candidates
-[`rustc_resolve::diagnostics`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/diagnostics/index.html
+[`redox_resolve`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/index.html
+[`lookup_import_candidates`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/struct.Resolver.html#method.lookup_import_candidates
+[`redox_resolve::diagnostics`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_resolve/diagnostics/index.html
 
 To tell the difference between speculative loads and loads initiated by the
-user, [`rustc_resolve`] passes around a `record_used` parameter, which is `false` when
+user, [`redox_resolve`] passes around a `record_used` parameter, which is `false` when
 the load is speculative.
 
-## TODO: [#16](https://github.com/rust-lang/rustc-dev-guide/issues/16)
+## TODO: [#16](https://github.com/rust-lang/redox-dev-guide/issues/16)
 
 This is a result of the first pass of learning the code. It is definitely
 incomplete and not detailed enough. It also might be inaccurate in places.

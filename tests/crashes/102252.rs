@@ -1,8 +1,8 @@
 //@ known-bug: #102252
 
-#![feature(min_specialization, rustc_attrs)]
+#![feature(min_specialization, redox_attrs)]
 
-#[rustc_specialization_trait]
+#[redox_specialization_trait]
 pub trait Trait {}
 
 struct Struct

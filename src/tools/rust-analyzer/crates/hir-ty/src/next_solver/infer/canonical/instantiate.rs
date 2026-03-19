@@ -2,7 +2,7 @@
 //! `Canonical<'db, T>`.
 //!
 //! For an overview of what canonicalization is and how it fits into
-//! rustc, check out the [chapter in the rustc dev guide][c].
+//! redox, check out the [chapter in the redox dev guide][c].
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
@@ -19,9 +19,9 @@ use crate::next_solver::{
         traits::{ObligationCause, PredicateObligations},
     },
 };
-use rustc_hash::FxHashMap;
-use rustc_index::{Idx as _, IndexVec};
-use rustc_type_ir::{
+use redox_hash::FxHashMap;
+use redox_index::{Idx as _, IndexVec};
+use redox_type_ir::{
     BoundVar, BoundVarIndexKind, GenericArgKind, TypeFlags, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
     inherent::{GenericArg as _, IntoKind},
@@ -176,7 +176,7 @@ impl<'db, 'a> TypeFolder<DbInterner<'db>> for CanonicalInstantiator<'db, 'a> {
             return c;
         }
 
-        // FIXME: We might need cache here for perf like rustc
+        // FIXME: We might need cache here for perf like redox
         c.super_fold_with(self)
     }
 }
@@ -230,7 +230,7 @@ impl<'db> InferCtxt<'db> {
     /// the query before applying this function.)
     ///
     /// To get a good understanding of what is happening here, check
-    /// out the [chapter in the rustc dev guide][c].
+    /// out the [chapter in the redox dev guide][c].
     ///
     /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#processing-the-canonicalized-query-result
     pub fn instantiate_query_response_and_region_obligations<R>(

@@ -15,10 +15,10 @@ impl<T: PointeeSized> *const T {
     /// assert!(!ptr.is_null());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
-    #[rustc_diagnostic_item = "ptr_const_is_null"]
+    #[redox_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
+    #[redox_diagnostic_item = "ptr_const_is_null"]
     #[inline]
-    #[rustc_allow_const_fn_unstable(const_eval_select)]
+    #[redox_allow_const_fn_unstable(const_eval_select)]
     pub const fn is_null(self) -> bool {
         // Compare via a cast to a thin pointer, so fat pointers are only
         // considering their "data" part for null-ness.
@@ -26,7 +26,7 @@ impl<T: PointeeSized> *const T {
         const_eval_select!(
             @capture { ptr: *const u8 } -> bool:
             // This use of `const_raw_ptr_comparison` has been explicitly blessed by t-lang.
-            if const #[rustc_allow_const_fn_unstable(const_raw_ptr_comparison)] {
+            if const #[redox_allow_const_fn_unstable(const_raw_ptr_comparison)] {
                 match (ptr).guaranteed_eq(null_mut()) {
                     Some(res) => res,
                     // To remain maximally conservative, we stop execution when we don't
@@ -42,8 +42,8 @@ impl<T: PointeeSized> *const T {
 
     /// Casts to a pointer of another type.
     #[stable(feature = "ptr_cast", since = "1.38.0")]
-    #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
-    #[rustc_diagnostic_item = "const_ptr_cast"]
+    #[redox_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
+    #[redox_diagnostic_item = "const_ptr_cast"]
     #[inline(always)]
     pub const fn cast<U>(self) -> *const U {
         self as _
@@ -139,8 +139,8 @@ impl<T: PointeeSized> *const T {
     /// This is a bit safer than `as` because it wouldn't silently change the type if the code is
     /// refactored.
     #[stable(feature = "ptr_const_cast", since = "1.65.0")]
-    #[rustc_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
-    #[rustc_diagnostic_item = "ptr_cast_mut"]
+    #[redox_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
+    #[redox_diagnostic_item = "ptr_cast_mut"]
     #[inline(always)]
     pub const fn cast_mut(self) -> *mut T {
         self as _
@@ -261,7 +261,7 @@ impl<T: PointeeSized> *const T {
     /// [`as_uninit_ref`]: #method.as_uninit_ref
     /// [`as_ref_unchecked`]: #method.as_ref_unchecked
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
+    #[redox_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
     #[inline]
     pub const unsafe fn as_ref<'a>(self) -> Option<&'a T> {
         // SAFETY: the caller must guarantee that `self` is valid
@@ -291,7 +291,7 @@ impl<T: PointeeSized> *const T {
     /// }
     /// ```
     #[stable(feature = "ptr_as_ref_unchecked", since = "1.95.0")]
-    #[rustc_const_stable(feature = "ptr_as_ref_unchecked", since = "1.95.0")]
+    #[redox_const_stable(feature = "ptr_as_ref_unchecked", since = "1.95.0")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_ref_unchecked<'a>(self) -> &'a T {
@@ -343,7 +343,7 @@ impl<T: PointeeSized> *const T {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[redox_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
     #[track_caller]
     pub const unsafe fn offset(self, count: isize) -> *const T
@@ -351,7 +351,7 @@ impl<T: PointeeSized> *const T {
         T: Sized,
     {
         #[inline]
-        #[rustc_allow_const_fn_unstable(const_eval_select)]
+        #[redox_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_offset_nowrap(this: *const (), count: isize, size: usize) -> bool {
             // We can use const_eval_select here because this is only for UB checks.
             const_eval_select!(
@@ -397,7 +397,7 @@ impl<T: PointeeSized> *const T {
     #[must_use]
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
+    #[redox_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     #[track_caller]
     pub const unsafe fn byte_offset(self, count: isize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `offset`.
@@ -458,7 +458,7 @@ impl<T: PointeeSized> *const T {
     /// ```
     #[stable(feature = "ptr_wrapping_offset", since = "1.16.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[redox_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
     pub const fn wrapping_offset(self, count: isize) -> *const T
     where
@@ -481,7 +481,7 @@ impl<T: PointeeSized> *const T {
     #[must_use]
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
+    #[redox_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     pub const fn wrapping_byte_offset(self, count: isize) -> Self {
         self.cast::<u8>().wrapping_offset(count).with_metadata_of(self)
     }
@@ -606,7 +606,7 @@ impl<T: PointeeSized> *const T {
     /// }
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
-    #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
+    #[redox_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
@@ -630,7 +630,7 @@ impl<T: PointeeSized> *const T {
     /// ignoring the metadata.
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
+    #[redox_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_offset_from<U: ?Sized>(self, origin: *const U) -> isize {
         // SAFETY: the caller must uphold the safety contract for `offset_from`.
@@ -695,14 +695,14 @@ impl<T: PointeeSized> *const T {
     /// // ptr1.offset_from_unsigned(ptr2)
     /// ```
     #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
-    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
+    #[redox_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
     #[inline]
     #[track_caller]
     pub const unsafe fn offset_from_unsigned(self, origin: *const T) -> usize
     where
         T: Sized,
     {
-        #[rustc_allow_const_fn_unstable(const_eval_select)]
+        #[redox_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_ptr_ge(this: *const (), origin: *const ()) -> bool {
             const_eval_select!(
                 @capture { this: *const (), origin: *const () } -> bool:
@@ -740,7 +740,7 @@ impl<T: PointeeSized> *const T {
     /// For non-`Sized` pointees this operation considers only the data pointers,
     /// ignoring the metadata.
     #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
-    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
+    #[redox_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
     #[inline]
     #[track_caller]
     pub const unsafe fn byte_offset_from_unsigned<U: ?Sized>(self, origin: *const U) -> usize {
@@ -766,7 +766,7 @@ impl<T: PointeeSized> *const T {
     /// differences, and it should also not be stabilized before we have a better understanding
     /// of this issue.
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
-    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[redox_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
     pub const fn guaranteed_eq(self, other: *const T) -> Option<bool>
     where
@@ -796,7 +796,7 @@ impl<T: PointeeSized> *const T {
     /// differences, and it should also not be stabilized before we have a better understanding
     /// of this issue.
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
-    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[redox_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
     pub const fn guaranteed_ne(self, other: *const T) -> Option<bool>
     where
@@ -823,7 +823,7 @@ impl<T: PointeeSized> *const T {
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[redox_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
     #[track_caller]
     pub const unsafe fn add(self, count: usize) -> Self
@@ -832,7 +832,7 @@ impl<T: PointeeSized> *const T {
     {
         #[cfg(debug_assertions)]
         #[inline]
-        #[rustc_allow_const_fn_unstable(const_eval_select)]
+        #[redox_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_add_nowrap(this: *const (), count: usize, size: usize) -> bool {
             const_eval_select!(
                 @capture { this: *const (), count: usize, size: usize } -> bool:
@@ -876,7 +876,7 @@ impl<T: PointeeSized> *const T {
     #[must_use]
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
+    #[redox_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     #[track_caller]
     pub const unsafe fn byte_add(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `add`.
@@ -929,7 +929,7 @@ impl<T: PointeeSized> *const T {
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[redox_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
     #[track_caller]
     pub const unsafe fn sub(self, count: usize) -> Self
@@ -938,7 +938,7 @@ impl<T: PointeeSized> *const T {
     {
         #[cfg(debug_assertions)]
         #[inline]
-        #[rustc_allow_const_fn_unstable(const_eval_select)]
+        #[redox_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_sub_nowrap(this: *const (), count: usize, size: usize) -> bool {
             const_eval_select!(
                 @capture { this: *const (), count: usize, size: usize } -> bool:
@@ -988,7 +988,7 @@ impl<T: PointeeSized> *const T {
     #[must_use]
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
+    #[redox_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     #[track_caller]
     pub const unsafe fn byte_sub(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `sub`.
@@ -1048,7 +1048,7 @@ impl<T: PointeeSized> *const T {
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[redox_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
     pub const fn wrapping_add(self, count: usize) -> Self
     where
@@ -1069,7 +1069,7 @@ impl<T: PointeeSized> *const T {
     #[must_use]
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
+    #[redox_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     pub const fn wrapping_byte_add(self, count: usize) -> Self {
         self.cast::<u8>().wrapping_add(count).with_metadata_of(self)
     }
@@ -1127,7 +1127,7 @@ impl<T: PointeeSized> *const T {
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[redox_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
     pub const fn wrapping_sub(self, count: usize) -> Self
     where
@@ -1148,7 +1148,7 @@ impl<T: PointeeSized> *const T {
     #[must_use]
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
+    #[redox_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     pub const fn wrapping_byte_sub(self, count: usize) -> Self {
         self.cast::<u8>().wrapping_sub(count).with_metadata_of(self)
     }
@@ -1160,7 +1160,7 @@ impl<T: PointeeSized> *const T {
     ///
     /// [`ptr::read`]: crate::ptr::read()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
+    #[redox_const_stable(feature = "const_ptr_read", since = "1.71.0")]
     #[inline]
     #[track_caller]
     pub const unsafe fn read(self) -> T
@@ -1201,7 +1201,7 @@ impl<T: PointeeSized> *const T {
     ///
     /// [`ptr::read_unaligned`]: crate::ptr::read_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
+    #[redox_const_stable(feature = "const_ptr_read", since = "1.71.0")]
     #[inline]
     #[track_caller]
     pub const unsafe fn read_unaligned(self) -> T
@@ -1220,7 +1220,7 @@ impl<T: PointeeSized> *const T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     #[track_caller]
@@ -1240,7 +1240,7 @@ impl<T: PointeeSized> *const T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+    #[redox_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     #[track_caller]
@@ -1455,7 +1455,7 @@ impl<T> *const [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_ptr_len", since = "1.79.0")]
-    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
+    #[redox_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
     pub const fn len(self) -> usize {
         metadata(self)
     }
@@ -1472,7 +1472,7 @@ impl<T> *const [T] {
     /// ```
     #[inline(always)]
     #[stable(feature = "slice_ptr_len", since = "1.79.0")]
-    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
+    #[redox_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
     pub const fn is_empty(self) -> bool {
         self.len() == 0
     }
@@ -1500,7 +1500,7 @@ impl<T> *const [T] {
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
     #[stable(feature = "core_slice_as_array", since = "1.93.0")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[redox_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_array<const N: usize>(self) -> Option<*const [T; N]> {
@@ -1532,7 +1532,7 @@ impl<T> *const [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
-    #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+    #[redox_const_unstable(feature = "const_index", issue = "143775")]
     #[inline]
     pub const unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
     where

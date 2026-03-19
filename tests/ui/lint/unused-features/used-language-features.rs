@@ -6,7 +6,7 @@
 // Used language features
 #![feature(box_patterns)]
 #![feature(decl_macro)]
-#![cfg_attr(all(), feature(rustc_attrs))]
+#![cfg_attr(all(), feature(redox_attrs))]
 
 pub fn use_box_patterns(b: Box<i32>) -> i32 {
     let box x = b;
@@ -18,5 +18,5 @@ pub fn use_decl_macro() {
     m!();
 }
 
-#[rustc_dummy]
-pub fn use_rustc_attrs() {}
+#[redox_dummy]
+pub fn use_redox_attrs() {}

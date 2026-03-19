@@ -11,14 +11,14 @@
 
 //@ only-windows
 
-use run_make_support::{cc, diff, extra_c_flags, is_windows_msvc, run, rustc};
+use run_make_support::{cc, diff, extra_c_flags, is_windows_msvc, run, redox};
 
 // NOTE: build_native_dynamic lib is not used, as the special `def` files
 // must be passed to the CC compiler.
 
 fn main() {
-    rustc().crate_type("lib").crate_name("raw_dylib_test").input("lib.rs").run();
-    rustc().crate_type("bin").input("driver.rs").run();
+    redox().crate_type("lib").crate_name("raw_dylib_test").input("lib.rs").run();
+    redox().crate_type("bin").input("driver.rs").run();
     if is_windows_msvc() {
         cc().arg("-c").out_exe("exporter").input("exporter.c").run();
         cc().input("exporter.obj")

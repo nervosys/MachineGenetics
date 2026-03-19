@@ -6,11 +6,11 @@
 // this bug, and checks that no ICE occurs.
 // See https://github.com/rust-lang/rust/issues/40535
 
-use run_make_support::rustc;
+use run_make_support::redox;
 
 fn main() {
-    rustc().input("baz.rs").emit("metadata").run();
-    rustc().input("bar.rs").emit("metadata").extern_("baz", "libbaz.rmeta").run();
+    redox().input("baz.rs").emit("metadata").run();
+    redox().input("bar.rs").emit("metadata").extern_("baz", "libbaz.rmeta").run();
     // There should be no internal compiler error.
-    rustc().input("foo.rs").emit("metadata").extern_("bar", "libbaz.rmeta").run();
+    redox().input("foo.rs").emit("metadata").extern_("bar", "libbaz.rmeta").run();
 }

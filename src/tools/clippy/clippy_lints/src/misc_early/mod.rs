@@ -8,11 +8,11 @@ mod unneeded_wildcard_pattern;
 mod zero_prefixed_literal;
 
 use clippy_utils::source::snippet_opt;
-use rustc_ast::ast::{Expr, ExprKind, Generics, LitFloatType, LitIntType, LitKind, Pat};
-use rustc_ast::token;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
+use redox_ast::ast::{Expr, ExprKind, Generics, LitFloatType, LitIntType, LitKind, Pat};
+use redox_ast::token;
+use redox_lint::{EarlyContext, EarlyLintPass, LintContext};
+use redox_session::declare_lint_pass;
+use redox_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does

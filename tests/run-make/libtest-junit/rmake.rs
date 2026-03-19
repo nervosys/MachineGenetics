@@ -3,10 +3,10 @@
 //@ ignore-cross-compile
 //@ needs-unwind (test file contains #[should_panic] test)
 
-use run_make_support::{cmd, diff, python_command, rustc};
+use run_make_support::{cmd, diff, python_command, redox};
 
 fn main() {
-    rustc().arg("--test").input("f.rs").run();
+    redox().arg("--test").input("f.rs").run();
 
     run_tests(&[], "output-default.xml");
     run_tests(&["--show-output"], "output-stdout-success.xml");

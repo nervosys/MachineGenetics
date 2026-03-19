@@ -25,13 +25,13 @@
 #![feature(negative_impls)]
 #![feature(panic_can_unwind)]
 #![feature(restricted_std)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(extend_one)]
 #![feature(mem_conjure_zst)]
 #![recursion_limit = "256"]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
-#![allow(rustc::internal)] // Can't use FxHashMap when compiled as part of the standard library
+#![allow(redox::internal)] // Can't use FxHashMap when compiled as part of the standard library
 #![warn(rustdoc::unescaped_backticks)]
 #![warn(unreachable_pub)]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -54,8 +54,8 @@ use std::{error, fmt};
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 #[unstable(feature = "proc_macro_value", issue = "136652")]
-pub use rustc_literal_escaper::EscapeError;
-use rustc_literal_escaper::{
+pub use redox_literal_escaper::EscapeError;
+use redox_literal_escaper::{
     MixedUnit, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char, unescape_str,
 };
 #[unstable(feature = "proc_macro_totokens", issue = "130977")]
@@ -99,7 +99,7 @@ pub fn is_available() -> bool {
 ///
 /// This is both the input and output of `#[proc_macro]`, `#[proc_macro_attribute]`
 /// and `#[proc_macro_derive]` definitions.
-#[cfg_attr(feature = "rustc-dep-of-std", rustc_diagnostic_item = "TokenStream")]
+#[cfg_attr(feature = "redox-dep-of-std", redox_diagnostic_item = "TokenStream")]
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 #[derive(Clone)]
 pub struct TokenStream(Option<bridge::client::TokenStream>);
@@ -459,7 +459,7 @@ pub mod token_stream {
 /// To quote `$` itself, use `$$`.
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
 #[allow_internal_unstable(proc_macro_def_site, proc_macro_internals, proc_macro_totokens)]
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 pub macro quote($($t:tt)*) {
     /* compiler built-in */
 }
@@ -801,12 +801,12 @@ pub enum Delimiter {
     ///
     /// <div class="warning">
     ///
-    /// Note: rustc currently can ignore the grouping of tokens delimited by `None` in the output
+    /// Note: redox currently can ignore the grouping of tokens delimited by `None` in the output
     /// of a proc_macro. Only `None`-delimited groups created by a macro_rules macro in the input
     /// of a proc_macro macro are preserved, and only in very specific circumstances.
     /// Any `None`-delimited groups (re)created by a proc_macro will therefore not preserve
     /// operator priorities as indicated above. The other `Delimiter` variants should be used
-    /// instead in this context. This is a rustc bug. For details, see
+    /// instead in this context. This is a redox bug. For details, see
     /// [rust-lang/rust#67062](https://github.com/rust-lang/rust/issues/67062).
     ///
     /// </div>
@@ -1049,7 +1049,7 @@ impl Ident {
     ///
     /// The constructed identifier will be NFC-normalized. See the [Reference] for more info.
     ///
-    /// Note that `span`, currently in rustc, configures the hygiene information
+    /// Note that `span`, currently in redox, configures the hygiene information
     /// for this identifier.
     ///
     /// As of this time `Span::call_site()` explicitly opts-in to "call-site" hygiene

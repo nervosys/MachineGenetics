@@ -25,17 +25,17 @@ fn test_copy_expand_in_core() {
     check(
         r#"
 //- /lib.rs crate:core
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro derive {}
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro Copy {}
 #[derive(Copy)]
 struct Foo;
 "#,
         expect![[r#"
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro derive {}
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro Copy {}
 #[derive(Copy)]
 struct Foo;

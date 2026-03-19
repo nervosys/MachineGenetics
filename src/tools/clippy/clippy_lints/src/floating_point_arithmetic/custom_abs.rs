@@ -3,11 +3,11 @@ use clippy_utils::consts::Constant::{F32, F64, Int};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{eq_expr_value, higher, peel_blocks};
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
-use rustc_lint::LateContext;
-use rustc_span::SyntaxContext;
-use rustc_span::Spanned;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind, UnOp};
+use redox_lint::LateContext;
+use redox_span::SyntaxContext;
+use redox_span::Spanned;
 
 use super::SUBOPTIMAL_FLOPS;
 

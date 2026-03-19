@@ -29,13 +29,13 @@ use hir_expand::{mod_path::PathKind, name::Name};
 use intern::{Internable, Interned, sym};
 use itertools::Itertools;
 use la_arena::ArenaMap;
-use rustc_apfloat::{
+use redox_apfloat::{
     Float,
     ieee::{Half as f16, Quad as f128},
 };
-use rustc_ast_ir::FloatTy;
-use rustc_hash::FxHashSet;
-use rustc_type_ir::{
+use redox_ast_ir::FloatTy;
+use redox_hash::FxHashSet;
+use redox_type_ir::{
     AliasTyKind, BoundVarIndexKind, CoroutineArgsParts, CoroutineClosureArgsParts, RegionKind,
     Upcast,
     inherent::{AdtDef, GenericArgs as _, IntoKind, Term as _, Ty as _, Tys as _},
@@ -1093,8 +1093,8 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     f.write_char(' ')?;
                 }
                 match m {
-                    rustc_ast_ir::Mutability::Not => (),
-                    rustc_ast_ir::Mutability::Mut => f.write_str("mut ")?,
+                    redox_ast_ir::Mutability::Not => (),
+                    redox_ast_ir::Mutability::Mut => f.write_str("mut ")?,
                 }
 
                 f.trait_bounds_need_parens = true;
@@ -1106,8 +1106,8 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     f,
                     "*{}",
                     match m {
-                        rustc_ast_ir::Mutability::Not => "const ",
-                        rustc_ast_ir::Mutability::Mut => "mut ",
+                        redox_ast_ir::Mutability::Not => "const ",
+                        redox_ast_ir::Mutability::Mut => "mut ",
                     }
                 )?;
 
@@ -1394,9 +1394,9 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     args.split_coroutine_closure_args();
                 let kind = closure_kind_ty.to_opt_closure_kind().unwrap();
                 let kind = match kind {
-                    rustc_type_ir::ClosureKind::Fn => "AsyncFn",
-                    rustc_type_ir::ClosureKind::FnMut => "AsyncFnMut",
-                    rustc_type_ir::ClosureKind::FnOnce => "AsyncFnOnce",
+                    redox_type_ir::ClosureKind::Fn => "AsyncFn",
+                    redox_type_ir::ClosureKind::FnMut => "AsyncFnMut",
+                    redox_type_ir::ClosureKind::FnOnce => "AsyncFnOnce",
                 };
                 let TyKind::FnPtr(coroutine_sig, _) = signature_parts_ty.kind() else {
                     unreachable!("invalid coroutine closure signature");
@@ -1502,7 +1502,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
 
                 if f.render_region(region) {
                     bounds_to_display
-                        .push(rustc_type_ir::OutlivesPredicate(*self, region).upcast(interner));
+                        .push(redox_type_ir::OutlivesPredicate(*self, region).upcast(interner));
                 }
 
                 write_bounds_like_dyn_trait_with_prefix(

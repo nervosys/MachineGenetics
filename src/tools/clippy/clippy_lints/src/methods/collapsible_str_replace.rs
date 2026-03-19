@@ -3,9 +3,9 @@ use clippy_utils::source::snippet;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{eq_expr_value, get_parent_expr, sym};
 use core::ops::ControlFlow;
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_lint::LateContext;
+use redox_errors::Applicability;
+use redox_hir as hir;
+use redox_lint::LateContext;
 use std::collections::VecDeque;
 
 use super::{COLLAPSIBLE_STR_REPLACE, method_call};

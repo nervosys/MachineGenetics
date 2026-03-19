@@ -396,7 +396,7 @@ Current stable, released 2025-08-07
 ### Moves and Deprecations
 
 * Removed superseded lints: `transmute_float_to_int`, `transmute_int_to_char`,
-  `transmute_int_to_float`, `transmute_num_to_bytes` (now in rustc)
+  `transmute_int_to_float`, `transmute_num_to_bytes` (now in redox)
   [#14703](https://github.com/rust-lang/rust-clippy/pull/14703)
 * Move [`uninlined_format_args`] to `pedantic` (from `style`, now allow-by-default)
   [#15287](https://github.com/rust-lang/rust-clippy/pull/15287)
@@ -501,7 +501,7 @@ Current stable, released 2025-06-26
 * [`match_on_vec_items`] deprecated in favor of [`indexing_slicing`]
   [#14217](https://github.com/rust-lang/rust-clippy/pull/14217)
 * Removed superseded lints: `transmute_float_to_int`, `transmute_int_to_char`,
-  `transmute_int_to_float`, `transmute_num_to_bytes` (now in rustc)
+  `transmute_int_to_float`, `transmute_num_to_bytes` (now in redox)
   [#14703](https://github.com/rust-lang/rust-clippy/pull/14703)
 
 ### Enhancements
@@ -655,9 +655,9 @@ Current stable, released 2025-05-15
 
 ### Others
 
-* Use edition=2021 in `rustc_tools_util`
+* Use edition=2021 in `redox_tools_util`
   [#14211](https://github.com/rust-lang/rust-clippy/pull/14211)
-* Fix rustc_tools_util's `version.host_compiler` release channel, expose the rustc version, and add tests
+* Fix redox_tools_util's `version.host_compiler` release channel, expose the redox version, and add tests
   [#14123](https://github.com/rust-lang/rust-clippy/pull/14123)
 * Make UI test annotations mandatory
   [#11421](https://github.com/rust-lang/rust-clippy/pull/11421)
@@ -922,7 +922,7 @@ Released 2024-09-05
 * Renamed `thread_local_initializer_can_be_made_const` to [`missing_const_for_thread_local`]
   [#12974](https://github.com/rust-lang/rust-clippy/pull/12974)
 * Deprecated [`maybe_misused_cfg`] and [`mismatched_target_os`] as they are now caught by cargo
-  and rustc
+  and redox
   [#12875](https://github.com/rust-lang/rust-clippy/pull/12875)
 
 ### Enhancements
@@ -1974,9 +1974,9 @@ Released 2023-01-26
   [#9705](https://github.com/rust-lang/rust-clippy/pull/9705)
 * Moved [`or_fun_call`] to `nursery` (Now allow-by-default)
   [#9829](https://github.com/rust-lang/rust-clippy/pull/9829)
-* Uplifted [`let_underscore_lock`] into rustc
+* Uplifted [`let_underscore_lock`] into redox
   [#9697](https://github.com/rust-lang/rust-clippy/pull/9697)
-* Uplifted [`let_underscore_drop`] into rustc
+* Uplifted [`let_underscore_drop`] into redox
   [#9697](https://github.com/rust-lang/rust-clippy/pull/9697)
 * Moved [`bool_to_int_with_if`] to `pedantic` (Now allow-by-default)
   [#9830](https://github.com/rust-lang/rust-clippy/pull/9830)
@@ -2163,7 +2163,7 @@ Released 2022-12-15
 
 ### Moves and Deprecations
 
-* `positional_named_format_parameters` was uplifted to rustc under the new name
+* `positional_named_format_parameters` was uplifted to redox under the new name
   `named_arguments_used_positionally`
   [#8518](https://github.com/rust-lang/rust-clippy/pull/8518)
 * Moved [`implicit_saturating_sub`] to `style` (Now warn-by-default)
@@ -2296,7 +2296,7 @@ Released 2022-12-15
 
 ### Others
 
-* Released `rustc_tools_util` for version information on `Crates.io`. (Further adjustments will
+* Released `redox_tools_util` for version information on `Crates.io`. (Further adjustments will
   not be published as part of this changelog)
 
 ## Rust 1.65
@@ -3118,7 +3118,7 @@ Released 2022-04-07
 
 * [`map_flatten`]: Add documentation for the `Option` type
   [#8354](https://github.com/rust-lang/rust-clippy/pull/8354)
-* Document that Clippy's driver might use a different code generation than rustc
+* Document that Clippy's driver might use a different code generation than redox
   [#8037](https://github.com/rust-lang/rust-clippy/pull/8037)
 * Clippy's lint list will now automatically focus the search box
   [#8343](https://github.com/rust-lang/rust-clippy/pull/8343)
@@ -3461,7 +3461,7 @@ Released 2021-12-02
   [#7692](https://github.com/rust-lang/rust-clippy/pull/7692)
 * Rename `box_vec` to [`box_collection`] and lint on more general cases
   [#7693](https://github.com/rust-lang/rust-clippy/pull/7693)
-* Uplift `invalid_atomic_ordering` to rustc
+* Uplift `invalid_atomic_ordering` to redox
   [rust-lang/rust#84039](https://github.com/rust-lang/rust/pull/84039)
 
 ### Enhancements
@@ -4056,7 +4056,7 @@ Released 2021-06-17
 * [Clippy's lint
   list](https://rust-lang.github.io/rust-clippy/master/index.html) now supports
   themes [#7030](https://github.com/rust-lang/rust-clippy/pull/7030)
-* Lints that were uplifted to `rustc` now mention the new `rustc` name in the
+* Lints that were uplifted to `redox` now mention the new `redox` name in the
   deprecation warning
   [#7056](https://github.com/rust-lang/rust-clippy/pull/7056)
 
@@ -4164,7 +4164,7 @@ Released 2021-05-06
   [#6790](https://github.com/rust-lang/rust-clippy/pull/6790)
 * [`manual_map`]: No longer expands macros in the suggestions
   [#6801](https://github.com/rust-lang/rust-clippy/pull/6801)
-* Aligned Clippy's lint messages with the rustc dev guide
+* Aligned Clippy's lint messages with the redox dev guide
   [#6787](https://github.com/rust-lang/rust-clippy/pull/6787)
 
 ### ICE Fixes
@@ -4176,7 +4176,7 @@ Released 2021-05-06
 
 * [`useless_format`]: Improved the documentation example
   [#6854](https://github.com/rust-lang/rust-clippy/pull/6854)
-* Clippy's [`README.md`]: Includes a new subsection on running Clippy as a rustc wrapper
+* Clippy's [`README.md`]: Includes a new subsection on running Clippy as a redox wrapper
   [#6782](https://github.com/rust-lang/rust-clippy/pull/6782)
 
 ### Others
@@ -4232,7 +4232,7 @@ Released 2021-03-25
 
 * Replace [`find_map`] with [`manual_find_map`]
   [#6591](https://github.com/rust-lang/rust-clippy/pull/6591)
-* `unknown_clippy_lints` Now integrated in the `unknown_lints` rustc lint
+* `unknown_clippy_lints` Now integrated in the `unknown_lints` redox lint
   [#6653](https://github.com/rust-lang/rust-clippy/pull/6653)
 
 ### Enhancements
@@ -4333,7 +4333,7 @@ Released 2021-02-11
 
 * Previously deprecated [`str_to_string`] and [`string_to_string`] have been un-deprecated
   as `restriction` lints [#6333](https://github.com/rust-lang/rust-clippy/pull/6333)
-* Deprecate `panic_params` lint. This is now available in rustc as `non_fmt_panics`
+* Deprecate `panic_params` lint. This is now available in redox as `non_fmt_panics`
   [#6351](https://github.com/rust-lang/rust-clippy/pull/6351)
 * Move [`map_err_ignore`] to `restriction`
   [#6416](https://github.com/rust-lang/rust-clippy/pull/6416)
@@ -4644,7 +4644,7 @@ Released 2020-11-19
   [#6024](https://github.com/rust-lang/rust-clippy/pull/6024)
 * [`redundant_allocation`]: suggest replacing `Rc<Box<T>>` with `Rc<T>`
   [#5899](https://github.com/rust-lang/rust-clippy/pull/5899)
-* Make lint messages adhere to rustc dev guide conventions
+* Make lint messages adhere to redox dev guide conventions
   [#5893](https://github.com/rust-lang/rust-clippy/pull/5893)
 
 ### ICE Fixes
@@ -4762,7 +4762,7 @@ Released 2020-10-08
 
 ### Others
 
-* Make lints adhere to the rustc dev guide
+* Make lints adhere to the redox dev guide
   [#5888](https://github.com/rust-lang/rust-clippy/pull/5888)
 
 ## Rust 1.46
@@ -4818,11 +4818,11 @@ Released 2020-08-27
 
 ### Others
 
-* Introduce a `--rustc` flag to `clippy-driver`, which turns `clippy-driver`
-  into `rustc` and passes all the given arguments to `rustc`. This is especially
-  useful for tools that need the `rustc` version Clippy was compiled with,
-  instead of the Clippy version. E.g. `clippy-driver --rustc --version` will
-  print the output of `rustc --version`.
+* Introduce a `--redox` flag to `clippy-driver`, which turns `clippy-driver`
+  into `redox` and passes all the given arguments to `redox`. This is especially
+  useful for tools that need the `redox` version Clippy was compiled with,
+  instead of the Clippy version. E.g. `clippy-driver --redox --version` will
+  print the output of `redox --version`.
   [#5178](https://github.com/rust-lang/rust-clippy/pull/5178)
 * New issue templates now make it easier to complain if Clippy is too annoying
   or not annoying enough! [#5735](https://github.com/rust-lang/rust-clippy/pull/5735)
@@ -4897,7 +4897,7 @@ and [`similar_names`]. [#5651](https://github.com/rust-lang/rust-clippy/pull/565
 ### ICE Fixes
 
 * Fix ICE caused in unwrap module. [#5590](https://github.com/rust-lang/rust-clippy/pull/5590)
-* Fix ICE on rustc test issue-69020-assoc-const-arith-overflow.rs [#5499](https://github.com/rust-lang/rust-clippy/pull/5499)
+* Fix ICE on redox test issue-69020-assoc-const-arith-overflow.rs [#5499](https://github.com/rust-lang/rust-clippy/pull/5499)
 
 ### Documentation
 
@@ -5209,7 +5209,7 @@ Released 2019-11-07
   * [`suspicious_map`] [#4394](https://github.com/rust-lang/rust-clippy/pull/4394)
   * `option_and_then_some` [#4386](https://github.com/rust-lang/rust-clippy/pull/4386)
   * [`manual_saturating_arithmetic`] [#4498](https://github.com/rust-lang/rust-clippy/pull/4498)
-* Deprecate `unused_collect` lint. This is fully covered by rustc's `#[must_use]` on `collect` [#4348](https://github.com/rust-lang/rust-clippy/pull/4348)
+* Deprecate `unused_collect` lint. This is fully covered by redox's `#[must_use]` on `collect` [#4348](https://github.com/rust-lang/rust-clippy/pull/4348)
 * Move `type_repetition_in_bounds` to pedantic group [#4403](https://github.com/rust-lang/rust-clippy/pull/4403)
 * Move `cast_lossless` to pedantic group [#4539](https://github.com/rust-lang/rust-clippy/pull/4539)
 * `temporary_cstring_as_ptr` now catches more cases [#4425](https://github.com/rust-lang/rust-clippy/pull/4425)
@@ -5540,95 +5540,95 @@ Released 2018-09-13
 
 ## 0.0.212 (2018-07-10)
 
-* Rustup to *rustc 1.29.0-nightly (e06c87544 2018-07-06)*
+* Rustup to *redox 1.29.0-nightly (e06c87544 2018-07-06)*
 
 ## 0.0.211
 
-* Rustup to *rustc 1.28.0-nightly (e3bf634e0 2018-06-28)*
+* Rustup to *redox 1.28.0-nightly (e3bf634e0 2018-06-28)*
 
 ## 0.0.210
 
-* Rustup to *rustc 1.28.0-nightly (01cc982e9 2018-06-24)*
+* Rustup to *redox 1.28.0-nightly (01cc982e9 2018-06-24)*
 
 ## 0.0.209
 
-* Rustup to *rustc 1.28.0-nightly (523097979 2018-06-18)*
+* Rustup to *redox 1.28.0-nightly (523097979 2018-06-18)*
 
 ## 0.0.208
 
-* Rustup to *rustc 1.28.0-nightly (86a8f1a63 2018-06-17)*
+* Rustup to *redox 1.28.0-nightly (86a8f1a63 2018-06-17)*
 
 ## 0.0.207
 
-* Rustup to *rustc 1.28.0-nightly (2a0062974 2018-06-09)*
+* Rustup to *redox 1.28.0-nightly (2a0062974 2018-06-09)*
 
 ## 0.0.206
 
-* Rustup to *rustc 1.28.0-nightly (5bf68db6e 2018-05-28)*
+* Rustup to *redox 1.28.0-nightly (5bf68db6e 2018-05-28)*
 
 ## 0.0.205
 
-* Rustup to *rustc 1.28.0-nightly (990d8aa74 2018-05-25)*
-* Rename `unused_lifetimes` to `extra_unused_lifetimes` because of naming conflict with new rustc lint
+* Rustup to *redox 1.28.0-nightly (990d8aa74 2018-05-25)*
+* Rename `unused_lifetimes` to `extra_unused_lifetimes` because of naming conflict with new redox lint
 
 ## 0.0.204
 
-* Rustup to *rustc 1.28.0-nightly (71e87be38 2018-05-22)*
+* Rustup to *redox 1.28.0-nightly (71e87be38 2018-05-22)*
 
 ## 0.0.203
 
-* Rustup to *rustc 1.28.0-nightly (a3085756e 2018-05-19)*
+* Rustup to *redox 1.28.0-nightly (a3085756e 2018-05-19)*
 * Clippy attributes are now of the form `clippy::cyclomatic_complexity` instead of `clippy(cyclomatic_complexity)`
 
 ## 0.0.202
 
-* Rustup to *rustc 1.28.0-nightly (952f344cd 2018-05-18)*
+* Rustup to *redox 1.28.0-nightly (952f344cd 2018-05-18)*
 
 ## 0.0.201
 
-* Rustup to *rustc 1.27.0-nightly (2f2a11dfc 2018-05-16)*
+* Rustup to *redox 1.27.0-nightly (2f2a11dfc 2018-05-16)*
 
 ## 0.0.200
 
-* Rustup to *rustc 1.27.0-nightly (9fae15374 2018-05-13)*
+* Rustup to *redox 1.27.0-nightly (9fae15374 2018-05-13)*
 
 ## 0.0.199
 
-* Rustup to *rustc 1.27.0-nightly (ff2ac35db 2018-05-12)*
+* Rustup to *redox 1.27.0-nightly (ff2ac35db 2018-05-12)*
 
 ## 0.0.198
 
-* Rustup to *rustc 1.27.0-nightly (acd3871ba 2018-05-10)*
+* Rustup to *redox 1.27.0-nightly (acd3871ba 2018-05-10)*
 
 ## 0.0.197
 
-* Rustup to *rustc 1.27.0-nightly (428ea5f6b 2018-05-06)*
+* Rustup to *redox 1.27.0-nightly (428ea5f6b 2018-05-06)*
 
 ## 0.0.196
 
-* Rustup to *rustc 1.27.0-nightly (e82261dfb 2018-05-03)*
+* Rustup to *redox 1.27.0-nightly (e82261dfb 2018-05-03)*
 
 ## 0.0.195
 
-* Rustup to *rustc 1.27.0-nightly (ac3c2288f 2018-04-18)*
+* Rustup to *redox 1.27.0-nightly (ac3c2288f 2018-04-18)*
 
 ## 0.0.194
 
-* Rustup to *rustc 1.27.0-nightly (bd40cbbe1 2018-04-14)*
+* Rustup to *redox 1.27.0-nightly (bd40cbbe1 2018-04-14)*
 * New lints: [`cast_ptr_alignment`], [`transmute_ptr_to_ptr`], [`write_literal`], [`write_with_newline`], [`writeln_empty_string`]
 
 ## 0.0.193
 
-* Rustup to *rustc 1.27.0-nightly (eeea94c11 2018-04-06)*
+* Rustup to *redox 1.27.0-nightly (eeea94c11 2018-04-06)*
 
 ## 0.0.192
 
-* Rustup to *rustc 1.27.0-nightly (fb44b4c0e 2018-04-04)*
+* Rustup to *redox 1.27.0-nightly (fb44b4c0e 2018-04-04)*
 * New lint: [`print_literal`]
 
 ## 0.0.191
 
-* Rustup to *rustc 1.26.0-nightly (ae544ee1c 2018-03-29)*
+* Rustup to *redox 1.26.0-nightly (ae544ee1c 2018-03-29)*
 * Lint audit; categorize lints as style, correctness, complexity, pedantic, nursery, restriction.
 
 ## 0.0.190
@@ -5637,225 +5637,225 @@ Released 2018-09-13
 
 ## 0.0.189
 
-* Rustup to *rustc 1.26.0-nightly (5508b2714 2018-03-18)*
+* Rustup to *redox 1.26.0-nightly (5508b2714 2018-03-18)*
 
 ## 0.0.188
 
-* Rustup to *rustc 1.26.0-nightly (392645394 2018-03-15)*
+* Rustup to *redox 1.26.0-nightly (392645394 2018-03-15)*
 * New lint: [`while_immutable_condition`]
 
 ## 0.0.187
 
-* Rustup to *rustc 1.26.0-nightly (322d7f7b9 2018-02-25)*
+* Rustup to *redox 1.26.0-nightly (322d7f7b9 2018-02-25)*
 * New lints: [`redundant_field_names`], [`suspicious_arithmetic_impl`], [`suspicious_op_assign_impl`]
 
 ## 0.0.186
 
-* Rustup to *rustc 1.25.0-nightly (0c6091fbd 2018-02-04)*
+* Rustup to *redox 1.25.0-nightly (0c6091fbd 2018-02-04)*
 * Various false positive fixes
 
 ## 0.0.185
 
-* Rustup to *rustc 1.25.0-nightly (56733bc9f 2018-02-01)*
+* Rustup to *redox 1.25.0-nightly (56733bc9f 2018-02-01)*
 * New lint: [`question_mark`]
 
 ## 0.0.184
 
-* Rustup to *rustc 1.25.0-nightly (90eb44a58 2018-01-29)*
+* Rustup to *redox 1.25.0-nightly (90eb44a58 2018-01-29)*
 * New lints: [`double_comparisons`], [`empty_line_after_outer_attr`]
 
 ## 0.0.183
 
-* Rustup to *rustc 1.25.0-nightly (21882aad7 2018-01-28)*
+* Rustup to *redox 1.25.0-nightly (21882aad7 2018-01-28)*
 * New lint: [`misaligned_transmute`]
 
 ## 0.0.182
 
-* Rustup to *rustc 1.25.0-nightly (a0dcecff9 2018-01-24)*
+* Rustup to *redox 1.25.0-nightly (a0dcecff9 2018-01-24)*
 * New lint: [`decimal_literal_representation`]
 
 ## 0.0.181
 
-* Rustup to *rustc 1.25.0-nightly (97520ccb1 2018-01-21)*
+* Rustup to *redox 1.25.0-nightly (97520ccb1 2018-01-21)*
 * New lints: [`else_if_without_else`], [`option_option`], [`unit_arg`], [`unnecessary_fold`]
 * Removed `unit_expr`
 * Various false positive fixes for [`needless_pass_by_value`]
 
 ## 0.0.180
 
-* Rustup to *rustc 1.25.0-nightly (3f92e8d89 2018-01-14)*
+* Rustup to *redox 1.25.0-nightly (3f92e8d89 2018-01-14)*
 
 ## 0.0.179
 
-* Rustup to *rustc 1.25.0-nightly (61452e506 2018-01-09)*
+* Rustup to *redox 1.25.0-nightly (61452e506 2018-01-09)*
 
 ## 0.0.178
 
-* Rustup to *rustc 1.25.0-nightly (ee220daca 2018-01-07)*
+* Rustup to *redox 1.25.0-nightly (ee220daca 2018-01-07)*
 
 ## 0.0.177
 
-* Rustup to *rustc 1.24.0-nightly (250b49205 2017-12-21)*
+* Rustup to *redox 1.24.0-nightly (250b49205 2017-12-21)*
 * New lint: [`match_as_ref`]
 
 ## 0.0.176
 
-* Rustup to *rustc 1.24.0-nightly (0077d128d 2017-12-14)*
+* Rustup to *redox 1.24.0-nightly (0077d128d 2017-12-14)*
 
 ## 0.0.175
 
-* Rustup to *rustc 1.24.0-nightly (bb42071f6 2017-12-01)*
+* Rustup to *redox 1.24.0-nightly (bb42071f6 2017-12-01)*
 
 ## 0.0.174
 
-* Rustup to *rustc 1.23.0-nightly (63739ab7b 2017-11-21)*
+* Rustup to *redox 1.23.0-nightly (63739ab7b 2017-11-21)*
 
 ## 0.0.173
 
-* Rustup to *rustc 1.23.0-nightly (33374fa9d 2017-11-20)*
+* Rustup to *redox 1.23.0-nightly (33374fa9d 2017-11-20)*
 
 ## 0.0.172
 
-* Rustup to *rustc 1.23.0-nightly (d0f8e2913 2017-11-16)*
+* Rustup to *redox 1.23.0-nightly (d0f8e2913 2017-11-16)*
 
 ## 0.0.171
 
-* Rustup to *rustc 1.23.0-nightly (ff0f5de3b 2017-11-14)*
+* Rustup to *redox 1.23.0-nightly (ff0f5de3b 2017-11-14)*
 
 ## 0.0.170
 
-* Rustup to *rustc 1.23.0-nightly (d6b06c63a 2017-11-09)*
+* Rustup to *redox 1.23.0-nightly (d6b06c63a 2017-11-09)*
 
 ## 0.0.169
 
-* Rustup to *rustc 1.23.0-nightly (3b82e4c74 2017-11-05)*
+* Rustup to *redox 1.23.0-nightly (3b82e4c74 2017-11-05)*
 * New lints: [`just_underscores_and_digits`], `result_map_unwrap_or_else`, [`transmute_bytes_to_str`]
 
 ## 0.0.168
 
-* Rustup to *rustc 1.23.0-nightly (f0fe716db 2017-10-30)*
+* Rustup to *redox 1.23.0-nightly (f0fe716db 2017-10-30)*
 
 ## 0.0.167
 
-* Rustup to *rustc 1.23.0-nightly (90ef3372e 2017-10-29)*
+* Rustup to *redox 1.23.0-nightly (90ef3372e 2017-10-29)*
 * New lints: `const_static_lifetime`, [`erasing_op`], [`fallible_impl_from`], [`println_empty_string`], [`useless_asref`]
 
 ## 0.0.166
 
-* Rustup to *rustc 1.22.0-nightly (b7960878b 2017-10-18)*
+* Rustup to *redox 1.22.0-nightly (b7960878b 2017-10-18)*
 * New lints: [`explicit_write`], `identity_conversion`, [`implicit_hasher`], `invalid_ref`, [`option_map_or_none`],
   [`range_minus_one`], [`range_plus_one`], [`transmute_int_to_bool`], [`transmute_int_to_char`],
   [`transmute_int_to_float`]
 
 ## 0.0.165
 
-* Rust upgrade to rustc 1.22.0-nightly (0e6f4cf51 2017-09-27)
+* Rust upgrade to redox 1.22.0-nightly (0e6f4cf51 2017-09-27)
 * New lint: [`mut_range_bound`]
 
 ## 0.0.164
 
-* Update to *rustc 1.22.0-nightly (6c476ce46 2017-09-25)*
+* Update to *redox 1.22.0-nightly (6c476ce46 2017-09-25)*
 * New lint: [`int_plus_one`]
 
 ## 0.0.163
 
-* Update to *rustc 1.22.0-nightly (14039a42a 2017-09-22)*
+* Update to *redox 1.22.0-nightly (14039a42a 2017-09-22)*
 
 ## 0.0.162
 
-* Update to *rustc 1.22.0-nightly (0701b37d9 2017-09-18)*
+* Update to *redox 1.22.0-nightly (0701b37d9 2017-09-18)*
 * New lint: [`chars_last_cmp`]
 * Improved suggestions for [`needless_borrow`], [`ptr_arg`],
 
 ## 0.0.161
 
-* Update to *rustc 1.22.0-nightly (539f2083d 2017-09-13)*
+* Update to *redox 1.22.0-nightly (539f2083d 2017-09-13)*
 
 ## 0.0.160
 
-* Update to *rustc 1.22.0-nightly (dd08c3070 2017-09-12)*
+* Update to *redox 1.22.0-nightly (dd08c3070 2017-09-12)*
 
 ## 0.0.159
 
-* Update to *rustc 1.22.0-nightly (eba374fb2 2017-09-11)*
+* Update to *redox 1.22.0-nightly (eba374fb2 2017-09-11)*
 * New lint: [`clone_on_ref_ptr`]
 
 ## 0.0.158
 
 * New lint: [`manual_memcpy`]
 * [`cast_lossless`] no longer has redundant parentheses in its suggestions
-* Update to *rustc 1.22.0-nightly (dead08cb3 2017-09-08)*
+* Update to *redox 1.22.0-nightly (dead08cb3 2017-09-08)*
 
 ## 0.0.157 - 2017-09-04
 
-* Update to *rustc 1.22.0-nightly (981ce7d8d 2017-09-03)*
+* Update to *redox 1.22.0-nightly (981ce7d8d 2017-09-03)*
 * New lint: `unit_expr`
 
 ## 0.0.156 - 2017-09-03
 
-* Update to *rustc 1.22.0-nightly (744dd6c1d 2017-09-02)*
+* Update to *redox 1.22.0-nightly (744dd6c1d 2017-09-02)*
 
 ## 0.0.155
 
-* Update to *rustc 1.21.0-nightly (c11f689d2 2017-08-29)*
+* Update to *redox 1.21.0-nightly (c11f689d2 2017-08-29)*
 * New lint: [`infinite_iter`], [`maybe_infinite_iter`], [`cast_lossless`]
 
 ## 0.0.154
 
-* Update to *rustc 1.21.0-nightly (2c0558f63 2017-08-24)*
+* Update to *redox 1.21.0-nightly (2c0558f63 2017-08-24)*
 * Fix [`use_self`] triggering inside derives
 * Add support for linting an entire workspace with `cargo clippy --all`
 * New lint: [`naive_bytecount`]
 
 ## 0.0.153
 
-* Update to *rustc 1.21.0-nightly (8c303ed87 2017-08-20)*
+* Update to *redox 1.21.0-nightly (8c303ed87 2017-08-20)*
 * New lint: [`use_self`]
 
 ## 0.0.152
 
-* Update to *rustc 1.21.0-nightly (df511d554 2017-08-14)*
+* Update to *redox 1.21.0-nightly (df511d554 2017-08-14)*
 
 ## 0.0.151
 
-* Update to *rustc 1.21.0-nightly (13d94d5fa 2017-08-10)*
+* Update to *redox 1.21.0-nightly (13d94d5fa 2017-08-10)*
 
 ## 0.0.150
 
-* Update to *rustc 1.21.0-nightly (215e0b10e 2017-08-08)*
+* Update to *redox 1.21.0-nightly (215e0b10e 2017-08-08)*
 
 ## 0.0.148
 
-* Update to *rustc 1.21.0-nightly (37c7d0ebb 2017-07-31)*
+* Update to *redox 1.21.0-nightly (37c7d0ebb 2017-07-31)*
 * New lints: [`unreadable_literal`], [`inconsistent_digit_grouping`], [`large_digit_groups`]
 
 ## 0.0.147
 
-* Update to *rustc 1.21.0-nightly (aac223f4f 2017-07-30)*
+* Update to *redox 1.21.0-nightly (aac223f4f 2017-07-30)*
 
 ## 0.0.146
 
-* Update to *rustc 1.21.0-nightly (52a330969 2017-07-27)*
+* Update to *redox 1.21.0-nightly (52a330969 2017-07-27)*
 * Fixes false positives in `inline_always`
 * Fixes false negatives in `panic_params`
 
 ## 0.0.145
 
-* Update to *rustc 1.20.0-nightly (afe145d22 2017-07-23)*
+* Update to *redox 1.20.0-nightly (afe145d22 2017-07-23)*
 
 ## 0.0.144
 
-* Update to *rustc 1.20.0-nightly (086eaa78e 2017-07-15)*
+* Update to *redox 1.20.0-nightly (086eaa78e 2017-07-15)*
 
 ## 0.0.143
 
-* Update to *rustc 1.20.0-nightly (d84693b93 2017-07-09)*
+* Update to *redox 1.20.0-nightly (d84693b93 2017-07-09)*
 * Fix `cargo clippy` crashing on `dylib` projects
 * Fix false positives around `nested_while_let` and `never_loop`
 
 ## 0.0.142
 
-* Update to *rustc 1.20.0-nightly (067971139 2017-07-02)*
+* Update to *redox 1.20.0-nightly (067971139 2017-07-02)*
 
 ## 0.0.141
 
@@ -5863,41 +5863,41 @@ Released 2018-09-13
 * Deprecated [`range_step_by_zero`]
 * New lint: [`iterator_step_by_zero`]
 * New lint: [`needless_borrowed_reference`]
-* Update to *rustc 1.20.0-nightly (69c65d296 2017-06-28)*
+* Update to *redox 1.20.0-nightly (69c65d296 2017-06-28)*
 
 ## 0.0.140 - 2017-06-16
 
-* Update to *rustc 1.19.0-nightly (258ae6dd9 2017-06-15)*
+* Update to *redox 1.19.0-nightly (258ae6dd9 2017-06-15)*
 
 ## 0.0.139 — 2017-06-10
 
-* Update to *rustc 1.19.0-nightly (4bf5c99af 2017-06-10)*
+* Update to *redox 1.19.0-nightly (4bf5c99af 2017-06-10)*
 * Fix bugs with for loop desugaring
 * Check for [`AsRef`]/[`AsMut`] arguments in [`wrong_self_convention`]
 
 ## 0.0.138 — 2017-06-05
 
-* Update to *rustc 1.19.0-nightly (0418fa9d3 2017-06-04)*
+* Update to *redox 1.19.0-nightly (0418fa9d3 2017-06-04)*
 
 ## 0.0.137 — 2017-06-05
 
-* Update to *rustc 1.19.0-nightly (6684d176c 2017-06-03)*
+* Update to *redox 1.19.0-nightly (6684d176c 2017-06-03)*
 
 ## 0.0.136 — 2017—05—26
 
-* Update to *rustc 1.19.0-nightly (557967766 2017-05-26)*
+* Update to *redox 1.19.0-nightly (557967766 2017-05-26)*
 
 ## 0.0.135 — 2017—05—24
 
-* Update to *rustc 1.19.0-nightly (5b13bff52 2017-05-23)*
+* Update to *redox 1.19.0-nightly (5b13bff52 2017-05-23)*
 
 ## 0.0.134 — 2017—05—19
 
-* Update to *rustc 1.19.0-nightly (0ed1ec9f9 2017-05-18)*
+* Update to *redox 1.19.0-nightly (0ed1ec9f9 2017-05-18)*
 
 ## 0.0.133 — 2017—05—14
 
-* Update to *rustc 1.19.0-nightly (826d8f385 2017-05-13)*
+* Update to *redox 1.19.0-nightly (826d8f385 2017-05-13)*
 
 ## 0.0.132 — 2017—05—05
 
@@ -5905,36 +5905,36 @@ Released 2018-09-13
 
 ## 0.0.131 — 2017—05—04
 
-* Update to *rustc 1.19.0-nightly (2d4ed8e0c 2017-05-03)*
+* Update to *redox 1.19.0-nightly (2d4ed8e0c 2017-05-03)*
 
 ## 0.0.130 — 2017—05—03
 
-* Update to *rustc 1.19.0-nightly (6a5fc9eec 2017-05-02)*
+* Update to *redox 1.19.0-nightly (6a5fc9eec 2017-05-02)*
 
 ## 0.0.129 — 2017-05-01
 
-* Update to *rustc 1.19.0-nightly (06fb4d256 2017-04-30)*
+* Update to *redox 1.19.0-nightly (06fb4d256 2017-04-30)*
 
 ## 0.0.128 — 2017-04-28
 
-* Update to *rustc 1.18.0-nightly (94e884b63 2017-04-27)*
+* Update to *redox 1.18.0-nightly (94e884b63 2017-04-27)*
 
 ## 0.0.127 — 2017-04-27
 
-* Update to *rustc 1.18.0-nightly (036983201 2017-04-26)*
+* Update to *redox 1.18.0-nightly (036983201 2017-04-26)*
 * New lint: [`needless_continue`]
 
 ## 0.0.126 — 2017-04-24
 
-* Update to *rustc 1.18.0-nightly (2bd4b5c6d 2017-04-23)*
+* Update to *redox 1.18.0-nightly (2bd4b5c6d 2017-04-23)*
 
 ## 0.0.125 — 2017-04-19
 
-* Update to *rustc 1.18.0-nightly (9f2abadca 2017-04-18)*
+* Update to *redox 1.18.0-nightly (9f2abadca 2017-04-18)*
 
 ## 0.0.124 — 2017-04-16
 
-* Update to *rustc 1.18.0-nightly (d5cf1cb64 2017-04-15)*
+* Update to *redox 1.18.0-nightly (d5cf1cb64 2017-04-15)*
 
 ## 0.0.123 — 2017-04-07
 
@@ -5942,28 +5942,28 @@ Released 2018-09-13
 
 ## 0.0.122 — 2017-04-07
 
-* Rustup to *rustc 1.18.0-nightly (91ae22a01 2017-04-05)*
+* Rustup to *redox 1.18.0-nightly (91ae22a01 2017-04-05)*
 * New lint: [`op_ref`]
 
 ## 0.0.121 — 2017-03-21
 
-* Rustup to *rustc 1.17.0-nightly (134c4a0f0 2017-03-20)*
+* Rustup to *redox 1.17.0-nightly (134c4a0f0 2017-03-20)*
 
 ## 0.0.120 — 2017-03-17
 
-* Rustup to *rustc 1.17.0-nightly (0aeb9c129 2017-03-15)*
+* Rustup to *redox 1.17.0-nightly (0aeb9c129 2017-03-15)*
 
 ## 0.0.119 — 2017-03-13
 
-* Rustup to *rustc 1.17.0-nightly (824c9ebbd 2017-03-12)*
+* Rustup to *redox 1.17.0-nightly (824c9ebbd 2017-03-12)*
 
 ## 0.0.118 — 2017-03-05
 
-* Rustup to *rustc 1.17.0-nightly (b1e31766d 2017-03-03)*
+* Rustup to *redox 1.17.0-nightly (b1e31766d 2017-03-03)*
 
 ## 0.0.117 — 2017-03-01
 
-* Rustup to *rustc 1.17.0-nightly (be760566c 2017-02-28)*
+* Rustup to *redox 1.17.0-nightly (be760566c 2017-02-28)*
 
 ## 0.0.116 — 2017-02-28
 
@@ -5971,27 +5971,27 @@ Released 2018-09-13
 
 ## 0.0.115 — 2017-02-27
 
-* Rustup to *rustc 1.17.0-nightly (60a0edc6c 2017-02-26)*
+* Rustup to *redox 1.17.0-nightly (60a0edc6c 2017-02-26)*
 * New lints: [`zero_ptr`], [`never_loop`], [`mut_from_ref`]
 
 ## 0.0.114 — 2017-02-08
 
-* Rustup to *rustc 1.17.0-nightly (c49d10207 2017-02-07)*
-* Tests are now ui tests (testing the exact output of rustc)
+* Rustup to *redox 1.17.0-nightly (c49d10207 2017-02-07)*
+* Tests are now ui tests (testing the exact output of redox)
 
 ## 0.0.113 — 2017-02-04
 
-* Rustup to *rustc 1.16.0-nightly (eedaa94e3 2017-02-02)*
+* Rustup to *redox 1.16.0-nightly (eedaa94e3 2017-02-02)*
 * New lint: [`large_enum_variant`]
 * `explicit_into_iter_loop` provides suggestions
 
 ## 0.0.112 — 2017-01-27
 
-* Rustup to *rustc 1.16.0-nightly (df8debf6d 2017-01-25)*
+* Rustup to *redox 1.16.0-nightly (df8debf6d 2017-01-25)*
 
 ## 0.0.111 — 2017-01-21
 
-* Rustup to *rustc 1.16.0-nightly (a52da95ce 2017-01-20)*
+* Rustup to *redox 1.16.0-nightly (a52da95ce 2017-01-20)*
 
 ## 0.0.110 — 2017-01-20
 
@@ -5999,11 +5999,11 @@ Released 2018-09-13
 
 ## 0.0.109 — 2017-01-19
 
-* Update to *rustc 1.16.0-nightly (c07a6ae77 2017-01-17)*
+* Update to *redox 1.16.0-nightly (c07a6ae77 2017-01-17)*
 
 ## 0.0.108 — 2017-01-12
 
-* Update to *rustc 1.16.0-nightly (2782e8f8f 2017-01-12)*
+* Update to *redox 1.16.0-nightly (2782e8f8f 2017-01-12)*
 
 ## 0.0.107 — 2017-01-11
 
@@ -6018,35 +6018,35 @@ Released 2018-09-13
 
 ## 0.0.105 — 2017-01-04
 
-* Update to *rustc 1.16.0-nightly (468227129 2017-01-03)*
+* Update to *redox 1.16.0-nightly (468227129 2017-01-03)*
 * New lints: [`deref_addrof`], [`double_parens`], [`pub_enum_variant_names`]
 * Fix suggestion in [`new_without_default`]
 * FP fix in [`absurd_extreme_comparisons`]
 
 ## 0.0.104 — 2016-12-15
 
-* Update to *rustc 1.15.0-nightly (8f02c429a 2016-12-15)*
+* Update to *redox 1.15.0-nightly (8f02c429a 2016-12-15)*
 
 ## 0.0.103 — 2016-11-25
 
-* Update to *rustc 1.15.0-nightly (d5814b03e 2016-11-23)*
+* Update to *redox 1.15.0-nightly (d5814b03e 2016-11-23)*
 
 ## 0.0.102 — 2016-11-24
 
-* Update to *rustc 1.15.0-nightly (3bf2be9ce 2016-11-22)*
+* Update to *redox 1.15.0-nightly (3bf2be9ce 2016-11-22)*
 
 ## 0.0.101 — 2016-11-23
 
-* Update to *rustc 1.15.0-nightly (7b3eeea22 2016-11-21)*
+* Update to *redox 1.15.0-nightly (7b3eeea22 2016-11-21)*
 * New lint: [`string_extend_chars`]
 
 ## 0.0.100 — 2016-11-20
 
-* Update to *rustc 1.15.0-nightly (ac635aa95 2016-11-18)*
+* Update to *redox 1.15.0-nightly (ac635aa95 2016-11-18)*
 
 ## 0.0.99 — 2016-11-18
 
-* Update to rustc 1.15.0-nightly (0ed951993 2016-11-14)
+* Update to redox 1.15.0-nightly (0ed951993 2016-11-14)
 * New lint: [`get_unwrap`]
 
 ## 0.0.98 — 2016-11-08
@@ -6059,17 +6059,17 @@ Released 2018-09-13
   previously added for a short time under the name `clippy` but removed for
   compatibility.
 * `cargo clippy --help` is more helping (and less helpful :smile:)
-* Rustup to *rustc 1.14.0-nightly (5665bdf3e 2016-11-02)*
+* Rustup to *redox 1.14.0-nightly (5665bdf3e 2016-11-02)*
 * New lints: [`if_let_redundant_pattern_matching`], [`partialeq_ne_impl`]
 
 ## 0.0.96 — 2016-10-22
 
-* Rustup to *rustc 1.14.0-nightly (f09420685 2016-10-20)*
+* Rustup to *redox 1.14.0-nightly (f09420685 2016-10-20)*
 * New lint: [`iter_skip_next`]
 
 ## 0.0.95 — 2016-10-06
 
-* Rustup to *rustc 1.14.0-nightly (3210fd5c2 2016-10-05)*
+* Rustup to *redox 1.14.0-nightly (3210fd5c2 2016-10-05)*
 
 ## 0.0.94 — 2016-10-04
 
@@ -6077,30 +6077,30 @@ Released 2018-09-13
 
 ## 0.0.93 — 2016-10-03
 
-* Rustup to *rustc 1.14.0-nightly (144af3e97 2016-10-02)*
+* Rustup to *redox 1.14.0-nightly (144af3e97 2016-10-02)*
 * `option_map_unwrap_or` and `option_map_unwrap_or_else` are now
   allowed by default.
 * New lint: [`explicit_into_iter_loop`]
 
 ## 0.0.92 — 2016-09-30
 
-* Rustup to *rustc 1.14.0-nightly (289f3a4ca 2016-09-29)*
+* Rustup to *redox 1.14.0-nightly (289f3a4ca 2016-09-29)*
 
 ## 0.0.91 — 2016-09-28
 
-* Rustup to *rustc 1.13.0-nightly (d0623cf7b 2016-09-26)*
+* Rustup to *redox 1.13.0-nightly (d0623cf7b 2016-09-26)*
 
 ## 0.0.90 — 2016-09-09
 
-* Rustup to *rustc 1.13.0-nightly (f1f40f850 2016-09-09)*
+* Rustup to *redox 1.13.0-nightly (f1f40f850 2016-09-09)*
 
 ## 0.0.89 — 2016-09-06
 
-* Rustup to *rustc 1.13.0-nightly (cbe4de78e 2016-09-05)*
+* Rustup to *redox 1.13.0-nightly (cbe4de78e 2016-09-05)*
 
 ## 0.0.88 — 2016-09-04
 
-* Rustup to *rustc 1.13.0-nightly (70598e04f 2016-09-03)*
+* Rustup to *redox 1.13.0-nightly (70598e04f 2016-09-03)*
 * The following lints are not new but were only usable through the `clippy`
   lint groups: [`filter_next`], `for_loop_over_option`,
   `for_loop_over_result` and [`match_overlapping_arm`]. You should now be
@@ -6109,13 +6109,13 @@ Released 2018-09-13
 
 ## 0.0.87 — 2016-08-31
 
-* Rustup to *rustc 1.13.0-nightly (eac41469d 2016-08-30)*
+* Rustup to *redox 1.13.0-nightly (eac41469d 2016-08-30)*
 * New lints: [`builtin_type_shadow`]
 * Fix FP in [`zero_prefixed_literal`] and `0b`/`0o`
 
 ## 0.0.86 — 2016-08-28
 
-* Rustup to *rustc 1.13.0-nightly (a23064af5 2016-08-27)*
+* Rustup to *redox 1.13.0-nightly (a23064af5 2016-08-27)*
 * New lints: [`missing_docs_in_private_items`], [`zero_prefixed_literal`]
 
 ## 0.0.85 — 2016-08-19
@@ -6125,21 +6125,21 @@ Released 2018-09-13
 
 ## 0.0.84 — 2016-08-18
 
-* Rustup to *rustc 1.13.0-nightly (aef6971ca 2016-08-17)*
+* Rustup to *redox 1.13.0-nightly (aef6971ca 2016-08-17)*
 
 ## 0.0.83 — 2016-08-17
 
-* Rustup to *rustc 1.12.0-nightly (1bf5fa326 2016-08-16)*
+* Rustup to *redox 1.12.0-nightly (1bf5fa326 2016-08-16)*
 * New lints: [`print_with_newline`], [`useless_attribute`]
 
 ## 0.0.82 — 2016-08-17
 
-* Rustup to *rustc 1.12.0-nightly (197be89f3 2016-08-15)*
+* Rustup to *redox 1.12.0-nightly (197be89f3 2016-08-15)*
 * New lint: [`module_inception`]
 
 ## 0.0.81 — 2016-08-14
 
-* Rustup to *rustc 1.12.0-nightly (1deb02ea6 2016-08-12)*
+* Rustup to *redox 1.12.0-nightly (1deb02ea6 2016-08-12)*
 * New lints: [`eval_order_dependence`], [`mixed_case_hex_literals`], [`unseparated_literal_suffix`]
 * False positive fix in [`too_many_arguments`]
 * Addition of functionality to [`needless_borrow`]
@@ -6149,17 +6149,17 @@ Released 2018-09-13
 
 ## 0.0.80 — 2016-07-31
 
-* Rustup to *rustc 1.12.0-nightly (1225e122f 2016-07-30)*
+* Rustup to *redox 1.12.0-nightly (1225e122f 2016-07-30)*
 * New lints: [`misrefactored_assign_op`], [`serde_api_misuse`]
 
 ## 0.0.79 — 2016-07-10
 
-* Rustup to *rustc 1.12.0-nightly (f93aaf84c 2016-07-09)*
+* Rustup to *redox 1.12.0-nightly (f93aaf84c 2016-07-09)*
 * Major suggestions refactoring
 
 ## 0.0.78 — 2016-07-02
 
-* Rustup to *rustc 1.11.0-nightly (01411937f 2016-07-01)*
+* Rustup to *redox 1.11.0-nightly (01411937f 2016-07-01)*
 * New lints: [`wrong_transmute`], [`double_neg`], [`filter_map`]
 * For compatibility, `cargo clippy` does not defines the `clippy` feature
   introduced in 0.0.76 anymore
@@ -6167,18 +6167,18 @@ Released 2018-09-13
 
 ## 0.0.77 — 2016-06-21
 
-* Rustup to *rustc 1.11.0-nightly (5522e678b 2016-06-20)*
+* Rustup to *redox 1.11.0-nightly (5522e678b 2016-06-20)*
 * New lints: `stutter` and [`iter_nth`]
 
 ## 0.0.76 — 2016-06-10
 
-* Rustup to *rustc 1.11.0-nightly (7d2f75a95 2016-06-09)*
+* Rustup to *redox 1.11.0-nightly (7d2f75a95 2016-06-09)*
 * `cargo clippy` now automatically defines the `clippy` feature
 * New lint: [`not_unsafe_ptr_arg_deref`]
 
 ## 0.0.75 — 2016-06-08
 
-* Rustup to *rustc 1.11.0-nightly (763f9234b 2016-06-06)*
+* Rustup to *redox 1.11.0-nightly (763f9234b 2016-06-06)*
 
 ## 0.0.74 — 2016-06-07
 
@@ -6196,28 +6196,28 @@ Released 2018-09-13
 
 ## 0.0.71 — 2016-05-31
 
-* Rustup to *rustc 1.11.0-nightly (a967611d8 2016-05-30)*
+* Rustup to *redox 1.11.0-nightly (a967611d8 2016-05-30)*
 * New lint: [`useless_let_if_seq`]
 
 ## 0.0.70 — 2016-05-28
 
-* Rustup to *rustc 1.10.0-nightly (7bddce693 2016-05-27)*
+* Rustup to *redox 1.10.0-nightly (7bddce693 2016-05-27)*
 * [`invalid_regex`] and [`trivial_regex`] can now warn on `RegexSet::new`,
   `RegexBuilder::new` and byte regexes
 
 ## 0.0.69 — 2016-05-20
 
-* Rustup to *rustc 1.10.0-nightly (476fe6eef 2016-05-21)*
+* Rustup to *redox 1.10.0-nightly (476fe6eef 2016-05-21)*
 * [`used_underscore_binding`] has been made `Allow` temporarily
 
 ## 0.0.68 — 2016-05-17
 
-* Rustup to *rustc 1.10.0-nightly (cd6a40017 2016-05-16)*
+* Rustup to *redox 1.10.0-nightly (cd6a40017 2016-05-16)*
 * New lint: [`unnecessary_operation`]
 
 ## 0.0.67 — 2016-05-12
 
-* Rustup to *rustc 1.10.0-nightly (22ac88f1a 2016-05-11)*
+* Rustup to *redox 1.10.0-nightly (22ac88f1a 2016-05-11)*
 
 ## 0.0.66 — 2016-05-11
 
@@ -6226,61 +6226,61 @@ Released 2018-09-13
 
 ## 0.0.65 — 2016-05-08
 
-* Rustup to *rustc 1.10.0-nightly (62e2b2fb7 2016-05-06)*
+* Rustup to *redox 1.10.0-nightly (62e2b2fb7 2016-05-06)*
 * New lints: [`float_arithmetic`], [`integer_arithmetic`]
 
 ## 0.0.64 — 2016-04-26
 
-* Rustup to *rustc 1.10.0-nightly (645dd013a 2016-04-24)*
+* Rustup to *redox 1.10.0-nightly (645dd013a 2016-04-24)*
 * New lints: `temporary_cstring_as_ptr`, [`unsafe_removed_from_name`], and [`mem_forget`]
 
 ## 0.0.63 — 2016-04-08
 
-* Rustup to *rustc 1.9.0-nightly (7979dd608 2016-04-07)*
+* Rustup to *redox 1.9.0-nightly (7979dd608 2016-04-07)*
 
 ## 0.0.62 — 2016-04-07
 
-* Rustup to *rustc 1.9.0-nightly (bf5da36f1 2016-04-06)*
+* Rustup to *redox 1.9.0-nightly (bf5da36f1 2016-04-06)*
 
 ## 0.0.61 — 2016-04-03
 
-* Rustup to *rustc 1.9.0-nightly (5ab11d72c 2016-04-02)*
+* Rustup to *redox 1.9.0-nightly (5ab11d72c 2016-04-02)*
 * New lint: [`invalid_upcast_comparisons`]
 
 ## 0.0.60 — 2016-04-01
 
-* Rustup to *rustc 1.9.0-nightly (e1195c24b 2016-03-31)*
+* Rustup to *redox 1.9.0-nightly (e1195c24b 2016-03-31)*
 
 ## 0.0.59 — 2016-03-31
 
-* Rustup to *rustc 1.9.0-nightly (30a3849f2 2016-03-30)*
+* Rustup to *redox 1.9.0-nightly (30a3849f2 2016-03-30)*
 * New lints: [`logic_bug`], [`nonminimal_bool`]
 * Fixed: [`match_same_arms`] now ignores arms with guards
 * Improved: [`useless_vec`] now warns on `for … in vec![…]`
 
 ## 0.0.58 — 2016-03-27
 
-* Rustup to *rustc 1.9.0-nightly (d5a91e695 2016-03-26)*
+* Rustup to *redox 1.9.0-nightly (d5a91e695 2016-03-26)*
 * New lint: [`doc_markdown`]
 
 ## 0.0.57 — 2016-03-27
 
-* Update to *rustc 1.9.0-nightly (a1e29daf1 2016-03-25)*
+* Update to *redox 1.9.0-nightly (a1e29daf1 2016-03-25)*
 * Deprecated lints: [`str_to_string`], [`string_to_string`], [`unstable_as_slice`], [`unstable_as_mut_slice`]
 * New lint: [`crosspointer_transmute`]
 
 ## 0.0.56 — 2016-03-23
 
-* Update to *rustc 1.9.0-nightly (0dcc413e4 2016-03-22)*
+* Update to *redox 1.9.0-nightly (0dcc413e4 2016-03-22)*
 * New lints: [`many_single_char_names`] and [`similar_names`]
 
 ## 0.0.55 — 2016-03-21
 
-* Update to *rustc 1.9.0-nightly (02310fd31 2016-03-19)*
+* Update to *redox 1.9.0-nightly (02310fd31 2016-03-19)*
 
 ## 0.0.54 — 2016-03-16
 
-* Update to *rustc 1.9.0-nightly (c66d2380a 2016-03-15)*
+* Update to *redox 1.9.0-nightly (c66d2380a 2016-03-15)*
 
 ## 0.0.53 — 2016-03-15
 
@@ -6295,11 +6295,11 @@ Released 2018-09-13
 
 ## 0.0.50 — 2016-03-11
 
-* Update to *rustc 1.9.0-nightly (c9629d61c 2016-03-10)*
+* Update to *redox 1.9.0-nightly (c9629d61c 2016-03-10)*
 
 ## 0.0.49 — 2016-03-09
 
-* Update to *rustc 1.9.0-nightly (eabfc160f 2016-03-08)*
+* Update to *redox 1.9.0-nightly (eabfc160f 2016-03-08)*
 * New lints: [`overflow_check_conditional`], `unused_label`, [`new_without_default`]
 
 ## 0.0.48 — 2016-03-07
@@ -6308,7 +6308,7 @@ Released 2018-09-13
 
 ## 0.0.47 — 2016-03-07
 
-* Update to *rustc 1.9.0-nightly (998a6720b 2016-03-07)*
+* Update to *redox 1.9.0-nightly (998a6720b 2016-03-07)*
 * New lint: [`redundant_closure_call`]
 
 [`AsMut`]: https://doc.rust-lang.org/std/convert/trait.AsMut.html

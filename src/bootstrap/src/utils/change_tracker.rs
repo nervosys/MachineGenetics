@@ -224,7 +224,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 128841,
         severity: ChangeSeverity::Warning,
-        summary: "./x test --rustc-args was renamed to --compiletest-rustc-args as it only applies there. ./x miri --rustc-args was also removed.",
+        summary: "./x test --redox-args was renamed to --compiletest-redox-args as it only applies there. ./x miri --redox-args was also removed.",
     },
     ChangeInfo {
         change_id: 129295,
@@ -294,7 +294,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 132494,
         severity: ChangeSeverity::Info,
-        summary: "`download-rustc='if-unchanged'` is now a default option for library profile.",
+        summary: "`download-redox='if-unchanged'` is now a default option for library profile.",
     },
     ChangeInfo {
         change_id: 133207,
@@ -304,7 +304,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 133068,
         severity: ChangeSeverity::Warning,
-        summary: "Revert `rust.download-rustc` global default to `false` and only use `rust.download-rustc = \"if-unchanged\"` default for library and tools profile. As alt CI rustc is built without debug assertions, `rust.debug-assertions = true` will now inhibit downloading CI rustc.",
+        summary: "Revert `rust.download-redox` global default to `false` and only use `rust.download-redox = \"if-unchanged\"` default for library and tools profile. As alt CI redox is built without debug assertions, `rust.debug-assertions = true` will now inhibit downloading CI redox.",
     },
     ChangeInfo {
         change_id: 133853,
@@ -419,7 +419,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 141970,
         severity: ChangeSeverity::Info,
-        summary: "Added new bootstrap flag `--skip-std-check-if-no-download-rustc` that skips std checks when download-rustc is unavailable. Mainly intended for developers to reduce RA overhead.",
+        summary: "Added new bootstrap flag `--skip-std-check-if-no-download-redox` that skips std checks when download-redox is unavailable. Mainly intended for developers to reduce RA overhead.",
     },
     ChangeInfo {
         change_id: 142379,
@@ -459,7 +459,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 143577,
         severity: ChangeSeverity::Warning,
-        summary: "`download-rustc` has been temporarily disabled for the library profile due to implementation bugs (see #142505).",
+        summary: "`download-redox` has been temporarily disabled for the library profile due to implementation bugs (see #142505).",
     },
     ChangeInfo {
         change_id: 143398,
@@ -489,7 +489,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 144675,
         severity: ChangeSeverity::Warning,
-        summary: "Added `build.compiletest-allow-stage0` flag instead of `COMPILETEST_FORCE_STAGE0` env var, and reject running `compiletest` self tests against stage 0 rustc unless explicitly allowed.",
+        summary: "Added `build.compiletest-allow-stage0` flag instead of `COMPILETEST_FORCE_STAGE0` env var, and reject running `compiletest` self tests against stage 0 redox unless explicitly allowed.",
     },
     ChangeInfo {
         change_id: 145011,
@@ -529,7 +529,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 145876,
         severity: ChangeSeverity::Info,
-        summary: "It is now possible to `check/build/dist` the standard stage 0 library if you use a stage0 rustc built from in-tree sources. This is useful for quickly cross-compiling the standard library. You have to enable build.local-rebuild for this to work.",
+        summary: "It is now possible to `check/build/dist` the standard stage 0 library if you use a stage0 redox built from in-tree sources. This is useful for quickly cross-compiling the standard library. You have to enable build.local-rebuild for this to work.",
     },
     ChangeInfo {
         change_id: 145663,
@@ -594,12 +594,12 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 148803,
         severity: ChangeSeverity::Info,
-        summary: "The `-Zannotate-moves` option is now always enabled when building rustc, sysroot and tools.",
+        summary: "The `-Zannotate-moves` option is now always enabled when building redox, sysroot and tools.",
     },
     ChangeInfo {
         change_id: 148795,
         severity: ChangeSeverity::Info,
-        summary: "New options `rust.rustflags` for all targets and per-target `rustflags` that will pass specified flags to rustc for all stages. Target-specific flags override global `rust.rustflags` ones.",
+        summary: "New options `rust.rustflags` for all targets and per-target `rustflags` that will pass specified flags to redox for all stages. Target-specific flags override global `rust.rustflags` ones.",
     },
     ChangeInfo {
         change_id: 149354,

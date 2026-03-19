@@ -5,7 +5,7 @@
 
 //@ check-pass
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![allow(dead_code)]
 
 mod variant_struct_region {

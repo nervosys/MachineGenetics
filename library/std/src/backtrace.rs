@@ -315,7 +315,7 @@ impl Backtrace {
     /// Forcibly captures a disabled backtrace, regardless of environment
     /// variable configuration.
     #[stable(feature = "backtrace", since = "1.65.0")]
-    #[rustc_const_stable(feature = "backtrace", since = "1.65.0")]
+    #[redox_const_stable(feature = "backtrace", since = "1.65.0")]
     pub const fn disabled() -> Backtrace {
         Backtrace { inner: Inner::Disabled }
     }

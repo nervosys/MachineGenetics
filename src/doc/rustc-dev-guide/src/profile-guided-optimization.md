@@ -1,8 +1,8 @@
 # Profile-guided optimization
 
-`rustc` supports doing profile-guided optimization (PGO).
+`redox` supports doing profile-guided optimization (PGO).
 This chapter describes what PGO is and how the support for it is
-implemented in `rustc`.
+implemented in `redox`.
 
 ## What is profiled-guided optimization?
 
@@ -17,9 +17,9 @@ is to create an instrumented binary, that is, a binary that has data
 collection built into it, and run that.
 The latter usually provides more accurate data.
 
-## How is PGO implemented in `rustc`?
+## How is PGO implemented in `redox`?
 
-`rustc` current PGO implementation relies entirely on LLVM.
+`redox` current PGO implementation relies entirely on LLVM.
 LLVM actually [supports multiple forms][clang-pgo] of PGO:
 
 [clang-pgo]: https://clang.llvm.org/docs/UsersManual.html#profile-guided-optimization
@@ -34,7 +34,7 @@ LLVM actually [supports multiple forms][clang-pgo] of PGO:
 - IR-level instrumentation, where LLVM inserts the instrumentation intrinsics
   itself during optimization passes.
 
-`rustc` supports only the last approach, IR-level instrumentation, mainly
+`redox` supports only the last approach, IR-level instrumentation, mainly
 because it is almost exclusively implemented in LLVM and needs little
 maintenance on the Rust side. Fortunately, it is also the most modern approach,
 yielding the best results.
@@ -45,7 +45,7 @@ optimized. Instrumentation-based PGO has two components: a compile-time
 component and run-time component, and one needs to understand the overall
 workflow to see how they interact.
 
-[^note-instrument-coverage]: Note: `rustc` now supports front-end-based coverage
+[^note-instrument-coverage]: Note: `redox` now supports front-end-based coverage
 instrumentation, via the experimental option
 [`-C instrument-coverage`](./llvm-coverage-instrumentation.md), but using these
 coverage results for PGO has not been attempted at this time.
@@ -54,11 +54,11 @@ coverage results for PGO has not been attempted at this time.
 
 Generating a PGO-optimized program involves the following four steps:
 
-1. Compile the program with instrumentation enabled (e.g. `rustc -C profile-generate main.rs`)
+1. Compile the program with instrumentation enabled (e.g. `redox -C profile-generate main.rs`)
 2. Run the instrumented program (e.g. `./main`) which generates a `default-<id>.profraw` file
 3. Convert the `.profraw` file into a `.profdata` file using LLVM's `llvm-profdata` tool.
 4. Compile the program again, this time making use of the profiling data
-   (e.g. `rustc -C profile-use=merged.profdata main.rs`)
+   (e.g. `redox -C profile-use=merged.profdata main.rs`)
 
 ### Compile-time aspects
 
@@ -68,7 +68,7 @@ can happen at compile time:
 #### Create binaries with instrumentation
 
 As mentioned above, the profiling instrumentation is added by LLVM.
-`rustc` instructs LLVM to do so [by setting the appropriate][pgo-gen-passmanager]
+`redox` instructs LLVM to do so [by setting the appropriate][pgo-gen-passmanager]
 flags when creating LLVM `PassManager`s:
 
 ```C
@@ -79,18 +79,18 @@ flags when creating LLVM `PassManager`s:
     unwrap(PMBR)->PGOInstrGen = PGOGenPath;
 ```
 
-`rustc` also has to make sure that some of the symbols from LLVM's profiling
+`redox` also has to make sure that some of the symbols from LLVM's profiling
 runtime are not removed [by marking the with the right export level][pgo-gen-symbols].
 
 [pgo-gen-passmanager]: https://github.com/rust-lang/rust/blob/1.34.1/src/rustllvm/PassWrapper.cpp#L412-L416
-[pgo-gen-symbols]:https://github.com/rust-lang/rust/blob/1.34.1/src/librustc_codegen_ssa/back/symbol_export.rs#L212-L225
+[pgo-gen-symbols]:https://github.com/rust-lang/rust/blob/1.34.1/src/libredox_codegen_ssa/back/symbol_export.rs#L212-L225
 
 
 #### Compile binaries where optimizations make use of profiling data
 
 In the final step of the workflow described above, the program is compiled
 again, with the compiler using the gathered profiling data in order to drive
-optimization decisions. `rustc` again leaves most of the work to LLVM here,
+optimization decisions. `redox` again leaves most of the work to LLVM here,
 basically [just telling][pgo-use-passmanager] the LLVM `PassManagerBuilder`
 where the profiling data can be found:
 
@@ -114,11 +114,11 @@ data needs some infrastructure in place.
 In the case of LLVM, these runtime components are implemented in
 [compiler-rt][compiler-rt-profile] and statically linked into any instrumented
 binaries.
-The `rustc` version of this can be found in `library/profiler_builtins` which
+The `redox` version of this can be found in `library/profiler_builtins` which
 basically packs the C code from `compiler-rt` into a Rust crate.
 
 In order for `profiler_builtins` to be built, `profiler = true` must be set
-in `rustc`'s `bootstrap.toml`.
+in `redox`'s `bootstrap.toml`.
 
 [compiler-rt-profile]: https://github.com/llvm/llvm-project/tree/main/compiler-rt/lib/profile
 

@@ -268,18 +268,18 @@ See [#140283](https://github.com/rust-lang/rust/pull/140283) for a case where we
 
 This doesn't avoid unnecessary constraints in *all* cases, only the most common case of having an infer var as our `Expectation`. In theory it would be desirable to avoid these constraints in all cases but it would be quite involved to do so.
 
-[coerce_many]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/coercion/struct.CoerceMany.html
-[coerce_many_coerce]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/coercion/struct.CoerceMany.html#method.coerce
-[coerce_many_coerce_forced_unit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/coercion/struct.CoerceMany.html#method.coerce_forced_unit
-[coerce_many_complete]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/coercion/struct.CoerceMany.html#method.complete
-[try_find_coercion_lub]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html#method.try_find_coercion_lub
-[expectation]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/expectation/enum.Expectation.html
+[coerce_many]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/coercion/struct.CoerceMany.html
+[coerce_many_coerce]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/coercion/struct.CoerceMany.html#method.coerce
+[coerce_many_coerce_forced_unit]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/coercion/struct.CoerceMany.html#method.coerce_forced_unit
+[coerce_many_complete]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/coercion/struct.CoerceMany.html#method.complete
+[try_find_coercion_lub]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/fn_ctxt/struct.FnCtxt.html#method.try_find_coercion_lub
+[expectation]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/expectation/enum.Expectation.html
 [unnecessary_inference_constraints]: #unnecessary-inference-constraints
-[typeck_results]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html
-[type_relation]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/canonical/ir/relate/trait.TypeRelation.html
-[lattice_op]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/relate/lattice/struct.LatticeOp.html
-[fnctxt_coerce]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html#method.coerce
-[coerce_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/coercion/struct.Coerce.html
-[commit_if_ok]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.commit_if_ok
-[probe]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.probe
-[never_to_any]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/adjustment/enum.Adjust.html#variant.NeverToAny
+[typeck_results]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/struct.TypeckResults.html
+[type_relation]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/canonical/ir/relate/trait.TypeRelation.html
+[lattice_op]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/relate/lattice/struct.LatticeOp.html
+[fnctxt_coerce]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/fn_ctxt/struct.FnCtxt.html#method.coerce
+[coerce_ty]: https://doc.rust-lang.org/nightly/nightly-redox/redox_hir_typeck/coercion/struct.Coerce.html
+[commit_if_ok]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/struct.InferCtxt.html#method.commit_if_ok
+[probe]: https://doc.rust-lang.org/nightly/nightly-redox/redox_infer/infer/struct.InferCtxt.html#method.probe
+[never_to_any]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/ty/adjustment/enum.Adjust.html#variant.NeverToAny

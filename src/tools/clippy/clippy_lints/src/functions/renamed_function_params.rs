@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::def_id::DefIdSet;
-use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind, Node, TraitRef};
-use rustc_lint::LateContext;
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, kw};
+use redox_errors::{Applicability, MultiSpan};
+use redox_hir::def_id::DefIdSet;
+use redox_hir::{Impl, ImplItem, ImplItemKind, ItemKind, Node, TraitRef};
+use redox_lint::LateContext;
+use redox_span::Span;
+use redox_span::symbol::{Ident, kw};
 use std::iter;
 
 use super::RENAMED_FUNCTION_PARAMS;

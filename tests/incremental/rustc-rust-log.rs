@@ -4,8 +4,8 @@
 //
 //@ dont-check-compiler-stdout
 //@ dont-check-compiler-stderr
-//@ aux-build: rustc-rust-log-aux.rs
-//@ rustc-env:RUSTC_LOG=debug
+//@ aux-build: redox-rust-log-aux.rs
+//@ redox-env:RUSTC_LOG=debug
 //@ ignore-backends: gcc
 
 #[cfg(rpass1)]

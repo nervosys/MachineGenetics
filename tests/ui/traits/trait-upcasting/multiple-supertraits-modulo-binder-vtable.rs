@@ -1,4 +1,4 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 // Test for <https://github.com/rust-lang/rust/issues/135316>.
 
@@ -16,11 +16,11 @@ impl<T, U> Trait<T, U> for () {}
 
 // We should observe compatibility between these two vtables.
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 type First = dyn for<'a> Trait<&'static (), &'a ()>;
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 type Second = dyn Trait<&'static (), &'static ()>;
 //~^ ERROR vtable entries
 

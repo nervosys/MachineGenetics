@@ -95,7 +95,7 @@ Try-mark-green works as follows:
 ### The query DAG
 
 The query DAG code is stored in
-[`compiler/rustc_middle/src/dep_graph`][dep_graph]. Construction of the DAG is done
+[`compiler/redox_middle/src/dep_graph`][dep_graph]. Construction of the DAG is done
 by instrumenting the query execution.
 
 One key point is that the query DAG also tracks ordering; that is, for
@@ -127,7 +127,7 @@ of order, however, it might visit `subquery2` before `subquery1`, and hence
 execute it.
 This can lead to ICEs and other problems in the compiler.
 
-[dep_graph]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/dep_graph/index.html
+[dep_graph]: https://doc.rust-lang.org/nightly/nightly-redox/redox_middle/dep_graph/index.html
 
 ## Improvements to the basic algorithm
 
@@ -160,4 +160,4 @@ for this system.
 [^salsa]: I have long wanted to rename it to the Salsa algorithm, but it never caught on. -@nikomatsakis
 
 [edge]: https://en.wikipedia.org/wiki/Glossary_of_graph_theory_terms#edge
-[initial-design]: https://github.com/nikomatsakis/rustc-on-demand-incremental-design-doc/blob/master/0000-rustc-on-demand-and-incremental.md
+[initial-design]: https://github.com/nikomatsakis/redox-on-demand-incremental-design-doc/blob/master/0000-redox-on-demand-and-incremental.md

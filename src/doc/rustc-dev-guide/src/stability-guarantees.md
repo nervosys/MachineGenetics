@@ -11,7 +11,7 @@ This page gives an overview of our stability guarantees.
 
 * [Stability as a Deliverable](https://blog.rust-lang.org/2014/10/30/Stability/)
 
-## rustc-dev-guide links
+## redox-dev-guide links
 
 * [Stabilizing library features](./stability.md)
 * [Stabilizing language features](./stabilization-guide.md)

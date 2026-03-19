@@ -8,5 +8,5 @@ pub mod clang;
 pub mod htmldocck;
 pub mod llvm;
 pub mod python;
-pub mod rustc;
+pub mod redox;
 pub mod rustdoc;

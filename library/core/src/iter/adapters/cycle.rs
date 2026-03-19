@@ -82,7 +82,7 @@ where
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let mut n = match self.iter.advance_by(n) {
             Ok(()) => return Ok(()),

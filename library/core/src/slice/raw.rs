@@ -117,9 +117,9 @@ use crate::{array, ptr, ub_checks};
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
+#[redox_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
 #[must_use]
-#[rustc_diagnostic_item = "slice_from_raw_parts"]
+#[redox_diagnostic_item = "slice_from_raw_parts"]
 #[track_caller]
 pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
@@ -172,9 +172,9 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
+#[redox_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
 #[must_use]
-#[rustc_diagnostic_item = "slice_from_raw_parts_mut"]
+#[redox_diagnostic_item = "slice_from_raw_parts_mut"]
 #[track_caller]
 pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
@@ -197,8 +197,8 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
 
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
-#[rustc_const_stable(feature = "const_slice_from_ref_shared", since = "1.63.0")]
-#[rustc_diagnostic_item = "slice_from_ref"]
+#[redox_const_stable(feature = "const_slice_from_ref_shared", since = "1.63.0")]
+#[redox_diagnostic_item = "slice_from_ref"]
 #[must_use]
 pub const fn from_ref<T>(s: &T) -> &[T] {
     array::from_ref(s)
@@ -206,7 +206,7 @@ pub const fn from_ref<T>(s: &T) -> &[T] {
 
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
-#[rustc_const_stable(feature = "const_slice_from_ref", since = "1.83.0")]
+#[redox_const_stable(feature = "const_slice_from_ref", since = "1.83.0")]
 #[must_use]
 pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
     array::from_mut(s)
@@ -272,7 +272,7 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 ///
 /// [valid]: ptr#safety
 #[unstable(feature = "slice_from_ptr_range", issue = "89792")]
-#[rustc_const_unstable(feature = "const_slice_from_ptr_range", issue = "89792")]
+#[redox_const_unstable(feature = "const_slice_from_ptr_range", issue = "89792")]
 #[track_caller]
 pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
     // SAFETY: the caller must uphold the safety contract for `from_ptr_range`.
@@ -343,7 +343,7 @@ pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 ///
 /// [valid]: ptr#safety
 #[unstable(feature = "slice_from_ptr_range", issue = "89792")]
-#[rustc_const_unstable(feature = "const_slice_from_mut_ptr_range", issue = "89792")]
+#[redox_const_unstable(feature = "const_slice_from_mut_ptr_range", issue = "89792")]
 pub const unsafe fn from_mut_ptr_range<'a, T>(range: Range<*mut T>) -> &'a mut [T] {
     // SAFETY: the caller must uphold the safety contract for `from_mut_ptr_range`.
     unsafe { from_raw_parts_mut(range.start, range.end.offset_from_unsigned(range.start)) }

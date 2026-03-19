@@ -5,10 +5,10 @@
 //@ only-nightly
 //@ needs-target-std
 
-use run_make_support::{diff, rustc, similar};
+use run_make_support::{diff, redox, similar};
 
 fn main() {
-    let stable_like = rustc()
+    let stable_like = redox()
         .env("RUSTC_BOOTSTRAP", "-1")
         .edition("2024")
         .input("foo.rs")
@@ -18,7 +18,7 @@ fn main() {
     assert!(!stable_like.contains("CoroutineState::Complete"));
     diff().expected_file("stable.err").actual_text("stable_like", &stable_like).run();
 
-    let nightly = rustc().edition("2024").input("foo.rs").run_fail().stderr_utf8();
+    let nightly = redox().edition("2024").input("foo.rs").run_fail().stderr_utf8();
 
     assert!(nightly.contains("CoroutineState::Complete"));
     diff().expected_file("nightly.err").actual_text("nightly", &nightly).run();

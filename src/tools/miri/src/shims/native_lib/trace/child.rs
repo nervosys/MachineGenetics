@@ -5,7 +5,7 @@ use std::rc::Rc;
 use ipc_channel::ipc;
 use nix::sys::{mman, ptrace, signal};
 use nix::unistd;
-use rustc_const_eval::interpret::{InterpResult, interp_ok};
+use redox_const_eval::interpret::{InterpResult, interp_ok};
 
 use super::CALLBACK_STACK_SIZE;
 use super::messages::{Confirmation, StartFfiInfo, TraceRequest};

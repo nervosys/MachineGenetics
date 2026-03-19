@@ -2,18 +2,18 @@ use crate::internal_paths;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::{is_lint_allowed, sym};
-use rustc_ast::ast::LitKind;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::hir_id::CRATE_HIR_ID;
-use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ExprKind, HirId, Item, MutTy, Mutability, Path, TyKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::nested_filter;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::symbol::Symbol;
-use rustc_span::{Span, Spanned};
+use redox_ast::ast::LitKind;
+use redox_data_structures::fx::{FxIndexMap, FxIndexSet};
+use redox_hir as hir;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::hir_id::CRATE_HIR_ID;
+use redox_hir::intravisit::Visitor;
+use redox_hir::{ExprKind, HirId, Item, MutTy, Mutability, Path, TyKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::hir::nested_filter;
+use redox_session::{declare_tool_lint, impl_lint_pass};
+use redox_span::symbol::Symbol;
+use redox_span::{Span, Spanned};
 
 declare_tool_lint! {
     /// ### What it does
@@ -176,7 +176,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
 
         for (lint_name, &lint_span) in &self.declared_lints {
             // When using the `declare_tool_lint!` macro, the original `lint_span`'s
-            // file points to "<rustc macros>".
+            // file points to "<redox macros>".
             // `compiletest-rs` thinks that's an error in a different file and
             // just ignores it. This causes the test in compile-fail/lint_pass
             // not able to capture the error.
@@ -219,7 +219,7 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
             return;
         }
 
-        if rustc_attr_parsing::parse_version(value).is_none() {
+        if redox_attr_parsing::parse_version(value).is_none() {
             span_lint_and_help(
                 cx,
                 INVALID_CLIPPY_VERSION_ATTRIBUTE,

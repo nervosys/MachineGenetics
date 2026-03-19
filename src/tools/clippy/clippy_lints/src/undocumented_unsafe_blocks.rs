@@ -8,12 +8,12 @@ use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
 use clippy_utils::visitors::{Descend, for_each_expr};
 use hir::HirId;
-use rustc_errors::Applicability;
-use rustc_hir::{self as hir, Block, BlockCheckMode, FnSig, Impl, ItemKind, Node, UnsafeSource};
-use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::{BytePos, Pos, RelativeBytePos, Span, SyntaxContext};
+use redox_errors::Applicability;
+use redox_hir::{self as hir, Block, BlockCheckMode, FnSig, Impl, ItemKind, Node, UnsafeSource};
+use redox_lexer::{FrontmatterAllowed, TokenKind, tokenize};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::{BytePos, Pos, RelativeBytePos, Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does

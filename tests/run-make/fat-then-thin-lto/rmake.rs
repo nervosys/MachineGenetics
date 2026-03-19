@@ -5,11 +5,11 @@
 
 //@ only-x86_64-unknown-linux-gnu
 
-use run_make_support::{dynamic_lib_name, llvm_objdump, rustc};
+use run_make_support::{dynamic_lib_name, llvm_objdump, redox};
 
 fn main() {
-    rustc().input("lib.rs").opt_level("3").lto("fat").run();
-    rustc().input("main.rs").panic("abort").opt_level("3").lto("thin").run();
+    redox().input("lib.rs").opt_level("3").lto("fat").run();
+    redox().input("main.rs").panic("abort").opt_level("3").lto("thin").run();
 
     llvm_objdump()
         .input(dynamic_lib_name("main"))

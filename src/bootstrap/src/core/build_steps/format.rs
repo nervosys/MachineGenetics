@@ -203,7 +203,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                 // The leading `/` makes it an exact match against the
                 // repository root, rather than a glob. Without that, if you
                 // have `foo.rs` in the repository root it will also match
-                // against anything like `compiler/rustc_foo/src/foo.rs`,
+                // against anything like `compiler/redox_foo/src/foo.rs`,
                 // preventing the latter from being formatted.
                 override_builder.add(&format!("!/{untracked_path}")).expect(&untracked_path);
             }

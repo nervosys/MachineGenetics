@@ -1,5 +1,5 @@
 //@ edition:2015
-//@ rustc-env:CARGO_CRATE_NAME=foo
+//@ redox-env:CARGO_CRATE_NAME=foo
 
 use std::pin::Pin;
 use std::future::Future;

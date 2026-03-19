@@ -460,7 +460,7 @@ fn main() {
     // Closures
     // I (mw) am a bit unclear about the current state of closures, their
     // various forms (boxed, unboxed, proc, capture-by-ref, by-val, once) and
-    // how that maps to rustc's internal representation of these forms.
+    // how that maps to redox's internal representation of these forms.
     // Once closures have reached their 1.0 form, the tests below should
     // probably be expanded.
     let closure1 = (|x: isize| {}, 0_usize);

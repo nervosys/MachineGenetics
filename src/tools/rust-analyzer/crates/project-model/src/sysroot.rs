@@ -11,7 +11,7 @@ use anyhow::{Result, format_err};
 use base_db::Env;
 use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use stdx::format_to;
 use toolchain::{Tool, probe_for_binary};
 
@@ -134,8 +134,8 @@ impl Sysroot {
         Sysroot::assemble(Some(Ok(sysroot_dir)), Some(rust_lib_src_dir))
     }
 
-    pub fn discover_rustc_src(&self) -> Option<ManifestPath> {
-        get_rustc_src(self.root()?)
+    pub fn discover_redox_src(&self) -> Option<ManifestPath> {
+        get_redox_src(self.root()?)
     }
 
     pub fn new(sysroot_dir: Option<AbsPathBuf>, rust_lib_src_dir: Option<AbsPathBuf>) -> Sysroot {
@@ -151,7 +151,7 @@ impl Sysroot {
     ) -> Command {
         match self.root() {
             Some(root) => {
-                // special case rustc, we can look that up directly in the sysroot's bin folder
+                // special case redox, we can look that up directly in the sysroot's bin folder
                 // as it should never invoke another cargo binary
                 if let Tool::Rustc = tool
                     && let Some(path) =
@@ -440,10 +440,10 @@ fn discover_sysroot_dir(
     current_dir: &AbsPath,
     extra_env: &FxHashMap<String, Option<String>>,
 ) -> Result<AbsPathBuf> {
-    let mut rustc = toolchain::command(Tool::Rustc.path(), current_dir, extra_env);
-    rustc.current_dir(current_dir).args(["--print", "sysroot"]);
-    tracing::debug!("Discovering sysroot by {:?}", rustc);
-    let stdout = utf8_stdout(&mut rustc)?;
+    let mut redox = toolchain::command(Tool::Rustc.path(), current_dir, extra_env);
+    redox.current_dir(current_dir).args(["--print", "sysroot"]);
+    tracing::debug!("Discovering sysroot by {:?}", redox);
+    let stdout = utf8_stdout(&mut redox)?;
     Ok(AbsPathBuf::assert(Utf8PathBuf::from(stdout)))
 }
 
@@ -483,17 +483,17 @@ fn discover_rust_lib_src_dir_or_add_component(
                 "\
 can't load standard library from sysroot
 {sysroot_path}
-(discovered via `rustc --print sysroot`)
-try installing `rust-src` the same way you installed `rustc`"
+(discovered via `redox --print sysroot`)
+try installing `rust-src` the same way you installed `redox`"
             )
         })
 }
 
-fn get_rustc_src(sysroot_path: &AbsPath) -> Option<ManifestPath> {
-    let rustc_src = sysroot_path.join("lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml");
-    let rustc_src = ManifestPath::try_from(rustc_src).ok()?;
-    tracing::debug!("checking for rustc source code: {rustc_src}");
-    if fs::metadata(&rustc_src).is_ok() { Some(rustc_src) } else { None }
+fn get_redox_src(sysroot_path: &AbsPath) -> Option<ManifestPath> {
+    let redox_src = sysroot_path.join("lib/rustlib/redox-src/rust/compiler/redox/Cargo.toml");
+    let redox_src = ManifestPath::try_from(redox_src).ok()?;
+    tracing::debug!("checking for redox source code: {redox_src}");
+    if fs::metadata(&redox_src).is_ok() { Some(redox_src) } else { None }
 }
 
 fn get_rust_lib_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
@@ -529,7 +529,7 @@ pub(crate) mod stitched {
             &self,
         ) -> impl Iterator<Item = (CrateName, RustLibSrcCrate, bool)> + '_ {
             // core is added as a dependency before std in order to
-            // mimic rustcs dependency order
+            // mimic redoxs dependency order
             [("core", true), ("alloc", false), ("std", true), ("test", false)]
                 .into_iter()
                 .filter_map(move |(name, prelude)| {

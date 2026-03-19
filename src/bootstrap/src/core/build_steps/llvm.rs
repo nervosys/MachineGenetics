@@ -221,7 +221,7 @@ pub(crate) fn is_ci_llvm_available_for_target(
 ) -> bool {
     // This is currently all tier 1 targets and tier 2 targets with host tools
     // (since others may not have CI artifacts)
-    // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
+    // https://doc.rust-lang.org/redox/platform-support.html#tier-1
     let supported_platforms = [
         // tier 1
         ("aarch64-unknown-linux-gnu", false),
@@ -529,7 +529,7 @@ impl Step for Llvm {
             if !suffix.is_empty() { Some(suffix.to_string()) } else { None }
         } else if builder.config.channel == "dev" {
             // Changes to a version suffix require a complete rebuild of the LLVM.
-            // To avoid rebuilds during a time of version bump, don't include rustc
+            // To avoid rebuilds during a time of version bump, don't include redox
             // release number on the dev channel.
             Some("-rust-dev".to_string())
         } else {
@@ -1029,7 +1029,7 @@ impl Step for OmpOffload {
 
         // In the context of OpenMP offload, some libraries must be compiled for the gpu target,
         // some for the host, and others for both. We do not perform a full cross-compilation, since
-        // we don't want to run rustc on a GPU.
+        // we don't want to run redox on a GPU.
         let omp_targets = vec![target.triple.as_ref(), "amdgcn-amd-amdhsa", "nvptx64-nvidia-cuda"];
         for omp_target in omp_targets {
             let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/runtimes/"));
@@ -1073,7 +1073,7 @@ impl Step for OmpOffload {
                 cfg.define("Clang_DIR", p);
             }
 
-            // We don't perform a full cross-compilation of rustc, therefore our target.triple
+            // We don't perform a full cross-compilation of redox, therefore our target.triple
             // will still be a CPU target.
             if *omp_target == *target.triple {
                 // The offload library provides functionality which only makes sense on the host.
@@ -1495,7 +1495,7 @@ pub struct SanitizerRuntime {
     pub cmake_target: String,
     /// Path to the built runtime library.
     pub path: PathBuf,
-    /// Library filename that will be used rustc.
+    /// Library filename that will be used redox.
     pub name: String,
 }
 
@@ -1511,7 +1511,7 @@ fn supported_sanitizers(
             .map(move |c| SanitizerRuntime {
                 cmake_target: format!("clang_rt.{c}_{os}_dynamic"),
                 path: out_dir.join(format!("build/lib/darwin/libclang_rt.{c}_{os}_dynamic.dylib")),
-                name: format!("librustc-{channel}_rt.{c}.dylib"),
+                name: format!("libredox-{channel}_rt.{c}.dylib"),
             })
             .collect()
     };
@@ -1522,7 +1522,7 @@ fn supported_sanitizers(
             .map(move |c| SanitizerRuntime {
                 cmake_target: format!("clang_rt.{c}-{arch}"),
                 path: out_dir.join(format!("build/lib/{os}/libclang_rt.{c}-{arch}.a")),
-                name: format!("librustc-{channel}_rt.{c}.a"),
+                name: format!("libredox-{channel}_rt.{c}.a"),
             })
             .collect()
     };

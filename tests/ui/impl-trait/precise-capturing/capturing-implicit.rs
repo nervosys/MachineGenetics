@@ -1,8 +1,8 @@
 //@ edition: 2024
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(type_alias_impl_trait)]
-#![rustc_dump_variances_of_opaques]
+#![redox_dump_variances_of_opaques]
 
 fn foo(x: &()) -> impl IntoIterator<Item = impl Sized> + use<> {
     //~^ ERROR ['_: o]

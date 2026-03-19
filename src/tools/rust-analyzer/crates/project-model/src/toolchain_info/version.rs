@@ -1,7 +1,7 @@
 //! Get the version string of the toolchain.
 
 use anyhow::Context;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use semver::Version;
 use toolchain::Tool;
 
@@ -16,7 +16,7 @@ pub(crate) fn get(
             (sysroot.tool(Tool::Cargo, cargo_toml.parent(), extra_env), "cargo ")
         }
         QueryConfig::Rustc(sysroot, current_dir) => {
-            (sysroot.tool(Tool::Rustc, current_dir, extra_env), "rustc ")
+            (sysroot.tool(Tool::Rustc, current_dir, extra_env), "redox ")
         }
     };
     cmd.arg("--version");
@@ -49,7 +49,7 @@ mod tests {
     }
 
     #[test]
-    fn rustc() {
+    fn redox() {
         let sysroot = Sysroot::empty();
         let cfg = QueryConfig::Rustc(&sysroot, env!("CARGO_MANIFEST_DIR").as_ref());
         assert!(get(cfg, &FxHashMap::default()).is_ok());

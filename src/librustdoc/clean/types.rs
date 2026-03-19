@@ -6,29 +6,29 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use itertools::Either;
-use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_ast as ast;
-use rustc_ast::attr::AttributeExt;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, DocAttribute};
-use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::lang_items::LangItem;
-use rustc_hir::{Attribute, BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
-use rustc_index::IndexVec;
-use rustc_metadata::rendered_const;
-use rustc_middle::span_bug;
-use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, TyCtxt, Visibility};
-use rustc_resolve::rustdoc::{
+use redox_abi::{ExternAbi, VariantIdx};
+use redox_ast as ast;
+use redox_ast::attr::AttributeExt;
+use redox_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use redox_data_structures::thin_vec::ThinVec;
+use redox_hir as hir;
+use redox_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, DocAttribute};
+use redox_hir::def::{CtorKind, DefKind, Res};
+use redox_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
+use redox_hir::lang_items::LangItem;
+use redox_hir::{Attribute, BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
+use redox_index::IndexVec;
+use redox_metadata::rendered_const;
+use redox_middle::span_bug;
+use redox_middle::ty::fast_reject::SimplifiedType;
+use redox_middle::ty::{self, TyCtxt, Visibility};
+use redox_resolve::rustdoc::{
     DocFragment, add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments,
 };
-use rustc_session::Session;
-use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, FileName, Ident, Loc, RemapPathScopeComponents};
+use redox_session::Session;
+use redox_span::hygiene::MacroKind;
+use redox_span::symbol::{Symbol, kw, sym};
+use redox_span::{DUMMY_SP, FileName, Ident, Loc, RemapPathScopeComponents};
 use tracing::{debug, trace};
 
 pub(crate) use self::ItemKind::*;
@@ -293,13 +293,13 @@ impl ExternalCrate {
         //
         // Note that this loop only searches the top-level items of the crate,
         // and this is intentional. If we were to search the entire crate for an
-        // item tagged with `#[rustc_doc_primitive]` then we would also have to
+        // item tagged with `#[redox_doc_primitive]` then we would also have to
         // search the entirety of external modules for items tagged
-        // `#[rustc_doc_primitive]`, which is a pretty inefficient process (decoding
+        // `#[redox_doc_primitive]`, which is a pretty inefficient process (decoding
         // all that metadata unconditionally).
         //
         // In order to keep the metadata load under control, the
-        // `#[rustc_doc_primitive]` feature is explicitly designed to only allow the
+        // `#[redox_doc_primitive]` feature is explicitly designed to only allow the
         // primitive tags to show up as the top level items in a crate.
         //
         // Also note that this does not attempt to deal with modules tagged
@@ -389,7 +389,7 @@ impl fmt::Debug for Item {
     }
 }
 
-pub(crate) fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
+pub(crate) fn redox_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
     Span::new(def_id.as_local().map_or_else(
         || tcx.def_span(def_id),
         |local| tcx.hir_span_with_body(tcx.local_def_id_to_hir_id(local)),
@@ -425,11 +425,11 @@ impl Item {
 
     pub(crate) fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
         self.def_id().and_then(|did| tcx.lookup_deprecation(did)).or_else(|| {
-            // `allowed_through_unstable_modules` is a bug-compatibility hack for old rustc
+            // `allowed_through_unstable_modules` is a bug-compatibility hack for old redox
             // versions; the paths that are exposed through it are "deprecated" because they
             // were never supposed to work at all.
             let stab = self.stability(tcx)?;
-            if let rustc_hir::StabilityLevel::Stable {
+            if let redox_hir::StabilityLevel::Stable {
                 allowed_through_unstable_modules: Some(note),
                 ..
             } = stab.level
@@ -475,16 +475,16 @@ impl Item {
             ItemKind::ImplItem(box Impl { kind: ImplKind::Auto, .. }) => None,
             ItemKind::ImplItem(box Impl { kind: ImplKind::Blanket(_), .. }) => {
                 if let ItemId::Blanket { impl_id, .. } = self.item_id {
-                    Some(rustc_span(impl_id, tcx))
+                    Some(redox_span(impl_id, tcx))
                 } else {
                     panic!("blanket impl item has non-blanket ID")
                 }
             }
-            _ => self.def_id().map(|did| rustc_span(did, tcx)),
+            _ => self.def_id().map(|did| redox_span(did, tcx)),
         }
     }
 
-    pub(crate) fn attr_span(&self, tcx: TyCtxt<'_>) -> rustc_span::Span {
+    pub(crate) fn attr_span(&self, tcx: TyCtxt<'_>) -> redox_span::Span {
         let deprecation_notes = self
             .attrs
             .other_attrs
@@ -752,7 +752,7 @@ impl Item {
         ) -> hir::FnHeader {
             let sig = tcx.fn_sig(def_id).skip_binder();
             let constness = if tcx.is_const_fn(def_id) {
-                // rustc's `is_const_fn` returns `true` for associated functions that have an `impl const` parent
+                // redox's `is_const_fn` returns `true` for associated functions that have an `impl const` parent
                 // or that have a `const trait` parent. Do not display those as `const` in rustdoc because we
                 // won't be printing correct syntax plus the syntax is unstable.
                 if let Some(assoc) = tcx.opt_associated_item(def_id)
@@ -1126,7 +1126,7 @@ impl GenericBound {
     fn is_bounded_by_lang_item(&self, cx: &DocContext<'_>, lang_item: LangItem) -> bool {
         if let GenericBound::TraitBound(
             PolyTrait { ref trait_, .. },
-            rustc_hir::TraitBoundModifiers::NONE,
+            redox_hir::TraitBoundModifiers::NONE,
         ) = *self
             && cx.tcx.is_lang_item(trait_.def_id(), lang_item)
         {
@@ -1271,7 +1271,7 @@ impl FnDecl {
 pub(crate) struct Parameter {
     pub(crate) name: Option<Symbol>,
     pub(crate) type_: Type,
-    /// This field is used to represent "const" arguments from the `rustc_legacy_const_generics`
+    /// This field is used to represent "const" arguments from the `redox_legacy_const_generics`
     /// feature. More information in <https://github.com/rust-lang/rust/issues/83167>.
     pub(crate) is_const: bool,
 }
@@ -1779,7 +1779,7 @@ impl PrimitiveType {
         }
     }
 
-    /// Returns the DefId of the module with `rustc_doc_primitive` for this primitive type.
+    /// Returns the DefId of the module with `redox_doc_primitive` for this primitive type.
     /// Panics if there is no such module.
     ///
     /// This gives precedence to primitives defined in the current crate, and deprioritizes
@@ -1788,7 +1788,7 @@ impl PrimitiveType {
     /// will be picked.
     ///
     /// In particular, if a crate depends on both `std` and another crate that also defines
-    /// `rustc_doc_primitive`, then it's entirely random whether `std` or the other crate is picked.
+    /// `redox_doc_primitive`, then it's entirely random whether `std` or the other crate is picked.
     /// (no_std crates are usually fine unless multiple dependencies define a primitive.)
     pub(crate) fn primitive_locations(tcx: TyCtxt<'_>) -> &FxIndexMap<PrimitiveType, DefId> {
         static PRIMITIVE_LOCATIONS: OnceCell<FxIndexMap<PrimitiveType, DefId>> = OnceCell::new();
@@ -1964,21 +1964,21 @@ impl Discriminant {
     }
 }
 
-/// Small wrapper around [`rustc_span::Span`] that adds helper methods
-/// and enforces calling [`rustc_span::Span::source_callsite()`].
+/// Small wrapper around [`redox_span::Span`] that adds helper methods
+/// and enforces calling [`redox_span::Span::source_callsite()`].
 #[derive(Copy, Clone, Debug)]
-pub(crate) struct Span(rustc_span::Span);
+pub(crate) struct Span(redox_span::Span);
 
 impl Span {
-    /// Wraps a [`rustc_span::Span`]. In case this span is the result of a macro expansion, the
+    /// Wraps a [`redox_span::Span`]. In case this span is the result of a macro expansion, the
     /// span will be updated to point to the macro invocation instead of the macro definition.
     ///
     /// (See rust-lang/rust#39726)
-    pub(crate) fn new(sp: rustc_span::Span) -> Self {
+    pub(crate) fn new(sp: redox_span::Span) -> Self {
         Self(sp.source_callsite())
     }
 
-    pub(crate) fn inner(&self) -> rustc_span::Span {
+    pub(crate) fn inner(&self) -> redox_span::Span {
         self.0
     }
 
@@ -2419,7 +2419,7 @@ pub(crate) enum AssocItemConstraintKind {
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use rustc_data_structures::static_assert_size;
+    use redox_data_structures::static_assert_size;
 
     use super::*;
     // tidy-alphabetical-start

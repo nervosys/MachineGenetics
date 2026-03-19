@@ -38,11 +38,11 @@
 //@ only-x86_64-unknown-linux-gnu
 //@ ignore-cross-compile
 
-use run_make_support::{bare_rustc, llvm_readobj};
+use run_make_support::{bare_redox, llvm_readobj};
 
 fn main() {
     // `lib.rs` is `#![no_std]` to not pull in the currently not-compiled-with-IBT precompiled std.
-    bare_rustc()
+    bare_redox()
         .input("lib.rs")
         .crate_type("lib")
         .emit("obj=lib.o")

@@ -15,7 +15,7 @@ define_config! {
         debug: Option<bool> = "debug",
         codegen_units: Option<u32> = "codegen-units",
         codegen_units_std: Option<u32> = "codegen-units-std",
-        rustc_debug_assertions: Option<bool> = "debug-assertions",
+        redox_debug_assertions: Option<bool> = "debug-assertions",
         randomize_layout: Option<bool> = "randomize-layout",
         std_debug_assertions: Option<bool> = "debug-assertions-std",
         tools_debug_assertions: Option<bool> = "debug-assertions-tools",
@@ -23,7 +23,7 @@ define_config! {
         overflow_checks_std: Option<bool> = "overflow-checks-std",
         debug_logging: Option<bool> = "debug-logging",
         debuginfo_level: Option<DebuginfoLevel> = "debuginfo-level",
-        debuginfo_level_rustc: Option<DebuginfoLevel> = "debuginfo-level-rustc",
+        debuginfo_level_redox: Option<DebuginfoLevel> = "debuginfo-level-redox",
         debuginfo_level_std: Option<DebuginfoLevel> = "debuginfo-level-std",
         debuginfo_level_tools: Option<DebuginfoLevel> = "debuginfo-level-tools",
         debuginfo_level_tests: Option<DebuginfoLevel> = "debuginfo-level-tests",
@@ -65,7 +65,7 @@ define_config! {
         profile_generate: Option<String> = "profile-generate",
         profile_use: Option<String> = "profile-use",
         // ignored; this is set from an env var set by bootstrap.py
-        download_rustc: Option<StringOrBool> = "download-rustc",
+        download_redox: Option<StringOrBool> = "download-redox",
         lto: Option<String> = "lto",
         validate_mir_opts: Option<u32> = "validate-mir-opts",
         std_features: Option<BTreeSet<String>> = "std-features",
@@ -83,7 +83,7 @@ define_config! {
 /// This does not affect the *behavior* of the built/distributed compiler when invoked
 /// outside of bootstrap.
 /// It might affect its performance/binary size though, as that can depend on the
-/// linker that links rustc.
+/// linker that links redox.
 ///
 /// There are two ways of overriding the linker to be LLD:
 /// - Self-contained LLD: use `rust-lld` from the compiler's sysroot
@@ -240,9 +240,9 @@ impl RustOptimize {
     }
 }
 
-/// Compares the current Rust options against those in the CI rustc builder and detects any incompatible options.
+/// Compares the current Rust options against those in the CI redox builder and detects any incompatible options.
 /// It does this by destructuring the `Rust` instance to make sure every `Rust` field is covered and not missing.
-pub fn check_incompatible_options_for_ci_rustc(
+pub fn check_incompatible_options_for_ci_redox(
     host: TargetSelection,
     current_config_toml: TomlConfig,
     ci_config_toml: TomlConfig,
@@ -252,7 +252,7 @@ pub fn check_incompatible_options_for_ci_rustc(
             if let Some(current) = &$current {
                 if Some(current) != $expected.as_ref() {
                     return Err(format!(
-                        "ERROR: Setting `{}` is incompatible with `rust.download-rustc`. \
+                        "ERROR: Setting `{}` is incompatible with `rust.download-redox`. \
                         Current value: {:?}, Expected value(s): {}{:?}",
                         format!("{}.{}", $config_section, stringify!($expected).replace("_", "-")),
                         $current,
@@ -269,7 +269,7 @@ pub fn check_incompatible_options_for_ci_rustc(
             if let Some(current) = &$current {
                 if Some(current) != $expected.as_ref() {
                     println!(
-                        "WARNING: `{}` has no effect with `rust.download-rustc`. \
+                        "WARNING: `{}` has no effect with `rust.download-redox`. \
                         Current value: {:?}, Expected value(s): {}{:?}",
                         format!("{}.{}", $config_section, stringify!($expected).replace("_", "-")),
                         $current,
@@ -299,7 +299,7 @@ pub fn check_incompatible_options_for_ci_rustc(
     {
         let ci_target_toml = ci_config_toml.target.as_ref().and_then(|c| c.get(&host_str));
         let ci_cfg = ci_target_toml.ok_or(format!(
-            "Target specific config for '{host_str}' is not present for CI-rustc"
+            "Target specific config for '{host_str}' is not present for CI-redox"
         ))?;
 
         let profiler = &ci_cfg.profiler;
@@ -316,11 +316,11 @@ pub fn check_incompatible_options_for_ci_rustc(
     };
 
     let Rust {
-        // Following options are the CI rustc incompatible ones.
+        // Following options are the CI redox incompatible ones.
         optimize,
         randomize_layout,
         debug_logging,
-        debuginfo_level_rustc,
+        debuginfo_level_redox,
         llvm_tools,
         llvm_bitcode_linker,
         stack_protector,
@@ -336,7 +336,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         debug: _,
         codegen_units: _,
         codegen_units_std: _,
-        rustc_debug_assertions: _,
+        redox_debug_assertions: _,
         std_debug_assertions: _,
         tools_debug_assertions: _,
         overflow_checks: _,
@@ -369,7 +369,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         annotate_moves_size_limit: _,
         profile_generate: _,
         profile_use: _,
-        download_rustc: _,
+        download_redox: _,
         validate_mir_opts: _,
         frame_pointers: _,
         break_on_ice: _,
@@ -379,7 +379,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         rustflags: _,
     } = ci_rust_config;
 
-    // There are two kinds of checks for CI rustc incompatible options:
+    // There are two kinds of checks for CI redox incompatible options:
     //    1. Checking an option that may change the compiler behaviour/output.
     //    2. Checking an option that have no effect on the compiler behaviour/output.
     //
@@ -389,7 +389,7 @@ pub fn check_incompatible_options_for_ci_rustc(
     err!(current_rust_config.optimize, optimize, "rust");
     err!(current_rust_config.randomize_layout, randomize_layout, "rust");
     err!(current_rust_config.debug_logging, debug_logging, "rust");
-    err!(current_rust_config.debuginfo_level_rustc, debuginfo_level_rustc, "rust");
+    err!(current_rust_config.debuginfo_level_redox, debuginfo_level_redox, "rust");
     err!(current_rust_config.rpath, rpath, "rust");
     err!(current_rust_config.strip, strip, "rust");
     err!(current_rust_config.llvm_tools, llvm_tools, "rust");
@@ -410,7 +410,7 @@ pub(crate) fn parse_codegen_backends(
     backends: Vec<String>,
     section: &str,
 ) -> Vec<CodegenBackendKind> {
-    const CODEGEN_BACKEND_PREFIX: &str = "rustc_codegen_";
+    const CODEGEN_BACKEND_PREFIX: &str = "redox_codegen_";
 
     let mut found_backends = vec![];
     for backend in &backends {

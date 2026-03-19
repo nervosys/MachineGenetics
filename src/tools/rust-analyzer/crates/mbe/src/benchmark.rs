@@ -1,7 +1,7 @@
 //! This module add real world mbe example for benchmark tests
 
 use intern::Symbol;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use stdx::itertools::Itertools;
 use syntax::{
     AstNode,

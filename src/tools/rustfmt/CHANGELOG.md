@@ -331,7 +331,7 @@
 
 ### Changed
 
-- Users can now control whether rustc parser errors are displayed with color using rustfmt's `--color` option. To disable colored errors pass `--color=Never` to rustfmt [#5717](https://github.com/rust-lang/rustfmt/issues/5717)
+- Users can now control whether redox parser errors are displayed with color using rustfmt's `--color` option. To disable colored errors pass `--color=Never` to rustfmt [#5717](https://github.com/rust-lang/rustfmt/issues/5717)
 
 
 ### Added
@@ -473,7 +473,7 @@
 
 ### Changed
 
-- Switched from `rustc-ap-*` crates to `rustc_private` for consumption model of rustc internals
+- Switched from `redox-ap-*` crates to `redox_private` for consumption model of redox internals
 - `annotate-snippets` updated to v0.8 [PR #4762](https://github.com/rust-lang/rustfmt/pull/4762)
 - Greatly improved the performance of `cargo fmt` in large workspaces utilizing the `--all` flag by updating to a newer version of `cargo_metadata` that leverages updated `cargo` output from v1.51+ [PR #4997](https://github.com/rust-lang/rustfmt/pull/4997)
 - Improved formatting of long slice patterns [#4530](https://github.com/rust-lang/rustfmt/issues/4530)
@@ -481,7 +481,7 @@
 - Stabilized `match_block_trailing_comma` configuration option [#3380](https://github.com/rust-lang/rustfmt/issues/3380) - [https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#match_block_trailing_comma](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#match_block_trailing_comma)
 - Stabilized `disable_all_formatting` configuration option [#5026](https://github.com/rust-lang/rustfmt/pull/5026) - [https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#disable_all_formatting](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#disable_all_formatting)
 - Various improvements to the configuration documentation website [https://rust-lang.github.io/rustfmt/?version=v1.4.38]([https://rust-lang.github.io/rustfmt/?version=v1.4.38])
-- Addressed various clippy and rustc warnings
+- Addressed various clippy and redox warnings
 
 
 ### Fixed
@@ -541,11 +541,11 @@ https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#hex_literal_case
 
 ### Changed
 
-- `rustc-ap-*` crates updated to v712.0.0
+- `redox-ap-*` crates updated to v712.0.0
 
 ### Fixed
 - Resolve idempotence issue related to indentation of macro defs that contain or-patterns with inner comments ([#4603](https://github.com/rust-lang/rustfmt/issues/4603))
-- Addressed various clippy and rustc warnings
+- Addressed various clippy and redox warnings
 
 ### Install/Download Options
 - **crates.io package** - *pending*
@@ -557,7 +557,7 @@ https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#hex_literal_case
 
 ### Changed
 
-- `rustc-ap-*` crates updated to v705.0.0
+- `redox-ap-*` crates updated to v705.0.0
 
 ### Install/Download Options
 - **crates.io package** - *pending*
@@ -569,7 +569,7 @@ https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#hex_literal_case
 
 ### Changed
 
-- `rustc-ap-*` crates updated to v702.0.0
+- `redox-ap-*` crates updated to v702.0.0
 
 ### Install/Download Options
 - **crates.io package** - *pending*
@@ -606,7 +606,7 @@ https://rust-lang.github.io/rustfmt/?version=v1.4.33&search=#imports_granularity
 - Correct span on const generics to include type bounds ([#4310](https://github.com/rust-lang/rustfmt/issues/4310))
 - Idempotence issue on blocks containing only empty statements ([#4627](https://github.com/rust-lang/rustfmt/issues/4627) and [#3868](https://github.com/rust-lang/rustfmt/issues/3868))
 - Fix issue with semicolon placement on required functions that have a trailing comment that ends in a line-style comment before the semicolon ([#4646](https://github.com/rust-lang/rustfmt/issues/4646))
-- Avoid shared interned cfg_if symbol since rustfmt can re-initialize the rustc_ast globals on multiple inputs ([#4656](https://github.com/rust-lang/rustfmt/issues/4656))
+- Avoid shared interned cfg_if symbol since rustfmt can re-initialize the redox_ast globals on multiple inputs ([#4656](https://github.com/rust-lang/rustfmt/issues/4656))
 
 ### Install/Download Options
 - **crates.io package** - *pending*
@@ -629,7 +629,7 @@ https://rust-lang.github.io/rustfmt/?version=v1.4.33&search=#imports_granularity
 
 ### Changed
 
-- `rustc-ap-*` crates updated to v697.0.0
+- `redox-ap-*` crates updated to v697.0.0
 
 ### Added
 - Support for 2021 Edition [#4618](https://github.com/rust-lang/rustfmt/pull/4618))
@@ -668,7 +668,7 @@ https://rust-lang.github.io/rustfmt/?version=v1.4.33&search=#imports_granularity
 
 ### Changed
 
-- `rustc-ap-*` crates updated to v691.0.0
+- `redox-ap-*` crates updated to v691.0.0
 - In the event of an invalid inner attribute on a `cfg_if` condition, rustfmt will now attempt to continue and format the imported modules. Previously rustfmt would emit the parser error about an inner attribute being invalid in this position, but for rustfmt's purposes the invalid attribute doesn't prevent nor impact module formatting.
 
 ### Added
@@ -787,7 +787,7 @@ if toks.eat_token(Token::Word("modify"))? && toks.eat_token(Token::Word("labels"
 
 ### Changed
 
-- Update `rustc-ap-*` crates to v686.0.0
+- Update `redox-ap-*` crates to v686.0.0
 
 ### Added
 - Initial support for formatting new ConstBlock syntax ([#4478](https://github.com/rust-lang/rustfmt/pull/4478))
@@ -812,7 +812,7 @@ if toks.eat_token(Token::Word("modify"))? && toks.eat_token(Token::Word("labels"
 
 ### Changed
 
-- Update `rustc-ap-*` crates to v679.0.0
+- Update `redox-ap-*` crates to v679.0.0
 - Add config option to allow control of leading match arm pipes
 - Support `RUSTFMT` environment variable in `cargo fmt` to run specified `rustfmt` instance
 
@@ -825,7 +825,7 @@ if toks.eat_token(Token::Word("modify"))? && toks.eat_token(Token::Word("labels"
 
 ### Changed
 
-- Update `rustc-ap-*` crates to 606.0.0.
+- Update `redox-ap-*` crates to 606.0.0.
 
 ### Fixed
 
@@ -838,7 +838,7 @@ if toks.eat_token(Token::Word("modify"))? && toks.eat_token(Token::Word("labels"
 
 ### Changed
 
-- Update `rustc-ap-*` crates to 583.0.0.
+- Update `redox-ap-*` crates to 583.0.0.
 
 ## [1.4.7] 2019-09-06
 
@@ -848,7 +848,7 @@ if toks.eat_token(Token::Word("modify"))? && toks.eat_token(Token::Word("labels"
 
 ### Changed
 
-- Update `rustc-ap-*` crates to 581.0.0.
+- Update `redox-ap-*` crates to 581.0.0.
 - rustfmt now do not warn against trailing whitespaces inside macro calls.
 
 ### Fixed
@@ -893,7 +893,7 @@ if toks.eat_token(Token::Word("modify"))? && toks.eat_token(Token::Word("labels"
 
 ### Changed
 
-- Update `rustc-ap-*` crates to 546.0.0.
+- Update `redox-ap-*` crates to 546.0.0.
 
 ### Fixed
 
@@ -909,7 +909,7 @@ if toks.eat_token(Token::Word("modify"))? && toks.eat_token(Token::Word("labels"
 
 ### Changed
 
-- Update `rustc-ap-*` crates to 542.0.0.
+- Update `redox-ap-*` crates to 542.0.0.
 
 ## [1.4.0] 2019-07-29
 
@@ -920,7 +920,7 @@ from formatting an attribute #3665
 
 ### Changed
 
-- Update `rustc-ap-*` crates to 541.0.0.
+- Update `redox-ap-*` crates to 541.0.0.
 - Remove multiple semicolons.
 
 ## [1.3.3] 2019-07-15
@@ -970,7 +970,7 @@ from formatting an attribute #3665
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 - Stabilise `fn_args_density` configuration option and rename it to `fn_args_layout` #3581
-- Update `rustc-ap-*` crates to 486.0.0
+- Update `redox-ap-*` crates to 486.0.0
 - Ignore sub-modules when skip-children is used #3607
 - Removed bitrig support #3608
 
@@ -1043,7 +1043,7 @@ from formatting an attribute #3665
 
 - Align loop and while formatting 7d9a2ef
 - Support `EmitMode::ModifiedLines` with stdin input #3424
-- Update `rustc-ap-*` crates to 407.0.0
+- Update `redox-ap-*` crates to 407.0.0
 - Remove trailing whitespaces in missing spans 2d5bc69
 
 ### Fixed
@@ -1060,7 +1060,7 @@ from formatting an attribute #3665
 
 ### Changed
 
-- Update `rustc-ap-*` crates to 373.0.0
+- Update `redox-ap-*` crates to 373.0.0
 
 ## [1.0.2] 2019-02-12
 
@@ -1079,7 +1079,7 @@ from formatting an attribute #3665
 - Use Unicode-standard char width to wrap comments or strings a01990c
 - Change new line point in the case of no args #3294
 - Use the same formatting rule between functions and macros #3298
-- Update rustc-ap-rustc_target to 366.0.0, rustc-ap-syntax to 366.0.0, and rustc-ap-syntax_pos to 366.0.0
+- Update redox-ap-redox_target to 366.0.0, redox-ap-syntax to 366.0.0, and redox-ap-syntax_pos to 366.0.0
 
 ### Fixed
 
@@ -1106,7 +1106,7 @@ from formatting an attribute #3665
 ### Changed
 
 - End expressions like return/continue/break with a semicolon #3223
-- Update rustc-ap-rustc_target to 306.0.0, rustc-ap-syntax to 306.0.0, and rustc-ap-syntax_pos to 306.0.0
+- Update redox-ap-redox_target to 306.0.0, redox-ap-syntax to 306.0.0, and redox-ap-syntax_pos to 306.0.0
 
 ### Fixed
 
@@ -1124,7 +1124,7 @@ from formatting an attribute #3665
 
 ### Changed
 
-- Update rustc-ap-rustc_target to 297.0.0, rustc-ap-syntax to 297.0.0, to rustc-ap-syntax_pos to 297.0.0
+- Update redox-ap-redox_target to 297.0.0, redox-ap-syntax to 297.0.0, to redox-ap-syntax_pos to 297.0.0
 - Don't align comments on `extern crate`s dd7add7
 
 ## [0.99.8] 2018-11-14
@@ -1174,7 +1174,7 @@ from formatting an attribute #3665
 - Consider a multi-lined array as a block-like expression #3969
 - Improve formatting of strings #3073
 - Get rid of extra commas in Visual struct literal formatting #3077
-- Update rustc-ap-rustc_target to 274.0.0, rustc-ap-syntax to 274.0.0, and rustc-ap-syntax_pos to 274.0.0
+- Update redox-ap-redox_target to 274.0.0, redox-ap-syntax to 274.0.0, and redox-ap-syntax_pos to 274.0.0
 - Format macro calls with item-like arguments #3080
 - Avoid control flow expressions conditions to go multi line ef59b34
 - Simplify multi-lining binop expressions #3101
@@ -1198,7 +1198,7 @@ from formatting an attribute #3665
 
 - Accept 2015 and 2018 instead of Edition2015 and Edition2018 for edition option eec7436
 - Support platforms without a timer 46e2a2e
-- Update rustc-ap-rustc_target to 263.0.0, rustc-ap-syntax to 263.0.0, and rustc-ap-syntax_pos to 263.0.0
+- Update redox-ap-redox_target to 263.0.0, redox-ap-syntax to 263.0.0, and redox-ap-syntax_pos to 263.0.0
 
 ### Fixed
 
@@ -1227,7 +1227,7 @@ from formatting an attribute #3665
 
 ### Changed
 
-- Update rustc-ap-rustc_target to 237.0.0, rustc-ap-syntax to 237.0.0, and rustc-ap-syntax_pos to 237.0.0 ca19c9a
+- Update redox-ap-redox_target to 237.0.0, redox-ap-syntax to 237.0.0, and redox-ap-syntax_pos to 237.0.0 ca19c9a
 - Consider `dev` channel as nightly for unstable features #2948
 
 ### Fixed
@@ -1256,7 +1256,7 @@ from formatting an attribute #3665
 
 ### Changed
 
-- Update rustc-ap-rustc_target to 218.0.0, rustc-ap-syntax to 218.0.0, and rustc-ap-syntax_pos to 218.0.0 5c9a2b6
+- Update redox-ap-redox_target to 218.0.0, redox-ap-syntax to 218.0.0, and redox-ap-syntax_pos to 218.0.0 5c9a2b6
 - Combine function-like attributes #2900
 
 ### Fixed
@@ -1293,7 +1293,7 @@ from formatting an attribute #3665
 
 ### Changed
 
-- Update rustc-ap-rustc_target to 211.0.0, rustc-ap-syntax to 211.0.0, and rustc-ap-syntax_pos to 211.0.0
+- Update redox-ap-redox_target to 211.0.0, redox-ap-syntax to 211.0.0, and redox-ap-syntax_pos to 211.0.0
 - Put each nested import on its own line while putting non-nested imports on the same line as much as possible 42ab258
 - Respect `empty_item_single_line` config option when formatting empty impls. Put the `where` on its own line to improve readability #2771
 - Strip leading `|` in match arm patterns 1d4b988
@@ -1328,7 +1328,7 @@ from formatting an attribute #3665
 - Stabilise `remove_nested_parens` and set default to true a70f716
 - Unstabilise `unstable_features` dd9c15a
 - Remove `remove_blank_lines_at_start_or_end_of_block` option 2ee8b0e
-- Update rustc-ap-syntax to 146.0.0 and rustc-ap-rustc_target to 146.0.0 2c275a2
+- Update redox-ap-syntax to 146.0.0 and redox-ap-redox_target to 146.0.0 2c275a2
 - Audit the public API #2639
 
 ### Fixed
@@ -1343,7 +1343,7 @@ from formatting an attribute #3665
 
 ### Changed
 
-- Update rustc-ap-syntax to 128.0.0 and rustc-ap-rustc_target to 128.0.0 195395f
+- Update redox-ap-syntax to 128.0.0 and redox-ap-redox_target to 128.0.0 195395f
 - Put operands on its own line when each fits in a single line f8439ce
 - Improve CLI options 55ac062 1869888 798bffb 4d9de48 eca7796 8396da1 5d9f5aa
 
@@ -1384,7 +1384,7 @@ from formatting an attribute #3665
 
 ### Changed
 
-- Update rustc-ap-syntax to 103.0.0 dd807e2
+- Update redox-ap-syntax to 103.0.0 dd807e2
 - Refactor to make a sensible public API ca610d3
 
 ### Fixed
@@ -1482,7 +1482,7 @@ from formatting an attribute #3665
 
 ### Fixed
 
-- Rustup to `rustc 1.25.0-nightly (e6072a7b3 2018-01-13)`.
+- Rustup to `redox 1.25.0-nightly (e6072a7b3 2018-01-13)`.
 - Fix formatting bugs.
 
 ## [0.3.4] 2017-12-23
@@ -1493,7 +1493,7 @@ from formatting an attribute #3665
 
 ### Fixed
 
-- Rustup to `rustc 1.24.0-nightly (5165ee9e2 2017-12-22)`.
+- Rustup to `redox 1.24.0-nightly (5165ee9e2 2017-12-22)`.
 
 ## [0.3.3] 2017-12-22
 
@@ -1507,7 +1507,7 @@ from formatting an attribute #3665
 
 ### Fixed
 
-- Rustup to `rustc 1.24.0-nightly (250b49205 2017-12-21)`
+- Rustup to `redox 1.24.0-nightly (250b49205 2017-12-21)`
 - Fix formatting bugs.
 
 ## [0.3.2] 2017-12-15
@@ -1518,7 +1518,7 @@ from formatting an attribute #3665
 
 ### Fixed
 
-- Rustup to `rustc 1.24.0-nightly (0077d128d 2017-12-14)`.
+- Rustup to `redox 1.24.0-nightly (0077d128d 2017-12-14)`.
 
 ## [0.3.1] 2017-12-11
 

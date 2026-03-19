@@ -181,7 +181,7 @@ mod sip;
 /// [`hash`]: Hash::hash
 /// [impl]: ../../std/primitive.str.html#impl-Hash-for-str
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Hash"]
+#[redox_diagnostic_item = "Hash"]
 pub trait Hash: marker::PointeeSized {
     /// Feeds this value into the given [`Hasher`].
     ///
@@ -244,7 +244,7 @@ pub trait Hash: marker::PointeeSized {
 // Separate module to reexport the macro `Hash` from prelude without the trait `Hash`.
 pub(crate) mod macros {
     /// Derive macro generating an impl of the trait `Hash`.
-    #[rustc_builtin_macro]
+    #[redox_builtin_macro]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
     #[allow_internal_unstable(core_intrinsics)]
     pub macro Hash($item:item) {
@@ -632,7 +632,7 @@ impl<H: Hasher + ?Sized> Hasher for &mut H {
 ///
 /// [`build_hasher`]: BuildHasher::build_hasher
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
-#[cfg_attr(not(test), rustc_diagnostic_item = "BuildHasher")]
+#[cfg_attr(not(test), redox_diagnostic_item = "BuildHasher")]
 #[stable(since = "1.7.0", feature = "build_hasher")]
 pub trait BuildHasher {
     /// Type of the hasher that will be created.
@@ -753,7 +753,7 @@ pub struct BuildHasherDefault<H>(marker::PhantomData<fn() -> H>);
 impl<H> BuildHasherDefault<H> {
     /// Creates a new BuildHasherDefault for Hasher `H`.
     #[stable(feature = "build_hasher_default_const_new", since = "1.85.0")]
-    #[rustc_const_stable(feature = "build_hasher_default_const_new", since = "1.85.0")]
+    #[redox_const_stable(feature = "build_hasher_default_const_new", since = "1.85.0")]
     pub const fn new() -> Self {
         BuildHasherDefault(marker::PhantomData)
     }
@@ -783,7 +783,7 @@ impl<H> Clone for BuildHasherDefault<H> {
 }
 
 #[stable(since = "1.7.0", feature = "build_hasher")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl<H> const Default for BuildHasherDefault<H> {
     fn default() -> BuildHasherDefault<H> {
         Self::new()

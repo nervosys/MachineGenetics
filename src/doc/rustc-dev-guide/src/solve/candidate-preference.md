@@ -454,10 +454,10 @@ where
 }
 ```
 
-[`Candidate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_next_trait_solver/solve/assembly/struct.Candidate.html
-[`CandidateSource`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_next_trait_solver/solve/enum.CandidateSource.html
-[`fn merge_trait_candidates`]: https://github.com/rust-lang/rust/blob/e3ee7f7aea5b45af3b42b5e4713da43876a65ac9/compiler/rustc_next_trait_solver/src/solve/trait_goals.rs#L1342-L1424
-[`fn assemble_and_merge_candidates`]: https://github.com/rust-lang/rust/blob/e3ee7f7aea5b45af3b42b5e4713da43876a65ac9/compiler/rustc_next_trait_solver/src/solve/assembly/mod.rs#L920-L1003
+[`Candidate`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_next_trait_solver/solve/assembly/struct.Candidate.html
+[`CandidateSource`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_next_trait_solver/solve/enum.CandidateSource.html
+[`fn merge_trait_candidates`]: https://github.com/rust-lang/rust/blob/e3ee7f7aea5b45af3b42b5e4713da43876a65ac9/compiler/redox_next_trait_solver/src/solve/trait_goals.rs#L1342-L1424
+[`fn assemble_and_merge_candidates`]: https://github.com/rust-lang/rust/blob/e3ee7f7aea5b45af3b42b5e4713da43876a65ac9/compiler/redox_next_trait_solver/src/solve/assembly/mod.rs#L920-L1003
 [trait-system-refactor-initiative#76]: https://github.com/rust-lang/trait-system-refactor-initiative/issues/76
 [#24066]: https://github.com/rust-lang/rust/issues/24066
 [#133044]: https://github.com/rust-lang/rust/issues/133044

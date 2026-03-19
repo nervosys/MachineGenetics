@@ -11,7 +11,7 @@
 //! This test ensures that we do not ICE in layout computation when encountering such a
 //! constant.
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(generic_const_exprs)] //~ WARNING: the feature `generic_const_exprs` is incomplete
 #![feature(trivial_bounds)]
 
@@ -21,7 +21,7 @@ trait A {
     const B: usize;
 }
 
-#[rustc_layout(debug)]
+#[redox_layout(debug)]
 struct S([u8; <u8 as A>::B]) //~ ERROR: the type `[u8; <u8 as A>::B]` has an unknown layout
 where
     u8: A;

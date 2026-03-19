@@ -8,11 +8,11 @@ use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{can_mut_borrow_both, fn_def_id, get_parent_expr};
 use core::ops::ControlFlow;
 use itertools::Itertools;
-use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{BindingMode, Expr, ExprKind, Node, PatKind};
-use rustc_lint::LateContext;
-use rustc_span::{Symbol, sym};
+use redox_errors::Applicability;
+use redox_hir::def_id::DefId;
+use redox_hir::{BindingMode, Expr, ExprKind, Node, PatKind};
+use redox_lint::LateContext;
+use redox_span::{Symbol, sym};
 
 use super::UNNECESSARY_TO_OWNED;
 

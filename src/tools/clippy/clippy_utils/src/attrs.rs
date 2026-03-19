@@ -2,14 +2,14 @@
 
 use crate::source::SpanRangeExt;
 use crate::{sym, tokenize_with_text};
-use rustc_ast::attr::AttributeExt;
-use rustc_errors::Applicability;
-use rustc_hir::find_attr;
-use rustc_lexer::TokenKind;
-use rustc_lint::LateContext;
-use rustc_middle::ty::{AdtDef, TyCtxt};
-use rustc_session::Session;
-use rustc_span::{Span, Symbol};
+use redox_ast::attr::AttributeExt;
+use redox_errors::Applicability;
+use redox_hir::find_attr;
+use redox_lexer::TokenKind;
+use redox_lint::LateContext;
+use redox_middle::ty::{AdtDef, TyCtxt};
+use redox_session::Session;
+use redox_span::{Span, Symbol};
 use std::str::FromStr;
 
 /// Given `attrs`, extract all the instances of a built-in Clippy attribute called `name`

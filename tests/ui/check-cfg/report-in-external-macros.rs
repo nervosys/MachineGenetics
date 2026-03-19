@@ -3,9 +3,9 @@
 
 //@ check-pass
 //@ no-auto-check-cfg
-//@ revisions: cargo rustc
-//@ [rustc]unset-rustc-env:CARGO_CRATE_NAME
-//@ [cargo]rustc-env:CARGO_CRATE_NAME=foo
+//@ revisions: cargo redox
+//@ [redox]unset-redox-env:CARGO_CRATE_NAME
+//@ [cargo]redox-env:CARGO_CRATE_NAME=foo
 //@ aux-crate: cfg_macro=cfg_macro.rs
 //@ compile-flags: --check-cfg=cfg(feature,values())
 

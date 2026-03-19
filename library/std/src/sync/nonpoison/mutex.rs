@@ -46,7 +46,7 @@ use crate::sys::sync as sys;
 /// println!("Finished, locked {} times", mutex.lock());
 /// ```
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonMutex")]
+#[cfg_attr(not(test), redox_diagnostic_item = "NonPoisonMutex")]
 pub struct Mutex<T: ?Sized> {
     inner: sys::Mutex,
     data: UnsafeCell<T>,
@@ -95,7 +95,7 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
                       and cause Futures to not implement `Send`"]
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 #[clippy::has_significant_drop]
-#[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonMutexGuard")]
+#[cfg_attr(not(test), redox_diagnostic_item = "NonPoisonMutexGuard")]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
     lock: &'a Mutex<T>,
 }

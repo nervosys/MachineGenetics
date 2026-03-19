@@ -1,7 +1,7 @@
 //! Lowering of inline assembly.
 use hir_expand::name::Name;
 use intern::Symbol;
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use syntax::{
     AstNode, AstPtr, AstToken, T,
     ast::{self, HasName, IsString},
@@ -204,12 +204,12 @@ impl ExprCollector<'_> {
                         None => None,
                     };
 
-                    let mut parser = rustc_parse_format::Parser::new(
+                    let mut parser = redox_parse_format::Parser::new(
                         &text,
                         str_style,
                         template_snippet,
                         false,
-                        rustc_parse_format::ParseMode::InlineAsm,
+                        redox_parse_format::ParseMode::InlineAsm,
                     );
                     parser.curarg = curarg;
 
@@ -234,13 +234,13 @@ impl ExprCollector<'_> {
                     };
                     for piece in unverified_pieces {
                         match piece {
-                            rustc_parse_format::Piece::Lit(_) => {}
-                            rustc_parse_format::Piece::NextArgument(arg) => {
+                            redox_parse_format::Piece::Lit(_) => {}
+                            redox_parse_format::Piece::NextArgument(arg) => {
                                 // let span = arg_spans.next();
 
                                 let (operand_idx, _name) = match arg.position {
-                                    rustc_parse_format::ArgumentIs(idx)
-                                    | rustc_parse_format::ArgumentImplicitlyIs(idx) => {
+                                    redox_parse_format::ArgumentIs(idx)
+                                    | redox_parse_format::ArgumentImplicitlyIs(idx) => {
                                         if idx >= operands.len()
                                             || named_pos.contains_key(&idx)
                                             || reg_args.contains(&idx)
@@ -250,7 +250,7 @@ impl ExprCollector<'_> {
                                             (Some(idx), None)
                                         }
                                     }
-                                    rustc_parse_format::ArgumentNamed(name) => {
+                                    redox_parse_format::ArgumentNamed(name) => {
                                         let name = Symbol::intern(name);
                                         (
                                             named_args.get(&name).copied(),

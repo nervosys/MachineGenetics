@@ -6,16 +6,16 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, std_or_core, sym};
 use itertools::Itertools;
 
-use rustc_data_structures::fx::FxIndexSet;
-use rustc_hir::intravisit::{Visitor, walk_expr};
+use redox_data_structures::fx::FxIndexSet;
+use redox_hir::intravisit::{Visitor, walk_expr};
 
-use rustc_errors::Applicability;
-use rustc_hir::{AssignOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Spanned, SyntaxContext};
+use redox_errors::Applicability;
+use redox_hir::{AssignOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty;
+use redox_session::declare_lint_pass;
+use redox_span::symbol::Ident;
+use redox_span::{Span, Spanned, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -432,7 +432,7 @@ struct IndexBindingVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for IndexBindingVisitor {
-    fn visit_path_segment(&mut self, path_segment: &'tcx rustc_hir::PathSegment<'tcx>) -> Self::Result {
+    fn visit_path_segment(&mut self, path_segment: &'tcx redox_hir::PathSegment<'tcx>) -> Self::Result {
         if path_segment.ident == self.idx {
             self.found_used = true;
         }

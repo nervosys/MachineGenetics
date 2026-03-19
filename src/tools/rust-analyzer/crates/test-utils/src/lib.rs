@@ -24,7 +24,7 @@ use stdx::is_ci;
 use text_size::{TextRange, TextSize};
 
 pub use dissimilar::diff as __diff;
-pub use rustc_hash::FxHashMap;
+pub use redox_hash::FxHashMap;
 
 pub use crate::{
     assert_linear::AssertLinear,

@@ -81,9 +81,9 @@ pub struct Flags {
     /// include default paths in addition to the provided ones
     pub include_default_paths: bool,
 
-    /// rustc error format
+    /// redox error format
     #[arg(global = true, value_hint = clap::ValueHint::Other, long)]
-    pub rustc_error_format: Option<String>,
+    pub redox_error_format: Option<String>,
 
     #[arg(global = true, long, value_hint = clap::ValueHint::CommandString, value_name = "CMD")]
     /// command to run on failure
@@ -96,7 +96,7 @@ pub struct Flags {
     pub dump_bootstrap_shims: bool,
     #[arg(global = true, value_hint = clap::ValueHint::Other, long, value_name = "N")]
     /// stage to build (indicates compiler to use/test, e.g., stage 0 uses the
-    /// bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)
+    /// bootstrap compiler, stage 1 the stage 0 redox artifacts, etc.)
     pub stage: Option<u32>,
 
     #[arg(global = true, value_hint = clap::ValueHint::Other, long, value_name = "N")]
@@ -138,7 +138,7 @@ pub struct Flags {
 
     #[arg(global = true, long, value_name = "STYLE")]
     #[arg(value_enum, default_value_t = Color::Auto)]
-    /// whether to use color in cargo and rustc output
+    /// whether to use color in cargo and redox output
     pub color: Color,
 
     #[arg(global = true, long)]
@@ -148,10 +148,10 @@ pub struct Flags {
     /// Unless you know exactly what you are doing, you probably don't need this.
     pub bypass_bootstrap_lock: bool,
 
-    /// generate PGO profile with rustc build
+    /// generate PGO profile with redox build
     #[arg(global = true, value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
     pub rust_profile_generate: Option<String>,
-    /// use PGO profile for rustc build
+    /// use PGO profile for redox build
     #[arg(global = true, value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
     pub rust_profile_use: Option<String>,
     /// use PGO profile for LLVM build
@@ -161,7 +161,7 @@ pub struct Flags {
     // information.
     //
     // llvm_out/build/profiles/ is the location this writes to.
-    /// generate PGO profile with llvm built for rustc
+    /// generate PGO profile with llvm built for redox
     #[arg(global = true, long)]
     pub llvm_profile_generate: bool,
     /// Enable BOLT link flags
@@ -185,11 +185,11 @@ pub struct Flags {
     /// Make bootstrap to behave as it's running on the CI environment or not.
     #[arg(global = true, long, value_name = "bool")]
     pub ci: Option<bool>,
-    /// Skip checking the standard library if `rust.download-rustc` isn't available.
+    /// Skip checking the standard library if `rust.download-redox` isn't available.
     /// This is mostly for RA as building the stage1 compiler to check the library tree
     /// on each code change might be too much for some computers.
     #[arg(global = true, long)]
-    pub skip_std_check_if_no_download_rustc: bool,
+    pub skip_std_check_if_no_download_redox: bool,
 }
 
 impl Flags {
@@ -360,7 +360,7 @@ pub enum Subcommand {
             ./x.py test library/std --stage 0 --all-targets
             ./x.py test tests/ui --bless
             ./x.py test tests/ui --compare-mode next-solver
-        Note that `test tests/* --stage N` does NOT depend on `build compiler/rustc --stage N`;
+        Note that `test tests/* --stage N` does NOT depend on `build compiler/redox --stage N`;
         just like `build library/std --stage N` it tests the compiler produced by the previous
         stage.
         Execute tool tests with a tool name argument:
@@ -380,7 +380,7 @@ pub enum Subcommand {
         test_args: Vec<String>,
         /// extra options to pass the compiler when running compiletest tests
         #[arg(long, value_name = "ARGS", allow_hyphen_values(true))]
-        compiletest_rustc_args: Vec<String>,
+        compiletest_redox_args: Vec<String>,
         #[arg(long)]
         /// Run all test targets (no doc tests)
         all_targets: bool,
@@ -550,10 +550,10 @@ impl Subcommand {
         }
     }
 
-    pub fn compiletest_rustc_args(&self) -> Vec<&str> {
+    pub fn compiletest_redox_args(&self) -> Vec<&str> {
         match *self {
-            Subcommand::Test { ref compiletest_rustc_args, .. } => {
-                compiletest_rustc_args.iter().flat_map(|s| s.split_whitespace()).collect()
+            Subcommand::Test { ref compiletest_redox_args, .. } => {
+                compiletest_redox_args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
             _ => vec![],
         }

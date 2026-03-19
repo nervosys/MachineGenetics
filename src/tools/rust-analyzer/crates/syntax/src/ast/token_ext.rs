@@ -3,7 +3,7 @@
 use std::ops::Range;
 use std::{borrow::Cow, num::ParseIntError};
 
-use rustc_literal_escaper::{
+use redox_literal_escaper::{
     EscapeError, MixedUnit, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char,
     unescape_str,
 };
@@ -545,7 +545,7 @@ impl IsString for AnyString {
 
 #[cfg(test)]
 mod tests {
-    use rustc_apfloat::ieee::Quad as f128;
+    use redox_apfloat::ieee::Quad as f128;
 
     use crate::ast::{self, FloatNumber, IntNumber, make};
 

@@ -4,8 +4,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::{alloc, slice};
 
-use rustc_abi::{Align, Size};
-use rustc_middle::mir::interpret::AllocBytes;
+use redox_abi::{Align, Size};
+use redox_middle::mir::interpret::AllocBytes;
 
 use crate::alloc::isolated_alloc::IsolatedAlloc;
 use crate::helpers::ToU64 as _;

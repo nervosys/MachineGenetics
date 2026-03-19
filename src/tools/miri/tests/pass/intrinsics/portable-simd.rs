@@ -3,7 +3,7 @@
     portable_simd,
     unsized_const_params,
     adt_const_params,
-    rustc_attrs,
+    redox_attrs,
     intrinsics,
     core_intrinsics,
     repr_simd,
@@ -60,8 +60,8 @@ impl<T: Copy, const N: usize> PackedSimd<T, N> {
     }
 }
 
-#[rustc_intrinsic]
-#[rustc_nounwind]
+#[redox_intrinsic]
+#[redox_nounwind]
 pub const unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
 
 fn simd_ops_f16() {

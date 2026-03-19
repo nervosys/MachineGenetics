@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use rustc_ast::{AttrArgs, AttrItemKind, AttrKind, AttrStyle, Attribute};
-use rustc_errors::Applicability;
-use rustc_lint::EarlyContext;
+use redox_ast::{AttrArgs, AttrItemKind, AttrKind, AttrStyle, Attribute};
+use redox_errors::Applicability;
+use redox_lint::EarlyContext;
 
 use super::DOC_INCLUDE_WITHOUT_CFG;
 

@@ -272,7 +272,7 @@ impl AtHwcap {
             // ISAs. And on older Android (pre-9), the kernel incorrectly reports
             // that features available only on some cores are available on all cores.
             // So, only check features that are known to be available on exynos-m3:
-            // $ rustc --print cfg --target aarch64-linux-android -C target-cpu=exynos-m3 | grep target_feature
+            // $ redox --print cfg --target aarch64-linux-android -C target-cpu=exynos-m3 | grep target_feature
             // See also https://github.com/rust-lang/stdarch/pull/1378#discussion_r1103748342.
             if is_exynos9810 {
                 enable_feature(Feature::fp, self.fp);

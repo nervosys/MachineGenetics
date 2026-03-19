@@ -6,12 +6,12 @@
 // checks that linker arguments remain intact and in the order they were originally passed in.
 // See https://github.com/rust-lang/rust/pull/70665
 
-use run_make_support::{is_windows_msvc, rustc};
+use run_make_support::{is_windows_msvc, redox};
 
 fn main() {
     let linker = if is_windows_msvc() { "msvc" } else { "ld" };
 
-    rustc()
+    redox()
         .input("empty.rs")
         .linker_flavor(linker)
         .link_arg("a")
@@ -21,7 +21,7 @@ fn main() {
         .arg("--print=link-args")
         .run_fail()
         .assert_stdout_contains(r#""a" "b" "c" "d" "e" "f""#);
-    rustc()
+    redox()
         .input("empty.rs")
         .linker_flavor(linker)
         .arg("-Zpre-link-arg=a")

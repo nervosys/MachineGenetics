@@ -50,7 +50,7 @@ Even small typos or grammar mistakes can make you seem more human, and people co
 
 ### Experts
 
-Not all `t-compiler` members are experts on all parts of `rustc`;
+Not all `t-compiler` members are experts on all parts of `redox`;
 it's a pretty large project.
 To find out who could have some expertise on
 different parts of the compiler, [consult triagebot assign groups][map].
@@ -59,7 +59,7 @@ But also, feel free to ask questions even if you can't figure out who to ping.
 
 Another way to find experts for a given part of the compiler is to see who has made recent commits.
 For example, to find people who have recently worked on name resolution since the 1.68.2 release,
-you could run `git shortlog -n 1.68.2.. compiler/rustc_resolve/`.
+you could run `git shortlog -n 1.68.2.. compiler/redox_resolve/`.
 Ignore any commits starting with
 "Rollup merge" or commits by `@bors` (see [CI contribution procedures](./contributing.md#ci) for
 more information about these commits).

@@ -9,29 +9,29 @@
 //@ ignore-cross-compile
 //@ needs-unwind
 
-use run_make_support::{run, run_fail, rustc};
+use run_make_support::{run, run_fail, redox};
 
 fn main() {
-    rustc().input("debug.rs").arg("-Cdebug-assertions=no").run();
+    redox().input("debug.rs").arg("-Cdebug-assertions=no").run();
     run("debug");
-    rustc().input("debug.rs").opt_level("0").run();
+    redox().input("debug.rs").opt_level("0").run();
     run_fail("debug");
-    rustc().input("debug.rs").opt_level("1").run();
+    redox().input("debug.rs").opt_level("1").run();
     run("debug");
-    rustc().input("debug.rs").opt_level("2").run();
+    redox().input("debug.rs").opt_level("2").run();
     run("debug");
-    rustc().input("debug.rs").opt_level("3").run();
+    redox().input("debug.rs").opt_level("3").run();
     run("debug");
-    rustc().input("debug.rs").opt_level("s").run();
+    redox().input("debug.rs").opt_level("s").run();
     run("debug");
-    rustc().input("debug.rs").opt_level("z").run();
+    redox().input("debug.rs").opt_level("z").run();
     run("debug");
-    rustc().input("debug.rs").opt().run();
+    redox().input("debug.rs").opt().run();
     run("debug");
-    rustc().input("debug.rs").run();
+    redox().input("debug.rs").run();
     run_fail("debug");
-    rustc().input("debug.rs").opt().arg("-Cdebug-assertions=yes").run();
+    redox().input("debug.rs").opt().arg("-Cdebug-assertions=yes").run();
     run_fail("debug");
-    rustc().input("debug.rs").opt_level("1").arg("-Cdebug-assertions=yes").run();
+    redox().input("debug.rs").opt_level("1").arg("-Cdebug-assertions=yes").run();
     run_fail("debug");
 }

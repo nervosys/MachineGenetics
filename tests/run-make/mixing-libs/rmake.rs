@@ -6,16 +6,16 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{dynamic_lib_name, rfs, rustc};
+use run_make_support::{dynamic_lib_name, rfs, redox};
 
 fn main() {
-    rustc().input("rlib.rs").crate_type("rlib").crate_type("dylib").run();
+    redox().input("rlib.rs").crate_type("rlib").crate_type("dylib").run();
 
     // Not putting `-C prefer-dynamic` here allows for static linking of librlib.rlib.
-    rustc().input("dylib.rs").run();
+    redox().input("dylib.rs").run();
 
     // librlib's dynamic version needs to be removed here to prevent prog.rs from fetching
     // the wrong one.
     rfs::remove_file(dynamic_lib_name("rlib"));
-    rustc().input("prog.rs").run_fail();
+    redox().input("prog.rs").run_fail();
 }

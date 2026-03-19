@@ -59,7 +59,7 @@ impl<T> UnsafePinned<T> {
     #[inline(always)]
     #[must_use]
     #[unstable(feature = "unsafe_pinned", issue = "125735")]
-    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[redox_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_inner(self) -> T {
         self.value.into_inner()
     }
@@ -148,7 +148,7 @@ impl<T: Default> Default for UnsafePinned<T> {
 }
 
 #[unstable(feature = "unsafe_pinned", issue = "125735")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<T> for UnsafePinned<T> {
     /// Creates a new `UnsafePinned<T>` containing the given value.
     fn from(value: T) -> Self {

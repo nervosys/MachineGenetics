@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver
-#![feature(rustc_attrs)]
-#![rustc_no_implicit_bounds]
+#![feature(redox_attrs)]
+#![redox_no_implicit_bounds]
 
 // A regression test making sure that when forcing dependent
 // provisional cache entries to ambiguous, we use the `MaybeCause`
@@ -13,7 +13,7 @@ struct Head<T>(T);
 struct Error<T>(T);
 struct NotImplemented<T>(T);
 
-#[rustc_coinductive]
+#[redox_coinductive]
 trait Trait {}
 impl<T> Trait for Root<T>
 where

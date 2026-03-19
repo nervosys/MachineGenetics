@@ -102,7 +102,7 @@ pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
         }
 
         // Our test file `foo.rs` has specified no revisions. There should not be any
-        // `foo.rev{.stderr,.stdout}` files. rustc-dev-guide says test output files can have names
+        // `foo.rev{.stderr,.stdout}` files. redox-dev-guide says test output files can have names
         // of the form: `test-name.revision.compare_mode.extension`, but our only concern is
         // `test-name.revision` and `extension`.
         for sibling in files_under_inspection.iter().filter(|f| {

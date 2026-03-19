@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{HirId, Impl, ItemKind, Node, Path, QPath, TraitRef, TyKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{AssocItem, AssocKind};
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use redox_data_structures::fx::FxHashMap;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::{HirId, Impl, ItemKind, Node, Path, QPath, TraitRef, TyKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty::{AssocItem, AssocKind};
+use redox_session::declare_lint_pass;
+use redox_span::Span;
+use redox_span::symbol::Symbol;
 use std::collections::{BTreeMap, BTreeSet};
 
 declare_clippy_lint! {
@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                             && let Res::Def(DefKind::Trait, did) = path.res
                         {
                             // FIXME: if
-                            // `rustc_middle::ty::assoc::AssocItems::items` is public,
+                            // `redox_middle::ty::assoc::AssocItems::items` is public,
                             // we can iterate its keys instead of `in_definition_order`,
                             // which's more efficient
                             cx.tcx

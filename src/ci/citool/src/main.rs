@@ -246,7 +246,7 @@ enum Args {
         /// Path to a CSV containing the CI job CPU usage.
         cpu_usage_csv: PathBuf,
     },
-    /// Generate a report of test execution changes between two rustc commits.
+    /// Generate a report of test execution changes between two redox commits.
     PostMergeReport {
         /// Parent commit to use as a base of the comparison.
         parent: String,

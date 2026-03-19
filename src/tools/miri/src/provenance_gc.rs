@@ -1,5 +1,5 @@
-use rustc_data_structures::either::Either;
-use rustc_data_structures::fx::FxHashSet;
+use redox_data_structures::either::Either;
+use redox_data_structures::fx::FxHashSet;
 
 use crate::*;
 

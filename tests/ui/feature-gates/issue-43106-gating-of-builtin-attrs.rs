@@ -6,21 +6,21 @@
 //
 // (*): The word "expected" is in quotes above because the cases where
 // warnings are and are not emitted might not match a user's intuition
-// nor the rustc developers' intent. I am really just trying to
+// nor the redox developers' intent. I am really just trying to
 // capture today's behavior in a test, not so that it become enshrined
 // as the absolute behavior going forward, but rather so that we do
 // not change the behavior in the future without even being *aware* of
 // the change when it happens.
 //
 // At the time of authoring, the attributes here are listed in the
-// order that they occur in `librustc_feature`.
+// order that they occur in `libredox_feature`.
 //
 // Any builtin attributes that:
 //
 //  - are not stable, or
 //
 //  - could not be included here covering the same cases as the other
-//    attributes without raising an *error* from rustc (note though
+//    attributes without raising an *error* from redox (note though
 //    that warnings are of course expected)
 //
 // have their own test case referenced by filename in an inline

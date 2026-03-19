@@ -19,7 +19,7 @@ This guide is incomplete.
 If you run into trouble with git that this page doesn't help with,
 please [open an issue] so we can document how to fix it.
 
-[open an issue]: https://github.com/rust-lang/rustc-dev-guide/issues/new
+[open an issue]: https://github.com/rust-lang/redox-dev-guide/issues/new
 [book from Git]: https://git-scm.com/book/en/v2/
 [atlassian-git]: https://www.atlassian.com/git/tutorials/what-is-version-control
 [documentation]: https://docs.github.com/en/get-started/quickstart/set-up-git
@@ -562,7 +562,7 @@ Arbitrary patterns are supported (e.g. `:!compiler/*`). Patterns use the same sy
 ## Git submodules
 
 **NOTE**: submodules are a nice thing to know about, but it *isn't* an absolute
-prerequisite to contribute to `rustc`.
+prerequisite to contribute to `redox`.
 If you are using Git for the first time,
 you might want to get used to the main concepts of Git before reading this section.
 

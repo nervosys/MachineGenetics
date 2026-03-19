@@ -1,23 +1,23 @@
 #![feature(intrinsics)]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 unsafe fn size_of<T>() -> usize;
 //~^ ERROR intrinsic safety mismatch
 //~| ERROR intrinsic has wrong type
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 const fn assume(_b: bool) {}
 //~^ ERROR intrinsic safety mismatch
 //~| ERROR intrinsic has wrong type
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 const fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
 //~^ ERROR intrinsic safety mismatch
 //~| ERROR intrinsic has wrong type
 
 mod foo {
-    #[rustc_intrinsic]
+    #[redox_intrinsic]
     unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
 }
 

@@ -22,7 +22,7 @@ fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
     core::intrinsics::abort(); //~ERROR: aborted
 }
 
-// rustc requires us to provide some more things that aren't actually used by this test
+// redox requires us to provide some more things that aren't actually used by this test
 mod plumbing {
     use super::*;
 

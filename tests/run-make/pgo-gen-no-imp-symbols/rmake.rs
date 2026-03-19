@@ -9,10 +9,10 @@
 // anomalous __imp_ stubs.
 // See https://github.com/rust-lang/rust/pull/59812
 
-use run_make_support::{cwd, rfs, rustc};
+use run_make_support::{cwd, rfs, redox};
 
 fn main() {
-    rustc()
+    redox()
         .input("test.rs")
         .emit("llvm-ir")
         .opt()

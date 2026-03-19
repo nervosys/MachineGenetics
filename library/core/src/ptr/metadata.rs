@@ -54,8 +54,8 @@ use crate::ptr::NonNull;
 ///
 /// [`to_raw_parts`]: *const::to_raw_parts
 #[lang = "pointee_trait"]
-#[rustc_deny_explicit_impl]
-#[rustc_dyn_incompatible_trait]
+#[redox_deny_explicit_impl]
+#[redox_dyn_incompatible_trait]
 pub trait Pointee: PointeeSized {
     /// The type for metadata in pointers and references to `Self`.
     #[lang = "metadata_type"]
@@ -170,7 +170,7 @@ unsafe extern "C" {
 }
 
 impl<Dyn: PointeeSized> DynMetadata<Dyn> {
-    /// When `DynMetadata` appears as the metadata field of a wide pointer, the rustc_middle layout
+    /// When `DynMetadata` appears as the metadata field of a wide pointer, the redox_middle layout
     /// computation does magic and the resulting layout is *not* a `FieldsShape::Aggregate`, instead
     /// it is a `FieldsShape::Primitive`. This means that the same type can have different layout
     /// depending on whether it appears as the metadata field of a wide pointer or as a stand-alone

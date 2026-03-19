@@ -11,11 +11,11 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{build_native_static_lib, cc, is_windows_msvc, llvm_ar, run, rustc};
+use run_make_support::{build_native_static_lib, cc, is_windows_msvc, llvm_ar, run, redox};
 
 fn main() {
     build_native_static_lib("test");
-    rustc().arg("-Zbranch-protection=bti,gcs,pac-ret,leaf").input("test.rs").run();
+    redox().arg("-Zbranch-protection=bti,gcs,pac-ret,leaf").input("test.rs").run();
     run("test");
     cc().arg("-v")
         .arg("-c")
@@ -25,7 +25,7 @@ fn main() {
         .run();
     let obj_file = if is_windows_msvc() { "test.obj" } else { "test" };
     llvm_ar().obj_to_ar().output_input("libtest.a", &obj_file).run();
-    rustc().arg("-Zbranch-protection=bti,gcs,pac-ret,leaf").input("test.rs").run();
+    redox().arg("-Zbranch-protection=bti,gcs,pac-ret,leaf").input("test.rs").run();
     run("test");
 
     // FIXME: +pc was only recently added to LLVM
@@ -37,6 +37,6 @@ fn main() {
     //     .run();
     // let obj_file = if is_windows_msvc() { "test.obj" } else { "test" };
     // llvm_ar().obj_to_ar().output_input("libtest.a", &obj_file).run();
-    // rustc().arg("-Zbranch-protection=bti,pac-ret,pc,leaf").input("test.rs").run();
+    // redox().arg("-Zbranch-protection=bti,pac-ret,pc,leaf").input("test.rs").run();
     // run("test");
 }

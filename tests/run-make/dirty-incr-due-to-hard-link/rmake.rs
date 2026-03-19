@@ -7,26 +7,26 @@
 // across incremental sessions that are not finalized due to errors originating from the
 // codegen backend.
 
-use run_make_support::{run, rustc};
+use run_make_support::{run, redox};
 
 fn main() {
-    let mk_rustc = || {
-        let mut rustc = rustc();
-        rustc.input("test.rs").incremental("incr").arg("-Csave-temps").output("test");
-        rustc
+    let mk_redox = || {
+        let mut redox = redox();
+        redox.input("test.rs").incremental("incr").arg("-Csave-temps").output("test");
+        redox
     };
 
     // Revision 1
-    mk_rustc().cfg("rpass1").run();
+    mk_redox().cfg("rpass1").run();
 
     run("test");
 
     // Revision 2
-    mk_rustc().cfg("cfail2").run_fail();
+    mk_redox().cfg("cfail2").run_fail();
     // Expected to fail.
 
     // Revision 3
-    mk_rustc().cfg("rpass3").run();
+    mk_redox().cfg("rpass3").run();
 
     run("test");
 }

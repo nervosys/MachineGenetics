@@ -4,7 +4,7 @@
 // same pointer for upcasting (e.g. `Send`/`Sync`)
 
 #![crate_type = "lib"]
-#![feature(rustc_attrs, auto_traits)]
+#![feature(redox_attrs, auto_traits)]
 
 // Markers
 auto trait M0 {}
@@ -31,19 +31,19 @@ impl M1 for S {}
 impl M2 for S {}
 impl T for S {}
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl A for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl B for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl C for S {}
 //~^ ERROR vtable entries
 
-#[rustc_dump_vtable]
+#[redox_dump_vtable]
 impl D for S {}
 //~^ ERROR vtable entries
 

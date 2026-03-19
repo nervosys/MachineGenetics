@@ -41,7 +41,7 @@ other distribution which has a basic m68k cross-toolchain available.
 
 ## Testing
 
-Currently there is no support to run the rustc test suite for this target.
+Currently there is no support to run the redox test suite for this target.
 
 ## Building Rust programs
 

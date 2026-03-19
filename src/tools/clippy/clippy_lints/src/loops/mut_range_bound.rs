@@ -2,13 +2,13 @@ use super::MUT_RANGE_BOUND;
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::{get_enclosing_block, higher};
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{BindingMode, Expr, ExprKind, HirId, Node, PatKind};
-use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
-use rustc_lint::LateContext;
-use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty;
-use rustc_span::Span;
+use redox_hir::intravisit::{self, Visitor};
+use redox_hir::{BindingMode, Expr, ExprKind, HirId, Node, PatKind};
+use redox_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
+use redox_lint::LateContext;
+use redox_middle::mir::FakeReadCause;
+use redox_middle::ty;
+use redox_span::Span;
 use std::ops::ControlFlow;
 
 pub(super) fn check(cx: &LateContext<'_>, arg: &Expr<'_>, body: &Expr<'_>) {

@@ -6,12 +6,12 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
 use clippy_utils::sym;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, QPath, RustcVersion};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{self, TyCtxt, UintTy};
-use rustc_session::impl_lint_pass;
-use rustc_span::Symbol;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind, QPath, RustcVersion};
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty::{self, TyCtxt, UintTy};
+use redox_session::impl_lint_pass;
+use redox_span::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -148,7 +148,7 @@ struct Unit {
     /// The increase factor over the previous (smaller) unit
     factor: u16,
 
-    /// In what rustc version stable support for this constructor was added.
+    /// In what redox version stable support for this constructor was added.
     /// We do not need to track the version stable support in const contexts was added, as the const
     /// stabilization was done in an ascending order of the time unites, so it's always valid to
     /// promote a const constructor.

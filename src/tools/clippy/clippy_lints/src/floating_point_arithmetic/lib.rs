@@ -1,9 +1,9 @@
 use clippy_utils::sugg::Sugg;
-use rustc_ast::ast;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, UnOp};
-use rustc_lint::LateContext;
-use rustc_middle::ty;
+use redox_ast::ast;
+use redox_errors::Applicability;
+use redox_hir::{Expr, ExprKind, UnOp};
+use redox_lint::LateContext;
+use redox_middle::ty;
 
 // Adds type suffixes and parenthesis to method receivers if necessary
 pub(super) fn prepare_receiver_sugg<'a>(

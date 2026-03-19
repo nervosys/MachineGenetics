@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{SpanlessEq, eq_expr_value, hash_expr, search_same};
-use rustc_hir::Expr;
-use rustc_lint::LateContext;
+use redox_hir::Expr;
+use redox_lint::LateContext;
 
 use super::SAME_FUNCTIONS_IN_IF_CONDITION;
 

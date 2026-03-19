@@ -8,7 +8,7 @@
 //! ## `rustc-hash`
 //!
 //! We expose a `rustc-hash` feature, disabled by default. This feature switches the
-//! [`std::collections::HashMap`] for [`rustc_hash::FxHashMap`] to improve the performance of said
+//! [`std::collections::HashMap`] for [`redox_hash::FxHashMap`] to improve the performance of said
 //! `HashMap` in specific situations.
 //!
 //! `cargo-semver-checks` for example, saw a [-3% improvement][1] when benchmarking using the
@@ -97,7 +97,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[cfg(feature = "rustc-hash")]
-use rustc_hash::FxHashMap as HashMap;
+use redox_hash::FxHashMap as HashMap;
 use serde_derive::{Deserialize, Serialize};
 
 pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
@@ -199,8 +199,8 @@ pub struct TargetFeature {
     /// Target features can also be globally enabled explicitly as a result of compiler flags like
     /// [`-Ctarget-feature`][1] or [`-Ctarget-cpu`][2].
     ///
-    /// [1]: https://doc.rust-lang.org/beta/rustc/codegen-options/index.html#target-feature
-    /// [2]: https://doc.rust-lang.org/beta/rustc/codegen-options/index.html#target-cpu
+    /// [1]: https://doc.rust-lang.org/beta/redox/codegen-options/index.html#target-feature
+    /// [2]: https://doc.rust-lang.org/beta/redox/codegen-options/index.html#target-cpu
     pub globally_enabled: bool,
 }
 
@@ -224,7 +224,7 @@ pub struct ExternalCrate {
     /// A path from where this crate was loaded.
     ///
     /// This will typically be a `.rlib` or `.rmeta`. It can be used to determine which crate
-    /// this was in terms of whatever build-system invoked rustc.
+    /// this was in terms of whatever build-system invoked redox.
     #[cfg_attr(feature = "rkyv_0_8", rkyv(with = rkyv::with::AsString))]
     pub path: PathBuf,
 }
@@ -1080,7 +1080,7 @@ pub struct FunctionHeader {
 #[cfg_attr(feature = "rkyv_0_8", rkyv(derive(Debug)))]
 pub enum Abi {
     // We only have a concrete listing here for stable ABI's because there are so many
-    // See rustc_ast_passes::feature_gate::PostExpansionVisitor::check_abi for the list
+    // See redox_ast_passes::feature_gate::PostExpansionVisitor::check_abi for the list
     /// The default ABI, but that can also be written explicitly with `extern "Rust"`.
     Rust,
     /// Can be specified as `extern "C"` or, as a shorthand, just `extern`.

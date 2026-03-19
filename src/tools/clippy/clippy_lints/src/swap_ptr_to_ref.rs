@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_with_context;
-use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::{Span, SyntaxContext, sym};
+use redox_errors::Applicability;
+use redox_hir::{BorrowKind, Expr, ExprKind, Mutability, UnOp};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::{Span, SyntaxContext, sym};
 
 declare_clippy_lint! {
     /// ### What it does

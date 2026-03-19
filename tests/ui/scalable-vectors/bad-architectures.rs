@@ -6,8 +6,8 @@
 // (see #153593)
 
 #![crate_type = "lib"]
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_scalable_vector(4)]
+#[redox_scalable_vector(4)]
 //~^ ERROR: scalable vectors are not supported on this architecture
 struct ScalableVec(i32);

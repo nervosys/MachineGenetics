@@ -79,7 +79,7 @@ fn foo(Foo { x, y }: Foo) {
 ## The algorithm
 
 Exhaustiveness checking is run before MIR building in [`check_match`].
-It is implemented in the [`rustc_pattern_analysis`] crate,
+It is implemented in the [`redox_pattern_analysis`] crate,
 with the core of the algorithm in the [`usefulness`] module.
 That file contains a detailed description of the algorithm.
 
@@ -210,9 +210,9 @@ above considerations. On stable, empty types are for the most part treated as no
 reachable in unsafe situations. The [`never_patterns`] experimental feature aims to fix this and
 permit the correct behavior of empty types in patterns.
 
-[`check_match`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/pattern/check_match/index.html
-[`rustc_pattern_analysis`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_pattern_analysis/index.html
-[`usefulness`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_pattern_analysis/usefulness/index.html
-[`constructor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_pattern_analysis/constructor/index.html
+[`check_match`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_build/thir/pattern/check_match/index.html
+[`redox_pattern_analysis`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_pattern_analysis/index.html
+[`usefulness`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_pattern_analysis/usefulness/index.html
+[`constructor`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_pattern_analysis/constructor/index.html
 [`never_patterns`]: https://github.com/rust-lang/rust/issues/118155
 [`exhaustive_patterns`]: https://github.com/rust-lang/rust/issues/51085

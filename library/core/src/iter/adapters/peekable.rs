@@ -13,7 +13,7 @@ use crate::ops::{ControlFlow, Try};
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "IterPeekable"]
+#[redox_diagnostic_item = "IterPeekable"]
 pub struct Peekable<I: Iterator> {
     iter: I,
     /// Remember a peeked value, even if it was None.
@@ -43,7 +43,7 @@ impl<I: Iterator> Iterator for Peekable<I> {
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
+    #[redox_inherit_overflow_checks]
     fn count(mut self) -> usize {
         match self.peeked.take() {
             Some(None) => 0,

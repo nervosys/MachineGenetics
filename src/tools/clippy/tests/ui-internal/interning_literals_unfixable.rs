@@ -1,9 +1,9 @@
 //@no-rustfix: paths that don't exist yet
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_span;
+extern crate redox_span;
 
-use rustc_span::Symbol;
+use redox_span::Symbol;
 
 fn main() {
     // Not yet defined

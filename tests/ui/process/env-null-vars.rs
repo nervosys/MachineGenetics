@@ -2,7 +2,7 @@
 // Regression test for rust-lang/rust#53200
 //@ run-pass
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 // FIXME: more platforms?
 #[cfg(target_os = "linux")]

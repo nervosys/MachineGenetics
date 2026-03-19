@@ -7,7 +7,7 @@
 #![feature(iter_partition_in_place)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(never_type)]
-#![feature(rustc_private)]
+#![feature(redox_private)]
 #![feature(stmt_expr_attributes)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
@@ -22,30 +22,30 @@
     rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications,
-    rustc::internal
+    redox::internal
 )]
 
-extern crate rustc_abi;
-extern crate rustc_arena;
-extern crate rustc_ast;
-extern crate rustc_ast_pretty;
-extern crate rustc_data_structures;
-extern crate rustc_errors;
-extern crate rustc_hir;
-extern crate rustc_hir_analysis;
-extern crate rustc_hir_pretty;
-extern crate rustc_hir_typeck;
-extern crate rustc_index;
-extern crate rustc_infer;
-extern crate rustc_lexer;
-extern crate rustc_lint;
-extern crate rustc_middle;
-extern crate rustc_parse_format;
-extern crate rustc_resolve;
-extern crate rustc_session;
-extern crate rustc_span;
-extern crate rustc_target;
-extern crate rustc_trait_selection;
+extern crate redox_abi;
+extern crate redox_arena;
+extern crate redox_ast;
+extern crate redox_ast_pretty;
+extern crate redox_data_structures;
+extern crate redox_errors;
+extern crate redox_hir;
+extern crate redox_hir_analysis;
+extern crate redox_hir_pretty;
+extern crate redox_hir_typeck;
+extern crate redox_index;
+extern crate redox_infer;
+extern crate redox_lexer;
+extern crate redox_lint;
+extern crate redox_middle;
+extern crate redox_parse_format;
+extern crate redox_resolve;
+extern crate redox_session;
+extern crate redox_span;
+extern crate redox_target;
+extern crate redox_trait_selection;
 
 #[macro_use]
 extern crate clippy_utils;
@@ -405,10 +405,10 @@ mod zombie_processes;
 
 use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync;
-use rustc_lint::{EarlyLintPass, LateLintPass, Lint};
-use rustc_middle::ty::TyCtxt;
+use redox_data_structures::fx::FxHashSet;
+use redox_data_structures::sync;
+use redox_lint::{EarlyLintPass, LateLintPass, Lint};
+use redox_middle::ty::TyCtxt;
 use utils::attr_collector::{AttrCollector, AttrStorage};
 
 pub fn explain(name: &str) -> i32 {
@@ -433,11 +433,11 @@ pub fn explain(name: &str) -> i32 {
     }
 }
 
-/// Register all lints and lint groups with the rustc lint store
+/// Register all lints and lint groups with the redox lint store
 ///
 /// Used in `./src/driver.rs`.
 #[expect(clippy::too_many_lines)]
-pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
+pub fn register_lint_passes(store: &mut redox_lint::LintStore, conf: &'static Conf) {
     for (old_name, new_name) in deprecated_lints::RENAMED {
         store.register_renamed(old_name, new_name);
     }

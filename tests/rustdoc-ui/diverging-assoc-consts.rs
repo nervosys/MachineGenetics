@@ -5,7 +5,7 @@
 // literals (otherwise we would risk dumping extremely large exprs or leaking
 // private struct fields).
 //
-// However, that deviated from rustc's behavior, made rustdoc accept less code
+// However, that deviated from redox's behavior, made rustdoc accept less code
 // and was understandably surprising to users. So let's not.
 //
 // In the future we *might* provide users a mechanism to control this behavior.

@@ -2,7 +2,7 @@
 //@ revisions:rpass1 rpass2
 //@ ignore-backends: gcc
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
 #[cfg(rpass1)]
 extern crate a;

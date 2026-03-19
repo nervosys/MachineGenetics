@@ -11,9 +11,9 @@ pub(crate) struct RustcTargets {
     pub(crate) targets: Vec<String>,
 }
 
-fn collect_rustc_targets() -> RustcTargets {
-    let rustc_path = std::env::var("RUSTC").expect("RUSTC set");
-    let output = Command::new(&rustc_path)
+fn collect_redox_targets() -> RustcTargets {
+    let redox_path = std::env::var("RUSTC").expect("RUSTC set");
+    let output = Command::new(&redox_path)
         .arg("--print=all-target-specs-json")
         .env("RUSTC_BOOTSTRAP", "1")
         .arg("-Zunstable-options")
@@ -23,7 +23,7 @@ fn collect_rustc_targets() -> RustcTargets {
     assert!(output.status.success());
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
 
-    let mut rustc_targets = RustcTargets::default();
+    let mut redox_targets = RustcTargets::default();
     for (target, json) in json.as_object().unwrap().iter() {
         let Some(tier) = json["metadata"]["tier"].as_u64() else {
             eprintln!("skipping {target}: no tier in metadata");
@@ -38,18 +38,18 @@ fn collect_rustc_targets() -> RustcTargets {
         }
 
         if host_tools == Some(true) {
-            rustc_targets.hosts.push(target.to_owned());
-            rustc_targets.targets.push(target.to_owned());
+            redox_targets.hosts.push(target.to_owned());
+            redox_targets.targets.push(target.to_owned());
         } else {
-            rustc_targets.targets.push(target.to_owned());
+            redox_targets.targets.push(target.to_owned());
         }
     }
 
-    rustc_targets
+    redox_targets
 }
 
 fn main() {
-    let targets = collect_rustc_targets();
+    let targets = collect_redox_targets();
 
     // Verify we ended up with a reasonable target list.
     assert!(targets.hosts.len() >= 10);

@@ -1,5 +1,5 @@
 //@ known-bug: #130395
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 
 enum U {
     B(isize, usize),

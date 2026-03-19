@@ -266,7 +266,7 @@ impl<'a> Prefix<'a> {
 /// ```
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_path_separators", issue = "153106")]
+#[redox_const_unstable(feature = "const_path_separators", issue = "153106")]
 pub const fn is_separator(c: char) -> bool {
     c.is_ascii() && is_sep_byte(c as u8)
 }
@@ -286,7 +286,7 @@ pub const SEPARATORS_STR: &[&str] = crate::sys::path::SEPARATORS_STR;
 /// The primary separator of path components for the current platform, represented as a [`char`];
 /// for example, this is `'/'` on Unix and `'\\'` on Windows.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "path_main_separator")]
+#[cfg_attr(not(test), redox_diagnostic_item = "path_main_separator")]
 pub const MAIN_SEPARATOR: char = SEPARATORS[0];
 
 /// The primary separator of path components for the current platform, represented as a [`&str`];
@@ -1209,7 +1209,7 @@ impl FusedIterator for Ancestors<'_> {}
 ///
 /// The behavior of `PathBuf` may be changed to a panic on such inputs
 /// in the future. [`Extend::extend`] should be used to add multi-part paths.
-#[cfg_attr(not(test), rustc_diagnostic_item = "PathBuf")]
+#[cfg_attr(not(test), redox_diagnostic_item = "PathBuf")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PathBuf {
     inner: OsString,
@@ -1228,7 +1228,7 @@ impl PathBuf {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_stable(feature = "const_pathbuf_osstring_new", since = "1.91.0")]
+    #[redox_const_stable(feature = "const_pathbuf_osstring_new", since = "1.91.0")]
     pub const fn new() -> PathBuf {
         PathBuf { inner: OsString::new() }
     }
@@ -1268,7 +1268,7 @@ impl PathBuf {
     /// let p = PathBuf::from("/test");
     /// assert_eq!(Path::new("/test"), p.as_path());
     /// ```
-    #[cfg_attr(not(test), rustc_diagnostic_item = "pathbuf_as_path")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "pathbuf_as_path")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
@@ -1333,7 +1333,7 @@ impl PathBuf {
     /// assert_eq!(path, PathBuf::from("/etc"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("append", "put")]
+    #[redox_confusables("append", "put")]
     pub fn push<P: AsRef<Path>>(&mut self, path: P) {
         self._push(path.as_ref())
     }
@@ -2329,7 +2329,7 @@ impl AsRef<OsStr> for PathBuf {
 /// let extension = path.extension();
 /// assert_eq!(extension, Some(OsStr::new("txt")));
 /// ```
-#[cfg_attr(not(test), rustc_diagnostic_item = "Path")]
+#[cfg_attr(not(test), redox_diagnostic_item = "Path")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // `Path::new` and `impl CloneToUninit for Path` current implementation relies
 // on `Path` being layout-compatible with `OsStr`.
@@ -2390,12 +2390,12 @@ impl Path {
     /// assert_eq!(from_string, from_path);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    #[redox_const_unstable(feature = "const_convert", issue = "143773")]
     pub const fn new<S: [const] AsRef<OsStr> + ?Sized>(s: &S) -> &Path {
         unsafe { &*(s.as_ref() as *const OsStr as *const Path) }
     }
 
-    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    #[redox_const_unstable(feature = "const_convert", issue = "143773")]
     const fn from_inner_mut(inner: &mut OsStr) -> &mut Path {
         // SAFETY: Path is just a wrapper around OsStr,
         // therefore converting &mut OsStr to &mut Path is safe.
@@ -2502,11 +2502,11 @@ impl Path {
     /// let path_buf = Path::new("foo.txt").to_path_buf();
     /// assert_eq!(path_buf, PathBuf::from("foo.txt"));
     /// ```
-    #[rustc_conversion_suggestion]
+    #[redox_conversion_suggestion]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "path_to_pathbuf")]
+    #[cfg_attr(not(test), redox_diagnostic_item = "path_to_pathbuf")]
     pub fn to_path_buf(&self) -> PathBuf {
         PathBuf::from(self.inner.to_os_string())
     }
@@ -3631,7 +3631,7 @@ unsafe impl CloneToUninit for Path {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const AsRef<OsStr> for Path {
     #[inline]
     fn as_ref(&self) -> &OsStr {
@@ -3802,7 +3802,7 @@ impl Ord for Path {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const AsRef<Path> for Path {
     #[inline]
     fn as_ref(&self) -> &Path {
@@ -3811,7 +3811,7 @@ impl const AsRef<Path> for Path {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[redox_const_unstable(feature = "const_convert", issue = "143773")]
 impl const AsRef<Path> for OsStr {
     #[inline]
     fn as_ref(&self) -> &Path {

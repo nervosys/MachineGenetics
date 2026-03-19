@@ -5,7 +5,7 @@
 //@ ignore-tvos execvp is prohibited
 //@ ignore-watchos execvp is prohibited
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
 extern crate libc;
 

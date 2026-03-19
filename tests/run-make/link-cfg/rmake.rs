@@ -14,31 +14,31 @@
 // Reason: the compiled binary is executed
 //@ needs-llvm-components: x86
 
-use run_make_support::{bare_rustc, build_native_dynamic_lib, build_native_static_lib, run, rustc};
+use run_make_support::{bare_redox, build_native_dynamic_lib, build_native_static_lib, run, redox};
 
 fn main() {
     build_native_dynamic_lib("return1");
     build_native_dynamic_lib("return2");
     build_native_static_lib("return3");
-    bare_rustc()
+    bare_redox()
         .print("cfg")
         .target("x86_64-unknown-linux-musl")
         .run()
         .assert_stdout_contains("crt-static");
-    rustc().input("no-deps.rs").cfg("foo").run();
+    redox().input("no-deps.rs").cfg("foo").run();
     run("no-deps");
-    rustc().input("no-deps.rs").cfg("bar").run();
+    redox().input("no-deps.rs").cfg("bar").run();
     run("no-deps");
 
-    rustc().input("dep.rs").run();
-    rustc().input("with-deps.rs").cfg("foo").run();
+    redox().input("dep.rs").run();
+    redox().input("with-deps.rs").cfg("foo").run();
     run("with-deps");
-    rustc().input("with-deps.rs").cfg("bar").run();
+    redox().input("with-deps.rs").cfg("bar").run();
     run("with-deps");
 
-    rustc().input("dep-with-staticlib.rs").run();
-    rustc().input("with-staticlib-deps.rs").cfg("foo").run();
+    redox().input("dep-with-staticlib.rs").run();
+    redox().input("with-staticlib-deps.rs").cfg("foo").run();
     run("with-staticlib-deps");
-    rustc().input("with-staticlib-deps.rs").cfg("bar").run();
+    redox().input("with-staticlib-deps.rs").cfg("bar").run();
     run("with-staticlib-deps");
 }

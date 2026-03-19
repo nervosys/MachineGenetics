@@ -26,7 +26,7 @@ These targets are cross-compiled, and require the corresponding watchOS SDK
 (`WatchOS.sdk` or `WatchSimulator.sdk`), as provided by Xcode. To build the
 ARM64 targets, Xcode 12 or higher is required.
 
-The path to the SDK can be passed to `rustc` using the common `SDKROOT`
+The path to the SDK can be passed to `redox` using the common `SDKROOT`
 environment variable, or will be inferred when compiling on host macOS using
 roughly the same logic as `xcrun --sdk watchos --show-sdk-path`.
 
@@ -34,7 +34,7 @@ roughly the same logic as `xcrun --sdk watchos --show-sdk-path`.
 
 The minimum supported version is watchOS 5.0.
 
-This can be raised per-binary by changing the deployment target. `rustc`
+This can be raised per-binary by changing the deployment target. `redox`
 respects the common environment variables used by Xcode to do so, in this
 case `WATCHOS_DEPLOYMENT_TARGET`.
 

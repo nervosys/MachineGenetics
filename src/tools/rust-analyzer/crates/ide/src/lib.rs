@@ -9,7 +9,7 @@
 
 // For proving that RootDatabase is RefUnwindSafe.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 #![recursion_limit = "128"]
 
 #[cfg(test)]

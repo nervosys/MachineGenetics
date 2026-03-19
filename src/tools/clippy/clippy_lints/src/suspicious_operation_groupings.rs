@@ -2,14 +2,14 @@ use clippy_utils::ast_utils::{IdentIter, eq_id, is_useless_with_eq_exprs};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use core::ops::{Add, AddAssign};
-use rustc_ast::ast::{BinOpKind, Expr, ExprKind, StmtKind};
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::Span;
-use rustc_span::Spanned;
-use rustc_span::symbol::Ident;
+use redox_ast::ast::{BinOpKind, Expr, ExprKind, StmtKind};
+use redox_data_structures::fx::FxHashSet;
+use redox_errors::Applicability;
+use redox_lint::{EarlyContext, EarlyLintPass};
+use redox_session::declare_lint_pass;
+use redox_span::Span;
+use redox_span::Spanned;
+use redox_span::symbol::Ident;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -506,7 +506,7 @@ fn ident_difference_expr_with_base_location(
     // return because if without that restriction the lint would lead to false
     // positives.
     //
-    // But, we cannot (easily?) use a `rustc_ast::visit::Visitor`, since we need
+    // But, we cannot (easily?) use a `redox_ast::visit::Visitor`, since we need
     // the two expressions to be walked in lockstep. And without a `Visitor`, we'd
     // have to do all the AST traversal ourselves, which is a lot of work, since to
     // do it properly we'd need to be able to handle more or less every possible

@@ -6,7 +6,7 @@ use std::cmp::{self, Ordering};
 use hir_def::{attrs::AttrFlags, signatures::FunctionSignature};
 use hir_expand::name::Name;
 use intern::sym;
-use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike, Ty as _};
+use redox_type_ir::inherent::{AdtDef, IntoKind, SliceLike, Ty as _};
 use stdx::never;
 
 use crate::{
@@ -239,7 +239,7 @@ impl<'db> Evaluator<'db> {
             {
                 let [size, align] = args else {
                     return Err(MirEvalError::InternalError(
-                        "rustc_allocator args are not provided".into(),
+                        "redox_allocator args are not provided".into(),
                     ));
                 };
                 let size = from_bytes!(usize, size.get(self)?);
@@ -251,7 +251,7 @@ impl<'db> Evaluator<'db> {
             _ if alloc_fn.contains(AttrFlags::RUSTC_REALLOCATOR) => {
                 let [ptr, old_size, align, new_size] = args else {
                     return Err(MirEvalError::InternalError(
-                        "rustc_allocator args are not provided".into(),
+                        "redox_allocator args are not provided".into(),
                     ));
                 };
                 let old_size = from_bytes!(usize, old_size.get(self)?);
@@ -278,7 +278,7 @@ impl<'db> Evaluator<'db> {
         let attrs = AttrFlags::query(self.db, def.into());
 
         if attrs.contains(AttrFlags::RUSTC_CONST_PANIC_STR) {
-            // `#[rustc_const_panic_str]` is treated like `lang = "begin_panic"` by rustc CTFE.
+            // `#[redox_const_panic_str]` is treated like `lang = "begin_panic"` by redox CTFE.
             return Some(BeginPanic);
         }
 
@@ -1041,8 +1041,8 @@ impl<'db> Evaluator<'db> {
                     };
                     if !matches!(
                         ty1.kind(),
-                        TyKind::Int(rustc_type_ir::IntTy::Isize)
-                            | TyKind::Uint(rustc_type_ir::UintTy::Usize)
+                        TyKind::Int(redox_type_ir::IntTy::Isize)
+                            | TyKind::Uint(redox_type_ir::UintTy::Usize)
                     ) {
                         return Err(MirEvalError::InternalError(
                             "offset generic arg is not usize or isize".into(),

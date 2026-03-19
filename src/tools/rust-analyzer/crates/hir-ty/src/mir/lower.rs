@@ -17,9 +17,9 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
-use rustc_apfloat::Float;
-use rustc_hash::FxHashMap;
-use rustc_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
+use redox_apfloat::Float;
+use redox_hash::FxHashMap;
+use redox_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
 use span::{Edition, FileId};
 use syntax::TextRange;
 use triomphe::Arc;
@@ -438,7 +438,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         else {
             return Ok(None);
         };
-        let bk = BorrowKind::from_rustc(m);
+        let bk = BorrowKind::from_redox(m);
         self.push_assignment(current, place, Rvalue::Ref(bk, p), expr_id.into());
         Ok(Some(current))
     }
@@ -973,8 +973,8 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 let Some((it, current)) = self.lower_expr_to_some_operand(*expr, current)? else {
                     return Ok(None);
                 };
-                // Since we don't have THIR, this is the "zipped" version of [rustc's HIR lowering](https://github.com/rust-lang/rust/blob/e71f9529121ca8f687e4b725e3c9adc3f1ebab4d/compiler/rustc_mir_build/src/thir/cx/expr.rs#L165-L178)
-                // and [THIR lowering as RValue](https://github.com/rust-lang/rust/blob/a4601859ae3875732797873612d424976d9e3dd0/compiler/rustc_mir_build/src/build/expr/as_rvalue.rs#L193-L313)
+                // Since we don't have THIR, this is the "zipped" version of [redox's HIR lowering](https://github.com/rust-lang/rust/blob/e71f9529121ca8f687e4b725e3c9adc3f1ebab4d/compiler/redox_mir_build/src/thir/cx/expr.rs#L165-L178)
+                // and [THIR lowering as RValue](https://github.com/rust-lang/rust/blob/a4601859ae3875732797873612d424976d9e3dd0/compiler/redox_mir_build/src/build/expr/as_rvalue.rs#L193-L313)
                 let rvalue = if self.infer.coercion_casts.contains(expr) {
                     Rvalue::Use(it)
                 } else {
@@ -1694,8 +1694,8 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         match &self.discr_temp {
             Some(it) => *it,
             None => {
-                // FIXME: rustc's ty is dependent on the adt type, maybe we need to do that as well
-                let discr_ty = Ty::new_int(self.interner(), rustc_type_ir::IntTy::I128);
+                // FIXME: redox's ty is dependent on the adt type, maybe we need to do that as well
+                let discr_ty = Ty::new_int(self.interner(), redox_type_ir::IntTy::I128);
                 let tmp: Place = self
                     .temp(discr_ty, current, MirSpan::Unknown)
                     .expect("discr_ty is never unsized")

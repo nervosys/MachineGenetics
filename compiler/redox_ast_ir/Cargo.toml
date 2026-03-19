@@ -1,0 +1,23 @@
+[package]
+name = "redox_ast_ir"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+redox_data_structures = { path = "../redox_data_structures", optional = true }
+redox_macros = { path = "../redox_macros", optional = true }
+redox_serialize = { path = "../redox_serialize", optional = true }
+redox_span = { path = "../redox_span", optional = true }
+# tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+default = ["nightly"]
+nightly = [
+    "dep:redox_data_structures",
+    "dep:redox_macros",
+    "dep:redox_serialize",
+    "dep:redox_span",
+]
+# tidy-alphabetical-end

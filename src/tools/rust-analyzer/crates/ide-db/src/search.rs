@@ -16,7 +16,7 @@ use hir::{
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
-use rustc_hash::{FxHashMap, FxHashSet};
+use redox_hash::{FxHashMap, FxHashSet};
 use salsa::Database;
 use syntax::{
     AstNode, AstToken, SmolStr, SyntaxElement, SyntaxNode, TextRange, TextSize, ToSmolStr,

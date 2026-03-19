@@ -10,9 +10,9 @@
 // See https://github.com/rust-lang/rust/issues/46515
 // CHECK-LABEL: @check_no_escape_in_landingpad
 // CHECK: start:
-// CHECK-NEXT: ; call __rustc::__rust_no_alloc_shim_is_unstable_v2
+// CHECK-NEXT: ; call __redox::__rust_no_alloc_shim_is_unstable_v2
 // CHECK-NEXT: tail call void @[[NO_ALLOC_SHIM:_R.+__rust_no_alloc_shim_is_unstable_v2]]()
-// CHECK-NEXT: ; call __rustc::__rust_no_alloc_shim_is_unstable_v2
+// CHECK-NEXT: ; call __redox::__rust_no_alloc_shim_is_unstable_v2
 // CHECK-NEXT: tail call void @[[NO_ALLOC_SHIM]]()
 // CHECK-NEXT: ret void
 #[no_mangle]

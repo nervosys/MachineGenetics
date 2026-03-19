@@ -6,10 +6,10 @@
 // a specific expected string.
 // See https://github.com/rust-lang/rust/pull/105481
 
-use run_make_support::{cwd, rfs, rustc};
+use run_make_support::{cwd, rfs, redox};
 
 fn main() {
-    rustc()
+    redox()
         .crate_type("lib")
         .input("foo.rs")
         .arg(format!("-Zdump-mono-stats={}", cwd().display()))

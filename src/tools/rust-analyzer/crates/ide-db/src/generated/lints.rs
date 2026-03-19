@@ -2033,7 +2033,7 @@ pub fn call_nonsecure_function(addr: usize) -> u32 {
 ```
 
 ``` text
-$ rustc --emit asm --crate-type lib --target thumbv8m.main-none-eabi function.rs
+$ redox --emit asm --crate-type lib --target thumbv8m.main-none-eabi function.rs
 
 call_nonsecure_function:
         .fnstart
@@ -2161,7 +2161,7 @@ pub fn device_function() {
 ```
 
 ``` text
-$ xargo rustc --target nvptx64-nvidia-cuda --release -- --emit=asm
+$ xargo redox --target nvptx64-nvidia-cuda --release -- --emit=asm
 
 $ cat $(find -name '*.s')
 //
@@ -4174,7 +4174,7 @@ pub extern "C-cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
 ```
 
 ``` text
-$ rustc --emit obj --crate-type lib --target thumbv8m.main-none-eabi function.rs
+$ redox --emit obj --crate-type lib --target thumbv8m.main-none-eabi function.rs
 $ arm-none-eabi-objdump -D function.o
 
 00000000 <entry_function>:
@@ -7037,7 +7037,7 @@ by the codegen backend, but not the MIR inliner.
 #![feature(intrinsics)]
 #![allow(internal_features)]
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
 ```
 
@@ -7047,11 +7047,11 @@ Since these are just regular functions, it is perfectly ok to create the intrins
 #![feature(intrinsics)]
 #![allow(internal_features)]
 
-#[rustc_intrinsic]
+#[redox_intrinsic]
 const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
 
 mod foo {
-    #[rustc_intrinsic]
+    #[redox_intrinsic]
     const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {
         panic!("noisy const dealloc")
     }
@@ -7069,18 +7069,18 @@ Various intrinsics have native MIR operations that they correspond to. Instead o
 backends to implement both the intrinsic and the MIR operation, the `lower_intrinsics` pass
 will convert the calls to the MIR operation. Backends do not need to know about these intrinsics
 at all. These intrinsics only make sense without a body, and can either be declared as a "rust-intrinsic"
-or as a `#[rustc_intrinsic]`. The body is never used, as calls to the intrinsic do not exist
+or as a `#[redox_intrinsic]`. The body is never used, as calls to the intrinsic do not exist
 anymore after MIR analyses.
 
 ## Intrinsics without fallback logic
 
 These must be implemented by all backends.
 
-### `#[rustc_intrinsic]` declarations
+### `#[redox_intrinsic]` declarations
 
 These are written like intrinsics with fallback bodies, but the body is irrelevant.
 Use `loop {}` for the body or call the intrinsic recursively and add
-`#[rustc_intrinsic_must_be_overridden]` to the function to ensure that backends don't
+`#[redox_intrinsic_must_be_overridden]` to the function to ensure that backends don't
 invoke the body.
 
 ### Legacy extern ABI based intrinsics
@@ -7104,7 +7104,7 @@ extern "rust-intrinsic" {
 ```
 
 As with any other FFI functions, these are by default always `unsafe` to call.
-You can add `#[rustc_safe_intrinsic]` to the intrinsic to make it safe to call.
+You can add `#[redox_safe_intrinsic]` to the intrinsic to make it safe to call.
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -7478,7 +7478,7 @@ The tracking issue for this feature is: None.
 
 ------------------------
 
-The `rustc` compiler has certain pluggable operations, that is,
+The `redox` compiler has certain pluggable operations, that is,
 functionality that isn't hard-coded into the language, but is
 implemented in libraries, with a special marker to tell the compiler
 it exists. The marker is the attribute `#[lang = "..."]` and there are
@@ -7487,7 +7487,7 @@ items'. Most of them can only be defined once.
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses `Box`
 then there is no need to define a function for `exchange_malloc`.
-`rustc` will emit an error when an item is needed but not found in the current
+`redox` will emit an error when an item is needed but not found in the current
 crate or any that it depends on.
 
 Some features provided by lang items:
@@ -7520,7 +7520,7 @@ allocation. A freestanding program that uses the `Box` sugar for dynamic
 allocations via `malloc` and `free`:
 
 ```rust,ignore (libc-is-finicky)
-#![feature(lang_items, start, core_intrinsics, rustc_private, panic_unwind, rustc_attrs)]
+#![feature(lang_items, start, core_intrinsics, redox_private, panic_unwind, redox_attrs)]
 #![allow(internal_features)]
 #![no_std]
 
@@ -7540,7 +7540,7 @@ pub struct Box<T, A = Global>(Unique<T>, A);
 
 impl<T> Box<T> {
     pub fn new(x: T) -> Self {
-        #[rustc_box]
+        #[redox_box]
         Box::new(x)
     }
 }
@@ -7586,7 +7586,7 @@ return a valid pointer, and so needs to do the check internally.
 
 An up-to-date list of all language items can be found [here] in the compiler code.
 
-[here]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_hir/src/lang_items.rs
+[here]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_hir/src/lang_items.rs
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -9852,8 +9852,8 @@ The tracking issue for this feature is: [#97544]
         deny_since: None,
     },
     Lint {
-        label: "rustc_allow_const_fn_unstable",
-        description: r##"# `rustc_allow_const_fn_unstable`
+        label: "redox_allow_const_fn_unstable",
+        description: r##"# `redox_allow_const_fn_unstable`
 
 The tracking issue for this feature is: [#69399]
 
@@ -9866,31 +9866,31 @@ The tracking issue for this feature is: [#69399]
         deny_since: None,
     },
     Lint {
-        label: "rustc_attrs",
-        description: r##"# `rustc_attrs`
+        label: "redox_attrs",
+        description: r##"# `redox_attrs`
 
 This feature has no tracking issue, and is therefore internal to
 the compiler, not being intended for general use.
 
-Note: `rustc_attrs` enables many rustc-internal attributes and this page
+Note: `redox_attrs` enables many redox-internal attributes and this page
 only discuss a few of them.
 
 ------------------------
 
-The `rustc_attrs` feature allows debugging rustc type layouts by using
-`#[rustc_layout(...)]` to debug layout at compile time (it even works
-with `cargo check`) as an alternative to `rustc -Z print-type-sizes`
+The `redox_attrs` feature allows debugging redox type layouts by using
+`#[redox_layout(...)]` to debug layout at compile time (it even works
+with `cargo check`) as an alternative to `redox -Z print-type-sizes`
 that is way more verbose.
 
-Options provided by `#[rustc_layout(...)]` are `debug`, `size`, `align`,
+Options provided by `#[redox_layout(...)]` are `debug`, `size`, `align`,
 `abi`. Note that it only works on sized types without generics.
 
 ## Examples
 
 ```rust,compile_fail
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_layout(abi, size)]
+#[redox_layout(abi, size)]
 pub enum X {
     Y(u8, u8, u8),
     Z(isize),
@@ -9926,8 +9926,8 @@ error: aborting due to 2 previous errors
         deny_since: None,
     },
     Lint {
-        label: "rustc_encodable_decodable",
-        description: r##"# `rustc_encodable_decodable`
+        label: "redox_encodable_decodable",
+        description: r##"# `redox_encodable_decodable`
 
 This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
@@ -9938,8 +9938,8 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
-        label: "rustc_private",
-        description: r##"# `rustc_private`
+        label: "redox_private",
+        description: r##"# `redox_private`
 
 The tracking issue for this feature is: [#27812]
 
@@ -9949,7 +9949,7 @@ The tracking issue for this feature is: [#27812]
 
 This feature allows access to unstable internal compiler crates.
 
-Additionally it changes the linking behavior of crates which have this feature enabled. It will prevent linking to a dylib if there's a static variant of it already statically linked into another dylib dependency. This is required to successfully link to `rustc_driver`.
+Additionally it changes the linking behavior of crates which have this feature enabled. It will prevent linking to a dylib if there's a static variant of it already statically linked into another dylib dependency. This is required to successfully link to `redox_driver`.
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -14360,7 +14360,7 @@ access individual slice values."##,
         label: "clippy::indexing_slicing",
         description: r##"Checks for usage of indexing or slicing. Arrays are special cases, this lint
 does report on arrays if we can tell that slicing operations are in bounds and does not
-lint on constant `usize` indexing on arrays because that is handled by rustc's `const_err` lint."##,
+lint on constant `usize` indexing on arrays because that is handled by redox's `const_err` lint."##,
         default_severity: Severity::Allow,
         warn_since: None,
         deny_since: None,
@@ -14853,8 +14853,8 @@ returned."##,
     Lint {
         label: "clippy::let_underscore_lock",
         description: r##"Checks for `let _ = sync_lock`. This supports `mutex` and `rwlock` in
-`parking_lot`. For `std` locks see the `rustc` lint
-[`let_underscore_lock`](https://doc.rust-lang.org/nightly/rustc/lints/listing/deny-by-default.html#let-underscore-lock)"##,
+`parking_lot`. For `std` locks see the `redox` lint
+[`let_underscore_lock`](https://doc.rust-lang.org/nightly/redox/lints/listing/deny-by-default.html#let-underscore-lock)"##,
         default_severity: Severity::Allow,
         warn_since: None,
         deny_since: None,

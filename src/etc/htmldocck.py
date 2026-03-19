@@ -3,7 +3,7 @@
 
 r"""
 For documentation and usage instructions, please see
-https://rustc-dev-guide.rust-lang.org/rustdoc-internals/rustdoc-test-suite.html
+https://redox-dev-guide.rust-lang.org/rustdoc-internals/rustdoc-test-suite.html
 """
 
 from __future__ import absolute_import, print_function, unicode_literals

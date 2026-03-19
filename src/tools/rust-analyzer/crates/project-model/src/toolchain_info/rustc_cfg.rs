@@ -2,24 +2,24 @@
 
 use anyhow::Context;
 use cfg::CfgAtom;
-use rustc_hash::FxHashMap;
+use redox_hash::FxHashMap;
 use toolchain::Tool;
 
 use crate::{toolchain_info::QueryConfig, utf8_stdout};
 
-/// Uses `rustc --print cfg` to fetch the builtin cfgs.
+/// Uses `redox --print cfg` to fetch the builtin cfgs.
 pub fn get(
     config: QueryConfig<'_>,
     target: Option<&str>,
     extra_env: &FxHashMap<String, Option<String>>,
 ) -> Vec<CfgAtom> {
-    let _p = tracing::info_span!("rustc_cfg::get").entered();
+    let _p = tracing::info_span!("redox_cfg::get").entered();
 
-    let rustc_cfgs = rustc_print_cfg(target, extra_env, config);
-    let rustc_cfgs = match rustc_cfgs {
+    let redox_cfgs = redox_print_cfg(target, extra_env, config);
+    let redox_cfgs = match redox_cfgs {
         Ok(cfgs) => cfgs,
         Err(e) => {
-            tracing::warn!(?e, "failed to get rustc cfgs");
+            tracing::warn!(?e, "failed to get redox cfgs");
             return vec![];
         }
     };
@@ -42,21 +42,21 @@ pub fn get(
         r#"target_thread_local"#,
         r#"target_has_atomic"#,
     ];
-    let rustc_cfgs =
-        rustc_cfgs.lines().chain(unstable).map(crate::parse_cfg).collect::<Result<Vec<_>, _>>();
-    match rustc_cfgs {
-        Ok(rustc_cfgs) => {
-            tracing::debug!(?rustc_cfgs, "rustc cfgs found");
-            rustc_cfgs
+    let redox_cfgs =
+        redox_cfgs.lines().chain(unstable).map(crate::parse_cfg).collect::<Result<Vec<_>, _>>();
+    match redox_cfgs {
+        Ok(redox_cfgs) => {
+            tracing::debug!(?redox_cfgs, "redox cfgs found");
+            redox_cfgs
         }
         Err(e) => {
-            tracing::error!(?e, "failed to parse rustc cfgs");
+            tracing::error!(?e, "failed to parse redox cfgs");
             vec![]
         }
     }
 }
 
-fn rustc_print_cfg(
+fn redox_print_cfg(
     target: Option<&str>,
     extra_env: &FxHashMap<String, Option<String>>,
     config: QueryConfig<'_>,
@@ -66,7 +66,7 @@ fn rustc_print_cfg(
         QueryConfig::Cargo(sysroot, cargo_toml, _) => {
             let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent(), extra_env);
             cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
-            cmd.args(["rustc", "-Z", "unstable-options"]).args(RUSTC_ARGS);
+            cmd.args(["redox", "-Z", "unstable-options"]).args(RUSTC_ARGS);
             if let Some(target) = target {
                 cmd.args(["--target", target]);
             }
@@ -77,7 +77,7 @@ fn rustc_print_cfg(
                 Err(e) => {
                     tracing::warn!(
                         %e,
-                        "failed to run `{cmd:?}`, falling back to invoking rustc directly"
+                        "failed to run `{cmd:?}`, falling back to invoking redox directly"
                     );
                     (sysroot, cargo_toml.parent().as_ref())
                 }
@@ -115,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    fn rustc() {
+    fn redox() {
         let sysroot = Sysroot::empty();
         let cfg = QueryConfig::Rustc(&sysroot, env!("CARGO_MANIFEST_DIR").as_ref());
         assert_ne!(get(cfg, None, &FxHashMap::default()), vec![]);

@@ -41,7 +41,7 @@ similar.
 ## Testing
 
 Created binaries work fine on Windows or Wine using native hardware. Remote
-testing is possible using the `remote-test-server` described [here](https://rustc-dev-guide.rust-lang.org/tests/running.html#running-tests-on-a-remote-machine).
+testing is possible using the `remote-test-server` described [here](https://redox-dev-guide.rust-lang.org/tests/running.html#running-tests-on-a-remote-machine).
 
 ## Cross-compilation toolchains and C code
 

@@ -1,5 +1,5 @@
 // In order to prevent temporary files from overwriting each other in parallel
-// compilation, rustc was changed to mix an extra filename with temporary
+// compilation, redox was changed to mix an extra filename with temporary
 // outputs. However, as this is a similar behavior with the codegen flag
 // -C extra-filename, this test checks that the manually passed flag
 // is not overwritten by this feature, and that the output files
@@ -8,10 +8,10 @@
 
 //@ ignore-cross-compile (relocations in generic ELF against `arm-unknown-linux-gnueabihf`)
 
-use run_make_support::{bin_name, cwd, has_prefix, has_suffix, rfs, rustc, shallow_find_files};
+use run_make_support::{bin_name, cwd, has_prefix, has_suffix, rfs, redox, shallow_find_files};
 
 fn main() {
-    rustc().extra_filename("bar").input("foo.rs").arg("-Csave-temps").run();
+    redox().extra_filename("bar").input("foo.rs").arg("-Csave-temps").run();
     let object_files = shallow_find_files(cwd(), |path| {
         has_prefix(path, "foobar.foo") && has_suffix(path, "0.rcgu.o")
     });

@@ -104,7 +104,7 @@
             "source": "registry+https://github.com/rust-lang/crates.io-index",
             "dependencies": [
                 {
-                    "name": "rustc-std-workspace-core",
+                    "name": "redox-std-workspace-core",
                     "source": "registry+https://github.com/rust-lang/crates.io-index",
                     "req": "^1.0.0",
                     "kind": null,
@@ -167,9 +167,9 @@
                     "std"
                 ],
                 "extra_traits": [],
-                "rustc-dep-of-std": [
+                "redox-dep-of-std": [
                     "align",
-                    "rustc-std-workspace-core"
+                    "redox-std-workspace-core"
                 ],
                 "std": [],
                 "use_std": [

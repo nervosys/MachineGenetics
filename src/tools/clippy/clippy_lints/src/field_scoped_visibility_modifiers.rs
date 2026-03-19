@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_ast::ast::{Item, ItemKind, VisibilityKind};
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
+use redox_ast::ast::{Item, ItemKind, VisibilityKind};
+use redox_lint::{EarlyContext, EarlyLintPass};
+use redox_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -60,7 +60,7 @@ impl EarlyLintPass for FieldScopedVisibilityModifiers {
             let VisibilityKind::Restricted { path, .. } = &field.vis.kind else {
                 continue;
             };
-            if !path.segments.is_empty() && path.segments[0].ident.name == rustc_span::symbol::kw::SelfLower {
+            if !path.segments.is_empty() && path.segments[0].ident.name == redox_span::symbol::kw::SelfLower {
                 // pub(self) is equivalent to not using pub at all, so we ignore it
                 continue;
             }

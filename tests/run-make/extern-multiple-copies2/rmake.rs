@@ -9,14 +9,14 @@
 // in successful compilation.
 // https://github.com/rust-lang/rust/issues/33762
 
-use run_make_support::{path, rfs, rust_lib_name, rustc};
+use run_make_support::{path, rfs, rust_lib_name, redox};
 
 fn main() {
-    rustc().input("foo1.rs").run();
-    rustc().input("foo2.rs").run();
+    redox().input("foo1.rs").run();
+    redox().input("foo2.rs").run();
     rfs::create_dir("foo");
     rfs::copy(rust_lib_name("foo1"), path("foo").join(rust_lib_name("foo1")));
-    rustc()
+    redox()
         .input("bar.rs")
         .extern_("foo1", path("foo").join(rust_lib_name("foo1")))
         .extern_("foo2", rust_lib_name("foo2"))

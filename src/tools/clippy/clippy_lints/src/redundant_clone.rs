@@ -4,15 +4,15 @@ use clippy_utils::res::MaybeDef;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::{has_drop, is_copy, peel_and_count_ty_refs};
 use clippy_utils::{fn_has_unsatisfiable_preds, sym};
-use rustc_errors::Applicability;
-use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, FnDecl, LangItem, def_id};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::mir;
-use rustc_middle::ty::{self, Ty};
-use rustc_session::declare_lint_pass;
-use rustc_span::def_id::LocalDefId;
-use rustc_span::{BytePos, Span};
+use redox_errors::Applicability;
+use redox_hir::intravisit::FnKind;
+use redox_hir::{Body, FnDecl, LangItem, def_id};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::mir;
+use redox_middle::ty::{self, Ty};
+use redox_session::declare_lint_pass;
+use redox_span::def_id::LocalDefId;
+use redox_span::{BytePos, Span};
 
 macro_rules! unwrap_or_continue {
     ($x:expr) => {

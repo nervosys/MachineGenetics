@@ -11,13 +11,13 @@ use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{VEC_METHODS_SHADOWING_SLICE_METHODS, get_parent_expr, higher, is_in_test, span_contains_comment};
-use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, LetStmt, Mutability, Node, Pat, PatKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_session::impl_lint_pass;
-use rustc_span::{DesugaringKind, Span};
+use redox_errors::Applicability;
+use redox_hir::{BorrowKind, Expr, ExprKind, HirId, LetStmt, Mutability, Node, Pat, PatKind};
+use redox_lint::{LateContext, LateLintPass};
+use redox_middle::ty;
+use redox_middle::ty::layout::LayoutOf;
+use redox_session::impl_lint_pass;
+use redox_span::{DesugaringKind, Span};
 
 pub struct UselessVec {
     too_large_for_stack: u64,

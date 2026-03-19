@@ -60,7 +60,7 @@ def get(base, url, path, checksums, verbose=False):
                     "src/stage0 doesn't contain a checksum for {}. "
                     "Pre-built artifacts might not be available for this "
                     "target at this time, see https://doc.rust-lang.org/nightly"
-                    "/rustc/platform-support.html for more information."
+                    "/redox/platform-support.html for more information."
                 ).format(url)
             )
         sha256 = checksums[url]
@@ -279,7 +279,7 @@ def format_build_time(duration):
 
 def default_build_triple(verbose):
     """Build triple as in LLVM"""
-    # If we're on Windows and have an existing `rustc` toolchain, use `rustc --version --verbose`
+    # If we're on Windows and have an existing `redox` toolchain, use `redox --version --verbose`
     # to find our host target triple. This fixes an issue with Windows builds being detected
     # as GNU instead of MSVC.
     # Otherwise, detect it via `uname`
@@ -288,19 +288,19 @@ def default_build_triple(verbose):
     if platform_is_win32():
         try:
             version = subprocess.check_output(
-                ["rustc", "--version", "--verbose"], stderr=subprocess.DEVNULL
+                ["redox", "--version", "--verbose"], stderr=subprocess.DEVNULL
             )
             version = version.decode(default_encoding)
             host = next(x for x in version.split("\n") if x.startswith("host: "))
             triple = host.split("host: ")[1]
             if verbose:
                 eprint(
-                    "detected default triple {} from pre-installed rustc".format(triple)
+                    "detected default triple {} from pre-installed redox".format(triple)
                 )
             return triple
         except Exception as e:
             if verbose:
-                eprint("pre-installed rustc not detected: {}".format(e))
+                eprint("pre-installed redox not detected: {}".format(e))
                 eprint("falling back to auto-detect")
 
     required = not platform_is_win32()
@@ -610,19 +610,19 @@ class RustBuild(object):
         Each downloaded tarball is extracted, after that, the script
         will move all the content to the right place.
         """
-        rustc_channel = self.stage0_compiler.version
+        redox_channel = self.stage0_compiler.version
         bin_root = self.bin_root()
 
         key = self.stage0_compiler.date
-        is_outdated = self.program_out_of_date(self.rustc_stamp(), key)
-        need_rustc = self.rustc().startswith(bin_root) and (
-            not os.path.exists(self.rustc()) or is_outdated
+        is_outdated = self.program_out_of_date(self.redox_stamp(), key)
+        need_redox = self.redox().startswith(bin_root) and (
+            not os.path.exists(self.redox()) or is_outdated
         )
         need_cargo = self.cargo().startswith(bin_root) and (
             not os.path.exists(self.cargo()) or is_outdated
         )
 
-        if need_rustc or need_cargo:
+        if need_redox or need_cargo:
             if os.path.exists(bin_root):
                 # HACK: On Windows, we can't delete rust-analyzer-proc-macro-server while it's
                 # running. Kill it.
@@ -648,19 +648,19 @@ class RustBuild(object):
                 self.build_dir, "cache"
             )
 
-            rustc_cache = os.path.join(cache_dst, key)
-            if not os.path.exists(rustc_cache):
-                os.makedirs(rustc_cache)
+            redox_cache = os.path.join(cache_dst, key)
+            if not os.path.exists(redox_cache):
+                os.makedirs(redox_cache)
 
             tarball_suffix = ".tar.gz" if lzma is None else ".tar.xz"
 
             toolchain_suffix = "{}-{}{}".format(
-                rustc_channel, self.build, tarball_suffix
+                redox_channel, self.build, tarball_suffix
             )
 
             tarballs_to_download = []
 
-            if need_rustc:
+            if need_redox:
                 tarballs_to_download.append(
                     (
                         "rust-std-{}".format(toolchain_suffix),
@@ -668,7 +668,7 @@ class RustBuild(object):
                     )
                 )
                 tarballs_to_download.append(
-                    ("rustc-{}".format(toolchain_suffix), "rustc")
+                    ("redox-{}".format(toolchain_suffix), "redox")
                 )
 
             if need_cargo:
@@ -683,7 +683,7 @@ class RustBuild(object):
                         self.stage0_compiler.date, filename
                     ),
                     bin_root=self.bin_root(),
-                    tarball_path=os.path.join(rustc_cache, filename),
+                    tarball_path=os.path.join(redox_cache, filename),
                     tarball_suffix=tarball_suffix,
                     stage0_data=self.stage0_data,
                     pattern=pattern,
@@ -721,7 +721,7 @@ class RustBuild(object):
             if self.should_fix_bins_and_dylibs():
                 self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
 
-                self.fix_bin_or_dylib("{}/bin/rustc".format(bin_root))
+                self.fix_bin_or_dylib("{}/bin/redox".format(bin_root))
                 self.fix_bin_or_dylib("{}/bin/rustdoc".format(bin_root))
                 self.fix_bin_or_dylib(
                     "{}/libexec/rust-analyzer-proc-macro-srv".format(bin_root)
@@ -740,7 +740,7 @@ class RustBuild(object):
                             if magic == b"\x7fELF":
                                 self.fix_bin_or_dylib(elf_path)
 
-            with output(self.rustc_stamp()) as rust_stamp:
+            with output(self.redox_stamp()) as rust_stamp:
                 rust_stamp.write(key)
 
     def should_fix_bins_and_dylibs(self):
@@ -874,16 +874,16 @@ class RustBuild(object):
             eprint("WARNING: failed to call patchelf:", reason)
             return
 
-    def rustc_stamp(self):
-        """Return the path for .rustc-stamp at the given stage
+    def redox_stamp(self):
+        """Return the path for .redox-stamp at the given stage
 
         >>> rb = RustBuild()
         >>> rb.build = "host"
         >>> rb.build_dir = "build"
-        >>> expected = os.path.join("build", "host", "stage0", ".rustc-stamp")
-        >>> assert rb.rustc_stamp() == expected, rb.rustc_stamp()
+        >>> expected = os.path.join("build", "host", "stage0", ".redox-stamp")
+        >>> assert rb.redox_stamp() == expected, rb.redox_stamp()
         """
-        return os.path.join(self.bin_root(), ".rustc-stamp")
+        return os.path.join(self.bin_root(), ".redox-stamp")
 
     def program_out_of_date(self, stamp_path, key):
         """Check if the given program stamp is out of date"""
@@ -951,17 +951,17 @@ class RustBuild(object):
         """Return config path for cargo"""
         return self.program_config("cargo")
 
-    def rustc(self):
-        """Return config path for rustc"""
-        return self.program_config("rustc")
+    def redox(self):
+        """Return config path for redox"""
+        return self.program_config("redox")
 
     def program_config(self, program):
         """Return config path for the given program at the given stage
 
         >>> rb = RustBuild()
-        >>> rb.config_toml = 'rustc = "rustc"\\n'
-        >>> rb.program_config('rustc')
-        'rustc'
+        >>> rb.config_toml = 'redox = "redox"\\n'
+        >>> rb.program_config('redox')
+        'redox'
         >>> rb.config_toml = ''
         >>> cargo_path = rb.program_config('cargo')
         >>> cargo_path.rstrip(".exe") == os.path.join(rb.bin_root(),
@@ -1045,7 +1045,7 @@ class RustBuild(object):
         if "GITHUB_ACTIONS" in env:
             env["CARGO_INCREMENTAL"] = "0"
         env["CARGO_TARGET_DIR"] = build_dir
-        env["RUSTC"] = self.rustc()
+        env["RUSTC"] = self.redox()
         env["LD_LIBRARY_PATH"] = (
             os.path.join(self.bin_root(), "lib") + (os.pathsep + env["LD_LIBRARY_PATH"])
             if "LD_LIBRARY_PATH" in env
@@ -1223,7 +1223,7 @@ class RustBuild(object):
 
         cargo_dir = os.path.join(self.rust_root, ".cargo")
         commit = self.get_latest_commit()
-        url = f"https://ci-artifacts.rust-lang.org/rustc-builds/{commit}/rustc-nightly-src.tar.xz"
+        url = f"https://ci-artifacts.rust-lang.org/redox-builds/{commit}/redox-nightly-src.tar.xz"
         if self.use_vendored_sources:
             vendor_dir = os.path.join(self.rust_root, "vendor")
             if not os.path.exists(vendor_dir):
@@ -1232,7 +1232,7 @@ class RustBuild(object):
                 )
                 eprint("       Run `x.py vendor` to initialize the vendor directory.")
                 eprint(
-                    "       Alternatively, use the pre-vendored `rustc-src` dist component."
+                    "       Alternatively, use the pre-vendored `redox-src` dist component."
                 )
                 eprint(
                     "       To get a stable/beta/nightly version, download it from: "

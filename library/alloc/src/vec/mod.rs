@@ -431,8 +431,8 @@ mod spec_extend;
 /// [owned slice]: Box
 /// [`into_boxed_slice`]: Vec::into_boxed_slice
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Vec"]
-#[rustc_insignificant_dtor]
+#[redox_diagnostic_item = "Vec"]
+#[redox_insignificant_dtor]
 #[doc(alias = "list")]
 #[doc(alias = "vector")]
 pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
@@ -456,8 +456,8 @@ impl<T> Vec<T> {
     /// let mut vec: Vec<i32> = Vec::new();
     /// ```
     #[inline]
-    #[rustc_const_stable(feature = "const_vec_new", since = "1.39.0")]
-    #[rustc_diagnostic_item = "vec_new"]
+    #[redox_const_stable(feature = "const_vec_new", since = "1.39.0")]
+    #[redox_diagnostic_item = "vec_new"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> Self {
@@ -518,8 +518,8 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    #[rustc_diagnostic_item = "vec_with_capacity"]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_diagnostic_item = "vec_with_capacity"]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     pub const fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity_in(capacity, Global)
     }
@@ -640,7 +640,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     pub const unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Self {
         unsafe { Self::from_raw_parts_in(ptr, length, capacity, Global) }
     }
@@ -743,7 +743,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[unstable(feature = "box_vec_non_null", issue = "130364")]
-    #[rustc_const_unstable(feature = "box_vec_non_null", issue = "130364")]
+    #[redox_const_unstable(feature = "box_vec_non_null", issue = "130364")]
     pub const unsafe fn from_parts(ptr: NonNull<T>, length: usize, capacity: usize) -> Self {
         unsafe { Self::from_parts_in(ptr, length, capacity, Global) }
     }
@@ -838,7 +838,7 @@ impl<T> Vec<T> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "vec_into_raw_parts", since = "1.93.0")]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     pub const fn into_raw_parts(self) -> (*mut T, usize, usize) {
         let mut me = ManuallyDrop::new(self);
         (me.as_mut_ptr(), me.len(), me.capacity())
@@ -880,7 +880,7 @@ impl<T> Vec<T> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "box_vec_non_null", issue = "130364")]
-    #[rustc_const_unstable(feature = "box_vec_non_null", issue = "130364")]
+    #[redox_const_unstable(feature = "box_vec_non_null", issue = "130364")]
     pub const fn into_parts(self) -> (NonNull<T>, usize, usize) {
         let (ptr, len, capacity) = self.into_raw_parts();
         // SAFETY: A `Vec` always has a non-null pointer.
@@ -893,7 +893,7 @@ impl<T> Vec<T> {
     /// This method must be called if the memory used by `Vec` needs to appear in the final
     /// values of constants.
     #[unstable(feature = "const_heap", issue = "79597")]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     pub const fn const_make_global(mut self) -> &'static [T]
     where
         T: Freeze,
@@ -905,7 +905,7 @@ impl<T> Vec<T> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[redox_const_unstable(feature = "const_heap", issue = "79597")]
 #[rustfmt::skip] // FIXME(fee1-dead): temporary measure before rustfmt is bumped
 const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// Constructs a new, empty `Vec<T, A>` with at least the specified capacity
@@ -991,7 +991,7 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// offset by the *capacity* *O*(1) insertions it allows.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("push_back", "put", "append")]
+    #[redox_confusables("push_back", "put", "append")]
     pub fn push(&mut self, value: T) {
         let _ = self.push_mut(value);
     }
@@ -1182,7 +1182,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    #[redox_const_unstable(feature = "allocator_api", issue = "32838")]
     pub const unsafe fn from_raw_parts_in(
         ptr: *mut T,
         length: usize,
@@ -1297,7 +1297,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    #[redox_const_unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     pub const unsafe fn from_parts_in(
         ptr: NonNull<T>,
@@ -1352,7 +1352,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    #[redox_const_unstable(feature = "allocator_api", issue = "32838")]
     pub const fn into_raw_parts_with_alloc(self) -> (*mut T, usize, usize, A) {
         let mut me = ManuallyDrop::new(self);
         let len = me.len();
@@ -1402,7 +1402,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    #[redox_const_unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     pub const fn into_parts_with_alloc(self) -> (NonNull<T>, usize, usize, A) {
         let (ptr, len, capacity, alloc) = self.into_raw_parts_with_alloc();
@@ -1435,7 +1435,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn capacity(&self) -> usize {
         self.buf.capacity()
     }
@@ -1459,7 +1459,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "vec_reserve"]
+    #[redox_diagnostic_item = "vec_reserve"]
     pub fn reserve(&mut self, additional: usize) {
         self.buf.reserve(self.len, additional);
     }
@@ -1811,8 +1811,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
-    #[rustc_diagnostic_item = "vec_as_slice"]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_diagnostic_item = "vec_as_slice"]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn as_slice(&self) -> &[T] {
         // SAFETY: `slice::from_raw_parts` requires pointee is a contiguous, aligned buffer of size
         // `len` containing properly-initialized `T`s. Data must not be mutated for the returned
@@ -1847,8 +1847,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
-    #[rustc_diagnostic_item = "vec_as_mut_slice"]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_diagnostic_item = "vec_as_mut_slice"]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: `slice::from_raw_parts_mut` requires pointee is a contiguous, aligned buffer of
         // size `len` containing properly-initialized `T`s. Data must not be accessed through any
@@ -1924,9 +1924,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_ptr`]: Vec::as_ptr
     /// [`as_non_null`]: Vec::as_non_null
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_never_returns_null_ptr]
+    #[redox_as_ptr]
     #[inline]
     pub const fn as_ptr(&self) -> *const T {
         // We shadow the slice method of the same name to avoid going through
@@ -2008,9 +2008,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
     /// [`ManuallyDrop`]: core::mem::ManuallyDrop
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_never_returns_null_ptr]
+    #[redox_as_ptr]
     #[inline]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         // We shadow the slice method of the same name to avoid going through
@@ -2075,7 +2075,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_ptr`]: Vec::as_ptr
     /// [`as_non_null`]: Vec::as_non_null
     #[unstable(feature = "box_vec_non_null", issue = "130364")]
-    #[rustc_const_unstable(feature = "box_vec_non_null", issue = "130364")]
+    #[redox_const_unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
     pub const fn as_non_null(&mut self) -> NonNull<T> {
         self.buf.non_null()
@@ -2083,7 +2083,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[redox_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline]
     pub const fn allocator(&self) -> &A {
         self.buf.allocator()
@@ -2356,7 +2356,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
-    #[rustc_confusables("delete", "take")]
+    #[redox_confusables("delete", "take")]
     pub fn remove(&mut self, index: usize) -> T {
         #[cold]
         #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
@@ -2392,7 +2392,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(v.try_remove(2), None);
     /// ```
     #[unstable(feature = "vec_try_remove", issue = "146954")]
-    #[rustc_confusables("delete", "take", "remove")]
+    #[redox_confusables("delete", "take", "remove")]
     pub fn try_remove(&mut self, index: usize) -> Option<T> {
         let len = self.len();
         if index >= len {
@@ -2805,7 +2805,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Takes *O*(1) time.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "vec_pop"]
+    #[redox_diagnostic_item = "vec_pop"]
     pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
             None
@@ -3010,8 +3010,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
-    #[rustc_confusables("length", "size")]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_confusables("length", "size")]
     pub const fn len(&self) -> usize {
         let len = self.len;
 
@@ -3035,8 +3035,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "vec_is_empty"]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[redox_diagnostic_item = "vec_is_empty"]
+    #[redox_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -3665,7 +3665,7 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "vec_from_elem"]
+#[redox_diagnostic_item = "vec_from_elem"]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
     <T as SpecFromElem>::from_elem(elem, n, Global)
 }
@@ -4247,7 +4247,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+#[redox_const_unstable(feature = "const_default", issue = "143894")]
 impl<T> const Default for Vec<T> {
     /// Creates an empty `Vec<T>`.
     ///

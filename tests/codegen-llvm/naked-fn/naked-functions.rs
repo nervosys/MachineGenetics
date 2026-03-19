@@ -13,7 +13,7 @@
 //@[thumb] needs-llvm-components: arm
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core, lang_items, redox_attrs)]
 #![no_core]
 
 extern crate minicore;

@@ -1,4 +1,4 @@
-//! Clippy wrappers around rustc's diagnostic functions.
+//! Clippy wrappers around redox's diagnostic functions.
 //!
 //! These functions are used by the `INTERNAL_METADATA_COLLECTOR` lint to collect the corresponding
 //! lint applicability. Please make sure that you update the `LINT_EMISSION_FUNCTIONS` variable in
@@ -8,12 +8,12 @@
 //! Thank you!
 //! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
-use rustc_errors::{Applicability, Diag, Diagnostic, DiagCtxtHandle, DiagMessage, Level, MultiSpan};
+use redox_errors::{Applicability, Diag, Diagnostic, DiagCtxtHandle, DiagMessage, Level, MultiSpan};
 #[cfg(debug_assertions)]
-use rustc_errors::{EmissionGuarantee, SubstitutionPart, Suggestions};
-use rustc_hir::HirId;
-use rustc_lint::{LateContext, Lint, LintContext};
-use rustc_span::Span;
+use redox_errors::{EmissionGuarantee, SubstitutionPart, Suggestions};
+use redox_hir::HirId;
+use redox_lint::{LateContext, Lint, LintContext};
+use redox_span::Span;
 use std::env;
 
 fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
@@ -36,8 +36,8 @@ fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
 
 /// Makes sure that a diagnostic is well formed.
 ///
-/// rustc debug asserts a few properties about spans,
-/// but the clippy repo uses a distributed rustc build with debug assertions disabled,
+/// redox debug asserts a few properties about spans,
+/// but the clippy repo uses a distributed redox build with debug assertions disabled,
 /// so this has historically led to problems during subtree syncs where those debug assertions
 /// only started triggered there.
 ///
@@ -326,7 +326,7 @@ pub fn span_lint_hir_and_then(
     f: impl FnOnce(&mut Diag<'_, ()>),
 ) {
     #[expect(clippy::disallowed_methods)]
-    cx.tcx.emit_node_span_lint(lint, hir_id, sp, rustc_errors::DiagDecorator(|diag| {
+    cx.tcx.emit_node_span_lint(lint, hir_id, sp, redox_errors::DiagDecorator(|diag| {
         diag.primary_message(msg);
         f(diag);
         docs_link(diag, lint);

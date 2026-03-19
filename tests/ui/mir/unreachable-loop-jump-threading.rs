@@ -1,5 +1,5 @@
 //@ build-pass
-//@ needs-rustc-debug-assertions
+//@ needs-redox-debug-assertions
 //@ compile-flags: -Zmir-enable-passes=+GVN -Zmir-enable-passes=+JumpThreading --crate-type=lib
 
 pub fn fun(terminate: bool) {

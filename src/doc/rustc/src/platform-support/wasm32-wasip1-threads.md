@@ -61,7 +61,7 @@ you'll need to do a few things to have C/Rust code interoperate.
 1. All Rust code needs to be compiled with `-C target-feature=-crt-static`,
    indicating that the bundled C standard library in the Rust sysroot will
    not be used.
-2. If you're using rustc to build a linked artifact then you'll need to
+2. If you're using redox to build a linked artifact then you'll need to
    specify `-C linker` to a `clang` binary that supports
    `wasm32-wasip1-threads` and is configured with the `wasm32-wasip1-threads` sysroot. This
    will cause Rust code to be linked against the libc.a that the specified
@@ -128,7 +128,7 @@ rustup target add wasm32-wasip1-threads --toolchain nightly
 Rust programs can be built for that target:
 
 ```text
-rustc --target wasm32-wasip1-threads your-code.rs
+redox --target wasm32-wasip1-threads your-code.rs
 ```
 
 ## Cross-compilation

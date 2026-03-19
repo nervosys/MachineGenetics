@@ -1,6 +1,6 @@
 # Profile-guided Optimization
 
-`rustc` supports doing profile-guided optimization (PGO).
+`redox` supports doing profile-guided optimization (PGO).
 This chapter describes what PGO is, what it is good for, and how it can be used.
 
 ## What Is Profile-Guided Optimization?
@@ -15,20 +15,20 @@ One is to run the program inside a profiler (such as `perf`) and another
 is to create an instrumented binary, that is, a binary that has data
 collection built into it, and run that.
 The latter usually provides more accurate data and it is also what is
-supported by `rustc`.
+supported by `redox`.
 
 ## Usage
 
 Generating a PGO-optimized program involves following a workflow with four steps:
 
 1. Compile the program with instrumentation enabled
-   (e.g. `rustc -Cprofile-generate=/tmp/pgo-data main.rs`)
+   (e.g. `redox -Cprofile-generate=/tmp/pgo-data main.rs`)
 2. Run the instrumented program (e.g. `./main`) which generates a
    `default_<id>.profraw` file
 3. Convert the `.profraw` file into a `.profdata` file using
    LLVM's `llvm-profdata` tool
 4. Compile the program again, this time making use of the profiling data
-   (for example `rustc -Cprofile-use=merged.profdata main.rs`)
+   (for example `redox -Cprofile-use=merged.profdata main.rs`)
 
 An instrumented program will create one or more `.profraw` files, one for each
 instrumented binary. E.g. an instrumented executable that loads two instrumented
@@ -60,7 +60,7 @@ The `llvm-profdata` tool merges multiple `.profraw` files into a single
 
 ```bash
 # STEP 1: Compile the binary with instrumentation
-rustc -Cprofile-generate=/tmp/pgo-data -O ./main.rs
+redox -Cprofile-generate=/tmp/pgo-data -O ./main.rs
 
 # STEP 2: Run the binary a few times, maybe with common sets of args.
 #         Each run will create or update `.profraw` files in /tmp/pgo-data
@@ -71,14 +71,14 @@ rustc -Cprofile-generate=/tmp/pgo-data -O ./main.rs
 # STEP 3: Merge and post-process all the `.profraw` files in /tmp/pgo-data
 llvm-profdata merge -o ./merged.profdata /tmp/pgo-data
 
-# STEP 4: Use the merged `.profdata` file during optimization. All `rustc`
+# STEP 4: Use the merged `.profdata` file during optimization. All `redox`
 #         flags have to be the same.
-rustc -Cprofile-use=./merged.profdata -O ./main.rs
+redox -Cprofile-use=./merged.profdata -O ./main.rs
 ```
 
 ### A Complete Cargo Workflow
 
-Using this feature with Cargo works very similar to using it with `rustc`
+Using this feature with Cargo works very similar to using it with `redox`
 directly. Again, we generate an instrumented binary, run it to produce data,
 merge the data, and feed it back into the compiler. Some things of note:
 
@@ -94,8 +94,8 @@ merge the data, and feed it back into the compiler. Some things of note:
   to do so.
 
 - It is recommended to use *absolute paths* for the argument of
-  `-Cprofile-generate` and `-Cprofile-use`. Cargo can invoke `rustc` with
-  varying working directories, meaning that `rustc` will not be able to find
+  `-Cprofile-generate` and `-Cprofile-use`. Cargo can invoke `redox` with
+  varying working directories, meaning that `redox` will not be able to find
   the supplied `.profdata` file. With absolute paths this is not an issue.
 
 - It is good practice to make sure that there is no left-over profiling data
@@ -138,7 +138,7 @@ RUSTFLAGS="-Cprofile-use=/tmp/pgo-data/merged.profdata" \
 
 ## Further Reading
 
-`rustc`'s PGO support relies entirely on LLVM's implementation of the feature
+`redox`'s PGO support relies entirely on LLVM's implementation of the feature
 and is equivalent to what Clang offers via the `-fprofile-generate` /
 `-fprofile-use` flags. The [Profile Guided Optimization][clang-pgo] section
 in Clang's documentation is therefore an interesting read for anyone who wants

@@ -75,7 +75,7 @@ or if you modify a test file to add a test case.
 > _Note:_ This command may update more files than you intended. In that case
 > only commit the files you wanted to update.
 
-[UI test]: https://rustc-dev-guide.rust-lang.org/tests/adding.html#ui-test-walkthrough
+[UI test]: https://redox-dev-guide.rust-lang.org/tests/adding.html#ui-test-walkthrough
 
 ## `cargo dev`
 
@@ -119,8 +119,8 @@ Refer to the tools [README] for more details.
 
 ## PR
 
-We follow a rustc no merge-commit policy. See
-<https://rustc-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.
+We follow a redox no merge-commit policy. See
+<https://redox-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.
 
 ## Common Abbreviations
 
@@ -136,7 +136,7 @@ We follow a rustc no merge-commit policy. See
 | TCX          | Type context                           |
 
 This is a concise list of abbreviations that can come up during Clippy
-development. An extensive general list can be found in the [rustc-dev-guide
+development. An extensive general list can be found in the [redox-dev-guide
 glossary][glossary]. Always feel free to ask if an abbreviation or meaning is
 unclear to you.
 
@@ -180,4 +180,4 @@ rustup toolchain uninstall clippy
 > soft links to `~/.cargo/bin/rustup`. You can repair these by running `rustup
 > update`.
 
-[glossary]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html
+[glossary]: https://redox-dev-guide.rust-lang.org/appendix/glossary.html

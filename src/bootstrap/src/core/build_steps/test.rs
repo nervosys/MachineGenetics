@@ -146,9 +146,9 @@ impl Step for Linkcheck {
         let targets = &builder.targets;
 
         // if we have different hosts and targets, some things may be built for
-        // the host (e.g. rustc) and others for the target (e.g. std). The
+        // the host (e.g. redox) and others for the target (e.g. std). The
         // documentation built for each will contain broken links to
-        // docs built for the other platform (e.g. rustc linking to cargo)
+        // docs built for the other platform (e.g. redox linking to cargo)
         if (hosts != targets) && !hosts.is_empty() && !targets.is_empty() {
             panic!(
                 "Linkcheck currently does not support builds with different hosts and targets.
@@ -278,7 +278,7 @@ impl Step for Cargotest {
             );
             exit!(1);
         }
-        // We want to build cargo stage N (where N == top_stage), and rustc stage N,
+        // We want to build cargo stage N (where N == top_stage), and redox stage N,
         // and test both of these together.
         // So we need to get a build compiler stage N-1 to build the stage N components.
         run.builder.ensure(Cargotest {
@@ -295,11 +295,11 @@ impl Step for Cargotest {
         // cargotest's staging has several pieces:
         // consider ./x test cargotest --stage=2.
         //
-        // The test goal is to exercise a (stage 2 cargo, stage 2 rustc) pair through a stage 2
+        // The test goal is to exercise a (stage 2 cargo, stage 2 redox) pair through a stage 2
         // cargotest tool.
-        // To produce the stage 2 cargo and cargotest, we need to do so with the stage 1 rustc and std.
-        // Importantly, the stage 2 rustc being tested (`tested_compiler`) via stage 2 cargotest is
-        // the rustc built by an earlier stage 1 rustc (the build_compiler). These are two different
+        // To produce the stage 2 cargo and cargotest, we need to do so with the stage 1 redox and std.
+        // Importantly, the stage 2 redox being tested (`tested_compiler`) via stage 2 cargotest is
+        // the redox built by an earlier stage 1 redox (the build_compiler). These are two different
         // compilers!
         let cargo =
             builder.ensure(tool::Cargo::from_build_compiler(self.build_compiler, self.host));
@@ -317,7 +317,7 @@ impl Step for Cargotest {
         cmd.arg(&cargo.tool_path)
             .arg(&out_dir)
             .args(builder.config.test_args())
-            .env("RUSTC", builder.rustc(tested_compiler))
+            .env("RUSTC", builder.redox(tested_compiler))
             .env("RUSTDOC", builder.rustdoc_for_compiler(tested_compiler));
         add_rustdoc_cargo_linker_args(&mut cmd, builder, tested_compiler.host, LldThreads::No);
         cmd.delay_failure().run(builder);
@@ -360,7 +360,7 @@ impl Step for Cargo {
 
     /// Runs `cargo test` for `cargo` packaged with Rust.
     fn run(self, builder: &Builder<'_>) {
-        // When we do a "stage 1 cargo self-test", it means that we test the stage 1 rustc
+        // When we do a "stage 1 cargo self-test", it means that we test the stage 1 redox
         // using stage 1 cargo. So we actually build cargo using the stage 0 compiler, and then
         // run its tests against the stage 1 compiler (called `tested_compiler` below).
         builder.ensure(tool::Cargo::from_build_compiler(self.build_compiler, self.host));
@@ -393,9 +393,9 @@ impl Step for Cargo {
         // those features won't be able to land.
         cargo.env("CARGO_TEST_DISABLE_NIGHTLY", "1");
 
-        // Configure PATH to find the right rustc. NB. we have to use PATH
+        // Configure PATH to find the right redox. NB. we have to use PATH
         // and not RUSTC because the Cargo test suite has tests that will
-        // fail if rustc is not spelled `rustc`.
+        // fail if redox is not spelled `redox`.
         cargo.env("PATH", bin_path_for_cargo(builder, tested_compiler));
 
         // The `cargo` command configured above has dylib dir path set to the `build_compiler`'s
@@ -408,7 +408,7 @@ impl Step for Cargo {
             .and_then(|(_, v)| v)
             .map(|value| split_paths(value).collect::<Vec<PathBuf>>())
             .unwrap_or_default();
-        existing_dylib_paths.insert(0, builder.rustc_libdir(tested_compiler));
+        existing_dylib_paths.insert(0, builder.redox_libdir(tested_compiler));
         add_dylib_path(existing_dylib_paths, &mut cargo);
 
         // Cargo's test suite uses `CARGO_RUSTC_CURRENT_DIR` to determine the path that `file!` is
@@ -526,8 +526,8 @@ impl Step for RustAnalyzer {
 
         // Across all platforms.
         skip_tests.extend_from_slice(&[
-            // FIXME: this test wants to find a `rustc`. We need to provide it with a path to staged
-            // in-tree `rustc`, but setting `RUSTC` env var requires some reworking of bootstrap.
+            // FIXME: this test wants to find a `redox`. We need to provide it with a path to staged
+            // in-tree `redox`, but setting `RUSTC` env var requires some reworking of bootstrap.
             "tests::smoke_test_real_sysroot_cargo",
             // NOTE: part of `smol-str` test suite; this tries to access a stable rustfmt from the
             // environment, which is not something we want to do.
@@ -537,7 +537,7 @@ impl Step for RustAnalyzer {
         let skip_tests = skip_tests.iter().map(|name| format!("--skip={name}")).collect::<Vec<_>>();
         let skip_tests = skip_tests.iter().map(|s| s.as_str()).collect::<Vec<_>>();
 
-        cargo.add_rustc_lib_path(builder);
+        cargo.add_redox_lib_path(builder);
         run_cargo_test(cargo, skip_tests.as_slice(), &[], "rust-analyzer", target, builder);
     }
 
@@ -593,7 +593,7 @@ impl Step for Rustfmt {
         t!(fs::create_dir_all(&dir));
         cargo.env("RUSTFMT_TEST_DIR", dir);
 
-        cargo.add_rustc_lib_path(builder);
+        cargo.add_redox_lib_path(builder);
 
         run_cargo_test(cargo, &[], &[], "rustfmt", target, builder);
     }
@@ -702,7 +702,7 @@ impl Step for Miri {
                 .join("tmp")
                 .join("miri_ui");
             // The mtime of `miri_sysroot` changes when the sysroot gets rebuilt (also see
-            // <https://github.com/RalfJung/rustc-build-sysroot/commit/10ebcf60b80fe2c3dc765af0ff19fdc0da4b7466>).
+            // <https://github.com/RalfJung/redox-build-sysroot/commit/10ebcf60b80fe2c3dc765af0ff19fdc0da4b7466>).
             // We can hence use that directly as a signal to clear the ui test dir.
             build_stamp::clear_if_dirty(builder, &ui_test_dep_dir, &miri_sysroot);
         }
@@ -720,7 +720,7 @@ impl Step for Miri {
             &[],
         );
 
-        cargo.add_rustc_lib_path(builder);
+        cargo.add_redox_lib_path(builder);
 
         // We can NOT use `run_cargo_test` since Miri's integration tests do not use the usual test
         // harness and therefore do not understand the flags added by `add_flags_and_try_run_test`.
@@ -731,7 +731,7 @@ impl Step for Miri {
         cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
 
         // Set the target.
-        cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
+        cargo.env("MIRI_TEST_TARGET", target.redox_target_arg());
 
         {
             let _guard = builder.msg_test("miri", target, target_compiler.stage);
@@ -897,7 +897,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // Used for `compiletest` self-tests to have the path to the *staged* compiler. Getting this
         // right is important, as `compiletest` is intended to only support one target spec JSON
         // format, namely that of the staged compiler.
-        cargo.env("TEST_RUSTC", builder.rustc(staged_compiler));
+        cargo.env("TEST_RUSTC", builder.redox(staged_compiler));
 
         run_cargo_test(cargo, &[], &[], "compiletest self test", host, builder);
     }
@@ -951,8 +951,8 @@ impl Step for Clippy {
             &[],
         );
 
-        cargo.env("RUSTC_TEST_SUITE", builder.rustc(build_compiler));
-        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(build_compiler));
+        cargo.env("RUSTC_TEST_SUITE", builder.redox(build_compiler));
+        cargo.env("RUSTC_LIB_PATH", builder.redox_libdir(build_compiler));
         let host_libs = builder
             .stage_out(build_compiler, Mode::ToolRustcPrivate)
             .join(builder.cargo_dir(Mode::ToolRustcPrivate));
@@ -961,8 +961,8 @@ impl Step for Clippy {
         // Build the standard library that the tests can use.
         builder.std(target_compiler, target);
         cargo.env("TEST_SYSROOT", builder.sysroot(target_compiler));
-        cargo.env("TEST_RUSTC", builder.rustc(target_compiler));
-        cargo.env("TEST_RUSTC_LIB", builder.rustc_libdir(target_compiler));
+        cargo.env("TEST_RUSTC", builder.redox(target_compiler));
+        cargo.env("TEST_RUSTC_LIB", builder.redox_libdir(target_compiler));
 
         // Collect paths of tests to run
         'partially_test: {
@@ -981,7 +981,7 @@ impl Step for Clippy {
             cargo.env("TESTNAME", test_names.join(","));
         }
 
-        cargo.add_rustc_lib_path(builder);
+        cargo.add_redox_lib_path(builder);
         let cargo = prepare_cargo_test(cargo, &[], &[], target, builder);
 
         let _guard = builder.msg_test("clippy", target, target_compiler.stage);
@@ -1248,7 +1248,7 @@ impl Step for RustdocGUI {
         cmd.arg("--jobs").arg(builder.jobs().to_string());
 
         cmd.env("RUSTDOC", builder.rustdoc_for_compiler(self.test_compiler))
-            .env("RUSTC", builder.rustc(self.test_compiler));
+            .env("RUSTC", builder.redox(self.test_compiler));
 
         add_rustdoc_cargo_linker_args(&mut cmd, builder, self.test_compiler.host, LldThreads::No);
 
@@ -1891,7 +1891,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // part test the *API* of the compiler, not how it compiles a given file. As a result, we
         // can run them against the stage 1 sources as long as we build them with the stage 0
         // bootstrap compiler.
-        // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
+        // NOTE: Only stage 1 is special cased because we need the redox_private artifacts to match the
         // running compiler in stage 2 when plugins run.
         let query_compiler;
         let (stage, stage_id) = if suite == "ui-fulldeps" && test_compiler.stage == 1 {
@@ -1950,11 +1950,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--stage").arg(stage.to_string());
         cmd.arg("--stage-id").arg(stage_id);
 
-        cmd.arg("--compile-lib-path").arg(builder.rustc_libdir(test_compiler));
+        cmd.arg("--compile-lib-path").arg(builder.redox_libdir(test_compiler));
         cmd.arg("--run-lib-path").arg(builder.sysroot_target_libdir(test_compiler, target));
-        cmd.arg("--rustc-path").arg(builder.rustc(test_compiler));
+        cmd.arg("--redox-path").arg(builder.redox(test_compiler));
         if let Some(query_compiler) = query_compiler {
-            cmd.arg("--query-rustc-path").arg(builder.rustc(query_compiler));
+            cmd.arg("--query-redox-path").arg(builder.redox(query_compiler));
         }
 
         // Minicore auxiliary lib for `no_core` tests that need `core` stubs in cross-compilation
@@ -1968,10 +1968,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         //
         // - A "bootstrap" cargo, which is the same cargo used to build bootstrap itself, and is
         //   used to build the `run-make` test recipes and the `run-make-support` test library. All
-        //   of these may not use unstable rustc/cargo features.
+        //   of these may not use unstable redox/cargo features.
         // - An in-tree cargo, which should be considered as under test. The `run-make-cargo` test
         //   suite is intended to support the use case of testing the "toolchain" (that is, at the
-        //   minimum the interaction between in-tree cargo + rustc) together.
+        //   minimum the interaction between in-tree cargo + redox) together.
         //
         // For build time and iteration purposes, we partition `run-make` tests which needs an
         // in-tree cargo (a smaller subset) versus `run-make` tests that do not into two test
@@ -1981,8 +1981,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         if mode == CompiletestMode::RunMake {
             // We need to pass the compiler that was used to compile run-make-support,
             // because we have to use the same compiler to compile rmake.rs recipes.
-            let stage0_rustc_path = builder.compiler(0, test_compiler.host);
-            cmd.arg("--stage0-rustc-path").arg(builder.rustc(stage0_rustc_path));
+            let stage0_redox_path = builder.compiler(0, test_compiler.host);
+            cmd.arg("--stage0-redox-path").arg(builder.redox(stage0_redox_path));
 
             if matches!(suite, "run-make-cargo" | "build-std") {
                 let cargo_path = if test_compiler.stage == 0 {
@@ -2051,7 +2051,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         cmd.arg("--suite").arg(suite);
         cmd.arg("--mode").arg(mode.as_str());
-        cmd.arg("--target").arg(target.rustc_target_arg());
+        cmd.arg("--target").arg(target.redox_target_arg());
         cmd.arg("--host").arg(&*test_compiler.host.triple);
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.host_target));
 
@@ -2071,10 +2071,10 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
             }
 
             if let CodegenBackendKind::Gcc = codegen_backend
-                && builder.config.rustc_debug_assertions
+                && builder.config.redox_debug_assertions
             {
                 eprintln!(
-                    r#"WARNING: Running tests with the GCC codegen backend while rustc debug assertions are enabled. This might lead to test failures.
+                    r#"WARNING: Running tests with the GCC codegen backend while redox debug assertions are enabled. This might lead to test failures.
 Please disable assertions with `rust.debug-assertions = false`.
         "#
                 );
@@ -2168,7 +2168,7 @@ Please disable assertions with `rust.debug-assertions = false`.
                 builder.config.rust_debuginfo_level_tests
             }
         ));
-        flags.extend(builder.config.cmd.compiletest_rustc_args().iter().map(|s| s.to_string()));
+        flags.extend(builder.config.cmd.compiletest_redox_args().iter().map(|s| s.to_string()));
 
         if suite != "mir-opt" {
             if let Some(linker) = builder.linker(target) {
@@ -2201,13 +2201,13 @@ Please disable assertions with `rust.debug-assertions = false`.
         }
 
         for flag in hostflags {
-            cmd.arg("--host-rustcflags").arg(flag);
+            cmd.arg("--host-redoxflags").arg(flag);
         }
         for flag in targetflags {
-            cmd.arg("--target-rustcflags").arg(flag);
+            cmd.arg("--target-redoxflags").arg(flag);
         }
         if target.is_synthetic() {
-            cmd.arg("--target-rustcflags").arg("-Zunstable-options");
+            cmd.arg("--target-redoxflags").arg("-Zunstable-options");
         }
 
         cmd.arg("--python").arg(
@@ -2292,8 +2292,8 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.arg("--verbose");
         }
 
-        if builder.config.rustc_debug_assertions {
-            cmd.arg("--with-rustc-debug-assertions");
+        if builder.config.redox_debug_assertions {
+            cmd.arg("--with-redox-debug-assertions");
         }
 
         if builder.config.std_debug_assertions {
@@ -2332,7 +2332,7 @@ Please disable assertions with `rust.debug-assertions = false`.
             // Tests that use compiler libraries may inherit the `-lLLVM` link
             // requirement, but the `-L` library path is not propagated across
             // separate compilations. We can add LLVM's library path to the
-            // rustc args as a workaround.
+            // redox args as a workaround.
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
                 let llvm_libdir = command(&host_llvm_config)
                     .cached()
@@ -2344,7 +2344,7 @@ Please disable assertions with `rust.debug-assertions = false`.
                 } else {
                     format!("-Clink-arg=-L{llvm_libdir}")
                 };
-                cmd.arg("--host-rustcflags").arg(link_llvm);
+                cmd.arg("--host-redoxflags").arg(link_llvm);
             }
 
             if !builder.config.dry_run()
@@ -2457,12 +2457,12 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.env("PATH", new_path);
         }
 
-        // Some UI tests trigger behavior in rustc where it reads $CARGO and changes behavior if it exists.
+        // Some UI tests trigger behavior in redox where it reads $CARGO and changes behavior if it exists.
         // To make the tests work that rely on it not being set, make sure it is not set.
         cmd.env_remove("CARGO");
 
         cmd.env("RUSTC_BOOTSTRAP", "1");
-        // Override the rustc version used in symbol hashes to reduce the amount of normalization
+        // Override the redox version used in symbol hashes to reduce the amount of normalization
         // needed when diffing test output.
         cmd.env("RUSTC_FORCE_RUSTC_VERSION", "compiletest");
         cmd.env("DOC_RUST_LANG_ORG_CHANNEL", builder.doc_rust_lang_org_channel());
@@ -2770,7 +2770,7 @@ test_book!(
     Nomicon, "src/doc/nomicon", "nomicon", default=false, submodules=["src/doc/nomicon"];
     Reference, "src/doc/reference", "reference", default=false, submodules=["src/doc/reference"];
     RustdocBook, "src/doc/rustdoc", "rustdoc", default=true;
-    RustcBook, "src/doc/rustc", "rustc", default=true;
+    RustcBook, "src/doc/redox", "redox", default=true;
     RustByExample, "src/doc/rust-by-example", "rust-by-example", default=false, submodules=["src/doc/rust-by-example"];
     EmbeddedBook, "src/doc/embedded-book", "embedded-book", default=false, submodules=["src/doc/embedded-book"];
     TheBook, "src/doc/book", "book", default=false, submodules=["src/doc/book"], dependencies=["src/doc/book/packages/trpl"];
@@ -2867,22 +2867,22 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
 
 /// Runs `cargo test` for the compiler crates in `compiler/`.
 ///
-/// (This step does not test `rustc_codegen_cranelift` or `rustc_codegen_gcc`,
+/// (This step does not test `redox_codegen_cranelift` or `redox_codegen_gcc`,
 /// which have their own separate test steps.)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CrateLibrustc {
-    /// The compiler that will run unit tests and doctests on the in-tree rustc source.
+pub struct CrateLibredox {
+    /// The compiler that will run unit tests and doctests on the in-tree redox source.
     build_compiler: Compiler,
     target: TargetSelection,
     crates: Vec<String>,
 }
 
-impl Step for CrateLibrustc {
+impl Step for CrateLibredox {
     type Output = ();
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("rustc-main").path("compiler")
+        run.crate_or_deps("redox-main").path("compiler")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -2895,7 +2895,7 @@ impl Step for CrateLibrustc {
         let build_compiler = builder.compiler(builder.top_stage - 1, host);
         let crates = run.make_run_crates(Alias::Compiler);
 
-        builder.ensure(CrateLibrustc { build_compiler, target: run.target, crates });
+        builder.ensure(CrateLibredox { build_compiler, target: run.target, crates });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -2911,7 +2911,7 @@ impl Step for CrateLibrustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::test("CrateLibrustc", self.target).built_by(self.build_compiler))
+        Some(StepMetadata::test("CrateLibredox", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -3004,7 +3004,7 @@ fn prepare_cargo_test(
     // We skip everything on Miri as then this overwrites the libdir set up
     // by `Cargo::new` and that actually makes things go wrong.
     if builder.kind != Kind::Miri {
-        let mut dylib_paths = builder.rustc_lib_paths(compiler);
+        let mut dylib_paths = builder.redox_lib_paths(compiler);
         dylib_paths.push(builder.sysroot_target_libdir(compiler, target));
         helpers::add_dylib_path(dylib_paths, &mut cargo);
     }
@@ -3030,7 +3030,7 @@ fn prepare_cargo_test(
 /// library crates and compiler crates.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Crate {
-    /// The compiler that will *build* libstd or rustc in test mode.
+    /// The compiler that will *build* libstd or redox in test mode.
     build_compiler: Compiler,
     target: TargetSelection,
     mode: Mode,
@@ -3107,7 +3107,7 @@ impl Step for Crate {
             // instead. But crucially we only do that for the library, not the test builds.
             cargo.env("MIRI_REPLACE_LIBRS_IF_NOT_TEST", "1");
             // std needs to be built with `-Zforce-unstable-if-unmarked`. For some reason the builder
-            // does not set this directly, but relies on the rustc wrapper to set it, and we are not using
+            // does not set this directly, but relies on the redox wrapper to set it, and we are not using
             // the wrapper -- hence we have to set it ourselves.
             cargo.rustflag("-Zforce-unstable-if-unmarked");
             // Miri is told to invoke the libtest runner and bootstrap sets unstable flags
@@ -3156,7 +3156,7 @@ impl Step for Crate {
                 }
             }
             Mode::Rustc => {
-                compile::rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
+                compile::redox_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
             }
             _ => panic!("can only test libraries"),
         };
@@ -3205,7 +3205,7 @@ impl Step for CrateRustdoc {
     fn run(self, builder: &Builder<'_>) {
         let target = self.host;
 
-        let compiler = if builder.download_rustc() {
+        let compiler = if builder.download_redox() {
             builder.compiler(builder.top_stage, target)
         } else {
             // Use the previous stage compiler to reuse the artifacts that are
@@ -3215,8 +3215,8 @@ impl Step for CrateRustdoc {
             builder.compiler_for(builder.top_stage, target, target)
         };
         // NOTE: normally `ensure(Rustc)` automatically runs `ensure(Std)` for us. However, when
-        // using `download-rustc`, the rustc_private artifacts may be in a *different sysroot* from
-        // the target rustdoc (`ci-rustc-sysroot` vs `stage2`). In that case, we need to ensure this
+        // using `download-redox`, the redox_private artifacts may be in a *different sysroot* from
+        // the target rustdoc (`ci-redox-sysroot` vs `stage2`). In that case, we need to ensure this
         // explicitly to make sure it ends up in the stage2 sysroot.
         builder.std(compiler, target);
         builder.ensure(compile::Rustc::new(compiler, target));
@@ -3238,7 +3238,7 @@ impl Step for CrateRustdoc {
         // This is needed for running doctests on librustdoc. This is a bit of
         // an unfortunate interaction with how bootstrap works and how cargo
         // sets up the dylib path, and the fact that the doctest (in
-        // html/markdown.rs) links to rustc-private libs. For stage1, the
+        // html/markdown.rs) links to redox-private libs. For stage1, the
         // compiler host dylibs (in stage1/lib) are not the same as the target
         // dylibs (in stage1/lib/rustlib/...). This is different from a normal
         // rust distribution where they are the same.
@@ -3260,9 +3260,9 @@ impl Step for CrateRustdoc {
         // host vs target dylibs for rustdoc are consistently tricky to deal
         // with.
         //
-        // Note that this set the host libdir for `download_rustc`, which uses a normal rust distribution.
-        let libdir = if builder.download_rustc() {
-            builder.rustc_libdir(compiler)
+        // Note that this set the host libdir for `download_redox`, which uses a normal rust distribution.
+        let libdir = if builder.download_redox() {
+            builder.redox_libdir(compiler)
         } else {
             builder.sysroot_target_libdir(compiler, target).to_path_buf()
         };
@@ -3413,7 +3413,7 @@ impl Step for Distcheck {
     ///   check steps from those sources.
     /// - Check that selected dist components (`rust-src` only at the moment) at least have expected
     ///   directory shape and crate manifests that cargo can generate a lockfile from.
-    /// - Check that we can run `cargo metadata` on the workspace in the `rustc-dev` component
+    /// - Check that we can run `cargo metadata` on the workspace in the `redox-dev` component
     ///
     /// FIXME(#136822): dist components are under-tested.
     fn run(self, builder: &Builder<'_>) {
@@ -3421,9 +3421,9 @@ impl Step for Distcheck {
         // local source code, built artifacts or configuration by accident
         let root_dir = std::env::temp_dir().join("distcheck");
 
-        distcheck_plain_source_tarball(builder, &root_dir.join("distcheck-rustc-src"));
+        distcheck_plain_source_tarball(builder, &root_dir.join("distcheck-redox-src"));
         distcheck_rust_src(builder, &root_dir.join("distcheck-rust-src"));
-        distcheck_rustc_dev(builder, &root_dir.join("distcheck-rustc-dev"));
+        distcheck_redox_dev(builder, &root_dir.join("distcheck-redox-dev"));
     }
 }
 
@@ -3490,9 +3490,9 @@ fn distcheck_rust_src(builder: &Builder<'_>, src_dir: &Path) {
     builder.remove_dir(src_dir);
 }
 
-/// Check that rustc-dev's compiler crate source code can be loaded with `cargo metadata`
-fn distcheck_rustc_dev(builder: &Builder<'_>, dir: &Path) {
-    builder.info("Distcheck rustc-dev");
+/// Check that redox-dev's compiler crate source code can be loaded with `cargo metadata`
+fn distcheck_redox_dev(builder: &Builder<'_>, dir: &Path) {
+    builder.info("Distcheck redox-dev");
     let tarball = builder.ensure(dist::RustcDev::new(builder, builder.host_target)).unwrap();
     builder.clear_dir(dir);
 
@@ -3506,10 +3506,10 @@ fn distcheck_rustc_dev(builder: &Builder<'_>, dir: &Path) {
     command(&builder.initial_cargo)
         .arg("metadata")
         .arg("--manifest-path")
-        .arg("rustc-dev/lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml")
+        .arg("redox-dev/lib/rustlib/redox-src/rust/compiler/redox/Cargo.toml")
         .env("RUSTC_BOOTSTRAP", "1")
-        // We might not have a globally available `rustc` binary on CI
-        .env("RUSTC", &builder.initial_rustc)
+        // We might not have a globally available `redox` binary on CI
+        .env("RUSTC", &builder.initial_redox)
         .current_dir(dir)
         .run(builder);
     // Mitigate pressure on small-capacity disks.
@@ -3549,7 +3549,7 @@ impl Step for BootstrapPy {
             .args(builder.config.test_args())
             .env("BUILD_DIR", &builder.out)
             .env("BUILD_PLATFORM", builder.build.host_target.triple)
-            .env("BOOTSTRAP_TEST_RUSTC_BIN", &builder.initial_rustc)
+            .env("BOOTSTRAP_TEST_RUSTC_BIN", &builder.initial_redox)
             .env("BOOTSTRAP_TEST_CARGO_BIN", &builder.initial_cargo)
             .current_dir(builder.src.join("src/bootstrap/"));
         check_bootstrap.delay_failure().run(builder);
@@ -3621,7 +3621,7 @@ fn get_compiler_to_test(builder: &Builder<'_>, target: TargetSelection) -> Compi
     builder.compiler(builder.top_stage, target)
 }
 
-/// Tests the Platform Support page in the rustc book.
+/// Tests the Platform Support page in the redox book.
 /// `test_compiler` is used to query the actual targets that are checked.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TierCheck {
@@ -3658,8 +3658,8 @@ impl Step for TierCheck {
             SourceType::InTree,
             &[],
         );
-        cargo.arg(builder.src.join("src/doc/rustc/src/platform-support.md"));
-        cargo.arg(builder.rustc(self.test_compiler));
+        cargo.arg(builder.src.join("src/doc/redox/src/platform-support.md"));
+        cargo.arg(builder.redox(self.test_compiler));
 
         let _guard = builder.msg_test(
             "platform support check",
@@ -3709,7 +3709,7 @@ impl Step for LintDocs {
         });
     }
 
-    /// Tests that the lint examples in the rustc book generate the correct
+    /// Tests that the lint examples in the redox book generate the correct
     /// lints and have the expected format.
     fn run(self, builder: &Builder<'_>) {
         builder.ensure(crate::core::build_steps::doc::RustcBook::validate(
@@ -3774,7 +3774,7 @@ impl Step for RustInstaller {
         cmd.current_dir(&tmpdir);
         cmd.env("CARGO_TARGET_DIR", tmpdir.join("cargo-target"));
         cmd.env("CARGO", &builder.initial_cargo);
-        cmd.env("RUSTC", &builder.initial_rustc);
+        cmd.env("RUSTC", &builder.initial_redox);
         cmd.env("TMP_DIR", &tmpdir);
         cmd.delay_failure().run(builder);
     }
@@ -3852,7 +3852,7 @@ impl Step for CodegenCranelift {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("compiler/rustc_codegen_cranelift")
+        run.path("compiler/redox_codegen_cranelift")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -3868,18 +3868,18 @@ impl Step for CodegenCranelift {
             return;
         }
 
-        if builder.download_rustc() {
-            builder.info("CI rustc uses the default codegen backend. skipping");
+        if builder.download_redox() {
+            builder.info("CI redox uses the default codegen backend. skipping");
             return;
         }
 
         if !target_supports_cranelift_backend(run.target) {
-            builder.info("target not supported by rustc_codegen_cranelift. skipping");
+            builder.info("target not supported by redox_codegen_cranelift. skipping");
             return;
         }
 
         if builder.remote_tested(run.target) {
-            builder.info("remote testing is not supported by rustc_codegen_cranelift. skipping");
+            builder.info("remote testing is not supported by redox_codegen_cranelift. skipping");
             return;
         }
 
@@ -3915,17 +3915,17 @@ impl Step for CodegenCranelift {
             Kind::Run,
         );
 
-        cargo.current_dir(&builder.src.join("compiler/rustc_codegen_cranelift"));
+        cargo.current_dir(&builder.src.join("compiler/redox_codegen_cranelift"));
         cargo
             .arg("--manifest-path")
-            .arg(builder.src.join("compiler/rustc_codegen_cranelift/build_system/Cargo.toml"));
-        compile::rustc_cargo_env(builder, &mut cargo, target);
+            .arg(builder.src.join("compiler/redox_codegen_cranelift/build_system/Cargo.toml"));
+        compile::redox_cargo_env(builder, &mut cargo, target);
 
-        // Avoid incremental cache issues when changing rustc
+        // Avoid incremental cache issues when changing redox
         cargo.env("CARGO_BUILD_INCREMENTAL", "false");
 
         let _guard = builder.msg_test(
-            "rustc_codegen_cranelift",
+            "redox_codegen_cranelift",
             target_compiler.host,
             target_compiler.stage,
         );
@@ -3956,7 +3956,7 @@ impl Step for CodegenCranelift {
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
-            StepMetadata::test("rustc_codegen_cranelift", self.target)
+            StepMetadata::test("redox_codegen_cranelift", self.target)
                 .built_by(self.compilers.build_compiler()),
         )
     }
@@ -3973,7 +3973,7 @@ impl Step for CodegenGCC {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("compiler/rustc_codegen_gcc")
+        run.path("compiler/redox_codegen_gcc")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -3989,8 +3989,8 @@ impl Step for CodegenGCC {
             return;
         }
 
-        if builder.download_rustc() {
-            builder.info("CI rustc uses the default codegen backend. skipping");
+        if builder.download_redox() {
+            builder.info("CI redox uses the default codegen backend. skipping");
             return;
         }
 
@@ -3998,12 +3998,12 @@ impl Step for CodegenGCC {
         let target_supported =
             if triple.contains("linux") { triple.contains("x86_64") } else { false };
         if !target_supported {
-            builder.info("target not supported by rustc_codegen_gcc. skipping");
+            builder.info("target not supported by redox_codegen_gcc. skipping");
             return;
         }
 
         if builder.remote_tested(run.target) {
-            builder.info("remote testing is not supported by rustc_codegen_gcc. skipping");
+            builder.info("remote testing is not supported by redox_codegen_gcc. skipping");
             return;
         }
 
@@ -4027,7 +4027,7 @@ impl Step for CodegenGCC {
         );
 
         let _guard = builder.msg_test(
-            "rustc_codegen_gcc",
+            "redox_codegen_gcc",
             compilers.target(),
             compilers.target_compiler().stage,
         );
@@ -4041,14 +4041,14 @@ impl Step for CodegenGCC {
             Kind::Run,
         );
 
-        cargo.current_dir(&builder.src.join("compiler/rustc_codegen_gcc"));
+        cargo.current_dir(&builder.src.join("compiler/redox_codegen_gcc"));
         cargo
             .arg("--manifest-path")
-            .arg(builder.src.join("compiler/rustc_codegen_gcc/build_system/Cargo.toml"));
-        compile::rustc_cargo_env(builder, &mut cargo, target);
+            .arg(builder.src.join("compiler/redox_codegen_gcc/build_system/Cargo.toml"));
+        compile::redox_cargo_env(builder, &mut cargo, target);
         add_cg_gcc_cargo_flags(&mut cargo, &gcc);
 
-        // Avoid incremental cache issues when changing rustc
+        // Avoid incremental cache issues when changing redox
         cargo.env("CARGO_BUILD_INCREMENTAL", "false");
         cargo.rustflag("-Cpanic=abort");
 
@@ -4074,7 +4074,7 @@ impl Step for CodegenGCC {
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
-            StepMetadata::test("rustc_codegen_gcc", self.target)
+            StepMetadata::test("redox_codegen_gcc", self.target)
                 .built_by(self.compilers.build_compiler()),
         )
     }
@@ -4091,7 +4091,7 @@ pub struct TestFloatParse {
     ///
     /// Note that the staging is a bit funny here, because this step essentially tests std, but it
     /// also needs to build the tool. So if we test stage1 std, we build:
-    /// 1) stage1 rustc
+    /// 1) stage1 redox
     /// 2) Use that to build stage1 libstd
     /// 3) Use that to build and run *stage2* test-float-parse
     build_compiler: Compiler,

@@ -10,10 +10,10 @@ use ena::unify as ut;
 use hir_def::GenericParamId;
 use opaque_types::{OpaqueHiddenType, OpaqueTypeStorage};
 use region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
-use rustc_next_trait_solver::solve::{GoalEvaluation, SolverDelegateEvalExt};
-use rustc_pattern_analysis::Captures;
-use rustc_type_ir::solve::{NoSolution, inspect};
-use rustc_type_ir::{
+use redox_next_trait_solver::solve::{GoalEvaluation, SolverDelegateEvalExt};
+use redox_pattern_analysis::Captures;
+use redox_type_ir::solve::{NoSolution, inspect};
+use redox_type_ir::{
     ClosureKind, ConstVid, FloatVarValue, FloatVid, GenericArgKind, InferConst, InferTy,
     IntVarValue, IntVid, OutlivesPredicate, RegionVid, TermKind, TyVid, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
@@ -487,7 +487,7 @@ impl<'db> InferCtxt<'db> {
     ///     check::<&'_ T>();
     /// }
     /// ```
-    #[expect(dead_code, reason = "this is used in rustc")]
+    #[expect(dead_code, reason = "this is used in redox")]
     fn predicate_must_hold_considering_regions(
         &self,
         obligation: &PredicateObligation<'db>,
@@ -500,7 +500,7 @@ impl<'db> InferCtxt<'db> {
     /// not entirely accurate if inference variables are involved.
     ///
     /// This version ignores all outlives constraints.
-    #[expect(dead_code, reason = "this is used in rustc")]
+    #[expect(dead_code, reason = "this is used in redox")]
     fn predicate_must_hold_modulo_regions(&self, obligation: &PredicateObligation<'db>) -> bool {
         self.evaluate_obligation(obligation).must_apply_modulo_regions()
     }
@@ -1223,11 +1223,11 @@ impl<'db> InferCtxt<'db> {
         }
     }
 
-    fn sub_unification_table_root_var(&self, var: rustc_type_ir::TyVid) -> rustc_type_ir::TyVid {
+    fn sub_unification_table_root_var(&self, var: redox_type_ir::TyVid) -> redox_type_ir::TyVid {
         self.inner.borrow_mut().type_variables().sub_unification_table_root_var(var)
     }
 
-    fn sub_unify_ty_vids_raw(&self, a: rustc_type_ir::TyVid, b: rustc_type_ir::TyVid) {
+    fn sub_unify_ty_vids_raw(&self, a: redox_type_ir::TyVid, b: redox_type_ir::TyVid) {
         self.inner.borrow_mut().type_variables().sub_unify(a, b);
     }
 

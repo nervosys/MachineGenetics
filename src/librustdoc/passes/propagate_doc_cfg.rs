@@ -1,7 +1,7 @@
 //! Propagates [`#[doc(cfg(...))]`](https://github.com/rust-lang/rust/issues/43781) to child items.
 
-use rustc_hir::Attribute;
-use rustc_hir::attrs::{AttributeKind, DocAttribute};
+use redox_hir::Attribute;
+use redox_hir::attrs::{AttributeKind, DocAttribute};
 
 use crate::clean::inline::{load_attrs, merge_attrs};
 use crate::clean::{CfgInfo, Crate, Item, ItemKind};

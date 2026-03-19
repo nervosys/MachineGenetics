@@ -12,7 +12,7 @@ macro_rules! pow {
         $(
             #[test]
             // FIXME(apfloat): We skip tests if system symbols aren't available rather
-            // than providing a fallback, since `rustc_apfloat` does not provide `pow`.
+            // than providing a fallback, since `redox_apfloat` does not provide `pow`.
             #[cfg($sys_available)]
             fn $fn() {
                 use compiler_builtins::float::pow::$fn;

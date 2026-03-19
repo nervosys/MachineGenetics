@@ -1,25 +1,25 @@
 // Tested with nightly-2025-03-28
 
-#![feature(rustc_private)]
+#![feature(redox_private)]
 
-extern crate rustc_data_structures;
-extern crate rustc_driver;
-extern crate rustc_error_codes;
-extern crate rustc_errors;
-extern crate rustc_hash;
-extern crate rustc_hir;
-extern crate rustc_interface;
-extern crate rustc_session;
-extern crate rustc_span;
+extern crate redox_data_structures;
+extern crate redox_driver;
+extern crate redox_error_codes;
+extern crate redox_errors;
+extern crate redox_hash;
+extern crate redox_hir;
+extern crate redox_interface;
+extern crate redox_session;
+extern crate redox_span;
 
 use std::sync::{Arc, Mutex};
 
-use rustc_errors::emitter::Emitter;
-use rustc_errors::registry::Registry;
-use rustc_errors::translation::Translate;
-use rustc_errors::{DiagInner, FluentBundle};
-use rustc_session::config;
-use rustc_span::source_map::SourceMap;
+use redox_errors::emitter::Emitter;
+use redox_errors::registry::Registry;
+use redox_errors::translation::Translate;
+use redox_errors::{DiagInner, FluentBundle};
+use redox_session::config;
+use redox_span::source_map::SourceMap;
 
 struct DebugEmitter {
     source_map: Arc<SourceMap>,
@@ -49,11 +49,11 @@ impl Emitter for DebugEmitter {
 fn main() {
     let buffer: Arc<Mutex<Vec<DiagInner>>> = Arc::default();
     let diagnostics = buffer.clone();
-    let config = rustc_interface::Config {
+    let config = redox_interface::Config {
         opts: config::Options::default(),
         // This program contains a type error.
         input: config::Input::Str {
-            name: rustc_span::FileName::Custom("main.rs".into()),
+            name: redox_span::FileName::Custom("main.rs".into()),
             input: "
 fn main() {
     let x: &str = 1;
@@ -66,7 +66,7 @@ fn main() {
         output_dir: None,
         output_file: None,
         file_loader: None,
-        lint_caps: rustc_hash::FxHashMap::default(),
+        lint_caps: redox_hash::FxHashMap::default(),
         psess_created: Some(Box::new(|parse_sess| {
             parse_sess.dcx().set_emitter(Box::new(DebugEmitter {
                 source_map: parse_sess.clone_source_map(),
@@ -79,11 +79,11 @@ fn main() {
         expanded_args: Vec::new(),
         ice_file: None,
         hash_untracked_state: None,
-        using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,
+        using_internal_features: &redox_driver::USING_INTERNAL_FEATURES,
     };
-    rustc_interface::run_compiler(config, |compiler| {
-        let krate = rustc_interface::passes::parse(&compiler.sess);
-        rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
+    redox_interface::run_compiler(config, |compiler| {
+        let krate = redox_interface::passes::parse(&compiler.sess);
+        redox_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
             // Iterate all the items defined and perform type checking.
             tcx.par_hir_body_owners(|item_def_id| {
                 tcx.ensure_ok().typeck(item_def_id);

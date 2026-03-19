@@ -1,13 +1,13 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use rustc_ast::ast::{
+use redox_ast::ast::{
     self, Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Item, ItemKind, Local, Pat, PatKind,
 };
-use rustc_ast::visit::{Visitor, walk_block, walk_expr, walk_pat};
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::impl_lint_pass;
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{Span, sym};
+use redox_ast::visit::{Visitor, walk_block, walk_expr, walk_pat};
+use redox_lint::{EarlyContext, EarlyLintPass, LintContext};
+use redox_session::impl_lint_pass;
+use redox_span::symbol::{Ident, Symbol};
+use redox_span::{Span, sym};
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
@@ -171,7 +171,7 @@ impl<'tcx> Visitor<'tcx> for SimilarNamesNameVisitor<'_, 'tcx, '_> {
                 }
             },
             // just go through the first pattern, as either all patterns
-            // bind the same bindings or rustc would have errored much earlier
+            // bind the same bindings or redox would have errored much earlier
             PatKind::Or(ref pats) => self.visit_pat(&pats[0]),
             _ => walk_pat(self, pat),
         }

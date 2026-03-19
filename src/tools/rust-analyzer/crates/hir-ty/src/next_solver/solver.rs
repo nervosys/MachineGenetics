@@ -1,8 +1,8 @@
 //! Defining `SolverContext` for next-trait-solver.
 
 use hir_def::{AssocItemId, GeneralConstId};
-use rustc_next_trait_solver::delegate::SolverDelegate;
-use rustc_type_ir::{
+use redox_next_trait_solver::delegate::SolverDelegate;
+use redox_type_ir::{
     AliasTyKind, GenericArgKind, InferCtxtLike, Interner, PredicatePolarity, TypeFlags,
     TypeVisitableExt,
     inherent::{IntoKind, Term as _, Ty as _},
@@ -22,7 +22,7 @@ use super::{
     infer::{DbInternerInferExt, InferCtxt, canonical::instantiate::CanonicalExt},
 };
 
-pub type Goal<'db, P> = rustc_type_ir::solve::Goal<DbInterner<'db>, P>;
+pub type Goal<'db, P> = redox_type_ir::solve::Goal<DbInterner<'db>, P>;
 
 #[repr(transparent)]
 pub(crate) struct SolverContext<'db>(pub(crate) InferCtxt<'db>);
@@ -52,10 +52,10 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
     fn build_with_canonical<V>(
         cx: Self::Interner,
-        canonical: &rustc_type_ir::CanonicalQueryInput<Self::Interner, V>,
-    ) -> (Self, V, rustc_type_ir::CanonicalVarValues<Self::Interner>)
+        canonical: &redox_type_ir::CanonicalQueryInput<Self::Interner, V>,
+    ) -> (Self, V, redox_type_ir::CanonicalVarValues<Self::Interner>)
     where
-        V: rustc_type_ir::TypeFoldable<Self::Interner>,
+        V: redox_type_ir::TypeFoldable<Self::Interner>,
     {
         let (infcx, value, vars) = cx.infer_ctxt().build_with_canonical(canonical);
         (SolverContext(infcx), value, vars)
@@ -71,7 +71,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
     fn leak_check(
         &self,
-        _max_input_universe: rustc_type_ir::UniverseIndex,
+        _max_input_universe: redox_type_ir::UniverseIndex,
     ) -> Result<(), NoSolution> {
         Ok(())
     }
@@ -79,12 +79,12 @@ impl<'db> SolverDelegate for SolverContext<'db> {
     fn well_formed_goals(
         &self,
         _param_env: ParamEnv<'db>,
-        _arg: <Self::Interner as rustc_type_ir::Interner>::Term,
+        _arg: <Self::Interner as redox_type_ir::Interner>::Term,
     ) -> Option<
         Vec<
-            rustc_type_ir::solve::Goal<
+            redox_type_ir::solve::Goal<
                 Self::Interner,
-                <Self::Interner as rustc_type_ir::Interner>::Predicate,
+                <Self::Interner as redox_type_ir::Interner>::Predicate,
             >,
         >,
     > {
@@ -95,9 +95,9 @@ impl<'db> SolverDelegate for SolverContext<'db> {
     fn make_deduplicated_outlives_constraints(
         &self,
     ) -> Vec<
-        rustc_type_ir::OutlivesPredicate<
+        redox_type_ir::OutlivesPredicate<
             Self::Interner,
-            <Self::Interner as rustc_type_ir::Interner>::GenericArg,
+            <Self::Interner as redox_type_ir::Interner>::GenericArg,
         >,
     > {
         // FIXME: add if we care about regions
@@ -106,11 +106,11 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
     fn instantiate_canonical<V>(
         &self,
-        canonical: rustc_type_ir::Canonical<Self::Interner, V>,
-        values: rustc_type_ir::CanonicalVarValues<Self::Interner>,
+        canonical: redox_type_ir::Canonical<Self::Interner, V>,
+        values: redox_type_ir::CanonicalVarValues<Self::Interner>,
     ) -> V
     where
-        V: rustc_type_ir::TypeFoldable<Self::Interner>,
+        V: redox_type_ir::TypeFoldable<Self::Interner>,
     {
         canonical.instantiate(self.cx(), &values)
     }
@@ -120,7 +120,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         kind: CanonicalVarKind<'db>,
         _span: <Self::Interner as Interner>::Span,
         var_values: &[GenericArg<'db>],
-        universe_map: impl Fn(rustc_type_ir::UniverseIndex) -> rustc_type_ir::UniverseIndex,
+        universe_map: impl Fn(redox_type_ir::UniverseIndex) -> redox_type_ir::UniverseIndex,
     ) -> GenericArg<'db> {
         self.0.instantiate_canonical_var(kind, var_values, universe_map)
     }
@@ -172,7 +172,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
     fn fetch_eligible_assoc_item(
         &self,
-        _goal_trait_ref: rustc_type_ir::TraitRef<Self::Interner>,
+        _goal_trait_ref: redox_type_ir::TraitRef<Self::Interner>,
         trait_assoc_def_id: SolverDefId,
         impl_id: AnyImplId,
     ) -> Result<Option<SolverDefId>, ErrorGuaranteed> {
@@ -234,7 +234,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         &self,
         _src: Ty<'db>,
         _dst: Ty<'db>,
-        _assume: <Self::Interner as rustc_type_ir::Interner>::Const,
+        _assume: <Self::Interner as redox_type_ir::Interner>::Const,
     ) -> Result<Certainty, NoSolution> {
         // It's better to return some value while not fully implement
         // then panic in the mean time
@@ -244,8 +244,8 @@ impl<'db> SolverDelegate for SolverContext<'db> {
     fn evaluate_const(
         &self,
         _param_env: ParamEnv<'db>,
-        uv: rustc_type_ir::UnevaluatedConst<Self::Interner>,
-    ) -> Option<<Self::Interner as rustc_type_ir::Interner>::Const> {
+        uv: redox_type_ir::UnevaluatedConst<Self::Interner>,
+    ) -> Option<<Self::Interner as redox_type_ir::Interner>::Const> {
         match uv.def.0 {
             GeneralConstId::ConstId(c) => {
                 let subst = uv.args;
@@ -261,11 +261,11 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
     fn compute_goal_fast_path(
         &self,
-        goal: rustc_type_ir::solve::Goal<
+        goal: redox_type_ir::solve::Goal<
             Self::Interner,
-            <Self::Interner as rustc_type_ir::Interner>::Predicate,
+            <Self::Interner as redox_type_ir::Interner>::Predicate,
         >,
-        _span: <Self::Interner as rustc_type_ir::Interner>::Span,
+        _span: <Self::Interner as redox_type_ir::Interner>::Span,
     ) -> Option<Certainty> {
         if let Some(trait_pred) = goal.predicate.as_trait_clause() {
             if self.shallow_resolve(trait_pred.self_ty().skip_binder()).is_ty_var()

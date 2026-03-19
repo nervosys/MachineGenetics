@@ -3,10 +3,10 @@
 use std::fs::read_to_string;
 use std::sync::{Arc, Mutex};
 
-use rustc_errors::DiagCtxtHandle;
-use rustc_session::config::Input;
-use rustc_span::source_map::FilePathMapping;
-use rustc_span::{DUMMY_SP, FileName, RealFileName};
+use redox_errors::DiagCtxtHandle;
+use redox_session::config::Input;
+use redox_span::source_map::FilePathMapping;
+use redox_span::{DUMMY_SP, FileName, RealFileName};
 use tempfile::tempdir;
 
 use super::{
@@ -44,8 +44,8 @@ impl DocTestVisitor for MdCollector {
             .chars()
             .enumerate()
             .map(|(i, c)| {
-                if (i == 0 && rustc_lexer::is_id_start(c))
-                    || (i != 0 && rustc_lexer::is_id_continue(c))
+                if (i == 0 && redox_lexer::is_id_start(c))
+                    || (i != 0 && redox_lexer::is_id_continue(c))
                 {
                     c
                 } else {
@@ -108,7 +108,7 @@ pub(crate) fn test(input: &Input, options: Options, dcx: DiagCtxtHandle<'_>) -> 
         filename: input
             .opt_path()
             .map(|f| {
-                // We don't have access to a rustc Session so let's just use a dummy
+                // We don't have access to a redox Session so let's just use a dummy
                 // filepath mapping to create a real filename.
                 let file_mapping = FilePathMapping::empty();
                 FileName::Real(file_mapping.to_real_filename(&RealFileName::empty(), f))

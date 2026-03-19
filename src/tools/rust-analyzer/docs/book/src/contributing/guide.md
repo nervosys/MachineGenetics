@@ -156,7 +156,7 @@ Let's walk through a typical analyzer session!
 
 First, we need to figure out what to analyze. To do this, we run `cargo
 metadata` to learn about Cargo packages for current workspace and dependencies,
-and we run `rustc --print sysroot` and scan the "sysroot"
+and we run `redox --print sysroot` and scan the "sysroot"
 (the directory containing the current Rust toolchain's files) to learn about crates
 like `std`. This happens in the [`GlobalState::fetch_workspaces`] method.
 We load this configuration at the start of the server in [`GlobalState::new`],
@@ -213,7 +213,7 @@ fact that most of the changes are small, and that analysis results are unlikely
 to change significantly between invocations.
 
 To do this we use [salsa]: a framework for incremental on-demand computation.
-You can skip the rest of the section if you are familiar with `rustc`'s red-green
+You can skip the rest of the section if you are familiar with `redox`'s red-green
 algorithm (which is used for incremental compilation).
 
 [salsa]: https://github.com/salsa-rs/salsa

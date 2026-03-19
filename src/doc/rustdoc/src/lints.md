@@ -9,7 +9,7 @@ can use them like any other lints by doing this:
 #![deny(rustdoc::broken_intra_doc_links)] // error if there are broken intra-doc links
 ```
 
-Note that, except for `missing_docs`, these lints are only available when running `rustdoc`, not `rustc`.
+Note that, except for `missing_docs`, these lints are only available when running `rustdoc`, not `redox`.
 
 Here is the list of the lints provided by `rustdoc`:
 
@@ -128,7 +128,7 @@ warning: missing documentation for a function
    | ^^^^^^^^^^^^^^^^^^^^^
 ```
 
-Note that unlike other rustdoc lints, this lint is also available from `rustc` directly.
+Note that unlike other rustdoc lints, this lint is also available from `redox` directly.
 
 ## `missing_crate_level_docs`
 
@@ -339,7 +339,7 @@ warning: could not parse code block as Rust code
 10 | | /// ```
    | |_______^
    |
-   = note: error from rustc: unterminated character literal
+   = note: error from redox: unterminated character literal
 ```
 
 ## `bare_urls`

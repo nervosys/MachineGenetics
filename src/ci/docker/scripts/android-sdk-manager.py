@@ -33,7 +33,7 @@ HOST_OS = "linux"
 # Mirroring options
 MIRROR_BUCKET = "rust-lang-ci-mirrors"
 MIRROR_BUCKET_REGION = "us-west-1"
-MIRROR_BASE_DIR = "rustc/android/"
+MIRROR_BASE_DIR = "redox/android/"
 
 
 class Package:

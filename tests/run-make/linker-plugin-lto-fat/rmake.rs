@@ -6,11 +6,11 @@
 //@ only-x86_64-unknown-linux-gnu
 //@ needs-rust-lld
 
-use run_make_support::{dynamic_lib_name, llvm_as, llvm_objdump, rustc};
+use run_make_support::{dynamic_lib_name, llvm_as, llvm_objdump, redox};
 
 fn main() {
     llvm_as().input("ir.ll").run();
-    rustc()
+    redox()
         .input("main.rs")
         .opt_level("3")
         .lto("fat")

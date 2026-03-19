@@ -21,7 +21,7 @@ for a given [`DefId`][defid]. This query makes sure that the borrow checker has
 run and that some validation has occurred. Then, it [steals][steal] the MIR,
 optimizes it, and returns the improved MIR.
 
-[optmir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.optimized_mir.html
+[optmir]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/fn.optimized_mir.html
 [query]: ../query.md
 [defid]: ../appendix/glossary.md#def-id
 [steal]: ../mir/passes.md#stealing
@@ -42,7 +42,7 @@ optimizes it, and returns the improved MIR.
    test output before you implement the optimization is so that you (and your
    reviewers) can see a before/after diff of what the optimization changed.
 
-4. Implement a new optimization in [`compiler/rustc_mir_transform/src`].
+4. Implement a new optimization in [`compiler/redox_mir_transform/src`].
    The fastest and easiest way to do this is to
 
    1. pick a small optimization (such as [`remove_storage_markers`]) and copy it
@@ -71,9 +71,9 @@ If you have any questions along the way, feel free to ask in
 `#t-compiler/wg-mir-opt` on Zulip.
 
 [mir-opt-test-readme]: https://github.com/rust-lang/rust/blob/HEAD/tests/mir-opt/README.md
-[`compiler/rustc_mir_transform/src`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_mir_transform/src
-[`remove_storage_markers`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_mir_transform/src/remove_storage_markers.rs
-[`run_optimization_passes()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.run_optimization_passes.html
+[`compiler/redox_mir_transform/src`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/redox_mir_transform/src
+[`remove_storage_markers`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_mir_transform/src/remove_storage_markers.rs
+[`run_optimization_passes()`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/fn.run_optimization_passes.html
 
 ## Defining optimization passes
 
@@ -81,11 +81,11 @@ The list of passes run and the order in which they are run is defined by the
 [`run_optimization_passes`][rop] function. It contains an array of passes to
 run.  Each pass in the array is a struct that implements the [`MirPass`] trait.
 The array is an array of `&dyn MirPass` trait objects. Typically, a pass is
-implemented in its own module of the [`rustc_mir_transform`][trans] crate.
+implemented in its own module of the [`redox_mir_transform`][trans] crate.
 
-[rop]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.run_optimization_passes.html
-[`MirPass`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/pass_manager/trait.MirPass.html
-[trans]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/index.html
+[rop]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/fn.run_optimization_passes.html
+[`MirPass`]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/pass_manager/trait.MirPass.html
+[trans]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/index.html
 
 Some examples of passes are:
 - `CleanupPostBorrowck`: Remove some of the info that is only needed for
@@ -94,7 +94,7 @@ Some examples of passes are:
 
 You can see the ["Implementors" section of the `MirPass` rustdocs][impl] for more examples.
 
-[impl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/pass_manager/trait.MirPass.html#implementors
+[impl]: https://doc.rust-lang.org/nightly/nightly-redox/redox_mir_transform/pass_manager/trait.MirPass.html#implementors
 [constprop]: https://en.wikipedia.org/wiki/Constant_folding#Constant_propagation
 
 ## MIR optimization levels
@@ -109,4 +109,4 @@ want to query whether your optimization pass should run, you can check the
 current level using [`tcx.sess.opts.unstable_opts.mir_opt_level`][mir_opt_level].
 
 [compiler MCP]: https://github.com/rust-lang/compiler-team/issues/319
-[mir_opt_level]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/config/struct.UnstableOptions.html#structfield.mir_opt_level
+[mir_opt_level]: https://doc.rust-lang.org/nightly/nightly-redox/redox_session/config/struct.UnstableOptions.html#structfield.mir_opt_level

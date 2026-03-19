@@ -3,7 +3,7 @@
 //! Specifically, it implements a concept of `MacroFile` -- a file whose syntax
 //! tree originates not from the text of some `FileId`, but from some macro
 //! expansion.
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 // It's useful to refer to code that is private in doc comments.
 #![allow(rustdoc::private_intra_doc_links)]
 
@@ -745,8 +745,8 @@ impl MacroCallKind {
 
     /// Returns the original file range that best describes the location of this macro call.
     ///
-    /// Here we try to roughly match what rustc does to improve diagnostics: fn-like macros
-    /// get the macro path (rustc shows the whole `ast::MacroCall`), attribute macros get the
+    /// Here we try to roughly match what redox does to improve diagnostics: fn-like macros
+    /// get the macro path (redox shows the whole `ast::MacroCall`), attribute macros get the
     /// attribute's range, and derives get only the specific derive that is being referred to.
     pub fn original_call_range(self, db: &dyn ExpandDatabase, krate: Crate) -> FileRange {
         let mut kind = self;

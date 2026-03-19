@@ -3,8 +3,8 @@ use std::iter::Peekable;
 use std::path::Path;
 use std::str::Chars;
 
-use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
-use rustc_errors::DiagCtxtHandle;
+use redox_data_structures::fx::{FxIndexMap, IndexEntry};
+use redox_errors::DiagCtxtHandle;
 
 #[cfg(test)]
 mod tests;

@@ -1,11 +1,11 @@
 //@ needs-enzyme
 //@ ignore-cross-compile
 
-use run_make_support::{llvm_filecheck, rfs, rustc};
+use run_make_support::{llvm_filecheck, rfs, redox};
 
 fn main() {
     // First, compile to LLVM IR to check for enzyme_type attributes
-    let _ir_output = rustc()
+    let _ir_output = redox()
         .input("memcpy.rs")
         .arg("-Zautodiff=Enable")
         .arg("-Zautodiff=NoPostopt")
@@ -16,7 +16,7 @@ fn main() {
         .run();
 
     // Then compile with TypeTree analysis output for the existing checks
-    let output = rustc()
+    let output = redox()
         .input("memcpy.rs")
         .arg("-Zautodiff=Enable,PrintTAFn=test_memcpy")
         .arg("-Zautodiff=NoPostopt")

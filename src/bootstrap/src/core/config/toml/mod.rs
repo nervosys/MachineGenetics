@@ -136,7 +136,7 @@ impl Merge for TomlConfig {
 /// useful in scenarios where developers want to see how the tarball sources were
 /// generated.
 ///
-/// We also use this file to compare the host's bootstrap.toml against the CI rustc builder
+/// We also use this file to compare the host's bootstrap.toml against the CI redox builder
 /// configuration to detect any incompatible options.
 pub const BUILDER_CONFIG_FILENAME: &str = "builder-config";
 

@@ -223,7 +223,7 @@ use crate::sys::sync as sys;
 /// ```
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Mutex")]
+#[cfg_attr(not(test), redox_diagnostic_item = "Mutex")]
 pub struct Mutex<T: ?Sized> {
     inner: sys::Mutex,
     poison: poison::Flag,
@@ -273,7 +273,7 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
                       and cause Futures to not implement `Send`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[clippy::has_significant_drop]
-#[cfg_attr(not(test), rustc_diagnostic_item = "MutexGuard")]
+#[cfg_attr(not(test), redox_diagnostic_item = "MutexGuard")]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
     lock: &'a Mutex<T>,
     poison: poison::Guard,
@@ -345,7 +345,7 @@ impl<T> Mutex<T> {
     /// let mutex = Mutex::new(0);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
+    #[redox_const_stable(feature = "const_locks", since = "1.63.0")]
     #[inline]
     pub const fn new(t: T) -> Mutex<T> {
         Mutex { inner: sys::Mutex::new(), poison: poison::Flag::new(), data: UnsafeCell::new(t) }
@@ -401,7 +401,7 @@ impl<T> Mutex<T> {
     /// assert_eq!(mutex.get_cloned().unwrap(), 11);
     /// ```
     #[unstable(feature = "lock_value_accessors", issue = "133407")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn set(&self, value: T) -> Result<(), PoisonError<T>> {
         if mem::needs_drop::<T>() {
             // If the contained value has non-trivial destructor, we
@@ -439,7 +439,7 @@ impl<T> Mutex<T> {
     /// assert_eq!(mutex.get_cloned().unwrap(), 11);
     /// ```
     #[unstable(feature = "lock_value_accessors", issue = "133407")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn replace(&self, value: T) -> LockResult<T> {
         match self.lock() {
             Ok(mut guard) => Ok(mem::replace(&mut *guard, value)),
@@ -486,7 +486,7 @@ impl<T: ?Sized> Mutex<T> {
     /// assert_eq!(*mutex.lock().unwrap(), 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn lock(&self) -> LockResult<MutexGuard<'_, T>> {
         unsafe {
             self.inner.lock();
@@ -535,7 +535,7 @@ impl<T: ?Sized> Mutex<T> {
     /// assert_eq!(*mutex.lock().unwrap(), 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn try_lock(&self) -> TryLockResult<MutexGuard<'_, T>> {
         unsafe {
             if self.inner.try_lock() {
@@ -606,7 +606,7 @@ impl<T: ?Sized> Mutex<T> {
     /// ```
     #[inline]
     #[stable(feature = "mutex_unpoison", since = "1.77.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn clear_poison(&self) {
         self.poison.clear();
     }

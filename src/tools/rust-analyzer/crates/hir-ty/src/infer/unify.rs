@@ -6,8 +6,8 @@ use base_db::Crate;
 use hir_def::{AdtId, DefWithBodyId, GenericParamId};
 use hir_expand::name::Name;
 use intern::sym;
-use rustc_hash::FxHashSet;
-use rustc_type_ir::{
+use redox_hash::FxHashSet;
+use redox_type_ir::{
     TyVid, TypeFoldable, TypeVisitableExt, UpcastFrom,
     inherent::{Const as _, GenericArg as _, IntoKind, Ty as _},
     solve::Certainty,
@@ -240,7 +240,7 @@ impl<'db> InferenceTable<'db> {
         let ty = self.shallow_resolve(ty);
 
         match ty.kind() {
-            TyKind::Infer(rustc_type_ir::TyVar(found_vid)) => {
+            TyKind::Infer(redox_type_ir::TyVar(found_vid)) => {
                 self.infer_ctxt.root_var(expected_vid) == self.infer_ctxt.root_var(found_vid)
             }
             _ => false,
@@ -251,7 +251,7 @@ impl<'db> InferenceTable<'db> {
         self.diverging_type_vars.insert(ty);
     }
 
-    pub(crate) fn canonicalize<T>(&mut self, t: T) -> rustc_type_ir::Canonical<DbInterner<'db>, T>
+    pub(crate) fn canonicalize<T>(&mut self, t: T) -> redox_type_ir::Canonical<DbInterner<'db>, T>
     where
         T: TypeFoldable<DbInterner<'db>>,
     {
@@ -332,7 +332,7 @@ impl<'db> InferenceTable<'db> {
 
     pub(crate) fn resolve_vars_with_obligations<T>(&mut self, t: T) -> T
     where
-        T: rustc_type_ir::TypeFoldable<DbInterner<'db>>,
+        T: redox_type_ir::TypeFoldable<DbInterner<'db>>,
     {
         if !t.has_non_region_infer() {
             return t;
@@ -430,7 +430,7 @@ impl<'db> InferenceTable<'db> {
         tracing::debug!(?result);
         match result {
             Ok((_, Certainty::Yes)) => {}
-            Err(rustc_type_ir::solve::NoSolution) => {}
+            Err(redox_type_ir::solve::NoSolution) => {}
             Ok((_, Certainty::Maybe { .. })) => {
                 self.fulfillment_cx.register_predicate_obligation(
                     &self.infer_ctxt,
@@ -538,7 +538,7 @@ impl<'db> InferenceTable<'db> {
             let proj_args = self.infer_ctxt.fill_rest_fresh_args(output_assoc_type.into(), args);
             let projection = Ty::new_alias(
                 self.interner(),
-                rustc_type_ir::AliasTyKind::Projection,
+                redox_type_ir::AliasTyKind::Projection,
                 AliasTy::new_from_args(self.interner(), output_assoc_type.into(), proj_args),
             );
 
@@ -583,7 +583,7 @@ impl<'db> InferenceTable<'db> {
     /// while `process_user_written_ty()` should (but doesn't currently).
     pub(crate) fn process_remote_user_written_ty(&mut self, ty: Ty<'db>) -> Ty<'db> {
         let ty = self.insert_type_vars(ty);
-        // See https://github.com/rust-lang/rust/blob/cdb45c87e2cd43495379f7e867e3cc15dcee9f93/compiler/rustc_hir_typeck/src/fn_ctxt/mod.rs#L487-L495:
+        // See https://github.com/rust-lang/rust/blob/cdb45c87e2cd43495379f7e867e3cc15dcee9f93/compiler/redox_hir_typeck/src/fn_ctxt/mod.rs#L487-L495:
         // Even though the new solver only lazily normalizes usually, here we eagerly normalize so that not everything needs
         // to normalize before inspecting the `TyKind`.
         // FIXME(next-solver): We should not deeply normalize here, only shallowly.
@@ -670,7 +670,7 @@ impl fmt::Debug for InferenceTable<'_> {
 }
 
 mod resolve_completely {
-    use rustc_type_ir::{DebruijnIndex, Flags, TypeFolder, TypeSuperFoldable};
+    use redox_type_ir::{DebruijnIndex, Flags, TypeFolder, TypeSuperFoldable};
 
     use crate::{
         infer::unify::InferenceTable,

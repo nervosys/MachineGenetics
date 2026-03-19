@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 use std::{fs, str};
 
-use rustc_errors::DiagCtxtHandle;
-use rustc_span::edition::Edition;
+use redox_errors::DiagCtxtHandle;
+use redox_span::edition::Edition;
 use serde::Serialize;
 
 use crate::html::markdown::{ErrorCodes, HeadingOffset, IdMap, Markdown, Playground};

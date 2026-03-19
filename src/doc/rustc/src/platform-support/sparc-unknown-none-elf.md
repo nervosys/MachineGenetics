@@ -92,7 +92,7 @@ rustflags = "-Ctarget-cpu=leon3"
 
 With this configuration, running `cargo run` will compile your code for the
 SPARC V8 compatible Gaisler Leon3 processor and then start the `tsim-leon3`
-simulator. The `libcore` was pre-compiled as part of the `rustc` compilation
+simulator. The `libcore` was pre-compiled as part of the `redox` compilation
 process using the SPARC V7 baseline, but if you are using a nightly toolchain
 you can use the
 [`-Z build-std=core`](https://doc.rust-lang.org/cargo/reference/unstable.html#build-std)

@@ -58,16 +58,16 @@ pub macro field_of($Container:ty, $($fields:expr)+ $(,)?) {
 /// byte offset `OFFSET`
 #[lang = "field"]
 #[unstable(feature = "field_projections", issue = "145383")]
-#[rustc_deny_explicit_impl]
-#[rustc_dyn_incompatible_trait]
+#[redox_deny_explicit_impl]
+#[redox_dyn_incompatible_trait]
 // NOTE: the compiler provides the impl of `Field` for `FieldRepresentingType` when it can guarantee
 // the safety requirements of this trait. It also has to manually add the correct trait bounds on
 // associated types (and the `Self` type). Thus any changes to the bounds here must be reflected in
 // the old and new trait solver:
 // - `fn assemble_candidates_for_field_trait` in
-//   `compiler/rustc_trait_selection/src/traits/select/candidate_assembly.rs`, and
+//   `compiler/redox_trait_selection/src/traits/select/candidate_assembly.rs`, and
 // - `fn consider_builtin_field_candidate` in
-//   `compiler/rustc_next_trait_solver/src/solve/trait_goals.rs`.
+//   `compiler/redox_next_trait_solver/src/solve/trait_goals.rs`.
 pub unsafe trait Field: Send + Sync + Copy {
     /// The type of the base where this field exists in.
     #[lang = "field_base"]

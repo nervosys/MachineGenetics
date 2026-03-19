@@ -578,7 +578,7 @@ class MSVCEnumSyntheticProvider:
     Synthetic provider for sum-type enums on MSVC. For a detailed explanation of the internals,
     see:
 
-    https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs
+    https://github.com/rust-lang/rust/blob/HEAD/compiler/redox_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs
     """
 
     valobj: SBValue

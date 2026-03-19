@@ -4,11 +4,11 @@ use clippy_utils::msrvs::Msrv;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{as_some_pattern, is_none_pattern, msrvs, peel_hir_expr_refs, sym};
-use rustc_errors::Applicability;
-use rustc_hir::{Arm, Expr, ExprKind, Pat, PatKind, QPath, is_range_literal};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
-use rustc_span::{Span, Symbol};
+use redox_errors::Applicability;
+use redox_hir::{Arm, Expr, ExprKind, Pat, PatKind, QPath, is_range_literal};
+use redox_lint::{LateContext, LateLintPass};
+use redox_session::impl_lint_pass;
+use redox_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does

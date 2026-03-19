@@ -1,6 +1,6 @@
 # JSON Output
 
-This chapter documents the JSON structures emitted by `rustc`. JSON may be
+This chapter documents the JSON structures emitted by `redox`. JSON may be
 enabled with the [`--error-format=json` flag][option-error-format]. Additional
 options may be specified with the [`--json` flag][option-json] which can
 change which messages are generated, and the format of the messages.
@@ -20,7 +20,7 @@ values may be `null`. New fields may be added. Enumerated fields like
 ## Diagnostics
 
 Diagnostic messages provide errors or possible concerns generated during
-compilation. `rustc` provides detailed information about where the diagnostic
+compilation. `redox` provides detailed information about where the diagnostic
 originates, along with hints and suggestions.
 
 Diagnostics are arranged in a parent/child relationship where the parent
@@ -206,7 +206,7 @@ Diagnostics have the following format:
         }
     ],
     /* Optional string of the rendered version of the diagnostic as displayed
-       by rustc. Note that this may be influenced by the `--json` flag.
+       by redox. Note that this may be influenced by the `--json` flag.
     */
     "rendered": "warning: unused variable: `x`\n --> lib.rs:2:9\n  |\n2 |     let x = 123;\n  |         ^ help: if this is intentional, prefix it with an underscore: `_x`\n  |\n  = note: `#[warn(unused_variables)]` on by default\n\n"
 }
@@ -233,7 +233,7 @@ for each type, for example when using multiple codegen units.
        - "asm": The `.s` file with generated assembly
        - "llvm-ir": The `.ll` file with generated textual LLVM IR
        - "llvm-bc": The `.bc` file with generated LLVM bitcode
-       - "mir": The `.mir` file with rustc's mid-level intermediate representation.
+       - "mir": The `.mir` file with redox's mid-level intermediate representation.
        - "obj": The `.o` file with generated native object code
     */
     "emit": "link"
@@ -260,7 +260,7 @@ information, even if the diagnostics have been suppressed (such as with an
     [
         {
             /* A diagnostic structure as defined in
-               https://doc.rust-lang.org/rustc/json.html#diagnostics
+               https://doc.rust-lang.org/redox/json.html#diagnostics
             */
             "diagnostic": {...},
         }
@@ -289,11 +289,11 @@ The JSON structure is:
 
 The warn/deny/forbid lint level (as defined either on the command line or in the
 source) dictates the `lint_level` in the JSON. With `unused-externs`, a
-`deny` or `forbid` level diagnostic will also cause `rustc` to exit with a
+`deny` or `forbid` level diagnostic will also cause `redox` to exit with a
 failure exit code.
 
 `unused-externs-silent` will report the diagnostic the same way, but will not
-cause `rustc` to exit with failure - it's up to the consumer to flag failure
+cause `redox` to exit with failure - it's up to the consumer to flag failure
 appropriately. (This is needed by Cargo which shares the same dependencies
 across multiple build targets, so it should only report an unused dependency if
 its not used by any of the targets.)
@@ -302,7 +302,7 @@ its not used by any of the targets.)
 
 **This setting is currently unstable and requires usage of `-Zunstable-options`.**
 
-The `--timings` option will tell `rustc` to emit messages when a certain compilation
+The `--timings` option will tell `redox` to emit messages when a certain compilation
 section (such as code generation or linking) begins or ends. The messages currently have
 the following format:
 

@@ -1,13 +1,13 @@
 //@ compile-flags: -Z unstable-options
 
-#![feature(rustc_private)]
-#![deny(rustc::lint_pass_impl_without_macro)]
+#![feature(redox_private)]
+#![deny(redox::lint_pass_impl_without_macro)]
 
-extern crate rustc_middle;
-extern crate rustc_session;
+extern crate redox_middle;
+extern crate redox_session;
 
-use rustc_session::lint::{LintPass, LintVec, Lint};
-use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
+use redox_session::lint::{LintPass, LintVec, Lint};
+use redox_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 
 declare_lint! {
     pub TEST_LINT,

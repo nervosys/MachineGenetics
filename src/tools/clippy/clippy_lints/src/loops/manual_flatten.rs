@@ -6,12 +6,12 @@ use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{HasSession, indent_of, reindent_multiline, snippet_with_applicability};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{higher, is_refutable, peel_blocks_with_stmt, span_contains_comment};
-use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Expr, Pat, PatKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_span::Span;
+use redox_errors::Applicability;
+use redox_hir::def::{DefKind, Res};
+use redox_hir::{Expr, Pat, PatKind};
+use redox_lint::LateContext;
+use redox_middle::ty;
+use redox_span::Span;
 
 /// Check for unnecessary `if let` usage in a for loop where only the `Some` or `Ok` variant of the
 /// iterator element is used.

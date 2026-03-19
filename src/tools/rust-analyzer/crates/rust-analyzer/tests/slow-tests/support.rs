@@ -44,7 +44,7 @@ impl Project<'_> {
                 "cargo": {
                     // Loading standard library is costly, let's ignore it by default
                     "sysroot": null,
-                    // Can't use test binary as rustc wrapper.
+                    // Can't use test binary as redox wrapper.
                     "buildScripts": {
                         "useRustcWrapper": false,
                         "enable": false,

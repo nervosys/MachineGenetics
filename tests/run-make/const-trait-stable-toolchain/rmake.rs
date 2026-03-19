@@ -3,10 +3,10 @@
 // Test output of const super trait errors in both stable and nightly.
 // We don't want to provide suggestions on stable that only make sense in nightly.
 
-use run_make_support::{diff, rustc};
+use run_make_support::{diff, redox};
 
 fn main() {
-    let out = rustc()
+    let out = redox()
         .input("const-super-trait.rs")
         .env("RUSTC_BOOTSTRAP", "-1")
         .cfg("feature_enabled")
@@ -19,9 +19,9 @@ fn main() {
             "may not be used on the .* release channel",
             "may not be used on the NIGHTLY release channel",
         )
-        .actual_text("(rustc)", &out)
+        .actual_text("(redox)", &out)
         .run();
-    let out = rustc()
+    let out = redox()
         .input("const-super-trait.rs")
         .cfg("feature_enabled")
         .ui_testing()
@@ -31,9 +31,9 @@ fn main() {
         .stderr_utf8();
     diff()
         .expected_file("const-super-trait-nightly-enabled.stderr")
-        .actual_text("(rustc)", &out)
+        .actual_text("(redox)", &out)
         .run();
-    let out = rustc()
+    let out = redox()
         .input("const-super-trait.rs")
         .env("RUSTC_BOOTSTRAP", "-1")
         .run_fail()
@@ -42,9 +42,9 @@ fn main() {
         .stderr_utf8();
     diff()
         .expected_file("const-super-trait-stable-disabled.stderr")
-        .actual_text("(rustc)", &out)
+        .actual_text("(redox)", &out)
         .run();
-    let out = rustc()
+    let out = redox()
         .input("const-super-trait.rs")
         .ui_testing()
         .run_fail()
@@ -52,6 +52,6 @@ fn main() {
         .stderr_utf8();
     diff()
         .expected_file("const-super-trait-nightly-disabled.stderr")
-        .actual_text("(rustc)", &out)
+        .actual_text("(redox)", &out)
         .run();
 }

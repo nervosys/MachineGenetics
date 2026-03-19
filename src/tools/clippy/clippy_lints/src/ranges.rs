@@ -7,14 +7,14 @@ use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{expr_use_ctxt, fn_def_id, get_parent_expr, higher, is_in_const_context, is_integer_const, sym};
-use rustc_ast::Mutability;
-use rustc_ast::ast::RangeLimits;
-use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, LangItem, Node};
-use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_middle::ty::{self, ClauseKind, GenericArgKind, PredicatePolarity, Ty};
-use rustc_session::impl_lint_pass;
-use rustc_span::{DesugaringKind, Span, Spanned};
+use redox_ast::Mutability;
+use redox_ast::ast::RangeLimits;
+use redox_errors::Applicability;
+use redox_hir::{BinOpKind, Expr, ExprKind, HirId, LangItem, Node};
+use redox_lint::{LateContext, LateLintPass, Lint};
+use redox_middle::ty::{self, ClauseKind, GenericArgKind, PredicatePolarity, Ty};
+use redox_session::impl_lint_pass;
+use redox_span::{DesugaringKind, Span, Spanned};
 use std::cmp::Ordering;
 
 declare_clippy_lint! {

@@ -6,15 +6,15 @@ use clippy_config::types::{
 };
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::is_cfg_test;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{
+use redox_hir::attrs::AttributeKind;
+use redox_hir::{
     Attribute, FieldDef, HirId, ImplItemId, IsAuto, Item, ItemKind, Mod, OwnerId, QPath, TraitItemId, TyKind, Variant,
     VariantData,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::AssocKind;
-use rustc_session::impl_lint_pass;
-use rustc_span::Ident;
+use redox_lint::{LateContext, LateLintPass, LintContext};
+use redox_middle::ty::AssocKind;
+use redox_session::impl_lint_pass;
+use redox_span::Ident;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -398,13 +398,13 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                     continue;
                 }
 
-                if ident.name == rustc_span::sym::std && item.span.is_dummy() {
+                if ident.name == redox_span::sym::std && item.span.is_dummy() {
                     if let ItemKind::ExternCrate(None, _) = item.kind {
                         // Filters the auto-included Rust standard library.
                         continue;
                     }
                     if cfg!(debug_assertions) {
-                        rustc_middle::bug!("unknown item: {item:?}");
+                        redox_middle::bug!("unknown item: {item:?}");
                     }
                 }
             } else if let ItemKind::Impl(_) = item.kind
@@ -466,7 +466,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
 
 /// Converts a [`ty::AssocKind`] to a [`SourceItemOrderingTraitAssocItemKind`].
 ///
-/// This is implemented here because `rustc_hir` is not a dependency of
+/// This is implemented here because `redox_hir` is not a dependency of
 /// `clippy_config`.
 fn convert_assoc_item_kind(cx: &LateContext<'_>, owner_id: OwnerId) -> SourceItemOrderingTraitAssocItemKind {
     #[allow(clippy::enum_glob_use)] // Very local glob use for legibility.
@@ -481,10 +481,10 @@ fn convert_assoc_item_kind(cx: &LateContext<'_>, owner_id: OwnerId) -> SourceIte
     }
 }
 
-/// Converts a [`rustc_hir::ItemKind`] to a
+/// Converts a [`redox_hir::ItemKind`] to a
 /// [`SourceItemOrderingModuleItemKind`].
 ///
-/// This is implemented here because `rustc_hir` is not a dependency of
+/// This is implemented here because `redox_hir` is not a dependency of
 /// `clippy_config`.
 fn convert_module_item_kind(value: &ItemKind<'_>) -> SourceItemOrderingModuleItemKind {
     #[allow(clippy::enum_glob_use)] // Very local glob use for legibility.

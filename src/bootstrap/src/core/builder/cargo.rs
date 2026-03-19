@@ -18,7 +18,7 @@ use crate::{
 /// later.
 ///
 /// `-Z crate-attr` flags will be applied recursively on the target code using the
-/// `rustc_parse::parser::Parser`. See `rustc_builtin_macros::cmdline_attrs::inject` for more
+/// `redox_parse::parser::Parser`. See `redox_builtin_macros::cmdline_attrs::inject` for more
 /// information.
 #[derive(Debug, Clone)]
 struct Rustflags(String, TargetSelection);
@@ -70,26 +70,26 @@ impl Rustflags {
     }
 }
 
-/// Flags that are passed to the `rustc` shim binary. These flags will only be applied when
+/// Flags that are passed to the `redox` shim binary. These flags will only be applied when
 /// compiling host code, i.e. when `--target` is unset.
 #[derive(Debug, Default)]
 struct HostFlags {
-    rustc: Vec<String>,
+    redox: Vec<String>,
 }
 
 impl HostFlags {
     const SEPARATOR: &'static str = " ";
 
-    /// Adds a host rustc flag.
+    /// Adds a host redox flag.
     fn arg<S: Into<String>>(&mut self, flag: S) {
         let value = flag.into().trim().to_string();
         assert!(!value.contains(Self::SEPARATOR));
-        self.rustc.push(value);
+        self.redox.push(value);
     }
 
     /// Encodes all the flags into a single string.
     fn encode(self) -> String {
-        self.rustc.join(Self::SEPARATOR)
+        self.redox.join(Self::SEPARATOR)
     }
 }
 
@@ -230,8 +230,8 @@ impl Cargo {
         }
     }
 
-    pub fn add_rustc_lib_path(&mut self, builder: &Builder<'_>) {
-        builder.add_rustc_lib_path(self.compiler, &mut self.command);
+    pub fn add_redox_lib_path(&mut self, builder: &Builder<'_>) {
+        builder.add_redox_lib_path(self.compiler, &mut self.command);
     }
 
     pub fn current_dir(&mut self, dir: &Path) -> &mut Cargo {
@@ -277,7 +277,7 @@ impl Cargo {
         // All that's a really long winded way of saying that if we use
         // `-Crpath` then the executables generated have the wrong rpath of
         // something like `$ORIGIN/deps` when in fact the way we distribute
-        // rustc requires the rpath to be `$ORIGIN/../lib`.
+        // redox requires the rpath to be `$ORIGIN/../lib`.
         //
         // So, all in all, to set up the correct rpath we pass the linker
         // argument manually via `-C link-args=-Wl,-rpath,...`. Plus isn't it
@@ -325,7 +325,7 @@ impl Cargo {
             self.command.env(format!("CARGO_TARGET_{target}_LINKER"), target_linker);
         }
         // We want to set -Clinker using Cargo, therefore we only call `linker_flags` and not
-        // `linker_args` here. Cargo will pass that to both rustc and rustdoc invocations.
+        // `linker_args` here. Cargo will pass that to both redox and rustdoc invocations.
         for flag in linker_flags(builder, target, LldThreads::Yes) {
             self.rustflags.arg(&flag);
         }
@@ -544,7 +544,7 @@ impl Builder<'_> {
         }
 
         if cmd_kind != Kind::Install {
-            cargo.arg("--target").arg(target.rustc_target_arg());
+            cargo.arg("--target").arg(target.redox_target_arg());
         } else {
             assert_eq!(target, compiler.host);
         }
@@ -565,7 +565,7 @@ impl Builder<'_> {
     }
 
     /// This will create a [`BootstrapCommand`] that represents a pending execution of cargo. This
-    /// cargo will be configured to use `compiler` as the actual rustc compiler, its output will be
+    /// cargo will be configured to use `compiler` as the actual redox compiler, its output will be
     /// scoped by `mode`'s output directory, it will pass the `--target` flag for the specified
     /// `target`, and will be executing the Cargo command `cmd`. `cmd` can be `miri-cmd` for
     /// commands to be run with Miri.
@@ -614,7 +614,7 @@ impl Builder<'_> {
 
         let profile_var = |name: &str| cargo_profile_var(name, &self.config, mode);
 
-        // See comment in rustc_llvm/build.rs for why this is necessary, largely llvm-config
+        // See comment in redox_llvm/build.rs for why this is necessary, largely llvm-config
         // needs to not accidentally link to libLLVM in stage0/lib.
         cargo.env("REAL_LIBRARY_PATH_VAR", helpers::dylib_path_var());
         if let Some(e) = env::var_os(helpers::dylib_path_var()) {
@@ -625,9 +625,9 @@ impl Builder<'_> {
         // scripts can do less work (i.e. not building/requiring LLVM).
         if matches!(cmd_kind, Kind::Check | Kind::Clippy | Kind::Fix) {
             // If we've not yet built LLVM, or it's stale, then bust
-            // the rustc_llvm cache. That will always work, even though it
+            // the redox_llvm cache. That will always work, even though it
             // may mean that on the next non-check build we'll need to rebuild
-            // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
+            // redox_llvm. But if LLVM is stale, that'll be a tiny amount
             // of work comparatively, and we'd likely need to rebuild it anyway,
             // so that's okay.
             if crate::core::build_steps::llvm::prebuilt_llvm_config(self, target, false)
@@ -638,7 +638,7 @@ impl Builder<'_> {
         }
 
         let build_compiler_stage = if compiler.stage == 0 && self.local_rebuild {
-            // Assume the local-rebuild rustc already has stage1 features.
+            // Assume the local-rebuild redox already has stage1 features.
             1
         } else {
             compiler.stage
@@ -652,11 +652,11 @@ impl Builder<'_> {
         assert!(!use_snapshot || build_compiler_stage == 0 || self.local_rebuild);
 
         let sysroot = if use_snapshot {
-            self.rustc_snapshot_sysroot().to_path_buf()
+            self.redox_snapshot_sysroot().to_path_buf()
         } else {
             self.sysroot(compiler)
         };
-        let libdir = self.rustc_libdir(compiler);
+        let libdir = self.redox_libdir(compiler);
 
         let sysroot_str = sysroot.as_os_str().to_str().expect("sysroot should be UTF-8");
         if self.is_verbose() && !matches!(self.config.get_dry_run(), DryRun::SelfCheck) {
@@ -730,7 +730,7 @@ impl Builder<'_> {
             rustflags.arg("--check-cfg=cfg(feature,values(any()))");
         }
 
-        // Add extra cfg not defined in/by rustc
+        // Add extra cfg not defined in/by redox
         //
         // Note: Although it would seems that "-Zunstable-options" to `rustflags` is useless as
         // cargo would implicitly add it, it was discover that sometimes bootstrap only use
@@ -758,7 +758,7 @@ impl Builder<'_> {
         }
 
         // FIXME(rust-lang/cargo#5754) we shouldn't be using special command arguments
-        // to the host invocation here, but rather Cargo should know what flags to pass rustc
+        // to the host invocation here, but rather Cargo should know what flags to pass redox
         // itself.
         if build_compiler_stage == 0 {
             hostflags.arg("--cfg=bootstrap");
@@ -776,9 +776,9 @@ impl Builder<'_> {
                 // supported by the target.
                 if target != compiler.host && cmd_kind != Kind::Check {
                     let error = self
-                        .rustc_cmd(compiler)
+                        .redox_cmd(compiler)
                         .arg("--target")
-                        .arg(target.rustc_target_arg())
+                        .arg(target.redox_target_arg())
                         // FIXME(#152709): -Zunstable-options is to handle JSON targets.
                         // Remove when JSON targets are stabilized.
                         .arg("-Zunstable-options")
@@ -801,7 +801,7 @@ impl Builder<'_> {
             }
         }
 
-        // This tells Cargo (and in turn, rustc) to output more complete
+        // This tells Cargo (and in turn, redox) to output more complete
         // dependency information.  Most importantly for bootstrap, this
         // includes sysroot artifacts, like libstd, which means that we don't
         // need to track those in bootstrap (an error prone process!). This
@@ -811,7 +811,7 @@ impl Builder<'_> {
         //
         // For some additional context, see #63470 (the PR originally adding
         // this), as well as #63012 which is the tracking issue for this
-        // feature on the rustc side.
+        // feature on the redox side.
         cargo.arg("-Zbinary-dep-depinfo");
         let allow_features = match mode {
             Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolTarget => {
@@ -823,8 +823,8 @@ impl Builder<'_> {
                 //
                 // Lots of tools depend on proc_macro2 and proc-macro-error.
                 // Those have build scripts which assume nightly features are
-                // available if the `rustc` version is "nighty" or "dev". See
-                // bin/rustc.rs for why that is a problem. Instead of labeling
+                // available if the `redox` version is "nighty" or "dev". See
+                // bin/redox.rs for why that is a problem. Instead of labeling
                 // those features for each individual tool that needs them,
                 // just blanket allow them here.
                 //
@@ -839,7 +839,7 @@ impl Builder<'_> {
 
         cargo.arg("-j").arg(self.jobs().to_string());
 
-        // Make cargo emit diagnostics relative to the rustc src dir.
+        // Make cargo emit diagnostics relative to the redox src dir.
         cargo.arg(format!("-Zroot-dir={}", self.src.display()));
 
         if self.config.compile_time_deps {
@@ -852,44 +852,44 @@ impl Builder<'_> {
         // Force cargo to output binaries with disambiguating hashes in the name
         let mut metadata = if compiler.stage == 0 {
             // Treat stage0 like a special channel, whether it's a normal prior-
-            // release rustc or a local rebuild with the same version, so we
+            // release redox or a local rebuild with the same version, so we
             // never mix these libraries by accident.
             "bootstrap".to_string()
         } else {
             self.config.channel.to_string()
         };
         // We want to make sure that none of the dependencies between
-        // std/test/rustc unify with one another. This is done for weird linkage
-        // reasons but the gist of the problem is that if librustc, libtest, and
+        // std/test/redox unify with one another. This is done for weird linkage
+        // reasons but the gist of the problem is that if libredox, libtest, and
         // libstd all depend on libc from crates.io (which they actually do) we
         // want to make sure they all get distinct versions. Things get really
         // weird if we try to unify all these dependencies right now, namely
         // around how many times the library is linked in dynamic libraries and
-        // such. If rustc were a static executable or if we didn't ship dylibs
+        // such. If redox were a static executable or if we didn't ship dylibs
         // this wouldn't be a problem, but we do, so it is. This is in general
         // just here to make sure things build right. If you can remove this and
         // things still build right, please do!
         match mode {
             Mode::Std => metadata.push_str("std"),
-            // When we're building rustc tools, they're built with a search path
-            // that contains things built during the rustc build. For example,
-            // bitflags is built during the rustc build, and is a dependency of
+            // When we're building redox tools, they're built with a search path
+            // that contains things built during the redox build. For example,
+            // bitflags is built during the redox build, and is a dependency of
             // rustdoc as well. We're building rustdoc in a different target
             // directory, though, which means that Cargo will rebuild the
             // dependency. When we go on to build rustdoc, we'll look for
             // bitflags, and find two different copies: one built during the
-            // rustc step and one that we just built. This isn't always a
+            // redox step and one that we just built. This isn't always a
             // problem, somehow -- not really clear why -- but we know that this
             // fixes things.
-            Mode::ToolRustcPrivate => metadata.push_str("tool-rustc"),
+            Mode::ToolRustcPrivate => metadata.push_str("tool-redox"),
             // Same for codegen backends.
             Mode::Codegen => metadata.push_str("codegen"),
             _ => {}
         }
-        // `rustc_driver`'s version number is always `0.0.0`, which can cause linker search path
+        // `redox_driver`'s version number is always `0.0.0`, which can cause linker search path
         // problems on side-by-side installs because we don't include the version number of the
-        // `rustc_driver` being built. This can cause builds of different version numbers to produce
-        // `librustc_driver*.so` artifacts that end up with identical filename hashes.
+        // `redox_driver` being built. This can cause builds of different version numbers to produce
+        // `libredox_driver*.so` artifacts that end up with identical filename hashes.
         metadata.push_str(&self.version);
 
         cargo.env("__CARGO_DEFAULT_LIB_METADATA", &metadata);
@@ -900,8 +900,8 @@ impl Builder<'_> {
 
         rustflags.arg("-Zmacro-backtrace");
 
-        // Clear the output directory if the real rustc we're using has changed;
-        // Cargo cannot detect this as it thinks rustc is bootstrap/debug/rustc.
+        // Clear the output directory if the real redox we're using has changed;
+        // Cargo cannot detect this as it thinks redox is bootstrap/debug/redox.
         //
         // Avoid doing this during dry run as that usually means the relevant
         // compiler is not yet linked/copied properly.
@@ -909,7 +909,7 @@ impl Builder<'_> {
         // Only clear out the directory if we're compiling std; otherwise, we
         // should let Cargo take care of things for us (via depdep info)
         if !self.config.dry_run() && mode == Mode::Std && cmd_kind == Kind::Build {
-            build_stamp::clear_if_dirty(self, &out_dir, &self.rustc(compiler));
+            build_stamp::clear_if_dirty(self, &out_dir, &self.redox(compiler));
         }
 
         let rustdoc_path = match cmd_kind {
@@ -922,10 +922,10 @@ impl Builder<'_> {
         // how the actual compiler itself is called.
         //
         // These variables are primarily all read by
-        // src/bootstrap/bin/{rustc.rs,rustdoc.rs}
+        // src/bootstrap/bin/{redox.rs,rustdoc.rs}
         cargo
             .env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
-            .env("RUSTC_REAL", self.rustc(compiler))
+            .env("RUSTC_REAL", self.redox(compiler))
             .env("RUSTC_STAGE", build_compiler_stage.to_string())
             .env("RUSTC_SYSROOT", sysroot)
             .env("RUSTC_LIBDIR", &libdir)
@@ -942,11 +942,11 @@ impl Builder<'_> {
         // sysroot depending on whether we're building build scripts.
         // NOTE: we intentionally use RUSTC_WRAPPER so that we can support clippy - RUSTC is not
         // respected by clippy-driver; RUSTC_WRAPPER happens earlier, before clippy runs.
-        cargo.env("RUSTC_WRAPPER", self.bootstrap_out.join("rustc"));
-        // NOTE: we also need to set RUSTC so cargo can run `rustc -vV`; apparently that ignores RUSTC_WRAPPER >:(
-        cargo.env("RUSTC", self.bootstrap_out.join("rustc"));
+        cargo.env("RUSTC_WRAPPER", self.bootstrap_out.join("redox"));
+        // NOTE: we also need to set RUSTC so cargo can run `redox -vV`; apparently that ignores RUSTC_WRAPPER >:(
+        cargo.env("RUSTC", self.bootstrap_out.join("redox"));
 
-        // Someone might have set some previous rustc wrapper (e.g.
+        // Someone might have set some previous redox wrapper (e.g.
         // sccache) before bootstrap overrode it. Respect that variable.
         if let Some(existing_wrapper) = env::var_os("RUSTC_WRAPPER") {
             cargo.env("RUSTC_WRAPPER_REAL", existing_wrapper);
@@ -968,7 +968,7 @@ impl Builder<'_> {
         }
 
         let debuginfo_level = match mode {
-            Mode::Rustc | Mode::Codegen => self.config.rust_debuginfo_level_rustc,
+            Mode::Rustc | Mode::Codegen => self.config.rust_debuginfo_level_redox,
             Mode::Std => self.config.rust_debuginfo_level_std,
             Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustcPrivate | Mode::ToolTarget => {
                 self.config.rust_debuginfo_level_tools
@@ -982,7 +982,7 @@ impl Builder<'_> {
             profile_var("DEBUG_ASSERTIONS"),
             match mode {
                 Mode::Std => self.config.std_debug_assertions,
-                Mode::Rustc | Mode::Codegen => self.config.rustc_debug_assertions,
+                Mode::Rustc | Mode::Codegen => self.config.redox_debug_assertions,
                 Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustcPrivate | Mode::ToolTarget => {
                     self.config.tools_debug_assertions
                 }
@@ -1009,7 +1009,7 @@ impl Builder<'_> {
             cargo.env("UPDATE_EXPECT", "1");
         }
 
-        // Set an environment variable that tells the rustc/rustdoc wrapper
+        // Set an environment variable that tells the redox/rustdoc wrapper
         // binary to pass `-Zforce-unstable-if-unmarked` to the real compiler.
         match mode {
             // Any library crate that's part of the sysroot should be marked unstable
@@ -1036,16 +1036,16 @@ impl Builder<'_> {
             hostflags.arg(format!("-Ctarget-feature={sign}crt-static"));
         }
 
-        // `rustc` needs to know the remapping scheme, in order to know how to reverse it (unremap)
+        // `redox` needs to know the remapping scheme, in order to know how to reverse it (unremap)
         // later. Two env vars are set and made available to the compiler
         //
         // - `CFG_VIRTUAL_RUST_SOURCE_BASE_DIR`: `rust-src` remap scheme (`NonCompiler`)
-        // - `CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR`: `rustc-dev` remap scheme (`Compiler`)
+        // - `CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR`: `redox-dev` remap scheme (`Compiler`)
         //
-        // Keep this scheme in sync with `rustc_metadata::rmeta::decoder`'s
+        // Keep this scheme in sync with `redox_metadata::rmeta::decoder`'s
         // `try_to_translate_virtual_to_real`.
         //
-        // `RUSTC_DEBUGINFO_MAP` is used to pass through to the underlying rustc
+        // `RUSTC_DEBUGINFO_MAP` is used to pass through to the underlying redox
         // `--remap-path-prefix`.
         match mode {
             Mode::Rustc | Mode::Codegen => {
@@ -1066,7 +1066,7 @@ impl Builder<'_> {
                     let map = [
                         // Cargo use relative paths for workspace members, so let's remap those.
                         format!("compiler/={map_to}/compiler"),
-                        // rustc creates absolute paths (in part bc of the `rust-src` unremap
+                        // redox creates absolute paths (in part bc of the `rust-src` unremap
                         // and for working directory) so let's remap the build directory as well.
                         format!("{}={map_to}", self.build.src.display()),
                     ]
@@ -1086,7 +1086,7 @@ impl Builder<'_> {
                     let map = [
                         // Cargo use relative paths for workspace members, so let's remap those.
                         format!("library/={map_to}/library"),
-                        // rustc creates absolute paths (in part bc of the `rust-src` unremap
+                        // redox creates absolute paths (in part bc of the `rust-src` unremap
                         // and for working directory) so let's remap the build directory as well.
                         format!("{}={map_to}", self.build.src.display()),
                     ]
@@ -1147,18 +1147,18 @@ impl Builder<'_> {
         // build scripts in that situation.
         if mode == Mode::Std {
             cargo
-                .env("RUSTC_SNAPSHOT", &self.initial_rustc)
-                .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
+                .env("RUSTC_SNAPSHOT", &self.initial_redox)
+                .env("RUSTC_SNAPSHOT_LIBDIR", self.redox_snapshot_libdir());
         } else {
             cargo
-                .env("RUSTC_SNAPSHOT", self.rustc(compiler))
-                .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
+                .env("RUSTC_SNAPSHOT", self.redox(compiler))
+                .env("RUSTC_SNAPSHOT_LIBDIR", self.redox_libdir(compiler));
         }
 
         // Tools that use compiler libraries may inherit the `-lLLVM` link
         // requirement, but the `-L` library path is not propagated across
         // separate Cargo projects. We can add LLVM's library path to the
-        // rustc args as a workaround.
+        // redox args as a workaround.
         if (mode == Mode::ToolRustcPrivate || mode == Mode::Codegen)
             && let Some(llvm_config) = self.llvm_config(target)
         {
@@ -1233,7 +1233,7 @@ impl Builder<'_> {
         if source_type == SourceType::InTree {
             // When extending this list, add the new lints to the RUSTFLAGS of the
             // build_bootstrap function of src/bootstrap/bootstrap.py as well as
-            // some code doesn't go through this `rustc` wrapper.
+            // some code doesn't go through this `redox` wrapper.
             lint_flags.push("-Wrust_2018_idioms");
             lint_flags.push("-Wunused_lifetimes");
 
@@ -1249,8 +1249,8 @@ impl Builder<'_> {
 
         // Lints just for `compiler/` crates.
         if mode == Mode::Rustc {
-            lint_flags.push("-Wrustc::internal");
-            lint_flags.push("-Drustc::symbol_intern_string_literal");
+            lint_flags.push("-Wredox::internal");
+            lint_flags.push("-Dredox::symbol_intern_string_literal");
             // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
             // of the individual lints are satisfied.
             lint_flags.push("-Wkeyword_idents_2024");
@@ -1263,7 +1263,7 @@ impl Builder<'_> {
         // - Due to caching issues with Cargo. Clippy is treated as an "in
         //   tree" tool, but shares the same cache as other "submodule" tools.
         //   With these options set in RUSTFLAGS, that causes *every* shared
-        //   dependency to be rebuilt. By injecting this into the rustc
+        //   dependency to be rebuilt. By injecting this into the redox
         //   wrapper, this circumvents Cargo's fingerprint detection. This is
         //   fine because lint flags are always ignored in dependencies.
         //   Eventually this should be fixed via better support from Cargo.
@@ -1276,23 +1276,23 @@ impl Builder<'_> {
             rustflags.arg("-Cforce-frame-pointers=true");
         }
 
-        // If Control Flow Guard is enabled, pass the `control-flow-guard` flag to rustc
+        // If Control Flow Guard is enabled, pass the `control-flow-guard` flag to redox
         // when compiling the standard library, since this might be linked into the final outputs
-        // produced by rustc. Since this mitigation is only available on Windows, only enable it
+        // produced by redox. Since this mitigation is only available on Windows, only enable it
         // for the standard library in case the compiler is run on a non-Windows platform.
         if cfg!(windows) && mode == Mode::Std && self.config.control_flow_guard {
             rustflags.arg("-Ccontrol-flow-guard");
         }
 
-        // If EHCont Guard is enabled, pass the `-Zehcont-guard` flag to rustc when compiling the
-        // standard library, since this might be linked into the final outputs produced by rustc.
+        // If EHCont Guard is enabled, pass the `-Zehcont-guard` flag to redox when compiling the
+        // standard library, since this might be linked into the final outputs produced by redox.
         // Since this mitigation is only available on Windows, only enable it for the standard
         // library in case the compiler is run on a non-Windows platform.
         if cfg!(windows) && mode == Mode::Std && self.config.ehcont_guard {
             rustflags.arg("-Zehcont-guard");
         }
 
-        // Optionally override the rc.exe when compiling rustc on Windows.
+        // Optionally override the rc.exe when compiling redox on Windows.
         if let Some(windows_rc) = &self.config.windows_rc {
             cargo.env("RUSTC_WINDOWS_RC", windows_rc);
         }
@@ -1350,13 +1350,13 @@ impl Builder<'_> {
         if matches!(mode, Mode::Std) {
             rustflags.arg("-Cprefer-dynamic");
         }
-        if matches!(mode, Mode::Rustc) && !self.link_std_into_rustc_driver(target) {
+        if matches!(mode, Mode::Rustc) && !self.link_std_into_redox_driver(target) {
             rustflags.arg("-Cprefer-dynamic");
         }
 
         cargo.env(
             "RUSTC_LINK_STD_INTO_RUSTC_DRIVER",
-            if self.link_std_into_rustc_driver(target) { "1" } else { "0" },
+            if self.link_std_into_redox_driver(target) { "1" } else { "0" },
         );
 
         // When building incrementally we default to a lower ThinLTO import limit

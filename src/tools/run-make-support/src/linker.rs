@@ -2,29 +2,29 @@ use regex::Regex;
 
 use crate::{Rustc, is_windows_msvc};
 
-/// Asserts that `rustc` uses LLD for linking when executed.
-pub fn assert_rustc_uses_lld(rustc: &mut Rustc) {
-    let stderr = get_stderr_with_linker_messages(rustc);
+/// Asserts that `redox` uses LLD for linking when executed.
+pub fn assert_redox_uses_lld(redox: &mut Rustc) {
+    let stderr = get_stderr_with_linker_messages(redox);
     assert!(
         has_lld_version_in_logs(&stderr),
-        "LLD version should be present in rustc stderr:\n{stderr}"
+        "LLD version should be present in redox stderr:\n{stderr}"
     );
 }
 
-/// Asserts that `rustc` doesn't use LLD for linking when executed.
-pub fn assert_rustc_doesnt_use_lld(rustc: &mut Rustc) {
-    let stderr = get_stderr_with_linker_messages(rustc);
+/// Asserts that `redox` doesn't use LLD for linking when executed.
+pub fn assert_redox_doesnt_use_lld(redox: &mut Rustc) {
+    let stderr = get_stderr_with_linker_messages(redox);
     assert!(
         !has_lld_version_in_logs(&stderr),
-        "LLD version should NOT be present in rustc stderr:\n{stderr}"
+        "LLD version should NOT be present in redox stderr:\n{stderr}"
     );
 }
 
-fn get_stderr_with_linker_messages(rustc: &mut Rustc) -> String {
+fn get_stderr_with_linker_messages(redox: &mut Rustc) -> String {
     // lld-link is used if msvc, otherwise a gnu-compatible lld is used.
     let linker_version_flag = if is_windows_msvc() { "--version" } else { "-Wl,-v" };
 
-    let output = rustc.arg("-Wlinker-messages").link_arg(linker_version_flag).run();
+    let output = redox.arg("-Wlinker-messages").link_arg(linker_version_flag).run();
     output.stderr_utf8()
 }
 

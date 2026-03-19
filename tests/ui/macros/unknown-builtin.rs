@@ -1,10 +1,10 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! unknown { () => () } //~ ERROR cannot find a built-in macro with name `unknown`
 
 // Defining another `line` builtin macro should not cause an error.
-#[rustc_builtin_macro]
+#[redox_builtin_macro]
 macro_rules! line { () => () }
 
 fn main() {

@@ -7,8 +7,8 @@ use hir_def::{
     attrs::AttrFlags,
     signatures::{StructFlags, VariantFields},
 };
-use rustc_abi::{Integer, ReprOptions, TargetDataLayout};
-use rustc_index::IndexVec;
+use redox_abi::{Integer, ReprOptions, TargetDataLayout};
+use redox_index::IndexVec;
 use smallvec::SmallVec;
 use triomphe::Arc;
 
@@ -108,7 +108,7 @@ pub(crate) fn layout_of_adt_cycle_result(
 }
 
 fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, Bound<u128>) {
-    let range = AttrFlags::rustc_layout_scalar_valid_range(db, def);
+    let range = AttrFlags::redox_layout_scalar_valid_range(db, def);
     let get = |value| match value {
         Some(it) => Bound::Included(it),
         None => Bound::Unbounded,

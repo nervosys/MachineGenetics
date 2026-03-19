@@ -1,4 +1,4 @@
-use run_make_support::{rustc, serde_json};
+use run_make_support::{redox, serde_json};
 
 // Please do NOT add more targets to this list!
 // Per https://github.com/rust-lang/compiler-team/issues/422,
@@ -19,7 +19,7 @@ static LEGACY_STATIC_LINKING_TARGETS: &[&'static str] = &[
 ];
 
 fn main() {
-    let targets = rustc().print("target-list").run().stdout_utf8();
+    let targets = redox().print("target-list").run().stdout_utf8();
 
     for target in targets.lines() {
         let abi = target.split('-').last().unwrap();
@@ -28,7 +28,7 @@ fn main() {
             continue;
         }
 
-        let target_spec_json = rustc()
+        let target_spec_json = redox()
             .print("target-spec-json")
             .target(target)
             .arg("-Zunstable-options")

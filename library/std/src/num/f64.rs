@@ -41,10 +41,10 @@ impl f64 {
     /// assert_eq!(g.floor(), 3.0);
     /// assert_eq!(h.floor(), -4.0);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_round_methods", since = "1.90.0")]
+    #[redox_const_stable(feature = "const_float_round_methods", since = "1.90.0")]
     #[inline]
     pub const fn floor(self) -> f64 {
         core::f64::math::floor(self)
@@ -64,10 +64,10 @@ impl f64 {
     /// assert_eq!(g.ceil(), 4.0);
     /// ```
     #[doc(alias = "ceiling")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_round_methods", since = "1.90.0")]
+    #[redox_const_stable(feature = "const_float_round_methods", since = "1.90.0")]
     #[inline]
     pub const fn ceil(self) -> f64 {
         core::f64::math::ceil(self)
@@ -93,10 +93,10 @@ impl f64 {
     /// assert_eq!(i.round(), 4.0);
     /// assert_eq!(j.round(), 5.0);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_round_methods", since = "1.90.0")]
+    #[redox_const_stable(feature = "const_float_round_methods", since = "1.90.0")]
     #[inline]
     pub const fn round(self) -> f64 {
         core::f64::math::round(self)
@@ -120,10 +120,10 @@ impl f64 {
     /// assert_eq!(h.round_ties_even(), 4.0);
     /// assert_eq!(i.round_ties_even(), 4.0);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "round_ties_even", since = "1.77.0")]
-    #[rustc_const_stable(feature = "const_float_round_methods", since = "1.90.0")]
+    #[redox_const_stable(feature = "const_float_round_methods", since = "1.90.0")]
     #[inline]
     pub const fn round_ties_even(self) -> f64 {
         core::f64::math::round_ties_even(self)
@@ -146,10 +146,10 @@ impl f64 {
     /// assert_eq!(h.trunc(), -3.0);
     /// ```
     #[doc(alias = "truncate")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_round_methods", since = "1.90.0")]
+    #[redox_const_stable(feature = "const_float_round_methods", since = "1.90.0")]
     #[inline]
     pub const fn trunc(self) -> f64 {
         core::f64::math::trunc(self)
@@ -170,10 +170,10 @@ impl f64 {
     /// assert!(abs_difference_x < 1e-10);
     /// assert!(abs_difference_y < 1e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_round_methods", since = "1.90.0")]
+    #[redox_const_stable(feature = "const_float_round_methods", since = "1.90.0")]
     #[inline]
     pub const fn fract(self) -> f64 {
         core::f64::math::fract(self)
@@ -212,12 +212,12 @@ impl f64 {
     /// // Different rounding with the non-fused multiply and add.
     /// assert_eq!(one_plus_eps * one_minus_eps + minus_one, 0.0);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[doc(alias = "fma", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_const_stable(feature = "const_mul_add", since = "1.94.0")]
+    #[redox_const_stable(feature = "const_mul_add", since = "1.94.0")]
     pub const fn mul_add(self, a: f64, b: f64) -> f64 {
         core::f64::math::mul_add(self, a, b)
     }
@@ -244,7 +244,7 @@ impl f64 {
     /// assert_eq!(a.div_euclid(-b), -1.0); // 7.0 >= -4.0 * -1.0
     /// assert_eq!((-a).div_euclid(-b), 2.0); // -7.0 >= -4.0 * 2.0
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
     #[stable(feature = "euclidean_division", since = "1.38.0")]
@@ -282,7 +282,7 @@ impl f64 {
     /// assert!((-f64::EPSILON).rem_euclid(3.0) != 0.0);
     /// ```
     #[doc(alias = "modulo", alias = "mod")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
     #[stable(feature = "euclidean_division", since = "1.38.0")]
@@ -316,7 +316,7 @@ impl f64 {
     /// assert_eq!(f64::powi(f64::NAN, 0), 1.0);
     /// assert_eq!(f64::powi(0.0, 0), 1.0);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -347,7 +347,7 @@ impl f64 {
     /// assert_eq!(f64::powf(f64::NAN, 0.0), 1.0);
     /// assert_eq!(f64::powf(0.0, 0.0), 1.0);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -377,7 +377,7 @@ impl f64 {
     /// assert!(negative_zero.sqrt() == negative_zero);
     /// ```
     #[doc(alias = "squareRoot")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -404,7 +404,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -429,7 +429,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -464,7 +464,7 @@ impl f64 {
     /// assert_eq!(0_f64.ln(), f64::NEG_INFINITY);
     /// assert!((-42_f64).ln().is_nan());
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -501,7 +501,7 @@ impl f64 {
     /// assert_eq!(0_f64.log(10.0), f64::NEG_INFINITY);
     /// assert!((-42_f64).log(10.0).is_nan());
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -534,7 +534,7 @@ impl f64 {
     /// assert_eq!(0_f64.log2(), f64::NEG_INFINITY);
     /// assert!((-42_f64).log2().is_nan());
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -567,7 +567,7 @@ impl f64 {
     /// assert_eq!(0_f64.log10(), f64::NEG_INFINITY);
     /// assert!((-42_f64).log10().is_nan());
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -599,7 +599,7 @@ impl f64 {
     /// assert!(abs_difference_x < 1e-10);
     /// assert!(abs_difference_y < 1e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -637,7 +637,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -668,7 +668,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -692,7 +692,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -716,7 +716,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -741,7 +741,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-14);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -771,7 +771,7 @@ impl f64 {
     /// assert!(abs_difference < 1e-14);
     /// ```
     #[doc(alias = "arcsin")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -801,7 +801,7 @@ impl f64 {
     /// assert!(abs_difference < 1e-10);
     /// ```
     #[doc(alias = "arccos")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -830,7 +830,7 @@ impl f64 {
     /// assert!(abs_difference < 1e-10);
     /// ```
     #[doc(alias = "arctan")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -873,7 +873,7 @@ impl f64 {
     /// assert!(abs_difference_1 < 1e-10);
     /// assert!(abs_difference_2 < 1e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -904,7 +904,7 @@ impl f64 {
     /// assert!(abs_difference_1 < 1e-10);
     /// ```
     #[doc(alias = "sincos")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin_cos(self) -> (f64, f64) {
@@ -932,7 +932,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-20);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -970,7 +970,7 @@ impl f64 {
     /// assert!((-2.0_f64).ln_1p().is_nan());
     /// ```
     #[doc(alias = "log1p")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1000,7 +1000,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1030,7 +1030,7 @@ impl f64 {
     /// // Same result
     /// assert!(abs_difference < 1.0e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1060,7 +1060,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1.0e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1086,7 +1086,7 @@ impl f64 {
     /// assert!(abs_difference < 1.0e-10);
     /// ```
     #[doc(alias = "arcsinh")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1114,7 +1114,7 @@ impl f64 {
     /// assert!(abs_difference < 1.0e-10);
     /// ```
     #[doc(alias = "arccosh")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1144,7 +1144,7 @@ impl f64 {
     /// assert!(abs_difference < 1.0e-10);
     /// ```
     #[doc(alias = "arctanh")]
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1171,7 +1171,7 @@ impl f64 {
     ///
     /// assert!(abs_difference <= 1e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_gamma", issue = "99842")]
     #[inline]
@@ -1200,7 +1200,7 @@ impl f64 {
     ///
     /// assert!(abs_difference <= f64::EPSILON);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_gamma", issue = "99842")]
     #[inline]
@@ -1237,7 +1237,7 @@ impl f64 {
     /// // 99.7% of a normal distribution is within three standard deviations
     /// assert!((within_standard_deviations(3.0) - 99.730).abs() < 0.01);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_erf", issue = "136321")]
     #[inline]
@@ -1266,7 +1266,7 @@ impl f64 {
     ///
     /// assert!(abs_difference <= 1e-10);
     /// ```
-    #[rustc_allow_incoherent_impl]
+    #[redox_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_erf", issue = "136321")]
     #[inline]

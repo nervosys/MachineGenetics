@@ -1,6 +1,6 @@
 //@ edition:2021
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![feature(stmt_expr_attributes)]
 
 // Should capture the discriminant since a variant of a multivariant enum is
@@ -8,7 +8,7 @@
 // of if it creates a binding
 fn test_1_should_capture() {
     let variant = Some(2229);
-    let c =  #[rustc_capture_analysis]
+    let c =  #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
@@ -26,7 +26,7 @@ fn test_1_should_capture() {
 // match arm
 fn test_2_should_not_capture() {
     let variant = Some(2229);
-    let c =  #[rustc_capture_analysis]
+    let c =  #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
         match variant {
@@ -45,7 +45,7 @@ enum SingleVariant {
 // in the match arm does not trigger a binding
 fn test_3_should_not_capture_single_variant() {
     let variant = SingleVariant::Points(1);
-    let c =  #[rustc_capture_analysis]
+    let c =  #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
         match variant {
@@ -59,7 +59,7 @@ fn test_3_should_not_capture_single_variant() {
 // in the match arm does not trigger a binding
 fn test_6_should_capture_single_variant() {
     let variant = SingleVariant::Points(1);
-    let c =  #[rustc_capture_analysis]
+    let c =  #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
@@ -78,7 +78,7 @@ fn test_6_should_capture_single_variant() {
 // match arm
 fn test_4_should_not_capture_array() {
     let array: [i32; 3] = [0; 3];
-    let c =  #[rustc_capture_analysis]
+    let c =  #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
         match array {
@@ -90,7 +90,7 @@ fn test_4_should_not_capture_array() {
     // We also do not need to capture an array
     // behind a reference (#112607)
     let array: &[i32; 3] = &[0; 3];
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
         match array {
@@ -103,7 +103,7 @@ fn test_4_should_not_capture_array() {
     // irrefutable pattern
     struct Foo<T>(T);
     let f = &Foo(&[10; 3]);
-    let c = #[rustc_capture_analysis]
+    let c = #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
         match f {
@@ -125,7 +125,7 @@ enum MVariant {
 // regardless of if it creates a binding
 fn test_5_should_capture_multi_variant() {
     let variant = MVariant::A;
-    let c =  #[rustc_capture_analysis]
+    let c =  #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
@@ -143,7 +143,7 @@ fn test_5_should_capture_multi_variant() {
 // in order to test the slice length
 fn test_7_should_capture_slice_len() {
     let slice: &[i32] = &[1, 2, 3];
-    let c =  #[rustc_capture_analysis]
+    let c =  #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
@@ -155,7 +155,7 @@ fn test_7_should_capture_slice_len() {
         }
     };
     c();
-    let c =  #[rustc_capture_analysis]
+    let c =  #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
@@ -167,7 +167,7 @@ fn test_7_should_capture_slice_len() {
         }
     };
     c();
-    let c =  #[rustc_capture_analysis]
+    let c =  #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
@@ -184,7 +184,7 @@ fn test_7_should_capture_slice_len() {
 // Wild pattern that doesn't bind, so no capture
 fn test_8_capture_slice_wild() {
     let slice: &[i32] = &[1, 2, 3];
-    let c =  #[rustc_capture_analysis]
+    let c =  #[redox_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
         match slice {

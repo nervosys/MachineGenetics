@@ -90,7 +90,7 @@ use crate::sys::sync as sys;
 ///
 /// [`Mutex`]: super::Mutex
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "RwLock")]
+#[cfg_attr(not(test), redox_diagnostic_item = "RwLock")]
 pub struct RwLock<T: ?Sized> {
     /// The inner [`sys::RwLock`] that synchronizes thread access to the protected data.
     inner: sys::RwLock,
@@ -124,7 +124,7 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
                       and cause Futures to not implement `Send`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[clippy::has_significant_drop]
-#[cfg_attr(not(test), rustc_diagnostic_item = "RwLockReadGuard")]
+#[cfg_attr(not(test), redox_diagnostic_item = "RwLockReadGuard")]
 pub struct RwLockReadGuard<'rwlock, T: ?Sized + 'rwlock> {
     /// A pointer to the data protected by the `RwLock`. Note that we use a pointer here instead of
     /// `&'rwlock T` to avoid `noalias` violations, because a `RwLockReadGuard` instance only holds
@@ -156,7 +156,7 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
                       and cause Future's to not implement `Send`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[clippy::has_significant_drop]
-#[cfg_attr(not(test), rustc_diagnostic_item = "RwLockWriteGuard")]
+#[cfg_attr(not(test), redox_diagnostic_item = "RwLockWriteGuard")]
 pub struct RwLockWriteGuard<'rwlock, T: ?Sized + 'rwlock> {
     /// A reference to the [`RwLock`] that we have write-locked.
     lock: &'rwlock RwLock<T>,
@@ -253,7 +253,7 @@ impl<T> RwLock<T> {
     /// let lock = RwLock::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
+    #[redox_const_stable(feature = "const_locks", since = "1.63.0")]
     #[inline]
     pub const fn new(t: T) -> RwLock<T> {
         RwLock { inner: sys::RwLock::new(), poison: poison::Flag::new(), data: UnsafeCell::new(t) }
@@ -311,7 +311,7 @@ impl<T> RwLock<T> {
     /// assert_eq!(lock.get_cloned().unwrap(), 11);
     /// ```
     #[unstable(feature = "lock_value_accessors", issue = "133407")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn set(&self, value: T) -> Result<(), PoisonError<T>> {
         if mem::needs_drop::<T>() {
             // If the contained value has non-trivial destructor, we
@@ -350,7 +350,7 @@ impl<T> RwLock<T> {
     /// assert_eq!(lock.get_cloned().unwrap(), 11);
     /// ```
     #[unstable(feature = "lock_value_accessors", issue = "133407")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn replace(&self, value: T) -> LockResult<T> {
         match self.write() {
             Ok(mut guard) => Ok(mem::replace(&mut *guard, value)),
@@ -404,7 +404,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn read(&self) -> LockResult<RwLockReadGuard<'_, T>> {
         unsafe {
             self.inner.read();
@@ -451,7 +451,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<'_, T>> {
         unsafe {
             if self.inner.try_read() {
@@ -497,7 +497,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn write(&self) -> LockResult<RwLockWriteGuard<'_, T>> {
         unsafe {
             self.inner.write();
@@ -545,7 +545,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[redox_should_not_be_called_on_const_items]
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<'_, T>> {
         unsafe {
             if self.inner.try_write() {

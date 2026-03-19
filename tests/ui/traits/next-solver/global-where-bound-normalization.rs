@@ -3,9 +3,9 @@
 
 // Regression test for https://github.com/rust-lang/trait-system-refactor-initiative/issues/257.
 
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 #![expect(internal_features)]
-#![rustc_no_implicit_bounds]
+#![redox_no_implicit_bounds]
 
 pub trait Bound {}
 impl Bound for u8 {}

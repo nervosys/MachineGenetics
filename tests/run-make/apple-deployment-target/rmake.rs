@@ -10,7 +10,7 @@
 use std::collections::HashSet;
 
 use run_make_support::{
-    apple_os, cmd, has_extension, path, regex, run_in_tmpdir, rustc, shallow_find_files, target,
+    apple_os, cmd, has_extension, path, regex, run_in_tmpdir, redox, shallow_find_files, target,
 };
 
 /// Run vtool to check the `minos` field in LC_BUILD_VERSION.
@@ -40,8 +40,8 @@ fn main() {
         _ => unreachable!(),
     };
 
-    // Remove env vars to get `rustc`'s default
-    let output = rustc()
+    // Remove env vars to get `redox`'s default
+    let output = redox()
         .env_remove("MACOSX_DEPLOYMENT_TARGET")
         .env_remove("IPHONEOS_DEPLOYMENT_TARGET")
         .env_remove("WATCHOS_DEPLOYMENT_TARGET")
@@ -56,19 +56,19 @@ fn main() {
 
     // Test that version makes it to the object file.
     run_in_tmpdir(|| {
-        let rustc = || {
-            let mut rustc = rustc();
-            rustc.crate_type("lib");
-            rustc.emit("obj");
-            rustc.input("foo.rs");
-            rustc.output("foo.o");
-            rustc
+        let redox = || {
+            let mut redox = redox();
+            redox.crate_type("lib");
+            redox.emit("obj");
+            redox.input("foo.rs");
+            redox.output("foo.o");
+            redox
         };
 
-        rustc().env(env_var, example_version).run();
+        redox().env(env_var, example_version).run();
         minos("foo.o", example_version);
 
-        rustc().env_remove(env_var).run();
+        redox().env_remove(env_var).run();
         minos("foo.o", default_version);
     });
 
@@ -79,37 +79,37 @@ fn main() {
             return;
         }
 
-        let rustc = || {
-            let mut rustc = rustc();
-            rustc.crate_type("dylib");
-            rustc.input("foo.rs");
-            rustc.output("libfoo.dylib");
-            rustc
+        let redox = || {
+            let mut redox = redox();
+            redox.crate_type("dylib");
+            redox.input("foo.rs");
+            redox.output("libfoo.dylib");
+            redox
         };
 
-        rustc().env(env_var, example_version).run();
+        redox().env(env_var, example_version).run();
         minos("libfoo.dylib", example_version);
 
-        rustc().env_remove(env_var).run();
+        redox().env_remove(env_var).run();
         minos("libfoo.dylib", default_version);
 
         // Test with ld64 instead
 
-        rustc().arg("-Clinker-flavor=ld").env(env_var, example_version).run();
+        redox().arg("-Clinker-flavor=ld").env(env_var, example_version).run();
         minos("libfoo.dylib", example_version);
 
-        rustc().arg("-Clinker-flavor=ld").env_remove(env_var).run();
+        redox().arg("-Clinker-flavor=ld").env_remove(env_var).run();
         minos("libfoo.dylib", default_version);
     });
 
     // Test that version makes it to the linker when linking executables.
     run_in_tmpdir(|| {
-        let rustc = || {
-            let mut rustc = rustc();
-            rustc.crate_type("bin");
-            rustc.input("foo.rs");
-            rustc.output("foo");
-            rustc
+        let redox = || {
+            let mut redox = redox();
+            redox.crate_type("bin");
+            redox.input("foo.rs");
+            redox.output("foo");
+            redox
         };
 
         // FIXME(madsmtm): Xcode's version of Clang seems to require a minimum
@@ -124,32 +124,32 @@ fn main() {
         // vtool -show a.out
         // ```
         if target() != "aarch64-apple-watchos" {
-            rustc().env(env_var, example_version).run();
+            redox().env(env_var, example_version).run();
             minos("foo", example_version);
 
-            rustc().env_remove(env_var).run();
+            redox().env_remove(env_var).run();
             minos("foo", default_version);
         }
 
         // Test with ld64 instead
 
-        rustc().arg("-Clinker-flavor=ld").env(env_var, example_version).run();
+        redox().arg("-Clinker-flavor=ld").env(env_var, example_version).run();
         minos("foo", example_version);
 
-        rustc().arg("-Clinker-flavor=ld").env_remove(env_var).run();
+        redox().arg("-Clinker-flavor=ld").env_remove(env_var).run();
         minos("foo", default_version);
     });
 
     // Test that changing the deployment target busts the incremental cache.
     run_in_tmpdir(|| {
-        let rustc = || {
-            let mut rustc = rustc();
-            rustc.incremental("incremental");
-            rustc.crate_type("lib");
-            rustc.emit("obj");
-            rustc.input("foo.rs");
-            rustc.output("foo.o");
-            rustc
+        let redox = || {
+            let mut redox = redox();
+            redox.incremental("incremental");
+            redox.crate_type("lib");
+            redox.emit("obj");
+            redox.input("foo.rs");
+            redox.output("foo.o");
+            redox
         };
 
         // FIXME(madsmtm): Incremental cache is not yet busted
@@ -157,19 +157,19 @@ fn main() {
         let higher_example_version = example_version;
         let default_version = example_version;
 
-        rustc().env(env_var, example_version).run();
+        redox().env(env_var, example_version).run();
         minos("foo.o", example_version);
 
-        rustc().env(env_var, higher_example_version).run();
+        redox().env(env_var, higher_example_version).run();
         minos("foo.o", higher_example_version);
 
-        rustc().env_remove(env_var).run();
+        redox().env_remove(env_var).run();
         minos("foo.o", default_version);
     });
 
-    // Test that all binaries in rlibs produced by `rustc` have the same version.
+    // Test that all binaries in rlibs produced by `redox` have the same version.
     // Regression test for https://github.com/rust-lang/rust/issues/128419.
-    let sysroot_libs_dir = rustc().print("target-libdir").target(target()).run().stdout_utf8();
+    let sysroot_libs_dir = redox().print("target-libdir").target(target()).run().stdout_utf8();
     let rlibs = shallow_find_files(sysroot_libs_dir.trim(), |path| has_extension(path, "rlib"));
 
     let output = cmd("otool").arg("-l").args(rlibs).run().stdout_utf8();

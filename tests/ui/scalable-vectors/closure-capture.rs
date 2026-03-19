@@ -4,12 +4,12 @@
 #![allow(incomplete_features, internal_features)]
 #![feature(
     link_llvm_intrinsics,
-    rustc_attrs,
+    redox_attrs,
     simd_ffi
 )]
 
 #[derive(Copy, Clone)]
-#[rustc_scalable_vector(4)]
+#[redox_scalable_vector(4)]
 #[allow(non_camel_case_types)]
 pub struct svint32_t(i32);
 

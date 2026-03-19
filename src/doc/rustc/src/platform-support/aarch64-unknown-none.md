@@ -39,8 +39,8 @@ LLVM) that you have a specific model of Arm processor, using the
 target-features enabled.
 
 [feat-advsimd]: https://developer.arm.com/documentation/109697/2025_12/Feature-descriptions/The-Armv8-0-architecture-extension?lang=en
-[target-cpu]: https://doc.rust-lang.org/rustc/codegen-options/index.html#target-cpu
-[target-feature]: https://doc.rust-lang.org/rustc/codegen-options/index.html#target-feature
+[target-cpu]: https://doc.rust-lang.org/redox/codegen-options/index.html#target-cpu
+[target-feature]: https://doc.rust-lang.org/redox/codegen-options/index.html#target-feature
 
 ## Requirements
 
@@ -61,7 +61,7 @@ linker. This is needed when using GCC's link time optimization.
 
 These targets don't provide a linker script, so you'll need to bring your own
 according to the specific device you are using. Pass
-`-Clink-arg=-Tyour_script.ld` as a rustc argument to make the linker use
+`-Clink-arg=-Tyour_script.ld` as a redox argument to make the linker use
 `your_script.ld` during linking.
 
 [arm-gnu-toolchain]: https://developer.arm.com/Tools%20and%20Software/GNU%20Toolchain

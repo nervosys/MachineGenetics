@@ -1,7 +1,7 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
-#![feature(rustc_attrs, marker_trait_attr)]
-#[rustc_coinductive]
+#![feature(redox_attrs, marker_trait_attr)]
+#[redox_coinductive]
 trait Trait {}
 
 impl<T, U> Trait for (T, U)

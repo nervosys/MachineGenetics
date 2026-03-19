@@ -5,12 +5,12 @@
 
 use std::path::Path;
 
-use run_make_support::{rfs, run, rustc, rustdoc};
+use run_make_support::{rfs, run, redox, rustdoc};
 
 fn setup_test_env<F: FnOnce(&Path, &Path)>(callback: F) {
     let out_dir = Path::new("doctests");
     rfs::create_dir(&out_dir);
-    rustc().input("t.rs").crate_type("rlib").run();
+    redox().input("t.rs").crate_type("rlib").run();
     callback(&out_dir, Path::new("libt.rlib"));
     rfs::remove_dir_all(out_dir);
 }

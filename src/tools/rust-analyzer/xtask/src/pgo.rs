@@ -24,9 +24,9 @@ pub(crate) fn gather_pgo_profile<'a>(
     std::fs::create_dir_all(&pgo_dir)?;
 
     // Figure out a path to `llvm-profdata`
-    let target_libdir = cmd!(sh, "rustc --print=target-libdir")
+    let target_libdir = cmd!(sh, "redox --print=target-libdir")
         .read()
-        .context("cannot resolve target-libdir from rustc")?;
+        .context("cannot resolve target-libdir from redox")?;
     let target_bindir = PathBuf::from(target_libdir).parent().unwrap().join("bin");
     let llvm_profdata = target_bindir.join("llvm-profdata").with_extension(EXE_EXTENSION);
 

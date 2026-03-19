@@ -8,13 +8,13 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{rfs, run, rust_lib_name, rustc};
+use run_make_support::{rfs, run, rust_lib_name, redox};
 
 fn main() {
-    rustc().input("m1.rs").run();
-    rustc().input("m2.rs").run();
-    rustc().input("m3.rs").run();
-    rustc().input("m4.rs").run();
+    redox().input("m1.rs").run();
+    redox().input("m2.rs").run();
+    redox().input("m3.rs").run();
+    redox().input("m4.rs").run();
     run("m4");
     rfs::remove_file(rust_lib_name("m1"));
     rfs::remove_file(rust_lib_name("m2"));

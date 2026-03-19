@@ -24,7 +24,7 @@
 use std::fmt;
 
 use intern::Symbol;
-use rustc_hash::FxBuildHasher;
+use redox_hash::FxBuildHasher;
 use span::{Span, SpanAnchor, SyntaxContext, TextRange, TextSize};
 
 use crate::{

@@ -1,4 +1,4 @@
-use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
+use redox_ast::ast::{LitFloatType, LitIntType, LitKind};
 use std::iter;
 
 /// Represents the base of a numeric literal, used for parsing and formatting.

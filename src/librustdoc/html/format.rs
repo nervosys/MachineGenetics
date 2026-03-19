@@ -13,17 +13,17 @@ use std::iter::{self, once};
 use std::slice;
 
 use itertools::{Either, Itertools};
-use rustc_abi::ExternAbi;
-use rustc_ast::join_path_syms;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
-use rustc_hir::def::{DefKind, MacroKinds};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::{ConstStability, StabilityLevel, StableSince};
-use rustc_metadata::creader::CStore;
-use rustc_middle::ty::{self, TyCtxt, TypingMode};
-use rustc_span::Symbol;
-use rustc_span::symbol::kw;
+use redox_abi::ExternAbi;
+use redox_ast::join_path_syms;
+use redox_data_structures::fx::FxHashSet;
+use redox_hir as hir;
+use redox_hir::def::{DefKind, MacroKinds};
+use redox_hir::def_id::{DefId, LOCAL_CRATE};
+use redox_hir::{ConstStability, StabilityLevel, StableSince};
+use redox_metadata::creader::CStore;
+use redox_middle::ty::{self, TyCtxt, TypingMode};
+use redox_span::Symbol;
+use redox_span::symbol::kw;
 use tracing::{debug, trace};
 
 use super::url_parts_builder::UrlPartsBuilder;
@@ -330,10 +330,10 @@ pub(crate) enum HrefError {
     ///
     /// Crate `a` defines a public trait and crate `b` – the target crate that depends on `a` –
     /// implements it for a local type.
-    /// We document `b` but **not** `a` (we only _build_ the latter – with `rustc`):
+    /// We document `b` but **not** `a` (we only _build_ the latter – with `redox`):
     ///
     /// ```sh
-    /// rustc a.rs --crate-type=lib
+    /// redox a.rs --crate-type=lib
     /// rustdoc b.rs --crate-type=lib --extern=a=liba.rlib
     /// ```
     ///
@@ -428,9 +428,9 @@ fn generate_item_def_id_path(
     cx: &Context<'_>,
     root_path: Option<&str>,
 ) -> Result<HrefInfo, HrefError> {
-    use rustc_middle::traits::ObligationCause;
-    use rustc_trait_selection::infer::TyCtxtInferExt;
-    use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
+    use redox_middle::traits::ObligationCause;
+    use redox_trait_selection::infer::TyCtxtInferExt;
+    use redox_trait_selection::traits::query::normalize::QueryNormalizeExt;
 
     let tcx = cx.tcx();
     let crate_name = tcx.crate_name(def_id.krate);

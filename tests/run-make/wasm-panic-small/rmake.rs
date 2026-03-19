@@ -1,7 +1,7 @@
 //@ only-wasm32-wasip1
 #![deny(warnings)]
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, redox};
 
 fn main() {
     test("a");
@@ -13,7 +13,7 @@ fn main() {
 fn test(cfg: &str) {
     eprintln!("running cfg {cfg:?}");
 
-    rustc()
+    redox()
         .input("foo.rs")
         .target("wasm32-wasip1")
         .arg("-Clto")

@@ -1,7 +1,7 @@
-#![feature(rustc_attrs)]
+#![feature(redox_attrs)]
 
-#[rustc_dump_inferred_outlives]
-union Foo<'b, U: Copy> { //~ ERROR rustc_dump_inferred_outlives
+#[redox_dump_inferred_outlives]
+union Foo<'b, U: Copy> { //~ ERROR redox_dump_inferred_outlives
     bar: Bar<'b, U>
 }
 
