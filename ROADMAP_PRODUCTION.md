@@ -26,7 +26,7 @@
 
 ### Parser: LL(1) Canonical Grammar
 
-- [ ] **Step 9**: Create `compiler/redox_grammar/` crate containing the formal LL(1) grammar specification for Redox canonical syntax as a structured data file (grammar rules, FIRST/FOLLOW sets). This serves as the single source of truth for the parser. Include grammar validation tests (no LL(1) conflicts).
+- [x] **Step 9**: Create `compiler/redox_grammar/` crate containing the formal LL(1) grammar specification for Redox canonical syntax as a structured data file (grammar rules, FIRST/FOLLOW sets). This serves as the single source of truth for the parser. Include grammar validation tests (no LL(1) conflicts).
 - [ ] **Step 10**: Modify `redox_parse` to support dual-mode parsing: add a `SyntaxMode` enum (`Canonical`, `Legacy`) to the parser state, controlled by the session configuration. In `Legacy` mode, the parser behaves identically to upstream `rustc_parse`. In `Canonical` mode, it accepts the new LL(1) grammar. Add plumbing tests.
 - [ ] **Step 11**: Implement `spec` block parsing in `redox_parse` (canonical mode). A `spec` block contains `@req` (precondition), `@ens` (postcondition), `@perf` (cost bound), and `@fx` (effect declaration) clauses. Parse into new AST nodes. Add parser tests with valid and invalid spec blocks.
 - [ ] **Step 12**: Implement contract syntax parsing in `redox_parse`: `@req(expr)`, `@ens(expr)`, `@inv(expr)` as function/method attributes in canonical mode. Parse into `ContractAttr` AST nodes. Add parser tests.
