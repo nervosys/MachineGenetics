@@ -78,7 +78,7 @@ bus.subscribe("channel.name", |msg| {
 Standard channels in the Redox compiler:
 
 | Channel             | Purpose                            |
-|---------------------|------------------------------------|
+| ------------------- | ---------------------------------- |
 | `parse.complete`    | Parser finished a compilation unit |
 | `type.error`        | Type checking found an error       |
 | `contract.violated` | A contract check failed            |
@@ -256,13 +256,13 @@ p"{runner.report()}";
 
 Key metrics:
 
-| Metric                | Unit       | Description                    |
-|-----------------------|------------|--------------------------------|
-| Token throughput      | tokens/ms  | Tokens processed per millisec  |
-| Parse error rate      | errors/unit| Parse errors per source unit   |
-| Synthesis success     | ratio      | Successful syntheses / total   |
-| Swarm dispatch latency| ms         | Time to dispatch a task        |
-| Swarm completion      | ms         | Time to complete a task        |
+| Metric                 | Unit        | Description                   |
+| ---------------------- | ----------- | ----------------------------- |
+| Token throughput       | tokens/ms   | Tokens processed per millisec |
+| Parse error rate       | errors/unit | Parse errors per source unit  |
+| Synthesis success      | ratio       | Successful syntheses / total  |
+| Swarm dispatch latency | ms          | Time to dispatch a task       |
+| Swarm completion       | ms          | Time to complete a task       |
 
 ---
 
