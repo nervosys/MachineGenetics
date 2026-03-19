@@ -98,6 +98,11 @@ test-dashboard/
 /.envrc
 /.direnv/
 
+## Environment (secrets)
+.env
+.env.local
+.env.*.local
+
 ## nix
 /flake.nix
 flake.lock
