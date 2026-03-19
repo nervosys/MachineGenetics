@@ -1037,6 +1037,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::Question => "?".into(),
             token::QuestionEq => "?=".into(),
             token::TildeGt => "~>".into(),
+            token::PlusFn => "+fn".into(),
+            token::MinusFn => "-fn".into(),
+            token::BangFn => "!fn".into(),
+            token::StarFn => "*fn".into(),
             token::SingleQuote => "'".into(),
 
             /* Literals */

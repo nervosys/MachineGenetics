@@ -1,7 +1,9 @@
-use redox_ast::token::{self, Delimiter, Token};
+use redox_ast::token::{self, Delimiter, IdentIsRaw, Token};
 use redox_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use redox_ast_pretty::pprust::token_to_string;
 use redox_errors::Diag;
+use redox_session::parse::SyntaxMode;
+use redox_span::kw;
 
 use super::diagnostics::{
     report_missing_open_delim, report_suspicious_mismatch_block, same_indentation_level,
@@ -166,6 +168,8 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 break (Spacing::Alone, next_tok);
             } else if let Some(glued) = self.token.glue(&next_tok) {
                 self.token = glued;
+            } else if let Some(fused) = self.try_canonical_sigil_fn(&next_tok) {
+                self.token = fused;
             } else {
                 let this_spacing = self.calculate_spacing(&next_tok);
                 break (this_spacing, next_tok);
@@ -195,6 +199,32 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         } else {
             Spacing::JointHidden
         }
+    }
+
+    /// In canonical syntax mode, fuse sigil + `fn` into a compound token:
+    ///   `+fn` → `PlusFn`  (async fn)
+    ///   `-fn` → `MinusFn` (const fn)
+    ///   `!fn` → `BangFn`  (unsafe fn)
+    ///   `*fn` → `StarFn`  (extern fn)
+    /// Returns `None` in legacy mode or when the pattern doesn't match.
+    fn try_canonical_sigil_fn(&self, next_tok: &Token) -> Option<Token> {
+        if self.psess.syntax_mode != SyntaxMode::Canonical {
+            return None;
+        }
+        // The next token must be `fn` (keyword or canonical-expanded `f`→`fn`).
+        let is_fn = matches!(next_tok.kind, token::Ident(sym, IdentIsRaw::No) if sym == kw::Fn);
+        if !is_fn {
+            return None;
+        }
+        let kind = match self.token.kind {
+            token::Plus  => token::PlusFn,
+            token::Minus => token::MinusFn,
+            token::Not   => token::BangFn,
+            token::Star  => token::StarFn,
+            _ => return None,
+        };
+        let span = self.token.span.to(next_tok.span);
+        Some(Token::new(kind, span))
     }
 
     fn eof_err(&mut self) -> Diag<'psess> {

@@ -8,7 +8,8 @@ use redox_ast::{
 };
 use redox_data_structures::stack::ensure_sufficient_stack;
 use redox_errors::{Applicability, Diag, E0516, PResult};
-use redox_span::{ErrorGuaranteed, Ident, Span, kw, sym};
+use redox_session::parse::SyntaxMode;
+use redox_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
@@ -310,6 +311,15 @@ impl<'a> Parser<'a> {
             |this| this.parse_ty_no_question_mark_recover(),
         ) {
             return Ok(ty);
+        }
+
+        // Redox canonical type abbreviations: `?T`, `R[T,E]`, `V[T]`.
+        {
+            let abbrev_lo = self.token.span;
+            if let Some(kind) = self.try_parse_canonical_type_abbrev()? {
+                let span = abbrev_lo.to(self.prev_token.span);
+                return Ok(self.mk_ty(span, kind));
+            }
         }
 
         let lo = self.token.span;
@@ -1642,5 +1652,88 @@ impl<'a> Parser<'a> {
 
     pub(super) fn mk_ty(&self, span: Span, kind: TyKind) -> Box<Ty> {
         Box::new(Ty { kind, span, id: ast::DUMMY_NODE_ID, tokens: None })
+    }
+
+    // ── Redox canonical type abbreviations ─────────────────────────────
+
+    /// Build a `TyKind::Path` equivalent to `Name<T1, T2, ...>`.
+    fn mk_generic_path_ty(
+        &self,
+        name: &str,
+        args: Vec<Box<Ty>>,
+        span: Span,
+    ) -> TyKind {
+        let ident = Ident::new(Symbol::intern(name), span);
+        let generic_args: ThinVec<_> = args
+            .into_iter()
+            .map(|ty| ast::AngleBracketedArg::Arg(ast::GenericArg::Type(ty)))
+            .collect();
+        let args = ast::GenericArgs::AngleBracketed(ast::AngleBracketedArgs {
+            span,
+            args: generic_args,
+        });
+        let segment = ast::PathSegment {
+            ident,
+            id: ast::DUMMY_NODE_ID,
+            args: Some(Box::new(args)),
+        };
+        TyKind::Path(None, ast::Path {
+            span,
+            segments: thin_vec![segment],
+            tokens: None,
+        })
+    }
+
+    /// In canonical mode, try to parse type abbreviations:
+    ///   `?T`     → `Option<T>`
+    ///   `R[T,E]` → `Result<T,E>`
+    ///   `V[T]`   → `Vec<T>`
+    /// Returns `None` in legacy mode or if the current token doesn't match.
+    fn try_parse_canonical_type_abbrev(&mut self) -> PResult<'a, Option<TyKind>> {
+        if self.psess.syntax_mode != SyntaxMode::Canonical {
+            return Ok(None);
+        }
+
+        // `?T` → `Option<T>`
+        if self.check(exp!(Question)) {
+            let lo = self.token.span;
+            self.bump(); // eat `?`
+            let inner = self.parse_ty()?;
+            let span = lo.to(self.prev_token.span);
+            return Ok(Some(self.mk_generic_path_ty("Option", vec![inner], span)));
+        }
+
+        // `R[T, E]` → `Result<T, E>`   or   `V[T]` → `Vec<T>`
+        if let token::Ident(sym, IdentIsRaw::No) = self.token.kind {
+            let s = sym.as_str();
+            let (type_name, expect_count) = match s {
+                "R" => ("Result", 2usize),
+                "V" => ("Vec", 1usize),
+                _ => return Ok(None),
+            };
+            // Only if immediately followed by `[`.
+            if !self.look_ahead(1, |t| *t == token::OpenBracket) {
+                return Ok(None);
+            }
+            let lo = self.token.span;
+            self.bump(); // eat `R` / `V`
+            self.expect(exp!(OpenBracket))?; // eat `[`
+            let mut types = vec![self.parse_ty()?];
+            while self.eat(exp!(Comma)) {
+                types.push(self.parse_ty()?);
+            }
+            self.expect(exp!(CloseBracket))?; // eat `]`
+            let span = lo.to(self.prev_token.span);
+            if types.len() != expect_count {
+                let msg = format!(
+                    "`{s}[...]` expects {expect_count} type argument(s), found {}",
+                    types.len()
+                );
+                return Err(self.dcx().struct_span_err(span, msg));
+            }
+            return Ok(Some(self.mk_generic_path_ty(type_name, types, span)));
+        }
+
+        Ok(None)
     }
 }

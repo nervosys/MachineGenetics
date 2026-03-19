@@ -21,7 +21,7 @@
 
 - [x] **Step 5**: Extend `redox_lexer` (`compiler/redox_lexer/src/lib.rs`) — add new `TokenKind` variants for Redox-specific tokens: `@@` (discovery), `?=` (refinement), `~>` (pipeline), `@` prefix for compact attributes. Add unit tests for each new token.
 - [x] **Step 6**: Implement token-compressed keyword recognition in the lexer. Add recognition for single-character keywords: `v` (let), `f` (fn), `t` (type), `s` (struct), `e` (enum), `m` (mod), `p` (pub), `i` (impl), `S` (Self), `E` (Effect), `T` (Trait), `I` (Interface). These should be recognized in canonical syntax mode only (controlled by a session flag). Add comprehensive lexer tests.
-- [ ] **Step 7**: Implement sigil prefix token recognition in the lexer: `+f` (async fn), `-f` (const fn), `!f` (unsafe fn), `*f` (extern fn). Add type abbreviation tokens: `?T` (Option<T>), `R[T,E]` (Result<T,E>), `V[T]` (Vec<T>), `[T]~` (mutable slice). Add lexer tests.
+- [x] **Step 7**: Implement sigil prefix token recognition in the lexer: `+f` (async fn), `-f` (const fn), `!f` (unsafe fn), `*f` (extern fn). Add type abbreviation tokens: `?T` (Option<T>), `R[T,E]` (Result<T,E>), `V[T]` (Vec<T>), `[T]~` (mutable slice). Add lexer tests.
 - [ ] **Step 8**: Implement compact attribute lexing: `@d` (#[derive(...)]), `@r` (#[repr(...)]), `@t` (#[test]), `@i` (#[inline]), `@as` (agent_spec), `@ac` (agent_contract), `@ax` (agent_effect), `@ao` (agent_capability), `@ae` (agent_entry). The lexer should emit `CompactAttribute(kind)` tokens. Add tests.
 
 ### Parser: LL(1) Canonical Grammar

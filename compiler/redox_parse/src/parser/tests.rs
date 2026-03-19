@@ -9,7 +9,7 @@ use ast::token::IdentIsRaw;
 use redox_ast::token::{self, Delimiter, Token};
 use redox_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use redox_ast::{self as ast, PatKind, visit};
-use redox_ast_pretty::pprust::item_to_string;
+use redox_ast_pretty::pprust::{item_to_string, ty_to_string};
 use redox_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use redox_errors::emitter::OutputTheme;
 use redox_errors::{AutoStream, DiagCtxt, MultiSpan, PResult};
@@ -3016,5 +3016,126 @@ fn canonical_mode_preserves_regular_idents() {
         let kinds = tokens_with_mode("value", SyntaxMode::Canonical);
         let sym_value = Symbol::intern("value");
         assert_eq!(kinds[0], token::Ident(sym_value, IdentIsRaw::No));
+    });
+}
+
+// ── Step 7: sigil-fn fusion & type abbreviation tests ──────────────────────
+
+#[test]
+fn canonical_sigil_fn_plus() {
+    create_default_session_globals_then(|| {
+        let kinds = tokens_with_mode("+fn", SyntaxMode::Canonical);
+        assert_eq!(kinds[0], token::PlusFn, "+fn should fuse to PlusFn in canonical mode");
+    });
+}
+
+#[test]
+fn canonical_sigil_fn_minus() {
+    create_default_session_globals_then(|| {
+        let kinds = tokens_with_mode("-fn", SyntaxMode::Canonical);
+        assert_eq!(kinds[0], token::MinusFn, "-fn should fuse to MinusFn in canonical mode");
+    });
+}
+
+#[test]
+fn canonical_sigil_fn_bang() {
+    create_default_session_globals_then(|| {
+        let kinds = tokens_with_mode("!fn", SyntaxMode::Canonical);
+        assert_eq!(kinds[0], token::BangFn, "!fn should fuse to BangFn in canonical mode");
+    });
+}
+
+#[test]
+fn canonical_sigil_fn_star() {
+    create_default_session_globals_then(|| {
+        let kinds = tokens_with_mode("*fn", SyntaxMode::Canonical);
+        assert_eq!(kinds[0], token::StarFn, "*fn should fuse to StarFn in canonical mode");
+    });
+}
+
+#[test]
+fn canonical_sigil_fn_all_variants() {
+    create_default_session_globals_then(|| {
+        let cases: Vec<(&str, token::TokenKind)> = vec![
+            ("+fn", token::PlusFn),
+            ("-fn", token::MinusFn),
+            ("!fn", token::BangFn),
+            ("*fn", token::StarFn),
+        ];
+        for (src, expected) in cases {
+            let kinds = tokens_with_mode(src, SyntaxMode::Canonical);
+            assert_eq!(kinds[0], expected, "sigil-fn '{src}' did not fuse correctly");
+        }
+    });
+}
+
+#[test]
+fn legacy_mode_no_sigil_fn_fusion() {
+    create_default_session_globals_then(|| {
+        // In legacy mode, `+fn` should stay as two separate tokens: Plus, Ident(fn).
+        let kinds = tokens_with_mode("+fn", SyntaxMode::Legacy);
+        assert_eq!(kinds[0], token::Plus);
+        assert_eq!(kinds[1], token::Ident(kw::Fn, IdentIsRaw::No));
+    });
+}
+
+#[test]
+fn canonical_sigil_fn_space_separated_no_fusion() {
+    create_default_session_globals_then(|| {
+        // Space between sigil and `fn` prevents fusion.
+        let kinds = tokens_with_mode("+ fn", SyntaxMode::Canonical);
+        assert_eq!(kinds[0], token::Plus);
+        assert_eq!(kinds[1], token::Ident(kw::Fn, IdentIsRaw::No));
+    });
+}
+
+/// Helper: parse a type string with the given `SyntaxMode`, return the
+/// pretty-printed result (which reflects the desugared AST).
+fn parse_ty_with_mode(src: &str, mode: SyntaxMode) -> String {
+    let mut psess = ParseSess::new();
+    psess.syntax_mode = mode;
+    let ty = with_error_checking_parse(src.to_string(), &psess, |p| p.parse_ty());
+    ty_to_string(&ty)
+}
+
+#[test]
+fn canonical_type_abbrev_option() {
+    create_default_session_globals_then(|| {
+        let result = parse_ty_with_mode("?i32", SyntaxMode::Canonical);
+        assert_eq!(result, "Option<i32>");
+    });
+}
+
+#[test]
+fn canonical_type_abbrev_result() {
+    create_default_session_globals_then(|| {
+        let result = parse_ty_with_mode("R[i32, String]", SyntaxMode::Canonical);
+        assert_eq!(result, "Result<i32, String>");
+    });
+}
+
+#[test]
+fn canonical_type_abbrev_vec() {
+    create_default_session_globals_then(|| {
+        let result = parse_ty_with_mode("V[u8]", SyntaxMode::Canonical);
+        assert_eq!(result, "Vec<u8>");
+    });
+}
+
+#[test]
+fn legacy_mode_no_type_abbrev() {
+    create_default_session_globals_then(|| {
+        // In legacy mode, `V` is just an identifier — a plain type path.
+        let result = parse_ty_with_mode("V", SyntaxMode::Legacy);
+        assert_eq!(result, "V");
+    });
+}
+
+#[test]
+fn canonical_type_abbrev_nested() {
+    create_default_session_globals_then(|| {
+        // Nested abbreviations: ?V[u8] → Option<Vec<u8>>
+        let result = parse_ty_with_mode("?V[u8]", SyntaxMode::Canonical);
+        assert_eq!(result, "Option<Vec<u8>>");
     });
 }
