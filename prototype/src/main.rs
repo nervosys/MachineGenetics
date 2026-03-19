@@ -1,5 +1,6 @@
 mod aci;
 mod ast;
+mod bench;
 mod certs;
 mod consensus;
 mod cost;
