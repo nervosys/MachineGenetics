@@ -4,6 +4,7 @@ mod bench;
 mod certs;
 mod consensus;
 mod cost;
+mod cost_calibration;
 mod crdt;
 mod decompose;
 mod effects;
