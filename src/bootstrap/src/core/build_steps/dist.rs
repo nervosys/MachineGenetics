@@ -188,7 +188,7 @@ impl Step for RustcDocs {
         builder.run_default_doc_steps();
 
         let mut tarball = Tarball::new(builder, "redox-docs", &target.triple);
-        tarball.set_product_name("Rustc Documentation");
+        tarball.set_product_name("Redox Documentation");
         tarball.add_bulk_dir(builder.compiler_doc_out(target), "share/doc/rust/html/redox-docs");
         tarball.generate()
     }

@@ -10,7 +10,7 @@ expression: install
     - Set({install::library/std})
 [Install] install::Rustc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({install::compiler/rustc})
+    - Set({install::compiler/redox})
 [Install] install::LlvmTools
     targets: [x86_64-unknown-linux-gnu]
     - Set({install::llvm-tools})

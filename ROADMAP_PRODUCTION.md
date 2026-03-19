@@ -13,8 +13,8 @@
 ### Rebrand & Build Infrastructure
 
 - [x] **Step 1**: Create automated rename script (`scripts/rebrand.py`) that renames all `rustc_*` crate directories under `compiler/` to `redox_*`, updates every `Cargo.toml` package name, and rewrites all `use rustc_*` / `extern crate rustc_*` imports across the entire tree. Validate with `grep -r "rustc_" compiler/` showing zero hits post-rename. Reference: REDOX_PROPOSAL.md §4.2 Compiler Crate Ontology.
-- [ ] **Step 2**: Update the build system (`src/bootstrap/`, `x.py`, `configure`, `bootstrap.example.toml`) to use `redox_*` crate names. Update `Cargo.toml` workspace members list. Ensure `python x.py check` succeeds with the rebranded crates.
-- [ ] **Step 3**: Rename the top-level compiler driver from `compiler/rustc/` to `compiler/redox/` and update all references. The produced binary should be `redoxc` (or `redox` as a compiler command). Update `src/tools/` references.
+- [x] **Step 2**: Update the build system (`src/bootstrap/`, `x.py`, `configure`, `bootstrap.example.toml`) to use `redox_*` crate names. Update `Cargo.toml` workspace members list. Ensure `python x.py check` succeeds with the rebranded crates.
+- [x] **Step 3**: Rename the top-level compiler driver from `compiler/rustc/` to `compiler/redox/` and update all references. The produced binary should be `redoxc` (or `redox` as a compiler command). Update `src/tools/` references.
 - [ ] **Step 4**: Establish CI/CD pipeline: add `.github/workflows/redox-ci.yml` with build, test, and lint jobs for the rebranded compiler. Verify the compiler bootstraps successfully (stage 0 → stage 1 at minimum).
 
 ### Lexer: Token-Compressed Keywords & Redox Tokens
