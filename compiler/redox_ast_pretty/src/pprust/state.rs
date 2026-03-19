@@ -1013,6 +1013,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
             /* Structural symbols */
             token::At => "@".into(),
+            token::AtAt => "@@".into(),
             token::Dot => ".".into(),
             token::DotDot => "..".into(),
             token::DotDotDot => "...".into(),
@@ -1034,6 +1035,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::Pound => "#".into(),
             token::Dollar => "$".into(),
             token::Question => "?".into(),
+            token::QuestionEq => "?=".into(),
+            token::TildeGt => "~>".into(),
             token::SingleQuote => "'".into(),
 
             /* Literals */

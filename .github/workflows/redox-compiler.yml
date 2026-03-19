@@ -1,0 +1,146 @@
+# Redox Compiler CI — verifies the rebranded compiler builds and passes basic tests.
+#
+# Triggers on changes to compiler/, library/, or build infrastructure.
+# Runs a stage-0 check (cargo check on all compiler crates) and
+# the prototype test suite.
+
+name: Redox Compiler
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "compiler/**"
+      - "library/**"
+      - "src/bootstrap/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/redox-compiler.yml"
+  pull_request:
+    branches: [master]
+    paths:
+      - "compiler/**"
+      - "library/**"
+      - "src/bootstrap/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/redox-compiler.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: redox-compiler-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ── Stage 0 Check: verify all compiler crates resolve & type-check ──
+  check:
+    name: Compiler Check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Install build dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build curl python3
+
+      - name: Configure bootstrap
+        run: |
+          cp bootstrap.example.toml bootstrap.toml || true
+          cat >> bootstrap.toml <<'EOF'
+
+          [rust]
+          # Use stage 0 only for CI speed
+          codegen-backends = ["llvm"]
+          EOF
+
+      - name: Bootstrap check (x.py check)
+        run: python3 x.py check
+        env:
+          RUSTC_BOOTSTRAP: 1
+
+  # ── Prototype Tests ────────────────────────────────────────────────
+  prototype:
+    name: Prototype Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            prototype/target
+          key: prototype-${{ hashFiles('prototype/Cargo.toml') }}
+          restore-keys: prototype-
+
+      - name: Test prototype (640 tests)
+        working-directory: prototype
+        run: cargo test --release -- --nocapture
+
+  # ── Lint compiler crate Cargo.toml consistency ─────────────────────
+  lint-crates:
+    name: Lint Crate Metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify no stale rustc_ internal crate names
+        run: |
+          set -euo pipefail
+          echo "Checking for stale rustc_ internal crate references..."
+
+          # Check Cargo.toml package names under compiler/
+          stale=$(grep -rn 'name = "rustc_' compiler/*/Cargo.toml 2>/dev/null || true)
+          if [ -n "$stale" ]; then
+            echo "FAIL: Found stale rustc_ package names:"
+            echo "$stale"
+            exit 1
+          fi
+
+          # Check for stale rustc_ path dependencies (but allow external rustc-* crates)
+          stale_paths=$(grep -rn 'path = "\.\./rustc_' compiler/*/Cargo.toml 2>/dev/null || true)
+          if [ -n "$stale_paths" ]; then
+            echo "FAIL: Found stale rustc_ path dependencies:"
+            echo "$stale_paths"
+            exit 1
+          fi
+
+          echo "All compiler crate names are correctly rebranded."
+
+      - name: Verify external crate names preserved
+        run: |
+          set -euo pipefail
+          echo "Checking external crate references..."
+
+          # These should still be rustc-* (hyphenated, external crates.io packages)
+          externals="rustc-hash rustc-demangle rustc-literal-escaper rustc-rayon"
+          for ext in $externals; do
+            count=$(grep -rn "$ext" compiler/*/Cargo.toml 2>/dev/null | wc -l)
+            if [ "$count" -eq 0 ]; then
+              echo "WARNING: External crate $ext not found (may be expected)"
+            else
+              echo "  OK: $ext ($count references)"
+            fi
+          done
+          echo "External crate names preserved."

@@ -369,3 +369,64 @@ fn main() {}
         "#]],
     )
 }
+
+#[test]
+fn redox_discovery_operator() {
+    // @@ — low-level lexer emits two separate At tokens; glued by parser into AtAt
+    check_lexing(
+        "@@",
+        FrontmatterAllowed::No,
+        expect![[r#"
+            Token { kind: At, len: 1 }
+            Token { kind: At, len: 1 }
+        "#]],
+    )
+}
+
+#[test]
+fn redox_refinement_operator() {
+    // ?= — low-level lexer emits Question then Eq; glued by parser into QuestionEq
+    check_lexing(
+        "?=",
+        FrontmatterAllowed::No,
+        expect![[r#"
+            Token { kind: Question, len: 1 }
+            Token { kind: Eq, len: 1 }
+        "#]],
+    )
+}
+
+#[test]
+fn redox_pipeline_operator() {
+    // ~> — low-level lexer emits Tilde then Gt; glued by parser into TildeGt
+    check_lexing(
+        "~>",
+        FrontmatterAllowed::No,
+        expect![[r#"
+            Token { kind: Tilde, len: 1 }
+            Token { kind: Gt, len: 1 }
+        "#]],
+    )
+}
+
+#[test]
+fn redox_at_prefix() {
+    // @ prefix for compact attributes — At then Ident
+    check_lexing(
+        "@d @r @t @i",
+        FrontmatterAllowed::No,
+        expect![[r#"
+            Token { kind: At, len: 1 }
+            Token { kind: Ident, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: At, len: 1 }
+            Token { kind: Ident, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: At, len: 1 }
+            Token { kind: Ident, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: At, len: 1 }
+            Token { kind: Ident, len: 1 }
+        "#]],
+    )
+}
