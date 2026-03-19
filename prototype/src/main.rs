@@ -9,6 +9,7 @@ mod effects;
 mod elision;
 mod ffi_gen;
 mod fmt;
+mod forge;
 mod grammar;
 mod heal;
 mod hir;
