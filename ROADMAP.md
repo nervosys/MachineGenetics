@@ -77,7 +77,7 @@
 | 57   | Deepen Forge registry        | ✅      | Capability-indexed search, semantic search by capability query, contract-based composition |
 | 58   | Agentic benchmarking suite   | ✅      | Token throughput, parse error rate, synthesis success rate, swarm latency metrics          |
 | 59   | Cost model calibration       | ✅      | Standardized benchmarks for cost oracle accuracy across targets                            |
-| 60   | Language specification draft | ⬚      | Formal Redox language specification document                                               |
+| 60   | Language specification draft | ✅      | Formal Redox language specification document                                               |
 
 ## Phase G: Documentation & Training (Steps 61–63)
 

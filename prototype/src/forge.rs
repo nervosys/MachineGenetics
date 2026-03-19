@@ -99,21 +99,12 @@ impl ForgeRegistry {
     /// Publish a package to the registry.
     pub fn publish(&mut self, pkg: ForgePackage) {
         for cap in &pkg.capabilities {
-            self.cap_index
-                .entry(cap.clone())
-                .or_default()
-                .insert(pkg.name.clone());
+            self.cap_index.entry(cap.clone()).or_default().insert(pkg.name.clone());
         }
         for eff in &pkg.effects {
-            self.effect_index
-                .entry(eff.clone())
-                .or_default()
-                .insert(pkg.name.clone());
+            self.effect_index.entry(eff.clone()).or_default().insert(pkg.name.clone());
         }
-        self.packages
-            .entry(pkg.name.clone())
-            .or_default()
-            .push(pkg);
+        self.packages.entry(pkg.name.clone()).or_default().push(pkg);
     }
 
     /// Get the latest version of a package.
@@ -210,11 +201,7 @@ impl ForgeRegistry {
     // ── Contract-based composition ────────────────────────────────
 
     /// Check if two packages are contract-compatible for composition.
-    pub fn check_compatibility(
-        &self,
-        provider: &str,
-        consumer: &str,
-    ) -> CompatibilityResult {
+    pub fn check_compatibility(&self, provider: &str, consumer: &str) -> CompatibilityResult {
         let provider_pkg = match self.latest(provider) {
             Some(p) => p,
             None => {
@@ -223,7 +210,7 @@ impl ForgeRegistry {
                     issues: vec![format!("Package '{}' not found", provider)],
                     satisfied_contracts: vec![],
                     missing_capabilities: vec![],
-                }
+                };
             }
         };
         let consumer_pkg = match self.latest(consumer) {
@@ -234,7 +221,7 @@ impl ForgeRegistry {
                     issues: vec![format!("Package '{}' not found", consumer)],
                     satisfied_contracts: vec![],
                     missing_capabilities: vec![],
-                }
+                };
             }
         };
 
@@ -260,21 +247,13 @@ impl ForgeRegistry {
         }
 
         // Check: provider's ensures match consumer's requires
-        let provider_ensures: Vec<&PackageContract> = provider_pkg
-            .contracts
-            .iter()
-            .filter(|c| c.kind == ContractKind::Ensures)
-            .collect();
-        let consumer_requires: Vec<&PackageContract> = consumer_pkg
-            .contracts
-            .iter()
-            .filter(|c| c.kind == ContractKind::Requires)
-            .collect();
+        let provider_ensures: Vec<&PackageContract> =
+            provider_pkg.contracts.iter().filter(|c| c.kind == ContractKind::Ensures).collect();
+        let consumer_requires: Vec<&PackageContract> =
+            consumer_pkg.contracts.iter().filter(|c| c.kind == ContractKind::Requires).collect();
 
         for req in &consumer_requires {
-            let matched = provider_ensures
-                .iter()
-                .any(|ens| ens.condition == req.condition);
+            let matched = provider_ensures.iter().any(|ens| ens.condition == req.condition);
             if matched {
                 satisfied.push(format!("contract:{}", req.condition));
             } else {
@@ -309,7 +288,8 @@ impl ForgeRegistry {
         let mut graph = BTreeMap::new();
         for (name, versions) in &self.packages {
             if let Some(pkg) = versions.last() {
-                let deps: Vec<String> = pkg.dependencies.iter().map(|d| d.package.clone()).collect();
+                let deps: Vec<String> =
+                    pkg.dependencies.iter().map(|d| d.package.clone()).collect();
                 graph.insert(name.clone(), deps);
             }
         }
@@ -367,10 +347,7 @@ impl ForgeRegistry {
         let pkgs = self.packages.len();
         let caps = self.cap_index.len();
         let effects = self.effect_index.len();
-        format!(
-            "{{\"packages\":{},\"capabilities\":{},\"effects\":{}}}",
-            pkgs, caps, effects
-        )
+        format!("{{\"packages\":{},\"capabilities\":{},\"effects\":{}}}", pkgs, caps, effects)
     }
 }
 
@@ -401,11 +378,7 @@ fn string_similarity(a: &str, b: &str) -> f64 {
     let tb = trigrams(b);
     let intersection = ta.intersection(&tb).count() as f64;
     let union = ta.union(&tb).count() as f64;
-    if union == 0.0 {
-        0.0
-    } else {
-        intersection / union
-    }
+    if union == 0.0 { 0.0 } else { intersection / union }
 }
 
 // ── Tests ──────────────────────────────────────────────────────────
@@ -458,13 +431,11 @@ mod tests {
                 target: "analyze".into(),
             }],
             effects: vec!["pure".into()],
-            dependencies: vec![
-                Dependency {
-                    package: "redox-math".into(),
-                    version_req: ">=1.0".into(),
-                    required_capabilities: vec!["arithmetic".into()],
-                },
-            ],
+            dependencies: vec![Dependency {
+                package: "redox-math".into(),
+                version_req: ">=1.0".into(),
+                required_capabilities: vec!["arithmetic".into()],
+            }],
             agents: vec!["Analyzer".into()],
         });
 

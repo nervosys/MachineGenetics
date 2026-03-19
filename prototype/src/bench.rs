@@ -24,13 +24,7 @@ pub struct MetricSample {
 
 impl MetricSample {
     pub fn new(name: &str, value: f64, unit: &str) -> Self {
-        Self {
-            name: name.into(),
-            value,
-            unit: unit.into(),
-            timestamp: 0,
-            tags: BTreeMap::new(),
-        }
+        Self { name: name.into(), value, unit: unit.into(), timestamp: 0, tags: BTreeMap::new() }
     }
 
     pub fn with_tag(mut self, key: &str, value: &str) -> Self {
@@ -55,11 +49,7 @@ pub struct MetricSeries {
 
 impl MetricSeries {
     pub fn new(name: &str, unit: &str) -> Self {
-        Self {
-            name: name.into(),
-            unit: unit.into(),
-            samples: Vec::new(),
-        }
+        Self { name: name.into(), unit: unit.into(), samples: Vec::new() }
     }
 
     pub fn record(&mut self, value: f64) {
@@ -86,10 +76,7 @@ impl MetricSeries {
     }
 
     pub fn max(&self) -> f64 {
-        self.samples
-            .iter()
-            .copied()
-            .fold(f64::NEG_INFINITY, f64::max)
+        self.samples.iter().copied().fold(f64::NEG_INFINITY, f64::max)
     }
 
     pub fn p50(&self) -> f64 {
@@ -165,9 +152,7 @@ pub struct TokenThroughput {
 
 impl TokenThroughput {
     pub fn new() -> Self {
-        Self {
-            series: MetricSeries::new("token_throughput", "tokens/ms"),
-        }
+        Self { series: MetricSeries::new("token_throughput", "tokens/ms") }
     }
 
     /// Record a measurement: tokens processed in elapsed_ms.
@@ -230,11 +215,7 @@ pub struct SynthesisRate {
 
 impl SynthesisRate {
     pub fn new() -> Self {
-        Self {
-            attempts: 0,
-            successes: 0,
-            latency: MetricSeries::new("synthesis_latency", "ms"),
-        }
+        Self { attempts: 0, successes: 0, latency: MetricSeries::new("synthesis_latency", "ms") }
     }
 
     /// Record a synthesis attempt.
@@ -306,10 +287,7 @@ pub struct BenchmarkRunner {
 
 impl BenchmarkRunner {
     pub fn new() -> Self {
-        Self {
-            suites: BTreeMap::new(),
-            results: Vec::new(),
-        }
+        Self { suites: BTreeMap::new(), results: Vec::new() }
     }
 
     pub fn register<F: Fn() -> BenchmarkResult + 'static>(&mut self, name: &str, f: F) {
