@@ -84,7 +84,7 @@
 | Step | Title                | Status | Description                                                                         |
 | ---- | -------------------- | ------ | ----------------------------------------------------------------------------------- |
 | 61   | Update documentation | ✅      | Book, cookbook, agent-guide, internals for all new features                         |
-| 62   | Update training data | ⬚      | JSONL samples for contracts, specs, swarm patterns, ACI, synthesis, FFI             |
+| 62   | Update training data | ✅      | JSONL samples for contracts, specs, swarm patterns, ACI, synthesis, FFI             |
 | 63   | Example projects     | ⬚      | End-to-end examples: swarm audit, capability-sandboxed agent, spec-driven synthesis |
 
 ---
