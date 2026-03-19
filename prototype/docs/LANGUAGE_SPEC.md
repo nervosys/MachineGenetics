@@ -35,112 +35,112 @@ Source files are UTF-8 encoded. Identifiers use `[a-zA-Z_][a-zA-Z0-9_]*`.
 
 #### Core Item Keywords
 
-| Sigil | Meaning               | Rust Equivalent       |
-|-------|-----------------------|-----------------------|
-| `f`   | Function              | `fn`                  |
-| `+f`  | Public function       | `pub fn`              |
-| `af`  | Async function        | `async fn`            |
-| `+af` | Public async function | `pub async fn`        |
-| `uf`  | Unsafe function       | `unsafe fn`           |
-| `+uf` | Public unsafe function| `pub unsafe fn`       |
-| `S`   | Struct                | `struct`              |
-| `+S`  | Public struct         | `pub struct`          |
-| `E`   | Enum                  | `enum`                |
-| `+E`  | Public enum           | `pub enum`            |
-| `T`   | Trait                 | `trait`               |
-| `+T`  | Public trait          | `pub trait`           |
-| `I`   | Impl block            | `impl`                |
-| `M`   | Module                | `mod`                 |
-| `+M`  | Public module         | `pub mod`             |
-| `~f`  | Crate-public function | `pub(crate) fn`       |
-| `~S`  | Crate-public struct   | `pub(crate) struct`   |
+| Sigil | Meaning                | Rust Equivalent     |
+| ----- | ---------------------- | ------------------- |
+| `f`   | Function               | `fn`                |
+| `+f`  | Public function        | `pub fn`            |
+| `af`  | Async function         | `async fn`          |
+| `+af` | Public async function  | `pub async fn`      |
+| `uf`  | Unsafe function        | `unsafe fn`         |
+| `+uf` | Public unsafe function | `pub unsafe fn`     |
+| `S`   | Struct                 | `struct`            |
+| `+S`  | Public struct          | `pub struct`        |
+| `E`   | Enum                   | `enum`              |
+| `+E`  | Public enum            | `pub enum`          |
+| `T`   | Trait                  | `trait`             |
+| `+T`  | Public trait           | `pub trait`         |
+| `I`   | Impl block             | `impl`              |
+| `M`   | Module                 | `mod`               |
+| `+M`  | Public module          | `pub mod`           |
+| `~f`  | Crate-public function  | `pub(crate) fn`     |
+| `~S`  | Crate-public struct    | `pub(crate) struct` |
 
 #### Visibility Prefixes
 
-| Prefix | Meaning       | Rust Equivalent |
-|--------|---------------|-----------------|
-| `+`    | Public        | `pub`           |
-| `~`    | Crate-public  | `pub(crate)`    |
-| (none) | Private       | (default)       |
+| Prefix | Meaning      | Rust Equivalent |
+| ------ | ------------ | --------------- |
+| `+`    | Public       | `pub`           |
+| `~`    | Crate-public | `pub(crate)`    |
+| (none) | Private      | (default)       |
 
 #### Control Flow
 
-| Sigil  | Meaning        | Rust Equivalent    |
-|--------|----------------|--------------------|
-| `?`    | Match          | `match`            |
-| `?:`   | If / if-else   | `if` / `if-else`   |
-| `??`   | If-let         | `if let`           |
-| `@`    | For-in loop    | `for`              |
-| `@@`   | Infinite loop  | `loop`             |
-| `@w`   | While loop     | `while`            |
-| `@wl`  | While-let      | `while let`        |
-| `!`    | Break          | `break`            |
-| `>>`   | Continue       | `continue`         |
-| `ret`  | Return         | `return`           |
+| Sigil | Meaning       | Rust Equivalent  |
+| ----- | ------------- | ---------------- |
+| `?`   | Match         | `match`          |
+| `?:`  | If / if-else  | `if` / `if-else` |
+| `??`  | If-let        | `if let`         |
+| `@`   | For-in loop   | `for`            |
+| `@@`  | Infinite loop | `loop`           |
+| `@w`  | While loop    | `while`          |
+| `@wl` | While-let     | `while let`      |
+| `!`   | Break         | `break`          |
+| `>>`  | Continue      | `continue`       |
+| `ret` | Return        | `return`         |
 
 #### Contract Annotations
 
-| Sigil   | Meaning            | Description                       |
-|---------|--------------------|-----------------------------------|
-| `@req`  | Precondition       | Must hold on function entry       |
-| `@ens`  | Postcondition      | Must hold on function exit        |
-| `@inv`  | Invariant          | Must hold across struct lifetime  |
-| `@fx`   | Effect declaration | Side effects of a function        |
-| `@perf` | Performance hint   | Performance annotation            |
+| Sigil   | Meaning            | Description                      |
+| ------- | ------------------ | -------------------------------- |
+| `@req`  | Precondition       | Must hold on function entry      |
+| `@ens`  | Postcondition      | Must hold on function exit       |
+| `@inv`  | Invariant          | Must hold across struct lifetime |
+| `@fx`   | Effect declaration | Side effects of a function       |
+| `@perf` | Performance hint   | Performance annotation           |
 
 ### 2.3 Operators and Punctuation
 
-| Token       | Meaning                     |
-|-------------|------------------------------|
-| `->`        | Return type                  |
-| `=>`        | Match arm                    |
-| `::`        | Path separator               |
-| `.`         | Field access                 |
-| `:`         | Type annotation              |
-| `=`         | Assignment / binding         |
-| `==`        | Equality                     |
-| `!=`        | Inequality                   |
-| `<` `>`     | Comparison / type args       |
-| `<=` `>=`   | Comparison                   |
-| `+` `-`     | Arithmetic                   |
-| `*` `/` `%` | Arithmetic                   |
-| `&&`        | Logical AND                  |
-| `\|\|`      | Logical OR                   |
-| `&`         | Borrow / reference           |
-| `^`         | Box (smart pointer)          |
-| `$`         | Rc (reference counted)       |
-| `@T`        | Arc (atomic ref counted)     |
-| `#`         | Attribute / derive           |
+| Token       | Meaning                  |
+| ----------- | ------------------------ |
+| `->`        | Return type              |
+| `=>`        | Match arm                |
+| `::`        | Path separator           |
+| `.`         | Field access             |
+| `:`         | Type annotation          |
+| `=`         | Assignment / binding     |
+| `==`        | Equality                 |
+| `!=`        | Inequality               |
+| `<` `>`     | Comparison / type args   |
+| `<=` `>=`   | Comparison               |
+| `+` `-`     | Arithmetic               |
+| `*` `/` `%` | Arithmetic               |
+| `&&`        | Logical AND              |
+| `\|\|`      | Logical OR               |
+| `&`         | Borrow / reference       |
+| `^`         | Box (smart pointer)      |
+| `$`         | Rc (reference counted)   |
+| `@T`        | Arc (atomic ref counted) |
+| `#`         | Attribute / derive       |
 
 ### 2.4 Type Sigils
 
-| Sigil       | Rust Equivalent         | Description               |
-|-------------|--------------------------|---------------------------|
-| `[T]~`      | `Vec<T>`                | Dynamic array             |
-| `[T; N]`    | `[T; N]`                | Fixed array               |
-| `{K: V}`    | `HashMap<K, V>`         | Hash map                  |
-| `{K}`       | `HashSet<K>`            | Hash set                  |
-| `^T`        | `Box<T>`                | Heap pointer              |
-| `$T`        | `Rc<T>`                 | Reference count           |
-| `@T`        | `Arc<T>`                | Atomic reference count    |
-| `&T`        | `&T`                    | Shared reference          |
-| `&m T`      | `&mut T`                | Mutable reference         |
-| `T?`        | `Option<T>`             | Optional                  |
-| `T!E`       | `Result<T, E>`          | Result                    |
-| `s`         | `String`                | Owned string              |
-| `&s`        | `&str`                  | String slice              |
+| Sigil    | Rust Equivalent | Description            |
+| -------- | --------------- | ---------------------- |
+| `[T]~`   | `Vec<T>`        | Dynamic array          |
+| `[T; N]` | `[T; N]`        | Fixed array            |
+| `{K: V}` | `HashMap<K, V>` | Hash map               |
+| `{K}`    | `HashSet<K>`    | Hash set               |
+| `^T`     | `Box<T>`        | Heap pointer           |
+| `$T`     | `Rc<T>`         | Reference count        |
+| `@T`     | `Arc<T>`        | Atomic reference count |
+| `&T`     | `&T`            | Shared reference       |
+| `&m T`   | `&mut T`        | Mutable reference      |
+| `T?`     | `Option<T>`     | Optional               |
+| `T!E`    | `Result<T, E>`  | Result                 |
+| `s`      | `String`        | Owned string           |
+| `&s`     | `&str`          | String slice           |
 
 ### 2.5 Literal Formats
 
-| Syntax        | Meaning                     |
-|---------------|------------------------------|
-| `42`          | Integer literal              |
-| `3.14`        | Float literal                |
-| `"hello"`     | String literal               |
-| `f"x = {x}"`  | Format string               |
-| `b"bytes"`    | Byte string                  |
-| `true`/`false`| Boolean                      |
-| `'c'`         | Character literal            |
+| Syntax         | Meaning           |
+| -------------- | ----------------- |
+| `42`           | Integer literal   |
+| `3.14`         | Float literal     |
+| `"hello"`      | String literal    |
+| `f"x = {x}"`   | Format string     |
+| `b"bytes"`     | Byte string       |
+| `true`/`false` | Boolean           |
+| `'c'`          | Character literal |
 
 ### 2.6 Comments
 
@@ -354,17 +354,17 @@ function inherits its effects unless explicitly handled.
 
 ### 6.3 Effect Kinds
 
-| Effect     | Description                           |
-|------------|---------------------------------------|
-| `pure`     | No side effects                       |
-| `io`       | General I/O                           |
-| `fs`       | File system access                    |
-| `net`      | Network access                        |
-| `mem`      | Memory allocation                     |
-| `panic`    | May panic                             |
-| `unsafe`   | Unsafe operations                     |
-| `async`    | Asynchronous execution                |
-| `nondeterministic` | Non-deterministic behavior    |
+| Effect             | Description                |
+| ------------------ | -------------------------- |
+| `pure`             | No side effects            |
+| `io`               | General I/O                |
+| `fs`               | File system access         |
+| `net`              | Network access             |
+| `mem`              | Memory allocation          |
+| `panic`            | May panic                  |
+| `unsafe`           | Unsafe operations          |
+| `async`            | Asynchronous execution     |
+| `nondeterministic` | Non-deterministic behavior |
 
 ---
 
