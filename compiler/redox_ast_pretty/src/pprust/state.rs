@@ -1041,6 +1041,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::MinusFn => "-fn".into(),
             token::BangFn => "!fn".into(),
             token::StarFn => "*fn".into(),
+            token::CompactAttribute(attr) => attr.as_str().into(),
             token::SingleQuote => "'".into(),
 
             /* Literals */

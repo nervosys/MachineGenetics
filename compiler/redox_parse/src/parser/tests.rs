@@ -3139,3 +3139,64 @@ fn canonical_type_abbrev_nested() {
         assert_eq!(result, "Option<Vec<u8>>");
     });
 }
+
+// ── Step 8: compact attribute tests ────────────────────────────────────────
+
+#[test]
+fn canonical_compact_attr_all_variants() {
+    create_default_session_globals_then(|| {
+        use token::CompactAttr;
+        let cases: Vec<(&str, CompactAttr)> = vec![
+            ("@d", CompactAttr::Derive),
+            ("@r", CompactAttr::Repr),
+            ("@t", CompactAttr::Test),
+            ("@i", CompactAttr::Inline),
+            ("@as", CompactAttr::AgentSpec),
+            ("@ac", CompactAttr::AgentContract),
+            ("@ax", CompactAttr::AgentEffect),
+            ("@ao", CompactAttr::AgentCapability),
+            ("@ae", CompactAttr::AgentEntry),
+        ];
+        for (src, expected_attr) in cases {
+            let kinds = tokens_with_mode(src, SyntaxMode::Canonical);
+            assert_eq!(
+                kinds[0],
+                token::CompactAttribute(expected_attr),
+                "compact attribute '{src}' did not fuse correctly"
+            );
+        }
+    });
+}
+
+#[test]
+fn legacy_mode_no_compact_attr_fusion() {
+    create_default_session_globals_then(|| {
+        // In legacy mode, `@d` stays as `At` + `Ident("d")`.
+        let kinds = tokens_with_mode("@d", SyntaxMode::Legacy);
+        assert_eq!(kinds[0], token::At);
+        let sym_d = Symbol::intern("d");
+        assert_eq!(kinds[1], token::Ident(sym_d, IdentIsRaw::No));
+    });
+}
+
+#[test]
+fn canonical_compact_attr_space_separated_no_fusion() {
+    create_default_session_globals_then(|| {
+        // Space between `@` and suffix prevents fusion.
+        let kinds = tokens_with_mode("@ d", SyntaxMode::Canonical);
+        assert_eq!(kinds[0], token::At);
+        let sym_d = Symbol::intern("d");
+        assert_eq!(kinds[1], token::Ident(sym_d, IdentIsRaw::No));
+    });
+}
+
+#[test]
+fn canonical_compact_attr_unknown_suffix_no_fusion() {
+    create_default_session_globals_then(|| {
+        // `@z` has no mapping, so it stays as `At` + `Ident("z")`.
+        let kinds = tokens_with_mode("@z", SyntaxMode::Canonical);
+        assert_eq!(kinds[0], token::At);
+        let sym_z = Symbol::intern("z");
+        assert_eq!(kinds[1], token::Ident(sym_z, IdentIsRaw::No));
+    });
+}

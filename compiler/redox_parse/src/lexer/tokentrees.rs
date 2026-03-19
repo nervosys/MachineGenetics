@@ -170,6 +170,8 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 self.token = glued;
             } else if let Some(fused) = self.try_canonical_sigil_fn(&next_tok) {
                 self.token = fused;
+            } else if let Some(fused) = self.try_canonical_compact_attr(&next_tok) {
+                self.token = fused;
             } else {
                 let this_spacing = self.calculate_spacing(&next_tok);
                 break (this_spacing, next_tok);
@@ -225,6 +227,25 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         };
         let span = self.token.span.to(next_tok.span);
         Some(Token::new(kind, span))
+    }
+
+    /// In canonical syntax mode, fuse `@` + identifier into a compact attribute token:
+    ///   `@d` → CompactAttribute(Derive),  `@r` → CompactAttribute(Repr), etc.
+    /// Returns `None` in legacy mode or when the pattern doesn't match.
+    fn try_canonical_compact_attr(&self, next_tok: &Token) -> Option<Token> {
+        if self.psess.syntax_mode != SyntaxMode::Canonical {
+            return None;
+        }
+        if self.token.kind != token::At {
+            return None;
+        }
+        if let token::Ident(sym, IdentIsRaw::No) = next_tok.kind {
+            if let Some(attr) = token::CompactAttr::from_suffix(sym.as_str()) {
+                let span = self.token.span.to(next_tok.span);
+                return Some(Token::new(token::CompactAttribute(attr), span));
+            }
+        }
+        None
     }
 
     fn eof_err(&mut self) -> Diag<'psess> {
