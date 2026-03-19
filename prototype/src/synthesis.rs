@@ -15,13 +15,13 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone)]
 pub struct SynthesisSpec {
     pub name: String,
-    pub params: Vec<(String, String)>,       // (name, type)
+    pub params: Vec<(String, String)>, // (name, type)
     pub return_type: Option<String>,
-    pub preconditions: Vec<String>,          // @req conditions
-    pub postconditions: Vec<String>,         // @ens conditions
-    pub invariants: Vec<String>,             // @inv conditions
-    pub effects: Vec<String>,                // declared effects
-    pub perf_bounds: Vec<(String, String)>,  // (metric, bound)
+    pub preconditions: Vec<String>,         // @req conditions
+    pub postconditions: Vec<String>,        // @ens conditions
+    pub invariants: Vec<String>,            // @inv conditions
+    pub effects: Vec<String>,               // declared effects
+    pub perf_bounds: Vec<(String, String)>, // (metric, bound)
 }
 
 impl SynthesisSpec {
@@ -102,9 +102,9 @@ pub enum Strategy {
 impl std::fmt::Display for Strategy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Strategy::Imperative  => write!(f, "imperative"),
-            Strategy::Recursive   => write!(f, "recursive"),
-            Strategy::Functional  => write!(f, "functional"),
+            Strategy::Imperative => write!(f, "imperative"),
+            Strategy::Recursive => write!(f, "recursive"),
+            Strategy::Functional => write!(f, "functional"),
             Strategy::TableDriven => write!(f, "table-driven"),
             Strategy::Speculative => write!(f, "speculative"),
         }
@@ -217,13 +217,7 @@ impl SynthesisOracle {
             let verification = self.verify(&spec, &body, &cost);
             let id = self.next_id;
             self.next_id += 1;
-            candidates.push(Candidate {
-                id,
-                strategy: strategy.clone(),
-                body,
-                cost,
-                verification,
-            });
+            candidates.push(Candidate { id, strategy: strategy.clone(), body, cost, verification });
         }
         candidates
     }
@@ -233,45 +227,85 @@ impl SynthesisOracle {
         if let Some((tmpl, cost)) = self.templates.get(&strategy.to_string()) {
             let body = tmpl
                 .replace("{name}", &spec.name)
-                .replace("{params}", &spec.params.iter()
-                    .map(|(n, t)| format!("{n}: {t}"))
-                    .collect::<Vec<_>>()
-                    .join(", "))
+                .replace(
+                    "{params}",
+                    &spec
+                        .params
+                        .iter()
+                        .map(|(n, t)| format!("{n}: {t}"))
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                )
                 .replace("{return}", spec.return_type.as_deref().unwrap_or("()"));
             return (body, cost.clone());
         }
 
         // Otherwise, synthesize stub based on strategy.
-        let params_str: String = spec.params.iter()
-            .map(|(n, t)| format!("{n}: {t}"))
-            .collect::<Vec<_>>()
-            .join(", ");
+        let params_str: String =
+            spec.params.iter().map(|(n, t)| format!("{n}: {t}")).collect::<Vec<_>>().join(", ");
         let ret = spec.return_type.as_deref().unwrap_or("()");
 
         match strategy {
             Strategy::Imperative => {
-                let body = format!("fn {}({}) -> {} {{ todo!(\"imperative\") }}", spec.name, params_str, ret);
-                let cost = CostEstimate { token_count: 8 + spec.params.len() * 3, cyclomatic_complexity: 1, allocation_count: 0, effect_count: spec.effects.len() };
+                let body = format!(
+                    "fn {}({}) -> {} {{ todo!(\"imperative\") }}",
+                    spec.name, params_str, ret
+                );
+                let cost = CostEstimate {
+                    token_count: 8 + spec.params.len() * 3,
+                    cyclomatic_complexity: 1,
+                    allocation_count: 0,
+                    effect_count: spec.effects.len(),
+                };
                 (body, cost)
             }
             Strategy::Recursive => {
-                let body = format!("fn {}({}) -> {} {{ if base_case {{ base }} else {{ {}(smaller) }} }}", spec.name, params_str, ret, spec.name);
-                let cost = CostEstimate { token_count: 15 + spec.params.len() * 3, cyclomatic_complexity: 2, allocation_count: 0, effect_count: spec.effects.len() };
+                let body = format!(
+                    "fn {}({}) -> {} {{ if base_case {{ base }} else {{ {}(smaller) }} }}",
+                    spec.name, params_str, ret, spec.name
+                );
+                let cost = CostEstimate {
+                    token_count: 15 + spec.params.len() * 3,
+                    cyclomatic_complexity: 2,
+                    allocation_count: 0,
+                    effect_count: spec.effects.len(),
+                };
                 (body, cost)
             }
             Strategy::Functional => {
-                let body = format!("fn {}({}) -> {} {{ input.iter().fold(init, |acc, x| combine(acc, x)) }}", spec.name, params_str, ret);
-                let cost = CostEstimate { token_count: 12 + spec.params.len() * 3, cyclomatic_complexity: 1, allocation_count: 1, effect_count: spec.effects.len() };
+                let body = format!(
+                    "fn {}({}) -> {} {{ input.iter().fold(init, |acc, x| combine(acc, x)) }}",
+                    spec.name, params_str, ret
+                );
+                let cost = CostEstimate {
+                    token_count: 12 + spec.params.len() * 3,
+                    cyclomatic_complexity: 1,
+                    allocation_count: 1,
+                    effect_count: spec.effects.len(),
+                };
                 (body, cost)
             }
             Strategy::TableDriven => {
                 let body = format!("fn {}({}) -> {} {{ TABLE[key] }}", spec.name, params_str, ret);
-                let cost = CostEstimate { token_count: 6 + spec.params.len() * 3, cyclomatic_complexity: 1, allocation_count: 0, effect_count: spec.effects.len() };
+                let cost = CostEstimate {
+                    token_count: 6 + spec.params.len() * 3,
+                    cyclomatic_complexity: 1,
+                    allocation_count: 0,
+                    effect_count: spec.effects.len(),
+                };
                 (body, cost)
             }
             Strategy::Speculative => {
-                let body = format!("fn {}({}) -> {} {{ let c = guess(); if verify(c) {{ c }} else {{ fallback() }} }}", spec.name, params_str, ret);
-                let cost = CostEstimate { token_count: 18 + spec.params.len() * 3, cyclomatic_complexity: 2, allocation_count: 1, effect_count: spec.effects.len() };
+                let body = format!(
+                    "fn {}({}) -> {} {{ let c = guess(); if verify(c) {{ c }} else {{ fallback() }} }}",
+                    spec.name, params_str, ret
+                );
+                let cost = CostEstimate {
+                    token_count: 18 + spec.params.len() * 3,
+                    cyclomatic_complexity: 2,
+                    allocation_count: 1,
+                    effect_count: spec.effects.len(),
+                };
                 (body, cost)
             }
         }
@@ -283,7 +317,10 @@ impl SynthesisOracle {
 
         // Check preconditions: body should reference each param (simplified check).
         for (param_name, _) in &spec.params {
-            if !body.contains(param_name.as_str()) && !body.contains("todo!") && !body.contains("{params}") {
+            if !body.contains(param_name.as_str())
+                && !body.contains("todo!")
+                && !body.contains("{params}")
+            {
                 result.preconditions_met = false;
                 result.violations.push(format!("param `{param_name}` unused"));
             }
@@ -322,10 +359,9 @@ impl SynthesisOracle {
                 if let Ok(max) = bound.parse::<usize>() {
                     if cost.token_count > max {
                         result.perf_bounds_met = false;
-                        result.violations.push(format!(
-                            "tokens {} exceeds bound {}",
-                            cost.token_count, max
-                        ));
+                        result
+                            .violations
+                            .push(format!("tokens {} exceeds bound {}", cost.token_count, max));
                     }
                 }
             }
@@ -339,8 +375,11 @@ impl SynthesisOracle {
         candidates.sort_by(|a, b| {
             let a_valid = a.verification.is_valid();
             let b_valid = b.verification.is_valid();
-            b_valid.cmp(&a_valid) // valid first
-                .then_with(|| a.cost.score().partial_cmp(&b.cost.score()).unwrap_or(std::cmp::Ordering::Equal))
+            b_valid
+                .cmp(&a_valid) // valid first
+                .then_with(|| {
+                    a.cost.score().partial_cmp(&b.cost.score()).unwrap_or(std::cmp::Ordering::Equal)
+                })
         });
     }
 
@@ -427,8 +466,18 @@ mod tests {
 
     #[test]
     fn cost_score_ordering() {
-        let low = CostEstimate { token_count: 5, cyclomatic_complexity: 1, allocation_count: 0, effect_count: 0 };
-        let high = CostEstimate { token_count: 20, cyclomatic_complexity: 3, allocation_count: 2, effect_count: 1 };
+        let low = CostEstimate {
+            token_count: 5,
+            cyclomatic_complexity: 1,
+            allocation_count: 0,
+            effect_count: 0,
+        };
+        let high = CostEstimate {
+            token_count: 20,
+            cyclomatic_complexity: 3,
+            allocation_count: 2,
+            effect_count: 1,
+        };
         assert!(low.score() < high.score());
     }
 
@@ -475,11 +524,14 @@ mod tests {
         oracle.register_template(
             &Strategy::Imperative,
             "fn {name}({params}) -> {return} { println!(\"hello\"); 42 }",
-            CostEstimate { token_count: 10, cyclomatic_complexity: 1, allocation_count: 0, effect_count: 1 },
+            CostEstimate {
+                token_count: 10,
+                cyclomatic_complexity: 1,
+                allocation_count: 0,
+                effect_count: 1,
+            },
         );
-        let spec = SynthesisSpec::new("f")
-            .with_param("x", "i32")
-            .with_return("i32"); // no IO effect declared
+        let spec = SynthesisSpec::new("f").with_param("x", "i32").with_return("i32"); // no IO effect declared
         let candidates = oracle.generate(&spec);
         let imp = candidates.iter().find(|c| c.strategy == Strategy::Imperative).unwrap();
         assert!(!imp.verification.effects_contained);
@@ -491,12 +543,15 @@ mod tests {
         oracle.register_template(
             &Strategy::Imperative,
             "fn {name}({params}) -> {return} { println!(\"hello\"); 42 }",
-            CostEstimate { token_count: 10, cyclomatic_complexity: 1, allocation_count: 0, effect_count: 1 },
+            CostEstimate {
+                token_count: 10,
+                cyclomatic_complexity: 1,
+                allocation_count: 0,
+                effect_count: 1,
+            },
         );
-        let spec = SynthesisSpec::new("f")
-            .with_param("x", "i32")
-            .with_return("i32")
-            .with_effect("IO"); // IO allowed
+        let spec =
+            SynthesisSpec::new("f").with_param("x", "i32").with_return("i32").with_effect("IO"); // IO allowed
         let candidates = oracle.generate(&spec);
         let imp = candidates.iter().find(|c| c.strategy == Strategy::Imperative).unwrap();
         assert!(imp.verification.effects_contained);
@@ -559,7 +614,12 @@ mod tests {
         oracle.register_template(
             &Strategy::Imperative,
             "fn {name}({params}) -> {return} { a + b }",
-            CostEstimate { token_count: 5, cyclomatic_complexity: 1, allocation_count: 0, effect_count: 0 },
+            CostEstimate {
+                token_count: 5,
+                cyclomatic_complexity: 1,
+                allocation_count: 0,
+                effect_count: 0,
+            },
         );
         let spec = simple_spec();
         let candidates = oracle.generate(&spec);

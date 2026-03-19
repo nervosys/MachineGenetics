@@ -73,7 +73,7 @@
 
 | Step | Title                        | Status | Description                                                                                |
 | ---- | ---------------------------- | ------ | ------------------------------------------------------------------------------------------ |
-| 56   | Deepen stdlib                | ⬚      | Batch APIs, streaming I/O, SwarmVec, ArenaVec, SwarmChannel, per-agent arena allocators    |
+| 56   | Deepen stdlib                | ✅      | Batch APIs, streaming I/O, SwarmVec, ArenaVec, SwarmChannel, per-agent arena allocators    |
 | 57   | Deepen Forge registry        | ⬚      | Capability-indexed search, semantic search by capability query, contract-based composition |
 | 58   | Agentic benchmarking suite   | ⬚      | Token throughput, parse error rate, synthesis success rate, swarm latency metrics          |
 | 59   | Cost model calibration       | ⬚      | Standardized benchmarks for cost oracle accuracy across targets                            |

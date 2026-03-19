@@ -25,6 +25,7 @@ mod resolve;
 mod sandbox;
 mod semantic_vcs;
 mod skb;
+mod stdlib_ext;
 mod swarm_bus;
 mod swarm_sdk;
 mod synthesis;
