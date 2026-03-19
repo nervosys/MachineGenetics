@@ -487,6 +487,8 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let sym = nfc_normalize(self.str_from(start));
         let span = self.mk_sp(start, self.pos);
         self.psess.symbol_gallery.insert(sym, span);
+        // In canonical syntax mode, expand single-char abbreviations to keywords.
+        let sym = self.psess.syntax_mode.expand_compact_keyword(sym).unwrap_or(sym);
         token::Ident(sym, IdentIsRaw::No)
     }
 

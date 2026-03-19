@@ -18,7 +18,7 @@ use redox_feature::{GateIssue, UnstableFeatures, find_feature_issue};
 use redox_span::edition::Edition;
 use redox_span::hygiene::ExpnId;
 use redox_span::source_map::{FilePathMapping, SourceMap};
-use redox_span::{Span, Symbol, sym};
+use redox_span::{Span, Symbol, kw, sym};
 
 use crate::Session;
 use crate::config::{Cfg, CheckCfg};
@@ -242,6 +242,82 @@ pub fn feature_err_unstable_feature_bound(
     err
 }
 
+/// Redox syntax mode: controls whether compact keyword abbreviations are recognized.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum SyntaxMode {
+    /// Standard Rust syntax — no compact keywords.
+    #[default]
+    Legacy,
+    /// Redox canonical syntax — single-char keyword abbreviations accepted.
+    Canonical,
+}
+
+impl SyntaxMode {
+    /// In canonical mode, map single-character abbreviation symbols to their
+    /// full keyword equivalents. Returns `None` if the symbol is not a compact
+    /// keyword abbreviation (or if we're in legacy mode).
+    pub fn expand_compact_keyword(self, sym: Symbol) -> Option<Symbol> {
+        if self != SyntaxMode::Canonical {
+            return None;
+        }
+        let s = sym.as_str();
+        match s {
+            "v" => Some(kw::Let),
+            "f" => Some(kw::Fn),
+            "t" => Some(kw::Type),
+            "s" => Some(kw::Struct),
+            "e" => Some(kw::Enum),
+            "m" => Some(kw::Mod),
+            "p" => Some(kw::Pub),
+            "i" => Some(kw::Impl),
+            "S" => Some(kw::SelfUpper),
+            _ => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod syntax_mode_tests {
+    use super::SyntaxMode;
+    use redox_span::{Symbol, create_default_session_globals_then, kw};
+
+    #[test]
+    fn canonical_expands_known_abbreviations() {
+        create_default_session_globals_then(|| {
+            let mode = SyntaxMode::Canonical;
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("v")), Some(kw::Let));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("f")), Some(kw::Fn));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("t")), Some(kw::Type));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("s")), Some(kw::Struct));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("e")), Some(kw::Enum));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("m")), Some(kw::Mod));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("p")), Some(kw::Pub));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("i")), Some(kw::Impl));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("S")), Some(kw::SelfUpper));
+        });
+    }
+
+    #[test]
+    fn canonical_rejects_unknown_abbreviations() {
+        create_default_session_globals_then(|| {
+            let mode = SyntaxMode::Canonical;
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("x")), None);
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("value")), None);
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("fn")), None);
+        });
+    }
+
+    #[test]
+    fn legacy_never_expands() {
+        create_default_session_globals_then(|| {
+            let mode = SyntaxMode::Legacy;
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("v")), None);
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("f")), None);
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("S")), None);
+        });
+    }
+}
+
 /// Info about a parsing session.
 pub struct ParseSess {
     dcx: DiagCtxt,
@@ -275,6 +351,8 @@ pub struct ParseSess {
     proc_macro_quoted_spans: AppendOnlyVec<Span>,
     /// Used to generate new `AttrId`s. Every `AttrId` is unique.
     pub attr_id_generator: AttrIdGenerator,
+    /// Redox syntax mode (Legacy = standard Rust, Canonical = compact keywords).
+    pub syntax_mode: SyntaxMode,
 }
 
 impl ParseSess {
@@ -308,6 +386,7 @@ impl ParseSess {
             assume_incomplete_release: false,
             proc_macro_quoted_spans: Default::default(),
             attr_id_generator: AttrIdGenerator::new(),
+            syntax_mode: SyntaxMode::default(),
         }
     }
 

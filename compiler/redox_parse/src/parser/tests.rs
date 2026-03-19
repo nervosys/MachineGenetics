@@ -13,7 +13,7 @@ use redox_ast_pretty::pprust::item_to_string;
 use redox_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use redox_errors::emitter::OutputTheme;
 use redox_errors::{AutoStream, DiagCtxt, MultiSpan, PResult};
-use redox_session::parse::ParseSess;
+use redox_session::parse::{ParseSess, SyntaxMode};
 use redox_span::source_map::{FilePathMapping, SourceMap};
 use redox_span::{
     BytePos, FileName, Pos, Span, Symbol, create_default_session_globals_then, kw, sym,
@@ -2919,4 +2919,102 @@ fn non_pattern_whitespace() {
     assert_eq!(matches_codepattern("a   b", "a\u{2002}b"), false);
     assert_eq!(matches_codepattern("\u{205F}a   b", "ab"), false);
     assert_eq!(matches_codepattern("a  \u{3000}b", "ab"), false);
+}
+
+// ── Redox canonical syntax mode tests ──────────────────────────────────────
+
+/// Helper: tokenize `src` with the given `SyntaxMode` and return the flat
+/// list of `TokenKind`s (skipping delimiters from token-trees).
+fn tokens_with_mode(src: &str, mode: SyntaxMode) -> Vec<token::TokenKind> {
+    let mut psess = ParseSess::new();
+    psess.syntax_mode = mode;
+    let stream = unwrap_or_emit_fatal(source_str_to_stream(
+        &psess,
+        filename(psess.source_map(), "canonical_test"),
+        src.to_string(),
+        None,
+    ));
+    fn flatten(stream: &TokenStream, out: &mut Vec<token::TokenKind>) {
+        for tt in stream.trees() {
+            match tt {
+                TokenTree::Token(tok, _) => out.push(tok.kind.clone()),
+                TokenTree::Delimited(.., inner) => {
+                    flatten(inner, out);
+                }
+            }
+        }
+    }
+    let mut kinds = Vec::new();
+    flatten(&stream, &mut kinds);
+    kinds
+}
+
+#[test]
+fn canonical_mode_expands_v_to_let() {
+    create_default_session_globals_then(|| {
+        let kinds = tokens_with_mode("v x = 1;", SyntaxMode::Canonical);
+        // First token should be `Ident(kw::Let)` — i.e. the keyword `let`.
+        assert_eq!(kinds[0], token::Ident(kw::Let, IdentIsRaw::No));
+    });
+}
+
+#[test]
+fn canonical_mode_expands_f_to_fn() {
+    create_default_session_globals_then(|| {
+        let kinds = tokens_with_mode("f main() {}", SyntaxMode::Canonical);
+        assert_eq!(kinds[0], token::Ident(kw::Fn, IdentIsRaw::No));
+    });
+}
+
+#[test]
+fn canonical_mode_expands_s_to_struct() {
+    create_default_session_globals_then(|| {
+        let kinds = tokens_with_mode("s Foo {}", SyntaxMode::Canonical);
+        assert_eq!(kinds[0], token::Ident(kw::Struct, IdentIsRaw::No));
+    });
+}
+
+#[test]
+fn canonical_mode_expands_all_abbreviations() {
+    create_default_session_globals_then(|| {
+        let cases: Vec<(&str, Symbol)> = vec![
+            ("v", kw::Let),
+            ("f", kw::Fn),
+            ("t", kw::Type),
+            ("s", kw::Struct),
+            ("e", kw::Enum),
+            ("m", kw::Mod),
+            ("p", kw::Pub),
+            ("i", kw::Impl),
+            ("S", kw::SelfUpper),
+        ];
+        for (abbrev, expected_kw) in cases {
+            let kinds = tokens_with_mode(abbrev, SyntaxMode::Canonical);
+            assert_eq!(
+                kinds[0],
+                token::Ident(expected_kw, IdentIsRaw::No),
+                "compact keyword '{abbrev}' did not expand correctly"
+            );
+        }
+    });
+}
+
+#[test]
+fn legacy_mode_does_not_expand() {
+    create_default_session_globals_then(|| {
+        // In legacy mode, "v" stays as the identifier "v", not `let`.
+        let kinds = tokens_with_mode("v x = 1;", SyntaxMode::Legacy);
+        let sym_v = Symbol::intern("v");
+        assert_eq!(kinds[0], token::Ident(sym_v, IdentIsRaw::No));
+    });
+}
+
+#[test]
+fn canonical_mode_preserves_regular_idents() {
+    create_default_session_globals_then(|| {
+        // Multi-char identifiers must NOT be expanded even in canonical mode.
+        let kinds = tokens_with_mode("value", SyntaxMode::Canonical);
+        let sym_value = Symbol::intern("value");
+        assert_eq!(kinds[0], token::Ident(sym_value, IdentIsRaw::No));
+    });
 }
