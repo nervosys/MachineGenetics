@@ -32,7 +32,7 @@
 - [x] **Step 12**: Implement contract syntax parsing in `redox_parse`: `@req(expr)`, `@ens(expr)`, `@inv(expr)` as function/method attributes in canonical mode. Parse into `ContractAttr` AST nodes. Add parser tests.
 - [x] **Step 13**: Implement effect declaration parsing: `effect name { fn ...; }` blocks and effect annotations on functions (`fn foo() -> io T`). Parse into `EffectDecl` and `EffectAnnotation` AST nodes. Add parser tests.
 - [x] **Step 14**: Implement capability block parsing: `capability name { ... }` declarations and `#[capability(name)]` / `@ao(name)` annotations. Parse into `CapabilityDecl` AST nodes. Add parser tests.
-- [ ] **Step 15**: Implement compact keyword parsing in canonical mode: recognize `v` as `let`, `f` as `fn`, `s` as `struct`, `e` as `enum`, etc. The parser should accept both compact and full keywords. Add comprehensive round-trip parser tests.
+- [x] **Step 15**: Implement compact keyword parsing in canonical mode: recognize `v` as `let`, `f` as `fn`, `s` as `struct`, `e` as `enum`, etc. The parser should accept both compact and full keywords. Add comprehensive round-trip parser tests.
 
 ### AST: Redox Node Types
 

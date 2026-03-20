@@ -246,6 +246,10 @@ pub struct Parser<'a> {
 
     /// Effect annotation parsed from the return type position.
     pub(super) pending_effect_ann: Option<Box<ast::EffectAnnotation>> = None,
+
+    /// Set when the compact keyword `m` is expanded to `let` in canonical mode,
+    /// so that `parse_local` can make the binding mutable.
+    pub(super) compact_mut_binding: bool = false,
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with

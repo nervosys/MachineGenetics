@@ -2979,15 +2979,23 @@ fn canonical_mode_expands_s_to_struct() {
 fn canonical_mode_expands_all_abbreviations() {
     create_default_session_globals_then(|| {
         let cases: Vec<(&str, Symbol)> = vec![
+            // Lowercase compact keywords
             ("v", kw::Let),
             ("f", kw::Fn),
             ("t", kw::Type),
             ("s", kw::Struct),
             ("e", kw::Enum),
-            ("m", kw::Mod),
             ("p", kw::Pub),
             ("i", kw::Impl),
-            ("S", kw::SelfUpper),
+            ("u", kw::Use),
+            // Uppercase compact keywords (LANGUAGE_SPEC)
+            ("S", kw::Struct),
+            ("E", kw::Enum),
+            ("T", kw::Trait),
+            ("I", kw::Impl),
+            ("M", kw::Mod),
+            ("C", kw::Const),
+            ("Z", kw::Static),
         ];
         for (abbrev, expected_kw) in cases {
             let kinds = tokens_with_mode(abbrev, SyntaxMode::Canonical);
@@ -2997,6 +3005,10 @@ fn canonical_mode_expands_all_abbreviations() {
                 "compact keyword '{abbrev}' did not expand correctly"
             );
         }
+        // Lowercase "m" should NOT be expanded by the lexer (handled at parser level for `let mut`).
+        let kinds = tokens_with_mode("m", SyntaxMode::Canonical);
+        let sym_m = Symbol::intern("m");
+        assert_eq!(kinds[0], token::Ident(sym_m, IdentIsRaw::No));
     });
 }
 
@@ -3421,9 +3433,7 @@ fn canonical_effect_decl_basic() {
 #[test]
 fn canonical_effect_decl_multiple_fns() {
     create_default_session_globals_then(|| {
-        let item = parse_item_canonical(
-            "effect Net { fn send(data: V[u8]); fn recv() -> V[u8]; }",
-        );
+        let item = parse_item_canonical("effect Net { fn send(data: V[u8]); fn recv() -> V[u8]; }");
         if let ast::ItemKind::Effect(ed) = &item.kind {
             assert_eq!(ed.ident.to_string(), "Net");
             assert_eq!(ed.items.len(), 2);
@@ -3494,11 +3504,9 @@ fn legacy_mode_no_effect_decl() {
         // Parsing "fn effect() {}" should work as a regular function named `effect`.
         let mut psess = ParseSess::new();
         psess.syntax_mode = SyntaxMode::Legacy;
-        let item = with_error_checking_parse(
-            "fn effect() {}".to_string(),
-            &psess,
-            |p| p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes),
-        );
+        let item = with_error_checking_parse("fn effect() {}".to_string(), &psess, |p| {
+            p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
+        });
         let item = item.unwrap();
         // Should parse as a regular function named `effect`
         if let ast::ItemKind::Fn(f) = &item.kind {
@@ -3559,16 +3567,214 @@ fn legacy_mode_no_capability_decl() {
         // In legacy mode, `capability` is just a regular identifier.
         let mut psess = ParseSess::new();
         psess.syntax_mode = SyntaxMode::Legacy;
-        let item = with_error_checking_parse(
-            "fn capability() {}".to_string(),
-            &psess,
-            |p| p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes),
-        );
+        let item = with_error_checking_parse("fn capability() {}".to_string(), &psess, |p| {
+            p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
+        });
         let item = item.unwrap();
         if let ast::ItemKind::Fn(_) = &item.kind {
             // Good — parsed as a regular function named `capability`
         } else {
             panic!("expected fn item");
         }
+    });
+}
+
+// ── Step 15: compact keyword parsing tests ─────────────────────────────────
+
+/// Parse a string as a statement in canonical mode and return the statement.
+fn parse_stmt_canonical(src: &str) -> ast::Stmt {
+    let mut psess = ParseSess::new();
+    psess.syntax_mode = SyntaxMode::Canonical;
+    with_error_checking_parse(src.to_string(), &psess, |p| p.parse_stmt(ForceCollect::No))
+        .expect("should parse as a statement")
+}
+
+#[test]
+fn canonical_compact_f_as_fn() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("f foo() {}");
+        assert!(matches!(item.kind, ast::ItemKind::Fn(_)), "expected Fn item");
+        assert_eq!(item.kind.ident().unwrap().to_string(), "foo");
+    });
+}
+
+#[test]
+fn canonical_compact_s_as_struct() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("S Foo { x: i32 }");
+        assert!(matches!(item.kind, ast::ItemKind::Struct(..)), "expected Struct item");
+        assert_eq!(item.kind.ident().unwrap().to_string(), "Foo");
+    });
+}
+
+#[test]
+fn canonical_compact_e_as_enum() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("E Bar { A, B }");
+        assert!(matches!(item.kind, ast::ItemKind::Enum(..)), "expected Enum item");
+        assert_eq!(item.kind.ident().unwrap().to_string(), "Bar");
+    });
+}
+
+#[test]
+fn canonical_compact_t_as_trait() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("T MyTrait { f required(&self); }");
+        assert!(matches!(item.kind, ast::ItemKind::Trait(_)), "expected Trait item");
+        assert_eq!(item.kind.ident().unwrap().to_string(), "MyTrait");
+    });
+}
+
+#[test]
+fn canonical_compact_i_as_impl() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("I Foo { f bar(&self) {} }");
+        assert!(matches!(item.kind, ast::ItemKind::Impl(_)), "expected Impl item");
+    });
+}
+
+#[test]
+fn canonical_compact_m_upper_as_mod() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("M mymod { f inner() {} }");
+        assert!(matches!(item.kind, ast::ItemKind::Mod(..)), "expected Mod item");
+        assert_eq!(item.kind.ident().unwrap().to_string(), "mymod");
+    });
+}
+
+#[test]
+fn canonical_compact_u_as_use() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("u std::collections::HashMap;");
+        assert!(matches!(item.kind, ast::ItemKind::Use(_)), "expected Use item");
+    });
+}
+
+#[test]
+fn canonical_compact_t_lower_as_type() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("t MyType = i32;");
+        assert!(matches!(item.kind, ast::ItemKind::TyAlias(_)), "expected TyAlias item");
+        assert_eq!(item.kind.ident().unwrap().to_string(), "MyType");
+    });
+}
+
+#[test]
+fn canonical_compact_c_as_const() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("C MY_CONST: i32 = 42;");
+        assert!(matches!(item.kind, ast::ItemKind::Const(_)), "expected Const item");
+        assert_eq!(item.kind.ident().unwrap().to_string(), "MY_CONST");
+    });
+}
+
+#[test]
+fn canonical_compact_z_as_static() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("Z MY_STATIC: i32 = 0;");
+        assert!(matches!(item.kind, ast::ItemKind::Static(_)), "expected Static item");
+        assert_eq!(item.kind.ident().unwrap().to_string(), "MY_STATIC");
+    });
+}
+
+#[test]
+fn canonical_compact_v_as_let() {
+    create_default_session_globals_then(|| {
+        let stmt = parse_stmt_canonical("v x = 5");
+        if let ast::StmtKind::Let(local) = &stmt.kind {
+            if let PatKind::Ident(mode, ident, _) = &local.pat.kind {
+                assert_eq!(ident.to_string(), "x");
+                assert_eq!(*mode, ast::BindingMode::NONE, "should be immutable");
+            } else {
+                panic!("expected ident pattern");
+            }
+        } else {
+            panic!("expected Let statement, got {:?}", stmt.kind);
+        }
+    });
+}
+
+#[test]
+fn canonical_compact_m_lower_as_let_mut() {
+    create_default_session_globals_then(|| {
+        let stmt = parse_stmt_canonical("m x = 5");
+        if let ast::StmtKind::Let(local) = &stmt.kind {
+            if let PatKind::Ident(mode, ident, _) = &local.pat.kind {
+                assert_eq!(ident.to_string(), "x");
+                assert_eq!(*mode, ast::BindingMode::MUT, "should be mutable");
+            } else {
+                panic!("expected ident pattern");
+            }
+        } else {
+            panic!("expected Let statement, got {:?}", stmt.kind);
+        }
+    });
+}
+
+#[test]
+fn canonical_compact_v_with_type() {
+    create_default_session_globals_then(|| {
+        let stmt = parse_stmt_canonical("v x: i32 = 5");
+        if let ast::StmtKind::Let(local) = &stmt.kind {
+            assert!(local.ty.is_some(), "should have type annotation");
+            if let PatKind::Ident(mode, ident, _) = &local.pat.kind {
+                assert_eq!(ident.to_string(), "x");
+                assert_eq!(*mode, ast::BindingMode::NONE);
+            } else {
+                panic!("expected ident pattern");
+            }
+        } else {
+            panic!("expected Let statement");
+        }
+    });
+}
+
+#[test]
+fn legacy_mode_no_compact_keywords() {
+    create_default_session_globals_then(|| {
+        // In legacy mode, compact keywords are not recognized.
+        let mut psess = ParseSess::new();
+        psess.syntax_mode = SyntaxMode::Legacy;
+        let item = with_error_checking_parse("fn foo() {}".to_string(), &psess, |p| {
+            p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
+        });
+        let item = item.unwrap();
+        assert!(matches!(item.kind, ast::ItemKind::Fn(_)));
+    });
+}
+
+// Lowercase aliases that coexist with uppercase LANGUAGE_SPEC forms.
+#[test]
+fn canonical_compact_s_lower_as_struct() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("s Foo { x: i32 }");
+        assert!(matches!(item.kind, ast::ItemKind::Struct(..)), "expected Struct item");
+        assert_eq!(item.kind.ident().unwrap().to_string(), "Foo");
+    });
+}
+
+#[test]
+fn canonical_compact_e_lower_as_enum() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("e Bar { A, B }");
+        assert!(matches!(item.kind, ast::ItemKind::Enum(..)), "expected Enum item");
+        assert_eq!(item.kind.ident().unwrap().to_string(), "Bar");
+    });
+}
+
+#[test]
+fn canonical_compact_i_lower_as_impl() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("i Foo { f bar(&self) {} }");
+        assert!(matches!(item.kind, ast::ItemKind::Impl(_)), "expected Impl item");
+    });
+}
+
+#[test]
+fn canonical_compact_p_as_pub_fn() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("p f foo() {}");
+        assert!(matches!(item.kind, ast::ItemKind::Fn(_)), "expected Fn item");
+        assert_eq!(item.kind.ident().unwrap().to_string(), "foo");
     });
 }

@@ -262,15 +262,25 @@ impl SyntaxMode {
         }
         let s = sym.as_str();
         match s {
+            // Lowercase compact keywords
             "v" => Some(kw::Let),
             "f" => Some(kw::Fn),
             "t" => Some(kw::Type),
             "s" => Some(kw::Struct),
             "e" => Some(kw::Enum),
-            "m" => Some(kw::Mod),
             "p" => Some(kw::Pub),
             "i" => Some(kw::Impl),
-            "S" => Some(kw::SelfUpper),
+            "u" => Some(kw::Use),
+            // Uppercase compact keywords (LANGUAGE_SPEC canonical forms)
+            "S" => Some(kw::Struct),
+            "E" => Some(kw::Enum),
+            "T" => Some(kw::Trait),
+            "I" => Some(kw::Impl),
+            "M" => Some(kw::Mod),
+            "C" => Some(kw::Const),
+            "Z" => Some(kw::Static),
+            // Note: lowercase "m" is NOT expanded here; it is handled at the
+            // parser/statement level as `let mut` (see stmt.rs).
             _ => None,
         }
     }
@@ -285,15 +295,25 @@ mod syntax_mode_tests {
     fn canonical_expands_known_abbreviations() {
         create_default_session_globals_then(|| {
             let mode = SyntaxMode::Canonical;
+            // Lowercase compact keywords
             assert_eq!(mode.expand_compact_keyword(Symbol::intern("v")), Some(kw::Let));
             assert_eq!(mode.expand_compact_keyword(Symbol::intern("f")), Some(kw::Fn));
             assert_eq!(mode.expand_compact_keyword(Symbol::intern("t")), Some(kw::Type));
             assert_eq!(mode.expand_compact_keyword(Symbol::intern("s")), Some(kw::Struct));
             assert_eq!(mode.expand_compact_keyword(Symbol::intern("e")), Some(kw::Enum));
-            assert_eq!(mode.expand_compact_keyword(Symbol::intern("m")), Some(kw::Mod));
             assert_eq!(mode.expand_compact_keyword(Symbol::intern("p")), Some(kw::Pub));
             assert_eq!(mode.expand_compact_keyword(Symbol::intern("i")), Some(kw::Impl));
-            assert_eq!(mode.expand_compact_keyword(Symbol::intern("S")), Some(kw::SelfUpper));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("u")), Some(kw::Use));
+            // Uppercase compact keywords (LANGUAGE_SPEC)
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("S")), Some(kw::Struct));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("E")), Some(kw::Enum));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("T")), Some(kw::Trait));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("I")), Some(kw::Impl));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("M")), Some(kw::Mod));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("C")), Some(kw::Const));
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("Z")), Some(kw::Static));
+            // Lowercase "m" is NOT handled at lexer level (reserved for parser-level let mut)
+            assert_eq!(mode.expand_compact_keyword(Symbol::intern("m")), None);
         });
     }
 

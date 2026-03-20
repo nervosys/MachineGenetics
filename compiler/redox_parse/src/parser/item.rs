@@ -2067,6 +2067,9 @@ impl<'a> Parser<'a> {
         Ok(ItemKind::Capability(Box::new(CapabilityDecl { ident, generics, items, span })))
     }
 
+    /// In canonical syntax mode, rewrite compact single-character keyword
+    /// identifiers to their full keyword equivalents in-place so that the
+    /// standard keyword-based dispatch logic works without modification.
     /// This function parses the fields of record structs:
     ///
     ///   - `struct S { ... }`
@@ -2794,7 +2797,15 @@ impl<'a> Parser<'a> {
         let body =
             self.parse_fn_body(attrs, &ident, &mut sig_hi, fn_parse_mode.req_body, fn_params_end)?;
         let fn_sig_span = sig_lo.to(sig_hi);
-        Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, contract, effect_ann, spec, body))
+        Ok((
+            ident,
+            FnSig { header, decl, span: fn_sig_span },
+            generics,
+            contract,
+            effect_ann,
+            spec,
+            body,
+        ))
     }
 
     /// Provide diagnostics when function body is not found

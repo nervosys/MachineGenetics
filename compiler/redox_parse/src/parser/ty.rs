@@ -259,10 +259,8 @@ impl<'a> Parser<'a> {
                     }
                     if !effects.is_empty() {
                         let ann_span = ann_lo.to(self.prev_token.span);
-                        self.pending_effect_ann = Some(Box::new(ast::EffectAnnotation {
-                            effects,
-                            span: ann_span,
-                        }));
+                        self.pending_effect_ann =
+                            Some(Box::new(ast::EffectAnnotation { effects, span: ann_span }));
                     }
                 }
             }
@@ -1681,31 +1679,17 @@ impl<'a> Parser<'a> {
     // ── Redox canonical type abbreviations ─────────────────────────────
 
     /// Build a `TyKind::Path` equivalent to `Name<T1, T2, ...>`.
-    fn mk_generic_path_ty(
-        &self,
-        name: &str,
-        args: Vec<Box<Ty>>,
-        span: Span,
-    ) -> TyKind {
+    fn mk_generic_path_ty(&self, name: &str, args: Vec<Box<Ty>>, span: Span) -> TyKind {
         let ident = Ident::new(Symbol::intern(name), span);
         let generic_args: ThinVec<_> = args
             .into_iter()
             .map(|ty| ast::AngleBracketedArg::Arg(ast::GenericArg::Type(ty)))
             .collect();
-        let args = ast::GenericArgs::AngleBracketed(ast::AngleBracketedArgs {
-            span,
-            args: generic_args,
-        });
-        let segment = ast::PathSegment {
-            ident,
-            id: ast::DUMMY_NODE_ID,
-            args: Some(Box::new(args)),
-        };
-        TyKind::Path(None, ast::Path {
-            span,
-            segments: thin_vec![segment],
-            tokens: None,
-        })
+        let args =
+            ast::GenericArgs::AngleBracketed(ast::AngleBracketedArgs { span, args: generic_args });
+        let segment =
+            ast::PathSegment { ident, id: ast::DUMMY_NODE_ID, args: Some(Box::new(args)) };
+        TyKind::Path(None, ast::Path { span, segments: thin_vec![segment], tokens: None })
     }
 
     /// In canonical mode, try to parse type abbreviations:

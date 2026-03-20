@@ -4,14 +4,16 @@ use std::ops::Bound;
 
 use ast::Label;
 use redox_ast as ast;
-use redox_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
+use redox_ast::token::{self, Delimiter, IdentIsRaw, InvisibleOrigin, MetaVarKind, TokenKind};
 use redox_ast::util::classify::{self, TrailingBrace};
 use redox_ast::visit::{Visitor, walk_expr};
 use redox_ast::{
-    AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind, HasAttrs, Local,
-    LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
+    AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind,
+    HasAttrs, Local, LocalKind, MacCall, MacCallStmt, MacStmtStyle, Mutability, PatKind,
+    Recovered, Stmt, StmtKind,
 };
 use redox_errors::{Applicability, Diag, PResult};
+use redox_session::parse::SyntaxMode;
 use redox_span::{BytePos, ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -64,6 +66,20 @@ impl<'a> Parser<'a> {
             return Ok(Some(stmt));
         }
 
+        // In canonical mode, `m` is a compact keyword for `let mut`.
+        // It is NOT handled by the lexer's expand_compact_keyword (to avoid
+        // ambiguity with `mod`), so we expand it here at the statement level.
+        if self.psess.syntax_mode == SyntaxMode::Canonical {
+            if let token::Ident(sym, IdentIsRaw::No) = self.token.kind {
+                if sym.as_str() == "m"
+                    && self.look_ahead(1, |t| t.is_ident() || *t == token::OpenParen)
+                {
+                    self.token.kind = token::Ident(kw::Let, IdentIsRaw::No);
+                    self.compact_mut_binding = true;
+                }
+            }
+        }
+
         if self.token.is_keyword(kw::Mut) && self.is_keyword_ahead(1, &[kw::Let]) {
             self.bump();
             let mut_let_span = lo.to(self.token.span);
@@ -90,7 +106,14 @@ impl<'a> Parser<'a> {
         } else if self.token.is_keyword(kw::Let) {
             self.collect_tokens(None, attrs, force_collect, |this, attrs| {
                 this.expect_keyword(exp!(Let))?;
-                let local = this.parse_local(None, attrs)?;
+                let mut local = this.parse_local(None, attrs)?;
+                // If `m` compact keyword was expanded, make the binding mutable.
+                if this.compact_mut_binding {
+                    this.compact_mut_binding = false;
+                    if let PatKind::Ident(ref mut mode, _, _) = local.pat.kind {
+                        mode.1 = Mutability::Mut;
+                    }
+                }
                 let trailing = Trailing::from(capture_semi && this.token == token::Semi);
                 Ok((
                     this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
