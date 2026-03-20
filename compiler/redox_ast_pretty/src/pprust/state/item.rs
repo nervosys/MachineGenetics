@@ -451,6 +451,19 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span, false, cb);
             }
+            ast::ItemKind::Capability(cd) => {
+                let (cb, ib) = self.head("");
+                self.print_visibility(&item.vis);
+                self.word_nbsp("capability");
+                self.print_ident(cd.ident);
+                self.print_generic_params(&cd.generics.params);
+                self.nbsp();
+                self.bopen(ib);
+                for it in &cd.items {
+                    self.print_item(it);
+                }
+                self.bclose(item.span, false, cb);
+            }
         }
         self.ann.post(self, AnnNode::Item(item))
     }

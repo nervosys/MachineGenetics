@@ -3664,7 +3664,8 @@ impl Item {
             | ItemKind::Delegation(_)
             | ItemKind::DelegationMac(_)
             | ItemKind::MacroDef(..)
-            | ItemKind::Effect(..) => None,
+            | ItemKind::Effect(..)
+            | ItemKind::Capability(..) => None,
             ItemKind::Static(_) => None,
             ItemKind::Const(i) => Some(&i.generics),
             ItemKind::Fn(i) => Some(&i.generics),
@@ -3885,6 +3886,15 @@ pub struct EffectAnnotation {
     pub span: Span,
 }
 
+/// A capability declaration: `capability name { ... }`.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct CapabilityDecl {
+    pub ident: Ident,
+    pub generics: Generics,
+    pub items: ThinVec<Box<Item>>,
+    pub span: Span,
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Default, Walkable)]
 pub struct FnContract {
     /// Declarations of variables accessible both in the `requires` and
@@ -4093,6 +4103,10 @@ pub enum ItemKind {
     ///
     /// E.g., `effect io { fn read(); fn write(); }`.
     Effect(Box<EffectDecl>),
+    /// A capability declaration (canonical mode).
+    ///
+    /// E.g., `capability http_client { ... }`.
+    Capability(Box<CapabilityDecl>),
     /// An implementation.
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
@@ -4128,7 +4142,8 @@ impl ItemKind {
             | ItemKind::TraitAlias(box TraitAlias { ident, .. })
             | ItemKind::MacroDef(ident, _)
             | ItemKind::Delegation(box Delegation { ident, .. })
-            | ItemKind::Effect(box EffectDecl { ident, .. }) => Some(ident),
+            | ItemKind::Effect(box EffectDecl { ident, .. })
+            | ItemKind::Capability(box CapabilityDecl { ident, .. }) => Some(ident),
 
             ItemKind::ConstBlock(_) => Some(ConstBlockItem::IDENT),
 
@@ -4147,7 +4162,8 @@ impl ItemKind {
         match self {
             Use(..) | Static(..) | Const(..) | ConstBlock(..) | Fn(..) | Mod(..)
             | GlobalAsm(..) | TyAlias(..) | Struct(..) | Union(..) | Trait(..) | TraitAlias(..)
-            | MacroDef(..) | Delegation(..) | DelegationMac(..) | Effect(..) => "a",
+            | MacroDef(..) | Delegation(..) | DelegationMac(..) | Effect(..)
+            | Capability(..) => "a",
             ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
         }
     }
@@ -4175,6 +4191,7 @@ impl ItemKind {
             ItemKind::Delegation(..) => "delegated function",
             ItemKind::DelegationMac(..) => "delegation",
             ItemKind::Effect(..) => "effect declaration",
+            ItemKind::Capability(..) => "capability declaration",
         }
     }
 
@@ -4201,7 +4218,8 @@ impl ItemKind {
             | Self::MacroDef(..)
             | Self::Delegation(..)
             | Self::DelegationMac(..)
-            | Self::Effect(..) => None,
+            | Self::Effect(..)
+            | Self::Capability(..) => None,
         }
     }
 }

@@ -3508,3 +3508,67 @@ fn legacy_mode_no_effect_decl() {
         }
     });
 }
+
+// ── Step 14: capability declaration parsing tests ──────────────────────────
+
+#[test]
+fn canonical_capability_decl_basic() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("capability HttpClient { fn get(url: &str) -> V[u8]; }");
+        if let ast::ItemKind::Capability(cd) = &item.kind {
+            assert_eq!(cd.ident.to_string(), "HttpClient");
+            assert_eq!(cd.items.len(), 1);
+            assert!(matches!(cd.items[0].kind, ast::ItemKind::Fn(_)));
+        } else {
+            panic!("expected Capability item, got {:?}", item.kind);
+        }
+    });
+}
+
+#[test]
+fn canonical_capability_decl_multiple_items() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical(
+            "capability FileSystem { fn read(path: &str) -> V[u8]; fn write(path: &str, data: &[u8]); }",
+        );
+        if let ast::ItemKind::Capability(cd) = &item.kind {
+            assert_eq!(cd.ident.to_string(), "FileSystem");
+            assert_eq!(cd.items.len(), 2);
+        } else {
+            panic!("expected Capability item");
+        }
+    });
+}
+
+#[test]
+fn canonical_capability_decl_empty() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("capability Empty {}");
+        if let ast::ItemKind::Capability(cd) = &item.kind {
+            assert_eq!(cd.ident.to_string(), "Empty");
+            assert!(cd.items.is_empty());
+        } else {
+            panic!("expected Capability item");
+        }
+    });
+}
+
+#[test]
+fn legacy_mode_no_capability_decl() {
+    create_default_session_globals_then(|| {
+        // In legacy mode, `capability` is just a regular identifier.
+        let mut psess = ParseSess::new();
+        psess.syntax_mode = SyntaxMode::Legacy;
+        let item = with_error_checking_parse(
+            "fn capability() {}".to_string(),
+            &psess,
+            |p| p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes),
+        );
+        let item = item.unwrap();
+        if let ast::ItemKind::Fn(_) = &item.kind {
+            // Good — parsed as a regular function named `capability`
+        } else {
+            panic!("expected fn item");
+        }
+    });
+}

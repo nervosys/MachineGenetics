@@ -965,7 +965,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             | ItemKind::ForeignMod(..)
             | ItemKind::GlobalAsm(..)
             | ItemKind::ConstBlock(..)
-            | ItemKind::Effect(..) => {}
+            | ItemKind::Effect(..)
+            | ItemKind::Capability(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
                 unreachable!()

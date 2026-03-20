@@ -864,6 +864,9 @@ macro_rules! common_visitor_and_walkers {
                     ItemKind::Effect(_) => {
                         // Effect declarations: no child nodes to visit yet.
                     }
+                    ItemKind::Capability(_) => {
+                        // Capability declarations: no child nodes to visit yet.
+                    }
                 }
                 V::Result::output()
             }

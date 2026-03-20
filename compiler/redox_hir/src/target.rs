@@ -188,6 +188,7 @@ impl Target {
             ast::ItemKind::Delegation(..) => Target::Delegation { mac: false },
             ast::ItemKind::DelegationMac(..) => Target::Delegation { mac: true },
             ast::ItemKind::Effect(..) => Target::Mod, // TODO: add Target::Effect
+            ast::ItemKind::Capability(..) => Target::Mod, // TODO: add Target::Capability
         }
     }
 

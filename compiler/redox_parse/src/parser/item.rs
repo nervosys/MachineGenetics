@@ -356,6 +356,13 @@ impl<'a> Parser<'a> {
             // EFFECT DECLARATION (canonical mode only)
             self.bump(); // `effect`
             self.parse_item_effect()?
+        } else if self.psess.syntax_mode == SyntaxMode::Canonical
+            && self.token.is_ident_named(sym::capability)
+            && self.look_ahead(1, |t| t.is_non_reserved_ident())
+        {
+            // CAPABILITY DECLARATION (canonical mode only)
+            self.bump(); // `capability`
+            self.parse_item_capability()?
         } else if self.is_builtin() {
             // BUILTIN# ITEM
             return self.parse_item_builtin();
@@ -2035,6 +2042,29 @@ impl<'a> Parser<'a> {
         let span = lo.to(self.prev_token.span);
 
         Ok(ItemKind::Effect(Box::new(EffectDecl { ident, generics, items, span })))
+    }
+
+    /// Parses a capability declaration: `capability Name { ... }`
+    fn parse_item_capability(&mut self) -> PResult<'a, ItemKind> {
+        let ident = self.parse_ident()?;
+        let mut generics = self.parse_generics()?;
+        generics.where_clause = self.parse_where_clause()?;
+
+        let lo = self.token.span;
+        self.expect(exp!(OpenBrace))?;
+        let mut items = ThinVec::new();
+        while !self.eat(exp!(CloseBrace)) {
+            if let Some(item) = self.parse_item(ForceCollect::No, AllowConstBlockItems::No)? {
+                items.push(item);
+            } else if self.token == token::Eof {
+                break;
+            } else {
+                self.unexpected()?;
+            }
+        }
+        let span = lo.to(self.prev_token.span);
+
+        Ok(ItemKind::Capability(Box::new(CapabilityDecl { ident, generics, items, span })))
     }
 
     /// This function parses the fields of record structs:

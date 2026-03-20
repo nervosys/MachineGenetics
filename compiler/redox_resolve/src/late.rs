@@ -2999,7 +2999,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 panic!("unexpanded macro in resolve!")
             }
 
-            ItemKind::Effect(..) => {
+            ItemKind::Effect(..) | ItemKind::Capability(..) => {
                 visit::walk_item(self, item);
             }
         }
@@ -5553,7 +5553,8 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
             | ItemKind::GlobalAsm(..)
             | ItemKind::MacCall(..)
             | ItemKind::DelegationMac(..)
-            | ItemKind::Effect(..) => {}
+            | ItemKind::Effect(..)
+            | ItemKind::Capability(..) => {}
             ItemKind::Delegation(..) => {
                 // Delegated functions have lifetimes, their count is not necessarily zero.
                 // But skipping the delegation items here doesn't mean that the count will be considered zero,

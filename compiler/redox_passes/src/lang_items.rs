@@ -292,6 +292,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
                 unreachable!("macros should have been expanded")
             }
             ast::ItemKind::Effect(..) => Target::Mod, // TODO: add Target::Effect
+            ast::ItemKind::Capability(..) => Target::Mod, // TODO: add Target::Capability
         };
 
         self.check_for_lang(

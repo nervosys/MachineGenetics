@@ -218,6 +218,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             | ItemKind::Trait(..)
             | ItemKind::TraitAlias(..)
             | ItemKind::Effect(..)
+            | ItemKind::Capability(..)
             | ItemKind::Impl(..)
             | ItemKind::MacCall(..)
             | ItemKind::MacroDef(..)
@@ -594,6 +595,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::Effect(..) => {
                 panic!("effect declarations should have been desugared by now")
+            }
+            ItemKind::Capability(..) => {
+                panic!("capability declarations should have been desugared by now")
             }
         }
     }

@@ -138,6 +138,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             ItemKind::ConstBlock(..) => DefKind::Const { is_type_const: false },
             ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
             ItemKind::Effect(..) => DefKind::Mod, // TODO: add DefKind::Effect
+            ItemKind::Capability(..) => DefKind::Mod, // TODO: add DefKind::Capability
             ItemKind::MacroDef(ident, def) => {
                 let edition = i.span.edition();
 
