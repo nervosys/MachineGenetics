@@ -1,4 +1,4 @@
-#![allow(redox::symbol_intern_string_literal)]
+#![allow(rustc::symbol_intern_string_literal)]
 
 use redox_hashes::Hash64;
 use redox_span::def_id::{DefPathHash, StableCrateId};

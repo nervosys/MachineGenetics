@@ -1,4 +1,4 @@
-#![allow(redox::symbol_intern_string_literal)]
+#![allow(rustc::symbol_intern_string_literal)]
 
 use redox_span::create_default_session_globals_then;
 

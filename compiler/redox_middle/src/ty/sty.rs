@@ -31,7 +31,7 @@ use crate::ty::{
 };
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
-#[redox_diagnostic_item = "TyKind"]
+#[rustc_diagnostic_item = "TyKind"]
 pub type TyKind<'tcx> = ir::TyKind<TyCtxt<'tcx>>;
 pub type TypeAndMut<'tcx> = ir::TypeAndMut<TyCtxt<'tcx>>;
 pub type AliasTy<'tcx> = ir::AliasTy<TyCtxt<'tcx>>;

@@ -967,7 +967,7 @@ redox_queries! {
     /// Returns `true` if calls to the function may be promoted.
     ///
     /// This is either because the function is e.g., a tuple-struct or tuple-variant
-    /// constructor, or because it has the `#[redox_promotable]` attribute. The attribute should
+    /// constructor, or because it has the `#[rustc_promotable]` attribute. The attribute should
     /// be removed in the future in favour of some form of check which figures out whether the
     /// function does not inspect the bits of any of its arguments (so is essentially just a
     /// constructor function).
@@ -1712,7 +1712,7 @@ redox_queries! {
     }
 
     /// A list of types where the ADT requires drop if and only if any of those types
-    /// has significant drop. A type marked with the attribute `redox_insignificant_dtor`
+    /// has significant drop. A type marked with the attribute `rustc_insignificant_dtor`
     /// is considered to not be significant. A drop is significant if it is implemented
     /// by the user or does anything that will have any observable behavior (other than
     /// freeing up memory). If the ADT is known to have a significant destructor then
@@ -1730,7 +1730,7 @@ redox_queries! {
     /// some visible side-effect on execution; freeing memory is NOT considered a side-effect.
     /// The rules are as follows:
     /// * Type with no explicit drop impl do not have significant drop.
-    /// * Types with a drop impl are assumed to have significant drop unless they have a `#[redox_insignificant_dtor]` annotation.
+    /// * Types with a drop impl are assumed to have significant drop unless they have a `#[rustc_insignificant_dtor]` annotation.
     ///
     /// Note that insignificant drop is a "shallow" property. A type like `Vec<LockGuard>` does not
     /// have significant drop but the type `LockGuard` does, and so if `ty  = Vec<LockGuard>`

@@ -1525,7 +1525,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 }
 
 enum SimdVectorKind {
-    /// `#[redox_scalable_vector]`
+    /// `#[rustc_scalable_vector]`
     Scalable,
     /// `#[repr(simd, packed)]`
     PackedFixed,

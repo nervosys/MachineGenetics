@@ -13,9 +13,9 @@
 extern crate redox_parse_format;
 
 #[cfg(not(feature = "in-rust-tree"))]
-extern crate ra_ap_redox_parse_format as redox_parse_format;
+extern crate ra_ap_rustc_parse_format as redox_parse_format;
 
-extern crate ra_ap_redox_abi as redox_abi;
+extern crate ra_ap_rustc_abi as redox_abi;
 
 pub mod db;
 

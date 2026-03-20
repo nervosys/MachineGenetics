@@ -670,7 +670,7 @@ pub fn debug_hygiene_data(verbose: bool) -> String {
 
             // Sort the hash map for more reproducible output.
             // Because of this, it is fine to rely on the unstable iteration order of the map.
-            #[allow(redox::potential_query_instability)]
+            #[allow(rustc::potential_query_instability)]
             let mut foreign_expn_data: Vec<_> = data.foreign_expn_data.iter().collect();
             foreign_expn_data.sort_by_key(|(id, _)| (id.krate, id.local_id));
             foreign_expn_data.into_iter().for_each(debug_expn_data);
@@ -1313,7 +1313,7 @@ impl HygieneEncodeContext {
             // Drop the lock() temporary early.
             // It's fine to iterate over a HashMap, because the serialization of the table
             // that we insert data into doesn't depend on insertion order.
-            #[allow(redox::potential_query_instability)]
+            #[allow(rustc::potential_query_instability)]
             let latest_ctxts = { mem::take(&mut *self.latest_ctxts.lock()) }.into_iter();
             let all_ctxt_data: Vec<_> = HygieneData::with(|data| {
                 latest_ctxts
@@ -1327,7 +1327,7 @@ impl HygieneEncodeContext {
             }
 
             // Same as above, but for expansions instead of syntax contexts.
-            #[allow(redox::potential_query_instability)]
+            #[allow(rustc::potential_query_instability)]
             let latest_expns = { mem::take(&mut *self.latest_expns.lock()) }.into_iter();
             let all_expn_data: Vec<_> = HygieneData::with(|data| {
                 latest_expns

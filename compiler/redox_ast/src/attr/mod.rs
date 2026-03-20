@@ -298,7 +298,7 @@ impl AttributeExt for Attribute {
     }
 
     fn is_redox_doc_primitive(&self) -> bool {
-        self.has_name(sym::redox_doc_primitive)
+        self.has_name(sym::rustc_doc_primitive)
     }
 }
 
@@ -940,7 +940,7 @@ pub trait AttributeExt: Debug {
     /// Returns `true` is this attribute contains `doc(keyword)` or `doc(attribute)`.
     fn is_doc_keyword_or_attribute(&self) -> bool;
 
-    /// Returns `true` if this is a `#[redox_doc_primitive]` attribute.
+    /// Returns `true` if this is a `#[rustc_doc_primitive]` attribute.
     fn is_redox_doc_primitive(&self) -> bool;
 }
 

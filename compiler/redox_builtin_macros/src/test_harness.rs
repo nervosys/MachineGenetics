@@ -175,7 +175,7 @@ impl<'a> Visitor<'a> for InnerItemLinter<'_> {
 fn entry_point_type(item: &ast::Item, at_root: bool) -> EntryPointType {
     match &item.kind {
         ast::ItemKind::Fn(fn_) => redox_ast::entry::entry_point_type(
-            contains_name(&item.attrs, sym::redox_main),
+            contains_name(&item.attrs, sym::rustc_main),
             at_root,
             Some(fn_.ident.name),
         ),
@@ -198,7 +198,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         ast::mut_visit::walk_item(self, item);
         self.depth -= 1;
 
-        // Remove any #[redox_main] from the AST so it doesn't
+        // Remove any #[rustc_main] from the AST so it doesn't
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
         match entry_point_type(&item, self.depth == 0) {
@@ -211,7 +211,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                     sym::dead_code,
                     self.def_site,
                 );
-                item.attrs.retain(|attr| !attr.has_name(sym::redox_main));
+                item.attrs.retain(|attr| !attr.has_name(sym::rustc_main));
                 item.attrs.push(allow_dead_code);
             }
             EntryPointType::None | EntryPointType::OtherMain => {}
@@ -262,7 +262,7 @@ fn generate_test_harness(
 /// By default this expands to
 ///
 /// ```ignore (messes with test internals)
-/// #[redox_main]
+/// #[rustc_main]
 /// pub fn main() {
 ///     extern crate test;
 ///     test::test_main_static(&[
@@ -311,8 +311,8 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
         ecx.item(sp, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None, test_ident)),
     );
 
-    // #[redox_main]
-    let main_attr = ecx.attr_word(sym::redox_main, sp);
+    // #[rustc_main]
+    let main_attr = ecx.attr_word(sym::rustc_main, sp);
     // #[coverage(off)]
     let coverage_attr = ecx.attr_nested_word(sym::coverage, sym::off, sp);
     // #[doc(hidden)]
@@ -344,6 +344,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
         ident: main_ident,
         generics: ast::Generics::default(),
         contract: None,
+        spec: None,
         body: Some(main_body),
         define_opaque: None,
         eii_impls: ThinVec::new(),

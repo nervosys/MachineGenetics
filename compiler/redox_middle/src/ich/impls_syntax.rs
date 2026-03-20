@@ -44,12 +44,12 @@ impl<'a> HashStable<StableHashingContext<'a>> for [hir::Attribute] {
 fn is_ignored_attr(name: Symbol) -> bool {
     const IGNORED_ATTRIBUTES: &[Symbol] = &[
         sym::cfg_trace, // FIXME(#138844) should this really be ignored?
-        sym::redox_if_this_changed,
-        sym::redox_then_this_would_need,
-        sym::redox_clean,
+        sym::rustc_if_this_changed,
+        sym::rustc_then_this_would_need,
+        sym::rustc_clean,
         sym::redox_partition_reused,
         sym::redox_partition_codegened,
-        sym::redox_expected_cgu_reuse,
+        sym::rustc_expected_cgu_reuse,
     ];
     IGNORED_ATTRIBUTES.contains(&name)
 }

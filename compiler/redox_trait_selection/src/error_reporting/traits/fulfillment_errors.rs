@@ -389,7 +389,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             _ => DUMMY_SP,
                         };
                         if let Some(s) = label {
-                            // If it has a custom `#[redox_on_unimplemented]`
+                            // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
                             err.span_label(span, s.as_str().to_owned());
                             if !matches!(leaf_trait_predicate.skip_binder().self_ty().kind(), ty::Param(_))
@@ -443,7 +443,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             err.span_label(span, msg);
                         }
                         for note in notes {
-                            // If it has a custom `#[redox_on_unimplemented]` note, let's display it
+                            // If it has a custom `#[rustc_on_unimplemented]` note, let's display it
                             err.note(note);
                         }
                         if let Some(s) = parent_label {

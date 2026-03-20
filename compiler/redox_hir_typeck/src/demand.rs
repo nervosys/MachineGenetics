@@ -1087,7 +1087,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //
                 // FIXME (#46459 and #46460): ideally
                 // `std::convert::Into::into` and `std::borrow:ToOwned` would
-                // also be `#[redox_conversion_suggestion]`, if not for
+                // also be `#[rustc_conversion_suggestion]`, if not for
                 // method-probing false-positives and -negatives (respectively).
                 //
                 // FIXME? Other potential candidate methods: `as_ref` and

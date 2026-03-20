@@ -82,6 +82,7 @@ impl AllocFnFactory<'_, '_> {
             ident: Ident::from_str_and_span(&global_fn_name(method.name), self.span),
             generics: Generics::default(),
             contract: None,
+            spec: None,
             body,
             define_opaque: None,
             eii_impls: ThinVec::new(),
@@ -105,7 +106,7 @@ impl AllocFnFactory<'_, '_> {
         let alloc_attr = match method.name {
             sym::alloc => sym::redox_allocator,
             sym::dealloc => sym::redox_deallocator,
-            sym::realloc => sym::redox_reallocator,
+            sym::realloc => sym::rustc_reallocator,
             sym::alloc_zeroed => sym::redox_allocator_zeroed,
             _ => unreachable!("Unknown allocator method!"),
         };

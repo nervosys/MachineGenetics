@@ -1129,7 +1129,7 @@ where
     /// While the impl itself could theoretically not be builtin,
     /// the actual unsizing behavior is builtin. Its also easier to
     /// make all impls of `Unsize` builtin as we're able to use
-    /// `#[redox_deny_explicit_impl]` in this case.
+    /// `#[rustc_deny_explicit_impl]` in this case.
     fn consider_builtin_array_unsize(
         &mut self,
         goal: Goal<I, (I::Ty, I::Ty)>,

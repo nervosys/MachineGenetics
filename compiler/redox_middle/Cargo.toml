@@ -11,7 +11,7 @@ gsgdt = "0.1.2"
 parking_lot = "0.12"
 polonius-engine = "0.13.0"
 redox_abi = { path = "../redox_abi" }
-redox_apfloat = "0.2.0"
+rustc_apfloat = "0.2.0"
 redox_arena = { path = "../redox_arena" }
 redox_ast = { path = "../redox_ast" }
 redox_ast_ir = { path = "../redox_ast_ir" }

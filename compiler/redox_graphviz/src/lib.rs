@@ -35,7 +35,7 @@
 //! which is cyclic.
 //!
 //! ```rust
-//! #![feature(redox_private)]
+//! #![feature(rustc_private)]
 //!
 //! use std::io::Write;
 //! use redox_graphviz as dot;
@@ -140,7 +140,7 @@
 //! entity `&sube`).
 //!
 //! ```rust
-//! #![feature(redox_private)]
+//! #![feature(rustc_private)]
 //!
 //! use std::io::Write;
 //! use redox_graphviz as dot;
@@ -202,7 +202,7 @@
 //! Hasse-diagram for the subsets of the set `{x, y}`.
 //!
 //! ```rust
-//! #![feature(redox_private)]
+//! #![feature(rustc_private)]
 //!
 //! use std::io::Write;
 //! use redox_graphviz as dot;

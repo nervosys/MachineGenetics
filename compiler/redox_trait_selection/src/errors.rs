@@ -30,7 +30,7 @@ pub struct UnableToConstructConstantValue<'a> {
 
 #[derive(Diagnostic)]
 #[diag("this attribute must have a value", code = E0232)]
-#[note("e.g. `#[redox_on_unimplemented(message=\"foo\")]`")]
+#[note("e.g. `#[rustc_on_unimplemented(message=\"foo\")]`")]
 pub struct NoValueInOnUnimplemented {
     #[primary_span]
     #[label("expected value here")]

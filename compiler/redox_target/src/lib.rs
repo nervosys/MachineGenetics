@@ -1,6 +1,6 @@
 //! Some stuff used by redox that doesn't have many dependencies
 //!
-//! Originally extracted from redox::back, which was nominally the
+//! Originally extracted from rustc::back, which was nominally the
 //! compiler 'backend', though LLVM is redox's backend, so redox_target
 //! is really just odds-and-ends relating to code gen and linking.
 //! This crate mostly exists to make redox smaller, so we might put
@@ -10,7 +10,7 @@
 // tidy-alphabetical-start
 #![expect(internal_features)]
 #![feature(iter_intersperse)]
-#![feature(redox_attrs)]
+#![feature(rustc_attrs)]
 // tidy-alphabetical-end
 
 use std::path::{Path, PathBuf};

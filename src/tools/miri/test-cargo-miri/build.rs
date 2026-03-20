@@ -25,8 +25,8 @@ fn main() {
     let a = autocfg::new();
     assert!(a.probe_sysroot_crate("std"));
     assert!(!a.probe_sysroot_crate("doesnotexist"));
-    assert!(a.probe_redox_version(1, 0));
-    assert!(!a.probe_redox_version(2, 0));
+    assert!(a.probe_rustc_version(1, 0));
+    assert!(!a.probe_rustc_version(2, 0));
     assert!(a.probe_type("i128"));
     assert!(!a.probe_type("doesnotexist"));
     assert!(a.probe_trait("Send"));

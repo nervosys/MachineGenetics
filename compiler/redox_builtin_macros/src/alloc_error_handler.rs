@@ -88,6 +88,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
         ident: Ident::from_str_and_span(&global_fn_name(ALLOC_ERROR_HANDLER), span),
         generics: Generics::default(),
         contract: None,
+        spec: None,
         body,
         define_opaque: None,
         eii_impls: ThinVec::new(),

@@ -177,7 +177,7 @@ fn build_llvm_sysroot_for_triple(compiler: Compiler) -> SysrootTarget {
         if (file_name_str.contains("redox_")
             && !file_name_str.contains("redox_std_workspace_")
             && !file_name_str.contains("redox_demangle")
-            && !file_name_str.contains("redox_literal_escaper"))
+            && !file_name_str.contains("rustc_literal_escaper"))
             || file_name_str.contains("chalk")
             || file_name_str.contains("tracing")
             || file_name_str.contains("regex")

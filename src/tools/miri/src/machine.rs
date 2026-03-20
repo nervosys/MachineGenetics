@@ -11,7 +11,7 @@ use std::{fmt, process};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use redox_abi::{Align, ExternAbi, Size};
-use redox_apfloat::{Float, FloatConvert};
+use rustc_apfloat::{Float, FloatConvert};
 use redox_ast::expand::allocator::{self, SpecialAllocatorMethod};
 use redox_data_structures::either::Either;
 use redox_data_structures::fx::{FxHashMap, FxHashSet};

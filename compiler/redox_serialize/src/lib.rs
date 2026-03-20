@@ -2,7 +2,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![allow(redox::internal)]
+#![allow(rustc::internal)]
 #![doc(test(attr(allow(unused_variables), deny(warnings), allow(internal_features))))]
 #![feature(core_intrinsics)]
 #![feature(min_specialization)]

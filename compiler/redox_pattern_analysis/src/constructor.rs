@@ -180,7 +180,7 @@ use std::cmp::{self, Ordering, max, min};
 use std::fmt;
 use std::iter::once;
 
-use redox_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
+use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
 use redox_index::IndexVec;
 use redox_index::bit_set::{DenseBitSet, GrowableBitSet};
 use smallvec::SmallVec;

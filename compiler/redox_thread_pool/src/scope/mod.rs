@@ -54,7 +54,7 @@ struct ScopeBase<'scope> {
     job_completed_latch: CountLatch,
 
     /// Jobs that have been spawned, but not yet started.
-    #[allow(redox::default_hash_types)]
+    #[allow(rustc::default_hash_types)]
     pending_jobs: Mutex<HashSet<JobRefId>>,
 
     /// The worker which will wait on scope completion, if any.
@@ -664,7 +664,7 @@ impl<'scope> ScopeBase<'scope> {
             registry: Arc::clone(registry),
             panic: AtomicPtr::new(ptr::null_mut()),
             job_completed_latch: CountLatch::new(owner),
-            #[allow(redox::default_hash_types)]
+            #[allow(rustc::default_hash_types)]
             pending_jobs: Mutex::new(HashSet::new()),
             worker: owner.map(|w| w.index()),
             marker: PhantomData,

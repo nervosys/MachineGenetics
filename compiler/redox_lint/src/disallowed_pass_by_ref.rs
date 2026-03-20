@@ -7,13 +7,13 @@ use crate::lints::DisallowedPassByRefDiag;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_tool_lint! {
-    /// The `disallowed_pass_by_ref` lint detects if types marked with `#[redox_pass_by_value]` are
+    /// The `disallowed_pass_by_ref` lint detects if types marked with `#[rustc_pass_by_value]` are
     /// passed by reference. Types with this marker are usually thin wrappers around references, so
     /// there is no benefit to an extra layer of indirection. (Example: `Ty` which is a reference
     /// to an `Interned<TyKind>`)
     pub redox::DISALLOWED_PASS_BY_REF,
     Warn,
-    "pass by reference of a type flagged as `#[redox_pass_by_value]`",
+    "pass by reference of a type flagged as `#[rustc_pass_by_value]`",
     report_in_external_macro: true
 }
 

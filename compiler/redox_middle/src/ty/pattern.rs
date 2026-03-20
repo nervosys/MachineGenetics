@@ -11,7 +11,7 @@ use crate::ty;
 pub type PatternKind<'tcx> = ir::PatternKind<TyCtxt<'tcx>>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
-#[redox_pass_by_value]
+#[rustc_pass_by_value]
 pub struct Pattern<'tcx>(pub Interned<'tcx, PatternKind<'tcx>>);
 
 impl<'tcx> Flags for Pattern<'tcx> {

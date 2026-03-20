@@ -225,7 +225,7 @@ impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
             },
         ),
         (
-            &[sym::redox_const_unstable],
+            &[sym::rustc_const_unstable],
             template!(List: &[r#"feature = "name""#]),
             |this, cx, args| {
                 reject_outside_std!(cx);
@@ -239,7 +239,7 @@ impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
                 }
             },
         ),
-        (&[sym::redox_promotable], template!(Word), |this, cx, _| {
+        (&[sym::rustc_promotable], template!(Word), |this, cx, _| {
             reject_outside_std!(cx);
             this.promotable = true;
         }),
@@ -366,7 +366,7 @@ pub(crate) fn parse_stability<S: Stage>(
     }
 }
 
-// Read the content of a `unstable`/`redox_const_unstable`/`redox_default_body_unstable`
+// Read the content of a `unstable`/`rustc_const_unstable`/`redox_default_body_unstable`
 /// attribute, and return the feature name and its stability information.
 pub(crate) fn parse_unstability<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,

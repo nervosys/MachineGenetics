@@ -9,8 +9,8 @@ use crate::source::{SpanRangeExt, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, sym, unsext};
 
 use redox_abi::Size;
-use redox_apfloat::Float;
-use redox_apfloat::ieee::{Half, Quad};
+use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Half, Quad};
 use redox_ast::ast::{LitFloatType, LitKind};
 use redox_hir::def::{DefKind, Res};
 use redox_hir::{

@@ -453,7 +453,7 @@ pub use Option::*;
 pub struct PhantomData<T: PointeeSized>;
 
 #[lang = "fn_once"]
-#[redox_paren_sugar]
+#[rustc_paren_sugar]
 pub trait FnOnce<Args: Tuple> {
     #[lang = "fn_once_output"]
     type Output;
@@ -462,7 +462,7 @@ pub trait FnOnce<Args: Tuple> {
 }
 
 #[lang = "fn_mut"]
-#[redox_paren_sugar]
+#[rustc_paren_sugar]
 pub trait FnMut<Args: Tuple>: FnOnce<Args> {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
@@ -571,8 +571,8 @@ pub trait Deref {
 }
 
 #[repr(transparent)]
-#[redox_layout_scalar_valid_range_start(1)]
-#[redox_nonnull_optimization_guaranteed]
+#[rustc_layout_scalar_valid_range_start(1)]
+#[rustc_nonnull_optimization_guaranteed]
 pub struct NonNull<T: PointeeSized>(pub *const T);
 
 impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
@@ -738,44 +738,44 @@ unsafe extern "C" {
 #[repr(transparent)]
 pub struct VaList<'a>(&'a mut VaListImpl);
 
-#[redox_builtin_macro]
-#[redox_macro_transparency = "semiopaque"]
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro stringify($($t:tt)*) {
     /* compiler built-in */
 }
 
-#[redox_builtin_macro]
-#[redox_macro_transparency = "semiopaque"]
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro file() {
     /* compiler built-in */
 }
 
-#[redox_builtin_macro]
-#[redox_macro_transparency = "semiopaque"]
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro line() {
     /* compiler built-in */
 }
 
-#[redox_builtin_macro]
-#[redox_macro_transparency = "semiopaque"]
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro cfg() {
     /* compiler built-in */
 }
 
-#[redox_builtin_macro]
-#[redox_macro_transparency = "semiopaque"]
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro asm() {
     /* compiler built-in */
 }
 
-#[redox_builtin_macro]
-#[redox_macro_transparency = "semiopaque"]
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro global_asm() {
     /* compiler built-in */
 }
 
-#[redox_builtin_macro]
-#[redox_macro_transparency = "semiopaque"]
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro naked_asm() {
     /* compiler built-in */
 }

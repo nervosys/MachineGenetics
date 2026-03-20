@@ -665,7 +665,7 @@ impl TokenKind {
             (TildeGt, 1) => (Tilde, Gt),
             (PlusFn, 1) => (Plus, Ident(kw::Fn, IdentIsRaw::No)),
             (MinusFn, 1) => (Minus, Ident(kw::Fn, IdentIsRaw::No)),
-            (BangFn, 1) => (Not, Ident(kw::Fn, IdentIsRaw::No)),
+            (BangFn, 1) => (Bang, Ident(kw::Fn, IdentIsRaw::No)),
             (StarFn, 1) => (Star, Ident(kw::Fn, IdentIsRaw::No)),
             (CompactAttribute(attr), 1) => (At, Ident(attr.suffix_symbol(), IdentIsRaw::No)),
             _ => return None,

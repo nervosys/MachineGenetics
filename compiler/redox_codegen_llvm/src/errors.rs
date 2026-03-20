@@ -190,11 +190,11 @@ pub(crate) struct UnknownCompression {
 
 #[derive(Diagnostic)]
 #[diag(
-    "data-layout for target `{$redox_target}`, `{$redox_layout}`, differs from LLVM target's `{$llvm_target}` default layout, `{$llvm_layout}`"
+    "data-layout for target `{$redox_target}`, `{$rustc_layout}`, differs from LLVM target's `{$llvm_target}` default layout, `{$llvm_layout}`"
 )]
 pub(crate) struct MismatchedDataLayout<'a> {
     pub redox_target: &'a str,
-    pub redox_layout: &'a str,
+    pub rustc_layout: &'a str,
     pub llvm_target: &'a str,
     pub llvm_layout: &'a str,
 }

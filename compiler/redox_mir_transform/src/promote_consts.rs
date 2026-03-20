@@ -637,7 +637,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             self.validate_operand(&arg.node)?;
         }
 
-        // Functions marked `#[redox_promotable]` are explicitly allowed to be promoted, so we can
+        // Functions marked `#[rustc_promotable]` are explicitly allowed to be promoted, so we can
         // accept them at this point.
         let fn_ty = callee.ty(self.body, self.tcx);
         if let ty::FnDef(def_id, _) = *fn_ty.kind() {

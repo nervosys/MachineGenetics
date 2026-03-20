@@ -22,7 +22,7 @@
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
-#![feature(redox_attrs)]
+#![feature(rustc_attrs)]
 // tidy-alphabetical-end
 
 // The code produced by the `Encodable`/`Decodable` derive macros refer to

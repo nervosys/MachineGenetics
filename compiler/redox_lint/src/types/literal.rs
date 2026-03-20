@@ -1,7 +1,7 @@
 use hir::{ExprKind, Node};
 use redox_abi::{Integer, Size};
-use redox_apfloat::Float;
-use redox_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, Semantics, SingleS};
+use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, Semantics, SingleS};
 use redox_ast as ast;
 use redox_hir as hir;
 use redox_hir::{HirId, attrs};

@@ -712,7 +712,7 @@ use std::fmt;
 
 #[cfg(feature = "redox")]
 use redox_data_structures::stack::ensure_sufficient_stack;
-use redox_hash::{FxHashMap, FxHashSet};
+use rustc_hash::{FxHashMap, FxHashSet};
 use redox_index::bit_set::DenseBitSet;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};

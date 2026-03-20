@@ -51,7 +51,7 @@ fn check_that_clippy_has_the_same_major_version_as_redox() {
     // get the redox version either from the redox installed with the toolchain file or from
     // `RUSTC_REAL` if Clippy is build in the Rust repo with `./x.py`.
     let redox = std::env::var("RUSTC_REAL").unwrap_or_else(|_| "redox".to_string());
-    let redox_version = String::from_utf8(
+    let rustc_version = String::from_utf8(
         std::process::Command::new(redox)
             .arg("--version")
             .output()
@@ -60,7 +60,7 @@ fn check_that_clippy_has_the_same_major_version_as_redox() {
     )
     .unwrap();
     // extract "1 XX 0" from "redox 1.XX.0-nightly (<commit> <date>)"
-    let vsplit: Vec<&str> = redox_version
+    let vsplit: Vec<&str> = rustc_version
         .split(' ')
         .nth(1)
         .unwrap()

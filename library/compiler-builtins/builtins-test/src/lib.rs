@@ -341,7 +341,7 @@ pub fn fuzz_float_2<F: Float, E: Fn(F, F)>(n: u32, f: E) {
 macro_rules! apfloat_fallback {
     (
         $float_ty:ty,
-        // Type name in `redox_apfloat::ieee`. Not a full path, it automatically gets the prefix.
+        // Type name in `rustc_apfloat::ieee`. Not a full path, it automatically gets the prefix.
         $apfloat_ty:ident,
         // Cfg expression for when builtin system operations should be used
         $sys_available:meta,
@@ -363,8 +363,8 @@ macro_rules! apfloat_fallback {
 
         #[cfg(not($sys_available))]
         let ret = {
-            use redox_apfloat::Float;
-            type FloatTy = redox_apfloat::ieee::$apfloat_ty;
+            use rustc_apfloat::Float;
+            type FloatTy = rustc_apfloat::ieee::$apfloat_ty;
 
             apfloat_fallback!(@inner
                 fty: $float_ty,

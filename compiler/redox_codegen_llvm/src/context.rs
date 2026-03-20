@@ -231,7 +231,7 @@ pub(crate) unsafe fn create_module<'ll>(
         if target_data_layout != llvm_data_layout {
             tcx.dcx().emit_err(crate::errors::MismatchedDataLayout {
                 redox_target: sess.opts.target_triple.to_string().as_str(),
-                redox_layout: target_data_layout.as_str(),
+                rustc_layout: target_data_layout.as_str(),
                 llvm_target: sess.target.llvm_target.borrow(),
                 llvm_layout: llvm_data_layout,
             });

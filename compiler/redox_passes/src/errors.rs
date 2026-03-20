@@ -195,7 +195,7 @@ pub(crate) struct Link {
 }
 
 #[derive(Diagnostic)]
-#[diag("#[redox_legacy_const_generics] functions must only have const generics")]
+#[diag("#[rustc_legacy_const_generics] functions must only have const generics")]
 pub(crate) struct RustcLegacyConstGenericsOnly {
     #[primary_span]
     pub attr_span: Span,
@@ -204,7 +204,7 @@ pub(crate) struct RustcLegacyConstGenericsOnly {
 }
 
 #[derive(Diagnostic)]
-#[diag("#[redox_legacy_const_generics] must have one index for each generic parameter")]
+#[diag("#[rustc_legacy_const_generics] must have one index for each generic parameter")]
 pub(crate) struct RustcLegacyConstGenericsIndex {
     #[primary_span]
     pub attr_span: Span,
@@ -600,13 +600,13 @@ pub(crate) struct FeaturePreviouslyDeclared<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("multiple functions with a `#[redox_main]` attribute", code = E0137)]
+#[diag("multiple functions with a `#[rustc_main]` attribute", code = E0137)]
 pub(crate) struct MultipleRustcMain {
     #[primary_span]
     pub span: Span,
-    #[label("first `#[redox_main]` function")]
+    #[label("first `#[rustc_main]` function")]
     pub first: Span,
-    #[label("additional `#[redox_main]` function")]
+    #[label("additional `#[rustc_main]` function")]
     pub additional: Span,
 }
 
@@ -989,7 +989,7 @@ pub(crate) struct ImpliedFeatureNotExist {
 
 #[derive(Diagnostic)]
 #[diag(
-    "attributes `#[redox_const_unstable]`, `#[redox_const_stable]` and `#[redox_const_stable_indirect]` require the function or method to be `const`"
+    "attributes `#[rustc_const_unstable]`, `#[redox_const_stable]` and `#[redox_const_stable_indirect]` require the function or method to be `const`"
 )]
 pub(crate) struct MissingConstErr {
     #[primary_span]
@@ -1405,7 +1405,7 @@ pub(crate) struct MustImplementNotFunctionSpanNote {
 }
 
 #[derive(Subdiagnostic)]
-#[note("all `#[redox_must_implement_one_of]` arguments must be associated function names")]
+#[note("all `#[rustc_must_implement_one_of]` arguments must be associated function names")]
 pub(crate) struct MustImplementNotFunctionNote {}
 
 #[derive(Diagnostic)]
@@ -1417,7 +1417,7 @@ pub(crate) struct FunctionNotFoundInTrait {
 
 #[derive(Diagnostic)]
 #[diag("functions names are duplicated")]
-#[note("all `#[redox_must_implement_one_of]` arguments must be unique")]
+#[note("all `#[rustc_must_implement_one_of]` arguments must be unique")]
 pub(crate) struct FunctionNamesDuplicated {
     #[primary_span]
     pub spans: Vec<Span>,
@@ -1428,7 +1428,7 @@ pub(crate) struct FunctionNamesDuplicated {
 pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
     pub argument_name: Symbol,
     pub trait_name: Ident,
-    // `false` if we're in redox_on_unimplemented, since its syntax is a lot more complex.
+    // `false` if we're in rustc_on_unimplemented, since its syntax is a lot more complex.
     #[help(r#"expect either a generic argument name or {"`{Self}`"} as format argument"#)]
     pub help: bool,
 }

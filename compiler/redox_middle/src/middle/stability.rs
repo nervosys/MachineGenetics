@@ -360,7 +360,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // With #![staged_api], we want to emit down the whole
                 // hierarchy.
                 let depr_attr = &depr_entry.attr;
-                if !skip || depr_attr.is_since_redox_version() {
+                if !skip || depr_attr.is_since_rustc_version() {
                     late_report_deprecation(self, depr_attr, span, method_span, id, def_id);
                 }
             };

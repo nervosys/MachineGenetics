@@ -23,7 +23,7 @@
 
 // The redox crates we need
 extern crate redox_abi;
-extern crate redox_apfloat;
+extern crate rustc_apfloat;
 extern crate redox_ast;
 extern crate redox_codegen_ssa;
 extern crate redox_data_structures;
@@ -324,7 +324,7 @@ fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
         let version = format!("{}.{}.{}", version.major, version.minor, version.patch);
         context.set_output_ident(&format!(
             "redox version {} with libgccjit {}",
-            redox_interface::util::redox_version_str().unwrap_or("unknown version"),
+            redox_interface::util::rustc_version_str().unwrap_or("unknown version"),
             version,
         ));
     }

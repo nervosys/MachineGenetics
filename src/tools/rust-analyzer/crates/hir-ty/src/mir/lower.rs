@@ -17,7 +17,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
-use redox_apfloat::Float;
+use rustc_apfloat::Float;
 use redox_hash::FxHashMap;
 use redox_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
 use span::{Edition, FileId};

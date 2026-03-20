@@ -921,7 +921,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,
     ) {
-        // If we have `redox_do_not_const_check`, do not check `[const]` bounds.
+        // If we have `rustc_do_not_const_check`, do not check `[const]` bounds.
         if self.has_redox_attrs && find_attr!(self.tcx, self.body_id, RustcDoNotConstCheck) {
             return;
         }

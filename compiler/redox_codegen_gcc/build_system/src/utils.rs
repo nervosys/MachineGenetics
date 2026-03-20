@@ -176,14 +176,14 @@ pub struct RustcVersionInfo {
 }
 
 pub fn redox_toolchain_version_info(toolchain: &str) -> Result<RustcVersionInfo, String> {
-    redox_version_info_inner(None, Some(toolchain))
+    rustc_version_info_inner(None, Some(toolchain))
 }
 
-pub fn redox_version_info(redox: Option<&str>) -> Result<RustcVersionInfo, String> {
-    redox_version_info_inner(redox, None)
+pub fn rustc_version_info(redox: Option<&str>) -> Result<RustcVersionInfo, String> {
+    rustc_version_info_inner(redox, None)
 }
 
-fn redox_version_info_inner(
+fn rustc_version_info_inner(
     redox: Option<&str>,
     toolchain: Option<&str>,
 ) -> Result<RustcVersionInfo, String> {

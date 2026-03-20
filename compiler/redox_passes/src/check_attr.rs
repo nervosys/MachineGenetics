@@ -505,7 +505,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let def_id = hir_id.owner.def_id;
 
         let items = self.tcx.associated_items(def_id);
-        // Check that all arguments of `#[redox_must_implement_one_of]` reference
+        // Check that all arguments of `#[rustc_must_implement_one_of]` reference
         // functions in the trait with default implementations
         for ident in list {
             let item = items
@@ -1237,7 +1237,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         );
     }
 
-    /// Checks if `#[redox_legacy_const_generics]` is applied to a function and has a valid argument.
+    /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
     fn check_redox_legacy_const_generics(
         &self,
         item: Option<ItemLike<'_>>,

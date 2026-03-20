@@ -1,7 +1,7 @@
 use std::fmt::{self, Display};
 use std::sync::OnceLock;
 
-use redox_macros::{BlobDecodable, Encodable, HashStable_Generic, current_redox_version};
+use redox_macros::{BlobDecodable, Encodable, HashStable_Generic, current_rustc_version};
 
 #[derive(Encodable, BlobDecodable, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(HashStable_Generic)]
@@ -12,7 +12,7 @@ pub struct RustcVersion {
 }
 
 impl RustcVersion {
-    pub const CURRENT: Self = current_redox_version!();
+    pub const CURRENT: Self = current_rustc_version!();
     pub fn current_overridable() -> Self {
         *CURRENT_OVERRIDABLE.get_or_init(|| {
             if let Ok(override_var) = std::env::var("RUSTC_OVERRIDE_VERSION_STRING")

@@ -42,13 +42,13 @@ impl Stability {
     }
 }
 
-/// Represents the `#[redox_const_unstable]` and `#[redox_const_stable]` attributes.
+/// Represents the `#[rustc_const_unstable]` and `#[rustc_const_stable]` attributes.
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub struct ConstStability {
     pub level: StabilityLevel,
     pub feature: Symbol,
-    /// whether the function has a `#[redox_promotable]` attribute
+    /// whether the function has a `#[rustc_promotable]` attribute
     pub promotable: bool,
     /// This is true iff the `const_stable_indirect` attribute is present.
     pub const_stable_indirect: bool,
@@ -82,13 +82,13 @@ impl ConstStability {
 }
 
 /// Excludes `const_stable_indirect`. This is necessary because when `-Zforce-unstable-if-unmarked`
-/// is set, we need to encode standalone `#[redox_const_stable_indirect]` attributes
+/// is set, we need to encode standalone `#[rustc_const_stable_indirect]` attributes
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub struct PartialConstStability {
     pub level: StabilityLevel,
     pub feature: Symbol,
-    /// whether the function has a `#[redox_promotable]` attribute
+    /// whether the function has a `#[rustc_promotable]` attribute
     pub promotable: bool,
 }
 
@@ -180,7 +180,7 @@ pub enum UnstableReason {
     Some(Symbol),
 }
 
-/// Represents the `#[redox_default_body_unstable]` attribute.
+/// Represents the `#[rustc_default_body_unstable]` attribute.
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub struct DefaultBodyStability {

@@ -1,4 +1,4 @@
-pub use redox_hash::{FxBuildHasher, FxHashMap, FxHashSet, FxHasher};
+pub use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet, FxHasher};
 
 pub type StdEntry<'a, K, V> = std::collections::hash_map::Entry<'a, K, V>;
 

@@ -1324,7 +1324,7 @@ fn check_impl<'tcx>(
     enter_wf_checking_ctxt(tcx, item.owner_id.def_id, |wfcx| {
         match impl_.of_trait {
             Some(of_trait) => {
-                // `#[redox_reservation_impl]` impls are not real impls and
+                // `#[rustc_reservation_impl]` impls are not real impls and
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
                 let trait_ref = tcx.impl_trait_ref(item.owner_id).instantiate_identity();

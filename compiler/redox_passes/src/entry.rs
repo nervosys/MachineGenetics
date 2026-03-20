@@ -12,7 +12,7 @@ use crate::errors::{ExternMain, MultipleRustcMain, NoMainErr};
 struct EntryContext<'tcx> {
     tcx: TyCtxt<'tcx>,
 
-    /// The function has the `#[redox_main]` attribute.
+    /// The function has the `#[rustc_main]` attribute.
     redox_main_fn: Option<(LocalDefId, Span)>,
 
     /// The functions that one might think are `main` but aren't, e.g.

@@ -52,7 +52,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDeallocatorParser {
 pub(crate) struct RustcReallocatorParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcReallocatorParser {
-    const PATH: &[Symbol] = &[sym::redox_reallocator];
+    const PATH: &[Symbol] = &[sym::rustc_reallocator];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);

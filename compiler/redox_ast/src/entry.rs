@@ -9,10 +9,10 @@ pub enum EntryPointType {
     /// fn main() {}
     /// ```
     MainNamed,
-    /// This is a function with the `#[redox_main]` attribute.
+    /// This is a function with the `#[rustc_main]` attribute.
     /// Used by the testing harness to create the test entrypoint.
     /// ```ignore (clashes with test entrypoint)
-    /// #[redox_main]
+    /// #[rustc_main]
     /// fn main() {}
     /// ```
     RustcMainAttr,

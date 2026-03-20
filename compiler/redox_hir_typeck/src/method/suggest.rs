@@ -1607,7 +1607,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut type_params = FxIndexMap::default();
 
         // Pick out the list of unimplemented traits on the receiver.
-        // This is used for custom error messages with the `#[redox_on_unimplemented]` attribute.
+        // This is used for custom error messages with the `#[rustc_on_unimplemented]` attribute.
         let mut unimplemented_traits = FxIndexMap::default();
 
         let mut unimplemented_traits_only = true;

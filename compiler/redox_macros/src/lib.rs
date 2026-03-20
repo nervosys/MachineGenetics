@@ -1,5 +1,5 @@
 // tidy-alphabetical-start
-#![allow(redox::default_hash_types)]
+#![allow(rustc::default_hash_types)]
 #![feature(never_type)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_tracked_env)]
@@ -25,7 +25,7 @@ mod visitable;
 // produces a `RustcVersion` literal containing that version (e.g.
 // `RustcVersion { major: 1, minor: 75, patch: 0 }`).
 #[proc_macro]
-pub fn current_redox_version(input: TokenStream) -> TokenStream {
+pub fn current_rustc_version(input: TokenStream) -> TokenStream {
     current_version::current_version(input)
 }
 

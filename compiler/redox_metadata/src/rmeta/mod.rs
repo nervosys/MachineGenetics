@@ -53,13 +53,13 @@ mod encoder;
 mod parameterized;
 mod table;
 
-pub(crate) fn redox_version(cfg_version: &'static str) -> String {
+pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
     format!("redox {cfg_version}")
 }
 
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
-/// the redox version can't be found to compare with `redox_version()`.
+/// the redox version can't be found to compare with `rustc_version()`.
 const METADATA_VERSION: u8 = 10;
 
 /// Metadata header which includes `METADATA_VERSION`.

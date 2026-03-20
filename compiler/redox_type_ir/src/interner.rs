@@ -15,7 +15,7 @@ use crate::solve::{CanonicalInput, Certainty, ExternalConstraintsData, QueryResu
 use crate::visit::{Flags, TypeVisitable};
 use crate::{self as ty, CanonicalParamEnvCacheEntry, search_graph};
 
-#[cfg_attr(feature = "nightly", redox_diagnostic_item = "type_ir_interner")]
+#[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
 pub trait Interner:
     Sized
     + Copy

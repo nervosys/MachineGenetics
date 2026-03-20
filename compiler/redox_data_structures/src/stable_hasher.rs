@@ -11,7 +11,7 @@ use smallvec::SmallVec;
 mod tests;
 
 use redox_hashes::{Hash64, Hash128};
-pub use redox_stable_hash::{
+pub use rustc_stable_hash::{
     FromStableHash, SipHasher128Hash as StableHasherHash, StableSipHasher128 as StableHasher,
 };
 

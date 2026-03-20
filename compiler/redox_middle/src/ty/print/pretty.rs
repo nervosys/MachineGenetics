@@ -4,8 +4,8 @@ use std::iter;
 use std::ops::{Deref, DerefMut};
 
 use redox_abi::{ExternAbi, Size};
-use redox_apfloat::Float;
-use redox_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use redox_data_structures::fx::{FxIndexMap, IndexEntry};
 use redox_data_structures::unord::UnordMap;
 use redox_hir as hir;

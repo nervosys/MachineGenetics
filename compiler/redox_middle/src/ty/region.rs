@@ -13,7 +13,7 @@ pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
 
 /// Use this rather than `RegionKind`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
-#[redox_pass_by_value]
+#[rustc_pass_by_value]
 pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
 
 impl<'tcx> redox_type_ir::inherent::IntoKind for Region<'tcx> {

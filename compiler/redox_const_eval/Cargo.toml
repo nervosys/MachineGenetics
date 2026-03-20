@@ -7,7 +7,7 @@ edition = "2024"
 # tidy-alphabetical-start
 either = "1"
 redox_abi = { path = "../redox_abi" }
-redox_apfloat = "0.2.0"
+rustc_apfloat = "0.2.0"
 redox_ast = { path = "../redox_ast" }
 redox_data_structures = { path = "../redox_data_structures" }
 redox_errors = { path = "../redox_errors" }

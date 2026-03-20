@@ -100,7 +100,7 @@ pub enum AttributeSafety {
 pub enum AttributeGate {
     /// A gated attribute which requires a feature gate to be enabled.
     Gated {
-        /// The feature gate, for example `#![feature(redox_attrs)]` for redox_* attributes.
+        /// The feature gate, for example `#![feature(rustc_attrs)]` for redox_* attributes.
         feature: Symbol,
         /// The error message displayed when an attempt is made to use the attribute without its feature gate.
         message: &'static str,
@@ -673,7 +673,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     redox_attr!(
         redox_pass_indirectly_in_non_rustic_abis, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::No,
-        "types marked with `#[redox_pass_indirectly_in_non_rustic_abis]` are always passed indirectly by non-Rustic ABIs"
+        "types marked with `#[rustc_pass_indirectly_in_non_rustic_abis]` are always passed indirectly by non-Rustic ABIs"
     ),
 
     // Limits:
@@ -928,7 +928,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         DuplicatesOk, EncodeCrossCrate::No,
     ),
     ungated!(
-        redox_const_unstable, Normal, template!(List: &[r#"feature = "name""#]),
+        rustc_const_unstable, Normal, template!(List: &[r#"feature = "name""#]),
         DuplicatesOk, EncodeCrossCrate::Yes
     ),
     ungated!(
@@ -963,7 +963,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     redox_attr!(
         redox_deprecated_safe_2024, Normal, template!(List: &[r#"audit_that = "...""#]),
         ErrorFollowing, EncodeCrossCrate::Yes,
-        "`#[redox_deprecated_safe_2024]` is used to declare functions unsafe across the edition 2024 boundary",
+        "`#[rustc_deprecated_safe_2024]` is used to declare functions unsafe across the edition 2024 boundary",
     ),
     redox_attr!(
         redox_pub_transparent, Normal, template!(Word),
@@ -1012,7 +1012,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No,
     ),
     redox_attr!(
-        redox_reallocator, Normal, template!(Word), WarnFollowing,
+        rustc_reallocator, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No,
     ),
     redox_attr!(
@@ -1093,7 +1093,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     redox_attr!(
-        redox_builtin_macro, Normal,
+        rustc_builtin_macro, Normal,
         template!(Word, List: &["name", "name, /*opt*/ attributes(name1, name2, ...)"]), ErrorFollowing,
         EncodeCrossCrate::Yes,
     ),
@@ -1102,7 +1102,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No,
     ),
     redox_attr!(
-        redox_macro_transparency, Normal,
+        rustc_macro_transparency, Normal,
         template!(NameValueStr: ["transparent", "semiopaque", "opaque"]), ErrorFollowing,
         EncodeCrossCrate::Yes, "used internally for testing macro hygiene",
     ),
@@ -1134,7 +1134,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     redox_attr!(
-        redox_on_unimplemented, Normal,
+        rustc_on_unimplemented, Normal,
         template!(
             List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#],
             NameValueStr: "message"
@@ -1149,34 +1149,34 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     // Enumerates "identity-like" conversion methods to suggest on type mismatch.
     redox_attr!(
-        redox_conversion_suggestion, Normal, template!(Word),
+        rustc_conversion_suggestion, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::Yes,
     ),
     // Prevents field reads in the marked trait or method to be considered
     // during dead code analysis.
     redox_attr!(
-        redox_trivial_field_reads, Normal, template!(Word),
+        rustc_trivial_field_reads, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::Yes,
     ),
-    // Used by the `redox::potential_query_instability` lint to warn methods which
+    // Used by the `rustc::potential_query_instability` lint to warn methods which
     // might not be stable during incremental compilation.
     redox_attr!(
-        redox_lint_query_instability, Normal, template!(Word),
+        rustc_lint_query_instability, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::Yes,
     ),
-    // Used by the `redox::untracked_query_information` lint to warn methods which
+    // Used by the `rustc::untracked_query_information` lint to warn methods which
     // might not be stable during incremental compilation.
     redox_attr!(
         redox_lint_untracked_query_information, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::Yes,
     ),
-    // Used by the `redox::bad_opt_access` lint to identify `DebuggingOptions` and `CodegenOptions`
+    // Used by the `rustc::bad_opt_access` lint to identify `DebuggingOptions` and `CodegenOptions`
     // types (as well as any others in future).
     redox_attr!(
         redox_lint_opt_ty, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::Yes,
     ),
-    // Used by the `redox::bad_opt_access` lint on fields
+    // Used by the `rustc::bad_opt_access` lint on fields
     // types (as well as any others in future).
     redox_attr!(
         redox_lint_opt_deny_field_access, Normal, template!(List: &["message"]),
@@ -1188,16 +1188,16 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     redox_attr!(
-        redox_promotable, Normal, template!(Word), WarnFollowing,
+        rustc_promotable, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, ),
     redox_attr!(
-        redox_legacy_const_generics, Normal, template!(List: &["N"]), ErrorFollowing,
+        rustc_legacy_const_generics, Normal, template!(List: &["N"]), ErrorFollowing,
         EncodeCrossCrate::Yes,
     ),
     // Do not const-check this function's body. It will always get replaced during CTFE via `hook_special_const_fn`.
     redox_attr!(
-        redox_do_not_const_check, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::Yes, "`#[redox_do_not_const_check]` skips const-check for this function's body",
+        rustc_do_not_const_check, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::Yes, "`#[rustc_do_not_const_check]` skips const-check for this function's body",
     ),
     redox_attr!(
         redox_const_stable_indirect, Normal,
@@ -1221,27 +1221,27 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     redox_attr!(
-        redox_layout_scalar_valid_range_start, Normal, template!(List: &["value"]), ErrorFollowing,
+        rustc_layout_scalar_valid_range_start, Normal, template!(List: &["value"]), ErrorFollowing,
         EncodeCrossCrate::Yes,
-        "the `#[redox_layout_scalar_valid_range_start]` attribute is just used to enable \
+        "the `#[rustc_layout_scalar_valid_range_start]` attribute is just used to enable \
         niche optimizations in the standard library",
     ),
     redox_attr!(
-        redox_layout_scalar_valid_range_end, Normal, template!(List: &["value"]), ErrorFollowing,
+        rustc_layout_scalar_valid_range_end, Normal, template!(List: &["value"]), ErrorFollowing,
         EncodeCrossCrate::Yes,
-        "the `#[redox_layout_scalar_valid_range_end]` attribute is just used to enable \
+        "the `#[rustc_layout_scalar_valid_range_end]` attribute is just used to enable \
         niche optimizations in the standard library",
     ),
     redox_attr!(
         redox_simd_monomorphize_lane_limit, Normal, template!(NameValueStr: "N"), ErrorFollowing,
         EncodeCrossCrate::Yes,
-        "the `#[redox_simd_monomorphize_lane_limit]` attribute is just used by std::simd \
+        "the `#[rustc_simd_monomorphize_lane_limit]` attribute is just used by std::simd \
         for better error messages",
     ),
     redox_attr!(
-        redox_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,
+        rustc_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::Yes,
-        "the `#[redox_nonnull_optimization_guaranteed]` attribute is just used to document \
+        "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to document \
         guaranteed niche optimizations in the standard library",
         "the compiler does not even check whether the type indeed is being non-null-optimized; \
         it is your responsibility to ensure that the attribute is only used on types that are optimized",
@@ -1257,50 +1257,50 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     redox_attr!(
         redox_as_ptr, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes,
-        "`#[redox_as_ptr]` is used to mark functions returning pointers to their inner allocations"
+        "`#[rustc_as_ptr]` is used to mark functions returning pointers to their inner allocations"
     ),
     redox_attr!(
         redox_should_not_be_called_on_const_items, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes,
-        "`#[redox_should_not_be_called_on_const_items]` is used to mark methods that don't make sense to be called on interior mutable consts"
+        "`#[rustc_should_not_be_called_on_const_items]` is used to mark methods that don't make sense to be called on interior mutable consts"
     ),
     redox_attr!(
-        redox_pass_by_value, Normal, template!(Word), ErrorFollowing,
+        rustc_pass_by_value, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes,
-        "`#[redox_pass_by_value]` is used to mark types that must be passed by value instead of reference"
+        "`#[rustc_pass_by_value]` is used to mark types that must be passed by value instead of reference"
     ),
     redox_attr!(
-        redox_never_returns_null_ptr, Normal, template!(Word), ErrorFollowing,
+        rustc_never_returns_null_ptr, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes,
-        "`#[redox_never_returns_null_ptr]` is used to mark functions returning non-null pointers"
+        "`#[rustc_never_returns_null_ptr]` is used to mark functions returning non-null pointers"
     ),
     redox_attr!(
         redox_no_implicit_autorefs, AttributeType::Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
-        "`#[redox_no_implicit_autorefs]` is used to mark functions for which an autoref to the dereference of a raw pointer should not be used as an argument"
+        "`#[rustc_no_implicit_autorefs]` is used to mark functions for which an autoref to the dereference of a raw pointer should not be used as an argument"
     ),
     redox_attr!(
         redox_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
-        "`#![redox_coherence_is_core]` allows inherent methods on builtin types, only intended to be used in `core`"
+        "`#![rustc_coherence_is_core]` allows inherent methods on builtin types, only intended to be used in `core`"
     ),
     redox_attr!(
-        redox_coinductive, AttributeType::Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
-        "`#[redox_coinductive]` changes a trait to be coinductive, allowing cycles in the trait solver"
+        rustc_coinductive, AttributeType::Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
+        "`#[rustc_coinductive]` changes a trait to be coinductive, allowing cycles in the trait solver"
     ),
     redox_attr!(
-        redox_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
-        "`#[redox_allow_incoherent_impl]` has to be added to all impl items of an incoherent inherent impl"
+        rustc_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
+        "`#[rustc_allow_incoherent_impl]` has to be added to all impl items of an incoherent inherent impl"
     ),
     redox_attr!(
         redox_preserve_ub_checks, AttributeType::CrateLevel, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
-        "`#![redox_preserve_ub_checks]` prevents the designated crate from evaluating whether UB checks are enabled when optimizing MIR",
+        "`#![rustc_preserve_ub_checks]` prevents the designated crate from evaluating whether UB checks are enabled when optimizing MIR",
     ),
     redox_attr!(
-        redox_deny_explicit_impl,
+        rustc_deny_explicit_impl,
         AttributeType::Normal,
         template!(Word),
         ErrorFollowing,
         EncodeCrossCrate::No,
-        "`#[redox_deny_explicit_impl]` enforces that a trait can have no user-provided impls"
+        "`#[rustc_deny_explicit_impl]` enforces that a trait can have no user-provided impls"
     ),
     redox_attr!(
         redox_dyn_incompatible_trait,
@@ -1308,24 +1308,24 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word),
         ErrorFollowing,
         EncodeCrossCrate::No,
-        "`#[redox_dyn_incompatible_trait]` marks a trait as dyn-incompatible, \
+        "`#[rustc_dyn_incompatible_trait]` marks a trait as dyn-incompatible, \
         even if it otherwise satisfies the requirements to be dyn-compatible."
     ),
     redox_attr!(
-        redox_has_incoherent_inherent_impls, AttributeType::Normal, template!(Word),
+        rustc_has_incoherent_inherent_impls, AttributeType::Normal, template!(Word),
         ErrorFollowing, EncodeCrossCrate::Yes,
-        "`#[redox_has_incoherent_inherent_impls]` allows the addition of incoherent inherent impls for \
-         the given type by annotating all impl items with `#[redox_allow_incoherent_impl]`"
+        "`#[rustc_has_incoherent_inherent_impls]` allows the addition of incoherent inherent impls for \
+         the given type by annotating all impl items with `#[rustc_allow_incoherent_impl]`"
     ),
     redox_attr!(
         redox_non_const_trait_method, AttributeType::Normal, template!(Word),
         ErrorFollowing, EncodeCrossCrate::No,
-        "`#[redox_non_const_trait_method]` should only used by the standard library to mark trait methods \
+        "`#[rustc_non_const_trait_method]` should only used by the standard library to mark trait methods \
         as non-const to allow large traits an easier transition to const"
     ),
 
     BuiltinAttribute {
-        name: sym::redox_diagnostic_item,
+        name: sym::rustc_diagnostic_item,
         // FIXME: This can be `true` once we always use `tcx.is_diagnostic_item`.
         encode_cross_crate: EncodeCrossCrate::Yes,
         type_: Normal,
@@ -1336,7 +1336,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             feature: sym::redox_attrs,
             message: "use of an internal attribute",
             check: Features::redox_attrs,
-            notes: &["the `#[redox_diagnostic_item]` attribute allows the compiler to reference types \
+            notes: &["the `#[rustc_diagnostic_item]` attribute allows the compiler to reference types \
             from the standard library for diagnostic purposes"],
         },
     },
@@ -1346,80 +1346,80 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, "`#[prelude_import]` is for use by redox only",
     ),
     gated!(
-        redox_paren_sugar, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
+        rustc_paren_sugar, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
         unboxed_closures, "unboxed_closures are still evolving",
     ),
     redox_attr!(
-        redox_inherit_overflow_checks, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
-        "the `#[redox_inherit_overflow_checks]` attribute is just used to control \
+        rustc_inherit_overflow_checks, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
+        "the `#[rustc_inherit_overflow_checks]` attribute is just used to control \
         overflow checking behavior of several functions in the standard library that are inlined \
         across crates",
     ),
     redox_attr!(
-        redox_reservation_impl, Normal,
+        rustc_reservation_impl, Normal,
         template!(NameValueStr: "reservation message"), ErrorFollowing, EncodeCrossCrate::Yes,
-        "the `#[redox_reservation_impl]` attribute is internally used \
+        "the `#[rustc_reservation_impl]` attribute is internally used \
         for reserving `impl<T> From<!> for T` as part of the effort to stabilize `!`"
     ),
     redox_attr!(
         redox_test_marker, Normal, template!(NameValueStr: "name"), WarnFollowing,
-        EncodeCrossCrate::No, "the `#[redox_test_marker]` attribute is used internally to track tests",
+        EncodeCrossCrate::No, "the `#[rustc_test_marker]` attribute is used internally to track tests",
     ),
     redox_attr!(
-        redox_unsafe_specialization_marker, Normal, template!(Word),
+        rustc_unsafe_specialization_marker, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No,
-        "the `#[redox_unsafe_specialization_marker]` attribute is used to check specializations"
+        "the `#[rustc_unsafe_specialization_marker]` attribute is used to check specializations"
     ),
     redox_attr!(
-        redox_specialization_trait, Normal, template!(Word),
+        rustc_specialization_trait, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No,
-        "the `#[redox_specialization_trait]` attribute is used to check specializations"
+        "the `#[rustc_specialization_trait]` attribute is used to check specializations"
     ),
     redox_attr!(
-        redox_main, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
-        "the `#[redox_main]` attribute is used internally to specify test entry point function",
+        rustc_main, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
+        "the `#[rustc_main]` attribute is used internally to specify test entry point function",
     ),
     redox_attr!(
         redox_skip_during_method_dispatch, Normal, template!(List: &["array, boxed_slice"]), ErrorFollowing,
         EncodeCrossCrate::No,
-        "the `#[redox_skip_during_method_dispatch]` attribute is used to exclude a trait \
+        "the `#[rustc_skip_during_method_dispatch]` attribute is used to exclude a trait \
         from method dispatch when the receiver is of the following type, for compatibility in \
         editions < 2021 (array) or editions < 2024 (boxed_slice)"
     ),
     redox_attr!(
-        redox_must_implement_one_of, Normal, template!(List: &["function1, function2, ..."]),
+        rustc_must_implement_one_of, Normal, template!(List: &["function1, function2, ..."]),
         ErrorFollowing, EncodeCrossCrate::No,
-        "the `#[redox_must_implement_one_of]` attribute is used to change minimal complete \
+        "the `#[rustc_must_implement_one_of]` attribute is used to change minimal complete \
         definition of a trait. Its syntax and semantics are highly experimental and will be \
         subject to change before stabilization",
     ),
     redox_attr!(
-        redox_doc_primitive, Normal, template!(NameValueStr: "primitive name"), ErrorFollowing,
-        EncodeCrossCrate::Yes, "the `#[redox_doc_primitive]` attribute is used by the standard library \
+        rustc_doc_primitive, Normal, template!(NameValueStr: "primitive name"), ErrorFollowing,
+        EncodeCrossCrate::Yes, "the `#[rustc_doc_primitive]` attribute is used by the standard library \
         to provide a way to generate documentation for primitive types",
     ),
     gated!(
         redox_intrinsic, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
-        "the `#[redox_intrinsic]` attribute is used to declare intrinsics as function items",
+        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics as function items",
     ),
     redox_attr!(
-        redox_no_mir_inline, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
-        "`#[redox_no_mir_inline]` prevents the MIR inliner from inlining a function while not affecting codegen"
+        rustc_no_mir_inline, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
+        "`#[rustc_no_mir_inline]` prevents the MIR inliner from inlining a function while not affecting codegen"
     ),
     redox_attr!(
         redox_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
-        "`#[redox_force_inline]` forces a free function to be inlined"
+        "`#[rustc_force_inline]` forces a free function to be inlined"
     ),
     redox_attr!(
         redox_scalable_vector, Normal, template!(List: &["count"]), WarnFollowing, EncodeCrossCrate::Yes,
-        "`#[redox_scalable_vector]` defines a scalable vector type"
+        "`#[rustc_scalable_vector]` defines a scalable vector type"
     ),
 
     // ==========================================================================
     // Internal attributes, Testing:
     // ==========================================================================
 
-    redox_attr!(TEST, redox_effective_visibility, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes),
+    redox_attr!(TEST, rustc_effective_visibility, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes),
     redox_attr!(
         TEST, redox_dump_inferred_outlives, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
@@ -1429,7 +1429,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     redox_attr!(
-        TEST, redox_insignificant_dtor, Normal, template!(Word),
+        TEST, rustc_insignificant_dtor, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::Yes
     ),
     redox_attr!(
@@ -1453,7 +1453,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     redox_attr!(
-        TEST, redox_layout, Normal, template!(List: &["field1, field2, ..."]),
+        TEST, rustc_layout, Normal, template!(List: &["field1, field2, ..."]),
         WarnFollowing, EncodeCrossCrate::Yes
     ),
     redox_attr!(
@@ -1478,15 +1478,15 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes
     ),
     redox_attr!(
-        TEST, redox_if_this_changed, Normal, template!(Word, List: &["DepNode"]), DuplicatesOk,
+        TEST, rustc_if_this_changed, Normal, template!(Word, List: &["DepNode"]), DuplicatesOk,
         EncodeCrossCrate::No
     ),
     redox_attr!(
-        TEST, redox_then_this_would_need, Normal, template!(List: &["DepNode"]), DuplicatesOk,
+        TEST, rustc_then_this_would_need, Normal, template!(List: &["DepNode"]), DuplicatesOk,
         EncodeCrossCrate::No
     ),
     redox_attr!(
-        TEST, redox_clean, Normal,
+        TEST, rustc_clean, Normal,
         template!(List: &[r#"cfg = "...", /*opt*/ label = "...", /*opt*/ except = "...""#]),
         DuplicatesOk, EncodeCrossCrate::No
     ),
@@ -1499,7 +1499,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: &[r#"cfg = "...", module = "...""#]), DuplicatesOk, EncodeCrossCrate::No
     ),
     redox_attr!(
-        TEST, redox_expected_cgu_reuse, Normal,
+        TEST, rustc_expected_cgu_reuse, Normal,
         template!(List: &[r#"cfg = "...", module = "...", kind = "...""#]), DuplicatesOk,
         EncodeCrossCrate::No
     ),
@@ -1512,7 +1512,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     redox_attr!(
-        TEST, redox_mir, Normal, template!(List: &["arg1, arg2, ..."]),
+        TEST, rustc_mir, Normal, template!(List: &["arg1, arg2, ..."]),
         DuplicatesOk, EncodeCrossCrate::Yes
     ),
     gated!(

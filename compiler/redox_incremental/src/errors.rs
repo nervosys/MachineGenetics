@@ -12,7 +12,7 @@ pub(crate) struct UnrecognizedDepNode {
 }
 
 #[derive(Diagnostic)]
-#[diag("no `#[redox_if_this_changed]` annotation detected")]
+#[diag("no `#[rustc_if_this_changed]` annotation detected")]
 pub(crate) struct MissingIfThisChanged {
     #[primary_span]
     pub span: Span,
@@ -100,7 +100,7 @@ pub(crate) struct NotLoaded<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("found unchecked `#[redox_clean]` attribute")]
+#[diag("found unchecked `#[rustc_clean]` attribute")]
 pub(crate) struct UncheckedClean {
     #[primary_span]
     pub span: Span,

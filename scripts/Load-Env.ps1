@@ -20,7 +20,7 @@ Get-Content $EnvFile | ForEach-Object {
     if ($line -eq '' -or $line.StartsWith('#')) { return }
     $parts = $line -split '=', 2
     if ($parts.Count -eq 2) {
-        $name  = $parts[0].Trim()
+        $name = $parts[0].Trim()
         $value = $parts[1].Trim().Trim('"').Trim("'")
         # Process-scoped only — does NOT modify the machine or user registry.
         [System.Environment]::SetEnvironmentVariable($name, $value, 'Process')

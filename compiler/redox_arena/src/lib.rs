@@ -16,7 +16,7 @@
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
 #![feature(never_type)]
-#![feature(redox_attrs)]
+#![feature(rustc_attrs)]
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 
@@ -624,7 +624,7 @@ impl DroplessArena {
 /// - Types that are `!Copy` and `Drop`: these must be specified in the
 ///   arguments. The `TypedArena` will be used for them.
 ///
-#[redox_macro_transparency = "semiopaque"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
     #[derive(Default)]
     pub struct Arena<'tcx> {

@@ -5,8 +5,8 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::{self, Command};
 
-use redox_build_sysroot::{BuildMode, SysrootBuilder, SysrootConfig, SysrootStatus};
-use redox_version::VersionMeta;
+use rustc_build_sysroot::{BuildMode, SysrootBuilder, SysrootConfig, SysrootStatus};
+use rustc_version::VersionMeta;
 
 use crate::util::*;
 
@@ -16,7 +16,7 @@ use crate::util::*;
 pub fn setup(
     subcommand: &MiriCommand,
     target: &str,
-    redox_version: &VersionMeta,
+    rustc_version: &VersionMeta,
     verbose: usize,
     quiet: bool,
 ) -> PathBuf {
@@ -39,7 +39,7 @@ pub fn setup(
         }
         None => {
             // Check for `rust-src` rustup component.
-            let rustup_src = redox_build_sysroot::redox_sysroot_src(miri_for_host())
+            let rustup_src = rustc_build_sysroot::redox_sysroot_src(miri_for_host())
                 .expect("could not determine sysroot source directory");
             if !rustup_src.exists() {
                 // Ask the user to install the `rust-src` component, and use that.
@@ -163,7 +163,7 @@ pub fn setup(
     // Do the build.
     let status = SysrootBuilder::new(&sysroot_dir, target)
         .build_mode(BuildMode::Build) // not a real build, since we use dummy codegen
-        .redox_version(redox_version.clone())
+        .rustc_version(rustc_version.clone())
         .sysroot_config(sysroot_config)
         .rustflags(rustflags)
         .cargo(cargo_cmd)

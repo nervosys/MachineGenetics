@@ -1,5 +1,5 @@
 use redox_abi::CanonAbi;
-use redox_apfloat::ieee::Double;
+use rustc_apfloat::ieee::Double;
 use redox_middle::ty::Ty;
 use redox_span::Symbol;
 use redox_target::callconv::FnAbi;
@@ -92,11 +92,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // "current SSE rounding mode", assume nearest
                     // https://www.felixcloutier.com/x86/cvtps2dq
                     // https://www.felixcloutier.com/x86/cvtpd2dq
-                    "cvtps2dq" | "cvtpd2dq" => redox_apfloat::Round::NearestTiesToEven,
+                    "cvtps2dq" | "cvtpd2dq" => rustc_apfloat::Round::NearestTiesToEven,
                     // always truncate
                     // https://www.felixcloutier.com/x86/cvttps2dq
                     // https://www.felixcloutier.com/x86/cvttpd2dq
-                    "cvttps2dq" | "cvttpd2dq" => redox_apfloat::Round::TowardZero,
+                    "cvttps2dq" | "cvttpd2dq" => rustc_apfloat::Round::TowardZero,
                     _ => unreachable!(),
                 };
 
@@ -240,10 +240,10 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let rnd = match unprefixed_name {
                     // "current SSE rounding mode", assume nearest
                     // https://www.felixcloutier.com/x86/cvtsd2si
-                    "cvtsd2si" | "cvtsd2si64" => redox_apfloat::Round::NearestTiesToEven,
+                    "cvtsd2si" | "cvtsd2si64" => rustc_apfloat::Round::NearestTiesToEven,
                     // always truncate
                     // https://www.felixcloutier.com/x86/cvttsd2si
-                    "cvttsd2si" | "cvttsd2si64" => redox_apfloat::Round::TowardZero,
+                    "cvttsd2si" | "cvttsd2si64" => rustc_apfloat::Round::TowardZero,
                     _ => unreachable!(),
                 };
 

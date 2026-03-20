@@ -19,7 +19,7 @@ use intern::sym;
 use la_arena::ArenaMap;
 use macros::GenericTypeVisitable;
 use redox_abi::TargetDataLayout;
-use redox_apfloat::{
+use rustc_apfloat::{
     Float,
     ieee::{Half as f16, Quad as f128},
 };

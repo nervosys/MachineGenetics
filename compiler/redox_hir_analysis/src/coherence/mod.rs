@@ -70,7 +70,7 @@ fn enforce_trait_manually_implementable(
         .emit();
     }
 
-    // Disallow *all* explicit impls of traits marked `#[redox_deny_explicit_impl]`
+    // Disallow *all* explicit impls of traits marked `#[rustc_deny_explicit_impl]`
     if trait_def.deny_explicit_impl {
         let trait_name = tcx.item_name(trait_def_id);
         let mut err = struct_span_code_err!(

@@ -24,7 +24,7 @@ pub struct TraitDef {
     /// Whether this trait is `const`.
     pub constness: hir::Constness,
 
-    /// If `true`, then this trait had the `#[redox_paren_sugar]`
+    /// If `true`, then this trait had the `#[rustc_paren_sugar]`
     /// attribute, indicating that it should be used with `Foo()`
     /// sugar. This is a temporary thing -- eventually any trait will
     /// be usable with the sugar (or without it).
@@ -37,7 +37,7 @@ pub struct TraitDef {
     /// and thus `impl`s of it are allowed to overlap.
     pub is_marker: bool,
 
-    /// If `true`, then this trait has the `#[redox_coinductive]` attribute or
+    /// If `true`, then this trait has the `#[rustc_coinductive]` attribute or
     /// is an auto trait. This indicates that trait solver cycles involving an
     /// `X: ThisTrait` goal are accepted.
     ///
@@ -65,7 +65,7 @@ pub struct TraitDef {
     /// on this trait.
     pub specialization_kind: TraitSpecializationKind,
 
-    /// List of functions from `#[redox_must_implement_one_of]` attribute one of which
+    /// List of functions from `#[rustc_must_implement_one_of]` attribute one of which
     /// must be implemented.
     pub must_implement_one_of: Option<Box<[Ident]>>,
 
@@ -75,7 +75,7 @@ pub struct TraitDef {
 
     /// Whether a trait is fully built-in, and any implementation is disallowed.
     /// This only applies to built-in traits, and is marked via
-    /// `#[redox_deny_explicit_impl]`.
+    /// `#[rustc_deny_explicit_impl]`.
     pub deny_explicit_impl: bool,
 }
 
@@ -87,13 +87,13 @@ pub enum TraitSpecializationKind {
     None,
     /// Specializing on this trait is allowed because it doesn't have any
     /// methods. For example `Sized` or `FusedIterator`.
-    /// Applies to traits with the `redox_unsafe_specialization_marker`
+    /// Applies to traits with the `rustc_unsafe_specialization_marker`
     /// attribute.
     Marker,
     /// Specializing on this trait is allowed because all of the impls of this
     /// trait are "always applicable". Always applicable means that if
     /// `X<'x>: T<'y>` for any lifetimes, then `for<'a, 'b> X<'a>: T<'b>`.
-    /// Applies to traits with the `redox_specialization_trait` attribute.
+    /// Applies to traits with the `rustc_specialization_trait` attribute.
     AlwaysApplicable,
 }
 

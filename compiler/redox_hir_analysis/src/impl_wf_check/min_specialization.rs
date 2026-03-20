@@ -47,7 +47,7 @@
 //! on some traits: that is, using them as bounds on the specializing impl,
 //! even when they don't occur in the base impl.
 //!
-//! ### redox_specialization_trait
+//! ### rustc_specialization_trait
 //!
 //! If a trait is always applicable, then it's sound to specialize on it. We
 //! check trait is always applicable in the same way as impls, except that step
@@ -55,7 +55,7 @@
 //! `specialization` or `min_specialization` is enabled to implement these
 //! traits.
 //!
-//! ### redox_unsafe_specialization_marker
+//! ### rustc_unsafe_specialization_marker
 //!
 //! There are also some specialization on traits with no methods, including the
 //! stable `FusedIterator` trait. We allow marking marker traits with an
@@ -351,7 +351,7 @@ fn check_predicates<'tcx>(
     //
     // For example, we allow:
     //
-    // #[redox_specialization_trait]
+    // #[rustc_specialization_trait]
     // trait AlwaysApplicable: Debug { }
     //
     // impl<T> Tr for T { }

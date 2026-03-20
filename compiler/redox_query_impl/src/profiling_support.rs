@@ -125,7 +125,7 @@ impl<T: SpecIntoSelfProfilingString> IntoSelfProfilingString for T {
     }
 }
 
-#[redox_specialization_trait]
+#[rustc_specialization_trait]
 trait SpecIntoSelfProfilingString: Debug {
     fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId;
 }

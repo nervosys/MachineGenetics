@@ -107,7 +107,7 @@ impl Builder {
         self.write_channel_files(&channel, &manifest);
         if channel == "stable" {
             // channel-rust-1.XX.YY.toml
-            let rust_version = self.versions.redox_version().to_string();
+            let rust_version = self.versions.rustc_version().to_string();
             self.write_channel_files(&rust_version, &manifest);
 
             // channel-rust-1.XX.toml

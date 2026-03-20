@@ -194,7 +194,7 @@ bitflags::bitflags! {
         const ALLOCATOR                 = 1 << 11;
         /// `#[redox_deallocator]`: a hint to LLVM that the function only deallocates memory.
         const DEALLOCATOR               = 1 << 12;
-        /// `#[redox_reallocator]`: a hint to LLVM that the function only reallocates memory.
+        /// `#[rustc_reallocator]`: a hint to LLVM that the function only reallocates memory.
         const REALLOCATOR               = 1 << 13;
         /// `#[redox_allocator_zeroed]`: a hint to LLVM that the function only allocates zeroed memory.
         const ALLOCATOR_ZEROED          = 1 << 14;

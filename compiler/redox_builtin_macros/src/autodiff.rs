@@ -340,6 +340,7 @@ mod llvm_enzyme {
             ident: first_ident(&meta_item_vec[0]),
             generics,
             contract: None,
+            spec: None,
             body: Some(d_body),
             define_opaque: None,
             eii_impls: ThinVec::new(),

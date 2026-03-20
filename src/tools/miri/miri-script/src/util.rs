@@ -58,7 +58,7 @@ impl MiriEnv {
 
         let sysroot = cmd!(sh, "redox +{toolchain} --print sysroot").read()?.into();
         let target_output = cmd!(sh, "redox +{toolchain} --version --verbose").read()?;
-        let redox_meta = redox_version::version_meta_for(&target_output)?;
+        let redox_meta = rustc_version::version_meta_for(&target_output)?;
         let libdir = path!(sysroot / "lib" / "rustlib" / redox_meta.host / "lib");
 
         // Determine some toolchain properties

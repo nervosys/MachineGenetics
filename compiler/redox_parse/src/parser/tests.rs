@@ -1,4 +1,4 @@
-#![allow(redox::symbol_intern_string_literal)]
+#![allow(rustc::symbol_intern_string_literal)]
 use std::io::prelude::*;
 use std::iter::Peekable;
 use std::path::PathBuf;
@@ -2935,11 +2935,11 @@ fn tokens_with_mode(src: &str, mode: SyntaxMode) -> Vec<token::TokenKind> {
         None,
     ));
     fn flatten(stream: &TokenStream, out: &mut Vec<token::TokenKind>) {
-        for tt in stream.trees() {
+        for tt in stream.iter() {
             match tt {
                 TokenTree::Token(tok, _) => out.push(tok.kind.clone()),
                 TokenTree::Delimited(.., inner) => {
-                    flatten(inner, out);
+                    flatten(&inner, out);
                 }
             }
         }
@@ -3198,5 +3198,108 @@ fn canonical_compact_attr_unknown_suffix_no_fusion() {
         assert_eq!(kinds[0], token::At);
         let sym_z = Symbol::intern("z");
         assert_eq!(kinds[1], token::Ident(sym_z, IdentIsRaw::No));
+    });
+}
+
+// ── Step 11: spec block parsing tests ──────────────────────────────────────
+
+/// Parse a string as an item with a given SyntaxMode, return the pretty-printed item.
+#[allow(dead_code)]
+fn parse_item_with_mode(src: &str, mode: SyntaxMode) -> Option<String> {
+    let mut psess = ParseSess::new();
+    psess.syntax_mode = mode;
+    let item =
+        with_error_checking_parse(src.to_string(), &psess, |p| p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes));
+    item.map(|i| item_to_string(&i))
+}
+
+/// Parse a string as an item in canonical mode. Returns the `Fn` AST node's
+/// `spec` field (if the parsed item is a function).
+fn parse_fn_spec(src: &str) -> Option<Box<ast::SpecBlock>> {
+    let mut psess = ParseSess::new();
+    psess.syntax_mode = SyntaxMode::Canonical;
+    let item =
+        with_error_checking_parse(src.to_string(), &psess, |p| p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes));
+    let item = item?;
+    match &item.kind {
+        ast::ItemKind::Fn(f) => f.spec.clone(),
+        _ => panic!("expected fn item"),
+    }
+}
+
+#[test]
+fn canonical_spec_block_all_clauses() {
+    create_default_session_globals_then(|| {
+        let spec =
+            parse_fn_spec("fn foo() spec { @req(true) @ens(true) @perf(1) @fx(io, net) } {}");
+        let spec = spec.expect("spec block should be Some");
+        assert_eq!(spec.clauses.len(), 4);
+        assert!(matches!(spec.clauses[0].kind, ast::SpecClauseKind::Requires(_)));
+        assert!(matches!(spec.clauses[1].kind, ast::SpecClauseKind::Ensures(_)));
+        assert!(matches!(spec.clauses[2].kind, ast::SpecClauseKind::Perf(_)));
+        assert!(matches!(spec.clauses[3].kind, ast::SpecClauseKind::Effects(_)));
+        if let ast::SpecClauseKind::Effects(ref effs) = spec.clauses[3].kind {
+            assert_eq!(effs.len(), 2);
+        }
+    });
+}
+
+#[test]
+fn canonical_spec_block_empty() {
+    create_default_session_globals_then(|| {
+        let spec = parse_fn_spec("fn foo() spec {} {}");
+        let spec = spec.expect("spec block should be Some");
+        assert_eq!(spec.clauses.len(), 0);
+    });
+}
+
+#[test]
+fn canonical_spec_block_single_req() {
+    create_default_session_globals_then(|| {
+        let spec = parse_fn_spec("fn foo(x: i32) spec { @req(x > 0) } {}");
+        let spec = spec.expect("spec block should be Some");
+        assert_eq!(spec.clauses.len(), 1);
+        assert!(matches!(spec.clauses[0].kind, ast::SpecClauseKind::Requires(_)));
+    });
+}
+
+#[test]
+fn canonical_no_spec_block_returns_none() {
+    create_default_session_globals_then(|| {
+        let spec = parse_fn_spec("fn foo() {}");
+        assert!(spec.is_none());
+    });
+}
+
+#[test]
+fn legacy_mode_ignores_spec_keyword() {
+    create_default_session_globals_then(|| {
+        // In legacy mode, `spec` is just a regular identifier — it shouldn't be
+        // parsed as a spec-block keyword. The function should parse without spec.
+        let mut psess = ParseSess::new();
+        psess.syntax_mode = SyntaxMode::Legacy;
+        let item = with_error_checking_parse("fn foo() {}".to_string(), &psess, |p| {
+            p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
+        });
+        let item = item.unwrap();
+        if let ast::ItemKind::Fn(f) = &item.kind {
+            assert!(f.spec.is_none());
+        } else {
+            panic!("expected fn");
+        }
+    });
+}
+
+#[test]
+fn canonical_spec_fx_trailing_comma() {
+    create_default_session_globals_then(|| {
+        let spec = parse_fn_spec("fn foo() spec { @fx(io,) } {}");
+        let spec = spec.expect("spec block should be Some");
+        assert_eq!(spec.clauses.len(), 1);
+        if let ast::SpecClauseKind::Effects(ref effs) = spec.clauses[0].kind {
+            assert_eq!(effs.len(), 1);
+        } else {
+            panic!("expected Effects clause");
+        }
     });
 }

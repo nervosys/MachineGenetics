@@ -6,7 +6,7 @@ use std::io::BufReader;
 use std::path::{self, Path, PathBuf};
 use std::process::Command;
 
-use redox_version::VersionMeta;
+use rustc_version::VersionMeta;
 
 use crate::setup::*;
 use crate::util::*;
@@ -100,7 +100,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     let quiet = has_arg_flag("-q") || has_arg_flag("--quiet");
 
     // Determine the involved architectures.
-    let redox_version = VersionMeta::for_command(miri_for_host()).unwrap_or_else(|err| {
+    let rustc_version = VersionMeta::for_command(miri_for_host()).unwrap_or_else(|err| {
         panic!(
             "failed to determine underlying redox version of Miri ({:?}):\n{err:?}",
             miri_for_host()
@@ -110,7 +110,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // If `targets` is empty, we need to add a `--target $HOST` flag ourselves, and also ensure
     // that the host target is indeed setup.
     let target_flag = if targets.is_empty() {
-        let host = &redox_version.host;
+        let host = &rustc_version.host;
         targets.push(host.clone());
         Some(host)
     } else {
@@ -130,7 +130,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
 
     for target in &targets {
         // We always setup.
-        setup(&subcommand, target.as_str(), &redox_version, verbose, quiet);
+        setup(&subcommand, target.as_str(), &rustc_version, verbose, quiet);
     }
     let miri_sysroot = get_sysroot_dir();
 

@@ -215,7 +215,7 @@ pub enum ImplPolarity {
     Positive,
     /// `impl !Trait for Type`
     Negative,
-    /// `#[redox_reservation_impl] impl Trait for Type`
+    /// `#[rustc_reservation_impl] impl Trait for Type`
     ///
     /// This is a "stability hack", not a real Rust feature.
     /// See #64631 for details.

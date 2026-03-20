@@ -20,7 +20,7 @@
 #![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 #![recursion_limit = "512"]
 
-extern crate ra_ap_redox_type_ir as redox_type_ir;
+extern crate ra_ap_rustc_type_ir as redox_type_ir;
 
 mod attrs;
 mod from_id;

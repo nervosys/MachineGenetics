@@ -794,12 +794,12 @@ impl<'a> TraitDef<'a> {
         let path =
             cx.path_all(type_ident.span.with_ctxt(ctxt), false, vec![type_ident], self_params);
         let self_type = cx.ty_path(path);
-        let redox_const_unstable =
-            cx.path_ident(self.span, Ident::new(sym::redox_const_unstable, self.span));
+        let rustc_const_unstable =
+            cx.path_ident(self.span, Ident::new(sym::rustc_const_unstable, self.span));
 
         let mut attrs = thin_vec![cx.attr_word(sym::automatically_derived, self.span),];
 
-        // Only add `redox_const_unstable` attributes if `derive_const` is used within libcore/libstd,
+        // Only add `rustc_const_unstable` attributes if `derive_const` is used within libcore/libstd,
         // Other crates don't need stability attributes, so adding them is not useful, but libcore needs them
         // on all const trait impls.
         if self.is_const && self.is_staged_api_crate {
@@ -807,7 +807,7 @@ impl<'a> TraitDef<'a> {
                 cx.attr_nested(
                     redox_ast::AttrItem {
                         unsafety: Safety::Default,
-                        path: redox_const_unstable,
+                        path: rustc_const_unstable,
                         args: redox_ast::ast::AttrItemKind::Unparsed(AttrArgs::Delimited(
                             DelimArgs {
                                 dspan: DelimSpan::from_single(self.span),
@@ -1091,6 +1091,7 @@ impl<'a> MethodDef<'a> {
                 ident: method_ident,
                 generics: fn_generics,
                 contract: None,
+                spec: None,
                 body: Some(body_block),
                 define_opaque: None,
                 eii_impls: ThinVec::new(),

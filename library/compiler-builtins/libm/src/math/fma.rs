@@ -104,7 +104,7 @@ mod tests {
             ),
             (
                 // FIXME: we raise underflow but this should only be inexact (based on C and
-                // `redox_apfloat`).
+                // `rustc_apfloat`).
                 hf64!("0x1.0p-1070"),
                 hf64!("0x1.0p-1070"),
                 hf64!("-0x1.0p-1022"),

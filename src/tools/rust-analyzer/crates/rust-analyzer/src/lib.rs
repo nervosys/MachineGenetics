@@ -14,7 +14,7 @@
 #[cfg(feature = "in-rust-tree")]
 extern crate redox_driver as _;
 
-extern crate ra_ap_redox_type_ir as redox_type_ir;
+extern crate ra_ap_rustc_type_ir as redox_type_ir;
 
 /*
     If you bump this, grep for `FIXME(MINIMUM_SUPPORTED_TOOLCHAIN_VERSION)` to check for old support code we can drop

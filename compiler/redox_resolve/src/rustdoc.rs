@@ -364,7 +364,7 @@ pub fn inner_docs(attrs: &[impl AttributeExt]) -> bool {
     true
 }
 
-/// Has `#[redox_doc_primitive]` or `#[doc(keyword)]` or `#[doc(attribute)]`.
+/// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]` or `#[doc(attribute)]`.
 pub fn has_primitive_or_keyword_or_attribute_docs(attrs: &[impl AttributeExt]) -> bool {
     for attr in attrs {
         if attr.is_redox_doc_primitive() || attr.is_doc_keyword_or_attribute() {

@@ -284,10 +284,10 @@ impl Versions {
     ) -> Result<String, Error> {
         let component_name = package.tarball_component_name();
         let version = match self.channel.as_str() {
-            "stable" => self.redox_version().into(),
+            "stable" => self.rustc_version().into(),
             "beta" => "beta".into(),
             "nightly" => "nightly".into(),
-            _ => format!("{}-dev", self.redox_version()),
+            _ => format!("{}-dev", self.rustc_version()),
         };
 
         if package.target_independent() {
@@ -301,7 +301,7 @@ impl Versions {
         self.archive_name(package, target, "tar.gz")
     }
 
-    pub(crate) fn redox_version(&self) -> &str {
+    pub(crate) fn rustc_version(&self) -> &str {
         const RUSTC_VERSION: &str = include_str!("../../../version");
         RUSTC_VERSION.trim()
     }

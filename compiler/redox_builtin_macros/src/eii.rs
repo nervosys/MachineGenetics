@@ -29,7 +29,7 @@ use crate::errors::{
 ///     fn panic_handler();
 /// }
 ///
-/// #[redox_builtin_macro(eii_shared_macro)]
+/// #[rustc_builtin_macro(eii_shared_macro)]
 /// #[eii_declaration(panic_handler)]
 /// macro panic_handler() {}
 /// ```
@@ -336,10 +336,10 @@ fn generate_attribute_macro_to_implement(
     macro_attrs.extend_from_slice(attrs_from_decl);
 
     // Avoid "missing stability attribute" errors for eiis in std. See #146993.
-    macro_attrs.push(ecx.attr_name_value_str(sym::redox_macro_transparency, sym::semiopaque, span));
+    macro_attrs.push(ecx.attr_name_value_str(sym::rustc_macro_transparency, sym::semiopaque, span));
 
     // #[builtin_macro(eii_shared_macro)]
-    macro_attrs.push(ecx.attr_nested_word(sym::redox_builtin_macro, sym::eii_shared_macro, span));
+    macro_attrs.push(ecx.attr_nested_word(sym::rustc_builtin_macro, sym::eii_shared_macro, span));
 
     // cant use ecx methods here to construct item since we need it to be public
     Box::new(ast::Item {

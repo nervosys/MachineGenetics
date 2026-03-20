@@ -736,8 +736,8 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 ///   implicitly within the `ImplicitCtxt`. Explicit access is preferred when
 ///   possible.
 #[derive(Copy, Clone)]
-#[redox_diagnostic_item = "TyCtxt"]
-#[redox_pass_by_value]
+#[rustc_diagnostic_item = "TyCtxt"]
+#[rustc_pass_by_value]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }

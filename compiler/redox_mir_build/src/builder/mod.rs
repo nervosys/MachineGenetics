@@ -22,8 +22,8 @@
 
 use itertools::Itertools;
 use redox_abi::{ExternAbi, FieldIdx};
-use redox_apfloat::Float;
-use redox_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use redox_data_structures::fx::FxHashMap;
 use redox_data_structures::sorted_map::SortedIndexMultiMap;
 use redox_errors::ErrorGuaranteed;

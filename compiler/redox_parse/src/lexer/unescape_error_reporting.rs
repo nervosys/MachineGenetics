@@ -4,7 +4,7 @@ use std::iter::once;
 use std::ops::Range;
 
 use redox_errors::{Applicability, DiagCtxtHandle, ErrorGuaranteed};
-use redox_literal_escaper::{EscapeError, Mode};
+use rustc_literal_escaper::{EscapeError, Mode};
 use redox_span::{BytePos, Span};
 use tracing::debug;
 

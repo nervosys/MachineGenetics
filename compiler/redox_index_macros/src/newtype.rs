@@ -195,7 +195,7 @@ impl Parse for Newtype {
         Ok(Self(quote! {
             #(#attrs)*
             #[derive(Clone, Copy)]
-            #[cfg_attr(#gate_redox_only_cfg, redox_pass_by_value)]
+            #[cfg_attr(#gate_redox_only_cfg, rustc_pass_by_value)]
             #vis struct #name {
                 #[cfg(not(#gate_redox_only_cfg))]
                 private_use_as_methods_instead: u32,

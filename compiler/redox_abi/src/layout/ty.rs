@@ -13,7 +13,7 @@ use crate::{
 // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
-#[redox_pass_by_value]
+#[rustc_pass_by_value]
 pub struct Layout<'a>(pub Interned<'a, LayoutData<FieldIdx, VariantIdx>>);
 
 impl<'a> fmt::Debug for Layout<'a> {
@@ -229,7 +229,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// If this method returns `true`, then this type should always have a `PassMode` of
     /// `Indirect { on_stack: false, .. }` when being used as the argument type of a function with a
     /// non-Rustic ABI (this is true for structs annotated with the
-    /// `#[redox_pass_indirectly_in_non_rustic_abis]` attribute).
+    /// `#[rustc_pass_indirectly_in_non_rustic_abis]` attribute).
     ///
     /// This is used to replicate some of the behaviour of C array-to-pointer decay; however unlike
     /// C any changes the caller makes to the passed value will not be reflected in the callee, so

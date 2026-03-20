@@ -3817,6 +3817,45 @@ pub struct TraitImplHeader {
     pub trait_ref: TraitRef,
 }
 
+// ── Spec blocks (canonical mode) ───────────────────────────────────────
+
+/// A `spec { ... }` block containing formal specification clauses.
+///
+/// E.g.:
+/// ```text
+/// spec {
+///     @req(x > 0)
+///     @ens(result > x)
+///     @perf(O(n))
+///     @fx(io, net)
+/// }
+/// ```
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct SpecBlock {
+    pub clauses: ThinVec<SpecClause>,
+    pub span: Span,
+}
+
+/// The kind of a spec clause inside a `spec { ... }` block.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum SpecClauseKind {
+    /// `@req(expr)` — precondition.
+    Requires(Box<Expr>),
+    /// `@ens(expr)` — postcondition.
+    Ensures(Box<Expr>),
+    /// `@perf(expr)` — asymptotic cost bound.
+    Perf(Box<Expr>),
+    /// `@fx(ident, ident, ...)` — declared effects.
+    Effects(ThinVec<Ident>),
+}
+
+/// A single clause in a `spec { ... }` block.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct SpecClause {
+    pub kind: SpecClauseKind,
+    pub span: Span,
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Default, Walkable)]
 pub struct FnContract {
     /// Declarations of variables accessible both in the `requires` and
@@ -3833,6 +3872,7 @@ pub struct Fn {
     pub generics: Generics,
     pub sig: FnSig,
     pub contract: Option<Box<FnContract>>,
+    pub spec: Option<Box<SpecBlock>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
     pub body: Option<Box<Block>>,
 
@@ -4274,7 +4314,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 192);
+    static_assert_size!(Fn, 200);
     static_assert_size!(ForeignItem, 80);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

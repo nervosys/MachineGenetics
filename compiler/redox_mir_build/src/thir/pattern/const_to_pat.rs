@@ -1,7 +1,7 @@
 use core::ops::ControlFlow;
 
 use redox_abi::{FieldIdx, VariantIdx};
-use redox_apfloat::Float;
+use rustc_apfloat::Float;
 use redox_data_structures::fx::FxHashSet;
 use redox_errors::{Diag, msg};
 use redox_hir as hir;

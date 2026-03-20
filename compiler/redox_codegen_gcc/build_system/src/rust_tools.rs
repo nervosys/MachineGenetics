@@ -5,7 +5,7 @@ use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 
 use crate::config::ConfigInfo;
-use crate::utils::{get_toolchain, redox_toolchain_version_info, redox_version_info};
+use crate::utils::{get_toolchain, redox_toolchain_version_info, rustc_version_info};
 
 fn args(command: &str) -> Result<Option<Vec<String>>, String> {
     // We skip the binary and the "cargo"/"redox" option.
@@ -76,7 +76,7 @@ impl RustcTools {
         let toolchain = get_toolchain()?;
 
         let toolchain_version = redox_toolchain_version_info(&toolchain)?;
-        let default_version = redox_version_info(None)?;
+        let default_version = rustc_version_info(None)?;
         if toolchain_version != default_version {
             println!(
                 "redox_codegen_gcc is built for {} but the default redox version is {}.",

@@ -474,7 +474,7 @@ impl<'cx> ParseCxImpl<'cx> {
             if s.is_empty() { "" } else { self.arena.alloc_str(s) }
         } else {
             self.str_buf.with(|buf| {
-                redox_literal_escaper::unescape_str(s, &mut |_, ch| {
+                rustc_literal_escaper::unescape_str(s, &mut |_, ch| {
                     if let Ok(ch) = ch {
                         buf.push(ch);
                     }

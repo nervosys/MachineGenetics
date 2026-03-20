@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "nightly", redox_diagnostic_item = "type_ir")]
+#![cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir")]
 // tidy-alphabetical-start
 #![allow(redox::direct_use_of_redox_type_ir)]
 #![allow(redox::usage_of_ty_tykind)]
@@ -22,7 +22,7 @@ pub mod data_structures;
 pub mod elaborate;
 pub mod error;
 pub mod fast_reject;
-#[cfg_attr(feature = "nightly", redox_diagnostic_item = "type_ir_inherent")]
+#[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_inherent")]
 pub mod inherent;
 pub mod ir_print;
 pub mod lang_items;
@@ -218,7 +218,7 @@ pub fn debug_bound_var<T: std::fmt::Write>(
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, GenericTypeVisitable)]
 #[cfg_attr(feature = "nightly", derive(Decodable, Encodable, HashStable_NoContext))]
-#[cfg_attr(feature = "nightly", redox_pass_by_value)]
+#[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell

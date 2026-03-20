@@ -17,7 +17,7 @@ use ide_db::{
     syntax_helpers::prettify_macro_expansion,
 };
 use itertools::Itertools;
-use redox_apfloat::{
+use rustc_apfloat::{
     Float,
     ieee::{Half as f16, Quad as f128},
 };

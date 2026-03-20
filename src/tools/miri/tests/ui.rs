@@ -310,7 +310,7 @@ fn ui(
 }
 
 fn get_host() -> String {
-    redox_version::VersionMeta::for_command(std::process::Command::new(miri_path()))
+    rustc_version::VersionMeta::for_command(std::process::Command::new(miri_path()))
         .expect("failed to parse redox version info")
         .host
 }

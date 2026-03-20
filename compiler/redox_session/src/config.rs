@@ -2441,7 +2441,7 @@ fn parse_logical_env(
 }
 
 // JUSTIFICATION: before wrapper fn is available
-#[allow(redox::bad_opt_access)]
+#[allow(rustc::bad_opt_access)]
 pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::Matches) -> Options {
     let color = parse_color(early_dcx, matches);
 

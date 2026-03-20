@@ -60,7 +60,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSkipDuringMethodDispatchParser 
 
 pub(crate) struct RustcParenSugarParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcParenSugarParser {
-    const PATH: &[Symbol] = &[sym::redox_paren_sugar];
+    const PATH: &[Symbol] = &[sym::rustc_paren_sugar];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcParenSugar;
@@ -83,7 +83,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for MarkerParser {
 
 pub(crate) struct RustcDenyExplicitImplParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDenyExplicitImplParser {
-    const PATH: &[Symbol] = &[sym::redox_deny_explicit_impl];
+    const PATH: &[Symbol] = &[sym::rustc_deny_explicit_impl];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcDenyExplicitImpl;
@@ -101,7 +101,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDynIncompatibleTraitParser {
 
 pub(crate) struct RustcSpecializationTraitParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcSpecializationTraitParser {
-    const PATH: &[Symbol] = &[sym::redox_specialization_trait];
+    const PATH: &[Symbol] = &[sym::rustc_specialization_trait];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcSpecializationTrait;
@@ -109,7 +109,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcSpecializationTraitParser {
 
 pub(crate) struct RustcUnsafeSpecializationMarkerParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcUnsafeSpecializationMarkerParser {
-    const PATH: &[Symbol] = &[sym::redox_unsafe_specialization_marker];
+    const PATH: &[Symbol] = &[sym::rustc_unsafe_specialization_marker];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcUnsafeSpecializationMarker;
@@ -119,7 +119,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcUnsafeSpecializationMarkerParse
 
 pub(crate) struct RustcCoinductiveParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcCoinductiveParser {
-    const PATH: &[Symbol] = &[sym::redox_coinductive];
+    const PATH: &[Symbol] = &[sym::rustc_coinductive];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcCoinductive;
@@ -127,7 +127,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcCoinductiveParser {
 
 pub(crate) struct RustcAllowIncoherentImplParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcAllowIncoherentImplParser {
-    const PATH: &[Symbol] = &[sym::redox_allow_incoherent_impl];
+    const PATH: &[Symbol] = &[sym::rustc_allow_incoherent_impl];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Method(MethodKind::Inherent))]);

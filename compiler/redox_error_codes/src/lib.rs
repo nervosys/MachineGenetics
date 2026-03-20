@@ -662,9 +662,9 @@ macro_rules! error_codes {
 //  E0489, // type/lifetime parameter not in scope here
 //  E0490, // removed: unreachable
 //  E0526, // shuffle indices are not constant
-//  E0540, // multiple redox_deprecated attributes
+//  E0540, // multiple rustc_deprecated attributes
 //  E0548, // replaced with a generic attribute input check
-//  E0553, // multiple redox_const_unstable attributes
+//  E0553, // multiple rustc_const_unstable attributes
 //  E0555, // replaced with a generic attribute input check
 //  E0558, // replaced with a generic attribute input check
 //  E0563, // cannot determine a type for this `impl Trait` removed in 6383de15
@@ -674,8 +674,8 @@ macro_rules! error_codes {
 //  E0611, // merged into E0616
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
-//  E0629, // missing 'feature' (redox_const_unstable)
-//  E0630, // redox_const_unstable attribute must be paired with stable/unstable
+//  E0629, // missing 'feature' (rustc_const_unstable)
+//  E0630, // rustc_const_unstable attribute must be paired with stable/unstable
 //         // attribute
 //  E0645, // trait aliases not finished
 //  E0694, // an unknown tool name found in scoped attributes

@@ -442,7 +442,7 @@ fn build_error_for_const_call<'tcx>(
     err
 }
 
-/// A call to an `#[unstable]` const fn, `#[redox_const_unstable]` function or trait.
+/// A call to an `#[unstable]` const fn, `#[rustc_const_unstable]` function or trait.
 ///
 /// Contains the name of the feature that would allow the use of this function/trait.
 #[derive(Debug)]

@@ -400,14 +400,14 @@ fn adt_consider_insignificant_dtor<'tcx>(
             // In some cases like `std::collections::HashMap` where the struct is a wrapper around
             // a type that is a Drop type, and the wrapped type (eg: `hashbrown::HashMap`) lies
             // outside stdlib, we might choose to still annotate the wrapper (std HashMap) with
-            // `redox_insignificant_dtor`, even if the type itself doesn't have a `Drop` impl.
+            // `rustc_insignificant_dtor`, even if the type itself doesn't have a `Drop` impl.
             Some(DtorType::Insignificant)
         } else if adt_def.destructor(tcx).is_some() {
             // There is a Drop impl and the type isn't marked insignificant, therefore Drop must be
             // significant.
             Some(DtorType::Significant)
         } else {
-            // No destructor found nor the type is annotated with `redox_insignificant_dtor`, we
+            // No destructor found nor the type is annotated with `rustc_insignificant_dtor`, we
             // treat this as the simple case of Drop impl for type.
             None
         }

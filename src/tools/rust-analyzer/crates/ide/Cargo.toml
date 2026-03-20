@@ -26,7 +26,7 @@ dot.workspace = true
 smallvec.workspace = true
 triomphe.workspace = true
 nohash-hasher.workspace = true
-redox_apfloat = "0.2.3"
+rustc_apfloat = "0.2.3"
 
 # local deps
 cfg.workspace = true

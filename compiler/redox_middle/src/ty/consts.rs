@@ -27,7 +27,7 @@ pub type UnevaluatedConst<'tcx> = ir::UnevaluatedConst<TyCtxt<'tcx>>;
 redox_data_structures::static_assert_size!(ConstKind<'_>, 24);
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
-#[redox_pass_by_value]
+#[rustc_pass_by_value]
 pub struct Const<'tcx>(pub(super) Interned<'tcx, WithCachedTypeInfo<ConstKind<'tcx>>>);
 
 impl<'tcx> redox_type_ir::inherent::IntoKind for Const<'tcx> {

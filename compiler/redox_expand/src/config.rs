@@ -74,7 +74,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                 sess.dcx().emit_err(FeatureRemoved {
                     span: feature_ident.span,
                     reason: f.reason.map(|reason| FeatureRemovedReason { reason }),
-                    removed_redox_version: f.feature.since,
+                    removed_rustc_version: f.feature.since,
                     pull_note,
                 });
                 continue;

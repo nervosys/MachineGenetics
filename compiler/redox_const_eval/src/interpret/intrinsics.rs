@@ -7,7 +7,7 @@ mod simd;
 use std::assert_matches;
 
 use redox_abi::{FieldIdx, HasDataLayout, Size, VariantIdx};
-use redox_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use redox_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use redox_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use redox_middle::ty::layout::TyAndLayout;
@@ -583,98 +583,98 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::floorf16 => self.float_round_intrinsic::<Half>(
                 args,
                 dest,
-                redox_apfloat::Round::TowardNegative,
+                rustc_apfloat::Round::TowardNegative,
             )?,
             sym::floorf32 => self.float_round_intrinsic::<Single>(
                 args,
                 dest,
-                redox_apfloat::Round::TowardNegative,
+                rustc_apfloat::Round::TowardNegative,
             )?,
             sym::floorf64 => self.float_round_intrinsic::<Double>(
                 args,
                 dest,
-                redox_apfloat::Round::TowardNegative,
+                rustc_apfloat::Round::TowardNegative,
             )?,
             sym::floorf128 => self.float_round_intrinsic::<Quad>(
                 args,
                 dest,
-                redox_apfloat::Round::TowardNegative,
+                rustc_apfloat::Round::TowardNegative,
             )?,
 
             sym::ceilf16 => self.float_round_intrinsic::<Half>(
                 args,
                 dest,
-                redox_apfloat::Round::TowardPositive,
+                rustc_apfloat::Round::TowardPositive,
             )?,
             sym::ceilf32 => self.float_round_intrinsic::<Single>(
                 args,
                 dest,
-                redox_apfloat::Round::TowardPositive,
+                rustc_apfloat::Round::TowardPositive,
             )?,
             sym::ceilf64 => self.float_round_intrinsic::<Double>(
                 args,
                 dest,
-                redox_apfloat::Round::TowardPositive,
+                rustc_apfloat::Round::TowardPositive,
             )?,
             sym::ceilf128 => self.float_round_intrinsic::<Quad>(
                 args,
                 dest,
-                redox_apfloat::Round::TowardPositive,
+                rustc_apfloat::Round::TowardPositive,
             )?,
 
             sym::truncf16 => {
-                self.float_round_intrinsic::<Half>(args, dest, redox_apfloat::Round::TowardZero)?
+                self.float_round_intrinsic::<Half>(args, dest, rustc_apfloat::Round::TowardZero)?
             }
             sym::truncf32 => {
-                self.float_round_intrinsic::<Single>(args, dest, redox_apfloat::Round::TowardZero)?
+                self.float_round_intrinsic::<Single>(args, dest, rustc_apfloat::Round::TowardZero)?
             }
             sym::truncf64 => {
-                self.float_round_intrinsic::<Double>(args, dest, redox_apfloat::Round::TowardZero)?
+                self.float_round_intrinsic::<Double>(args, dest, rustc_apfloat::Round::TowardZero)?
             }
             sym::truncf128 => {
-                self.float_round_intrinsic::<Quad>(args, dest, redox_apfloat::Round::TowardZero)?
+                self.float_round_intrinsic::<Quad>(args, dest, rustc_apfloat::Round::TowardZero)?
             }
 
             sym::roundf16 => self.float_round_intrinsic::<Half>(
                 args,
                 dest,
-                redox_apfloat::Round::NearestTiesToAway,
+                rustc_apfloat::Round::NearestTiesToAway,
             )?,
             sym::roundf32 => self.float_round_intrinsic::<Single>(
                 args,
                 dest,
-                redox_apfloat::Round::NearestTiesToAway,
+                rustc_apfloat::Round::NearestTiesToAway,
             )?,
             sym::roundf64 => self.float_round_intrinsic::<Double>(
                 args,
                 dest,
-                redox_apfloat::Round::NearestTiesToAway,
+                rustc_apfloat::Round::NearestTiesToAway,
             )?,
             sym::roundf128 => self.float_round_intrinsic::<Quad>(
                 args,
                 dest,
-                redox_apfloat::Round::NearestTiesToAway,
+                rustc_apfloat::Round::NearestTiesToAway,
             )?,
 
             sym::round_ties_even_f16 => self.float_round_intrinsic::<Half>(
                 args,
                 dest,
-                redox_apfloat::Round::NearestTiesToEven,
+                rustc_apfloat::Round::NearestTiesToEven,
             )?,
             sym::round_ties_even_f32 => self.float_round_intrinsic::<Single>(
                 args,
                 dest,
-                redox_apfloat::Round::NearestTiesToEven,
+                rustc_apfloat::Round::NearestTiesToEven,
             )?,
             sym::round_ties_even_f64 => self.float_round_intrinsic::<Double>(
                 args,
                 dest,
-                redox_apfloat::Round::NearestTiesToEven,
+                rustc_apfloat::Round::NearestTiesToEven,
             )?,
             sym::round_ties_even_f128 => self.float_round_intrinsic::<Quad>(
                 args,
                 dest,
-                redox_apfloat::Round::NearestTiesToEven,
+                rustc_apfloat::Round::NearestTiesToEven,
             )?,
             sym::fmaf16 => self.float_muladd_intrinsic::<Half>(args, dest, MulAddType::Fused)?,
             sym::fmaf32 => self.float_muladd_intrinsic::<Single>(args, dest, MulAddType::Fused)?,
@@ -1027,7 +1027,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         op: MinMax,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>>
     where
-        F: redox_apfloat::Float + redox_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
         let a: F = a.to_float()?;
         let b: F = b.to_float()?;
@@ -1055,7 +1055,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()>
     where
-        F: redox_apfloat::Float + redox_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
         let res =
             self.float_minmax::<F>(self.read_scalar(&args[0])?, self.read_scalar(&args[1])?, op)?;
@@ -1069,7 +1069,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()>
     where
-        F: redox_apfloat::Float + redox_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
         let a: F = self.read_scalar(&args[0])?.to_float()?;
         let b: F = self.read_scalar(&args[1])?.to_float()?;
@@ -1084,7 +1084,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()>
     where
-        F: redox_apfloat::Float + redox_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
         let x: F = self.read_scalar(&args[0])?.to_float()?;
         // bitwise, no NaN adjustments
@@ -1095,10 +1095,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn float_round<F>(
         &mut self,
         x: Scalar<M::Provenance>,
-        mode: redox_apfloat::Round,
+        mode: rustc_apfloat::Round,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>>
     where
-        F: redox_apfloat::Float + redox_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
         let x: F = x.to_float()?;
         let res = x.round_to_integral(mode).value;
@@ -1110,10 +1110,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &mut self,
         args: &[OpTy<'tcx, M::Provenance>],
         dest: &PlaceTy<'tcx, M::Provenance>,
-        mode: redox_apfloat::Round,
+        mode: rustc_apfloat::Round,
     ) -> InterpResult<'tcx, ()>
     where
-        F: redox_apfloat::Float + redox_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
         let res = self.float_round::<F>(self.read_scalar(&args[0])?, mode)?;
         self.write_scalar(res, dest)?;
@@ -1128,7 +1128,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         typ: MulAddType,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>>
     where
-        F: redox_apfloat::Float + redox_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
         let a: F = a.to_float()?;
         let b: F = b.to_float()?;
@@ -1148,7 +1148,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         typ: MulAddType,
     ) -> InterpResult<'tcx, ()>
     where
-        F: redox_apfloat::Float + redox_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
         let a = self.read_scalar(&args[0])?;
         let b = self.read_scalar(&args[1])?;
@@ -1166,14 +1166,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         src: &ImmTy<'tcx, M::Provenance>,
         cast_to: TyAndLayout<'tcx>,
-        round: redox_apfloat::Round,
+        round: rustc_apfloat::Round,
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx, M::Provenance>>> {
-        fn float_to_int_inner<'tcx, F: redox_apfloat::Float, M: Machine<'tcx>>(
+        fn float_to_int_inner<'tcx, F: rustc_apfloat::Float, M: Machine<'tcx>>(
             ecx: &InterpCx<'tcx, M>,
             src: F,
             cast_to: TyAndLayout<'tcx>,
-            round: redox_apfloat::Round,
-        ) -> (Scalar<M::Provenance>, redox_apfloat::Status) {
+            round: rustc_apfloat::Round,
+        ) -> (Scalar<M::Provenance>, rustc_apfloat::Status) {
             let int_size = cast_to.layout.size;
             match cast_to.ty.kind() {
                 // Unsigned
@@ -1207,9 +1207,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
 
         if status.intersects(
-            redox_apfloat::Status::INVALID_OP
-                | redox_apfloat::Status::OVERFLOW
-                | redox_apfloat::Status::UNDERFLOW,
+            rustc_apfloat::Status::INVALID_OP
+                | rustc_apfloat::Status::OVERFLOW
+                | rustc_apfloat::Status::UNDERFLOW,
         ) {
             // Floating point value is NaN (flagged with INVALID_OP) or outside the range
             // of values of the integer type (flagged with OVERFLOW or UNDERFLOW).

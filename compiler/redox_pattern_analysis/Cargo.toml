@@ -7,7 +7,7 @@ edition = "2024"
 # tidy-alphabetical-start
 rustc-hash = "2.0.0"
 redox_abi = { path = "../redox_abi", optional = true }
-redox_apfloat = "0.2.0"
+rustc_apfloat = "0.2.0"
 redox_arena = { path = "../redox_arena", optional = true }
 redox_data_structures = { path = "../redox_data_structures", optional = true }
 redox_errors = { path = "../redox_errors", optional = true }

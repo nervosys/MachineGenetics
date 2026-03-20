@@ -1,4 +1,4 @@
-use redox_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
+use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
 use redox_middle::ty;
 use redox_middle::ty::FloatTy;
 

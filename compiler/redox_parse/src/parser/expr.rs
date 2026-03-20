@@ -20,7 +20,7 @@ use redox_ast::{
 };
 use redox_data_structures::stack::ensure_sufficient_stack;
 use redox_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
-use redox_literal_escaper::unescape_char;
+use rustc_literal_escaper::unescape_char;
 use redox_session::errors::{ExprParenthesesNeeded, report_lit_error};
 use redox_session::lint::BuiltinLintDiag;
 use redox_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;

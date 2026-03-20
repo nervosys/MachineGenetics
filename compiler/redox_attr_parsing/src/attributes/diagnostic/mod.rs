@@ -26,7 +26,7 @@ pub(crate) mod on_unimplemented;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Mode {
-    /// `#[redox_on_unimplemented]`
+    /// `#[rustc_on_unimplemented]`
     RustcOnUnimplemented,
     /// `#[diagnostic::on_unimplemented]`
     DiagnosticOnUnimplemented,
@@ -244,7 +244,7 @@ fn parse_directive_items<'p, S: Stage>(
                     let condition = parse_condition(condition);
 
                     if items.len() < 2 {
-                        // Something like `#[redox_on_unimplemented(on(.., /* nothing */))]`
+                        // Something like `#[rustc_on_unimplemented(on(.., /* nothing */))]`
                         // There's a condition but no directive behind it, this is a mistake.
                         malformed!();
                     }
@@ -326,7 +326,7 @@ fn parse_arg(
     match arg.position {
         // Something like "hello {name}"
         Position::ArgumentNamed(name) => match (mode, Symbol::intern(name)) {
-            // Only `#[redox_on_unimplemented]` can use these
+            // Only `#[rustc_on_unimplemented]` can use these
             (Mode::RustcOnUnimplemented { .. }, sym::ItemContext) => FormatArg::ItemContext,
             (Mode::RustcOnUnimplemented { .. }, sym::This) => FormatArg::This,
             (Mode::RustcOnUnimplemented { .. }, sym::Trait) => FormatArg::Trait,
@@ -353,7 +353,7 @@ fn parse_arg(
     }
 }
 
-/// `#[redox_on_unimplemented]` and `#[diagnostic::...]` don't actually do anything
+/// `#[rustc_on_unimplemented]` and `#[diagnostic::...]` don't actually do anything
 /// with specifiers, so emit a warning if they are used.
 fn warn_on_format_spec(
     spec: &FormatSpec<'_>,
@@ -477,7 +477,7 @@ fn parse_filter(input: Symbol) -> FilterFormatString {
 
 #[derive(Diagnostic)]
 pub(crate) enum InvalidOnClause {
-    #[diag("empty `on`-clause in `#[redox_on_unimplemented]`", code = E0232)]
+    #[diag("empty `on`-clause in `#[rustc_on_unimplemented]`", code = E0232)]
     Empty {
         #[primary_span]
         #[label("empty `on`-clause here")]
@@ -522,7 +522,7 @@ pub(crate) enum InvalidOnClause {
 
 #[derive(Diagnostic)]
 #[diag("this attribute must have a value", code = E0232)]
-#[note("e.g. `#[redox_on_unimplemented(message=\"foo\")]`")]
+#[note("e.g. `#[rustc_on_unimplemented(message=\"foo\")]`")]
 pub(crate) struct NoValueInOnUnimplemented {
     #[primary_span]
     #[label("expected value here")]
@@ -531,6 +531,6 @@ pub(crate) struct NoValueInOnUnimplemented {
 
 #[derive(Diagnostic)]
 #[diag(
-    "using multiple `redox_on_unimplemented` (or mixing it with `diagnostic::on_unimplemented`) is not supported"
+    "using multiple `rustc_on_unimplemented` (or mixing it with `diagnostic::on_unimplemented`) is not supported"
 )]
 pub(crate) struct DupesNotAllowed;

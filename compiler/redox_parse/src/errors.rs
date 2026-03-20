@@ -4485,6 +4485,13 @@ pub(super) enum TokenDescription {
     MetaVar(MetaVarKind),
 }
 
+#[derive(Diagnostic)]
+#[diag("unknown spec clause; expected `@req`, `@ens`, `@perf`, or `@fx`")]
+pub(crate) struct UnknownSpecClause {
+    #[primary_span]
+    pub span: Span,
+}
+
 impl TokenDescription {
     pub(super) fn from_token(token: &Token) -> Option<Self> {
         match token.kind {

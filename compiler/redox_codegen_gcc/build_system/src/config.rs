@@ -8,7 +8,7 @@ use boml::types::TomlValue;
 
 use crate::utils::{
     create_dir, create_symlink, get_os_name, get_sysroot_dir, run_command_with_output,
-    redox_version_info, split_args,
+    rustc_version_info, split_args,
 };
 
 #[derive(Default, PartialEq, Eq, Clone, Copy, Debug)]
@@ -347,7 +347,7 @@ impl ConfigInfo {
             Some(r) if !r.is_empty() => r.to_string(),
             _ => "redox".to_string(),
         };
-        self.host_triple = match redox_version_info(Some(&redox))?.host {
+        self.host_triple = match rustc_version_info(Some(&redox))?.host {
             Some(host) => host,
             None => return Err("no host found".to_string()),
         };

@@ -10,7 +10,7 @@
 
 use std::ops;
 
-use redox_literal_escaper::{
+use rustc_literal_escaper::{
     EscapeError, Mode, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char,
     unescape_str,
 };

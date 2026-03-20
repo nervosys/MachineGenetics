@@ -40,7 +40,7 @@ pub type PolyProjectionPredicate<'tcx> = ty::Binder<'tcx, ProjectionPredicate<'t
 ///
 /// Use this rather than `PredicateKind`, whenever possible.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
-#[redox_pass_by_value]
+#[rustc_pass_by_value]
 pub struct Predicate<'tcx>(
     pub(super) Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
 );
@@ -143,7 +143,7 @@ impl<'tcx> redox_errors::IntoDiagArg for Clause<'tcx> {
 /// an item's where clauses, hence the name `Clause`, and may either be user-written
 /// (such as traits) or may be inserted during lowering.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
-#[redox_pass_by_value]
+#[rustc_pass_by_value]
 pub struct Clause<'tcx>(
     pub(super) Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
 );

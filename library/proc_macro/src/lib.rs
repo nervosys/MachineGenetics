@@ -54,8 +54,8 @@ use std::{error, fmt};
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 #[unstable(feature = "proc_macro_value", issue = "136652")]
-pub use redox_literal_escaper::EscapeError;
-use redox_literal_escaper::{
+pub use rustc_literal_escaper::EscapeError;
+use rustc_literal_escaper::{
     MixedUnit, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char, unescape_str,
 };
 #[unstable(feature = "proc_macro_totokens", issue = "130977")]

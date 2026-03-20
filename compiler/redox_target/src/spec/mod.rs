@@ -1957,7 +1957,7 @@ impl Arch {
         }
     }
 
-    /// Whether `#[redox_scalable_vector]` is supported for a target architecture
+    /// Whether `#[rustc_scalable_vector]` is supported for a target architecture
     pub fn supports_scalable_vectors(&self) -> bool {
         use Arch::*;
 
@@ -2208,7 +2208,7 @@ type StaticCow<T> = Cow<'static, T>;
 /// construction, all its fields logically belong to `Target` and available from `Target`
 /// through `Deref` impls.
 #[derive(PartialEq, Clone, Debug)]
-#[redox_lint_opt_ty]
+#[rustc_lint_opt_ty]
 pub struct TargetOptions {
     /// Used as the `target_endian` `cfg` variable. Defaults to little endian.
     pub endian: Endian,
@@ -2229,7 +2229,7 @@ pub struct TargetOptions {
     /// `llvm_floatabi`, and `redox_abi`.
     pub abi: Abi,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
-    #[redox_lint_opt_deny_field_access(
+    #[rustc_lint_opt_deny_field_access(
         "use `Target::is_like_*` instead of this field; see https://github.com/rust-lang/rust/issues/100343 for rationale"
     )]
     vendor: StaticCow<str>,

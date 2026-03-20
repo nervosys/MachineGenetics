@@ -87,7 +87,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [left, right, rounding] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                round_first::<redox_apfloat::ieee::Single>(this, left, right, rounding, dest)?;
+                round_first::<rustc_apfloat::ieee::Single>(this, left, right, rounding, dest)?;
             }
             // Used to implement the _mm_floor_ps, _mm_ceil_ps and _mm_round_ps
             // functions. Rounds the elements of `op` according to `rounding`.
@@ -95,7 +95,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [op, rounding] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                round_all::<redox_apfloat::ieee::Single>(this, op, rounding, dest)?;
+                round_all::<rustc_apfloat::ieee::Single>(this, op, rounding, dest)?;
             }
             // Used to implement the _mm_floor_sd, _mm_ceil_sd and _mm_round_sd
             // functions. Rounds the first element of `right` according to `rounding`
@@ -104,7 +104,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [left, right, rounding] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                round_first::<redox_apfloat::ieee::Double>(this, left, right, rounding, dest)?;
+                round_first::<rustc_apfloat::ieee::Double>(this, left, right, rounding, dest)?;
             }
             // Used to implement the _mm_floor_pd, _mm_ceil_pd and _mm_round_pd
             // functions. Rounds the elements of `op` according to `rounding`.
@@ -112,7 +112,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [op, rounding] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                round_all::<redox_apfloat::ieee::Double>(this, op, rounding, dest)?;
+                round_all::<rustc_apfloat::ieee::Double>(this, op, rounding, dest)?;
             }
             // Used to implement the _mm_minpos_epu16 function.
             // Find the minimum unsigned 16-bit integer in `op` and

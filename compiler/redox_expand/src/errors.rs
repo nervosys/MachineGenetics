@@ -145,14 +145,14 @@ pub(crate) struct MacroBodyStability {
 
 #[derive(Diagnostic)]
 #[diag("feature has been removed", code = E0557)]
-#[note("removed in {$removed_redox_version}{$pull_note}")]
+#[note("removed in {$removed_rustc_version}{$pull_note}")]
 pub(crate) struct FeatureRemoved<'a> {
     #[primary_span]
     #[label("feature has been removed")]
     pub span: Span,
     #[subdiagnostic]
     pub reason: Option<FeatureRemovedReason<'a>>,
-    pub removed_redox_version: &'a str,
+    pub removed_rustc_version: &'a str,
     pub pull_note: String,
 }
 

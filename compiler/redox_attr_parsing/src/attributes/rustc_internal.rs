@@ -19,7 +19,7 @@ use crate::session_diagnostics::{
 pub(crate) struct RustcMainParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcMainParser {
-    const PATH: &[Symbol] = &[sym::redox_main];
+    const PATH: &[Symbol] = &[sym::rustc_main];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcMain;
@@ -28,7 +28,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcMainParser {
 pub(crate) struct RustcMustImplementOneOfParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcMustImplementOneOfParser {
-    const PATH: &[Symbol] = &[sym::redox_must_implement_one_of];
+    const PATH: &[Symbol] = &[sym::rustc_must_implement_one_of];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
@@ -74,7 +74,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcMustImplementOneOfParser {
 pub(crate) struct RustcNeverReturnsNullPtrParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNeverReturnsNullPtrParser {
-    const PATH: &[Symbol] = &[sym::redox_never_returns_null_ptr];
+    const PATH: &[Symbol] = &[sym::rustc_never_returns_null_ptr];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -104,7 +104,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNoImplicitAutorefsParser {
 pub(crate) struct RustcLayoutScalarValidRangeStartParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStartParser {
-    const PATH: &[Symbol] = &[sym::redox_layout_scalar_valid_range_start];
+    const PATH: &[Symbol] = &[sym::rustc_layout_scalar_valid_range_start];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
@@ -119,7 +119,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStartPars
 pub(crate) struct RustcLayoutScalarValidRangeEndParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeEndParser {
-    const PATH: &[Symbol] = &[sym::redox_layout_scalar_valid_range_end];
+    const PATH: &[Symbol] = &[sym::rustc_layout_scalar_valid_range_end];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
@@ -134,7 +134,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeEndParser
 pub(crate) struct RustcLegacyConstGenericsParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLegacyConstGenericsParser {
-    const PATH: &[Symbol] = &[sym::redox_legacy_const_generics];
+    const PATH: &[Symbol] = &[sym::rustc_legacy_const_generics];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
@@ -178,7 +178,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLegacyConstGenericsParser {
 pub(crate) struct RustcInheritOverflowChecksParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcInheritOverflowChecksParser {
-    const PATH: &[Symbol] = &[sym::redox_inherit_overflow_checks];
+    const PATH: &[Symbol] = &[sym::rustc_inherit_overflow_checks];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -342,7 +342,7 @@ impl<S: Stage> AttributeParser<S> for RustcCguTestAttributeParser {
             },
         ),
         (
-            &[sym::redox_expected_cgu_reuse],
+            &[sym::rustc_expected_cgu_reuse],
             template!(List: &[r#"cfg = "...", module = "...", kind = "...""#]),
             |this, cx, args| {
                 this.items.extend(parse_cgu_fields(cx, args, true).map(|(cfg, module, kind)| {
@@ -414,7 +414,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDeprecatedSafe2024Parser {
 pub(crate) struct RustcConversionSuggestionParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcConversionSuggestionParser {
-    const PATH: &[Symbol] = &[sym::redox_conversion_suggestion];
+    const PATH: &[Symbol] = &[sym::rustc_conversion_suggestion];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -520,7 +520,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcNeverTypeOptionsParser {
 pub(crate) struct RustcTrivialFieldReadsParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcTrivialFieldReadsParser {
-    const PATH: &[Symbol] = &[sym::redox_trivial_field_reads];
+    const PATH: &[Symbol] = &[sym::rustc_trivial_field_reads];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcTrivialFieldReads;
@@ -529,7 +529,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcTrivialFieldReadsParser {
 pub(crate) struct RustcNoMirInlineParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNoMirInlineParser {
-    const PATH: &[Symbol] = &[sym::redox_no_mir_inline];
+    const PATH: &[Symbol] = &[sym::rustc_no_mir_inline];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -544,7 +544,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNoMirInlineParser {
 pub(crate) struct RustcLintQueryInstabilityParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {
-    const PATH: &[Symbol] = &[sym::redox_lint_query_instability];
+    const PATH: &[Symbol] = &[sym::rustc_lint_query_instability];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -661,7 +661,7 @@ impl<S: Stage> SingleAttributeParser<S> for LangParser {
 pub(crate) struct RustcHasIncoherentInherentImplsParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcHasIncoherentInherentImplsParser {
-    const PATH: &[Symbol] = &[sym::redox_has_incoherent_inherent_impls];
+    const PATH: &[Symbol] = &[sym::rustc_has_incoherent_inherent_impls];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Trait),
@@ -717,7 +717,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcOffloadKernelParser {
 pub(crate) struct RustcLayoutParser;
 
 impl<S: Stage> CombineAttributeParser<S> for RustcLayoutParser {
-    const PATH: &[Symbol] = &[sym::redox_layout];
+    const PATH: &[Symbol] = &[sym::rustc_layout];
 
     type Item = RustcLayoutType;
 
@@ -774,7 +774,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcLayoutParser {
 pub(crate) struct RustcMirParser;
 
 impl<S: Stage> CombineAttributeParser<S> for RustcMirParser {
-    const PATH: &[Symbol] = &[sym::redox_mir];
+    const PATH: &[Symbol] = &[sym::rustc_mir];
 
     type Item = RustcMirKind;
 
@@ -874,7 +874,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNonConstTraitMethodParser {
 pub(crate) struct RustcCleanParser;
 
 impl<S: Stage> CombineAttributeParser<S> for RustcCleanParser {
-    const PATH: &[Symbol] = &[sym::redox_clean];
+    const PATH: &[Symbol] = &[sym::rustc_clean];
 
     type Item = RustcCleanAttribute;
 
@@ -979,7 +979,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcCleanParser {
 pub(crate) struct RustcIfThisChangedParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcIfThisChangedParser {
-    const PATH: &[Symbol] = &[sym::redox_if_this_changed];
+    const PATH: &[Symbol] = &[sym::rustc_if_this_changed];
 
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
 
@@ -1040,7 +1040,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcIfThisChangedParser {
 pub(crate) struct RustcThenThisWouldNeedParser;
 
 impl<S: Stage> CombineAttributeParser<S> for RustcThenThisWouldNeedParser {
-    const PATH: &[Symbol] = &[sym::redox_then_this_would_need];
+    const PATH: &[Symbol] = &[sym::rustc_then_this_would_need];
     type Item = Ident;
 
     const CONVERT: ConvertFn<Self::Item> =
@@ -1094,7 +1094,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcThenThisWouldNeedParser {
 pub(crate) struct RustcInsignificantDtorParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcInsignificantDtorParser {
-    const PATH: &[Symbol] = &[sym::redox_insignificant_dtor];
+    const PATH: &[Symbol] = &[sym::rustc_insignificant_dtor];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Enum),
@@ -1107,7 +1107,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcInsignificantDtorParser {
 pub(crate) struct RustcEffectiveVisibilityParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcEffectiveVisibilityParser {
-    const PATH: &[Symbol] = &[sym::redox_effective_visibility];
+    const PATH: &[Symbol] = &[sym::rustc_effective_visibility];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Use),
@@ -1146,7 +1146,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcEffectiveVisibilityParser {
 pub(crate) struct RustcDiagnosticItemParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcDiagnosticItemParser {
-    const PATH: &[Symbol] = &[sym::redox_diagnostic_item];
+    const PATH: &[Symbol] = &[sym::rustc_diagnostic_item];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
@@ -1185,7 +1185,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDiagnosticItemParser {
 pub(crate) struct RustcDoNotConstCheckParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDoNotConstCheckParser {
-    const PATH: &[Symbol] = &[sym::redox_do_not_const_check];
+    const PATH: &[Symbol] = &[sym::rustc_do_not_const_check];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -1200,7 +1200,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDoNotConstCheckParser {
 pub(crate) struct RustcNonnullOptimizationGuaranteedParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNonnullOptimizationGuaranteedParser {
-    const PATH: &[Symbol] = &[sym::redox_nonnull_optimization_guaranteed];
+    const PATH: &[Symbol] = &[sym::rustc_nonnull_optimization_guaranteed];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNonnullOptimizationGuaranteed;
@@ -1274,7 +1274,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcStrictCoherenceParser {
 pub(crate) struct RustcReservationImplParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcReservationImplParser {
-    const PATH: &[Symbol] = &[sym::redox_reservation_impl];
+    const PATH: &[Symbol] = &[sym::rustc_reservation_impl];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets =
@@ -1309,7 +1309,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for PreludeImportParser {
 pub(crate) struct RustcDocPrimitiveParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcDocPrimitiveParser {
-    const PATH: &[Symbol] = &[sym::redox_doc_primitive];
+    const PATH: &[Symbol] = &[sym::rustc_doc_primitive];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Mod)]);

@@ -761,7 +761,7 @@ macro_rules! common_visitor_and_walkers {
         // This is only used by the MutVisitor. We include this symmetry here to make writing other
         // functions easier.
         $(${ignore($lt)}
-            #[expect(unused, redox::disallowed_pass_by_ref)]
+            #[expect(unused, rustc::disallowed_pass_by_ref)]
             #[inline]
         )?
         fn visit_span<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, span: &$($lt)? $($mut)? Span) -> V::Result {
@@ -930,7 +930,7 @@ macro_rules! common_visitor_and_walkers {
                     _ctxt,
                     // Visibility is visited as a part of the item.
                     _vis,
-                    Fn { defaultness, ident, sig, generics, contract, body, define_opaque, eii_impls },
+                    Fn { defaultness, ident, sig, generics, contract, spec: _, body, define_opaque, eii_impls },
                 ) => {
                     let FnSig { header, decl, span } = sig;
                     visit_visitable!($($mut)? vis,

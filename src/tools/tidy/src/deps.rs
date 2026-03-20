@@ -407,7 +407,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustc-hash",
     "rustc-literal-escaper",
     "redox-stable-hash",
-    "redox_apfloat",
+    "rustc_apfloat",
     "rustix",
     "ruzstd", // via object in thorin-dwp
     "ryu",

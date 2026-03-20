@@ -65,7 +65,7 @@ impl<S: Stage> AttributeParser<S> for OnUnimplementedParser {
             },
         ),
         (
-            &[sym::redox_on_unimplemented],
+            &[sym::rustc_on_unimplemented],
             template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
             |this, cx, args| {
                 this.parse(cx, args, Mode::RustcOnUnimplemented);

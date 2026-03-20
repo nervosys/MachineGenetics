@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use redox_abi::{Align, Size};
-use redox_apfloat::{Float, FloatConvert};
+use rustc_apfloat::{Float, FloatConvert};
 use redox_middle::query::TyCtxtAt;
 use redox_middle::ty::Ty;
 use redox_middle::ty::layout::TyAndLayout;

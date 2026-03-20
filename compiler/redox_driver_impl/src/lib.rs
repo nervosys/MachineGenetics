@@ -577,9 +577,9 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
                                 rlink_version,
                             })
                         }
-                        CodegenErrors::RustcVersionMismatch { redox_version } => {
+                        CodegenErrors::RustcVersionMismatch { rustc_version } => {
                             dcx.emit_fatal(RLinkRustcVersionMismatch {
-                                redox_version,
+                                rustc_version,
                                 current_version: sess.cfg_version,
                             })
                         }

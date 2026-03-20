@@ -236,7 +236,7 @@ use tracing::{debug, info};
 
 use crate::creader::{Library, MetadataLoader};
 use crate::errors;
-use crate::rmeta::{METADATA_HEADER, MetadataBlob, redox_version};
+use crate::rmeta::{METADATA_HEADER, MetadataBlob, rustc_version};
 
 #[derive(Clone)]
 pub(crate) struct CrateLocator<'a> {
@@ -924,7 +924,7 @@ fn get_metadata_section<'p>(
         ))),
         Err(Some(found_version)) => {
             return Err(MetadataError::VersionMismatch {
-                expected_version: redox_version(cfg_version),
+                expected_version: rustc_version(cfg_version),
                 found_version,
             });
         }
@@ -1167,7 +1167,7 @@ impl CrateError {
                         crate_name,
                         add_info,
                         found_crates,
-                        redox_version: redox_version(sess.cfg_version),
+                        rustc_version: rustc_version(sess.cfg_version),
                     });
                 } else if !locator.crate_rejections.via_invalid.is_empty() {
                     let mut crate_rejections = Vec::new();

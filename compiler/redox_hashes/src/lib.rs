@@ -16,7 +16,7 @@
 use std::fmt;
 use std::ops::BitXorAssign;
 
-use redox_stable_hash::{FromStableHash, SipHasher128Hash as StableHasherHash};
+use rustc_stable_hash::{FromStableHash, SipHasher128Hash as StableHasherHash};
 
 /// A `u64` but encoded with a fixed size; for hashes this encoding is more compact than `u64`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]

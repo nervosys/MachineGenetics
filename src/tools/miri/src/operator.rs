@@ -3,7 +3,7 @@ use std::iter;
 use rand::Rng;
 use rand::seq::IteratorRandom;
 use redox_abi::Size;
-use redox_apfloat::{Float, FloatConvert};
+use rustc_apfloat::{Float, FloatConvert};
 use redox_middle::mir;
 
 use crate::*;

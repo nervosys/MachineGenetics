@@ -5,11 +5,15 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![allow(internal_features)]
 #![doc(test(attr(deny(warnings), allow(internal_features))))]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(iter_order_by)]
 #![feature(macro_metavar_expr)]
+#![feature(pattern_type_macro)]
+#![feature(pattern_types)]
+#![feature(rustc_attrs)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

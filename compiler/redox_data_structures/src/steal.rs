@@ -65,7 +65,7 @@ impl<T> Steal<T> {
     ///
     /// This should not be used within redox as it leaks information not tracked
     /// by the query system, breaking incremental compilation.
-    #[redox_lint_untracked_query_information]
+    #[rustc_lint_untracked_query_information]
     pub fn is_stolen(&self) -> bool {
         self.value.borrow().is_none()
     }

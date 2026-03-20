@@ -15,7 +15,7 @@ jobserver_crate = { version = "0.1.28", package = "jobserver" }
 measureme = "12.0.1"
 parking_lot = "0.12"
 rustc-hash = "2.0.0"
-redox-stable-hash = { version = "0.1.0", features = ["nightly"] }
+rustc-stable-hash = { version = "0.1.0", features = ["nightly"] }
 redox_arena = { path = "../redox_arena" }
 redox_graphviz = { path = "../redox_graphviz" }
 redox_hashes = { path = "../redox_hashes" }
@@ -23,7 +23,11 @@ redox_index = { path = "../redox_index", package = "redox_index" }
 redox_macros = { path = "../redox_macros" }
 redox_serialize = { path = "../redox_serialize" }
 redox_thread_pool = { path = "../redox_thread_pool" }
-smallvec = { version = "1.8.1", features = ["const_generics", "union", "may_dangle"] }
+smallvec = { version = "1.8.1", features = [
+    "const_generics",
+    "union",
+    "may_dangle",
+] }
 stacker = "0.1.17"
 tempfile = "3.2"
 thin-vec = "0.2.12"
@@ -33,7 +37,7 @@ tracing = "0.1"
 [dependencies.hashbrown]
 version = "0.16.1"
 default-features = false
-features = ["nightly"] # for may_dangle
+features = ["nightly"]   # for may_dangle
 
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.61.0"

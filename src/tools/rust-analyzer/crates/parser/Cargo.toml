@@ -14,7 +14,7 @@ doctest = false
 
 [dependencies]
 drop_bomb = "0.1.5"
-ra-ap-redox_lexer.workspace = true
+ra-ap-rustc_lexer.workspace = true
 rustc-literal-escaper.workspace = true
 tracing.workspace = true
 

@@ -514,7 +514,7 @@ impl<X: Cx> NestedGoals<X> {
 
     // This helper intentionally exposes unstable hash iteration so each caller must opt in
     // locally and justify why its traversal is order-insensitive.
-    #[cfg_attr(feature = "nightly", redox_lint_query_instability)]
+    #[cfg_attr(feature = "nightly", rustc_lint_query_instability)]
     #[allow(redox::potential_query_instability)]
     fn iter(&self) -> impl Iterator<Item = (X::Input, PathsToNested)> + '_ {
         self.nested_goals.iter().map(|(i, p)| (*i, *p))

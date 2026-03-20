@@ -387,11 +387,11 @@ top_level_options!(
     /// `CodegenOptions`, think about how it influences incremental compilation. If in
     /// doubt, specify `[TRACKED]`, which is always "correct" but might lead to
     /// unnecessary re-compilation.
-    #[redox_lint_opt_ty]
+    #[rustc_lint_opt_ty]
     pub struct Options {
         /// The crate config requested for the session, which may be combined
         /// with additional crate configurations during the compile process.
-        #[redox_lint_opt_deny_field_access("use `TyCtxt::crate_types` instead of this field")]
+        #[rustc_lint_opt_deny_field_access("use `TyCtxt::crate_types` instead of this field")]
         crate_types: Vec<CrateType> [TRACKED],
         optimize: OptLevel [TRACKED],
         /// Include the `debug_assertions` flag in dependency tracking, since it
@@ -421,7 +421,7 @@ top_level_options!(
         assert_incr_state: Option<IncrementalStateAssertion> [UNTRACKED],
         /// Set by the `Config::hash_untracked_state` callback for custom
         /// drivers to invalidate the incremental cache
-        #[redox_lint_opt_deny_field_access("should only be used via `Config::hash_untracked_state`")]
+        #[rustc_lint_opt_deny_field_access("should only be used via `Config::hash_untracked_state`")]
         untracked_state_hash: Hash64 [TRACKED_NO_CRATE_HASH],
 
         unstable_opts: UnstableOptions [SUBSTRUCT UnstableOptionsTargetModifiers UnstableOptions],
@@ -447,9 +447,9 @@ top_level_options!(
         /// what redox was invoked with, but massaged a bit to agree with
         /// commands like `--emit llvm-ir` which they're often incompatible with
         /// if we otherwise use the defaults of redox.
-        #[redox_lint_opt_deny_field_access("use `Session::codegen_units` instead of this field")]
+        #[rustc_lint_opt_deny_field_access("use `Session::codegen_units` instead of this field")]
         cli_forced_codegen_units: Option<usize> [UNTRACKED],
-        #[redox_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
+        #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
         cli_forced_local_thinlto_off: bool [UNTRACKED],
 
         /// Remap source path prefixes in all output (messages, object files, debug, etc.).
@@ -494,7 +494,7 @@ top_level_options!(
         pretty: Option<PpMode> [UNTRACKED],
 
         /// The (potentially remapped) working directory
-        #[redox_lint_opt_deny_field_access("use `SourceMap::working_dir` instead of this field")]
+        #[rustc_lint_opt_deny_field_access("use `SourceMap::working_dir` instead of this field")]
         working_dir: RealFileName [TRACKED],
 
         color: ColorConfig [UNTRACKED],
@@ -615,7 +615,7 @@ macro_rules! options {
      ),* ,) =>
 (
     #[derive(Clone)]
-    #[redox_lint_opt_ty]
+    #[rustc_lint_opt_ty]
     pub struct $struct_name { $( $( #[$attr] )* pub $opt: $t),* }
 
     tmod_enum!( $tmod_enum_name, $prefix, {$($opt, $parse, $t, [$($tmod),*])|*} );
@@ -682,7 +682,7 @@ macro_rules! options {
 
 impl CodegenOptions {
     // JUSTIFICATION: defn of the suggested wrapper fn
-    #[allow(redox::bad_opt_access)]
+    #[allow(rustc::bad_opt_access)]
     pub fn instrument_coverage(&self) -> InstrumentCoverage {
         self.instrument_coverage
     }
@@ -2056,11 +2056,11 @@ options! {
     // - src/doc/redox/src/codegen-options/index.md
 
     // tidy-alphabetical-start
-    #[redox_lint_opt_deny_field_access("documented to do nothing")]
+    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     ar: String = (String::new(), parse_string, [UNTRACKED],
         "this option is deprecated and does nothing",
         is_deprecated_and_do_nothing: true),
-    #[redox_lint_opt_deny_field_access("use `Session::code_model` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::code_model` instead of this field")]
     code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED],
         "choose the code model to use (`redox --print code-models` for details)"),
     codegen_units: Option<usize> = (None, parse_opt_number, [UNTRACKED],
@@ -2079,7 +2079,7 @@ options! {
         "allow the linker to link its default libraries (default: no)"),
     dlltool: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "import library generation tool (ignored except when targeting windows-gnu)"),
-    #[redox_lint_opt_deny_field_access("use `Session::dwarf_version` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::dwarf_version` instead of this field")]
     dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],
@@ -2088,18 +2088,18 @@ options! {
         "extra data to put in each output filename"),
     force_frame_pointers: FramePointer = (FramePointer::MayOmit, parse_frame_pointer, [TRACKED],
         "force use of the frame pointers"),
-    #[redox_lint_opt_deny_field_access("use `Session::must_emit_unwind_tables` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::must_emit_unwind_tables` instead of this field")]
     force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "force use of unwind tables"),
     help: bool = (false, parse_no_value, [UNTRACKED], "Print codegen options"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "enable incremental compilation"),
-    #[redox_lint_opt_deny_field_access("documented to do nothing")]
+    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     inline_threshold: Option<u32> = (None, parse_opt_number, [UNTRACKED],
         "this option is deprecated and does nothing \
         (consider using `-Cllvm-args=--inline-threshold=...`)",
         is_deprecated_and_do_nothing: true),
-    #[redox_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
     instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage reports \
         (note, the compiler build config must include `profiler = true`); \
@@ -2110,7 +2110,7 @@ options! {
         "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
         "extra arguments to append to the linker invocation (space separated)"),
-    #[redox_lint_opt_deny_field_access("use `Session::link_dead_code` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::link_dead_code` instead of this field")]
     link_dead_code: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "try to generate and link dead code (default: no)"),
     link_self_contained: LinkSelfContained = (LinkSelfContained::default(), parse_link_self_contained, [UNTRACKED],
@@ -2127,7 +2127,7 @@ options! {
         "generate build artifacts that are compatible with linker-based LTO"),
     llvm_args: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list of arguments to pass to LLVM (space separated)"),
-    #[redox_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
     lto: LtoCli = (LtoCli::Unspecified, parse_lto, [TRACKED],
         "perform LLVM link-time optimizations"),
     metadata: Vec<String> = (Vec::new(), parse_list, [TRACKED],
@@ -2136,7 +2136,7 @@ options! {
         "give an empty list of passes to the pass manager"),
     no_redzone: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "disable the use of the redzone"),
-    #[redox_lint_opt_deny_field_access("documented to do nothing")]
+    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     no_stack_check: bool = (false, parse_no_value, [UNTRACKED],
         "this option is deprecated and does nothing",
         is_deprecated_and_do_nothing: true),
@@ -2146,10 +2146,10 @@ options! {
         "disable LLVM's SLP vectorization pass"),
     opt_level: String = ("0".to_string(), parse_string, [TRACKED],
         "optimization level (0-3, s, or z; default: 0)"),
-    #[redox_lint_opt_deny_field_access("use `Session::overflow_checks` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::overflow_checks` instead of this field")]
     overflow_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "use overflow checks for integer arithmetic"),
-    #[redox_lint_opt_deny_field_access("use `Session::panic_strategy` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::panic_strategy` instead of this field")]
     panic: Option<PanicStrategy> = (None, parse_opt_panic_strategy, [TRACKED],
         "panic strategy to compile crate with"),
     passes: Vec<String> = (Vec::new(), parse_list, [TRACKED],
@@ -2161,7 +2161,7 @@ options! {
         "compile the program with profiling instrumentation"),
     profile_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "use the given `.profdata` file for profile-guided optimization"),
-    #[redox_lint_opt_deny_field_access("use `Session::relocation_model` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::relocation_model` instead of this field")]
     relocation_model: Option<RelocModel> = (None, parse_relocation_model, [TRACKED],
         "control generation of position-independent code (PIC) \
         (`redox --print relocation-models` for details)"),
@@ -2175,7 +2175,7 @@ options! {
         "save all temporary output files during compilation (default: no)"),
     soft_float: bool = (false, parse_bool, [TRACKED],
         "deprecated option: use soft float ABI (*eabihf targets only) (default: no)"),
-    #[redox_lint_opt_deny_field_access("use `Session::split_debuginfo` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::split_debuginfo` instead of this field")]
     split_debuginfo: Option<SplitDebuginfo> = (None, parse_split_debuginfo, [TRACKED],
         "how to handle split-debuginfo, a platform-specific option"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
@@ -2234,7 +2234,7 @@ options! {
         `=LooseTypes`
         `=Inline`
         Multiple options can be combined with commas."),
-    #[redox_lint_opt_deny_field_access("use `Session::binary_dep_depinfo` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::binary_dep_depinfo` instead of this field")]
     binary_dep_depinfo: bool = (false, parse_bool, [TRACKED],
         "include artifacts (sysroot, crate dependencies) used during compilation in dep-info \
         (default: no)"),
@@ -2307,7 +2307,7 @@ options! {
         "output statistics about monomorphization collection"),
     dump_mono_stats_format: DumpMonoStatsFormat = (DumpMonoStatsFormat::Markdown, parse_dump_mono_stats, [UNTRACKED],
         "the format to use for -Z dump-mono-stats (`markdown` (default) or `json`)"),
-    #[redox_lint_opt_deny_field_access("use `Session::dwarf_version` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::dwarf_version` instead of this field")]
     dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     dylib_lto: bool = (false, parse_bool, [UNTRACKED],
@@ -2335,7 +2335,7 @@ options! {
         "rely on user specified linker commands to find clangrt"),
     extra_const_ub_checks: bool = (false, parse_bool, [TRACKED],
         "turns on more checks to detect const UB, which can be slow (default: no)"),
-    #[redox_lint_opt_deny_field_access("use `Session::fewer_names` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::fewer_names` instead of this field")]
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
@@ -2472,7 +2472,7 @@ options! {
     mir_opt_bisect_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "limit the number of MIR optimization pass executions (global across all bodies). \
         Pass executions after this limit are skipped and reported. (default: no limit)"),
-    #[redox_lint_opt_deny_field_access("use `Session::mir_opt_level` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::mir_opt_level` instead of this field")]
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
     mir_preserve_ub: bool = (false, parse_bool, [TRACKED],
@@ -2550,7 +2550,7 @@ options! {
         "use a more precise version of drop elaboration for matches on enums (default: yes). \
         This results in better codegen, but has caused miscompilations on some tier 2 platforms. \
         See #77382 and #74551."),
-    #[redox_lint_opt_deny_field_access("use `Session::print_codegen_stats` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::print_codegen_stats` instead of this field")]
     print_codegen_stats: bool = (false, parse_bool, [UNTRACKED],
         "print codegen statistics (default: no)"),
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
@@ -2594,7 +2594,7 @@ written to standard error output)"),
     retpoline_external_thunk: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
         "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
         target features (default: no)"),
-    #[redox_lint_opt_deny_field_access("use `Session::sanitizers()` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::sanitizers()` instead of this field")]
     sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED TARGET_MODIFIER],
         "use a sanitizer"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
@@ -2660,7 +2660,7 @@ written to standard error output)"),
         "enable LTO unit splitting (default: no)"),
     src_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_src_file_hash, [TRACKED],
         "hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)"),
-    #[redox_lint_opt_deny_field_access("use `Session::stack_protector` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::stack_protector` instead of this field")]
     stack_protector: StackProtector = (StackProtector::None, parse_stack_protector, [TRACKED],
         "control stack smash protection strategy (`redox --print stack-protector-strategies` for details)"),
     staticlib_allow_rdylib_deps: bool = (false, parse_bool, [TRACKED],
@@ -2669,21 +2669,21 @@ written to standard error output)"),
         "prefer dynamic linking to static linking for staticlibs (default: no)"),
     strict_init_checks: bool = (false, parse_bool, [TRACKED],
         "control if mem::uninitialized and mem::zeroed panic on more UB"),
-    #[redox_lint_opt_deny_field_access("use `Session::teach` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::teach` instead of this field")]
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help (default: no)"),
     temps_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "the directory the intermediate files are written to"),
     terminal_urls: TerminalUrl = (TerminalUrl::No, parse_terminal_url, [UNTRACKED],
         "use the OSC 8 hyperlink terminal specification to print hyperlinks in the compiler output"),
-    #[redox_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
     /// We default to 1 here since we want to behave like
     /// a sequential compiler for now. This'll likely be adjusted
     /// in the future. Note that -Zthreads=0 is the way to get
     /// the num_cpus behavior.
-    #[redox_lint_opt_deny_field_access("use `Session::threads` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::threads` instead of this field")]
     threads: usize = (1, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
@@ -2694,7 +2694,7 @@ written to standard error output)"),
         "the format to use for -Z time-passes (`text` (default) or `json`)"),
     tiny_const_eval_limit: bool = (false, parse_bool, [TRACKED],
         "sets a tiny, non-configurable limit for const eval; useful for compiler tests"),
-    #[redox_lint_opt_deny_field_access("use `Session::tls_model` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::tls_model` instead of this field")]
     tls_model: Option<TlsModel> = (None, parse_tls_model, [TRACKED],
         "choose the TLS model to use (`redox --print tls-models` for details)"),
     trace_macros: bool = (false, parse_bool, [UNTRACKED],
@@ -2712,10 +2712,10 @@ written to standard error output)"),
         "in diagnostics, use heuristics to shorten paths referring to items"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`redox --print target-cpus` for details)"),
-    #[redox_lint_opt_deny_field_access("use `TyCtxt::use_typing_mode_borrowck` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `TyCtxt::use_typing_mode_borrowck` instead of this field")]
     typing_mode_borrowck: bool = (false, parse_bool, [TRACKED],
         "enable `TypingMode::Borrowck`, changing the way opaque types are handled during MIR borrowck"),
-    #[redox_lint_opt_deny_field_access("use `Session::ub_checks` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::ub_checks` instead of this field")]
     ub_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit runtime checks for Undefined Behavior (default: -Cdebug-assertions)"),
     ui_testing: bool = (false, parse_bool, [UNTRACKED],
@@ -2747,7 +2747,7 @@ written to standard error output)"),
     /// so this boolean value is mostly used for enabling unstable _values_ of
     /// stable options. That separate check doesn't handle boolean values, so
     /// to avoid an inconsistent state we also forbid them here.
-    #[redox_lint_opt_deny_field_access("use `Session::unstable_options` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::unstable_options` instead of this field")]
     unstable_options: bool = (false, parse_no_value, [UNTRACKED],
         "adds unstable command line options to redox interface (default: no)"),
     use_ctors_section: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2758,10 +2758,10 @@ written to standard error output)"),
         "validate MIR after each transformation"),
     verbose_asm: bool = (false, parse_bool, [TRACKED],
         "add descriptive comments from LLVM to the assembly (may change behavior) (default: no)"),
-    #[redox_lint_opt_deny_field_access("use `Session::verbose_internals` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::verbose_internals` instead of this field")]
     verbose_internals: bool = (false, parse_bool, [TRACKED_NO_CRATE_HASH],
         "in general, enable more debug printouts (default: no)"),
-    #[redox_lint_opt_deny_field_access("use `Session::verify_llvm_ir` instead of this field")]
+    #[rustc_lint_opt_deny_field_access("use `Session::verify_llvm_ir` instead of this field")]
     verify_llvm_ir: bool = (false, parse_bool, [TRACKED],
         "verify LLVM IR (default: no)"),
     virtual_function_elimination: bool = (false, parse_bool, [TRACKED],

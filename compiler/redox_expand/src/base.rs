@@ -915,7 +915,7 @@ impl SyntaxExtension {
     }
 
     fn get_hide_backtrace(attrs: &[hir::Attribute]) -> bool {
-        // FIXME(estebank): instead of reusing `#[redox_diagnostic_item]` as a proxy, introduce a
+        // FIXME(estebank): instead of reusing `#[rustc_diagnostic_item]` as a proxy, introduce a
         // new attribute purely for this under the `#[diagnostic]` namespace.
         find_attr!(attrs, RustcDiagnosticItem(..))
     }

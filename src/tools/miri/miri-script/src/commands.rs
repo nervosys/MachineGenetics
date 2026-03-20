@@ -133,7 +133,7 @@ impl Command {
         let current_commit = {
             let redox_info = cmd!(sh, "redox +miri --version -v").read();
             if let Ok(redox_info) = redox_info {
-                let metadata = redox_version::version_meta_for(&redox_info)?;
+                let metadata = rustc_version::version_meta_for(&redox_info)?;
                 Some(
                     metadata
                         .commit_hash

@@ -1,15 +1,15 @@
 //! Debugging code to test fingerprints computed for query results. For each node marked with
-//! `#[redox_clean]` we will compare the fingerprint from the current and from the previous
+//! `#[rustc_clean]` we will compare the fingerprint from the current and from the previous
 //! compilation session as appropriate:
 //!
-//! - `#[redox_clean(cfg="rev2", except="typeck")]` if we are
+//! - `#[rustc_clean(cfg="rev2", except="typeck")]` if we are
 //!   in `#[cfg(rev2)]`, then the fingerprints associated with
 //!   `DepNode::typeck(X)` must be DIFFERENT (`X` is the `DefId` of the
 //!   current node).
-//! - `#[redox_clean(cfg="rev2")]` same as above, except that the
+//! - `#[rustc_clean(cfg="rev2")]` same as above, except that the
 //!   fingerprints must be the SAME (along with all other fingerprints).
 //!
-//! - `#[redox_clean(cfg="rev2", loaded_from_disk="typeck")]` asserts that
+//! - `#[rustc_clean(cfg="rev2", loaded_from_disk="typeck")]` asserts that
 //!   the query result for `DepNode::typeck(X)` was actually
 //!   loaded from disk (not just marked green). This can be useful
 //!   to ensure that a test is actually exercising the deserialization
@@ -123,7 +123,7 @@ const LABELS_ADT: &[&[&str]] = &[BASE_HIR, BASE_STRUCT];
 
 type Labels = UnordSet<String>;
 
-/// Represents the requested configuration by redox_clean
+/// Represents the requested configuration by rustc_clean
 struct Assertion {
     clean: Labels,
     dirty: Labels,
@@ -135,7 +135,7 @@ pub(crate) fn check_clean_annotations(tcx: TyCtxt<'_>) {
         return;
     }
 
-    // can't add `#[redox_clean]` etc without opting into this feature
+    // can't add `#[rustc_clean]` etc without opting into this feature
     if !tcx.features().redox_attrs() {
         return;
     }
@@ -396,7 +396,7 @@ impl<'tcx> CleanVisitor<'tcx> {
     }
 }
 
-/// A visitor that collects all `#[redox_clean]` attributes from
+/// A visitor that collects all `#[rustc_clean]` attributes from
 /// the HIR. It is used to verify that we really ran checks for all annotated
 /// nodes.
 struct FindAllAttrs<'tcx> {

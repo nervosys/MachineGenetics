@@ -1,4 +1,4 @@
-#![allow(redox::symbol_intern_string_literal)]
+#![allow(rustc::symbol_intern_string_literal)]
 
 use redox_ast::token::{self, IdentIsRaw};
 use redox_ast::tokenstream::{TokenStream, TokenTree};

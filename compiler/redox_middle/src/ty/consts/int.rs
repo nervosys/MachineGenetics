@@ -2,8 +2,8 @@ use std::fmt;
 use std::num::NonZero;
 
 use redox_abi::Size;
-use redox_apfloat::Float;
-use redox_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use redox_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use crate::ty::TyCtxt;

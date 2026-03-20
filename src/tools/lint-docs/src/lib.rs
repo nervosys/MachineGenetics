@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use redox_literal_escaper::unescape_str;
+use rustc_literal_escaper::unescape_str;
 use walkdir::WalkDir;
 
 mod groups;

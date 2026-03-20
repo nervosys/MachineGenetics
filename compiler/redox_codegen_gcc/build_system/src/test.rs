@@ -9,7 +9,7 @@ use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
     create_dir, get_sysroot_dir, get_toolchain, git_clone, git_clone_root_dir, remove_file,
-    run_command, run_command_with_env, run_command_with_output_and_env, redox_version_info,
+    run_command, run_command_with_env, run_command_with_output_and_env, rustc_version_info,
     split_args, walk_dir,
 };
 
@@ -457,7 +457,7 @@ fn setup_redox(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     let rust_dir: Option<&Path> = Some(&rust_dir_path);
     run_command(&[&"git", &"checkout", &"--", &"tests/"], rust_dir)?;
     run_command_with_output_and_env(&[&"git", &"fetch"], rust_dir, Some(env))?;
-    let redox_commit = match redox_version_info(env.get("RUSTC").map(|s| s.as_str()))?.commit_hash {
+    let redox_commit = match rustc_version_info(env.get("RUSTC").map(|s| s.as_str()))?.commit_hash {
         Some(commit_hash) => commit_hash,
         None => return Err("Couldn't retrieve redox commit hash".to_string()),
     };
@@ -608,7 +608,7 @@ where
 {
     let toolchain = get_toolchain()?;
     let toolchain_arg = format!("+{toolchain}");
-    let redox_version = String::from_utf8(
+    let rustc_version = String::from_utf8(
         run_command_with_env(&[&args.config_info.redox_command[0], &"-V"], cwd, Some(env))?.stdout,
     )
     .map_err(|error| format!("Failed to retrieve redox version: {error:?}"))?;
@@ -622,9 +622,9 @@ where
     )
     .map_err(|error| format!("Failed to retrieve redox +toolchain version: {error:?}"))?;
 
-    if redox_version != redox_toolchain_version {
+    if rustc_version != redox_toolchain_version {
         eprintln!(
-            "redox_codegen_gcc is built for `{redox_toolchain_version}` but the default redox version is `{redox_version}`.",
+            "redox_codegen_gcc is built for `{redox_toolchain_version}` but the default redox version is `{rustc_version}`.",
         );
         eprintln!("Using `{redox_toolchain_version}`.");
     }

@@ -4,13 +4,13 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![allow(redox::direct_use_of_redox_type_ir)]
+#![allow(rustc::direct_use_of_redox_type_ir)]
 #![feature(associated_type_defaults)]
 #![feature(default_field_values)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(negative_impls)]
 #![feature(never_type)]
-#![feature(redox_attrs)]
+#![feature(rustc_attrs)]
 // tidy-alphabetical-end
 
 extern crate self as redox_errors;

@@ -95,7 +95,7 @@ impl LivenessValues {
 
     /// Iterate through each region that has a value in this set.
     // We are passing query instability implications to the caller.
-    #[redox_lint_query_instability]
+    #[rustc_lint_query_instability]
     #[allow(redox::potential_query_instability)]
     pub(crate) fn live_regions_unordered(&self) -> impl Iterator<Item = RegionVid> {
         self.live_regions.as_ref().unwrap().iter().copied()

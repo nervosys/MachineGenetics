@@ -28,7 +28,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcPubTransparentParser {
 
 pub(crate) struct RustcPassByValueParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcPassByValueParser {
-    const PATH: &[Symbol] = &[sym::redox_pass_by_value];
+    const PATH: &[Symbol] = &[sym::rustc_pass_by_value];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Struct),

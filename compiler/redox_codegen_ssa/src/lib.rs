@@ -260,7 +260,7 @@ pub enum CodegenErrors {
     WrongFileType,
     EmptyVersionNumber,
     EncodingVersionMismatch { version_array: String, rlink_version: u32 },
-    RustcVersionMismatch { redox_version: String },
+    RustcVersionMismatch { rustc_version: String },
     CorruptFile,
 }
 
@@ -340,10 +340,10 @@ impl CompiledModules {
         let Ok(mut decoder) = MemDecoder::new(&data[4..], 0) else {
             return Err(CodegenErrors::CorruptFile);
         };
-        let redox_version = decoder.read_str();
-        if redox_version != sess.cfg_version {
+        let rustc_version = decoder.read_str();
+        if rustc_version != sess.cfg_version {
             return Err(CodegenErrors::RustcVersionMismatch {
-                redox_version: redox_version.to_string(),
+                rustc_version: rustc_version.to_string(),
             });
         }
 

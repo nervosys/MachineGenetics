@@ -552,33 +552,33 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F16) => {
-                        use redox_apfloat::Float;
+                        use rustc_apfloat::Float;
                         let bits = value.to_leaf().to_u16();
-                        let value = redox_apfloat::ieee::Half::from_bits(bits.into());
+                        let value = rustc_apfloat::ieee::Half::from_bits(bits.into());
                         ctor = F16Range(value, value, RangeEnd::Included);
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F32) => {
-                        use redox_apfloat::Float;
+                        use rustc_apfloat::Float;
                         let bits = value.to_leaf().to_u32();
-                        let value = redox_apfloat::ieee::Single::from_bits(bits.into());
+                        let value = rustc_apfloat::ieee::Single::from_bits(bits.into());
                         ctor = F32Range(value, value, RangeEnd::Included);
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F64) => {
-                        use redox_apfloat::Float;
+                        use rustc_apfloat::Float;
                         let bits = value.to_leaf().to_u64();
-                        let value = redox_apfloat::ieee::Double::from_bits(bits.into());
+                        let value = rustc_apfloat::ieee::Double::from_bits(bits.into());
                         ctor = F64Range(value, value, RangeEnd::Included);
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F128) => {
-                        use redox_apfloat::Float;
+                        use rustc_apfloat::Float;
                         let bits = value.to_leaf().to_u128();
-                        let value = redox_apfloat::ieee::Quad::from_bits(bits);
+                        let value = rustc_apfloat::ieee::Quad::from_bits(bits);
                         ctor = F128Range(value, value, RangeEnd::Included);
                         fields = vec![];
                         arity = 0;
@@ -614,30 +614,30 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         IntRange(IntRange::from_range(lo, hi, end))
                     }
                     ty::Float(fty) => {
-                        use redox_apfloat::Float;
+                        use rustc_apfloat::Float;
                         let lo = lo.as_finite().map(|c| c.to_leaf().to_bits_unchecked());
                         let hi = hi.as_finite().map(|c| c.to_leaf().to_bits_unchecked());
                         match fty {
                             ty::FloatTy::F16 => {
-                                use redox_apfloat::ieee::Half;
+                                use rustc_apfloat::ieee::Half;
                                 let lo = lo.map(Half::from_bits).unwrap_or(-Half::INFINITY);
                                 let hi = hi.map(Half::from_bits).unwrap_or(Half::INFINITY);
                                 F16Range(lo, hi, end)
                             }
                             ty::FloatTy::F32 => {
-                                use redox_apfloat::ieee::Single;
+                                use rustc_apfloat::ieee::Single;
                                 let lo = lo.map(Single::from_bits).unwrap_or(-Single::INFINITY);
                                 let hi = hi.map(Single::from_bits).unwrap_or(Single::INFINITY);
                                 F32Range(lo, hi, end)
                             }
                             ty::FloatTy::F64 => {
-                                use redox_apfloat::ieee::Double;
+                                use rustc_apfloat::ieee::Double;
                                 let lo = lo.map(Double::from_bits).unwrap_or(-Double::INFINITY);
                                 let hi = hi.map(Double::from_bits).unwrap_or(Double::INFINITY);
                                 F64Range(lo, hi, end)
                             }
                             ty::FloatTy::F128 => {
-                                use redox_apfloat::ieee::Quad;
+                                use rustc_apfloat::ieee::Quad;
                                 let lo = lo.map(Quad::from_bits).unwrap_or(-Quad::INFINITY);
                                 let hi = hi.map(Quad::from_bits).unwrap_or(Quad::INFINITY);
                                 F128Range(lo, hi, end)

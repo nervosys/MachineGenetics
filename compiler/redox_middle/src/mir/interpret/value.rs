@@ -2,8 +2,8 @@ use std::fmt;
 
 use either::{Either, Left, Right};
 use redox_abi::{HasDataLayout, Size};
-use redox_apfloat::Float;
-use redox_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use redox_macros::{HashStable, TyDecodable, TyEncodable};
 
 use super::{

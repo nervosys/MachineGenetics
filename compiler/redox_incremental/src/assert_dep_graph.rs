@@ -1,7 +1,7 @@
 //! This pass is only used for the UNIT TESTS and DEBUGGING NEEDS
 //! around dependency graph construction. It serves two purposes; it
 //! will dump graphs in graphviz form to disk, and it searches for
-//! `#[redox_if_this_changed]` and `#[redox_then_this_would_need]`
+//! `#[rustc_if_this_changed]` and `#[rustc_then_this_would_need]`
 //! annotations. These annotations can be used to test whether paths
 //! exist in the graph. These checks run after codegen, so they view the
 //! the final state of the dependency graph. Note that there are
@@ -9,27 +9,27 @@
 //! **initial** state of the dependency graph, just after it has been
 //! loaded from disk.
 //!
-//! In this code, we report errors on each `redox_if_this_changed`
+//! In this code, we report errors on each `rustc_if_this_changed`
 //! annotation. If a path exists in all cases, then we would report
 //! "all path(s) exist". Otherwise, we report: "no path to `foo`" for
 //! each case where no path exists. `ui` tests can then be
 //! used to check when paths exist or do not.
 //!
-//! The full form of the `redox_if_this_changed` annotation is
-//! `#[redox_if_this_changed("foo")]`, which will report a
+//! The full form of the `rustc_if_this_changed` annotation is
+//! `#[rustc_if_this_changed("foo")]`, which will report a
 //! source node of `foo(def_id)`. The `"foo"` is optional and
 //! defaults to `"Hir"` if omitted.
 //!
 //! Example:
 //!
 //! ```ignore (needs flags)
-//! #[redox_if_this_changed(Hir)]
+//! #[rustc_if_this_changed(Hir)]
 //! fn foo() { }
 //!
-//! #[redox_then_this_would_need(codegen)] //~ ERROR no path from `foo`
+//! #[rustc_then_this_would_need(codegen)] //~ ERROR no path from `foo`
 //! fn bar() { }
 //!
-//! #[redox_then_this_would_need(codegen)] //~ ERROR OK
+//! #[rustc_then_this_would_need(codegen)] //~ ERROR OK
 //! fn baz() { foo(); }
 //! ```
 
@@ -86,8 +86,8 @@ pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
                 tcx.sess.opts.unstable_opts.query_dep_graph,
                 "cannot use the `#[{}]` or `#[{}]` annotations \
                     without supplying `-Z query-dep-graph`",
-                sym::redox_if_this_changed,
-                sym::redox_then_this_would_need
+                sym::rustc_if_this_changed,
+                sym::rustc_then_this_would_need
             );
         }
 

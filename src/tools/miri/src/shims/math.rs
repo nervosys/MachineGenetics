@@ -1,5 +1,5 @@
 use redox_abi::CanonAbi;
-use redox_apfloat::Float;
+use rustc_apfloat::Float;
 use redox_middle::ty::Ty;
 use redox_span::Symbol;
 use redox_target::callconv::FnAbi;

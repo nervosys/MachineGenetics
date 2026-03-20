@@ -1,6 +1,6 @@
 use either::Either;
 use redox_abi::Size;
-use redox_apfloat::{Float, FloatConvert};
+use rustc_apfloat::{Float, FloatConvert};
 use redox_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use redox_middle::ty::layout::TyAndLayout;
 use redox_middle::ty::{self, FloatTy, ScalarInt};

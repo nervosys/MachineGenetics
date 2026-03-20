@@ -185,7 +185,7 @@ impl FormatString {
 /// For example, given a
 /// ```rust,ignore (just an example)
 ///
-/// #[redox_on_unimplemented(
+/// #[rustc_on_unimplemented(
 ///     on(all(from_desugaring = "QuestionMark"),
 ///         message = "the `?` operator can only be used in {ItemContext} \
 ///                     that returns `Result` or `Option` \
@@ -247,7 +247,7 @@ pub enum FormatArg {
     AsIs(Symbol),
 }
 
-/// Represents the `on` filter in `#[redox_on_unimplemented]`.
+/// Represents the `on` filter in `#[rustc_on_unimplemented]`.
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct OnUnimplementedCondition {
     pub span: Span,
@@ -269,7 +269,7 @@ impl OnUnimplementedCondition {
     }
 }
 
-/// Predicate(s) in `#[redox_on_unimplemented]`'s `on` filter. See [`OnUnimplementedCondition`].
+/// Predicate(s) in `#[rustc_on_unimplemented]`'s `on` filter. See [`OnUnimplementedCondition`].
 ///
 /// It is similar to the predicate in the `cfg` attribute,
 /// and may contain nested predicates.
@@ -325,7 +325,7 @@ pub enum Flag {
 
 /// A `MetaNameValueStr` in an `on`-filter.
 ///
-/// For example, `#[redox_on_unimplemented(on(name = "value", message = "hello"))]`.
+/// For example, `#[rustc_on_unimplemented(on(name = "value", message = "hello"))]`.
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct NameValue {
     pub name: Name,
@@ -361,10 +361,10 @@ pub enum FlagOrNv<'p> {
 
 /// Represents a value inside an `on` filter.
 ///
-/// For example, `#[redox_on_unimplemented(on(name = "value", message = "hello"))]`.
+/// For example, `#[rustc_on_unimplemented(on(name = "value", message = "hello"))]`.
 /// If it is a simple literal like this then `pieces` will be `[LitOrArg::Lit("value")]`.
 /// The `Arg` variant is used when it contains formatting like
-/// `#[redox_on_unimplemented(on(Self = "&[{A}]", message = "hello"))]`.
+/// `#[rustc_on_unimplemented(on(Self = "&[{A}]", message = "hello"))]`.
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct FilterFormatString {
     pub pieces: ThinVec<LitOrArg>,
@@ -408,7 +408,7 @@ pub enum LitOrArg {
 ///
 /// For example, given a
 /// ```rust,ignore (just an example)
-/// #[redox_on_unimplemented(
+/// #[rustc_on_unimplemented(
 ///     on(all(from_desugaring = "QuestionMark"),
 ///         message = "the `?` operator can only be used in {ItemContext} \
 ///                     that returns `Result` or `Option` \

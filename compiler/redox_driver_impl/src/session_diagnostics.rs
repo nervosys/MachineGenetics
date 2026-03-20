@@ -33,10 +33,10 @@ pub(crate) struct RLinkEncodingVersionMismatch {
 
 #[derive(Diagnostic)]
 #[diag(
-    ".rlink file was produced by redox version `{$redox_version}`, but the current version is `{$current_version}`"
+    ".rlink file was produced by redox version `{$rustc_version}`, but the current version is `{$current_version}`"
 )]
 pub(crate) struct RLinkRustcVersionMismatch<'a> {
-    pub redox_version: String,
+    pub rustc_version: String,
     pub current_version: &'a str,
 }
 

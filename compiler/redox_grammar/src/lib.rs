@@ -286,8 +286,12 @@ fn compute_follow_sets(
 
                         // If rest can derive epsilon (or is empty), add FOLLOW(LHS) to FOLLOW(B).
                         if first_rest.contains(&Symbol::Epsilon) {
-                            let follow_lhs: Vec<Symbol> =
-                                follow.get(lhs_name).cloned().unwrap_or_default().into_iter().collect();
+                            let follow_lhs: Vec<Symbol> = follow
+                                .get(lhs_name)
+                                .cloned()
+                                .unwrap_or_default()
+                                .into_iter()
+                                .collect();
                             let follow_b = follow.get_mut(b).unwrap();
                             for s in follow_lhs {
                                 if follow_b.insert(s) {
@@ -371,457 +375,870 @@ pub fn canonical_grammar() -> Grammar {
 
     // ── Top-level ──────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("Program", vec![
-        Production::new(vec![Symbol::nt("ItemList"), Symbol::Eof]),
-    ]));
+    g.add_rule(Rule::new(
+        "Program",
+        vec![Production::new(vec![Symbol::nt("ItemList"), Symbol::Eof])],
+    ));
 
-    g.add_rule(Rule::new("ItemList", vec![
-        Production::new(vec![Symbol::nt("Item"), Symbol::nt("ItemList")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "ItemList",
+        vec![
+            Production::new(vec![Symbol::nt("Item"), Symbol::nt("ItemList")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("Item", vec![
-        Production::new(vec![Symbol::nt("OptAttrs"), Symbol::nt("OptVis"), Symbol::nt("ItemKind")]),
-    ]));
+    g.add_rule(Rule::new(
+        "Item",
+        vec![Production::new(vec![
+            Symbol::nt("OptAttrs"),
+            Symbol::nt("OptVis"),
+            Symbol::nt("ItemKind"),
+        ])],
+    ));
 
     // ── Attributes ─────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("OptAttrs", vec![
-        Production::new(vec![Symbol::nt("Attr"), Symbol::nt("OptAttrs")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptAttrs",
+        vec![
+            Production::new(vec![Symbol::nt("Attr"), Symbol::nt("OptAttrs")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("Attr", vec![
-        // Standard attribute: #[...]
-        Production::new(vec![Symbol::term("Pound"), Symbol::term("OpenBracket"), Symbol::nt("AttrContent"), Symbol::term("CloseBracket")]),
-        // Compact attribute form: @d(...), @t, etc.
-        Production::new(vec![Symbol::term("CompactAttribute"), Symbol::nt("OptAttrArgs")]),
-    ]));
+    g.add_rule(Rule::new(
+        "Attr",
+        vec![
+            // Standard attribute: #[...]
+            Production::new(vec![
+                Symbol::term("Pound"),
+                Symbol::term("OpenBracket"),
+                Symbol::nt("AttrContent"),
+                Symbol::term("CloseBracket"),
+            ]),
+            // Compact attribute form: @d(...), @t, etc.
+            Production::new(vec![Symbol::term("CompactAttribute"), Symbol::nt("OptAttrArgs")]),
+        ],
+    ));
 
-    g.add_rule(Rule::new("OptAttrArgs", vec![
-        Production::new(vec![Symbol::term("OpenParen"), Symbol::nt("AttrArgList"), Symbol::term("CloseParen")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptAttrArgs",
+        vec![
+            Production::new(vec![
+                Symbol::term("OpenParen"),
+                Symbol::nt("AttrArgList"),
+                Symbol::term("CloseParen"),
+            ]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("AttrContent", vec![
-        Production::new(vec![Symbol::nt("Path"), Symbol::nt("OptAttrArgs")]),
-    ]));
+    g.add_rule(Rule::new(
+        "AttrContent",
+        vec![Production::new(vec![Symbol::nt("Path"), Symbol::nt("OptAttrArgs")])],
+    ));
 
-    g.add_rule(Rule::new("AttrArgList", vec![
-        Production::new(vec![Symbol::nt("AttrArg"), Symbol::nt("AttrArgListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "AttrArgList",
+        vec![
+            Production::new(vec![Symbol::nt("AttrArg"), Symbol::nt("AttrArgListTail")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("AttrArgListTail", vec![
-        Production::new(vec![Symbol::term("Comma"), Symbol::nt("AttrArg"), Symbol::nt("AttrArgListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "AttrArgListTail",
+        vec![
+            Production::new(vec![
+                Symbol::term("Comma"),
+                Symbol::nt("AttrArg"),
+                Symbol::nt("AttrArgListTail"),
+            ]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("AttrArg", vec![
-        Production::new(vec![Symbol::term("Ident")]),
-    ]));
+    g.add_rule(Rule::new("AttrArg", vec![Production::new(vec![Symbol::term("Ident")])]));
 
     // ── Visibility ─────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("OptVis", vec![
-        Production::new(vec![Symbol::term("kw_pub"), Symbol::nt("OptVisRestriction")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptVis",
+        vec![
+            Production::new(vec![Symbol::term("kw_pub"), Symbol::nt("OptVisRestriction")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("OptVisRestriction", vec![
-        Production::new(vec![Symbol::term("OpenParen"), Symbol::nt("VisPath"), Symbol::term("CloseParen")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptVisRestriction",
+        vec![
+            Production::new(vec![
+                Symbol::term("OpenParen"),
+                Symbol::nt("VisPath"),
+                Symbol::term("CloseParen"),
+            ]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("VisPath", vec![
-        Production::new(vec![Symbol::term("kw_crate")]),
-        Production::new(vec![Symbol::term("kw_super")]),
-        Production::new(vec![Symbol::term("kw_in"), Symbol::nt("Path")]),
-    ]));
+    g.add_rule(Rule::new(
+        "VisPath",
+        vec![
+            Production::new(vec![Symbol::term("kw_crate")]),
+            Production::new(vec![Symbol::term("kw_super")]),
+            Production::new(vec![Symbol::term("kw_in"), Symbol::nt("Path")]),
+        ],
+    ));
 
     // ── Item kinds ─────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("ItemKind", vec![
-        Production::new(vec![Symbol::nt("FnItem")]),
-        Production::new(vec![Symbol::nt("StructItem")]),
-        Production::new(vec![Symbol::nt("EnumItem")]),
-        Production::new(vec![Symbol::nt("TypeItem")]),
-        Production::new(vec![Symbol::nt("ModItem")]),
-        Production::new(vec![Symbol::nt("ImplItem")]),
-        Production::new(vec![Symbol::nt("UseItem")]),
-        Production::new(vec![Symbol::nt("LetItem")]),
-        Production::new(vec![Symbol::nt("TraitItem")]),
-    ]));
+    g.add_rule(Rule::new(
+        "ItemKind",
+        vec![
+            Production::new(vec![Symbol::nt("FnItem")]),
+            Production::new(vec![Symbol::nt("StructItem")]),
+            Production::new(vec![Symbol::nt("EnumItem")]),
+            Production::new(vec![Symbol::nt("TypeItem")]),
+            Production::new(vec![Symbol::nt("ModItem")]),
+            Production::new(vec![Symbol::nt("ImplItem")]),
+            Production::new(vec![Symbol::nt("UseItem")]),
+            Production::new(vec![Symbol::nt("LetItem")]),
+            Production::new(vec![Symbol::nt("TraitItem")]),
+        ],
+    ));
 
     // ── Function ───────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("FnItem", vec![
-        // Regular fn (with optional keyword qualifiers)
-        Production::new(vec![Symbol::nt("OptKeywordQualifier"), Symbol::term("kw_fn"), Symbol::term("Ident"), Symbol::nt("OptGenericParams"), Symbol::term("OpenParen"), Symbol::nt("ParamList"), Symbol::term("CloseParen"), Symbol::nt("OptReturnType"), Symbol::nt("Block")]),
-        // Sigil-fn forms (qualifier + fn fused into single token)
-        Production::new(vec![Symbol::term("PlusFn"), Symbol::term("Ident"), Symbol::nt("OptGenericParams"), Symbol::term("OpenParen"), Symbol::nt("ParamList"), Symbol::term("CloseParen"), Symbol::nt("OptReturnType"), Symbol::nt("Block")]),
-        Production::new(vec![Symbol::term("MinusFn"), Symbol::term("Ident"), Symbol::nt("OptGenericParams"), Symbol::term("OpenParen"), Symbol::nt("ParamList"), Symbol::term("CloseParen"), Symbol::nt("OptReturnType"), Symbol::nt("Block")]),
-        Production::new(vec![Symbol::term("BangFn"), Symbol::term("Ident"), Symbol::nt("OptGenericParams"), Symbol::term("OpenParen"), Symbol::nt("ParamList"), Symbol::term("CloseParen"), Symbol::nt("OptReturnType"), Symbol::nt("Block")]),
-        Production::new(vec![Symbol::term("StarFn"), Symbol::term("Ident"), Symbol::nt("OptGenericParams"), Symbol::term("OpenParen"), Symbol::nt("ParamList"), Symbol::term("CloseParen"), Symbol::nt("OptReturnType"), Symbol::nt("Block")]),
-    ]));
+    g.add_rule(Rule::new(
+        "FnItem",
+        vec![
+            // Regular fn (with optional keyword qualifiers)
+            Production::new(vec![
+                Symbol::nt("OptKeywordQualifier"),
+                Symbol::term("kw_fn"),
+                Symbol::term("Ident"),
+                Symbol::nt("OptGenericParams"),
+                Symbol::term("OpenParen"),
+                Symbol::nt("ParamList"),
+                Symbol::term("CloseParen"),
+                Symbol::nt("OptReturnType"),
+                Symbol::nt("Block"),
+            ]),
+            // Sigil-fn forms (qualifier + fn fused into single token)
+            Production::new(vec![
+                Symbol::term("PlusFn"),
+                Symbol::term("Ident"),
+                Symbol::nt("OptGenericParams"),
+                Symbol::term("OpenParen"),
+                Symbol::nt("ParamList"),
+                Symbol::term("CloseParen"),
+                Symbol::nt("OptReturnType"),
+                Symbol::nt("Block"),
+            ]),
+            Production::new(vec![
+                Symbol::term("MinusFn"),
+                Symbol::term("Ident"),
+                Symbol::nt("OptGenericParams"),
+                Symbol::term("OpenParen"),
+                Symbol::nt("ParamList"),
+                Symbol::term("CloseParen"),
+                Symbol::nt("OptReturnType"),
+                Symbol::nt("Block"),
+            ]),
+            Production::new(vec![
+                Symbol::term("BangFn"),
+                Symbol::term("Ident"),
+                Symbol::nt("OptGenericParams"),
+                Symbol::term("OpenParen"),
+                Symbol::nt("ParamList"),
+                Symbol::term("CloseParen"),
+                Symbol::nt("OptReturnType"),
+                Symbol::nt("Block"),
+            ]),
+            Production::new(vec![
+                Symbol::term("StarFn"),
+                Symbol::term("Ident"),
+                Symbol::nt("OptGenericParams"),
+                Symbol::term("OpenParen"),
+                Symbol::nt("ParamList"),
+                Symbol::term("CloseParen"),
+                Symbol::nt("OptReturnType"),
+                Symbol::nt("Block"),
+            ]),
+        ],
+    ));
 
     // Keyword-based qualifiers (legacy-style, non-fused).
-    g.add_rule(Rule::new("OptKeywordQualifier", vec![
-        Production::new(vec![Symbol::term("kw_async")]),
-        Production::new(vec![Symbol::term("kw_const")]),
-        Production::new(vec![Symbol::term("kw_unsafe")]),
-        Production::new(vec![Symbol::term("kw_extern")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptKeywordQualifier",
+        vec![
+            Production::new(vec![Symbol::term("kw_async")]),
+            Production::new(vec![Symbol::term("kw_const")]),
+            Production::new(vec![Symbol::term("kw_unsafe")]),
+            Production::new(vec![Symbol::term("kw_extern")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("OptGenericParams", vec![
-        Production::new(vec![Symbol::term("Lt"), Symbol::nt("GenericParamList"), Symbol::term("Gt")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptGenericParams",
+        vec![
+            Production::new(vec![
+                Symbol::term("Lt"),
+                Symbol::nt("GenericParamList"),
+                Symbol::term("Gt"),
+            ]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("GenericParamList", vec![
-        Production::new(vec![Symbol::nt("GenericParam"), Symbol::nt("GenericParamListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "GenericParamList",
+        vec![
+            Production::new(vec![Symbol::nt("GenericParam"), Symbol::nt("GenericParamListTail")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("GenericParamListTail", vec![
-        Production::new(vec![Symbol::term("Comma"), Symbol::nt("GenericParam"), Symbol::nt("GenericParamListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "GenericParamListTail",
+        vec![
+            Production::new(vec![
+                Symbol::term("Comma"),
+                Symbol::nt("GenericParam"),
+                Symbol::nt("GenericParamListTail"),
+            ]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("GenericParam", vec![
-        Production::new(vec![Symbol::term("Ident"), Symbol::nt("OptBounds")]),
-        Production::new(vec![Symbol::term("Lifetime")]),
-    ]));
+    g.add_rule(Rule::new(
+        "GenericParam",
+        vec![
+            Production::new(vec![Symbol::term("Ident"), Symbol::nt("OptBounds")]),
+            Production::new(vec![Symbol::term("Lifetime")]),
+        ],
+    ));
 
-    g.add_rule(Rule::new("OptBounds", vec![
-        Production::new(vec![Symbol::term("Colon"), Symbol::nt("TypeBound"), Symbol::nt("TypeBoundTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptBounds",
+        vec![
+            Production::new(vec![
+                Symbol::term("Colon"),
+                Symbol::nt("TypeBound"),
+                Symbol::nt("TypeBoundTail"),
+            ]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("TypeBound", vec![
-        Production::new(vec![Symbol::nt("Path")]),
-    ]));
+    g.add_rule(Rule::new("TypeBound", vec![Production::new(vec![Symbol::nt("Path")])]));
 
-    g.add_rule(Rule::new("TypeBoundTail", vec![
-        Production::new(vec![Symbol::term("Plus"), Symbol::nt("TypeBound"), Symbol::nt("TypeBoundTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "TypeBoundTail",
+        vec![
+            Production::new(vec![
+                Symbol::term("Plus"),
+                Symbol::nt("TypeBound"),
+                Symbol::nt("TypeBoundTail"),
+            ]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("ParamList", vec![
-        Production::new(vec![Symbol::nt("Param"), Symbol::nt("ParamListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "ParamList",
+        vec![
+            Production::new(vec![Symbol::nt("Param"), Symbol::nt("ParamListTail")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("ParamListTail", vec![
-        Production::new(vec![Symbol::term("Comma"), Symbol::nt("Param"), Symbol::nt("ParamListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "ParamListTail",
+        vec![
+            Production::new(vec![
+                Symbol::term("Comma"),
+                Symbol::nt("Param"),
+                Symbol::nt("ParamListTail"),
+            ]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("Param", vec![
-        Production::new(vec![Symbol::nt("Pattern"), Symbol::term("Colon"), Symbol::nt("Type")]),
-        Production::new(vec![Symbol::term("kw_self")]),
-        Production::new(vec![Symbol::term("And"), Symbol::nt("RefSelfSuffix")]),
-    ]));
+    g.add_rule(Rule::new(
+        "Param",
+        vec![
+            Production::new(vec![Symbol::nt("Pattern"), Symbol::term("Colon"), Symbol::nt("Type")]),
+            Production::new(vec![Symbol::term("kw_self")]),
+            Production::new(vec![Symbol::term("And"), Symbol::nt("RefSelfSuffix")]),
+        ],
+    ));
 
-    g.add_rule(Rule::new("RefSelfSuffix", vec![
-        Production::new(vec![Symbol::term("kw_self")]),
-        Production::new(vec![Symbol::term("kw_mut"), Symbol::term("kw_self")]),
-    ]));
+    g.add_rule(Rule::new(
+        "RefSelfSuffix",
+        vec![
+            Production::new(vec![Symbol::term("kw_self")]),
+            Production::new(vec![Symbol::term("kw_mut"), Symbol::term("kw_self")]),
+        ],
+    ));
 
-    g.add_rule(Rule::new("OptReturnType", vec![
-        Production::new(vec![Symbol::term("RArrow"), Symbol::nt("Type")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptReturnType",
+        vec![
+            Production::new(vec![Symbol::term("RArrow"), Symbol::nt("Type")]),
+            Production::epsilon(),
+        ],
+    ));
 
     // ── Struct ─────────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("StructItem", vec![
-        Production::new(vec![Symbol::term("kw_struct"), Symbol::term("Ident"), Symbol::nt("OptGenericParams"), Symbol::nt("StructBody")]),
-    ]));
+    g.add_rule(Rule::new(
+        "StructItem",
+        vec![Production::new(vec![
+            Symbol::term("kw_struct"),
+            Symbol::term("Ident"),
+            Symbol::nt("OptGenericParams"),
+            Symbol::nt("StructBody"),
+        ])],
+    ));
 
-    g.add_rule(Rule::new("StructBody", vec![
-        Production::new(vec![Symbol::term("OpenBrace"), Symbol::nt("FieldList"), Symbol::term("CloseBrace")]),
-        Production::new(vec![Symbol::term("OpenParen"), Symbol::nt("TupleFieldList"), Symbol::term("CloseParen"), Symbol::term("Semi")]),
-        Production::new(vec![Symbol::term("Semi")]),
-    ]));
+    g.add_rule(Rule::new(
+        "StructBody",
+        vec![
+            Production::new(vec![
+                Symbol::term("OpenBrace"),
+                Symbol::nt("FieldList"),
+                Symbol::term("CloseBrace"),
+            ]),
+            Production::new(vec![
+                Symbol::term("OpenParen"),
+                Symbol::nt("TupleFieldList"),
+                Symbol::term("CloseParen"),
+                Symbol::term("Semi"),
+            ]),
+            Production::new(vec![Symbol::term("Semi")]),
+        ],
+    ));
 
-    g.add_rule(Rule::new("FieldList", vec![
-        Production::new(vec![Symbol::nt("Field"), Symbol::nt("FieldListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "FieldList",
+        vec![
+            Production::new(vec![Symbol::nt("Field"), Symbol::nt("FieldListTail")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("FieldListTail", vec![
-        Production::new(vec![Symbol::term("Comma"), Symbol::nt("FieldListCont")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "FieldListTail",
+        vec![
+            Production::new(vec![Symbol::term("Comma"), Symbol::nt("FieldListCont")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("FieldListCont", vec![
-        Production::new(vec![Symbol::nt("Field"), Symbol::nt("FieldListTail")]),
-        Production::epsilon(), // trailing comma
-    ]));
+    g.add_rule(Rule::new(
+        "FieldListCont",
+        vec![
+            Production::new(vec![Symbol::nt("Field"), Symbol::nt("FieldListTail")]),
+            Production::epsilon(), // trailing comma
+        ],
+    ));
 
-    g.add_rule(Rule::new("Field", vec![
-        Production::new(vec![Symbol::nt("OptVis"), Symbol::term("Ident"), Symbol::term("Colon"), Symbol::nt("Type")]),
-    ]));
+    g.add_rule(Rule::new(
+        "Field",
+        vec![Production::new(vec![
+            Symbol::nt("OptVis"),
+            Symbol::term("Ident"),
+            Symbol::term("Colon"),
+            Symbol::nt("Type"),
+        ])],
+    ));
 
-    g.add_rule(Rule::new("TupleFieldList", vec![
-        Production::new(vec![Symbol::nt("TupleField"), Symbol::nt("TupleFieldListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "TupleFieldList",
+        vec![
+            Production::new(vec![Symbol::nt("TupleField"), Symbol::nt("TupleFieldListTail")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("TupleFieldListTail", vec![
-        Production::new(vec![Symbol::term("Comma"), Symbol::nt("TupleField"), Symbol::nt("TupleFieldListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "TupleFieldListTail",
+        vec![
+            Production::new(vec![
+                Symbol::term("Comma"),
+                Symbol::nt("TupleField"),
+                Symbol::nt("TupleFieldListTail"),
+            ]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("TupleField", vec![
-        Production::new(vec![Symbol::nt("Type")]),
-    ]));
+    g.add_rule(Rule::new("TupleField", vec![Production::new(vec![Symbol::nt("Type")])]));
 
     // ── Enum ───────────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("EnumItem", vec![
-        Production::new(vec![Symbol::term("kw_enum"), Symbol::term("Ident"), Symbol::nt("OptGenericParams"), Symbol::term("OpenBrace"), Symbol::nt("VariantList"), Symbol::term("CloseBrace")]),
-    ]));
+    g.add_rule(Rule::new(
+        "EnumItem",
+        vec![Production::new(vec![
+            Symbol::term("kw_enum"),
+            Symbol::term("Ident"),
+            Symbol::nt("OptGenericParams"),
+            Symbol::term("OpenBrace"),
+            Symbol::nt("VariantList"),
+            Symbol::term("CloseBrace"),
+        ])],
+    ));
 
-    g.add_rule(Rule::new("VariantList", vec![
-        Production::new(vec![Symbol::nt("Variant"), Symbol::nt("VariantListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "VariantList",
+        vec![
+            Production::new(vec![Symbol::nt("Variant"), Symbol::nt("VariantListTail")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("VariantListTail", vec![
-        Production::new(vec![Symbol::term("Comma"), Symbol::nt("VariantListCont")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "VariantListTail",
+        vec![
+            Production::new(vec![Symbol::term("Comma"), Symbol::nt("VariantListCont")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("VariantListCont", vec![
-        Production::new(vec![Symbol::nt("Variant"), Symbol::nt("VariantListTail")]),
-        Production::epsilon(), // trailing comma
-    ]));
+    g.add_rule(Rule::new(
+        "VariantListCont",
+        vec![
+            Production::new(vec![Symbol::nt("Variant"), Symbol::nt("VariantListTail")]),
+            Production::epsilon(), // trailing comma
+        ],
+    ));
 
-    g.add_rule(Rule::new("Variant", vec![
-        Production::new(vec![Symbol::term("Ident"), Symbol::nt("OptVariantData")]),
-    ]));
+    g.add_rule(Rule::new(
+        "Variant",
+        vec![Production::new(vec![Symbol::term("Ident"), Symbol::nt("OptVariantData")])],
+    ));
 
-    g.add_rule(Rule::new("OptVariantData", vec![
-        Production::new(vec![Symbol::term("OpenParen"), Symbol::nt("TupleFieldList"), Symbol::term("CloseParen")]),
-        Production::new(vec![Symbol::term("OpenBrace"), Symbol::nt("FieldList"), Symbol::term("CloseBrace")]),
-        Production::new(vec![Symbol::term("Eq"), Symbol::nt("Expr")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptVariantData",
+        vec![
+            Production::new(vec![
+                Symbol::term("OpenParen"),
+                Symbol::nt("TupleFieldList"),
+                Symbol::term("CloseParen"),
+            ]),
+            Production::new(vec![
+                Symbol::term("OpenBrace"),
+                Symbol::nt("FieldList"),
+                Symbol::term("CloseBrace"),
+            ]),
+            Production::new(vec![Symbol::term("Eq"), Symbol::nt("Expr")]),
+            Production::epsilon(),
+        ],
+    ));
 
     // ── Type alias ─────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("TypeItem", vec![
-        Production::new(vec![Symbol::term("kw_type"), Symbol::term("Ident"), Symbol::nt("OptGenericParams"), Symbol::term("Eq"), Symbol::nt("Type"), Symbol::term("Semi")]),
-    ]));
+    g.add_rule(Rule::new(
+        "TypeItem",
+        vec![Production::new(vec![
+            Symbol::term("kw_type"),
+            Symbol::term("Ident"),
+            Symbol::nt("OptGenericParams"),
+            Symbol::term("Eq"),
+            Symbol::nt("Type"),
+            Symbol::term("Semi"),
+        ])],
+    ));
 
     // ── Module ─────────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("ModItem", vec![
-        Production::new(vec![Symbol::term("kw_mod"), Symbol::term("Ident"), Symbol::nt("ModBody")]),
-    ]));
+    g.add_rule(Rule::new(
+        "ModItem",
+        vec![Production::new(vec![
+            Symbol::term("kw_mod"),
+            Symbol::term("Ident"),
+            Symbol::nt("ModBody"),
+        ])],
+    ));
 
-    g.add_rule(Rule::new("ModBody", vec![
-        Production::new(vec![Symbol::term("OpenBrace"), Symbol::nt("ItemList"), Symbol::term("CloseBrace")]),
-        Production::new(vec![Symbol::term("Semi")]),
-    ]));
+    g.add_rule(Rule::new(
+        "ModBody",
+        vec![
+            Production::new(vec![
+                Symbol::term("OpenBrace"),
+                Symbol::nt("ItemList"),
+                Symbol::term("CloseBrace"),
+            ]),
+            Production::new(vec![Symbol::term("Semi")]),
+        ],
+    ));
 
     // ── Impl ───────────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("ImplItem", vec![
-        Production::new(vec![Symbol::term("kw_impl"), Symbol::nt("OptGenericParams"), Symbol::nt("Type"), Symbol::nt("OptForType"), Symbol::term("OpenBrace"), Symbol::nt("ImplItemList"), Symbol::term("CloseBrace")]),
-    ]));
+    g.add_rule(Rule::new(
+        "ImplItem",
+        vec![Production::new(vec![
+            Symbol::term("kw_impl"),
+            Symbol::nt("OptGenericParams"),
+            Symbol::nt("Type"),
+            Symbol::nt("OptForType"),
+            Symbol::term("OpenBrace"),
+            Symbol::nt("ImplItemList"),
+            Symbol::term("CloseBrace"),
+        ])],
+    ));
 
-    g.add_rule(Rule::new("OptForType", vec![
-        Production::new(vec![Symbol::term("kw_for"), Symbol::nt("Type")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptForType",
+        vec![
+            Production::new(vec![Symbol::term("kw_for"), Symbol::nt("Type")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("ImplItemList", vec![
-        Production::new(vec![Symbol::nt("Item"), Symbol::nt("ImplItemList")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "ImplItemList",
+        vec![
+            Production::new(vec![Symbol::nt("Item"), Symbol::nt("ImplItemList")]),
+            Production::epsilon(),
+        ],
+    ));
 
     // ── Trait ──────────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("TraitItem", vec![
-        Production::new(vec![Symbol::term("kw_trait"), Symbol::term("Ident"), Symbol::nt("OptGenericParams"), Symbol::nt("OptBounds"), Symbol::term("OpenBrace"), Symbol::nt("TraitItemList"), Symbol::term("CloseBrace")]),
-    ]));
+    g.add_rule(Rule::new(
+        "TraitItem",
+        vec![Production::new(vec![
+            Symbol::term("kw_trait"),
+            Symbol::term("Ident"),
+            Symbol::nt("OptGenericParams"),
+            Symbol::nt("OptBounds"),
+            Symbol::term("OpenBrace"),
+            Symbol::nt("TraitItemList"),
+            Symbol::term("CloseBrace"),
+        ])],
+    ));
 
-    g.add_rule(Rule::new("TraitItemList", vec![
-        Production::new(vec![Symbol::nt("Item"), Symbol::nt("TraitItemList")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "TraitItemList",
+        vec![
+            Production::new(vec![Symbol::nt("Item"), Symbol::nt("TraitItemList")]),
+            Production::epsilon(),
+        ],
+    ));
 
     // ── Use ────────────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("UseItem", vec![
-        Production::new(vec![Symbol::term("kw_use"), Symbol::nt("UsePath"), Symbol::term("Semi")]),
-    ]));
+    g.add_rule(Rule::new(
+        "UseItem",
+        vec![Production::new(vec![
+            Symbol::term("kw_use"),
+            Symbol::nt("UsePath"),
+            Symbol::term("Semi"),
+        ])],
+    ));
 
-    g.add_rule(Rule::new("UsePath", vec![
-        Production::new(vec![Symbol::nt("Path"), Symbol::nt("OptUseAlias")]),
-    ]));
+    g.add_rule(Rule::new(
+        "UsePath",
+        vec![Production::new(vec![Symbol::nt("Path"), Symbol::nt("OptUseAlias")])],
+    ));
 
-    g.add_rule(Rule::new("OptUseAlias", vec![
-        Production::new(vec![Symbol::term("kw_as"), Symbol::term("Ident")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptUseAlias",
+        vec![
+            Production::new(vec![Symbol::term("kw_as"), Symbol::term("Ident")]),
+            Production::epsilon(),
+        ],
+    ));
 
     // ── Let binding ────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("LetItem", vec![
-        Production::new(vec![Symbol::term("kw_let"), Symbol::nt("Pattern"), Symbol::nt("OptTypeAnnot"), Symbol::nt("OptInit"), Symbol::term("Semi")]),
-    ]));
+    g.add_rule(Rule::new(
+        "LetItem",
+        vec![Production::new(vec![
+            Symbol::term("kw_let"),
+            Symbol::nt("Pattern"),
+            Symbol::nt("OptTypeAnnot"),
+            Symbol::nt("OptInit"),
+            Symbol::term("Semi"),
+        ])],
+    ));
 
-    g.add_rule(Rule::new("OptTypeAnnot", vec![
-        Production::new(vec![Symbol::term("Colon"), Symbol::nt("Type")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptTypeAnnot",
+        vec![
+            Production::new(vec![Symbol::term("Colon"), Symbol::nt("Type")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("OptInit", vec![
-        Production::new(vec![Symbol::term("Eq"), Symbol::nt("Expr")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptInit",
+        vec![Production::new(vec![Symbol::term("Eq"), Symbol::nt("Expr")]), Production::epsilon()],
+    ));
 
     // ── Types ──────────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("Type", vec![
-        Production::new(vec![Symbol::nt("Path"), Symbol::nt("OptTypeArgs")]),
-        Production::new(vec![Symbol::term("And"), Symbol::nt("OptLifetime"), Symbol::nt("OptMut"), Symbol::nt("Type")]),
-        Production::new(vec![Symbol::term("Star"), Symbol::nt("ConstOrMut"), Symbol::nt("Type")]),
-        Production::new(vec![Symbol::term("OpenBracket"), Symbol::nt("Type"), Symbol::nt("OptArrayLen"), Symbol::term("CloseBracket")]),
-        Production::new(vec![Symbol::term("OpenParen"), Symbol::nt("TupleTypeList"), Symbol::term("CloseParen")]),
-        // Option sugar: ?T → Option<T>
-        Production::new(vec![Symbol::term("Question"), Symbol::nt("Type")]),
-        // Vec sugar: V[T] (handled as Path + bracket args)
-        // Result sugar: R[T,E] (handled as Path + bracket args)
-        Production::new(vec![Symbol::term("kw_dyn"), Symbol::nt("TypeBound"), Symbol::nt("TypeBoundTail")]),
-        Production::new(vec![Symbol::term("kw_impl"), Symbol::nt("TypeBound"), Symbol::nt("TypeBoundTail")]),
-        Production::new(vec![Symbol::term("Bang")]), // never type
-    ]));
+    g.add_rule(Rule::new(
+        "Type",
+        vec![
+            Production::new(vec![Symbol::nt("Path"), Symbol::nt("OptTypeArgs")]),
+            Production::new(vec![
+                Symbol::term("And"),
+                Symbol::nt("OptLifetime"),
+                Symbol::nt("OptMut"),
+                Symbol::nt("Type"),
+            ]),
+            Production::new(vec![
+                Symbol::term("Star"),
+                Symbol::nt("ConstOrMut"),
+                Symbol::nt("Type"),
+            ]),
+            Production::new(vec![
+                Symbol::term("OpenBracket"),
+                Symbol::nt("Type"),
+                Symbol::nt("OptArrayLen"),
+                Symbol::term("CloseBracket"),
+            ]),
+            Production::new(vec![
+                Symbol::term("OpenParen"),
+                Symbol::nt("TupleTypeList"),
+                Symbol::term("CloseParen"),
+            ]),
+            // Option sugar: ?T → Option<T>
+            Production::new(vec![Symbol::term("Question"), Symbol::nt("Type")]),
+            // Vec sugar: V[T] (handled as Path + bracket args)
+            // Result sugar: R[T,E] (handled as Path + bracket args)
+            Production::new(vec![
+                Symbol::term("kw_dyn"),
+                Symbol::nt("TypeBound"),
+                Symbol::nt("TypeBoundTail"),
+            ]),
+            Production::new(vec![
+                Symbol::term("kw_impl"),
+                Symbol::nt("TypeBound"),
+                Symbol::nt("TypeBoundTail"),
+            ]),
+            Production::new(vec![Symbol::term("Bang")]), // never type
+        ],
+    ));
 
-    g.add_rule(Rule::new("OptTypeArgs", vec![
-        Production::new(vec![Symbol::term("Lt"), Symbol::nt("TypeArgList"), Symbol::term("Gt")]),
-        Production::new(vec![Symbol::term("OpenBracket"), Symbol::nt("TypeArgList"), Symbol::term("CloseBracket")]), // V[T], R[T,E] sugar
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptTypeArgs",
+        vec![
+            Production::new(vec![
+                Symbol::term("Lt"),
+                Symbol::nt("TypeArgList"),
+                Symbol::term("Gt"),
+            ]),
+            Production::new(vec![
+                Symbol::term("OpenBracket"),
+                Symbol::nt("TypeArgList"),
+                Symbol::term("CloseBracket"),
+            ]), // V[T], R[T,E] sugar
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("TypeArgList", vec![
-        Production::new(vec![Symbol::nt("Type"), Symbol::nt("TypeArgListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "TypeArgList",
+        vec![
+            Production::new(vec![Symbol::nt("Type"), Symbol::nt("TypeArgListTail")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("TypeArgListTail", vec![
-        Production::new(vec![Symbol::term("Comma"), Symbol::nt("Type"), Symbol::nt("TypeArgListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "TypeArgListTail",
+        vec![
+            Production::new(vec![
+                Symbol::term("Comma"),
+                Symbol::nt("Type"),
+                Symbol::nt("TypeArgListTail"),
+            ]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("OptLifetime", vec![
-        Production::new(vec![Symbol::term("Lifetime")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptLifetime",
+        vec![Production::new(vec![Symbol::term("Lifetime")]), Production::epsilon()],
+    ));
 
-    g.add_rule(Rule::new("OptMut", vec![
-        Production::new(vec![Symbol::term("kw_mut")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptMut",
+        vec![Production::new(vec![Symbol::term("kw_mut")]), Production::epsilon()],
+    ));
 
-    g.add_rule(Rule::new("ConstOrMut", vec![
-        Production::new(vec![Symbol::term("kw_const")]),
-        Production::new(vec![Symbol::term("kw_mut")]),
-    ]));
+    g.add_rule(Rule::new(
+        "ConstOrMut",
+        vec![
+            Production::new(vec![Symbol::term("kw_const")]),
+            Production::new(vec![Symbol::term("kw_mut")]),
+        ],
+    ));
 
-    g.add_rule(Rule::new("OptArrayLen", vec![
-        Production::new(vec![Symbol::term("Semi"), Symbol::nt("Expr")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptArrayLen",
+        vec![
+            Production::new(vec![Symbol::term("Semi"), Symbol::nt("Expr")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("TupleTypeList", vec![
-        Production::new(vec![Symbol::nt("Type"), Symbol::term("Comma"), Symbol::nt("TupleTypeListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "TupleTypeList",
+        vec![
+            Production::new(vec![
+                Symbol::nt("Type"),
+                Symbol::term("Comma"),
+                Symbol::nt("TupleTypeListTail"),
+            ]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("TupleTypeListTail", vec![
-        Production::new(vec![Symbol::nt("Type"), Symbol::nt("OptCommaAndMore")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "TupleTypeListTail",
+        vec![
+            Production::new(vec![Symbol::nt("Type"), Symbol::nt("OptCommaAndMore")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("OptCommaAndMore", vec![
-        Production::new(vec![Symbol::term("Comma"), Symbol::nt("TupleTypeListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptCommaAndMore",
+        vec![
+            Production::new(vec![Symbol::term("Comma"), Symbol::nt("TupleTypeListTail")]),
+            Production::epsilon(),
+        ],
+    ));
 
     // ── Patterns ───────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("Pattern", vec![
-        Production::new(vec![Symbol::term("Ident"), Symbol::nt("OptPatternBinding")]),
-        Production::new(vec![Symbol::term("kw_mut"), Symbol::term("Ident")]),
-        Production::new(vec![Symbol::term("kw_ref"), Symbol::term("Ident")]),
-        Production::new(vec![Symbol::term("Underscore")]),
-        Production::new(vec![Symbol::term("OpenParen"), Symbol::nt("PatternList"), Symbol::term("CloseParen")]),
-        Production::new(vec![Symbol::term("Literal")]),
-    ]));
+    g.add_rule(Rule::new(
+        "Pattern",
+        vec![
+            Production::new(vec![Symbol::term("Ident"), Symbol::nt("OptPatternBinding")]),
+            Production::new(vec![Symbol::term("kw_mut"), Symbol::term("Ident")]),
+            Production::new(vec![Symbol::term("kw_ref"), Symbol::term("Ident")]),
+            Production::new(vec![Symbol::term("Underscore")]),
+            Production::new(vec![
+                Symbol::term("OpenParen"),
+                Symbol::nt("PatternList"),
+                Symbol::term("CloseParen"),
+            ]),
+            Production::new(vec![Symbol::term("Literal")]),
+        ],
+    ));
 
-    g.add_rule(Rule::new("OptPatternBinding", vec![
-        Production::new(vec![Symbol::term("At"), Symbol::nt("Pattern")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "OptPatternBinding",
+        vec![
+            Production::new(vec![Symbol::term("At"), Symbol::nt("Pattern")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("PatternList", vec![
-        Production::new(vec![Symbol::nt("Pattern"), Symbol::nt("PatternListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "PatternList",
+        vec![
+            Production::new(vec![Symbol::nt("Pattern"), Symbol::nt("PatternListTail")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("PatternListTail", vec![
-        Production::new(vec![Symbol::term("Comma"), Symbol::nt("Pattern"), Symbol::nt("PatternListTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "PatternListTail",
+        vec![
+            Production::new(vec![
+                Symbol::term("Comma"),
+                Symbol::nt("Pattern"),
+                Symbol::nt("PatternListTail"),
+            ]),
+            Production::epsilon(),
+        ],
+    ));
 
     // ── Expressions (simplified — not full expression grammar) ─────────
 
-    g.add_rule(Rule::new("Expr", vec![
-        Production::new(vec![Symbol::term("Ident")]),
-        Production::new(vec![Symbol::term("Literal")]),
-        Production::new(vec![Symbol::term("OpenParen"), Symbol::nt("Expr"), Symbol::term("CloseParen")]),
-    ]));
+    g.add_rule(Rule::new(
+        "Expr",
+        vec![
+            Production::new(vec![Symbol::term("Ident")]),
+            Production::new(vec![Symbol::term("Literal")]),
+            Production::new(vec![
+                Symbol::term("OpenParen"),
+                Symbol::nt("Expr"),
+                Symbol::term("CloseParen"),
+            ]),
+        ],
+    ));
 
     // ── Blocks ─────────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("Block", vec![
-        Production::new(vec![Symbol::term("OpenBrace"), Symbol::nt("StmtList"), Symbol::term("CloseBrace")]),
-    ]));
+    g.add_rule(Rule::new(
+        "Block",
+        vec![Production::new(vec![
+            Symbol::term("OpenBrace"),
+            Symbol::nt("StmtList"),
+            Symbol::term("CloseBrace"),
+        ])],
+    ));
 
-    g.add_rule(Rule::new("StmtList", vec![
-        Production::new(vec![Symbol::nt("Stmt"), Symbol::nt("StmtList")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "StmtList",
+        vec![
+            Production::new(vec![Symbol::nt("Stmt"), Symbol::nt("StmtList")]),
+            Production::epsilon(),
+        ],
+    ));
 
-    g.add_rule(Rule::new("Stmt", vec![
-        Production::new(vec![Symbol::nt("LetItem")]),
-        Production::new(vec![Symbol::nt("ExprStmt")]),
-    ]));
+    g.add_rule(Rule::new(
+        "Stmt",
+        vec![
+            Production::new(vec![Symbol::nt("LetItem")]),
+            Production::new(vec![Symbol::nt("ExprStmt")]),
+        ],
+    ));
 
-    g.add_rule(Rule::new("ExprStmt", vec![
-        Production::new(vec![Symbol::nt("Expr"), Symbol::term("Semi")]),
-    ]));
+    g.add_rule(Rule::new(
+        "ExprStmt",
+        vec![Production::new(vec![Symbol::nt("Expr"), Symbol::term("Semi")])],
+    ));
 
     // ── Path ───────────────────────────────────────────────────────────
 
-    g.add_rule(Rule::new("Path", vec![
-        Production::new(vec![Symbol::term("Ident"), Symbol::nt("PathTail")]),
-        Production::new(vec![Symbol::term("PathSep"), Symbol::term("Ident"), Symbol::nt("PathTail")]),
-        Production::new(vec![Symbol::term("kw_crate"), Symbol::nt("PathTail")]),
-        Production::new(vec![Symbol::term("kw_super"), Symbol::nt("PathTail")]),
-        Production::new(vec![Symbol::term("kw_self"), Symbol::nt("PathTail")]),
-    ]));
+    g.add_rule(Rule::new(
+        "Path",
+        vec![
+            Production::new(vec![Symbol::term("Ident"), Symbol::nt("PathTail")]),
+            Production::new(vec![
+                Symbol::term("PathSep"),
+                Symbol::term("Ident"),
+                Symbol::nt("PathTail"),
+            ]),
+            Production::new(vec![Symbol::term("kw_crate"), Symbol::nt("PathTail")]),
+            Production::new(vec![Symbol::term("kw_super"), Symbol::nt("PathTail")]),
+            Production::new(vec![Symbol::term("kw_self"), Symbol::nt("PathTail")]),
+        ],
+    ));
 
-    g.add_rule(Rule::new("PathTail", vec![
-        Production::new(vec![Symbol::term("PathSep"), Symbol::term("Ident"), Symbol::nt("PathTail")]),
-        Production::epsilon(),
-    ]));
+    g.add_rule(Rule::new(
+        "PathTail",
+        vec![
+            Production::new(vec![
+                Symbol::term("PathSep"),
+                Symbol::term("Ident"),
+                Symbol::nt("PathTail"),
+            ]),
+            Production::epsilon(),
+        ],
+    ));
 
     g
 }
@@ -868,10 +1285,7 @@ mod tests {
     fn follow_sets_contain_eof_for_start() {
         let g = canonical_grammar();
         let analysis = analyze(&g);
-        assert!(
-            analysis.follow["Program"].contains(&Symbol::Eof),
-            "FOLLOW(start) must contain $"
-        );
+        assert!(analysis.follow["Program"].contains(&Symbol::Eof), "FOLLOW(start) must contain $");
     }
 
     #[test]
@@ -913,13 +1327,11 @@ mod tests {
     #[test]
     fn simple_grammar_first_sets() {
         let mut g = Grammar::new("S");
-        g.add_rule(Rule::new("S", vec![
-            Production::new(vec![Symbol::term("a"), Symbol::nt("B")]),
-        ]));
-        g.add_rule(Rule::new("B", vec![
-            Production::new(vec![Symbol::term("b")]),
-            Production::epsilon(),
-        ]));
+        g.add_rule(Rule::new("S", vec![Production::new(vec![Symbol::term("a"), Symbol::nt("B")])]));
+        g.add_rule(Rule::new(
+            "B",
+            vec![Production::new(vec![Symbol::term("b")]), Production::epsilon()],
+        ));
         let analysis = analyze(&g);
         assert!(analysis.first["S"].contains(&Symbol::term("a")));
         assert!(analysis.first["B"].contains(&Symbol::term("b")));
@@ -930,13 +1342,11 @@ mod tests {
     #[test]
     fn simple_grammar_follow_sets() {
         let mut g = Grammar::new("S");
-        g.add_rule(Rule::new("S", vec![
-            Production::new(vec![Symbol::nt("A"), Symbol::term("b")]),
-        ]));
-        g.add_rule(Rule::new("A", vec![
-            Production::new(vec![Symbol::term("a")]),
-            Production::epsilon(),
-        ]));
+        g.add_rule(Rule::new("S", vec![Production::new(vec![Symbol::nt("A"), Symbol::term("b")])]));
+        g.add_rule(Rule::new(
+            "A",
+            vec![Production::new(vec![Symbol::term("a")]), Production::epsilon()],
+        ));
         let analysis = analyze(&g);
         // FOLLOW(A) should contain "b" (since S → A b).
         assert!(analysis.follow["A"].contains(&Symbol::term("b")));
@@ -948,10 +1358,13 @@ mod tests {
     fn detects_ll1_conflict() {
         let mut g = Grammar::new("S");
         // Both productions for S start with the same terminal — an LL(1) conflict.
-        g.add_rule(Rule::new("S", vec![
-            Production::new(vec![Symbol::term("a"), Symbol::term("b")]),
-            Production::new(vec![Symbol::term("a"), Symbol::term("c")]),
-        ]));
+        g.add_rule(Rule::new(
+            "S",
+            vec![
+                Production::new(vec![Symbol::term("a"), Symbol::term("b")]),
+                Production::new(vec![Symbol::term("a"), Symbol::term("c")]),
+            ],
+        ));
         let analysis = analyze(&g);
         assert!(!analysis.conflicts.is_empty(), "should detect LL(1) conflict");
         assert_eq!(analysis.conflicts[0].non_terminal, "S");
@@ -963,8 +1376,17 @@ mod tests {
         let nts = g.non_terminals();
         // Check a sample of expected non-terminals.
         let expected = vec![
-            "Program", "ItemList", "Item", "FnItem", "StructItem", "EnumItem",
-            "Type", "Pattern", "Block", "Path", "Expr",
+            "Program",
+            "ItemList",
+            "Item",
+            "FnItem",
+            "StructItem",
+            "EnumItem",
+            "Type",
+            "Pattern",
+            "Block",
+            "Path",
+            "Expr",
         ];
         for name in expected {
             assert!(nts.contains(&name), "missing non-terminal '{name}'");

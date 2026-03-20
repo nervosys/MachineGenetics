@@ -98,8 +98,8 @@ pub(crate) struct UnstableInStableExposed {
         "if the {$is_function_call2 ->
             [true] caller
             *[false] function
-        } is not (yet) meant to be exposed to stable const contexts, add `#[redox_const_unstable]`",
-        code = "#[redox_const_unstable(feature = \"...\", issue = \"...\")]\n",
+        } is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`",
+        code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
         applicability = "has-placeholders"
     )]
     pub attr_span: Span,
@@ -187,7 +187,7 @@ pub(crate) struct UnstableIntrinsic {
 #[derive(Diagnostic)]
 #[diag("`{$def_path}` cannot be (indirectly) exposed to stable")]
 #[help(
-    "either mark the callee as `#[redox_const_stable_indirect]`, or the caller as `#[redox_const_unstable]`"
+    "either mark the callee as `#[redox_const_stable_indirect]`, or the caller as `#[rustc_const_unstable]`"
 )]
 pub(crate) struct UnmarkedConstItemExposed {
     #[primary_span]
@@ -198,7 +198,7 @@ pub(crate) struct UnmarkedConstItemExposed {
 #[derive(Diagnostic)]
 #[diag("intrinsic `{$def_path}` cannot be (indirectly) exposed to stable")]
 #[help(
-    "mark the caller as `#[redox_const_unstable]`, or mark the intrinsic `#[redox_intrinsic_const_stable_indirect]` (but this requires team approval)"
+    "mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[redox_intrinsic_const_stable_indirect]` (but this requires team approval)"
 )]
 pub(crate) struct UnmarkedIntrinsicExposed {
     #[primary_span]

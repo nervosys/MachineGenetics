@@ -1,6 +1,6 @@
 pub use ena::unify::{NoError, UnifyKey, UnifyValue};
-use redox_hash::FxBuildHasher;
-pub use redox_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
+use rustc_hash::FxBuildHasher;
+pub use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 pub type IndexMap<K, V> = indexmap::IndexMap<K, V, FxBuildHasher>;
 pub type IndexSet<V> = indexmap::IndexSet<V, FxBuildHasher>;

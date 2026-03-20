@@ -84,12 +84,12 @@ pub mod marker {
 auto trait Freeze {}
 
 #[macro_export]
-#[redox_builtin_macro]
+#[rustc_builtin_macro]
 macro_rules! Copy {
     () => {};
 }
 #[macro_export]
-#[redox_builtin_macro]
+#[rustc_builtin_macro]
 macro_rules! derive {
     () => {};
 }

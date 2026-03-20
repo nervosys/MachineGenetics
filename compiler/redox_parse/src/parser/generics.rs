@@ -389,6 +389,92 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parses an optional `spec { ... }` block (canonical mode only).
+    ///
+    /// ```text
+    /// spec {
+    ///     @req(expr)
+    ///     @ens(expr)
+    ///     @perf(expr)
+    ///     @fx(ident, ident, ...)
+    /// }
+    /// ```
+    pub(super) fn parse_spec_block(&mut self) -> PResult<'a, Option<Box<ast::SpecBlock>>> {
+        use redox_session::parse::SyntaxMode;
+
+        if self.psess.syntax_mode != SyntaxMode::Canonical {
+            return Ok(None);
+        }
+
+        if !self.token.is_ident_named(sym::spec) {
+            return Ok(None);
+        }
+
+        let lo = self.token.span;
+        self.bump(); // consume `spec`
+
+        self.expect(exp!(OpenBrace))?;
+
+        let mut clauses = ThinVec::new();
+        while !self.eat(exp!(CloseBrace)) {
+            let clause_lo = self.token.span;
+
+            // Each clause starts with `@` followed by the clause keyword
+            self.expect(exp!(At))?;
+
+            let clause_kind = if self.token.is_ident_named(sym::req) {
+                self.bump(); // consume `req`
+                self.expect(exp!(OpenParen))?;
+                let expr = self.parse_expr()?;
+                self.expect(exp!(CloseParen))?;
+                ast::SpecClauseKind::Requires(expr)
+            } else if self.token.is_ident_named(sym::ens) {
+                self.bump(); // consume `ens`
+                self.expect(exp!(OpenParen))?;
+                let expr = self.parse_expr()?;
+                self.expect(exp!(CloseParen))?;
+                ast::SpecClauseKind::Ensures(expr)
+            } else if self.token.is_ident_named(sym::perf) {
+                self.bump(); // consume `perf`
+                self.expect(exp!(OpenParen))?;
+                let expr = self.parse_expr()?;
+                self.expect(exp!(CloseParen))?;
+                ast::SpecClauseKind::Perf(expr)
+            } else if self.token.is_ident_named(sym::fx) {
+                self.bump(); // consume `fx`
+                self.expect(exp!(OpenParen))?;
+                let mut effects = ThinVec::new();
+                if !self.check(exp!(CloseParen)) {
+                    effects.push(self.parse_ident()?);
+                    while self.eat(exp!(Comma)) {
+                        if self.check(exp!(CloseParen)) {
+                            break; // trailing comma
+                        }
+                        effects.push(self.parse_ident()?);
+                    }
+                }
+                self.expect(exp!(CloseParen))?;
+                ast::SpecClauseKind::Effects(effects)
+            } else {
+                return Err(self.dcx().create_err(errors::UnknownSpecClause {
+                    span: self.token.span,
+                }));
+            };
+
+            let clause_hi = self.prev_token.span;
+            clauses.push(ast::SpecClause {
+                kind: clause_kind,
+                span: clause_lo.to(clause_hi),
+            });
+        }
+
+        let hi = self.prev_token.span;
+        Ok(Some(Box::new(ast::SpecBlock {
+            clauses,
+            span: lo.to(hi),
+        })))
+    }
+
     /// Parses an optional where-clause.
     ///
     /// ```ignore (only-for-syntax-highlight)

@@ -321,7 +321,7 @@ impl<'input> Parser<'input> {
                     let without_quotes = &snippet[1..snippet.len() - 1];
                     let (mut ok, mut vec) = (true, vec![]);
                     let mut chars = input.chars();
-                    redox_literal_escaper::unescape_str(without_quotes, |range, res| match res {
+                    rustc_literal_escaper::unescape_str(without_quotes, |range, res| match res {
                         Ok(ch) if ok && chars.next().is_some_and(|c| ch == c) => {
                             vec.push((range, ch));
                         }

@@ -2534,7 +2534,7 @@ fn with_encode_metadata_header(
     };
 
     // Encode the redox version string in a predictable location.
-    redox_version(tcx.sess.cfg_version).encode(&mut ecx);
+    rustc_version(tcx.sess.cfg_version).encode(&mut ecx);
 
     let root_position = f(&mut ecx);
 

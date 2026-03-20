@@ -1,5 +1,5 @@
-use redox_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, Semantics, SingleS};
-use redox_apfloat::{self, Float, FloatConvert, Round};
+use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, Semantics, SingleS};
+use rustc_apfloat::{self, Float, FloatConvert, Round};
 use redox_middle::mir;
 use redox_middle::ty::{self, FloatTy};
 
@@ -104,10 +104,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         match intrinsic_name {
             // Operations we can do with soft-floats.
-            "sqrtf16" => sqrt::<redox_apfloat::ieee::Half>(this, args, dest)?,
-            "sqrtf32" => sqrt::<redox_apfloat::ieee::Single>(this, args, dest)?,
-            "sqrtf64" => sqrt::<redox_apfloat::ieee::Double>(this, args, dest)?,
-            "sqrtf128" => sqrt::<redox_apfloat::ieee::Quad>(this, args, dest)?,
+            "sqrtf16" => sqrt::<rustc_apfloat::ieee::Half>(this, args, dest)?,
+            "sqrtf32" => sqrt::<rustc_apfloat::ieee::Single>(this, args, dest)?,
+            "sqrtf64" => sqrt::<rustc_apfloat::ieee::Double>(this, args, dest)?,
+            "sqrtf128" => sqrt::<rustc_apfloat::ieee::Quad>(this, args, dest)?,
 
             #[rustfmt::skip]
             | "fadd_fast"

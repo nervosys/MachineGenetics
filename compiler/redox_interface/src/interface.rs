@@ -445,7 +445,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 },
                 config.lint_caps,
                 target,
-                util::redox_version_str().unwrap_or("unknown"),
+                util::rustc_version_str().unwrap_or("unknown"),
                 config.ice_file,
                 config.using_internal_features,
             );

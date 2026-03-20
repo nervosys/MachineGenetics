@@ -5,5 +5,5 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-redox-stable-hash = { version = "0.1.0" }
+rustc-stable-hash = { version = "0.1.0" }
 # tidy-alphabetical-end

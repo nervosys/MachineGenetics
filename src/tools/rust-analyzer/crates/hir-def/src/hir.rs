@@ -21,7 +21,7 @@ use std::fmt;
 use hir_expand::{MacroDefId, name::Name};
 use intern::Symbol;
 use la_arena::Idx;
-use redox_apfloat::ieee::{Half as f16, Quad as f128};
+use rustc_apfloat::ieee::{Half as f16, Quad as f128};
 use syntax::ast;
 use type_ref::TypeRefId;
 

@@ -455,8 +455,8 @@ pub struct CReaderCacheKey {
 
 /// Use this rather than `TyKind`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
-#[redox_diagnostic_item = "Ty"]
-#[redox_pass_by_value]
+#[rustc_diagnostic_item = "Ty"]
+#[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
 
 impl<'tcx> redox_type_ir::inherent::IntoKind for Ty<'tcx> {
@@ -1630,7 +1630,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match (impl1.polarity, impl2.polarity) {
             (ImplPolarity::Reservation, _) | (_, ImplPolarity::Reservation) => {
-                // `#[redox_reservation_impl]` impls don't overlap with anything
+                // `#[rustc_reservation_impl]` impls don't overlap with anything
                 return Some(ImplOverlapKind::Permitted { marker: false });
             }
             (ImplPolarity::Positive, ImplPolarity::Negative)
@@ -1778,7 +1778,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns `true` if this is coinductive, either because it is
-    /// an auto trait or because it has the `#[redox_coinductive]` attribute.
+    /// an auto trait or because it has the `#[rustc_coinductive]` attribute.
     pub fn trait_is_coinductive(self, trait_def_id: DefId) -> bool {
         self.trait_def(trait_def_id).is_coinductive
     }

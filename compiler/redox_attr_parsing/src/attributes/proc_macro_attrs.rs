@@ -45,7 +45,7 @@ impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
 
 pub(crate) struct RustcBuiltinMacroParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcBuiltinMacroParser {
-    const PATH: &[Symbol] = &[sym::redox_builtin_macro];
+    const PATH: &[Symbol] = &[sym::rustc_builtin_macro];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
@@ -64,7 +64,7 @@ fn parse_derive_like<S: Stage>(
     trait_name_mandatory: bool,
 ) -> Option<(Option<Symbol>, ThinVec<Symbol>)> {
     let Some(list) = args.list() else {
-        // For #[redox_builtin_macro], it is permitted to leave out the trait name
+        // For #[rustc_builtin_macro], it is permitted to leave out the trait name
         if args.no_args().is_ok() && !trait_name_mandatory {
             return Some((None, ThinVec::new()));
         }

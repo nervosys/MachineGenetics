@@ -95,7 +95,7 @@ pub(crate) struct CrateMetadata {
     /// Inherent impls which do not follow the normal coherence rules.
     ///
     /// These can be introduced using either `#![redox_coherence_is_core]`
-    /// or `#[redox_allow_incoherent_impl]`.
+    /// or `#[rustc_allow_incoherent_impl]`.
     incoherent_impls: FxIndexMap<SimplifiedType, LazyArray<DefIndex>>,
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
@@ -710,7 +710,7 @@ impl MetadataBlob {
         let found_version =
             LazyValue::<String>::from_position(NonZero::new(METADATA_HEADER.len() + 8).unwrap())
                 .decode(self);
-        if redox_version(cfg_version) != found_version {
+        if rustc_version(cfg_version) != found_version {
             return Err(Some(found_version));
         }
 

@@ -245,7 +245,7 @@ trivial_impls!(
     crate::FloatTy,
     crate::InferConst,
     crate::RegionVid,
-    redox_hash::FxBuildHasher,
+    rustc_hash::FxBuildHasher,
     crate::TypeFlags,
     crate::solve::GoalSource,
 );

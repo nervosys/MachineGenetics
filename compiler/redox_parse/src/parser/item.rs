@@ -248,7 +248,7 @@ impl<'a> Parser<'a> {
             self.parse_use_item()?
         } else if self.check_fn_front_matter(check_pub, case) {
             // FUNCTION ITEM
-            let (ident, sig, generics, contract, body) =
+            let (ident, sig, generics, contract, spec, body) =
                 self.parse_fn(attrs, fn_parse_mode, lo, vis, case)?;
             ItemKind::Fn(Box::new(Fn {
                 defaultness: def_(),
@@ -256,6 +256,7 @@ impl<'a> Parser<'a> {
                 sig,
                 generics,
                 contract,
+                spec,
                 body,
                 define_opaque: None,
                 eii_impls: ThinVec::new(),
@@ -2676,7 +2677,17 @@ impl<'a> Parser<'a> {
         sig_lo: Span,
         vis: &Visibility,
         case: Case,
-    ) -> PResult<'a, (Ident, FnSig, Generics, Option<Box<FnContract>>, Option<Box<Block>>)> {
+    ) -> PResult<
+        'a,
+        (
+            Ident,
+            FnSig,
+            Generics,
+            Option<Box<FnContract>>,
+            Option<Box<ast::SpecBlock>>,
+            Option<Box<Block>>,
+        ),
+    > {
         let fn_span = self.token.span;
         let header = self.parse_fn_front_matter(vis, case, FrontMatterParsingMode::Function)?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
@@ -2703,6 +2714,8 @@ impl<'a> Parser<'a> {
 
         generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
 
+        let spec = self.parse_spec_block()?;
+
         // `fn_params_end` is needed only when it's followed by a where clause.
         let fn_params_end =
             if generics.where_clause.has_where_token { Some(fn_params_end) } else { None };
@@ -2712,7 +2725,7 @@ impl<'a> Parser<'a> {
         let body =
             self.parse_fn_body(attrs, &ident, &mut sig_hi, fn_parse_mode.req_body, fn_params_end)?;
         let fn_sig_span = sig_lo.to(sig_hi);
-        Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, contract, body))
+        Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, contract, spec, body))
     }
 
     /// Provide diagnostics when function body is not found

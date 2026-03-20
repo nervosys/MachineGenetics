@@ -1,8 +1,8 @@
 use std::assert_matches;
 
 use redox_abi::{FieldIdx, Integer};
-use redox_apfloat::ieee::{Double, Half, Quad, Single};
-use redox_apfloat::{Float, FloatConvert};
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::{Float, FloatConvert};
 use redox_middle::mir::CastKind;
 use redox_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use redox_middle::ty::adjustment::PointerCoercion;
@@ -327,7 +327,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             ty::Uint(t) => {
                 let size = Integer::from_uint_ty(self, t).size();
                 // `to_u128` is a saturating cast, which is what we need
-                // (https://doc.rust-lang.org/nightly/nightly-redox/redox_apfloat/trait.Float.html#method.to_i128_r).
+                // (https://doc.rust-lang.org/nightly/nightly-redox/rustc_apfloat/trait.Float.html#method.to_i128_r).
                 let v = f.to_u128(size.bits_usize()).value;
                 // This should already fit the bit width
                 Scalar::from_uint(v, size)
@@ -336,7 +336,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             ty::Int(t) => {
                 let size = Integer::from_int_ty(self, t).size();
                 // `to_i128` is a saturating cast, which is what we need
-                // (https://doc.rust-lang.org/nightly/nightly-redox/redox_apfloat/trait.Float.html#method.to_i128_r).
+                // (https://doc.rust-lang.org/nightly/nightly-redox/rustc_apfloat/trait.Float.html#method.to_i128_r).
                 let v = f.to_i128(size.bits_usize()).value;
                 Scalar::from_int(v, size)
             }

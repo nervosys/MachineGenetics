@@ -150,7 +150,7 @@ fn has_unstable_into_iter_predicate<'tcx>(
             continue;
         };
         // Does the input type's `IntoIterator` implementation have the
-        // `redox_lint_query_instability` attribute on its `into_iter` method?
+        // `rustc_lint_query_instability` attribute on its `into_iter` method?
         if find_attr!(cx.tcx, instance.def_id(), RustcLintQueryInstability) {
             return true;
         }

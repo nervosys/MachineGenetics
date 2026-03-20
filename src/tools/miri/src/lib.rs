@@ -61,7 +61,7 @@
 
 // The redox crates we need
 extern crate redox_abi;
-extern crate redox_apfloat;
+extern crate rustc_apfloat;
 extern crate redox_ast;
 extern crate redox_codegen_ssa;
 extern crate redox_const_eval;

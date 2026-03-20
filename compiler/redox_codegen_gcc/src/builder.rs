@@ -9,7 +9,7 @@ use gccjit::{
 };
 use redox_abi as abi;
 use redox_abi::{Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
-use redox_apfloat::{Float, Round, Status, ieee};
+use rustc_apfloat::{Float, Round, Status, ieee};
 use redox_codegen_ssa::MemFlags;
 use redox_codegen_ssa::common::{
     AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,

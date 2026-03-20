@@ -219,10 +219,10 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             return None;
         }
         let kind = match self.token.kind {
-            token::Plus  => token::PlusFn,
+            token::Plus => token::PlusFn,
             token::Minus => token::MinusFn,
-            token::Not   => token::BangFn,
-            token::Star  => token::StarFn,
+            token::Bang => token::BangFn,
+            token::Star => token::StarFn,
             _ => return None,
         };
         let span = self.token.span.to(next_tok.span);

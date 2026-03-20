@@ -2,7 +2,7 @@
 //! on all of `redox_hir` (which is large and depends on other large things like `redox_target`).
 #![allow(internal_features)]
 #![feature(negative_impls)]
-#![feature(redox_attrs)]
+#![feature(rustc_attrs)]
 
 use std::fmt::{self, Debug};
 
@@ -81,7 +81,7 @@ impl<CTX: HashStableContext> ToStableHashKey<CTX> for OwnerId {
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
-#[redox_pass_by_value]
+#[rustc_pass_by_value]
 pub struct HirId {
     pub owner: OwnerId,
     pub local_id: ItemLocalId,

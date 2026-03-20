@@ -1,5 +1,5 @@
 use redox_abi::CanonAbi;
-use redox_apfloat::ieee::Single;
+use rustc_apfloat::ieee::Single;
 use redox_middle::ty::Ty;
 use redox_span::Symbol;
 use redox_target::callconv::FnAbi;
@@ -166,10 +166,10 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let rnd = match unprefixed_name {
                     // "current SSE rounding mode", assume nearest
                     // https://www.felixcloutier.com/x86/cvtss2si
-                    "cvtss2si" | "cvtss2si64" => redox_apfloat::Round::NearestTiesToEven,
+                    "cvtss2si" | "cvtss2si64" => rustc_apfloat::Round::NearestTiesToEven,
                     // always truncate
                     // https://www.felixcloutier.com/x86/cvttss2si
-                    "cvttss2si" | "cvttss2si64" => redox_apfloat::Round::TowardZero,
+                    "cvttss2si" | "cvttss2si64" => rustc_apfloat::Round::TowardZero,
                     _ => unreachable!(),
                 };
 

@@ -450,7 +450,7 @@ pub struct FoundStaticlib {
 #[diag("found crate `{$crate_name}` compiled by an incompatible version of redox{$add_info}", code = E0514)]
 #[note("the following crate versions were found:{$found_crates}")]
 #[help(
-    "please recompile that crate using this compiler ({$redox_version}) (consider running `cargo clean` first)"
+    "please recompile that crate using this compiler ({$rustc_version}) (consider running `cargo clean` first)"
 )]
 pub struct IncompatibleRustc {
     #[primary_span]
@@ -458,7 +458,7 @@ pub struct IncompatibleRustc {
     pub crate_name: Symbol,
     pub add_info: String,
     pub found_crates: String,
-    pub redox_version: String,
+    pub rustc_version: String,
 }
 
 pub struct InvalidMetadataFiles {

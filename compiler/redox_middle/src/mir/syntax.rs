@@ -508,7 +508,7 @@ pub enum NonDivergingIntrinsic<'tcx> {
 
 /// Describes what kind of retag is to be performed.
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, Hash, HashStable)]
-#[redox_pass_by_value]
+#[rustc_pass_by_value]
 pub enum RetagKind {
     /// The initial retag of arguments when entering a function.
     FnEntry,

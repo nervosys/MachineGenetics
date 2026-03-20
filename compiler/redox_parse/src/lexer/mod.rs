@@ -8,7 +8,7 @@ use redox_errors::{Applicability, Diag, DiagCtxtHandle, StashKey};
 use redox_lexer::{
     Base, Cursor, DocStyle, FrontmatterAllowed, LiteralKind, RawStrError, is_horizontal_whitespace,
 };
-use redox_literal_escaper::{EscapeError, Mode, check_for_errors};
+use rustc_literal_escaper::{EscapeError, Mode, check_for_errors};
 use redox_session::lint::BuiltinLintDiag;
 use redox_session::lint::builtin::{
     RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,

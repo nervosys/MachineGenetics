@@ -22,7 +22,7 @@
 #![cfg_attr(feature = "in-rust-tree", feature(redox_private))]
 
 #[cfg(not(feature = "in-rust-tree"))]
-extern crate ra_ap_redox_lexer as redox_lexer;
+extern crate ra_ap_rustc_lexer as redox_lexer;
 #[cfg(feature = "in-rust-tree")]
 extern crate redox_driver as _;
 #[cfg(feature = "in-rust-tree")]

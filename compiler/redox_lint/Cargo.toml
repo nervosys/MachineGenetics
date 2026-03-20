@@ -7,7 +7,7 @@ edition = "2024"
 # tidy-alphabetical-start
 bitflags = "2.4.1"
 redox_abi = { path = "../redox_abi" }
-redox_apfloat = "0.2.0"
+rustc_apfloat = "0.2.0"
 redox_ast = { path = "../redox_ast" }
 redox_ast_pretty = { path = "../redox_ast_pretty" }
 redox_attr_parsing = { path = "../redox_attr_parsing" }

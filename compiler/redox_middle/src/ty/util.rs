@@ -3,7 +3,7 @@
 use std::{fmt, iter};
 
 use redox_abi::{Float, Integer, IntegerType, Size};
-use redox_apfloat::Float as _;
+use rustc_apfloat::Float as _;
 use redox_data_structures::fx::{FxHashMap, FxHashSet};
 use redox_data_structures::stable_hasher::{HashStable, StableHasher};
 use redox_data_structures::stack::ensure_sufficient_stack;
@@ -1091,7 +1091,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the minimum and maximum values for the given numeric type (including `char`s) or
     /// returns `None` if the type is not numeric.
     pub fn numeric_min_and_max_as_bits(self, tcx: TyCtxt<'tcx>) -> Option<(u128, u128)> {
-        use redox_apfloat::ieee::{Double, Half, Quad, Single};
+        use rustc_apfloat::ieee::{Double, Half, Quad, Single};
         Some(match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = self.int_size_and_signed(tcx);
@@ -1366,7 +1366,7 @@ impl<'tcx> Ty<'tcx> {
     ///
     /// Note that this method can return false even if `ty` has a destructor
     /// attached; even if that is the case then the adt has been marked with
-    /// the attribute `redox_insignificant_dtor`.
+    /// the attribute `rustc_insignificant_dtor`.
     ///
     /// Note that this method is used to check for change in drop order for
     /// 2229 drop reorder migration analysis.

@@ -2,7 +2,7 @@
 
 use std::{ascii, fmt, str};
 
-use redox_literal_escaper::{
+use rustc_literal_escaper::{
     MixedUnit, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char, unescape_str,
 };
 use redox_span::{ByteSymbol, Span, Symbol, kw, sym};

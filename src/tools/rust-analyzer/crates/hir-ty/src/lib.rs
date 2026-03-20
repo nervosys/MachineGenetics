@@ -11,17 +11,17 @@
 // For details, see the zulip discussion below:
 // https://rust-lang.zulipchat.com/#narrow/channel/185405-t-compiler.2Frust-analyzer/topic/relying.20on.20in-tree.20.60redox_type_ir.60.2F.60redox_next_trait_solver.60/with/541055689
 
-extern crate ra_ap_redox_index as redox_index;
+extern crate ra_ap_rustc_index as redox_index;
 
-extern crate ra_ap_redox_abi as redox_abi;
+extern crate ra_ap_rustc_abi as redox_abi;
 
-extern crate ra_ap_redox_pattern_analysis as redox_pattern_analysis;
+extern crate ra_ap_rustc_pattern_analysis as redox_pattern_analysis;
 
-extern crate ra_ap_redox_ast_ir as redox_ast_ir;
+extern crate ra_ap_rustc_ast_ir as redox_ast_ir;
 
-extern crate ra_ap_redox_type_ir as redox_type_ir;
+extern crate ra_ap_rustc_type_ir as redox_type_ir;
 
-extern crate ra_ap_redox_next_trait_solver as redox_next_trait_solver;
+extern crate ra_ap_rustc_next_trait_solver as redox_next_trait_solver;
 
 extern crate self as hir_ty;
 

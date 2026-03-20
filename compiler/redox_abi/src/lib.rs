@@ -1,6 +1,6 @@
 // tidy-alphabetical-start
 #![cfg_attr(feature = "nightly", allow(internal_features))]
-#![cfg_attr(feature = "nightly", feature(redox_attrs))]
+#![cfg_attr(feature = "nightly", feature(rustc_attrs))]
 #![cfg_attr(feature = "nightly", feature(step_trait))]
 // tidy-alphabetical-end
 
@@ -160,7 +160,7 @@ pub struct ReprOptions {
     pub align: Option<Align>,
     pub pack: Option<Align>,
     pub flags: ReprFlags,
-    /// `#[redox_scalable_vector]`
+    /// `#[rustc_scalable_vector]`
     pub scalable: Option<ScalableElt>,
     /// The seed to be used for randomizing a type's layout
     ///

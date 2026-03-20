@@ -97,7 +97,7 @@ pub enum DivergingBlockBehavior {
     /// Alternative behavior:
     ///
     /// ```ignore (very-unstable-new-attribute)
-    /// #![redox_never_type_options(diverging_block_default = "unit")]
+    /// #![rustc_never_type_options(diverging_block_default = "unit")]
     /// {
     ///     return;
     /// } // block has type = (), since we are dropping `!` from `return` with `;`
@@ -111,7 +111,7 @@ pub enum InlineAttr {
     Hint,
     Always,
     Never,
-    /// `#[redox_force_inline]` forces inlining to happen in the MIR inliner - it reports an error
+    /// `#[rustc_force_inline]` forces inlining to happen in the MIR inliner - it reports an error
     /// if the inlining cannot happen. It is limited to only free functions so that the calls
     /// can always be resolved.
     Force {
@@ -223,7 +223,7 @@ pub enum CoverageAttrKind {
     Off,
 }
 
-/// Successfully-parsed value of a `#[redox_abi(..)]` attribute.
+/// Successfully-parsed value of a `#[rustc_abi(..)]` attribute.
 #[derive(Copy, Debug, Eq, PartialEq, Encodable, Decodable, Clone)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub enum RustcAbiAttrKind {
@@ -246,7 +246,7 @@ impl Deprecation {
         }
     }
 
-    pub fn is_since_redox_version(&self) -> bool {
+    pub fn is_since_rustc_version(&self) -> bool {
         matches!(self.since, DeprecatedSince::RustcVersion(_))
     }
 }
@@ -789,7 +789,7 @@ pub struct RustcCleanAttribute {
     pub loaded_from_disk: Option<RustcCleanQueries>,
 }
 
-/// Represents the `except=` or `loaded_from_disk=` argument of `#[redox_clean]`
+/// Represents the `except=` or `loaded_from_disk=` argument of `#[rustc_clean]`
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[derive(HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct RustcCleanQueries {
@@ -1064,7 +1064,7 @@ pub enum AttributeKind {
         reason: Option<Symbol>,
     },
 
-    /// Represents `#[inline]` and `#[redox_force_inline]`.
+    /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
 
     /// Represents `#[instruction_set]`
@@ -1180,7 +1180,7 @@ pub enum AttributeKind {
         directive: Option<Box<Directive>>,
     },
 
-    /// Represents `#[redox_on_unimplemented]` and `#[diagnostic::on_unimplemented]`.
+    /// Represents `#[rustc_on_unimplemented]` and `#[diagnostic::on_unimplemented]`.
     OnUnimplemented {
         span: Span,
         /// None if the directive was malformed in some way.
@@ -1253,7 +1253,7 @@ pub enum AttributeKind {
         first_span: Span,
     },
 
-    /// Represents `#[redox_abi(..)]`
+    /// Represents `#[rustc_abi(..)]`
     RustcAbi {
         attr_span: Span,
         kind: RustcAbiAttrKind,
@@ -1266,276 +1266,276 @@ pub enum AttributeKind {
         span: Span,
     },
 
-    /// Represents `#[redox_allocator]`
+    /// Represents `#[rustc_allocator]`
     RustcAllocator,
 
-    /// Represents `#[redox_allocator_zeroed]`
+    /// Represents `#[rustc_allocator_zeroed]`
     RustcAllocatorZeroed,
 
-    /// Represents `#[redox_allocator_zeroed_variant]`
+    /// Represents `#[rustc_allocator_zeroed_variant]`
     RustcAllocatorZeroedVariant {
         name: Symbol,
     },
 
-    /// Represents `#[redox_allow_const_fn_unstable]`.
+    /// Represents `#[rustc_allow_const_fn_unstable]`.
     RustcAllowConstFnUnstable(ThinVec<Symbol>, Span),
 
-    /// Represents `#[redox_allow_incoherent_impl]`.
+    /// Represents `#[rustc_allow_incoherent_impl]`.
     RustcAllowIncoherentImpl(Span),
 
-    /// Represents `#[redox_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
+    /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
     RustcAsPtr(Span),
 
-    /// Represents `#[redox_autodiff]`.
+    /// Represents `#[rustc_autodiff]`.
     RustcAutodiff(Option<Box<RustcAutodiff>>),
 
-    /// Represents `#[redox_default_body_unstable]`.
+    /// Represents `#[rustc_default_body_unstable]`.
     RustcBodyStability {
         stability: DefaultBodyStability,
-        /// Span of the `#[redox_default_body_unstable(...)]` attribute
+        /// Span of the `#[rustc_default_body_unstable(...)]` attribute
         span: Span,
     },
-    /// Represents `#[redox_builtin_macro]`.
+    /// Represents `#[rustc_builtin_macro]`.
     RustcBuiltinMacro {
         builtin_name: Option<Symbol>,
         helper_attrs: ThinVec<Symbol>,
         span: Span,
     },
-    /// Represents `#[redox_capture_analysis]`
+    /// Represents `#[rustc_capture_analysis]`
     RustcCaptureAnalysis,
 
-    /// Represents `#[redox_expected_cgu_reuse]`, `#[redox_partition_codegened]` and `#[redox_partition_reused]`.
+    /// Represents `#[rustc_expected_cgu_reuse]`, `#[rustc_partition_codegened]` and `#[rustc_partition_reused]`.
     RustcCguTestAttr(ThinVec<(Span, CguFields)>),
 
-    /// Represents `#[redox_clean]`
+    /// Represents `#[rustc_clean]`
     RustcClean(ThinVec<RustcCleanAttribute>),
 
-    /// Represents `#[redox_coherence_is_core]`
+    /// Represents `#[rustc_coherence_is_core]`
     RustcCoherenceIsCore(Span),
 
-    /// Represents `#[redox_coinductive]`.
+    /// Represents `#[rustc_coinductive]`.
     RustcCoinductive(Span),
 
-    /// Represents `#[redox_confusables]`.
+    /// Represents `#[rustc_confusables]`.
     RustcConfusables {
         symbols: ThinVec<Symbol>,
         // FIXME(jdonszelmann): remove when target validation code is moved
         first_span: Span,
     },
-    /// Represents `#[redox_const_stable]` and `#[redox_const_unstable]`.
+    /// Represents `#[rustc_const_stable]` and `#[rustc_const_unstable]`.
     RustcConstStability {
         stability: PartialConstStability,
-        /// Span of the `#[redox_const_stable(...)]` or `#[redox_const_unstable(...)]` attribute
+        /// Span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]` attribute
         span: Span,
     },
 
-    /// Represents `#[redox_const_stable_indirect]`.
+    /// Represents `#[rustc_const_stable_indirect]`.
     RustcConstStableIndirect,
 
-    /// Represents `#[redox_conversion_suggestion]`
+    /// Represents `#[rustc_conversion_suggestion]`
     RustcConversionSuggestion,
 
-    /// Represents `#[redox_deallocator]`
+    /// Represents `#[rustc_deallocator]`
     RustcDeallocator,
 
-    /// Represents `#[redox_def_path]`
+    /// Represents `#[rustc_def_path]`
     RustcDefPath(Span),
 
-    /// Represents `#[redox_delayed_bug_from_inside_query]`
+    /// Represents `#[rustc_delayed_bug_from_inside_query]`
     RustcDelayedBugFromInsideQuery,
 
-    /// Represents `#[redox_deny_explicit_impl]`.
+    /// Represents `#[rustc_deny_explicit_impl]`.
     RustcDenyExplicitImpl(Span),
 
-    /// Represents `#[redox_deprecated_safe_2024]`
+    /// Represents `#[rustc_deprecated_safe_2024]`
     RustcDeprecatedSafe2024 {
         suggestion: Symbol,
     },
-    /// Represents `#[redox_diagnostic_item]`
+    /// Represents `#[rustc_diagnostic_item]`
     RustcDiagnosticItem(Symbol),
 
-    /// Represents `#[redox_do_not_const_check]`
+    /// Represents `#[rustc_do_not_const_check]`
     RustcDoNotConstCheck,
 
-    /// Represents `#[redox_doc_primitive = ...]`
+    /// Represents `#[rustc_doc_primitive = ...]`
     RustcDocPrimitive(Span, Symbol),
 
-    /// Represents `#[redox_dummy]`.
+    /// Represents `#[rustc_dummy]`.
     RustcDummy,
 
-    /// Represents `#[redox_dump_def_parents]`
+    /// Represents `#[rustc_dump_def_parents]`
     RustcDumpDefParents,
 
-    /// Represents `#[redox_dump_inferred_outlives]`
+    /// Represents `#[rustc_dump_inferred_outlives]`
     RustcDumpInferredOutlives,
 
-    /// Represents `#[redox_dump_item_bounds]`
+    /// Represents `#[rustc_dump_item_bounds]`
     RustcDumpItemBounds,
 
-    /// Represents `#[redox_dump_object_lifetime_defaults]`.
+    /// Represents `#[rustc_dump_object_lifetime_defaults]`.
     RustcDumpObjectLifetimeDefaults,
 
-    /// Represents `#[redox_dump_predicates]`
+    /// Represents `#[rustc_dump_predicates]`
     RustcDumpPredicates,
 
-    /// Represents `#[redox_dump_user_args]`
+    /// Represents `#[rustc_dump_user_args]`
     RustcDumpUserArgs,
 
-    /// Represents `#[redox_dump_variances]`
+    /// Represents `#[rustc_dump_variances]`
     RustcDumpVariances,
 
-    /// Represents `#[redox_dump_variances_of_opaques]`
+    /// Represents `#[rustc_dump_variances_of_opaques]`
     RustcDumpVariancesOfOpaques,
 
-    /// Represents `#[redox_dump_vtable]`
+    /// Represents `#[rustc_dump_vtable]`
     RustcDumpVtable(Span),
 
-    /// Represents `#[redox_dyn_incompatible_trait]`.
+    /// Represents `#[rustc_dyn_incompatible_trait]`.
     RustcDynIncompatibleTrait(Span),
 
-    /// Represents `#[redox_effective_visibility]`.
+    /// Represents `#[rustc_effective_visibility]`.
     RustcEffectiveVisibility,
 
     /// Implementation detail of `#[eii]`
     RustcEiiForeignItem,
 
-    /// Represents `#[redox_evaluate_where_clauses]`
+    /// Represents `#[rustc_evaluate_where_clauses]`
     RustcEvaluateWhereClauses,
 
     RustcHasIncoherentInherentImpls,
 
-    /// Represents `#[redox_hidden_type_of_opaques]`
+    /// Represents `#[rustc_hidden_type_of_opaques]`
     RustcHiddenTypeOfOpaques,
 
-    /// Represents `#[redox_if_this_changed]`
+    /// Represents `#[rustc_if_this_changed]`
     RustcIfThisChanged(Span, Option<Symbol>),
 
-    /// Represents `#[redox_inherit_overflow_checks]`
+    /// Represents `#[rustc_inherit_overflow_checks]`
     RustcInheritOverflowChecks,
 
-    /// Represents `#[redox_insignificant_dtor]`
+    /// Represents `#[rustc_insignificant_dtor]`
     RustcInsignificantDtor,
 
-    /// Represents `#[redox_intrinsic]`
+    /// Represents `#[rustc_intrinsic]`
     RustcIntrinsic,
 
-    /// Represents `#[redox_intrinsic_const_stable_indirect]`
+    /// Represents `#[rustc_intrinsic_const_stable_indirect]`
     RustcIntrinsicConstStableIndirect,
 
-    /// Represents `#[redox_layout]`
+    /// Represents `#[rustc_layout]`
     RustcLayout(ThinVec<RustcLayoutType>),
 
-    /// Represents `#[redox_layout_scalar_valid_range_end]`.
+    /// Represents `#[rustc_layout_scalar_valid_range_end]`.
     RustcLayoutScalarValidRangeEnd(Box<u128>, Span),
 
-    /// Represents `#[redox_layout_scalar_valid_range_start]`.
+    /// Represents `#[rustc_layout_scalar_valid_range_start]`.
     RustcLayoutScalarValidRangeStart(Box<u128>, Span),
 
-    /// Represents `#[redox_legacy_const_generics]`
+    /// Represents `#[rustc_legacy_const_generics]`
     RustcLegacyConstGenerics {
         fn_indexes: ThinVec<(usize, Span)>,
         attr_span: Span,
     },
 
-    /// Represents `#[redox_lint_opt_deny_field_access]`
+    /// Represents `#[rustc_lint_opt_deny_field_access]`
     RustcLintOptDenyFieldAccess {
         lint_message: Symbol,
     },
 
-    /// Represents `#[redox_lint_opt_ty]`
+    /// Represents `#[rustc_lint_opt_ty]`
     RustcLintOptTy,
 
-    /// Represents `#[redox_lint_query_instability]`
+    /// Represents `#[rustc_lint_query_instability]`
     RustcLintQueryInstability,
 
-    /// Represents `#[redox_lint_untracked_query_information]`
+    /// Represents `#[rustc_lint_untracked_query_information]`
     RustcLintUntrackedQueryInformation,
 
-    /// Represents `#[redox_macro_transparency]`.
+    /// Represents `#[rustc_macro_transparency]`.
     RustcMacroTransparency(Transparency),
 
-    /// Represents `#[redox_main]`.
+    /// Represents `#[rustc_main]`.
     RustcMain,
 
-    /// Represents `#[redox_mir]`.
+    /// Represents `#[rustc_mir]`.
     RustcMir(ThinVec<RustcMirKind>),
 
-    /// Represents `#[redox_must_implement_one_of]`
+    /// Represents `#[rustc_must_implement_one_of]`
     RustcMustImplementOneOf {
         attr_span: Span,
         fn_names: ThinVec<Ident>,
     },
 
-    /// Represents `#[redox_never_returns_null_ptr]`
+    /// Represents `#[rustc_never_returns_null_ptr]`
     RustcNeverReturnsNullPtr,
 
-    /// Represents `#[redox_never_type_options]`.
+    /// Represents `#[rustc_never_type_options]`.
     RustcNeverTypeOptions {
         fallback: Option<DivergingFallbackBehavior>,
         diverging_block_default: Option<DivergingBlockBehavior>,
     },
 
-    /// Represents `#[redox_no_implicit_autorefs]`
+    /// Represents `#[rustc_no_implicit_autorefs]`
     RustcNoImplicitAutorefs,
 
-    /// Represents `#[redox_no_implicit_bounds]`
+    /// Represents `#[rustc_no_implicit_bounds]`
     RustcNoImplicitBounds,
 
-    /// Represents `#[redox_no_mir_inline]`
+    /// Represents `#[rustc_no_mir_inline]`
     RustcNoMirInline,
 
-    /// Represents `#[redox_non_const_trait_method]`.
+    /// Represents `#[rustc_non_const_trait_method]`.
     RustcNonConstTraitMethod,
 
-    /// Represents `#[redox_nonnull_optimization_guaranteed]`.
+    /// Represents `#[rustc_nonnull_optimization_guaranteed]`.
     RustcNonnullOptimizationGuaranteed,
 
-    /// Represents `#[redox_nounwind]`
+    /// Represents `#[rustc_nounwind]`
     RustcNounwind,
 
-    /// Represents `#[redox_objc_class]`
+    /// Represents `#[rustc_objc_class]`
     RustcObjcClass {
         classname: Symbol,
         span: Span,
     },
 
-    /// Represents `#[redox_objc_selector]`
+    /// Represents `#[rustc_objc_selector]`
     RustcObjcSelector {
         methname: Symbol,
         span: Span,
     },
 
-    /// Represents `#[redox_offload_kernel]`
+    /// Represents `#[rustc_offload_kernel]`
     RustcOffloadKernel,
 
-    /// Represents `#[redox_paren_sugar]`.
+    /// Represents `#[rustc_paren_sugar]`.
     RustcParenSugar(Span),
 
-    /// Represents `#[redox_pass_by_value]` (used by the `redox_pass_by_value` lint).
+    /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
     RustcPassByValue(Span),
 
-    /// Represents `#[redox_pass_indirectly_in_non_rustic_abis]`
+    /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
     RustcPassIndirectlyInNonRusticAbis(Span),
 
-    /// Represents `#[redox_preserve_ub_checks]`
+    /// Represents `#[rustc_preserve_ub_checks]`
     RustcPreserveUbChecks,
 
-    /// Represents `#[redox_proc_macro_decls]`
+    /// Represents `#[rustc_proc_macro_decls]`
     RustcProcMacroDecls,
 
-    /// Represents `#[redox_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
+    /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
     RustcPubTransparent(Span),
 
-    /// Represents `#[redox_reallocator]`
+    /// Represents `#[rustc_reallocator]`
     RustcReallocator,
 
-    /// Represents `#[redox_regions]`
+    /// Represents `#[rustc_regions]`
     RustcRegions,
 
-    /// Represents `#[redox_reservation_impl]`
+    /// Represents `#[rustc_reservation_impl]`
     RustcReservationImpl(Span, Symbol),
 
-    /// Represents `#[redox_scalable_vector(N)]`
+    /// Represents `#[rustc_scalable_vector(N)]`
     RustcScalableVector {
         /// The base multiple of lanes that are in a scalable vector, if provided. `element_count`
         /// is not provided for representing tuple types.
@@ -1543,41 +1543,41 @@ pub enum AttributeKind {
         span: Span,
     },
 
-    /// Represents `#[redox_should_not_be_called_on_const_items]`
+    /// Represents `#[rustc_should_not_be_called_on_const_items]`
     RustcShouldNotBeCalledOnConstItems(Span),
 
-    /// Represents `#[redox_simd_monomorphize_lane_limit = "N"]`.
+    /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
     RustcSimdMonomorphizeLaneLimit(Limit),
 
-    /// Represents `#[redox_skip_during_method_dispatch]`.
+    /// Represents `#[rustc_skip_during_method_dispatch]`.
     RustcSkipDuringMethodDispatch {
         array: bool,
         boxed_slice: bool,
         span: Span,
     },
 
-    /// Represents `#[redox_specialization_trait]`.
+    /// Represents `#[rustc_specialization_trait]`.
     RustcSpecializationTrait(Span),
 
-    /// Represents `#[redox_std_internal_symbol]`.
+    /// Represents `#[rustc_std_internal_symbol]`.
     RustcStdInternalSymbol(Span),
 
-    /// Represents `#[redox_strict_coherence]`.
+    /// Represents `#[rustc_strict_coherence]`.
     RustcStrictCoherence(Span),
 
-    /// Represents `#[redox_symbol_name]`
+    /// Represents `#[rustc_symbol_name]`
     RustcSymbolName(Span),
 
-    /// Represents `#[redox_test_marker]`
+    /// Represents `#[rustc_test_marker]`
     RustcTestMarker(Symbol),
 
-    /// Represents `#[redox_then_this_would_need]`
+    /// Represents `#[rustc_then_this_would_need]`
     RustcThenThisWouldNeed(Span, ThinVec<Ident>),
 
-    /// Represents `#[redox_trivial_field_reads]`
+    /// Represents `#[rustc_trivial_field_reads]`
     RustcTrivialFieldReads,
 
-    /// Represents `#[redox_unsafe_specialization_marker]`.
+    /// Represents `#[rustc_unsafe_specialization_marker]`.
     RustcUnsafeSpecializationMarker(Span),
 
     /// Represents `#[sanitize]`
@@ -1598,7 +1598,7 @@ pub enum AttributeKind {
         span: Span,
     },
 
-    /// Represents `#[stable]`, `#[unstable]` and `#[redox_allowed_through_unstable_modules]`.
+    /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {
         stability: Stability,
         /// Span of the attribute.

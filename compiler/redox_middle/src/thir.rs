@@ -1070,27 +1070,27 @@ impl<'tcx> PatRangeBoundary<'tcx> {
 
         match ty.kind() {
             ty::Float(ty::FloatTy::F16) => {
-                use redox_apfloat::Float;
-                let a = redox_apfloat::ieee::Half::from_bits(a);
-                let b = redox_apfloat::ieee::Half::from_bits(b);
+                use rustc_apfloat::Float;
+                let a = rustc_apfloat::ieee::Half::from_bits(a);
+                let b = rustc_apfloat::ieee::Half::from_bits(b);
                 a.partial_cmp(&b)
             }
             ty::Float(ty::FloatTy::F32) => {
-                use redox_apfloat::Float;
-                let a = redox_apfloat::ieee::Single::from_bits(a);
-                let b = redox_apfloat::ieee::Single::from_bits(b);
+                use rustc_apfloat::Float;
+                let a = rustc_apfloat::ieee::Single::from_bits(a);
+                let b = rustc_apfloat::ieee::Single::from_bits(b);
                 a.partial_cmp(&b)
             }
             ty::Float(ty::FloatTy::F64) => {
-                use redox_apfloat::Float;
-                let a = redox_apfloat::ieee::Double::from_bits(a);
-                let b = redox_apfloat::ieee::Double::from_bits(b);
+                use rustc_apfloat::Float;
+                let a = rustc_apfloat::ieee::Double::from_bits(a);
+                let b = rustc_apfloat::ieee::Double::from_bits(b);
                 a.partial_cmp(&b)
             }
             ty::Float(ty::FloatTy::F128) => {
-                use redox_apfloat::Float;
-                let a = redox_apfloat::ieee::Quad::from_bits(a);
-                let b = redox_apfloat::ieee::Quad::from_bits(b);
+                use rustc_apfloat::Float;
+                let a = rustc_apfloat::ieee::Quad::from_bits(a);
+                let b = rustc_apfloat::ieee::Quad::from_bits(b);
                 a.partial_cmp(&b)
             }
             ty::Int(ity) => {

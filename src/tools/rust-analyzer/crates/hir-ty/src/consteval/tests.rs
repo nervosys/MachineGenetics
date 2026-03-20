@@ -1,7 +1,7 @@
 use base_db::RootQueryDb;
 use hir_def::db::DefDatabase;
 use hir_expand::EditionedFileId;
-use redox_apfloat::{
+use rustc_apfloat::{
     Float,
     ieee::{Half as f16, Quad as f128},
 };

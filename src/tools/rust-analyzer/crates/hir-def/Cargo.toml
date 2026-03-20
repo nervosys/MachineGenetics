@@ -26,13 +26,13 @@ rustc-hash.workspace = true
 tracing = { workspace = true, features = ["attributes"] }
 smallvec.workspace = true
 triomphe.workspace = true
-redox_apfloat = "0.2.3"
+rustc_apfloat = "0.2.3"
 salsa.workspace = true
 salsa-macros.workspace = true
 query-group.workspace = true
 
-ra-ap-redox_parse_format.workspace = true
-ra-ap-redox_abi.workspace = true
+ra-ap-rustc_parse_format.workspace = true
+ra-ap-rustc_abi.workspace = true
 
 # local deps
 stdx.workspace = true

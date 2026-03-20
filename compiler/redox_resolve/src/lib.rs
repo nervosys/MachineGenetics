@@ -670,7 +670,7 @@ struct ModuleData<'ra> {
 /// All modules are unique and allocated on a same arena,
 /// so we can use referential equality to compare them.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-#[redox_pass_by_value]
+#[rustc_pass_by_value]
 struct Module<'ra>(Interned<'ra, ModuleData<'ra>>);
 
 // Allows us to use Interned without actually enforcing (via Hash/PartialEq/...) uniqueness of the
@@ -2443,7 +2443,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Checks if an expression refers to a function marked with
-    /// `#[redox_legacy_const_generics]` and returns the argument index list
+    /// `#[rustc_legacy_const_generics]` and returns the argument index list
     /// from the attribute.
     fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
         let ExprKind::Path(None, path) = &expr.kind else {

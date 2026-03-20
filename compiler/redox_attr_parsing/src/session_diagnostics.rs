@@ -309,7 +309,7 @@ impl IncorrectReprFormatGenericCause {
 }
 
 #[derive(Diagnostic)]
-#[diag("`redox_promotable` attribute must be paired with either a `redox_const_unstable` or a `redox_const_stable` attribute", code = E0717)]
+#[diag("`rustc_promotable` attribute must be paired with either a `rustc_const_unstable` or a `redox_const_stable` attribute", code = E0717)]
 pub(crate) struct RustcPromotablePairing {
     #[primary_span]
     pub span: Span,

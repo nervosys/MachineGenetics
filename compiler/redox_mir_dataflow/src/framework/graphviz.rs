@@ -25,7 +25,7 @@ use super::{
 };
 
 /// Writes a DOT file containing the results of a dataflow analysis if the user requested it via
-/// `redox_mir` attributes and `-Z dump-mir-dataflow`. The `Result` in and the `Results` out are
+/// `rustc_mir` attributes and `-Z dump-mir-dataflow`. The `Result` in and the `Results` out are
 /// the same.
 pub(super) fn write_graphviz_results<'tcx, A>(
     tcx: TyCtxt<'tcx>,

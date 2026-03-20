@@ -6,7 +6,7 @@ mod block;
 
 use itertools::Itertools;
 use rowan::Direction;
-use redox_literal_escaper::{
+use rustc_literal_escaper::{
     EscapeError, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char, unescape_str,
 };
 

@@ -29,7 +29,7 @@ use hir_expand::{mod_path::PathKind, name::Name};
 use intern::{Internable, Interned, sym};
 use itertools::Itertools;
 use la_arena::ArenaMap;
-use redox_apfloat::{
+use rustc_apfloat::{
     Float,
     ieee::{Half as f16, Quad as f128},
 };

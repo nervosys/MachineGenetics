@@ -1,7 +1,7 @@
 use either::Either;
 use redox_abi::{BackendRepr, Endian};
-use redox_apfloat::ieee::{Double, Half, Quad, Single};
-use redox_apfloat::{Float, Round};
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::{Float, Round};
 use redox_middle::mir::interpret::{InterpErrorKind, Pointer, UndefinedBehaviorInfo};
 use redox_middle::ty::{FloatTy, ScalarInt, SimdAlign};
 use redox_middle::{bug, err_ub_format, mir, span_bug, throw_unsup_format, ty};
@@ -90,17 +90,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 enum Op {
                     MirOp(mir::UnOp),
                     Abs,
-                    Round(redox_apfloat::Round),
+                    Round(rustc_apfloat::Round),
                     Numeric(Symbol),
                 }
                 let which = match intrinsic_name {
                     sym::simd_neg => Op::MirOp(mir::UnOp::Neg),
                     sym::simd_fabs => Op::Abs,
-                    sym::simd_ceil => Op::Round(redox_apfloat::Round::TowardPositive),
-                    sym::simd_floor => Op::Round(redox_apfloat::Round::TowardNegative),
-                    sym::simd_round => Op::Round(redox_apfloat::Round::NearestTiesToAway),
-                    sym::simd_round_ties_even => Op::Round(redox_apfloat::Round::NearestTiesToEven),
-                    sym::simd_trunc => Op::Round(redox_apfloat::Round::TowardZero),
+                    sym::simd_ceil => Op::Round(rustc_apfloat::Round::TowardPositive),
+                    sym::simd_floor => Op::Round(rustc_apfloat::Round::TowardNegative),
+                    sym::simd_round => Op::Round(rustc_apfloat::Round::NearestTiesToAway),
+                    sym::simd_round_ties_even => Op::Round(rustc_apfloat::Round::NearestTiesToEven),
+                    sym::simd_trunc => Op::Round(rustc_apfloat::Round::TowardZero),
                     sym::simd_ctlz => Op::Numeric(sym::ctlz),
                     sym::simd_ctpop => Op::Numeric(sym::ctpop),
                     sym::simd_cttz => Op::Numeric(sym::cttz),

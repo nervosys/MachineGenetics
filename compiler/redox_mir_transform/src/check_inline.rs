@@ -43,7 +43,7 @@ pub(super) fn is_inline_valid_on_fn<'tcx>(
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
 
     if find_attr!(tcx, def_id, RustcNoMirInline) {
-        return Err("#[redox_no_mir_inline]");
+        return Err("#[rustc_no_mir_inline]");
     }
 
     let ty = tcx.type_of(def_id);

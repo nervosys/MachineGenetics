@@ -33,10 +33,10 @@ pub(crate) fn write_file_header(stream: &mut FileEncoder, sess: &Session) {
     stream
         .emit_raw_bytes(&[(HEADER_FORMAT_VERSION >> 0) as u8, (HEADER_FORMAT_VERSION >> 8) as u8]);
 
-    let redox_version = redox_version(sess.is_nightly_build(), sess.cfg_version);
-    assert_eq!(redox_version.len(), (redox_version.len() as u8) as usize);
-    stream.emit_raw_bytes(&[redox_version.len() as u8]);
-    stream.emit_raw_bytes(redox_version.as_bytes());
+    let rustc_version = rustc_version(sess.is_nightly_build(), sess.cfg_version);
+    assert_eq!(rustc_version.len(), (rustc_version.len() as u8) as usize);
+    stream.emit_raw_bytes(&[rustc_version.len() as u8]);
+    stream.emit_raw_bytes(rustc_version.as_bytes());
 }
 
 pub(crate) fn save_in<F>(sess: &Session, path_buf: PathBuf, name: &str, encode: F)
@@ -137,13 +137,13 @@ pub(crate) fn read_file(
 
     // Check RUSTC_VERSION
     {
-        let mut redox_version_str_len = [0u8; 1];
-        file.read_exact(&mut redox_version_str_len)?;
-        let redox_version_str_len = redox_version_str_len[0] as usize;
-        let mut buffer = vec![0; redox_version_str_len];
+        let mut rustc_version_str_len = [0u8; 1];
+        file.read_exact(&mut rustc_version_str_len)?;
+        let rustc_version_str_len = rustc_version_str_len[0] as usize;
+        let mut buffer = vec![0; rustc_version_str_len];
         file.read_exact(&mut buffer)?;
 
-        if buffer != redox_version(is_nightly_build, cfg_version).as_bytes() {
+        if buffer != rustc_version(is_nightly_build, cfg_version).as_bytes() {
             report_format_mismatch(report_incremental_info, path, "Different compiler version");
             return Ok(None);
         }
@@ -168,7 +168,7 @@ fn report_format_mismatch(report_incremental_info: bool, file: &Path, message: &
 /// A version string that hopefully is always different for compiler versions
 /// with different encodings of incremental compilation artifacts. Contains
 /// the Git commit hash.
-fn redox_version(nightly_build: bool, cfg_version: &'static str) -> Cow<'static, str> {
+fn rustc_version(nightly_build: bool, cfg_version: &'static str) -> Cow<'static, str> {
     if nightly_build {
         if let Ok(val) = env::var("RUSTC_FORCE_RUSTC_VERSION") {
             return val.into();

@@ -1106,8 +1106,8 @@ declare_lint! {
     ///
     /// ```rust,compile_fail
     /// # #![allow(internal_features)]
-    /// #![feature(redox_attrs)]
-    /// #![feature(redox_attrs)]
+    /// #![feature(rustc_attrs)]
+    /// #![feature(rustc_attrs)]
     /// ```
     ///
     /// {{produces}}

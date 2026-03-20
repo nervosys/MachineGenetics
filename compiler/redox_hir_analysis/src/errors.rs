@@ -844,7 +844,7 @@ pub(crate) struct EnumDiscriminantOverflowed {
 
 #[derive(Diagnostic)]
 #[diag(
-    "the `#[redox_paren_sugar]` attribute is a temporary means of controlling which traits can use parenthetical notation"
+    "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling which traits can use parenthetical notation"
 )]
 #[help("add `#![feature(unboxed_closures)]` to the crate attributes to use it")]
 pub(crate) struct ParenSugarAttribute {
@@ -1020,7 +1020,7 @@ pub(crate) struct TooLargeStatic {
 }
 
 #[derive(Diagnostic)]
-#[diag("implementing `redox_specialization_trait` traits is unstable")]
+#[diag("implementing `rustc_specialization_trait` traits is unstable")]
 #[help("add `#![feature(min_specialization)]` to the crate attributes to enable")]
 pub(crate) struct SpecializationTrait {
     #[primary_span]
@@ -1168,7 +1168,7 @@ pub(crate) struct ReturnPositionImplTraitInTraitRefinedLifetimes {
 pub(crate) struct InherentTyOutside {
     #[primary_span]
     #[help(
-        "alternatively add `#[redox_has_incoherent_inherent_impls]` to the type and `#[redox_allow_incoherent_impl]` to the relevant impl items"
+        "alternatively add `#[rustc_has_incoherent_inherent_impls]` to the type and `#[rustc_allow_incoherent_impl]` to the relevant impl items"
     )]
     pub span: Span,
 }
@@ -1222,7 +1222,7 @@ pub(crate) struct CoercePointeeNoField {
 pub(crate) struct InherentTyOutsideRelevant {
     #[primary_span]
     pub span: Span,
-    #[help("alternatively add `#[redox_allow_incoherent_impl]` to the relevant impl items")]
+    #[help("alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items")]
     pub help_span: Span,
 }
 
@@ -1257,7 +1257,7 @@ pub(crate) struct InherentTyOutsideNewAliasNote {
 pub(crate) struct InherentTyOutsidePrimitive {
     #[primary_span]
     pub span: Span,
-    #[help("alternatively add `#[redox_allow_incoherent_impl]` to the relevant impl items")]
+    #[help("alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items")]
     pub help_span: Span,
 }
 
