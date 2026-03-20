@@ -3856,6 +3856,17 @@ pub struct SpecClause {
     pub span: Span,
 }
 
+/// A contract attribute in canonical mode (e.g. `@req(expr)`, `@ens(expr)`, `@inv(expr)`).
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum ContractAttr {
+    /// `@req(expr)` — precondition.
+    Requires(Box<Expr>),
+    /// `@ens(expr)` — postcondition.
+    Ensures(Box<Expr>),
+    /// `@inv(expr)` — invariant.
+    Invariant(Box<Expr>),
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Default, Walkable)]
 pub struct FnContract {
     /// Declarations of variables accessible both in the `requires` and
@@ -3872,6 +3883,7 @@ pub struct Fn {
     pub generics: Generics,
     pub sig: FnSig,
     pub contract: Option<Box<FnContract>>,
+    pub contract_attrs: ThinVec<ContractAttr>,
     pub spec: Option<Box<SpecBlock>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
     pub body: Option<Box<Block>>,
@@ -4314,7 +4326,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 200);
+    static_assert_size!(Fn, 208);
     static_assert_size!(ForeignItem, 80);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

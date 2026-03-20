@@ -398,6 +398,12 @@ pub enum CompactAttr {
     AgentCapability,
     /// `@ae` → `#[agent_entry]`
     AgentEntry,
+    /// `@req` → contract requires (canonical mode)
+    Req,
+    /// `@ens` → contract ensures (canonical mode)
+    Ens,
+    /// `@inv` → invariant (canonical mode)
+    Inv,
 }
 
 impl CompactAttr {
@@ -413,6 +419,9 @@ impl CompactAttr {
             "ax" => Some(Self::AgentEffect),
             "ao" => Some(Self::AgentCapability),
             "ae" => Some(Self::AgentEntry),
+            "req" => Some(Self::Req),
+            "ens" => Some(Self::Ens),
+            "inv" => Some(Self::Inv),
             _ => None,
         }
     }
@@ -429,6 +438,9 @@ impl CompactAttr {
             Self::AgentEffect => "@ax",
             Self::AgentCapability => "@ao",
             Self::AgentEntry => "@ae",
+            Self::Req => "@req",
+            Self::Ens => "@ens",
+            Self::Inv => "@inv",
         }
     }
 
@@ -444,6 +456,9 @@ impl CompactAttr {
             Self::AgentEffect => "ax",
             Self::AgentCapability => "ao",
             Self::AgentEntry => "ae",
+            Self::Req => "req",
+            Self::Ens => "ens",
+            Self::Inv => "inv",
         })
     }
 }

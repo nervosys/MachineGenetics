@@ -1100,6 +1100,7 @@ symbols! {
         into_try_type,
         intra_doc_pointers,
         intrinsics,
+        inv,
         irrefutable_let_patterns,
         is,
         is_auto,

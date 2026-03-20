@@ -18,6 +18,7 @@ use redox_span::source_map::{FilePathMapping, SourceMap};
 use redox_span::{
     BytePos, FileName, Pos, Span, Symbol, create_default_session_globals_then, kw, sym,
 };
+use thin_vec::ThinVec;
 
 use crate::lexer::StripTokens;
 use crate::parser::{AllowConstBlockItems, ForceCollect, Parser};
@@ -3208,8 +3209,9 @@ fn canonical_compact_attr_unknown_suffix_no_fusion() {
 fn parse_item_with_mode(src: &str, mode: SyntaxMode) -> Option<String> {
     let mut psess = ParseSess::new();
     psess.syntax_mode = mode;
-    let item =
-        with_error_checking_parse(src.to_string(), &psess, |p| p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes));
+    let item = with_error_checking_parse(src.to_string(), &psess, |p| {
+        p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
+    });
     item.map(|i| item_to_string(&i))
 }
 
@@ -3218,8 +3220,9 @@ fn parse_item_with_mode(src: &str, mode: SyntaxMode) -> Option<String> {
 fn parse_fn_spec(src: &str) -> Option<Box<ast::SpecBlock>> {
     let mut psess = ParseSess::new();
     psess.syntax_mode = SyntaxMode::Canonical;
-    let item =
-        with_error_checking_parse(src.to_string(), &psess, |p| p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes));
+    let item = with_error_checking_parse(src.to_string(), &psess, |p| {
+        p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
+    });
     let item = item?;
     match &item.kind {
         ast::ItemKind::Fn(f) => f.spec.clone(),
@@ -3300,6 +3303,90 @@ fn canonical_spec_fx_trailing_comma() {
             assert_eq!(effs.len(), 1);
         } else {
             panic!("expected Effects clause");
+        }
+    });
+}
+
+// ── Step 12: contract attribute parsing tests ──────────────────────────────
+
+/// Parse a string as a function item in canonical mode and return the
+/// `contract_attrs` field from the `Fn` AST node.
+fn parse_fn_contract_attrs(src: &str) -> ThinVec<ast::ContractAttr> {
+    let mut psess = ParseSess::new();
+    psess.syntax_mode = SyntaxMode::Canonical;
+    let item = with_error_checking_parse(src.to_string(), &psess, |p| {
+        p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
+    });
+    let item = item.expect("should parse as an item");
+    match &item.kind {
+        ast::ItemKind::Fn(f) => f.contract_attrs.clone(),
+        _ => panic!("expected fn item"),
+    }
+}
+
+#[test]
+fn canonical_contract_attr_req() {
+    create_default_session_globals_then(|| {
+        let attrs = parse_fn_contract_attrs("@req(x > 0) fn foo(x: i32) {}");
+        assert_eq!(attrs.len(), 1);
+        assert!(matches!(&attrs[0], ast::ContractAttr::Requires(_)));
+    });
+}
+
+#[test]
+fn canonical_contract_attr_ens() {
+    create_default_session_globals_then(|| {
+        let attrs = parse_fn_contract_attrs("@ens(result > 0) fn foo() -> i32 { 1 }");
+        assert_eq!(attrs.len(), 1);
+        assert!(matches!(&attrs[0], ast::ContractAttr::Ensures(_)));
+    });
+}
+
+#[test]
+fn canonical_contract_attr_inv() {
+    create_default_session_globals_then(|| {
+        let attrs = parse_fn_contract_attrs("@inv(self.len > 0) fn foo() {}");
+        assert_eq!(attrs.len(), 1);
+        assert!(matches!(&attrs[0], ast::ContractAttr::Invariant(_)));
+    });
+}
+
+#[test]
+fn canonical_contract_attr_multiple() {
+    create_default_session_globals_then(|| {
+        let attrs = parse_fn_contract_attrs(
+            "@req(x > 0) @ens(result > 0) @inv(true) fn foo(x: i32) -> i32 { x }",
+        );
+        assert_eq!(attrs.len(), 3);
+        assert!(matches!(&attrs[0], ast::ContractAttr::Requires(_)));
+        assert!(matches!(&attrs[1], ast::ContractAttr::Ensures(_)));
+        assert!(matches!(&attrs[2], ast::ContractAttr::Invariant(_)));
+    });
+}
+
+#[test]
+fn canonical_no_contract_attrs_returns_empty() {
+    create_default_session_globals_then(|| {
+        let attrs = parse_fn_contract_attrs("fn foo() {}");
+        assert!(attrs.is_empty());
+    });
+}
+
+#[test]
+fn legacy_mode_no_contract_attrs() {
+    create_default_session_globals_then(|| {
+        // In legacy mode, `@req(...)` should not be parsed as contract attrs.
+        // The function without contract attrs should parse normally.
+        let mut psess = ParseSess::new();
+        psess.syntax_mode = SyntaxMode::Legacy;
+        let item = with_error_checking_parse("fn foo() {}".to_string(), &psess, |p| {
+            p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
+        });
+        let item = item.unwrap();
+        if let ast::ItemKind::Fn(f) = &item.kind {
+            assert!(f.contract_attrs.is_empty());
+        } else {
+            panic!("expected fn");
         }
     });
 }

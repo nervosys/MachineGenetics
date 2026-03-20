@@ -930,7 +930,7 @@ macro_rules! common_visitor_and_walkers {
                     _ctxt,
                     // Visibility is visited as a part of the item.
                     _vis,
-                    Fn { defaultness, ident, sig, generics, contract, spec: _, body, define_opaque, eii_impls },
+                    Fn { defaultness, ident, sig, generics, contract, contract_attrs: _, spec: _, body, define_opaque, eii_impls },
                 ) => {
                     let FnSig { header, decl, span } = sig;
                     visit_visitable!($($mut)? vis,

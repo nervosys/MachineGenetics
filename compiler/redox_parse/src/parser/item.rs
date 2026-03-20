@@ -250,12 +250,15 @@ impl<'a> Parser<'a> {
             // FUNCTION ITEM
             let (ident, sig, generics, contract, spec, body) =
                 self.parse_fn(attrs, fn_parse_mode, lo, vis, case)?;
+            let contract_attrs: ThinVec<ContractAttr> =
+                mem::take(&mut self.pending_contract_attrs).into();
             ItemKind::Fn(Box::new(Fn {
                 defaultness: def_(),
                 ident,
                 sig,
                 generics,
                 contract,
+                contract_attrs,
                 spec,
                 body,
                 define_opaque: None,

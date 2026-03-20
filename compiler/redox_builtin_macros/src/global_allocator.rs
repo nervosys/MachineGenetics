@@ -82,6 +82,7 @@ impl AllocFnFactory<'_, '_> {
             ident: Ident::from_str_and_span(&global_fn_name(method.name), self.span),
             generics: Generics::default(),
             contract: None,
+            contract_attrs: ThinVec::new(),
             spec: None,
             body,
             define_opaque: None,

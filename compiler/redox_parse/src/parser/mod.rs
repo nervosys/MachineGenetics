@@ -240,13 +240,16 @@ pub struct Parser<'a> {
     in_fn_body: bool = false,
     /// Whether we have detected a missing semicolon in function body.
     pub fn_body_missing_semi_guar: Option<ErrorGuaranteed> = None,
+    /// Contract attributes (`@req(expr)`, `@ens(expr)`, `@inv(expr)`) parsed
+    /// during outer-attribute collection and awaiting attachment to a `Fn` node.
+    pub(super) pending_contract_attrs: Vec<ast::ContractAttr> = Vec::new(),
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with
 // nonterminals. Make sure it doesn't unintentionally get bigger. We only check a few arches
 // though, because `TokenTypeSet(u128)` alignment varies on others, changing the total size.
 #[cfg(all(target_pointer_width = "64", any(target_arch = "aarch64", target_arch = "x86_64")))]
-redox_data_structures::static_assert_size!(Parser<'_>, 288);
+redox_data_structures::static_assert_size!(Parser<'_>, 320);
 
 /// Stores span information about a closure.
 #[derive(Clone, Debug)]

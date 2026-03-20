@@ -704,6 +704,7 @@ impl<'a> State<'a> {
             generics,
             sig,
             contract,
+            contract_attrs: _,
             spec: _,
             body,
             define_opaque,

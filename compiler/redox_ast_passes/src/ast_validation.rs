@@ -1228,6 +1228,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     generics: _,
                     sig,
                     contract: _,
+                    contract_attrs: _,
                     spec: _,
                     body,
                     define_opaque: _,

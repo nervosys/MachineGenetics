@@ -101,6 +101,27 @@ impl<'a> Parser<'a> {
                     data,
                     self.prev_token.span,
                 ))
+            } else if let token::CompactAttribute(
+                compact @ (token::CompactAttr::Req
+                | token::CompactAttr::Ens
+                | token::CompactAttr::Inv),
+            ) = self.token.kind
+            {
+                // `@req(expr)`, `@ens(expr)`, `@inv(expr)` — contract attributes.
+                // Parse the parenthesised expression and stash for the upcoming `Fn`.
+                self.bump(); // eat the compact attribute token
+                self.expect(exp!(OpenParen))?;
+                let expr = self.parse_expr()?;
+                self.expect(exp!(CloseParen))?;
+                let contract_attr = match compact {
+                    token::CompactAttr::Req => ast::ContractAttr::Requires(expr),
+                    token::CompactAttr::Ens => ast::ContractAttr::Ensures(expr),
+                    token::CompactAttr::Inv => ast::ContractAttr::Invariant(expr),
+                    _ => unreachable!(),
+                };
+                self.pending_contract_attrs.push(contract_attr);
+                just_parsed_doc_comment = false;
+                continue; // contract attrs don't produce an Attribute node
             } else {
                 None
             };
