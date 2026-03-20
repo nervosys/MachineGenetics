@@ -11,6 +11,7 @@ use redox_ast_pretty::pprust;
 use redox_errors::codes::*;
 use redox_errors::{Applicability, PResult, StashKey, msg, struct_span_code_err};
 use redox_session::lint::builtin::VARARGS_WITHOUT_PATTERN;
+use redox_session::parse::SyntaxMode;
 use redox_span::edit_distance::edit_distance;
 use redox_span::edition::Edition;
 use redox_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, respan, sym};
@@ -248,7 +249,7 @@ impl<'a> Parser<'a> {
             self.parse_use_item()?
         } else if self.check_fn_front_matter(check_pub, case) {
             // FUNCTION ITEM
-            let (ident, sig, generics, contract, spec, body) =
+            let (ident, sig, generics, contract, effect_ann, spec, body) =
                 self.parse_fn(attrs, fn_parse_mode, lo, vis, case)?;
             let contract_attrs: ThinVec<ContractAttr> =
                 mem::take(&mut self.pending_contract_attrs).into();
@@ -259,6 +260,7 @@ impl<'a> Parser<'a> {
                 generics,
                 contract,
                 contract_attrs,
+                effect_ann,
                 spec,
                 body,
                 define_opaque: None,
@@ -347,6 +349,13 @@ impl<'a> Parser<'a> {
             // UNION ITEM
             self.bump(); // `union`
             self.parse_item_union()?
+        } else if self.psess.syntax_mode == SyntaxMode::Canonical
+            && self.token.is_ident_named(sym::effect)
+            && self.look_ahead(1, |t| t.is_non_reserved_ident())
+        {
+            // EFFECT DECLARATION (canonical mode only)
+            self.bump(); // `effect`
+            self.parse_item_effect()?
         } else if self.is_builtin() {
             // BUILTIN# ITEM
             return self.parse_item_builtin();
@@ -2005,6 +2014,29 @@ impl<'a> Parser<'a> {
         Ok(ItemKind::Union(ident, generics, vdata))
     }
 
+    /// Parses an effect declaration: `effect Name { fn sig(); ... }`
+    fn parse_item_effect(&mut self) -> PResult<'a, ItemKind> {
+        let ident = self.parse_ident()?;
+        let mut generics = self.parse_generics()?;
+        generics.where_clause = self.parse_where_clause()?;
+
+        let lo = self.token.span;
+        self.expect(exp!(OpenBrace))?;
+        let mut items = ThinVec::new();
+        while !self.eat(exp!(CloseBrace)) {
+            if let Some(item) = self.parse_item(ForceCollect::No, AllowConstBlockItems::No)? {
+                items.push(item);
+            } else if self.token == token::Eof {
+                break;
+            } else {
+                self.unexpected()?;
+            }
+        }
+        let span = lo.to(self.prev_token.span);
+
+        Ok(ItemKind::Effect(Box::new(EffectDecl { ident, generics, items, span })))
+    }
+
     /// This function parses the fields of record structs:
     ///
     ///   - `struct S { ... }`
@@ -2687,6 +2719,7 @@ impl<'a> Parser<'a> {
             FnSig,
             Generics,
             Option<Box<FnContract>>,
+            Option<Box<ast::EffectAnnotation>>,
             Option<Box<ast::SpecBlock>>,
             Option<Box<Block>>,
         ),
@@ -2715,6 +2748,9 @@ impl<'a> Parser<'a> {
 
         let contract = self.parse_contract()?;
 
+        // Drain any effect annotation collected during return-type parsing.
+        let effect_ann = self.pending_effect_ann.take();
+
         generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
 
         let spec = self.parse_spec_block()?;
@@ -2728,7 +2764,7 @@ impl<'a> Parser<'a> {
         let body =
             self.parse_fn_body(attrs, &ident, &mut sig_hi, fn_parse_mode.req_body, fn_params_end)?;
         let fn_sig_span = sig_lo.to(sig_hi);
-        Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, contract, spec, body))
+        Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, contract, effect_ann, spec, body))
     }
 
     /// Provide diagnostics when function body is not found

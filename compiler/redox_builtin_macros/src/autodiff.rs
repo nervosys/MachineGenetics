@@ -341,6 +341,7 @@ mod llvm_enzyme {
             generics,
             contract: None,
             contract_attrs: ThinVec::new(),
+            effect_ann: None,
             spec: None,
             body: Some(d_body),
             define_opaque: None,

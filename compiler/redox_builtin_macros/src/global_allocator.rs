@@ -83,6 +83,7 @@ impl AllocFnFactory<'_, '_> {
             generics: Generics::default(),
             contract: None,
             contract_attrs: ThinVec::new(),
+            effect_ann: None,
             spec: None,
             body,
             define_opaque: None,

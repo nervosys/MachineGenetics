@@ -840,6 +840,7 @@ symbols! {
         dynamic_no_pic: "dynamic-no-pic",
         edition_panic,
         effective_target_features,
+        effect,
         effects,
         eh_catch_typeinfo,
         eh_personality,

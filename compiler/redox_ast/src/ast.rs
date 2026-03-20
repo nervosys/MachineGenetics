@@ -3663,7 +3663,8 @@ impl Item {
             | ItemKind::MacCall(_)
             | ItemKind::Delegation(_)
             | ItemKind::DelegationMac(_)
-            | ItemKind::MacroDef(..) => None,
+            | ItemKind::MacroDef(..)
+            | ItemKind::Effect(..) => None,
             ItemKind::Static(_) => None,
             ItemKind::Const(i) => Some(&i.generics),
             ItemKind::Fn(i) => Some(&i.generics),
@@ -3867,6 +3868,23 @@ pub enum ContractAttr {
     Invariant(Box<Expr>),
 }
 
+/// An effect declaration: `effect name { fn sig(); ... }`.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct EffectDecl {
+    pub ident: Ident,
+    pub generics: Generics,
+    pub items: ThinVec<Box<Item>>,
+    pub span: Span,
+}
+
+/// An effect annotation on a function return type: `fn foo() -> io T`.
+/// Stored on the `Fn` node to track which effects a function declares.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct EffectAnnotation {
+    pub effects: ThinVec<Ident>,
+    pub span: Span,
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Default, Walkable)]
 pub struct FnContract {
     /// Declarations of variables accessible both in the `requires` and
@@ -3884,6 +3902,7 @@ pub struct Fn {
     pub sig: FnSig,
     pub contract: Option<Box<FnContract>>,
     pub contract_attrs: ThinVec<ContractAttr>,
+    pub effect_ann: Option<Box<EffectAnnotation>>,
     pub spec: Option<Box<SpecBlock>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
     pub body: Option<Box<Block>>,
@@ -4070,6 +4089,10 @@ pub enum ItemKind {
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
     TraitAlias(Box<TraitAlias>),
+    /// An effect declaration (canonical mode).
+    ///
+    /// E.g., `effect io { fn read(); fn write(); }`.
+    Effect(Box<EffectDecl>),
     /// An implementation.
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
@@ -4104,7 +4127,8 @@ impl ItemKind {
             | ItemKind::Trait(box Trait { ident, .. })
             | ItemKind::TraitAlias(box TraitAlias { ident, .. })
             | ItemKind::MacroDef(ident, _)
-            | ItemKind::Delegation(box Delegation { ident, .. }) => Some(ident),
+            | ItemKind::Delegation(box Delegation { ident, .. })
+            | ItemKind::Effect(box EffectDecl { ident, .. }) => Some(ident),
 
             ItemKind::ConstBlock(_) => Some(ConstBlockItem::IDENT),
 
@@ -4123,7 +4147,7 @@ impl ItemKind {
         match self {
             Use(..) | Static(..) | Const(..) | ConstBlock(..) | Fn(..) | Mod(..)
             | GlobalAsm(..) | TyAlias(..) | Struct(..) | Union(..) | Trait(..) | TraitAlias(..)
-            | MacroDef(..) | Delegation(..) | DelegationMac(..) => "a",
+            | MacroDef(..) | Delegation(..) | DelegationMac(..) | Effect(..) => "a",
             ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
         }
     }
@@ -4150,6 +4174,7 @@ impl ItemKind {
             ItemKind::Impl { .. } => "implementation",
             ItemKind::Delegation(..) => "delegated function",
             ItemKind::DelegationMac(..) => "delegation",
+            ItemKind::Effect(..) => "effect declaration",
         }
     }
 
@@ -4175,7 +4200,8 @@ impl ItemKind {
             | Self::MacCall(..)
             | Self::MacroDef(..)
             | Self::Delegation(..)
-            | Self::DelegationMac(..) => None,
+            | Self::DelegationMac(..)
+            | Self::Effect(..) => None,
         }
     }
 }
@@ -4326,7 +4352,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 208);
+    static_assert_size!(Fn, 216);
     static_assert_size!(ForeignItem, 80);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

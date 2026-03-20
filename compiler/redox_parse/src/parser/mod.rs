@@ -243,6 +243,9 @@ pub struct Parser<'a> {
     /// Contract attributes (`@req(expr)`, `@ens(expr)`, `@inv(expr)`) parsed
     /// during outer-attribute collection and awaiting attachment to a `Fn` node.
     pub(super) pending_contract_attrs: Vec<ast::ContractAttr> = Vec::new(),
+
+    /// Effect annotation parsed from the return type position.
+    pub(super) pending_effect_ann: Option<Box<ast::EffectAnnotation>> = None,
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with

@@ -242,6 +242,30 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, FnRetTy> {
         let lo = self.prev_token.span;
         Ok(if self.eat(exp!(RArrow)) {
+            // In canonical mode, check for effect annotations: `-> effect_name Type`
+            // Effect names are lowercase identifiers not followed by `::` or `<`.
+            {
+                use redox_session::parse::SyntaxMode;
+                if self.psess.syntax_mode == SyntaxMode::Canonical {
+                    let mut effects = ThinVec::new();
+                    let ann_lo = self.token.span;
+                    while self.token.is_ident()
+                        && !self.token.is_keyword(kw::SelfUpper)
+                        && !self.look_ahead(1, |t| *t == token::PathSep || *t == token::Lt)
+                        && self.look_ahead(1, |t| t.can_begin_type())
+                    {
+                        let ident = self.parse_ident()?;
+                        effects.push(ident);
+                    }
+                    if !effects.is_empty() {
+                        let ann_span = ann_lo.to(self.prev_token.span);
+                        self.pending_effect_ann = Some(Box::new(ast::EffectAnnotation {
+                            effects,
+                            span: ann_span,
+                        }));
+                    }
+                }
+            }
             // FIXME(Centril): Can we unconditionally `allow_plus`?
             let ty = self.parse_ty_common(
                 allow_plus,

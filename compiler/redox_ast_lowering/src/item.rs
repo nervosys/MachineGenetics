@@ -217,6 +217,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             | ItemKind::Union(..)
             | ItemKind::Trait(..)
             | ItemKind::TraitAlias(..)
+            | ItemKind::Effect(..)
             | ItemKind::Impl(..)
             | ItemKind::MacCall(..)
             | ItemKind::MacroDef(..)
@@ -590,6 +591,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
                 panic!("macros should have been expanded by now")
+            }
+            ItemKind::Effect(..) => {
+                panic!("effect declarations should have been desugared by now")
             }
         }
     }

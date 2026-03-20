@@ -291,6 +291,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             ast::ItemKind::MacCall(_) | ast::ItemKind::DelegationMac(_) => {
                 unreachable!("macros should have been expanded")
             }
+            ast::ItemKind::Effect(..) => Target::Mod, // TODO: add Target::Effect
         };
 
         self.check_for_lang(

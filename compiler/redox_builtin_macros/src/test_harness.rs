@@ -345,6 +345,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
         generics: ast::Generics::default(),
         contract: None,
         contract_attrs: ThinVec::new(),
+        effect_ann: None,
         spec: None,
         body: Some(main_body),
         define_opaque: None,

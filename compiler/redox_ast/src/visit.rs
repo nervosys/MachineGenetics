@@ -861,6 +861,9 @@ macro_rules! common_visitor_and_walkers {
                         visit_visitable!($($mut)? vis, delegation),
                     ItemKind::DelegationMac(dm) =>
                         visit_visitable!($($mut)? vis, dm),
+                    ItemKind::Effect(_) => {
+                        // Effect declarations: no child nodes to visit yet.
+                    }
                 }
                 V::Result::output()
             }
@@ -930,7 +933,7 @@ macro_rules! common_visitor_and_walkers {
                     _ctxt,
                     // Visibility is visited as a part of the item.
                     _vis,
-                    Fn { defaultness, ident, sig, generics, contract, contract_attrs: _, spec: _, body, define_opaque, eii_impls },
+                    Fn { defaultness, ident, sig, generics, contract, contract_attrs: _, effect_ann: _, spec: _, body, define_opaque, eii_impls },
                 ) => {
                     let FnSig { header, decl, span } = sig;
                     visit_visitable!($($mut)? vis,

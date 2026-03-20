@@ -258,6 +258,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
             | ast::ItemKind::GlobalAsm(..)
             | ast::ItemKind::TyAlias(..)
             | ast::ItemKind::TraitAlias(..)
+            | ast::ItemKind::Effect(..)
             | ast::ItemKind::MacroDef(..)
             | ast::ItemKind::ForeignMod(..)
             | ast::ItemKind::Fn(..)

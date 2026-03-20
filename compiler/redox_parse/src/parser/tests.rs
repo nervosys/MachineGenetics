@@ -3390,3 +3390,121 @@ fn legacy_mode_no_contract_attrs() {
         }
     });
 }
+
+// ── Step 13: effect declaration & effect annotation tests ──────────────────
+
+/// Parse a string as an item in canonical mode and return the item.
+fn parse_item_canonical(src: &str) -> Box<ast::Item> {
+    let mut psess = ParseSess::new();
+    psess.syntax_mode = SyntaxMode::Canonical;
+    let item = with_error_checking_parse(src.to_string(), &psess, |p| {
+        p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
+    });
+    item.expect("should parse as an item")
+}
+
+#[test]
+fn canonical_effect_decl_basic() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("effect Io { fn read() -> bool; }");
+        if let ast::ItemKind::Effect(ed) = &item.kind {
+            assert_eq!(ed.ident.to_string(), "Io");
+            assert_eq!(ed.items.len(), 1);
+            // The inner item should be a function
+            assert!(matches!(ed.items[0].kind, ast::ItemKind::Fn(_)));
+        } else {
+            panic!("expected Effect item, got {:?}", item.kind);
+        }
+    });
+}
+
+#[test]
+fn canonical_effect_decl_multiple_fns() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical(
+            "effect Net { fn send(data: V[u8]); fn recv() -> V[u8]; }",
+        );
+        if let ast::ItemKind::Effect(ed) = &item.kind {
+            assert_eq!(ed.ident.to_string(), "Net");
+            assert_eq!(ed.items.len(), 2);
+        } else {
+            panic!("expected Effect item");
+        }
+    });
+}
+
+#[test]
+fn canonical_effect_decl_empty() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("effect Empty {}");
+        if let ast::ItemKind::Effect(ed) = &item.kind {
+            assert_eq!(ed.ident.to_string(), "Empty");
+            assert!(ed.items.is_empty());
+        } else {
+            panic!("expected Effect item");
+        }
+    });
+}
+
+#[test]
+fn canonical_effect_annotation_single() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("fn foo() -> io bool {}");
+        if let ast::ItemKind::Fn(f) = &item.kind {
+            let ann = f.effect_ann.as_ref().expect("should have effect annotation");
+            assert_eq!(ann.effects.len(), 1);
+            assert_eq!(ann.effects[0].to_string(), "io");
+        } else {
+            panic!("expected fn item");
+        }
+    });
+}
+
+#[test]
+fn canonical_effect_annotation_multiple() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("fn foo() -> io net bool {}");
+        if let ast::ItemKind::Fn(f) = &item.kind {
+            let ann = f.effect_ann.as_ref().expect("should have effect annotation");
+            assert_eq!(ann.effects.len(), 2);
+            assert_eq!(ann.effects[0].to_string(), "io");
+            assert_eq!(ann.effects[1].to_string(), "net");
+        } else {
+            panic!("expected fn item");
+        }
+    });
+}
+
+#[test]
+fn canonical_fn_no_effect_annotation() {
+    create_default_session_globals_then(|| {
+        let item = parse_item_canonical("fn foo() -> bool {}");
+        if let ast::ItemKind::Fn(f) = &item.kind {
+            assert!(f.effect_ann.is_none());
+        } else {
+            panic!("expected fn item");
+        }
+    });
+}
+
+#[test]
+fn legacy_mode_no_effect_decl() {
+    create_default_session_globals_then(|| {
+        // In legacy mode, `effect` is just a regular identifier, not a keyword.
+        // Parsing "fn effect() {}" should work as a regular function named `effect`.
+        let mut psess = ParseSess::new();
+        psess.syntax_mode = SyntaxMode::Legacy;
+        let item = with_error_checking_parse(
+            "fn effect() {}".to_string(),
+            &psess,
+            |p| p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes),
+        );
+        let item = item.unwrap();
+        // Should parse as a regular function named `effect`
+        if let ast::ItemKind::Fn(f) = &item.kind {
+            assert!(f.effect_ann.is_none());
+        } else {
+            panic!("expected fn item");
+        }
+    });
+}

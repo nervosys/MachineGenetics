@@ -1092,6 +1092,7 @@ impl<'a> MethodDef<'a> {
                 generics: fn_generics,
                 contract: None,
                 contract_attrs: ThinVec::new(),
+                effect_ann: None,
                 spec: None,
                 body: Some(body_block),
                 define_opaque: None,

@@ -30,7 +30,7 @@
 - [x] **Step 10**: Modify `redox_parse` to support dual-mode parsing: add a `SyntaxMode` enum (`Canonical`, `Legacy`) to the parser state, controlled by the session configuration. In `Legacy` mode, the parser behaves identically to upstream `rustc_parse`. In `Canonical` mode, it accepts the new LL(1) grammar. Add plumbing tests.
 - [x] **Step 11**: Implement `spec` block parsing in `redox_parse` (canonical mode). A `spec` block contains `@req` (precondition), `@ens` (postcondition), `@perf` (cost bound), and `@fx` (effect declaration) clauses. Parse into new AST nodes. Add parser tests with valid and invalid spec blocks.
 - [x] **Step 12**: Implement contract syntax parsing in `redox_parse`: `@req(expr)`, `@ens(expr)`, `@inv(expr)` as function/method attributes in canonical mode. Parse into `ContractAttr` AST nodes. Add parser tests.
-- [ ] **Step 13**: Implement effect declaration parsing: `effect name { fn ...; }` blocks and effect annotations on functions (`fn foo() -> io T`). Parse into `EffectDecl` and `EffectAnnotation` AST nodes. Add parser tests.
+- [x] **Step 13**: Implement effect declaration parsing: `effect name { fn ...; }` blocks and effect annotations on functions (`fn foo() -> io T`). Parse into `EffectDecl` and `EffectAnnotation` AST nodes. Add parser tests.
 - [ ] **Step 14**: Implement capability block parsing: `capability name { ... }` declarations and `#[capability(name)]` / `@ao(name)` annotations. Parse into `CapabilityDecl` AST nodes. Add parser tests.
 - [ ] **Step 15**: Implement compact keyword parsing in canonical mode: recognize `v` as `let`, `f` as `fn`, `s` as `struct`, `e` as `enum`, etc. The parser should accept both compact and full keywords. Add comprehensive round-trip parser tests.
 

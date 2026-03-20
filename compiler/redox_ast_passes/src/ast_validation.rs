@@ -1229,6 +1229,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     sig,
                     contract: _,
                     contract_attrs: _,
+                    effect_ann: _,
                     spec: _,
                     body,
                     define_opaque: _,

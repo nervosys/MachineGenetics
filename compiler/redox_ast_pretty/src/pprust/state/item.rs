@@ -438,6 +438,19 @@ impl<'a> State<'a> {
                 deleg.suffixes.as_ref().map_or(DelegationKind::Glob, |s| DelegationKind::List(s)),
                 &deleg.body,
             ),
+            ast::ItemKind::Effect(ed) => {
+                let (cb, ib) = self.head("");
+                self.print_visibility(&item.vis);
+                self.word_nbsp("effect");
+                self.print_ident(ed.ident);
+                self.print_generic_params(&ed.generics.params);
+                self.nbsp();
+                self.bopen(ib);
+                for it in &ed.items {
+                    self.print_item(it);
+                }
+                self.bclose(item.span, false, cb);
+            }
         }
         self.ann.post(self, AnnNode::Item(item))
     }
@@ -705,6 +718,7 @@ impl<'a> State<'a> {
             sig,
             contract,
             contract_attrs: _,
+            effect_ann: _,
             spec: _,
             body,
             define_opaque,
