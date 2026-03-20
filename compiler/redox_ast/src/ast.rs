@@ -3832,14 +3832,14 @@ pub struct TraitImplHeader {
 ///     @fx(io, net)
 /// }
 /// ```
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct SpecBlock {
     pub clauses: ThinVec<SpecClause>,
     pub span: Span,
 }
 
 /// The kind of a spec clause inside a `spec { ... }` block.
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum SpecClauseKind {
     /// `@req(expr)` — precondition.
     Requires(Box<Expr>),
@@ -3852,14 +3852,14 @@ pub enum SpecClauseKind {
 }
 
 /// A single clause in a `spec { ... }` block.
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct SpecClause {
     pub kind: SpecClauseKind,
     pub span: Span,
 }
 
 /// A contract attribute in canonical mode (e.g. `@req(expr)`, `@ens(expr)`, `@inv(expr)`).
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum ContractAttr {
     /// `@req(expr)` — precondition.
     Requires(Box<Expr>),
@@ -3870,7 +3870,7 @@ pub enum ContractAttr {
 }
 
 /// An effect declaration: `effect name { fn sig(); ... }`.
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct EffectDecl {
     pub ident: Ident,
     pub generics: Generics,
@@ -3880,19 +3880,53 @@ pub struct EffectDecl {
 
 /// An effect annotation on a function return type: `fn foo() -> io T`.
 /// Stored on the `Fn` node to track which effects a function declares.
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct EffectAnnotation {
     pub effects: ThinVec<Ident>,
     pub span: Span,
 }
 
 /// A capability declaration: `capability name { ... }`.
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct CapabilityDecl {
     pub ident: Ident,
     pub generics: Generics,
     pub items: ThinVec<Box<Item>>,
     pub span: Span,
+}
+
+/// A block listing required capabilities, e.g. `@cap(fs_read, net_connect)`.
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct CapabilityBlock {
+    pub capabilities: ThinVec<Ident>,
+    pub span: Span,
+}
+
+/// A refinement type with a base type and predicate, e.g. `{ x: i32 | x > 0 }`.
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct RefinementType {
+    pub base_ty: Box<Ty>,
+    pub predicate: Box<Expr>,
+    pub span: Span,
+}
+
+/// A performance annotation, e.g. `@pi!` (force-inline), `@pnb` (no-block), `@pv(4)` (vectorize).
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum PerfAnnotation {
+    /// `@pi!` — force inline.
+    ForceInline,
+    /// `@pnb` — no blocking.
+    NoBlock,
+    /// `@pv(N)` — vectorize with width N.
+    Vectorize(u32),
+    /// `@pt(target)` — target hint.
+    TargetHint(Symbol),
+    /// `@pa(N)` — alignment.
+    Alignment(u32),
+    /// `@pp` — pure (no side effects).
+    Pure,
+    /// `#[repr(target_optimal)]` — target-optimal representation.
+    ReprTargetOptimal,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Default, Walkable)]

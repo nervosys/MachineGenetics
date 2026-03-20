@@ -375,6 +375,7 @@ macro_rules! common_visitor_and_walkers {
             std::borrow::Cow<'_, str>,
             Symbol,
             u8,
+            u32,
             usize,
         );
         // `Span` is only a no-op for the non-mutable visitor.
@@ -394,6 +395,10 @@ macro_rules! common_visitor_and_walkers {
             ThinVec<Box<Ty>>,
             ThinVec<TyPat>,
             ThinVec<EiiImpl>,
+            ThinVec<Ident>,
+            ThinVec<SpecClause>,
+            ThinVec<ContractAttr>,
+            ThinVec<PerfAnnotation>,
         );
 
         // This macro generates `impl Visitable` and `impl MutVisitable` that forward to `Walkable`
@@ -492,6 +497,9 @@ macro_rules! common_visitor_and_walkers {
             YieldKind,
             EiiDecl,
             EiiImpl,
+            SpecClauseKind,
+            SpecClause,
+            ContractAttr,
         );
 
         /// Each method of this trait is a hook to be potentially
@@ -563,6 +571,13 @@ macro_rules! common_visitor_and_walkers {
                 fn visit_capture_by(CaptureBy);
                 fn visit_closure_binder(ClosureBinder);
                 fn visit_contract(FnContract);
+                fn visit_spec_block(SpecBlock);
+                fn visit_effect_decl(EffectDecl);
+                fn visit_effect_annotation(EffectAnnotation);
+                fn visit_capability_decl(CapabilityDecl);
+                fn visit_capability_block(CapabilityBlock);
+                fn visit_refinement_type(RefinementType);
+                fn visit_perf_annotation(PerfAnnotation);
                 fn visit_coroutine_kind(CoroutineKind);
                 fn visit_crate(Crate);
                 fn visit_expr(Expr);
@@ -1091,6 +1106,13 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_capture_by(CaptureBy);
             pub fn walk_closure_binder(ClosureBinder);
             pub fn walk_contract(FnContract);
+            pub fn walk_spec_block(SpecBlock);
+            pub fn walk_effect_decl(EffectDecl);
+            pub fn walk_effect_annotation(EffectAnnotation);
+            pub fn walk_capability_decl(CapabilityDecl);
+            pub fn walk_capability_block(CapabilityBlock);
+            pub fn walk_refinement_type(RefinementType);
+            pub fn walk_perf_annotation(PerfAnnotation);
             pub fn walk_coroutine_kind(CoroutineKind);
             pub fn walk_crate(Crate);
             pub fn walk_expr(Expr);
