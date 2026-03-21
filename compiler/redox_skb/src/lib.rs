@@ -21,6 +21,8 @@
 //!
 //! Reference: REDOX_PROPOSAL.md §15
 
+pub mod query;
+
 use std::collections::HashMap;
 use std::fmt;
 
@@ -482,6 +484,11 @@ impl SafetyKnowledgeBase {
     /// Number of rules in a specific database.
     pub fn rules_in_database(&self, db: Database) -> usize {
         self.rules.iter().filter(|r| r.database == db).count()
+    }
+
+    /// Return references to all rules.
+    pub fn all_rules(&self) -> Vec<&Rule> {
+        self.rules.iter().collect()
     }
 
     /// Add a rule to the SKB and update all indices.
