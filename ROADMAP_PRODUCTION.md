@@ -83,7 +83,7 @@
 ### Agent Infrastructure
 
 - [x] **Step 34**: Build `redox_index` — a persistent semantic knowledge graph that indexes all symbols, types, traits, impls, and their relationships across crates. Store as a queryable database (embedded, e.g., SQLite or custom B-tree). Expose via the query API.
-- [ ] **Step 35**: Implement capability inference pass in the MIR pipeline. Analyze function bodies to determine required capabilities (alloc, io, unsafe, panic, etc.). Store inferred capabilities in function metadata. Add tests.
+- [x] **Step 35**: Implement capability inference pass in the MIR pipeline. Analyze function bodies to determine required capabilities (alloc, io, unsafe, panic, etc.). Store inferred capabilities in function metadata. Add tests.
 - [ ] **Step 36**: Extend `redox_metadata` with capability manifest serialization. Each compiled crate produces a capability manifest JSON alongside its rlib/dylib. Implement the schema from REDOX_PROPOSAL.md §10.2.
 - [ ] **Step 37**: Build prototype RAP (Redox Agent Protocol) server, merging rust-analyzer-style IDE support with direct compiler query access. The server should expose: `query.*`, `tokens.*`, `ast.*`, `type.*`, `diagnostic.*` endpoints. Reference: REDOX_PROPOSAL.md §8.2.
 
