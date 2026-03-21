@@ -3473,6 +3473,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_capability_manifest"
+version = "0.1.0"
+
+[[package]]
 name = "redox_codegen_llvm"
 version = "0.0.0"
 dependencies = [
@@ -4408,6 +4412,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_safety_cfg"
+version = "0.1.0"
+
+[[package]]
 name = "redox_sanitizers"
 version = "0.0.0"
 dependencies = [
@@ -4422,6 +4430,10 @@ dependencies = [
  "tracing",
  "twox-hash 1.6.3",
 ]
+
+[[package]]
+name = "redox_semantic_index"
+version = "0.1.0"
 
 [[package]]
 name = "redox_serialize"

@@ -4,6 +4,7 @@ members = [
   # tidy-alphabetical-start
   "compiler/redox",
   "compiler/redox_diagnostics",
+  "compiler/redox_capability_manifest",
   "compiler/redox_mlir",
   "compiler/redox_query",
   "compiler/redox_safety_cfg",
