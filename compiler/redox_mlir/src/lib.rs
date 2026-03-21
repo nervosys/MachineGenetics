@@ -18,6 +18,8 @@
 //!
 //! Reference: REDOX_PROPOSAL.md §5.4.1
 
+pub mod dialect;
+
 // ---------------------------------------------------------------------------
 // Raw FFI declarations (only when linking against MLIR)
 // ---------------------------------------------------------------------------
@@ -74,12 +76,8 @@ pub mod ffi {
         ) -> MlirLocation;
 
         // Dialect registration
-        pub fn mlirGetDialectHandle__llvm__(
-        ) -> MlirDialectHandle;
-        pub fn mlirDialectHandleRegisterDialect(
-            handle: MlirDialectHandle,
-            context: MlirContext,
-        );
+        pub fn mlirGetDialectHandle__llvm__() -> MlirDialectHandle;
+        pub fn mlirDialectHandleRegisterDialect(handle: MlirDialectHandle, context: MlirContext);
     }
 }
 
@@ -114,11 +112,7 @@ pub struct Module {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Location {
     Unknown,
-    FileLineCol {
-        file: String,
-        line: u32,
-        col: u32,
-    },
+    FileLineCol { file: String, line: u32, col: u32 },
 }
 
 /// Error type for MLIR operations.
@@ -155,10 +149,7 @@ impl std::error::Error for MlirError {}
 impl Context {
     /// Create a new MLIR context (mock).
     pub fn new() -> Result<Self, MlirError> {
-        Ok(Self {
-            alive: true,
-            dialects_registered: Vec::new(),
-        })
+        Ok(Self { alive: true, dialects_registered: Vec::new() })
     }
 
     /// Whether this context is still alive (not destroyed).
@@ -256,10 +247,7 @@ impl Drop for Context {
 impl Module {
     /// Create an empty MLIR module (mock).
     pub fn new_empty(_ctx: &Context, _loc: &Location) -> Result<Self, MlirError> {
-        Ok(Self {
-            alive: true,
-            operations: Vec::new(),
-        })
+        Ok(Self { alive: true, operations: Vec::new() })
     }
 
     pub fn is_alive(&self) -> bool {
@@ -299,11 +287,7 @@ impl Location {
     }
 
     pub fn file_line_col(file: impl Into<String>, line: u32, col: u32) -> Self {
-        Location::FileLineCol {
-            file: file.into(),
-            line,
-            col,
-        }
+        Location::FileLineCol { file: file.into(), line, col }
     }
 }
 
@@ -385,24 +369,14 @@ mod tests {
     #[test]
     fn location_file_line_col() {
         let loc = Location::file_line_col("main.rs", 42, 5);
-        assert_eq!(
-            loc,
-            Location::FileLineCol {
-                file: "main.rs".into(),
-                line: 42,
-                col: 5,
-            }
-        );
+        assert_eq!(loc, Location::FileLineCol { file: "main.rs".into(), line: 42, col: 5 });
     }
 
     // -- Error display -------------------------------------------------------
 
     #[test]
     fn error_display() {
-        assert_eq!(
-            MlirError::ContextCreationFailed.to_string(),
-            "MLIR context creation failed",
-        );
+        assert_eq!(MlirError::ContextCreationFailed.to_string(), "MLIR context creation failed",);
         assert_eq!(
             MlirError::DialectNotFound("foo".into()).to_string(),
             "MLIR dialect not found: foo",
