@@ -5,6 +5,7 @@ members = [
   "compiler/redox",
   "compiler/redox_diagnostics",
   "compiler/redox_agent_attrs",
+  "compiler/redox_attr_compress",
   "compiler/redox_capability_manifest",
   "compiler/redox_mlir",
   "compiler/redox_query",

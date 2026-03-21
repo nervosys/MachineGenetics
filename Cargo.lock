@@ -3393,6 +3393,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_attr_compress"
+version = "0.1.0"
+
+[[package]]
 name = "redox_attr_parsing"
 version = "0.0.0"
 dependencies = [
