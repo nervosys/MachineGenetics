@@ -35,6 +35,7 @@ members = [
   "src/tools/replace-version-placeholder",
   "src/tools/run-make-support",
   "src/tools/rust-installer",
+  "src/tools/rust2redox",
   "src/tools/rustdoc",
   "src/tools/rustdoc-gui-test",
   "src/tools/rustdoc-themes",

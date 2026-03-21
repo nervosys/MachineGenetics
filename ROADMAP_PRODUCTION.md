@@ -47,7 +47,7 @@
 
 ### Dual-Syntax Transpiler & Formatter
 
-- [ ] **Step 21**: Build the `rust2redox` transpiler (can live in `src/tools/rust2redox/`). Input: valid Rust source. Output: canonical Redox compact form. Must handle: keyword compression, attribute compression, lifetime/borrow elision, type abbreviation. Add tests with the examples from REDOX_PROPOSAL.md §5.4 and §5.7.
+- [x] **Step 21**: Build the `rust2redox` transpiler (can live in `src/tools/rust2redox/`). Input: valid Rust source. Output: canonical Redox compact form. Must handle: keyword compression, attribute compression, lifetime/borrow elision, type abbreviation. Add tests with the examples from REDOX_PROPOSAL.md §5.4 and §5.7.
 - [ ] **Step 22**: Implement `redoxfmt` tool (in `src/tools/redoxfmt/`). Two modes: `--compact` (minimum-token canonical form, single-char keywords, all abbreviations applied) and `--expand` (fully-expanded human-readable form with full keywords and all safety annotations). Add round-trip test: `compact(expand(src)) == compact(src)`.
 
 ### Diagnostics & Query API
