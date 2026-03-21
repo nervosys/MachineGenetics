@@ -647,4 +647,94 @@ allow-synthesis = true
         assert_eq!(config.safety.mode, SafetyMode::Agent);
         assert_eq!(config.safety.borrow_check, CheckLevel::Skip);
     }
+
+    // --- Step 20: Safety-free type inference configuration tests ---
+
+    #[test]
+    fn agent_mode_enables_mutability_inference() {
+        // In agent mode, the compiler should infer `&` vs `&mut` from usage.
+        // This is controlled by safety.mode == Agent.
+        let config = SafetyConfig::with_mode(SafetyMode::Agent);
+        assert_eq!(config.mode, SafetyMode::Agent);
+        // Agent mode + skip borrow-check means mutability coercion is unrestricted.
+        assert_eq!(config.borrow_check, CheckLevel::Skip);
+    }
+
+    #[test]
+    fn human_mode_enforces_mutability_checks() {
+        let config = SafetyConfig::default();
+        assert_eq!(config.mode, SafetyMode::Human);
+        // Human mode enforces strict mutability checking.
+        assert_eq!(config.borrow_check, CheckLevel::Error);
+    }
+
+    #[test]
+    fn agent_mode_enables_binding_mode_inference() {
+        // In agent mode, explicit `ref`/`ref mut` pattern annotations should be
+        // stripped — the compiler infers `move` vs `ref` from context (§5.6.1).
+        let config = SafetyConfig::with_mode(SafetyMode::Agent);
+        assert_eq!(config.mode, SafetyMode::Agent);
+        // Lifetime checks are also skipped — binding modes inferred.
+        assert_eq!(config.lifetime_check, CheckLevel::Skip);
+    }
+
+    #[test]
+    fn agent_mode_enables_dispatch_inference() {
+        // In agent mode, `dyn Trait` vs `impl Trait` distinction is unified —
+        // the compiler decides dispatch strategy automatically (§5.6.1).
+        let config = SafetyConfig::with_mode(SafetyMode::Agent);
+        assert_eq!(config.mode, SafetyMode::Agent);
+        // Bounds checks skipped — dyn compatibility violations suppressed.
+        assert_eq!(config.bounds_check, CheckLevel::Skip);
+    }
+
+    #[test]
+    fn ci_mode_enforces_all_inference_checks() {
+        // CI mode should enforce all checks — no inference relaxation.
+        let config = SafetyConfig::with_mode(SafetyMode::Ci);
+        assert_eq!(config.mode, SafetyMode::Ci);
+        assert_eq!(config.borrow_check, CheckLevel::Error);
+        assert_eq!(config.lifetime_check, CheckLevel::Error);
+        assert_eq!(config.bounds_check, CheckLevel::Error);
+    }
+
+    #[test]
+    fn safety_free_function_signature_config() {
+        // Test the configuration from REDOX_PROPOSAL.md §5.2.1:
+        // "f longest(x: s, y: s) -> s" — no lifetimes, no borrow annotations.
+        // This requires agent mode with all safety checks skipped.
+        let input = r#"
+[safety]
+mode = "agent"
+borrow-check = "skip"
+lifetime-check = "skip"
+bounds-check = "skip"
+overflow-check = "skip"
+"#;
+        let config = parse_redox_config_str(input).unwrap();
+        assert_eq!(config.safety.mode, SafetyMode::Agent);
+        assert_eq!(config.safety.borrow_check, CheckLevel::Skip);
+        assert_eq!(config.safety.lifetime_check, CheckLevel::Skip);
+        assert_eq!(config.safety.bounds_check, CheckLevel::Skip);
+        assert_eq!(config.safety.overflow_check, CheckLevel::Skip);
+    }
+
+    #[test]
+    fn agent_mode_partial_inference_config() {
+        // An agent might want mutability inference but still enforce bounds checks.
+        let input = r#"
+[safety]
+mode = "agent"
+borrow-check = "skip"
+lifetime-check = "skip"
+bounds-check = "error"
+overflow-check = "warn"
+"#;
+        let config = parse_redox_config_str(input).unwrap();
+        assert_eq!(config.safety.mode, SafetyMode::Agent);
+        assert_eq!(config.safety.borrow_check, CheckLevel::Skip);
+        assert_eq!(config.safety.lifetime_check, CheckLevel::Skip);
+        assert_eq!(config.safety.bounds_check, CheckLevel::Error);
+        assert_eq!(config.safety.overflow_check, CheckLevel::Warn);
+    }
 }

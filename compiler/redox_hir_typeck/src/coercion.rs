@@ -66,6 +66,8 @@ use redox_trait_selection::traits::{
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
+use redox_session::redox_config::SafetyMode;
+
 use crate::FnCtxt;
 use crate::errors::SuggestBoxingForReturnImplTrait;
 
@@ -98,11 +100,15 @@ type CoerceResult<'tcx> = InferResult<'tcx, (Vec<Adjustment<'tcx>>, Ty<'tcx>)>;
 
 /// Coercing a mutable reference to an immutable works, while
 /// coercing `&T` to `&mut T` should be forbidden.
+///
+/// In agent mode, mutability coercion is always permitted — the compiler
+/// infers `&` vs `&mut` from usage context (Redox proposal §5.6.1).
 fn coerce_mutbls<'tcx>(
     from_mutbl: hir::Mutability,
     to_mutbl: hir::Mutability,
+    agent_mode: bool,
 ) -> RelateResult<'tcx, ()> {
-    if from_mutbl >= to_mutbl { Ok(()) } else { Err(TypeError::Mutability) }
+    if agent_mode || from_mutbl >= to_mutbl { Ok(()) } else { Err(TypeError::Mutability) }
 }
 
 /// This always returns `Ok(...)`.
@@ -153,6 +159,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         coerce_never: bool,
     ) -> Self {
         Coerce { fcx, cause, allow_two_phase, use_lub: false, coerce_never }
+    }
+
+    /// Returns `true` when safety-free inference is active (agent mode).
+    fn is_agent_mode(&self) -> bool {
+        self.fcx.tcx.sess.psess.redox_config.safety.mode == SafetyMode::Agent
     }
 
     fn unify_raw(
@@ -392,7 +403,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let (r_a, mt_a) = match *a.kind() {
             ty::Ref(r_a, ty, mutbl) => {
-                coerce_mutbls(mutbl, mutbl_b)?;
+                coerce_mutbls(mutbl, mutbl_b, self.is_agent_mode())?;
                 (r_a, ty::TypeAndMut { ty, mutbl })
             }
             _ => return self.unify(a, b, ForceLeakCheck::No),
@@ -602,7 +613,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
         let reborrow = match (source.kind(), target.kind()) {
             (&ty::Ref(_, ty_a, mutbl_a), &ty::Ref(_, _, mutbl_b)) => {
-                coerce_mutbls(mutbl_a, mutbl_b)?;
+                coerce_mutbls(mutbl_a, mutbl_b, self.is_agent_mode())?;
 
                 let coercion = RegionVariableOrigin::Coercion(self.cause.span);
                 let r_borrow = self.next_region_var(coercion);
@@ -621,7 +632,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 ))
             }
             (&ty::Ref(_, ty_a, mt_a), &ty::RawPtr(_, mt_b)) => {
-                coerce_mutbls(mt_a, mt_b)?;
+                coerce_mutbls(mt_a, mt_b, self.is_agent_mode())?;
 
                 Some((
                     Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: ty_a },
@@ -851,7 +862,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug_assert_eq!(a_pin, ty::Pinnedness::Pinned);
         debug_assert_eq!(b_pin, ty::Pinnedness::Not);
 
-        coerce_mutbls(a_mut, b_mut)?;
+        coerce_mutbls(a_mut, b_mut, self.is_agent_mode())?;
 
         let unpin_obligation = self.unpin_obligation(a, b, a_ty);
 
@@ -915,7 +926,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         };
 
-        coerce_mutbls(a_mut, b_mut)?;
+        coerce_mutbls(a_mut, b_mut, self.is_agent_mode())?;
 
         // update a with b's mutability since we'll be coercing mutability
         let a = Ty::new_pinned_ref(self.tcx, a_r, a_ty, b_mut);
@@ -1013,7 +1024,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::RawPtr(ty, mutbl) => (false, ty::TypeAndMut { ty, mutbl }),
             _ => return self.unify(a, b, ForceLeakCheck::No),
         };
-        coerce_mutbls(mt_a.mutbl, mutbl_b)?;
+        coerce_mutbls(mt_a.mutbl, mutbl_b, self.is_agent_mode())?;
 
         // Check that the types which they point at are compatible.
         let a_raw = Ty::new_ptr(self.tcx, mt_a.ty, mutbl_b);

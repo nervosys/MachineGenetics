@@ -19,6 +19,7 @@ use redox_infer::infer::{self, RegionVariableOrigin};
 use redox_infer::traits::{DynCompatibilityViolation, Obligation};
 use redox_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use redox_session::Session;
+use redox_session::redox_config::SafetyMode;
 use redox_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span};
 use redox_trait_selection::error_reporting::TypeErrCtxt;
 use redox_trait_selection::traits::{
@@ -457,6 +458,12 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
     }
 
     fn dyn_compatibility_violations(&self, trait_def_id: DefId) -> Vec<DynCompatibilityViolation> {
+        // In agent mode, suppress dyn compatibility violations — the compiler
+        // treats `dyn Trait` and `impl Trait` as equivalent, deciding dispatch
+        // strategy automatically (Redox proposal §5.6.1).
+        if self.tcx.sess.psess.redox_config.safety.mode == SafetyMode::Agent {
+            return Vec::new();
+        }
         self.tcx.dyn_compatibility_violations(trait_def_id).to_vec()
     }
 }

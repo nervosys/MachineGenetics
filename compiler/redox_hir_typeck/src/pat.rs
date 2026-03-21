@@ -33,6 +33,8 @@ use ty::VariantDef;
 use ty::adjustment::{PatAdjust, PatAdjustment};
 
 use super::report_unexpected_variant_res;
+use redox_session::redox_config::SafetyMode;
+
 use crate::expectation::Expectation;
 use crate::gather_locals::DeclOrigin;
 use crate::{FnCtxt, errors};
@@ -1156,6 +1158,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
         let PatInfo { binding_mode: def_br, top_info: ti, .. } = pat_info;
+
+        // In agent mode, strip explicit `ref`/`ref mut` annotations — the compiler
+        // infers `move` vs `ref` from context (Redox proposal §5.6.1).
+        let user_bind_annot = if self.tcx.sess.psess.redox_config.safety.mode == SafetyMode::Agent {
+            match user_bind_annot {
+                BindingMode(ByRef::Yes(_, _), mutbl) => BindingMode(ByRef::No, mutbl),
+                other => other,
+            }
+        } else {
+            user_bind_annot
+        };
 
         // Determine the binding mode...
         let bm = match user_bind_annot {

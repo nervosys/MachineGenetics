@@ -43,7 +43,7 @@
 
 - [x] **Step 18**: Add a `Redox.toml` configuration file format (parsed via a new `redox_config` crate or extension of `redox_session`). Support `[safety]` section with `mode = "agent" | "human" | "ci"`, `borrow-check`, `lifetime-check`, `bounds-check`, `overflow-check` settings per the proposal §9.4. Add config parsing tests.
 - [x] **Step 19**: Implement the safety elision pass in `redox_ast_lowering` (or as a MIR pass). When `safety.mode = "agent"`, strip all explicit lifetime annotations, borrow annotations, and `unsafe` blocks during lowering. The compiler should infer these from usage context. Add tests showing identical compilation output with and without explicit annotations.
-- [ ] **Step 20**: Implement safety-free type inference extensions in `redox_hir_typeck` / `redox_infer`. When in agent mode, the compiler should infer: `&` vs `&mut` from usage, `move` vs `ref` from context, `dyn` vs `impl` from call sites. Add tests with the safety-free function signatures from the proposal §5.2.1.
+- [x] **Step 20**: Implement safety-free type inference extensions in `redox_hir_typeck` / `redox_infer`. When in agent mode, the compiler should infer: `&` vs `&mut` from usage, `move` vs `ref` from context, `dyn` vs `impl` from call sites. Add tests with the safety-free function signatures from the proposal §5.2.1.
 
 ### Dual-Syntax Transpiler & Formatter
 
