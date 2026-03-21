@@ -19,6 +19,7 @@
 //! Reference: REDOX_PROPOSAL.md §5.4.1
 
 pub mod dialect;
+pub mod lowering;
 pub mod mir_to_mlir;
 
 // ---------------------------------------------------------------------------
