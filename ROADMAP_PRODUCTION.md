@@ -92,7 +92,7 @@
 - [x] **Step 38**: Implement agent discovery attributes in the compiler: `@as` (agent_spec), `@ac` (agent_contract), `@ax` (agent_effect), `@ao` (agent_capability), `@ae` (agent_entry). Wire through parsing, AST, lowering, and metadata emission.
 - [x] **Step 39**: Implement the attribute compression system — map `#[derive(...)]` ↔ `@d(...)`, `#[repr(...)]` ↔ `@r(...)`, `#[test]` ↔ `@t`, `#[inline]` ↔ `@i`, etc. Store mappings in the abbreviation registry. Add round-trip tests.
 - [x] **Step 40**: Implement token budget reporting: `redox build --token-report` outputs per-file and per-function token counts, with compact vs expanded savings metrics.
-- [ ] **Step 41**: Implement the Cost Oracle (REDOX_PROPOSAL.md P38): per-target cost queries for expressions, types, and operations. Expose via `cost.query(expr, target)` API. Implement multi-target cost comparison (`cost.compare`). Seed with initial cost models for x86-64, AArch64, WASM.
+- [x] **Step 41**: Implement the Cost Oracle (REDOX_PROPOSAL.md P38): per-target cost queries for expressions, types, and operations. Expose via `cost.query(expr, target)` API. Implement multi-target cost comparison (`cost.compare`). Seed with initial cost models for x86-64, AArch64, WASM.
 
 ### Swarm Primitives
 

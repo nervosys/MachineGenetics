@@ -6,6 +6,7 @@ members = [
   "compiler/redox_diagnostics",
   "compiler/redox_agent_attrs",
   "compiler/redox_attr_compress",
+  "compiler/redox_cost_oracle",
   "compiler/redox_token_budget",
   "compiler/redox_capability_manifest",
   "compiler/redox_mlir",
