@@ -4572,6 +4572,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_token_budget"
+version = "0.1.0"
+
+[[package]]
 name = "redox_trait_selection"
 version = "0.0.0"
 dependencies = [
