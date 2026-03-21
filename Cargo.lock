@@ -4071,6 +4071,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_message_bus"
+version = "0.1.0"
+
+[[package]]
 name = "redox_metadata"
 version = "0.0.0"
 dependencies = [
