@@ -96,7 +96,7 @@
 
 ### Swarm Primitives
 
-- [ ] **Step 42**: Implement the semantic lease manager. Semantic leases grant shared-read or exclusive-write access to code regions. Implement lease acquisition, release, timeout, and deadlock detection. Add concurrency tests.
+- [x] **Step 42**: Implement the semantic lease manager. Semantic leases grant shared-read or exclusive-write access to code regions. Implement lease acquisition, release, timeout, and deadlock detection. Add concurrency tests.
 - [ ] **Step 43**: Build the CRDT-based semantic merge engine for concurrent AST/HIR modifications. Implement the CRDT types from REDOX_PROPOSAL.md §7.4: `SemanticCRDT` with `InsertNode`, `DeleteNode`, `MoveNode`, `RenameSymbol`, `ChangeType`, `AddImport` operations. Add merge conflict resolution tests.
 - [ ] **Step 44**: Implement the swarm message bus with zero-copy FlatBuffers-inspired serialization. Support three transport layers: shared memory (<100ns), Unix domain sockets (~1μs), TCP/TLS (network). Implement the wire protocol from REDOX_PROPOSAL.md §16 (frame header, routing header, CRC-32C). Add latency benchmarks.
 - [ ] **Step 45**: Validate MLIR→LLVM backend targets: x86-64, AArch64, WASM. Run the Redox compiler test suite producing binaries for each target. Verify correctness with target-specific test harnesses.
