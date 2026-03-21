@@ -118,7 +118,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         match *b {
             BlockCheckMode::Default => hir::BlockCheckMode::DefaultBlock,
             BlockCheckMode::Unsafe(u) => {
-                hir::BlockCheckMode::UnsafeBlock(self.lower_unsafe_source(u))
+                // In agent mode, strip user-provided `unsafe` blocks — the agent
+                // pre-validates safety via the SKB.
+                if self.is_safety_elision_active() && matches!(u, UnsafeSource::UserProvided) {
+                    hir::BlockCheckMode::DefaultBlock
+                } else {
+                    hir::BlockCheckMode::UnsafeBlock(self.lower_unsafe_source(u))
+                }
             }
         }
     }

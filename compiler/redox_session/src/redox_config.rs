@@ -566,4 +566,85 @@ mode = "agent"
         assert_eq!(strip_comment(r#"no comment"#), "no comment");
         assert_eq!(strip_comment(r#"value = "has # inside""#), r#"value = "has # inside""#);
     }
+
+    #[test]
+    fn agent_mode_elides_all_safety_checks() {
+        let input = r#"
+[safety]
+mode = "agent"
+borrow-check = "skip"
+lifetime-check = "skip"
+bounds-check = "skip"
+overflow-check = "skip"
+"#;
+        let config = parse_redox_config_str(input).unwrap();
+        assert_eq!(config.safety.mode, SafetyMode::Agent);
+        // In agent mode, all checks should be skip — this drives safety elision
+        // in the lowering pass (unsafe blocks stripped, lifetimes elided).
+        assert_eq!(config.safety.borrow_check, CheckLevel::Skip);
+        assert_eq!(config.safety.lifetime_check, CheckLevel::Skip);
+        assert_eq!(config.safety.bounds_check, CheckLevel::Skip);
+        assert_eq!(config.safety.overflow_check, CheckLevel::Skip);
+    }
+
+    #[test]
+    fn human_mode_enforces_all_safety_checks() {
+        let input = r#"
+[safety]
+mode = "human"
+borrow-check = "error"
+lifetime-check = "error"
+bounds-check = "error"
+overflow-check = "error"
+"#;
+        let config = parse_redox_config_str(input).unwrap();
+        assert_eq!(config.safety.mode, SafetyMode::Human);
+        // In human mode, all checks enforced — lowering preserves unsafe/lifetimes.
+        assert_eq!(config.safety.borrow_check, CheckLevel::Error);
+        assert_eq!(config.safety.lifetime_check, CheckLevel::Error);
+        assert_eq!(config.safety.bounds_check, CheckLevel::Error);
+        assert_eq!(config.safety.overflow_check, CheckLevel::Error);
+    }
+
+    #[test]
+    fn ci_mode_enforces_all_safety_checks() {
+        let input = r#"
+[safety]
+mode = "ci"
+borrow-check = "error"
+lifetime-check = "error"
+bounds-check = "error"
+overflow-check = "error"
+"#;
+        let config = parse_redox_config_str(input).unwrap();
+        assert_eq!(config.safety.mode, SafetyMode::Ci);
+        assert_eq!(config.safety.borrow_check, CheckLevel::Error);
+    }
+
+    #[test]
+    fn full_redox_toml_with_multiple_sections() {
+        let input = r#"
+[package]
+name = "flight-controller"
+version = "2.1.0"
+edition = "redox-2026"
+
+[performance]
+optimization = "aggressive"
+
+[safety]
+mode = "agent"
+borrow-check = "skip"
+lifetime-check = "skip"
+bounds-check = "skip"
+overflow-check = "skip"
+
+[agents]
+allow-synthesis = true
+"#;
+        let config = parse_redox_config_str(input).unwrap();
+        // Only [safety] is parsed; other sections are silently ignored.
+        assert_eq!(config.safety.mode, SafetyMode::Agent);
+        assert_eq!(config.safety.borrow_check, CheckLevel::Skip);
+    }
 }

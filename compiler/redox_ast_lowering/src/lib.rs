@@ -60,6 +60,7 @@ use redox_macros::extension;
 use redox_middle::span_bug;
 use redox_middle::ty::{ResolverAstLowering, TyCtxt};
 use redox_session::parse::add_feature_diagnostics;
+use redox_session::redox_config::SafetyMode;
 use redox_span::symbol::{Ident, Symbol, kw, sym};
 use redox_span::{DUMMY_SP, DesugaringKind, Span};
 use smallvec::SmallVec;
@@ -229,6 +230,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'hir> {
         self.tcx.dcx()
+    }
+
+    /// Returns `true` when safety elision is active (agent mode).
+    /// In agent mode, explicit lifetime annotations, `unsafe` blocks, and
+    /// `unsafe` function qualifiers are stripped during lowering.
+    fn is_safety_elision_active(&self) -> bool {
+        self.tcx.sess.psess.redox_config.safety.mode == SafetyMode::Agent
     }
 }
 
@@ -1540,6 +1548,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         t: &Ty,
         region: Option<Lifetime>,
     ) -> &'hir hir::Lifetime {
+        // In agent mode, strip explicit lifetime annotations — treat them as
+        // if no lifetime was written (the compiler will infer).
+        let region = if self.is_safety_elision_active() { None } else { region };
+
         let (region, syntax) = match region {
             Some(region) => (region, region.ident.into()),
 

@@ -1808,7 +1808,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_safety(&self, s: Safety, default: hir::Safety) -> hir::Safety {
         match s {
-            Safety::Unsafe(_) => hir::Safety::Unsafe,
+            Safety::Unsafe(_) => {
+                // In agent mode, treat `unsafe` qualifiers as safe — agents
+                // pre-validate safety invariants via the SKB.
+                if self.is_safety_elision_active() {
+                    default
+                } else {
+                    hir::Safety::Unsafe
+                }
+            }
             Safety::Default => default,
             Safety::Safe(_) => hir::Safety::Safe,
         }
