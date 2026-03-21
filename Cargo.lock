@@ -3418,6 +3418,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_backend_targets"
+version = "0.1.0"
+dependencies = [
+ "redox_mlir",
+]
+
+[[package]]
 name = "redox_baked_icu_data"
 version = "0.0.0"
 dependencies = [

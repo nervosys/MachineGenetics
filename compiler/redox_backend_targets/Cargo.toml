@@ -1,0 +1,7 @@
+[package]
+name = "redox_backend_targets"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+redox_mlir = { path = "../redox_mlir" }
