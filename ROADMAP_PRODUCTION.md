@@ -52,7 +52,7 @@
 
 ### Diagnostics & Query API
 
-- [ ] **Step 23**: Implement the Structured Diagnostics Protocol in `redox_diagnostics` (extending `redox_errors`). Emit diagnostics as JSON diagnostic graphs with: error node, cause chain, fix candidates (each with token cost and confidence), related locations. Reference: REDOX_PROPOSAL.md §6.2. Add tests for structured diagnostic output.
+- [x] **Step 23**: Implement the Structured Diagnostics Protocol in `redox_diagnostics` (extending `redox_errors`). Emit diagnostics as JSON diagnostic graphs with: error node, cause chain, fix candidates (each with token cost and confidence), related locations. Reference: REDOX_PROPOSAL.md §6.2. Add tests for structured diagnostic output.
 - [ ] **Step 24**: Create `redox_query` crate (or extend `redox_public`) that externalizes core compiler queries as a stable API. Agents should be able to query: `tokens_of(file)`, `ast_of(file)`, `type_of(expr)`, `impl_of(trait, type)`, `diagnostics_of(file)`. Add integration tests.
 
 ### Abbreviation Registry
