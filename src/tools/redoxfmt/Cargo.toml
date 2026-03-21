@@ -1,0 +1,17 @@
+[package]
+name = "redoxfmt"
+version = "0.1.0"
+edition = "2021"
+description = "Redox formatter — compact and expand modes for canonical form enforcement"
+license = "MIT OR Apache-2.0"
+
+[[bin]]
+name = "redoxfmt"
+path = "src/main.rs"
+
+[lib]
+name = "redoxfmt"
+path = "src/lib.rs"
+
+[dependencies]
+rust2redox = { path = "../rust2redox" }
