@@ -3300,6 +3300,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_agent_attrs"
+version = "0.1.0"
+
+[[package]]
 name = "redox_arena"
 version = "0.0.0"
 dependencies = [
