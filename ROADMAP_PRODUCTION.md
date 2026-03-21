@@ -57,7 +57,7 @@
 
 ### Abbreviation Registry
 
-- [ ] **Step 25**: Create the standard abbreviation registry v1 as a data file in `compiler/redox_lexer/` (or `compiler/redox_config/`). Map all core types (`V[T]`→`Vec<T>`, `S[T]`→`String`, `?T`→`Option<T>`, `R[T,E]`→`Result<T,E>`, etc.), traits (`D`→`Debug`, `Cl`→`Clone`, `Cp`→`Copy`, `Df`→`Default`, etc.), and derives. The lexer and parser should use this registry. Add registry lookup tests.
+- [x] **Step 25**: Create the standard abbreviation registry v1 as a data file in `compiler/redox_lexer/` (or `compiler/redox_config/`). Map all core types (`V[T]`→`Vec<T>`, `S[T]`→`String`, `?T`→`Option<T>`, `R[T,E]`→`Result<T,E>`, etc.), traits (`D`→`Debug`, `Cl`→`Clone`, `Cp`→`Copy`, `Df`→`Default`, etc.), and derives. The lexer and parser should use this registry. Add registry lookup tests.
 
 ### Semantic Region Decomposition
 

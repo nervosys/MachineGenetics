@@ -28,6 +28,8 @@
 #[cfg(test)]
 mod tests;
 
+pub mod abbreviation_registry;
+
 use std::str::Chars;
 
 use LiteralKind::*;
