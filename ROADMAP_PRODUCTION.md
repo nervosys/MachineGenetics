@@ -76,7 +76,7 @@
 
 ### Safety Knowledge Base
 
-- [ ] **Step 31**: Build the Safety Knowledge Base (SKB) as `compiler/redox_skb/`. Implement the rule schema (category, subcategory, severity, condition, remedy, references). Seed with an initial corpus: ownership rules (2,847), borrowing rules (1,203), lifetime rules (894), type safety rules (3,412), concurrency rules (567), FFI rules (234) — totaling ~9,157 rules. Reference: REDOX_PROPOSAL.md §15.
+- [x] **Step 31**: Build the Safety Knowledge Base (SKB) as `compiler/redox_skb/`. Implement the rule schema (category, subcategory, severity, condition, remedy, references). Seed with an initial corpus: ownership rules (2,847), borrowing rules (1,203), lifetime rules (894), type safety rules (3,412), concurrency rules (567), FFI rules (234) — totaling ~9,157 rules. Reference: REDOX_PROPOSAL.md §15.
 - [ ] **Step 32**: Implement the SKB query API and SKB-QL query language parser. Support queries like `QUERY rules WHERE category = "ownership" AND severity >= "error"`. Implement dual-index architecture (B-tree on category + hash on pattern signature). Performance target: avg 0.02ms, P99 0.20ms query time. Add query benchmarks.
 - [ ] **Step 33**: Make all safety compiler passes opt-in via `Redox.toml` safety profiles. Implement profile presets: `agent-dev` (all checks skipped), `human-dev` (all checks enforced), `ci-pipeline` (all enforced), `production` (all enforced). Wire profile selection into the compiler session. Add tests.
 

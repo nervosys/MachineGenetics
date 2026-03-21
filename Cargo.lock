@@ -3607,6 +3607,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_diagnostics"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "redox_driver"
 version = "0.0.0"
 dependencies = [
@@ -4179,6 +4187,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_mlir"
+version = "0.1.0"
+
+[[package]]
 name = "redox_monomorphize"
 version = "0.0.0"
 dependencies = [
@@ -4342,6 +4354,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_query"
+version = "0.1.0"
+dependencies = [
+ "redox_diagnostics",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "redox_query_impl"
 version = "0.0.0"
 dependencies = [
@@ -4438,6 +4459,10 @@ dependencies = [
  "tracing",
  "windows 0.61.3",
 ]
+
+[[package]]
+name = "redox_skb"
+version = "0.1.0"
 
 [[package]]
 name = "redox_span"
@@ -4644,6 +4669,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "redoxfmt"
+version = "0.1.0"
+dependencies = [
+ "rust2redox",
+]
+
+[[package]]
 name = "ref-cast"
 version = "1.0.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4772,6 +4804,10 @@ dependencies = [
  "tempfile",
  "wasmparser 0.236.1",
 ]
+
+[[package]]
+name = "rust2redox"
+version = "0.1.0"
 
 [[package]]
 name = "rustc-build-sysroot"

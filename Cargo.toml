@@ -6,6 +6,7 @@ members = [
   "compiler/redox_diagnostics",
   "compiler/redox_mlir",
   "compiler/redox_query",
+  "compiler/redox_skb",
   "src/build_helper",
   "src/rustc-std-workspace/rustc-std-workspace-alloc",
   "src/rustc-std-workspace/rustc-std-workspace-core",
