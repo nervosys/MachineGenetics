@@ -3589,6 +3589,10 @@ name = "redox_cost_oracle"
 version = "0.1.0"
 
 [[package]]
+name = "redox_crdt_merge"
+version = "0.1.0"
+
+[[package]]
 name = "redox_data_structures"
 version = "0.0.0"
 dependencies = [
