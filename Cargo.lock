@@ -4385,6 +4385,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_rap"
+version = "0.1.0"
+
+[[package]]
 name = "redox_resolve"
 version = "0.0.0"
 dependencies = [

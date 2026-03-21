@@ -7,6 +7,7 @@ members = [
   "compiler/redox_capability_manifest",
   "compiler/redox_mlir",
   "compiler/redox_query",
+  "compiler/redox_rap",
   "compiler/redox_safety_cfg",
   "compiler/redox_semantic_index",
   "compiler/redox_skb",
