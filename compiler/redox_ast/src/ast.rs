@@ -4196,8 +4196,9 @@ impl ItemKind {
         match self {
             Use(..) | Static(..) | Const(..) | ConstBlock(..) | Fn(..) | Mod(..)
             | GlobalAsm(..) | TyAlias(..) | Struct(..) | Union(..) | Trait(..) | TraitAlias(..)
-            | MacroDef(..) | Delegation(..) | DelegationMac(..) | Effect(..)
-            | Capability(..) => "a",
+            | MacroDef(..) | Delegation(..) | DelegationMac(..) | Effect(..) | Capability(..) => {
+                "a"
+            }
             ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
         }
     }

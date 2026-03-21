@@ -37,7 +37,7 @@
 ### AST: Redox Node Types
 
 - [x] **Step 16**: Extend `redox_ast` with new AST node types: `SpecBlock`, `ContractAttr`, `EffectDecl`, `EffectAnnotation`, `CapabilityDecl`, `CapabilityBlock`, `RefinementType`, `PerfAnnotation`. Add visitor trait implementations for all new nodes. Add serialization support.
-- [ ] **Step 17**: Extend `redox_ast_pretty` to pretty-print all new Redox AST nodes in both canonical (compact) and expanded (human-readable) forms. Add round-trip pretty-print tests: parse → print → re-parse should be identity.
+- [x] **Step 17**: Extend `redox_ast_pretty` to pretty-print all new Redox AST nodes in both canonical (compact) and expanded (human-readable) forms. Add round-trip pretty-print tests: parse → print → re-parse should be identity.
 
 ### Safety Elision Pass
 

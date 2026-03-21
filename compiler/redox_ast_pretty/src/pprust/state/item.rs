@@ -730,9 +730,9 @@ impl<'a> State<'a> {
             generics,
             sig,
             contract,
-            contract_attrs: _,
-            effect_ann: _,
-            spec: _,
+            contract_attrs,
+            effect_ann,
+            spec,
             body,
             define_opaque,
             eii_impls,
@@ -754,6 +754,18 @@ impl<'a> State<'a> {
             self.hardbreak();
         }
 
+        // Print Redox contract attributes (@req, @ens, @inv) before the function.
+        for attr in contract_attrs {
+            self.print_contract_attr(attr);
+            self.hardbreak();
+        }
+
+        // Print effect annotation (e.g. `@fx(io, net)`) before the function.
+        if let Some(ann) = effect_ann {
+            self.print_effect_annotation(ann);
+            self.hardbreak();
+        }
+
         let body_cb_ib = body.as_ref().map(|body| (body, self.head("")));
 
         self.print_visibility(vis);
@@ -763,6 +775,13 @@ impl<'a> State<'a> {
             self.nbsp();
             self.print_contract(contract);
         }
+
+        // Print spec block after the function signature.
+        if let Some(spec) = spec {
+            self.nbsp();
+            self.print_spec_block(spec);
+        }
+
         if let Some((body, (cb, ib))) = body_cb_ib {
             if self.is_sdylib_interface {
                 self.word(";");
@@ -805,6 +824,119 @@ impl<'a> State<'a> {
             self.popen();
             self.print_expr(pred, FixupContext::default());
             self.pclose();
+        }
+    }
+
+    pub(crate) fn print_contract_attr(&mut self, attr: &ast::ContractAttr) {
+        match attr {
+            ast::ContractAttr::Requires(expr) => {
+                self.word("@req");
+                self.popen();
+                self.print_expr(expr, FixupContext::default());
+                self.pclose();
+            }
+            ast::ContractAttr::Ensures(expr) => {
+                self.word("@ens");
+                self.popen();
+                self.print_expr(expr, FixupContext::default());
+                self.pclose();
+            }
+            ast::ContractAttr::Invariant(expr) => {
+                self.word("@inv");
+                self.popen();
+                self.print_expr(expr, FixupContext::default());
+                self.pclose();
+            }
+        }
+    }
+
+    pub(crate) fn print_effect_annotation(&mut self, ann: &ast::EffectAnnotation) {
+        self.word("@fx");
+        self.popen();
+        self.commasep(Inconsistent, &ann.effects, |s, ident| s.print_ident(*ident));
+        self.pclose();
+    }
+
+    pub(crate) fn print_spec_block(&mut self, spec: &ast::SpecBlock) {
+        self.word("spec");
+        self.nbsp();
+        self.word("{");
+        self.hardbreak();
+        for clause in &spec.clauses {
+            self.print_spec_clause(clause);
+            self.hardbreak();
+        }
+        self.word("}");
+    }
+
+    pub(crate) fn print_spec_clause(&mut self, clause: &ast::SpecClause) {
+        match &clause.kind {
+            ast::SpecClauseKind::Requires(expr) => {
+                self.word("@req");
+                self.popen();
+                self.print_expr(expr, FixupContext::default());
+                self.pclose();
+            }
+            ast::SpecClauseKind::Ensures(expr) => {
+                self.word("@ens");
+                self.popen();
+                self.print_expr(expr, FixupContext::default());
+                self.pclose();
+            }
+            ast::SpecClauseKind::Perf(expr) => {
+                self.word("@perf");
+                self.popen();
+                self.print_expr(expr, FixupContext::default());
+                self.pclose();
+            }
+            ast::SpecClauseKind::Effects(idents) => {
+                self.word("@fx");
+                self.popen();
+                self.commasep(Inconsistent, idents, |s, ident| s.print_ident(*ident));
+                self.pclose();
+            }
+        }
+    }
+
+    pub(crate) fn print_capability_block(&mut self, cap: &ast::CapabilityBlock) {
+        self.word("@cap");
+        self.popen();
+        self.commasep(Inconsistent, &cap.capabilities, |s, ident| s.print_ident(*ident));
+        self.pclose();
+    }
+
+    pub(crate) fn print_refinement_type(&mut self, refty: &ast::RefinementType) {
+        self.word("{");
+        self.print_type(&refty.base_ty);
+        self.word(" | ");
+        self.print_expr(&refty.predicate, FixupContext::default());
+        self.word("}");
+    }
+
+    pub(crate) fn print_perf_annotation(&mut self, ann: &ast::PerfAnnotation) {
+        match ann {
+            ast::PerfAnnotation::ForceInline => self.word("@pi!"),
+            ast::PerfAnnotation::NoBlock => self.word("@pnb"),
+            ast::PerfAnnotation::Vectorize(n) => {
+                self.word("@pv");
+                self.popen();
+                self.word(n.to_string());
+                self.pclose();
+            }
+            ast::PerfAnnotation::TargetHint(sym) => {
+                self.word("@pt");
+                self.popen();
+                self.word(sym.to_string());
+                self.pclose();
+            }
+            ast::PerfAnnotation::Alignment(n) => {
+                self.word("@pa");
+                self.popen();
+                self.word(n.to_string());
+                self.pclose();
+            }
+            ast::PerfAnnotation::Pure => self.word("@pp"),
+            ast::PerfAnnotation::ReprTargetOptimal => self.word("#[repr(target_optimal)]"),
         }
     }
 
