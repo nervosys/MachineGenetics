@@ -61,7 +61,7 @@
 
 ### Semantic Region Decomposition
 
-- [ ] **Step 26**: Implement semantic region decomposition in the compiler query system. Each source file is divided into semantic regions (function, impl block, module, type definition) that can be independently queried, parsed, and compiled. Region boundaries are exposed via the query API. Add tests showing independent region compilation.
+- [x] **Step 26**: Implement semantic region decomposition in the compiler query system. Each source file is divided into semantic regions (function, impl block, module, type definition) that can be independently queried, parsed, and compiled. Region boundaries are exposed via the query API. Add tests showing independent region compilation.
 
 ### MLIR Integration Foundation
 

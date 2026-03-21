@@ -114,6 +114,46 @@ pub struct ImplInfo {
 }
 
 // ---------------------------------------------------------------------------
+// Semantic region types (§7.1)
+// ---------------------------------------------------------------------------
+
+/// A semantic region — the unit of independent querying, compilation, and
+/// agent ownership. Each source file is decomposed into non-overlapping
+/// semantic regions with well-defined interfaces.
+///
+/// Reference: REDOX_PROPOSAL.md §7.1 (Semantic Regions)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SemanticRegion {
+    /// The kind (and name) of this region.
+    pub kind: RegionKind,
+    /// Span covering the entire region in the source file.
+    pub span: Span,
+    /// Items that this region exposes (public interface).
+    pub interface_items: Vec<String>,
+    /// Identifiers this region depends on (imports / external references).
+    pub dependencies: Vec<String>,
+    /// Nested child regions (e.g. functions inside an impl block).
+    pub children: Vec<SemanticRegion>,
+}
+
+/// Classification of a semantic region.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RegionKind {
+    /// A single function body.
+    Function(String),
+    /// An `impl` block.
+    Impl(String),
+    /// A module's private items.
+    Module(String),
+    /// A trait definition (shared interface).
+    TraitDef(String),
+    /// A struct/enum definition (shared interface).
+    TypeDef(String),
+    /// All pub items collectively (crate interface).
+    CrateInterface,
+}
+
+// ---------------------------------------------------------------------------
 // Error type
 // ---------------------------------------------------------------------------
 
@@ -175,6 +215,13 @@ pub trait QueryEngine {
 
     /// Return all diagnostics for the given file.
     fn diagnostics_of(&self, file: &str) -> Result<Vec<DiagnosticGraph>, QueryError>;
+
+    /// Decompose the given file into semantic regions.
+    ///
+    /// Each region can be independently queried, parsed, and compiled.
+    /// Region boundaries correspond to top-level items: functions, impl blocks,
+    /// modules, trait definitions, type definitions.
+    fn regions_of(&self, file: &str) -> Result<Vec<SemanticRegion>, QueryError>;
 }
 
 // ---------------------------------------------------------------------------
@@ -194,6 +241,7 @@ pub struct StubFile {
     pub tokens: Vec<Token>,
     pub ast: Option<AstNode>,
     pub diagnostics: Vec<DiagnosticGraph>,
+    pub regions: Vec<SemanticRegion>,
 }
 
 impl StubQueryEngine {
@@ -246,6 +294,14 @@ impl QueryEngine for StubQueryEngine {
             .get(file)
             .ok_or_else(|| QueryError::FileNotFound(file.to_owned()))?;
         Ok(f.diagnostics.clone())
+    }
+
+    fn regions_of(&self, file: &str) -> Result<Vec<SemanticRegion>, QueryError> {
+        let f = self
+            .files
+            .get(file)
+            .ok_or_else(|| QueryError::FileNotFound(file.to_owned()))?;
+        Ok(f.regions.clone())
     }
 }
 
@@ -352,6 +408,33 @@ impl ImplInfo {
 
     pub fn with_where(mut self, clause: impl Into<String>) -> Self {
         self.where_clause = Some(clause.into());
+        self
+    }
+}
+
+impl SemanticRegion {
+    pub fn new(kind: RegionKind, span: Span) -> Self {
+        Self {
+            kind,
+            span,
+            interface_items: Vec::new(),
+            dependencies: Vec::new(),
+            children: Vec::new(),
+        }
+    }
+
+    pub fn with_interface(mut self, item: impl Into<String>) -> Self {
+        self.interface_items.push(item.into());
+        self
+    }
+
+    pub fn with_dependency(mut self, dep: impl Into<String>) -> Self {
+        self.dependencies.push(dep.into());
+        self
+    }
+
+    pub fn with_child(mut self, child: SemanticRegion) -> Self {
+        self.children.push(child);
         self
     }
 }
@@ -606,5 +689,155 @@ mod tests {
                 span("mod.rs", 3),
             ));
         assert_eq!(root.children.len(), 1);
+    }
+
+    // -- Semantic regions ---------------------------------------------------
+
+    #[test]
+    fn regions_of_returns_regions() {
+        let mut engine = StubQueryEngine::new();
+        let regions = vec![
+            SemanticRegion::new(
+                RegionKind::Function("main".into()),
+                span("main.rs", 1),
+            )
+            .with_interface("main"),
+            SemanticRegion::new(
+                RegionKind::Impl("MyStruct".into()),
+                span("main.rs", 10),
+            )
+            .with_child(SemanticRegion::new(
+                RegionKind::Function("new".into()),
+                span("main.rs", 11),
+            )),
+        ];
+        engine.add_file(
+            "main.rs",
+            StubFile {
+                regions: regions.clone(),
+                ..Default::default()
+            },
+        );
+
+        let result = engine.regions_of("main.rs").unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].kind, RegionKind::Function("main".into()));
+        assert_eq!(result[0].interface_items, vec!["main"]);
+        assert_eq!(result[1].kind, RegionKind::Impl("MyStruct".into()));
+        assert_eq!(result[1].children.len(), 1);
+    }
+
+    #[test]
+    fn regions_of_file_not_found() {
+        let engine = StubQueryEngine::new();
+        let err = engine.regions_of("missing.rs").unwrap_err();
+        assert_eq!(err, QueryError::FileNotFound("missing.rs".into()));
+    }
+
+    #[test]
+    fn regions_of_empty_file() {
+        let mut engine = StubQueryEngine::new();
+        engine.add_file("empty.rs", StubFile::default());
+        let result = engine.regions_of("empty.rs").unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn region_all_kinds() {
+        let kinds = vec![
+            RegionKind::Function("f".into()),
+            RegionKind::Impl("I".into()),
+            RegionKind::Module("m".into()),
+            RegionKind::TraitDef("T".into()),
+            RegionKind::TypeDef("S".into()),
+            RegionKind::CrateInterface,
+        ];
+        for k in &kinds {
+            let r = SemanticRegion::new(k.clone(), span("x.rs", 1));
+            assert_eq!(&r.kind, k);
+        }
+    }
+
+    #[test]
+    fn region_builder() {
+        let r = SemanticRegion::new(
+            RegionKind::Module("my_mod".into()),
+            span("mod.rs", 1),
+        )
+        .with_interface("pub_fn_a")
+        .with_interface("pub_fn_b")
+        .with_dependency("std::io")
+        .with_child(SemanticRegion::new(
+            RegionKind::Function("helper".into()),
+            span("mod.rs", 5),
+        ));
+
+        assert_eq!(r.interface_items, vec!["pub_fn_a", "pub_fn_b"]);
+        assert_eq!(r.dependencies, vec!["std::io"]);
+        assert_eq!(r.children.len(), 1);
+        assert_eq!(
+            r.children[0].kind,
+            RegionKind::Function("helper".into())
+        );
+    }
+
+    #[test]
+    fn region_json_roundtrip() {
+        let r = SemanticRegion::new(
+            RegionKind::Impl("Vec<u32>".into()),
+            span("vec.rs", 10),
+        )
+        .with_interface("push")
+        .with_interface("pop")
+        .with_dependency("alloc::raw_vec")
+        .with_child(
+            SemanticRegion::new(
+                RegionKind::Function("push".into()),
+                span("vec.rs", 12),
+            )
+            .with_dependency("RawVec::reserve"),
+        );
+
+        let json = to_json(&r).unwrap();
+        let r2: SemanticRegion = from_json(&json).unwrap();
+        assert_eq!(r, r2);
+    }
+
+    #[test]
+    fn independent_region_compilation() {
+        // Demonstrate that two regions from the same file can be queried
+        // independently — each has its own span, interface, and dependencies.
+        let mut engine = StubQueryEngine::new();
+
+        let region_a = SemanticRegion::new(
+            RegionKind::Function("compute".into()),
+            span("lib.rs", 1),
+        )
+        .with_dependency("std::ops::Add");
+
+        let region_b = SemanticRegion::new(
+            RegionKind::TypeDef("Config".into()),
+            span("lib.rs", 20),
+        )
+        .with_interface("Config");
+
+        engine.add_file(
+            "lib.rs",
+            StubFile {
+                regions: vec![region_a, region_b],
+                ..Default::default()
+            },
+        );
+
+        let regions = engine.regions_of("lib.rs").unwrap();
+        // Regions are independent — no overlap in spans
+        assert_eq!(regions.len(), 2);
+        assert_ne!(regions[0].span, regions[1].span);
+        // Each has its own dependencies
+        assert_eq!(regions[0].dependencies, vec!["std::ops::Add"]);
+        assert!(regions[1].dependencies.is_empty());
+        // Region B exposes interface, Region A does not
+        assert!(regions[0].interface_items.is_empty());
+        assert_eq!(regions[1].interface_items, vec!["Config"]);
     }
 }
