@@ -22,6 +22,7 @@ use redox_span::{Span, Symbol, kw, sym};
 
 use crate::Session;
 use crate::config::{Cfg, CheckCfg};
+use crate::redox_config::RedoxConfig;
 use crate::errors::{
     CliFeatureDiagnosticHelp, FeatureDiagnosticForIssue, FeatureDiagnosticHelp,
     FeatureDiagnosticSuggestion, FeatureGateError, SuggestUpgradeCompiler,
@@ -373,6 +374,8 @@ pub struct ParseSess {
     pub attr_id_generator: AttrIdGenerator,
     /// Redox syntax mode (Legacy = standard Rust, Canonical = compact keywords).
     pub syntax_mode: SyntaxMode,
+    /// Redox project configuration (from Redox.toml).
+    pub redox_config: RedoxConfig,
 }
 
 impl ParseSess {
@@ -407,6 +410,7 @@ impl ParseSess {
             proc_macro_quoted_spans: Default::default(),
             attr_id_generator: AttrIdGenerator::new(),
             syntax_mode: SyntaxMode::default(),
+            redox_config: RedoxConfig::default(),
         }
     }
 

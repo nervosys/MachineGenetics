@@ -23,6 +23,7 @@ pub mod cstore;
 pub mod filesearch;
 mod macros;
 mod options;
+pub mod redox_config;
 pub mod search_paths;
 
 mod session;
