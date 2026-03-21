@@ -4,6 +4,7 @@ members = [
   # tidy-alphabetical-start
   "compiler/redox",
   "compiler/redox_diagnostics",
+  "compiler/redox_mlir",
   "compiler/redox_query",
   "src/build_helper",
   "src/rustc-std-workspace/rustc-std-workspace-alloc",
