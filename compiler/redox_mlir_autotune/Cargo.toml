@@ -1,0 +1,7 @@
+[package]
+name = "redox_mlir_autotune"
+version = "0.1.0"
+edition = "2024"
+description = "MLIR-native autotuning engine: @pa(N) generates N variants, benchmarks per-target, selects optimal"
+
+[dependencies]
