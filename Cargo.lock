@@ -4435,6 +4435,10 @@ name = "redox_rap"
 version = "0.1.0"
 
 [[package]]
+name = "redox_rap_ide"
+version = "0.1.0"
+
+[[package]]
 name = "redox_rap_protocol"
 version = "0.1.0"
 

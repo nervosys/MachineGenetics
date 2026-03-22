@@ -20,6 +20,7 @@ members = [
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",
+  "compiler/redox_rap_ide",
   "compiler/redox_safety_cfg",
   "compiler/redox_semantic_index",
   "compiler/redox_semantic_vcs",
