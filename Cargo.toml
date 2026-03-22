@@ -14,6 +14,7 @@ members = [
   "compiler/redox_semantic_lease",
   "compiler/redox_token_budget",
   "compiler/redox_capability_manifest",
+  "compiler/redox_capability_system",
   "compiler/redox_mlir",
   "compiler/redox_query",
   "compiler/redox_rap",

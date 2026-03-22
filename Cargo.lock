@@ -3492,6 +3492,10 @@ name = "redox_capability_manifest"
 version = "0.1.0"
 
 [[package]]
+name = "redox_capability_system"
+version = "0.1.0"
+
+[[package]]
 name = "redox_codegen_llvm"
 version = "0.0.0"
 dependencies = [
