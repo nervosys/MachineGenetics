@@ -31,6 +31,7 @@ members = [
   "compiler/redox_phase2_integration",
   "compiler/redox_effect_system",
   "compiler/redox_contracts",
+  "compiler/redox_refinement_types",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",

@@ -1,0 +1,7 @@
+[package]
+name = "redox_refinement_types"
+version = "0.1.0"
+edition = "2024"
+description = "Refinement types with value constraints and SMT solver integration for static verification"
+
+[dependencies]
