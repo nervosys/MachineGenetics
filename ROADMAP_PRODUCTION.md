@@ -111,7 +111,7 @@
 - [x] **Step 49**: Implement the verification oracle as an opt-in service: verify contracts, effects, and capabilities at compile time. Emit verification certificates.
 - [x] **Step 50**: Build the swarm SDK (`compiler/redox_swarm/` or `library/redox_swarm/`) with orchestrator, synthesizer, and verifier agent roles.
 - [x] **Step 51**: Implement the consensus protocol engine: propose → vote → resolve → integrate cycle. Support configurable quorum rules.
-- [ ] **Step 52**: Build the task decomposition engine: dependency-aware parallel work splitting with DAG scheduling. No cycles in assignment graph (enforced by orchestrator).
+- [x] **Step 52**: Build the task decomposition engine: dependency-aware parallel work splitting with DAG scheduling. No cycles in assignment graph (enforced by orchestrator).
 - [ ] **Step 53**: Implement semantic VCS: operation-log-based version control for agent swarms, replacing git-level merges with semantic-operation-level merges.
 - [ ] **Step 54**: Integrate the RAP server with IDE infrastructure (VS Code extension, LSP integration).
 - [ ] **Step 55**: Build swarm audit log system: append-only, cryptographically signed (SHA-256) operation history with agent ID attribution.
