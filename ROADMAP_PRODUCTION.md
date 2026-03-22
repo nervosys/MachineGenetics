@@ -142,7 +142,7 @@
 - [x] **Step 75**: Build the synthesis oracle: spec → candidate implementation generation using constraint solving and template synthesis.
 - [x] **Step 76**: Build the verification oracle: candidate → spec satisfaction proof using symbolic execution and SMT solving.
 - [x] **Step 77**: Implement pipeline composition from specs: `pipeline` blocks that chain function contracts, with compile-time verification of contract compatibility.
-- [ ] **Step 78**: Implement the self-evolving grammar extension system: `grammar_extension!` macro, registration API, extension discovery.
+- [x] **Step 78**: Implement the self-evolving grammar extension system: `grammar_extension!` macro, registration API, extension discovery.
 - [ ] **Step 79**: Implement frequency-driven abbreviation promotion in ACI: analyze token frequency across corpus, suggest new abbreviations.
 - [ ] **Step 80**: Implement the Agent Memory Model: ephemeral (per-task), session (per-swarm-session), project (conventions), global (cross-project) memory tiers.
 - [ ] **Step 81**: Build the memory recall API: `memory.store`, `memory.recall`, `memory.suggest` endpoints in RAP.
