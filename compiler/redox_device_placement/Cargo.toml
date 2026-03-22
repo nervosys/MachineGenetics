@@ -1,0 +1,7 @@
+[package]
+name = "redox_device_placement"
+version = "0.1.0"
+edition = "2024"
+description = "Automatic device placement: @pt(auto) uses MLIR cost model to select CPU/GPU/NPU target"
+
+[dependencies]
