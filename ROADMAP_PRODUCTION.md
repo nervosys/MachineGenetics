@@ -120,7 +120,7 @@
 - [x] **Step 58**: Implement MLIR-native autotuning engine: `@pa(N)` generates N variants, benchmarks per-target, selects optimal.
 - [x] **Step 59**: Implement automatic device placement: `@pt(auto)` uses MLIR cost model to select device. Agent-queryable via RAP.
 - [x] **Step 60**: Implement hardware-agnostic parallelism via MLIR OpenMP/GPU/async dialects.
-- [ ] **Step 61**: Build ACI Codebase Model: fine-tune small LLM on project source + SKB + swarm history for project-specific intelligence.
+- [x] **Step 61**: Build ACI Codebase Model: fine-tune small LLM on project source + SKB + swarm history for project-specific intelligence.
 - [ ] **Step 62**: Implement ACI Dynamic Warning Engine: ML-based warning generation from bug patterns and swarm session history.
 - [ ] **Step 63**: Implement ACI Intelligent Debugging Engine: causal root-cause analysis from runtime traces.
 - [ ] **Step 64**: Implement ACI Performance Advisor Engine: suggestions from MLIR cost models + profiling data.
