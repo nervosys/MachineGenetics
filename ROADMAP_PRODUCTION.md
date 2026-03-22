@@ -122,7 +122,7 @@
 - [x] **Step 60**: Implement hardware-agnostic parallelism via MLIR OpenMP/GPU/async dialects.
 - [x] **Step 61**: Build ACI Codebase Model: fine-tune small LLM on project source + SKB + swarm history for project-specific intelligence.
 - [x] **Step 62**: Implement ACI Dynamic Warning Engine: ML-based warning generation from bug patterns and swarm session history.
-- [ ] **Step 63**: Implement ACI Intelligent Debugging Engine: causal root-cause analysis from runtime traces.
+- [x] **Step 63**: Implement ACI Intelligent Debugging Engine: causal root-cause analysis from runtime traces.
 - [ ] **Step 64**: Implement ACI Performance Advisor Engine: suggestions from MLIR cost models + profiling data.
 - [ ] **Step 65**: Implement ACI Swarm Coordination Intelligence: conflict prediction, decomposition learning from swarm history.
 - [ ] **Step 66**: Expose all ACI services via RAP endpoints: `aci.warnings`, `aci.debug`, `aci.perf`, `aci.swarm`.
