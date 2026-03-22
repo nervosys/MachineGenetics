@@ -229,12 +229,7 @@ pub struct VerificationCheck {
 
 impl VerificationCheck {
     pub fn proven(kind: CheckKind, proof: ProofKind) -> Self {
-        VerificationCheck {
-            kind,
-            status: CheckStatus::Proven,
-            proof_kind: proof,
-            details: None,
-        }
+        VerificationCheck { kind, status: CheckStatus::Proven, proof_kind: proof, details: None }
     }
 
     pub fn conditional(kind: CheckKind, conditions: Vec<String>) -> Self {
@@ -362,30 +357,35 @@ impl VerificationCertificate {
     }
 
     pub fn failed_checks(&self) -> Vec<&VerificationCheck> {
-        self.checks.iter()
-            .filter(|c| matches!(c.status, CheckStatus::Failed(_)))
-            .collect()
+        self.checks.iter().filter(|c| matches!(c.status, CheckStatus::Failed(_))).collect()
     }
 
     /// Simple text summary.
     pub fn summary(&self) -> String {
         format!(
             "Certificate({} v{}: {}/{} proven, {} contracts, {} effects, {} capabilities)",
-            self.crate_name, self.version,
-            self.proven_count(), self.total_checks(),
-            self.contracts_verified, self.effects_verified,
+            self.crate_name,
+            self.version,
+            self.proven_count(),
+            self.total_checks(),
+            self.contracts_verified,
+            self.effects_verified,
             self.capabilities_verified,
         )
     }
 
     /// Serialize to a minimal JSON string.
     pub fn to_json(&self) -> String {
-        let checks_json: Vec<String> = self.checks.iter().map(|c| {
-            format!(
-                "{{\"kind\":\"{}\",\"status\":\"{}\",\"proof\":\"{}\"}}",
-                c.kind, c.status, c.proof_kind,
-            )
-        }).collect();
+        let checks_json: Vec<String> = self
+            .checks
+            .iter()
+            .map(|c| {
+                format!(
+                    "{{\"kind\":\"{}\",\"status\":\"{}\",\"proof\":\"{}\"}}",
+                    c.kind, c.status, c.proof_kind,
+                )
+            })
+            .collect();
         format!(
             concat!(
                 "{{\"crate\":\"{}\",\"version\":\"{}\",\"timestamp\":{},",
@@ -393,10 +393,14 @@ impl VerificationCertificate {
                 "\"contracts_verified\":{},\"effects_verified\":{},",
                 "\"capabilities_verified\":{}}}"
             ),
-            self.crate_name, self.version, self.timestamp,
+            self.crate_name,
+            self.version,
+            self.timestamp,
             checks_json.join(","),
-            self.compiler_version, self.hash,
-            self.contracts_verified, self.effects_verified,
+            self.compiler_version,
+            self.hash,
+            self.contracts_verified,
+            self.effects_verified,
             self.capabilities_verified,
         )
     }
@@ -459,16 +463,11 @@ impl CertificateBuilder {
     }
 
     pub fn build(self) -> VerificationCertificate {
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
         // Simple hash from crate name + version + check count.
-        let hash_input = format!(
-            "{}:{}:{}:{}",
-            self.crate_name, self.version, self.checks.len(), timestamp
-        );
+        let hash_input =
+            format!("{}:{}:{}:{}", self.crate_name, self.version, self.checks.len(), timestamp);
         let hash = simple_hash(&hash_input);
 
         VerificationCertificate {
@@ -587,9 +586,7 @@ impl VerificationOracle {
         }
 
         if contract.ensures == "false" {
-            return ContractVerdict::Violated(
-                "postcondition is unsatisfiable".to_string()
-            );
+            return ContractVerdict::Violated("postcondition is unsatisfiable".to_string());
         }
 
         // Check for common patterns.
@@ -598,21 +595,15 @@ impl VerificationOracle {
         }
 
         if contract.requires.is_empty() {
-            return ContractVerdict::Conditional(vec![
-                "no precondition specified".to_string(),
-            ]);
+            return ContractVerdict::Conditional(vec!["no precondition specified".to_string()]);
         }
 
-        ContractVerdict::Conditional(vec![
-            format!("requires: {}", contract.requires),
-        ])
+        ContractVerdict::Conditional(vec![format!("requires: {}", contract.requires)])
     }
 
     /// Verify multiple contracts, returning all verdicts.
     pub fn verify_contracts(&mut self, contracts: Vec<Contract>) -> Vec<ContractVerdict> {
-        contracts.into_iter()
-            .map(|c| self.verify_contract(c))
-            .collect()
+        contracts.into_iter().map(|c| self.verify_contract(c)).collect()
     }
 
     // ── Effect Verification ──
@@ -625,10 +616,13 @@ impl VerificationOracle {
         inferred: Vec<Effect>,
     ) -> EffectResult {
         let leaks: Vec<Effect> = if self.enabled {
-            inferred.iter()
+            inferred
+                .iter()
                 .filter(|e| {
                     // Pure is always contained.
-                    if **e == Effect::Pure { return false; }
+                    if **e == Effect::Pure {
+                        return false;
+                    }
                     !declared.contains(e)
                 })
                 .cloned()
@@ -638,13 +632,8 @@ impl VerificationOracle {
         };
 
         let contained = leaks.is_empty();
-        let result = EffectResult {
-            function: function.to_string(),
-            declared,
-            inferred,
-            contained,
-            leaks,
-        };
+        let result =
+            EffectResult { function: function.to_string(), declared, inferred, contained, leaks };
         self.effect_results.push(result.clone());
         result
     }
@@ -659,10 +648,7 @@ impl VerificationOracle {
         used: Vec<String>,
     ) -> CapabilityResult {
         let exceeds: Vec<String> = if self.enabled {
-            used.iter()
-                .filter(|u| !declared.contains(u))
-                .cloned()
-                .collect()
+            used.iter().filter(|u| !declared.contains(u)).cloned().collect()
         } else {
             Vec::new()
         };
@@ -682,33 +668,33 @@ impl VerificationOracle {
     // ── Certificate Emission ──
 
     /// Emit a verification certificate for a crate, based on all accumulated results.
-    pub fn emit_certificate(
-        &mut self,
-        crate_name: &str,
-        version: &str,
-    ) -> VerificationCertificate {
+    pub fn emit_certificate(&mut self, crate_name: &str, version: &str) -> VerificationCertificate {
         let mut builder = CertificateBuilder::new(crate_name, version);
 
         // Memory safety — always proven in Rust-based system.
-        builder = builder.add_check(
-            VerificationCheck::proven(CheckKind::MemorySafety, ProofKind::StaticAnalysis)
-        );
+        builder = builder.add_check(VerificationCheck::proven(
+            CheckKind::MemorySafety,
+            ProofKind::StaticAnalysis,
+        ));
 
         // Data race freedom — proven via Send/Sync.
-        builder = builder.add_check(
-            VerificationCheck::proven(CheckKind::DataRaceFreedom, ProofKind::StaticAnalysis)
-        );
+        builder = builder.add_check(VerificationCheck::proven(
+            CheckKind::DataRaceFreedom,
+            ProofKind::StaticAnalysis,
+        ));
 
         // Contract satisfaction.
         let contract_count = self.contract_results.len();
-        let all_contracts_ok = self.contract_results.iter()
-            .all(|r| r.verdict.is_satisfied());
+        let all_contracts_ok = self.contract_results.iter().all(|r| r.verdict.is_satisfied());
         if all_contracts_ok && contract_count > 0 {
-            builder = builder.add_check(
-                VerificationCheck::proven(CheckKind::ContractSatisfaction, ProofKind::StaticAnalysis)
-            );
+            builder = builder.add_check(VerificationCheck::proven(
+                CheckKind::ContractSatisfaction,
+                ProofKind::StaticAnalysis,
+            ));
         } else if contract_count > 0 {
-            let violated: Vec<String> = self.contract_results.iter()
+            let violated: Vec<String> = self
+                .contract_results
+                .iter()
                 .filter(|r| r.verdict.is_violated())
                 .map(|r| r.contract.function.clone())
                 .collect();
@@ -730,11 +716,14 @@ impl VerificationOracle {
         let effect_count = self.effect_results.len();
         let all_effects_ok = self.effect_results.iter().all(|r| r.contained);
         if all_effects_ok && effect_count > 0 {
-            builder = builder.add_check(
-                VerificationCheck::proven(CheckKind::EffectContainment, ProofKind::StaticAnalysis)
-            );
+            builder = builder.add_check(VerificationCheck::proven(
+                CheckKind::EffectContainment,
+                ProofKind::StaticAnalysis,
+            ));
         } else if effect_count > 0 {
-            let leaky: Vec<String> = self.effect_results.iter()
+            let leaky: Vec<String> = self
+                .effect_results
+                .iter()
                 .filter(|r| !r.contained)
                 .map(|r| r.function.clone())
                 .collect();
@@ -749,11 +738,14 @@ impl VerificationOracle {
         let cap_count = self.capability_results.len();
         let all_caps_ok = self.capability_results.iter().all(|r| r.within_bounds);
         if all_caps_ok && cap_count > 0 {
-            builder = builder.add_check(
-                VerificationCheck::proven(CheckKind::CapabilityBounds, ProofKind::StaticAnalysis)
-            );
+            builder = builder.add_check(VerificationCheck::proven(
+                CheckKind::CapabilityBounds,
+                ProofKind::StaticAnalysis,
+            ));
         } else if cap_count > 0 {
-            let excess: Vec<String> = self.capability_results.iter()
+            let excess: Vec<String> = self
+                .capability_results
+                .iter()
                 .filter(|r| !r.within_bounds)
                 .map(|r| r.agent.clone())
                 .collect();
@@ -833,8 +825,8 @@ mod tests {
 
     #[test]
     fn contract_with_effects() {
-        let c = Contract::new("f", "", "")
-            .with_effects(vec!["io".to_string(), "alloc".to_string()]);
+        let c =
+            Contract::new("f", "", "").with_effects(vec!["io".to_string(), "alloc".to_string()]);
         assert!(c.has_effects());
         assert_eq!(c.effects.len(), 2);
     }
@@ -949,8 +941,14 @@ mod tests {
     fn certificate_builder() {
         let cert = CertificateBuilder::new("my_crate", "1.0.0")
             .compiler_version("redox 0.2.0")
-            .add_check(VerificationCheck::proven(CheckKind::MemorySafety, ProofKind::StaticAnalysis))
-            .add_check(VerificationCheck::proven(CheckKind::DataRaceFreedom, ProofKind::StaticAnalysis))
+            .add_check(VerificationCheck::proven(
+                CheckKind::MemorySafety,
+                ProofKind::StaticAnalysis,
+            ))
+            .add_check(VerificationCheck::proven(
+                CheckKind::DataRaceFreedom,
+                ProofKind::StaticAnalysis,
+            ))
             .contracts_verified(5)
             .effects_verified(3)
             .capabilities_verified(2)
@@ -969,7 +967,10 @@ mod tests {
     #[test]
     fn certificate_failed_checks() {
         let cert = CertificateBuilder::new("test", "0.1.0")
-            .add_check(VerificationCheck::proven(CheckKind::MemorySafety, ProofKind::StaticAnalysis))
+            .add_check(VerificationCheck::proven(
+                CheckKind::MemorySafety,
+                ProofKind::StaticAnalysis,
+            ))
             .add_check(VerificationCheck::failed(CheckKind::ContractSatisfaction, "bad"))
             .build();
 
@@ -981,7 +982,10 @@ mod tests {
     #[test]
     fn certificate_summary() {
         let cert = CertificateBuilder::new("my_crate", "1.0.0")
-            .add_check(VerificationCheck::proven(CheckKind::MemorySafety, ProofKind::StaticAnalysis))
+            .add_check(VerificationCheck::proven(
+                CheckKind::MemorySafety,
+                ProofKind::StaticAnalysis,
+            ))
             .contracts_verified(3)
             .build();
 
@@ -994,7 +998,10 @@ mod tests {
     #[test]
     fn certificate_to_json() {
         let cert = CertificateBuilder::new("test", "0.1.0")
-            .add_check(VerificationCheck::proven(CheckKind::MemorySafety, ProofKind::StaticAnalysis))
+            .add_check(VerificationCheck::proven(
+                CheckKind::MemorySafety,
+                ProofKind::StaticAnalysis,
+            ))
             .build();
 
         let json = cert.to_json();
@@ -1081,11 +1088,7 @@ mod tests {
     #[test]
     fn oracle_verify_effects_contained() {
         let mut oracle = VerificationOracle::new();
-        let r = oracle.verify_effects(
-            "f",
-            vec![Effect::Io, Effect::Alloc],
-            vec![Effect::Io],
-        );
+        let r = oracle.verify_effects("f", vec![Effect::Io, Effect::Alloc], vec![Effect::Io]);
         assert!(r.is_contained());
         assert!(r.leaks.is_empty());
     }
@@ -1093,11 +1096,7 @@ mod tests {
     #[test]
     fn oracle_verify_effects_leaked() {
         let mut oracle = VerificationOracle::new();
-        let r = oracle.verify_effects(
-            "f",
-            vec![Effect::Pure],
-            vec![Effect::Io],
-        );
+        let r = oracle.verify_effects("f", vec![Effect::Pure], vec![Effect::Io]);
         assert!(!r.is_contained());
         assert_eq!(r.leaks.len(), 1);
         assert_eq!(r.leaks[0], Effect::Io);
@@ -1106,11 +1105,7 @@ mod tests {
     #[test]
     fn oracle_verify_effects_pure_always_contained() {
         let mut oracle = VerificationOracle::new();
-        let r = oracle.verify_effects(
-            "f",
-            vec![],
-            vec![Effect::Pure],
-        );
+        let r = oracle.verify_effects("f", vec![], vec![Effect::Pure]);
         assert!(r.is_contained());
     }
 
