@@ -115,7 +115,7 @@
 - [x] **Step 53**: Implement semantic VCS: operation-log-based version control for agent swarms, replacing git-level merges with semantic-operation-level merges.
 - [x] **Step 54**: Integrate the RAP server with IDE infrastructure (VS Code extension, LSP integration).
 - [x] **Step 55**: Build swarm audit log system: append-only, cryptographically signed (SHA-256) operation history with agent ID attribution.
-- [ ] **Step 56**: Enable MLIR→LLVM backend targets: RISC-V, AMDGPU, NVPTX. Add target-specific lowering passes and validation tests.
+- [x] **Step 56**: Enable MLIR→LLVM backend targets: RISC-V, AMDGPU, NVPTX. Add target-specific lowering passes and validation tests.
 - [ ] **Step 57**: Implement MLIR SPIR-V dialect pipeline for Vulkan/OpenCL GPU compute.
 - [ ] **Step 58**: Implement MLIR-native autotuning engine: `@pa(N)` generates N variants, benchmarks per-target, selects optimal.
 - [ ] **Step 59**: Implement automatic device placement: `@pt(auto)` uses MLIR cost model to select device. Agent-queryable via RAP.
