@@ -137,7 +137,7 @@
 - [x] **Step 70**: Implement refinement types in the type checker: `{x: i32 | x > 0}` style value constraints with SMT solver integration for static verification.
 - [x] **Step 71**: Implement capability blocks in HIR lowering: scoped capability grants that limit what code within the block can do.
 - [x] **Step 72**: Implement compact performance annotations: `@pi!` (inline), `@pnb` (no bounds check), `@pv(N)` (vectorize with width N), `@pt(target)` (target placement).
-- [ ] **Step 73**: Implement `#[repr(target_optimal)]`: per-target struct layout optimization using MLIR cost model.
+- [x] **Step 73**: Implement `#[repr(target_optimal)]`: per-target struct layout optimization using MLIR cost model.
 - [ ] **Step 74**: Implement formal specification syntax: `spec` blocks with `@req`/`@ens`/`@perf`/`@fx` clauses, machine-verifiable.
 - [ ] **Step 75**: Build the synthesis oracle: spec → candidate implementation generation using constraint solving and template synthesis.
 - [ ] **Step 76**: Build the verification oracle: candidate → spec satisfaction proof using symbolic execution and SMT solving.
