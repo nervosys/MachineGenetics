@@ -3948,6 +3948,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_integration_tests"
+version = "0.1.0"
+dependencies = [
+ "redox_cost_oracle",
+ "redox_diagnostics",
+ "redox_safety_cfg",
+ "redox_semantic_lease",
+ "redox_skb",
+]
+
+[[package]]
 name = "redox_interface"
 version = "0.0.0"
 dependencies = [

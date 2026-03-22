@@ -1,0 +1,11 @@
+[package]
+name = "redox_integration_tests"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+redox_skb = { path = "../redox_skb" }
+redox_semantic_lease = { path = "../redox_semantic_lease" }
+redox_safety_cfg = { path = "../redox_safety_cfg" }
+redox_diagnostics = { path = "../redox_diagnostics" }
+redox_cost_oracle = { path = "../redox_cost_oracle" }
