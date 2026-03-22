@@ -138,7 +138,7 @@
 - [x] **Step 71**: Implement capability blocks in HIR lowering: scoped capability grants that limit what code within the block can do.
 - [x] **Step 72**: Implement compact performance annotations: `@pi!` (inline), `@pnb` (no bounds check), `@pv(N)` (vectorize with width N), `@pt(target)` (target placement).
 - [x] **Step 73**: Implement `#[repr(target_optimal)]`: per-target struct layout optimization using MLIR cost model.
-- [ ] **Step 74**: Implement formal specification syntax: `spec` blocks with `@req`/`@ens`/`@perf`/`@fx` clauses, machine-verifiable.
+- [x] **Step 74**: Implement formal specification syntax: `spec` blocks with `@req`/`@ens`/`@perf`/`@fx` clauses, machine-verifiable.
 - [ ] **Step 75**: Build the synthesis oracle: spec → candidate implementation generation using constraint solving and template synthesis.
 - [ ] **Step 76**: Build the verification oracle: candidate → spec satisfaction proof using symbolic execution and SMT solving.
 - [ ] **Step 77**: Implement pipeline composition from specs: `pipeline` blocks that chain function contracts, with compile-time verification of contract compatibility.

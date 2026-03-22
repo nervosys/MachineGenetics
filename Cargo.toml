@@ -35,6 +35,7 @@ members = [
   "compiler/redox_capability_blocks",
   "compiler/redox_perf_annotations",
   "compiler/redox_repr_target_optimal",
+  "compiler/redox_formal_spec",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",
