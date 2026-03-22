@@ -106,7 +106,7 @@
 
 ## Phase 2: Agent Protocol + Swarm Coordination + GPU/NPU Targets + ACI (Steps 47–67)
 
-- [ ] **Step 47**: Define and implement the full Redox Agent Protocol (RAP) specification: JSON-RPC request/response format, capability negotiation, session management.
+- [x] **Step 47**: Define and implement the full Redox Agent Protocol (RAP) specification: JSON-RPC request/response format, capability negotiation, session management.
 - [ ] **Step 48**: Build the agent capability system and enforcement layer: per-agent capability bounds, attenuation (child ≤ parent), runtime enforcement at the swarm bus level.
 - [ ] **Step 49**: Implement the verification oracle as an opt-in service: verify contracts, effects, and capabilities at compile time. Emit verification certificates.
 - [ ] **Step 50**: Build the swarm SDK (`compiler/redox_swarm/` or `library/redox_swarm/`) with orchestrator, synthesizer, and verifier agent roles.
