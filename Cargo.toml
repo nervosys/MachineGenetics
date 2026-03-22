@@ -22,6 +22,7 @@ members = [
   "compiler/redox_rap_protocol",
   "compiler/redox_safety_cfg",
   "compiler/redox_semantic_index",
+  "compiler/redox_semantic_vcs",
   "compiler/redox_skb",
   "compiler/redox_swarm",
   "compiler/redox_task_decomposition",
