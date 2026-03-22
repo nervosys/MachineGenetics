@@ -1,0 +1,7 @@
+[package]
+name = "redox_aci_warnings"
+version = "0.1.0"
+edition = "2024"
+description = "ACI Dynamic Warning Engine: ML-based warning generation from bug patterns and swarm session history"
+
+[dependencies]

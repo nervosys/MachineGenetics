@@ -23,6 +23,7 @@ members = [
   "compiler/redox_device_placement",
   "compiler/redox_mlir_parallel",
   "compiler/redox_aci_codebase_model",
+  "compiler/redox_aci_warnings",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",
