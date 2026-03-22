@@ -4732,6 +4732,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_verification_oracle"
+version = "0.1.0"
+
+[[package]]
 name = "redox_windows_rc"
 version = "0.0.0"
 dependencies = [

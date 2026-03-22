@@ -108,7 +108,7 @@
 
 - [x] **Step 47**: Define and implement the full Redox Agent Protocol (RAP) specification: JSON-RPC request/response format, capability negotiation, session management.
 - [x] **Step 48**: Build the agent capability system and enforcement layer: per-agent capability bounds, attenuation (child ≤ parent), runtime enforcement at the swarm bus level.
-- [ ] **Step 49**: Implement the verification oracle as an opt-in service: verify contracts, effects, and capabilities at compile time. Emit verification certificates.
+- [x] **Step 49**: Implement the verification oracle as an opt-in service: verify contracts, effects, and capabilities at compile time. Emit verification certificates.
 - [ ] **Step 50**: Build the swarm SDK (`compiler/redox_swarm/` or `library/redox_swarm/`) with orchestrator, synthesizer, and verifier agent roles.
 - [ ] **Step 51**: Implement the consensus protocol engine: propose → vote → resolve → integrate cycle. Support configurable quorum rules.
 - [ ] **Step 52**: Build the task decomposition engine: dependency-aware parallel work splitting with DAG scheduling. No cycles in assignment graph (enforced by orchestrator).
