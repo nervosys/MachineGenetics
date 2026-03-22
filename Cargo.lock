@@ -4554,6 +4554,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_swarm"
+version = "0.1.0"
+
+[[package]]
 name = "redox_symbol_mangling"
 version = "0.0.0"
 dependencies = [

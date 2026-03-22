@@ -22,6 +22,7 @@ members = [
   "compiler/redox_safety_cfg",
   "compiler/redox_semantic_index",
   "compiler/redox_skb",
+  "compiler/redox_swarm",
   "compiler/redox_verification_oracle",
   "src/build_helper",
   "src/rustc-std-workspace/rustc-std-workspace-alloc",
