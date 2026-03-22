@@ -21,6 +21,7 @@ members = [
   "compiler/redox_mlir_spirv",
   "compiler/redox_mlir_autotune",
   "compiler/redox_device_placement",
+  "compiler/redox_mlir_parallel",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",

@@ -1,0 +1,7 @@
+[package]
+name = "redox_mlir_parallel"
+version = "0.1.0"
+edition = "2024"
+description = "Hardware-agnostic parallelism via MLIR OpenMP/GPU/async dialects"
+
+[dependencies]
