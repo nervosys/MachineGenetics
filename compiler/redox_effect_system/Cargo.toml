@@ -1,0 +1,7 @@
+[package]
+name = "redox_effect_system"
+version = "0.1.0"
+edition = "2024"
+description = "Effect type system: effect declarations, inference, polymorphism, and handling"
+
+[dependencies]

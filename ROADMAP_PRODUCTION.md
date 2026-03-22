@@ -132,7 +132,7 @@
 
 ## Phase 3: Language Evolution + Synthesis + Grammar Extensions (Steps 68–88)
 
-- [ ] **Step 68**: Implement the effect type system in `redox_hir_analysis`: effect declarations, effect inference, effect polymorphism, effect handling.
+- [x] **Step 68**: Implement the effect type system in `redox_hir_analysis`: effect declarations, effect inference, effect polymorphism, effect handling.
 - [ ] **Step 69**: Implement contract syntax and checking in `redox_contracts`: preconditions, postconditions, invariants with compile-time and runtime verification modes.
 - [ ] **Step 70**: Implement refinement types in the type checker: `{x: i32 | x > 0}` style value constraints with SMT solver integration for static verification.
 - [ ] **Step 71**: Implement capability blocks in HIR lowering: scoped capability grants that limit what code within the block can do.
