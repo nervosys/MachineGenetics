@@ -1,0 +1,7 @@
+[package]
+name = "redox_phase2_integration"
+version = "0.1.0"
+edition = "2024"
+description = "Phase 2 integration testing: full agent swarm coordinated compilation with ACI assistance"
+
+[dependencies]

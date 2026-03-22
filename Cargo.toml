@@ -28,6 +28,7 @@ members = [
   "compiler/redox_aci_perf_advisor",
   "compiler/redox_aci_swarm_intel",
   "compiler/redox_aci_rap",
+  "compiler/redox_phase2_integration",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",
