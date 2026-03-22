@@ -116,7 +116,7 @@
 - [x] **Step 54**: Integrate the RAP server with IDE infrastructure (VS Code extension, LSP integration).
 - [x] **Step 55**: Build swarm audit log system: append-only, cryptographically signed (SHA-256) operation history with agent ID attribution.
 - [x] **Step 56**: Enable MLIR→LLVM backend targets: RISC-V, AMDGPU, NVPTX. Add target-specific lowering passes and validation tests.
-- [ ] **Step 57**: Implement MLIR SPIR-V dialect pipeline for Vulkan/OpenCL GPU compute.
+- [x] **Step 57**: Implement MLIR SPIR-V dialect pipeline for Vulkan/OpenCL GPU compute.
 - [ ] **Step 58**: Implement MLIR-native autotuning engine: `@pa(N)` generates N variants, benchmarks per-target, selects optimal.
 - [ ] **Step 59**: Implement automatic device placement: `@pt(auto)` uses MLIR cost model to select device. Agent-queryable via RAP.
 - [ ] **Step 60**: Implement hardware-agnostic parallelism via MLIR OpenMP/GPU/async dialects.

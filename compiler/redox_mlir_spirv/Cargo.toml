@@ -1,0 +1,8 @@
+[package]
+name = "redox_mlir_spirv"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+[dev-dependencies]

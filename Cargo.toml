@@ -18,6 +18,7 @@ members = [
   "compiler/redox_capability_system",
   "compiler/redox_mlir",
   "compiler/redox_mlir_targets",
+  "compiler/redox_mlir_spirv",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",
