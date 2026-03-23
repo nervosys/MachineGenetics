@@ -44,6 +44,7 @@ members = [
   "compiler/redox_memory_recall_api",
   "compiler/redox_agentic_stdlib",
   "compiler/redox_token_frequency",
+  "compiler/redox_abbrev_registry_v2",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",
