@@ -53,6 +53,7 @@ members = [
   "compiler/redox_ecosystem_migrate",
   "compiler/redox_swarm_marketplace",
   "compiler/redox_safety_certify",
+  "compiler/redox_lang_spec",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",

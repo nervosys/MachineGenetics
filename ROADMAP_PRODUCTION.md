@@ -162,7 +162,7 @@
 - [x] **Step 90**: Migrate core ecosystem crates with capability manifests.
 - [x] **Step 91**: Build agent swarm marketplace and pre-composed swarm templates.
 - [x] **Step 92**: Develop certification pipeline for safety-critical industries (opt-in full safety mode).
-- [ ] **Step 93**: Publish Redox language specification.
+- [x] **Step 93**: Publish Redox language specification.
 - [ ] **Step 94**: Ship reference swarm configurations (audit swarm, migration swarm, greenfield swarm).
 - [ ] **Step 95**: Build swarm performance benchmarking suite (throughput, latency, conflict rate metrics).
 - [ ] **Step 96**: Publish SKB rule corpus as open dataset for agent training.
