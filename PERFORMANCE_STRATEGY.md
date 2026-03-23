@@ -39,18 +39,18 @@ transparency, and agent reasoning.
 
 ## Performance Targets
 
-| Metric              | vs. C     | vs. C++   | vs. Rust  | Mechanism                          |
-| ------------------- | --------- | --------- | --------- | ---------------------------------- |
-| Runtime latency     | 1.0–1.5×  | 1.1–1.8×  | 1.0–1.3×  | Contract-guided vectorization      |
-| Throughput (ops/s)  | 1.0–2.0×  | 1.1–2.5×  | 1.0–1.5×  | Effect-driven parallelization      |
-| Binary size         | 0.7–1.0×  | 0.5–0.8×  | 0.7–0.9×  | Dead-effect elimination + LTO      |
-| Compile time        | 2–5× *    | 5–20× *   | 3–10× *   | LL(1) parse + incremental + SKB    |
-| Memory footprint    | 0.9–1.1×  | 0.7–1.0×  | 0.9–1.0×  | Layout optimization + pool alloc   |
-| Energy (mJ/op)      | 0.8–1.0×  | 0.7–0.9×  | 0.8–1.0×  | Device placement + auto-sleep      |
-| Cache miss rate     | 0.6–0.9×  | 0.5–0.8×  | 0.7–0.9×  | AoS→SoA + tiling + prefetch        |
-| Startup time        | 1.0–1.2×  | 1.5–3.0×  | 1.0–1.5×  | Static init elision + lazy statics |
-| Peak memory         | 0.8–1.0×  | 0.6–0.9×  | 0.8–1.0×  | Arena inference + region analysis   |
-| Concurrency scaling | 1.5–3.0×  | 1.5–3.0×  | 1.2–2.0×  | Effect purity → automatic parallel |
+| Metric              | vs. C    | vs. C++  | vs. Rust | Mechanism                          |
+| ------------------- | -------- | -------- | -------- | ---------------------------------- |
+| Runtime latency     | 1.0–1.5× | 1.1–1.8× | 1.0–1.3× | Contract-guided vectorization      |
+| Throughput (ops/s)  | 1.0–2.0× | 1.1–2.5× | 1.0–1.5× | Effect-driven parallelization      |
+| Binary size         | 0.7–1.0× | 0.5–0.8× | 0.7–0.9× | Dead-effect elimination + LTO      |
+| Compile time        | 2–5× *   | 5–20× *  | 3–10× *  | LL(1) parse + incremental + SKB    |
+| Memory footprint    | 0.9–1.1× | 0.7–1.0× | 0.9–1.0× | Layout optimization + pool alloc   |
+| Energy (mJ/op)      | 0.8–1.0× | 0.7–0.9× | 0.8–1.0× | Device placement + auto-sleep      |
+| Cache miss rate     | 0.6–0.9× | 0.5–0.8× | 0.7–0.9× | AoS→SoA + tiling + prefetch        |
+| Startup time        | 1.0–1.2× | 1.5–3.0× | 1.0–1.5× | Static init elision + lazy statics |
+| Peak memory         | 0.8–1.0× | 0.6–0.9× | 0.8–1.0× | Arena inference + region analysis  |
+| Concurrency scaling | 1.5–3.0× | 1.5–3.0× | 1.2–2.0× | Effect purity → automatic parallel |
 
 \* = faster (lower wall-clock time)
 
@@ -152,14 +152,14 @@ points-to analysis. The effect annotation is the proof.
 
 ### Automatic Parallel Tiers
 
-| Effect signature   | Parallelization                                | Guarantee           |
-| ------------------ | ---------------------------------------------- | ------------------- |
-| `/ pure`           | Full SIMD + multi-thread + GPU offload         | Zero data races     |
-| `/ alloc`          | SIMD + thread-local allocators                 | No shared mutation  |
-| `/ io`             | Pipeline (overlap compute with I/O)            | Ordered I/O         |
-| `/ net`            | Concurrent I/O with connection pooling         | Connection safety   |
-| `/ pure + alloc`   | SIMD + parallel with arena-per-thread          | Region isolation    |
-| (no annotation)    | Conservative sequential                        | Correctness default |
+| Effect signature | Parallelization                        | Guarantee           |
+| ---------------- | -------------------------------------- | ------------------- |
+| `/ pure`         | Full SIMD + multi-thread + GPU offload | Zero data races     |
+| `/ alloc`        | SIMD + thread-local allocators         | No shared mutation  |
+| `/ io`           | Pipeline (overlap compute with I/O)    | Ordered I/O         |
+| `/ net`          | Concurrent I/O with connection pooling | Connection safety   |
+| `/ pure + alloc` | SIMD + parallel with arena-per-thread  | Region isolation    |
+| (no annotation)  | Conservative sequential                | Correctness default |
 
 ### MLIR Lowering
 
@@ -223,16 +223,16 @@ f process_huge(items: [T]~) { ... }
 
 The cost oracle provides per-target data:
 
-| Pattern                  | x86_64 cost | AArch64 cost | Decision            |
-| ------------------------ | ----------- | ------------ | ------------------- |
-| `[T]~` where N ≤ 8      | 1 cycle     | 1 cycle      | Stack array         |
-| `[T]~` where N ≤ 64     | 5 cycles    | 5 cycles     | SmallVec            |
-| `[T]~` where N > 64     | 30 cycles   | 35 cycles    | Heap Vec            |
-| `{K:V}` where N ≤ 16    | 3 cycles    | 3 cycles     | Linear scan array   |
-| `{K:V}` where N > 16    | 20 cycles   | 22 cycles    | HashMap             |
-| `{K:V}` where N > 10⁶   | 20 cycles   | 22 cycles    | B-tree HashMap      |
-| `s` where len ≤ 22      | 1 cycle     | 1 cycle      | SSO (inline string) |
-| `s` where len > 22      | 30 cycles   | 35 cycles    | Heap string         |
+| Pattern               | x86_64 cost | AArch64 cost | Decision            |
+| --------------------- | ----------- | ------------ | ------------------- |
+| `[T]~` where N ≤ 8    | 1 cycle     | 1 cycle      | Stack array         |
+| `[T]~` where N ≤ 64   | 5 cycles    | 5 cycles     | SmallVec            |
+| `[T]~` where N > 64   | 30 cycles   | 35 cycles    | Heap Vec            |
+| `{K:V}` where N ≤ 16  | 3 cycles    | 3 cycles     | Linear scan array   |
+| `{K:V}` where N > 16  | 20 cycles   | 22 cycles    | HashMap             |
+| `{K:V}` where N > 10⁶ | 20 cycles   | 22 cycles    | B-tree HashMap      |
+| `s` where len ≤ 22    | 1 cycle     | 1 cycle      | SSO (inline string) |
+| `s` where len > 22    | 30 cycles   | 35 cycles    | Heap string         |
 
 The compiler queries the oracle at monomorphization time and selects the optimal
 backing representation.
@@ -411,14 +411,14 @@ The compiler knows:
 
 ### Stack Promotion Table
 
-| Pattern                            | C/C++/Rust  | Redox               | Savings    |
-| ---------------------------------- | ----------- | -------------------- | ---------- |
-| `Vec<T>` where N ≤ 8              | heap alloc  | `[T; 8]` on stack   | 30 cycles  |
-| `String` where len ≤ 22           | heap alloc  | SSO inline           | 30 cycles  |
-| `Box<T>` where T ≤ 64 bytes       | heap alloc  | stack slot           | 30 cycles  |
-| `HashMap` where N ≤ 16            | heap alloc  | stack array + linear | 50 cycles  |
-| Return value where size ≤ 4096    | heap alloc  | stack + NRVO         | 30 cycles  |
-| Collected iterator where N bounded | N allocs    | 1 arena alloc        | 30N cycles |
+| Pattern                            | C/C++/Rust | Redox                | Savings    |
+| ---------------------------------- | ---------- | -------------------- | ---------- |
+| `Vec<T>` where N ≤ 8               | heap alloc | `[T; 8]` on stack    | 30 cycles  |
+| `String` where len ≤ 22            | heap alloc | SSO inline           | 30 cycles  |
+| `Box<T>` where T ≤ 64 bytes        | heap alloc | stack slot           | 30 cycles  |
+| `HashMap` where N ≤ 16             | heap alloc | stack array + linear | 50 cycles  |
+| Return value where size ≤ 4096     | heap alloc | stack + NRVO         | 30 cycles  |
+| Collected iterator where N bounded | N allocs   | 1 arena alloc        | 30N cycles |
 
 ---
 
@@ -448,15 +448,15 @@ the constant `6765`. No function call at runtime. No branches. No stack frames.
 
 ### Automatic Const Propagation Scope
 
-| Condition                          | C++ `constexpr` | Rust `const fn` | Redox `/ pure` |
-| ---------------------------------- | --------------- | --------------- | -------------- |
-| Explicit opt-in required           | Yes             | Yes             | No (automatic) |
-| Heap allocation allowed            | C++20 partial   | No              | Yes (via arena)|
-| Loops allowed                      | Yes             | Limited         | Yes            |
-| Trait dispatch allowed             | No              | No              | Yes (monomorphized) |
-| Recursion allowed                  | Limited depth   | No (stable)     | Yes            |
-| String operations                  | Limited         | No              | Yes            |
-| Applies to all pure functions      | No (must mark)  | No (must mark)  | Yes            |
+| Condition                     | C++ `constexpr` | Rust `const fn` | Redox `/ pure`      |
+| ----------------------------- | --------------- | --------------- | ------------------- |
+| Explicit opt-in required      | Yes             | Yes             | No (automatic)      |
+| Heap allocation allowed       | C++20 partial   | No              | Yes (via arena)     |
+| Loops allowed                 | Yes             | Limited         | Yes                 |
+| Trait dispatch allowed        | No              | No              | Yes (monomorphized) |
+| Recursion allowed             | Limited depth   | No (stable)     | Yes                 |
+| String operations             | Limited         | No              | Yes                 |
+| Applies to all pure functions | No (must mark)  | No (must mark)  | Yes                 |
 
 ---
 
@@ -484,15 +484,15 @@ Linalg / Affine / SCF (mathematical operations: tiling, fusion, vectorization)
 
 Each lowering path applies target-specific optimizations that LLVM cannot:
 
-| Target   | Optimization                          | Speedup vs. LLVM-only |
-| -------- | ------------------------------------- | ---------------------- |
-| x86_64   | AVX-512 tile size tuning, prefetch    | 1.5–2×                 |
-| AArch64  | SVE scalable vector width selection   | 1.3–1.8×               |
-| RISC-V   | V-extension custom vector scheduling  | 1.5–2.5×               |
-| NVIDIA   | Tensor core mapping, shared mem tiling| 3–10×                  |
-| AMD GPU  | Wavefront occupancy optimization      | 2–5×                   |
-| NPU      | TOSA quantized int8 fusion            | 5–20×                  |
-| FPGA     | Pipeline scheduling, II minimization  | 10–100×                |
+| Target  | Optimization                           | Speedup vs. LLVM-only |
+| ------- | -------------------------------------- | --------------------- |
+| x86_64  | AVX-512 tile size tuning, prefetch     | 1.5–2×                |
+| AArch64 | SVE scalable vector width selection    | 1.3–1.8×              |
+| RISC-V  | V-extension custom vector scheduling   | 1.5–2.5×              |
+| NVIDIA  | Tensor core mapping, shared mem tiling | 3–10×                 |
+| AMD GPU | Wavefront occupancy optimization       | 2–5×                  |
+| NPU     | TOSA quantized int8 fusion             | 5–20×                 |
+| FPGA    | Pipeline scheduling, II minimization   | 10–100×               |
 
 ### Automatic Device Placement
 
@@ -524,16 +524,16 @@ Rust's safety has runtime cost: bounds checks, overflow checks in debug mode,
 of safety without contracts. Redox eliminates the runtime cost while preserving
 the safety guarantee by proving checks unnecessary.
 
-| Safety check              | Rust cost     | Redox cost           | Mechanism                    |
-| ------------------------- | ------------- | -------------------- | ----------------------------- |
-| Array bounds check        | 1–3 cycles    | 0 cycles             | `@req idx < len` proof       |
-| Integer overflow check    | 1 cycle       | 0 cycles             | `@req` range proof           |
-| `Option::unwrap()` panic  | 1 branch      | 0 branches           | `@req opt.is_some()` proof   |
-| `Result::unwrap()` panic  | 1 branch      | 0 branches           | `@ens` success proof         |
-| Arc atomic increment      | 5–15 cycles   | 0 cycles             | Effect proves single-thread  |
-| Mutex lock/unlock         | 20–50 cycles  | 0 cycles             | Effect proves no contention  |
-| UTF-8 validation          | O(n)          | 0                    | `@inv` string invariant      |
-| Null check (Option)       | 1 branch      | 0 branches           | `@req` non-null proof        |
+| Safety check             | Rust cost    | Redox cost | Mechanism                   |
+| ------------------------ | ------------ | ---------- | --------------------------- |
+| Array bounds check       | 1–3 cycles   | 0 cycles   | `@req idx < len` proof      |
+| Integer overflow check   | 1 cycle      | 0 cycles   | `@req` range proof          |
+| `Option::unwrap()` panic | 1 branch     | 0 branches | `@req opt.is_some()` proof  |
+| `Result::unwrap()` panic | 1 branch     | 0 branches | `@ens` success proof        |
+| Arc atomic increment     | 5–15 cycles  | 0 cycles   | Effect proves single-thread |
+| Mutex lock/unlock        | 20–50 cycles | 0 cycles   | Effect proves no contention |
+| UTF-8 validation         | O(n)         | 0          | `@inv` string invariant     |
+| Null check (Option)      | 1 branch     | 0 branches | `@req` non-null proof       |
 
 ### Cumulative Impact
 
@@ -605,16 +605,16 @@ where LTO cannot reach.
 Compile time is a performance metric. Redox targets 3–10× faster compilation
 than Rust through architectural advantages:
 
-| Stage          | Rust                    | Redox                   | Speedup   |
-| -------------- | ----------------------- | ----------------------- | --------- |
-| Lexing         | Context-sensitive       | LL(1) deterministic     | 2–4×      |
-| Parsing        | Recursive descent + BT  | Predictive LL(1)        | 2–4×      |
-| Name resolution| Full module graph       | Incremental + cached    | 2–3×      |
-| Type checking  | Lifetime inference      | SKB-guided elision      | 2–5×      |
-| Borrow check   | NLL dataflow analysis   | SKB rule lookup         | 3–10×     |
-| MIR transform  | Fixed pipeline          | Effect-guided skip      | 1.5–2×    |
-| Code generation| LLVM full pipeline      | MLIR incremental        | 2–3×      |
-| Linking        | Full link               | Function-level hot-link | 10–100×   |
+| Stage           | Rust                   | Redox                   | Speedup |
+| --------------- | ---------------------- | ----------------------- | ------- |
+| Lexing          | Context-sensitive      | LL(1) deterministic     | 2–4×    |
+| Parsing         | Recursive descent + BT | Predictive LL(1)        | 2–4×    |
+| Name resolution | Full module graph      | Incremental + cached    | 2–3×    |
+| Type checking   | Lifetime inference     | SKB-guided elision      | 2–5×    |
+| Borrow check    | NLL dataflow analysis  | SKB rule lookup         | 3–10×   |
+| MIR transform   | Fixed pipeline         | Effect-guided skip      | 1.5–2×  |
+| Code generation | LLVM full pipeline     | MLIR incremental        | 2–3×    |
+| Linking         | Full link              | Function-level hot-link | 10–100× |
 
 ### Token Reduction Impact
 
@@ -649,16 +649,16 @@ just optimize instructions — they optimize *algorithms*.
 
 ### Agent Optimization Passes
 
-| Pass                          | What the agent does                              | Expected impact |
-| ----------------------------- | ------------------------------------------------ | --------------- |
-| Algorithm substitution        | Replace O(n²) sort with O(n log n)               | 10–1000×        |
-| Data structure substitution   | Replace linked list with Vec for cache locality   | 5–50×           |
-| Batching                      | Combine N individual I/O calls into 1 batch       | 10–100×         |
-| Memoization                   | Cache results of `/ pure` functions               | 2–∞× (depends)  |
-| Strength reduction            | Replace `pow(x, 2)` with `x * x`                 | 2–5×            |
-| Loop fusion                   | Merge adjacent loops over same range              | 1.5–3×          |
-| Dead computation elimination  | Remove computations whose results are unused      | 1–∞×            |
-| Specialization                | Generate type-specific fast paths                 | 2–5×            |
+| Pass                         | What the agent does                             | Expected impact |
+| ---------------------------- | ----------------------------------------------- | --------------- |
+| Algorithm substitution       | Replace O(n²) sort with O(n log n)              | 10–1000×        |
+| Data structure substitution  | Replace linked list with Vec for cache locality | 5–50×           |
+| Batching                     | Combine N individual I/O calls into 1 batch     | 10–100×         |
+| Memoization                  | Cache results of `/ pure` functions             | 2–∞× (depends)  |
+| Strength reduction           | Replace `pow(x, 2)` with `x * x`                | 2–5×            |
+| Loop fusion                  | Merge adjacent loops over same range            | 1.5–3×          |
+| Dead computation elimination | Remove computations whose results are unused    | 1–∞×            |
+| Specialization               | Generate type-specific fast paths               | 2–5×            |
 
 ### Agent Decision Protocol
 
@@ -716,20 +716,20 @@ Aggressive composite (parallel numerical kernel):
 
 ## Implementation Priority
 
-| Priority | Strategy                     | Crates involved                                             | Prerequisite |
-| -------- | ---------------------------- | ----------------------------------------------------------- | ------------ |
-| P0       | Contract-driven optimization | `redox_contracts`, `redox_mir_transform`                    | None         |
-| P0       | Effect-driven parallelization| `redox_effects`, `redox_mlir_parallel`                      | None         |
-| P0       | Zero-cost safety             | `redox_contracts`, `redox_skb`, `redox_borrowck`            | Contracts    |
-| P1       | MLIR autotuning              | `redox_mlir_autotune`, `redox_cost_oracle`                  | MLIR pipeline|
-| P1       | Data structure selection     | `redox_cost_oracle`, `redox_monomorphize`                   | Cost oracle  |
-| P1       | Compile-time speed           | `redox_lexer`, `redox_parser`, `redox_skb`, `redox_hot_reload` | None      |
-| P2       | Memory layout optimization   | `redox_mlir`, `redox_perf_annotations`                      | MLIR + effects|
-| P2       | Allocation elimination       | `redox_contracts`, `redox_mir_transform`                    | Contracts    |
-| P2       | Hardware-specific lowering   | `redox_mlir_targets`, `redox_mlir_pipeline`                 | MLIR pipeline|
-| P3       | Compile-time computation     | `redox_effects`, `redox_const_eval`                         | Effects      |
-| P3       | Whole-program optimization   | `redox_metadata`, `redox_contracts`, `redox_effects`        | Contracts + effects |
-| P3       | Agent-guided rewriting       | `redox_synthesis_oracle`, `redox_agentic_bench`, `redox_cost_oracle` | All above |
+| Priority | Strategy                      | Crates involved                                                      | Prerequisite        |
+| -------- | ----------------------------- | -------------------------------------------------------------------- | ------------------- |
+| P0       | Contract-driven optimization  | `redox_contracts`, `redox_mir_transform`                             | None                |
+| P0       | Effect-driven parallelization | `redox_effects`, `redox_mlir_parallel`                               | None                |
+| P0       | Zero-cost safety              | `redox_contracts`, `redox_skb`, `redox_borrowck`                     | Contracts           |
+| P1       | MLIR autotuning               | `redox_mlir_autotune`, `redox_cost_oracle`                           | MLIR pipeline       |
+| P1       | Data structure selection      | `redox_cost_oracle`, `redox_monomorphize`                            | Cost oracle         |
+| P1       | Compile-time speed            | `redox_lexer`, `redox_parser`, `redox_skb`, `redox_hot_reload`       | None                |
+| P2       | Memory layout optimization    | `redox_mlir`, `redox_perf_annotations`                               | MLIR + effects      |
+| P2       | Allocation elimination        | `redox_contracts`, `redox_mir_transform`                             | Contracts           |
+| P2       | Hardware-specific lowering    | `redox_mlir_targets`, `redox_mlir_pipeline`                          | MLIR pipeline       |
+| P3       | Compile-time computation      | `redox_effects`, `redox_const_eval`                                  | Effects             |
+| P3       | Whole-program optimization    | `redox_metadata`, `redox_contracts`, `redox_effects`                 | Contracts + effects |
+| P3       | Agent-guided rewriting        | `redox_synthesis_oracle`, `redox_agentic_bench`, `redox_cost_oracle` | All above           |
 
 ---
 
@@ -740,26 +740,26 @@ every metric:
 
 ### Micro-benchmarks
 
-| Benchmark               | Measures                  | Baseline comparison            |
-| ------------------------ | ------------------------- | ------------------------------ |
-| `sum_array`              | Vectorization, bounds     | C `-O3`, Rust `--release`      |
-| `matrix_multiply`        | Tiling, parallelization   | C `-O3 -fopenmp`, BLAS        |
-| `json_parse`             | Branch elimination, alloc | C (simdjson), Rust (serde)     |
-| `hash_map_insert`        | Data structure selection  | C (khash), Rust (std HashMap)  |
-| `sort_large`             | Algorithm + SIMD          | C (qsort), Rust (sort)        |
-| `string_search`          | SIMD vectorization        | C (strstr), Rust (memchr)     |
-| `fib(40)`                | Compile-time evaluation   | C `-O3`, Rust `const fn`      |
-| `image_blur`             | GPU offload, tiling       | C (OpenCV), CUDA              |
+| Benchmark         | Measures                  | Baseline comparison           |
+| ----------------- | ------------------------- | ----------------------------- |
+| `sum_array`       | Vectorization, bounds     | C `-O3`, Rust `--release`     |
+| `matrix_multiply` | Tiling, parallelization   | C `-O3 -fopenmp`, BLAS        |
+| `json_parse`      | Branch elimination, alloc | C (simdjson), Rust (serde)    |
+| `hash_map_insert` | Data structure selection  | C (khash), Rust (std HashMap) |
+| `sort_large`      | Algorithm + SIMD          | C (qsort), Rust (sort)        |
+| `string_search`   | SIMD vectorization        | C (strstr), Rust (memchr)     |
+| `fib(40)`         | Compile-time evaluation   | C `-O3`, Rust `const fn`      |
+| `image_blur`      | GPU offload, tiling       | C (OpenCV), CUDA              |
 
 ### Macro-benchmarks
 
-| Benchmark               | Measures                  | Baseline comparison            |
-| ------------------------ | ------------------------- | ------------------------------ |
-| `http_server`            | I/O throughput, alloc     | C (libuv), Rust (tokio)       |
-| `compiler_self`          | Compile time              | rustc self-compile             |
-| `ray_tracer`             | Parallelism, vectorization| C++ (embree), Rust             |
-| `database_query`         | Memory layout, cache      | C (SQLite), Rust               |
-| `agent_swarm_100`        | Swarm coordination        | (no baseline — Redox-only)     |
+| Benchmark         | Measures                   | Baseline comparison        |
+| ----------------- | -------------------------- | -------------------------- |
+| `http_server`     | I/O throughput, alloc      | C (libuv), Rust (tokio)    |
+| `compiler_self`   | Compile time               | rustc self-compile         |
+| `ray_tracer`      | Parallelism, vectorization | C++ (embree), Rust         |
+| `database_query`  | Memory layout, cache       | C (SQLite), Rust           |
+| `agent_swarm_100` | Swarm coordination         | (no baseline — Redox-only) |
 
 ### Metrics Collected
 
