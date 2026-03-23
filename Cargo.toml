@@ -60,6 +60,7 @@ members = [
   "compiler/redox_global_memory",
   "compiler/redox_synthesis_market",
   "compiler/redox_cost_calibrate",
+  "compiler/redox_hot_reload",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",
