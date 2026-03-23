@@ -158,7 +158,7 @@
 
 ## Phase 4: Ecosystem (Steps 89–105)
 
-- [ ] **Step 89**: Build capability-indexed package registry.
+- [x] **Step 89**: Build capability-indexed package registry.
 - [ ] **Step 90**: Migrate core ecosystem crates with capability manifests.
 - [ ] **Step 91**: Build agent swarm marketplace and pre-composed swarm templates.
 - [ ] **Step 92**: Develop certification pipeline for safety-critical industries (opt-in full safety mode).
