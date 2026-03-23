@@ -144,7 +144,7 @@
 - [x] **Step 77**: Implement pipeline composition from specs: `pipeline` blocks that chain function contracts, with compile-time verification of contract compatibility.
 - [x] **Step 78**: Implement the self-evolving grammar extension system: `grammar_extension!` macro, registration API, extension discovery.
 - [x] **Step 79**: Implement frequency-driven abbreviation promotion in ACI: analyze token frequency across corpus, suggest new abbreviations.
-- [ ] **Step 80**: Implement the Agent Memory Model: ephemeral (per-task), session (per-swarm-session), project (conventions), global (cross-project) memory tiers.
+- [x] **Step 80**: Implement the Agent Memory Model: ephemeral (per-task), session (per-swarm-session), project (conventions), global (cross-project) memory tiers.
 - [ ] **Step 81**: Build the memory recall API: `memory.store`, `memory.recall`, `memory.suggest` endpoints in RAP.
 - [ ] **Step 82**: Implement the agentic standard library: `SwarmVec`, `ArenaVec`, `SwarmChannel`, streaming I/O primitives in `library/`.
 - [ ] **Step 83**: Conduct corpus-wide token frequency analysis on crates.io ecosystem for abbreviation optimization.
