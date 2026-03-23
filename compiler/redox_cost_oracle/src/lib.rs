@@ -154,9 +154,7 @@ pub struct CostOracle {
 impl CostOracle {
     /// Create a new Cost Oracle pre-seeded with standard cost models.
     pub fn new() -> Self {
-        let mut oracle = Self {
-            costs: BTreeMap::new(),
-        };
+        let mut oracle = Self { costs: BTreeMap::new() };
         oracle.seed_x86_64();
         oracle.seed_aarch64();
         oracle.seed_wasm32();
@@ -165,9 +163,7 @@ impl CostOracle {
 
     /// Create an empty oracle (no cost models).
     pub fn empty() -> Self {
-        Self {
-            costs: BTreeMap::new(),
-        }
+        Self { costs: BTreeMap::new() }
     }
 
     /// Query the cost of a subject on a specific target.
@@ -181,15 +177,9 @@ impl CostOracle {
         let mut entries = Vec::new();
         for target in targets {
             let cost = self.query(subject, target).cloned();
-            entries.push(ComparisonEntry {
-                target: target.clone(),
-                cost,
-            });
+            entries.push(ComparisonEntry { target: target.clone(), cost });
         }
-        CostComparison {
-            subject: subject.clone(),
-            entries,
-        }
+        CostComparison { subject: subject.clone(), entries }
     }
 
     /// Compare costs across all standard targets.
@@ -211,10 +201,7 @@ impl CostOracle {
     /// List all subjects that have cost data for a given target.
     pub fn subjects_for_target(&self, target: &Target) -> Vec<String> {
         let target_name = target.name().to_string();
-        self.costs.keys()
-            .filter(|(_, t)| *t == target_name)
-            .map(|(s, _)| s.clone())
-            .collect()
+        self.costs.keys().filter(|(_, t)| *t == target_name).map(|(s, _)| s.clone()).collect()
     }
 
     /// Find the cheapest target for a given subject (by latency).
@@ -236,304 +223,840 @@ impl CostOracle {
         let t = Target::X86_64;
 
         // Arithmetic operations
-        self.register(&CostSubject::operation("add_i32"), &t, Cost {
-            latency_cycles: 1, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 1, throughput_mops: 4000.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("add_i64"), &t, Cost {
-            latency_cycles: 1, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 1, throughput_mops: 4000.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("mul_i32"), &t, Cost {
-            latency_cycles: 3, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 3, throughput_mops: 1500.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("mul_i64"), &t, Cost {
-            latency_cycles: 3, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 3, throughput_mops: 1500.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("div_i32"), &t, Cost {
-            latency_cycles: 26, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 15, throughput_mops: 200.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("div_i64"), &t, Cost {
-            latency_cycles: 40, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 25, throughput_mops: 130.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("add_f64"), &t, Cost {
-            latency_cycles: 4, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 5, throughput_mops: 2000.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("mul_f64"), &t, Cost {
-            latency_cycles: 5, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 6, throughput_mops: 1600.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("div_f64"), &t, Cost {
-            latency_cycles: 15, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 12, throughput_mops: 400.0, token_count: 1,
-        });
+        self.register(
+            &CostSubject::operation("add_i32"),
+            &t,
+            Cost {
+                latency_cycles: 1,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 1,
+                throughput_mops: 4000.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("add_i64"),
+            &t,
+            Cost {
+                latency_cycles: 1,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 1,
+                throughput_mops: 4000.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("mul_i32"),
+            &t,
+            Cost {
+                latency_cycles: 3,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 3,
+                throughput_mops: 1500.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("mul_i64"),
+            &t,
+            Cost {
+                latency_cycles: 3,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 3,
+                throughput_mops: 1500.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("div_i32"),
+            &t,
+            Cost {
+                latency_cycles: 26,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 15,
+                throughput_mops: 200.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("div_i64"),
+            &t,
+            Cost {
+                latency_cycles: 40,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 25,
+                throughput_mops: 130.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("add_f64"),
+            &t,
+            Cost {
+                latency_cycles: 4,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 5,
+                throughput_mops: 2000.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("mul_f64"),
+            &t,
+            Cost {
+                latency_cycles: 5,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 6,
+                throughput_mops: 1600.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("div_f64"),
+            &t,
+            Cost {
+                latency_cycles: 15,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 12,
+                throughput_mops: 400.0,
+                token_count: 1,
+            },
+        );
 
         // Memory operations
-        self.register(&CostSubject::operation("alloc"), &t, Cost {
-            latency_cycles: 100, memory_bytes: 0, alloc_count: 1,
-            energy_uj: 50, throughput_mops: 50.0, token_count: 2,
-        });
-        self.register(&CostSubject::operation("dealloc"), &t, Cost {
-            latency_cycles: 80, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 40, throughput_mops: 60.0, token_count: 0,
-        });
-        self.register(&CostSubject::operation("memcpy"), &t, Cost {
-            latency_cycles: 10, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 8, throughput_mops: 800.0, token_count: 0,
-        });
-        self.register(&CostSubject::operation("cache_miss"), &t, Cost {
-            latency_cycles: 200, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 100, throughput_mops: 0.0, token_count: 0,
-        });
+        self.register(
+            &CostSubject::operation("alloc"),
+            &t,
+            Cost {
+                latency_cycles: 100,
+                memory_bytes: 0,
+                alloc_count: 1,
+                energy_uj: 50,
+                throughput_mops: 50.0,
+                token_count: 2,
+            },
+        );
+        self.register(
+            &CostSubject::operation("dealloc"),
+            &t,
+            Cost {
+                latency_cycles: 80,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 40,
+                throughput_mops: 60.0,
+                token_count: 0,
+            },
+        );
+        self.register(
+            &CostSubject::operation("memcpy"),
+            &t,
+            Cost {
+                latency_cycles: 10,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 8,
+                throughput_mops: 800.0,
+                token_count: 0,
+            },
+        );
+        self.register(
+            &CostSubject::operation("cache_miss"),
+            &t,
+            Cost {
+                latency_cycles: 200,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 100,
+                throughput_mops: 0.0,
+                token_count: 0,
+            },
+        );
 
         // Type costs (construction/access overhead)
-        self.register(&CostSubject::type_of("Vec<T>"), &t, Cost {
-            latency_cycles: 100, memory_bytes: 24, alloc_count: 1,
-            energy_uj: 50, throughput_mops: 0.0, token_count: 2,
-        });
-        self.register(&CostSubject::type_of("[T; N]"), &t, Cost {
-            latency_cycles: 0, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 0, throughput_mops: 0.0, token_count: 3,
-        });
-        self.register(&CostSubject::type_of("SmallVec<T, N>"), &t, Cost {
-            latency_cycles: 5, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 3, throughput_mops: 0.0, token_count: 4,
-        });
-        self.register(&CostSubject::type_of("HashMap<K, V>"), &t, Cost {
-            latency_cycles: 200, memory_bytes: 48, alloc_count: 1,
-            energy_uj: 100, throughput_mops: 0.0, token_count: 3,
-        });
-        self.register(&CostSubject::type_of("BTreeMap<K, V>"), &t, Cost {
-            latency_cycles: 150, memory_bytes: 24, alloc_count: 1,
-            energy_uj: 80, throughput_mops: 0.0, token_count: 3,
-        });
-        self.register(&CostSubject::type_of("String"), &t, Cost {
-            latency_cycles: 100, memory_bytes: 24, alloc_count: 1,
-            energy_uj: 50, throughput_mops: 0.0, token_count: 1,
-        });
-        self.register(&CostSubject::type_of("Box<T>"), &t, Cost {
-            latency_cycles: 100, memory_bytes: 8, alloc_count: 1,
-            energy_uj: 50, throughput_mops: 0.0, token_count: 2,
-        });
-        self.register(&CostSubject::type_of("Arc<T>"), &t, Cost {
-            latency_cycles: 120, memory_bytes: 16, alloc_count: 1,
-            energy_uj: 60, throughput_mops: 0.0, token_count: 2,
-        });
-        self.register(&CostSubject::type_of("Rc<T>"), &t, Cost {
-            latency_cycles: 110, memory_bytes: 16, alloc_count: 1,
-            energy_uj: 55, throughput_mops: 0.0, token_count: 2,
-        });
-        self.register(&CostSubject::type_of("Option<T>"), &t, Cost {
-            latency_cycles: 0, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 0, throughput_mops: 0.0, token_count: 2,
-        });
+        self.register(
+            &CostSubject::type_of("Vec<T>"),
+            &t,
+            Cost {
+                latency_cycles: 100,
+                memory_bytes: 24,
+                alloc_count: 1,
+                energy_uj: 50,
+                throughput_mops: 0.0,
+                token_count: 2,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("[T; N]"),
+            &t,
+            Cost {
+                latency_cycles: 0,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 0,
+                throughput_mops: 0.0,
+                token_count: 3,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("SmallVec<T, N>"),
+            &t,
+            Cost {
+                latency_cycles: 5,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 3,
+                throughput_mops: 0.0,
+                token_count: 4,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("HashMap<K, V>"),
+            &t,
+            Cost {
+                latency_cycles: 200,
+                memory_bytes: 48,
+                alloc_count: 1,
+                energy_uj: 100,
+                throughput_mops: 0.0,
+                token_count: 3,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("BTreeMap<K, V>"),
+            &t,
+            Cost {
+                latency_cycles: 150,
+                memory_bytes: 24,
+                alloc_count: 1,
+                energy_uj: 80,
+                throughput_mops: 0.0,
+                token_count: 3,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("String"),
+            &t,
+            Cost {
+                latency_cycles: 100,
+                memory_bytes: 24,
+                alloc_count: 1,
+                energy_uj: 50,
+                throughput_mops: 0.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("Box<T>"),
+            &t,
+            Cost {
+                latency_cycles: 100,
+                memory_bytes: 8,
+                alloc_count: 1,
+                energy_uj: 50,
+                throughput_mops: 0.0,
+                token_count: 2,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("Arc<T>"),
+            &t,
+            Cost {
+                latency_cycles: 120,
+                memory_bytes: 16,
+                alloc_count: 1,
+                energy_uj: 60,
+                throughput_mops: 0.0,
+                token_count: 2,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("Rc<T>"),
+            &t,
+            Cost {
+                latency_cycles: 110,
+                memory_bytes: 16,
+                alloc_count: 1,
+                energy_uj: 55,
+                throughput_mops: 0.0,
+                token_count: 2,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("Option<T>"),
+            &t,
+            Cost {
+                latency_cycles: 0,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 0,
+                throughput_mops: 0.0,
+                token_count: 2,
+            },
+        );
 
         // Expression cost patterns
-        self.register(&CostSubject::expression("vec_push"), &t, Cost {
-            latency_cycles: 5, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 3, throughput_mops: 800.0, token_count: 3,
-        });
-        self.register(&CostSubject::expression("hashmap_insert"), &t, Cost {
-            latency_cycles: 50, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 25, throughput_mops: 80.0, token_count: 4,
-        });
-        self.register(&CostSubject::expression("hashmap_get"), &t, Cost {
-            latency_cycles: 30, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 15, throughput_mops: 120.0, token_count: 3,
-        });
-        self.register(&CostSubject::expression("sort_slice"), &t, Cost {
-            latency_cycles: 500, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 200, throughput_mops: 10.0, token_count: 3,
-        });
-        self.register(&CostSubject::expression("clone_deep"), &t, Cost {
-            latency_cycles: 300, memory_bytes: 0, alloc_count: 1,
-            energy_uj: 150, throughput_mops: 15.0, token_count: 2,
-        });
-        self.register(&CostSubject::expression("format_string"), &t, Cost {
-            latency_cycles: 200, memory_bytes: 64, alloc_count: 1,
-            energy_uj: 100, throughput_mops: 20.0, token_count: 4,
-        });
+        self.register(
+            &CostSubject::expression("vec_push"),
+            &t,
+            Cost {
+                latency_cycles: 5,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 3,
+                throughput_mops: 800.0,
+                token_count: 3,
+            },
+        );
+        self.register(
+            &CostSubject::expression("hashmap_insert"),
+            &t,
+            Cost {
+                latency_cycles: 50,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 25,
+                throughput_mops: 80.0,
+                token_count: 4,
+            },
+        );
+        self.register(
+            &CostSubject::expression("hashmap_get"),
+            &t,
+            Cost {
+                latency_cycles: 30,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 15,
+                throughput_mops: 120.0,
+                token_count: 3,
+            },
+        );
+        self.register(
+            &CostSubject::expression("sort_slice"),
+            &t,
+            Cost {
+                latency_cycles: 500,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 200,
+                throughput_mops: 10.0,
+                token_count: 3,
+            },
+        );
+        self.register(
+            &CostSubject::expression("clone_deep"),
+            &t,
+            Cost {
+                latency_cycles: 300,
+                memory_bytes: 0,
+                alloc_count: 1,
+                energy_uj: 150,
+                throughput_mops: 15.0,
+                token_count: 2,
+            },
+        );
+        self.register(
+            &CostSubject::expression("format_string"),
+            &t,
+            Cost {
+                latency_cycles: 200,
+                memory_bytes: 64,
+                alloc_count: 1,
+                energy_uj: 100,
+                throughput_mops: 20.0,
+                token_count: 4,
+            },
+        );
     }
 
     fn seed_aarch64(&mut self) {
         let t = Target::AArch64;
 
         // AArch64 arithmetic: generally similar latency, lower energy
-        self.register(&CostSubject::operation("add_i32"), &t, Cost {
-            latency_cycles: 1, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 1, throughput_mops: 3200.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("add_i64"), &t, Cost {
-            latency_cycles: 1, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 1, throughput_mops: 3200.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("mul_i32"), &t, Cost {
-            latency_cycles: 3, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 2, throughput_mops: 1200.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("mul_i64"), &t, Cost {
-            latency_cycles: 4, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 3, throughput_mops: 1000.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("div_i32"), &t, Cost {
-            latency_cycles: 12, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 8, throughput_mops: 350.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("div_i64"), &t, Cost {
-            latency_cycles: 20, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 12, throughput_mops: 200.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("add_f64"), &t, Cost {
-            latency_cycles: 4, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 3, throughput_mops: 1600.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("mul_f64"), &t, Cost {
-            latency_cycles: 5, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 4, throughput_mops: 1300.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("div_f64"), &t, Cost {
-            latency_cycles: 12, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 8, throughput_mops: 500.0, token_count: 1,
-        });
+        self.register(
+            &CostSubject::operation("add_i32"),
+            &t,
+            Cost {
+                latency_cycles: 1,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 1,
+                throughput_mops: 3200.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("add_i64"),
+            &t,
+            Cost {
+                latency_cycles: 1,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 1,
+                throughput_mops: 3200.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("mul_i32"),
+            &t,
+            Cost {
+                latency_cycles: 3,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 2,
+                throughput_mops: 1200.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("mul_i64"),
+            &t,
+            Cost {
+                latency_cycles: 4,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 3,
+                throughput_mops: 1000.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("div_i32"),
+            &t,
+            Cost {
+                latency_cycles: 12,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 8,
+                throughput_mops: 350.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("div_i64"),
+            &t,
+            Cost {
+                latency_cycles: 20,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 12,
+                throughput_mops: 200.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("add_f64"),
+            &t,
+            Cost {
+                latency_cycles: 4,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 3,
+                throughput_mops: 1600.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("mul_f64"),
+            &t,
+            Cost {
+                latency_cycles: 5,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 4,
+                throughput_mops: 1300.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("div_f64"),
+            &t,
+            Cost {
+                latency_cycles: 12,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 8,
+                throughput_mops: 500.0,
+                token_count: 1,
+            },
+        );
 
         // Memory
-        self.register(&CostSubject::operation("alloc"), &t, Cost {
-            latency_cycles: 120, memory_bytes: 0, alloc_count: 1,
-            energy_uj: 35, throughput_mops: 40.0, token_count: 2,
-        });
-        self.register(&CostSubject::operation("dealloc"), &t, Cost {
-            latency_cycles: 90, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 25, throughput_mops: 50.0, token_count: 0,
-        });
-        self.register(&CostSubject::operation("cache_miss"), &t, Cost {
-            latency_cycles: 150, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 60, throughput_mops: 0.0, token_count: 0,
-        });
+        self.register(
+            &CostSubject::operation("alloc"),
+            &t,
+            Cost {
+                latency_cycles: 120,
+                memory_bytes: 0,
+                alloc_count: 1,
+                energy_uj: 35,
+                throughput_mops: 40.0,
+                token_count: 2,
+            },
+        );
+        self.register(
+            &CostSubject::operation("dealloc"),
+            &t,
+            Cost {
+                latency_cycles: 90,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 25,
+                throughput_mops: 50.0,
+                token_count: 0,
+            },
+        );
+        self.register(
+            &CostSubject::operation("cache_miss"),
+            &t,
+            Cost {
+                latency_cycles: 150,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 60,
+                throughput_mops: 0.0,
+                token_count: 0,
+            },
+        );
 
         // Types
-        self.register(&CostSubject::type_of("Vec<T>"), &t, Cost {
-            latency_cycles: 120, memory_bytes: 24, alloc_count: 1,
-            energy_uj: 35, throughput_mops: 0.0, token_count: 2,
-        });
-        self.register(&CostSubject::type_of("[T; N]"), &t, Cost {
-            latency_cycles: 0, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 0, throughput_mops: 0.0, token_count: 3,
-        });
-        self.register(&CostSubject::type_of("HashMap<K, V>"), &t, Cost {
-            latency_cycles: 220, memory_bytes: 48, alloc_count: 1,
-            energy_uj: 70, throughput_mops: 0.0, token_count: 3,
-        });
-        self.register(&CostSubject::type_of("String"), &t, Cost {
-            latency_cycles: 120, memory_bytes: 24, alloc_count: 1,
-            energy_uj: 35, throughput_mops: 0.0, token_count: 1,
-        });
-        self.register(&CostSubject::type_of("Box<T>"), &t, Cost {
-            latency_cycles: 120, memory_bytes: 8, alloc_count: 1,
-            energy_uj: 35, throughput_mops: 0.0, token_count: 2,
-        });
+        self.register(
+            &CostSubject::type_of("Vec<T>"),
+            &t,
+            Cost {
+                latency_cycles: 120,
+                memory_bytes: 24,
+                alloc_count: 1,
+                energy_uj: 35,
+                throughput_mops: 0.0,
+                token_count: 2,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("[T; N]"),
+            &t,
+            Cost {
+                latency_cycles: 0,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 0,
+                throughput_mops: 0.0,
+                token_count: 3,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("HashMap<K, V>"),
+            &t,
+            Cost {
+                latency_cycles: 220,
+                memory_bytes: 48,
+                alloc_count: 1,
+                energy_uj: 70,
+                throughput_mops: 0.0,
+                token_count: 3,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("String"),
+            &t,
+            Cost {
+                latency_cycles: 120,
+                memory_bytes: 24,
+                alloc_count: 1,
+                energy_uj: 35,
+                throughput_mops: 0.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("Box<T>"),
+            &t,
+            Cost {
+                latency_cycles: 120,
+                memory_bytes: 8,
+                alloc_count: 1,
+                energy_uj: 35,
+                throughput_mops: 0.0,
+                token_count: 2,
+            },
+        );
 
         // Expressions
-        self.register(&CostSubject::expression("vec_push"), &t, Cost {
-            latency_cycles: 6, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 2, throughput_mops: 650.0, token_count: 3,
-        });
-        self.register(&CostSubject::expression("hashmap_insert"), &t, Cost {
-            latency_cycles: 60, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 18, throughput_mops: 65.0, token_count: 4,
-        });
-        self.register(&CostSubject::expression("sort_slice"), &t, Cost {
-            latency_cycles: 600, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 150, throughput_mops: 8.0, token_count: 3,
-        });
+        self.register(
+            &CostSubject::expression("vec_push"),
+            &t,
+            Cost {
+                latency_cycles: 6,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 2,
+                throughput_mops: 650.0,
+                token_count: 3,
+            },
+        );
+        self.register(
+            &CostSubject::expression("hashmap_insert"),
+            &t,
+            Cost {
+                latency_cycles: 60,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 18,
+                throughput_mops: 65.0,
+                token_count: 4,
+            },
+        );
+        self.register(
+            &CostSubject::expression("sort_slice"),
+            &t,
+            Cost {
+                latency_cycles: 600,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 150,
+                throughput_mops: 8.0,
+                token_count: 3,
+            },
+        );
     }
 
     fn seed_wasm32(&mut self) {
         let t = Target::Wasm32;
 
         // WASM: interpreted/JIT, higher overhead
-        self.register(&CostSubject::operation("add_i32"), &t, Cost {
-            latency_cycles: 1, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 2, throughput_mops: 2000.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("add_i64"), &t, Cost {
-            latency_cycles: 2, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 3, throughput_mops: 1500.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("mul_i32"), &t, Cost {
-            latency_cycles: 4, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 5, throughput_mops: 800.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("mul_i64"), &t, Cost {
-            latency_cycles: 8, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 10, throughput_mops: 400.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("div_i32"), &t, Cost {
-            latency_cycles: 35, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 30, throughput_mops: 100.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("div_i64"), &t, Cost {
-            latency_cycles: 60, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 50, throughput_mops: 50.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("add_f64"), &t, Cost {
-            latency_cycles: 5, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 7, throughput_mops: 1000.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("mul_f64"), &t, Cost {
-            latency_cycles: 8, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 10, throughput_mops: 600.0, token_count: 1,
-        });
-        self.register(&CostSubject::operation("div_f64"), &t, Cost {
-            latency_cycles: 25, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 20, throughput_mops: 200.0, token_count: 1,
-        });
+        self.register(
+            &CostSubject::operation("add_i32"),
+            &t,
+            Cost {
+                latency_cycles: 1,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 2,
+                throughput_mops: 2000.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("add_i64"),
+            &t,
+            Cost {
+                latency_cycles: 2,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 3,
+                throughput_mops: 1500.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("mul_i32"),
+            &t,
+            Cost {
+                latency_cycles: 4,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 5,
+                throughput_mops: 800.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("mul_i64"),
+            &t,
+            Cost {
+                latency_cycles: 8,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 10,
+                throughput_mops: 400.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("div_i32"),
+            &t,
+            Cost {
+                latency_cycles: 35,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 30,
+                throughput_mops: 100.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("div_i64"),
+            &t,
+            Cost {
+                latency_cycles: 60,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 50,
+                throughput_mops: 50.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("add_f64"),
+            &t,
+            Cost {
+                latency_cycles: 5,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 7,
+                throughput_mops: 1000.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("mul_f64"),
+            &t,
+            Cost {
+                latency_cycles: 8,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 10,
+                throughput_mops: 600.0,
+                token_count: 1,
+            },
+        );
+        self.register(
+            &CostSubject::operation("div_f64"),
+            &t,
+            Cost {
+                latency_cycles: 25,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 20,
+                throughput_mops: 200.0,
+                token_count: 1,
+            },
+        );
 
         // Memory
-        self.register(&CostSubject::operation("alloc"), &t, Cost {
-            latency_cycles: 200, memory_bytes: 0, alloc_count: 1,
-            energy_uj: 80, throughput_mops: 25.0, token_count: 2,
-        });
-        self.register(&CostSubject::operation("dealloc"), &t, Cost {
-            latency_cycles: 150, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 60, throughput_mops: 30.0, token_count: 0,
-        });
+        self.register(
+            &CostSubject::operation("alloc"),
+            &t,
+            Cost {
+                latency_cycles: 200,
+                memory_bytes: 0,
+                alloc_count: 1,
+                energy_uj: 80,
+                throughput_mops: 25.0,
+                token_count: 2,
+            },
+        );
+        self.register(
+            &CostSubject::operation("dealloc"),
+            &t,
+            Cost {
+                latency_cycles: 150,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 60,
+                throughput_mops: 30.0,
+                token_count: 0,
+            },
+        );
 
         // Types
-        self.register(&CostSubject::type_of("Vec<T>"), &t, Cost {
-            latency_cycles: 200, memory_bytes: 12, alloc_count: 1,
-            energy_uj: 80, throughput_mops: 0.0, token_count: 2,
-        });
-        self.register(&CostSubject::type_of("[T; N]"), &t, Cost {
-            latency_cycles: 0, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 0, throughput_mops: 0.0, token_count: 3,
-        });
-        self.register(&CostSubject::type_of("HashMap<K, V>"), &t, Cost {
-            latency_cycles: 350, memory_bytes: 24, alloc_count: 1,
-            energy_uj: 150, throughput_mops: 0.0, token_count: 3,
-        });
-        self.register(&CostSubject::type_of("String"), &t, Cost {
-            latency_cycles: 200, memory_bytes: 12, alloc_count: 1,
-            energy_uj: 80, throughput_mops: 0.0, token_count: 1,
-        });
+        self.register(
+            &CostSubject::type_of("Vec<T>"),
+            &t,
+            Cost {
+                latency_cycles: 200,
+                memory_bytes: 12,
+                alloc_count: 1,
+                energy_uj: 80,
+                throughput_mops: 0.0,
+                token_count: 2,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("[T; N]"),
+            &t,
+            Cost {
+                latency_cycles: 0,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 0,
+                throughput_mops: 0.0,
+                token_count: 3,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("HashMap<K, V>"),
+            &t,
+            Cost {
+                latency_cycles: 350,
+                memory_bytes: 24,
+                alloc_count: 1,
+                energy_uj: 150,
+                throughput_mops: 0.0,
+                token_count: 3,
+            },
+        );
+        self.register(
+            &CostSubject::type_of("String"),
+            &t,
+            Cost {
+                latency_cycles: 200,
+                memory_bytes: 12,
+                alloc_count: 1,
+                energy_uj: 80,
+                throughput_mops: 0.0,
+                token_count: 1,
+            },
+        );
 
         // Expressions
-        self.register(&CostSubject::expression("vec_push"), &t, Cost {
-            latency_cycles: 10, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 8, throughput_mops: 400.0, token_count: 3,
-        });
-        self.register(&CostSubject::expression("hashmap_insert"), &t, Cost {
-            latency_cycles: 80, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 40, throughput_mops: 40.0, token_count: 4,
-        });
-        self.register(&CostSubject::expression("sort_slice"), &t, Cost {
-            latency_cycles: 1000, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 400, throughput_mops: 4.0, token_count: 3,
-        });
+        self.register(
+            &CostSubject::expression("vec_push"),
+            &t,
+            Cost {
+                latency_cycles: 10,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 8,
+                throughput_mops: 400.0,
+                token_count: 3,
+            },
+        );
+        self.register(
+            &CostSubject::expression("hashmap_insert"),
+            &t,
+            Cost {
+                latency_cycles: 80,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 40,
+                throughput_mops: 40.0,
+                token_count: 4,
+            },
+        );
+        self.register(
+            &CostSubject::expression("sort_slice"),
+            &t,
+            Cost {
+                latency_cycles: 1000,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 400,
+                throughput_mops: 4.0,
+                token_count: 3,
+            },
+        );
     }
 }
 
@@ -561,21 +1084,24 @@ pub struct ComparisonEntry {
 impl CostComparison {
     /// Find the target with the lowest latency.
     pub fn cheapest_by_latency(&self) -> Option<&ComparisonEntry> {
-        self.entries.iter()
+        self.entries
+            .iter()
             .filter(|e| e.cost.is_some())
             .min_by_key(|e| e.cost.as_ref().unwrap().latency_cycles)
     }
 
     /// Find the target with the lowest energy usage.
     pub fn cheapest_by_energy(&self) -> Option<&ComparisonEntry> {
-        self.entries.iter()
+        self.entries
+            .iter()
             .filter(|e| e.cost.is_some())
             .min_by_key(|e| e.cost.as_ref().unwrap().energy_uj)
     }
 
     /// Find the target with the lowest memory usage.
     pub fn cheapest_by_memory(&self) -> Option<&ComparisonEntry> {
-        self.entries.iter()
+        self.entries
+            .iter()
             .filter(|e| e.cost.is_some())
             .min_by_key(|e| e.cost.as_ref().unwrap().memory_bytes)
     }
@@ -658,8 +1184,22 @@ mod tests {
 
     #[test]
     fn test_cost_add() {
-        let a = Cost { latency_cycles: 10, memory_bytes: 8, alloc_count: 1, energy_uj: 5, throughput_mops: 0.0, token_count: 2 };
-        let b = Cost { latency_cycles: 20, memory_bytes: 16, alloc_count: 0, energy_uj: 10, throughput_mops: 0.0, token_count: 3 };
+        let a = Cost {
+            latency_cycles: 10,
+            memory_bytes: 8,
+            alloc_count: 1,
+            energy_uj: 5,
+            throughput_mops: 0.0,
+            token_count: 2,
+        };
+        let b = Cost {
+            latency_cycles: 20,
+            memory_bytes: 16,
+            alloc_count: 0,
+            energy_uj: 10,
+            throughput_mops: 0.0,
+            token_count: 3,
+        };
         let sum = a.add(&b);
         assert_eq!(sum.latency_cycles, 30);
         assert_eq!(sum.memory_bytes, 24);
@@ -670,7 +1210,14 @@ mod tests {
 
     #[test]
     fn test_cost_scale() {
-        let c = Cost { latency_cycles: 10, memory_bytes: 8, alloc_count: 1, energy_uj: 5, throughput_mops: 100.0, token_count: 2 };
+        let c = Cost {
+            latency_cycles: 10,
+            memory_bytes: 8,
+            alloc_count: 1,
+            energy_uj: 5,
+            throughput_mops: 100.0,
+            token_count: 2,
+        };
         let scaled = c.scale(100);
         assert_eq!(scaled.latency_cycles, 1000);
         assert_eq!(scaled.memory_bytes, 8); // memory doesn't scale
@@ -680,8 +1227,22 @@ mod tests {
 
     #[test]
     fn test_cost_dominates() {
-        let a = Cost { latency_cycles: 5, memory_bytes: 8, alloc_count: 0, energy_uj: 3, throughput_mops: 0.0, token_count: 1 };
-        let b = Cost { latency_cycles: 10, memory_bytes: 16, alloc_count: 1, energy_uj: 8, throughput_mops: 0.0, token_count: 2 };
+        let a = Cost {
+            latency_cycles: 5,
+            memory_bytes: 8,
+            alloc_count: 0,
+            energy_uj: 3,
+            throughput_mops: 0.0,
+            token_count: 1,
+        };
+        let b = Cost {
+            latency_cycles: 10,
+            memory_bytes: 16,
+            alloc_count: 1,
+            energy_uj: 8,
+            throughput_mops: 0.0,
+            token_count: 2,
+        };
         assert!(a.dominates(&b));
         assert!(!b.dominates(&a));
     }
@@ -826,7 +1387,10 @@ mod tests {
     #[test]
     fn test_compare_incomplete() {
         let o = oracle();
-        let cmp = o.compare(&CostSubject::operation("add_i32"), &[Target::X86_64, Target::Custom("risc-v".to_string())]);
+        let cmp = o.compare(
+            &CostSubject::operation("add_i32"),
+            &[Target::X86_64, Target::Custom("risc-v".to_string())],
+        );
         assert!(!cmp.is_complete()); // custom target has no data
     }
 
@@ -847,10 +1411,18 @@ mod tests {
     #[test]
     fn test_register_custom() {
         let mut o = CostOracle::empty();
-        o.register(&CostSubject::operation("custom_op"), &Target::X86_64, Cost {
-            latency_cycles: 42, memory_bytes: 0, alloc_count: 0,
-            energy_uj: 10, throughput_mops: 100.0, token_count: 1,
-        });
+        o.register(
+            &CostSubject::operation("custom_op"),
+            &Target::X86_64,
+            Cost {
+                latency_cycles: 42,
+                memory_bytes: 0,
+                alloc_count: 0,
+                energy_uj: 10,
+                throughput_mops: 100.0,
+                token_count: 1,
+            },
+        );
         let cost = o.query(&CostSubject::operation("custom_op"), &Target::X86_64).unwrap();
         assert_eq!(cost.latency_cycles, 42);
     }

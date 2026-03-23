@@ -132,11 +132,7 @@ pub struct OpLog {
 
 impl OpLog {
     pub fn new() -> Self {
-        Self {
-            ops: Vec::new(),
-            next_id: 1,
-            next_timestamp: 1,
-        }
+        Self { ops: Vec::new(), next_id: 1, next_timestamp: 1 }
     }
 
     /// Append an operation to the log.
@@ -175,11 +171,12 @@ impl OpLog {
     }
 
     /// Get operations on a specific branch since a given timestamp (exclusive).
-    pub fn ops_on_branch_since(&self, branch: &str, since_timestamp: Timestamp) -> Vec<&SemanticOp> {
-        self.ops
-            .iter()
-            .filter(|op| op.branch == branch && op.timestamp > since_timestamp)
-            .collect()
+    pub fn ops_on_branch_since(
+        &self,
+        branch: &str,
+        since_timestamp: Timestamp,
+    ) -> Vec<&SemanticOp> {
+        self.ops.iter().filter(|op| op.branch == branch && op.timestamp > since_timestamp).collect()
     }
 
     /// Get operations by a specific agent.
@@ -189,10 +186,7 @@ impl OpLog {
 
     /// Get operations affecting a specific region.
     pub fn ops_in_region(&self, region: &str) -> Vec<&SemanticOp> {
-        self.ops
-            .iter()
-            .filter(|op| op.kind.primary_region() == region)
-            .collect()
+        self.ops.iter().filter(|op| op.kind.primary_region() == region).collect()
     }
 
     /// Number of operations in the log.
@@ -207,11 +201,7 @@ impl OpLog {
 
     /// Current timestamp (last assigned).
     pub fn current_timestamp(&self) -> Timestamp {
-        if self.next_timestamp > 1 {
-            self.next_timestamp - 1
-        } else {
-            0
-        }
+        if self.next_timestamp > 1 { self.next_timestamp - 1 } else { 0 }
     }
 }
 
@@ -345,12 +335,7 @@ impl SemanticVCS {
     }
 
     /// Commit an operation with rationale.
-    pub fn commit_with_rationale(
-        &mut self,
-        agent: &str,
-        kind: OpKind,
-        rationale: &str,
-    ) -> OpId {
+    pub fn commit_with_rationale(&mut self, agent: &str, kind: OpKind, rationale: &str) -> OpId {
         let branch = self.current_branch.clone();
         let op_id = self.log.append_with_rationale(agent, &branch, kind, rationale);
         self.advance_branch_head();
@@ -437,8 +422,7 @@ impl SemanticVCS {
         // Get ops on each branch since the fork point, filtered by branch name
         let ops_current: Vec<&SemanticOp> =
             self.log.ops_on_branch_since(&self.current_branch, fork_ts);
-        let ops_other: Vec<&SemanticOp> =
-            self.log.ops_on_branch_since(other_branch, fork_ts);
+        let ops_other: Vec<&SemanticOp> = self.log.ops_on_branch_since(other_branch, fork_ts);
 
         // Find conflicts between the two sets
         let mut conflicts = Vec::new();
@@ -480,10 +464,7 @@ impl SemanticVCS {
         // Sort by timestamp
         merged_ops.sort_by_key(|op| op.timestamp);
 
-        Ok(MergeResult {
-            merged_ops,
-            conflicts,
-        })
+        Ok(MergeResult { merged_ops, conflicts })
     }
 
     /// Query the operation history.
@@ -538,10 +519,7 @@ mod tests {
 
     #[test]
     fn op_kind_primary_region() {
-        let op = OpKind::AddDefinition {
-            name: "Foo".to_string(),
-            region: "core".to_string(),
-        };
+        let op = OpKind::AddDefinition { name: "Foo".to_string(), region: "core".to_string() };
         assert_eq!(op.primary_region(), "core");
 
         let op = OpKind::MoveDefinition {
@@ -554,53 +532,29 @@ mod tests {
 
     #[test]
     fn op_kind_conflicts_same_modify() {
-        let a = OpKind::ModifyBody {
-            name: "foo".to_string(),
-            region: "core".to_string(),
-        };
-        let b = OpKind::ModifyBody {
-            name: "foo".to_string(),
-            region: "core".to_string(),
-        };
+        let a = OpKind::ModifyBody { name: "foo".to_string(), region: "core".to_string() };
+        let b = OpKind::ModifyBody { name: "foo".to_string(), region: "core".to_string() };
         assert!(a.conflicts_with(&b));
     }
 
     #[test]
     fn op_kind_no_conflict_different_region() {
-        let a = OpKind::ModifyBody {
-            name: "foo".to_string(),
-            region: "core".to_string(),
-        };
-        let b = OpKind::ModifyBody {
-            name: "foo".to_string(),
-            region: "utils".to_string(),
-        };
+        let a = OpKind::ModifyBody { name: "foo".to_string(), region: "core".to_string() };
+        let b = OpKind::ModifyBody { name: "foo".to_string(), region: "utils".to_string() };
         assert!(!a.conflicts_with(&b));
     }
 
     #[test]
     fn op_kind_no_conflict_different_name() {
-        let a = OpKind::ModifyBody {
-            name: "foo".to_string(),
-            region: "core".to_string(),
-        };
-        let b = OpKind::ModifyBody {
-            name: "bar".to_string(),
-            region: "core".to_string(),
-        };
+        let a = OpKind::ModifyBody { name: "foo".to_string(), region: "core".to_string() };
+        let b = OpKind::ModifyBody { name: "bar".to_string(), region: "core".to_string() };
         assert!(!a.conflicts_with(&b));
     }
 
     #[test]
     fn op_kind_conflict_modify_remove() {
-        let a = OpKind::ModifyBody {
-            name: "foo".to_string(),
-            region: "core".to_string(),
-        };
-        let b = OpKind::RemoveDefinition {
-            name: "foo".to_string(),
-            region: "core".to_string(),
-        };
+        let a = OpKind::ModifyBody { name: "foo".to_string(), region: "core".to_string() };
+        let b = OpKind::RemoveDefinition { name: "foo".to_string(), region: "core".to_string() };
         assert!(a.conflicts_with(&b));
         assert!(b.conflicts_with(&a));
     }
@@ -622,14 +576,8 @@ mod tests {
 
     #[test]
     fn op_kind_no_conflict_different_ops() {
-        let a = OpKind::AddDefinition {
-            name: "foo".to_string(),
-            region: "core".to_string(),
-        };
-        let b = OpKind::ModifyBody {
-            name: "bar".to_string(),
-            region: "core".to_string(),
-        };
+        let a = OpKind::AddDefinition { name: "foo".to_string(), region: "core".to_string() };
+        let b = OpKind::ModifyBody { name: "bar".to_string(), region: "core".to_string() };
         assert!(!a.conflicts_with(&b));
     }
 
@@ -643,18 +591,12 @@ mod tests {
         log.append(
             "agent1",
             "main",
-            OpKind::AddDefinition {
-                name: "Foo".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::AddDefinition { name: "Foo".to_string(), region: "core".to_string() },
         );
         log.append(
             "agent2",
             "main",
-            OpKind::ModifyBody {
-                name: "Bar".to_string(),
-                region: "utils".to_string(),
-            },
+            OpKind::ModifyBody { name: "Bar".to_string(), region: "utils".to_string() },
         );
 
         assert_eq!(log.len(), 2);
@@ -667,26 +609,17 @@ mod tests {
         log.append(
             "agent1",
             "main",
-            OpKind::AddDefinition {
-                name: "A".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::AddDefinition { name: "A".to_string(), region: "core".to_string() },
         );
         log.append(
             "agent2",
             "main",
-            OpKind::AddDefinition {
-                name: "B".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::AddDefinition { name: "B".to_string(), region: "core".to_string() },
         );
         log.append(
             "agent1",
             "main",
-            OpKind::ModifyBody {
-                name: "A".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::ModifyBody { name: "A".to_string(), region: "core".to_string() },
         );
 
         assert_eq!(log.ops_by_agent("agent1").len(), 2);
@@ -699,18 +632,12 @@ mod tests {
         log.append(
             "a1",
             "main",
-            OpKind::AddDefinition {
-                name: "X".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::AddDefinition { name: "X".to_string(), region: "core".to_string() },
         );
         log.append(
             "a1",
             "main",
-            OpKind::AddDefinition {
-                name: "Y".to_string(),
-                region: "utils".to_string(),
-            },
+            OpKind::AddDefinition { name: "Y".to_string(), region: "utils".to_string() },
         );
 
         assert_eq!(log.ops_in_region("core").len(), 1);
@@ -721,9 +648,21 @@ mod tests {
     #[test]
     fn oplog_ops_on_branch_since() {
         let mut log = OpLog::new();
-        log.append("a1", "main", OpKind::AddDefinition { name: "A".to_string(), region: "r".to_string() });
-        log.append("a1", "feature", OpKind::AddDefinition { name: "B".to_string(), region: "r".to_string() });
-        log.append("a1", "main", OpKind::AddDefinition { name: "C".to_string(), region: "r".to_string() });
+        log.append(
+            "a1",
+            "main",
+            OpKind::AddDefinition { name: "A".to_string(), region: "r".to_string() },
+        );
+        log.append(
+            "a1",
+            "feature",
+            OpKind::AddDefinition { name: "B".to_string(), region: "r".to_string() },
+        );
+        log.append(
+            "a1",
+            "main",
+            OpKind::AddDefinition { name: "C".to_string(), region: "r".to_string() },
+        );
 
         assert_eq!(log.ops_on_branch_since("main", 0).len(), 2);
         assert_eq!(log.ops_on_branch_since("feature", 0).len(), 1);
@@ -736,17 +675,11 @@ mod tests {
         let id = log.append_with_rationale(
             "agent1",
             "main",
-            OpKind::AddDefinition {
-                name: "Foo".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::AddDefinition { name: "Foo".to_string(), region: "core".to_string() },
             "Adding error handling",
         );
         assert_eq!(id, OpId(1));
-        assert_eq!(
-            log.ops()[0].rationale.as_deref(),
-            Some("Adding error handling")
-        );
+        assert_eq!(log.ops()[0].rationale.as_deref(), Some("Adding error handling"));
     }
 
     // ── SemanticVCS tests ──
@@ -764,10 +697,7 @@ mod tests {
         let mut vcs = SemanticVCS::new();
         let id = vcs.commit(
             "agent1",
-            OpKind::AddDefinition {
-                name: "Foo".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::AddDefinition { name: "Foo".to_string(), region: "core".to_string() },
         );
         assert_eq!(id, OpId(1));
         assert_eq!(vcs.op_count(), 1);
@@ -778,10 +708,7 @@ mod tests {
         let mut vcs = SemanticVCS::new();
         vcs.commit_with_rationale(
             "agent1",
-            OpKind::AddDefinition {
-                name: "Foo".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::AddDefinition { name: "Foo".to_string(), region: "core".to_string() },
             "Initial setup",
         );
         assert_eq!(vcs.history()[0].rationale.as_deref(), Some("Initial setup"));
@@ -815,13 +742,7 @@ mod tests {
     #[test]
     fn vcs_snapshot() {
         let mut vcs = SemanticVCS::new();
-        vcs.commit(
-            "a1",
-            OpKind::AddDefinition {
-                name: "X".to_string(),
-                region: "r".to_string(),
-            },
-        );
+        vcs.commit("a1", OpKind::AddDefinition { name: "X".to_string(), region: "r".to_string() });
         let snap = vcs.create_snapshot("v1").unwrap();
         assert_eq!(snap.name, "v1");
         assert_eq!(snap.op_count, 1);
@@ -837,10 +758,7 @@ mod tests {
         // Commit on main
         vcs.commit(
             "a1",
-            OpKind::AddDefinition {
-                name: "Base".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::AddDefinition { name: "Base".to_string(), region: "core".to_string() },
         );
 
         // Create feature branch and switch to it
@@ -850,25 +768,23 @@ mod tests {
         // Commit on feature (different region — no conflict)
         vcs.commit(
             "a2",
-            OpKind::AddDefinition {
-                name: "Feature".to_string(),
-                region: "utils".to_string(),
-            },
+            OpKind::AddDefinition { name: "Feature".to_string(), region: "utils".to_string() },
         );
 
         // Switch back to main, commit something non-conflicting
         vcs.switch_branch("main").unwrap();
         vcs.commit(
             "a1",
-            OpKind::ModifyBody {
-                name: "Base".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::ModifyBody { name: "Base".to_string(), region: "core".to_string() },
         );
 
         // Merge feature into main — should be clean
         let result = vcs.merge("feature").unwrap();
-        assert!(result.is_clean(), "Expected clean merge, got {} conflicts", result.conflict_count());
+        assert!(
+            result.is_clean(),
+            "Expected clean merge, got {} conflicts",
+            result.conflict_count()
+        );
         assert!(result.merged_count() > 0);
     }
 
@@ -879,10 +795,7 @@ mod tests {
         // Base commit on main
         vcs.commit(
             "a1",
-            OpKind::AddDefinition {
-                name: "Shared".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::AddDefinition { name: "Shared".to_string(), region: "core".to_string() },
         );
 
         // Create feature branch and switch
@@ -892,20 +805,14 @@ mod tests {
         // Modify same function on feature branch
         vcs.commit(
             "a2",
-            OpKind::ModifyBody {
-                name: "Shared".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::ModifyBody { name: "Shared".to_string(), region: "core".to_string() },
         );
 
         // Switch to main and modify same function
         vcs.switch_branch("main").unwrap();
         vcs.commit(
             "a1",
-            OpKind::ModifyBody {
-                name: "Shared".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::ModifyBody { name: "Shared".to_string(), region: "core".to_string() },
         );
 
         // Merge: should detect conflict
@@ -933,17 +840,11 @@ mod tests {
         let mut vcs = SemanticVCS::new();
         vcs.commit(
             "agent_a",
-            OpKind::AddDefinition {
-                name: "X".to_string(),
-                region: "r".to_string(),
-            },
+            OpKind::AddDefinition { name: "X".to_string(), region: "r".to_string() },
         );
         vcs.commit(
             "agent_b",
-            OpKind::AddDefinition {
-                name: "Y".to_string(),
-                region: "r".to_string(),
-            },
+            OpKind::AddDefinition { name: "Y".to_string(), region: "r".to_string() },
         );
 
         assert_eq!(vcs.history_by_agent("agent_a").len(), 1);
@@ -955,17 +856,11 @@ mod tests {
         let mut vcs = SemanticVCS::new();
         vcs.commit(
             "a",
-            OpKind::AddDefinition {
-                name: "X".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::AddDefinition { name: "X".to_string(), region: "core".to_string() },
         );
         vcs.commit(
             "a",
-            OpKind::AddDefinition {
-                name: "Y".to_string(),
-                region: "utils".to_string(),
-            },
+            OpKind::AddDefinition { name: "Y".to_string(), region: "utils".to_string() },
         );
 
         assert_eq!(vcs.history_in_region("core").len(), 1);
@@ -977,18 +872,12 @@ mod tests {
         let mut vcs = SemanticVCS::new();
         vcs.commit_with_rationale(
             "a",
-            OpKind::AddDefinition {
-                name: "Handler".to_string(),
-                region: "core".to_string(),
-            },
+            OpKind::AddDefinition { name: "Handler".to_string(), region: "core".to_string() },
             "Adding error handling logic",
         );
         vcs.commit_with_rationale(
             "a",
-            OpKind::AddDefinition {
-                name: "Parser".to_string(),
-                region: "parse".to_string(),
-            },
+            OpKind::AddDefinition { name: "Parser".to_string(), region: "parse".to_string() },
             "Implementing token parser",
         );
 
@@ -1023,27 +912,15 @@ mod tests {
 
     #[test]
     fn conflict_add_add_same_name() {
-        let a = OpKind::AddDefinition {
-            name: "Foo".to_string(),
-            region: "core".to_string(),
-        };
-        let b = OpKind::AddDefinition {
-            name: "Foo".to_string(),
-            region: "core".to_string(),
-        };
+        let a = OpKind::AddDefinition { name: "Foo".to_string(), region: "core".to_string() };
+        let b = OpKind::AddDefinition { name: "Foo".to_string(), region: "core".to_string() };
         assert!(a.conflicts_with(&b));
     }
 
     #[test]
     fn conflict_interface_interface() {
-        let a = OpKind::ModifyInterface {
-            name: "Trait1".to_string(),
-            region: "core".to_string(),
-        };
-        let b = OpKind::ModifyInterface {
-            name: "Trait1".to_string(),
-            region: "core".to_string(),
-        };
+        let a = OpKind::ModifyInterface { name: "Trait1".to_string(), region: "core".to_string() };
+        let b = OpKind::ModifyInterface { name: "Trait1".to_string(), region: "core".to_string() };
         assert!(a.conflicts_with(&b));
     }
 
@@ -1054,10 +931,7 @@ mod tests {
             from_region: "a".to_string(),
             to_region: "b".to_string(),
         };
-        let b = OpKind::AddDefinition {
-            name: "Y".to_string(),
-            region: "c".to_string(),
-        };
+        let b = OpKind::AddDefinition { name: "Y".to_string(), region: "c".to_string() };
         assert!(!a.conflicts_with(&b));
     }
 }

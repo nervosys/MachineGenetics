@@ -70,12 +70,7 @@ pub struct TrainingRecord {
 
 impl TrainingRecord {
     pub fn new(source: DataSourceKind, content: &str, timestamp: u64) -> Self {
-        TrainingRecord {
-            source,
-            content: content.to_string(),
-            tags: Vec::new(),
-            timestamp,
-        }
+        TrainingRecord { source, content: content.to_string(), tags: Vec::new(), timestamp }
     }
 
     pub fn with_tags(mut self, tags: &[&str]) -> Self {
@@ -229,8 +224,9 @@ impl fmt::Display for FineTuneStatus {
         match self {
             FineTuneStatus::Pending => write!(f, "pending"),
             FineTuneStatus::Preprocessing => write!(f, "preprocessing"),
-            FineTuneStatus::Training { epoch, total_epochs } =>
-                write!(f, "training ({epoch}/{total_epochs})"),
+            FineTuneStatus::Training { epoch, total_epochs } => {
+                write!(f, "training ({epoch}/{total_epochs})")
+            }
             FineTuneStatus::Evaluating => write!(f, "evaluating"),
             FineTuneStatus::Complete => write!(f, "complete"),
             FineTuneStatus::Failed { reason } => write!(f, "failed: {reason}"),
@@ -255,11 +251,7 @@ impl FineTuneResult {
     }
 
     pub fn improvement_ratio(&self) -> f64 {
-        if self.validation_loss > 0.0 {
-            self.training_loss / self.validation_loss
-        } else {
-            1.0
-        }
+        if self.validation_loss > 0.0 { self.training_loss / self.validation_loss } else { 1.0 }
     }
 }
 
@@ -444,27 +436,20 @@ impl CodebaseModel {
     /// Run inference on a query.
     pub fn infer(&self, query: &InferenceQuery) -> InferenceResult {
         match query {
-            InferenceQuery::PatternCompletion { context } => {
-                self.infer_pattern(context)
-            }
-            InferenceQuery::BugRiskPrediction { code } => {
-                self.infer_bug_risk(code)
-            }
-            InferenceQuery::NamingSuggestion { kind, context } => {
-                self.infer_naming(kind, context)
-            }
+            InferenceQuery::PatternCompletion { context } => self.infer_pattern(context),
+            InferenceQuery::BugRiskPrediction { code } => self.infer_bug_risk(code),
+            InferenceQuery::NamingSuggestion { kind, context } => self.infer_naming(kind, context),
             InferenceQuery::SwarmAdvice { task_description } => {
                 self.infer_swarm_advice(task_description)
             }
-            InferenceQuery::CodeReviewHints { diff } => {
-                self.infer_review_hints(diff)
-            }
+            InferenceQuery::CodeReviewHints { diff } => self.infer_review_hints(diff),
         }
     }
 
     fn infer_pattern(&self, context: &str) -> InferenceResult {
         // Find matching patterns from index
-        let mut matches: Vec<(String, u32)> = self.pattern_index
+        let mut matches: Vec<(String, u32)> = self
+            .pattern_index
             .iter()
             .filter(|(tag, _)| context.contains(tag.as_str()) || tag.contains(context))
             .map(|(tag, freq)| (tag.clone(), *freq))
@@ -478,7 +463,8 @@ impl CodebaseModel {
             ("no matching pattern found".to_string(), Confidence::new(0.1))
         };
 
-        let alternatives = matches.iter()
+        let alternatives = matches
+            .iter()
             .skip(1)
             .take(3)
             .map(|(tag, freq)| {
@@ -492,12 +478,18 @@ impl CodebaseModel {
             prediction,
             confidence,
             alternatives,
-            reasoning: format!("Matched {} patterns in corpus of {} records", matches.len(), self.corpus_size),
+            reasoning: format!(
+                "Matched {} patterns in corpus of {} records",
+                matches.len(),
+                self.corpus_size
+            ),
         }
     }
 
     fn infer_bug_risk(&self, code: &str) -> InferenceResult {
-        let matching_bugs = self.bug_patterns.iter()
+        let matching_bugs = self
+            .bug_patterns
+            .iter()
             .filter(|p| {
                 // Simple substring overlap heuristic
                 p.split_whitespace().any(|word| code.contains(word) && word.len() > 3)
@@ -527,11 +519,8 @@ impl CodebaseModel {
 
         if let Some(names) = suggestions {
             let prediction = names.first().cloned().unwrap_or_default();
-            let alternatives: Vec<(String, Confidence)> = names.iter()
-                .skip(1)
-                .take(3)
-                .map(|n| (n.clone(), Confidence::new(0.6)))
-                .collect();
+            let alternatives: Vec<(String, Confidence)> =
+                names.iter().skip(1).take(3).map(|n| (n.clone(), Confidence::new(0.6))).collect();
 
             InferenceResult {
                 query_type: "naming_suggestion".to_string(),
@@ -552,7 +541,9 @@ impl CodebaseModel {
     }
 
     fn infer_swarm_advice(&self, task: &str) -> InferenceResult {
-        let swarm_patterns: Vec<(&String, &u32)> = self.pattern_index.iter()
+        let swarm_patterns: Vec<(&String, &u32)> = self
+            .pattern_index
+            .iter()
             .filter(|(tag, _)| tag.starts_with("swarm:") || tag.contains("decomposition"))
             .map(|(tag, freq)| (tag, freq))
             .collect();
@@ -581,7 +572,9 @@ impl CodebaseModel {
         let mut hints = Vec::new();
 
         // Check for bug-prone patterns in diff
-        let bug_matches: Vec<&String> = self.bug_patterns.iter()
+        let bug_matches: Vec<&String> = self
+            .bug_patterns
+            .iter()
             .filter(|p| p.split_whitespace().any(|w| diff.contains(w) && w.len() > 3))
             .collect();
 
@@ -709,15 +702,13 @@ pub fn process_aci_query(model: &CodebaseModel, query: &AciQuery) -> AciResponse
             )
         }
         AciEndpoint::Predict => {
-            let inference = model.infer(&InferenceQuery::PatternCompletion {
-                context: query.payload.clone(),
-            });
+            let inference =
+                model.infer(&InferenceQuery::PatternCompletion { context: query.payload.clone() });
             format!("{} (confidence: {})", inference.prediction, inference.confidence)
         }
         AciEndpoint::BugRisk => {
-            let inference = model.infer(&InferenceQuery::BugRiskPrediction {
-                code: query.payload.clone(),
-            });
+            let inference =
+                model.infer(&InferenceQuery::BugRiskPrediction { code: query.payload.clone() });
             format!("{} (confidence: {})", inference.prediction, inference.confidence)
         }
         AciEndpoint::Naming => {
@@ -728,15 +719,13 @@ pub fn process_aci_query(model: &CodebaseModel, query: &AciQuery) -> AciResponse
             format!("{} (confidence: {})", inference.prediction, inference.confidence)
         }
         AciEndpoint::Swarm => {
-            let inference = model.infer(&InferenceQuery::SwarmAdvice {
-                task_description: query.payload.clone(),
-            });
+            let inference = model
+                .infer(&InferenceQuery::SwarmAdvice { task_description: query.payload.clone() });
             inference.prediction
         }
         AciEndpoint::Review => {
-            let inference = model.infer(&InferenceQuery::CodeReviewHints {
-                diff: query.payload.clone(),
-            });
+            let inference =
+                model.infer(&InferenceQuery::CodeReviewHints { diff: query.payload.clone() });
             inference.prediction
         }
         AciEndpoint::Learn => {
@@ -744,11 +733,7 @@ pub fn process_aci_query(model: &CodebaseModel, query: &AciQuery) -> AciResponse
         }
     };
 
-    AciResponse {
-        endpoint: query.endpoint,
-        result,
-        model_version: model.version,
-    }
+    AciResponse { endpoint: query.endpoint, result, model_version: model.version }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -762,28 +747,48 @@ mod tests {
     fn sample_corpus() -> TrainingCorpus {
         let mut corpus = TrainingCorpus::new();
         corpus.add(
-            TrainingRecord::new(DataSourceKind::ProjectSource, "fn process_batch(data: Vec<i32>)", 1000)
-                .with_tags(&["batch", "processing", "naming:function"]),
+            TrainingRecord::new(
+                DataSourceKind::ProjectSource,
+                "fn process_batch(data: Vec<i32>)",
+                1000,
+            )
+            .with_tags(&["batch", "processing", "naming:function"]),
         );
         corpus.add(
-            TrainingRecord::new(DataSourceKind::ProjectSource, "fn validate_input(input: &str)", 1100)
-                .with_tags(&["validation", "input", "naming:function"]),
+            TrainingRecord::new(
+                DataSourceKind::ProjectSource,
+                "fn validate_input(input: &str)",
+                1100,
+            )
+            .with_tags(&["validation", "input", "naming:function"]),
         );
         corpus.add(
             TrainingRecord::new(DataSourceKind::BugHistory, "off-by-one in loop bounds", 900)
                 .with_tags(&["bug:off-by-one", "loop"]),
         );
         corpus.add(
-            TrainingRecord::new(DataSourceKind::BugHistory, "null pointer deref in callback handler", 950)
-                .with_tags(&["bug:null-deref", "callback"]),
+            TrainingRecord::new(
+                DataSourceKind::BugHistory,
+                "null pointer deref in callback handler",
+                950,
+            )
+            .with_tags(&["bug:null-deref", "callback"]),
         );
         corpus.add(
-            TrainingRecord::new(DataSourceKind::SwarmHistory, "decompose matrix multiply 4-way", 1050)
-                .with_tags(&["swarm:decomposition", "matrix"]),
+            TrainingRecord::new(
+                DataSourceKind::SwarmHistory,
+                "decompose matrix multiply 4-way",
+                1050,
+            )
+            .with_tags(&["swarm:decomposition", "matrix"]),
         );
         corpus.add(
-            TrainingRecord::new(DataSourceKind::SkbEntries, "rule: bounds check on array access", 800)
-                .with_tags(&["safety", "bounds"]),
+            TrainingRecord::new(
+                DataSourceKind::SkbEntries,
+                "rule: bounds check on array access",
+                800,
+            )
+            .with_tags(&["safety", "bounds"]),
         );
         corpus.add(
             TrainingRecord::new(DataSourceKind::PerfProfiles, "matmul: 2.3ms GPU, 45ms CPU", 1200)
@@ -898,9 +903,8 @@ mod tests {
     #[test]
     fn infer_pattern_match() {
         let model = sample_model();
-        let result = model.infer(&InferenceQuery::PatternCompletion {
-            context: "batch".to_string(),
-        });
+        let result =
+            model.infer(&InferenceQuery::PatternCompletion { context: "batch".to_string() });
         assert!(!result.prediction.is_empty());
         assert!(result.confidence.value() > 0.0);
     }
@@ -929,9 +933,8 @@ mod tests {
     #[test]
     fn infer_bug_risk_low() {
         let model = sample_model();
-        let result = model.infer(&InferenceQuery::BugRiskPrediction {
-            code: "return 42".to_string(),
-        });
+        let result =
+            model.infer(&InferenceQuery::BugRiskPrediction { code: "return 42".to_string() });
         assert_eq!(result.prediction, "low risk");
     }
 
@@ -973,18 +976,18 @@ mod tests {
     #[test]
     fn infer_review_clean() {
         let model = sample_model();
-        let result = model.infer(&InferenceQuery::CodeReviewHints {
-            diff: "let x = 42;".to_string(),
-        });
-        assert!(result.prediction.contains("No review concerns") || result.confidence.value() <= 0.75);
+        let result =
+            model.infer(&InferenceQuery::CodeReviewHints { diff: "let x = 42;".to_string() });
+        assert!(
+            result.prediction.contains("No review concerns") || result.confidence.value() <= 0.75
+        );
     }
 
     #[test]
     fn infer_review_temp_naming() {
         let model = sample_model();
-        let result = model.infer(&InferenceQuery::CodeReviewHints {
-            diff: "let tmp = get_data();".to_string(),
-        });
+        let result = model
+            .infer(&InferenceQuery::CodeReviewHints { diff: "let tmp = get_data();".to_string() });
         assert!(result.prediction.contains("Temporary naming"));
     }
 
@@ -995,8 +998,12 @@ mod tests {
         let mut model = sample_model();
         let v1 = model.version;
         let records = vec![
-            TrainingRecord::new(DataSourceKind::BugHistory, "race condition in async handler", 2000)
-                .with_tags(&["bug:race", "async"]),
+            TrainingRecord::new(
+                DataSourceKind::BugHistory,
+                "race condition in async handler",
+                2000,
+            )
+            .with_tags(&["bug:race", "async"]),
         ];
         let update = model.incremental_update(&records);
         assert_eq!(update.records_added, 1);
@@ -1023,10 +1030,10 @@ mod tests {
     #[test]
     fn rap_status() {
         let model = sample_model();
-        let resp = process_aci_query(&model, &AciQuery {
-            endpoint: AciEndpoint::Status,
-            payload: String::new(),
-        });
+        let resp = process_aci_query(
+            &model,
+            &AciQuery { endpoint: AciEndpoint::Status, payload: String::new() },
+        );
         assert!(resp.result.contains("model="));
         assert!(resp.result.contains("version="));
     }
@@ -1034,30 +1041,33 @@ mod tests {
     #[test]
     fn rap_predict() {
         let model = sample_model();
-        let resp = process_aci_query(&model, &AciQuery {
-            endpoint: AciEndpoint::Predict,
-            payload: "batch".to_string(),
-        });
+        let resp = process_aci_query(
+            &model,
+            &AciQuery { endpoint: AciEndpoint::Predict, payload: "batch".to_string() },
+        );
         assert!(!resp.result.is_empty());
     }
 
     #[test]
     fn rap_bug_risk() {
         let model = sample_model();
-        let resp = process_aci_query(&model, &AciQuery {
-            endpoint: AciEndpoint::BugRisk,
-            payload: "loop bounds".to_string(),
-        });
+        let resp = process_aci_query(
+            &model,
+            &AciQuery { endpoint: AciEndpoint::BugRisk, payload: "loop bounds".to_string() },
+        );
         assert!(resp.result.contains("risk"));
     }
 
     #[test]
     fn rap_learn() {
         let model = sample_model();
-        let resp = process_aci_query(&model, &AciQuery {
-            endpoint: AciEndpoint::Learn,
-            payload: "fix applied successfully".to_string(),
-        });
+        let resp = process_aci_query(
+            &model,
+            &AciQuery {
+                endpoint: AciEndpoint::Learn,
+                payload: "fix applied successfully".to_string(),
+            },
+        );
         assert!(resp.result.contains("acknowledged"));
     }
 

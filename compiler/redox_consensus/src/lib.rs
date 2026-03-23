@@ -167,10 +167,7 @@ pub enum QuorumRule {
     /// Custom threshold (0.0..=1.0).
     Threshold(f64),
     /// Weighted voting with per-voter weights.
-    Weighted {
-        weights: BTreeMap<String, f64>,
-        threshold: f64,
-    },
+    Weighted { weights: BTreeMap<String, f64>, threshold: f64 },
 }
 
 impl QuorumRule {
@@ -189,15 +186,9 @@ impl QuorumRule {
             };
         }
 
-        let approve_count = votes.iter()
-            .filter(|v| v.decision == VoteDecision::Approve)
-            .count();
-        let reject_count = votes.iter()
-            .filter(|v| v.decision == VoteDecision::Reject)
-            .count();
-        let abstain_count = votes.iter()
-            .filter(|v| v.decision == VoteDecision::Abstain)
-            .count();
+        let approve_count = votes.iter().filter(|v| v.decision == VoteDecision::Approve).count();
+        let reject_count = votes.iter().filter(|v| v.decision == VoteDecision::Reject).count();
+        let abstain_count = votes.iter().filter(|v| v.decision == VoteDecision::Abstain).count();
 
         let (met, threshold_needed, achieved_ratio) = match self {
             QuorumRule::Majority => {
@@ -219,18 +210,14 @@ impl QuorumRule {
                 (ratio >= *t, *t, ratio)
             }
             QuorumRule::Weighted { weights, threshold } => {
-                let total_weight: f64 = eligible_voters.iter()
-                    .map(|v| weights.get(v).copied().unwrap_or(1.0))
-                    .sum();
-                let approve_weight: f64 = votes.iter()
+                let total_weight: f64 =
+                    eligible_voters.iter().map(|v| weights.get(v).copied().unwrap_or(1.0)).sum();
+                let approve_weight: f64 = votes
+                    .iter()
                     .filter(|v| v.decision == VoteDecision::Approve)
                     .map(|v| weights.get(&v.voter).copied().unwrap_or(1.0))
                     .sum();
-                let ratio = if total_weight > 0.0 {
-                    approve_weight / total_weight
-                } else {
-                    0.0
-                };
+                let ratio = if total_weight > 0.0 { approve_weight / total_weight } else { 0.0 };
                 (ratio >= *threshold, *threshold, ratio)
             }
         };
@@ -313,8 +300,11 @@ impl fmt::Display for EventKind {
                 VoteDecision::Abstain => write!(f, "vote:abstain"),
             },
             EventKind::Resolved(accepted) => {
-                if *accepted { write!(f, "resolved:accepted") }
-                else { write!(f, "resolved:rejected") }
+                if *accepted {
+                    write!(f, "resolved:accepted")
+                } else {
+                    write!(f, "resolved:rejected")
+                }
             }
             EventKind::Integrated => write!(f, "integrated"),
             EventKind::Withdrawn => write!(f, "withdrawn"),
@@ -404,13 +394,11 @@ impl ConsensusEngine {
     // ── Phase 2: Vote ──
 
     /// Cast a vote on a proposal.
-    pub fn vote(
-        &mut self,
-        proposal_id: &ProposalId,
-        vote: Vote,
-    ) -> Result<(), ConsensusError> {
+    pub fn vote(&mut self, proposal_id: &ProposalId, vote: Vote) -> Result<(), ConsensusError> {
         // Check proposal exists and is in voting.
-        let proposal = self.proposals.get(proposal_id)
+        let proposal = self
+            .proposals
+            .get(proposal_id)
             .ok_or_else(|| ConsensusError::ProposalNotFound(proposal_id.0.clone()))?;
         if proposal.status != ProposalStatus::Voting {
             return Err(ConsensusError::ProposalNotVoting(proposal_id.0.clone()));
@@ -441,16 +429,16 @@ impl ConsensusEngine {
     /// Resolve a proposal by checking quorum.
     /// Returns `true` if accepted, `false` if rejected.
     pub fn resolve(&mut self, proposal_id: &ProposalId) -> Result<bool, ConsensusError> {
-        let proposal = self.proposals.get(proposal_id)
+        let proposal = self
+            .proposals
+            .get(proposal_id)
             .ok_or_else(|| ConsensusError::ProposalNotFound(proposal_id.0.clone()))?;
         if proposal.status != ProposalStatus::Voting {
             return Err(ConsensusError::ProposalNotVoting(proposal_id.0.clone()));
         }
 
         let eligible: Vec<String> = self.eligible_voters.iter().cloned().collect();
-        let votes = self.votes.get(proposal_id)
-            .map(|v| v.as_slice())
-            .unwrap_or(&[]);
+        let votes = self.votes.get(proposal_id).map(|v| v.as_slice()).unwrap_or(&[]);
 
         let result = self.quorum_rule.is_met(votes, &eligible);
         let accepted = result.met;
@@ -459,11 +447,11 @@ impl ConsensusEngine {
         if accepted {
             proposal.status = ProposalStatus::Accepted;
         } else {
-            proposal.status = ProposalStatus::Rejected(
-                format!("quorum not met: {:.1}% < {:.1}%",
-                    result.achieved_ratio * 100.0,
-                    result.threshold_needed * 100.0)
-            );
+            proposal.status = ProposalStatus::Rejected(format!(
+                "quorum not met: {:.1}% < {:.1}%",
+                result.achieved_ratio * 100.0,
+                result.threshold_needed * 100.0
+            ));
         }
 
         self.history.push(ConsensusEvent {
@@ -479,7 +467,9 @@ impl ConsensusEngine {
 
     /// Mark a proposal as integrated (applied to codebase).
     pub fn integrate(&mut self, proposal_id: &ProposalId) -> Result<(), ConsensusError> {
-        let proposal = self.proposals.get_mut(proposal_id)
+        let proposal = self
+            .proposals
+            .get_mut(proposal_id)
             .ok_or_else(|| ConsensusError::ProposalNotFound(proposal_id.0.clone()))?;
         if proposal.status != ProposalStatus::Accepted {
             return Err(ConsensusError::ProposalNotAccepted(proposal_id.0.clone()));
@@ -501,7 +491,9 @@ impl ConsensusEngine {
         proposal_id: &ProposalId,
         actor: &str,
     ) -> Result<(), ConsensusError> {
-        let proposal = self.proposals.get_mut(proposal_id)
+        let proposal = self
+            .proposals
+            .get_mut(proposal_id)
             .ok_or_else(|| ConsensusError::ProposalNotFound(proposal_id.0.clone()))?;
         match &proposal.status {
             ProposalStatus::Open | ProposalStatus::Voting => {}
@@ -547,14 +539,16 @@ impl ConsensusEngine {
 
     /// All open/voting proposals.
     pub fn active_proposals(&self) -> Vec<&Proposal> {
-        self.proposals.values()
+        self.proposals
+            .values()
             .filter(|p| matches!(p.status, ProposalStatus::Open | ProposalStatus::Voting))
             .collect()
     }
 
     /// Number of proposals by status.
     pub fn count_by_status(&self, status: &ProposalStatus) -> usize {
-        self.proposals.values()
+        self.proposals
+            .values()
             .filter(|p| {
                 // Compare discriminant only.
                 std::mem::discriminant(&p.status) == std::mem::discriminant(status)
@@ -745,10 +739,7 @@ mod tests {
 
         let accepted = engine.resolve(&id).unwrap();
         assert!(!accepted);
-        assert!(matches!(
-            engine.get_proposal(&id).unwrap().status,
-            ProposalStatus::Rejected(_)
-        ));
+        assert!(matches!(engine.get_proposal(&id).unwrap().status, ProposalStatus::Rejected(_)));
     }
 
     #[test]
@@ -943,10 +934,7 @@ mod tests {
         weights.insert("dev2".to_string(), 1.0);
         weights.insert("dev3".to_string(), 1.0);
 
-        let mut engine = ConsensusEngine::new(QuorumRule::Weighted {
-            weights,
-            threshold: 0.6,
-        });
+        let mut engine = ConsensusEngine::new(QuorumRule::Weighted { weights, threshold: 0.6 });
         engine.register_voter("lead");
         engine.register_voter("dev1");
         engine.register_voter("dev2");

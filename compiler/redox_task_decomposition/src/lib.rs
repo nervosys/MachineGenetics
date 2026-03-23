@@ -172,11 +172,7 @@ pub struct DependencyGraph {
 
 impl DependencyGraph {
     pub fn new() -> Self {
-        Self {
-            nodes: BTreeMap::new(),
-            forward: BTreeMap::new(),
-            reverse: BTreeMap::new(),
-        }
+        Self { nodes: BTreeMap::new(), forward: BTreeMap::new(), reverse: BTreeMap::new() }
     }
 
     /// Add a task node to the graph.
@@ -265,36 +261,22 @@ impl DependencyGraph {
 
     /// Get the direct dependencies of a task (what it depends on).
     pub fn dependencies_of(&self, id: &TaskId) -> Vec<&TaskId> {
-        self.reverse
-            .get(id)
-            .map(|set| set.iter().collect())
-            .unwrap_or_default()
+        self.reverse.get(id).map(|set| set.iter().collect()).unwrap_or_default()
     }
 
     /// Get the direct dependents of a task (what depends on it).
     pub fn dependents_of(&self, id: &TaskId) -> Vec<&TaskId> {
-        self.forward
-            .get(id)
-            .map(|set| set.iter().collect())
-            .unwrap_or_default()
+        self.forward.get(id).map(|set| set.iter().collect()).unwrap_or_default()
     }
 
     /// Get root tasks (no dependencies — can start immediately).
     pub fn roots(&self) -> Vec<&TaskId> {
-        self.reverse
-            .iter()
-            .filter(|(_, deps)| deps.is_empty())
-            .map(|(id, _)| id)
-            .collect()
+        self.reverse.iter().filter(|(_, deps)| deps.is_empty()).map(|(id, _)| id).collect()
     }
 
     /// Get leaf tasks (nothing depends on them).
     pub fn leaves(&self) -> Vec<&TaskId> {
-        self.forward
-            .iter()
-            .filter(|(_, deps)| deps.is_empty())
-            .map(|(id, _)| id)
-            .collect()
+        self.forward.iter().filter(|(_, deps)| deps.is_empty()).map(|(id, _)| id).collect()
     }
 
     /// Validate the entire graph: check for dangling deps and cycles.
@@ -328,11 +310,8 @@ impl DependencyGraph {
             }
         }
 
-        let mut queue: VecDeque<TaskId> = in_degree
-            .iter()
-            .filter(|(_, deg)| **deg == 0)
-            .map(|(id, _)| id.clone())
-            .collect();
+        let mut queue: VecDeque<TaskId> =
+            in_degree.iter().filter(|(_, deg)| **deg == 0).map(|(id, _)| id.clone()).collect();
 
         let mut sorted = Vec::new();
 
@@ -352,11 +331,8 @@ impl DependencyGraph {
 
         if sorted.len() != self.nodes.len() {
             // Find cycle participants
-            let cycle_nodes: Vec<TaskId> = in_degree
-                .iter()
-                .filter(|(_, deg)| **deg > 0)
-                .map(|(id, _)| id.clone())
-                .collect();
+            let cycle_nodes: Vec<TaskId> =
+                in_degree.iter().filter(|(_, deg)| **deg > 0).map(|(id, _)| id.clone()).collect();
             return Err(DecompositionError::CycleDetected(cycle_nodes));
         }
 
@@ -441,10 +417,7 @@ impl Scheduler {
             let phase = if deps.is_empty() {
                 0
             } else {
-                deps.iter()
-                    .map(|d| task_phase.get(*d).copied().unwrap_or(0) + 1)
-                    .max()
-                    .unwrap_or(0)
+                deps.iter().map(|d| task_phase.get(*d).copied().unwrap_or(0) + 1).max().unwrap_or(0)
             };
             task_phase.insert(id.clone(), phase);
         }
@@ -453,11 +426,8 @@ impl Scheduler {
         let max_phase = task_phase.values().copied().max().unwrap_or(0);
         let mut phases = Vec::new();
         for i in 0..=max_phase {
-            let task_ids: Vec<TaskId> = sorted
-                .iter()
-                .filter(|id| task_phase.get(*id) == Some(&i))
-                .cloned()
-                .collect();
+            let task_ids: Vec<TaskId> =
+                sorted.iter().filter(|id| task_phase.get(*id) == Some(&i)).cloned().collect();
             if !task_ids.is_empty() {
                 phases.push(Phase { index: i, task_ids });
             }
@@ -471,10 +441,7 @@ impl Scheduler {
         let sorted = graph.topological_sort()?;
 
         if sorted.is_empty() {
-            return Ok(CriticalPath {
-                tasks: Vec::new(),
-                total_cost: 0,
-            });
+            return Ok(CriticalPath { tasks: Vec::new(), total_cost: 0 });
         }
 
         // For each task, compute longest path ending at that task
@@ -511,10 +478,7 @@ impl Scheduler {
         }
         path.reverse();
 
-        Ok(CriticalPath {
-            tasks: path,
-            total_cost: *total_cost,
-        })
+        Ok(CriticalPath { tasks: path, total_cost: *total_cost })
     }
 }
 
@@ -529,10 +493,7 @@ pub struct Region {
 
 impl Region {
     pub fn new(name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-            dependencies: Vec::new(),
-        }
+        Self { name: name.to_string(), dependencies: Vec::new() }
     }
 
     pub fn with_dependency(mut self, dep: &str) -> Self {
@@ -647,13 +608,10 @@ impl Decomposer {
         }
 
         // Add integration task that depends on all verification tasks
-        let integrate = TaskNode::new(
-            "integrate",
-            "Integrate all region changes",
-            TaskKind::Integrate,
-        )
-        .with_priority(Priority::High)
-        .sequential();
+        let integrate =
+            TaskNode::new("integrate", "Integrate all region changes", TaskKind::Integrate)
+                .with_priority(Priority::High)
+                .sequential();
         graph.add_task(integrate)?;
 
         for (id, _) in &region_task_ids {
@@ -664,12 +622,7 @@ impl Decomposer {
         let schedule = Scheduler::schedule(&graph)?;
         let critical_path = Scheduler::critical_path(&graph)?;
 
-        Ok(DecompositionPlan {
-            graph,
-            schedule,
-            critical_path,
-            consensus_points,
-        })
+        Ok(DecompositionPlan { graph, schedule, critical_path, consensus_points })
     }
 }
 
@@ -694,32 +647,20 @@ pub struct AssignmentGraph {
 
 impl AssignmentGraph {
     pub fn new() -> Self {
-        Self {
-            assignments: Vec::new(),
-            agent_tasks: BTreeMap::new(),
-        }
+        Self { assignments: Vec::new(), agent_tasks: BTreeMap::new() }
     }
 
     /// Assign an agent to a task.
     pub fn assign(&mut self, agent: &str, task_id: TaskId) {
-        self.assignments.push(Assignment {
-            agent: agent.to_string(),
-            task_id: task_id.clone(),
-        });
-        self.agent_tasks
-            .entry(agent.to_string())
-            .or_default()
-            .push(task_id);
+        self.assignments.push(Assignment { agent: agent.to_string(), task_id: task_id.clone() });
+        self.agent_tasks.entry(agent.to_string()).or_default().push(task_id);
     }
 
     /// Verify no cycles exist in the agent-level dependency graph.
     ///
     /// Builds an agent-to-agent dependency graph: agent A depends on agent B
     /// if one of A's tasks depends on one of B's tasks. Checks acyclicity.
-    pub fn verify_no_cycles(
-        &self,
-        task_graph: &DependencyGraph,
-    ) -> Result<(), DecompositionError> {
+    pub fn verify_no_cycles(&self, task_graph: &DependencyGraph) -> Result<(), DecompositionError> {
         // Build task -> agent mapping
         let mut task_owner: BTreeMap<&TaskId, &str> = BTreeMap::new();
         for assignment in &self.assignments {
@@ -733,10 +674,7 @@ impl AssignmentGraph {
                 for dep_id in task_graph.dependencies_of(task_id) {
                     if let Some(&dep_agent) = task_owner.get(dep_id) {
                         if dep_agent != agent.as_str() {
-                            agent_deps
-                                .entry(agent.as_str())
-                                .or_default()
-                                .insert(dep_agent);
+                            agent_deps.entry(agent.as_str()).or_default().insert(dep_agent);
                         }
                     }
                 }
@@ -755,11 +693,8 @@ impl AssignmentGraph {
             }
         }
 
-        let mut queue: VecDeque<&str> = in_degree
-            .iter()
-            .filter(|(_, deg)| **deg == 0)
-            .map(|(&a, _)| a)
-            .collect();
+        let mut queue: VecDeque<&str> =
+            in_degree.iter().filter(|(_, deg)| **deg == 0).map(|(&a, _)| a).collect();
         let mut visited = 0usize;
 
         while let Some(agent) = queue.pop_front() {
@@ -795,10 +730,7 @@ impl AssignmentGraph {
 
     /// Get tasks assigned to a specific agent.
     pub fn tasks_for_agent(&self, agent: &str) -> Vec<&TaskId> {
-        self.agent_tasks
-            .get(agent)
-            .map(|tasks| tasks.iter().collect())
-            .unwrap_or_default()
+        self.agent_tasks.get(agent).map(|tasks| tasks.iter().collect()).unwrap_or_default()
     }
 
     /// Number of agents with assignments.
@@ -1210,9 +1142,7 @@ mod tests {
 
     #[test]
     fn region_with_dependencies() {
-        let r = Region::new("core")
-            .with_dependency("base")
-            .with_dependency("utils");
+        let r = Region::new("core").with_dependency("base").with_dependency("utils");
         assert_eq!(r.name, "core");
         assert_eq!(r.dependencies, vec!["base", "utils"]);
     }
@@ -1227,7 +1157,8 @@ mod tests {
         let err = DecompositionError::TaskNotFound(TaskId::new("x"));
         assert!(format!("{}", err).contains("Task not found: x"));
 
-        let err = DecompositionError::AssignmentCycle(vec!["agent1".to_string(), "agent2".to_string()]);
+        let err =
+            DecompositionError::AssignmentCycle(vec!["agent1".to_string(), "agent2".to_string()]);
         assert!(format!("{}", err).contains("Assignment cycle"));
     }
 }

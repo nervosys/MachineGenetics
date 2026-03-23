@@ -271,11 +271,7 @@ pub struct TypeInvariant {
 
 impl TypeInvariant {
     pub fn new(name: String) -> Self {
-        Self {
-            type_name: name,
-            fields: Vec::new(),
-            invariants: Vec::new(),
-        }
+        Self { type_name: name, fields: Vec::new(), invariants: Vec::new() }
     }
 
     pub fn field(mut self, name: String, ty: String) -> Self {
@@ -337,9 +333,7 @@ pub fn static_eval(expr: &ContractExpr, env: &StaticEnv) -> StaticValue {
         ContractExpr::IntLit(n) => StaticValue::Int(*n),
         ContractExpr::FloatLit(v) => StaticValue::Float(*v),
         ContractExpr::StrLit(s) => StaticValue::Str(s.clone()),
-        ContractExpr::Var(name) => {
-            env.get(name).cloned().unwrap_or(StaticValue::Unknown)
-        }
+        ContractExpr::Var(name) => env.get(name).cloned().unwrap_or(StaticValue::Unknown),
         ContractExpr::Result => StaticValue::Unknown,
         ContractExpr::Old(_) => StaticValue::Unknown,
         ContractExpr::BinOp(l, op, r) => {
@@ -460,8 +454,10 @@ fn free_vars(expr: &ContractExpr, vars: &mut Vec<String>) {
         ContractExpr::Var(name) => vars.push(name.clone()),
         ContractExpr::Old(inner) => free_vars(inner, vars),
         ContractExpr::Result => {}
-        ContractExpr::BoolLit(_) | ContractExpr::IntLit(_)
-        | ContractExpr::FloatLit(_) | ContractExpr::StrLit(_) => {}
+        ContractExpr::BoolLit(_)
+        | ContractExpr::IntLit(_)
+        | ContractExpr::FloatLit(_)
+        | ContractExpr::StrLit(_) => {}
         ContractExpr::Field(base, _) => free_vars(base, vars),
         ContractExpr::Index(base, idx) => {
             free_vars(base, vars);
@@ -859,10 +855,7 @@ pub fn verify_function(contract: &FunctionContract, mode: VerificationMode) -> V
 }
 
 /// Run full contract verification for a type invariant.
-pub fn verify_type_invariant(
-    ti: &TypeInvariant,
-    mode: VerificationMode,
-) -> VerificationReport {
+pub fn verify_type_invariant(ti: &TypeInvariant, mode: VerificationMode) -> VerificationReport {
     let mut checker = ContractChecker::new(mode);
     checker.check_type_invariant(ti);
 
@@ -1063,10 +1056,7 @@ mod tests {
 
         let report = verify_function(&contract, VerificationMode::CompileTime);
         assert!(!report.is_ok());
-        assert!(matches!(
-            &report.errors[0],
-            ContractError::ResultWithoutReturn { .. }
-        ));
+        assert!(matches!(&report.errors[0], ContractError::ResultWithoutReturn { .. }));
     }
 
     #[test]
@@ -1074,10 +1064,7 @@ mod tests {
         let contract = FunctionContract::new("inc".to_string())
             .param("x".to_string(), "i32".to_string())
             .returns("i32".to_string())
-            .post(eq(
-                ContractExpr::Result,
-                add(ContractExpr::Old(Box::new(var("z"))), int_lit(1)),
-            ));
+            .post(eq(ContractExpr::Result, add(ContractExpr::Old(Box::new(var("z"))), int_lit(1))));
 
         let report = verify_function(&contract, VerificationMode::CompileTime);
         assert!(!report.is_ok());
@@ -1095,10 +1082,7 @@ mod tests {
 
         let report = verify_function(&contract, VerificationMode::CompileTime);
         assert!(!report.is_ok());
-        assert!(matches!(
-            &report.errors[0],
-            ContractError::AlwaysFalse { .. }
-        ));
+        assert!(matches!(&report.errors[0], ContractError::AlwaysFalse { .. }));
     }
 
     #[test]
@@ -1110,10 +1094,7 @@ mod tests {
         let report = verify_function(&contract, VerificationMode::CompileTime);
         assert!(report.is_ok());
         assert_eq!(report.warnings.len(), 1);
-        assert!(matches!(
-            &report.warnings[0],
-            ContractError::AlwaysTrue { .. }
-        ));
+        assert!(matches!(&report.warnings[0], ContractError::AlwaysTrue { .. }));
     }
 
     #[test]
@@ -1190,11 +1171,7 @@ mod tests {
             .returns("i32".to_string())
             .pre_labeled(
                 "divisor non-zero".to_string(),
-                ContractExpr::BinOp(
-                    Box::new(var("b")),
-                    BinOp::Ne,
-                    Box::new(int_lit(0)),
-                ),
+                ContractExpr::BinOp(Box::new(var("b")), BinOp::Ne, Box::new(int_lit(0))),
             );
 
         let assertions = generate_runtime_assertions(&contract);
@@ -1225,10 +1202,7 @@ mod tests {
     fn test_runtime_invariant_assertion() {
         let ti = TypeInvariant::new("NonEmpty".to_string())
             .field("len".to_string(), "usize".to_string())
-            .invariant_labeled(
-                "must be non-empty".to_string(),
-                gt(var("len"), int_lit(0)),
-            );
+            .invariant_labeled("must be non-empty".to_string(), gt(var("len"), int_lit(0)));
 
         let assertions = generate_invariant_assertions(&ti);
         assert_eq!(assertions.len(), 1);

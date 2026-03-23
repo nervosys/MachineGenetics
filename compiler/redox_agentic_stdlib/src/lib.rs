@@ -53,33 +53,20 @@ pub struct SwarmEntry<T> {
 
 impl<T> SwarmVec<T> {
     pub fn new() -> Self {
-        Self {
-            items: Vec::new(),
-            next_id: 0,
-        }
+        Self { items: Vec::new(), next_id: 0 }
     }
 
     pub fn spawn(&mut self, value: T) -> u64 {
         let id = self.next_id;
         self.next_id += 1;
-        self.items.push(SwarmEntry {
-            id,
-            value,
-            status: AgentStatus::Idle,
-            tags: Vec::new(),
-        });
+        self.items.push(SwarmEntry { id, value, status: AgentStatus::Idle, tags: Vec::new() });
         id
     }
 
     pub fn spawn_tagged(&mut self, value: T, tags: Vec<String>) -> u64 {
         let id = self.next_id;
         self.next_id += 1;
-        self.items.push(SwarmEntry {
-            id,
-            value,
-            status: AgentStatus::Idle,
-            tags,
-        });
+        self.items.push(SwarmEntry { id, value, status: AgentStatus::Idle, tags });
         id
     }
 
@@ -183,12 +170,7 @@ enum ArenaSlot<T> {
 
 impl<T> ArenaVec<T> {
     pub fn new() -> Self {
-        Self {
-            slots: Vec::new(),
-            free_list: Vec::new(),
-            generation: Vec::new(),
-            count: 0,
-        }
+        Self { slots: Vec::new(), free_list: Vec::new(), generation: Vec::new(), count: 0 }
     }
 
     pub fn insert(&mut self, value: T) -> ArenaIndex {
@@ -255,11 +237,9 @@ impl<T> ArenaVec<T> {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (ArenaIndex, &T)> {
-        self.slots.iter().enumerate().filter_map(|(i, slot)| {
-            match slot {
-                ArenaSlot::Occupied(v) => Some((ArenaIndex(i), v)),
-                ArenaSlot::Vacant => None,
-            }
+        self.slots.iter().enumerate().filter_map(|(i, slot)| match slot {
+            ArenaSlot::Occupied(v) => Some((ArenaIndex(i), v)),
+            ArenaSlot::Vacant => None,
         })
     }
 }
@@ -346,11 +326,7 @@ impl<T> SwarmChannel<T> {
         }
         let seq = self.total_sent;
         self.total_sent += 1;
-        self.buffer.push_back(ChannelMessage {
-            payload,
-            sender_id,
-            sequence: seq,
-        });
+        self.buffer.push_back(ChannelMessage { payload, sender_id, sequence: seq });
         Ok(seq)
     }
 
@@ -424,19 +400,11 @@ pub struct StreamSource {
 
 impl StreamSource {
     pub fn new() -> Self {
-        Self {
-            chunks: VecDeque::new(),
-            bytes_read: 0,
-            finished: false,
-        }
+        Self { chunks: VecDeque::new(), bytes_read: 0, finished: false }
     }
 
     pub fn from_chunks(chunks: Vec<StreamChunk>) -> Self {
-        Self {
-            chunks: VecDeque::from(chunks),
-            bytes_read: 0,
-            finished: false,
-        }
+        Self { chunks: VecDeque::from(chunks), bytes_read: 0, finished: false }
     }
 
     pub fn push(&mut self, chunk: StreamChunk) {
@@ -483,11 +451,7 @@ pub struct StreamSink {
 
 impl StreamSink {
     pub fn new() -> Self {
-        Self {
-            buffer: Vec::new(),
-            bytes_written: 0,
-            closed: false,
-        }
+        Self { buffer: Vec::new(), bytes_written: 0, closed: false }
     }
 
     pub fn write(&mut self, chunk: StreamChunk) -> Result<(), String> {
@@ -781,10 +745,8 @@ mod tests {
 
     #[test]
     fn test_stream_source_chunks() {
-        let mut src = StreamSource::from_chunks(vec![
-            StreamChunk::Text("hello".into()),
-            StreamChunk::End,
-        ]);
+        let mut src =
+            StreamSource::from_chunks(vec![StreamChunk::Text("hello".into()), StreamChunk::End]);
         let c1 = src.next_chunk().unwrap();
         assert!(matches!(c1, StreamChunk::Text(_)));
         assert_eq!(src.bytes_read(), 5);

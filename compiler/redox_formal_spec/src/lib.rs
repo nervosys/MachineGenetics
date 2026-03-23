@@ -50,9 +50,19 @@ pub enum SpecExpr {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BinOp {
-    Add, Sub, Mul, Div, Mod,
-    Eq, Ne, Lt, Le, Gt, Ge,
-    And, Or,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    And,
+    Or,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -326,38 +336,53 @@ impl SpecBlock {
     // ── Queries ──────────────────────────────────────────────────
 
     pub fn preconditions(&self) -> Vec<&SpecExpr> {
-        self.clauses.iter().filter_map(|c| match c {
-            SpecClause::Requires(e) | SpecClause::RequiresLabeled(_, e) => Some(e),
-            _ => None,
-        }).collect()
+        self.clauses
+            .iter()
+            .filter_map(|c| match c {
+                SpecClause::Requires(e) | SpecClause::RequiresLabeled(_, e) => Some(e),
+                _ => None,
+            })
+            .collect()
     }
 
     pub fn postconditions(&self) -> Vec<&SpecExpr> {
-        self.clauses.iter().filter_map(|c| match c {
-            SpecClause::Ensures(e) | SpecClause::EnsuresLabeled(_, e) => Some(e),
-            _ => None,
-        }).collect()
+        self.clauses
+            .iter()
+            .filter_map(|c| match c {
+                SpecClause::Ensures(e) | SpecClause::EnsuresLabeled(_, e) => Some(e),
+                _ => None,
+            })
+            .collect()
     }
 
     pub fn performance_bounds(&self) -> Vec<&Complexity> {
-        self.clauses.iter().filter_map(|c| match c {
-            SpecClause::Performance(p) => Some(p),
-            _ => None,
-        }).collect()
+        self.clauses
+            .iter()
+            .filter_map(|c| match c {
+                SpecClause::Performance(p) => Some(p),
+                _ => None,
+            })
+            .collect()
     }
 
     pub fn effects(&self) -> Vec<&EffectKind> {
-        self.clauses.iter().filter_map(|c| match c {
-            SpecClause::Effect(e) => Some(e),
-            _ => None,
-        }).collect()
+        self.clauses
+            .iter()
+            .filter_map(|c| match c {
+                SpecClause::Effect(e) => Some(e),
+                _ => None,
+            })
+            .collect()
     }
 
     pub fn invariants(&self) -> Vec<&SpecExpr> {
-        self.clauses.iter().filter_map(|c| match c {
-            SpecClause::Invariant(e) | SpecClause::InvariantLabeled(_, e) => Some(e),
-            _ => None,
-        }).collect()
+        self.clauses
+            .iter()
+            .filter_map(|c| match c {
+                SpecClause::Invariant(e) | SpecClause::InvariantLabeled(_, e) => Some(e),
+                _ => None,
+            })
+            .collect()
     }
 
     pub fn is_pure(&self) -> bool {
@@ -473,7 +498,14 @@ pub fn parse_expr(s: &str) -> Result<SpecExpr, String> {
     }
 
     // Comparison: ==, !=, <=, >=, <, >
-    for (op_str, op) in &[("==", BinOp::Eq), ("!=", BinOp::Ne), ("<=", BinOp::Le), (">=", BinOp::Ge), ("<", BinOp::Lt), (">", BinOp::Gt)] {
+    for (op_str, op) in &[
+        ("==", BinOp::Eq),
+        ("!=", BinOp::Ne),
+        ("<=", BinOp::Le),
+        (">=", BinOp::Ge),
+        ("<", BinOp::Lt),
+        (">", BinOp::Gt),
+    ] {
         if let Some(pos) = find_top_level_op(s, op_str) {
             let left = s[..pos].trim();
             let right = s[pos + op_str.len()..].trim();
@@ -683,10 +715,14 @@ fn collect_free_vars(expr: &SpecExpr, vars: &mut Vec<String>) {
         SpecExpr::Field(e, _) => collect_free_vars(e, vars),
         SpecExpr::MethodCall(e, _, args) => {
             collect_free_vars(e, vars);
-            for a in args { collect_free_vars(a, vars); }
+            for a in args {
+                collect_free_vars(a, vars);
+            }
         }
         SpecExpr::Call(_, args) => {
-            for a in args { collect_free_vars(a, vars); }
+            for a in args {
+                collect_free_vars(a, vars);
+            }
         }
         SpecExpr::BinOp(l, _, r) | SpecExpr::Implies(l, r) => {
             collect_free_vars(l, vars);
@@ -771,16 +807,10 @@ fn uses_result(expr: &SpecExpr) -> bool {
         SpecExpr::Result => true,
         SpecExpr::BoolLit(_) | SpecExpr::IntLit(_) | SpecExpr::Var(_) => false,
         SpecExpr::Old(e) | SpecExpr::UnOp(_, e) | SpecExpr::Field(e, _) => uses_result(e),
-        SpecExpr::MethodCall(e, _, args) => {
-            uses_result(e) || args.iter().any(|a| uses_result(a))
-        }
+        SpecExpr::MethodCall(e, _, args) => uses_result(e) || args.iter().any(|a| uses_result(a)),
         SpecExpr::Call(_, args) => args.iter().any(|a| uses_result(a)),
-        SpecExpr::BinOp(l, _, r) | SpecExpr::Implies(l, r) => {
-            uses_result(l) || uses_result(r)
-        }
-        SpecExpr::ForAll(_, c, p) | SpecExpr::Exists(_, c, p) => {
-            uses_result(c) || uses_result(p)
-        }
+        SpecExpr::BinOp(l, _, r) | SpecExpr::Implies(l, r) => uses_result(l) || uses_result(r),
+        SpecExpr::ForAll(_, c, p) | SpecExpr::Exists(_, c, p) => uses_result(c) || uses_result(p),
     }
 }
 
@@ -877,15 +907,15 @@ mod tests {
             .param_mut("xs", "[T]")
             .returns("Vec<T>")
             .requires(SpecExpr::BinOp(
-                Box::new(SpecExpr::MethodCall(Box::new(SpecExpr::Var("xs".into())), "len".into(), vec![])),
+                Box::new(SpecExpr::MethodCall(
+                    Box::new(SpecExpr::Var("xs".into())),
+                    "len".into(),
+                    vec![],
+                )),
                 BinOp::Gt,
                 Box::new(SpecExpr::IntLit(0)),
             ))
-            .ensures(SpecExpr::MethodCall(
-                Box::new(SpecExpr::Result),
-                "is_sorted".into(),
-                vec![],
-            ))
+            .ensures(SpecExpr::MethodCall(Box::new(SpecExpr::Result), "is_sorted".into(), vec![]))
             .perf(Complexity::ONLogN)
             .effect(EffectKind::Pure);
 
@@ -947,21 +977,23 @@ mod tests {
     #[test]
     fn test_parse_expr_comparison() {
         let expr = parse_expr("x > 0").unwrap();
-        assert_eq!(expr, SpecExpr::BinOp(
-            Box::new(SpecExpr::Var("x".into())),
-            BinOp::Gt,
-            Box::new(SpecExpr::IntLit(0)),
-        ));
+        assert_eq!(
+            expr,
+            SpecExpr::BinOp(
+                Box::new(SpecExpr::Var("x".into())),
+                BinOp::Gt,
+                Box::new(SpecExpr::IntLit(0)),
+            )
+        );
     }
 
     #[test]
     fn test_parse_expr_field_access() {
         let expr = parse_expr("xs.len()").unwrap();
-        assert_eq!(expr, SpecExpr::MethodCall(
-            Box::new(SpecExpr::Var("xs".into())),
-            "len".into(),
-            vec![],
-        ));
+        assert_eq!(
+            expr,
+            SpecExpr::MethodCall(Box::new(SpecExpr::Var("xs".into())), "len".into(), vec![],)
+        );
     }
 
     #[test]
@@ -976,21 +1008,27 @@ mod tests {
     #[test]
     fn test_parse_expr_logical() {
         let expr = parse_expr("a && b").unwrap();
-        assert_eq!(expr, SpecExpr::BinOp(
-            Box::new(SpecExpr::Var("a".into())),
-            BinOp::And,
-            Box::new(SpecExpr::Var("b".into())),
-        ));
+        assert_eq!(
+            expr,
+            SpecExpr::BinOp(
+                Box::new(SpecExpr::Var("a".into())),
+                BinOp::And,
+                Box::new(SpecExpr::Var("b".into())),
+            )
+        );
     }
 
     #[test]
     fn test_parse_expr_arithmetic() {
         let expr = parse_expr("x + 1").unwrap();
-        assert_eq!(expr, SpecExpr::BinOp(
-            Box::new(SpecExpr::Var("x".into())),
-            BinOp::Add,
-            Box::new(SpecExpr::IntLit(1)),
-        ));
+        assert_eq!(
+            expr,
+            SpecExpr::BinOp(
+                Box::new(SpecExpr::Var("x".into())),
+                BinOp::Add,
+                Box::new(SpecExpr::IntLit(1)),
+            )
+        );
     }
 
     #[test]
@@ -1097,35 +1135,29 @@ mod tests {
 
     #[test]
     fn test_validate_result_in_precondition() {
-        let spec = SpecBlock::new("bad")
-            .param("x", "i32")
-            .requires(SpecExpr::BinOp(
-                Box::new(SpecExpr::Result),
-                BinOp::Gt,
-                Box::new(SpecExpr::IntLit(0)),
-            ));
+        let spec = SpecBlock::new("bad").param("x", "i32").requires(SpecExpr::BinOp(
+            Box::new(SpecExpr::Result),
+            BinOp::Gt,
+            Box::new(SpecExpr::IntLit(0)),
+        ));
         let errors = validate(&spec);
         assert!(errors.iter().any(|e| e.message.contains("result")));
     }
 
     #[test]
     fn test_validate_unknown_var() {
-        let spec = SpecBlock::new("bad")
-            .param("x", "i32")
-            .requires(SpecExpr::BinOp(
-                Box::new(SpecExpr::Var("z".into())),
-                BinOp::Gt,
-                Box::new(SpecExpr::IntLit(0)),
-            ));
+        let spec = SpecBlock::new("bad").param("x", "i32").requires(SpecExpr::BinOp(
+            Box::new(SpecExpr::Var("z".into())),
+            BinOp::Gt,
+            Box::new(SpecExpr::IntLit(0)),
+        ));
         let errors = validate(&spec);
         assert!(errors.iter().any(|e| e.message.contains("z")));
     }
 
     #[test]
     fn test_validate_pure_conflict() {
-        let spec = SpecBlock::new("bad")
-            .effect(EffectKind::Pure)
-            .effect(EffectKind::Io);
+        let spec = SpecBlock::new("bad").effect(EffectKind::Pure).effect(EffectKind::Io);
         let errors = validate(&spec);
         assert!(errors.iter().any(|e| e.message.contains("pure")));
     }
@@ -1173,8 +1205,7 @@ mod tests {
 
     #[test]
     fn test_runtime_check_with_label() {
-        let spec = SpecBlock::new("test")
-            .requires_labeled("non_empty", SpecExpr::BoolLit(true));
+        let spec = SpecBlock::new("test").requires_labeled("non_empty", SpecExpr::BoolLit(true));
         let checks = generate_runtime_checks(&spec);
         assert_eq!(checks[0].label.as_deref(), Some("non_empty"));
     }
@@ -1277,13 +1308,11 @@ mod tests {
 
     #[test]
     fn test_invariants() {
-        let spec = SpecBlock::new("f")
-            .param("x", "i32")
-            .invariant(SpecExpr::BinOp(
-                Box::new(SpecExpr::Var("x".into())),
-                BinOp::Gt,
-                Box::new(SpecExpr::IntLit(0)),
-            ));
+        let spec = SpecBlock::new("f").param("x", "i32").invariant(SpecExpr::BinOp(
+            Box::new(SpecExpr::Var("x".into())),
+            BinOp::Gt,
+            Box::new(SpecExpr::IntLit(0)),
+        ));
         assert_eq!(spec.invariants().len(), 1);
     }
 }

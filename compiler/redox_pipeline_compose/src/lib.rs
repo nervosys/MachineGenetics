@@ -32,30 +32,51 @@ pub enum Expr {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BinOp {
-    Add, Sub, Mul, Div,
-    Eq, Ne, Lt, Le, Gt, Ge,
-    And, Or,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    And,
+    Or,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum UnOp { Not, Neg }
+pub enum UnOp {
+    Not,
+    Neg,
+}
 
 impl fmt::Display for BinOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Add => write!(f, "+"), Self::Sub => write!(f, "-"),
-            Self::Mul => write!(f, "*"), Self::Div => write!(f, "/"),
-            Self::Eq => write!(f, "=="), Self::Ne => write!(f, "!="),
-            Self::Lt => write!(f, "<"), Self::Le => write!(f, "<="),
-            Self::Gt => write!(f, ">"), Self::Ge => write!(f, ">="),
-            Self::And => write!(f, "&&"), Self::Or => write!(f, "||"),
+            Self::Add => write!(f, "+"),
+            Self::Sub => write!(f, "-"),
+            Self::Mul => write!(f, "*"),
+            Self::Div => write!(f, "/"),
+            Self::Eq => write!(f, "=="),
+            Self::Ne => write!(f, "!="),
+            Self::Lt => write!(f, "<"),
+            Self::Le => write!(f, "<="),
+            Self::Gt => write!(f, ">"),
+            Self::Ge => write!(f, ">="),
+            Self::And => write!(f, "&&"),
+            Self::Or => write!(f, "||"),
         }
     }
 }
 
 impl fmt::Display for UnOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self { Self::Not => write!(f, "!"), Self::Neg => write!(f, "-") }
+        match self {
+            Self::Not => write!(f, "!"),
+            Self::Neg => write!(f, "-"),
+        }
     }
 }
 
@@ -264,12 +285,31 @@ pub enum PipelineError {
 impl fmt::Display for PipelineError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::MissingContract { stage_index, function_name } =>
-                write!(f, "stage {stage_index}: no contract for `{function_name}`"),
-            Self::TypeMismatch { from_stage, from_name, from_output, to_stage, to_name, to_input } =>
-                write!(f, "type mismatch: stage {from_stage} `{from_name}` outputs {from_output}, but stage {to_stage} `{to_name}` expects {to_input}"),
-            Self::ContractIncompatible { from_stage, from_name, to_stage, to_name, postcondition, precondition } =>
-                write!(f, "contract mismatch: stage {from_stage} `{from_name}` postcondition ({postcondition}) may not imply stage {to_stage} `{to_name}` precondition ({precondition})"),
+            Self::MissingContract { stage_index, function_name } => {
+                write!(f, "stage {stage_index}: no contract for `{function_name}`")
+            }
+            Self::TypeMismatch {
+                from_stage,
+                from_name,
+                from_output,
+                to_stage,
+                to_name,
+                to_input,
+            } => write!(
+                f,
+                "type mismatch: stage {from_stage} `{from_name}` outputs {from_output}, but stage {to_stage} `{to_name}` expects {to_input}"
+            ),
+            Self::ContractIncompatible {
+                from_stage,
+                from_name,
+                to_stage,
+                to_name,
+                postcondition,
+                precondition,
+            } => write!(
+                f,
+                "contract mismatch: stage {from_stage} `{from_name}` postcondition ({postcondition}) may not imply stage {to_stage} `{to_name}` precondition ({precondition})"
+            ),
             Self::EmptyPipeline => write!(f, "pipeline is empty"),
         }
     }
@@ -284,11 +324,9 @@ pub fn types_compatible(output: &StageType, input: &StageType) -> bool {
         // Array subtyping
         (StageType::Array(a), StageType::Array(b)) => types_compatible(a, b),
         // Record subtyping: output record has at least all fields of input record
-        (StageType::Record(out_fields), StageType::Record(in_fields)) => {
-            in_fields.iter().all(|(name, ty)| {
-                out_fields.iter().any(|(n, t)| n == name && types_compatible(t, ty))
-            })
-        }
+        (StageType::Record(out_fields), StageType::Record(in_fields)) => in_fields
+            .iter()
+            .all(|(name, ty)| out_fields.iter().any(|(n, t)| n == name && types_compatible(t, ty))),
         _ => false,
     }
 }
@@ -309,16 +347,14 @@ pub fn exprs_structurally_compatible(post: &Expr, pre: &Expr) -> bool {
         (Expr::BinOp(_, post_op, post_rhs), Expr::BinOp(_, pre_op, pre_rhs)) => {
             match (post_op, pre_op) {
                 // post: result > N, pre: input > M => compatible if N >= M
-                (BinOp::Gt, BinOp::Gt) | (BinOp::Ge, BinOp::Ge) |
-                (BinOp::Gt, BinOp::Ge) => {
+                (BinOp::Gt, BinOp::Gt) | (BinOp::Ge, BinOp::Ge) | (BinOp::Gt, BinOp::Ge) => {
                     match (post_rhs.as_ref(), pre_rhs.as_ref()) {
                         (Expr::IntLit(n), Expr::IntLit(m)) => n >= m,
                         _ => false,
                     }
                 }
                 // post: result < N, pre: input < M => compatible if N <= M
-                (BinOp::Lt, BinOp::Lt) | (BinOp::Le, BinOp::Le) |
-                (BinOp::Lt, BinOp::Le) => {
+                (BinOp::Lt, BinOp::Lt) | (BinOp::Le, BinOp::Le) | (BinOp::Lt, BinOp::Le) => {
                     match (post_rhs.as_ref(), pre_rhs.as_ref()) {
                         (Expr::IntLit(n), Expr::IntLit(m)) => n <= m,
                         _ => false,
@@ -334,10 +370,7 @@ pub fn exprs_structurally_compatible(post: &Expr, pre: &Expr) -> bool {
 }
 
 /// Verify a pipeline against a contract registry.
-pub fn verify_pipeline(
-    pipeline: &Pipeline,
-    registry: &ContractRegistry,
-) -> Vec<PipelineError> {
+pub fn verify_pipeline(pipeline: &Pipeline, registry: &ContractRegistry) -> Vec<PipelineError> {
     let mut errors = Vec::new();
 
     if pipeline.stages.is_empty() {
@@ -433,8 +466,14 @@ pub struct CompiledPipeline {
 
 impl fmt::Display for CompiledPipeline {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "compiled pipeline `{}`: {} -> {} ({} stages)",
-            self.name, self.input_type, self.output_type, self.stages.len())
+        write!(
+            f,
+            "compiled pipeline `{}`: {} -> {} ({} stages)",
+            self.name,
+            self.input_type,
+            self.output_type,
+            self.stages.len()
+        )
     }
 }
 
@@ -459,12 +498,10 @@ pub fn compile_pipeline(
         });
     }
 
-    let input_type = compiled_stages.first()
-        .map(|s| s.input_type.clone())
-        .unwrap_or(StageType::Unit);
-    let output_type = compiled_stages.last()
-        .map(|s| s.output_type.clone())
-        .unwrap_or(StageType::Unit);
+    let input_type =
+        compiled_stages.first().map(|s| s.input_type.clone()).unwrap_or(StageType::Unit);
+    let output_type =
+        compiled_stages.last().map(|s| s.output_type.clone()).unwrap_or(StageType::Unit);
 
     Ok(CompiledPipeline {
         name: pipeline.name.clone(),
@@ -505,10 +542,7 @@ impl fmt::Display for PipelineAnalysis {
 }
 
 /// Analyze a pipeline.
-pub fn analyze_pipeline(
-    pipeline: &Pipeline,
-    registry: &ContractRegistry,
-) -> PipelineAnalysis {
+pub fn analyze_pipeline(pipeline: &Pipeline, registry: &ContractRegistry) -> PipelineAnalysis {
     let errors = verify_pipeline(pipeline, registry);
     let stage_count = pipeline.stages.len();
 
@@ -526,11 +560,7 @@ pub fn analyze_pipeline(
         }
     }
 
-    let coverage = if stage_count > 0 {
-        contracts_found as f64 / stage_count as f64
-    } else {
-        0.0
-    };
+    let coverage = if stage_count > 0 { contracts_found as f64 / stage_count as f64 } else { 0.0 };
 
     PipelineAnalysis {
         name: pipeline.name.clone(),
@@ -550,18 +580,21 @@ mod tests {
 
     fn setup_registry() -> ContractRegistry {
         let mut reg = ContractRegistry::new();
-        reg.register(
-            FunctionContract::new("read_input", StageType::Unit, StageType::String)
-                .post(Expr::BinOp(
-                    Box::new(Expr::MethodCall(Box::new(Expr::Result), "len".into(), vec![])),
-                    BinOp::Gt,
-                    Box::new(Expr::IntLit(0)),
-                ))
-        );
+        reg.register(FunctionContract::new("read_input", StageType::Unit, StageType::String).post(
+            Expr::BinOp(
+                Box::new(Expr::MethodCall(Box::new(Expr::Result), "len".into(), vec![])),
+                BinOp::Gt,
+                Box::new(Expr::IntLit(0)),
+            ),
+        ));
         reg.register(
             FunctionContract::new("validate", StageType::String, StageType::String)
                 .pre(Expr::BinOp(
-                    Box::new(Expr::MethodCall(Box::new(Expr::Var("input".into())), "len".into(), vec![])),
+                    Box::new(Expr::MethodCall(
+                        Box::new(Expr::Var("input".into())),
+                        "len".into(),
+                        vec![],
+                    )),
                     BinOp::Gt,
                     Box::new(Expr::IntLit(0)),
                 ))
@@ -569,29 +602,24 @@ mod tests {
                     Box::new(Expr::MethodCall(Box::new(Expr::Result), "len".into(), vec![])),
                     BinOp::Gt,
                     Box::new(Expr::IntLit(0)),
-                ))
+                )),
         );
         reg.register(
             FunctionContract::new("transform", StageType::String, StageType::Int)
                 .pre(Expr::BinOp(
-                    Box::new(Expr::MethodCall(Box::new(Expr::Var("input".into())), "len".into(), vec![])),
+                    Box::new(Expr::MethodCall(
+                        Box::new(Expr::Var("input".into())),
+                        "len".into(),
+                        vec![],
+                    )),
                     BinOp::Gt,
                     Box::new(Expr::IntLit(0)),
                 ))
-                .post(Expr::BinOp(
-                    Box::new(Expr::Result),
-                    BinOp::Ge,
-                    Box::new(Expr::IntLit(0)),
-                ))
+                .post(Expr::BinOp(Box::new(Expr::Result), BinOp::Ge, Box::new(Expr::IntLit(0)))),
         );
-        reg.register(
-            FunctionContract::new("write_output", StageType::Int, StageType::Unit)
-                .pre(Expr::BinOp(
-                    Box::new(Expr::Var("input".into())),
-                    BinOp::Ge,
-                    Box::new(Expr::IntLit(0)),
-                ))
-        );
+        reg.register(FunctionContract::new("write_output", StageType::Int, StageType::Unit).pre(
+            Expr::BinOp(Box::new(Expr::Var("input".into())), BinOp::Ge, Box::new(Expr::IntLit(0))),
+        ));
         reg
     }
 
@@ -632,11 +660,7 @@ mod tests {
     fn test_contract_display() {
         let c = FunctionContract::new("inc", StageType::Int, StageType::Int)
             .pre(Expr::BoolLit(true))
-            .post(Expr::BinOp(
-                Box::new(Expr::Result),
-                BinOp::Gt,
-                Box::new(Expr::IntLit(0)),
-            ));
+            .post(Expr::BinOp(Box::new(Expr::Result), BinOp::Gt, Box::new(Expr::IntLit(0))));
         let s = format!("{c}");
         assert!(s.contains("inc"));
         assert!(s.contains("@req"));
@@ -678,9 +702,7 @@ mod tests {
 
     #[test]
     fn test_types_compatible_record_missing_field() {
-        let out = StageType::Record(vec![
-            ("name".into(), StageType::String),
-        ]);
+        let out = StageType::Record(vec![("name".into(), StageType::String)]);
         let inp = StageType::Record(vec![
             ("name".into(), StageType::String),
             ("age".into(), StageType::Int),
@@ -708,9 +730,7 @@ mod tests {
     #[test]
     fn test_verify_missing_contract() {
         let reg = setup_registry();
-        let p = Pipeline::new("bad")
-            .stage("read_input")
-            .stage("nonexistent");
+        let p = Pipeline::new("bad").stage("read_input").stage("nonexistent");
         let errors = verify_pipeline(&p, &reg);
         assert!(errors.iter().any(|e| matches!(e, PipelineError::MissingContract { .. })));
     }
@@ -728,22 +748,16 @@ mod tests {
     #[test]
     fn test_verify_contract_incompatible() {
         let mut reg = ContractRegistry::new();
-        reg.register(
-            FunctionContract::new("a", StageType::Int, StageType::Int)
-                .post(Expr::BinOp(
-                    Box::new(Expr::Result),
-                    BinOp::Ge,
-                    Box::new(Expr::IntLit(0)),
-                ))
-        );
-        reg.register(
-            FunctionContract::new("b", StageType::Int, StageType::Int)
-                .pre(Expr::BinOp(
-                    Box::new(Expr::Var("input".into())),
-                    BinOp::Gt,
-                    Box::new(Expr::IntLit(100)),
-                ))
-        );
+        reg.register(FunctionContract::new("a", StageType::Int, StageType::Int).post(Expr::BinOp(
+            Box::new(Expr::Result),
+            BinOp::Ge,
+            Box::new(Expr::IntLit(0)),
+        )));
+        reg.register(FunctionContract::new("b", StageType::Int, StageType::Int).pre(Expr::BinOp(
+            Box::new(Expr::Var("input".into())),
+            BinOp::Gt,
+            Box::new(Expr::IntLit(100)),
+        )));
         let p = Pipeline::new("bad").stage("a").stage("b");
         let errors = verify_pipeline(&p, &reg);
         assert!(errors.iter().any(|e| matches!(e, PipelineError::ContractIncompatible { .. })));
@@ -761,14 +775,16 @@ mod tests {
     #[test]
     fn test_exprs_compatible_ge_chain() {
         let post = Expr::BinOp(Box::new(Expr::Result), BinOp::Ge, Box::new(Expr::IntLit(10)));
-        let pre = Expr::BinOp(Box::new(Expr::Var("x".into())), BinOp::Ge, Box::new(Expr::IntLit(5)));
+        let pre =
+            Expr::BinOp(Box::new(Expr::Var("x".into())), BinOp::Ge, Box::new(Expr::IntLit(5)));
         assert!(exprs_structurally_compatible(&post, &pre));
     }
 
     #[test]
     fn test_exprs_compatible_ge_fail() {
         let post = Expr::BinOp(Box::new(Expr::Result), BinOp::Ge, Box::new(Expr::IntLit(3)));
-        let pre = Expr::BinOp(Box::new(Expr::Var("x".into())), BinOp::Ge, Box::new(Expr::IntLit(10)));
+        let pre =
+            Expr::BinOp(Box::new(Expr::Var("x".into())), BinOp::Ge, Box::new(Expr::IntLit(10)));
         assert!(!exprs_structurally_compatible(&post, &pre));
     }
 
@@ -814,9 +830,7 @@ mod tests {
     #[test]
     fn test_analyze_partial_coverage() {
         let reg = setup_registry();
-        let p = Pipeline::new("partial")
-            .stage("read_input")
-            .stage("unknown_stage");
+        let p = Pipeline::new("partial").stage("read_input").stage("unknown_stage");
         let analysis = analyze_pipeline(&p, &reg);
         assert!(!analysis.is_valid);
         assert!(analysis.contract_coverage < 1.0);
@@ -837,10 +851,7 @@ mod tests {
         let e = PipelineError::EmptyPipeline;
         assert_eq!(format!("{e}"), "pipeline is empty");
 
-        let e = PipelineError::MissingContract {
-            stage_index: 1,
-            function_name: "foo".into(),
-        };
+        let e = PipelineError::MissingContract { stage_index: 1, function_name: "foo".into() };
         assert!(format!("{e}").contains("foo"));
     }
 
@@ -855,11 +866,7 @@ mod tests {
 
     #[test]
     fn test_expr_display() {
-        let e = Expr::BinOp(
-            Box::new(Expr::Var("x".into())),
-            BinOp::Add,
-            Box::new(Expr::IntLit(1)),
-        );
+        let e = Expr::BinOp(Box::new(Expr::Var("x".into())), BinOp::Add, Box::new(Expr::IntLit(1)));
         assert_eq!(format!("{e}"), "(x + 1)");
     }
 
@@ -880,10 +887,9 @@ mod tests {
 
     #[test]
     fn test_named_type_compatibility() {
-        assert!(types_compatible(
-            &StageType::Named("Foo".into()),
-            &StageType::Named("Foo".into()),
-        ));
+        assert!(
+            types_compatible(&StageType::Named("Foo".into()), &StageType::Named("Foo".into()),)
+        );
         assert!(!types_compatible(
             &StageType::Named("Foo".into()),
             &StageType::Named("Bar".into()),

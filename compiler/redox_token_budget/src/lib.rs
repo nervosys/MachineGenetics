@@ -103,7 +103,9 @@ pub fn count_tokens(source: &str) -> usize {
         if ch.is_ascii_digit() {
             count += 1;
             i += 1;
-            while i < len && (chars[i].is_ascii_alphanumeric() || chars[i] == '.' || chars[i] == '_') {
+            while i < len
+                && (chars[i].is_ascii_alphanumeric() || chars[i] == '.' || chars[i] == '_')
+            {
                 i += 1;
             }
             continue;
@@ -113,9 +115,8 @@ pub fn count_tokens(source: &str) -> usize {
         if i + 1 < len {
             let two = &source[i..i + 2];
             match two {
-                "->" | "=>" | "::" | ".." | "==" | "!=" | "<=" | ">="
-                | "&&" | "||" | "<<" | ">>" | "+=" | "-=" | "*=" | "/="
-                | "&=" | "|=" | "^=" | "%=" => {
+                "->" | "=>" | "::" | ".." | "==" | "!=" | "<=" | ">=" | "&&" | "||" | "<<"
+                | ">>" | "+=" | "-=" | "*=" | "/=" | "&=" | "|=" | "^=" | "%=" => {
                     count += 1;
                     i += 2;
                     continue;
@@ -267,7 +268,8 @@ fn parse_item_header(line: &str) -> Option<(ItemKind, String)> {
         Some((ItemKind::Enum, name))
     } else if line.starts_with("impl") {
         let rest = line.strip_prefix("impl").unwrap().trim();
-        let name = rest.split(|c: char| c == '{' || c == '<' || c.is_whitespace())
+        let name = rest
+            .split(|c: char| c == '{' || c == '<' || c.is_whitespace())
             .next()
             .unwrap_or("?")
             .to_string();
@@ -313,7 +315,10 @@ fn extract_name_after(line: &str, keyword: &str) -> String {
         return "?".to_string();
     };
     let after = after.trim();
-    after.split(|c: char| c == '(' || c == '<' || c == '{' || c == ':' || c == ';' || c.is_whitespace())
+    after
+        .split(|c: char| {
+            c == '(' || c == '<' || c == '{' || c == ':' || c == ';' || c.is_whitespace()
+        })
         .next()
         .unwrap_or("?")
         .to_string()
@@ -390,12 +395,7 @@ impl FileReport {
     pub fn from_source(path: &str, source: &str) -> Self {
         let total_tokens = count_tokens(source);
         let items = extract_items(source);
-        Self {
-            path: path.to_string(),
-            total_tokens,
-            compact_tokens: None,
-            items,
-        }
+        Self { path: path.to_string(), total_tokens, compact_tokens: None, items }
     }
 
     /// Set the compact token count (from a compact-formatted version of same source).
@@ -422,9 +422,7 @@ impl FileReport {
 
     /// Get the function with the highest token count.
     pub fn most_expensive_function(&self) -> Option<&ItemTokens> {
-        self.items.iter()
-            .filter(|it| it.kind == ItemKind::Function)
-            .max_by_key(|it| it.token_count)
+        self.items.iter().filter(|it| it.kind == ItemKind::Function).max_by_key(|it| it.token_count)
     }
 
     /// Format the report as human-readable text.
@@ -460,10 +458,7 @@ pub struct ModuleReport {
 
 impl ModuleReport {
     pub fn new(name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-            files: Vec::new(),
-        }
+        Self { name: name.to_string(), files: Vec::new() }
     }
 
     pub fn add_file(&mut self, report: FileReport) {
@@ -493,11 +488,7 @@ impl ModuleReport {
     pub fn savings_percent(&self) -> Option<f64> {
         let total = self.total_tokens();
         let compact = self.total_compact_tokens()?;
-        if total > 0 {
-            Some(((total - compact) as f64 / total as f64) * 100.0)
-        } else {
-            Some(0.0)
-        }
+        if total > 0 { Some(((total - compact) as f64 / total as f64) * 100.0) } else { Some(0.0) }
     }
 }
 
@@ -511,13 +502,12 @@ pub struct BuildReport {
 
 impl BuildReport {
     pub fn new() -> Self {
-        Self {
-            modules: BTreeMap::new(),
-        }
+        Self { modules: BTreeMap::new() }
     }
 
     pub fn add_file(&mut self, module: &str, report: FileReport) {
-        self.modules.entry(module.to_string())
+        self.modules
+            .entry(module.to_string())
             .or_insert_with(|| ModuleReport::new(module))
             .add_file(report);
     }
@@ -541,7 +531,11 @@ impl BuildReport {
 
         for (name, module) in &self.modules {
             out.push_str(&format!("Module: {}\n", name));
-            out.push_str(&format!("  Files: {}  Tokens: {}", module.file_count(), module.total_tokens()));
+            out.push_str(&format!(
+                "  Files: {}  Tokens: {}",
+                module.file_count(),
+                module.total_tokens()
+            ));
             if let Some(pct) = module.savings_percent() {
                 out.push_str(&format!("  Compact savings: {:.1}%", pct));
             }
@@ -564,8 +558,12 @@ impl BuildReport {
             out.push('\n');
         }
 
-        out.push_str(&format!("Total: {} tokens across {} files ({} items)\n",
-            self.total_tokens(), self.total_files(), self.total_items()));
+        out.push_str(&format!(
+            "Total: {} tokens across {} files ({} items)\n",
+            self.total_tokens(),
+            self.total_files(),
+            self.total_items()
+        ));
         out
     }
 
@@ -597,7 +595,10 @@ impl BuildReport {
                 for (ii, item) in file.items.iter().enumerate() {
                     out.push_str("            {\n");
                     out.push_str(&format!("              \"kind\": \"{}\",\n", item.kind));
-                    out.push_str(&format!("              \"name\": \"{}\",\n", escape_json(&item.name)));
+                    out.push_str(&format!(
+                        "              \"name\": \"{}\",\n",
+                        escape_json(&item.name)
+                    ));
                     out.push_str(&format!("              \"line\": {},\n", item.line));
                     out.push_str(&format!("              \"token_count\": {}\n", item.token_count));
                     out.push_str("            }");
@@ -676,11 +677,7 @@ impl std::fmt::Display for ViolationKind {
 
 impl TokenBudget {
     pub fn new() -> Self {
-        Self {
-            max_function_tokens: None,
-            max_file_tokens: None,
-            max_module_tokens: None,
-        }
+        Self { max_function_tokens: None, max_file_tokens: None, max_module_tokens: None }
     }
 
     pub fn with_function_limit(mut self, limit: usize) -> Self {
@@ -935,8 +932,7 @@ mod tests {
     #[test]
     fn test_file_report_savings() {
         let source = "fn main() {\n    let x = 1;\n}\n";
-        let report = FileReport::from_source("main.rs", source)
-            .with_compact_tokens(5);
+        let report = FileReport::from_source("main.rs", source).with_compact_tokens(5);
         assert!(report.savings_percent().unwrap() > 0.0);
     }
 
@@ -1016,9 +1012,7 @@ fn long_function() {
 
     #[test]
     fn test_budget_no_violations() {
-        let budget = TokenBudget::new()
-            .with_function_limit(1000)
-            .with_file_limit(10000);
+        let budget = TokenBudget::new().with_function_limit(1000).with_file_limit(10000);
         let mut report = BuildReport::new();
         report.add_file("m", FileReport::from_source("a.rs", "fn a() {}"));
         let violations = budget.check(&report);
@@ -1029,7 +1023,10 @@ fn long_function() {
     fn test_budget_function_violation() {
         let budget = TokenBudget::new().with_function_limit(3);
         let mut report = BuildReport::new();
-        report.add_file("m", FileReport::from_source("a.rs", "fn big_fn() {\n    let a = 1;\n    let b = 2;\n}"));
+        report.add_file(
+            "m",
+            FileReport::from_source("a.rs", "fn big_fn() {\n    let a = 1;\n    let b = 2;\n}"),
+        );
         let violations = budget.check(&report);
         assert!(!violations.is_empty());
         assert_eq!(violations[0].kind, ViolationKind::FunctionTooLarge);
@@ -1048,7 +1045,10 @@ fn long_function() {
     fn test_budget_module_violation() {
         let budget = TokenBudget::new().with_module_limit(5);
         let mut report = BuildReport::new();
-        report.add_file("m", FileReport::from_source("a.rs", "fn a() { let x = 1; let y = 2; let z = 3; }"));
+        report.add_file(
+            "m",
+            FileReport::from_source("a.rs", "fn a() { let x = 1; let y = 2; let z = 3; }"),
+        );
         let violations = budget.check(&report);
         assert!(violations.iter().any(|v| v.kind == ViolationKind::ModuleTooLarge));
     }

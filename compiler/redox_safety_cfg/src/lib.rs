@@ -295,12 +295,7 @@ impl SafetyConfig {
             profiles.insert(preset.name().to_string(), preset.to_profile());
         }
         let effective = SafetyProfile::uniform("default", CheckLevel::Error);
-        Self {
-            mode: SafetyMode::Full,
-            profiles,
-            active_profile: None,
-            effective,
-        }
+        Self { mode: SafetyMode::Full, profiles, active_profile: None, effective }
     }
 
     /// Convenience: create a config pre-set to the given preset.
@@ -342,10 +337,7 @@ impl SafetyConfig {
                     current_overrides.clear();
                 }
 
-                let section = trimmed
-                    .trim_start_matches('[')
-                    .trim_end_matches(']')
-                    .trim();
+                let section = trimmed.trim_start_matches('[').trim_end_matches(']').trim();
 
                 match section {
                     "safety" => {
@@ -508,16 +500,8 @@ impl SafetyConfig {
 fn parse_kv(line: &str) -> Option<(String, String)> {
     let eq_pos = line.find('=')?;
     let key = line[..eq_pos].trim().trim_matches('"').to_string();
-    let val = line[eq_pos + 1..]
-        .trim()
-        .trim_matches('"')
-        .trim_end_matches(',')
-        .to_string();
-    if key.is_empty() {
-        None
-    } else {
-        Some((key, val))
-    }
+    let val = line[eq_pos + 1..].trim().trim_matches('"').trim_end_matches(',').to_string();
+    if key.is_empty() { None } else { Some((key, val)) }
 }
 
 /// Parse `{ key = "val", key2 = "val2" }` into a map.
@@ -541,7 +525,11 @@ fn parse_inline_table(s: &str) -> Result<HashMap<String, String>, ConfigError> {
 }
 
 /// Apply a check level to a pass by name.
-fn apply_pass(profile: &mut SafetyProfile, pass: &str, level: CheckLevel) -> Result<(), ConfigError> {
+fn apply_pass(
+    profile: &mut SafetyProfile,
+    pass: &str,
+    level: CheckLevel,
+) -> Result<(), ConfigError> {
     match pass {
         "borrow-check" | "borrow_check" => profile.borrow_check = level,
         "lifetime-check" | "lifetime_check" => profile.lifetime_check = level,
@@ -668,12 +656,10 @@ mod tests {
 
     #[test]
     fn from_overrides_partial() {
-        let overrides: HashMap<String, String> = [
-            ("borrow-check".into(), "error".into()),
-            ("lifetime-check".into(), "warn".into()),
-        ]
-        .into_iter()
-        .collect();
+        let overrides: HashMap<String, String> =
+            [("borrow-check".into(), "error".into()), ("lifetime-check".into(), "warn".into())]
+                .into_iter()
+                .collect();
         let p = SafetyProfile::from_overrides("custom", CheckLevel::Skip, &overrides).unwrap();
         assert_eq!(p.borrow_check, CheckLevel::Error);
         assert_eq!(p.lifetime_check, CheckLevel::Warn);

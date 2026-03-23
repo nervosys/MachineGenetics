@@ -62,30 +62,22 @@ impl AgentRole {
     /// Default capabilities for this role.
     pub fn default_capabilities(&self) -> Vec<&'static str> {
         match self {
-            AgentRole::Orchestrator => vec![
-                "read_all", "decompose_task", "assign_region", "manage_consensus",
-            ],
-            AgentRole::Architect => vec![
-                "read_all", "modify_interfaces", "propose_types", "propose_traits",
-            ],
-            AgentRole::Synthesizer => vec![
-                "read_all", "modify_region", "query_types", "query_borrow",
-            ],
-            AgentRole::Reviewer => vec![
-                "read_all", "query_types", "query_borrow", "emit_diagnostics",
-            ],
-            AgentRole::Integrator => vec![
-                "read_all", "merge_changes", "resolve_conflicts",
-            ],
-            AgentRole::Verifier => vec![
-                "read_all", "run_tests", "run_miri", "check_contracts",
-            ],
-            AgentRole::Optimizer => vec![
-                "read_all", "modify_region", "query_perf",
-            ],
-            AgentRole::Documenter => vec![
-                "read_all", "modify_docs", "query_types",
-            ],
+            AgentRole::Orchestrator => {
+                vec!["read_all", "decompose_task", "assign_region", "manage_consensus"]
+            }
+            AgentRole::Architect => {
+                vec!["read_all", "modify_interfaces", "propose_types", "propose_traits"]
+            }
+            AgentRole::Synthesizer => {
+                vec!["read_all", "modify_region", "query_types", "query_borrow"]
+            }
+            AgentRole::Reviewer => {
+                vec!["read_all", "query_types", "query_borrow", "emit_diagnostics"]
+            }
+            AgentRole::Integrator => vec!["read_all", "merge_changes", "resolve_conflicts"],
+            AgentRole::Verifier => vec!["read_all", "run_tests", "run_miri", "check_contracts"],
+            AgentRole::Optimizer => vec!["read_all", "modify_region", "query_perf"],
+            AgentRole::Documenter => vec!["read_all", "modify_docs", "query_types"],
             AgentRole::Custom(_) => vec!["read_all"],
         }
     }
@@ -146,12 +138,7 @@ pub struct Agent {
 
 impl Agent {
     pub fn new(id: &str, role: AgentRole) -> Self {
-        Agent {
-            id: AgentId::new(id),
-            role,
-            assigned_region: None,
-            status: AgentStatus::Idle,
-        }
+        Agent { id: AgentId::new(id), role, assigned_region: None, status: AgentStatus::Idle }
     }
 
     pub fn with_region(mut self, region: &str) -> Self {
@@ -314,7 +301,8 @@ impl Swarm {
 
     /// Get all ready tasks (dependencies satisfied, not yet assigned).
     pub fn ready_tasks(&self) -> Vec<&Task> {
-        self.tasks.iter()
+        self.tasks
+            .iter()
             .filter(|t| t.status == TaskStatus::Pending && t.is_ready(&self.completed_tasks))
             .collect()
     }
@@ -390,9 +378,7 @@ pub struct Orchestrator {
 
 impl Orchestrator {
     pub fn new(swarm_name: &str) -> Self {
-        Orchestrator {
-            swarm: Swarm::new(swarm_name),
-        }
+        Orchestrator { swarm: Swarm::new(swarm_name) }
     }
 
     pub fn swarm(&self) -> &Swarm {
@@ -431,13 +417,13 @@ impl Orchestrator {
         let mut assignments = Vec::new();
 
         // Collect ready task IDs.
-        let ready_ids: Vec<String> = self.swarm.ready_tasks()
-            .iter()
-            .map(|t| t.id.clone())
-            .collect();
+        let ready_ids: Vec<String> =
+            self.swarm.ready_tasks().iter().map(|t| t.id.clone()).collect();
 
         // Collect idle synthesizer/verifier agent IDs.
-        let idle_ids: Vec<AgentId> = self.swarm.agents
+        let idle_ids: Vec<AgentId> = self
+            .swarm
+            .agents
             .values()
             .filter(|a| a.is_idle() && a.role.allows_parallel())
             .map(|a| a.id.clone())
@@ -473,12 +459,7 @@ pub struct MapReducePattern {
 
 impl MapReducePattern {
     pub fn new(name: &str, inputs: Vec<String>, agents: usize) -> Self {
-        MapReducePattern {
-            name: name.to_string(),
-            inputs,
-            agent_count: agents,
-            timeout_ms: 30_000,
-        }
+        MapReducePattern { name: name.to_string(), inputs, agent_count: agents, timeout_ms: 30_000 }
     }
 
     pub fn with_timeout(mut self, ms: u64) -> Self {
@@ -513,20 +494,13 @@ pub struct PipelineStage {
 
 impl PipelineStage {
     pub fn new(name: &str, agents: usize) -> Self {
-        PipelineStage {
-            name: name.to_string(),
-            agent_count: agents,
-        }
+        PipelineStage { name: name.to_string(), agent_count: agents }
     }
 }
 
 impl PipelinePattern {
     pub fn new(name: &str) -> Self {
-        PipelinePattern {
-            name: name.to_string(),
-            stages: Vec::new(),
-            queue_bound: 1000,
-        }
+        PipelinePattern { name: name.to_string(), stages: Vec::new(), queue_bound: 1000 }
     }
 
     pub fn add_stage(mut self, stage: PipelineStage) -> Self {
@@ -609,10 +583,7 @@ pub struct SagaStep {
 
 impl SagaStep {
     pub fn new(action: &str, compensate: &str) -> Self {
-        SagaStep {
-            action: action.to_string(),
-            compensate: compensate.to_string(),
-        }
+        SagaStep { action: action.to_string(), compensate: compensate.to_string() }
     }
 }
 
@@ -657,10 +628,7 @@ impl SagaPattern {
 
     /// Execute compensation for completed steps (indices 0..failed_at).
     pub fn compensation_plan(&self, failed_at: usize) -> Vec<&str> {
-        self.steps[..failed_at].iter()
-            .rev()
-            .map(|s| s.compensate.as_str())
-            .collect()
+        self.steps[..failed_at].iter().rev().map(|s| s.compensate.as_str()).collect()
     }
 }
 
@@ -712,10 +680,7 @@ pub fn verify_pipeline(pattern: &PipelinePattern) -> PatternVerification {
         detail: None,
     });
 
-    PatternVerification {
-        pattern_name: pattern.name.clone(),
-        checks,
-    }
+    PatternVerification { pattern_name: pattern.name.clone(), checks }
 }
 
 /// Verify a saga pattern (all steps have compensation).
@@ -739,10 +704,7 @@ pub fn verify_saga(pattern: &SagaPattern) -> PatternVerification {
         },
     });
 
-    PatternVerification {
-        pattern_name: pattern.name.clone(),
-        checks,
-    }
+    PatternVerification { pattern_name: pattern.name.clone(), checks }
 }
 
 /// Verify a scatter-gather pattern (quorum in range, agents > 0).
@@ -767,10 +729,7 @@ pub fn verify_scatter_gather(pattern: &ScatterGatherPattern) -> PatternVerificat
         detail: None,
     });
 
-    PatternVerification {
-        pattern_name: pattern.name.clone(),
-        checks,
-    }
+    PatternVerification { pattern_name: pattern.name.clone(), checks }
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -839,8 +798,7 @@ mod tests {
 
     #[test]
     fn agent_with_region() {
-        let a = Agent::new("synth-01", AgentRole::Synthesizer)
-            .with_region("module::foo");
+        let a = Agent::new("synth-01", AgentRole::Synthesizer).with_region("module::foo");
         assert_eq!(a.assigned_region.as_deref(), Some("module::foo"));
     }
 
@@ -861,8 +819,7 @@ mod tests {
 
     #[test]
     fn task_ready_with_satisfied_deps() {
-        let t = Task::new("t2", "step two")
-            .with_dependency("t1");
+        let t = Task::new("t2", "step two").with_dependency("t1");
         assert!(!t.is_ready(&[]));
         assert!(t.is_ready(&["t1".to_string()]));
     }
@@ -998,8 +955,7 @@ mod tests {
 
     #[test]
     fn pipeline_validate_ok() {
-        let p = PipelinePattern::new("good")
-            .add_stage(PipelineStage::new("s1", 2));
+        let p = PipelinePattern::new("good").add_stage(PipelineStage::new("s1", 2));
         assert!(p.validate().is_ok());
     }
 
@@ -1011,8 +967,7 @@ mod tests {
 
     #[test]
     fn pipeline_validate_zero_agents() {
-        let p = PipelinePattern::new("bad")
-            .add_stage(PipelineStage::new("s1", 0));
+        let p = PipelinePattern::new("bad").add_stage(PipelineStage::new("s1", 0));
         assert!(p.validate().is_err());
     }
 
@@ -1020,8 +975,7 @@ mod tests {
 
     #[test]
     fn scatter_gather_quorum() {
-        let sg = ScatterGatherPattern::new("audit", 10)
-            .with_quorum(0.8);
+        let sg = ScatterGatherPattern::new("audit", 10).with_quorum(0.8);
         assert_eq!(sg.quorum_count(), 8);
         assert!(!sg.quorum_met(7));
         assert!(sg.quorum_met(8));
@@ -1030,8 +984,7 @@ mod tests {
 
     #[test]
     fn scatter_gather_full_quorum() {
-        let sg = ScatterGatherPattern::new("all", 5)
-            .with_quorum(1.0);
+        let sg = ScatterGatherPattern::new("all", 5).with_quorum(1.0);
         assert_eq!(sg.quorum_count(), 5);
     }
 
@@ -1047,8 +1000,7 @@ mod tests {
 
     #[test]
     fn saga_validate_missing_comp() {
-        let s = SagaPattern::new("bad")
-            .add_step(SagaStep::new("action", ""));
+        let s = SagaPattern::new("bad").add_step(SagaStep::new("action", ""));
         assert!(s.validate().is_err());
     }
 
@@ -1065,8 +1017,7 @@ mod tests {
 
     #[test]
     fn saga_failure_policy() {
-        let s = SagaPattern::new("test")
-            .with_failure_policy(SagaFailurePolicy::Abort);
+        let s = SagaPattern::new("test").with_failure_policy(SagaFailurePolicy::Abort);
         assert_eq!(s.on_failure, SagaFailurePolicy::Abort);
     }
 
@@ -1083,24 +1034,21 @@ mod tests {
 
     #[test]
     fn verify_saga_passes() {
-        let s = SagaPattern::new("good")
-            .add_step(SagaStep::new("x", "undo_x"));
+        let s = SagaPattern::new("good").add_step(SagaStep::new("x", "undo_x"));
         let v = verify_saga(&s);
         assert!(v.all_passed());
     }
 
     #[test]
     fn verify_saga_fails_no_compensation() {
-        let s = SagaPattern::new("bad")
-            .add_step(SagaStep::new("x", ""));
+        let s = SagaPattern::new("bad").add_step(SagaStep::new("x", ""));
         let v = verify_saga(&s);
         assert!(!v.all_passed());
     }
 
     #[test]
     fn verify_scatter_gather_passes() {
-        let sg = ScatterGatherPattern::new("audit", 10)
-            .with_quorum(0.5);
+        let sg = ScatterGatherPattern::new("audit", 10).with_quorum(0.5);
         let v = verify_scatter_gather(&sg);
         assert!(v.all_passed());
     }
@@ -1113,10 +1061,12 @@ mod tests {
 
         // Register agents.
         orch.register_agent(Agent::new("arch-01", AgentRole::Architect));
-        orch.register_agent(Agent::new("synth-01", AgentRole::Synthesizer)
-            .with_region("module::control"));
-        orch.register_agent(Agent::new("synth-02", AgentRole::Synthesizer)
-            .with_region("module::sensors"));
+        orch.register_agent(
+            Agent::new("synth-01", AgentRole::Synthesizer).with_region("module::control"),
+        );
+        orch.register_agent(
+            Agent::new("synth-02", AgentRole::Synthesizer).with_region("module::sensors"),
+        );
         orch.register_agent(Agent::new("verify-01", AgentRole::Verifier));
         orch.register_agent(Agent::new("verify-02", AgentRole::Verifier));
 

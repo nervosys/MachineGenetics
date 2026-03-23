@@ -199,15 +199,16 @@ impl Predicate {
     pub fn subst(&self, var_name: &str, replacement: &Predicate) -> Predicate {
         match self {
             Predicate::Var(v) if v == var_name => replacement.clone(),
-            Predicate::Var(_) | Predicate::True | Predicate::False
-            | Predicate::IntLit(_) | Predicate::BoolLit(_) => self.clone(),
-            Predicate::BinOp(l, op, r) => {
-                Predicate::BinOp(
-                    Box::new(l.subst(var_name, replacement)),
-                    *op,
-                    Box::new(r.subst(var_name, replacement)),
-                )
-            }
+            Predicate::Var(_)
+            | Predicate::True
+            | Predicate::False
+            | Predicate::IntLit(_)
+            | Predicate::BoolLit(_) => self.clone(),
+            Predicate::BinOp(l, op, r) => Predicate::BinOp(
+                Box::new(l.subst(var_name, replacement)),
+                *op,
+                Box::new(r.subst(var_name, replacement)),
+            ),
             Predicate::UnOp(op, e) => {
                 Predicate::UnOp(*op, Box::new(e.subst(var_name, replacement)))
             }
@@ -454,9 +455,7 @@ impl SmtSolver {
         match pred {
             Predicate::BinOp(l, op, r) if positive => {
                 // var op const or const op var
-                if let (Predicate::Var(v), Some(n)) =
-                    (l.as_ref(), self.const_eval_int(r))
-                {
+                if let (Predicate::Var(v), Some(n)) = (l.as_ref(), self.const_eval_int(r)) {
                     let entry = bounds.entry(v.clone()).or_insert((None, None));
                     match op {
                         PredOp::Gt => {
@@ -480,9 +479,7 @@ impl SmtSolver {
                         _ => {}
                     }
                 }
-                if let (Some(n), Predicate::Var(v)) =
-                    (self.const_eval_int(l), r.as_ref())
-                {
+                if let (Some(n), Predicate::Var(v)) = (self.const_eval_int(l), r.as_ref()) {
                     let entry = bounds.entry(v.clone()).or_insert((None, None));
                     match op {
                         PredOp::Lt => {
@@ -604,10 +601,7 @@ pub enum SubtypeResult {
 /// {x: T | P} <: {y: T | Q} iff for all x, P(x) => Q[y:=x](x).
 pub fn check_subtype(sub: &RefinementType, sup: &RefinementType) -> SubtypeResult {
     if sub.base != sup.base {
-        return SubtypeResult::Fail(format!(
-            "base type mismatch: {} vs {}",
-            sub.base, sup.base
-        ));
+        return SubtypeResult::Fail(format!("base type mismatch: {} vs {}", sub.base, sup.base));
     }
 
     // Trivial cases
@@ -712,11 +706,8 @@ impl RefinementChecker {
         expected: &RefinementType,
     ) {
         // Build a refined type from the value fact
-        let value_ty = RefinementType::new(
-            expected.var.clone(),
-            expected.base.clone(),
-            value_fact.clone(),
-        );
+        let value_ty =
+            RefinementType::new(expected.var.clone(), expected.base.clone(), value_fact.clone());
 
         match check_subtype(&value_ty, expected) {
             SubtypeResult::Ok => {
@@ -1028,10 +1019,7 @@ mod tests {
         );
         checker.check_satisfiable(&rt, "test");
         assert!(checker.has_errors());
-        assert!(matches!(
-            &checker.errors()[0],
-            RefinementError::UnsatisfiablePredicate { .. }
-        ));
+        assert!(matches!(&checker.errors()[0], RefinementError::UnsatisfiablePredicate { .. }));
     }
 
     #[test]
@@ -1050,10 +1038,7 @@ mod tests {
         let arg_ty = RefinementType::trivial("x".to_string(), BaseType::Bool);
         checker.check_arg("div", "n", &param_ty, &arg_ty);
         assert!(checker.has_errors());
-        assert!(matches!(
-            &checker.errors()[0],
-            RefinementError::SubtypeFail { .. }
-        ));
+        assert!(matches!(&checker.errors()[0], RefinementError::SubtypeFail { .. }));
     }
 
     // -- Common constructor tests --
@@ -1083,10 +1068,7 @@ mod tests {
                 .to_string(),
             "(i64, i64) -> bool"
         );
-        assert_eq!(
-            BaseType::Tuple(vec![BaseType::Int, BaseType::Str]).to_string(),
-            "(i64, str)"
-        );
+        assert_eq!(BaseType::Tuple(vec![BaseType::Int, BaseType::Str]).to_string(), "(i64, str)");
     }
 
     // -- Error display --
@@ -1100,10 +1082,8 @@ mod tests {
         };
         assert!(e.to_string().contains("type mismatch"));
 
-        let e2 = RefinementError::UndefinedVar {
-            var: "z".to_string(),
-            location: "line 10".to_string(),
-        };
+        let e2 =
+            RefinementError::UndefinedVar { var: "z".to_string(), location: "line 10".to_string() };
         assert!(e2.to_string().contains("undefined variable"));
     }
 

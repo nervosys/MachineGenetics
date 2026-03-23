@@ -90,10 +90,7 @@ pub struct PairFeatures {
 }
 
 /// Extract features for every pair of tasks.
-pub fn extract_pair_features(
-    tasks: &[SwarmTask],
-    history: &[SwarmSession],
-) -> Vec<PairFeatures> {
+pub fn extract_pair_features(tasks: &[SwarmTask], history: &[SwarmSession]) -> Vec<PairFeatures> {
     let historical_rates = compute_historical_rates(history);
     let mut features = Vec::new();
 
@@ -118,14 +115,11 @@ pub fn extract_pair_features(
                     rate_count += 1;
                 }
             }
-            let historical_conflict_rate = if rate_count > 0 {
-                rate_sum / rate_count as f64
-            } else {
-                0.0
-            };
+            let historical_conflict_rate =
+                if rate_count > 0 { rate_sum / rate_count as f64 } else { 0.0 };
 
-            let has_dependency = a.dependencies.contains(&b.task_id)
-                || b.dependencies.contains(&a.task_id);
+            let has_dependency =
+                a.dependencies.contains(&b.task_id) || b.dependencies.contains(&a.task_id);
 
             features.push(PairFeatures {
                 task_a: a.task_id.clone(),
@@ -201,8 +195,10 @@ pub fn predict_conflicts(features: &[PairFeatures]) -> Vec<ConflictPrediction> {
         // Historical rate factor.
         if pair.historical_conflict_rate > 0.0 {
             prob += pair.historical_conflict_rate * 0.3;
-            factors.push(format!("historical conflict rate {:.0}%",
-                pair.historical_conflict_rate * 100.0));
+            factors.push(format!(
+                "historical conflict rate {:.0}%",
+                pair.historical_conflict_rate * 100.0
+            ));
         }
 
         // Dependency relationship reduces merge conflict risk (ordered) but
@@ -233,7 +229,9 @@ pub fn predict_conflicts(features: &[PairFeatures]) -> Vec<ConflictPrediction> {
         }
     }
 
-    predictions.sort_by(|a, b| b.probability.partial_cmp(&a.probability).unwrap_or(std::cmp::Ordering::Equal));
+    predictions.sort_by(|a, b| {
+        b.probability.partial_cmp(&a.probability).unwrap_or(std::cmp::Ordering::Equal)
+    });
     predictions
 }
 
@@ -274,11 +272,8 @@ pub fn score_decomposition(
 
     // Parallelism factor: how many groups can run concurrently
     let max_depth = compute_group_depth(groups);
-    let parallelism_factor = if max_depth > 0 {
-        groups.len() as f64 / max_depth as f64
-    } else {
-        1.0
-    };
+    let parallelism_factor =
+        if max_depth > 0 { groups.len() as f64 / max_depth as f64 } else { 1.0 };
 
     // Estimated duration: sequential time / parallelism
     let total_task_time: u64 = tasks.iter().map(|t| t.duration_secs).sum();
@@ -291,9 +286,7 @@ pub fn score_decomposition(
     // Estimate conflict probability from pair analysis
     let features = extract_pair_features(tasks, history);
     let predictions = predict_conflicts(&features);
-    let max_conflict_prob = predictions.iter()
-        .map(|p| p.probability)
-        .fold(0.0_f64, f64::max);
+    let max_conflict_prob = predictions.iter().map(|p| p.probability).fold(0.0_f64, f64::max);
 
     // Score: reward parallelism, penalize conflicts and duration
     let time_ratio = if avg_historical_duration > 0 {
@@ -316,11 +309,7 @@ pub fn score_decomposition(
 fn compute_group_depth(groups: &[TaskGroup]) -> usize {
     let mut depths: HashMap<usize, usize> = HashMap::new();
 
-    fn depth_of(
-        gid: usize,
-        groups: &[TaskGroup],
-        cache: &mut HashMap<usize, usize>,
-    ) -> usize {
+    fn depth_of(gid: usize, groups: &[TaskGroup], cache: &mut HashMap<usize, usize>) -> usize {
         if let Some(d) = cache.get(&gid) {
             return *d;
         }
@@ -328,10 +317,8 @@ fn compute_group_depth(groups: &[TaskGroup]) -> usize {
             Some(g) => g,
             None => return 1,
         };
-        let max_dep = group.depends_on.iter()
-            .map(|dep| depth_of(*dep, groups, cache))
-            .max()
-            .unwrap_or(0);
+        let max_dep =
+            group.depends_on.iter().map(|dep| depth_of(*dep, groups, cache)).max().unwrap_or(0);
         let d = max_dep + 1;
         cache.insert(gid, d);
         d
@@ -362,10 +349,16 @@ pub fn suggest_decomposition(
 
     fn find(parent: &mut [usize], x: usize) -> usize {
         let mut r = x;
-        while parent[r] != r { r = parent[r]; }
+        while parent[r] != r {
+            r = parent[r];
+        }
         // Path compression
         let mut c = x;
-        while c != r { let next = parent[c]; parent[c] = r; c = next; }
+        while c != r {
+            let next = parent[c];
+            parent[c] = r;
+            c = next;
+        }
         r
     }
 
@@ -392,17 +385,11 @@ pub fn suggest_decomposition(
     let mut task_to_group: HashMap<String, usize> = HashMap::new();
 
     for (gid, (_root, members)) in cluster_map.into_iter().enumerate() {
-        let task_ids: Vec<String> = members.iter()
-            .map(|i| tasks[*i].task_id.clone())
-            .collect();
+        let task_ids: Vec<String> = members.iter().map(|i| tasks[*i].task_id.clone()).collect();
         for tid in &task_ids {
             task_to_group.insert(tid.clone(), gid);
         }
-        groups.push(TaskGroup {
-            group_id: gid,
-            task_ids,
-            depends_on: Vec::new(),
-        });
+        groups.push(TaskGroup { group_id: gid, task_ids, depends_on: Vec::new() });
     }
 
     // Add inter-group dependencies
@@ -410,9 +397,7 @@ pub fn suggest_decomposition(
         if let Some(my_group) = task_to_group.get(&task.task_id) {
             for dep_id in &task.dependencies {
                 if let Some(dep_group) = task_to_group.get(dep_id) {
-                    if dep_group != my_group
-                        && !groups[*my_group].depends_on.contains(dep_group)
-                    {
+                    if dep_group != my_group && !groups[*my_group].depends_on.contains(dep_group) {
                         groups[*my_group].depends_on.push(*dep_group);
                     }
                 }
@@ -509,10 +494,8 @@ mod tests {
 
     #[test]
     fn pair_features_with_history() {
-        let tasks = vec![
-            make_task("a", &["main.rdx"], &[], &[]),
-            make_task("b", &["main.rdx"], &[], &[]),
-        ];
+        let tasks =
+            vec![make_task("a", &["main.rdx"], &[], &[]), make_task("b", &["main.rdx"], &[], &[])];
         let history = make_history();
         let features = extract_pair_features(&tasks, &history);
         assert!(features[0].historical_conflict_rate > 0.0);
@@ -520,10 +503,8 @@ mod tests {
 
     #[test]
     fn pair_features_dependency() {
-        let tasks = vec![
-            make_task("a", &["f1.rdx"], &[], &[]),
-            make_task("b", &["f1.rdx"], &[], &["a"]),
-        ];
+        let tasks =
+            vec![make_task("a", &["f1.rdx"], &[], &[]), make_task("b", &["f1.rdx"], &[], &["a"])];
         let features = extract_pair_features(&tasks, &[]);
         assert!(features[0].has_dependency);
     }
@@ -600,7 +581,8 @@ mod tests {
 
     #[test]
     fn group_depth_single() {
-        let groups = vec![TaskGroup { group_id: 0, task_ids: vec!["a".to_string()], depends_on: vec![] }];
+        let groups =
+            vec![TaskGroup { group_id: 0, task_ids: vec!["a".to_string()], depends_on: vec![] }];
         assert_eq!(compute_group_depth(&groups), 1);
     }
 
@@ -628,10 +610,8 @@ mod tests {
 
     #[test]
     fn score_parallel_better_than_serial() {
-        let tasks = vec![
-            make_task("a", &["f1.rdx"], &[], &[]),
-            make_task("b", &["f2.rdx"], &[], &[]),
-        ];
+        let tasks =
+            vec![make_task("a", &["f1.rdx"], &[], &[]), make_task("b", &["f2.rdx"], &[], &[])];
         let parallel = vec![
             TaskGroup { group_id: 0, task_ids: vec!["a".to_string()], depends_on: vec![] },
             TaskGroup { group_id: 1, task_ids: vec!["b".to_string()], depends_on: vec![] },
@@ -647,13 +627,13 @@ mod tests {
 
     #[test]
     fn score_with_history() {
-        let tasks = vec![
-            make_task("a", &["main.rdx"], &[], &[]),
-            make_task("b", &["main.rdx"], &[], &[]),
-        ];
-        let groups = vec![
-            TaskGroup { group_id: 0, task_ids: vec!["a".to_string(), "b".to_string()], depends_on: vec![] },
-        ];
+        let tasks =
+            vec![make_task("a", &["main.rdx"], &[], &[]), make_task("b", &["main.rdx"], &[], &[])];
+        let groups = vec![TaskGroup {
+            group_id: 0,
+            task_ids: vec!["a".to_string(), "b".to_string()],
+            depends_on: vec![],
+        }];
         let history = make_history();
         let strategy = score_decomposition(&tasks, &groups, &history);
         assert!(strategy.estimated_conflict_prob > 0.0);
@@ -671,9 +651,8 @@ mod tests {
         let strategy = suggest_decomposition(&tasks, &[]);
         // a and b should be in the same group (share f2.rdx), c separate
         assert!(strategy.task_groups.len() >= 2);
-        let c_group = strategy.task_groups.iter()
-            .find(|g| g.task_ids.contains(&"c".to_string()))
-            .unwrap();
+        let c_group =
+            strategy.task_groups.iter().find(|g| g.task_ids.contains(&"c".to_string())).unwrap();
         assert!(!c_group.task_ids.contains(&"a".to_string()));
     }
 
@@ -702,14 +681,14 @@ mod tests {
 
     #[test]
     fn suggest_with_dependencies() {
-        let tasks = vec![
-            make_task("a", &["f1.rdx"], &[], &[]),
-            make_task("b", &["f2.rdx"], &[], &["a"]),
-        ];
+        let tasks =
+            vec![make_task("a", &["f1.rdx"], &[], &[]), make_task("b", &["f2.rdx"], &[], &["a"])];
         let strategy = suggest_decomposition(&tasks, &[]);
         // Different files → different groups, but b depends on a's group
         if strategy.task_groups.len() > 1 {
-            let b_group = strategy.task_groups.iter()
+            let b_group = strategy
+                .task_groups
+                .iter()
                 .find(|g| g.task_ids.contains(&"b".to_string()))
                 .unwrap();
             assert!(!b_group.depends_on.is_empty());

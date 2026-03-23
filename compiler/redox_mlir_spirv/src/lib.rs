@@ -314,10 +314,18 @@ pub enum SpirvType {
 }
 
 impl SpirvType {
-    pub fn i32() -> Self { SpirvType::Int { width: 32, signed: true } }
-    pub fn u32() -> Self { SpirvType::Int { width: 32, signed: false } }
-    pub fn f32() -> Self { SpirvType::Float { width: 32 } }
-    pub fn f64() -> Self { SpirvType::Float { width: 64 } }
+    pub fn i32() -> Self {
+        SpirvType::Int { width: 32, signed: true }
+    }
+    pub fn u32() -> Self {
+        SpirvType::Int { width: 32, signed: false }
+    }
+    pub fn f32() -> Self {
+        SpirvType::Float { width: 32 }
+    }
+    pub fn f64() -> Self {
+        SpirvType::Float { width: 64 }
+    }
     pub fn vec4_f32() -> Self {
         SpirvType::Vector { element: Box::new(SpirvType::f32()), count: 4 }
     }
@@ -364,11 +372,7 @@ pub struct SpirvOp {
 
 impl SpirvOp {
     pub fn new(opcode: &str, comment: &str) -> Self {
-        SpirvOp {
-            opcode: opcode.to_string(),
-            operands: Vec::new(),
-            comment: comment.to_string(),
-        }
+        SpirvOp { opcode: opcode.to_string(), operands: Vec::new(), comment: comment.to_string() }
     }
 
     pub fn with_operands(mut self, operands: &[&str]) -> Self {
@@ -591,17 +595,11 @@ impl SpirvModule {
         }
 
         // Memory model
-        asm.push_str(&format!(
-            "OpMemoryModel {} {}\n",
-            self.addressing_model, self.memory_model
-        ));
+        asm.push_str(&format!("OpMemoryModel {} {}\n", self.addressing_model, self.memory_model));
 
         // Entry points
         for ep in &self.entry_points {
-            asm.push_str(&format!(
-                "OpEntryPoint {} %main \"{}\"",
-                ep.execution_model, ep.name
-            ));
+            asm.push_str(&format!("OpEntryPoint {} %main \"{}\"", ep.execution_model, ep.name));
             for var in &ep.interface_vars {
                 asm.push_str(&format!(" %{var}"));
             }
@@ -692,15 +690,10 @@ pub fn lower_to_spirv(op: &GenericOp, env: &TargetEnv) -> Vec<SpirvOp> {
                 SpirvOp::new("OpVariable", "kernel argument setup (Vulkan)"),
                 SpirvOp::new("OpFunctionCall", "dispatch compute (Vulkan)"),
             ],
-            TargetEnv::OpenCL(_) => vec![
-                SpirvOp::new("OpFunctionCall", "enqueue kernel (OpenCL)"),
-            ],
+            TargetEnv::OpenCL(_) => vec![SpirvOp::new("OpFunctionCall", "enqueue kernel (OpenCL)")],
         },
         _ => {
-            vec![SpirvOp::new(
-                &format!("; unsupported: {}", op.name),
-                "fallback",
-            )]
+            vec![SpirvOp::new(&format!("; unsupported: {}", op.name), "fallback")]
         }
     }
 }
@@ -774,9 +767,7 @@ pub fn run_spirv_pipeline(
         TargetEnv::Vulkan(_) => {
             EntryPoint::compute(&config.entry_point_name, config.workgroup_size)
         }
-        TargetEnv::OpenCL(_) => {
-            EntryPoint::kernel(&config.entry_point_name, config.workgroup_size)
-        }
+        TargetEnv::OpenCL(_) => EntryPoint::kernel(&config.entry_point_name, config.workgroup_size),
     };
     module.add_entry_point(entry);
 
@@ -789,12 +780,7 @@ pub fn run_spirv_pipeline(
     // Validate
     let validation_diags = validate_module(&module);
 
-    SpirvPipelineResult {
-        module,
-        generic_ops,
-        spirv_ops,
-        validation_diags,
-    }
+    SpirvPipelineResult { module, generic_ops, spirv_ops, validation_diags }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -853,10 +839,7 @@ pub fn validate_module(module: &SpirvModule) -> Vec<ValidationDiag> {
         if ep.workgroup_size.total_invocations() == 0 {
             diags.push(ValidationDiag {
                 severity: DiagSeverity::Error,
-                message: format!(
-                    "entry point '{}' has zero workgroup invocations",
-                    ep.name
-                ),
+                message: format!("entry point '{}' has zero workgroup invocations", ep.name),
             });
         }
 
@@ -1255,7 +1238,9 @@ mod tests {
         // Add a Kernel entry point to a Vulkan target
         m.add_entry_point(EntryPoint::kernel("wrong", WorkgroupSize::linear(64)));
         let diags = validate_module(&m);
-        assert!(diags.iter().any(|d| d.message.contains("Kernel") && d.message.contains("GLCompute")));
+        assert!(
+            diags.iter().any(|d| d.message.contains("Kernel") && d.message.contains("GLCompute"))
+        );
     }
 
     #[test]
@@ -1300,10 +1285,7 @@ mod tests {
     #[test]
     fn full_pipeline_vulkan() {
         let config = SpirvPipelineConfig::vulkan("main_cs", WorkgroupSize::linear(64));
-        let ops = vec![
-            GenericOp::new("llvm.load", "load"),
-            GenericOp::new("llvm.store", "store"),
-        ];
+        let ops = vec![GenericOp::new("llvm.load", "load"), GenericOp::new("llvm.store", "store")];
         let result = run_spirv_pipeline(ops, &config);
         assert!(result.validation_diags.is_empty());
         assert_eq!(result.spirv_ops.len(), 2);

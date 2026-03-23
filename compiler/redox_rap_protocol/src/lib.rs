@@ -96,7 +96,9 @@ impl fmt::Display for JsonValue {
             JsonValue::Array(arr) => {
                 write!(f, "[")?;
                 for (i, v) in arr.iter().enumerate() {
-                    if i > 0 { write!(f, ",")?; }
+                    if i > 0 {
+                        write!(f, ",")?;
+                    }
                     write!(f, "{v}")?;
                 }
                 write!(f, "]")
@@ -104,7 +106,9 @@ impl fmt::Display for JsonValue {
             JsonValue::Object(map) => {
                 write!(f, "{{")?;
                 for (i, (k, v)) in map.iter().enumerate() {
-                    if i > 0 { write!(f, ",")?; }
+                    if i > 0 {
+                        write!(f, ",")?;
+                    }
                     write!(f, "\"{k}\":{v}")?;
                 }
                 write!(f, "}}")
@@ -232,10 +236,8 @@ impl RpcError {
 
     /// Serialize to JSON.
     pub fn to_json(&self) -> String {
-        let mut parts = vec![
-            format!("\"code\":{}", self.code),
-            format!("\"message\":\"{}\"", self.message),
-        ];
+        let mut parts =
+            vec![format!("\"code\":{}", self.code), format!("\"message\":\"{}\"", self.message)];
         if let Some(ref d) = self.data {
             parts.push(format!("\"data\":{d}"));
         }
@@ -271,12 +273,7 @@ impl RpcResponse {
 
     /// Create an error response.
     pub fn error(id: Option<RequestId>, err: RpcError) -> Self {
-        RpcResponse {
-            jsonrpc: JSONRPC_VERSION.to_string(),
-            id,
-            result: None,
-            error: Some(err),
-        }
+        RpcResponse { jsonrpc: JSONRPC_VERSION.to_string(), id, result: None, error: Some(err) }
     }
 
     /// Whether this response indicates success.
@@ -328,30 +325,70 @@ impl fmt::Display for Capability {
 pub mod capabilities {
     use super::Capability;
 
-    pub fn query_rules() -> Capability { Capability::new("query.rules", 1) }
-    pub fn query_types() -> Capability { Capability::new("query.types", 1) }
-    pub fn query_search() -> Capability { Capability::new("query.search", 1) }
-    pub fn tokens() -> Capability { Capability::new("tokens", 1) }
-    pub fn ast() -> Capability { Capability::new("ast", 1) }
-    pub fn diagnostics() -> Capability { Capability::new("diagnostics", 1) }
-    pub fn build_heal() -> Capability { Capability::new("build.heal", 1) }
-    pub fn cost_query() -> Capability { Capability::new("cost.query", 1) }
-    pub fn cost_compare() -> Capability { Capability::new("cost.compare", 1) }
-    pub fn skb_query() -> Capability { Capability::new("skb.query", 1) }
-    pub fn skb_spec() -> Capability { Capability::new("skb.spec", 1) }
-    pub fn verify_contracts() -> Capability { Capability::new("verify.contracts", 1) }
-    pub fn session_management() -> Capability { Capability::new("session", 1) }
-    pub fn swarm_coordination() -> Capability { Capability::new("swarm", 1) }
-    pub fn lease_management() -> Capability { Capability::new("lease", 1) }
+    pub fn query_rules() -> Capability {
+        Capability::new("query.rules", 1)
+    }
+    pub fn query_types() -> Capability {
+        Capability::new("query.types", 1)
+    }
+    pub fn query_search() -> Capability {
+        Capability::new("query.search", 1)
+    }
+    pub fn tokens() -> Capability {
+        Capability::new("tokens", 1)
+    }
+    pub fn ast() -> Capability {
+        Capability::new("ast", 1)
+    }
+    pub fn diagnostics() -> Capability {
+        Capability::new("diagnostics", 1)
+    }
+    pub fn build_heal() -> Capability {
+        Capability::new("build.heal", 1)
+    }
+    pub fn cost_query() -> Capability {
+        Capability::new("cost.query", 1)
+    }
+    pub fn cost_compare() -> Capability {
+        Capability::new("cost.compare", 1)
+    }
+    pub fn skb_query() -> Capability {
+        Capability::new("skb.query", 1)
+    }
+    pub fn skb_spec() -> Capability {
+        Capability::new("skb.spec", 1)
+    }
+    pub fn verify_contracts() -> Capability {
+        Capability::new("verify.contracts", 1)
+    }
+    pub fn session_management() -> Capability {
+        Capability::new("session", 1)
+    }
+    pub fn swarm_coordination() -> Capability {
+        Capability::new("swarm", 1)
+    }
+    pub fn lease_management() -> Capability {
+        Capability::new("lease", 1)
+    }
 
     /// All standard capabilities.
     pub fn all_standard() -> Vec<Capability> {
         vec![
-            query_rules(), query_types(), query_search(),
-            tokens(), ast(), diagnostics(),
-            build_heal(), cost_query(), cost_compare(),
-            skb_query(), skb_spec(), verify_contracts(),
-            session_management(), swarm_coordination(), lease_management(),
+            query_rules(),
+            query_types(),
+            query_search(),
+            tokens(),
+            ast(),
+            diagnostics(),
+            build_heal(),
+            cost_query(),
+            cost_compare(),
+            skb_query(),
+            skb_spec(),
+            verify_contracts(),
+            session_management(),
+            swarm_coordination(),
+            lease_management(),
         ]
     }
 }
@@ -438,10 +475,7 @@ impl NegotiationResult {
 }
 
 /// Negotiate capabilities between client and server.
-pub fn negotiate(
-    client: &ClientCapabilities,
-    server: &ServerCapabilities,
-) -> NegotiationResult {
+pub fn negotiate(client: &ClientCapabilities, server: &ServerCapabilities) -> NegotiationResult {
     let mut granted = Vec::new();
     let mut denied = Vec::new();
 
@@ -563,10 +597,7 @@ pub struct SessionManager {
 
 impl SessionManager {
     pub fn new(default_timeout: Duration) -> Self {
-        SessionManager {
-            sessions: BTreeMap::new(),
-            default_timeout,
-        }
+        SessionManager { sessions: BTreeMap::new(), default_timeout }
     }
 
     pub fn with_default_timeout() -> Self {
@@ -587,8 +618,7 @@ impl SessionManager {
         id: SessionId,
         server_caps: &ServerCapabilities,
     ) -> Result<&NegotiationResult, SessionError> {
-        let session = self.sessions.get_mut(&id.0)
-            .ok_or(SessionError::NotFound(id))?;
+        let session = self.sessions.get_mut(&id.0).ok_or(SessionError::NotFound(id))?;
 
         if session.state != SessionState::Created {
             return Err(SessionError::InvalidState {
@@ -618,8 +648,7 @@ impl SessionManager {
 
     /// Touch a session (update last activity).
     pub fn touch(&mut self, id: SessionId) -> Result<(), SessionError> {
-        let session = self.sessions.get_mut(&id.0)
-            .ok_or(SessionError::NotFound(id))?;
+        let session = self.sessions.get_mut(&id.0).ok_or(SessionError::NotFound(id))?;
 
         if session.is_expired() {
             session.state = SessionState::Closed;
@@ -638,26 +667,22 @@ impl SessionManager {
 
     /// Shutdown a session gracefully.
     pub fn shutdown(&mut self, id: SessionId) -> Result<(), SessionError> {
-        let session = self.sessions.get_mut(&id.0)
-            .ok_or(SessionError::NotFound(id))?;
+        let session = self.sessions.get_mut(&id.0).ok_or(SessionError::NotFound(id))?;
         session.state = SessionState::ShuttingDown;
         Ok(())
     }
 
     /// Close and remove a session.
     pub fn close(&mut self, id: SessionId) -> Result<Session, SessionError> {
-        let mut session = self.sessions.remove(&id.0)
-            .ok_or(SessionError::NotFound(id))?;
+        let mut session = self.sessions.remove(&id.0).ok_or(SessionError::NotFound(id))?;
         session.state = SessionState::Closed;
         Ok(session)
     }
 
     /// Purge all expired sessions, returning the count removed.
     pub fn purge_expired(&mut self) -> usize {
-        let expired: Vec<u64> = self.sessions.iter()
-            .filter(|(_, s)| s.is_expired())
-            .map(|(k, _)| *k)
-            .collect();
+        let expired: Vec<u64> =
+            self.sessions.iter().filter(|(_, s)| s.is_expired()).map(|(k, _)| *k).collect();
         let count = expired.len();
         for id in expired {
             self.sessions.remove(&id);
@@ -667,7 +692,8 @@ impl SessionManager {
 
     /// Number of active sessions.
     pub fn active_count(&self) -> usize {
-        self.sessions.values()
+        self.sessions
+            .values()
             .filter(|s| s.state == SessionState::Active && !s.is_expired())
             .count()
     }
@@ -688,11 +714,7 @@ impl SessionManager {
 pub enum SessionError {
     NotFound(SessionId),
     Expired(SessionId),
-    InvalidState {
-        id: SessionId,
-        expected: SessionState,
-        actual: SessionState,
-    },
+    InvalidState { id: SessionId, expected: SessionState, actual: SessionState },
 }
 
 impl fmt::Display for SessionError {
@@ -700,8 +722,9 @@ impl fmt::Display for SessionError {
         match self {
             SessionError::NotFound(id) => write!(f, "Session {id} not found"),
             SessionError::Expired(id) => write!(f, "Session {id} expired"),
-            SessionError::InvalidState { id, expected, actual } =>
-                write!(f, "Session {id}: expected state {expected}, got {actual}"),
+            SessionError::InvalidState { id, expected, actual } => {
+                write!(f, "Session {id}: expected state {expected}, got {actual}")
+            }
         }
     }
 }
@@ -711,7 +734,9 @@ impl fmt::Display for SessionError {
 /// Trait for RAP method handlers.
 pub trait MethodHandler: Send + Sync {
     fn handle(&self, params: &Option<JsonValue>) -> Result<JsonValue, RpcError>;
-    fn required_capability(&self) -> Option<&str> { None }
+    fn required_capability(&self) -> Option<&str> {
+        None
+    }
 }
 
 /// A simple handler from a closure.
@@ -741,8 +766,7 @@ impl ProtocolServer {
     pub fn new(name: &str, version: &str) -> Self {
         ProtocolServer {
             handlers: BTreeMap::new(),
-            server_caps: ServerCapabilities::new(name, version)
-                .support_all_standard(),
+            server_caps: ServerCapabilities::new(name, version).support_all_standard(),
             sessions: SessionManager::with_default_timeout(),
         }
     }
@@ -752,10 +776,13 @@ impl ProtocolServer {
     where
         F: Fn(&Option<JsonValue>) -> Result<JsonValue, RpcError> + Send + Sync + 'static,
     {
-        self.handlers.insert(method.to_string(), Box::new(ClosureHandler {
-            func: Box::new(handler),
-            capability: capability.map(|s| s.to_string()),
-        }));
+        self.handlers.insert(
+            method.to_string(),
+            Box::new(ClosureHandler {
+                func: Box::new(handler),
+                capability: capability.map(|s| s.to_string()),
+            }),
+        );
     }
 
     /// List all registered method names.
@@ -798,9 +825,10 @@ impl ProtocolServer {
     /// For notifications (no ID), returns None.
     pub fn dispatch(&mut self, request: &RpcRequest) -> Option<RpcResponse> {
         if request.jsonrpc != JSONRPC_VERSION {
-            return request.id.as_ref().map(|id| {
-                RpcResponse::error(Some(id.clone()), RpcError::invalid_request())
-            });
+            return request
+                .id
+                .as_ref()
+                .map(|id| RpcResponse::error(Some(id.clone()), RpcError::invalid_request()));
         }
 
         // Handle built-in lifecycle methods.
@@ -822,10 +850,12 @@ impl ProtocolServer {
 
         let handler = match self.handlers.get(&request.method) {
             Some(h) => h,
-            None => return Some(RpcResponse::error(
-                Some(id),
-                RpcError::method_not_found(&request.method),
-            )),
+            None => {
+                return Some(RpcResponse::error(
+                    Some(id),
+                    RpcError::method_not_found(&request.method),
+                ));
+            }
         };
 
         // Check capability requirement.
@@ -850,11 +880,13 @@ impl ProtocolServer {
 
         // Extract client info from params.
         let (client_name, client_version) = if let Some(ref params) = request.params {
-            let name = params.as_object()
+            let name = params
+                .as_object()
                 .and_then(|o| o.get("clientName"))
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown");
-            let version = params.as_object()
+            let version = params
+                .as_object()
                 .and_then(|o| o.get("clientVersion"))
                 .and_then(|v| v.as_str())
                 .unwrap_or("0.0.0");
@@ -863,20 +895,25 @@ impl ProtocolServer {
             ("unknown".to_string(), "0.0.0".to_string())
         };
 
-        let client_caps = ClientCapabilities::new(&client_name, &client_version)
-            .request_all_standard();
+        let client_caps =
+            ClientCapabilities::new(&client_name, &client_version).request_all_standard();
         let session_id = self.sessions.create_session(client_caps);
 
         match self.sessions.initialize(session_id, &self.server_caps) {
             Ok(negotiation) => {
                 let mut result = BTreeMap::new();
                 result.insert("sessionId".to_string(), JsonValue::Str(session_id.to_string()));
-                result.insert("serverName".to_string(), JsonValue::Str(self.server_caps.server_name.clone()));
-                result.insert("serverVersion".to_string(), JsonValue::Str(self.server_caps.server_version.clone()));
+                result.insert(
+                    "serverName".to_string(),
+                    JsonValue::Str(self.server_caps.server_name.clone()),
+                );
+                result.insert(
+                    "serverVersion".to_string(),
+                    JsonValue::Str(self.server_caps.server_version.clone()),
+                );
 
-                let granted: Vec<JsonValue> = negotiation.granted.iter()
-                    .map(|c| JsonValue::Str(c.to_string()))
-                    .collect();
+                let granted: Vec<JsonValue> =
+                    negotiation.granted.iter().map(|c| JsonValue::Str(c.to_string())).collect();
                 result.insert("capabilities".to_string(), JsonValue::Array(granted));
 
                 RpcResponse::success(id, JsonValue::Object(result))
@@ -896,7 +933,9 @@ impl ProtocolServer {
         };
 
         // Try to find and shutdown all sessions, or a specific one.
-        let session_id_str = request.params.as_ref()
+        let session_id_str = request
+            .params
+            .as_ref()
             .and_then(|p| p.as_object())
             .and_then(|o| o.get("sessionId"))
             .and_then(|v| v.as_str())
@@ -938,7 +977,8 @@ impl ProtocolServer {
         });
 
         self.register("query.search", Some("query.search"), |params| {
-            let query = params.as_ref()
+            let query = params
+                .as_ref()
                 .and_then(|p| p.as_object())
                 .and_then(|o| o.get("query"))
                 .and_then(|v| v.as_str())
@@ -949,13 +989,9 @@ impl ProtocolServer {
             Ok(JsonValue::Object(result))
         });
 
-        self.register("tokens.tokenize", Some("tokens"), |_params| {
-            Ok(JsonValue::Array(vec![]))
-        });
+        self.register("tokens.tokenize", Some("tokens"), |_params| Ok(JsonValue::Array(vec![])));
 
-        self.register("ast.parse", Some("ast"), |_params| {
-            Ok(JsonValue::Object(BTreeMap::new()))
-        });
+        self.register("ast.parse", Some("ast"), |_params| Ok(JsonValue::Object(BTreeMap::new())));
 
         self.register("diagnostic.check", Some("diagnostics"), |_params| {
             Ok(JsonValue::Array(vec![]))
@@ -966,7 +1002,8 @@ impl ProtocolServer {
         });
 
         self.register("cost/query", Some("cost.query"), |params| {
-            let subject = params.as_ref()
+            let subject = params
+                .as_ref()
                 .and_then(|p| p.as_object())
                 .and_then(|o| o.get("subject"))
                 .and_then(|v| v.as_str())
@@ -983,7 +1020,8 @@ impl ProtocolServer {
         });
 
         self.register("skb/query", Some("skb.query"), |params| {
-            let fqn = params.as_ref()
+            let fqn = params
+                .as_ref()
                 .and_then(|p| p.as_object())
                 .and_then(|o| o.get("fqn"))
                 .and_then(|v| v.as_str())
@@ -1071,10 +1109,7 @@ mod tests {
 
     #[test]
     fn request_with_params() {
-        let params = json_object(vec![
-            ("file", json_str("main.rdx")),
-            ("line", json_int(42)),
-        ]);
+        let params = json_object(vec![("file", json_str("main.rdx")), ("line", json_int(42))]);
         let req = RpcRequest::with_params(1, "diagnostic.check", params);
         assert!(req.params.is_some());
     }
@@ -1099,10 +1134,8 @@ mod tests {
 
     #[test]
     fn error_response() {
-        let resp = RpcResponse::error(
-            Some(RequestId::Integer(1)),
-            RpcError::method_not_found("foo"),
-        );
+        let resp =
+            RpcResponse::error(Some(RequestId::Integer(1)), RpcError::method_not_found("foo"));
         assert!(!resp.is_success());
         assert!(resp.error.is_some());
         assert_eq!(resp.error.as_ref().unwrap().code, -32601);
@@ -1206,8 +1239,7 @@ mod tests {
         let client = ClientCapabilities::new("test-client", "1.0")
             .request(Capability::new("query.rules", 1))
             .request(Capability::new("tokens", 1));
-        let server = ServerCapabilities::new("test-server", "1.0")
-            .support_all_standard();
+        let server = ServerCapabilities::new("test-server", "1.0").support_all_standard();
 
         let result = negotiate(&client, &server);
         assert!(result.is_fully_granted());
@@ -1233,10 +1265,8 @@ mod tests {
 
     #[test]
     fn negotiate_version_mismatch() {
-        let client = ClientCapabilities::new("c", "1.0")
-            .request(Capability::new("tokens", 3));
-        let server = ServerCapabilities::new("s", "1.0")
-            .support(Capability::new("tokens", 2));
+        let client = ClientCapabilities::new("c", "1.0").request(Capability::new("tokens", 3));
+        let server = ServerCapabilities::new("s", "1.0").support(Capability::new("tokens", 2));
 
         let result = negotiate(&client, &server);
         assert!(!result.is_fully_granted());
@@ -1258,11 +1288,9 @@ mod tests {
     #[test]
     fn initialize_session() {
         let mut mgr = SessionManager::with_default_timeout();
-        let caps = ClientCapabilities::new("test", "1.0")
-            .request_all_standard();
+        let caps = ClientCapabilities::new("test", "1.0").request_all_standard();
         let id = mgr.create_session(caps);
-        let server_caps = ServerCapabilities::new("srv", "1.0")
-            .support_all_standard();
+        let server_caps = ServerCapabilities::new("srv", "1.0").support_all_standard();
 
         let result = mgr.initialize(id, &server_caps).unwrap();
         assert!(result.is_fully_granted());
@@ -1372,8 +1400,8 @@ mod tests {
             .request(capabilities::query_rules())
             .request(capabilities::tokens());
         let id = mgr.create_session(caps);
-        let server_caps = ServerCapabilities::new("srv", "1.0")
-            .support(capabilities::query_rules());
+        let server_caps =
+            ServerCapabilities::new("srv", "1.0").support(capabilities::query_rules());
         mgr.initialize(id, &server_caps).unwrap();
 
         let session = mgr.get(id).unwrap();
@@ -1393,9 +1421,7 @@ mod tests {
     #[test]
     fn register_and_dispatch() {
         let mut server = ProtocolServer::new("test", "1.0");
-        server.register("echo", None, |params| {
-            Ok(params.clone().unwrap_or(JsonValue::Null))
-        });
+        server.register("echo", None, |params| Ok(params.clone().unwrap_or(JsonValue::Null)));
 
         assert!(server.has_method("echo"));
 
@@ -1567,10 +1593,14 @@ mod tests {
         server.register_standard_methods();
 
         // 1. Initialize.
-        let init = RpcRequest::with_params(1, "initialize", json_object(vec![
-            ("clientName", json_str("agent-01")),
-            ("clientVersion", json_str("2.0")),
-        ]));
+        let init = RpcRequest::with_params(
+            1,
+            "initialize",
+            json_object(vec![
+                ("clientName", json_str("agent-01")),
+                ("clientVersion", json_str("2.0")),
+            ]),
+        );
         let resp = server.dispatch(&init).unwrap();
         assert!(resp.is_success());
         assert!(server.sessions().total_count() > 0);

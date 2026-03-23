@@ -29,9 +29,19 @@ pub enum SpecExpr {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BinOp {
-    Add, Sub, Mul, Div, Mod,
-    Eq, Ne, Lt, Le, Gt, Ge,
-    And, Or,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    And,
+    Or,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -43,12 +53,19 @@ pub enum UnOp {
 impl fmt::Display for BinOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Add => write!(f, "+"), Self::Sub => write!(f, "-"),
-            Self::Mul => write!(f, "*"), Self::Div => write!(f, "/"), Self::Mod => write!(f, "%"),
-            Self::Eq => write!(f, "=="), Self::Ne => write!(f, "!="),
-            Self::Lt => write!(f, "<"), Self::Le => write!(f, "<="),
-            Self::Gt => write!(f, ">"), Self::Ge => write!(f, ">="),
-            Self::And => write!(f, "&&"), Self::Or => write!(f, "||"),
+            Self::Add => write!(f, "+"),
+            Self::Sub => write!(f, "-"),
+            Self::Mul => write!(f, "*"),
+            Self::Div => write!(f, "/"),
+            Self::Mod => write!(f, "%"),
+            Self::Eq => write!(f, "=="),
+            Self::Ne => write!(f, "!="),
+            Self::Lt => write!(f, "<"),
+            Self::Le => write!(f, "<="),
+            Self::Gt => write!(f, ">"),
+            Self::Ge => write!(f, ">="),
+            Self::And => write!(f, "&&"),
+            Self::Or => write!(f, "||"),
         }
     }
 }
@@ -207,10 +224,21 @@ impl CodeExpr {
     fn collect_holes(&self, out: &mut Vec<String>) {
         match self {
             Self::Hole(name, _) => out.push(name.clone()),
-            Self::BinOp(l, _, r) => { l.collect_holes(out); r.collect_holes(out); }
+            Self::BinOp(l, _, r) => {
+                l.collect_holes(out);
+                r.collect_holes(out);
+            }
             Self::UnOp(_, e) => e.collect_holes(out),
-            Self::Ite(c, t, e) => { c.collect_holes(out); t.collect_holes(out); e.collect_holes(out); }
-            Self::Call(_, args) => { for a in args { a.collect_holes(out); } }
+            Self::Ite(c, t, e) => {
+                c.collect_holes(out);
+                t.collect_holes(out);
+                e.collect_holes(out);
+            }
+            Self::Call(_, args) => {
+                for a in args {
+                    a.collect_holes(out);
+                }
+            }
             Self::Lit(_) | Self::BoolLit(_) | Self::Var(_) => {}
         }
     }
@@ -218,20 +246,18 @@ impl CodeExpr {
     /// Substitute holes with given mappings.
     pub fn fill_holes(&self, mapping: &HashMap<String, CodeExpr>) -> CodeExpr {
         match self {
-            Self::Hole(name, _) => {
-                mapping.get(name).cloned().unwrap_or_else(|| self.clone())
-            }
-            Self::BinOp(l, op, r) => {
-                CodeExpr::BinOp(Box::new(l.fill_holes(mapping)), *op, Box::new(r.fill_holes(mapping)))
-            }
+            Self::Hole(name, _) => mapping.get(name).cloned().unwrap_or_else(|| self.clone()),
+            Self::BinOp(l, op, r) => CodeExpr::BinOp(
+                Box::new(l.fill_holes(mapping)),
+                *op,
+                Box::new(r.fill_holes(mapping)),
+            ),
             Self::UnOp(op, e) => CodeExpr::UnOp(*op, Box::new(e.fill_holes(mapping))),
-            Self::Ite(c, t, e) => {
-                CodeExpr::Ite(
-                    Box::new(c.fill_holes(mapping)),
-                    Box::new(t.fill_holes(mapping)),
-                    Box::new(e.fill_holes(mapping)),
-                )
-            }
+            Self::Ite(c, t, e) => CodeExpr::Ite(
+                Box::new(c.fill_holes(mapping)),
+                Box::new(t.fill_holes(mapping)),
+                Box::new(e.fill_holes(mapping)),
+            ),
             Self::Call(name, args) => {
                 CodeExpr::Call(name.clone(), args.iter().map(|a| a.fill_holes(mapping)).collect())
             }
@@ -324,11 +350,15 @@ fn eval_binop(l: &Value, op: BinOp, r: &Value) -> Result<Value, String> {
             BinOp::Sub => Ok(Value::Int(a - b)),
             BinOp::Mul => Ok(Value::Int(a * b)),
             BinOp::Div => {
-                if *b == 0 { return Err("division by zero".into()); }
+                if *b == 0 {
+                    return Err("division by zero".into());
+                }
                 Ok(Value::Int(a / b))
             }
             BinOp::Mod => {
-                if *b == 0 { return Err("modulo by zero".into()); }
+                if *b == 0 {
+                    return Err("modulo by zero".into());
+                }
                 Ok(Value::Int(a % b))
             }
             BinOp::Eq => Ok(Value::Bool(a == b)),
@@ -514,8 +544,11 @@ impl fmt::Display for SynthConfidence {
 
 impl fmt::Display for SynthResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} (confidence: {}, verified: {} cases)",
-            self.expression, self.confidence, self.verified_cases)
+        write!(
+            f,
+            "{} (confidence: {}, verified: {} cases)",
+            self.expression, self.confidence, self.verified_cases
+        )
     }
 }
 
@@ -599,13 +632,21 @@ fn try_fill_int_hole(
                     for post in postconditions {
                         match eval_spec(post, &env) {
                             Ok(Value::Bool(true)) => {}
-                            _ => { all_pass = false; break; }
+                            _ => {
+                                all_pass = false;
+                                break;
+                            }
                         }
                     }
                 }
-                Err(_) => { all_pass = false; break; }
+                Err(_) => {
+                    all_pass = false;
+                    break;
+                }
             }
-            if !all_pass { break; }
+            if !all_pass {
+                break;
+            }
         }
         if all_pass && !test_cases.is_empty() {
             return Some(c);
@@ -647,7 +688,9 @@ pub fn synthesize(problem: &SynthProblem) -> Vec<SynthResult> {
         } else if holes.len() == 1 {
             // Single hole: try enumeration
             let hole_name = &holes[0];
-            if let Some(c) = try_fill_int_hole(template, hole_name, &test_cases, &problem.postconditions) {
+            if let Some(c) =
+                try_fill_int_hole(template, hole_name, &test_cases, &problem.postconditions)
+            {
                 let mut mapping = HashMap::new();
                 mapping.insert(hole_name.clone(), CodeExpr::Lit(c));
                 let filled = template.fill_holes(&mapping);
@@ -691,9 +734,9 @@ fn verify_candidate(
         match eval_code(candidate, &env) {
             Ok(result) => {
                 env.insert("__result".to_string(), result);
-                let all_post = postconditions.iter().all(|post| {
-                    matches!(eval_spec(post, &env), Ok(Value::Bool(true)))
-                });
+                let all_post = postconditions
+                    .iter()
+                    .all(|post| matches!(eval_spec(post, &env), Ok(Value::Bool(true))));
                 if all_post {
                     passed += 1;
                 }
@@ -719,8 +762,11 @@ pub struct OracleResult {
 impl fmt::Display for OracleResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Synthesis oracle for `{}`:", self.problem_name)?;
-        writeln!(f, "  templates tried: {}, test cases: {}",
-            self.template_count, self.test_case_count)?;
+        writeln!(
+            f,
+            "  templates tried: {}, test cases: {}",
+            self.template_count, self.test_case_count
+        )?;
         writeln!(f, "  candidates found: {}", self.candidates.len())?;
         if let Some(ref best) = self.best {
             writeln!(f, "  best: {best}")?;
@@ -755,24 +801,21 @@ mod tests {
 
     // spec inc(x: i64) -> i64 { @req true; @ens result == x + 1 }
     fn inc_problem() -> SynthProblem {
-        SynthProblem::new("inc", SynthType::Int)
-            .param("x", SynthType::Int)
-            .post(SpecExpr::BinOp(
-                Box::new(SpecExpr::Result),
-                BinOp::Eq,
-                Box::new(SpecExpr::BinOp(
-                    Box::new(SpecExpr::Var("x".into())),
-                    BinOp::Add,
-                    Box::new(SpecExpr::IntLit(1)),
-                )),
-            ))
+        SynthProblem::new("inc", SynthType::Int).param("x", SynthType::Int).post(SpecExpr::BinOp(
+            Box::new(SpecExpr::Result),
+            BinOp::Eq,
+            Box::new(SpecExpr::BinOp(
+                Box::new(SpecExpr::Var("x".into())),
+                BinOp::Add,
+                Box::new(SpecExpr::IntLit(1)),
+            )),
+        ))
     }
 
     // spec double(x: i64) -> i64 { @req true; @ens result == x * 2 }
     fn double_problem() -> SynthProblem {
-        SynthProblem::new("double", SynthType::Int)
-            .param("x", SynthType::Int)
-            .post(SpecExpr::BinOp(
+        SynthProblem::new("double", SynthType::Int).param("x", SynthType::Int).post(
+            SpecExpr::BinOp(
                 Box::new(SpecExpr::Result),
                 BinOp::Eq,
                 Box::new(SpecExpr::BinOp(
@@ -780,7 +823,8 @@ mod tests {
                     BinOp::Mul,
                     Box::new(SpecExpr::IntLit(2)),
                 )),
-            ))
+            ),
+        )
     }
 
     // spec abs(x: i64) -> i64 { @req true; @ens result >= 0; @ens result >= x; @ens result >= -x }
@@ -944,13 +988,13 @@ mod tests {
     #[test]
     fn test_generate_test_cases_with_precondition() {
         // @req x > 0
-        let problem = SynthProblem::new("pos_inc", SynthType::Int)
-            .param("x", SynthType::Int)
-            .pre(SpecExpr::BinOp(
+        let problem = SynthProblem::new("pos_inc", SynthType::Int).param("x", SynthType::Int).pre(
+            SpecExpr::BinOp(
                 Box::new(SpecExpr::Var("x".into())),
                 BinOp::Gt,
                 Box::new(SpecExpr::IntLit(0)),
-            ));
+            ),
+        );
         let cases = generate_test_cases(&problem, 10);
         for tc in &cases {
             let x = match tc.inputs.get("x") {
@@ -1047,7 +1091,10 @@ mod tests {
         assert_eq!(format!("{}", SynthType::Int), "i64");
         assert_eq!(format!("{}", SynthType::Bool), "bool");
         assert_eq!(format!("{}", SynthType::Array(Box::new(SynthType::Int))), "[i64]");
-        assert_eq!(format!("{}", SynthType::Tuple(vec![SynthType::Int, SynthType::Bool])), "(i64, bool)");
+        assert_eq!(
+            format!("{}", SynthType::Tuple(vec![SynthType::Int, SynthType::Bool])),
+            "(i64, bool)"
+        );
     }
 
     #[test]
@@ -1137,12 +1184,11 @@ mod tests {
 
     #[test]
     fn test_no_param_problem() {
-        let problem = SynthProblem::new("const5", SynthType::Int)
-            .post(SpecExpr::BinOp(
-                Box::new(SpecExpr::Result),
-                BinOp::Eq,
-                Box::new(SpecExpr::IntLit(5)),
-            ));
+        let problem = SynthProblem::new("const5", SynthType::Int).post(SpecExpr::BinOp(
+            Box::new(SpecExpr::Result),
+            BinOp::Eq,
+            Box::new(SpecExpr::IntLit(5)),
+        ));
         let results = synthesize(&problem);
         assert!(!results.is_empty(), "should find constant 5");
     }

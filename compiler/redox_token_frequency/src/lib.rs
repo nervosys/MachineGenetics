@@ -127,15 +127,17 @@ impl FrequencyEntry {
     }
 
     pub fn dominant_context(&self) -> Option<TokenContext> {
-        self.context_counts.iter()
-            .max_by_key(|(_, count)| *count)
-            .map(|(ctx, _)| *ctx)
+        self.context_counts.iter().max_by_key(|(_, count)| *count).map(|(ctx, _)| *ctx)
     }
 }
 
 impl fmt::Display for FrequencyEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} ({}): {} total, {} crates", self.text, self.kind, self.total_count, self.crate_count)
+        write!(
+            f,
+            "{} ({}): {} total, {} crates",
+            self.text, self.kind, self.total_count, self.crate_count
+        )
     }
 }
 
@@ -151,11 +153,7 @@ pub struct CorpusAnalyzer {
 
 impl CorpusAnalyzer {
     pub fn new() -> Self {
-        Self {
-            entries: HashMap::new(),
-            crate_names: Vec::new(),
-            total_tokens: 0,
-        }
+        Self { entries: HashMap::new(), crate_names: Vec::new(), total_tokens: 0 }
     }
 
     /// Record a batch of tokens from one crate.
@@ -169,7 +167,9 @@ impl CorpusAnalyzer {
 
         for tok in tokens {
             self.total_tokens += 1;
-            let entry = self.entries.entry(tok.text.clone())
+            let entry = self
+                .entries
+                .entry(tok.text.clone())
                 .or_insert_with(|| FrequencyEntry::new(tok.text.clone(), tok.kind));
             entry.total_count += 1;
             *entry.context_counts.entry(tok.context).or_insert(0) += 1;
@@ -267,8 +267,11 @@ impl fmt::Display for AbbrevRecommendation {
 
 impl fmt::Display for AbbrevScore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: savings={:.2}, disp={:.2}, freq={} ({})",
-            self.token, self.savings_score, self.dispersion, self.frequency, self.recommendation)
+        write!(
+            f,
+            "{}: savings={:.2}, disp={:.2}, freq={} ({})",
+            self.token, self.savings_score, self.dispersion, self.frequency, self.recommendation
+        )
     }
 }
 
@@ -309,7 +312,9 @@ pub fn score_abbreviations(analyzer: &CorpusAnalyzer, min_length: usize) -> Vec<
         });
     }
 
-    scores.sort_by(|a, b| b.savings_score.partial_cmp(&a.savings_score).unwrap_or(std::cmp::Ordering::Equal));
+    scores.sort_by(|a, b| {
+        b.savings_score.partial_cmp(&a.savings_score).unwrap_or(std::cmp::Ordering::Equal)
+    });
     scores
 }
 
@@ -327,18 +332,15 @@ pub struct CorpusReport {
 }
 
 pub fn generate_report(analyzer: &CorpusAnalyzer) -> CorpusReport {
-    let top_count: Vec<(String, u64)> = analyzer.top_by_count(10)
-        .iter()
-        .map(|e| (e.text.clone(), e.total_count))
-        .collect();
+    let top_count: Vec<(String, u64)> =
+        analyzer.top_by_count(10).iter().map(|e| (e.text.clone(), e.total_count)).collect();
 
-    let top_disp: Vec<(String, u64)> = analyzer.top_by_dispersion(10)
-        .iter()
-        .map(|e| (e.text.clone(), e.crate_count))
-        .collect();
+    let top_disp: Vec<(String, u64)> =
+        analyzer.top_by_dispersion(10).iter().map(|e| (e.text.clone(), e.crate_count)).collect();
 
     let abbrev_scores = score_abbreviations(analyzer, 5);
-    let candidates = abbrev_scores.iter()
+    let candidates = abbrev_scores
+        .iter()
         .filter(|s| s.recommendation != AbbrevRecommendation::NotRecommended)
         .count();
 
@@ -376,10 +378,9 @@ impl fmt::Display for CorpusReport {
 /// Classify a raw token string into a TokenKind (heuristic).
 pub fn classify_token(text: &str) -> TokenKind {
     const KEYWORDS: &[&str] = &[
-        "fn", "let", "mut", "pub", "struct", "enum", "trait", "impl", "use",
-        "mod", "if", "else", "match", "for", "while", "loop", "return",
-        "break", "continue", "const", "static", "type", "where", "as",
-        "ref", "self", "super", "crate", "async", "await", "move", "unsafe",
+        "fn", "let", "mut", "pub", "struct", "enum", "trait", "impl", "use", "mod", "if", "else",
+        "match", "for", "while", "loop", "return", "break", "continue", "const", "static", "type",
+        "where", "as", "ref", "self", "super", "crate", "async", "await", "move", "unsafe",
         "extern", "dyn", "box", "in",
     ];
 
@@ -413,45 +414,60 @@ pub fn classify_token(text: &str) -> TokenKind {
 mod tests {
     use super::*;
 
-    fn make_tokens(crate_name: &str, tokens: &[(&str, TokenKind, TokenContext)]) -> Vec<TokenRecord> {
-        tokens.iter().map(|(text, kind, ctx)| TokenRecord {
-            text: text.to_string(),
-            kind: *kind,
-            context: *ctx,
-            crate_name: crate_name.to_string(),
-        }).collect()
+    fn make_tokens(
+        crate_name: &str,
+        tokens: &[(&str, TokenKind, TokenContext)],
+    ) -> Vec<TokenRecord> {
+        tokens
+            .iter()
+            .map(|(text, kind, ctx)| TokenRecord {
+                text: text.to_string(),
+                kind: *kind,
+                context: *ctx,
+                crate_name: crate_name.to_string(),
+            })
+            .collect()
     }
 
     fn sample_analyzer() -> CorpusAnalyzer {
         let mut a = CorpusAnalyzer::new();
 
-        let t1 = make_tokens("serde", &[
-            ("derive", TokenKind::Keyword, TokenContext::ModuleLevel),
-            ("struct", TokenKind::Keyword, TokenContext::StructDef),
-            ("Serialize", TokenKind::Type, TokenContext::TraitDef),
-            ("Deserialize", TokenKind::Type, TokenContext::TraitDef),
-            ("fn", TokenKind::Keyword, TokenContext::FunctionDef),
-            ("serialize", TokenKind::Identifier, TokenContext::FunctionDef),
-            ("deserialize", TokenKind::Identifier, TokenContext::FunctionDef),
-        ]);
+        let t1 = make_tokens(
+            "serde",
+            &[
+                ("derive", TokenKind::Keyword, TokenContext::ModuleLevel),
+                ("struct", TokenKind::Keyword, TokenContext::StructDef),
+                ("Serialize", TokenKind::Type, TokenContext::TraitDef),
+                ("Deserialize", TokenKind::Type, TokenContext::TraitDef),
+                ("fn", TokenKind::Keyword, TokenContext::FunctionDef),
+                ("serialize", TokenKind::Identifier, TokenContext::FunctionDef),
+                ("deserialize", TokenKind::Identifier, TokenContext::FunctionDef),
+            ],
+        );
         a.ingest_crate("serde", &t1);
 
-        let t2 = make_tokens("tokio", &[
-            ("fn", TokenKind::Keyword, TokenContext::FunctionDef),
-            ("async", TokenKind::Keyword, TokenContext::FunctionDef),
-            ("struct", TokenKind::Keyword, TokenContext::StructDef),
-            ("Runtime", TokenKind::Type, TokenContext::StructDef),
-            ("spawn", TokenKind::Identifier, TokenContext::FunctionCall),
-            ("serialize", TokenKind::Identifier, TokenContext::FunctionCall),
-        ]);
+        let t2 = make_tokens(
+            "tokio",
+            &[
+                ("fn", TokenKind::Keyword, TokenContext::FunctionDef),
+                ("async", TokenKind::Keyword, TokenContext::FunctionDef),
+                ("struct", TokenKind::Keyword, TokenContext::StructDef),
+                ("Runtime", TokenKind::Type, TokenContext::StructDef),
+                ("spawn", TokenKind::Identifier, TokenContext::FunctionCall),
+                ("serialize", TokenKind::Identifier, TokenContext::FunctionCall),
+            ],
+        );
         a.ingest_crate("tokio", &t2);
 
-        let t3 = make_tokens("rand", &[
-            ("fn", TokenKind::Keyword, TokenContext::FunctionDef),
-            ("struct", TokenKind::Keyword, TokenContext::StructDef),
-            ("thread_rng", TokenKind::Identifier, TokenContext::FunctionCall),
-            ("serialize", TokenKind::Identifier, TokenContext::FunctionCall),
-        ]);
+        let t3 = make_tokens(
+            "rand",
+            &[
+                ("fn", TokenKind::Keyword, TokenContext::FunctionDef),
+                ("struct", TokenKind::Keyword, TokenContext::StructDef),
+                ("thread_rng", TokenKind::Identifier, TokenContext::FunctionCall),
+                ("serialize", TokenKind::Identifier, TokenContext::FunctionCall),
+            ],
+        );
         a.ingest_crate("rand", &t3);
 
         a
@@ -561,7 +577,10 @@ mod tests {
 
     #[test]
     fn test_abbrev_recommendation_display() {
-        assert_eq!(format!("{}", AbbrevRecommendation::StronglyRecommended), "strongly recommended");
+        assert_eq!(
+            format!("{}", AbbrevRecommendation::StronglyRecommended),
+            "strongly recommended"
+        );
     }
 
     #[test]

@@ -3283,6 +3283,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_abbrev_promotion"
+version = "0.1.0"
+
+[[package]]
+name = "redox_abbrev_registry_v2"
+version = "0.1.0"
+
+[[package]]
 name = "redox_abi"
 version = "0.0.0"
 dependencies = [
@@ -3300,7 +3308,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_aci_codebase_model"
+version = "0.1.0"
+
+[[package]]
+name = "redox_aci_debugger"
+version = "0.1.0"
+
+[[package]]
+name = "redox_aci_perf_advisor"
+version = "0.1.0"
+
+[[package]]
+name = "redox_aci_rap"
+version = "0.1.0"
+
+[[package]]
+name = "redox_aci_swarm_intel"
+version = "0.1.0"
+
+[[package]]
+name = "redox_aci_warnings"
+version = "0.1.0"
+
+[[package]]
 name = "redox_agent_attrs"
+version = "0.1.0"
+
+[[package]]
+name = "redox_agent_memory"
+version = "0.1.0"
+
+[[package]]
+name = "redox_agentic_bench"
+version = "0.1.0"
+
+[[package]]
+name = "redox_agentic_stdlib"
 version = "0.1.0"
 
 [[package]]
@@ -3488,6 +3532,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_capability_blocks"
+version = "0.1.0"
+
+[[package]]
 name = "redox_capability_manifest"
 version = "0.1.0"
 
@@ -3600,6 +3648,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_contracts"
+version = "0.1.0"
+
+[[package]]
+name = "redox_cost_calibrate"
+version = "0.1.0"
+
+[[package]]
 name = "redox_cost_oracle"
 version = "0.1.0"
 
@@ -3640,6 +3696,10 @@ dependencies = [
  "tracing",
  "windows 0.61.3",
 ]
+
+[[package]]
+name = "redox_device_placement"
+version = "0.1.0"
 
 [[package]]
 name = "redox_diagnostics"
@@ -3697,6 +3757,18 @@ dependencies = [
  "tracing",
  "windows 0.61.3",
 ]
+
+[[package]]
+name = "redox_ecosystem_migrate"
+version = "0.1.0"
+
+[[package]]
+name = "redox_edition_2026"
+version = "0.1.0"
+
+[[package]]
+name = "redox_effect_system"
+version = "0.1.0"
 
 [[package]]
 name = "redox_error_codes"
@@ -3785,11 +3857,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_ffi"
+version = "0.1.0"
+
+[[package]]
+name = "redox_formal_spec"
+version = "0.1.0"
+
+[[package]]
 name = "redox_fs_util"
 version = "0.0.0"
 dependencies = [
  "tempfile",
 ]
+
+[[package]]
+name = "redox_global_memory"
+version = "0.1.0"
+
+[[package]]
+name = "redox_grammar_extension"
+version = "0.1.0"
 
 [[package]]
 name = "redox_graphviz"
@@ -3899,6 +3987,10 @@ dependencies = [
  "smallvec",
  "tracing",
 ]
+
+[[package]]
+name = "redox_hot_reload"
+version = "0.1.0"
 
 [[package]]
 name = "redox_incremental"
@@ -4014,6 +4106,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_lang_spec"
+version = "0.1.0"
+
+[[package]]
 name = "redox_lexer"
 version = "0.0.0"
 dependencies = [
@@ -4095,6 +4191,10 @@ dependencies = [
  "syn 2.0.110",
  "synstructure",
 ]
+
+[[package]]
+name = "redox_memory_recall_api"
+version = "0.1.0"
 
 [[package]]
 name = "redox_message_bus"
@@ -4241,6 +4341,26 @@ name = "redox_mlir"
 version = "0.1.0"
 
 [[package]]
+name = "redox_mlir_autotune"
+version = "0.1.0"
+
+[[package]]
+name = "redox_mlir_parallel"
+version = "0.1.0"
+
+[[package]]
+name = "redox_mlir_pipeline"
+version = "0.1.0"
+
+[[package]]
+name = "redox_mlir_spirv"
+version = "0.1.0"
+
+[[package]]
+name = "redox_mlir_targets"
+version = "0.1.0"
+
+[[package]]
 name = "redox_monomorphize"
 version = "0.0.0"
 dependencies = [
@@ -4271,6 +4391,10 @@ dependencies = [
  "redox_type_ir_macros",
  "tracing",
 ]
+
+[[package]]
+name = "redox_package_registry"
+version = "0.1.0"
 
 [[package]]
 name = "redox_parse"
@@ -4348,6 +4472,18 @@ dependencies = [
  "tracing-subscriber",
  "tracing-tree",
 ]
+
+[[package]]
+name = "redox_perf_annotations"
+version = "0.1.0"
+
+[[package]]
+name = "redox_phase2_integration"
+version = "0.1.0"
+
+[[package]]
+name = "redox_pipeline_compose"
+version = "0.1.0"
 
 [[package]]
 name = "redox_privacy"
@@ -4443,6 +4579,14 @@ name = "redox_rap_protocol"
 version = "0.1.0"
 
 [[package]]
+name = "redox_refinement_types"
+version = "0.1.0"
+
+[[package]]
+name = "redox_repr_target_optimal"
+version = "0.1.0"
+
+[[package]]
 name = "redox_resolve"
 version = "0.0.0"
 dependencies = [
@@ -4470,7 +4614,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_safety_certify"
+version = "0.1.0"
+
+[[package]]
 name = "redox_safety_cfg"
+version = "0.1.0"
+
+[[package]]
+name = "redox_sandbox"
 version = "0.1.0"
 
 [[package]]
@@ -4488,6 +4640,10 @@ dependencies = [
  "tracing",
  "twox-hash 1.6.3",
 ]
+
+[[package]]
+name = "redox_self_heal"
+version = "0.1.0"
 
 [[package]]
 name = "redox_semantic_index"
@@ -4543,6 +4699,10 @@ name = "redox_skb"
 version = "0.1.0"
 
 [[package]]
+name = "redox_skb_corpus"
+version = "0.1.0"
+
+[[package]]
 name = "redox_span"
 version = "0.0.0"
 dependencies = [
@@ -4570,6 +4730,30 @@ name = "redox_swarm"
 version = "0.1.0"
 
 [[package]]
+name = "redox_swarm_audit"
+version = "0.1.0"
+
+[[package]]
+name = "redox_swarm_bench"
+version = "0.1.0"
+
+[[package]]
+name = "redox_swarm_configs"
+version = "0.1.0"
+
+[[package]]
+name = "redox_swarm_hierarchy"
+version = "0.1.0"
+
+[[package]]
+name = "redox_swarm_marketplace"
+version = "0.1.0"
+
+[[package]]
+name = "redox_swarm_patterns"
+version = "0.1.0"
+
+[[package]]
 name = "redox_symbol_mangling"
 version = "0.0.0"
 dependencies = [
@@ -4585,6 +4769,14 @@ dependencies = [
  "rustc-demangle",
  "tracing",
 ]
+
+[[package]]
+name = "redox_synthesis_market"
+version = "0.1.0"
+
+[[package]]
+name = "redox_synthesis_oracle"
+version = "0.1.0"
 
 [[package]]
 name = "redox_syscall"
@@ -4635,6 +4827,10 @@ dependencies = [
 
 [[package]]
 name = "redox_token_budget"
+version = "0.1.0"
+
+[[package]]
+name = "redox_token_frequency"
 version = "0.1.0"
 
 [[package]]
@@ -4750,6 +4946,10 @@ dependencies = [
  "libredox",
  "thiserror 2.0.17",
 ]
+
+[[package]]
+name = "redox_verification_cert"
+version = "0.1.0"
 
 [[package]]
 name = "redox_verification_oracle"

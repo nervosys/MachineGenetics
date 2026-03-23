@@ -111,23 +111,17 @@ impl CapabilitySet {
 
     /// Intersection: capabilities in both sets
     pub fn intersect(&self, other: &CapabilitySet) -> CapabilitySet {
-        CapabilitySet {
-            caps: self.caps.intersection(&other.caps).cloned().collect(),
-        }
+        CapabilitySet { caps: self.caps.intersection(&other.caps).cloned().collect() }
     }
 
     /// Union: capabilities in either set
     pub fn union(&self, other: &CapabilitySet) -> CapabilitySet {
-        CapabilitySet {
-            caps: self.caps.union(&other.caps).cloned().collect(),
-        }
+        CapabilitySet { caps: self.caps.union(&other.caps).cloned().collect() }
     }
 
     /// Difference: capabilities in self but not in other
     pub fn difference(&self, other: &CapabilitySet) -> CapabilitySet {
-        CapabilitySet {
-            caps: self.caps.difference(&other.caps).cloned().collect(),
-        }
+        CapabilitySet { caps: self.caps.difference(&other.caps).cloned().collect() }
     }
 
     /// Is self a subset of other?
@@ -187,9 +181,7 @@ impl CapabilityBlock {
                 // Only grant capabilities that are available in the ambient set
                 self.capabilities.intersect(ambient)
             }
-            CapBlockMode::Deny => {
-                ambient.difference(&self.capabilities)
-            }
+            CapBlockMode::Deny => ambient.difference(&self.capabilities),
         }
     }
 }
@@ -213,11 +205,7 @@ pub enum HirNode {
     /// Let binding
     Let { name: String, value: Box<HirNode> },
     /// If expression
-    If {
-        cond: Box<HirNode>,
-        then_branch: Box<HirNode>,
-        else_branch: Option<Box<HirNode>>,
-    },
+    If { cond: Box<HirNode>, then_branch: Box<HirNode>, else_branch: Option<Box<HirNode>> },
 }
 
 // ---------------------------------------------------------------------------
@@ -234,8 +222,7 @@ pub struct CapabilityViolation {
 
 impl fmt::Display for CapabilityViolation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "capability violation at {}: {} — {}",
-            self.location, self.required, self.message)
+        write!(f, "capability violation at {}: {} — {}", self.location, self.required, self.message)
     }
 }
 
@@ -247,10 +234,7 @@ pub struct CapabilityChecker {
 
 impl CapabilityChecker {
     pub fn new() -> Self {
-        Self {
-            violations: Vec::new(),
-            fn_caps: HashMap::new(),
-        }
+        Self { violations: Vec::new(), fn_caps: HashMap::new() }
     }
 
     pub fn violations(&self) -> &[CapabilityViolation] {
@@ -298,7 +282,11 @@ impl CapabilityChecker {
             HirNode::CapBlock(cap_block) => {
                 let effective = cap_block.effective_caps(available);
                 for (i, child) in cap_block.children.iter().enumerate() {
-                    self.check(child, &effective, &format!("{path}/cap_block:{}/child:{i}", cap_block.id));
+                    self.check(
+                        child,
+                        &effective,
+                        &format!("{path}/cap_block:{}/child:{i}", cap_block.id),
+                    );
                 }
             }
             HirNode::Let { name, value } => {
@@ -326,7 +314,10 @@ impl Default for CapabilityChecker {
 // ---------------------------------------------------------------------------
 
 /// Infer the minimum capability set needed for an HIR node.
-pub fn infer_required_caps(node: &HirNode, fn_caps: &HashMap<String, CapabilitySet>) -> CapabilitySet {
+pub fn infer_required_caps(
+    node: &HirNode,
+    fn_caps: &HashMap<String, CapabilitySet>,
+) -> CapabilitySet {
     match node {
         HirNode::Literal(_) | HirNode::VarRef(_) => CapabilitySet::new(),
         HirNode::Call { name, required_caps } => {
@@ -378,10 +369,16 @@ pub struct LoweredBlock {
 pub enum LoweredNode {
     Literal(String),
     VarRef(String),
-    Call { name: String, required_caps: CapabilitySet },
+    Call {
+        name: String,
+        required_caps: CapabilitySet,
+    },
     Block(Vec<LoweredNode>),
     CapBlock(LoweredBlock),
-    Let { name: String, value: Box<LoweredNode> },
+    Let {
+        name: String,
+        value: Box<LoweredNode>,
+    },
     If {
         cond: Box<LoweredNode>,
         then_branch: Box<LoweredNode>,
@@ -394,24 +391,18 @@ pub fn lower_cap_blocks(node: &HirNode, ambient: &CapabilitySet) -> LoweredNode 
     match node {
         HirNode::Literal(v) => LoweredNode::Literal(v.clone()),
         HirNode::VarRef(v) => LoweredNode::VarRef(v.clone()),
-        HirNode::Call { name, required_caps } => LoweredNode::Call {
-            name: name.clone(),
-            required_caps: required_caps.clone(),
-        },
+        HirNode::Call { name, required_caps } => {
+            LoweredNode::Call { name: name.clone(), required_caps: required_caps.clone() }
+        }
         HirNode::Block(stmts) => {
-            let lowered: Vec<LoweredNode> = stmts
-                .iter()
-                .map(|s| lower_cap_blocks(s, ambient))
-                .collect();
+            let lowered: Vec<LoweredNode> =
+                stmts.iter().map(|s| lower_cap_blocks(s, ambient)).collect();
             LoweredNode::Block(lowered)
         }
         HirNode::CapBlock(cap_block) => {
             let effective = cap_block.effective_caps(ambient);
-            let children: Vec<LoweredNode> = cap_block
-                .children
-                .iter()
-                .map(|c| lower_cap_blocks(c, &effective))
-                .collect();
+            let children: Vec<LoweredNode> =
+                cap_block.children.iter().map(|c| lower_cap_blocks(c, &effective)).collect();
             LoweredNode::CapBlock(LoweredBlock {
                 original_id: cap_block.id,
                 effective_caps: effective,
@@ -492,9 +483,7 @@ mod tests {
     }
 
     fn net_caps() -> CapabilitySet {
-        CapabilitySet::new()
-            .with(Capability::NetConnect)
-            .with(Capability::NetListen)
+        CapabilitySet::new().with(Capability::NetConnect).with(Capability::NetListen)
     }
 
     // -- CapabilitySet tests --
@@ -525,9 +514,7 @@ mod tests {
     #[test]
     fn test_set_intersect() {
         let a = io_caps();
-        let b = CapabilitySet::new()
-            .with(Capability::FileRead)
-            .with(Capability::NetConnect);
+        let b = CapabilitySet::new().with(Capability::FileRead).with(Capability::NetConnect);
         let inter = a.intersect(&b);
         assert!(inter.has(&Capability::FileRead));
         assert!(!inter.has(&Capability::FileWrite));
@@ -644,10 +631,7 @@ mod tests {
     #[test]
     fn test_checker_violation() {
         let mut checker = CapabilityChecker::new();
-        let node = HirNode::Call {
-            name: "connect".to_string(),
-            required_caps: net_caps(),
-        };
+        let node = HirNode::Call { name: "connect".to_string(), required_caps: net_caps() };
         checker.check(&node, &io_caps(), "test");
         assert!(checker.has_violations());
         assert_eq!(checker.violations().len(), 2); // NetConnect + NetListen
@@ -680,14 +664,9 @@ mod tests {
     #[test]
     fn test_checker_registered_fn_caps() {
         let mut checker = CapabilityChecker::new();
-        checker.register_fn(
-            "dangerous".to_string(),
-            CapabilitySet::new().with(Capability::Unsafe),
-        );
-        let node = HirNode::Call {
-            name: "dangerous".to_string(),
-            required_caps: CapabilitySet::new(),
-        };
+        checker.register_fn("dangerous".to_string(), CapabilitySet::new().with(Capability::Unsafe));
+        let node =
+            HirNode::Call { name: "dangerous".to_string(), required_caps: CapabilitySet::new() };
         let ambient = io_caps();
         checker.check(&node, &ambient, "test");
         assert!(checker.has_violations());
@@ -836,19 +815,15 @@ mod tests {
             id: 1,
             mode: CapBlockMode::Deny,
             capabilities: net_caps(),
-            children: vec![
-                HirNode::CapBlock(CapabilityBlock {
-                    id: 2,
-                    mode: CapBlockMode::Deny,
-                    capabilities: CapabilitySet::new().with(Capability::FileWrite),
-                    children: vec![
-                        HirNode::Call {
-                            name: "read".to_string(),
-                            required_caps: CapabilitySet::new().with(Capability::FileRead),
-                        },
-                    ],
-                }),
-            ],
+            children: vec![HirNode::CapBlock(CapabilityBlock {
+                id: 2,
+                mode: CapBlockMode::Deny,
+                capabilities: CapabilitySet::new().with(Capability::FileWrite),
+                children: vec![HirNode::Call {
+                    name: "read".to_string(),
+                    required_caps: CapabilitySet::new().with(Capability::FileRead),
+                }],
+            })],
         });
         let ambient = io_caps().union(&net_caps());
         checker.check(&node, &ambient, "test");

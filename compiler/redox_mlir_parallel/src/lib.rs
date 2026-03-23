@@ -56,14 +56,9 @@ pub enum ParallelRegionKind {
         independent: bool,
     },
     /// Parallel sections (task parallelism).
-    ParallelSections {
-        section_count: usize,
-    },
+    ParallelSections { section_count: usize },
     /// GPU kernel launch.
-    GpuLaunch {
-        grid: GridDim,
-        block: BlockDim,
-    },
+    GpuLaunch { grid: GridDim, block: BlockDim },
     /// Async task spawn.
     AsyncTask {
         /// Task group name.
@@ -72,9 +67,7 @@ pub enum ParallelRegionKind {
     /// Barrier / synchronization point.
     Barrier,
     /// Reduction operation.
-    Reduction {
-        op: ReductionOp,
-    },
+    Reduction { op: ReductionOp },
 }
 
 /// Grid dimensions for GPU launch.
@@ -206,9 +199,8 @@ impl fmt::Display for ParallelOp {
 pub fn lower_to_openmp(region: &ParallelRegionKind) -> Vec<ParallelOp> {
     match region {
         ParallelRegionKind::ParallelFor { iterations, independent } => {
-            let mut ops = vec![
-                ParallelOp::new(ParallelDialect::OpenMP, "parallel", "begin parallel region"),
-            ];
+            let mut ops =
+                vec![ParallelOp::new(ParallelDialect::OpenMP, "parallel", "begin parallel region")];
             if *independent {
                 ops.push(
                     ParallelOp::new(ParallelDialect::OpenMP, "wsloop", "worksharing loop")
@@ -216,8 +208,12 @@ pub fn lower_to_openmp(region: &ParallelRegionKind) -> Vec<ParallelOp> {
                 );
             } else {
                 ops.push(
-                    ParallelOp::new(ParallelDialect::OpenMP, "ordered_wsloop", "ordered worksharing loop")
-                        .with_operands(&[&format!("trips={iterations}")]),
+                    ParallelOp::new(
+                        ParallelDialect::OpenMP,
+                        "ordered_wsloop",
+                        "ordered worksharing loop",
+                    )
+                    .with_operands(&[&format!("trips={iterations}")]),
                 );
             }
             ops.push(ParallelOp::new(ParallelDialect::OpenMP, "terminator", "end parallel"));
@@ -226,7 +222,11 @@ pub fn lower_to_openmp(region: &ParallelRegionKind) -> Vec<ParallelOp> {
         ParallelRegionKind::ParallelSections { section_count } => {
             let mut ops = vec![
                 ParallelOp::new(ParallelDialect::OpenMP, "parallel", "begin parallel sections"),
-                ParallelOp::new(ParallelDialect::OpenMP, "sections", &format!("{section_count} sections")),
+                ParallelOp::new(
+                    ParallelDialect::OpenMP,
+                    "sections",
+                    &format!("{section_count} sections"),
+                ),
             ];
             for i in 0..*section_count {
                 ops.push(ParallelOp::new(
@@ -244,11 +244,7 @@ pub fn lower_to_openmp(region: &ParallelRegionKind) -> Vec<ParallelOp> {
         ParallelRegionKind::Reduction { op } => {
             vec![
                 ParallelOp::new(ParallelDialect::OpenMP, "parallel", "begin reduction region"),
-                ParallelOp::new(
-                    ParallelDialect::OpenMP,
-                    "reduction",
-                    &format!("reduce with {op}"),
-                ),
+                ParallelOp::new(ParallelDialect::OpenMP, "reduction", &format!("reduce with {op}")),
                 ParallelOp::new(ParallelDialect::OpenMP, "terminator", "end reduction"),
             ]
         }
@@ -279,15 +275,16 @@ pub fn lower_to_gpu(region: &ParallelRegionKind) -> Vec<ParallelOp> {
     match region {
         ParallelRegionKind::GpuLaunch { grid, block } => {
             vec![
-                ParallelOp::new(ParallelDialect::Gpu, "launch", "launch GPU kernel")
-                    .with_operands(&[
+                ParallelOp::new(ParallelDialect::Gpu, "launch", "launch GPU kernel").with_operands(
+                    &[
                         &format!("gridX={}", grid.x),
                         &format!("gridY={}", grid.y),
                         &format!("gridZ={}", grid.z),
                         &format!("blockX={}", block.x),
                         &format!("blockY={}", block.y),
                         &format!("blockZ={}", block.z),
-                    ]),
+                    ],
+                ),
                 ParallelOp::new(ParallelDialect::Gpu, "terminator", "end kernel"),
             ]
         }
@@ -298,11 +295,10 @@ pub fn lower_to_gpu(region: &ParallelRegionKind) -> Vec<ParallelOp> {
             vec![
                 ParallelOp::new(ParallelDialect::Gpu, "alloc", "allocate device memory"),
                 ParallelOp::new(ParallelDialect::Gpu, "memcpy", "host→device transfer"),
-                ParallelOp::new(ParallelDialect::Gpu, "launch", "launch kernel")
-                    .with_operands(&[
-                        &format!("gridX={grid_size}"),
-                        &format!("blockX={block_size}"),
-                    ]),
+                ParallelOp::new(ParallelDialect::Gpu, "launch", "launch kernel").with_operands(&[
+                    &format!("gridX={grid_size}"),
+                    &format!("blockX={block_size}"),
+                ]),
                 ParallelOp::new(ParallelDialect::Gpu, "memcpy", "device→host transfer"),
                 ParallelOp::new(ParallelDialect::Gpu, "dealloc", "free device memory"),
             ]
@@ -329,7 +325,11 @@ pub fn lower_to_gpu(region: &ParallelRegionKind) -> Vec<ParallelOp> {
         ParallelRegionKind::AsyncTask { group } => {
             // Map async to GPU stream
             vec![
-                ParallelOp::new(ParallelDialect::Gpu, "stream_create", &format!("stream for {group}")),
+                ParallelOp::new(
+                    ParallelDialect::Gpu,
+                    "stream_create",
+                    &format!("stream for {group}"),
+                ),
                 ParallelOp::new(ParallelDialect::Gpu, "launch_on_stream", "async kernel launch"),
                 ParallelOp::new(ParallelDialect::Gpu, "stream_sync", "sync stream"),
             ]
@@ -346,22 +346,32 @@ pub fn lower_to_async(region: &ParallelRegionKind) -> Vec<ParallelOp> {
     match region {
         ParallelRegionKind::AsyncTask { group } => {
             vec![
-                ParallelOp::new(ParallelDialect::Async, "execute", &format!("spawn async: {group}")),
+                ParallelOp::new(
+                    ParallelDialect::Async,
+                    "execute",
+                    &format!("spawn async: {group}"),
+                ),
                 ParallelOp::new(ParallelDialect::Async, "yield", "yield token"),
             ]
         }
         ParallelRegionKind::ParallelFor { iterations, .. } => {
             vec![
-                ParallelOp::new(ParallelDialect::Async, "create_group", &format!("{iterations} tasks")),
+                ParallelOp::new(
+                    ParallelDialect::Async,
+                    "create_group",
+                    &format!("{iterations} tasks"),
+                ),
                 ParallelOp::new(ParallelDialect::Async, "execute", "launch task"),
                 ParallelOp::new(ParallelDialect::Async, "yield", "yield token"),
                 ParallelOp::new(ParallelDialect::Async, "await_all", "join all tasks"),
             ]
         }
         ParallelRegionKind::ParallelSections { section_count } => {
-            let mut ops = vec![
-                ParallelOp::new(ParallelDialect::Async, "create_group", &format!("{section_count} sections")),
-            ];
+            let mut ops = vec![ParallelOp::new(
+                ParallelDialect::Async,
+                "create_group",
+                &format!("{section_count} sections"),
+            )];
             for i in 0..*section_count {
                 ops.push(ParallelOp::new(
                     ParallelDialect::Async,
@@ -413,11 +423,7 @@ pub fn auto_select_dialect(region: &ParallelRegionKind) -> ParallelDialect {
         ParallelRegionKind::AsyncTask { .. } => ParallelDialect::Async,
         ParallelRegionKind::ParallelFor { iterations, .. } => {
             // Large iteration counts → GPU; small → OpenMP
-            if *iterations > 10_000 {
-                ParallelDialect::Gpu
-            } else {
-                ParallelDialect::OpenMP
-            }
+            if *iterations > 10_000 { ParallelDialect::Gpu } else { ParallelDialect::OpenMP }
         }
         ParallelRegionKind::ParallelSections { section_count } => {
             if *section_count > 32 {
@@ -739,13 +745,11 @@ mod tests {
     #[test]
     fn pipeline_multi_region() {
         let regions = vec![
-            ParallelRegion::new("loop", ParallelRegionKind::ParallelFor {
-                iterations: 100_000,
-                independent: true,
-            }),
-            ParallelRegion::new("io", ParallelRegionKind::AsyncTask {
-                group: "io".to_string(),
-            }),
+            ParallelRegion::new(
+                "loop",
+                ParallelRegionKind::ParallelFor { iterations: 100_000, independent: true },
+            ),
+            ParallelRegion::new("io", ParallelRegionKind::AsyncTask { group: "io".to_string() }),
             ParallelRegion::new("sync", ParallelRegionKind::Barrier),
         ];
         let result = lower_parallel_program(&regions);
@@ -756,13 +760,11 @@ mod tests {
     #[test]
     fn pipeline_dialects_used() {
         let regions = vec![
-            ParallelRegion::new("a", ParallelRegionKind::ParallelFor {
-                iterations: 100_000,
-                independent: true,
-            }),
-            ParallelRegion::new("b", ParallelRegionKind::AsyncTask {
-                group: "io".to_string(),
-            }),
+            ParallelRegion::new(
+                "a",
+                ParallelRegionKind::ParallelFor { iterations: 100_000, independent: true },
+            ),
+            ParallelRegion::new("b", ParallelRegionKind::AsyncTask { group: "io".to_string() }),
         ];
         let result = lower_parallel_program(&regions);
         let dialects = result.dialects_used();
@@ -771,15 +773,13 @@ mod tests {
 
     #[test]
     fn pipeline_explicit_dialect() {
-        let regions = vec![
-            (
-                ParallelRegion::new("loop", ParallelRegionKind::ParallelFor {
-                    iterations: 100,
-                    independent: true,
-                }),
-                ParallelDialect::Async,
+        let regions = vec![(
+            ParallelRegion::new(
+                "loop",
+                ParallelRegionKind::ParallelFor { iterations: 100, independent: true },
             ),
-        ];
+            ParallelDialect::Async,
+        )];
         let result = lower_parallel_program_with_dialect(&regions);
         assert_eq!(result.regions[0].1, ParallelDialect::Async);
     }

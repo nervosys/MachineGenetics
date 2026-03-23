@@ -172,7 +172,12 @@ pub struct RecallResponse {
 
 impl fmt::Display for RecallResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "memory.recall: {} results (searched {})", self.results.len(), self.total_searched)?;
+        writeln!(
+            f,
+            "memory.recall: {} results (searched {})",
+            self.results.len(),
+            self.total_searched
+        )?;
         for r in &self.results {
             writeln!(f, "  {r}")?;
         }
@@ -258,15 +263,9 @@ impl MemoryBackend {
 
 /// Process a `memory.store` request.
 pub fn handle_store(backend: &mut MemoryBackend, req: StoreRequest) -> StoreResponse {
-    let entry = StoreEntry::new(&req.key, req.value, req.tier)
-        .with_tags(req.tags);
+    let entry = StoreEntry::new(&req.key, req.value, req.tier).with_tags(req.tags);
     backend.tier_store_mut(req.tier).insert(req.key.clone(), entry);
-    StoreResponse {
-        success: true,
-        key: req.key,
-        tier: req.tier,
-        message: "stored".into(),
-    }
+    StoreResponse { success: true, key: req.key, tier: req.tier, message: "stored".into() }
 }
 
 /// Compute relevance between a query and a store entry.
@@ -343,7 +342,8 @@ pub fn handle_recall(backend: &mut MemoryBackend, req: RecallRequest) -> RecallR
     }
 
     // Sort by relevance
-    results.sort_by(|a, b| b.relevance.partial_cmp(&a.relevance).unwrap_or(std::cmp::Ordering::Equal));
+    results
+        .sort_by(|a, b| b.relevance.partial_cmp(&a.relevance).unwrap_or(std::cmp::Ordering::Equal));
     results.truncate(req.max_results);
 
     // Touch accessed entries
@@ -363,7 +363,9 @@ pub fn handle_suggest(backend: &MemoryBackend, req: SuggestRequest) -> SuggestRe
 
     let mut suggestions = Vec::new();
 
-    for tier in [MemoryTier::Ephemeral, MemoryTier::Session, MemoryTier::Project, MemoryTier::Global] {
+    for tier in
+        [MemoryTier::Ephemeral, MemoryTier::Session, MemoryTier::Project, MemoryTier::Global]
+    {
         for entry in backend.tier_store(tier).values() {
             let mut score = 0.0;
             let mut reasons = Vec::new();
@@ -371,7 +373,8 @@ pub fn handle_suggest(backend: &MemoryBackend, req: SuggestRequest) -> SuggestRe
             // Key word overlap
             let key_lower = entry.key.to_lowercase();
             let key_words: Vec<&str> = key_lower.split(|c: char| !c.is_alphanumeric()).collect();
-            let overlap: usize = context_words.iter()
+            let overlap: usize = context_words
+                .iter()
                 .filter(|w| key_words.iter().any(|kw| kw.contains(*w) || w.contains(kw)))
                 .count();
             if overlap > 0 {
@@ -405,7 +408,9 @@ pub fn handle_suggest(backend: &MemoryBackend, req: SuggestRequest) -> SuggestRe
         }
     }
 
-    suggestions.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
+    suggestions.sort_by(|a, b| {
+        b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal)
+    });
     suggestions.truncate(req.max_suggestions);
     SuggestResponse { suggestions }
 }
@@ -473,30 +478,42 @@ mod tests {
 
     fn setup_backend() -> MemoryBackend {
         let mut b = MemoryBackend::new();
-        handle_store(&mut b, StoreRequest {
-            key: "indent_style".into(),
-            value: MemValue::Text("spaces".into()),
-            tier: MemoryTier::Project,
-            tags: vec!["convention".into(), "formatting".into()],
-        });
-        handle_store(&mut b, StoreRequest {
-            key: "max_line_length".into(),
-            value: MemValue::Number(120.0),
-            tier: MemoryTier::Project,
-            tags: vec!["convention".into()],
-        });
-        handle_store(&mut b, StoreRequest {
-            key: "debug_mode".into(),
-            value: MemValue::Bool(true),
-            tier: MemoryTier::Session,
-            tags: vec!["debug".into()],
-        });
-        handle_store(&mut b, StoreRequest {
-            key: "user_preference".into(),
-            value: MemValue::Text("dark_theme".into()),
-            tier: MemoryTier::Global,
-            tags: vec!["ui".into()],
-        });
+        handle_store(
+            &mut b,
+            StoreRequest {
+                key: "indent_style".into(),
+                value: MemValue::Text("spaces".into()),
+                tier: MemoryTier::Project,
+                tags: vec!["convention".into(), "formatting".into()],
+            },
+        );
+        handle_store(
+            &mut b,
+            StoreRequest {
+                key: "max_line_length".into(),
+                value: MemValue::Number(120.0),
+                tier: MemoryTier::Project,
+                tags: vec!["convention".into()],
+            },
+        );
+        handle_store(
+            &mut b,
+            StoreRequest {
+                key: "debug_mode".into(),
+                value: MemValue::Bool(true),
+                tier: MemoryTier::Session,
+                tags: vec!["debug".into()],
+            },
+        );
+        handle_store(
+            &mut b,
+            StoreRequest {
+                key: "user_preference".into(),
+                value: MemValue::Text("dark_theme".into()),
+                tier: MemoryTier::Global,
+                tags: vec!["ui".into()],
+            },
+        );
         b
     }
 
@@ -558,12 +575,15 @@ mod tests {
     #[test]
     fn test_handle_store() {
         let mut b = MemoryBackend::new();
-        let resp = handle_store(&mut b, StoreRequest {
-            key: "test".into(),
-            value: MemValue::Bool(true),
-            tier: MemoryTier::Ephemeral,
-            tags: vec![],
-        });
+        let resp = handle_store(
+            &mut b,
+            StoreRequest {
+                key: "test".into(),
+                value: MemValue::Bool(true),
+                tier: MemoryTier::Ephemeral,
+                tags: vec![],
+            },
+        );
         assert!(resp.success);
         assert_eq!(resp.key, "test");
         assert_eq!(b.entry_count(MemoryTier::Ephemeral), 1);
@@ -571,7 +591,12 @@ mod tests {
 
     #[test]
     fn test_store_response_display() {
-        let r = StoreResponse { success: true, key: "k".into(), tier: MemoryTier::Session, message: "ok".into() };
+        let r = StoreResponse {
+            success: true,
+            key: "k".into(),
+            tier: MemoryTier::Session,
+            message: "ok".into(),
+        };
         let s = format!("{r}");
         assert!(s.contains("OK"));
     }
@@ -579,12 +604,10 @@ mod tests {
     #[test]
     fn test_handle_recall_by_key() {
         let mut b = setup_backend();
-        let resp = handle_recall(&mut b, RecallRequest {
-            query: "indent".into(),
-            tier: None,
-            tags: vec![],
-            max_results: 10,
-        });
+        let resp = handle_recall(
+            &mut b,
+            RecallRequest { query: "indent".into(), tier: None, tags: vec![], max_results: 10 },
+        );
         assert!(!resp.results.is_empty());
         assert!(resp.results[0].key.contains("indent"));
     }
@@ -592,12 +615,15 @@ mod tests {
     #[test]
     fn test_handle_recall_by_tier() {
         let mut b = setup_backend();
-        let resp = handle_recall(&mut b, RecallRequest {
-            query: "debug".into(),
-            tier: Some(MemoryTier::Session),
-            tags: vec![],
-            max_results: 10,
-        });
+        let resp = handle_recall(
+            &mut b,
+            RecallRequest {
+                query: "debug".into(),
+                tier: Some(MemoryTier::Session),
+                tags: vec![],
+                max_results: 10,
+            },
+        );
         assert!(!resp.results.is_empty());
         assert_eq!(resp.results[0].tier, MemoryTier::Session);
     }
@@ -605,24 +631,30 @@ mod tests {
     #[test]
     fn test_handle_recall_by_tag() {
         let mut b = setup_backend();
-        let resp = handle_recall(&mut b, RecallRequest {
-            query: "convention".into(),
-            tier: None,
-            tags: vec!["convention".into()],
-            max_results: 10,
-        });
+        let resp = handle_recall(
+            &mut b,
+            RecallRequest {
+                query: "convention".into(),
+                tier: None,
+                tags: vec!["convention".into()],
+                max_results: 10,
+            },
+        );
         assert!(resp.results.len() >= 1);
     }
 
     #[test]
     fn test_handle_recall_no_match() {
         let mut b = setup_backend();
-        let resp = handle_recall(&mut b, RecallRequest {
-            query: "zzzzz_nonexistent_zzzzz".into(),
-            tier: None,
-            tags: vec![],
-            max_results: 10,
-        });
+        let resp = handle_recall(
+            &mut b,
+            RecallRequest {
+                query: "zzzzz_nonexistent_zzzzz".into(),
+                tier: None,
+                tags: vec![],
+                max_results: 10,
+            },
+        );
         assert!(resp.results.is_empty());
     }
 
@@ -657,20 +689,20 @@ mod tests {
     #[test]
     fn test_handle_suggest() {
         let b = setup_backend();
-        let resp = handle_suggest(&b, SuggestRequest {
-            context: "formatting convention indent".into(),
-            max_suggestions: 5,
-        });
+        let resp = handle_suggest(
+            &b,
+            SuggestRequest { context: "formatting convention indent".into(), max_suggestions: 5 },
+        );
         assert!(!resp.suggestions.is_empty());
     }
 
     #[test]
     fn test_handle_suggest_no_match() {
         let b = setup_backend();
-        let resp = handle_suggest(&b, SuggestRequest {
-            context: "zzzzz_nothing_zzzzz".into(),
-            max_suggestions: 5,
-        });
+        let resp = handle_suggest(
+            &b,
+            SuggestRequest { context: "zzzzz_nothing_zzzzz".into(), max_suggestions: 5 },
+        );
         assert!(resp.suggestions.is_empty());
     }
 
@@ -740,12 +772,10 @@ mod tests {
     #[test]
     fn test_recall_sorts_by_relevance() {
         let mut b = setup_backend();
-        let resp = handle_recall(&mut b, RecallRequest {
-            query: "convention".into(),
-            tier: None,
-            tags: vec![],
-            max_results: 10,
-        });
+        let resp = handle_recall(
+            &mut b,
+            RecallRequest { query: "convention".into(), tier: None, tags: vec![], max_results: 10 },
+        );
         if resp.results.len() >= 2 {
             assert!(resp.results[0].relevance >= resp.results[1].relevance);
         }
@@ -754,14 +784,24 @@ mod tests {
     #[test]
     fn test_store_overwrites() {
         let mut b = MemoryBackend::new();
-        handle_store(&mut b, StoreRequest {
-            key: "k".into(), value: MemValue::Number(1.0),
-            tier: MemoryTier::Ephemeral, tags: vec![],
-        });
-        handle_store(&mut b, StoreRequest {
-            key: "k".into(), value: MemValue::Number(2.0),
-            tier: MemoryTier::Ephemeral, tags: vec![],
-        });
+        handle_store(
+            &mut b,
+            StoreRequest {
+                key: "k".into(),
+                value: MemValue::Number(1.0),
+                tier: MemoryTier::Ephemeral,
+                tags: vec![],
+            },
+        );
+        handle_store(
+            &mut b,
+            StoreRequest {
+                key: "k".into(),
+                value: MemValue::Number(2.0),
+                tier: MemoryTier::Ephemeral,
+                tags: vec![],
+            },
+        );
         assert_eq!(b.entry_count(MemoryTier::Ephemeral), 1);
     }
 
@@ -769,19 +809,20 @@ mod tests {
     fn test_recall_max_results() {
         let mut b = MemoryBackend::new();
         for i in 0..10 {
-            handle_store(&mut b, StoreRequest {
-                key: format!("item_{i}"),
-                value: MemValue::Text("item".into()),
-                tier: MemoryTier::Project,
-                tags: vec![],
-            });
+            handle_store(
+                &mut b,
+                StoreRequest {
+                    key: format!("item_{i}"),
+                    value: MemValue::Text("item".into()),
+                    tier: MemoryTier::Project,
+                    tags: vec![],
+                },
+            );
         }
-        let resp = handle_recall(&mut b, RecallRequest {
-            query: "item".into(),
-            tier: None,
-            tags: vec![],
-            max_results: 3,
-        });
+        let resp = handle_recall(
+            &mut b,
+            RecallRequest { query: "item".into(), tier: None, tags: vec![], max_results: 3 },
+        );
         assert!(resp.results.len() <= 3);
     }
 

@@ -116,7 +116,9 @@ impl ProgramProfile {
     /// Entries sorted by wall time descending (hottest first).
     pub fn hotspots(&self) -> Vec<&ProfileEntry> {
         let mut sorted: Vec<&ProfileEntry> = self.entries.iter().collect();
-        sorted.sort_by(|a, b| b.wall_time_us.partial_cmp(&a.wall_time_us).unwrap_or(std::cmp::Ordering::Equal));
+        sorted.sort_by(|a, b| {
+            b.wall_time_us.partial_cmp(&a.wall_time_us).unwrap_or(std::cmp::Ordering::Equal)
+        });
         sorted
     }
 
@@ -235,9 +237,11 @@ impl PerfSuggestion {
 
 impl fmt::Display for PerfSuggestion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{:.1}×] {} at {}:{} — {} (add: {})",
-            self.estimated_speedup, self.kind, self.file, self.line,
-            self.message, self.annotation)
+        write!(
+            f,
+            "[{:.1}×] {} at {}:{} — {} (add: {})",
+            self.estimated_speedup, self.kind, self.file, self.line, self.message, self.annotation
+        )
     }
 }
 
@@ -285,8 +289,10 @@ pub fn detect_opportunities(
                     region_name: entry.region_name.clone(),
                     file: entry.file.clone(),
                     line: entry.line,
-                    message: format!("High cache misses ({}); tiling would improve locality",
-                        entry.cache_misses.unwrap_or(0)),
+                    message: format!(
+                        "High cache misses ({}); tiling would improve locality",
+                        entry.cache_misses.unwrap_or(0)
+                    ),
                     annotation: "#[perf::tile(32)]".to_string(),
                     estimated_speedup: 2.0,
                     priority: time_frac * 2.0,
@@ -335,8 +341,10 @@ pub fn detect_opportunities(
                 region_name: entry.region_name.clone(),
                 file: entry.file.clone(),
                 line: entry.line,
-                message: format!("{}MB allocated in hot region; consider pre-allocation or arena",
-                    entry.alloc_bytes / 1_000_000),
+                message: format!(
+                    "{}MB allocated in hot region; consider pre-allocation or arena",
+                    entry.alloc_bytes / 1_000_000
+                ),
                 annotation: "#[perf::arena]".to_string(),
                 estimated_speedup: 1.5,
                 priority: time_frac * 1.5,
@@ -350,8 +358,11 @@ pub fn detect_opportunities(
                 region_name: entry.region_name.clone(),
                 file: entry.file.clone(),
                 line: entry.line,
-                message: format!("Called {}× with {:.2}µs/call — inline candidate",
-                    entry.call_count, entry.avg_time_us()),
+                message: format!(
+                    "Called {}× with {:.2}µs/call — inline candidate",
+                    entry.call_count,
+                    entry.avg_time_us()
+                ),
                 annotation: "#[inline(always)]".to_string(),
                 estimated_speedup: 1.3,
                 priority: time_frac * 1.3,
@@ -360,7 +371,8 @@ pub fn detect_opportunities(
     }
 
     // Sort by priority (highest first)
-    suggestions.sort_by(|a, b| b.priority.partial_cmp(&a.priority).unwrap_or(std::cmp::Ordering::Equal));
+    suggestions
+        .sort_by(|a, b| b.priority.partial_cmp(&a.priority).unwrap_or(std::cmp::Ordering::Equal));
     suggestions
 }
 
@@ -387,28 +399,28 @@ impl PerfAdvisorReport {
     }
 
     pub fn summary(&self) -> String {
-        let top = self.top_suggestion()
-            .map(|s| format!("{s}"))
-            .unwrap_or_else(|| "none".to_string());
+        let top =
+            self.top_suggestion().map(|s| format!("{s}")).unwrap_or_else(|| "none".to_string());
         format!(
             "Performance Report: {} suggestions, {:.1}µs total, est. {:.1}× overall speedup\n  Top: {}",
-            self.suggestions.len(), self.total_time_us, self.estimated_total_speedup, top,
+            self.suggestions.len(),
+            self.total_time_us,
+            self.estimated_total_speedup,
+            top,
         )
     }
 }
 
 /// Run the full advisor pipeline.
-pub fn advise(
-    profile: &ProgramProfile,
-    costs: &[MlirCostEstimate],
-) -> PerfAdvisorReport {
+pub fn advise(profile: &ProgramProfile, costs: &[MlirCostEstimate]) -> PerfAdvisorReport {
     let suggestions = detect_opportunities(profile, costs);
 
     // Estimate overall speedup from applying all suggestions
     // Model: each suggestion reduces the hot region's contribution
     let total_time = profile.total_time_us();
     // Track max speedup per region to avoid double-counting
-    let mut region_speedups: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+    let mut region_speedups: std::collections::HashMap<String, f64> =
+        std::collections::HashMap::new();
     for suggestion in &suggestions {
         let entry = region_speedups.entry(suggestion.region_name.clone()).or_insert(1.0_f64);
         if suggestion.estimated_speedup > *entry {
@@ -423,15 +435,10 @@ pub fn advise(
             remaining_time -= savings.min(remaining_time);
         }
     }
-    let estimated_total_speedup = if remaining_time > 0.0 {
-        total_time / remaining_time
-    } else {
-        1.0
-    };
+    let estimated_total_speedup =
+        if remaining_time > 0.0 { total_time / remaining_time } else { 1.0 };
 
-    let hotspot_count = profile.entries.iter()
-        .filter(|e| profile.time_fraction(e) >= 0.05)
-        .count();
+    let hotspot_count = profile.entries.iter().filter(|e| profile.time_fraction(e) >= 0.05).count();
 
     PerfAdvisorReport {
         suggestions,
@@ -456,13 +463,9 @@ mod tests {
                 .with_alloc(2_000_000)
                 .with_cache_misses(50_000)
                 .with_flops(1_000_000_000),
-            ProfileEntry::new("sort", "util.rdx", 50, 10_000.0)
-                .with_calls(100)
-                .with_alloc(500_000),
-            ProfileEntry::new("parse", "io.rdx", 5, 5_000.0)
-                .with_calls(50_000),
-            ProfileEntry::new("tiny", "misc.rdx", 1, 10.0)
-                .with_calls(1),
+            ProfileEntry::new("sort", "util.rdx", 50, 10_000.0).with_calls(100).with_alloc(500_000),
+            ProfileEntry::new("parse", "io.rdx", 5, 5_000.0).with_calls(50_000),
+            ProfileEntry::new("tiny", "misc.rdx", 1, 10.0).with_calls(1),
         ])
     }
 
@@ -511,9 +514,7 @@ mod tests {
 
     #[test]
     fn arithmetic_intensity_some() {
-        let entry = ProfileEntry::new("f", "a.rdx", 1, 100.0)
-            .with_alloc(1000)
-            .with_flops(10_000);
+        let entry = ProfileEntry::new("f", "a.rdx", 1, 100.0).with_alloc(1000).with_flops(10_000);
         assert!((entry.arithmetic_intensity().unwrap() - 10.0).abs() < 0.01);
     }
 
@@ -726,9 +727,9 @@ mod tests {
         let profile = sample_profile();
         let suggestions = detect_opportunities(&profile, &[]);
         // Should still detect allocation-based and call-count-based suggestions
-        let has_alloc_or_inline = suggestions.iter().any(|s|
+        let has_alloc_or_inline = suggestions.iter().any(|s| {
             s.kind == SuggestionKind::ReduceAllocations || s.kind == SuggestionKind::InlineFunction
-        );
+        });
         assert!(has_alloc_or_inline);
     }
 }

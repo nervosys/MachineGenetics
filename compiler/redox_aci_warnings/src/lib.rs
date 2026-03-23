@@ -176,8 +176,14 @@ impl WarningRule {
 
 impl fmt::Display for WarningRule {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}] {} (confidence: {:.0}%, severity: {})",
-            self.category, self.message, self.confidence * 100.0, self.severity)
+        write!(
+            f,
+            "[{}] {} (confidence: {:.0}%, severity: {})",
+            self.category,
+            self.message,
+            self.confidence * 100.0,
+            self.severity
+        )
     }
 }
 
@@ -217,7 +223,8 @@ pub fn extract_warning_rules(bugs: &[BugRecord]) -> Vec<WarningRule> {
             category, total_occurrences
         );
 
-        let suggestion = records.iter()
+        let suggestion = records
+            .iter()
             .find(|r| !r.fix_description.is_empty())
             .map(|r| r.fix_description.clone())
             .unwrap_or_else(|| format!("Review for {category} patterns"));
@@ -236,27 +243,25 @@ pub fn extract_warning_rules(bugs: &[BugRecord]) -> Vec<WarningRule> {
     }
 
     // Sort by priority (highest first)
-    rules.sort_by(|a, b| b.priority().partial_cmp(&a.priority()).unwrap_or(std::cmp::Ordering::Equal));
+    rules.sort_by(|a, b| {
+        b.priority().partial_cmp(&a.priority()).unwrap_or(std::cmp::Ordering::Equal)
+    });
     rules
 }
 
 /// Calibrate rules using swarm session feedback.
-pub fn calibrate_with_swarm_feedback(
-    rules: &mut [WarningRule],
-    sessions: &[SwarmSessionRecord],
-) {
+pub fn calibrate_with_swarm_feedback(rules: &mut [WarningRule], sessions: &[SwarmSessionRecord]) {
     for rule in rules.iter_mut() {
         let rule_id = &rule.id;
         let mut total_generated = 0u32;
         let mut total_fp = 0u32;
 
         for session in sessions {
-            let generated = session.warnings_generated.iter()
-                .filter(|w| w.contains(rule_id.as_str()))
-                .count() as u32;
-            let fp = session.false_positives.iter()
-                .filter(|w| w.contains(rule_id.as_str()))
-                .count() as u32;
+            let generated =
+                session.warnings_generated.iter().filter(|w| w.contains(rule_id.as_str())).count()
+                    as u32;
+            let fp = session.false_positives.iter().filter(|w| w.contains(rule_id.as_str())).count()
+                as u32;
             total_generated += generated;
             total_fp += fp;
         }
@@ -291,8 +296,14 @@ impl DynamicWarning {
 
 impl fmt::Display for DynamicWarning {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "warning[{}]: {} at {} (confidence: {:.0}%)",
-            self.category, self.message, self.location, self.confidence * 100.0)
+        write!(
+            f,
+            "warning[{}]: {} at {} (confidence: {:.0}%)",
+            self.category,
+            self.message,
+            self.location,
+            self.confidence * 100.0
+        )
     }
 }
 
@@ -326,11 +337,7 @@ pub struct CodeSnippet {
 
 impl CodeSnippet {
     pub fn new(file: &str, start_line: u32, content: &str) -> Self {
-        CodeSnippet {
-            file: file.to_string(),
-            start_line,
-            content: content.to_string(),
-        }
+        CodeSnippet { file: file.to_string(), start_line, content: content.to_string() }
     }
 }
 
@@ -345,20 +352,21 @@ pub fn analyze_code(snippet: &CodeSnippet, rules: &[WarningRule]) -> Vec<Dynamic
         }
 
         // Check if any trigger keywords match
-        let matching_keywords: Vec<&String> = rule.trigger_keywords.iter()
-            .filter(|kw| content_lower.contains(kw.as_str()))
-            .collect();
+        let matching_keywords: Vec<&String> =
+            rule.trigger_keywords.iter().filter(|kw| content_lower.contains(kw.as_str())).collect();
 
         if matching_keywords.is_empty() {
             continue;
         }
 
         // More keyword matches → higher confidence
-        let match_ratio = matching_keywords.len() as f64 / rule.trigger_keywords.len().max(1) as f64;
+        let match_ratio =
+            matching_keywords.len() as f64 / rule.trigger_keywords.len().max(1) as f64;
         let effective_confidence = rule.confidence * match_ratio;
 
         // Find approximate line of first match
-        let line_offset = content_lower.lines()
+        let line_offset = content_lower
+            .lines()
             .enumerate()
             .find(|(_, line)| matching_keywords.iter().any(|kw| line.contains(kw.as_str())))
             .map(|(i, _)| i as u32)
@@ -377,7 +385,8 @@ pub fn analyze_code(snippet: &CodeSnippet, rules: &[WarningRule]) -> Vec<Dynamic
 
     // Sort by severity (highest first), then confidence
     warnings.sort_by(|a, b| {
-        b.severity.cmp(&a.severity)
+        b.severity
+            .cmp(&a.severity)
             .then(b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal))
     });
 
@@ -432,11 +441,7 @@ impl WarningEngine {
         if !sessions.is_empty() {
             calibrate_with_swarm_feedback(&mut rules, sessions);
         }
-        WarningEngine {
-            rules,
-            config,
-            feedback: HashMap::new(),
-        }
+        WarningEngine { rules, config, feedback: HashMap::new() }
     }
 
     /// Analyze a code snippet.
@@ -526,26 +531,37 @@ mod tests {
                 .with_fix("Use match or if-let instead of unwrap")
                 .with_severity(5)
                 .with_occurrences(3),
-            BugRecord::new(3, BugCategory::RaceCondition, "shared mutex lock unlock", "race in shared state")
-                .with_fix("Hold lock for entire critical section")
-                .with_severity(5)
-                .with_occurrences(2),
-            BugRecord::new(4, BugCategory::ResourceLeak, "open file close drop", "file handle leak")
-                .with_fix("Use RAII pattern or explicit close")
-                .with_severity(3)
-                .with_occurrences(4),
+            BugRecord::new(
+                3,
+                BugCategory::RaceCondition,
+                "shared mutex lock unlock",
+                "race in shared state",
+            )
+            .with_fix("Hold lock for entire critical section")
+            .with_severity(5)
+            .with_occurrences(2),
+            BugRecord::new(
+                4,
+                BugCategory::ResourceLeak,
+                "open file close drop",
+                "file handle leak",
+            )
+            .with_fix("Use RAII pattern or explicit close")
+            .with_severity(3)
+            .with_occurrences(4),
         ]
     }
 
     fn sample_sessions() -> Vec<SwarmSessionRecord> {
-        vec![
-            SwarmSessionRecord {
-                session_id: "s1".to_string(),
-                warnings_generated: vec!["aci-warn-off-by-one".to_string(), "aci-warn-null-deref".to_string()],
-                warnings_that_caught_bugs: vec!["aci-warn-null-deref".to_string()],
-                false_positives: vec!["aci-warn-off-by-one".to_string()],
-            },
-        ]
+        vec![SwarmSessionRecord {
+            session_id: "s1".to_string(),
+            warnings_generated: vec![
+                "aci-warn-off-by-one".to_string(),
+                "aci-warn-null-deref".to_string(),
+            ],
+            warnings_that_caught_bugs: vec!["aci-warn-null-deref".to_string()],
+            false_positives: vec!["aci-warn-off-by-one".to_string()],
+        }]
     }
 
     // ── Bug Category ─────────────────────────────────────────────────────
@@ -739,7 +755,11 @@ mod tests {
 
     #[test]
     fn engine_build() {
-        let engine = WarningEngine::build(&sample_bugs(), &sample_sessions(), WarningEngineConfig::default());
+        let engine = WarningEngine::build(
+            &sample_bugs(),
+            &sample_sessions(),
+            WarningEngineConfig::default(),
+        );
         let stats = engine.stats();
         assert!(stats.active_rules > 0);
         assert!(stats.total_evidence > 0);
@@ -766,10 +786,7 @@ mod tests {
 
     #[test]
     fn engine_min_severity_filter() {
-        let config = WarningEngineConfig {
-            min_severity: 5,
-            ..Default::default()
-        };
+        let config = WarningEngineConfig { min_severity: 5, ..Default::default() };
         let engine = WarningEngine::build(&sample_bugs(), &[], config);
         let snippet = CodeSnippet::new("test.rdx", 1, "loop index len minus unwrap open file");
         let warnings = engine.analyze(&snippet);
@@ -781,7 +798,8 @@ mod tests {
     #[test]
     fn engine_feedback() {
         let mut engine = WarningEngine::build(&sample_bugs(), &[], WarningEngineConfig::default());
-        let obo_id = engine.rules.iter().find(|r| r.category == BugCategory::OffByOne).map(|r| r.id.clone());
+        let obo_id =
+            engine.rules.iter().find(|r| r.category == BugCategory::OffByOne).map(|r| r.id.clone());
         if let Some(id) = obo_id {
             engine.record_feedback(&id, true);
             engine.record_feedback(&id, false);

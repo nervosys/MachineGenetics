@@ -294,10 +294,7 @@ impl SemanticIndex {
         let id = item.id;
 
         // Name index.
-        self.name_index
-            .entry(item.name.clone())
-            .or_default()
-            .push(id);
+        self.name_index.entry(item.name.clone()).or_default().push(id);
 
         // Path index.
         self.path_index.insert(item.path.clone(), id);
@@ -318,10 +315,7 @@ impl SemanticIndex {
 
     /// Add a directional edge between two items.
     pub fn add_edge(&mut self, edge: Edge) {
-        self.edges_to
-            .entry(edge.to)
-            .or_default()
-            .push(edge.clone());
+        self.edges_to.entry(edge.to).or_default().push(edge.clone());
         self.edges_from.entry(edge.from).or_default().push(edge);
     }
 
@@ -346,9 +340,7 @@ impl SemanticIndex {
 
     /// Get an item by its fully-qualified path.
     pub fn get_by_path(&self, path: &str) -> Option<&Item> {
-        self.path_index
-            .get(path)
-            .and_then(|id| self.items.get(id))
+        self.path_index.get(path).and_then(|id| self.items.get(id))
     }
 
     // ------------------------------------------------------------------
@@ -481,12 +473,8 @@ impl SemanticIndex {
         let mut capabilities_count: HashMap<String, usize> = HashMap::new();
 
         for item in self.items.values() {
-            *items_by_kind
-                .entry(format!("{}", item.kind))
-                .or_default() += 1;
-            *items_by_crate
-                .entry(item.crate_id.name.clone())
-                .or_default() += 1;
+            *items_by_kind.entry(format!("{}", item.kind)).or_default() += 1;
+            *items_by_crate.entry(item.crate_id.name.clone()).or_default() += 1;
             for cap in &item.capabilities {
                 *capabilities_count.entry(cap.name().to_string()).or_default() += 1;
             }
@@ -585,23 +573,17 @@ mod tests {
     }
 
     fn make_fn(idx: &mut SemanticIndex, name: &str, path: &str) -> ItemId {
-        let item = ItemBuilder::new(name, ItemKind::Function, test_crate())
-            .path(path)
-            .build();
+        let item = ItemBuilder::new(name, ItemKind::Function, test_crate()).path(path).build();
         idx.insert(item)
     }
 
     fn make_struct(idx: &mut SemanticIndex, name: &str, path: &str) -> ItemId {
-        let item = ItemBuilder::new(name, ItemKind::Struct, test_crate())
-            .path(path)
-            .build();
+        let item = ItemBuilder::new(name, ItemKind::Struct, test_crate()).path(path).build();
         idx.insert(item)
     }
 
     fn make_trait(idx: &mut SemanticIndex, name: &str, path: &str) -> ItemId {
-        let item = ItemBuilder::new(name, ItemKind::Trait, test_crate())
-            .path(path)
-            .build();
+        let item = ItemBuilder::new(name, ItemKind::Trait, test_crate()).path(path).build();
         idx.insert(item)
     }
 
@@ -763,11 +745,7 @@ mod tests {
         let trait_id = make_trait(&mut idx, "Display", "std::fmt::Display");
         let struct_id = make_struct(&mut idx, "Point", "mylib::Point");
 
-        idx.add_edge(Edge {
-            from: struct_id,
-            to: trait_id,
-            kind: EdgeKind::Implements,
-        });
+        idx.add_edge(Edge { from: struct_id, to: trait_id, kind: EdgeKind::Implements });
 
         let impls = idx.implementors(trait_id);
         assert_eq!(impls.len(), 1);
@@ -804,16 +782,13 @@ mod tests {
     fn crate_dependencies() {
         let mut idx = SemanticIndex::new();
         let crate_a = {
-            let item = ItemBuilder::new("crate_a", ItemKind::Module, test_crate())
-                .path("crate_a")
-                .build();
+            let item =
+                ItemBuilder::new("crate_a", ItemKind::Module, test_crate()).path("crate_a").build();
             idx.insert(item)
         };
         let dep_crate = CrateId { name: "serde".into(), version: "1.0.0".into() };
         let crate_b = {
-            let item = ItemBuilder::new("serde", ItemKind::Module, dep_crate)
-                .path("serde")
-                .build();
+            let item = ItemBuilder::new("serde", ItemKind::Module, dep_crate).path("serde").build();
             idx.insert(item)
         };
 
@@ -896,11 +871,7 @@ mod tests {
             })
             .capability(Capability::Io)
             .doc("Process an item.")
-            .source(SourceLoc {
-                file: "src/lib.rs".into(),
-                line: 42,
-                column: 1,
-            })
+            .source(SourceLoc { file: "src/lib.rs".into(), line: 42, column: 1 })
             .build();
 
         assert_eq!(item.name, "process");
