@@ -164,7 +164,7 @@
 - [x] **Step 92**: Develop certification pipeline for safety-critical industries (opt-in full safety mode).
 - [x] **Step 93**: Publish Redox language specification.
 - [x] **Step 94**: Ship reference swarm configurations (audit swarm, migration swarm, greenfield swarm).
-- [ ] **Step 95**: Build swarm performance benchmarking suite (throughput, latency, conflict rate metrics).
+- [x] **Step 95**: Build swarm performance benchmarking suite (throughput, latency, conflict rate metrics).
 - [ ] **Step 96**: Publish SKB rule corpus as open dataset for agent training.
 - [ ] **Step 97**: Launch global memory network: anonymized cross-project pattern sharing (opt-in).
 - [ ] **Step 98**: Build synthesis marketplace: verified spec→implementation pairs as reusable components.

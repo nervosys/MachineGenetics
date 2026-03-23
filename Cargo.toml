@@ -55,6 +55,7 @@ members = [
   "compiler/redox_safety_certify",
   "compiler/redox_lang_spec",
   "compiler/redox_swarm_configs",
+  "compiler/redox_swarm_bench",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",
