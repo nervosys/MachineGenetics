@@ -1,0 +1,635 @@
+// autonomous-pipeline — AI-Driven Code Generation Pipeline.
+//
+// A production-grade scenario: an AI system receives a natural-language
+// specification ("build a REST API for user management"), decomposes it
+// into verified tasks, generates code through a contracted pipeline,
+// estimates costs per target, and delivers optimized output.
+//
+// Demonstrates:
+//   - Task decomposition into dependency DAGs
+//   - Function contracts with pre/post conditions
+//   - Pipeline composition with type-safe stages
+//   - Cost oracle queries for multi-target optimization
+//   - Token budget tracking for LLM-aware compilation
+//   - Memory recall for caching intermediate results
+//   - Effect annotations (/ io, / db, / net)
+
+u std.col;
+u std.fmt;
+u std.io;
+
+// ─────────────────────────────────────────────────────────────────────
+// §1 — Specification: the user's high-level request
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S Specification {
+    description: s,
+    language: s,
+    targets: [s]~,
+    max_token_budget: usize,
+    safety_level: SafetyLevel,
+}
+
+@d(Debug, Clone, PartialEq)
++E SafetyLevel {
+    Prototype,
+    Development,
+    Production,
+    SafetyCritical,
+}
+
+I ~ SafetyLevel {
+    f requires_contracts(&self) -> bool {
+        ? self {
+            SafetyLevel.Production | SafetyLevel.SafetyCritical => 1b,
+            _ => 0b,
+        }
+    }
+
+    f requires_formal_verification(&self) -> bool {
+        ? self {
+            SafetyLevel.SafetyCritical => 1b,
+            _ => 0b,
+        }
+    }
+
+    f min_test_coverage(&self) -> f64 {
+        ? self {
+            SafetyLevel.Prototype => 0.0,
+            SafetyLevel.Development => 0.60,
+            SafetyLevel.Production => 0.85,
+            SafetyLevel.SafetyCritical => 0.95,
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §2 — Task decomposition: break spec into executable units
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)]
++E TaskKind {
+    DesignApi,
+    DefineContracts,
+    ImplementEndpoint,
+    ImplementModel,
+    GenerateTests,
+    OptimizeForTarget,
+    VerifyContracts,
+    IntegrationTest,
+}
+
+@d(Debug, Clone)
++S Task {
+    id: u64,
+    name: s,
+    kind: TaskKind,
+    dependencies: [u64]~,
+    token_estimate: usize,
+    completed: bool,
+}
+
+I ~ Task {
+    +f new(id: u64, name: s, kind: TaskKind, token_est: usize) -> Task {
+        Task @{
+            id: id,
+            name: name,
+            kind: kind,
+            dependencies: []~,
+            token_estimate: token_est,
+            completed: 0b,
+        }
+    }
+
+    +f depends_on(m self, deps: [u64]~) -> Task {
+        self.dependencies = deps;
+        self
+    }
+
+    +f is_ready(&self, completed: &{u64}) -> bool {
+        self.dependencies.iter().all(|d| completed.contains(d))
+    }
+}
+
+/// Decompose a specification into a task DAG.
+///
+/// @req  spec.targets.len() > 0            "must target at least one platform"
+/// @ens  result.len() >= 3                 "minimal pipeline has design + implement + test"
+/// @fx   pure
+f decompose(spec: &Specification) -> [Task]~ {
+    m tasks: [Task]~ = []~;
+    m next_id: u64 = 1;
+
+    // Phase 1: Design the API surface.
+    v design = Task.new(next_id, "Design REST API surface".to_string(), TaskKind.DesignApi, 200);
+    tasks.push(design);
+    v design_id = next_id;
+    next_id = next_id + 1;
+
+    // Phase 2: Define contracts (if safety level requires it).
+    m contract_id: ?u64 = None;
+    ?: spec.safety_level.requires_contracts() {
+        v contracts = Task.new(
+            next_id,
+            "Define function contracts".to_string(),
+            TaskKind.DefineContracts,
+            150,
+        ).depends_on([design_id]~);
+        contract_id = Some(next_id);
+        tasks.push(contracts);
+        next_id = next_id + 1;
+    }
+
+    // Phase 3: Implement models and endpoints.
+    v model_deps = ? contract_id {
+        Some(cid) => [design_id, cid]~,
+        None => [design_id]~,
+    };
+
+    v model = Task.new(
+        next_id,
+        "Implement User model".to_string(),
+        TaskKind.ImplementModel,
+        300,
+    ).depends_on(model_deps.clone());
+    v model_id = next_id;
+    tasks.push(model);
+    next_id = next_id + 1;
+
+    // Endpoints depend on model.
+    v endpoints = ["create_user", "get_user", "update_user", "delete_user"];
+    m endpoint_ids: [u64]~ = []~;
+    @ name ~ &endpoints {
+        v ep = Task.new(
+            next_id,
+            f"Implement {name} endpoint".to_string(),
+            TaskKind.ImplementEndpoint,
+            250,
+        ).depends_on([model_id]~);
+        endpoint_ids.push(next_id);
+        tasks.push(ep);
+        next_id = next_id + 1;
+    }
+
+    // Phase 4: Generate tests.
+    v test_task = Task.new(
+        next_id,
+        "Generate test suite".to_string(),
+        TaskKind.GenerateTests,
+        400,
+    ).depends_on(endpoint_ids.clone());
+    v test_id = next_id;
+    tasks.push(test_task);
+    next_id = next_id + 1;
+
+    // Phase 5: Optimize for each target.
+    @ target ~ &spec.targets {
+        v opt = Task.new(
+            next_id,
+            f"Optimize for {target}".to_string(),
+            TaskKind.OptimizeForTarget,
+            180,
+        ).depends_on([test_id]~);
+        tasks.push(opt);
+        next_id = next_id + 1;
+    }
+
+    // Phase 6: Verify contracts (if safety-critical).
+    ?: spec.safety_level.requires_formal_verification() {
+        v verify = Task.new(
+            next_id,
+            "Formal contract verification".to_string(),
+            TaskKind.VerifyContracts,
+            500,
+        ).depends_on(endpoint_ids.clone());
+        tasks.push(verify);
+    }
+
+    tasks
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §3 — Contracts: specify what each generated function must satisfy
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S ContractSpec {
+    fn_name: s,
+    preconditions: [s]~,
+    postconditions: [s]~,
+}
+
+I ~ ContractSpec {
+    +f new(name: &s) -> ContractSpec {
+        ContractSpec @{
+            fn_name: name.clone(),
+            preconditions: []~,
+            postconditions: []~,
+        }
+    }
+
+    +f pre(m self, cond: s) -> ContractSpec {
+        self.preconditions.push(cond);
+        self
+    }
+
+    +f post(m self, cond: s) -> ContractSpec {
+        self.postconditions.push(cond);
+        self
+    }
+}
+
+/// Build contracts for a user-management REST API. Each endpoint gets
+/// pre/postconditions that the generated code must satisfy.
+///
+/// @fx pure
+f build_api_contracts() -> [ContractSpec]~ {
+    [
+        ContractSpec.new(&"create_user".to_string())
+            .pre("email.len() > 0".to_string())
+            .pre("email.contains('@')".to_string())
+            .pre("password.len() >= 8".to_string())
+            .post("result.is_ok() => db.contains(email)".to_string())
+            .post("result.is_err() => db.unchanged()".to_string()),
+
+        ContractSpec.new(&"get_user".to_string())
+            .pre("id > 0".to_string())
+            .post("result.is_some() => result.unwrap().id == id".to_string()),
+
+        ContractSpec.new(&"update_user".to_string())
+            .pre("id > 0".to_string())
+            .pre("db.contains(id)".to_string())
+            .post("result.is_ok() => db.get(id).version > old(db.get(id).version)".to_string()),
+
+        ContractSpec.new(&"delete_user".to_string())
+            .pre("id > 0".to_string())
+            .post("result.is_ok() => !db.contains(id)".to_string()),
+    ]~
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §4 — Pipeline: staged code generation
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++E StageResult {
+    Ok(s),
+    Err(s),
+}
+
+@d(Debug, Clone)
++S PipelineStage {
+    name: s,
+    input_type: s,
+    output_type: s,
+}
+
+@d(Debug, Clone)
++S GenerationPipeline {
+    stages: [PipelineStage]~,
+    results: {s: StageResult},
+}
+
+I ~ GenerationPipeline {
+    +f new() -> GenerationPipeline {
+        GenerationPipeline @{ stages: []~, results: HashMap.new() }
+    }
+
+    +f stage(m self, name: s, input: s, output: s) -> GenerationPipeline {
+        self.stages.push(PipelineStage @{
+            name: name,
+            input_type: input,
+            output_type: output,
+        });
+        self
+    }
+
+    /// Run all stages sequentially. Each stage's output becomes the
+    /// next stage's input — verified by type compatibility.
+    ///
+    /// @req  self.stages.len() > 0          "pipeline must have stages"
+    /// @ens  self.results.len() == self.stages.len()
+    +f run(&!self, initial_input: s) / io {
+        p"";
+        p"╔═══════════════════════════════════════════╗";
+        p"║     Code Generation Pipeline              ║";
+        p"╚═══════════════════════════════════════════╝";
+
+        m current_input = initial_input;
+        @ (i, stage) ~ self.stages.iter().enumerate() {
+            p"  ┌─ Stage {i + 1}: {stage.name}";
+            p"  │  Input:  {stage.input_type} ({current_input.len()} chars)";
+
+            // Simulate generation — in production this calls the LLM.
+            v output = f"// Generated by stage: {stage.name}\n{current_input}";
+
+            p"  │  Output: {stage.output_type} ({output.len()} chars)";
+            p"  └─ ✓ Complete";
+
+            self.results.insert(stage.name.clone(), StageResult.Ok(output.clone()));
+            current_input = output;
+        }
+        p"";
+        p"Pipeline complete: {self.results.len()} stages executed.";
+    }
+}
+
+/// Build the standard code-generation pipeline.
+///
+/// @fx pure
+f build_generation_pipeline() -> GenerationPipeline {
+    GenerationPipeline.new()
+        .stage(
+            "parse_spec".to_string(),
+            "NaturalLanguage".to_string(),
+            "StructuredAST".to_string(),
+        )
+        .stage(
+            "generate_types".to_string(),
+            "StructuredAST".to_string(),
+            "TypeDefinitions".to_string(),
+        )
+        .stage(
+            "generate_endpoints".to_string(),
+            "TypeDefinitions".to_string(),
+            "EndpointCode".to_string(),
+        )
+        .stage(
+            "attach_contracts".to_string(),
+            "EndpointCode".to_string(),
+            "ContractedCode".to_string(),
+        )
+        .stage(
+            "generate_tests".to_string(),
+            "ContractedCode".to_string(),
+            "TestedModule".to_string(),
+        )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §5 — Cost estimation: choose the best target
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S TargetCost {
+    target: s,
+    latency_ms: f64,
+    memory_mb: f64,
+    energy_score: f64,
+}
+
+I fmt.Display ~ TargetCost {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        write!(f, "{}: {:.1}ms latency, {:.1}MB memory, energy={:.2}",
+            self.target, self.latency_ms, self.memory_mb, self.energy_score)
+    }
+}
+
+/// Estimate compilation cost for each target.
+///
+/// @req  targets.len() > 0
+/// @ens  result.len() == targets.len()
+/// @fx   pure
+f estimate_costs(targets: &[s]~, code_size_tokens: usize) -> [TargetCost]~ {
+    m costs: [TargetCost]~ = []~;
+    v base = code_size_tokens as f64;
+
+    @ target ~ targets {
+        v (lat, mem, energy) = ? target.as_str() {
+            "x86_64"  => (base * 0.012, base * 0.08,  0.85),
+            "aarch64" => (base * 0.010, base * 0.07,  0.65),
+            "wasm32"  => (base * 0.018, base * 0.12,  0.40),
+            "riscv64" => (base * 0.015, base * 0.09,  0.55),
+            _         => (base * 0.020, base * 0.15,  1.00),
+        };
+        costs.push(TargetCost @{
+            target: target.clone(),
+            latency_ms: lat,
+            memory_mb: mem,
+            energy_score: energy,
+        });
+    }
+    costs
+}
+
+/// Select the optimal target for the given workload.
+///
+/// @req  costs.len() > 0
+/// @fx   pure
+f select_optimal_target(costs: &[TargetCost]~) -> &TargetCost {
+    // Multi-objective scoring: prefer low latency + low memory + low energy.
+    m best = &costs[0];
+    m best_score = best.latency_ms + best.memory_mb + best.energy_score * 100.0;
+
+    @ cost ~ costs.iter().skip(1) {
+        v score = cost.latency_ms + cost.memory_mb + cost.energy_score * 100.0;
+        ?: score < best_score {
+            best = cost;
+            best_score = score;
+        }
+    }
+    best
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §6 — Token budget tracking
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug)]
++S TokenBudget {
+    max_tokens: usize,
+    used_tokens: usize,
+    allocations: [(s, usize)]~,
+}
+
+I ~ TokenBudget {
+    +f new(max: usize) -> TokenBudget {
+        TokenBudget @{ max_tokens: max, used_tokens: 0, allocations: []~ }
+    }
+
+    +f allocate(&!self, label: s, tokens: usize) -> bool {
+        ?: self.used_tokens + tokens > self.max_tokens {
+            ret 0b;
+        }
+        self.used_tokens = self.used_tokens + tokens;
+        self.allocations.push((label, tokens));
+        1b
+    }
+
+    +f remaining(&self) -> usize {
+        self.max_tokens - self.used_tokens
+    }
+
+    +f utilization(&self) -> f64 {
+        self.used_tokens as f64 / self.max_tokens as f64 * 100.0
+    }
+
+    +f report(&self) / io {
+        p"";
+        p"── Token Budget Report ──────────────────────";
+        p"  Total:     {self.max_tokens}";
+        p"  Used:      {self.used_tokens}";
+        p"  Remaining: {self.remaining()}";
+        p"  Util:      {self.utilization():.1}%";
+        p"  ┌───────────────────────────┬────────┐";
+        p"  │ Allocation                │ Tokens │";
+        p"  ├───────────────────────────┼────────┤";
+        @ (label, count) ~ &self.allocations {
+            p"  │ {label:<25} │ {count:>6} │";
+        }
+        p"  └───────────────────────────┴────────┘";
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §7 — Memory: cache intermediate generation results
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S CacheEntry {
+    key: s,
+    value: s,
+    hit_count: u64,
+}
+
+@d(Debug)]
++S GenerationCache {
+    entries: {s: CacheEntry},
+}
+
+I ~ GenerationCache {
+    +f new() -> GenerationCache {
+        GenerationCache @{ entries: HashMap.new() }
+    }
+
+    +f store(&!self, key: s, value: s) {
+        self.entries.insert(key.clone(), CacheEntry @{
+            key: key,
+            value: value,
+            hit_count: 0,
+        });
+    }
+
+    +f recall(&!self, key: &s) -> ?&s {
+        ? self.entries.get_mut(key) {
+            Some(entry) => {
+                entry.hit_count = entry.hit_count + 1;
+                Some(&entry.value)
+            },
+            None => None,
+        }
+    }
+
+    +f stats(&self) / io {
+        p"  Cache entries: {self.entries.len()}";
+        @ (key, entry) ~ &self.entries {
+            p"    {key}: {entry.hit_count} hits";
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §8 — Entry point: orchestrate the full pipeline
+// ─────────────────────────────────────────────────────────────────────
+
++f main() / io {
+    p"╔═══════════════════════════════════════════════════════════╗";
+    p"║  Redox Autonomous Code Generation Pipeline               ║";
+    p"╚═══════════════════════════════════════════════════════════╝";
+    p"";
+
+    // Define the specification.
+    v spec = Specification @{
+        description: "Build a REST API for user management with CRUD operations".to_string(),
+        language: "redox".to_string(),
+        targets: ["x86_64", "aarch64", "wasm32"]~.iter().map(|s| s.to_string()).collect(),
+        max_token_budget: 4096,
+        safety_level: SafetyLevel.Production,
+    };
+
+    p"Specification:";
+    p"  {spec.description}";
+    p"  Language: {spec.language}";
+    p"  Targets:  {spec.targets:?}";
+    p"  Safety:   {spec.safety_level:?}";
+    p"  Budget:   {spec.max_token_budget} tokens";
+    p"";
+
+    // Step 1: Decompose into tasks.
+    p"─── Step 1: Task Decomposition ───────────────────────────";
+    v tasks = decompose(&spec);
+    p"  Decomposed into {tasks.len()} tasks:";
+    @ task ~ &tasks {
+        v deps = ? task.dependencies.is_empty() {
+            0b => f" (depends on: {task.dependencies:?})",
+            1b => "".to_string(),
+        };
+        p"    [{task.id}] {task.name} (~{task.token_estimate} tokens){deps}";
+    }
+    p"";
+
+    // Step 2: Build contracts.
+    p"─── Step 2: Contract Specification ───────────────────────";
+    v contracts = build_api_contracts();
+    @ contract ~ &contracts {
+        p"  {contract.fn_name}:";
+        @ pre ~ &contract.preconditions {
+            p"    @req {pre}";
+        }
+        @ post ~ &contract.postconditions {
+            p"    @ens {post}";
+        }
+    }
+    p"";
+
+    // Step 3: Track token budget across tasks.
+    p"─── Step 3: Token Budget Allocation ──────────────────────";
+    m budget = TokenBudget.new(spec.max_token_budget);
+    @ task ~ &tasks {
+        v ok = budget.allocate(task.name.clone(), task.token_estimate);
+        ?: !ok {
+            p"  ⚠  Budget exceeded at task: {task.name}";
+        }
+    }
+    budget.report();
+    p"";
+
+    // Step 4: Run the generation pipeline.
+    p"─── Step 4: Generation Pipeline ──────────────────────────";
+    m pipeline = build_generation_pipeline();
+    pipeline.run(spec.description.clone());
+    p"";
+
+    // Step 5: Estimate costs and select target.
+    p"─── Step 5: Cost Estimation ──────────────────────────────";
+    v total_tokens = tasks.iter().map(|t| t.token_estimate).sum::<usize>();
+    v costs = estimate_costs(&spec.targets, total_tokens);
+    @ cost ~ &costs {
+        p"  {cost}";
+    }
+    v optimal = select_optimal_target(&costs);
+    p"";
+    p"  ★ Optimal target: {optimal}";
+    p"";
+
+    // Step 6: Cache results for future recall.
+    p"─── Step 6: Result Caching ───────────────────────────────";
+    m cache = GenerationCache.new();
+    cache.store("api_design".to_string(), "User { id, email, name }".to_string());
+    cache.store("contracts".to_string(), f"{contracts.len()} contracts defined".to_string());
+    cache.store("optimal_target".to_string(), optimal.target.clone());
+
+    // Simulate recall.
+    ? cache.recall(&"api_design".to_string()) {
+        Some(val) => p"  Recalled api_design: {val}",
+        None => p"  Cache miss",
+    };
+    cache.stats();
+    p"";
+
+    p"═══════════════════════════════════════════════════════════";
+    p"  Pipeline complete. {tasks.len()} tasks, {contracts.len()} contracts,";
+    p"  {costs.len()} targets evaluated. Optimal: {optimal.target}";
+    p"═══════════════════════════════════════════════════════════";
+}

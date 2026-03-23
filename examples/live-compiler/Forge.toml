@@ -1,0 +1,14 @@
+[module]
+name = "live-compiler"
+version = "0.1.0"
+edition = "2025"
+description = "Hot-reload development server with self-healing diagnostics"
+license = "MIT"
+
+[dependencies]
+async-rt = { version = "0.5", features = ["multi-thread"] }
+
+[hot-reload]
+watch = ["src/**/*.rdx"]
+debounce = "200ms"
+rollback-on-failure = true

@@ -1,0 +1,585 @@
+// safe-plugin-host — Capability-Based Plugin Sandbox.
+//
+// A compiler extension host that loads untrusted plugins (linters,
+// formatters, code generators) inside capability-restricted sandboxes.
+// Each plugin declares what it needs (file read, network, memory);
+// the host grants only what the policy allows. Violations are logged
+// in an immutable audit trail.
+//
+// Demonstrates:
+//   - Capability-based security model
+//   - Sandbox policies with resource limits
+//   - Plugin lifecycle (load → validate → run → teardown)
+//   - Audit logging with tamper-evident entries
+//   - Effect annotations (/ io, / fs)
+//   - Contract specs on plugin interfaces
+//   - Pattern matching for capability checks
+
+u std.col;
+u std.fmt;
+u std.io;
+
+// ─────────────────────────────────────────────────────────────────────
+// §1 — Capabilities: what a plugin may request
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone, PartialEq, Eq, Hash)
++E Capability {
+    FileRead,
+    FileWrite,
+    NetworkAccess,
+    MemoryAlloc,
+    ProcessSpawn,
+    FfiCall,
+    TimerAccess,
+    EnvRead,
+}
+
+I fmt.Display ~ Capability {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            Capability.FileRead      => write!(f, "file:read"),
+            Capability.FileWrite     => write!(f, "file:write"),
+            Capability.NetworkAccess => write!(f, "net:access"),
+            Capability.MemoryAlloc   => write!(f, "mem:alloc"),
+            Capability.ProcessSpawn  => write!(f, "proc:spawn"),
+            Capability.FfiCall       => write!(f, "ffi:call"),
+            Capability.TimerAccess   => write!(f, "timer:access"),
+            Capability.EnvRead       => write!(f, "env:read"),
+        }
+    }
+}
+
+I ~ Capability {
+    +f risk_level(&self) -> RiskLevel {
+        ? self {
+            Capability.FileRead | Capability.EnvRead | Capability.TimerAccess
+                => RiskLevel.Low,
+            Capability.MemoryAlloc | Capability.FileWrite
+                => RiskLevel.Medium,
+            Capability.NetworkAccess | Capability.FfiCall
+                => RiskLevel.High,
+            Capability.ProcessSpawn
+                => RiskLevel.Critical,
+        }
+    }
+}
+
+@d(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)
++E RiskLevel {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+I fmt.Display ~ RiskLevel {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            RiskLevel.Low      => write!(f, "LOW"),
+            RiskLevel.Medium   => write!(f, "MEDIUM"),
+            RiskLevel.High     => write!(f, "HIGH"),
+            RiskLevel.Critical => write!(f, "CRITICAL"),
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §2 — Resource limits
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S ResourceLimits {
+    max_memory_bytes: u64,
+    max_cpu_ms: u64,
+    max_open_files: u32,
+    max_network_connections: u32,
+}
+
+I ~ ResourceLimits {
+    +f restrictive() -> ResourceLimits {
+        ResourceLimits @{
+            max_memory_bytes: 16 * 1024 * 1024,     // 16 MB
+            max_cpu_ms: 1000,                         // 1 second
+            max_open_files: 4,
+            max_network_connections: 0,               // no network
+        }
+    }
+
+    +f standard() -> ResourceLimits {
+        ResourceLimits @{
+            max_memory_bytes: 256 * 1024 * 1024,     // 256 MB
+            max_cpu_ms: 5000,                         // 5 seconds
+            max_open_files: 32,
+            max_network_connections: 4,
+        }
+    }
+
+    +f permissive() -> ResourceLimits {
+        ResourceLimits @{
+            max_memory_bytes: 1024 * 1024 * 1024,   // 1 GB
+            max_cpu_ms: 30000,                        // 30 seconds
+            max_open_files: 256,
+            max_network_connections: 32,
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §3 — Sandbox policy: combines capabilities + limits + path rules
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S SandboxPolicy {
+    name: s,
+    capabilities: {Capability},
+    limits: ResourceLimits,
+    allowed_paths: [s]~,
+    denied_paths: [s]~,
+}
+
+I ~ SandboxPolicy {
+    +f new(name: s) -> SandboxPolicy {
+        SandboxPolicy @{
+            name: name,
+            capabilities: HashSet.new(),
+            limits: ResourceLimits.restrictive(),
+            allowed_paths: []~,
+            denied_paths: []~,
+        }
+    }
+
+    +f allow(&!self, cap: Capability) -> &!SandboxPolicy {
+        self.capabilities.insert(cap);
+        self
+    }
+
+    +f with_limits(m self, limits: ResourceLimits) -> SandboxPolicy {
+        self.limits = limits;
+        self
+    }
+
+    +f allow_path(m self, path: s) -> SandboxPolicy {
+        self.allowed_paths.push(path);
+        self
+    }
+
+    +f deny_path(m self, path: s) -> SandboxPolicy {
+        self.denied_paths.push(path);
+        self
+    }
+
+    +f has_capability(&self, cap: &Capability) -> bool {
+        self.capabilities.contains(cap)
+    }
+
+    +f max_risk(&self) -> RiskLevel {
+        m max = RiskLevel.Low;
+        @ cap ~ &self.capabilities {
+            v risk = cap.risk_level();
+            ?: risk > max {
+                max = risk;
+            }
+        }
+        max
+    }
+}
+
+/// Pre-built policies for common plugin categories.
++f linter_policy() -> SandboxPolicy {
+    m policy = SandboxPolicy.new("linter".to_string());
+    policy.allow(Capability.FileRead);
+    policy.allow(Capability.MemoryAlloc);
+    policy.allow(Capability.TimerAccess);
+    policy
+        .with_limits(ResourceLimits.restrictive())
+        .allow_path("/src/**".to_string())
+        .deny_path("/secrets/**".to_string())
+}
+
++f formatter_policy() -> SandboxPolicy {
+    m policy = SandboxPolicy.new("formatter".to_string());
+    policy.allow(Capability.FileRead);
+    policy.allow(Capability.FileWrite);
+    policy.allow(Capability.MemoryAlloc);
+    policy
+        .with_limits(ResourceLimits.standard())
+        .allow_path("/src/**".to_string())
+        .deny_path("/build/**".to_string())
+}
+
++f codegen_policy() -> SandboxPolicy {
+    m policy = SandboxPolicy.new("codegen".to_string());
+    policy.allow(Capability.FileRead);
+    policy.allow(Capability.FileWrite);
+    policy.allow(Capability.MemoryAlloc);
+    policy.allow(Capability.NetworkAccess);
+    policy.allow(Capability.EnvRead);
+    policy
+        .with_limits(ResourceLimits.permissive())
+        .allow_path("/src/**".to_string())
+        .allow_path("/generated/**".to_string())
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §4 — Plugin manifest and lifecycle
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++E PluginKind {
+    Linter,
+    Formatter,
+    CodeGenerator,
+    Analyzer,
+    Custom(s),
+}
+
+I fmt.Display ~ PluginKind {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            PluginKind.Linter        => write!(f, "linter"),
+            PluginKind.Formatter     => write!(f, "formatter"),
+            PluginKind.CodeGenerator => write!(f, "codegen"),
+            PluginKind.Analyzer      => write!(f, "analyzer"),
+            PluginKind.Custom(name)  => write!(f, "custom({name})"),
+        }
+    }
+}
+
+@d(Debug, Clone)
++S PluginManifest {
+    name: s,
+    version: s,
+    author: s,
+    kind: PluginKind,
+    requested_capabilities: [Capability]~,
+    description: s,
+}
+
+@d(Debug, Clone, PartialEq)
++E PluginState {
+    Registered,
+    Validated,
+    Running,
+    Completed,
+    Denied(s),
+    Failed(s),
+}
+
+I fmt.Display ~ PluginState {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            PluginState.Registered  => write!(f, "REGISTERED"),
+            PluginState.Validated   => write!(f, "VALIDATED"),
+            PluginState.Running     => write!(f, "RUNNING"),
+            PluginState.Completed   => write!(f, "COMPLETED"),
+            PluginState.Denied(msg) => write!(f, "DENIED: {msg}"),
+            PluginState.Failed(msg) => write!(f, "FAILED: {msg}"),
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §5 — Audit log: tamper-evident operation recording
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S AuditEntry {
+    sequence: u64,
+    plugin_name: s,
+    operation: s,
+    capability: ?Capability,
+    allowed: bool,
+    detail: s,
+}
+
+I fmt.Display ~ AuditEntry {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        v status = ?: self.allowed { "ALLOW" } : { "DENY" };
+        v cap = ? &self.capability {
+            Some(c) => f"[{c}]",
+            None => "[-]".to_string(),
+        };
+        write!(f, "#{seq:04} {status} {cap:<16} {plugin} — {detail}",
+            seq = self.sequence,
+            status = status,
+            cap = cap,
+            plugin = self.plugin_name,
+            detail = self.detail)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §6 — Plugin host: orchestrates the full lifecycle
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug)
++S PluginHost {
+    policies: {s: SandboxPolicy},
+    plugins: [(PluginManifest, PluginState)]~,
+    audit: [AuditEntry]~,
+    next_seq: u64,
+}
+
+I ~ PluginHost {
+    +f new() -> PluginHost {
+        m host = PluginHost @{
+            policies: HashMap.new(),
+            plugins: []~,
+            audit: []~,
+            next_seq: 1,
+        };
+
+        // Register built-in policies.
+        host.register_policy(linter_policy());
+        host.register_policy(formatter_policy());
+        host.register_policy(codegen_policy());
+        host
+    }
+
+    +f register_policy(&!self, policy: SandboxPolicy) {
+        self.policies.insert(policy.name.clone(), policy);
+    }
+
+    f log_audit(&!self, plugin: &s, op: s, cap: ?Capability, allowed: bool, detail: s) {
+        v entry = AuditEntry @{
+            sequence: self.next_seq,
+            plugin_name: plugin.clone(),
+            operation: op,
+            capability: cap,
+            allowed: allowed,
+            detail: detail,
+        };
+        self.next_seq = self.next_seq + 1;
+        self.audit.push(entry);
+    }
+
+    /// Validate a plugin against its assigned policy.
+    ///
+    /// @req  manifest.requested_capabilities is non-empty
+    /// @ens  result is Validated or Denied
+    +f validate(&!self, manifest: &PluginManifest, policy_name: &s) -> PluginState / io {
+        p"  Validating '{manifest.name}' against policy '{policy_name}'...";
+
+        v policy = ? self.policies.get(policy_name) {
+            Some(p) => p.clone(),
+            None => {
+                v msg = f"Unknown policy: {policy_name}";
+                self.log_audit(&manifest.name, "validate".to_string(), None, 0b, msg.clone());
+                ret PluginState.Denied(msg);
+            },
+        };
+
+        // Check each requested capability against the policy.
+        @ cap ~ &manifest.requested_capabilities {
+            ?: !policy.has_capability(cap) {
+                v msg = f"Capability {cap} not granted by policy '{policy_name}'";
+                p"    ✗ {msg}";
+                self.log_audit(
+                    &manifest.name,
+                    "capability_check".to_string(),
+                    Some(cap.clone()),
+                    0b,
+                    msg.clone(),
+                );
+                ret PluginState.Denied(msg);
+            }
+            p"    ✓ {cap} — granted (risk: {cap.risk_level()})";
+            self.log_audit(
+                &manifest.name,
+                "capability_check".to_string(),
+                Some(cap.clone()),
+                1b,
+                "granted".to_string(),
+            );
+        }
+
+        self.log_audit(&manifest.name, "validate".to_string(), None, 1b, "passed".to_string());
+        p"    ✓ Validation passed (max risk: {policy.max_risk()})";
+        PluginState.Validated
+    }
+
+    /// Run a validated plugin inside its sandbox.
+    ///
+    /// @req  state == PluginState.Validated
+    /// @ens  result is Completed or Failed
+    +f run_plugin(&!self, manifest: &PluginManifest) -> PluginState / io {
+        p"  Running '{manifest.name}' ({manifest.kind})...";
+        self.log_audit(
+            &manifest.name,
+            "execute".to_string(),
+            None,
+            1b,
+            f"started ({manifest.kind})".to_string(),
+        );
+
+        // Simulate plugin execution.
+        p"    ⚙ Processing files...";
+        p"    ⚙ Applying {manifest.kind} rules...";
+        p"    ⚙ Generating output...";
+
+        self.log_audit(
+            &manifest.name,
+            "execute".to_string(),
+            None,
+            1b,
+            "completed successfully".to_string(),
+        );
+        p"    ✓ Plugin completed";
+        PluginState.Completed
+    }
+
+    /// Load, validate, and run a plugin end-to-end.
+    +f load_and_run(&!self, manifest: PluginManifest, policy_name: &s) / io {
+        p"";
+        p"┌── Plugin: {manifest.name} v{manifest.version} ──";
+        p"│   Author: {manifest.author}";
+        p"│   Kind:   {manifest.kind}";
+        p"│   Caps:   {manifest.requested_capabilities:?}";
+
+        // Validate.
+        v state = self.validate(&manifest, policy_name);
+
+        // Run if validated.
+        v final_state = ? state {
+            PluginState.Validated => self.run_plugin(&manifest),
+            _ => state.clone(),
+        };
+
+        p"└── Result: {final_state}";
+        self.plugins.push((manifest, final_state));
+    }
+
+    +f print_audit(&self) / io {
+        p"";
+        p"── Audit Trail ─────────────────────────────────────────";
+        @ entry ~ &self.audit {
+            p"  {entry}";
+        }
+        p"  Total entries: {self.audit.len()}";
+    }
+
+    +f summary(&self) / io {
+        v total = self.plugins.len();
+        v approved = self.plugins.iter()
+            .filter(|(_, s)| *s == PluginState.Completed)
+            .count();
+        v denied = self.plugins.iter()
+            .filter(|(_, s)| ? s { PluginState.Denied(_) => 1b, _ => 0b })
+            .count();
+
+        p"";
+        p"── Plugin Host Summary ─────────────────────────────────";
+        p"  Plugins loaded: {total}";
+        p"  Completed:      {approved}";
+        p"  Denied:         {denied}";
+        p"  Policies:       {self.policies.len()}";
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §7 — Entry point: load several plugins into the sandbox
+// ─────────────────────────────────────────────────────────────────────
+
++f main() / io {
+    p"╔═══════════════════════════════════════════════════════════╗";
+    p"║  Redox Safe Plugin Host                                  ║";
+    p"╚═══════════════════════════════════════════════════════════╝";
+
+    m host = PluginHost.new();
+
+    // Plugin 1: A well-behaved linter (should pass).
+    host.load_and_run(
+        PluginManifest @{
+            name: "redox-lint".to_string(),
+            version: "2.1.0".to_string(),
+            author: "lint-corp".to_string(),
+            kind: PluginKind.Linter,
+            requested_capabilities: [
+                Capability.FileRead,
+                Capability.MemoryAlloc,
+            ]~,
+            description: "Style and correctness linter".to_string(),
+        },
+        &"linter".to_string(),
+    );
+
+    // Plugin 2: A formatter that needs file write (should pass).
+    host.load_and_run(
+        PluginManifest @{
+            name: "rdxfmt".to_string(),
+            version: "1.0.3".to_string(),
+            author: "fmt-team".to_string(),
+            kind: PluginKind.Formatter,
+            requested_capabilities: [
+                Capability.FileRead,
+                Capability.FileWrite,
+                Capability.MemoryAlloc,
+            ]~,
+            description: "Opinionated code formatter".to_string(),
+        },
+        &"formatter".to_string(),
+    );
+
+    // Plugin 3: A malicious plugin requesting process spawn (should be DENIED).
+    host.load_and_run(
+        PluginManifest @{
+            name: "shady-tool".to_string(),
+            version: "0.0.1".to_string(),
+            author: "unknown".to_string(),
+            kind: PluginKind.Custom("suspicious".to_string()),
+            requested_capabilities: [
+                Capability.FileRead,
+                Capability.ProcessSpawn,
+                Capability.NetworkAccess,
+            ]~,
+            description: "Definitely not malware".to_string(),
+        },
+        &"linter".to_string(),
+    );
+
+    // Plugin 4: A code generator with broad capabilities (should pass codegen policy).
+    host.load_and_run(
+        PluginManifest @{
+            name: "proto-gen".to_string(),
+            version: "3.2.0".to_string(),
+            author: "grpc-tools".to_string(),
+            kind: PluginKind.CodeGenerator,
+            requested_capabilities: [
+                Capability.FileRead,
+                Capability.FileWrite,
+                Capability.MemoryAlloc,
+                Capability.NetworkAccess,
+                Capability.EnvRead,
+            ]~,
+            description: "Generate Redox bindings from .proto files".to_string(),
+        },
+        &"codegen".to_string(),
+    );
+
+    // Plugin 5: A codegen plugin trying to use FFI (should be DENIED — codegen policy
+    // does not grant FfiCall).
+    host.load_and_run(
+        PluginManifest @{
+            name: "native-bridge".to_string(),
+            version: "1.0.0".to_string(),
+            author: "native-corp".to_string(),
+            kind: PluginKind.CodeGenerator,
+            requested_capabilities: [
+                Capability.FileRead,
+                Capability.FfiCall,
+            ]~,
+            description: "Bridge to native C libraries".to_string(),
+        },
+        &"codegen".to_string(),
+    );
+
+    // Print results.
+    host.print_audit();
+    host.summary();
+
+    p"";
+    p"═══════════════════════════════════════════════════════════";
+    p"  Plugin host shutdown. All sandboxes released.";
+    p"═══════════════════════════════════════════════════════════";
+}

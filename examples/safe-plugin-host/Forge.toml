@@ -1,0 +1,12 @@
+[module]
+name = "safe-plugin-host"
+version = "0.1.0"
+edition = "2025"
+description = "Capability-based plugin sandbox — load untrusted extensions safely"
+license = "MIT"
+
+[safety]
+mode = "capability"
+profile = "sandbox"
+max-memory = "256MB"
+max-cpu = "5000ms"

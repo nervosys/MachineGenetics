@@ -1,0 +1,11 @@
+[module]
+name = "multilang-bindings"
+version = "0.1.0"
+edition = "2025"
+description = "Generate cross-language FFI bindings from a single Redox interface definition"
+license = "MIT"
+
+[ffi]
+targets = ["c", "python", "wasm"]
+safe-wrappers = true
+prefix = "rdx_"

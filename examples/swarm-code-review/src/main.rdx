@@ -1,0 +1,629 @@
+// swarm-code-review — Multi-Agent Code Review System.
+//
+// A team of specialized AI agents reviews a pull request: an Architect
+// checks design, a Security agent audits for vulnerabilities, a
+// Performance agent profiles hot paths, and a Style agent enforces
+// conventions. Each agent files findings, then they vote on whether
+// to approve, request changes, or reject. Past decisions are cached
+// in a memory store for future reference.
+//
+// Demonstrates:
+//   - Agent roles with distinct expertise
+//   - Swarm coordination patterns (scatter/gather)
+//   - Consensus voting with quorum rules
+//   - Memory recall API for review history
+//   - Effect annotations (/ io, / db)
+//   - Pattern matching on enums
+//   - Contract specs on review functions
+
+u std.col;
+u std.fmt;
+u std.io;
+
+// ─────────────────────────────────────────────────────────────────────
+// §1 — Code change representation
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S FileDiff {
+    path: s,
+    additions: u32,
+    deletions: u32,
+    hunks: [s]~,
+}
+
+@d(Debug, Clone)
++S PullRequest {
+    id: u64,
+    title: s,
+    author: s,
+    description: s,
+    files: [FileDiff]~,
+    labels: [s]~,
+}
+
+I ~ PullRequest {
+    +f total_changes(&self) -> u32 {
+        self.files.iter().map(|f| f.additions + f.deletions).sum()
+    }
+
+    +f file_count(&self) -> usize {
+        self.files.len()
+    }
+
+    +f has_label(&self, label: &s) -> bool {
+        self.labels.iter().any(|l| l == label)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §2 — Review agent roles
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone, PartialEq)
++E ReviewRole {
+    Architect,
+    Security,
+    Performance,
+    Style,
+    Testing,
+}
+
+I fmt.Display ~ ReviewRole {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            ReviewRole.Architect   => write!(f, "🏗  Architect"),
+            ReviewRole.Security    => write!(f, "🔒 Security"),
+            ReviewRole.Performance => write!(f, "⚡ Performance"),
+            ReviewRole.Style       => write!(f, "🎨 Style"),
+            ReviewRole.Testing     => write!(f, "🧪 Testing"),
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §3 — Findings: what each agent discovers
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone, PartialEq)
++E Severity {
+    Info,
+    Warning,
+    Error,
+    Critical,
+}
+
+I ~ Severity {
+    f weight(&self) -> u32 {
+        ? self {
+            Severity.Info     => 1,
+            Severity.Warning  => 3,
+            Severity.Error    => 8,
+            Severity.Critical => 20,
+        }
+    }
+}
+
+I fmt.Display ~ Severity {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            Severity.Info     => write!(f, "INFO"),
+            Severity.Warning  => write!(f, "WARN"),
+            Severity.Error    => write!(f, "ERROR"),
+            Severity.Critical => write!(f, "CRIT"),
+        }
+    }
+}
+
+@d(Debug, Clone)
++S Finding {
+    role: ReviewRole,
+    severity: Severity,
+    file: s,
+    line: ?u32,
+    message: s,
+    suggestion: ?s,
+}
+
+I fmt.Display ~ Finding {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        v loc = ? self.line {
+            Some(l) => f"{}:{l}", self.file),
+            None => self.file.clone(),
+        };
+        write!(f, "[{sev}] {role} @ {loc}: {msg}",
+            sev = self.severity,
+            role = self.role,
+            loc = loc,
+            msg = self.message)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §4 — Specialized review agents
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug)
++S ReviewAgent {
+    id: u64,
+    role: ReviewRole,
+    findings: [Finding]~,
+}
+
+I ~ ReviewAgent {
+    +f new(id: u64, role: ReviewRole) -> ReviewAgent {
+        ReviewAgent @{ id: id, role: role, findings: []~ }
+    }
+
+    +f add_finding(&!self, severity: Severity, file: s, line: ?u32, msg: s, suggestion: ?s) {
+        self.findings.push(Finding @{
+            role: self.role.clone(),
+            severity: severity,
+            file: file,
+            line: line,
+            message: msg,
+            suggestion: suggestion,
+        });
+    }
+
+    +f risk_score(&self) -> u32 {
+        self.findings.iter().map(|f| f.severity.weight()).sum()
+    }
+
+    /// Perform the review. Each role focuses on different aspects.
+    ///
+    /// @req  pr.file_count() > 0     "must have files to review"
+    /// @ens  self.findings.len() >= 0
+    +f review(&!self, pr: &PullRequest) / io {
+        p"  {self.role} reviewing {pr.file_count()} files...";
+
+        ? self.role {
+            ReviewRole.Architect => self.review_architecture(pr),
+            ReviewRole.Security => self.review_security(pr),
+            ReviewRole.Performance => self.review_performance(pr),
+            ReviewRole.Style => self.review_style(pr),
+            ReviewRole.Testing => self.review_testing(pr),
+        };
+
+        p"    → Found {self.findings.len()} issue(s), risk score: {self.risk_score()}";
+    }
+
+    f review_architecture(&!self, pr: &PullRequest) {
+        // Check for overly large changes.
+        ?: pr.total_changes() > 500 {
+            self.add_finding(
+                Severity.Warning,
+                "overall".to_string(),
+                None,
+                "PR is very large — consider splitting into smaller changes".to_string(),
+                Some("Break into feature-flag-gated incremental PRs".to_string()),
+            );
+        }
+
+        // Check for new public API surface.
+        @ file ~ &pr.files {
+            @ hunk ~ &file.hunks {
+                ?: hunk.contains("+f ") || hunk.contains("+S ") || hunk.contains("+T ") {
+                    self.add_finding(
+                        Severity.Info,
+                        file.path.clone(),
+                        None,
+                        "New public API surface detected".to_string(),
+                        Some("Ensure backward compatibility".to_string()),
+                    );
+                }
+            }
+        }
+    }
+
+    f review_security(&!self, pr: &PullRequest) {
+        @ file ~ &pr.files {
+            @ hunk ~ &file.hunks {
+                // Check for unsafe blocks.
+                ?: hunk.contains("uf ") || hunk.contains("unsafe") {
+                    self.add_finding(
+                        Severity.Error,
+                        file.path.clone(),
+                        None,
+                        "Unsafe code detected — requires manual audit".to_string(),
+                        Some("Add @safety annotation with justification".to_string()),
+                    );
+                }
+
+                // Check for raw SQL.
+                ?: hunk.contains("raw_sql") || hunk.contains("exec_raw") {
+                    self.add_finding(
+                        Severity.Critical,
+                        file.path.clone(),
+                        None,
+                        "Raw SQL query — potential injection vulnerability".to_string(),
+                        Some("Use parameterized queries via db effect".to_string()),
+                    );
+                }
+
+                // Check for hardcoded secrets.
+                ?: hunk.contains("password =") || hunk.contains("api_key =") {
+                    self.add_finding(
+                        Severity.Critical,
+                        file.path.clone(),
+                        None,
+                        "Possible hardcoded credential".to_string(),
+                        Some("Use env.get() or a secret vault".to_string()),
+                    );
+                }
+            }
+        }
+    }
+
+    f review_performance(&!self, pr: &PullRequest) {
+        @ file ~ &pr.files {
+            // Flag files with many additions (potential hot paths).
+            ?: file.additions > 100 {
+                self.add_finding(
+                    Severity.Info,
+                    file.path.clone(),
+                    None,
+                    f"Large addition ({file.additions} lines) — profile for hot paths".to_string(),
+                    Some("Add @perf benchmark annotation".to_string()),
+                );
+            }
+
+            @ hunk ~ &file.hunks {
+                // Detect nested loops.
+                ?: hunk.contains("@ ") && hunk.matches("@ ").count() > 1 {
+                    self.add_finding(
+                        Severity.Warning,
+                        file.path.clone(),
+                        None,
+                        "Nested loops detected — potential O(n²) complexity".to_string(),
+                        Some("Consider using a hash-based lookup".to_string()),
+                    );
+                }
+            }
+        }
+    }
+
+    f review_style(&!self, pr: &PullRequest) {
+        @ file ~ &pr.files {
+            // Check for Rust-style remnants.
+            @ hunk ~ &file.hunks {
+                ?: hunk.contains("fn ") {
+                    self.add_finding(
+                        Severity.Warning,
+                        file.path.clone(),
+                        None,
+                        "Rust-style `fn` keyword — use Redox `f` or `+f`".to_string(),
+                        None,
+                    );
+                }
+                ?: hunk.contains("let ") {
+                    self.add_finding(
+                        Severity.Warning,
+                        file.path.clone(),
+                        None,
+                        "Rust-style `let` keyword — use Redox `v` or `m`".to_string(),
+                        None,
+                    );
+                }
+            }
+        }
+    }
+
+    f review_testing(&!self, pr: &PullRequest) {
+        m has_test_file = 0b;
+        @ file ~ &pr.files {
+            ?: file.path.contains("test") || file.path.contains("spec") {
+                has_test_file = 1b;
+            }
+        }
+        ?: !has_test_file {
+            self.add_finding(
+                Severity.Error,
+                "overall".to_string(),
+                None,
+                "No test files modified — all new code needs tests".to_string(),
+                Some("Add a test module with at least one test per public function".to_string()),
+            );
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §5 — Consensus voting
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone, PartialEq)
++E VoteDecision {
+    Approve,
+    RequestChanges,
+    Reject,
+}
+
+I fmt.Display ~ VoteDecision {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            VoteDecision.Approve        => write!(f, "✅ Approve"),
+            VoteDecision.RequestChanges => write!(f, "🔄 Request Changes"),
+            VoteDecision.Reject         => write!(f, "❌ Reject"),
+        }
+    }
+}
+
+@d(Debug, Clone)
++S Vote {
+    agent_id: u64,
+    role: ReviewRole,
+    decision: VoteDecision,
+    reason: s,
+}
+
+/// Compute each agent's vote based on their findings.
+///
+/// @req  agent.findings is available
+/// @ens  result.decision reflects worst severity found
+/// @fx   pure
+f compute_vote(agent: &ReviewAgent) -> Vote {
+    v critical = agent.findings.iter().any(|f| f.severity == Severity.Critical);
+    v errors = agent.findings.iter().filter(|f| f.severity == Severity.Error).count();
+    v score = agent.risk_score();
+
+    v (decision, reason) = ?: critical {
+        (VoteDecision.Reject, "Critical issues found — cannot merge".to_string())
+    } :? errors > 2 {
+        (VoteDecision.RequestChanges, f"Found {errors} errors (risk score: {score})".to_string())
+    } :? score > 15 {
+        (VoteDecision.RequestChanges, f"High risk score ({score}) — needs attention".to_string())
+    } : {
+        (VoteDecision.Approve, f"Looks good (risk score: {score})".to_string())
+    };
+
+    Vote @{
+        agent_id: agent.id,
+        role: agent.role.clone(),
+        decision: decision,
+        reason: reason,
+    }
+}
+
+@d(Debug, Clone, PartialEq)
++E ReviewOutcome {
+    Approved,
+    ChangesRequested,
+    Rejected,
+}
+
+I fmt.Display ~ ReviewOutcome {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            ReviewOutcome.Approved         => write!(f, "✅ APPROVED"),
+            ReviewOutcome.ChangesRequested => write!(f, "🔄 CHANGES REQUESTED"),
+            ReviewOutcome.Rejected         => write!(f, "❌ REJECTED"),
+        }
+    }
+}
+
+/// Apply supermajority consensus: approve only if >2/3 approve
+/// and no one rejects.
+///
+/// @req  votes.len() > 0                  "need at least one vote"
+/// @ens  result is deterministic
+/// @fx   pure
+f consensus(votes: &[Vote]~) -> ReviewOutcome {
+    v total = votes.len();
+    v approvals = votes.iter().filter(|v| v.decision == VoteDecision.Approve).count();
+    v rejections = votes.iter().filter(|v| v.decision == VoteDecision.Reject).count();
+
+    ?: rejections > 0 {
+        ReviewOutcome.Rejected
+    } :? approvals * 3 > total * 2 {
+        ReviewOutcome.Approved
+    } : {
+        ReviewOutcome.ChangesRequested
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §6 — Review history (memory recall)
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S ReviewRecord {
+    pr_id: u64,
+    pr_title: s,
+    outcome: ReviewOutcome,
+    finding_count: usize,
+    total_risk: u32,
+}
+
+@d(Debug)]
++S ReviewHistory {
+    records: [ReviewRecord]~,
+}
+
+I ~ ReviewHistory {
+    +f new() -> ReviewHistory {
+        ReviewHistory @{ records: []~ }
+    }
+
+    +f record(&!self, pr: &PullRequest, outcome: ReviewOutcome,
+              findings: &[Finding]~, risk: u32) {
+        self.records.push(ReviewRecord @{
+            pr_id: pr.id,
+            pr_title: pr.title.clone(),
+            outcome: outcome,
+            finding_count: findings.len(),
+            total_risk: risk,
+        });
+    }
+
+    +f approval_rate(&self) -> f64 {
+        ?: self.records.is_empty() {
+            ret 0.0;
+        }
+        v approved = self.records.iter()
+            .filter(|r| r.outcome == ReviewOutcome.Approved)
+            .count();
+        approved as f64 / self.records.len() as f64 * 100.0
+    }
+
+    +f avg_risk(&self) -> f64 {
+        ?: self.records.is_empty() {
+            ret 0.0;
+        }
+        v total: u32 = self.records.iter().map(|r| r.total_risk).sum();
+        total as f64 / self.records.len() as f64
+    }
+
+    +f report(&self) / io {
+        p"";
+        p"── Review History ─────────────────────────────────────";
+        p"  Total reviews:  {self.records.len()}";
+        p"  Approval rate:  {self.approval_rate():.1}%";
+        p"  Avg risk score: {self.avg_risk():.1}";
+        p"  ┌─────┬──────────────────────────┬─────────────────┐";
+        p"  │ PR  │ Title                    │ Outcome         │";
+        p"  ├─────┼──────────────────────────┼─────────────────┤";
+        @ rec ~ &self.records {
+            p"  │ {rec.pr_id:<3} │ {rec.pr_title:<24} │ {rec.outcome:<15} │";
+        }
+        p"  └─────┴──────────────────────────┴─────────────────┘";
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §7 — Entry point: run a full code review
+// ─────────────────────────────────────────────────────────────────────
+
++f main() / io {
+    p"╔═══════════════════════════════════════════════════════════╗";
+    p"║  Redox Swarm Code Review System                          ║";
+    p"╚═══════════════════════════════════════════════════════════╝";
+    p"";
+
+    // Simulate a pull request.
+    v pr = PullRequest @{
+        id: 42,
+        title: "Add user authentication".to_string(),
+        author: "developer-a".to_string(),
+        description: "Implements JWT-based auth with refresh tokens".to_string(),
+        files: [
+            FileDiff @{
+                path: "src/auth/mod.rdx".to_string(),
+                additions: 120,
+                deletions: 5,
+                hunks: [
+                    "+f verify_token(token: &s) -> R[Claims, AuthError]".to_string(),
+                    "+S Claims { user_id: u64, exp: u64 }".to_string(),
+                    "v api_key = \"sk-test-12345\"".to_string(),
+                ]~,
+            },
+            FileDiff @{
+                path: "src/auth/jwt.rdx".to_string(),
+                additions: 85,
+                deletions: 0,
+                hunks: [
+                    "+f sign(payload: &Claims, secret: &s) -> s".to_string(),
+                    "uf decode_raw(bytes: &[u8]) -> Claims".to_string(),
+                ]~,
+            },
+            FileDiff @{
+                path: "src/middleware.rdx".to_string(),
+                additions: 40,
+                deletions: 10,
+                hunks: [
+                    "+f auth_middleware(req: &Request) / net + io -> R[(), AuthError]".to_string(),
+                ]~,
+            },
+        ]~,
+        labels: ["feature", "auth"]~.iter().map(|s| s.to_string()).collect(),
+    };
+
+    p"Pull Request #{pr.id}: {pr.title}";
+    p"  Author: {pr.author}";
+    p"  Files:  {pr.file_count()}";
+    p"  Changes: +{pr.files.iter().map(|f| f.additions).sum::<u32>()} / -{pr.files.iter().map(|f| f.deletions).sum::<u32>()}";
+    p"";
+
+    // Create the review swarm.
+    p"─── Assembling Review Swarm ──────────────────────────────";
+    m agents: [ReviewAgent]~ = [
+        ReviewAgent.new(1, ReviewRole.Architect),
+        ReviewAgent.new(2, ReviewRole.Security),
+        ReviewAgent.new(3, ReviewRole.Performance),
+        ReviewAgent.new(4, ReviewRole.Style),
+        ReviewAgent.new(5, ReviewRole.Testing),
+    ]~;
+
+    // Each agent reviews independently (scatter phase).
+    p"";
+    p"─── Scatter: Independent Reviews ─────────────────────────";
+    @ agent ~ &!agents {
+        agent.review(&pr);
+    }
+
+    // Gather all findings.
+    p"";
+    p"─── Gather: Consolidated Findings ────────────────────────";
+    m all_findings: [Finding]~ = []~;
+    @ agent ~ &agents {
+        @ finding ~ &agent.findings {
+            p"  {finding}";
+            all_findings.push(finding.clone());
+        }
+    }
+    p"";
+    p"  Total findings: {all_findings.len()}";
+
+    // Vote on the PR.
+    p"";
+    p"─── Consensus: Voting ────────────────────────────────────";
+    m votes: [Vote]~ = []~;
+    @ agent ~ &agents {
+        v vote = compute_vote(agent);
+        p"  {vote.role}: {vote.decision} — {vote.reason}";
+        votes.push(vote);
+    }
+
+    v outcome = consensus(&votes);
+    v total_risk: u32 = agents.iter().map(|a| a.risk_score()).sum();
+    p"";
+    p"  ╔═══════════════════════════════════════╗";
+    p"  ║  Review Outcome: {outcome:<21}║";
+    p"  ║  Total Risk Score: {total_risk:<19}║";
+    p"  ╚═══════════════════════════════════════╝";
+
+    // Record in history.
+    m history = ReviewHistory.new();
+    history.record(&pr, outcome, &all_findings, total_risk);
+
+    // Simulate a second clean PR.
+    v clean_pr = PullRequest @{
+        id: 43,
+        title: "Fix typo in README".to_string(),
+        author: "developer-b".to_string(),
+        description: "Minor documentation fix".to_string(),
+        files: [
+            FileDiff @{
+                path: "README.md".to_string(),
+                additions: 1,
+                deletions: 1,
+                hunks: ["Fixed spelling of 'authentication'".to_string()]~,
+            },
+            FileDiff @{
+                path: "tests/readme_test.rdx".to_string(),
+                additions: 5,
+                deletions: 0,
+                hunks: ["added doc link test".to_string()]~,
+            },
+        ]~,
+        labels: ["docs"]~.iter().map(|s| s.to_string()).collect(),
+    };
+    history.record(&clean_pr, ReviewOutcome.Approved, &[]~, 1);
+
+    history.report();
+
+    p"";
+    p"═══════════════════════════════════════════════════════════";
+    p"  Review system complete.";
+    p"═══════════════════════════════════════════════════════════";
+}

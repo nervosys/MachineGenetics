@@ -1,0 +1,18 @@
+[module]
+name = "swarm-code-review"
+version = "0.1.0"
+edition = "2025"
+description = "Multi-agent code review with swarm intelligence, consensus voting, and memory recall"
+license = "MIT"
+
+[dependencies]
+async-rt = { version = "0.5", features = ["multi-thread"] }
+
+[agent]
+swarm-size = 5
+consensus = "supermajority"
+lease-timeout = "15m"
+
+[safety]
+mode = "skb-only"
+profile = "review"

@@ -1,0 +1,521 @@
+// multilang-bindings — Cross-Language FFI Bridge Generator.
+//
+// Define a library API once in Redox, then automatically generate
+// bindings for C, C++, Python, and WebAssembly. Each target gets
+// type-safe wrappers, proper memory management annotations, and
+// a summary of the generated binding surface.
+//
+// Demonstrates:
+//   - FFI language targets and type mappings
+//   - Header descriptor parsing
+//   - Binding generation with safe wrappers
+//   - Multi-target code generation
+//   - Effect annotations (/ io)
+//   - Contract specs for type safety
+//   - Enum-based dispatch per target language
+
+u std.col;
+u std.fmt;
+u std.io;
+
+// ─────────────────────────────────────────────────────────────────────
+// §1 — Target languages and their type systems
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone, PartialEq, Eq, Hash)
++E FfiTarget {
+    C,
+    Cpp,
+    Python,
+    Wasm,
+}
+
+I fmt.Display ~ FfiTarget {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            FfiTarget.C      => write!(f, "C"),
+            FfiTarget.Cpp    => write!(f, "C++"),
+            FfiTarget.Python => write!(f, "Python"),
+            FfiTarget.Wasm   => write!(f, "WebAssembly"),
+        }
+    }
+}
+
+I ~ FfiTarget {
+    +f file_extension(&self) -> &s {
+        ? self {
+            FfiTarget.C      => "h",
+            FfiTarget.Cpp    => "hpp",
+            FfiTarget.Python => "py",
+            FfiTarget.Wasm   => "wat",
+        }
+    }
+
+    +f comment_prefix(&self) -> &s {
+        ? self {
+            FfiTarget.C | FfiTarget.Cpp => "//",
+            FfiTarget.Python            => "#",
+            FfiTarget.Wasm              => ";;",
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §2 — Type mapping: Redox types → foreign types
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S TypeMapping {
+    redox_type: s,
+    foreign_type: s,
+    is_pointer: bool,
+    is_nullable: bool,
+    needs_free: bool,
+}
+
+I fmt.Display ~ TypeMapping {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        v ptr = ?: self.is_pointer { "*" } : { "" };
+        v null = ?: self.is_nullable { "?" } : { "" };
+        write!(f, "{rdx} → {ptr}{foreign}{null}",
+            rdx = self.redox_type,
+            ptr = ptr,
+            foreign = self.foreign_type,
+            null = null)
+    }
+}
+
+/// Build type mappings for a given target language.
+///
+/// @req  target is a valid FfiTarget
+/// @ens  result contains mappings for all common Redox types
+/// @fx   pure
+f type_mappings_for(target: &FfiTarget) -> [TypeMapping]~ {
+    ? target {
+        FfiTarget.C => [
+            TypeMapping @{ redox_type: "i32".into(), foreign_type: "int32_t".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "i64".into(), foreign_type: "int64_t".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "f64".into(), foreign_type: "double".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "bool".into(), foreign_type: "bool".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "s".into(), foreign_type: "char".into(), is_pointer: 1b, is_nullable: 0b, needs_free: 1b },
+            TypeMapping @{ redox_type: "&s".into(), foreign_type: "char".into(), is_pointer: 1b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "?s".into(), foreign_type: "char".into(), is_pointer: 1b, is_nullable: 1b, needs_free: 1b },
+            TypeMapping @{ redox_type: "[u8]~".into(), foreign_type: "uint8_t".into(), is_pointer: 1b, is_nullable: 0b, needs_free: 1b },
+        ]~,
+        FfiTarget.Cpp => [
+            TypeMapping @{ redox_type: "i32".into(), foreign_type: "int32_t".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "i64".into(), foreign_type: "int64_t".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "f64".into(), foreign_type: "double".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "bool".into(), foreign_type: "bool".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "s".into(), foreign_type: "std::string".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "&s".into(), foreign_type: "std::string_view".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "?s".into(), foreign_type: "std::optional<std::string>".into(), is_pointer: 0b, is_nullable: 1b, needs_free: 0b },
+            TypeMapping @{ redox_type: "[u8]~".into(), foreign_type: "std::vector<uint8_t>".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+        ]~,
+        FfiTarget.Python => [
+            TypeMapping @{ redox_type: "i32".into(), foreign_type: "int".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "i64".into(), foreign_type: "int".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "f64".into(), foreign_type: "float".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "bool".into(), foreign_type: "bool".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "s".into(), foreign_type: "str".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "&s".into(), foreign_type: "str".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "?s".into(), foreign_type: "Optional[str]".into(), is_pointer: 0b, is_nullable: 1b, needs_free: 0b },
+            TypeMapping @{ redox_type: "[u8]~".into(), foreign_type: "bytes".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+        ]~,
+        FfiTarget.Wasm => [
+            TypeMapping @{ redox_type: "i32".into(), foreign_type: "i32".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "i64".into(), foreign_type: "i64".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "f64".into(), foreign_type: "f64".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "bool".into(), foreign_type: "i32".into(), is_pointer: 0b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "s".into(), foreign_type: "i32".into(), is_pointer: 1b, is_nullable: 0b, needs_free: 1b },
+            TypeMapping @{ redox_type: "&s".into(), foreign_type: "i32".into(), is_pointer: 1b, is_nullable: 0b, needs_free: 0b },
+            TypeMapping @{ redox_type: "?s".into(), foreign_type: "i32".into(), is_pointer: 1b, is_nullable: 1b, needs_free: 1b },
+            TypeMapping @{ redox_type: "[u8]~".into(), foreign_type: "i32".into(), is_pointer: 1b, is_nullable: 0b, needs_free: 1b },
+        ]~,
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §3 — Function signatures to export
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S FfiParam {
+    name: s,
+    redox_type: s,
+}
+
+@d(Debug, Clone)
++S FfiFunction {
+    name: s,
+    params: [FfiParam]~,
+    return_type: s,
+    is_unsafe: bool,
+    doc: s,
+}
+
+I ~ FfiFunction {
+    +f new(name: s, doc: s) -> FfiFunction {
+        FfiFunction @{
+            name: name,
+            params: []~,
+            return_type: "()".to_string(),
+            is_unsafe: 0b,
+            doc: doc,
+        }
+    }
+
+    +f param(m self, name: s, ty: s) -> FfiFunction {
+        self.params.push(FfiParam @{ name: name, redox_type: ty });
+        self
+    }
+
+    +f returns(m self, ty: s) -> FfiFunction {
+        self.return_type = ty;
+        self
+    }
+
+    +f unsafe_fn(m self) -> FfiFunction {
+        self.is_unsafe = 1b;
+        self
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §4 — Library API: the interface we're exporting
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S LibraryApi {
+    name: s,
+    version: s,
+    functions: [FfiFunction]~,
+}
+
+/// Define a sample image-processing library API.
+///
+/// @fx pure
+f define_image_api() -> LibraryApi {
+    LibraryApi @{
+        name: "redox_image".to_string(),
+        version: "1.0.0".to_string(),
+        functions: [
+            FfiFunction.new("image_open".to_string(), "Open an image file".to_string())
+                .param("path".to_string(), "&s".to_string())
+                .returns("?ImageHandle".to_string()),
+
+            FfiFunction.new("image_width".to_string(), "Get image width in pixels".to_string())
+                .param("handle".to_string(), "ImageHandle".to_string())
+                .returns("i32".to_string()),
+
+            FfiFunction.new("image_height".to_string(), "Get image height in pixels".to_string())
+                .param("handle".to_string(), "ImageHandle".to_string())
+                .returns("i32".to_string()),
+
+            FfiFunction.new("image_resize".to_string(), "Resize image to target dimensions".to_string())
+                .param("handle".to_string(), "ImageHandle".to_string())
+                .param("width".to_string(), "i32".to_string())
+                .param("height".to_string(), "i32".to_string())
+                .returns("bool".to_string()),
+
+            FfiFunction.new("image_to_grayscale".to_string(), "Convert image to grayscale".to_string())
+                .param("handle".to_string(), "ImageHandle".to_string())
+                .returns("bool".to_string()),
+
+            FfiFunction.new("image_pixels".to_string(), "Get raw pixel data".to_string())
+                .param("handle".to_string(), "ImageHandle".to_string())
+                .returns("[u8]~".to_string())
+                .unsafe_fn(),
+
+            FfiFunction.new("image_save".to_string(), "Save image to file".to_string())
+                .param("handle".to_string(), "ImageHandle".to_string())
+                .param("path".to_string(), "&s".to_string())
+                .param("format".to_string(), "&s".to_string())
+                .returns("bool".to_string()),
+
+            FfiFunction.new("image_close".to_string(), "Close and free image resources".to_string())
+                .param("handle".to_string(), "ImageHandle".to_string())
+                .returns("()".to_string()),
+        ]~,
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §5 — Binding generator: produce output per target
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S GeneratedBinding {
+    target: FfiTarget,
+    filename: s,
+    code: s,
+    function_count: usize,
+    line_count: usize,
+}
+
+I fmt.Display ~ GeneratedBinding {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        write!(f, "{target} → {file} ({funcs} functions, {lines} lines)",
+            target = self.target,
+            file = self.filename,
+            funcs = self.function_count,
+            lines = self.line_count)
+    }
+}
+
+/// Look up the foreign type for a given Redox type in a target.
+///
+/// @fx pure
+f map_type(redox_type: &s, mappings: &[TypeMapping]~) -> s {
+    @ mapping ~ mappings {
+        ?: mapping.redox_type == *redox_type {
+            v prefix = ?: mapping.is_pointer { "*" } : { "" };
+            ret f"{prefix}{mapping.foreign_type}";
+        }
+    }
+    // Opaque handle — return as void pointer in C, int in Python, etc.
+    f"/* opaque */ void*"
+}
+
+/// Generate a C header file.
+///
+/// @ens  result.code contains proper extern "C" declarations
+/// @fx   pure
+f generate_c_binding(api: &LibraryApi, prefix: &s) -> GeneratedBinding {
+    m lines: [s]~ = []~;
+
+    lines.push(f"/* Auto-generated C bindings for {api.name} v{api.version} */");
+    lines.push(f"#ifndef {prefix.to_uppercase()}{api.name.to_uppercase()}_H");
+    lines.push(f"#define {prefix.to_uppercase()}{api.name.to_uppercase()}_H");
+    lines.push("".to_string());
+    lines.push("#include <stdint.h>".to_string());
+    lines.push("#include <stdbool.h>".to_string());
+    lines.push("".to_string());
+    lines.push("typedef void* ImageHandle;".to_string());
+    lines.push("".to_string());
+    lines.push("#ifdef __cplusplus".to_string());
+    lines.push("extern \"C\" {".to_string());
+    lines.push("#endif".to_string());
+    lines.push("".to_string());
+
+    v mappings = type_mappings_for(&FfiTarget.C);
+
+    @ func ~ &api.functions {
+        lines.push(f"/* {func.doc} */");
+        v ret_type = map_type(&func.return_type, &mappings);
+        m params_str: [s]~ = []~;
+        @ param ~ &func.params {
+            v ty = map_type(&param.redox_type, &mappings);
+            params_str.push(f"{ty} {param.name}");
+        }
+        v params = ?: params_str.is_empty() { "void".to_string() } : { params_str.join(", ") };
+        lines.push(f"{ret_type} {prefix}{func.name}({params});");
+        lines.push("".to_string());
+    }
+
+    lines.push("#ifdef __cplusplus".to_string());
+    lines.push("}".to_string());
+    lines.push("#endif".to_string());
+    lines.push("".to_string());
+    lines.push(f"#endif /* {prefix.to_uppercase()}{api.name.to_uppercase()}_H */");
+
+    v code = lines.join("\n");
+    v lc = lines.len();
+    GeneratedBinding @{
+        target: FfiTarget.C,
+        filename: f"{prefix}{api.name}.h",
+        code: code,
+        function_count: api.functions.len(),
+        line_count: lc,
+    }
+}
+
+/// Generate a Python module using ctypes.
+///
+/// @fx pure
+f generate_python_binding(api: &LibraryApi, prefix: &s) -> GeneratedBinding {
+    m lines: [s]~ = []~;
+
+    lines.push(f"# Auto-generated Python bindings for {api.name} v{api.version}");
+    lines.push(f"# Generated by Redox FFI bridge");
+    lines.push("".to_string());
+    lines.push("import ctypes".to_string());
+    lines.push("from typing import Optional".to_string());
+    lines.push("from pathlib import Path".to_string());
+    lines.push("".to_string());
+    lines.push(f"_lib = ctypes.CDLL(\"lib{prefix}{api.name}.so\")");
+    lines.push("".to_string());
+
+    v mappings = type_mappings_for(&FfiTarget.Python);
+    v ctypes_map = [
+        ("int", "ctypes.c_int32"),
+        ("float", "ctypes.c_double"),
+        ("bool", "ctypes.c_bool"),
+        ("str", "ctypes.c_char_p"),
+        ("bytes", "ctypes.POINTER(ctypes.c_uint8)"),
+    ]~;
+
+    @ func ~ &api.functions {
+        lines.push(f"# {func.doc}");
+        lines.push(f"def {func.name}(");
+        @ (i, param) ~ func.params.iter().enumerate() {
+            v py_type = map_type(&param.redox_type, &mappings);
+            v comma = ?: i < func.params.len() - 1 { "," } : { "" };
+            lines.push(f"    {param.name}: {py_type}{comma}");
+        }
+        v ret_py = map_type(&func.return_type, &mappings);
+        lines.push(f") -> {ret_py}:");
+        lines.push(f"    return _lib.{prefix}{func.name}(");
+        @ (i, param) ~ func.params.iter().enumerate() {
+            v comma = ?: i < func.params.len() - 1 { "," } : { "" };
+            lines.push(f"        {param.name}{comma}");
+        }
+        lines.push("    )".to_string());
+        lines.push("".to_string());
+    }
+
+    v code = lines.join("\n");
+    v lc = lines.len();
+    GeneratedBinding @{
+        target: FfiTarget.Python,
+        filename: f"{api.name}.py",
+        code: code,
+        function_count: api.functions.len(),
+        line_count: lc,
+    }
+}
+
+/// Generate WebAssembly text format imports.
+///
+/// @fx pure
+f generate_wasm_binding(api: &LibraryApi, prefix: &s) -> GeneratedBinding {
+    m lines: [s]~ = []~;
+
+    lines.push(f";; Auto-generated WASM imports for {api.name} v{api.version}");
+    lines.push("(module".to_string());
+    lines.push(f"  ;; Import host functions from \"{api.name}\"");
+    lines.push("".to_string());
+
+    v mappings = type_mappings_for(&FfiTarget.Wasm);
+
+    @ func ~ &api.functions {
+        lines.push(f"  ;; {func.doc}");
+        m params_wasm: [s]~ = []~;
+        @ param ~ &func.params {
+            v wasm_ty = map_type(&param.redox_type, &mappings);
+            params_wasm.push(f"(param ${param.name} {wasm_ty})");
+        }
+        v ret_wasm = map_type(&func.return_type, &mappings);
+        v result = ?: func.return_type == "()" { "" } : { f" (result {ret_wasm})" };
+        v params = params_wasm.join(" ");
+        lines.push(f"  (import \"{api.name}\" \"{prefix}{func.name}\" (func ${func.name} {params}{result}))");
+        lines.push("".to_string());
+    }
+
+    lines.push(")".to_string());
+
+    v code = lines.join("\n");
+    v lc = lines.len();
+    GeneratedBinding @{
+        target: FfiTarget.Wasm,
+        filename: f"{api.name}.wat",
+        code: code,
+        function_count: api.functions.len(),
+        line_count: lc,
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §6 — Entry point: generate bindings for all targets
+// ─────────────────────────────────────────────────────────────────────
+
++f main() / io {
+    p"╔═══════════════════════════════════════════════════════════╗";
+    p"║  Redox Multi-Language FFI Bridge Generator                ║";
+    p"╚═══════════════════════════════════════════════════════════╝";
+    p"";
+
+    // Define the API.
+    v api = define_image_api();
+    v prefix = "rdx_";
+
+    p"Library: {api.name} v{api.version}";
+    p"Functions: {api.functions.len()}";
+    p"Prefix: {prefix}";
+    p"";
+
+    p"─── API Surface ──────────────────────────────────────────";
+    @ func ~ &api.functions {
+        v params: [s]~ = func.params.iter()
+            .map(|p| f"{p.name}: {p.redox_type}")
+            .collect();
+        v unsafe_tag = ?: func.is_unsafe { " [unsafe]" } : { "" };
+        p"  +f {func.name}({params_str}) -> {func.return_type}{unsafe_tag}",
+            params_str = params.join(", "),
+            unsafe_tag = unsafe_tag;
+    }
+    p"";
+
+    // Generate bindings for each target.
+    v targets = [FfiTarget.C, FfiTarget.Python, FfiTarget.Wasm]~;
+    m bindings: [GeneratedBinding]~ = []~;
+
+    @ target ~ &targets {
+        p"─── Generating {target} Bindings ─────────────────────";
+
+        v binding = ? target {
+            FfiTarget.C      => generate_c_binding(&api, &prefix.to_string()),
+            FfiTarget.Python => generate_python_binding(&api, &prefix.to_string()),
+            FfiTarget.Wasm   => generate_wasm_binding(&api, &prefix.to_string()),
+            _                => {
+                p"  Skipped: {target} not yet supported";
+                >> ;  // continue
+            },
+        };
+
+        p"  {binding}";
+        p"";
+
+        // Show a preview (first 15 lines).
+        v preview_lines: [&s]~ = binding.code.lines().take(15).collect();
+        p"  Preview:";
+        @ line ~ &preview_lines {
+            p"    {line}";
+        }
+        ?: binding.line_count > 15 {
+            p"    ... ({binding.line_count - 15} more lines)";
+        }
+        p"";
+
+        bindings.push(binding);
+    }
+
+    // Type mapping summary.
+    p"─── Type Mapping Summary ─────────────────────────────────";
+    p"  ┌──────────┬──────────────┬───────────────────────┬──────────┐";
+    p"  │ Redox    │ C            │ Python                │ WASM     │";
+    p"  ├──────────┼──────────────┼───────────────────────┼──────────┤";
+    v c_maps = type_mappings_for(&FfiTarget.C);
+    v py_maps = type_mappings_for(&FfiTarget.Python);
+    v wasm_maps = type_mappings_for(&FfiTarget.Wasm);
+    @ i ~ 0..c_maps.len() {
+        p"  │ {rdx:<8} │ {c:<12} │ {py:<21} │ {w:<8} │",
+            rdx = c_maps[i].redox_type,
+            c = c_maps[i].foreign_type,
+            py = py_maps[i].foreign_type,
+            w = wasm_maps[i].foreign_type;
+    }
+    p"  └──────────┴──────────────┴───────────────────────┴──────────┘";
+
+    // Final summary.
+    p"";
+    p"═══════════════════════════════════════════════════════════";
+    v total_lines: usize = bindings.iter().map(|b| b.line_count).sum();
+    v total_funcs: usize = bindings.iter().map(|b| b.function_count).sum();
+    p"  Generated {bindings.len()} binding files:";
+    @ b ~ &bindings {
+        p"    - {b.filename} ({b.target})";
+    }
+    p"  Total: {total_funcs} function bindings, {total_lines} lines of code";
+    p"═══════════════════════════════════════════════════════════";
+}

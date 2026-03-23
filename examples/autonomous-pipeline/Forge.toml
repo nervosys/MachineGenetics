@@ -1,0 +1,18 @@
+[module]
+name = "autonomous-pipeline"
+version = "0.1.0"
+edition = "2025"
+description = "AI-driven code generation pipeline with contracts, task decomposition, and cost optimization"
+license = "MIT"
+
+[dependencies]
+async-rt = { version = "0.5", features = ["multi-thread"] }
+
+[agent]
+swarm-size = 6
+consensus = "majority"
+lease-timeout = "10m"
+
+[safety]
+mode = "contracts"
+profile = "production"

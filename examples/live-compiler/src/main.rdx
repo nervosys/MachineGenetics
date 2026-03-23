@@ -1,0 +1,614 @@
+// live-compiler — Hot-Reload Development Server with Self-Healing.
+//
+// A development server that watches source files, incrementally
+// recompiles on change, hot-patches running functions without restart,
+// and automatically proposes fixes for common errors. Includes a
+// rollback mechanism when patches introduce regressions.
+//
+// Demonstrates:
+//   - Hot-reload runtime with function versioning
+//   - Patch application and rollback
+//   - Self-healing compiler diagnostics
+//   - Repair candidate generation and confidence scoring
+//   - Async file watching (/ io, / fs)
+//   - Token budget monitoring
+//   - Effect annotations throughout
+
+u std.col;
+u std.fmt;
+u std.io;
+
+// ─────────────────────────────────────────────────────────────────────
+// §1 — Source file tracking
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S SourceFile {
+    path: s,
+    content: s,
+    version: u64,
+    token_count: usize,
+    last_modified: u64,
+}
+
+I ~ SourceFile {
+    +f new(path: s, content: s) -> SourceFile {
+        v tokens = count_tokens(&content);
+        SourceFile @{
+            path: path,
+            content: content,
+            version: 1,
+            token_count: tokens,
+            last_modified: 0,
+        }
+    }
+
+    +f update(&!self, new_content: s) {
+        self.content = new_content.clone();
+        self.token_count = count_tokens(&new_content);
+        self.version = self.version + 1;
+        self.last_modified = self.last_modified + 1;
+    }
+}
+
+/// Simple token counter — counts whitespace-separated tokens.
+///
+/// @fx pure
+f count_tokens(source: &s) -> usize {
+    source.split_whitespace().count()
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §2 — Diagnostics: errors the compiler finds
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone, PartialEq)
++E ErrorKind {
+    TypeMismatch,
+    UndefinedVariable,
+    MissingImport,
+    SyntaxError,
+    BorrowCheck,
+    LifetimeError,
+    UnusedVariable,
+    AmbiguousType,
+}
+
+I fmt.Display ~ ErrorKind {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            ErrorKind.TypeMismatch     => write!(f, "type mismatch"),
+            ErrorKind.UndefinedVariable => write!(f, "undefined variable"),
+            ErrorKind.MissingImport    => write!(f, "missing import"),
+            ErrorKind.SyntaxError      => write!(f, "syntax error"),
+            ErrorKind.BorrowCheck      => write!(f, "borrow check"),
+            ErrorKind.LifetimeError    => write!(f, "lifetime error"),
+            ErrorKind.UnusedVariable   => write!(f, "unused variable"),
+            ErrorKind.AmbiguousType    => write!(f, "ambiguous type"),
+        }
+    }
+}
+
+@d(Debug, Clone, PartialEq)
++E Severity {
+    Warning,
+    Error,
+}
+
+I fmt.Display ~ Severity {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            Severity.Warning => write!(f, "warning"),
+            Severity.Error   => write!(f, "error"),
+        }
+    }
+}
+
+I ~ ErrorKind {
+    +f severity(&self) -> Severity {
+        ? self {
+            ErrorKind.UnusedVariable => Severity.Warning,
+            _ => Severity.Error,
+        }
+    }
+}
+
+@d(Debug, Clone)
++S Diagnostic {
+    file: s,
+    line: u32,
+    column: u32,
+    kind: ErrorKind,
+    message: s,
+}
+
+I fmt.Display ~ Diagnostic {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        write!(f, "{sev}[{kind}]: {file}:{line}:{col} — {msg}",
+            sev = self.kind.severity(),
+            kind = self.kind,
+            file = self.file,
+            line = self.line,
+            col = self.column,
+            msg = self.message)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §3 — Self-healing: propose fixes automatically
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++S RepairCandidate {
+    description: s,
+    patch_text: s,
+    confidence: f64,
+    kind: ErrorKind,
+}
+
+I fmt.Display ~ RepairCandidate {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        write!(f, "[{conf:.0}%] {desc}: {patch}",
+            conf = self.confidence * 100.0,
+            desc = self.description,
+            patch = self.patch_text)
+    }
+}
+
+/// Generate repair candidates for a diagnostic.
+///
+/// @req  diagnostic.kind.severity() == Severity.Error || Severity.Warning
+/// @ens  result candidates sorted by confidence descending
+/// @fx   pure
+f propose_repairs(diag: &Diagnostic) -> [RepairCandidate]~ {
+    m candidates: [RepairCandidate]~ = []~;
+
+    ? diag.kind {
+        ErrorKind.TypeMismatch => {
+            candidates.push(RepairCandidate @{
+                description: "Add explicit type cast".to_string(),
+                patch_text: f"({diag.message}) as TargetType".to_string(),
+                confidence: 0.75,
+                kind: ErrorKind.TypeMismatch,
+            });
+            candidates.push(RepairCandidate @{
+                description: "Use .into() conversion".to_string(),
+                patch_text: "value.into()".to_string(),
+                confidence: 0.60,
+                kind: ErrorKind.TypeMismatch,
+            });
+        },
+        ErrorKind.UndefinedVariable => {
+            candidates.push(RepairCandidate @{
+                description: "Declare the variable".to_string(),
+                patch_text: f"v {diag.message}: _ = todo!();".to_string(),
+                confidence: 0.50,
+                kind: ErrorKind.UndefinedVariable,
+            });
+            candidates.push(RepairCandidate @{
+                description: "Check for typo in variable name".to_string(),
+                patch_text: "// Did you mean a similar name?".to_string(),
+                confidence: 0.70,
+                kind: ErrorKind.UndefinedVariable,
+            });
+        },
+        ErrorKind.MissingImport => {
+            candidates.push(RepairCandidate @{
+                description: "Add import statement".to_string(),
+                patch_text: f"u std.{diag.message};".to_string(),
+                confidence: 0.85,
+                kind: ErrorKind.MissingImport,
+            });
+        },
+        ErrorKind.UnusedVariable => {
+            candidates.push(RepairCandidate @{
+                description: "Prefix with underscore".to_string(),
+                patch_text: f"v _{diag.message} = ...".to_string(),
+                confidence: 0.95,
+                kind: ErrorKind.UnusedVariable,
+            });
+            candidates.push(RepairCandidate @{
+                description: "Remove the variable".to_string(),
+                patch_text: "// removed unused binding".to_string(),
+                confidence: 0.80,
+                kind: ErrorKind.UnusedVariable,
+            });
+        },
+        _ => {
+            candidates.push(RepairCandidate @{
+                description: "No automatic fix available".to_string(),
+                patch_text: "// manual fix required".to_string(),
+                confidence: 0.0,
+                kind: diag.kind.clone(),
+            });
+        },
+    };
+
+    // Sort by confidence descending.
+    candidates.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
+    candidates
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §4 — Hot-reload runtime: patch functions without restart
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug, Clone)
++E PatchStatus {
+    Pending,
+    Applied,
+    RolledBack,
+    Failed,
+}
+
+I fmt.Display ~ PatchStatus {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        ? self {
+            PatchStatus.Pending    => write!(f, "PENDING"),
+            PatchStatus.Applied    => write!(f, "APPLIED"),
+            PatchStatus.RolledBack => write!(f, "ROLLED BACK"),
+            PatchStatus.Failed     => write!(f, "FAILED"),
+        }
+    }
+}
+
+@d(Debug, Clone)
++S FunctionPatch {
+    id: u64,
+    function_name: s,
+    from_version: u64,
+    to_version: u64,
+    status: PatchStatus,
+    description: s,
+}
+
+I fmt.Display ~ FunctionPatch {
+    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+        write!(f, "Patch #{id}: {name} v{from}→v{to} [{status}]",
+            id = self.id,
+            name = self.function_name,
+            from = self.from_version,
+            to = self.to_version,
+            status = self.status)
+    }
+}
+
+@d(Debug)
++S HotReloadRuntime {
+    functions: {s: u64},     // function name → current version
+    patches: [FunctionPatch]~,
+    rollbacks: [s]~,
+    next_patch_id: u64,
+}
+
+I ~ HotReloadRuntime {
+    +f new() -> HotReloadRuntime {
+        HotReloadRuntime @{
+            functions: HashMap.new(),
+            patches: []~,
+            rollbacks: []~,
+            next_patch_id: 1,
+        }
+    }
+
+    +f register_function(&!self, name: s, version: u64) {
+        self.functions.insert(name, version);
+    }
+
+    /// Apply a hot patch to a running function.
+    ///
+    /// @req  self.functions.contains(function_name)
+    /// @ens  patch is recorded in self.patches
+    +f apply_patch(&!self, function_name: &s, description: s) -> R[u64, s] / io {
+        v current = ? self.functions.get(function_name) {
+            Some(v) => *v,
+            None => ret Err(f"Function '{function_name}' not registered".to_string()),
+        };
+
+        v patch_id = self.next_patch_id;
+        self.next_patch_id = self.next_patch_id + 1;
+        v new_version = current + 1;
+
+        v patch = FunctionPatch @{
+            id: patch_id,
+            function_name: function_name.clone(),
+            from_version: current,
+            to_version: new_version,
+            status: PatchStatus.Applied,
+            description: description,
+        };
+
+        self.functions.insert(function_name.clone(), new_version);
+        p"    ⚡ {patch}";
+        self.patches.push(patch);
+        Ok(patch_id)
+    }
+
+    /// Roll back the last patch for a function.
+    ///
+    /// @req  function has at least one applied patch
+    +f rollback(&!self, function_name: &s) -> R[(), s] / io {
+        // Find the last applied patch for this function.
+        m found_idx: ?usize = None;
+        m i = self.patches.len();
+        @ _ ~ 0..self.patches.len() {
+            i = i - 1;
+            ?: self.patches[i].function_name == *function_name
+               && self.patches[i].status == PatchStatus.Applied {
+                found_idx = Some(i);
+                !;  // break
+            }
+        }
+
+        v idx = ? found_idx {
+            Some(i) => i,
+            None => ret Err(f"No applied patches for '{function_name}'".to_string()),
+        };
+
+        v patch = &!self.patches[idx];
+        patch.status = PatchStatus.RolledBack;
+        self.functions.insert(function_name.clone(), patch.from_version);
+
+        p"    ↩ Rolled back: {function_name} v{patch.to_version}→v{patch.from_version}";
+        self.rollbacks.push(f"Rolled back {function_name}".to_string());
+        Ok(())
+    }
+
+    +f version_of(&self, function_name: &s) -> ?u64 {
+        self.functions.get(function_name).copied()
+    }
+
+    +f patch_count(&self) -> usize {
+        self.patches.len()
+    }
+
+    +f report(&self) / io {
+        p"";
+        p"── Hot-Reload Status ──────────────────────────────────";
+        p"  Registered functions: {self.functions.len()}";
+        p"  Applied patches:     {self.patches.iter().filter(|p| p.status == PatchStatus.Applied).count()}";
+        p"  Rolled back:         {self.rollbacks.len()}";
+        p"  ┌───────────────────────┬─────────┬────────────┐";
+        p"  │ Function              │ Version │ Status     │";
+        p"  ├───────────────────────┼─────────┼────────────┤";
+        @ (name, version) ~ &self.functions {
+            p"  │ {name:<21} │ v{version:<6} │ live       │";
+        }
+        p"  └───────────────────────┴─────────┴────────────┘";
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §5 — Development server: ties it all together
+// ─────────────────────────────────────────────────────────────────────
+
+@d(Debug)
++S DevServer {
+    files: {s: SourceFile},
+    runtime: HotReloadRuntime,
+    diagnostics: [Diagnostic]~,
+    repairs_applied: u32,
+    total_rebuilds: u32,
+}
+
+I ~ DevServer {
+    +f new() -> DevServer {
+        DevServer @{
+            files: HashMap.new(),
+            runtime: HotReloadRuntime.new(),
+            diagnostics: []~,
+            repairs_applied: 0,
+            total_rebuilds: 0,
+        }
+    }
+
+    +f add_file(&!self, path: s, content: s) / io {
+        v file = SourceFile.new(path.clone(), content);
+        p"  📄 Loaded: {path} ({file.token_count} tokens, v{file.version})";
+
+        // Register all functions found in the file.
+        // (simplified: register the file itself as a "function")
+        self.runtime.register_function(path.clone(), file.version);
+        self.files.insert(path, file);
+    }
+
+    /// Simulate a file change and trigger rebuild.
+    +f on_file_changed(&!self, path: &s, new_content: s) / io {
+        p"";
+        p"  🔄 File changed: {path}";
+
+        v file = ? self.files.get_mut(path) {
+            Some(f) => f,
+            None => {
+                p"    ⚠ Unknown file: {path}";
+                ret;
+            },
+        };
+
+        v old_version = file.version;
+        file.update(new_content);
+        p"    Updated: v{old_version} → v{file.version} ({file.token_count} tokens)";
+        self.total_rebuilds = self.total_rebuilds + 1;
+
+        // Compile and check for errors.
+        v errors = self.compile(path);
+
+        ?: errors.is_empty() {
+            // No errors — apply hot patch.
+            p"    ✓ Compilation successful";
+            v _ = self.runtime.apply_patch(
+                path,
+                f"Rebuild #{self.total_rebuilds}".to_string(),
+            );
+        } : {
+            // Errors found — attempt self-healing.
+            p"    ✗ Found {errors.len()} error(s) — attempting self-healing...";
+            self.heal_errors(&errors);
+        }
+    }
+
+    /// Simulate compilation — returns diagnostics.
+    f compile(&!self, path: &s) -> [Diagnostic]~ / io {
+        m errors: [Diagnostic]~ = []~;
+
+        v file = ? self.files.get(path) {
+            Some(f) => f,
+            None => ret errors,
+        };
+
+        // Simulate detecting errors based on file content patterns.
+        ?: file.content.contains("fn ") {
+            errors.push(Diagnostic @{
+                file: path.clone(),
+                line: 1,
+                column: 1,
+                kind: ErrorKind.SyntaxError,
+                message: "Use Redox `f` keyword instead of Rust `fn`".to_string(),
+            });
+        }
+
+        ?: file.content.contains("undefined_var") {
+            errors.push(Diagnostic @{
+                file: path.clone(),
+                line: 5,
+                column: 10,
+                kind: ErrorKind.UndefinedVariable,
+                message: "undefined_var".to_string(),
+            });
+        }
+
+        ?: file.content.contains("let ") {
+            errors.push(Diagnostic @{
+                file: path.clone(),
+                line: 3,
+                column: 5,
+                kind: ErrorKind.SyntaxError,
+                message: "Use Redox `v` keyword instead of Rust `let`".to_string(),
+            });
+        }
+
+        ?: file.content.contains("unused_x") {
+            errors.push(Diagnostic @{
+                file: path.clone(),
+                line: 7,
+                column: 5,
+                kind: ErrorKind.UnusedVariable,
+                message: "unused_x".to_string(),
+            });
+        }
+
+        @ diag ~ &errors {
+            p"    {diag}";
+            self.diagnostics.push(diag.clone());
+        }
+        errors
+    }
+
+    /// Attempt to heal errors automatically.
+    f heal_errors(&!self, errors: &[Diagnostic]~) / io {
+        @ diag ~ errors {
+            v repairs = propose_repairs(diag);
+            ?: !repairs.is_empty() {
+                v best = &repairs[0];
+                p"    💡 {best}";
+                ?: best.confidence > 0.5 {
+                    p"    ✓ Auto-applied repair (confidence {:.0}%)", best.confidence * 100.0);
+                    self.repairs_applied = self.repairs_applied + 1;
+                } : {
+                    p"    ⚠ Low confidence — manual review needed";
+                }
+            }
+        }
+    }
+
+    /// Simulate detecting a regression and rolling back.
+    +f simulate_regression(&!self, path: &s) / io {
+        p"";
+        p"  ⚠ Regression detected in {path}!";
+        ? self.runtime.rollback(path) {
+            Ok(()) => p"    ✓ Service restored to previous version",
+            Err(msg) => p"    ✗ Rollback failed: {msg}",
+        }
+    }
+
+    +f summary(&self) / io {
+        p"";
+        p"── Development Server Summary ────────────────────────";
+        p"  Files tracked:    {self.files.len()}";
+        p"  Total rebuilds:   {self.total_rebuilds}";
+        p"  Diagnostics:      {self.diagnostics.len()}";
+        p"  Auto-repairs:     {self.repairs_applied}";
+        v total_tokens: usize = self.files.values().map(|f| f.token_count).sum();
+        p"  Total tokens:     {total_tokens}";
+        self.runtime.report();
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// §6 — Entry point: simulate a development session
+// ─────────────────────────────────────────────────────────────────────
+
++f main() / io {
+    p"╔═══════════════════════════════════════════════════════════╗";
+    p"║  Redox Live Compiler — Hot-Reload Dev Server             ║";
+    p"╚═══════════════════════════════════════════════════════════╝";
+    p"";
+
+    m server = DevServer.new();
+
+    // Load initial source files.
+    p"─── Loading Project ──────────────────────────────────────";
+    server.add_file(
+        "src/lib.rdx".to_string(),
+        "+f greet(name: &s) -> s {\n    f\"Hello, {name}!\"\n}".to_string(),
+    );
+    server.add_file(
+        "src/math.rdx".to_string(),
+        "f add(a: i32, b: i32) -> i32 { a + b }\nf mul(a: i32, b: i32) -> i32 { a * b }".to_string(),
+    );
+    server.add_file(
+        "src/api.rdx".to_string(),
+        "+f handle_request(req: &Request) / io + net -> R[Response, ApiError] {\n    v body = req.body();\n    Ok(Response.ok(body))\n}".to_string(),
+    );
+
+    // Simulate editing a file — clean change.
+    p"";
+    p"─── Edit 1: Clean Change ─────────────────────────────────";
+    server.on_file_changed(
+        &"src/lib.rdx".to_string(),
+        "+f greet(name: &s) -> s {\n    v greeting = f\"Hello, {name}!\";\n    greeting\n}".to_string(),
+    );
+
+    // Simulate editing with an error — triggers self-healing.
+    p"";
+    p"─── Edit 2: Introduces Errors ────────────────────────────";
+    server.on_file_changed(
+        &"src/math.rdx".to_string(),
+        "fn add(a: i32, b: i32) -> i32 { a + b }\nv unused_x = 42;\nf mul(a: i32, b: i32) -> i32 { a * b }".to_string(),
+    );
+
+    // Another clean edit.
+    p"";
+    p"─── Edit 3: Fix and Improve ──────────────────────────────";
+    server.on_file_changed(
+        &"src/math.rdx".to_string(),
+        "f add(a: i32, b: i32) -> i32 { a + b }\nf mul(a: i32, b: i32) -> i32 { a * b }\nf div(a: f64, b: f64) -> R[f64, s]\n    @req b != 0.0\n{ Ok(a / b) }".to_string(),
+    );
+
+    // Simulate a regression — trigger rollback.
+    p"";
+    p"─── Edit 4: Regression Detected ──────────────────────────";
+    server.on_file_changed(
+        &"src/api.rdx".to_string(),
+        "+f handle_request(req: &Request) / io + net -> R[Response, ApiError] {\n    v undefined_var = process(req);\n    Ok(Response.ok(undefined_var))\n}".to_string(),
+    );
+    server.simulate_regression(&"src/api.rdx".to_string());
+
+    // Final summary.
+    server.summary();
+
+    p"";
+    p"═══════════════════════════════════════════════════════════";
+    p"  Dev server session complete.";
+    p"═══════════════════════════════════════════════════════════";
+}
