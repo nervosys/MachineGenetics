@@ -48,6 +48,7 @@ members = [
   "compiler/redox_edition_2026",
   "compiler/redox_verification_cert",
   "compiler/redox_swarm_hierarchy",
+  "compiler/redox_mlir_pipeline",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",

@@ -152,7 +152,7 @@
 - [x] **Step 85**: Define `redox-2026` edition with all new features including token-compact canonical form.
 - [x] **Step 86**: Build verification certificate emission pipeline: opt-in for safety-critical code, emits machine-checkable proofs.
 - [x] **Step 87**: Implement swarm-of-swarms hierarchical orchestration for million-LOC+ codebases.
-- [ ] **Step 88**: Implement MLIR→CIRCT pipeline for FPGA targets and MLIR StableHLO/TOSA dialect pipelines for NPU/TPU targets.
+- [x] **Step 88**: Implement MLIR→CIRCT pipeline for FPGA targets and MLIR StableHLO/TOSA dialect pipelines for NPU/TPU targets.
 
 ---
 
