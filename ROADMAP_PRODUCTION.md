@@ -147,7 +147,7 @@
 - [x] **Step 80**: Implement the Agent Memory Model: ephemeral (per-task), session (per-swarm-session), project (conventions), global (cross-project) memory tiers.
 - [x] **Step 81**: Build the memory recall API: `memory.store`, `memory.recall`, `memory.suggest` endpoints in RAP.
 - [x] **Step 82**: Implement the agentic standard library: `SwarmVec`, `ArenaVec`, `SwarmChannel`, streaming I/O primitives in `library/`.
-- [ ] **Step 83**: Conduct corpus-wide token frequency analysis on crates.io ecosystem for abbreviation optimization.
+- [x] **Step 83**: Conduct corpus-wide token frequency analysis on crates.io ecosystem for abbreviation optimization.
 - [ ] **Step 84**: Finalize standard abbreviation registry v2 with full ecosystem coverage, frequency-weighted.
 - [ ] **Step 85**: Define `redox-2026` edition with all new features including token-compact canonical form.
 - [ ] **Step 86**: Build verification certificate emission pipeline: opt-in for safety-critical code, emits machine-checkable proofs.
