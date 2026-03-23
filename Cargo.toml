@@ -51,6 +51,7 @@ members = [
   "compiler/redox_mlir_pipeline",
   "compiler/redox_package_registry",
   "compiler/redox_ecosystem_migrate",
+  "compiler/redox_swarm_marketplace",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",

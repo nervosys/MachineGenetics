@@ -160,7 +160,7 @@
 
 - [x] **Step 89**: Build capability-indexed package registry.
 - [x] **Step 90**: Migrate core ecosystem crates with capability manifests.
-- [ ] **Step 91**: Build agent swarm marketplace and pre-composed swarm templates.
+- [x] **Step 91**: Build agent swarm marketplace and pre-composed swarm templates.
 - [ ] **Step 92**: Develop certification pipeline for safety-critical industries (opt-in full safety mode).
 - [ ] **Step 93**: Publish Redox language specification.
 - [ ] **Step 94**: Ship reference swarm configurations (audit swarm, migration swarm, greenfield swarm).
