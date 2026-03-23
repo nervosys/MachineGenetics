@@ -58,6 +58,7 @@ members = [
   "compiler/redox_swarm_bench",
   "compiler/redox_skb_corpus",
   "compiler/redox_global_memory",
+  "compiler/redox_synthesis_market",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",
