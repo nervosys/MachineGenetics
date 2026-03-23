@@ -63,6 +63,7 @@ members = [
   "compiler/redox_hot_reload",
   "compiler/redox_ffi",
   "compiler/redox_sandbox",
+  "compiler/redox_agentic_bench",
   "compiler/redox_query",
   "compiler/redox_rap",
   "compiler/redox_rap_protocol",
