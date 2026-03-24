@@ -7,6 +7,7 @@
 /// - Unification: Robinson's algorithm extended for MechGen types
 /// - Substitution: apply solved constraints to resolve all type variables
 use crate::ast;
+use crate::hir;
 use crate::hir::{
     Diagnostic, DiagnosticCategory, FloatTy, IntTy, Severity, Ty, TyVar, UintTy, pure,
 };
@@ -202,8 +203,44 @@ fn unify(subst: &mut Subst, a: &Ty, b: &Ty) -> Result<(), String> {
             }
             Ok(())
         }
+        // AI types: Tensor shape unification
+        (Ty::Tensor(t1, s1), Ty::Tensor(t2, s2)) => {
+            unify(subst, t1, t2)?;
+            unify_shapes(s1, s2)
+        }
+        (Ty::Param(t1, s1), Ty::Param(t2, s2)) => {
+            unify(subst, t1, t2)?;
+            unify_shapes(s1, s2)
+        }
+        (Ty::Genome(t1), Ty::Genome(t2)) => unify(subst, t1, t2),
+        (Ty::Policy(s1, a1), Ty::Policy(s2, a2)) => {
+            unify(subst, s1, s2)?;
+            unify(subst, a1, a2)
+        }
+        (Ty::KnowledgeBase, Ty::KnowledgeBase) => Ok(()),
+        (Ty::LlmType, Ty::LlmType) => Ok(()),
         _ => Err(format!("type mismatch: {a} vs {b}")),
     }
+}
+
+/// Unify two tensor shape dimension lists.
+fn unify_shapes(
+    s1: &[hir::TensorDimHir],
+    s2: &[hir::TensorDimHir],
+) -> Result<(), String> {
+    if s1.len() != s2.len() {
+        return Err(format!("tensor rank mismatch: {} vs {}", s1.len(), s2.len()));
+    }
+    for (d1, d2) in s1.iter().zip(s2.iter()) {
+        match (d1, d2) {
+            (hir::TensorDimHir::Lit(a), hir::TensorDimHir::Lit(b)) if a != b => {
+                return Err(format!("tensor dimension mismatch: {a} vs {b}"));
+            }
+            // Var dims unify with anything (symbolic).
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 // ── Type environment ─────────────────────────────────────────────────
@@ -349,6 +386,30 @@ impl TypeChecker {
                 let inner_ty = self.lower_type(inner);
                 Ty::Named(crate::hir::SymbolId(u32::MAX), vec![inner_ty])
             }
+            ast::Type::Tensor { inner, shape } => {
+                let inner_ty = self.lower_type(inner);
+                let dims: Vec<crate::hir::TensorDimHir> = shape.iter().map(|d| match d {
+                    ast::TensorDim::Lit(n) => crate::hir::TensorDimHir::Lit(*n),
+                    ast::TensorDim::Var(v) => crate::hir::TensorDimHir::Var(v.clone()),
+                }).collect();
+                Ty::Tensor(Box::new(inner_ty), dims)
+            }
+            ast::Type::ParamTy { inner, shape } => {
+                let inner_ty = self.lower_type(inner);
+                let dims: Vec<crate::hir::TensorDimHir> = shape.iter().map(|d| match d {
+                    ast::TensorDim::Lit(n) => crate::hir::TensorDimHir::Lit(*n),
+                    ast::TensorDim::Var(v) => crate::hir::TensorDimHir::Var(v.clone()),
+                }).collect();
+                Ty::Param(Box::new(inner_ty), dims)
+            }
+            ast::Type::Genome { inner } => {
+                Ty::Genome(Box::new(self.lower_type(inner)))
+            }
+            ast::Type::Policy { state, action } => {
+                Ty::Policy(Box::new(self.lower_type(state)), Box::new(self.lower_type(action)))
+            }
+            ast::Type::KnowledgeBase => Ty::KnowledgeBase,
+            ast::Type::LlmType => Ty::LlmType,
             ast::Type::Refined { base, .. } => {
                 // Lower to the base type; predicate is checked separately by verify
                 self.lower_type(base)
@@ -606,6 +667,18 @@ impl TypeChecker {
                         }
                         self.subst.apply(&lt)
                     }
+                    // Tensor operators: operands must be tensor types.
+                    "\u{2297}" | "\u{2299}" => {
+                        // ⊗ (matmul), ⊙ (hadamard) — both operands tensor, result tensor.
+                        if let Err(e) = unify(&mut self.subst, &lt, &rt) {
+                            self.emit_error(format!("tensor `{op}`: {e}"));
+                        }
+                        self.subst.apply(&lt)
+                    }
+                    "\u{25b8}" => {
+                        // ▸ (pipeline) — chain operations, result of rhs.
+                        self.subst.apply(&rt)
+                    }
                     _ => {
                         self.emit_error(format!("unknown operator: `{op}`"));
                         Ty::Error
@@ -642,6 +715,15 @@ impl TypeChecker {
                         }
                     }
                     "&" => Ty::Ref(false, Box::new(t)),
+                    // Tensor postfix: ⊤ (transpose) keeps type, ⊥ (flatten) unwraps inner.
+                    "\u{22a4}" => t, // transpose — same tensor type
+                    "\u{22a5}" => {
+                        // flatten — unwrap one nesting level
+                        match &t {
+                            Ty::Tensor(inner, _) => Ty::Tensor(inner.clone(), vec![]),
+                            _ => t,
+                        }
+                    }
                     _ => {
                         self.emit_error(format!("unknown unary operator: `{op}`"));
                         Ty::Error
@@ -650,6 +732,23 @@ impl TypeChecker {
             }
 
             ast::Expr::Call { func, args } => {
+                // Built-in `grad` typing: grad(f) where f: Tensor → same Tensor type.
+                if let ast::Expr::Ident { name } = func.as_ref() {
+                    if name == "grad" && args.len() == 1 {
+                        let arg_ty = self.infer_expr(&args[0]);
+                        let resolved = self.subst.apply(&arg_ty);
+                        match &resolved {
+                            Ty::Tensor(..) | Ty::Param(..) => return resolved,
+                            _ => {
+                                self.emit_error(format!(
+                                    "grad requires tensor or param type, found {resolved}"
+                                ));
+                                return Ty::Error;
+                            }
+                        }
+                    }
+                }
+
                 let func_ty = self.infer_expr(func);
                 let arg_tys: Vec<Ty> = args.iter().map(|a| self.infer_expr(a)).collect();
 

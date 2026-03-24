@@ -47,6 +47,10 @@ fn elide_item_kind(kind: &ItemKind) -> ItemKind {
         ItemKind::Effect(e) => ItemKind::Effect(e.clone()),
         ItemKind::Spec(s) => ItemKind::Spec(s.clone()),
         ItemKind::Agent(a) => ItemKind::Agent(a.clone()),
+        ItemKind::Net(n) => ItemKind::Net(n.clone()),
+        ItemKind::Kb(k) => ItemKind::Kb(k.clone()),
+        ItemKind::Evolve(e) => ItemKind::Evolve(e.clone()),
+        ItemKind::Train(t) => ItemKind::Train(t.clone()),
     }
 }
 
@@ -281,7 +285,25 @@ fn elide_type(ty: &Type) -> Type {
         },
 
         // Leaf types pass through unchanged
-        Type::Never | Type::Inferred | Type::SelfType | Type::StringType => ty.clone(),
+        Type::Never
+        | Type::Inferred
+        | Type::SelfType
+        | Type::StringType
+        | Type::KnowledgeBase
+        | Type::LlmType => ty.clone(),
+
+        // AI types: recurse into inner types
+        Type::Tensor { inner, shape } => {
+            Type::Tensor { inner: Box::new(elide_type(inner)), shape: shape.clone() }
+        }
+        Type::ParamTy { inner, shape } => {
+            Type::ParamTy { inner: Box::new(elide_type(inner)), shape: shape.clone() }
+        }
+        Type::Genome { inner } => Type::Genome { inner: Box::new(elide_type(inner)) },
+        Type::Policy { state, action } => Type::Policy {
+            state: Box::new(elide_type(state)),
+            action: Box::new(elide_type(action)),
+        },
 
         // Refinement types: recurse into base type, preserve predicate
         Type::Refined { base, predicate } => {

@@ -42,6 +42,10 @@ pub enum ItemKind {
     Effect(EffectDef),
     Spec(SpecDef),
     Agent(AgentDef),
+    Net(NetDef),
+    Kb(KbDef),
+    Evolve(EvolveDef),
+    Train(TrainDef),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,6 +144,23 @@ pub enum Type {
         inner: Box<Type>,
         width: u64,
     }, // Simd[T, N]
+    Tensor {
+        inner: Box<Type>,
+        shape: Vec<TensorDim>,
+    }, // Tensor[T, Shape]
+    ParamTy {
+        inner: Box<Type>,
+        shape: Vec<TensorDim>,
+    }, // Param[T, Shape]
+    Genome {
+        inner: Box<Type>,
+    }, // Genome[T]
+    Policy {
+        state: Box<Type>,
+        action: Box<Type>,
+    }, // Policy[S, A]
+    KnowledgeBase, // KnowledgeBase
+    LlmType,       // LLM
     Fn {
         params: Vec<Type>,
         ret: Option<Box<Type>>,
@@ -404,4 +425,76 @@ pub enum ContractClauseKind {
     Ensures,
     /// @inv — invariant.
     Invariant,
+}
+
+// ── AI subsystem definitions ─────────────────────────────────
+
+/// A dimension in a tensor shape: either a named variable or a literal integer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TensorDim {
+    Lit(u64),
+    Var(String),
+}
+
+/// Neural network definition: `net Name { layer ...; layer ...; forward { ... } }`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetDef {
+    pub name: String,
+    pub generics: Vec<GenericParam>,
+    pub layers: Vec<LayerDef>,
+    pub forward: Block,
+}
+
+/// A single layer inside a `net` definition.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LayerDef {
+    pub name: String,
+    pub layer_type: Type,
+    pub args: Vec<Expr>,
+}
+
+/// Knowledge base definition: `kb Name { fact ...; rule ...; }`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KbDef {
+    pub name: String,
+    pub facts: Vec<FactDef>,
+    pub rules: Vec<RuleDef>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FactDef {
+    pub name: String,
+    pub args: Vec<Expr>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RuleDef {
+    pub name: String,
+    pub params: Vec<Param>,
+    pub conditions: Vec<Expr>,
+    pub body: Block,
+}
+
+/// Evolutionary computation definition: `evolve Name { genome ...; fitness { ... } }`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvolveDef {
+    pub name: String,
+    pub genome_type: Type,
+    pub population_size: Option<Expr>,
+    pub generations: Option<Expr>,
+    pub fitness: Block,
+    pub mutate_fn: Option<Block>,
+    pub crossover_fn: Option<Block>,
+    pub select_fn: Option<Block>,
+}
+
+/// Training loop definition: `train Name { ... }`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrainDef {
+    pub name: String,
+    pub net: String,
+    pub optimizer: Option<Expr>,
+    pub loss: Option<Expr>,
+    pub epochs: Option<Expr>,
+    pub body: Block,
 }

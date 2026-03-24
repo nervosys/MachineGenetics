@@ -16,10 +16,10 @@
 | Step | Title                              | Status | Description                                                                                                                       |
 | ---- | ---------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------- |
 | 23   | Complete the lexer                 | ✅      | Cover all 60+ keyword/attribute/type mappings from §5.5 (ep"...", `@@`, `?=`, `~>`, `af`, `uf`, `Y`, `Z`, `R`, `Ok`, `Err`, etc.) |
-| 24   | Complete the parser                | ✅      | Proper LL(1) with all MechGen syntax forms: contracts, specs, effects decl, capability blocks, swarm patterns, perf annotations     |
+| 24   | Complete the parser                | ✅      | Proper LL(1) with all MechGen syntax forms: contracts, specs, effects decl, capability blocks, swarm patterns, perf annotations   |
 | 25   | Structured Diagnostic Graph        | ✅      | Replace flat error strings with DiagnosticGraph (§6.2): fix candidates, confidence, causal chains, related errors                 |
 | 26   | Safety elision pass                | ✅      | Strip lifetimes, `unsafe`, `&mut`, `move`, `ref`, `Pin`, `PhantomData`, `Send`/`Sync` from AST in agentic mode                    |
-| 27   | Dual-syntax transpiler integration | ✅      | `--syntax=legacy` flag: accept Rust syntax via rust2mg, feed canonical form to compiler                                          |
+| 27   | Dual-syntax transpiler integration | ✅      | `--syntax=legacy` flag: accept Rust syntax via rust2mg, feed canonical form to compiler                                           |
 | 28   | Token budget reporting             | ✅      | `--token-report` per-function/module token counts, compact vs expanded metrics                                                    |
 
 ## Phase B: Agentic Core Deepening (Steps 29–35)
@@ -41,9 +41,9 @@
 | 36   | Expand RAP server          | ✅      | From 9 to 25+ methods: format/compact, format/expand, lint/check, doc/query, token/report, grammar/extensions, grammar/expand, aci/*, sandbox/*, ffi/*, hotpatch/*, memory/*, synthesis/* |
 | 37   | redoxfmt service           | ✅      | `--compact` (min tokens) and `--expand` (human-readable), bidirectional lossless AST conversion                                                                                           |
 | 38   | Agent discovery attributes | ✅      | `@as("...")`, `@ac("...")`, `@ax("...")`, `@ao("...")`, `@ae("...")` in lexer/parser/AST                                                                                                  |
-| 39   | Grammar extension system   | ✅      | `grammar_extension!` macro, MechGen.toml registration, namespace-scoped discovery, frequency promotion                                                                                      |
+| 39   | Grammar extension system   | ✅      | `grammar_extension!` macro, MechGen.toml registration, namespace-scoped discovery, frequency promotion                                                                                    |
 | 40   | Capability manifests       | ✅      | JSON manifest generation per crate, capability-indexed search in Forge                                                                                                                    |
-| 41   | MLIR dialect definition    | ✅      | First-class MLIR dialect ops: `MechGen.contract.*`, `MechGen.perf`, `MechGen.agent`, `MechGen.spec`, `MechGen.ownership.*`; 7 new tests (313 total)                                                 |
+| 41   | MLIR dialect definition    | ✅      | First-class MLIR dialect ops: `MechGen.contract.*`, `MechGen.perf`, `MechGen.agent`, `MechGen.spec`, `MechGen.ownership.*`; 7 new tests (313 total)                                       |
 
 ## Phase D: Swarm Runtime (Steps 42–48)
 
@@ -54,7 +54,7 @@
 | 44   | Consensus protocol        | ✅      | 5-phase Propose→ImpactAnalysis→Vote→Resolve→Integrate, quorum majority, phase enforcement; 13 tests (367 total)                   |
 | 45   | Task decomposition engine | ✅      | Task DAG, topological sort, parallel waves, critical path, capability-based agent assignment; 15 tests (382 total)                |
 | 46   | Swarm message bus         | ✅      | Typed SwarmMessage, per-agent mailboxes, topic pub/sub, priority, depth limits, bus stats; 18 tests (400 total)                   |
-| 47   | Swarm SDK                 | ✅      | `mechgen_swarm` crate: derive macros, role taxonomy, SwarmAgent trait, example orchestrator                                         |
+| 47   | Swarm SDK                 | ✅      | `mechgen_swarm` crate: derive macros, role taxonomy, SwarmAgent trait, example orchestrator                                       |
 | 48   | Semantic VCS              | ✅      | Operation-log-based version control, semantic branching/merging, intent-based history queries                                     |
 
 ## Phase E: Advanced Subsystems (Steps 49–55)
@@ -77,7 +77,7 @@
 | 57   | Deepen Forge registry        | ✅      | Capability-indexed search, semantic search by capability query, contract-based composition |
 | 58   | Agentic benchmarking suite   | ✅      | Token throughput, parse error rate, synthesis success rate, swarm latency metrics          |
 | 59   | Cost model calibration       | ✅      | Standardized benchmarks for cost oracle accuracy across targets                            |
-| 60   | Language specification draft | ✅      | Formal MechGen language specification document                                               |
+| 60   | Language specification draft | ✅      | Formal MechGen language specification document                                             |
 
 ## Phase G: Documentation & Training (Steps 61–63)
 
@@ -94,20 +94,20 @@
 | Step | Title                                                                                                                   |
 | ---- | ----------------------------------------------------------------------------------------------------------------------- |
 | 1    | Prototype compiler (lexer, parser, AST, HIR, types, effects, MLIR, resolver)                                            |
-| 2    | rust2mg transpiler                                                                                                     |
+| 2    | rust2mg transpiler                                                                                                      |
 | 3    | VS Code extension                                                                                                       |
 | 4    | Safety Knowledge Base (SKB)                                                                                             |
 | 5    | Benchmarks                                                                                                              |
 | 6    | End-to-end demo                                                                                                         |
-| 7    | mg CLI                                                                                                                 |
+| 7    | mg CLI                                                                                                                  |
 | 8    | Standard library stubs                                                                                                  |
-| 9    | MechGen Book                                                                                                              |
+| 9    | MechGen Book                                                                                                            |
 | 10   | Cookbook                                                                                                                |
 | 11   | Agent Guide                                                                                                             |
 | 12   | Migration Guide                                                                                                         |
 | 13   | Internals Guide                                                                                                         |
 | 14   | Quick Start Guide                                                                                                       |
-| 15   | mg2rs back-transpiler                                                                                                  |
+| 15   | mg2rs back-transpiler                                                                                                   |
 | 16   | Example projects                                                                                                        |
 | 17   | CI/CD pipeline                                                                                                          |
 | 18   | Editor configs                                                                                                          |
@@ -115,3 +115,28 @@
 | 20   | Community infrastructure                                                                                                |
 | 21   | Forge package registry                                                                                                  |
 | 22   | Agentic AI integration (self-healing, cost oracle, SKB query engine, verification oracle, agent memory, swarm patterns) |
+
+---
+
+## Phase H: AI-Native Language Primitives (Steps 64–78)
+
+> Implement the MECHGEN_SPEC.md AI constructs in the prototype compiler.
+> Strategy: prototype first (nimble, testable), then migrate to compiler crates.
+
+| Step | Title                           | Status | Description                                                                                                                                                                                                                                                |
+| ---- | ------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 64   | AI keywords in lexer            | ✅      | Add 22 AI keywords to prototype lexer: `net`, `layer`, `tensor`, `param`, `train`, `grad`, `kb`, `fact`, `rule`, `query`, `evolve`, `genome`, `mutate`, `fitness`, `select`, `crossover`, `rl`, `policy`, `reward`, `forward`, `population`, `generations` |
+| 65   | Matrix-mode Greek symbols       | ✅      | Lex AI-specific Greek/math symbols: `Ψ`→net, `λ`→layer, `Φ`→tensor, `Π`→param, `Θ`→train, `∇`→grad, `α`→agent, `κ`→kb, `ρ`→rule, `Ω`→evolve, `Γ`→genome, `φ`→fitness, `Ξ`→policy, `μ`→mutate, `χ`→crossover                                                |
+| 66   | AST: AI item kinds & types      | ✅      | `ItemKind::Net`, `::Kb`, `::Evolve`, `::Train` with child structures. `Type::Tensor`, `::Param`, `::Genome`, `::Policy`, `::KnowledgeBase`, `::LLM`                                                                                                        |
+| 67   | Parser: `net` blocks            | ✅      | Parse `net Name { layer dense(...); layer dropout(...); fn forward(...) }` per §5.1 BNF, produce `NetDef` AST                                                                                                                                              |
+| 68   | Parser: `kb` blocks             | ✅      | Parse `kb Name { fact ...; rule ... :- ...; query ... :- ...; }` per §7.1 BNF, produce `KbDef` AST                                                                                                                                                         |
+| 69   | Parser: `evolve` blocks         | ✅      | Parse `evolve Name { genome: T, population: N, generations: N, fitness fn, select/crossover/mutate strategies }` per §8.1 BNF                                                                                                                              |
+| 70   | Parser: `train` blocks          | ✅      | Parse `train Name { model, data, optimizer, loss, epochs, batch_size, on_epoch hook }` per §5.4 BNF                                                                                                                                                        |
+| 71   | Tensor operator parsing         | ✅      | Parse `⊗` (matmul), `⊙` (Hadamard), `⊤` (transpose), `⊥` (flatten), `▸` (pipeline) with correct operator precedence                                                                                                                                        |
+| 72   | HIR: tensor/neural types        | ✅      | `Ty::Tensor(Box<Ty>, Vec<TensorDimHir>)`, `Ty::Param`, `Ty::Genome`, `Ty::Policy`, `Ty::KnowledgeBase`, `Ty::LlmType`                                                                                                                                      |
+| 73   | Type checker: shape unification | ✅      | Shape dimension unification: `Lit(n)=Lit(n)`, `Var(v)` unifies with anything; rank mismatch diagnostics                                                                                                                                                    |
+| 74   | Type checker: grad typing       | ✅      | Built-in `grad(expr)` type rule: argument must be `Tensor`/`Param` type, returns same type; differentiability check                                                                                                                                        |
+| 75   | Effect system: AI effects       | ✅      | Register `Gpu`, `Npu`, `Llm`, `Evolve`, `Learn`, `Rng` as built-in effects; `Effect::from_name()` recognition                                                                                                                                              |
+| 76   | Name resolution: AI items       | ✅      | `SymbolKind::Net`, `::Kb`, `::Evolve`, `::Train`; scoped resolution for layers in nets, rules in KBs                                                                                                                                                       |
+| 77   | MLIR lowering: AI ops           | ✅      | `MechGen.tensor.*`, `MechGen.neural.*`, `MechGen.evolve.*`, `MechGen.kb.*` dialect operations                                                                                                                                                              |
+| 78   | Matrix-mode AI operators        | ✅      | Tensor op symbols `⊗`→matmul, `⊙`→hadamard, `⊤`→transpose, `⊥`→flatten, `▸`→pipeline; Pratt parser binding powers; type inference rules                                                                                                                    |

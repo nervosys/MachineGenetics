@@ -85,6 +85,10 @@ impl<'a> EmitCtx<'a> {
                 self.line(&format!("MechGen.static @{} : {ty}", sd.name));
             }
             ast::ItemKind::Agent(ad) => self.emit_agent(ad),
+            ast::ItemKind::Net(n) => self.emit_net(n),
+            ast::ItemKind::Kb(k) => self.emit_kb(k),
+            ast::ItemKind::Evolve(e) => self.emit_evolve(e),
+            ast::ItemKind::Train(t) => self.emit_train(t),
         }
     }
 
@@ -315,6 +319,61 @@ impl<'a> EmitCtx<'a> {
         for approval in &ad.requires_approval {
             self.line(&format!("MechGen.requires_approval \"{approval}\""));
         }
+        self.indent -= 1;
+        self.line("}");
+        self.line("");
+    }
+
+    fn emit_net(&mut self, n: &ast::NetDef) {
+        self.line(&format!("MechGen.neural.net @{} {{", n.name));
+        self.indent += 1;
+        for layer in &n.layers {
+            let ty = self.mlir_type(&layer.layer_type);
+            self.line(&format!("MechGen.neural.layer @{} : {ty}", layer.name));
+        }
+        self.line("MechGen.neural.forward {");
+        self.indent += 1;
+        self.emit_block(&n.forward);
+        self.indent -= 1;
+        self.line("}");
+        self.indent -= 1;
+        self.line("}");
+        self.line("");
+    }
+
+    fn emit_kb(&mut self, k: &ast::KbDef) {
+        self.line(&format!("MechGen.kb @{} {{", k.name));
+        self.indent += 1;
+        for f in &k.facts {
+            self.line(&format!("MechGen.kb.fact @{}", f.name));
+        }
+        for r in &k.rules {
+            self.line(&format!("MechGen.kb.rule @{}", r.name));
+        }
+        self.indent -= 1;
+        self.line("}");
+        self.line("");
+    }
+
+    fn emit_evolve(&mut self, e: &ast::EvolveDef) {
+        let gty = self.mlir_type(&e.genome_type);
+        self.line(&format!("MechGen.evolve @{} : {gty} {{", e.name));
+        self.indent += 1;
+        self.line("MechGen.evolve.fitness {");
+        self.indent += 1;
+        self.emit_block(&e.fitness);
+        self.indent -= 1;
+        self.line("}");
+        self.indent -= 1;
+        self.line("}");
+        self.line("");
+    }
+
+    fn emit_train(&mut self, t: &ast::TrainDef) {
+        self.line(&format!("MechGen.train @{} {{", t.name));
+        self.indent += 1;
+        self.line(&format!("MechGen.train.net @{}", t.net));
+        self.emit_block(&t.body);
         self.indent -= 1;
         self.line("}");
         self.line("");
@@ -594,8 +653,10 @@ impl<'a> EmitCtx<'a> {
             }
             ast::Type::Fn { params, ret } => {
                 let ps: Vec<String> = params.iter().map(|t| self.mlir_type(t)).collect();
-                let r =
-                    ret.as_ref().map(|t| self.mlir_type(t)).unwrap_or_else(|| "!MechGen.unit".into());
+                let r = ret
+                    .as_ref()
+                    .map(|t| self.mlir_type(t))
+                    .unwrap_or_else(|| "!MechGen.unit".into());
                 format!("({}) -> {r}", ps.join(", "))
             }
             ast::Type::Never => "!MechGen.never".into(),
@@ -624,6 +685,34 @@ impl<'a> EmitCtx<'a> {
                 // Refinement types lower to their base type in MLIR
                 self.mlir_type(base)
             }
+            ast::Type::Tensor { inner, shape } => {
+                let dims: Vec<String> = shape
+                    .iter()
+                    .map(|d| match d {
+                        ast::TensorDim::Lit(n) => n.to_string(),
+                        ast::TensorDim::Var(v) => format!("?/*{v}*/"),
+                    })
+                    .collect();
+                format!("!MechGen.tensor<{}x{}>", dims.join("x"), self.mlir_type(inner))
+            }
+            ast::Type::ParamTy { inner, shape } => {
+                let dims: Vec<String> = shape
+                    .iter()
+                    .map(|d| match d {
+                        ast::TensorDim::Lit(n) => n.to_string(),
+                        ast::TensorDim::Var(v) => format!("?/*{v}*/"),
+                    })
+                    .collect();
+                format!("!MechGen.param<{}x{}>", dims.join("x"), self.mlir_type(inner))
+            }
+            ast::Type::Genome { inner } => {
+                format!("!MechGen.genome<{}>", self.mlir_type(inner))
+            }
+            ast::Type::Policy { state, action } => {
+                format!("!MechGen.policy<{}, {}>", self.mlir_type(state), self.mlir_type(action))
+            }
+            ast::Type::KnowledgeBase => "!MechGen.kb".into(),
+            ast::Type::LlmType => "!MechGen.llm".into(),
         }
     }
 }

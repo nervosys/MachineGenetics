@@ -86,6 +86,60 @@ pub enum TokenKind {
     KwPipeline,       // pipeline
     KwGrammarExt,     // grammar_extension
 
+    // ── AI / Neural keywords ──────────────────────────────────────
+    KwNet,     // net
+    KwLayer,   // layer
+    KwTensor,  // tensor
+    KwParam,   // param
+    KwTrain,   // train
+    KwGrad,    // grad
+    KwForward, // forward
+
+    // ── AI / Knowledge Base keywords ─────────────────────────────
+    KwKb,    // kb
+    KwFact,  // fact
+    KwRule,  // rule
+    KwQuery, // query
+
+    // ── AI / Evolution keywords ──────────────────────────────────
+    KwEvolve,      // evolve
+    KwGenome,      // genome
+    KwMutate,      // mutate
+    KwFitness,     // fitness
+    KwSelect,      // select
+    KwCrossover,   // crossover
+    KwPopulation,  // population
+    KwGenerations, // generations
+
+    // ── AI / Reinforcement Learning keywords ─────────────────────
+    KwRl,     // rl
+    KwPolicy, // policy
+    KwReward, // reward
+
+    // ── Matrix-mode Greek symbols ────────────────────────────────
+    KwPsi,        // Ψ → net
+    KwLambda,     // λ → layer
+    KwPhi,        // Φ → tensor
+    KwPi,         // Π → param
+    KwTheta,      // Θ → train
+    KwNabla,      // ∇ → grad
+    KwAlpha,      // α → agent
+    KwKappa,      // κ → kb
+    KwRho,        // ρ → rule
+    KwOmega,      // Ω → evolve
+    KwGammaGreek, // Γ → genome
+    KwPhiLower,   // φ → fitness
+    KwXi,         // Ξ → policy
+    KwMu,         // μ → mutate
+    KwChi,        // χ → crossover
+
+    // ── Tensor operators ─────────────────────────────────────────
+    TensorMatmul,    // ⊗
+    TensorHadamard,  // ⊙
+    TensorTranspose, // ⊤
+    TensorFlatten,   // ⊥
+    TensorPipeline,  // ▸
+
     // ── Literals ──────────────────────────────────────────────────
     IntLiteral,
     FloatLiteral,
@@ -561,8 +615,135 @@ impl<'a> Lexer<'a> {
             b'~' => self.make_token(TokenKind::Tilde, start, start_line, start_col),
             b'$' => self.make_token(TokenKind::Dollar, start, start_line, start_col),
 
+            // ── Matrix-mode Greek symbols & tensor operators (UTF-8) ──
+            0xCE => self.lex_greek_ce(start, start_line, start_col),
+            0xCF => self.lex_greek_cf(start, start_line, start_col),
+            0xE2 => self.lex_utf8_e2(start, start_line, start_col),
+
             _ => self.make_token(TokenKind::Error, start, start_line, start_col),
         }
+    }
+
+    /// Lex Greek symbols starting with UTF-8 lead byte 0xCE.
+    fn lex_greek_ce(&mut self, start: usize, start_line: usize, start_col: usize) -> Token {
+        let kind = match self.peek() {
+            Some(0x93) => {
+                self.advance();
+                TokenKind::KwGammaGreek
+            } // Γ
+            Some(0x98) => {
+                self.advance();
+                TokenKind::KwTheta
+            } // Θ
+            Some(0x9E) => {
+                self.advance();
+                TokenKind::KwXi
+            } // Ξ
+            Some(0xA0) => {
+                self.advance();
+                TokenKind::KwPi
+            } // Π
+            Some(0xA6) => {
+                self.advance();
+                TokenKind::KwPhi
+            } // Φ
+            Some(0xA8) => {
+                self.advance();
+                TokenKind::KwPsi
+            } // Ψ
+            Some(0xA9) => {
+                self.advance();
+                TokenKind::KwOmega
+            } // Ω
+            Some(0xB1) => {
+                self.advance();
+                TokenKind::KwAlpha
+            } // α
+            Some(0xBA) => {
+                self.advance();
+                TokenKind::KwKappa
+            } // κ
+            Some(0xBB) => {
+                self.advance();
+                TokenKind::KwLambda
+            } // λ
+            Some(0xBC) => {
+                self.advance();
+                TokenKind::KwMu
+            } // μ
+            _ => TokenKind::Error,
+        };
+        self.make_token(kind, start, start_line, start_col)
+    }
+
+    /// Lex Greek symbols starting with UTF-8 lead byte 0xCF.
+    fn lex_greek_cf(&mut self, start: usize, start_line: usize, start_col: usize) -> Token {
+        let kind = match self.peek() {
+            Some(0x81) => {
+                self.advance();
+                TokenKind::KwRho
+            } // ρ
+            Some(0x86) => {
+                self.advance();
+                TokenKind::KwPhiLower
+            } // φ
+            Some(0x87) => {
+                self.advance();
+                TokenKind::KwChi
+            } // χ
+            _ => TokenKind::Error,
+        };
+        self.make_token(kind, start, start_line, start_col)
+    }
+
+    /// Lex ∇, tensor operators, and ▸ starting with UTF-8 lead byte 0xE2.
+    fn lex_utf8_e2(&mut self, start: usize, start_line: usize, start_col: usize) -> Token {
+        let kind = match self.peek() {
+            Some(0x88) => {
+                self.advance();
+                match self.peek() {
+                    Some(0x87) => {
+                        self.advance();
+                        TokenKind::KwNabla
+                    } // ∇ (E2 88 87)
+                    _ => TokenKind::Error,
+                }
+            }
+            Some(0x8A) => {
+                self.advance();
+                match self.peek() {
+                    Some(0x97) => {
+                        self.advance();
+                        TokenKind::TensorMatmul
+                    } // ⊗ (E2 8A 97)
+                    Some(0x99) => {
+                        self.advance();
+                        TokenKind::TensorHadamard
+                    } // ⊙ (E2 8A 99)
+                    Some(0xA4) => {
+                        self.advance();
+                        TokenKind::TensorTranspose
+                    } // ⊤ (E2 8A A4)
+                    Some(0xA5) => {
+                        self.advance();
+                        TokenKind::TensorFlatten
+                    } // ⊥ (E2 8A A5)
+                    _ => TokenKind::Error,
+                }
+            }
+            Some(0x96) => {
+                self.advance();
+                match self.peek() {
+                    Some(0xB8) => {
+                        self.advance();
+                        TokenKind::TensorPipeline
+                    } // ▸ (E2 96 B8)
+                    _ => TokenKind::Error,
+                }
+            }
+            _ => TokenKind::Error,
+        };
+        self.make_token(kind, start, start_line, start_col)
     }
 
     fn lex_string(
@@ -810,6 +991,36 @@ impl<'a> Lexer<'a> {
             "pipeline" => TokenKind::KwPipeline,
             "grammar_extension" => TokenKind::KwGrammarExt,
 
+            // AI / Neural keywords
+            "net" => TokenKind::KwNet,
+            "layer" => TokenKind::KwLayer,
+            "tensor" => TokenKind::KwTensor,
+            "param" => TokenKind::KwParam,
+            "train" => TokenKind::KwTrain,
+            "grad" => TokenKind::KwGrad,
+            "forward" => TokenKind::KwForward,
+
+            // AI / Knowledge Base keywords
+            "kb" => TokenKind::KwKb,
+            "fact" => TokenKind::KwFact,
+            "rule" => TokenKind::KwRule,
+            "query" => TokenKind::KwQuery,
+
+            // AI / Evolution keywords
+            "evolve" => TokenKind::KwEvolve,
+            "genome" => TokenKind::KwGenome,
+            "mutate" => TokenKind::KwMutate,
+            "fitness" => TokenKind::KwFitness,
+            "select" => TokenKind::KwSelect,
+            "crossover" => TokenKind::KwCrossover,
+            "population" => TokenKind::KwPopulation,
+            "generations" => TokenKind::KwGenerations,
+
+            // AI / Reinforcement Learning keywords
+            "rl" => TokenKind::KwRl,
+            "policy" => TokenKind::KwPolicy,
+            "reward" => TokenKind::KwReward,
+
             // Special identifiers
             "_" => TokenKind::Underscore,
             "_T" => TokenKind::UnderscoreT,
@@ -1009,5 +1220,139 @@ mod tests {
         let tokens = lex("agent");
         assert_eq!(tokens[0].kind, TokenKind::KwAgent);
         assert_eq!(tokens[0].text, "agent");
+    }
+
+    #[test]
+    fn test_ai_neural_keywords() {
+        let tokens = lex("net layer tensor param train grad forward");
+        let kinds: Vec<_> = tokens
+            .iter()
+            .filter(|t| t.kind != TokenKind::Whitespace && t.kind != TokenKind::Eof)
+            .map(|t| t.kind)
+            .collect();
+        assert_eq!(
+            kinds,
+            vec![
+                TokenKind::KwNet,
+                TokenKind::KwLayer,
+                TokenKind::KwTensor,
+                TokenKind::KwParam,
+                TokenKind::KwTrain,
+                TokenKind::KwGrad,
+                TokenKind::KwForward,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_ai_kb_keywords() {
+        let tokens = lex("kb fact rule query");
+        let kinds: Vec<_> = tokens
+            .iter()
+            .filter(|t| t.kind != TokenKind::Whitespace && t.kind != TokenKind::Eof)
+            .map(|t| t.kind)
+            .collect();
+        assert_eq!(
+            kinds,
+            vec![TokenKind::KwKb, TokenKind::KwFact, TokenKind::KwRule, TokenKind::KwQuery,]
+        );
+    }
+
+    #[test]
+    fn test_ai_evolve_keywords() {
+        let tokens = lex("evolve genome mutate fitness select crossover population generations");
+        let kinds: Vec<_> = tokens
+            .iter()
+            .filter(|t| t.kind != TokenKind::Whitespace && t.kind != TokenKind::Eof)
+            .map(|t| t.kind)
+            .collect();
+        assert_eq!(
+            kinds,
+            vec![
+                TokenKind::KwEvolve,
+                TokenKind::KwGenome,
+                TokenKind::KwMutate,
+                TokenKind::KwFitness,
+                TokenKind::KwSelect,
+                TokenKind::KwCrossover,
+                TokenKind::KwPopulation,
+                TokenKind::KwGenerations,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_ai_rl_keywords() {
+        let tokens = lex("rl policy reward");
+        let kinds: Vec<_> = tokens
+            .iter()
+            .filter(|t| t.kind != TokenKind::Whitespace && t.kind != TokenKind::Eof)
+            .map(|t| t.kind)
+            .collect();
+        assert_eq!(kinds, vec![TokenKind::KwRl, TokenKind::KwPolicy, TokenKind::KwReward]);
+    }
+
+    #[test]
+    fn test_greek_symbols() {
+        let tokens = lex("Ψ λ Φ Π Θ ∇ α κ Ω Γ Ξ μ ρ φ χ");
+        let kinds: Vec<_> = tokens
+            .iter()
+            .filter(|t| t.kind != TokenKind::Whitespace && t.kind != TokenKind::Eof)
+            .map(|t| t.kind)
+            .collect();
+        assert_eq!(
+            kinds,
+            vec![
+                TokenKind::KwPsi,
+                TokenKind::KwLambda,
+                TokenKind::KwPhi,
+                TokenKind::KwPi,
+                TokenKind::KwTheta,
+                TokenKind::KwNabla,
+                TokenKind::KwAlpha,
+                TokenKind::KwKappa,
+                TokenKind::KwOmega,
+                TokenKind::KwGammaGreek,
+                TokenKind::KwXi,
+                TokenKind::KwMu,
+                TokenKind::KwRho,
+                TokenKind::KwPhiLower,
+                TokenKind::KwChi,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_tensor_operators() {
+        let tokens = lex("⊗ ⊙ ⊤ ⊥ ▸");
+        let kinds: Vec<_> = tokens
+            .iter()
+            .filter(|t| t.kind != TokenKind::Whitespace && t.kind != TokenKind::Eof)
+            .map(|t| t.kind)
+            .collect();
+        assert_eq!(
+            kinds,
+            vec![
+                TokenKind::TensorMatmul,
+                TokenKind::TensorHadamard,
+                TokenKind::TensorTranspose,
+                TokenKind::TensorFlatten,
+                TokenKind::TensorPipeline,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_net_def_tokens() {
+        let tokens = lex("net MyModel { layer conv1 }");
+        let kinds: Vec<_> = tokens
+            .iter()
+            .filter(|t| t.kind != TokenKind::Whitespace && t.kind != TokenKind::Eof)
+            .map(|t| t.kind)
+            .collect();
+        assert_eq!(kinds[0], TokenKind::KwNet);
+        assert_eq!(kinds[1], TokenKind::Ident); // MyModel
+        assert_eq!(kinds[2], TokenKind::LBrace);
+        assert_eq!(kinds[3], TokenKind::KwLayer);
     }
 }

@@ -67,6 +67,18 @@ pub enum Ty {
     Ptr(Box<Ty>),
     /// SIMD vector Simd[T, N].
     Simd(Box<Ty>, u64),
+    /// Tensor Tensor[T, Shape].
+    Tensor(Box<Ty>, Vec<TensorDimHir>),
+    /// Trainable parameter Param[T, Shape].
+    Param(Box<Ty>, Vec<TensorDimHir>),
+    /// Genome for evolutionary algorithms Genome[T].
+    Genome(Box<Ty>),
+    /// RL policy Policy[S, A].
+    Policy(Box<Ty>, Box<Ty>),
+    /// Knowledge base type.
+    KnowledgeBase,
+    /// LLM handle type.
+    LlmType,
     /// Function type f(T1, T2) -> R.
     Fn(Vec<Ty>, Box<Ty>, EffectSet),
     /// A unification variable (fresh type variable, resolved during inference).
@@ -83,6 +95,13 @@ impl fmt::Display for TyVar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "?T{}", self.0)
     }
+}
+
+/// A dimension in a tensor shape (HIR-level).
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum TensorDimHir {
+    Lit(u64),
+    Var(String),
 }
 
 /// Integer types.
@@ -167,6 +186,30 @@ impl fmt::Display for Ty {
             Ty::Map(k, v) => write!(f, "{{{k}: {v}}}"),
             Ty::Ptr(t) => write!(f, "Ptr[{t}]"),
             Ty::Simd(t, w) => write!(f, "Simd[{t}, {w}]"),
+            Ty::Tensor(t, dims) => {
+                write!(f, "Tensor[{t}")?;
+                for d in dims {
+                    match d {
+                        TensorDimHir::Lit(n) => write!(f, ", {n}")?,
+                        TensorDimHir::Var(v) => write!(f, ", {v}")?,
+                    }
+                }
+                write!(f, "]")
+            }
+            Ty::Param(t, dims) => {
+                write!(f, "Param[{t}")?;
+                for d in dims {
+                    match d {
+                        TensorDimHir::Lit(n) => write!(f, ", {n}")?,
+                        TensorDimHir::Var(v) => write!(f, ", {v}")?,
+                    }
+                }
+                write!(f, "]")
+            }
+            Ty::Genome(t) => write!(f, "Genome[{t}]"),
+            Ty::Policy(s, a) => write!(f, "Policy[{s}, {a}]"),
+            Ty::KnowledgeBase => write!(f, "KnowledgeBase"),
+            Ty::LlmType => write!(f, "LLM"),
             Ty::Fn(params, ret, _) => {
                 write!(f, "f(")?;
                 for (i, p) in params.iter().enumerate() {
@@ -197,6 +240,18 @@ pub enum Effect {
     FFI,
     Env,
     Time,
+    /// GPU compute effect.
+    Gpu,
+    /// NPU/accelerator effect.
+    Npu,
+    /// LLM inference effect.
+    Llm,
+    /// Evolutionary computation effect.
+    Evolve,
+    /// Machine learning / training effect.
+    Learn,
+    /// Random number generation effect.
+    Rng,
     /// User-defined effect.
     Custom(String),
 }
@@ -213,6 +268,12 @@ impl fmt::Display for Effect {
             Effect::FFI => write!(f, "FFI"),
             Effect::Env => write!(f, "Env"),
             Effect::Time => write!(f, "Time"),
+            Effect::Gpu => write!(f, "Gpu"),
+            Effect::Npu => write!(f, "Npu"),
+            Effect::Llm => write!(f, "Llm"),
+            Effect::Evolve => write!(f, "Evolve"),
+            Effect::Learn => write!(f, "Learn"),
+            Effect::Rng => write!(f, "Rng"),
             Effect::Custom(name) => write!(f, "{name}"),
         }
     }
@@ -230,6 +291,12 @@ impl Effect {
             "FFI" => Effect::FFI,
             "Env" => Effect::Env,
             "Time" => Effect::Time,
+            "Gpu" => Effect::Gpu,
+            "Npu" => Effect::Npu,
+            "Llm" => Effect::Llm,
+            "Evolve" => Effect::Evolve,
+            "Learn" => Effect::Learn,
+            "Rng" => Effect::Rng,
             other => Effect::Custom(other.to_string()),
         }
     }

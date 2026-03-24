@@ -82,6 +82,10 @@ fn emit_item(buf: &mut String, item: &Item, mode: Mode, depth: usize) {
         ItemKind::Effect(e) => emit_effect(buf, e, mode, depth),
         ItemKind::Spec(s) => emit_spec(buf, s, mode, depth),
         ItemKind::Agent(a) => emit_agent(buf, a, depth),
+        ItemKind::Net(n) => emit_net(buf, n, depth),
+        ItemKind::Kb(k) => emit_kb(buf, k, depth),
+        ItemKind::Evolve(e) => emit_evolve(buf, e, depth),
+        ItemKind::Train(t) => emit_train(buf, t, depth),
     }
 }
 
@@ -505,6 +509,68 @@ fn emit_agent(buf: &mut String, a: &AgentDef, depth: usize) {
     buf.push_str("}\n");
 }
 
+fn emit_net(buf: &mut String, n: &NetDef, depth: usize) {
+    indent(buf, depth);
+    buf.push_str("net ");
+    buf.push_str(&n.name);
+    buf.push_str(" {\n");
+    for l in &n.layers {
+        indent(buf, depth + 1);
+        buf.push_str("layer ");
+        buf.push_str(&l.name);
+        buf.push_str(";\n");
+    }
+    indent(buf, depth + 1);
+    buf.push_str("forward { ... }\n");
+    indent(buf, depth);
+    buf.push_str("}\n");
+}
+
+fn emit_kb(buf: &mut String, k: &KbDef, depth: usize) {
+    indent(buf, depth);
+    buf.push_str("kb ");
+    buf.push_str(&k.name);
+    buf.push_str(" {\n");
+    for f in &k.facts {
+        indent(buf, depth + 1);
+        buf.push_str("fact ");
+        buf.push_str(&f.name);
+        buf.push_str(";\n");
+    }
+    for r in &k.rules {
+        indent(buf, depth + 1);
+        buf.push_str("rule ");
+        buf.push_str(&r.name);
+        buf.push_str(";\n");
+    }
+    indent(buf, depth);
+    buf.push_str("}\n");
+}
+
+fn emit_evolve(buf: &mut String, e: &EvolveDef, depth: usize) {
+    indent(buf, depth);
+    buf.push_str("evolve ");
+    buf.push_str(&e.name);
+    buf.push_str(" {\n");
+    indent(buf, depth + 1);
+    buf.push_str("fitness { ... }\n");
+    indent(buf, depth);
+    buf.push_str("}\n");
+}
+
+fn emit_train(buf: &mut String, t: &TrainDef, depth: usize) {
+    indent(buf, depth);
+    buf.push_str("train ");
+    buf.push_str(&t.name);
+    buf.push_str(" {\n");
+    indent(buf, depth + 1);
+    buf.push_str("net: ");
+    buf.push_str(&t.net);
+    buf.push_str("\n");
+    indent(buf, depth);
+    buf.push_str("}\n");
+}
+
 // ── Contracts ────────────────────────────────────────────────────────
 
 fn emit_contract(buf: &mut String, c: &ContractClause) {
@@ -659,6 +725,44 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
         Type::Inferred => buf.push('_'),
         Type::SelfType => buf.push_str("Self"),
         Type::StringType => buf.push_str("String"),
+        Type::KnowledgeBase => buf.push_str("KnowledgeBase"),
+        Type::LlmType => buf.push_str("LLM"),
+        Type::Tensor { inner, shape } => {
+            buf.push_str("Tensor[");
+            emit_type(buf, inner, mode);
+            for d in shape {
+                buf.push_str(", ");
+                match d {
+                    crate::ast::TensorDim::Lit(n) => buf.push_str(&n.to_string()),
+                    crate::ast::TensorDim::Var(v) => buf.push_str(v),
+                }
+            }
+            buf.push(']');
+        }
+        Type::ParamTy { inner, shape } => {
+            buf.push_str("Param[");
+            emit_type(buf, inner, mode);
+            for d in shape {
+                buf.push_str(", ");
+                match d {
+                    crate::ast::TensorDim::Lit(n) => buf.push_str(&n.to_string()),
+                    crate::ast::TensorDim::Var(v) => buf.push_str(v),
+                }
+            }
+            buf.push(']');
+        }
+        Type::Genome { inner } => {
+            buf.push_str("Genome[");
+            emit_type(buf, inner, mode);
+            buf.push(']');
+        }
+        Type::Policy { state, action } => {
+            buf.push_str("Policy[");
+            emit_type(buf, state, mode);
+            buf.push_str(", ");
+            emit_type(buf, action, mode);
+            buf.push(']');
+        }
         Type::Refined { base, predicate } => {
             emit_type(buf, base, mode);
             buf.push_str(" ~> ");

@@ -386,7 +386,12 @@ fn count_type_compact(ty: &Type) -> u32 {
             }
             n
         }
-        Type::Never | Type::Inferred | Type::SelfType | Type::StringType => 1,
+        Type::Never | Type::Inferred | Type::SelfType | Type::StringType
+        | Type::KnowledgeBase | Type::LlmType => 1,
+        Type::Tensor { inner, shape } => 2 + count_type_compact(inner) + shape.len() as u32,
+        Type::ParamTy { inner, shape } => 2 + count_type_compact(inner) + shape.len() as u32,
+        Type::Genome { inner } => 2 + count_type_compact(inner),
+        Type::Policy { state, action } => 2 + count_type_compact(state) + count_type_compact(action),
         Type::Refined { base, .. } => count_type_compact(base) + 4,
     }
 }
@@ -800,7 +805,12 @@ fn count_type_expanded(ty: &Type) -> u32 {
             }
             n
         }
-        Type::Never | Type::Inferred | Type::SelfType | Type::StringType => 1,
+        Type::Never | Type::Inferred | Type::SelfType | Type::StringType
+        | Type::KnowledgeBase | Type::LlmType => 1,
+        Type::Tensor { inner, shape } => 3 + count_type_expanded(inner) + shape.len() as u32,
+        Type::ParamTy { inner, shape } => 3 + count_type_expanded(inner) + shape.len() as u32,
+        Type::Genome { inner } => 3 + count_type_expanded(inner),
+        Type::Policy { state, action } => 3 + count_type_expanded(state) + count_type_expanded(action),
         Type::Refined { base, .. } => count_type_expanded(base) + 6,
     }
 }

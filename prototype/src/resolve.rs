@@ -25,6 +25,10 @@ pub enum SymbolKind {
     Effect,
     Spec,
     Agent,
+    Net,
+    Kb,
+    Evolve,
+    Train,
     Variable { mutable: bool },
     Param,
     GenericParam,
@@ -240,6 +244,18 @@ impl Resolver {
             ast::ItemKind::Agent(ad) => {
                 self.define_value(&ad.name, SymbolKind::Agent);
             }
+            ast::ItemKind::Net(n) => {
+                self.define_type(&n.name, SymbolKind::Net);
+            }
+            ast::ItemKind::Kb(k) => {
+                self.define_type(&k.name, SymbolKind::Kb);
+            }
+            ast::ItemKind::Evolve(e) => {
+                self.define_type(&e.name, SymbolKind::Evolve);
+            }
+            ast::ItemKind::Train(t) => {
+                self.define_value(&t.name, SymbolKind::Train);
+            }
             ast::ItemKind::Impl(_) | ast::ItemKind::Use(_) => {
                 // Impl blocks and use decls don't introduce a single name
             }
@@ -262,6 +278,10 @@ impl Resolver {
             ast::ItemKind::Effect(ed) => self.resolve_effect(ed),
             ast::ItemKind::Spec(_) => { /* spec bodies are declarative, skip for now */ }
             ast::ItemKind::Agent(_) => { /* agent bodies are declarative, skip for now */ }
+            ast::ItemKind::Net(_) => { /* net bodies resolved later */ }
+            ast::ItemKind::Kb(_) => { /* kb bodies resolved later */ }
+            ast::ItemKind::Evolve(_) => { /* evolve bodies resolved later */ }
+            ast::ItemKind::Train(_) => { /* train bodies resolved later */ }
             ast::ItemKind::Static(sd) => {
                 self.resolve_ast_type(&sd.ty);
                 self.resolve_expr(&sd.value);
@@ -465,7 +485,18 @@ impl Resolver {
             ast::Type::Never
             | ast::Type::Inferred
             | ast::Type::SelfType
-            | ast::Type::StringType => {}
+            | ast::Type::StringType
+            | ast::Type::KnowledgeBase
+            | ast::Type::LlmType => {}
+            ast::Type::Tensor { inner, .. }
+            | ast::Type::ParamTy { inner, .. }
+            | ast::Type::Genome { inner } => {
+                self.resolve_ast_type(inner);
+            }
+            ast::Type::Policy { state, action } => {
+                self.resolve_ast_type(state);
+                self.resolve_ast_type(action);
+            }
             ast::Type::Refined { base, .. } => {
                 self.resolve_ast_type(base);
             }

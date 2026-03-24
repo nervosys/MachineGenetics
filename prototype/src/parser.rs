@@ -61,8 +61,8 @@ impl<'a> Parser<'a> {
     }
 
     fn expect_ident(&mut self) -> Result<String, ParseError> {
-        // Single-char keywords (f, m, v, c, S, E, T, I, M, U, u) can appear as
-        // identifiers in contexts like generic params, field names, etc.
+        // Single-char keywords and AI keywords can appear as identifiers in
+        // contexts like generic params, field names, capabilities lists, etc.
         match self.peek() {
             TokenKind::Ident
             | TokenKind::KwF
@@ -75,7 +75,29 @@ impl<'a> Parser<'a> {
             | TokenKind::KwI
             | TokenKind::KwMod
             | TokenKind::KwU
-            | TokenKind::KwUse => Ok(self.advance().text.clone()),
+            | TokenKind::KwUse
+            | TokenKind::KwNet
+            | TokenKind::KwLayer
+            | TokenKind::KwTensor
+            | TokenKind::KwParam
+            | TokenKind::KwTrain
+            | TokenKind::KwGrad
+            | TokenKind::KwForward
+            | TokenKind::KwKb
+            | TokenKind::KwFact
+            | TokenKind::KwRule
+            | TokenKind::KwQuery
+            | TokenKind::KwEvolve
+            | TokenKind::KwGenome
+            | TokenKind::KwMutate
+            | TokenKind::KwFitness
+            | TokenKind::KwSelect
+            | TokenKind::KwCrossover
+            | TokenKind::KwPopulation
+            | TokenKind::KwGenerations
+            | TokenKind::KwRl
+            | TokenKind::KwPolicy
+            | TokenKind::KwReward => Ok(self.advance().text.clone()),
             _ => {
                 let tok = self.current();
                 Err(ParseError {
@@ -151,6 +173,10 @@ impl<'a> Parser<'a> {
             TokenKind::KwEffect => self.parse_effect_def().map(ItemKind::Effect),
             TokenKind::KwSpec => self.parse_spec_def().map(ItemKind::Spec),
             TokenKind::KwAgent => self.parse_agent_def().map(ItemKind::Agent),
+            TokenKind::KwNet => self.parse_net_def().map(ItemKind::Net),
+            TokenKind::KwKb => self.parse_kb_def().map(ItemKind::Kb),
+            TokenKind::KwEvolve => self.parse_evolve_def().map(ItemKind::Evolve),
+            TokenKind::KwTrain => self.parse_train_def().map(ItemKind::Train),
             _ => Err(self.error(&format!("expected item, found {:?}", self.peek()))),
         }
     }
@@ -812,6 +838,293 @@ impl<'a> Parser<'a> {
         Ok(AgentDef { name, capabilities, requires_approval })
     }
 
+    // ── Net ─────────────────────────────────────────────────
+
+    /// Parse `net Name[T] { layer ...; forward { ... } }`
+    fn parse_net_def(&mut self) -> Result<NetDef, ParseError> {
+        self.expect(TokenKind::KwNet)?;
+        let name = self.expect_ident()?;
+
+        let generics = if self.peek() == TokenKind::LBrack {
+            self.parse_generic_params()?
+        } else {
+            Vec::new()
+        };
+
+        self.expect(TokenKind::LBrace)?;
+        let mut layers = Vec::new();
+        let mut forward = None;
+
+        while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
+            match self.peek() {
+                TokenKind::KwLayer => {
+                    self.advance();
+                    let lname = self.expect_ident()?;
+                    self.expect(TokenKind::Colon)?;
+                    let layer_type = self.parse_type()?;
+                    let mut args = Vec::new();
+                    if self.peek() == TokenKind::LParen {
+                        self.advance();
+                        while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
+                            args.push(self.parse_expr()?);
+                            if self.peek() == TokenKind::Comma {
+                                self.advance();
+                            }
+                        }
+                        self.expect(TokenKind::RParen)?;
+                    }
+                    if self.peek() == TokenKind::Semi {
+                        self.advance();
+                    }
+                    layers.push(LayerDef { name: lname, layer_type, args });
+                }
+                TokenKind::KwForward => {
+                    self.advance();
+                    forward = Some(self.parse_block()?);
+                }
+                TokenKind::Semi | TokenKind::Comma => {
+                    self.advance();
+                }
+                _ => {
+                    return Err(self.error(&format!(
+                        "expected `layer`, `forward`, or `}}` in net, found {:?}",
+                        self.peek()
+                    )));
+                }
+            }
+        }
+        self.expect(TokenKind::RBrace)?;
+
+        let forward = forward.unwrap_or(Block { stmts: Vec::new(), tail_expr: None });
+        Ok(NetDef { name, generics, layers, forward })
+    }
+
+    // ── Knowledge Base ──────────────────────────────────────
+
+    /// Parse `kb Name { fact ...; rule ...; }`
+    fn parse_kb_def(&mut self) -> Result<KbDef, ParseError> {
+        self.expect(TokenKind::KwKb)?;
+        let name = self.expect_ident()?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut facts = Vec::new();
+        let mut rules = Vec::new();
+
+        while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
+            match self.peek() {
+                TokenKind::KwFact => {
+                    self.advance();
+                    let fname = self.expect_ident()?;
+                    self.expect(TokenKind::LParen)?;
+                    let mut args = Vec::new();
+                    while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
+                        args.push(self.parse_expr()?);
+                        if self.peek() == TokenKind::Comma {
+                            self.advance();
+                        }
+                    }
+                    self.expect(TokenKind::RParen)?;
+                    if self.peek() == TokenKind::Semi {
+                        self.advance();
+                    }
+                    facts.push(FactDef { name: fname, args });
+                }
+                TokenKind::KwRule => {
+                    self.advance();
+                    let rname = self.expect_ident()?;
+                    self.expect(TokenKind::LParen)?;
+                    let params = self.parse_param_list()?;
+                    self.expect(TokenKind::RParen)?;
+
+                    // Optional conditions: `where expr, expr, ...`
+                    let mut conditions = Vec::new();
+                    if self.peek() == TokenKind::Ident && self.peek_text() == "where" {
+                        self.advance();
+                        conditions.push(self.parse_expr()?);
+                        while self.peek() == TokenKind::Comma {
+                            self.advance();
+                            conditions.push(self.parse_expr()?);
+                        }
+                    }
+
+                    let body = self.parse_block()?;
+                    if self.peek() == TokenKind::Semi {
+                        self.advance();
+                    }
+                    rules.push(RuleDef { name: rname, params, conditions, body });
+                }
+                TokenKind::Semi | TokenKind::Comma => {
+                    self.advance();
+                }
+                _ => {
+                    return Err(self.error(&format!(
+                        "expected `fact`, `rule`, or `}}` in kb, found {:?}",
+                        self.peek()
+                    )));
+                }
+            }
+        }
+        self.expect(TokenKind::RBrace)?;
+
+        Ok(KbDef { name, facts, rules })
+    }
+
+    // ── Evolve ──────────────────────────────────────────────
+
+    /// Parse `evolve Name { genome Type; fitness { ... }; ... }`
+    fn parse_evolve_def(&mut self) -> Result<EvolveDef, ParseError> {
+        self.expect(TokenKind::KwEvolve)?;
+        let name = self.expect_ident()?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut genome_type = Type::Inferred;
+        let mut population_size = None;
+        let mut generations = None;
+        let mut fitness = None;
+        let mut mutate_fn = None;
+        let mut crossover_fn = None;
+        let mut select_fn = None;
+
+        while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
+            match self.peek() {
+                TokenKind::KwGenome => {
+                    self.advance();
+                    self.expect(TokenKind::Colon)?;
+                    genome_type = self.parse_type()?;
+                    if self.peek() == TokenKind::Semi {
+                        self.advance();
+                    }
+                }
+                TokenKind::KwPopulation => {
+                    self.advance();
+                    self.expect(TokenKind::Colon)?;
+                    population_size = Some(self.parse_expr()?);
+                    if self.peek() == TokenKind::Semi {
+                        self.advance();
+                    }
+                }
+                TokenKind::KwGenerations => {
+                    self.advance();
+                    self.expect(TokenKind::Colon)?;
+                    generations = Some(self.parse_expr()?);
+                    if self.peek() == TokenKind::Semi {
+                        self.advance();
+                    }
+                }
+                TokenKind::KwFitness => {
+                    self.advance();
+                    fitness = Some(self.parse_block()?);
+                }
+                TokenKind::KwMutate => {
+                    self.advance();
+                    mutate_fn = Some(self.parse_block()?);
+                }
+                TokenKind::KwCrossover => {
+                    self.advance();
+                    crossover_fn = Some(self.parse_block()?);
+                }
+                TokenKind::KwSelect => {
+                    self.advance();
+                    select_fn = Some(self.parse_block()?);
+                }
+                TokenKind::Semi | TokenKind::Comma => {
+                    self.advance();
+                }
+                _ => {
+                    return Err(self.error(&format!(
+                        "expected evolve field or `}}`, found {:?}",
+                        self.peek()
+                    )));
+                }
+            }
+        }
+        self.expect(TokenKind::RBrace)?;
+
+        let fitness = fitness.unwrap_or(Block { stmts: Vec::new(), tail_expr: None });
+        Ok(EvolveDef {
+            name,
+            genome_type,
+            population_size,
+            generations,
+            fitness,
+            mutate_fn,
+            crossover_fn,
+            select_fn,
+        })
+    }
+
+    // ── Train ───────────────────────────────────────────────
+
+    /// Parse `train Name { net: ident; optimizer: expr; loss: expr; epochs: expr; body { ... } }`
+    fn parse_train_def(&mut self) -> Result<TrainDef, ParseError> {
+        self.expect(TokenKind::KwTrain)?;
+        let name = self.expect_ident()?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut net = String::new();
+        let mut optimizer = None;
+        let mut loss = None;
+        let mut epochs = None;
+        let mut body = None;
+
+        while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
+            match self.peek() {
+                // Accept Ident or KwNet (since `net` is now a keyword)
+                TokenKind::Ident | TokenKind::KwNet => {
+                    let label = self.advance();
+                    let label_text = label.text.clone();
+                    match label_text.as_str() {
+                        "net" => {
+                            self.expect(TokenKind::Colon)?;
+                            net = self.expect_ident()?;
+                            if self.peek() == TokenKind::Semi {
+                                self.advance();
+                            }
+                        }
+                        "optimizer" => {
+                            self.expect(TokenKind::Colon)?;
+                            optimizer = Some(self.parse_expr()?);
+                            if self.peek() == TokenKind::Semi {
+                                self.advance();
+                            }
+                        }
+                        "loss" => {
+                            self.expect(TokenKind::Colon)?;
+                            loss = Some(self.parse_expr()?);
+                            if self.peek() == TokenKind::Semi {
+                                self.advance();
+                            }
+                        }
+                        "epochs" => {
+                            self.expect(TokenKind::Colon)?;
+                            epochs = Some(self.parse_expr()?);
+                            if self.peek() == TokenKind::Semi {
+                                self.advance();
+                            }
+                        }
+                        "body" => {
+                            body = Some(self.parse_block()?);
+                        }
+                        other => {
+                            return Err(self.error(&format!("unknown train field `{}`", other)));
+                        }
+                    }
+                }
+                TokenKind::Semi | TokenKind::Comma => {
+                    self.advance();
+                }
+                _ => {
+                    return Err(self
+                        .error(&format!("expected train field or `}}`, found {:?}", self.peek())));
+                }
+            }
+        }
+        self.expect(TokenKind::RBrace)?;
+
+        let body = body.unwrap_or(Block { stmts: Vec::new(), tail_expr: None });
+        Ok(TrainDef { name, net, optimizer, loss, epochs, body })
+    }
+
     /// Parse `[ident1, ident2, ...]` → Vec<String>
     fn parse_bracket_string_list(&mut self) -> Result<Vec<String>, ParseError> {
         self.expect(TokenKind::LBrack)?;
@@ -1119,6 +1432,79 @@ impl<'a> Parser<'a> {
                 Ok(Type::Fn { params, ret })
             }
 
+            // AI-native types
+            // Tensor[T, N, M, ...]
+            TokenKind::KwTensor => {
+                self.advance();
+                self.expect(TokenKind::LBrack)?;
+                let inner = self.parse_type()?;
+                let mut shape = Vec::new();
+                while self.peek() == TokenKind::Comma {
+                    self.advance();
+                    match self.peek() {
+                        TokenKind::IntLiteral => {
+                            let tok = self.advance();
+                            shape.push(TensorDim::Lit(tok.text.parse().unwrap_or(0)));
+                        }
+                        _ => {
+                            let name = self.expect_ident()?;
+                            shape.push(TensorDim::Var(name));
+                        }
+                    }
+                }
+                self.expect(TokenKind::RBrack)?;
+                Ok(Type::Tensor { inner: Box::new(inner), shape })
+            }
+
+            // Param[T, N, M, ...]
+            TokenKind::KwParam => {
+                self.advance();
+                self.expect(TokenKind::LBrack)?;
+                let inner = self.parse_type()?;
+                let mut shape = Vec::new();
+                while self.peek() == TokenKind::Comma {
+                    self.advance();
+                    match self.peek() {
+                        TokenKind::IntLiteral => {
+                            let tok = self.advance();
+                            shape.push(TensorDim::Lit(tok.text.parse().unwrap_or(0)));
+                        }
+                        _ => {
+                            let name = self.expect_ident()?;
+                            shape.push(TensorDim::Var(name));
+                        }
+                    }
+                }
+                self.expect(TokenKind::RBrack)?;
+                Ok(Type::ParamTy { inner: Box::new(inner), shape })
+            }
+
+            // Genome[T]
+            TokenKind::KwGenome => {
+                self.advance();
+                self.expect(TokenKind::LBrack)?;
+                let inner = self.parse_type()?;
+                self.expect(TokenKind::RBrack)?;
+                Ok(Type::Genome { inner: Box::new(inner) })
+            }
+
+            // Policy[State, Action]
+            TokenKind::KwPolicy => {
+                self.advance();
+                self.expect(TokenKind::LBrack)?;
+                let state = self.parse_type()?;
+                self.expect(TokenKind::Comma)?;
+                let action = self.parse_type()?;
+                self.expect(TokenKind::RBrack)?;
+                Ok(Type::Policy { state: Box::new(state), action: Box::new(action) })
+            }
+
+            // KnowledgeBase (no params)
+            TokenKind::KwKb => {
+                self.advance();
+                Ok(Type::KnowledgeBase)
+            }
+
             _ => Err(self.error(&format!("expected type, found {:?}", self.peek()))),
         }
     }
@@ -1200,6 +1586,17 @@ impl<'a> Parser<'a> {
                     lhs = Expr::Try { expr: Box::new(lhs) };
                     continue;
                 }
+                // Postfix tensor ops: ⊤ (transpose), ⊥ (flatten)
+                TokenKind::TensorTranspose => {
+                    self.advance();
+                    lhs = Expr::Unary { op: "⊤".to_string(), operand: Box::new(lhs) };
+                    continue;
+                }
+                TokenKind::TensorFlatten => {
+                    self.advance();
+                    lhs = Expr::Unary { op: "⊥".to_string(), operand: Box::new(lhs) };
+                    continue;
+                }
                 TokenKind::Dot => {
                     self.advance();
                     let field = self.expect_ident()?;
@@ -1274,6 +1671,10 @@ impl<'a> Parser<'a> {
                 TokenKind::Star => ("*", 21, 22),
                 TokenKind::Slash => ("/", 21, 22),
                 TokenKind::Percent => ("%", 21, 22),
+                // Tensor operators (higher precedence than arithmetic)
+                TokenKind::TensorMatmul => ("⊗", 23, 24),
+                TokenKind::TensorHadamard => ("⊙", 23, 24),
+                TokenKind::TensorPipeline => ("▸", 3, 4),
                 _ => break,
             };
 
@@ -2040,6 +2441,108 @@ mod tests {
             assert!(ad.capabilities.is_empty());
         } else {
             panic!("expected agent def");
+        }
+    }
+
+    // ── AI construct parsing tests ──────────────────────────
+
+    #[test]
+    fn test_parse_net_def() {
+        let src = r#"net MyNet {
+            layer fc1: Linear(784, 128);
+            layer fc2: Linear(128, 10);
+            forward { fc1 }
+        }"#;
+        let module = parse_source(src);
+        if let ItemKind::Net(ref nd) = module.items[0].kind {
+            assert_eq!(nd.name, "MyNet");
+            assert_eq!(nd.layers.len(), 2);
+            assert_eq!(nd.layers[0].name, "fc1");
+            assert_eq!(nd.layers[1].name, "fc2");
+        } else {
+            panic!("expected net def");
+        }
+    }
+
+    #[test]
+    fn test_parse_kb_def() {
+        let src = r#"kb Animals {
+            fact dog(1);
+            fact cat(2);
+        }"#;
+        let module = parse_source(src);
+        if let ItemKind::Kb(ref kd) = module.items[0].kind {
+            assert_eq!(kd.name, "Animals");
+            assert_eq!(kd.facts.len(), 2);
+            assert_eq!(kd.facts[0].name, "dog");
+            assert_eq!(kd.facts[1].name, "cat");
+        } else {
+            panic!("expected kb def");
+        }
+    }
+
+    #[test]
+    fn test_parse_evolve_def() {
+        let src = r#"evolve Optimizer {
+            genome: Weights;
+            population: 100;
+            generations: 50;
+            fitness { 0 }
+        }"#;
+        let module = parse_source(src);
+        if let ItemKind::Evolve(ref ed) = module.items[0].kind {
+            assert_eq!(ed.name, "Optimizer");
+            assert!(ed.population_size.is_some());
+            assert!(ed.generations.is_some());
+        } else {
+            panic!("expected evolve def");
+        }
+    }
+
+    #[test]
+    fn test_parse_train_def() {
+        let src = r#"train MyTraining {
+            net: MyNet;
+            epochs: 10;
+            body { 0 }
+        }"#;
+        let module = parse_source(src);
+        if let ItemKind::Train(ref td) = module.items[0].kind {
+            assert_eq!(td.name, "MyTraining");
+            assert_eq!(td.net, "MyNet");
+            assert!(td.epochs.is_some());
+        } else {
+            panic!("expected train def");
+        }
+    }
+
+    #[test]
+    fn test_parse_tensor_type() {
+        let src = "f identity(x: tensor[Float, 3, 3]) -> tensor[Float, 3, 3] { x }";
+        let module = parse_source(src);
+        if let ItemKind::Function(ref fd) = module.items[0].kind {
+            assert_eq!(fd.name, "identity");
+            match &fd.params[0].ty {
+                Type::Tensor { shape, .. } => assert_eq!(shape.len(), 2),
+                other => panic!("expected Tensor type, got {:?}", other),
+            }
+        } else {
+            panic!("expected function def");
+        }
+    }
+
+    #[test]
+    fn test_parse_policy_type() {
+        let src = "f act(p: policy[State, Action]) -> Action { p }";
+        let tokens = lexer::lex(src);
+        let module = parse(&tokens).expect("parse failed");
+        if let ItemKind::Function(ref fd) = module.items[0].kind {
+            match &fd.params[0].ty {
+                Type::Policy { .. } => {}
+                other => panic!("expected Policy type, got {:?}", other),
+            }
+        } else {
+            panic!("expected function def, got {:?}", module.items[0].kind);
         }
     }
 }
