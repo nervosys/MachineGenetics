@@ -1,99 +1,99 @@
-//! # std.fs — File System
+//! # std::fs — File System
 //!
 //! File system operations: read, write, create, remove, metadata, walk.
 //! All functions declare the `io` effect.
 
-u std.io.{IoError, IoErrorKind};
-u std.time.SystemTime;
+use std::io::{IoError, IoErrorKind};
+use std::time::SystemTime;
 
 // ---------------------------------------------------------------------------
 // Convenience functions
 // ---------------------------------------------------------------------------
 
 /// Read the entire contents of a file into a string.
-+f read(path: &s) -> R[s, IoError] / io;
+pub fn read(path: &String) -> Result<String, IoError> / io;
 
 /// Read the entire contents of a file into a byte vector.
-+f read_bytes(path: &s) -> R[[u8]~, IoError] / io;
+pub fn read_bytes(path: &String) -> Result<Vec<u8>, IoError> / io;
 
 /// Write a string to a file, creating it if needed, truncating if exists.
-+f write(path: &s, contents: &s) -> R[(), IoError] / io;
+pub fn write(path: &String, contents: &String) -> Result<(), IoError> / io;
 
 /// Write bytes to a file.
-+f write_bytes(path: &s, contents: &[u8]) -> R[(), IoError] / io;
+pub fn write_bytes(path: &String, contents: &[u8]) -> Result<(), IoError> / io;
 
 /// Append a string to a file.
-+f append(path: &s, contents: &s) -> R[(), IoError] / io;
+pub fn append(path: &String, contents: &String) -> Result<(), IoError> / io;
 
 // ---------------------------------------------------------------------------
 // Directory operations
 // ---------------------------------------------------------------------------
 
 /// Create a directory. Fails if it already exists.
-+f create_dir(path: &s) -> R[(), IoError] / io;
+pub fn create_dir(path: &String) -> Result<(), IoError> / io;
 
 /// Create a directory and all parent directories.
-+f create_dir_all(path: &s) -> R[(), IoError] / io;
+pub fn create_dir_all(path: &String) -> Result<(), IoError> / io;
 
 /// Remove an empty directory.
-+f remove_dir(path: &s) -> R[(), IoError] / io;
+pub fn remove_dir(path: &String) -> Result<(), IoError> / io;
 
 /// Remove a directory and all its contents.
-+f remove_dir_all(path: &s) -> R[(), IoError] / io;
+pub fn remove_dir_all(path: &String) -> Result<(), IoError> / io;
 
 /// Read directory entries.
-+f read_dir(path: &s) -> R[[DirEntry]~, IoError] / io;
+pub fn read_dir(path: &String) -> Result<Vec<DirEntry>, IoError> / io;
 
 // ---------------------------------------------------------------------------
 // File operations
 // ---------------------------------------------------------------------------
 
 /// Remove a file.
-+f remove(path: &s) -> R[(), IoError] / io;
+pub fn remove(path: &String) -> Result<(), IoError> / io;
 
 /// Rename / move a file or directory.
-+f rename(from: &s, to: &s) -> R[(), IoError] / io;
+pub fn rename(from: &String, to: &String) -> Result<(), IoError> / io;
 
 /// Copy a file. Returns the number of bytes copied.
-+f copy(from: &s, to: &s) -> R[u64, IoError] / io;
+pub fn copy(from: &String, to: &String) -> Result<u64, IoError> / io;
 
 /// Test whether a path exists.
-+f exists(path: &s) -> 1b / io;
+pub fn exists(path: &String) -> bool / io;
 
 // ---------------------------------------------------------------------------
 // Metadata
 // ---------------------------------------------------------------------------
 
 /// Query metadata about a file (follows symlinks).
-+f metadata(path: &s) -> R[Metadata, IoError] / io;
+pub fn metadata(path: &String) -> Result<Metadata, IoError> / io;
 
 /// Query metadata about a file (does not follow symlinks).
-+f symlink_metadata(path: &s) -> R[Metadata, IoError] / io;
+pub fn symlink_metadata(path: &String) -> Result<Metadata, IoError> / io;
 
 /// File metadata.
-+S Metadata {
+pub struct Metadata {
     file_type: FileType,
     len: u64,
-    modified: ?SystemTime,
-    created: ?SystemTime,
+    modified: Option<SystemTime>,
+    created: Option<SystemTime>,
     permissions: Permissions,
 }
 
-I Metadata {
-    +f is_file(&self) -> 1b { self.file_type == FileType.File }
-    +f is_dir(&self) -> 1b  { self.file_type == FileType.Dir }
-    +f is_symlink(&self) -> 1b { self.file_type == FileType.Symlink }
+impl Metadata {
+    pub fn is_file(&self) -> bool { self.file_type == FileType::File }
+    pub fn is_dir(&self) -> bool  { self.file_type == FileType::Dir }
+    pub fn is_symlink(&self) -> bool { self.file_type == FileType::Symlink }
 }
 
-+E FileType {
+pub enum FileType {
     File,
     Dir,
     Symlink,
 }
 
-+S Permissions {
-    readonly: 1b,
-    mode: ?u32,   // Unix mode bits
+pub struct Permissions {
+    readonly: bool,
+    mode: Option<u32>,   // Unix mode bits
 }
 
 // ---------------------------------------------------------------------------
@@ -101,16 +101,16 @@ I Metadata {
 // ---------------------------------------------------------------------------
 
 /// A single entry inside a directory.
-+S DirEntry {
-    name: s,
-    path: s,
+pub struct DirEntry {
+    name: String,
+    path: String,
     file_type: FileType,
 }
 
-I DirEntry {
-    +f name(&self) -> &s { &self.name }
-    +f path(&self) -> &s { &self.path }
-    +f metadata(&self) -> R[Metadata, IoError] / io;
+impl DirEntry {
+    pub fn name(&self) -> &String { &self.name }
+    pub fn path(&self) -> &String { &self.path }
+    pub fn metadata(&self) -> Result<Metadata, IoError> / io;
 }
 
 // ---------------------------------------------------------------------------
@@ -118,14 +118,14 @@ I DirEntry {
 // ---------------------------------------------------------------------------
 
 /// Recursively walk a directory tree.
-+f walk(path: &s) -> R[Walker, IoError] / io;
+pub fn walk(path: &String) -> Result<Walker, IoError> / io;
 
 /// Recursive directory walker.
-+S Walker {
-    stack: [s]~,
+pub struct Walker {
+    stack: Vec<String>,
 }
 
-I Iterator ~ Walker {
-    type Item = R[DirEntry, IoError];
-    +f next(&!self) -> ?R[DirEntry, IoError] / io;
+impl Iterator for Walker {
+    type Item = Result<DirEntry, IoError>;
+    pub fn next(&mut self) -> Option<Result<DirEntry, IoError>> / io;
 }

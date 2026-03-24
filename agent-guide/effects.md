@@ -1,6 +1,7 @@
 # Redox Effect Annotation Guide
 
 > Complete reference for the Redox effect system, optimized for AI agents.
+> All examples use **standard syntax** (default).
 
 ---
 
@@ -11,24 +12,24 @@ no annotation. Impure functions list their effects after `/`.
 
 ```redox
 // Pure — no annotation
-f add(a: i32, b: i32) -> i32 { a + b }
+fn add(a: i32, b: i32) -> i32 { a + b }
 
 // Impure — annotated
-f read() -> R[s, Error] / io { fs.read_to_string("data.txt") }
+fn read() -> Result<String, Error> / io { fs::read_to_string("data.txt") }
 ```
 
 ## Built-In Effects
 
-| Effect    | Meaning            | Typical Operations                                   |
-| --------- | ------------------ | ---------------------------------------------------- |
-| `io`      | File / console I/O | `fs.read`, `fs.write`, `p"..."`, stdin/stdout        |
-| `net`     | Network access     | `http.get`, `TcpStream.connect`, DNS lookup          |
-| `rng`     | Randomness         | `rng.gen()`, `rng.shuffle()`                         |
-| `async`   | Async execution    | `.await`, `spawn`, `select`                          |
-| `agent`   | Agent operations   | `Agent.execute`, `Swarm.spawn`, `Capability.request` |
-| `time`    | Clock access       | `Instant.now()`, `sleep`, `SystemTime`               |
-| `env`     | Environment access | `env.var()`, `env.args()`, `env.current_dir()`       |
-| `process` | Process control    | `Command.new()`, `exit()`, `spawn_process()`         |
+| Effect    | Meaning            | Typical Operations                                       |
+| --------- | ------------------ | -------------------------------------------------------- |
+| `io`      | File / console I/O | `fs::read`, `fs::write`, `println!("...")`, stdin/stdout |
+| `net`     | Network access     | `http::get`, `TcpStream::connect`, DNS lookup            |
+| `rng`     | Randomness         | `rng::gen()`, `rng::shuffle()`                           |
+| `async`   | Async execution    | `.await`, `spawn`, `select`                              |
+| `agent`   | Agent operations   | `Agent::execute`, `Swarm::spawn`, `Capability::request`  |
+| `time`    | Clock access       | `Instant::now()`, `sleep`, `SystemTime`                  |
+| `env`     | Environment access | `env::var()`, `env::args()`, `env::current_dir()`        |
+| `process` | Process control    | `Command::new()`, `exit()`, `spawn_process()`            |
 
 ## Effect Hierarchy
 
@@ -42,16 +43,16 @@ agent  ⊃  async    →  / agent (already includes async)
 **Examples:**
 ```redox
 // WRONG — redundant io with net
-+af fetch(url: &s) -> R[s, Error] / io, net { ... }
+pub async fn fetch(url: &str) -> Result<String, Error> / io, net { ... }
 
 // CORRECT — net implies io
-+af fetch(url: &s) -> R[s, Error] / net { ... }
+pub async fn fetch(url: &str) -> Result<String, Error> / net { ... }
 
 // WRONG — redundant async with agent
-+af run(a: &!Agent) -> R[(), Error] / async, agent { ... }
+pub async fn run(a: &mut Agent) -> Result<(), Error> / async, agent { ... }
 
 // CORRECT — agent implies async
-+af run(a: &!Agent) -> R[(), Error] / agent { ... }
+pub async fn run(a: &mut Agent) -> Result<(), Error> / agent { ... }
 ```
 
 ## Effect Propagation
@@ -61,23 +62,23 @@ declare effect E (or a superset of E).
 
 ```redox
 // B has / io
-f read_data() -> R[s, Error] / io {
-    fs.read_to_string("data.txt")
+fn read_data() -> Result<String, Error> / io {
+    fs::read_to_string("data.txt")
 }
 
 // A calls B, so A must also have / io
-f process() -> R[(), Error] / io {
-    v data = read_data()?
-    p"Got: {data}"
-    ret ()
+fn process() -> Result<(), Error> / io {
+    let data = read_data()?;
+    println!("Got: {data}");
+    return ();
 }
 ```
 
 **Violation** — compiler error:
 ```redox
 // WRONG — missing / io, but calls read_data() which requires / io
-f process() -> R[(), Error] {
-    v data = read_data()?   // ERROR: effect `io` not declared
+fn process() -> Result<(), Error> {
+    let data = read_data()?;   // ERROR: effect `io` not declared
 }
 ```
 
@@ -103,10 +104,10 @@ Does the function...
 Comma-separate multiple effects:
 
 ```redox
-+af download_and_save(url: &s, path: &s) -> R[(), Error] / net, io {
-    v data = http.get(url).await?
-    fs.write(path, data.bytes())?
-    ret ()
+pub async fn download_and_save(url: &str, path: &str) -> Result<(), Error> / net, io {
+    let data = http::get(url).await?;
+    fs::write(path, data.bytes())?;
+    return ();
 }
 ```
 
@@ -114,10 +115,10 @@ But apply the hierarchy rule — don't list implied effects:
 
 ```redox
 // net already implies io, so this is redundant:
-+af fetch() -> R[s, Error] / io, net { ... }
+pub async fn fetch() -> Result<String, Error> / io, net { ... }
 
 // Just use:
-+af fetch() -> R[s, Error] / net { ... }
+pub async fn fetch() -> Result<String, Error> / net { ... }
 ```
 
 ## Effect Handling (Mocking)
@@ -125,13 +126,13 @@ But apply the hierarchy rule — don't list implied effects:
 Use `handle` blocks to intercept effects. Essential for testing:
 
 ```redox
-@test
-f test_read_config() {
+#[test]
+fn test_read_config() {
     handle io {
         read_to_string(_) => "key = value",
     } {
-        v config = read_config("config.toml")
-        assert_eq!(config.unwrap().key, "value")
+        let config = read_config("config.toml");
+        assert_eq!(config.unwrap().key, "value");
     }
 }
 ```
@@ -139,16 +140,16 @@ f test_read_config() {
 Multiple handlers:
 
 ```redox
-@test
-f test_fetch_and_parse() {
+#[test]
+fn test_fetch_and_parse() {
     handle net {
-        get(_) => Response.mock(200, "{}"),
+        get(_) => Response::mock(200, "{}"),
     }
     handle io {
         write(_, _) => (),
     } {
-        v result = fetch_and_save("http://example.com", "out.json")
-        assert!(result.is_ok())
+        let result = fetch_and_save("http://example.com", "out.json");
+        assert!(result.is_ok());
     }
 }
 ```
@@ -156,17 +157,17 @@ f test_fetch_and_parse() {
 ## Effect Annotations on Trait Methods
 
 ```redox
-+T DataSource {
-    f fetch(&self, query: &s) -> R[s, Error] / io
-    f count(&self) -> usize    // pure
+pub trait DataSource {
+    fn fetch(&self, query: &str) -> Result<String, Error> / io;
+    fn count(&self) -> usize;    // pure
 }
 
-I DataSource ~ FileSource {
-    f fetch(&self, query: &s) -> R[s, Error] / io {
-        fs.read_to_string(&f"data/{query}.txt")
+impl DataSource for FileSource {
+    fn fetch(&self, query: &str) -> Result<String, Error> / io {
+        fs::read_to_string(&format!("data/{query}.txt"))
     }
 
-    f count(&self) -> usize {
+    fn count(&self) -> usize {
         self.entries.len()
     }
 }
@@ -178,13 +179,13 @@ I DataSource ~ FileSource {
 
 ```redox
 // Accept a closure that performs io
-+f with_file[T](path: &s, work: f(&s) -> T / io) -> R[T, Error] / io {
-    v content = fs.read_to_string(path)?
-    ret work(&content)
+pub fn with_file<T>(path: &str, work: fn(&str) -> T / io) -> Result<T, Error> / io {
+    let content = fs::read_to_string(path)?;
+    return work(&content);
 }
 
 // Accept a pure closure
-+f transform[T](data: T, func: f(T) -> T) -> T {
+pub fn transform<T>(data: T, func: fn(T) -> T) -> T {
     func(data)
 }
 ```

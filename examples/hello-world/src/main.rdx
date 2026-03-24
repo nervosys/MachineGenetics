@@ -1,31 +1,31 @@
 // hello-world — Minimal Redox program.
 //
 // Demonstrates:
-//   - Entry point (+f main)
-//   - Variable binding (v)
-//   - String type (s)
-//   - Print macro (p"...")
-//   - Format strings (f"...")
+//   - Entry point (pub fn main)
+//   - Variable binding (let)
+//   - String type (String)
+//   - Print macro (println!("..."))
+//   - Format strings (format!("..."))
 
-+f main() {
+pub fn main() {
     // Simple print.
-    p"Hello, Redox!";
+    println!("Hello, Redox!");
 
     // Variable binding and format string.
-    v name: s = "World";
-    v greeting: s = f"Hello, {name}!";
-    p"{greeting}";
+    let name: String = "World";
+    let greeting: String = format!("Hello, {name}!");
+    println!("{greeting}");
 
     // Mutable variable.
-    m counter: i32 = 0;
+    let mut counter: i32 = 0;
     counter = counter + 1;
-    p"Counter: {counter}";
+    println!("Counter: {counter}");
 
     // Boolean literals.
-    v is_redox: bool = 1b;
-    v is_legacy: bool = 0b;
-    p"is_redox={is_redox}, is_legacy={is_legacy}";
+    let is_redox: bool = true;
+    let is_legacy: bool = false;
+    println!("is_redox={is_redox}, is_legacy={is_legacy}");
 
     // Return value (implicit — last expression).
-    p"Goodbye!";
+    println!("Goodbye!");
 }

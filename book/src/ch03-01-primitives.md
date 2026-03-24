@@ -18,10 +18,10 @@
 | `usize` | pointer | platform-dependent |
 
 ```rdx
-v count: i32 = 42
-v big: i64 = 1_000_000
-v byte: u8 = 0xFF
-v hex: u32 = 0xDEAD_BEEF
+let count: i32 = 42;
+let big: i64 = 1_000_000;
+let byte: u8 = 0xFF;
+let hex: u32 = 0xDEAD_BEEF;
 ```
 
 ## Floating point
@@ -32,43 +32,43 @@ v hex: u32 = 0xDEAD_BEEF
 | `f64` | 64-bit | ~15 decimal digits |
 
 ```rdx
-v pi: f64 = 3.14159
-v small: f32 = 1.0e-6
+let pi: f64 = 3.14159;
+let small: f32 = 1.0e-6;
 ```
 
 ## Booleans
 
 ```rdx
-v yes = 1b    // true
-v no = 0b     // false
+let yes = true;
+let no = false;
 ```
 
-`1b` and `0b` — one-token booleans. No `true`/`false` keywords.
+Standard `true`/`false` keywords.
 
 ## Characters
 
 ```rdx
-v letter: char = 'A'
-v emoji: char = '🦀'
+let letter: char = 'A';
+let emoji: char = '🦀';
 ```
 
 ## Strings
 
-The type `s` is Redox's string type (equivalent to Rust's `String`):
+The type `String` is Redox's owned string type (equivalent to Rust's `String`):
 
 ```rdx
-v name: s = "Alice"
-v greeting = f"Hello, {name}!"    // format string
-p"The answer is {40 + 2}"         // print string (prints directly)
+let name: String = "Alice".into();
+let greeting = format!("Hello, {name}!");
+println!("The answer is {}", 40 + 2);
 ```
 
-String slices use `&s` (equivalent to Rust's `&str`):
+String slices use `&str` (equivalent to Rust's `&str`):
 
 ```rdx
-f first_word(text: &s) -> &s {
-    ? text.find(' ') => Some(i) {
+fn first_word(text: &str) -> &str {
+    if let Some(i) = text.find(' ') {
         &text[..i]
-    } : {
+    } else {
         text
     }
 }
@@ -77,7 +77,7 @@ f first_word(text: &s) -> &s {
 ## The unit type
 
 ```rdx
-v nothing: () = ()
+let nothing: () = ();
 ```
 
 Functions with no return value implicitly return `()`.

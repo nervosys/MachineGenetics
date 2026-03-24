@@ -83,9 +83,9 @@ value range at every call site. This unlocks:
 Source:
   @req items.len() > 0 && items.len() <= 256
   @ens result >= 0
-  +f sum(items: &[i32]~) -> i32 / pure {
-      m total = 0;
-      @ x ~ items { total = total + *x; }
+  pub fn sum(items: &Vec<i32>) -> i32 / pure {
+      let mut total = 0;
+      for x in items { total = total + *x; }
       total
   }
 
@@ -115,12 +115,12 @@ Contracts propagate interprocedurally:
 ```
 @req x > 0
 @ens result > 0
-f double(x: i32) -> i32 { x * 2 }
+fn double(x: i32) -> i32 { x * 2 }
 
 @req n > 0
-f quad(n: i32) -> i32 {
-    v d = double(n);     // Compiler infers d > 0 from @ens
-    double(d)            // @req satisfied by d > 0
+fn quad(n: i32) -> i32 {
+    let d = double(n);     // Compiler infers d > 0 from @ens
+    double(d)              // @req satisfied by d > 0
 }
 // quad: no overflow check needed for n ∈ [1, i32::MAX/4]
 // quad: no sign check needed — result provably > 0
@@ -137,13 +137,13 @@ compilers cannot prove functions are free of side effects. Redox's effect
 system solves this at the type level.
 
 ```
-f compute(x: f64) -> f64 / pure { /* effect system guarantees no I/O, no alloc, no mutation */ }
+fn compute(x: f64) -> f64 / pure { /* effect system guarantees no I/O, no alloc, no mutation */ }
 ```
 
 When the compiler encounters:
 
 ```
-v results: [f64]~ = items.iter().map(|x| compute(*x)).collect();
+let results: Vec<f64> = items.iter().map(|x| compute(*x)).collect();
 ```
 
 It knows `compute` is `/ pure` — no shared state, no I/O, no allocation. The
@@ -207,15 +207,15 @@ Redox's contracts provide N:
 
 ```
 @req items.len() <= 8
-f process_small(items: [T]~) { ... }
-// Compiler: len ≤ 8 → lower [T]~ to [T; 8] on the stack. Zero alloc.
+fn process_small(items: Vec<T>) { ... }
+// Compiler: len ≤ 8 → lower Vec<T> to [T; 8] on the stack. Zero alloc.
 
 @req items.len() <= 64
-f process_medium(items: [T]~) { ... }
-// Compiler: len ≤ 64 → lower [T]~ to SmallVec<[T; 64]>. Stack fast path.
+fn process_medium(items: Vec<T>) { ... }
+// Compiler: len ≤ 64 → lower Vec<T> to SmallVec<[T; 64]>. Stack fast path.
 
 @req items.len() >= 1_000_000
-f process_huge(items: [T]~) { ... }
+fn process_huge(items: Vec<T>) { ... }
 // Compiler: len ≥ 1M → preallocate, use parallel chunked iteration.
 ```
 
@@ -223,16 +223,16 @@ f process_huge(items: [T]~) { ... }
 
 The cost oracle provides per-target data:
 
-| Pattern               | x86_64 cost | AArch64 cost | Decision            |
-| --------------------- | ----------- | ------------ | ------------------- |
-| `[T]~` where N ≤ 8    | 1 cycle     | 1 cycle      | Stack array         |
-| `[T]~` where N ≤ 64   | 5 cycles    | 5 cycles     | SmallVec            |
-| `[T]~` where N > 64   | 30 cycles   | 35 cycles    | Heap Vec            |
-| `{K:V}` where N ≤ 16  | 3 cycles    | 3 cycles     | Linear scan array   |
-| `{K:V}` where N > 16  | 20 cycles   | 22 cycles    | HashMap             |
-| `{K:V}` where N > 10⁶ | 20 cycles   | 22 cycles    | B-tree HashMap      |
-| `s` where len ≤ 22    | 1 cycle     | 1 cycle      | SSO (inline string) |
-| `s` where len > 22    | 30 cycles   | 35 cycles    | Heap string         |
+| Pattern                      | x86_64 cost | AArch64 cost | Decision            |
+| ---------------------------- | ----------- | ------------ | ------------------- |
+| `Vec<T>` where N ≤ 8         | 1 cycle     | 1 cycle      | Stack array         |
+| `Vec<T>` where N ≤ 64        | 5 cycles    | 5 cycles     | SmallVec            |
+| `Vec<T>` where N > 64        | 30 cycles   | 35 cycles    | Heap Vec            |
+| `HashMap<K,V>` where N ≤ 16  | 3 cycles    | 3 cycles     | Linear scan array   |
+| `HashMap<K,V>` where N > 16  | 20 cycles   | 22 cycles    | HashMap             |
+| `HashMap<K,V>` where N > 10⁶ | 20 cycles   | 22 cycles    | B-tree HashMap      |
+| `String` where len ≤ 22      | 1 cycle     | 1 cycle      | SSO (inline string) |
+| `String` where len > 22      | 30 cycles   | 35 cycles    | Heap string         |
 
 The compiler queries the oracle at monomorphization time and selects the optimal
 backing representation.
@@ -252,7 +252,7 @@ variants of every hot loop and benchmarks them on the actual target hardware.
 ```
 Source (annotated):
   @pa(8)  // autotune with 8 variants
-  @ i ~ 0..n {
+  for i in 0..n {
       out[i] = a[i] * b[i] + c[i];
   }
 
@@ -326,9 +326,9 @@ automatically.
 
 ```
 @req points.len() >= 1024
-f sum_x(points: &[Point3D]~) -> f64 / pure {
-    m total = 0.0;
-    @ p ~ points { total = total + p.x; }
+fn sum_x(points: &Vec<Point3D>) -> f64 / pure {
+    let mut total = 0.0;
+    for p in points { total = total + p.x; }
     total
 }
 ```
@@ -352,9 +352,9 @@ Loop reads only memref<1024 x f64> for 'x' field.
 When automatic layout is insufficient, the programmer uses `@pt`:
 
 ```
-@d(Debug, Clone)
-@pt(target_optimal)   // Compiler chooses AoS or SoA per access pattern
-+S Particle {
+#[derive(Debug, Clone)]
+#[repr(target_optimal)]   // Compiler chooses AoS or SoA per access pattern
+pub struct Particle {
     position: [f64; 3],
     velocity: [f64; 3],
     mass: f64,
@@ -377,10 +377,10 @@ allocations using contract-inferred size bounds.
 ```
 @req name.len() <= 64
 @req items.len() <= 16
-f format_record(name: &s, items: &[i32]~) -> s / pure {
-    m buf = f"Record: {name}\n";
-    @ item ~ items {
-        buf = buf + &f"  - {item}\n";
+fn format_record(name: &str, items: &Vec<i32>) -> String / pure {
+    let mut buf = format!("Record: {name}\n");
+    for item in items {
+        buf = buf + &format!("  - {item}\n");
     }
     buf
 }
@@ -398,7 +398,7 @@ When allocations cannot be eliminated, contracts provide lifetime bounds:
 
 ```
 @req batch.len() <= 1000
-f process_batch(batch: &[Request]~) -> [Response]~ / alloc {
+fn process_batch(batch: &Vec<Request>) -> Vec<Response> / alloc {
     batch.iter().map(|r| handle(r)).collect()
 }
 ```
@@ -431,14 +431,14 @@ limited. Redox's `/ pure` effect annotation automatically identifies every
 function whose inputs are known at compile time — and evaluates it.
 
 ```
-f fibonacci(n: u64) -> u64 / pure {
-    ?: n <= 1 { ret n; }
+fn fibonacci(n: u64) -> u64 / pure {
+    if n <= 1 { return n; }
     fibonacci(n - 1) + fibonacci(n - 2)
 }
 
-+f main() / io {
-    v fib20 = fibonacci(20);  // Evaluated at compile time → constant 6765
-    p"{fib20}";
+pub fn main() / io {
+    let fib20 = fibonacci(20);  // Evaluated at compile time → constant 6765
+    println!("{fib20}");
 }
 ```
 
@@ -500,7 +500,7 @@ The cost oracle + effect system together decide *where* to run each function:
 
 ```
 @req matrix.rows() >= 512 && matrix.cols() >= 512
-f matmul(a: &Matrix, b: &Matrix) -> Matrix / pure {
+fn matmul(a: &Matrix, b: &Matrix) -> Matrix / pure {
     // Cost oracle: CPU = 4.2ms, GPU = 0.3ms, NPU = 0.1ms
     // Effect: / pure → safe to offload, no host-side effects
     // Decision: NPU (14× faster than CPU)
@@ -550,9 +550,9 @@ fn dot(a: &[f64], b: &[f64]) -> f64 {
 // Redox: 0 bounds checks — contracts prove safety
 @req a.len() == b.len()
 @ens result == a.iter().zip(b.iter()).map(|(x,y)| x*y).sum()
-f dot(a: &[f64]~, b: &[f64]~) -> f64 / pure {
-    m sum = 0.0;
-    @ i ~ 0..a.len() {
+fn dot(a: &Vec<f64>, b: &Vec<f64>) -> f64 / pure {
+    let mut sum = 0.0;
+    for i in 0..a.len() {
         sum = sum + a[i] * b[i];  // No bounds check: i ∈ [0, len) proven
     }
     sum
@@ -576,12 +576,12 @@ without LTO. This enables whole-program optimization at zero link-time cost.
 // crate: math
 @req x >= 0.0
 @ens result >= 0.0
-+f sqrt(x: f64) -> f64 / pure { ... }
+pub fn sqrt(x: f64) -> f64 / pure { ... }
 
 // crate: physics (depends on math)
 @req dt > 0.0
-+f simulate(dt: f64) / pure {
-    v speed = math.sqrt(energy * 2.0);
+pub fn simulate(dt: f64) / pure {
+    let speed = math::sqrt(energy * 2.0);
     //                  ^^^^^^^^^
     // Compiler knows: energy * 2.0 >= 0.0 (if energy >= 0.0)
     // → @req satisfied without runtime check

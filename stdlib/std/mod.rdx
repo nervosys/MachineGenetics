@@ -2,65 +2,65 @@
 //!
 //! The `std` module is the root of the Redox standard library.
 //! All standard types, traits, and functions are accessible through
-//! dot-separated paths: `std.io`, `std.col.Map`, `std.agent.Swarm`, etc.
+//! double-colon-separated paths: `std::io`, `std::col::Map`, `std::agent::Swarm`, etc.
 //!
 //! ## Design Principles
 //!
-//! - **Agent-first**: `std.agent`, `std.json`, and `std.net.http` are first-class
-//! - **Minimal keywords**: Types use sigils (`?T`, `R[T,E]`, `[T]~`, `@T`)
+//! - **Agent-first**: `std::agent`, `std::json`, and `std::net::http` are first-class
+//! - **C-like keywords**: `fn`, `let`, `struct`, `enum`, `trait`, `impl`, `pub`, `match`, etc.
 //! - **Effect-aware**: I/O and networking modules declare their effects
 //! - **SKB-integrated**: Safety rules are embedded in type contracts
 
 /// I/O: File I/O, streams, buffering
-+m io;
+pub mod io;
 
 /// Networking: TCP, UDP, HTTP, DNS
-+m net;
+pub mod net;
 
 /// File system: read, write, create, remove, walk
-+m fs;
+pub mod fs;
 
 /// Collections: Map, Set, BTree, VecDeque, LinkedList
-+m col;
+pub mod col;
 
 /// Synchronization: Mutex, RwLock, Channel, Barrier, Atomic
-+m sync;
+pub mod sync;
 
 /// Async runtime: spawn, join, select, Stream
-+m async;
+pub mod async;
 
 /// Formatting: Display, Debug, format, print
-+m fmt;
+pub mod fmt;
 
 /// String utilities: split, join, trim, regex, encode
-+m str;
+pub mod str;
 
 /// Mathematics: trig, exp, log, random, simd
-+m math;
+pub mod math;
 
 /// Date and time: Instant, Duration, SystemTime
-+m time;
+pub mod time;
 
 /// JSON: parse, stringify, Value, Serialize, Deserialize
-+m json;
+pub mod json;
 
 /// Environment: args, vars, current_dir
-+m env;
+pub mod env;
 
 /// Process management: Command, exit, signal
-+m process;
+pub mod process;
 
 /// Agent primitives: Agent, Swarm, Message, Lease, Region, Bus
-+m agent;
+pub mod agent;
 
 /// Safety Knowledge Base: Rule, query, validate
-+m skb;
+pub mod skb;
 
 /// Effect system: Effect, handle, perform
-+m effect;
+pub mod effect;
 
 /// Contract system: require, ensure, invariant, verify
-+m spec;
+pub mod spec;
 
 /// Testing: assert, assert_eq, bench, prop
-+m test;
+pub mod test;

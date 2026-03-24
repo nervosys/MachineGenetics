@@ -1,154 +1,195 @@
-//! # std.time — Date and Time
+//! # std::time — Time & Duration
 //!
-//! Instants, durations, and system time.
+//! Monotonic clocks, wall-clock time, durations, and formatting.
+//! Clock operations declare the `time` effect.
 
 // ---------------------------------------------------------------------------
 // Duration
 // ---------------------------------------------------------------------------
 
-/// A span of time, measured in seconds and nanoseconds.
-+S Duration {
+/// A span of time with nanosecond precision.
+pub struct Duration {
     secs: u64,
     nanos: u32,
 }
 
-I Duration {
-    /// Create a duration from seconds.
-    +f from_secs(secs: u64) -> Duration {
-        @Duration { secs, nanos: 0 }
+impl Duration {
+    /// Create from seconds.
+    pub fn from_secs(secs: u64) -> Duration {
+        Duration { secs, nanos: 0 }
     }
 
-    /// Create a duration from milliseconds.
-    +f from_millis(ms: u64) -> Duration {
-        @Duration {
-            secs: ms / 1000,
-            nanos: ((ms % 1000) * 1_000_000) ~> u32,
-        }
+    /// Create from milliseconds.
+    pub fn from_millis(ms: u64) -> Duration {
+        Duration { secs: ms / 1000, nanos: ((ms % 1000) * 1_000_000) as u32 }
     }
 
-    /// Create a duration from microseconds.
-    +f from_micros(us: u64) -> Duration {
-        @Duration {
-            secs: us / 1_000_000,
-            nanos: ((us % 1_000_000) * 1000) ~> u32,
-        }
+    /// Create from microseconds.
+    pub fn from_micros(us: u64) -> Duration {
+        Duration { secs: us / 1_000_000, nanos: ((us % 1_000_000) * 1_000) as u32 }
     }
 
-    /// Create a duration from nanoseconds.
-    +f from_nanos(ns: u64) -> Duration {
-        @Duration {
-            secs: ns / 1_000_000_000,
-            nanos: (ns % 1_000_000_000) ~> u32,
-        }
+    /// Create from nanoseconds.
+    pub fn from_nanos(ns: u64) -> Duration {
+        Duration { secs: ns / 1_000_000_000, nanos: (ns % 1_000_000_000) as u32 }
     }
 
-    /// Total whole seconds.
-    +f as_secs(&self) -> u64 { self.secs }
+    /// Zero duration.
+    pub fn zero() -> Duration { Duration { secs: 0, nanos: 0 } }
 
-    /// Total milliseconds.
-    +f as_millis(&self) -> u128 {
-        (self.secs ~> u128) * 1000 + (self.nanos ~> u128) / 1_000_000
-    }
+    /// Total seconds (truncated).
+    pub fn as_secs(&self) -> u64 { self.secs }
 
-    /// Total microseconds.
-    +f as_micros(&self) -> u128 {
-        (self.secs ~> u128) * 1_000_000 + (self.nanos ~> u128) / 1000
-    }
+    /// Total milliseconds (truncated).
+    pub fn as_millis(&self) -> u64 { self.secs * 1000 + (self.nanos as u64) / 1_000_000 }
+
+    /// Total microseconds (truncated).
+    pub fn as_micros(&self) -> u64 { self.secs * 1_000_000 + (self.nanos as u64) / 1_000 }
 
     /// Total nanoseconds.
-    +f as_nanos(&self) -> u128 {
-        (self.secs ~> u128) * 1_000_000_000 + (self.nanos ~> u128)
+    pub fn as_nanos(&self) -> u128 {
+        (self.secs as u128) * 1_000_000_000 + (self.nanos as u128)
     }
 
-    /// Subsecond nanoseconds.
-    +f subsec_nanos(&self) -> u32 { self.nanos }
+    /// Fractional part in nanoseconds.
+    pub fn subsec_nanos(&self) -> u32 { self.nanos }
 
     /// Whether the duration is zero.
-    +f is_zero(&self) -> 1b { self.secs == 0 && self.nanos == 0 }
+    pub fn is_zero(&self) -> bool { self.secs == 0 && self.nanos == 0 }
 
     /// Add two durations.
-    +f add(&self, other: &Duration) -> Duration;
+    pub fn add(&self, other: &Duration) -> Duration {
+        let mut nanos = self.nanos + other.nanos;
+        let mut secs = self.secs + other.secs;
+        if nanos >= 1_000_000_000 {
+            secs += 1;
+            nanos -= 1_000_000_000;
+        }
+        Duration { secs, nanos }
+    }
 
     /// Subtract a duration (saturating at zero).
-    +f saturating_sub(&self, other: &Duration) -> Duration;
+    pub fn saturating_sub(&self, other: &Duration) -> Duration {
+        if self.secs < other.secs {
+            return Duration::zero();
+        }
+        if self.secs == other.secs && self.nanos < other.nanos {
+            return Duration::zero();
+        }
+        let mut secs = self.secs - other.secs;
+        let nanos = if self.nanos >= other.nanos {
+            self.nanos - other.nanos
+        } else {
+            secs -= 1;
+            1_000_000_000 + self.nanos - other.nanos
+        };
+        Duration { secs, nanos }
+    }
 
     /// Multiply by a scalar.
-    +f mul(&self, factor: u32) -> Duration;
+    pub fn mul(&self, factor: u32) -> Duration {
+        let total_nanos = self.as_nanos() * (factor as u128);
+        Duration {
+            secs: (total_nanos / 1_000_000_000) as u64,
+            nanos: (total_nanos % 1_000_000_000) as u32,
+        }
+    }
 
-    /// Zero duration constant.
-    +f zero() -> Duration { @Duration { secs: 0, nanos: 0 } }
+    /// Convert to fractional seconds.
+    pub fn as_secs_f64(&self) -> f64 {
+        (self.secs as f64) + (self.nanos as f64) / 1e9
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Instant — monotonic clock
 // ---------------------------------------------------------------------------
 
-/// A measurement from a monotonic clock (for measuring elapsed time).
-+S Instant {
-    _t: u64,
+/// A point in time on a monotonic clock (unaffected by clock adjustments).
+pub struct Instant {
+    _ns: u64,
 }
 
-I Instant {
+impl Instant {
     /// Capture the current instant.
-    +f now() -> Instant / time;
+    pub fn now() -> Instant / time;
 
-    /// Time elapsed since this instant.
-    +f elapsed(&self) -> Duration / time;
+    /// Duration elapsed since this instant.
+    pub fn elapsed(&self) -> Duration / time;
 
     /// Duration between two instants.
-    +f duration_since(&self, earlier: &Instant) -> Duration;
+    pub fn duration_since(&self, earlier: &Instant) -> Duration;
 
-    /// Checked duration between two instants.
-    +f checked_duration_since(&self, earlier: &Instant) -> ?Duration;
+    /// Measure the time to execute a closure.
+    pub fn measure<T>(f: fn() -> T) -> (T, Duration) / time {
+        let start = Instant::now();
+        let result = f();
+        let elapsed = start.elapsed();
+        (result, elapsed)
+    }
 }
 
 // ---------------------------------------------------------------------------
 // SystemTime — wall clock
 // ---------------------------------------------------------------------------
 
-/// A point in time according to the system wall clock.
-+S SystemTime {
-    _secs: u64,
+/// A point in time on the system (wall) clock.
+pub struct SystemTime {
+    _secs_since_epoch: u64,
     _nanos: u32,
 }
 
-I SystemTime {
+impl SystemTime {
     /// The current system time.
-    +f now() -> SystemTime / time;
+    pub fn now() -> SystemTime / time;
 
-    /// The Unix epoch (1970-01-01 00:00:00 UTC).
-    +f unix_epoch() -> SystemTime {
-        @SystemTime { _secs: 0, _nanos: 0 }
+    /// The Unix epoch (1970-01-01T00:00:00Z).
+    pub fn unix_epoch() -> SystemTime {
+        SystemTime { _secs_since_epoch: 0, _nanos: 0 }
     }
 
     /// Duration since the Unix epoch.
-    +f duration_since_epoch(&self) -> R[Duration, TimeError] / time;
+    pub fn duration_since_epoch(&self) -> Duration;
 
-    /// Duration elapsed since this system time.
-    +f elapsed(&self) -> R[Duration, TimeError] / time;
+    /// Duration between two system times.
+    pub fn duration_since(&self, earlier: &SystemTime) -> Result<Duration, TimeError>;
 
-    /// Add a duration.
-    +f add(&self, dur: &Duration) -> SystemTime;
-
-    /// Subtract a duration.
-    +f sub(&self, dur: &Duration) -> SystemTime;
+    /// Elapsed time since this system time.
+    pub fn elapsed(&self) -> Result<Duration, TimeError> / time;
 }
 
 // ---------------------------------------------------------------------------
-// Formatting
+// Formatting & Parsing
 // ---------------------------------------------------------------------------
 
-/// Format a SystemTime using a strftime-style pattern.
-/// Example: `std.time.format(&t, "%Y-%m-%d %H:%M:%S")`
-+f format(time: &SystemTime, pattern: &s) -> s;
+/// Format a system time as an ISO 8601 string (UTC).
+pub fn format_iso8601(time: &SystemTime) -> String;
 
-/// Parse a string into a SystemTime using a strftime-style pattern.
-+f parse(input: &s, pattern: &s) -> R[SystemTime, TimeError];
+/// Parse an ISO 8601 string into a system time.
+pub fn parse_iso8601(s: &String) -> Result<SystemTime, TimeError>;
+
+/// Format a system time using a custom format string.
+/// Supports `%Y`, `%m`, `%d`, `%H`, `%M`, `%S`, `%f`.
+pub fn format(time: &SystemTime, fmt: &String) -> String;
+
+/// Parse a time string with a custom format.
+pub fn parse(s: &String, fmt: &String) -> Result<SystemTime, TimeError>;
+
+// ---------------------------------------------------------------------------
+// Sleep
+// ---------------------------------------------------------------------------
+
+/// Pause the current thread for the given duration.
+pub fn sleep(dur: &Duration) / time;
 
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
 
-+S TimeError {
-    message: s,
+pub struct TimeError {
+    message: String,
+}
+
+impl TimeError {
+    pub fn new(msg: &String) -> TimeError { TimeError { message: msg.to_owned() } }
 }

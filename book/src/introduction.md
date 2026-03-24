@@ -11,9 +11,9 @@ and reimagines them for an era of AI-driven development:
 
 - **Zero-ambiguity syntax** — a deterministic LL(1) grammar that eliminates
   agent parsing errors entirely.
-- **Token-minimal forms** — every construct is designed for minimum token
-  footprint. Where Rust writes `pub fn`, Redox writes `+f`. Programs are
-  typically ≤50% the token count of equivalent Rust.
+- **Dual syntax modes** — a standard mode with familiar C-like keywords (`fn`,
+  `let`, `struct`, `impl`) and a compact mode (`#![syntax(compact)]`) with
+  single-character tokens for maximum AI token efficiency.
 - **Safety via knowledge, not syntax** — lifetimes, borrow annotations, and
   `unsafe` blocks are eliminated from the source. Safety rules live in the
   **Safety Knowledge Base (SKB)**, a queryable database agents consult directly.
@@ -57,19 +57,19 @@ dive into whichever chapter interests you.
 
 ## Conventions
 
-Code examples use Redox syntax throughout:
+Code examples use Redox standard syntax throughout:
 
 ```rdx
 // A simple function that greets a user
-+f greet(name: &s) -> s {
-    f"Hello, {name}!"
+pub fn greet(name: &str) -> String {
+    format!("Hello, {name}!")
 }
 ```
 
 Rust equivalents are shown in separate blocks when comparing:
 
 ```rust
-// The Rust equivalent
+// The Rust equivalent — identical in standard mode!
 pub fn greet(name: &str) -> String {
     format!("Hello, {name}!")
 }

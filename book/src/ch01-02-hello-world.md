@@ -7,23 +7,24 @@ Let's write the simplest possible Redox program.
 Create a file called `hello.rdx`:
 
 ```rdx
-+f main() / io {
-    p"Hello, world!"
+pub fn main() / io {
+    println!("Hello, world!");
 }
 ```
 
-That's it. Three lines, three tokens for the print statement.
+That's it. Looks just like Rust, with one addition: the `/ io` effect
+annotation.
 
 ## Understanding the code
 
 Let's break it down:
 
-| Token              | Meaning                                                       |
-| ------------------ | ------------------------------------------------------------- |
-| `+f`               | Declares a **public function** (`+` = public, `f` = function) |
-| `main()`           | The entry point, taking no arguments                          |
-| `/ io`             | Declares that this function has the **io effect** (it prints) |
-| `p"Hello, world!"` | A **print string literal** — prints directly to stdout        |
+| Token                       | Meaning                                                       |
+| --------------------------- | ------------------------------------------------------------- |
+| `pub fn`                    | Declares a **public function**                                |
+| `main()`                    | The entry point, taking no arguments                          |
+| `/ io`                      | Declares that this function has the **io effect** (it prints) |
+| `println!("Hello, world!")` | Prints to stdout, same as Rust                                |
 
 ### Comparing to Rust
 
@@ -33,7 +34,7 @@ fn main() {
 }
 ```
 
-Redox is 30% fewer tokens. The `/ io` effect annotation is new — it makes the
+The only difference is the `/ io` effect annotation — it makes the
 side effect *explicit* in the function signature. Pure functions have no
 annotation.
 
@@ -55,13 +56,13 @@ rdx build hello.rdx
 ## A slightly larger example
 
 ```rdx
-u std.io.File
-u std.json.{parse, Value}
+use std::io::File;
+use std::json::{parse, Value};
 
-+f main() / io {
-    v content = File.read("config.json")?
-    v config: Value = parse(&content)?
-    p"Loaded config: {config}"
+pub fn main() / io {
+    let content = File::read("config.json")?;
+    let config: Value = parse(&content)?;
+    println!("Loaded config: {config}");
 }
 ```
 

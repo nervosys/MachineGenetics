@@ -1,25 +1,25 @@
 // structs.rdx — structs, enums, impl blocks, generics
 
-+S Point[T] {
-    +x: T,
-    +y: T,
+pub struct Point<T> {
+    pub x: T,
+    pub y: T,
 }
 
-E Shape {
+enum Shape {
     Circle(f64),
     Rect(f64, f64),
-    Poly([Point[f64]]~),
+    Poly(Vec<Point<f64>>),
 }
 
-I Point[T: Copy] {
-    +f distance(&self, other: &Point[T]) -> f64 {
-        v dx = self.x - other.x;
-        v dy = self.y - other.y;
+impl Point<T: Copy> {
+    pub fn distance(&self, other: &Point<T>) -> f64 {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
         (dx * dx + dy * dy)
     }
 }
 
-+f make_origin() -> Point[f64] {
-    v p = @Point { x: 0.0, y: 0.0 };
+pub fn make_origin() -> Point<f64> {
+    let p = Point { x: 0.0, y: 0.0 };
     p
 }

@@ -8,12 +8,12 @@ can only perform operations they have explicit permission for.
 A Capability declares what an agent is allowed to do:
 
 ```rdx
-u std.agent.{Capability, CapabilityScope}
+use std::agent::{Capability, CapabilityScope};
 
-v cap = Capability @{
+let cap = Capability {
     name: "file-write",
-    scope: CapabilityScope.Instance,
-}
+    scope: CapabilityScope::Instance,
+};
 ```
 
 ### Declaring capabilities
@@ -21,12 +21,12 @@ v cap = Capability @{
 Agents declare their capabilities in the `capabilities()` method:
 
 ```rdx
-I Agent ~ FileWriter {
-    +f capabilities(&self) -> [Capability]~ {
-        [
-            Capability @{ name: "file-read", scope: CapabilityScope.Instance },
-            Capability @{ name: "file-write", scope: CapabilityScope.Instance },
-        ]~
+impl Agent for FileWriter {
+    pub fn capabilities(&self) -> Vec<Capability> {
+        vec![
+            Capability { name: "file-read", scope: CapabilityScope::Instance },
+            Capability { name: "file-write", scope: CapabilityScope::Instance },
+        ]
     }
 
     // ... handle, id, etc.
@@ -36,13 +36,13 @@ I Agent ~ FileWriter {
 ### Checking capabilities at runtime
 
 ```rdx
-u std.agent.Region
+use std::agent::Region;
 
-+f safe_write(agent: &^Agent, path: &s, data: &s) -> R[(), Error] / io, agent {
-    v cap = Capability @{ name: "file-write", scope: CapabilityScope.Instance }
+pub fn safe_write(agent: &Box<dyn Agent>, path: &str, data: &str) -> Result<(), Error> / io, agent {
+    let cap = Capability { name: "file-write", scope: CapabilityScope::Instance };
 
-    Region.enter(cap, || {
-        File.write(path, data)
+    Region::enter(cap, || {
+        File::write(path, data)
     })
 }
 ```
@@ -53,29 +53,29 @@ A **Lease** is a time-bounded capability — it grants permission for a specific
 duration and automatically expires:
 
 ```rdx
-u std.agent.Lease
+use std::agent::Lease;
 
 // Acquire a lease for 5 minutes
-v lease = Lease @{
+let lease = Lease {
     capability: cap,
-    duration: Duration.from_secs(300),
-    granted_at: Instant.now(),
-}
+    duration: Duration::from_secs(300),
+    granted_at: Instant::now(),
+};
 
 // Check lease status
-? lease.is_valid() {
+if lease.is_valid() {
     // perform privileged operation
-    do_work()?
-} : {
-    p"Lease expired, requesting renewal"
-    v new_lease = lease.renew(Duration.from_secs(300))?
+    do_work()?;
+} else {
+    println!("Lease expired, requesting renewal");
+    let new_lease = lease.renew(Duration::from_secs(300))?;
 }
 
 // Remaining time
-v remaining = lease.remaining()
+let remaining = lease.remaining();
 
 // Explicitly release
-lease.release()
+lease.release();
 ```
 
 ## Regions
@@ -83,12 +83,12 @@ lease.release()
 **Regions** create bounded scopes where specific capabilities are active:
 
 ```rdx
-u std.agent.Region
+use std::agent::Region;
 
 // Only FFI calls are permitted inside this region
-v result = Region.enter(ffi_capability, || {
+let result = Region::enter(ffi_capability, || {
     call_c_library()
-})
+});
 
 // The capability is no longer active outside the region
 ```
@@ -96,13 +96,13 @@ v result = Region.enter(ffi_capability, || {
 Regions compose — nested regions combine capabilities:
 
 ```rdx
-Region.enter(file_cap, || {
+Region::enter(file_cap, || {
     // Can read/write files here
-    Region.enter(net_cap, || {
+    Region::enter(net_cap, || {
         // Can read/write files AND make network calls here
-    })
+    });
     // Only file access here
-})
+});
 ```
 
 ## Why this matters

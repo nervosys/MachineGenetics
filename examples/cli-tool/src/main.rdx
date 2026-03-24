@@ -3,78 +3,78 @@
 // Demonstrates:
 //   - Command-line argument parsing
 //   - File I/O with effects (/ io)
-//   - Iterators and for loops (@ line ~ lines)
-//   - Error handling with Result (R[T, E])
+//   - Iterators and for loops (for line in lines)
+//   - Error handling with Result<T, E>
 //   - String manipulation
 //   - Process exit codes
-//   - Constants (+v)
-//   - If/else (? / :)
-//   - Mutable variables (m)
+//   - Constants (pub const)
+//   - If/else
+//   - Mutable variables (let mut)
 
-u std.env;
-u std.fs;
-u std.io;
-u std.process;
+use std::env;
+use std::fs;
+use std::io;
+use std::process;
 
 // ── Configuration ────────────────────────────────────────────────────
 
-+v VERSION: &s = "0.1.0";
+pub const VERSION: &str = "0.1.0";
 
-@d(Debug)
-S Config {
-    pattern: s,
-    files: [s]~,
+#[derive(Debug)]
+struct Config {
+    pattern: String,
+    files: Vec<String>,
     ignore_case: bool,
     line_numbers: bool,
     count_only: bool,
     invert: bool,
 }
 
-@d(Debug)
-S Match {
-    file: s,
+#[derive(Debug)]
+struct Match {
+    file: String,
     line_num: usize,
-    line: s,
+    line: String,
 }
 
 // ── Argument parsing ─────────────────────────────────────────────────
 
-f parse_args(args: [s]~) -> R[Config, s] / io {
-    m pattern: ?s = None;
-    m files: [s]~ = []~;
-    m ignore_case = 0b;
-    m line_numbers = 0b;
-    m count_only = 0b;
-    m invert = 0b;
+fn parse_args(args: Vec<String>) -> Result<Config, String> / io {
+    let mut pattern: Option<String> = None;
+    let mut files: Vec<String> = Vec::new();
+    let mut ignore_case = false;
+    let mut line_numbers = false;
+    let mut count_only = false;
+    let mut invert = false;
 
-    m i: usize = 1; // skip program name
-    @ _ ~ 0..args.len() {
-        ? i >= args.len() {
+    let mut i: usize = 1; // skip program name
+    for _ in 0..args.len() {
+        if i >= args.len() {
             // Done.
-            ret Ok(());
+            return Ok(());
         }
 
-        v arg = &args[i];
-        ? arg.as_str() {
+        let arg = &args[i];
+        match arg.as_str() {
             "--help" | "-h" => {
                 print_usage();
-                process.exit(0);
+                process::exit(0);
             },
             "--version" | "-V" => {
-                p"rdx-grep {VERSION}";
-                process.exit(0);
+                println!("rdx-grep {VERSION}");
+                process::exit(0);
             },
-            "-i" | "--ignore-case" => ignore_case = 1b,
-            "-n" | "--line-numbers" => line_numbers = 1b,
-            "-c" | "--count" => count_only = 1b,
-            "-v" | "--invert" => invert = 1b,
+            "-i" | "--ignore-case" => ignore_case = true,
+            "-n" | "--line-numbers" => line_numbers = true,
+            "-c" | "--count" => count_only = true,
+            "-v" | "--invert" => invert = true,
             other => {
-                ? other.starts_with('-') {
-                    ret Err(f"unknown option: {other}");
+                if other.starts_with('-') {
+                    return Err(format!("unknown option: {other}"));
                 }
-                ? pattern.is_none() {
+                if pattern.is_none() {
                     pattern = Some(other.clone());
-                } : {
+                } else {
                     files.push(other.clone());
                 }
             },
@@ -82,12 +82,12 @@ f parse_args(args: [s]~) -> R[Config, s] / io {
         i = i + 1;
     }
 
-    v pat = pattern.ok_or("no search pattern specified".to_string())?;
-    ? files.is_empty() {
-        ret Err("no files specified".to_string());
+    let pat = pattern.ok_or("no search pattern specified".to_string())?;
+    if files.is_empty() {
+        return Err("no files specified".to_string());
     }
 
-    Ok(Config @{
+    Ok(Config {
         pattern: pat,
         files: files,
         ignore_case: ignore_case,
@@ -97,46 +97,46 @@ f parse_args(args: [s]~) -> R[Config, s] / io {
     })
 }
 
-f print_usage() / io {
-    ep"rdx-grep — search for patterns in files";
-    ep"";
-    ep"Usage: rdx-grep [OPTIONS] <PATTERN> <FILE...>";
-    ep"";
-    ep"Options:";
-    ep"  -i, --ignore-case    Case-insensitive matching";
-    ep"  -n, --line-numbers   Show line numbers";
-    ep"  -c, --count          Only print match count";
-    ep"  -v, --invert         Invert match (show non-matching lines)";
-    ep"  -h, --help           Show this help";
-    ep"  -V, --version        Show version";
+fn print_usage() / io {
+    eprintln!("rdx-grep — search for patterns in files");
+    eprintln!("");
+    eprintln!("Usage: rdx-grep [OPTIONS] <PATTERN> <FILE...>");
+    eprintln!("");
+    eprintln!("Options:");
+    eprintln!("  -i, --ignore-case    Case-insensitive matching");
+    eprintln!("  -n, --line-numbers   Show line numbers");
+    eprintln!("  -c, --count          Only print match count");
+    eprintln!("  -v, --invert         Invert match (show non-matching lines)");
+    eprintln!("  -h, --help           Show this help");
+    eprintln!("  -V, --version        Show version");
 }
 
 // ── Search logic ─────────────────────────────────────────────────────
 
-f search_file(path: &s, config: &Config) -> R[[Match]~, s] / io {
-    v content = fs.read_to_string(path)
-        .map_err(|e| f"cannot read {path}: {e}")?;
+fn search_file(path: &str, config: &Config) -> Result<Vec<Match>, String> / io {
+    let content = fs::read_to_string(path)
+        .map_err(|e| format!("cannot read {path}: {e}"))?;
 
-    m matches: [Match]~ = []~;
+    let mut matches: Vec<Match> = Vec::new();
 
-    v search_pattern = ? config.ignore_case {
+    let search_pattern = if config.ignore_case {
         config.pattern.to_lowercase()
-    } : {
+    } else {
         config.pattern.clone()
     };
 
-    @ (line_num, line) ~ content.lines().enumerate() {
-        v hay = ? config.ignore_case {
+    for (line_num, line) in content.lines().enumerate() {
+        let hay = if config.ignore_case {
             line.to_lowercase()
-        } : {
+        } else {
             line.to_string()
         };
 
-        v found = hay.contains(&search_pattern);
-        v include = ? config.invert { !found } : { found };
+        let found = hay.contains(&search_pattern);
+        let include = if config.invert { !found } else { found };
 
-        ? include {
-            matches.push(Match @{
+        if include {
+            matches.push(Match {
                 file: path.to_string(),
                 line_num: line_num + 1,
                 line: line.to_string(),
@@ -149,87 +149,87 @@ f search_file(path: &s, config: &Config) -> R[[Match]~, s] / io {
 
 // ── Output ───────────────────────────────────────────────────────────
 
-f print_matches(matches: &[Match]~, config: &Config, multi_file: bool) / io {
-    ? config.count_only {
-        ? multi_file {
+fn print_matches(matches: &Vec<Match>, config: &Config, multi_file: bool) / io {
+    if config.count_only {
+        if multi_file {
             // Group by file.
-            m current_file: s = "".to_string();
-            m count: usize = 0;
-            @ m ~ matches {
-                ? m.file != current_file {
-                    ? !current_file.is_empty() {
-                        p"{current_file}:{count}";
+            let mut current_file: String = "".to_string();
+            let mut count: usize = 0;
+            for m in matches {
+                if m.file != current_file {
+                    if !current_file.is_empty() {
+                        println!("{current_file}:{count}");
                     }
                     current_file = m.file.clone();
                     count = 0;
                 }
                 count = count + 1;
             }
-            ? !current_file.is_empty() {
-                p"{current_file}:{count}";
+            if !current_file.is_empty() {
+                println!("{current_file}:{count}");
             }
-        } : {
-            p"{matches.len()}";
+        } else {
+            println!("{matches.len()}");
         }
-        ret;
+        return;
     }
 
-    @ m ~ matches {
-        v prefix = ? multi_file {
-            ? config.line_numbers {
-                f"{m.file}:{m.line_num}:"
-            } : {
-                f"{m.file}:"
+    for m in matches {
+        let prefix = if multi_file {
+            if config.line_numbers {
+                format!("{m.file}:{m.line_num}:")
+            } else {
+                format!("{m.file}:")
             }
-        } : {
-            ? config.line_numbers {
-                f"{m.line_num}:"
-            } : {
+        } else {
+            if config.line_numbers {
+                format!("{m.line_num}:")
+            } else {
                 "".to_string()
             }
         };
-        p"{prefix}{m.line}";
+        println!("{prefix}{m.line}");
     }
 }
 
 // ── Entry point ──────────────────────────────────────────────────────
 
-+f main() / io {
-    v args: [s]~ = env.args().collect();
+pub fn main() / io {
+    let args: Vec<String> = env::args().collect();
 
-    v config = ? parse_args(args) {
+    let config = match parse_args(args) {
         Ok(c) => c,
         Err(e) => {
-            ep"error: {e}";
+            eprintln!("error: {e}");
             print_usage();
-            process.exit(1);
+            process::exit(1);
         },
     };
 
-    v multi_file = config.files.len() > 1;
-    m all_matches: [Match]~ = []~;
-    m had_error = 0b;
+    let multi_file = config.files.len() > 1;
+    let mut all_matches: Vec<Match> = Vec::new();
+    let mut had_error = false;
 
-    @ file ~ &config.files {
-        ? search_file(file, &config) {
+    for file in &config.files {
+        match search_file(file, &config) {
             Ok(matches) => {
-                @ m ~ matches {
+                for m in matches {
                     all_matches.push(m);
                 }
             },
             Err(e) => {
-                ep"{e}";
-                had_error = 1b;
+                eprintln!("{e}");
+                had_error = true;
             },
         }
     }
 
     print_matches(&all_matches, &config, multi_file);
 
-    ? had_error {
-        process.exit(2);
+    if had_error {
+        process::exit(2);
     }
-    ? all_matches.is_empty() {
-        process.exit(1);
+    if all_matches.is_empty() {
+        process::exit(1);
     }
 }

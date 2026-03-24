@@ -1,49 +1,49 @@
 # Concurrency
 
-Redox provides both synchronous primitives (`std.sync`) and async utilities
-(`std.async`).
+Redox provides both synchronous primitives (`std::sync`) and async utilities
+(`std::async`).
 
 ## Mutex
 
 ```rdx
-u std.sync.Mutex
+use std::sync::Mutex;
 
-+f main() / async {
-    v counter = @.new(Mutex.new(0))    // Arc<Mutex<i32>>
+pub fn main() / async {
+    let counter = Arc::new(Mutex::new(0));    // Arc<Mutex<i32>>
 
-    m handles = [JoinHandle[()]]~.new()
-    @ _ : 0..10 {
-        v counter = counter.clone()
-        v h = spawn(|| {
-            m guard = counter.lock()?
-            *guard += 1
-        })
-        handles.push(h)
+    let mut handles: Vec<JoinHandle<()>> = Vec::new();
+    for _ in 0..10 {
+        let counter = counter.clone();
+        let h = spawn(|| {
+            let mut guard = counter.lock()?;
+            *guard += 1;
+        });
+        handles.push(h);
     }
 
-    @ h : handles { h.join()? }
-    p"Count: {*counter.lock()?}"    // 10
+    for h in handles { h.join()?; }
+    println!("Count: {}", *counter.lock()?);    // 10
 }
 ```
 
 ## Channels
 
 ```rdx
-u std.sync.{channel, Sender, Receiver}
+use std::sync::{channel, Sender, Receiver};
 
-+f main() / async, io {
-    v (tx, rx) = channel[s]()
+pub fn main() / async, io {
+    let (tx, rx) = channel::<String>();
 
     // Spawn a producer
     spawn(|| / io {
-        @ i : 0..5 {
-            tx.send(f"message {i}")?
+        for i in 0..5 {
+            tx.send(format!("message {i}"))?;
         }
-    })
+    });
 
     // Receive messages
-    @ msg : rx {
-        p"Got: {msg}"
+    for msg in rx {
+        println!("Got: {msg}");
     }
 }
 ```
@@ -51,21 +51,21 @@ u std.sync.{channel, Sender, Receiver}
 ## Async / Await
 
 ```rdx
-u std.async.{spawn, join, sleep}
-u std.time.Duration
+use std::async::{spawn, join, sleep};
+use std::time::Duration;
 
-+af main() / async, io {
+pub async fn main() / async, io {
     // Spawn concurrent tasks
-    v h1 = spawn(|| fetch("https://api.example.com/a"))
-    v h2 = spawn(|| fetch("https://api.example.com/b"))
+    let h1 = spawn(|| fetch("https://api.example.com/a"));
+    let h2 = spawn(|| fetch("https://api.example.com/b"));
 
     // Await both
-    v (a, b) = join(h1, h2).await?
-    p"Results: {a}, {b}"
+    let (a, b) = join(h1, h2).await?;
+    println!("Results: {a}, {b}");
 }
 
-+af fetch(url: &s) -> R[s, Error] / net {
-    v resp = Request.get(url).send().await?
+pub async fn fetch(url: &str) -> Result<String, Error> / net {
+    let resp = Request::get(url).send().await?;
     resp.text().await
 }
 ```
@@ -73,35 +73,35 @@ u std.time.Duration
 ## Select (first completion)
 
 ```rdx
-u std.async.{spawn, select}
+use std::async::{spawn, select};
 
-+af main() / async {
-    v fast = spawn(|| fast_operation())
-    v slow = spawn(|| slow_operation())
+pub async fn main() / async {
+    let fast = spawn(|| fast_operation());
+    let slow = spawn(|| slow_operation());
 
     // Return whichever finishes first
-    v result = select(fast, slow).await
+    let result = select(fast, slow).await;
 }
 ```
 
 ## RwLock
 
 ```rdx
-u std.sync.RwLock
+use std::sync::RwLock;
 
-+f main() / async {
-    v data = @.new(RwLock.new([1, 2, 3]~))
+pub fn main() / async {
+    let data = Arc::new(RwLock::new(vec![1, 2, 3]));
 
     // Multiple readers
     {
-        v guard = data.read()?
-        p"data: {guard}"
+        let guard = data.read()?;
+        println!("data: {guard}");
     }
 
     // One writer
     {
-        m guard = data.write()?
-        guard.push(4)
+        let mut guard = data.write()?;
+        guard.push(4);
     }
 }
 ```
@@ -111,12 +111,12 @@ u std.sync.RwLock
 For lock-free counters and flags:
 
 ```rdx
-u std.sync.{AtomicUsize, Ordering}
+use std::sync::{AtomicUsize, Ordering};
 
-v counter = AtomicUsize.new(0)
+let counter = AtomicUsize::new(0);
 
 // From multiple threads
-counter.fetch_add(1, Ordering.SeqCst)
+counter.fetch_add(1, Ordering::SeqCst);
 
-v val = counter.load(Ordering.SeqCst)
+let val = counter.load(Ordering::SeqCst);
 ```

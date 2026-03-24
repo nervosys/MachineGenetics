@@ -4,16 +4,16 @@ Redox defines a set of built-in effects for common side-effect categories.
 
 ## Effect catalog
 
-| Effect    | Meaning                 | Triggered by                        |
-| --------- | ----------------------- | ----------------------------------- |
-| `io`      | File I/O, console I/O   | `File.read`, `print`, `stdin`       |
-| `net`     | Networking              | `TcpStream`, `Request`, `UdpSocket` |
-| `rng`     | Randomness              | `Rng.new()`, `shuffle`, `choose`    |
-| `async`   | Asynchronous operations | `spawn`, `sleep`, `select`          |
-| `agent`   | Agent communication     | `Swarm.send`, `Bus.publish`         |
-| `time`    | Time observation        | `Instant.now()`, `SystemTime.now()` |
-| `env`     | Environment access      | `args()`, `var()`, `current_dir()`  |
-| `process` | Process management      | `Command.spawn`, `exit`             |
+| Effect    | Meaning                 | Triggered by                          |
+| --------- | ----------------------- | ------------------------------------- |
+| `io`      | File I/O, console I/O   | `File::read`, `print`, `stdin`        |
+| `net`     | Networking              | `TcpStream`, `Request`, `UdpSocket`   |
+| `rng`     | Randomness              | `Rng::new()`, `shuffle`, `choose`     |
+| `async`   | Asynchronous operations | `spawn`, `sleep`, `select`            |
+| `agent`   | Agent communication     | `Swarm::send`, `Bus::publish`         |
+| `time`    | Time observation        | `Instant::now()`, `SystemTime::now()` |
+| `env`     | Environment access      | `args()`, `var()`, `current_dir()`    |
+| `process` | Process management      | `Command::spawn`, `exit`              |
 
 ## Effect hierarchy
 
@@ -32,21 +32,21 @@ If your function declares `/ net`, it implicitly has `/ io` as well.
 You can define your own effects using the `Effect` trait:
 
 ```rdx
-u std.effect.Effect
+use std::effect::Effect;
 
-+S DbEffect;
+pub struct DbEffect;
 
-I Effect ~ DbEffect {
+impl Effect for DbEffect {
     type Input = Query;
-    type Output = R[Rows, DbError];
+    type Output = Result<Rows, DbError>;
 }
 ```
 
 Then use it in function signatures:
 
 ```rdx
-+f run_query(q: &Query) -> R[Rows, DbError] / db {
-    perform[DbEffect](q.clone())
+pub fn run_query(q: &Query) -> Result<Rows, DbError> / db {
+    perform::<DbEffect>(q.clone())
 }
 ```
 
@@ -56,11 +56,11 @@ Real applications combine effects naturally:
 
 ```rdx
 // A web handler: reads DB, writes logs, returns HTTP response
-+f handle_request(req: &Request) -> R[Response, Error] / io, net, db {
-    v user_id = req.param("id")?
-    v user = db_query(f"SELECT * FROM users WHERE id = {user_id}")?
-    log(f"Fetched user {user_id}")?
-    Ok(Response.json(&user))
+pub fn handle_request(req: &Request) -> Result<Response, Error> / io, net, db {
+    let user_id = req.param("id")?;
+    let user = db_query(&format!("SELECT * FROM users WHERE id = {user_id}"))?;
+    log(&format!("Fetched user {user_id}"))?;
+    Ok(Response::json(&user))
 }
 ```
 
@@ -71,8 +71,8 @@ inputs and can be freely cached, memoized, parallelized, and reordered:
 
 ```rdx
 // Pure: depends only on input
-+f fibonacci(n: u64) -> u64 {
-    ? n <= 1 { n } : { fibonacci(n - 1) + fibonacci(n - 2) }
+pub fn fibonacci(n: u64) -> u64 {
+    if n <= 1 { n } else { fibonacci(n - 1) + fibonacci(n - 2) }
 }
 
 // The compiler knows this is pure and can optimize accordingly

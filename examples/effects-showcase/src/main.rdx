@@ -10,9 +10,9 @@
 //   - Effect constraints in specs (@fx)
 //   - Practical patterns: logging, database, async I/O
 
-u std.io;
-u std.fmt;
-u std.col;
+use std::io;
+use std::fmt;
+use std::col;
 
 // ─────────────────────────────────────────────────────────────────────
 // §1 — Declaring custom effects
@@ -24,28 +24,28 @@ u std.col;
 
 // Standard I/O effect (provided by std, shown here for illustration).
 effect io {
-    f read(fd: i32, buf: &![u8]) -> isize;
-    f write(fd: i32, buf: &[u8]) -> isize;
+    fn read(fd: i32, buf: &mut [u8]) -> isize;
+    fn write(fd: i32, buf: &[u8]) -> isize;
 }
 
 // Logging effect — separates "what to log" from "how to log".
 effect log {
-    f info(msg: &s);
-    f warn(msg: &s);
-    f error(msg: &s);
+    fn info(msg: &str);
+    fn warn(msg: &str);
+    fn error(msg: &str);
 }
 
 // Database effect — abstract over storage backend.
 effect db {
-    f get(key: &s) -> ?s;
-    f put(key: &s, value: &s);
-    f delete(key: &s) -> bool;
+    fn get(key: &str) -> Option<String>;
+    fn put(key: &str, value: &str);
+    fn delete(key: &str) -> bool;
 }
 
 // Random number generation effect.
 effect rng {
-    f next_u64() -> u64;
-    f next_f64() -> f64;
+    fn next_u64() -> u64;
+    fn next_f64() -> f64;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -55,21 +55,21 @@ effect rng {
 // Functions without an effect annotation are guaranteed pure by the
 // compiler — no I/O, no mutation of global state, no randomness.
 
-f add(a: i32, b: i32) -> i32 {
+fn add(a: i32, b: i32) -> i32 {
     a + b
 }
 
-f fibonacci(n: u64) -> u64 {
-    ? n <= 1 {
-        ret n;
+fn fibonacci(n: u64) -> u64 {
+    if n <= 1 {
+        return n;
     }
     fibonacci(n - 1) + fibonacci(n - 2)
 }
 
-f reverse[T: Clone](items: &[T]~) -> [T]~ {
-    m result: [T]~ = []~;
-    m i = items.len();
-    @ _ ~ 0..items.len() {
+fn reverse<T: Clone>(items: &Vec<T>) -> Vec<T> {
+    let mut result: Vec<T> = Vec::new();
+    let mut i = items.len();
+    for _ in 0..items.len() {
         i = i - 1;
         result.push(items[i].clone());
     }
@@ -85,19 +85,19 @@ f reverse[T: Clone](items: &[T]~) -> [T]~ {
 // from its declared effect set.
 
 // Single effect — this function does I/O.
-f greet(name: &s) / io {
-    p"Hello, {name}!";
+fn greet(name: &str) / io {
+    println!("Hello, {name}!");
 }
 
 // Single effect — logging only.
-f log_startup() / log {
-    log.info("Application starting");
-    log.info("Loading configuration");
+fn log_startup() / log {
+    log::info("Application starting");
+    log::info("Loading configuration");
 }
 
 // Database access.
-f lookup_user(id: &s) / db -> ?s {
-    db.get(id)
+fn lookup_user(id: &str) / db -> Option<String> {
+    db::get(id)
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -106,28 +106,28 @@ f lookup_user(id: &s) / db -> ?s {
 //
 // Functions that use multiple effects compose them with `+`.
 
-f initialize_db(entries: &[(&s, &s)]~) / db + log {
-    log.info("Seeding database");
-    @ (key, value) ~ entries {
-        db.put(key, value);
-        log.info(&f"  stored: {key}");
+fn initialize_db(entries: &Vec<(&str, &str)>) / db + log {
+    log::info("Seeding database");
+    for (key, value) in entries {
+        db::put(key, value);
+        log::info(&format!("  stored: {key}"));
     }
-    log.info(&f"Seeded {entries.len()} entries");
+    log::info(&format!("Seeded {entries.len()} entries"));
 }
 
-f process_request(user_id: &s) / io + db + log -> R[s, s] {
-    log.info(&f"Processing request for user {user_id}");
+fn process_request(user_id: &str) / io + db + log -> Result<String, String> {
+    log::info(&format!("Processing request for user {user_id}"));
 
-    v user = db.get(user_id);
-    ? user {
+    let user = db::get(user_id);
+    match user {
         Some(name) => {
-            p"Found user: {name}";
-            log.info(&f"User {user_id} found");
+            println!("Found user: {name}");
+            log::info(&format!("User {user_id} found"));
             Ok(name)
         },
         None => {
-            log.warn(&f"User {user_id} not found");
-            Err(f"unknown user: {user_id}")
+            log::warn(&format!("User {user_id} not found"));
+            Err(format!("unknown user: {user_id}"))
         },
     }
 }
@@ -139,9 +139,9 @@ f process_request(user_id: &s) / io + db + log -> R[s, s] {
 // Generic functions can be polymorphic over an effect variable `E`,
 // so they work with any effect set determined by their arguments.
 
-f transform[T, U, E](items: &[T]~, func: f(&T) -> E U) -> E [U]~ {
-    m results: [U]~ = []~;
-    @ item ~ items {
+fn transform<T, U, E>(items: &Vec<T>, func: fn(&T) -> E U) -> E Vec<U> {
+    let mut results: Vec<U> = Vec::new();
+    for item in items {
         results.push(func(item));
     }
     results
@@ -151,19 +151,19 @@ f transform[T, U, E](items: &[T]~, func: f(&T) -> E U) -> E [U]~ {
 // When called with an effectful closure, `transform` inherits that
 // effect.
 
-f demo_polymorphism() / io {
-    v numbers = [1, 2, 3, 4, 5]~;
+fn demo_polymorphism() / io {
+    let numbers = vec![1, 2, 3, 4, 5];
 
     // Pure usage — transform inherits no effects.
-    v doubled = transform(&numbers, |n| n * 2);
-    p"Doubled: {doubled:?}";
+    let doubled = transform(&numbers, |n| n * 2);
+    println!("Doubled: {doubled:?}");
 
     // Effectful usage — transform inherits / io from the closure.
-    v printed = transform(&numbers, |n| {
-        p"  processing {n}";
+    let printed = transform(&numbers, |n| {
+        println!("  processing {n}");
         n * 10
     });
-    p"Processed: {printed:?}";
+    println!("Processed: {printed:?}");
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -174,59 +174,59 @@ f demo_polymorphism() / io {
 // implementations.  This separates policy from mechanism.
 
 // A console-based log handler.
-S ConsoleLogger;
+struct ConsoleLogger;
 
-I ~ ConsoleLogger {
-    f new() -> ConsoleLogger {
+impl ConsoleLogger {
+    fn new() -> ConsoleLogger {
         ConsoleLogger
     }
 }
 
-handle log ~ ConsoleLogger {
-    f info(msg: &s) {
-        p"[INFO]  {msg}";
+handle log for ConsoleLogger {
+    fn info(msg: &str) {
+        println!("[INFO]  {msg}");
     }
-    f warn(msg: &s) {
-        p"[WARN]  {msg}";
+    fn warn(msg: &str) {
+        println!("[WARN]  {msg}");
     }
-    f error(msg: &s) {
-        ep"[ERROR] {msg}";
+    fn error(msg: &str) {
+        eprintln!("[ERROR] {msg}");
     }
 }
 
 // An in-memory database handler (useful for testing).
-S MemoryDb {
-    store: {s: s},
+struct MemoryDb {
+    store: HashMap<String, String>,
 }
 
-I ~ MemoryDb {
-    f new() -> MemoryDb {
-        MemoryDb @{ store: HashMap.new() }
+impl MemoryDb {
+    fn new() -> MemoryDb {
+        MemoryDb { store: HashMap::new() }
     }
 }
 
-handle db ~ MemoryDb {
-    f get(key: &s) -> ?s {
+handle db for MemoryDb {
+    fn get(key: &str) -> Option<String> {
         self.store.get(key).cloned()
     }
-    f put(key: &s, value: &s) {
+    fn put(key: &str, value: &str) {
         self.store.insert(key.clone(), value.clone());
     }
-    f delete(key: &s) -> bool {
+    fn delete(key: &str) -> bool {
         self.store.remove(key).is_some()
     }
 }
 
 // A deterministic RNG handler (repeatable tests).
-S FixedRng {
+struct FixedRng {
     value: u64,
 }
 
-handle rng ~ FixedRng {
-    f next_u64() -> u64 {
+handle rng for FixedRng {
+    fn next_u64() -> u64 {
         self.value
     }
-    f next_f64() -> f64 {
+    fn next_f64() -> f64 {
         (self.value % 1000) as f64 / 1000.0
     }
 }
@@ -238,7 +238,7 @@ handle rng ~ FixedRng {
 // Specs can use @fx to constrain which effects a conforming
 // implementation may use.
 
-spec PureSort[T: Ord] {
+spec PureSort<T: Ord> {
     @fx();                          // must be pure — no effects allowed
     @req(items.len() > 0);
     @ens(|result| result.len() == items.len());
@@ -259,96 +259,96 @@ spec DatabaseService {
 //   - Presentation layer adds io
 
 // Domain layer — pure business rules.
-S Order {
+struct Order {
     id: u64,
-    item: s,
+    item: String,
     quantity: u32,
     price_cents: u64,
 }
 
-f calculate_total(order: &Order) -> u64 {
+fn calculate_total(order: &Order) -> u64 {
     order.quantity as u64 * order.price_cents
 }
 
-f apply_discount(total: u64, percent: u32) -> u64 {
+fn apply_discount(total: u64, percent: u32) -> u64 {
     total - (total * percent as u64 / 100)
 }
 
-f validate_order(order: &Order) -> R[(), s] {
-    ? order.quantity == 0 {
-        ret Err("quantity must be > 0".to_string());
+fn validate_order(order: &Order) -> Result<(), String> {
+    if order.quantity == 0 {
+        return Err("quantity must be > 0".to_string());
     }
-    ? order.price_cents == 0 {
-        ret Err("price must be > 0".to_string());
+    if order.price_cents == 0 {
+        return Err("price must be > 0".to_string());
     }
     Ok(())
 }
 
 // Application layer — orchestrated with db + log effects.
-f save_order(order: &Order) / db + log -> R[(), s] {
+fn save_order(order: &Order) / db + log -> Result<(), String> {
     validate_order(order)?;
-    v total = calculate_total(order);
-    v discounted = apply_discount(total, 10);
+    let total = calculate_total(order);
+    let discounted = apply_discount(total, 10);
 
-    db.put(
-        &f"{order.id}",
-        &f"{order.item}|{order.quantity}|{discounted}",
+    db::put(
+        &format!("{order.id}"),
+        &format!("{order.item}|{order.quantity}|{discounted}"),
     );
-    log.info(&f"Order {order.id} saved — total: {discounted} cents");
+    log::info(&format!("Order {order.id} saved — total: {discounted} cents"));
     Ok(())
 }
 
 // Presentation layer — adds io for user interaction.
-f print_receipt(order: &Order) / io + db + log {
-    v total = calculate_total(order);
-    v discounted = apply_discount(total, 10);
+fn print_receipt(order: &Order) / io + db + log {
+    let total = calculate_total(order);
+    let discounted = apply_discount(total, 10);
 
-    p"╔══════════════════════════╗";
-    p"║       RECEIPT            ║";
-    p"╠══════════════════════════╣";
-    p"║ Order:    {order.id:<15}║";
-    p"║ Item:     {order.item:<15}║";
-    p"║ Qty:      {order.quantity:<15}║";
-    p"║ Subtotal: {total:<15}║";
-    p"║ Discount: 10%            ║";
-    p"║ Total:    {discounted:<15}║";
-    p"╚══════════════════════════╝";
+    println!("╔══════════════════════════╗");
+    println!("║       RECEIPT            ║");
+    println!("╠══════════════════════════╣");
+    println!("║ Order:    {order.id:<15}║");
+    println!("║ Item:     {order.item:<15}║");
+    println!("║ Qty:      {order.quantity:<15}║");
+    println!("║ Subtotal: {total:<15}║");
+    println!("║ Discount: 10%            ║");
+    println!("║ Total:    {discounted:<15}║");
+    println!("╚══════════════════════════╝");
 
-    log.info(&f"Receipt printed for order {order.id}");
+    log::info(&format!("Receipt printed for order {order.id}"));
 }
 
 // ─────────────────────────────────────────────────────────────────────
 // §9 — Entry point — wiring handlers to effects
 // ─────────────────────────────────────────────────────────────────────
 
-+f main() / io {
-    p"=== Redox Effects Showcase ===";
-    p"";
+pub fn main() / io {
+    println!("=== Redox Effects Showcase ===");
+    println!("");
 
     // §2 — Pure functions.
-    p"-- Pure functions --";
-    p"add(3, 4) = {add(3, 4)}";
-    p"fibonacci(10) = {fibonacci(10)}";
-    v items = [1, 2, 3]~;
-    p"reverse([1,2,3]) = {reverse(&items):?}";
-    p"";
+    println!("-- Pure functions --");
+    println!("add(3, 4) = {add(3, 4)}");
+    println!("fibonacci(10) = {fibonacci(10)}");
+    let items = vec![1, 2, 3];
+    println!("reverse([1,2,3]) = {reverse(&items):?}");
+    println!("");
 
     // §3 — Single effect annotation.
-    p"-- Single effect (/ io) --";
+    println!("-- Single effect (/ io) --");
     greet("Redox");
-    p"";
+    println!("");
 
     // §5 — Effect polymorphism.
-    p"-- Effect polymorphism --";
+    println!("-- Effect polymorphism --");
     demo_polymorphism();
-    p"";
+    println!("");
 
     // §6 + §8 — Handlers + layered architecture.
-    p"-- Layered architecture with handlers --";
-    m db_handler = MemoryDb.new();
-    v logger = ConsoleLogger.new();
+    println!("-- Layered architecture with handlers --");
+    let mut db_handler = MemoryDb::new();
+    let logger = ConsoleLogger::new();
 
-    v order = Order @{
+    let order = Order {
         id: 1001,
         item: "Widget".to_string(),
         quantity: 3,
@@ -361,6 +361,6 @@ f print_receipt(order: &Order) / io + db + log {
         print_receipt(&order);
     }
 
-    p"";
-    p"=== Done ===";
+    println!("");
+    println!("=== Done ===");
 }

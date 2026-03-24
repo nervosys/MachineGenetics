@@ -16,25 +16,25 @@ Every function that performs a side effect declares it after `/`:
 
 ```rdx
 // Pure function — no effects
-+f add(a: i32, b: i32) -> i32 {
+pub fn add(a: i32, b: i32) -> i32 {
     a + b
 }
 
 // Reads/writes files — io effect
-+f read_config(path: &s) -> R[Config, Error] / io {
-    v data = File.read(path)?
+pub fn read_config(path: &str) -> Result<Config, Error> / io {
+    let data = File::read(path)?;
     parse(&data)
 }
 
 // Makes network requests — net effect (implies io)
-+f fetch_api(url: &s) -> R[Value, Error] / net {
-    v resp = Request.get(url).send()?
+pub fn fetch_api(url: &str) -> Result<Value, Error> / net {
+    let resp = Request::get(url).send()?;
     parse(&resp.text()?)
 }
 
 // Uses randomness
-+f roll_dice() -> u32 / rng {
-    Rng.new().range_int(1, 7)
+pub fn roll_dice() -> u32 / rng {
+    Rng::new().range_int(1, 7)
 }
 ```
 
@@ -44,13 +44,13 @@ Effects propagate up the call chain. If `foo()` calls `bar() / io`, then `foo`
 must also declare `/ io` (or handle the effect):
 
 ```rdx
-f bar() / io {
-    p"hello"
+fn bar() / io {
+    println!("hello");
 }
 
 // Must declare / io because it calls bar()
-f foo() / io {
-    bar()
+fn foo() / io {
+    bar();
 }
 
 // The compiler infers and checks effect propagation
@@ -61,9 +61,9 @@ f foo() / io {
 Functions can have multiple effects, comma-separated:
 
 ```rdx
-+f scrape_and_save(url: &s, path: &s) -> R[(), Error] / io, net {
-    v data = Request.get(url).send()?.text()?
-    File.write(path, &data)?
+pub fn scrape_and_save(url: &str, path: &str) -> Result<(), Error> / io, net {
+    let data = Request::get(url).send()?.text()?;
+    File::write(path, &data)?;
     Ok(())
 }
 ```
@@ -72,11 +72,11 @@ Functions can have multiple effects, comma-separated:
 
 Effects serve as machine-readable documentation. At a glance, you know:
 
-- `f calculate(...) -> f64` — pure computation, no side effects
-- `f read_file(...) / io` — touches the filesystem
-- `f fetch(...) / net` — makes network calls
-- `f simulate(...) / rng` — uses randomness (non-deterministic)
-- `f coordinate(...) / agent` — communicates with other agents
+- `fn calculate(...) -> f64` — pure computation, no side effects
+- `fn read_file(...) / io` — touches the filesystem
+- `fn fetch(...) / net` — makes network calls
+- `fn simulate(...) / rng` — uses randomness (non-deterministic)
+- `fn coordinate(...) / agent` — communicates with other agents
 
 For AI agents, this is invaluable — the effect signature tells the agent exactly
 what a function can do without reading the implementation.
@@ -87,8 +87,8 @@ The compiler tracks effects and reports violations:
 
 ```rdx
 // ERROR: function performs io but does not declare / io
-f sneaky() {
-    p"I'm printing!"    // io effect not declared!
+fn sneaky() {
+    println!("I'm printing!");    // io effect not declared!
 }
 ```
 

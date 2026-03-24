@@ -1,53 +1,53 @@
 // http-client — Async HTTP client with JSON parsing.
 //
 // Demonstrates:
-//   - Async functions (+af, af)
+//   - Async functions (pub async fn, async fn)
 //   - Effect annotations (/ io, / net)
-//   - Error handling with Result (R[T, E])
+//   - Error handling with Result<T, E>
 //   - JSON deserialization
-//   - Struct + derive (@d)
-//   - For loops (@ item ~ iter)
-//   - String formatting (f"...")
-//   - Print macros (p"...", ep"...")
+//   - Struct + derive (#[derive])
+//   - For loops (for item in iter)
+//   - String formatting (format!("..."))
+//   - Print macros (println!("..."), eprintln!("..."))
 
-u std.io;
-u std.net;
-u std.json;
-u std.fmt;
+use std::io;
+use std::net;
+use std::json;
+use std::fmt;
 
 // ── Data types ───────────────────────────────────────────────────────
 
-@d(Debug, Clone)
-+S User {
+#[derive(Debug, Clone)]
+pub struct User {
     id: u64,
-    name: s,
-    email: s,
+    name: String,
+    email: String,
     active: bool,
 }
 
-@d(Debug, Clone)
-+S Post {
+#[derive(Debug, Clone)]
+pub struct Post {
     id: u64,
     user_id: u64,
-    title: s,
-    body: s,
+    title: String,
+    body: String,
 }
 
-@d(Debug)
-+E ApiError {
-    NetworkError(s),
-    ParseError(s),
+#[derive(Debug)]
+pub enum ApiError {
+    NetworkError(String),
+    ParseError(String),
     NotFound,
     RateLimited { retry_after: u64 },
 }
 
-I fmt.Display ~ ApiError {
-    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
-        ? self {
-            ApiError.NetworkError(msg) => write!(f, "network error: {msg}"),
-            ApiError.ParseError(msg) => write!(f, "parse error: {msg}"),
-            ApiError.NotFound => write!(f, "resource not found"),
-            ApiError.RateLimited { retry_after } =>
+impl fmt::Display for ApiError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ApiError::NetworkError(msg) => write!(f, "network error: {msg}"),
+            ApiError::ParseError(msg) => write!(f, "parse error: {msg}"),
+            ApiError::NotFound => write!(f, "resource not found"),
+            ApiError::RateLimited { retry_after } =>
                 write!(f, "rate limited, retry after {retry_after}s"),
         }
     }
@@ -55,83 +55,83 @@ I fmt.Display ~ ApiError {
 
 // ── HTTP client wrapper ──────────────────────────────────────────────
 
-+S ApiClient {
-    base_url: s,
+pub struct ApiClient {
+    base_url: String,
     timeout_ms: u64,
 }
 
-I ~ ApiClient {
-    +f new(base_url: s) -> ApiClient {
-        ApiClient @{ base_url: base_url, timeout_ms: 5000 }
+impl ApiClient {
+    pub fn new(base_url: String) -> ApiClient {
+        ApiClient { base_url: base_url, timeout_ms: 5000 }
     }
 
-    +f with_timeout(base_url: s, timeout_ms: u64) -> ApiClient {
-        ApiClient @{ base_url: base_url, timeout_ms: timeout_ms }
+    pub fn with_timeout(base_url: String, timeout_ms: u64) -> ApiClient {
+        ApiClient { base_url: base_url, timeout_ms: timeout_ms }
     }
 
     /// Fetch a single resource by path.
-    +af get[T: json.Deserialize](&self, path: &s) -> R[T, ApiError] / net, io {
-        v url = f"{self.base_url}{path}";
-        v response = net.get(&url)
+    pub async fn get<T: json::Deserialize>(&self, path: &str) -> Result<T, ApiError> / net, io {
+        let url = format!("{self.base_url}{path}");
+        let response = net::get(&url)
             .timeout(self.timeout_ms)
             .send()
             .await
-            .map_err(|e| ApiError.NetworkError(f"{e}"))?;
+            .map_err(|e| ApiError::NetworkError(format!("{e}")))?;
 
-        ? response.status() != 200 {
-            ? response.status() == 404 {
-                ret Err(ApiError.NotFound);
+        if response.status() != 200 {
+            if response.status() == 404 {
+                return Err(ApiError::NotFound);
             }
-            ? response.status() == 429 {
-                v retry = response.header("Retry-After")
-                    .and_then(|v| v.parse.[u64]().ok())
+            if response.status() == 429 {
+                let retry = response.header("Retry-After")
+                    .and_then(|v| v.parse::<u64>().ok())
                     .unwrap_or(60);
-                ret Err(ApiError.RateLimited @{ retry_after: retry });
+                return Err(ApiError::RateLimited { retry_after: retry });
             }
-            ret Err(ApiError.NetworkError(f"HTTP {response.status()}"));
+            return Err(ApiError::NetworkError(format!("HTTP {response.status()}")));
         }
 
-        v body = response.text().await
-            .map_err(|e| ApiError.NetworkError(f"{e}"))?;
+        let body = response.text().await
+            .map_err(|e| ApiError::NetworkError(format!("{e}")))?;
 
-        json.from_str(&body)
-            .map_err(|e| ApiError.ParseError(f"{e}"))
+        json::from_str(&body)
+            .map_err(|e| ApiError::ParseError(format!("{e}")))
     }
 
     /// Fetch a list of resources.
-    +af list[T: json.Deserialize](&self, path: &s) -> R[[T]~, ApiError] / net, io {
+    pub async fn list<T: json::Deserialize>(&self, path: &str) -> Result<Vec<T>, ApiError> / net, io {
         self.get(path).await
     }
 }
 
 // ── Application logic ────────────────────────────────────────────────
 
-af fetch_user_posts(client: &ApiClient, user_id: u64)
-    -> R[[Post]~, ApiError] / net, io
+async fn fetch_user_posts(client: &ApiClient, user_id: u64)
+    -> Result<Vec<Post>, ApiError> / net, io
 {
-    v path = f"/users/{user_id}/posts";
-    client.list.[Post](&path).await
+    let path = format!("/users/{user_id}/posts");
+    client.list::<Post>(&path).await
 }
 
-af display_user_summary(client: &ApiClient, user_id: u64)
-    -> R[(), ApiError] / net, io
+async fn display_user_summary(client: &ApiClient, user_id: u64)
+    -> Result<(), ApiError> / net, io
 {
     // Fetch user and posts concurrently.
-    v user_future = client.get.[User](&f"/users/{user_id}");
-    v posts_future = fetch_user_posts(client, user_id);
+    let user_future = client.get::<User>(&format!("/users/{user_id}"));
+    let posts_future = fetch_user_posts(client, user_id);
 
-    v user = user_future.await?;
-    v posts = posts_future.await?;
+    let user = user_future.await?;
+    let posts = posts_future.await?;
 
-    p"";
-    p"=== User: {user.name} ===";
-    p"  Email:  {user.email}";
-    p"  Active: {user.active}";
-    p"  Posts:  {posts.len()}";
-    p"";
+    println!("");
+    println!("=== User: {user.name} ===");
+    println!("  Email:  {user.email}");
+    println!("  Active: {user.active}");
+    println!("  Posts:  {posts.len()}");
+    println!("");
 
-    @ post ~ &posts {
-        p"  [{post.id}] {post.title}";
+    for post in &posts {
+        println!("  [{post.id}] {post.title}");
     }
 
     Ok(())
@@ -139,31 +139,31 @@ af display_user_summary(client: &ApiClient, user_id: u64)
 
 // ── Entry point ──────────────────────────────────────────────────────
 
-+af main() -> R[(), ApiError] / net, io {
-    v client = ApiClient.new("https://api.example.com".to_string());
+pub async fn main() -> Result<(), ApiError> / net, io {
+    let client = ApiClient::new("https://api.example.com".to_string());
 
-    p"Fetching users...";
+    println!("Fetching users...");
 
     // Fetch and display multiple users.
-    v user_ids: [u64]~ = [1, 2, 3]~;
+    let user_ids: Vec<u64> = vec![1, 2, 3];
 
-    @ id ~ &user_ids {
-        ? display_user_summary(&client, *id).await {
+    for id in &user_ids {
+        match display_user_summary(&client, *id).await {
             Ok(()) => {},
-            Err(ApiError.NotFound) => ep"User {id} not found, skipping.",
-            Err(ApiError.RateLimited { retry_after }) => {
-                ep"Rate limited. Waiting {retry_after}s...";
-                async_rt.sleep(retry_after * 1000).await;
+            Err(ApiError::NotFound) => eprintln!("User {id} not found, skipping."),
+            Err(ApiError::RateLimited { retry_after }) => {
+                eprintln!("Rate limited. Waiting {retry_after}s...");
+                async_rt::sleep(retry_after * 1000).await;
                 // Retry once.
-                ? display_user_summary(&client, *id).await {
+                match display_user_summary(&client, *id).await {
                     Ok(()) => {},
-                    Err(e) => ep"Retry failed for user {id}: {e}",
+                    Err(e) => eprintln!("Retry failed for user {id}: {e}"),
                 }
             },
-            Err(e) => ep"Error fetching user {id}: {e}",
+            Err(e) => eprintln!("Error fetching user {id}: {e}"),
         }
     }
 
-    p"Done.";
+    println!("Done.");
     Ok(())
 }

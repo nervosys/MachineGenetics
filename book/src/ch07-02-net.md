@@ -5,32 +5,32 @@ Redox includes HTTP in the standard library — no external packages needed.
 ## HTTP Client
 
 ```rdx
-u std.net.{Request, Response, Method}
+use std::net::{Request, Response, Method};
 
-+f main() / io, net {
+pub fn main() / io, net {
     // Simple GET
-    v resp = Request.get("https://api.example.com/data").send()?
-    p"Status: {resp.status()}"
-    p"Body: {resp.text()?}"
+    let resp = Request::get("https://api.example.com/data").send()?;
+    println!("Status: {}", resp.status());
+    println!("Body: {}", resp.text()?);
 }
 ```
 
 ### POST with JSON body
 
 ```rdx
-u std.net.Request
-u std.json.stringify
+use std::net::Request;
+use std::json::stringify;
 
-@d(Serialize)
-S CreateUser { name: s, email: s }
+#[derive(Serialize)]
+struct CreateUser { name: String, email: String }
 
-+f create_user() -> R[Response, NetError] / net {
-    v user = CreateUser @{
+pub fn create_user() -> Result<Response, NetError> / net {
+    let user = CreateUser {
         name: "Alice".into(),
         email: "alice@example.com".into(),
-    }
+    };
 
-    Request.post("https://api.example.com/users")
+    Request::post("https://api.example.com/users")
         .header("Content-Type", "application/json")
         .json(&user)
         .send()
@@ -40,60 +40,60 @@ S CreateUser { name: s, email: s }
 ### Request builder
 
 ```rdx
-v resp = Request.new(Method.Put, "https://api.example.com/data")
-    .header("Authorization", f"Bearer {token}")
+let resp = Request::new(Method::Put, "https://api.example.com/data")
+    .header("Authorization", &format!("Bearer {token}"))
     .header("Accept", "application/json")
     .body(payload)
-    .send()?
+    .send()?;
 ```
 
 ## TCP
 
 ```rdx
-u std.net.{TcpStream, TcpListener}
+use std::net::{TcpStream, TcpListener};
 
 // TCP server
-+f serve() / io, net {
-    v listener = TcpListener.bind("127.0.0.1:8080")?
-    p"Listening on :8080"
+pub fn serve() / io, net {
+    let listener = TcpListener::bind("127.0.0.1:8080")?;
+    println!("Listening on :8080");
 
-    @ stream : listener.incoming() {
-        v stream = stream?
-        handle_connection(stream)?
+    for stream in listener.incoming() {
+        let stream = stream?;
+        handle_connection(stream)?;
     }
 }
 
-f handle_connection(m stream: TcpStream) / io, net {
-    m buf = [0u8; 1024]
-    v n = stream.read(&!buf)?
-    v request = s.from_utf8(&buf[..n])?
-    stream.write(b"HTTP/1.1 200 OK\r\n\r\nHello!")?
+fn handle_connection(mut stream: TcpStream) / io, net {
+    let mut buf = [0u8; 1024];
+    let n = stream.read(&mut buf)?;
+    let request = String::from_utf8(&buf[..n])?;
+    stream.write(b"HTTP/1.1 200 OK\r\n\r\nHello!")?;
 }
 ```
 
 ## UDP
 
 ```rdx
-u std.net.UdpSocket
+use std::net::UdpSocket;
 
-+f main() / io, net {
-    v socket = UdpSocket.bind("0.0.0.0:9000")?
-    m buf = [0u8; 1024]
-    v (n, addr) = socket.recv_from(&!buf)?
-    p"Received {n} bytes from {addr}"
-    socket.send_to(b"ACK", addr)?
+pub fn main() / io, net {
+    let socket = UdpSocket::bind("0.0.0.0:9000")?;
+    let mut buf = [0u8; 1024];
+    let (n, addr) = socket.recv_from(&mut buf)?;
+    println!("Received {n} bytes from {addr}");
+    socket.send_to(b"ACK", addr)?;
 }
 ```
 
 ## DNS
 
 ```rdx
-u std.net.dns
+use std::net::dns;
 
-+f main() / net {
-    v addrs = dns.resolve("example.com")?
-    @ addr : addrs {
-        p"IP: {addr}"
+pub fn main() / net {
+    let addrs = dns::resolve("example.com")?;
+    for addr in addrs {
+        println!("IP: {addr}");
     }
 }
 ```

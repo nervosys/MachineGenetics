@@ -15,16 +15,16 @@ not also permit arbitrary pointer arithmetic.
 A capability is a fine-grained permission:
 
 ```rdx
-u std.agent.{Capability, Region}
+use std::agent::{Capability, Region};
 
 // Request the FFI capability
-v ffi_cap = Capability.request("ffi")?
+let ffi_cap = Capability::request("ffi")?;
 
 // Use it in a bounded region
-Region.enter(ffi_cap, || {
+Region::enter(ffi_cap, || {
     // Only FFI calls are permitted here
     // Other unsafe operations are still forbidden
-})
+});
 ```
 
 ### Built-in capabilities
@@ -43,12 +43,12 @@ Region.enter(ffi_cap, || {
 Capabilities have a scope, preventing them from leaking:
 
 ```rdx
-u std.agent.{Capability, CapabilityScope}
+use std::agent::{Capability, CapabilityScope};
 
-v cap = Capability @{
+let cap = Capability {
     name: "ffi",
-    scope: CapabilityScope.Instance,  // only this invocation
-}
+    scope: CapabilityScope::Instance,  // only this invocation
+};
 ```
 
 | Scope      | Persistence                      |
@@ -62,13 +62,13 @@ v cap = Capability @{
 Capabilities can be time-bounded with leases:
 
 ```rdx
-u std.agent.Lease
+use std::agent::Lease;
 
-v lease = cap.lease(Duration.from_secs(60))?
+let lease = cap.lease(Duration::from_secs(60))?;
 
-? lease.is_valid() {
+if lease.is_valid() {
     // Capability is active
-    do_ffi_work()
+    do_ffi_work();
 }
 // Capability automatically expires after 60 seconds
 ```

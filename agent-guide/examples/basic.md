@@ -1,6 +1,7 @@
 # Worked Examples: Basic
 
 > Prompt → Response pairs for AI agent training and evaluation.
+> All examples use **standard syntax** (default).
 
 ---
 
@@ -10,8 +11,8 @@
 
 **Response:**
 ```redox
-+f main() / io {
-    p"Hello, world!"
+pub fn main() / io {
+    println!("Hello, world!");
 }
 ```
 
@@ -23,7 +24,7 @@
 
 **Response:**
 ```redox
-f sum(numbers: &[i32]~) -> i32 {
+fn sum(numbers: &Vec<i32>) -> i32 {
     numbers.iter().sum()
 }
 ```
@@ -36,16 +37,16 @@ f sum(numbers: &[i32]~) -> i32 {
 
 **Response:**
 ```redox
-+f main() / io {
-    @ n ~ 1..=100 {
-        ? n % 15 == 0 {
-            p"FizzBuzz"
-        } : ? n % 3 == 0 {
-            p"Fizz"
-        } : ? n % 5 == 0 {
-            p"Buzz"
-        } : {
-            p"{n}"
+pub fn main() / io {
+    for n in 1..=100 {
+        if n % 15 == 0 {
+            println!("FizzBuzz");
+        } else if n % 3 == 0 {
+            println!("Fizz");
+        } else if n % 5 == 0 {
+            println!("Buzz");
+        } else {
+            println!("{n}");
         }
     }
 }
@@ -59,22 +60,22 @@ f sum(numbers: &[i32]~) -> i32 {
 
 **Response:**
 ```redox
-@d(Debug, Clone)
-+S Rectangle {
-    +width: f64,
-    +height: f64,
+#[derive(Debug, Clone)]
+pub struct Rectangle {
+    pub width: f64,
+    pub height: f64,
 }
 
-I ~ Rectangle {
-    +f new(width: f64, height: f64) -> Self {
-        Self @{ width, height }
+impl Rectangle {
+    pub fn new(width: f64, height: f64) -> Self {
+        Self { width, height }
     }
 
-    +f area(&self) -> f64 {
+    pub fn area(&self) -> f64 {
         self.width * self.height
     }
 
-    +f perimeter(&self) -> f64 {
+    pub fn perimeter(&self) -> f64 {
         2.0 * (self.width + self.height)
     }
 }
@@ -88,18 +89,18 @@ I ~ Rectangle {
 
 **Response:**
 ```redox
-@d(Debug, Clone)]
-+E Color {
+#[derive(Debug, Clone)]
+pub enum Color {
     Red,
     Green,
     Blue,
 }
 
-+f to_hex(color: &Color) -> &s {
-    ? color {
-        Color.Red => "#FF0000",
-        Color.Green => "#00FF00",
-        Color.Blue => "#0000FF",
+pub fn to_hex(color: &Color) -> &str {
+    match color {
+        Color::Red => "#FF0000",
+        Color::Green => "#00FF00",
+        Color::Blue => "#0000FF",
     }
 }
 ```
@@ -112,7 +113,7 @@ I ~ Rectangle {
 
 **Response:**
 ```redox
-f first_even(numbers: &[i32]~) -> ?i32 {
+fn first_even(numbers: &Vec<i32>) -> Option<i32> {
     numbers.iter().find(|n| *n % 2 == 0).copied()
 }
 ```
@@ -125,8 +126,8 @@ f first_even(numbers: &[i32]~) -> ?i32 {
 
 **Response:**
 ```redox
-f reverse_upper(input: &s) -> s {
-    input.chars().rev().collect[s]().to_uppercase()
+fn reverse_upper(input: &str) -> String {
+    input.chars().rev().collect::<String>().to_uppercase()
 }
 ```
 
@@ -138,9 +139,9 @@ f reverse_upper(input: &s) -> s {
 
 **Response:**
 ```redox
-f greet_all(names: &[s]~) -> [s]~ {
+fn greet_all(names: &Vec<String>) -> Vec<String> {
     names.iter()
-        .map(|name| f"Hello, {name}!")
+        .map(|name| format!("Hello, {name}!"))
         .collect()
 }
 ```
@@ -153,12 +154,12 @@ f greet_all(names: &[s]~) -> [s]~ {
 
 **Response:**
 ```redox
-u std.io
+use std::io;
 
-f read_line() -> R[s, io.Error] / io {
-    m buf = s.new()
-    io.stdin().read_line(&!buf)?
-    ret buf.trim().to_string()
+fn read_line() -> Result<String, io::Error> / io {
+    let mut buf = String::new();
+    io::stdin().read_line(&mut buf)?;
+    return buf.trim().to_string();
 }
 ```
 
@@ -170,12 +171,12 @@ f read_line() -> R[s, io.Error] / io {
 
 **Response:**
 ```redox
-u std.fs
+use std::fs;
 
-+f count_lines(path: &s) -> R[usize, io.Error] / io {
-    v content = fs.read_to_string(path)?
-    v count = content.lines().count()
-    p"File {path} has {count} lines"
-    ret count
+pub fn count_lines(path: &str) -> Result<usize, io::Error> / io {
+    let content = fs::read_to_string(path)?;
+    let count = content.lines().count();
+    println!("File {path} has {count} lines");
+    return count;
 }
 ```

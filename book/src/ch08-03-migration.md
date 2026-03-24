@@ -1,8 +1,8 @@
 # Migration from Rust
 
-The `rust2rdx` tool translates Rust source files into Redox. It applies
-28 syntactic transformation rules to convert Rust idioms to their Redox
-equivalents.
+The `rust2rdx` tool translates Rust source files into Redox. Because Redox's
+standard syntax closely mirrors Rust, migration is mostly straightforward — the
+main additions are effect annotations and the capability system.
 
 ## Quick start
 
@@ -17,48 +17,44 @@ rdx migrate lib/
 rdx migrate src/main.rs --dry-run
 ```
 
-## What gets translated
+## What stays the same
 
-| Rust                  | Redox            | Rule                    |
-| --------------------- | ---------------- | ----------------------- |
-| `pub fn`              | `+f`             | Function visibility     |
-| `fn`                  | `f`              | Private function        |
-| `let`                 | `v`              | Immutable binding       |
-| `let mut`             | `m`              | Mutable binding         |
-| `struct`              | `S`              | Struct declaration      |
-| `pub struct`          | `+S`             | Public struct           |
-| `enum`                | `E`              | Enum declaration        |
-| `trait`               | `T`              | Trait declaration       |
-| `impl Trait for Type` | `I Trait ~ Type` | Trait implementation    |
-| `impl Type`           | `I ~ Type`       | Inherent implementation |
-| `mod`                 | `M`              | Module declaration      |
-| `pub mod`             | `+M`             | Public module           |
-| `use`                 | `u`              | Import                  |
-| `pub use`             | `+u`             | Re-export               |
-| `pub(crate)`          | `~`              | Crate visibility        |
-| `const`               | `+v`             | Public constant         |
-| `true` / `false`      | `1b` / `0b`      | Boolean literals        |
-| `String`              | `s`              | String type             |
-| `Vec<T>`              | `[T]~`           | Vector type             |
-| `Option<T>`           | `?T`             | Option type             |
-| `Result<T, E>`        | `R[T, E]`        | Result type             |
-| `Box<T>`              | `^T`             | Box (owned pointer)     |
-| `Rc<T>`               | `$T`             | Reference-counted       |
-| `Arc<T>`              | `@T`             | Atomic ref-counted      |
-| `HashMap<K, V>`       | `{K: V}`         | Hash map                |
-| `HashSet<K>`          | `{K}`            | Hash set                |
-| `&mut`                | `&!`             | Exclusive reference     |
-| `if` / `match`        | `?`              | Conditional / match     |
-| `else`                | `:`              | Else branch             |
-| `for ... in`          | `@ ... :`        | For loop                |
-| `return`              | `ret`            | Early return            |
-| `async fn`            | `af`             | Async function          |
-| `pub async fn`        | `+af`            | Public async function   |
-| `where`               | `~>`             | Where clause            |
-| `#[derive(...)]`      | `@d(...)`        | Derive attribute        |
-| `#[inline]`           | `@i`             | Inline attribute        |
-| `#[test]`             | `@test`          | Test attribute          |
-| `::` (path sep)       | `.`              | Path separator          |
+Most Rust syntax is valid Redox in standard mode:
+
+| Feature               | Rust                  | Redox (Standard)      |
+| --------------------- | --------------------- | --------------------- |
+| Functions             | `pub fn foo()`        | `pub fn foo()`        |
+| Variables             | `let x = 5;`         | `let x = 5;`         |
+| Mutable bindings      | `let mut x = 5;`     | `let mut x = 5;`     |
+| Structs               | `struct Foo { ... }`  | `struct Foo { ... }`  |
+| Enums                 | `enum Foo { ... }`    | `enum Foo { ... }`    |
+| Traits                | `trait Foo { ... }`   | `trait Foo { ... }`   |
+| Impl blocks           | `impl Foo for Bar`    | `impl Foo for Bar`    |
+| Modules               | `pub mod foo`         | `pub mod foo`         |
+| Imports               | `use std::io`         | `use std::io`         |
+| Generics              | `fn foo<T>(x: T)`     | `fn foo<T>(x: T)`     |
+| Where clauses         | `where T: Clone`      | `where T: Clone`      |
+| Pattern matching      | `match x { ... }`     | `match x { ... }`     |
+| `if` / `else`         | `if cond { ... }`     | `if cond { ... }`     |
+| `for` loops           | `for x in iter`       | `for x in iter`       |
+| Closures              | `\|x\| x + 1`        | `\|x\| x + 1`        |
+| `Vec<T>`, `Option<T>` | same                  | same                  |
+| `HashMap<K, V>`       | same                  | same                  |
+| `Box<T>`, `Arc<T>`    | same                  | same                  |
+| `&mut T`              | same                  | same                  |
+| `println!()` etc.     | same                  | same                  |
+| `#[derive(...)]`      | same                  | same                  |
+| `#[test]`             | same                  | same                  |
+
+## What changes
+
+| Rust                    | Redox Addition                 | Notes                          |
+| ----------------------- | ------------------------------ | ------------------------------ |
+| (no equivalent)         | `/ io`, `/ net`, `/ rng` etc.  | Effect annotations on fns      |
+| `unsafe { ... }`        | `Capability::request("ffi")?`  | Capability system              |
+| Lifetime annotations    | Removed — SKB handles them     | No `'a` syntax                 |
+| `Cargo.toml`            | `Forge.toml`                   | Project manifest               |
+| `.rs` extension         | `.rdx` extension               | File extension                 |
 
 ## Example
 
@@ -77,20 +73,23 @@ pub fn count_words(text: &str) -> HashMap<String, usize> {
 }
 ```
 
-### Redox output
+### Redox output (standard syntax)
 
 ```rdx
-u std.col.Map
+use std::collections::HashMap;
 
-+f count_words(text: &s) -> {s: usize} {
-    m counts = {s: usize}.new()
-    @ word : text.split_whitespace() {
-        v entry = counts.entry(word.to_string()).or_insert(0)
-        *entry += 1
+pub fn count_words(text: &str) -> HashMap<String, usize> {
+    let mut counts = HashMap::new();
+    for word in text.split_whitespace() {
+        let entry = counts.entry(word.to_string()).or_insert(0);
+        *entry += 1;
     }
     counts
 }
 ```
+
+The syntax is nearly identical. The translator removes lifetime annotations
+and renames the file from `.rs` to `.rdx`.
 
 ## Workflow for large projects
 

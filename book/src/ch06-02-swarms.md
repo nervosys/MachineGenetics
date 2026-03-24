@@ -6,19 +6,19 @@ consensus on shared decisions.
 ## Creating a swarm
 
 ```rdx
-u std.agent.{Swarm, ConsensusStrategy}
+use std::agent::{Swarm, ConsensusStrategy};
 
-+f main() / agent, io {
-    m swarm = Swarm.new()
+pub fn main() / agent, io {
+    let mut swarm = Swarm::new();
 
     // Add agents
-    swarm.add(Planner)
-    swarm.add(Coder)
-    swarm.add(Coder)     // multiple coders
-    swarm.add(Reviewer)
+    swarm.add(Planner);
+    swarm.add(Coder);
+    swarm.add(Coder);     // multiple coders
+    swarm.add(Reviewer);
 
     // Run the swarm
-    swarm.run()?
+    swarm.run()?;
 }
 ```
 
@@ -27,9 +27,9 @@ u std.agent.{Swarm, ConsensusStrategy}
 Send a message to all agents in the swarm:
 
 ```rdx
-v responses = swarm.broadcast("implement a sorting algorithm")?
-@ resp : responses {
-    p"Agent responded: {resp}"
+let responses = swarm.broadcast("implement a sorting algorithm")?;
+for resp in responses {
+    println!("Agent responded: {resp}");
 }
 ```
 
@@ -38,7 +38,7 @@ v responses = swarm.broadcast("implement a sorting algorithm")?
 Send to a specific agent:
 
 ```rdx
-swarm.send(AgentId(20), "implement quicksort")?
+swarm.send(AgentId(20), "implement quicksort")?;
 ```
 
 ## Consensus
@@ -47,13 +47,13 @@ When agents need to agree on a decision:
 
 ```rdx
 // Default: majority consensus
-v decision = swarm.consensus("Should we use quicksort or mergesort?")?
+let decision = swarm.consensus("Should we use quicksort or mergesort?")?;
 
 // Custom strategy
-v decision = swarm.consensus_with(
+let decision = swarm.consensus_with(
     "Which algorithm?",
-    ConsensusStrategy.Unanimous,
-)?
+    ConsensusStrategy::Unanimous,
+)?;
 ```
 
 ### Consensus strategies
@@ -72,38 +72,38 @@ v decision = swarm.consensus_with(
 
 ```rdx
 // Distribute subtasks, then merge results
-v subtasks = ["parse", "analyze", "generate"]~
-v results = swarm.broadcast_all(subtasks)?
-v merged = merge_results(results)
+let subtasks = vec!["parse", "analyze", "generate"];
+let results = swarm.broadcast_all(subtasks)?;
+let merged = merge_results(results);
 ```
 
 ### Pipeline
 
 ```rdx
 // Chain agents: planner → coder → reviewer
-v plan = swarm.send(planner_id, task)?
-v code = swarm.send(coder_id, plan)?
-v review = swarm.send(reviewer_id, code)?
+let plan = swarm.send(planner_id, task)?;
+let code = swarm.send(coder_id, plan)?;
+let review = swarm.send(reviewer_id, code)?;
 ```
 
 ### Supervisor
 
 ```rdx
 // One agent oversees others
-S Supervisor {
-    workers: [AgentId]~,
+struct Supervisor {
+    workers: Vec<AgentId>,
 }
 
-I Agent ~ Supervisor {
-    +f handle(&!self, msg: Message[s]) -> R[s, AgentError] / agent {
+impl Agent for Supervisor {
+    pub fn handle(&mut self, msg: Message<String>) -> Result<String, AgentError> / agent {
         // Distribute work to workers, collect results
-        m results = [s]~.new()
-        @ worker : &self.workers {
-            v r = perform_send(*worker, &msg.payload)?
-            results.push(r)
+        let mut results: Vec<String> = Vec::new();
+        for worker in &self.workers {
+            let r = perform_send(*worker, &msg.payload)?;
+            results.push(r);
         }
         Ok(merge(results))
     }
-    +f id(&self) -> AgentId { AgentId(1) }
+    pub fn id(&self) -> AgentId { AgentId(1) }
 }
 ```

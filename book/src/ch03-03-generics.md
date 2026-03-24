@@ -1,43 +1,42 @@
 # Generics
 
-Redox uses `[T]` syntax for generic parameters (square brackets, not angle
-brackets). This eliminates Rust's turbofish (`::<>`) ambiguity entirely.
+Redox uses `<T>` syntax for generic parameters, identical to Rust.
 
 ## Generic functions
 
 ```rdx
-+f max[T: Ord](a: T, b: T) -> T {
-    ? a >= b { a } : { b }
+pub fn max<T: Ord>(a: T, b: T) -> T {
+    if a >= b { a } else { b }
 }
 
-+f swap[T](a: &!T, b: &!T) {
-    v temp = *a
-    *a = *b
-    *b = temp
+pub fn swap<T>(a: &mut T, b: &mut T) {
+    let temp = *a;
+    *a = *b;
+    *b = temp;
 }
 ```
 
 ## Generic structs
 
 ```rdx
-+S Stack[T] {
-    items: [T]~,
+pub struct Stack<T> {
+    items: Vec<T>,
 }
 
-I Stack[T] {
-    +f new() -> Self {
-        Stack @{ items: [T]~.new() }
+impl<T> Stack<T> {
+    pub fn new() -> Self {
+        Stack { items: Vec::new() }
     }
 
-    +f push(&!self, item: T) {
-        self.items.push(item)
+    pub fn push(&mut self, item: T) {
+        self.items.push(item);
     }
 
-    +f pop(&!self) -> ?T {
+    pub fn pop(&mut self) -> Option<T> {
         self.items.pop()
     }
 
-    +f is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
 }
@@ -48,9 +47,9 @@ I Stack[T] {
 Inline bounds:
 
 ```rdx
-+f print_all[T: Display](items: &[T]) / io {
-    @ item : items {
-        p"{item}"
+pub fn print_all<T: Display>(items: &[T]) / io {
+    for item in items {
+        println!("{item}");
     }
 }
 ```
@@ -58,40 +57,38 @@ Inline bounds:
 Multiple bounds with `+`:
 
 ```rdx
-+f sort_and_print[T: Ord + Display](items: &![T]~) / io {
-    items.sort()
-    @ item : items {
-        p"{item}"
+pub fn sort_and_print<T: Ord + Display>(items: &mut Vec<T>) / io {
+    items.sort();
+    for item in items {
+        println!("{item}");
     }
 }
 ```
 
-## Where clauses with `~>`
+## Where clauses
 
-For complex bounds, use `~>`:
+For complex bounds, use `where`:
 
 ```rdx
-+f merge[K, V](a: {K: V}, b: {K: V}) -> {K: V}
-    ~> K: Eq + Hash, V: Clone
+pub fn merge<K, V>(a: HashMap<K, V>, b: HashMap<K, V>) -> HashMap<K, V>
+    where K: Eq + Hash, V: Clone
 {
-    m result = a.clone()
-    @ (k, v) : b {
-        result.insert(k.clone(), v.clone())
+    let mut result = a.clone();
+    for (k, v) in b {
+        result.insert(k.clone(), v.clone());
     }
     result
 }
 ```
 
-## No turbofish
+## Turbofish
 
-In Rust, disambiguating generics in expressions requires `::<>`:
+When the compiler can't infer the type, use turbofish syntax just like Rust:
 
 ```rust
-let x = Vec::<i32>::new();   // Rust turbofish
+let x = Vec::<i32>::new();
 ```
 
-In Redox, square brackets are unambiguous:
-
 ```rdx
-v x = [i32]~.new()    // No turbofish needed
+let x = Vec::<i32>::new();   // Same syntax in Redox
 ```

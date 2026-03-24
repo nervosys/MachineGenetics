@@ -1,4 +1,4 @@
-//! # std.fmt — Formatting
+//! # std::fmt — Formatting
 //!
 //! Display and debug formatting, print macros, and format engine.
 
@@ -6,29 +6,29 @@
 // Core formatting traits
 // ---------------------------------------------------------------------------
 
-/// Human-readable formatting (the default for `f"..."` interpolation).
-+T Display {
-    +f fmt(&self, f: &!Formatter) -> R[(), FmtError];
+/// Human-readable formatting (the default for `format!("...")` interpolation).
+pub trait Display {
+    pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>;
 }
 
 /// Debug formatting (used by `{:?}` in format strings).
-+T Debug {
-    +f fmt(&self, f: &!Formatter) -> R[(), FmtError];
+pub trait Debug {
+    pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>;
 }
 
 /// Binary formatting (`{:b}`).
-+T Binary {
-    +f fmt(&self, f: &!Formatter) -> R[(), FmtError];
+pub trait Binary {
+    pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>;
 }
 
 /// Hex formatting, lowercase (`{:x}`).
-+T LowerHex {
-    +f fmt(&self, f: &!Formatter) -> R[(), FmtError];
+pub trait LowerHex {
+    pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>;
 }
 
 /// Hex formatting, uppercase (`{:X}`).
-+T UpperHex {
-    +f fmt(&self, f: &!Formatter) -> R[(), FmtError];
+pub trait UpperHex {
+    pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>;
 }
 
 // ---------------------------------------------------------------------------
@@ -36,77 +36,77 @@
 // ---------------------------------------------------------------------------
 
 /// Controls how values are formatted into strings.
-+S Formatter {
-    _buf: &!s,
-    width: ?usize,
-    precision: ?usize,
+pub struct Formatter {
+    _buf: &mut String,
+    width: Option<usize>,
+    precision: Option<usize>,
     fill: char,
     align: Alignment,
 }
 
-+E Alignment {
+pub enum Alignment {
     Left,
     Right,
     Center,
 }
 
-I Formatter {
+impl Formatter {
     /// Write a string slice to the output buffer.
-    +f write_str(&!self, s: &s) -> R[(), FmtError];
+    pub fn write_str(&mut self, s: &String) -> Result<(), FmtError>;
 
     /// Write a single character.
-    +f write_char(&!self, c: char) -> R[(), FmtError];
+    pub fn write_char(&mut self, c: char) -> Result<(), FmtError>;
 }
 
-+S FmtError { _priv: () }
+pub struct FmtError { _priv: () }
 
 // ---------------------------------------------------------------------------
 // Format function
 // ---------------------------------------------------------------------------
 
 /// Format a value using its `Display` implementation.
-/// This is the runtime backing for `f"..."` format strings.
-+f format[T: Display](value: &T) -> s;
+/// This is the runtime backing for `format!("...")` format strings.
+pub fn format<T: Display>(value: &T) -> String;
 
 /// Format a value using its `Debug` implementation.
-+f debug[T: Debug](value: &T) -> s;
+pub fn debug<T: Debug>(value: &T) -> String;
 
 // ---------------------------------------------------------------------------
 // Print functions — declare `io` effect
 // ---------------------------------------------------------------------------
 
 /// Print a formatted string to stdout (no newline).
-+f print(msg: &s) / io;
+pub fn print(msg: &String) / io;
 
 /// Print a formatted string to stdout with a newline.
-+f println(msg: &s) / io;
+pub fn println(msg: &String) / io;
 
 /// Print a formatted string to stderr (no newline).
-+f eprint(msg: &s) / io;
+pub fn eprint(msg: &String) / io;
 
 /// Print a formatted string to stderr with a newline.
-+f eprintln(msg: &s) / io;
+pub fn eprintln(msg: &String) / io;
 
 // ---------------------------------------------------------------------------
 // Standard Display implementations
 // ---------------------------------------------------------------------------
 
-I Display ~ s    { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Display ~ i32  { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Display ~ i64  { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Display ~ u32  { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Display ~ u64  { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Display ~ usize { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Display ~ f32  { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Display ~ f64  { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Display ~ 1b   { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Display ~ char { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+impl Display for String { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Display for i32    { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Display for i64    { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Display for u32    { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Display for u64    { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Display for usize  { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Display for f32    { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Display for f64    { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Display for bool   { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Display for char   { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
 
-I Debug ~ s     { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Debug ~ i32   { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Debug ~ i64   { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Debug ~ u32   { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Debug ~ u64   { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Debug ~ usize { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Debug ~ f64   { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
-I Debug ~ 1b    { +f fmt(&self, f: &!Formatter) -> R[(), FmtError]; }
+impl Debug for String   { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Debug for i32      { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Debug for i64      { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Debug for u32      { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Debug for u64      { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Debug for usize    { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Debug for f64      { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }
+impl Debug for bool     { pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>; }

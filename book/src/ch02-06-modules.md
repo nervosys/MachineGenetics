@@ -1,45 +1,42 @@
 # Modules & Imports
 
-Redox uses dot-separated module paths and the `u` keyword for imports.
+Redox uses `::` path separators and the `use` keyword for imports — identical to
+Rust.
 
 ## Declaring modules
 
 ```rdx
 // In src/main.rdx or src/lib.rdx
-+M network;    // declares a public module (loads from src/network.rdx
-               // or src/network/mod.rdx)
-M helpers;     // private module
+pub mod network;   // declares a public module (loads from src/network.rdx
+                   // or src/network/mod.rdx)
+mod helpers;       // private module
 ```
 
-## Importing with `u`
+## Importing with `use`
 
 ```rdx
 // Import specific items
-u std.io.{Read, Write, File}
-u std.col.{Map, Set}
+use std::io::{Read, Write, File};
+use std::collections::{HashMap, HashSet};
 
 // Import a single item
-u std.json.Value
+use std::json::Value;
 
 // Import everything from a module (use sparingly)
-u std.fmt.*
+use std::fmt::*;
 
 // Aliased import
-u std.col.Map ~ HashMap   // use Map as HashMap
+use std::collections::HashMap as Map;
 ```
-
-The `~` in imports means "as" (alias).
 
 ## Module paths
 
-Redox uses dots instead of `::`:
-
-| Rust                        | Redox          |
-| --------------------------- | -------------- |
-| `std::io::Read`             | `std.io.Read`  |
-| `std::collections::HashMap` | `std.col.Map`  |
-| `crate::util::helpers`      | `util.helpers` |
-| `super::config`             | `super.config` |
+| Rust                        | Redox                       |
+| --------------------------- | --------------------------- |
+| `std::io::Read`             | `std::io::Read`             |
+| `std::collections::HashMap` | `std::collections::HashMap` |
+| `crate::util::helpers`      | `crate::util::helpers`      |
+| `super::config`             | `super::config`             |
 
 ## File structure
 
@@ -48,11 +45,11 @@ Modules map to files the same way as Rust:
 ```
 src/
 ├── main.rdx          // crate root
-├── network.rdx       // M network (if flat)
-├── network/          // M network (if nested)
+├── network.rdx       // mod network (if flat)
+├── network/          // mod network (if nested)
 │   ├── mod.rdx       //   module root
-│   ├── tcp.rdx       //   M tcp
-│   └── http.rdx      //   M http
+│   ├── tcp.rdx       //   mod tcp
+│   └── http.rdx      //   mod http
 └── util/
     ├── mod.rdx
     └── helpers.rdx
@@ -62,19 +59,19 @@ src/
 
 ```rdx
 // In mod.rdx — re-export items for a cleaner public API
-+u tcp.TcpStream
-+u http.{Request, Response}
+pub use tcp::TcpStream;
+pub use http::{Request, Response};
 ```
 
 ## Prelude
 
-Redox automatically imports common types without requiring `u`:
+Redox automatically imports common types without requiring `use`:
 
-- `Option` (`?T`) — `Some`, `None`
-- `Result` (`R[T,E]`) — `Ok`, `Err`
-- `Vec` (`[T]~`)
-- `String` (`s`)
-- `Box` (`^T`)
-- `Arc` (`@T`)
+- `Option<T>` — `Some`, `None`
+- `Result<T, E>` — `Ok`, `Err`
+- `Vec<T>`
+- `String`
+- `Box<T>`
+- `Arc<T>`
 - `Display`, `Debug`
 - `Clone`, `Copy`

@@ -1,74 +1,74 @@
 # Collections
 
-Beyond the built-in `[T]~` (Vec) and `{K:V}` (Map), the `std.col` module
-provides additional data structures.
+Beyond `Vec<T>` and `HashMap<K, V>`, the `std::col` module provides additional
+data structures.
 
-## Map (`{K: V}`)
+## HashMap
 
 ```rdx
-+f main() {
-    m scores: {s: i32} = {s: i32}.new()
-    scores.insert("Alice", 100)
-    scores.insert("Bob", 95)
+pub fn main() {
+    let mut scores: HashMap<String, i32> = HashMap::new();
+    scores.insert("Alice", 100);
+    scores.insert("Bob", 95);
 
     // Lookup
-    ? scores.get("Alice") => Some(score) {
-        p"Alice: {score}"
+    if let Some(score) = scores.get("Alice") {
+        println!("Alice: {score}");
     }
 
     // Iterate
-    @ (name, score) : &scores {
-        p"{name}: {score}"
+    for (name, score) in &scores {
+        println!("{name}: {score}");
     }
 
     // Check membership
-    ? scores.contains_key("Charlie") {
-        p"found"
+    if scores.contains_key("Charlie") {
+        println!("found");
     }
 }
 ```
 
-## Set (`{K}`)
+## HashSet
 
 ```rdx
-+f main() {
-    m fruits: {s} = {s}.new()
-    fruits.insert("apple")
-    fruits.insert("banana")
-    fruits.insert("apple")    // no duplicate
+pub fn main() {
+    let mut fruits: HashSet<String> = HashSet::new();
+    fruits.insert("apple");
+    fruits.insert("banana");
+    fruits.insert("apple");    // no duplicate
 
-    p"Count: {fruits.len()}"  // 2
+    println!("Count: {}", fruits.len());  // 2
 
     // Set operations
-    m more: {s} = {s}.new()
-    more.insert("banana")
-    more.insert("cherry")
+    let mut more: HashSet<String> = HashSet::new();
+    more.insert("banana");
+    more.insert("cherry");
 
-    v both = fruits.intersection(&more)      // {"banana"}
-    v all = fruits.union(&more)              // {"apple", "banana", "cherry"}
-    v only_fruits = fruits.difference(&more) // {"apple"}
+    let both = fruits.intersection(&more);      // {"banana"}
+    let all = fruits.union(&more);              // {"apple", "banana", "cherry"}
+    let only_fruits = fruits.difference(&more); // {"apple"}
 }
 ```
 
-## BTree (ordered map)
+## BTreeMap (ordered map)
 
 ```rdx
-u std.col.BTree
+use std::col::BTreeMap;
 
-+f main() {
-    m tree: BTree[i32, s] = BTree.new()
-    tree.insert(3, "three")
-    tree.insert(1, "one")
-    tree.insert(2, "two")
+pub fn main() {
+    let mut tree: BTreeMap<i32, String> = BTreeMap::new();
+    tree.insert(3, "three");
+    tree.insert(1, "one");
+    tree.insert(2, "two");
 
     // Iteration is in sorted order
-    @ (k, v) : &tree {
-        p"{k}: {v}"    // 1: one, 2: two, 3: three
+    for (k, v) in &tree {
+        println!("{k}: {v}");    // 1: one, 2: two, 3: three
     }
 
     // Range query
-    @ (k, v) : tree.range(1..3) {
-        p"{k}: {v}"    // 1: one, 2: two
+    for (k, v) in tree.range(1..3) {
+        println!("{k}: {v}");    // 1: one, 2: two
     }
 }
 ```
@@ -76,26 +76,26 @@ u std.col.BTree
 ## VecDeque (double-ended queue)
 
 ```rdx
-u std.col.VecDeque
+use std::col::VecDeque;
 
-+f main() {
-    m dq: VecDeque[i32] = VecDeque.new()
-    dq.push_back(1)
-    dq.push_back(2)
-    dq.push_front(0)
+pub fn main() {
+    let mut dq: VecDeque<i32> = VecDeque::new();
+    dq.push_back(1);
+    dq.push_back(2);
+    dq.push_front(0);
 
-    v first = dq.pop_front()    // Some(0)
-    v last = dq.pop_back()      // Some(2)
+    let first = dq.pop_front();    // Some(0)
+    let last = dq.pop_back();      // Some(2)
 }
 ```
 
 ## Choosing the right collection
 
-| Need             | Use        | Sugar    |
-| ---------------- | ---------- | -------- |
-| Ordered sequence | `Vec`      | `[T]~`   |
-| Key-value lookup | `Map`      | `{K: V}` |
-| Unique elements  | `Set`      | `{K}`    |
-| Sorted key-value | `BTree`    | —        |
-| Queue / deque    | `VecDeque` | —        |
-| FIFO queue       | `VecDeque` | —        |
+| Need             | Use        | Type             |
+| ---------------- | ---------- | ---------------- |
+| Ordered sequence | `Vec`      | `Vec<T>`         |
+| Key-value lookup | `HashMap`  | `HashMap<K, V>`  |
+| Unique elements  | `HashSet`  | `HashSet<K>`     |
+| Sorted key-value | `BTreeMap` | `BTreeMap<K, V>` |
+| Queue / deque    | `VecDeque` | `VecDeque<T>`    |
+| FIFO queue       | `VecDeque` | `VecDeque<T>`    |

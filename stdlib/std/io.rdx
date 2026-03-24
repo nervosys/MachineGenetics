@@ -1,4 +1,4 @@
-//! # std.io — Input/Output
+//! # std::io — Input/Output
 //!
 //! Core I/O traits, buffered wrappers, and standard streams.
 //! All I/O functions declare the `io` effect.
@@ -8,57 +8,57 @@
 // ---------------------------------------------------------------------------
 
 /// A type that can be read from.
-+T Read {
+pub trait Read {
     /// Read bytes into a buffer. Returns number of bytes read.
-    +f read(&!self, buf: &![u8]) -> R[usize, IoError] / io;
+    pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, IoError> / io;
 
     /// Read all remaining bytes into a growable buffer.
-    +f read_all(&!self, buf: &![u8]~) -> R[usize, IoError] / io {
-        v total = 0usize;
-        v chunk: [u8; 4096];
-        @ {
-            v n = self.read(&!chunk)?;
-            ? n == 0 { ~ total; }
+    pub fn read_all(&mut self, buf: &mut Vec<u8>) -> Result<usize, IoError> / io {
+        let total = 0usize;
+        let chunk: [u8; 4096];
+        loop {
+            let n = self.read(&mut chunk)?;
+            if n == 0 { return total; }
             buf.extend(&chunk[..n]);
             total += n;
         }
     }
 
     /// Read exactly `buf.len()` bytes or error.
-    +f read_exact(&!self, buf: &![u8]) -> R[(), IoError] / io;
+    pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), IoError> / io;
 }
 
 /// A type that can be written to.
-+T Write {
+pub trait Write {
     /// Write bytes from a buffer. Returns number of bytes written.
-    +f write(&!self, buf: &[u8]) -> R[usize, IoError] / io;
+    pub fn write(&mut self, buf: &[u8]) -> Result<usize, IoError> / io;
 
     /// Write all bytes from a buffer.
-    +f write_all(&!self, buf: &[u8]) -> R[(), IoError] / io {
-        v remaining = buf;
-        @ remaining.len() > 0 {
-            v n = self.write(remaining)?;
+    pub fn write_all(&mut self, buf: &[u8]) -> Result<(), IoError> / io {
+        let remaining = buf;
+        while remaining.len() > 0 {
+            let n = self.write(remaining)?;
             remaining = &remaining[n..];
         }
-        R.ok(())
+        Result::ok(())
     }
 
     /// Flush buffered data.
-    +f flush(&!self) -> R[(), IoError] / io;
+    pub fn flush(&mut self) -> Result<(), IoError> / io;
 }
 
 /// A type that supports seeking.
-+T Seek {
+pub trait Seek {
     /// Seek to a position. Returns the new position.
-    +f seek(&!self, pos: SeekFrom) -> R[u64, IoError] / io;
+    pub fn seek(&mut self, pos: SeekFrom) -> Result<u64, IoError> / io;
 }
 
 // ---------------------------------------------------------------------------
 // Seek positions
 // ---------------------------------------------------------------------------
 
-/// Position argument for `Seek.seek()`.
-+E SeekFrom {
+/// Position argument for `Seek::seek()`.
+pub enum SeekFrom {
     /// Seek from the beginning of the stream.
     Start(u64),
     /// Seek from the end of the stream.
@@ -72,12 +72,12 @@
 // ---------------------------------------------------------------------------
 
 /// I/O error type.
-+S IoError {
+pub struct IoError {
     kind: IoErrorKind,
-    message: s,
+    message: String,
 }
 
-+E IoErrorKind {
+pub enum IoErrorKind {
     NotFound,
     PermissionDenied,
     AlreadyExists,
@@ -88,9 +88,9 @@
     Other,
 }
 
-I IoError {
-    +f new(kind: IoErrorKind, msg: s) -> IoError {
-        @IoError { kind, message: msg }
+impl IoError {
+    pub fn new(kind: IoErrorKind, msg: String) -> IoError {
+        IoError { kind, message: msg }
     }
 }
 
@@ -99,49 +99,49 @@ I IoError {
 // ---------------------------------------------------------------------------
 
 /// Wraps a `Read` with an internal buffer.
-+S BufReader[R: Read] {
+pub struct BufReader<R: Read> {
     inner: R,
-    buf: [u8]~,
+    buf: Vec<u8>,
     pos: usize,
     cap: usize,
 }
 
-I BufReader[R: Read] {
-    +f new(inner: R) -> BufReader[R] {
-        BufReader.with_capacity(8192, inner)
+impl BufReader<R: Read> {
+    pub fn new(inner: R) -> BufReader<R> {
+        BufReader::with_capacity(8192, inner)
     }
 
-    +f with_capacity(cap: usize, inner: R) -> BufReader[R] {
-        @BufReader {
+    pub fn with_capacity(cap: usize, inner: R) -> BufReader<R> {
+        BufReader {
             inner,
-            buf: [u8]~.with_capacity(cap),
+            buf: Vec::<u8>::with_capacity(cap),
             pos: 0,
             cap: 0,
         }
     }
 
     /// Read a line into the given string. Returns bytes read.
-    +f read_line(&!self, line: &!s) -> R[usize, IoError] / io;
+    pub fn read_line(&mut self, line: &mut String) -> Result<usize, IoError> / io;
 
     /// Return an iterator over lines.
-    +f lines(&!self) -> Lines[R] / io;
+    pub fn lines(&mut self) -> Lines<R> / io;
 }
 
 /// Wraps a `Write` with an internal buffer.
-+S BufWriter[W: Write] {
+pub struct BufWriter<W: Write> {
     inner: W,
-    buf: [u8]~,
+    buf: Vec<u8>,
 }
 
-I BufWriter[W: Write] {
-    +f new(inner: W) -> BufWriter[W] {
-        BufWriter.with_capacity(8192, inner)
+impl BufWriter<W: Write> {
+    pub fn new(inner: W) -> BufWriter<W> {
+        BufWriter::with_capacity(8192, inner)
     }
 
-    +f with_capacity(cap: usize, inner: W) -> BufWriter[W] {
-        @BufWriter {
+    pub fn with_capacity(cap: usize, inner: W) -> BufWriter<W> {
+        BufWriter {
             inner,
-            buf: [u8]~.with_capacity(cap),
+            buf: Vec::<u8>::with_capacity(cap),
         }
     }
 }
@@ -151,62 +151,62 @@ I BufWriter[W: Write] {
 // ---------------------------------------------------------------------------
 
 /// A handle to an open file on the filesystem.
-+S File {
+pub struct File {
     _fd: u64,
 }
 
-I File {
+impl File {
     /// Open a file in read-only mode.
-    +f open(path: &s) -> R[File, IoError] / io;
+    pub fn open(path: &String) -> Result<File, IoError> / io;
 
     /// Create a new file or truncate an existing one.
-    +f create(path: &s) -> R[File, IoError] / io;
+    pub fn create(path: &String) -> Result<File, IoError> / io;
 
     /// Open a file with custom options.
-    +f options() -> OpenOptions;
+    pub fn options() -> OpenOptions;
 }
 
-I Read ~ File {
-    +f read(&!self, buf: &![u8]) -> R[usize, IoError] / io;
-    +f read_exact(&!self, buf: &![u8]) -> R[(), IoError] / io;
+impl Read for File {
+    pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, IoError> / io;
+    pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), IoError> / io;
 }
 
-I Write ~ File {
-    +f write(&!self, buf: &[u8]) -> R[usize, IoError] / io;
-    +f flush(&!self) -> R[(), IoError] / io;
+impl Write for File {
+    pub fn write(&mut self, buf: &[u8]) -> Result<usize, IoError> / io;
+    pub fn flush(&mut self) -> Result<(), IoError> / io;
 }
 
-I Seek ~ File {
-    +f seek(&!self, pos: SeekFrom) -> R[u64, IoError] / io;
+impl Seek for File {
+    pub fn seek(&mut self, pos: SeekFrom) -> Result<u64, IoError> / io;
 }
 
 /// Builder for opening files with specific options.
-+S OpenOptions {
-    read: 1b,
-    write: 1b,
-    append: 1b,
-    create: 1b,
-    truncate: 1b,
+pub struct OpenOptions {
+    read: bool,
+    write: bool,
+    append: bool,
+    create: bool,
+    truncate: bool,
 }
 
-I OpenOptions {
-    +f new() -> OpenOptions {
-        @OpenOptions {
-            read: 0b,
-            write: 0b,
-            append: 0b,
-            create: 0b,
-            truncate: 0b,
+impl OpenOptions {
+    pub fn new() -> OpenOptions {
+        OpenOptions {
+            read: false,
+            write: false,
+            append: false,
+            create: false,
+            truncate: false,
         }
     }
 
-    +f read(&!self, yes: 1b) -> &!OpenOptions   { self.read = yes; self }
-    +f write(&!self, yes: 1b) -> &!OpenOptions   { self.write = yes; self }
-    +f append(&!self, yes: 1b) -> &!OpenOptions  { self.append = yes; self }
-    +f create(&!self, yes: 1b) -> &!OpenOptions  { self.create = yes; self }
-    +f truncate(&!self, yes: 1b) -> &!OpenOptions { self.truncate = yes; self }
+    pub fn read(&mut self, yes: bool) -> &mut OpenOptions   { self.read = yes; self }
+    pub fn write(&mut self, yes: bool) -> &mut OpenOptions   { self.write = yes; self }
+    pub fn append(&mut self, yes: bool) -> &mut OpenOptions  { self.append = yes; self }
+    pub fn create(&mut self, yes: bool) -> &mut OpenOptions  { self.create = yes; self }
+    pub fn truncate(&mut self, yes: bool) -> &mut OpenOptions { self.truncate = yes; self }
 
-    +f open(&self, path: &s) -> R[File, IoError] / io;
+    pub fn open(&self, path: &String) -> Result<File, IoError> / io;
 }
 
 // ---------------------------------------------------------------------------
@@ -214,31 +214,31 @@ I OpenOptions {
 // ---------------------------------------------------------------------------
 
 /// Returns a handle to standard input.
-+f stdin() -> Stdin / io;
+pub fn stdin() -> Stdin / io;
 
 /// Returns a handle to standard output.
-+f stdout() -> Stdout / io;
+pub fn stdout() -> Stdout / io;
 
 /// Returns a handle to standard error.
-+f stderr() -> Stderr / io;
+pub fn stderr() -> Stderr / io;
 
-+S Stdin { _priv: () }
-+S Stdout { _priv: () }
-+S Stderr { _priv: () }
+pub struct Stdin { _priv: () }
+pub struct Stdout { _priv: () }
+pub struct Stderr { _priv: () }
 
-I Read ~ Stdin {
-    +f read(&!self, buf: &![u8]) -> R[usize, IoError] / io;
-    +f read_exact(&!self, buf: &![u8]) -> R[(), IoError] / io;
+impl Read for Stdin {
+    pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, IoError> / io;
+    pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), IoError> / io;
 }
 
-I Write ~ Stdout {
-    +f write(&!self, buf: &[u8]) -> R[usize, IoError] / io;
-    +f flush(&!self) -> R[(), IoError] / io;
+impl Write for Stdout {
+    pub fn write(&mut self, buf: &[u8]) -> Result<usize, IoError> / io;
+    pub fn flush(&mut self) -> Result<(), IoError> / io;
 }
 
-I Write ~ Stderr {
-    +f write(&!self, buf: &[u8]) -> R[usize, IoError] / io;
-    +f flush(&!self) -> R[(), IoError] / io;
+impl Write for Stderr {
+    pub fn write(&mut self, buf: &[u8]) -> Result<usize, IoError> / io;
+    pub fn flush(&mut self) -> Result<(), IoError> / io;
 }
 
 // ---------------------------------------------------------------------------
@@ -246,11 +246,11 @@ I Write ~ Stderr {
 // ---------------------------------------------------------------------------
 
 /// Iterator over lines from a buffered reader.
-+S Lines[R: Read] {
-    reader: BufReader[R],
+pub struct Lines<R: Read> {
+    reader: BufReader<R>,
 }
 
-I Iterator ~ Lines[R: Read] {
-    type Item = R[s, IoError];
-    +f next(&!self) -> ?R[s, IoError] / io;
+impl Iterator for Lines<R: Read> {
+    type Item = Result<String, IoError>;
+    pub fn next(&mut self) -> Option<Result<String, IoError>> / io;
 }

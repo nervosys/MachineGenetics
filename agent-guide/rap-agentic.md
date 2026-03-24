@@ -21,7 +21,7 @@ ranked fix candidates with confidence scores and token cost.
 
 ```json
 // Request
-{"jsonrpc":"2.0","id":1,"method":"build/heal","params":{"source":"+f add(a: i32, b: i32) { a + b }"}}
+{"jsonrpc":"2.0","id":1,"method":"build/heal","params":{"source":"pub fn add(a: i32, b: i32) { a + b }"}}
 
 // Response
 {"jsonrpc":"2.0","id":1,"result":{
@@ -74,14 +74,14 @@ Compare two constructs side-by-side with a recommendation.
 
 Query the structured knowledge base. The `by` parameter selects the index:
 
-| `by` value   | Searches                            | Example `value`    |
-| ------------ | ----------------------------------- | ------------------ |
-| `fqn`        | Fully qualified name (exact/prefix) | `std.io.read_file` |
-| `effect`     | Symbols declaring a given effect    | `io`               |
-| `capability` | Symbols requiring a capability      | `network`          |
-| `tag`        | Semantic tags                       | `agent`            |
-| `rust_alias` | Rust equivalent symbol name         | `HashMap`          |
-| `module`     | All symbols in a module (prefix)    | `std.io`           |
+| `by` value   | Searches                            | Example `value`      |
+| ------------ | ----------------------------------- | -------------------- |
+| `fqn`        | Fully qualified name (exact/prefix) | `std::io::read_file` |
+| `effect`     | Symbols declaring a given effect    | `io`                 |
+| `capability` | Symbols requiring a capability      | `network`            |
+| `tag`        | Semantic tags                       | `agent`              |
+| `rust_alias` | Rust equivalent symbol name         | `HashMap`            |
+| `module`     | All symbols in a module (prefix)    | `std::io`            |
 
 ```json
 {"jsonrpc":"2.0","id":4,"method":"skb/query","params":{"by":"rust_alias","value":"HashMap"}}
@@ -96,7 +96,7 @@ needs a capability, query `by=fqn`.
 Lookup the spec block (preconditions, postconditions) for a symbol.
 
 ```json
-{"jsonrpc":"2.0","id":5,"method":"skb/spec","params":{"fqn":"std.io.read_file"}}
+{"jsonrpc":"2.0","id":5,"method":"skb/spec","params":{"fqn":"std::io::read_file"}}
 ```
 
 ## `verify/contracts`
@@ -118,7 +118,7 @@ Returns `status` (Verified/Partial/Failed/Trivial), individual `checks`, and
 
 ## Agent Memory (stdlib)
 
-The `std.agent.Memory` type provides 4-tier persistent memory:
+The `std::agent::Memory` type provides 4-tier persistent memory:
 
 | Tier      | Lifetime                | Use Case                            |
 | --------- | ----------------------- | ----------------------------------- |
@@ -128,10 +128,10 @@ The `std.agent.Memory` type provides 4-tier persistent memory:
 | Global    | Cross-project, shared   | Ecosystem knowledge, shared models  |
 
 ```rdx
-v mem = Memory.new(ephemeral_store, session_store, project_store, global_store);
-mem.set(MemoryTier.Project, "convention", "use_camelCase", &["style"]);
-v entry = mem.get("convention");  // searches all tiers
-mem.promote("convention", MemoryTier.Session, MemoryTier.Project);
+let mem = Memory::new(ephemeral_store, session_store, project_store, global_store);
+mem.set(MemoryTier::Project, "convention", "use_camelCase", &["style"]);
+let entry = mem.get("convention");  // searches all tiers
+mem.promote("convention", MemoryTier::Session, MemoryTier::Project);
 ```
 
 ## Swarm Orchestration Patterns
@@ -146,11 +146,11 @@ mem.promote("convention", MemoryTier.Session, MemoryTier.Project);
 
 ```rdx
 // Map-reduce: distribute items across swarm agents, then merge
-v result = swarm_map_reduce(&swarm, &items, map_fn, reduce_fn);
+let result = swarm_map_reduce(&swarm, &items, map_fn, reduce_fn);
 
 // Saga: multi-step with rollback on failure
-v result = swarm_saga(&swarm, &steps, initial_input);
+let result = swarm_saga(&swarm, &steps, initial_input);
 
 // Race: fastest agent wins
-v result = swarm_race(&swarm, &task, timeout);
+let result = swarm_race(&swarm, &task, timeout);
 ```

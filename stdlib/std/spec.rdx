@@ -1,125 +1,129 @@
-//! # std.spec — Contract System
+//! # std::spec — Specification & Contracts
 //!
-//! Preconditions, postconditions, invariants, and runtime verification.
-//! Contracts enable formal-style reasoning about Redox code.
+//! Formal specification primitives: preconditions, postconditions,
+//! invariants, and verification.
 
 // ---------------------------------------------------------------------------
-// Contract annotations (used inside `spec` blocks)
+// Contract functions
 // ---------------------------------------------------------------------------
 
-/// Assert a precondition. Panics if `cond` is false.
-/// Typically used as `@req` in spec blocks.
-///
-/// Example:
-/// ```
-/// spec {
-///     @req n > 0, "n must be positive";
-///     @ens result >= 0;
-/// }
-/// +f sqrt(n: f64) -> f64 { ... }
-/// ```
-+f require(cond: 1b, msg: &s);
+/// Assert a precondition. Panics at runtime if `cond` is false.
+/// In verification mode, the solver checks this statically.
+pub fn require(cond: bool, msg: &String);
 
-/// Assert a postcondition. Checked after function returns.
-/// Typically used as `@ens` in spec blocks.
-+f ensure(cond: 1b, msg: &s);
+/// Assert a postcondition. Panics at runtime if `cond` is false.
+pub fn ensure(cond: bool, msg: &String);
 
-/// Assert a type invariant. Checked after every mutation.
-/// Typically used as `@inv` in spec blocks.
-+f invariant(cond: 1b, msg: &s);
+/// Assert a class/loop invariant. Panics at runtime if `cond` is false.
+pub fn invariant(cond: bool, msg: &String);
+
+/// Mark a code path as unreachable. Panics if reached at runtime.
+pub fn unreachable(msg: &String) -> !;
 
 // ---------------------------------------------------------------------------
-// Runtime verification
+// Specification blocks
 // ---------------------------------------------------------------------------
 
-/// Verify all spec contracts for a given module at runtime.
-/// Returns a report of pass/fail results.
-+f verify(module: &s) -> R[VerifyReport, SpecError];
-
-/// Verify a specific function's contracts.
-+f verify_fn(module: &s, function: &s) -> R[VerifyReport, SpecError];
-
-// ---------------------------------------------------------------------------
-// Spec block representation
-// ---------------------------------------------------------------------------
-
-/// A parsed spec block attached to a function.
-+S SpecBlock {
-    function: s,
-    preconditions: [Condition]~,
-    postconditions: [Condition]~,
-    invariants: [Condition]~,
+/// A specification block that groups related contracts.
+pub struct SpecBlock {
+    name: String,
+    preconditions: Vec<SpecClause>,
+    postconditions: Vec<SpecClause>,
+    invariants: Vec<SpecClause>,
 }
 
-/// A single condition within a spec block.
-+S Condition {
-    /// The expression as source text.
-    expr: s,
-    /// Human-readable message.
-    message: s,
-    /// Whether this condition passed during verification.
-    passed: ?1b,
+pub struct SpecClause {
+    description: String,
+    check: fn() -> bool,
 }
 
-I SpecBlock {
-    /// Check all preconditions.
-    +f check_pre(&self) -> R[(), SpecViolation];
+impl SpecBlock {
+    /// Create a named specification block.
+    pub fn new(name: &String) -> SpecBlock {
+        SpecBlock {
+            name: name.to_owned(),
+            preconditions: Vec::new(),
+            postconditions: Vec::new(),
+            invariants: Vec::new(),
+        }
+    }
 
-    /// Check all postconditions.
-    +f check_post(&self) -> R[(), SpecViolation];
+    /// Add a precondition.
+    pub fn pre(&mut self, desc: &String, check: fn() -> bool) -> &mut SpecBlock {
+        self.preconditions.push(SpecClause { description: desc.to_owned(), check });
+        self
+    }
 
-    /// Check all invariants.
-    +f check_inv(&self) -> R[(), SpecViolation];
+    /// Add a postcondition.
+    pub fn post(&mut self, desc: &String, check: fn() -> bool) -> &mut SpecBlock {
+        self.postconditions.push(SpecClause { description: desc.to_owned(), check });
+        self
+    }
+
+    /// Add an invariant.
+    pub fn inv(&mut self, desc: &String, check: fn() -> bool) -> &mut SpecBlock {
+        self.invariants.push(SpecClause { description: desc.to_owned(), check });
+        self
+    }
+
+    /// Verify all clauses. Returns a report.
+    pub fn verify(&self) -> VerifyReport {
+        let mut results = Vec::new();
+
+        for clause in &self.preconditions {
+            results.push(SpecResult {
+                kind: SpecKind::Precondition,
+                description: clause.description.clone(),
+                passed: (clause.check)(),
+            });
+        }
+
+        for clause in &self.postconditions {
+            results.push(SpecResult {
+                kind: SpecKind::Postcondition,
+                description: clause.description.clone(),
+                passed: (clause.check)(),
+            });
+        }
+
+        for clause in &self.invariants {
+            results.push(SpecResult {
+                kind: SpecKind::Invariant,
+                description: clause.description.clone(),
+                passed: (clause.check)(),
+            });
+        }
+
+        let all_passed = results.iter().all(|r| r.passed);
+        VerifyReport { name: self.name.clone(), results, passed: all_passed }
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Verification report
 // ---------------------------------------------------------------------------
 
-+S VerifyReport {
-    module: s,
-    specs: [SpecResult]~,
-    total: usize,
-    passed: usize,
-    failed: usize,
-}
-
-I VerifyReport {
-    +f is_clean(&self) -> 1b { self.failed == 0 }
-
-    +f summary(&self) -> s {
-        f"{self.passed}/{self.total} specs passed ({self.failed} failed)"
-    }
-}
-
-+S SpecResult {
-    function: s,
-    kind: SpecKind,
-    passed: 1b,
-    message: ?s,
-}
-
-+E SpecKind {
+pub enum SpecKind {
     Precondition,
     Postcondition,
     Invariant,
 }
 
-// ---------------------------------------------------------------------------
-// Errors
-// ---------------------------------------------------------------------------
-
-+S SpecViolation {
-    function: s,
+pub struct SpecResult {
     kind: SpecKind,
-    condition: s,
-    message: s,
+    description: String,
+    passed: bool,
 }
 
-+S SpecError {
-    message: s,
+pub struct VerifyReport {
+    name: String,
+    results: Vec<SpecResult>,
+    passed: bool,
 }
 
-I std.fmt.Display ~ SpecViolation {
-    +f fmt(&self, f: &!std.fmt.Formatter) -> R[(), std.fmt.FmtError];
+impl VerifyReport {
+    pub fn is_ok(&self) -> bool { self.passed }
+    pub fn failures(&self) -> Vec<&SpecResult> {
+        self.results.iter().filter(|r| !r.passed).collect()
+    }
 }

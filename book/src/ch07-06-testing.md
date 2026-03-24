@@ -6,31 +6,31 @@ testing — all in the standard library.
 ## Basic assertions
 
 ```rdx
-u std.test.*
+use std::test::*;
 
-@test
-f test_addition() {
-    assert_eq(2 + 2, 4)
-    assert_ne(2 + 2, 5)
-    assert_true(10 > 5)
+#[test]
+fn test_addition() {
+    assert_eq!(2 + 2, 4);
+    assert_ne!(2 + 2, 5);
+    assert!(10 > 5);
 }
 
-@test
-f test_option() {
-    v x: ?i32 = Some(42)
-    assert_some(x)
+#[test]
+fn test_option() {
+    let x: Option<i32> = Some(42);
+    assert_some!(x);
 
-    v y: ?i32 = None
-    assert_none(y)
+    let y: Option<i32> = None;
+    assert_none!(y);
 }
 
-@test
-f test_result() {
-    v ok: R[i32, s] = Ok(42)
-    assert_ok(ok)
+#[test]
+fn test_result() {
+    let ok: Result<i32, String> = Ok(42);
+    assert_ok!(ok);
 
-    v err: R[i32, s] = Err("oops".into())
-    assert_err(err)
+    let err: Result<i32, String> = Err("oops".into());
+    assert_err!(err);
 }
 ```
 
@@ -47,27 +47,27 @@ rdx test -- --nocapture     # Show print output
 For floating-point comparisons:
 
 ```rdx
-@test
-f test_pi() {
-    v computed_pi = 4.0 * (1.0 - 1.0/3.0 + 1.0/5.0 - 1.0/7.0)
-    assert_approx(computed_pi, 3.14159, 0.01)
+#[test]
+fn test_pi() {
+    let computed_pi = 4.0 * (1.0 - 1.0/3.0 + 1.0/5.0 - 1.0/7.0);
+    assert_approx!(computed_pi, 3.14159, 0.01);
 }
 ```
 
 ## Benchmarking
 
 ```rdx
-u std.test.{Bencher, black_box}
+use std::test::{Bencher, black_box};
 
-@bench
-f bench_sort(b: &!Bencher) {
-    v data = [5, 3, 1, 4, 2]~
+#[bench]
+fn bench_sort(b: &mut Bencher) {
+    let data = vec![5, 3, 1, 4, 2];
 
     b.iter(|| {
-        m d = data.clone()
-        d.sort()
+        let mut d = data.clone();
+        d.sort();
         black_box(d)
-    })
+    });
 }
 ```
 
@@ -82,53 +82,53 @@ rdx bench
 Generate random inputs and verify properties:
 
 ```rdx
-u std.test.{prop, Arbitrary}
+use std::test::{prop, Arbitrary};
 
-@test
-f test_sort_is_sorted() {
-    prop(|items: [i32]~| {
-        m sorted = items.clone()
-        sorted.sort()
+#[test]
+fn test_sort_is_sorted() {
+    prop(|items: Vec<i32>| {
+        let mut sorted = items.clone();
+        sorted.sort();
 
         // Property: every adjacent pair is in order
-        @ i : 0..sorted.len().saturating_sub(1) {
-            assert_true(sorted[i] <= sorted[i + 1])
+        for i in 0..sorted.len().saturating_sub(1) {
+            assert!(sorted[i] <= sorted[i + 1]);
         }
-    })
+    });
 }
 
-@test
-f test_reverse_reverse_is_identity() {
-    prop(|items: [i32]~| {
-        m reversed = items.clone()
-        reversed.reverse()
-        reversed.reverse()
-        assert_eq(reversed, items)
-    })
+#[test]
+fn test_reverse_reverse_is_identity() {
+    prop(|items: Vec<i32>| {
+        let mut reversed = items.clone();
+        reversed.reverse();
+        reversed.reverse();
+        assert_eq!(reversed, items);
+    });
 }
 ```
 
 ### Custom Arbitrary implementations
 
 ```rdx
-u std.test.Arbitrary
+use std::test::Arbitrary;
 
-S Point { x: f64, y: f64 }
+struct Point { x: f64, y: f64 }
 
-I Arbitrary ~ Point {
-    +f arbitrary(rng: &!Rng) -> Self {
-        Point @{
-            x: f64.arbitrary(rng),
-            y: f64.arbitrary(rng),
+impl Arbitrary for Point {
+    pub fn arbitrary(rng: &mut Rng) -> Self {
+        Point {
+            x: f64::arbitrary(rng),
+            y: f64::arbitrary(rng),
         }
     }
 
-    +f shrink(&self) -> [Self]~ {
-        [
-            Point @{ x: 0.0, y: self.y },
-            Point @{ x: self.x, y: 0.0 },
-            Point @{ x: self.x / 2.0, y: self.y / 2.0 },
-        ]~
+    pub fn shrink(&self) -> Vec<Self> {
+        vec![
+            Point { x: 0.0, y: self.y },
+            Point { x: self.x, y: 0.0 },
+            Point { x: self.x / 2.0, y: self.y / 2.0 },
+        ]
     }
 }
 ```
@@ -136,15 +136,15 @@ I Arbitrary ~ Point {
 Property testing with custom config:
 
 ```rdx
-u std.test.PropConfig
+use std::test::PropConfig;
 
-@test
-f test_with_many_cases() {
+#[test]
+fn test_with_many_cases() {
     prop_with_config(
-        PropConfig @{ num_tests: 10_000, max_shrink_steps: 200 },
+        PropConfig { num_tests: 10_000, max_shrink_steps: 200 },
         |x: i32| {
-            assert_eq(x + 0, x)    // additive identity
+            assert_eq!(x + 0, x);    // additive identity
         },
-    )
+    );
 }
 ```

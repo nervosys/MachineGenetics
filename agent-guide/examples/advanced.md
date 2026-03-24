@@ -1,6 +1,7 @@
 # Worked Examples: Advanced
 
 > Prompt → Response pairs with agents, swarms, capabilities, and complex systems.
+> All examples use **standard syntax** (default).
 
 ---
 
@@ -10,33 +11,33 @@
 
 **Response:**
 ```redox
-u std.agent.{Agent, Capability}
+use std::agent::{Agent, Capability};
 
-@d(Debug)]
-+S LinkScraper {
-    url: s,
+#[derive(Debug)]
+pub struct LinkScraper {
+    url: String,
     cap: Capability,
 }
 
-I Agent ~ LinkScraper {
-    +af execute(&!self) -> R[[s]~, Error] / net, agent {
-        self.cap.request("net.http.get", &self.url)?
+impl Agent for LinkScraper {
+    pub async fn execute(&mut self) -> Result<Vec<String>, Error> / net, agent {
+        self.cap.request("net.http.get", &self.url)?;
 
-        v resp = http.get(&self.url).await?
-        v html = resp.text().await?
+        let resp = http::get(&self.url).await?;
+        let html = resp.text().await?;
 
-        v links = extract_links(&html)
-        ret links
+        let links = extract_links(&html);
+        return links;
     }
 }
 
-f extract_links(html: &s) -> [s]~ {
-    m result = [s]~.new()
-    @ segment ~ html.split("href=\"") {
-        ? v end = segment.find('"') {
-            v link = segment[..end].to_string()
-            ? link.starts_with("http") {
-                result.push(link)
+fn extract_links(html: &str) -> Vec<String> {
+    let mut result = Vec::new();
+    for segment in html.split("href=\"") {
+        if let end = segment.find('"') {
+            let link = segment[..end].to_string();
+            if link.starts_with("http") {
+                result.push(link);
             }
         }
     }
@@ -52,67 +53,67 @@ f extract_links(html: &s) -> [s]~ {
 
 **Response:**
 ```redox
-u std.agent.{Agent, Swarm, Capability}
-u std.sync.channel
+use std::agent::{Agent, Swarm, Capability};
+use std::sync::channel;
 
-@d(Debug)
-+S Fetcher {
-    url: s,
+#[derive(Debug)]
+pub struct Fetcher {
+    url: String,
 }
 
-I Agent ~ Fetcher {
-    +af execute(&!self) -> R[s, Error] / net, agent {
-        v resp = http.get(&self.url).await?
+impl Agent for Fetcher {
+    pub async fn execute(&mut self) -> Result<String, Error> / net, agent {
+        let resp = http::get(&self.url).await?;
         resp.text().await
     }
 }
 
-@d(Debug)
-+S Transformer {
-    raw_data: s,
+#[derive(Debug)]
+pub struct Transformer {
+    raw_data: String,
 }
 
-I Agent ~ Transformer {
-    +af execute(&!self) -> R[[Record]~, Error] / agent {
-        v records = parse_csv(&self.raw_data)?
-        v cleaned = records.into_iter()
+impl Agent for Transformer {
+    pub async fn execute(&mut self) -> Result<Vec<Record>, Error> / agent {
+        let records = parse_csv(&self.raw_data)?;
+        let cleaned = records.into_iter()
             .filter(|r| r.is_valid())
             .map(|r| r.normalize())
-            .collect()
-        ret cleaned
+            .collect();
+        return cleaned;
     }
 }
 
-@d(Debug)
-+S Saver {
-    records: [Record]~,
-    output_path: s,
+#[derive(Debug)]
+pub struct Saver {
+    records: Vec<Record>,
+    output_path: String,
 }
 
-I Agent ~ Saver {
-    +af execute(&!self) -> R[usize, Error] / io, agent {
-        v json = json.stringify(&self.records)?
-        fs.write(&self.output_path, &json)?
-        ret self.records.len()
+impl Agent for Saver {
+    pub async fn execute(&mut self) -> Result<usize, Error> / io, agent {
+        let j = json::stringify(&self.records)?;
+        fs::write(&self.output_path, &j)?;
+        return self.records.len();
     }
 }
 
-+af run_pipeline(url: s, output: s) -> R[usize, Error] / net, io, agent {
+pub async fn run_pipeline(url: String, output: String) -> Result<usize, Error> / net, io, agent {
     // Stage 1: Fetch
-    v fetcher = Fetcher @{ url }
-    v raw = fetcher.execute().await?
+    let fetcher = Fetcher { url };
+    let raw = fetcher.execute().await?;
 
     // Stage 2: Transform
-    v transformer = Transformer @{ raw_data: raw }
-    v records = transformer.execute().await?
+    let transformer = Transformer { raw_data: raw };
+    let records = transformer.execute().await?;
 
     // Stage 3: Save
-    v count = records.len()
-    v saver = Saver @{ records, output_path: output }
-    saver.execute().await?
+    let count = records.len();
+    let saver = Saver { records, output_path: output };
+    saver.execute().await?;
 
-    p"Pipeline complete: {count} records saved"
-    ret count
+    println!("Pipeline complete: {count} records saved");
+    return count;
 }
 ```
 
@@ -124,45 +125,45 @@ I Agent ~ Saver {
 
 **Response:**
 ```redox
-u std.agent.{Agent, Capability}
-u std.col.HashMap
+use std::agent::{Agent, Capability};
+use std::collections::HashMap;
 
-+S SecretManager {
+pub struct SecretManager {
     cap: Capability,
-    store: {s: s},
+    store: HashMap<String, String>,
 }
 
-I ~ SecretManager {
-    +f new(cap: Capability) -> Self {
-        Self @{ cap, store: {s: s}.new() }
+impl SecretManager {
+    pub fn new(cap: Capability) -> Self {
+        Self { cap, store: HashMap::new() }
     }
 }
 
-I Agent ~ SecretManager {
-    +af execute(&!self) -> R[(), Error] / io, agent {
+impl Agent for SecretManager {
+    pub async fn execute(&mut self) -> Result<(), Error> / io, agent {
         // Default execution: validate all secrets
-        @ (key, _) ~ &self.store {
-            self.cap.request("secrets.validate", key)?
+        for (key, _) in &self.store {
+            self.cap.request("secrets.validate", key)?;
         }
-        p"All {self.store.len()} secrets validated"
+        println!("All {} secrets validated", self.store.len());
         Ok(())
     }
 }
 
-I ~ SecretManager {
-    +af get(&self, key: &s) -> R[?&s, Error] / agent {
-        self.cap.request("secrets.read", key)?
+impl SecretManager {
+    pub async fn get(&self, key: &str) -> Result<Option<&String>, Error> / agent {
+        self.cap.request("secrets.read", key)?;
         Ok(self.store.get(key))
     }
 
-    +af set(&!self, key: s, value: s) -> R[(), Error] / agent {
-        self.cap.request("secrets.write", &key)?
-        self.store.insert(key, value)
+    pub async fn set(&mut self, key: String, value: String) -> Result<(), Error> / agent {
+        self.cap.request("secrets.write", &key)?;
+        self.store.insert(key, value);
         Ok(())
     }
 
-    +af delete(&!self, key: &s) -> R[?s, Error] / agent {
-        self.cap.request("secrets.delete", key)?
+    pub async fn delete(&mut self, key: &str) -> Result<Option<String>, Error> / agent {
+        self.cap.request("secrets.delete", key)?;
         Ok(self.store.remove(key))
     }
 }
@@ -176,64 +177,64 @@ I ~ SecretManager {
 
 **Response:**
 ```redox
-u std.agent.{Agent, Swarm}
-u std.time.Duration
+use std::agent::{Agent, Swarm};
+use std::time::Duration;
 
-@d(Debug, Clone)
-+E HealthStatus {
+#[derive(Debug, Clone)]
+pub enum HealthStatus {
     Healthy(u16),
-    Unhealthy(s),
+    Unhealthy(String),
     Timeout,
 }
 
-+S HealthChecker {
-    url: s,
+pub struct HealthChecker {
+    url: String,
     timeout: Duration,
 }
 
-I Agent ~ HealthChecker {
-    +af execute(&!self) -> R[HealthStatus, Error] / net, time, agent {
-        v result = http.get(&self.url)
+impl Agent for HealthChecker {
+    pub async fn execute(&mut self) -> Result<HealthStatus, Error> / net, time, agent {
+        let result = http::get(&self.url)
             .timeout(self.timeout)
-            .await
+            .await;
 
-        ? result {
+        match result {
             Ok(resp) => {
-                v status = resp.status_code()
-                ? status >= 200 && status < 400 {
-                    ret Ok(HealthStatus.Healthy(status))
-                } : {
-                    ret Ok(HealthStatus.Unhealthy(f"HTTP {status}"))
+                let status = resp.status_code();
+                if status >= 200 && status < 400 {
+                    return Ok(HealthStatus::Healthy(status));
+                } else {
+                    return Ok(HealthStatus::Unhealthy(format!("HTTP {status}")));
                 }
             },
             Err(e) => {
-                ? e.is_timeout() {
-                    ret Ok(HealthStatus.Timeout)
-                } : {
-                    ret Ok(HealthStatus.Unhealthy(f"{e}"))
+                if e.is_timeout() {
+                    return Ok(HealthStatus::Timeout);
+                } else {
+                    return Ok(HealthStatus::Unhealthy(format!("{e}")));
                 }
             },
         }
     }
 }
 
-+af check_all(urls: [s]~) -> R[{s: HealthStatus}, Error] / net, time, agent {
-    v swarm = Swarm.new()
-    v timeout = Duration.from_secs(5)
+pub async fn check_all(urls: Vec<String>) -> Result<HashMap<String, HealthStatus>, Error> / net, time, agent {
+    let swarm = Swarm::new();
+    let timeout = Duration::from_secs(5);
 
-    @ url ~ &urls {
-        swarm.spawn(HealthChecker @{
+    for url in &urls {
+        swarm.spawn(HealthChecker {
             url: url.clone(),
             timeout,
-        })
+        });
     }
 
-    v results = swarm.join_all().await?
-    m report = {s: HealthStatus}.new()
-    @ (url, status) ~ urls.into_iter().zip(results.into_iter()) {
-        report.insert(url, status)
+    let results = swarm.join_all().await?;
+    let mut report = HashMap::new();
+    for (url, status) in urls.into_iter().zip(results.into_iter()) {
+        report.insert(url, status);
     }
-    ret report
+    return report;
 }
 ```
 
@@ -245,68 +246,68 @@ I Agent ~ HealthChecker {
 
 **Response:**
 ```redox
-u std.agent.{Agent, Swarm}
-u std.sync.{channel, Sender, Receiver}
+use std::agent::{Agent, Swarm};
+use std::sync::{channel, Sender, Receiver};
 
-@d(Debug, Clone)
-+E Event {
-    Data(s),
+#[derive(Debug, Clone)]
+pub enum Event {
+    Data(String),
     Shutdown,
 }
 
-+S Producer {
-    sender: Sender[Event],
-    items: [s]~,
+pub struct Producer {
+    sender: Sender<Event>,
+    items: Vec<String>,
 }
 
-I Agent ~ Producer {
-    +af execute(&!self) -> R[(), Error] / io, agent {
-        @ item ~ &self.items {
-            p"Producing: {item}"
-            self.sender.send(Event.Data(item.clone()))?
+impl Agent for Producer {
+    pub async fn execute(&mut self) -> Result<(), Error> / io, agent {
+        for item in &self.items {
+            println!("Producing: {item}");
+            self.sender.send(Event::Data(item.clone()))?;
         }
-        self.sender.send(Event.Shutdown)?
+        self.sender.send(Event::Shutdown)?;
         Ok(())
     }
 }
 
-+S Consumer {
-    receiver: Receiver[Event],
+pub struct Consumer {
+    receiver: Receiver<Event>,
 }
 
-I Agent ~ Consumer {
-    +af execute(&!self) -> R[usize, Error] / io, agent {
-        m count: usize = 0
+impl Agent for Consumer {
+    pub async fn execute(&mut self) -> Result<usize, Error> / io, agent {
+        let mut count: usize = 0;
         loop {
-            ? self.receiver.recv()? {
-                Event.Data(msg) => {
-                    p"Consumed: {msg}"
-                    count += 1
+            match self.receiver.recv()? {
+                Event::Data(msg) => {
+                    println!("Consumed: {msg}");
+                    count += 1;
                 },
-                Event.Shutdown => {
-                    p"Shutting down after {count} events"
-                    ret Ok(count)
+                Event::Shutdown => {
+                    println!("Shutting down after {count} events");
+                    return Ok(count);
                 },
             }
         }
     }
 }
 
-+af run_pipeline() -> R[usize, Error] / io, agent {
-    v (tx, rx) = channel[Event]()
+pub async fn run_pipeline() -> Result<usize, Error> / io, agent {
+    let (tx, rx) = channel::<Event>();
 
-    v items = ["alpha", "beta", "gamma"]
+    let items = ["alpha", "beta", "gamma"]
         .iter()
-        .map(|i| s.from(*i))
-        .collect()
+        .map(|i| String::from(*i))
+        .collect();
 
-    v swarm = Swarm.new()
-    swarm.spawn(Producer @{ sender: tx, items })
-    swarm.spawn(Consumer @{ receiver: rx })
+    let swarm = Swarm::new();
+    swarm.spawn(Producer { sender: tx, items });
+    swarm.spawn(Consumer { receiver: rx });
 
-    v results = swarm.join_all().await?
+    let results = swarm.join_all().await?;
     // Consumer result is the count
-    ret results[1]
+    return results[1];
 }
 ```
 
@@ -318,62 +319,62 @@ I Agent ~ Consumer {
 
 **Response:**
 ```redox
-@d(Debug, Clone)
-+S Request {
-    +path: s,
-    +headers: {s: s},
-    +body: s,
+#[derive(Debug, Clone)]
+pub struct Request {
+    pub path: String,
+    pub headers: HashMap<String, String>,
+    pub body: String,
 }
 
-@d(Debug, Clone)
-+S Response {
-    +status: u16,
-    +body: s,
+#[derive(Debug, Clone)]
+pub struct Response {
+    pub status: u16,
+    pub body: String,
 }
 
-+T Middleware {
-    af handle(&self, req: Request, next: &dyn Handler) -> R[Response, Error] / net
+pub trait Middleware {
+    async fn handle(&self, req: Request, next: &dyn Handler) -> Result<Response, Error> / net;
 }
 
-+T Handler {
-    af handle(&self, req: Request) -> R[Response, Error] / net
+pub trait Handler {
+    async fn handle(&self, req: Request) -> Result<Response, Error> / net;
 }
 
-+S LoggingMiddleware {}
+pub struct LoggingMiddleware {}
 
-I Middleware ~ LoggingMiddleware {
-    af handle(&self, req: Request, next: &dyn Handler) -> R[Response, Error] / net {
-        p"→ {req.path}"
-        v resp = next.handle(req).await?
-        p"← {resp.status}"
-        ret resp
+impl Middleware for LoggingMiddleware {
+    async fn handle(&self, req: Request, next: &dyn Handler) -> Result<Response, Error> / net {
+        println!("→ {}", req.path);
+        let resp = next.handle(req).await?;
+        println!("← {}", resp.status);
+        return resp;
     }
 }
 
-+S AuthMiddleware {
-    api_key: s,
+pub struct AuthMiddleware {
+    api_key: String,
 }
 
-I Middleware ~ AuthMiddleware {
-    af handle(&self, m req: Request, next: &dyn Handler) -> R[Response, Error] / net {
-        ? v key = req.headers.get("Authorization") {
-            ? key != &self.api_key {
-                ret Ok(Response @{ status: 401, body: s.from("Unauthorized") })
+impl Middleware for AuthMiddleware {
+    async fn handle(&self, mut req: Request, next: &dyn Handler) -> Result<Response, Error> / net {
+        if let key = req.headers.get("Authorization") {
+            if key != &self.api_key {
+                return Ok(Response { status: 401, body: String::from("Unauthorized") });
             }
-        } : {
-            ret Ok(Response @{ status: 401, body: s.from("Missing auth") })
+        } else {
+            return Ok(Response { status: 401, body: String::from("Missing auth") });
         }
         next.handle(req).await
     }
 }
 
-+S AppHandler {}
+pub struct AppHandler {}
 
-I Handler ~ AppHandler {
-    af handle(&self, req: Request) -> R[Response, Error] / net {
-        Ok(Response @{
+impl Handler for AppHandler {
+    async fn handle(&self, req: Request) -> Result<Response, Error> / net {
+        Ok(Response {
             status: 200,
-            body: f"OK: {req.path}",
+            body: format!("OK: {}", req.path),
         })
     }
 }
@@ -387,48 +388,48 @@ I Handler ~ AppHandler {
 
 **Response:**
 ```redox
-u std.agent.{Agent, Capability}
-u std.skb.{Rule, Query, Proof}
+use std::agent::{Agent, Capability};
+use std::skb::{Rule, Query, Proof};
 
-@d(Debug)
-+S Optimizer {
-    source: s,
+#[derive(Debug)]
+pub struct Optimizer {
+    source: String,
     cap: Capability,
 }
 
-I Agent ~ Optimizer {
-    +af execute(&!self) -> R[s, Error] / io, agent {
-        self.cap.request("skb.query", "optimization")?
+impl Agent for Optimizer {
+    pub async fn execute(&mut self) -> Result<String, Error> / io, agent {
+        self.cap.request("skb.query", "optimization")?;
 
         // Query SKB for applicable rules
-        v query = Query.new("category", "optimization")
-        v rules = skb.search(query)?
+        let query = Query::new("category", "optimization");
+        let rules = skb::search(query)?;
 
-        m optimized = self.source.clone()
-        @ rule ~ &rules {
+        let mut optimized = self.source.clone();
+        for rule in &rules {
             // Try to apply each rule, check proof
-            ? v proof = rule.try_apply(&optimized) {
-                ? proof.is_valid() {
-                    optimized = proof.apply()
-                    p"Applied rule: {rule.name()}"
+            if let proof = rule.try_apply(&optimized) {
+                if proof.is_valid() {
+                    optimized = proof.apply();
+                    println!("Applied rule: {}", rule.name());
                 }
             }
         }
 
-        ret optimized
+        return optimized;
     }
 }
 
-+af optimize_file(path: &s) -> R[s, Error] / io, agent {
-    v source = fs.read_to_string(path)?
-    v cap = Capability.new("skb")
+pub async fn optimize_file(path: &str) -> Result<String, Error> / io, agent {
+    let source = fs::read_to_string(path)?;
+    let cap = Capability::new("skb");
 
-    v optimizer = Optimizer @{ source, cap }
-    v result = optimizer.execute().await?
+    let optimizer = Optimizer { source, cap };
+    let result = optimizer.execute().await?;
 
-    fs.write(path, &result)?
-    p"Optimized {path}"
-    ret result
+    fs::write(path, &result)?;
+    println!("Optimized {path}");
+    return result;
 }
 ```
 
@@ -440,111 +441,111 @@ I Agent ~ Optimizer {
 
 **Response:**
 ```redox
-u std.fs
-u std.json
-u std.env
+use std::fs;
+use std::json;
+use std::env;
 
-@d(Debug, Clone)
-+S Task {
-    +id: u64,
-    +title: s,
-    +done: bool,
+#[derive(Debug, Clone)]
+pub struct Task {
+    pub id: u64,
+    pub title: String,
+    pub done: bool,
 }
 
-@d(Debug)
-+S TaskStore {
-    path: s,
-    tasks: [Task]~,
+#[derive(Debug)]
+pub struct TaskStore {
+    path: String,
+    tasks: Vec<Task>,
     next_id: u64,
 }
 
-I ~ TaskStore {
-    +f load(path: &s) -> R[Self, Error] / io {
-        ? fs.exists(path) {
-            v data = fs.read_to_string(path)?
-            v tasks = json.parse[[Task]~](&data)?
-            v next_id = tasks.iter().map(|t| t.id).max().unwrap_or(0) + 1
-            ret Ok(Self @{ path: path.to_string(), tasks, next_id })
-        } : {
-            ret Ok(Self @{
+impl TaskStore {
+    pub fn load(path: &str) -> Result<Self, Error> / io {
+        if fs::exists(path) {
+            let data = fs::read_to_string(path)?;
+            let tasks = json::parse::<Vec<Task>>(&data)?;
+            let next_id = tasks.iter().map(|t| t.id).max().unwrap_or(0) + 1;
+            return Ok(Self { path: path.to_string(), tasks, next_id });
+        } else {
+            return Ok(Self {
                 path: path.to_string(),
-                tasks: [Task]~.new(),
+                tasks: Vec::new(),
                 next_id: 1,
-            })
+            });
         }
     }
 
-    +f save(&self) -> R[(), Error] / io {
-        v data = json.stringify_pretty(&self.tasks)?
-        fs.write(&self.path, &data)
+    pub fn save(&self) -> Result<(), Error> / io {
+        let data = json::stringify_pretty(&self.tasks)?;
+        fs::write(&self.path, &data)
     }
 
-    +f add(&!self, title: s) -> u64 {
-        v id = self.next_id
-        self.tasks.push(Task @{ id, title, done: 0b })
-        self.next_id += 1
+    pub fn add(&mut self, title: String) -> u64 {
+        let id = self.next_id;
+        self.tasks.push(Task { id, title, done: false });
+        self.next_id += 1;
         id
     }
 
-    +f complete(&!self, id: u64) -> R[(), s] {
-        ? v task = self.tasks.iter_mut().find(|t| t.id == id) {
-            task.done = 1b
+    pub fn complete(&mut self, id: u64) -> Result<(), String> {
+        if let task = self.tasks.iter_mut().find(|t| t.id == id) {
+            task.done = true;
             Ok(())
-        } : {
-            Err(f"Task {id} not found")
+        } else {
+            Err(format!("Task {id} not found"))
         }
     }
 
-    +f delete(&!self, id: u64) -> R[(), s] {
-        v before = self.tasks.len()
-        self.tasks.retain(|t| t.id != id)
-        ? self.tasks.len() < before {
+    pub fn delete(&mut self, id: u64) -> Result<(), String> {
+        let before = self.tasks.len();
+        self.tasks.retain(|t| t.id != id);
+        if self.tasks.len() < before {
             Ok(())
-        } : {
-            Err(f"Task {id} not found")
+        } else {
+            Err(format!("Task {id} not found"))
         }
     }
 
-    +f list(&self) / io {
-        ? self.tasks.is_empty() {
-            p"No tasks."
-            ret
+    pub fn list(&self) / io {
+        if self.tasks.is_empty() {
+            println!("No tasks.");
+            return;
         }
-        @ task ~ &self.tasks {
-            v mark = ? task.done { "✓" } : { " " }
-            p"[{mark}] {task.id}: {task.title}"
+        for task in &self.tasks {
+            let mark = if task.done { "✓" } else { " " };
+            println!("[{mark}] {}: {}", task.id, task.title);
         }
     }
 }
 
-+f main() -> R[(), Error] / io, env {
-    v args: [s]~ = env.args().skip(1).collect()
-    m store = TaskStore.load("tasks.json")?
+pub fn main() -> Result<(), Error> / io, env {
+    let args: Vec<String> = env::args().skip(1).collect();
+    let mut store = TaskStore::load("tasks.json")?;
 
-    ? args.first().map(|a| a.as_str()) {
+    match args.first().map(|a| a.as_str()) {
         Some("add") => {
-            v title = args[1..].join(" ")
-            v id = store.add(title)
-            store.save()?
-            p"Added task #{id}"
+            let title = args[1..].join(" ");
+            let id = store.add(title);
+            store.save()?;
+            println!("Added task #{id}");
         },
         Some("list") => {
-            store.list()
+            store.list();
         },
         Some("done") => {
-            v id: u64 = args[1].parse().unwrap()
-            store.complete(id).unwrap()
-            store.save()?
-            p"Completed task #{id}"
+            let id: u64 = args[1].parse().unwrap();
+            store.complete(id).unwrap();
+            store.save()?;
+            println!("Completed task #{id}");
         },
         Some("rm") => {
-            v id: u64 = args[1].parse().unwrap()
-            store.delete(id).unwrap()
-            store.save()?
-            p"Deleted task #{id}"
+            let id: u64 = args[1].parse().unwrap();
+            store.delete(id).unwrap();
+            store.save()?;
+            println!("Deleted task #{id}");
         },
         _ => {
-            p"Usage: tasks <add|list|done|rm> [args...]"
+            println!("Usage: tasks <add|list|done|rm> [args...]");
         },
     }
 

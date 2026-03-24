@@ -1,4 +1,4 @@
-//! # std.agent — Agent Primitives (Redox-unique)
+//! # std::agent — Agent Primitives (Redox-unique)
 //!
 //! Core building blocks for AI agent systems: agents, swarms, messages,
 //! capability leases, code regions, and the swarm bus.
@@ -11,45 +11,45 @@
 
 /// The core trait for an autonomous agent.
 /// Every agent can receive messages, produce actions, and participate in swarms.
-+T Agent {
+pub trait Agent {
     /// The type of messages this agent can handle.
     type Msg;
     /// The type of actions this agent can produce.
     type Action;
 
     /// Handle an incoming message and optionally produce an action.
-    +f handle(&!self, msg: Self.Msg) -> ?Self.Action / agent;
+    pub fn handle(&mut self, msg: Self::Msg) -> Option<Self::Action> / agent;
 
     /// Called once when the agent is started.
-    +f on_start(&!self) / agent {}
+    pub fn on_start(&mut self) / agent {}
 
     /// Called once when the agent is stopped.
-    +f on_stop(&!self) / agent {}
+    pub fn on_stop(&mut self) / agent {}
 
     /// The agent's unique identifier.
-    +f id(&self) -> AgentId;
+    pub fn id(&self) -> AgentId;
 
     /// Current capabilities held by this agent.
-    +f capabilities(&self) -> &[Capability];
+    pub fn capabilities(&self) -> &[Capability];
 }
 
 /// Unique identifier for an agent instance.
-+S AgentId {
+pub struct AgentId {
     value: u128,
 }
 
-I AgentId {
+impl AgentId {
     /// Generate a new random agent ID.
-    +f new() -> AgentId / agent;
+    pub fn new() -> AgentId / agent;
 
     /// Create from a specific value (e.g., for tests).
-    +f from(value: u128) -> AgentId {
-        @AgentId { value }
+    pub fn from(value: u128) -> AgentId {
+        AgentId { value }
     }
 }
 
-I std.fmt.Display ~ AgentId {
-    +f fmt(&self, f: &!std.fmt.Formatter) -> R[(), std.fmt.FmtError];
+impl std::fmt::Display for AgentId {
+    pub fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::FmtError>;
 }
 
 // ---------------------------------------------------------------------------
@@ -57,47 +57,47 @@ I std.fmt.Display ~ AgentId {
 // ---------------------------------------------------------------------------
 
 /// A coordinated group of agents working together.
-+S Swarm[A: Agent] {
-    agents: [@A]~,
+pub struct Swarm<A: Agent> {
+    agents: Vec<Arc<A>>,
     bus: Bus,
     consensus: ConsensusStrategy,
-    _running: 1b,
+    _running: bool,
 }
 
-I Swarm[A: Agent] {
+impl Swarm<A: Agent> {
     /// Create a new swarm with the given consensus strategy.
-    +f new(strategy: ConsensusStrategy) -> Swarm[A] / agent;
+    pub fn new(strategy: ConsensusStrategy) -> Swarm<A> / agent;
 
     /// Add an agent to the swarm.
-    +f add(&!self, agent: A) -> AgentId / agent;
+    pub fn add(&mut self, agent: A) -> AgentId / agent;
 
     /// Remove an agent by ID.
-    +f remove(&!self, id: &AgentId) -> R[A, AgentError] / agent;
+    pub fn remove(&mut self, id: &AgentId) -> Result<A, AgentError> / agent;
 
     /// Send a message to all agents in the swarm.
-    +f broadcast(&self, msg: &A.Msg) / agent;
+    pub fn broadcast(&self, msg: &A::Msg) / agent;
 
     /// Send a message to a specific agent.
-    +f send(&self, id: &AgentId, msg: A.Msg) -> R[(), AgentError] / agent;
+    pub fn send(&self, id: &AgentId, msg: A::Msg) -> Result<(), AgentError> / agent;
 
     /// Run the swarm until all agents are idle or stopped.
-    +f run(&!self) -> R[[A.Action]~, AgentError] / agent;
+    pub fn run(&mut self) -> Result<Vec<A::Action>, AgentError> / agent;
 
     /// Run the swarm with a timeout.
-    +f run_with_timeout(&!self, dur: std.time.Duration) -> R[[A.Action]~, AgentError] / agent;
+    pub fn run_with_timeout(&mut self, dur: std::time::Duration) -> Result<Vec<A::Action>, AgentError> / agent;
 
     /// Gather a consensus from agent responses.
-    +f consensus(&self, responses: &[A.Action]) -> ?A.Action / agent;
+    pub fn consensus(&self, responses: &[A::Action]) -> Option<A::Action> / agent;
 
     /// Number of agents.
-    +f size(&self) -> usize { self.agents.len() }
+    pub fn size(&self) -> usize { self.agents.len() }
 
     /// Get the shared bus.
-    +f bus(&self) -> &Bus { &self.bus }
+    pub fn bus(&self) -> &Bus { &self.bus }
 }
 
 /// Consensus strategies for swarm decision-making.
-+E ConsensusStrategy {
+pub enum ConsensusStrategy {
     /// Majority vote (> 50% agreement).
     Majority,
     /// Unanimous agreement required.
@@ -105,9 +105,9 @@ I Swarm[A: Agent] {
     /// First response wins (fastest agent).
     FirstResponse,
     /// Weighted voting (agents have different weights).
-    Weighted([f64]~),
+    Weighted(Vec<f64>),
     /// Custom consensus function.
-    Custom(f(&[_]) -> ?_),
+    Custom(fn(&[_]) -> Option<_>),
 }
 
 // ---------------------------------------------------------------------------
@@ -115,23 +115,23 @@ I Swarm[A: Agent] {
 // ---------------------------------------------------------------------------
 
 /// A message passed between agents.
-+S Message[T] {
+pub struct Message<T> {
     from: AgentId,
-    to: ?AgentId,       // None = broadcast
+    to: Option<AgentId>,       // None = broadcast
     payload: T,
-    timestamp: std.time.Instant,
-    correlation_id: ?u128,
+    timestamp: std::time::Instant,
+    correlation_id: Option<u128>,
 }
 
-I Message[T] {
+impl Message<T> {
     /// Create a new directed message.
-    +f new(from: AgentId, to: AgentId, payload: T) -> Message[T] / agent;
+    pub fn new(from: AgentId, to: AgentId, payload: T) -> Message<T> / agent;
 
     /// Create a broadcast message.
-    +f broadcast(from: AgentId, payload: T) -> Message[T] / agent;
+    pub fn broadcast(from: AgentId, payload: T) -> Message<T> / agent;
 
     /// Whether this is a broadcast message.
-    +f is_broadcast(&self) -> 1b { self.to.is_none() }
+    pub fn is_broadcast(&self) -> bool { self.to.is_none() }
 }
 
 // ---------------------------------------------------------------------------
@@ -139,41 +139,41 @@ I Message[T] {
 // ---------------------------------------------------------------------------
 
 /// A capability token granting access to a resource or operation.
-+S Capability {
-    name: s,
+pub struct Capability {
+    name: String,
     scope: CapabilityScope,
-    expires: ?std.time.Instant,
+    expires: Option<std::time::Instant>,
 }
 
-+E CapabilityScope {
+pub enum CapabilityScope {
     /// Access to a single resource instance.
-    Instance(s),
+    Instance(String),
     /// Access to all resources of a kind.
-    Kind(s),
+    Kind(String),
     /// Global access.
     Global,
 }
 
 /// A time-bounded lease on a capability.
-+S Lease {
+pub struct Lease {
     capability: Capability,
     holder: AgentId,
-    granted_at: std.time.Instant,
-    expires_at: std.time.Instant,
+    granted_at: std::time::Instant,
+    expires_at: std::time::Instant,
 }
 
-I Lease {
+impl Lease {
     /// Check if the lease is still valid.
-    +f is_valid(&self) -> 1b / time;
+    pub fn is_valid(&self) -> bool / time;
 
     /// Remaining duration on the lease.
-    +f remaining(&self) -> std.time.Duration / time;
+    pub fn remaining(&self) -> std::time::Duration / time;
 
     /// Renew the lease for an additional duration.
-    +f renew(&!self, dur: std.time.Duration) -> R[(), AgentError] / agent;
+    pub fn renew(&mut self, dur: std::time::Duration) -> Result<(), AgentError> / agent;
 
     /// Release the lease early.
-    +f release(&!self) / agent;
+    pub fn release(&mut self) / agent;
 }
 
 // ---------------------------------------------------------------------------
@@ -182,22 +182,22 @@ I Lease {
 
 /// A code region with explicit capability requirements.
 /// Regions enable fine-grained access control within agents.
-+S Region {
-    name: s,
-    required_capabilities: [s]~,
+pub struct Region {
+    name: String,
+    required_capabilities: Vec<String>,
 }
 
-I Region {
+impl Region {
     /// Define a new region with the given capability requirements.
-    +f new(name: &s, caps: &[s]) -> Region {
-        @Region {
+    pub fn new(name: &String, caps: &[String]) -> Region {
+        Region {
             name: name.to_owned(),
             required_capabilities: caps.iter().map(|c| c.to_owned()).collect(),
         }
     }
 
     /// Execute a closure within this region, verifying capabilities.
-    +f enter[T](&self, agent: &Agent, body: f() -> T) -> R[T, AgentError] / agent;
+    pub fn enter<T>(&self, agent: &Agent, body: fn() -> T) -> Result<T, AgentError> / agent;
 }
 
 // ---------------------------------------------------------------------------
@@ -205,25 +205,25 @@ I Region {
 // ---------------------------------------------------------------------------
 
 /// The swarm communication bus. Agents publish and subscribe to topics.
-+S Bus {
-    _inner: @_BusInner,
+pub struct Bus {
+    _inner: Arc<_BusInner>,
 }
 
-I Bus {
+impl Bus {
     /// Create a new bus.
-    +f new() -> Bus / agent;
+    pub fn new() -> Bus / agent;
 
     /// Publish a message to a topic.
-    +f publish[T: std.json.Serialize](&self, topic: &s, payload: &T) / agent;
+    pub fn publish<T: std::json::Serialize>(&self, topic: &String, payload: &T) / agent;
 
     /// Subscribe to a topic. Returns a receiver for messages.
-    +f subscribe[T: std.json.Deserialize](&self, topic: &s) -> std.sync.Receiver[T] / agent;
+    pub fn subscribe<T: std::json::Deserialize>(&self, topic: &String) -> std::sync::Receiver<T> / agent;
 
     /// Unsubscribe from a topic.
-    +f unsubscribe(&self, topic: &s) / agent;
+    pub fn unsubscribe(&self, topic: &String) / agent;
 
     /// List active topics.
-    +f topics(&self) -> [s]~;
+    pub fn topics(&self) -> Vec<String>;
 }
 
 // ---------------------------------------------------------------------------
@@ -231,7 +231,7 @@ I Bus {
 // ---------------------------------------------------------------------------
 
 /// Tier of agent memory persistence.
-+E MemoryTier {
+pub enum MemoryTier {
     /// Ephemeral: lives within a single request/invocation.
     Ephemeral,
     /// Session: persists for the duration of a conversation/session.
@@ -243,71 +243,71 @@ I Bus {
 }
 
 /// A single entry in agent memory.
-+S MemoryEntry {
-    key: s,
-    value: s,
+pub struct MemoryEntry {
+    key: String,
+    value: String,
     tier: MemoryTier,
-    created_at: std.time.Instant,
-    updated_at: std.time.Instant,
-    ttl: ?std.time.Duration,
-    tags: [s]~,
+    created_at: std::time::Instant,
+    updated_at: std::time::Instant,
+    ttl: Option<std::time::Duration>,
+    tags: Vec<String>,
 }
 
 /// Trait for agent memory stores. Implement per-tier backends.
-+T MemoryStore {
+pub trait MemoryStore {
     /// Retrieve an entry by key.
-    +f get(&self, key: &s) -> ?MemoryEntry / agent;
+    pub fn get(&self, key: &String) -> Option<MemoryEntry> / agent;
 
     /// Store or update an entry.
-    +f set(&!self, key: &s, value: &s, tags: &[s]) -> R[(), AgentError] / agent;
+    pub fn set(&mut self, key: &String, value: &String, tags: &[String]) -> Result<(), AgentError> / agent;
 
     /// Remove an entry.
-    +f remove(&!self, key: &s) -> R[(), AgentError] / agent;
+    pub fn remove(&mut self, key: &String) -> Result<(), AgentError> / agent;
 
     /// Query entries by tag.
-    +f query_by_tag(&self, tag: &s) -> [MemoryEntry]~ / agent;
+    pub fn query_by_tag(&self, tag: &String) -> Vec<MemoryEntry> / agent;
 
     /// List all keys (bounded by limit).
-    +f keys(&self, limit: usize) -> [s]~ / agent;
+    pub fn keys(&self, limit: usize) -> Vec<String> / agent;
 
     /// Clear all entries.
-    +f clear(&!self) -> R[(), AgentError] / agent;
+    pub fn clear(&mut self) -> Result<(), AgentError> / agent;
 }
 
 /// Unified 4-tier memory manager for agents.
-+S Memory {
-    ephemeral: ^MemoryStore,
-    session: ^MemoryStore,
-    project: ^MemoryStore,
-    global: ^MemoryStore,
+pub struct Memory {
+    ephemeral: Box<MemoryStore>,
+    session: Box<MemoryStore>,
+    project: Box<MemoryStore>,
+    global: Box<MemoryStore>,
 }
 
-I Memory {
+impl Memory {
     /// Create a new Memory with the given per-tier backends.
-    +f new(
-        ephemeral: ^MemoryStore,
-        session: ^MemoryStore,
-        project: ^MemoryStore,
-        global: ^MemoryStore,
+    pub fn new(
+        ephemeral: Box<MemoryStore>,
+        session: Box<MemoryStore>,
+        project: Box<MemoryStore>,
+        global: Box<MemoryStore>,
     ) -> Memory / agent;
 
-    /// Get a value, searching tiers in order: ephemeral → session → project → global.
-    +f get(&self, key: &s) -> ?MemoryEntry / agent;
+    /// Get a value, searching tiers in order: ephemeral -> session -> project -> global.
+    pub fn get(&self, key: &String) -> Option<MemoryEntry> / agent;
 
     /// Set a value at a specific tier.
-    +f set(&!self, tier: MemoryTier, key: &s, value: &s, tags: &[s]) -> R[(), AgentError] / agent;
+    pub fn set(&mut self, tier: MemoryTier, key: &String, value: &String, tags: &[String]) -> Result<(), AgentError> / agent;
 
     /// Remove from a specific tier.
-    +f remove(&!self, tier: MemoryTier, key: &s) -> R[(), AgentError] / agent;
+    pub fn remove(&mut self, tier: MemoryTier, key: &String) -> Result<(), AgentError> / agent;
 
     /// Query across all tiers by tag.
-    +f query_by_tag(&self, tag: &s) -> [MemoryEntry]~ / agent;
+    pub fn query_by_tag(&self, tag: &String) -> Vec<MemoryEntry> / agent;
 
     /// Promote an entry from one tier to a higher-persistence tier.
-    +f promote(&!self, key: &s, from: MemoryTier, to: MemoryTier) -> R[(), AgentError] / agent;
+    pub fn promote(&mut self, key: &String, from: MemoryTier, to: MemoryTier) -> Result<(), AgentError> / agent;
 
     /// Flush ephemeral and session tiers (e.g., on session end).
-    +f flush_transient(&!self) -> R[(), AgentError] / agent;
+    pub fn flush_transient(&mut self) -> Result<(), AgentError> / agent;
 }
 
 // ---------------------------------------------------------------------------
@@ -317,58 +317,58 @@ I Memory {
 /// Map-reduce over a swarm: distribute work, collect, and merge.
 ///
 /// ```rdx
-/// v results = swarm_map_reduce(&swarm, items, map_fn, reduce_fn);
+/// let results = swarm_map_reduce(&swarm, items, map_fn, reduce_fn);
 /// ```
-+f swarm_map_reduce[A: Agent, T, R](
-    swarm: &Swarm[A],
+pub fn swarm_map_reduce<A: Agent, T, R>(
+    swarm: &Swarm<A>,
     items: &[T],
-    map_fn: f(&A, &T) -> R,
-    reduce_fn: f(&[R]) -> R,
-) -> R[R, AgentError] / agent;
+    map_fn: fn(&A, &T) -> R,
+    reduce_fn: fn(&[R]) -> R,
+) -> Result<R, AgentError> / agent;
 
 /// Pipeline: chain agents sequentially, output of one feeds input of next.
 ///
 /// ```rdx
-/// v result = swarm_pipeline(&stages, input);
+/// let result = swarm_pipeline(&stages, input);
 /// ```
-+f swarm_pipeline[T](
-    stages: &[^Agent[Msg = T, Action = T]],
+pub fn swarm_pipeline<T>(
+    stages: &[Box<Agent<Msg = T, Action = T>>],
     input: T,
-) -> R[T, AgentError] / agent;
+) -> Result<T, AgentError> / agent;
 
 /// Saga: multi-step workflow with compensating rollbacks on failure.
 ///
 /// Each step is a (forward_fn, rollback_fn) pair. If any step fails,
 /// all completed steps are rolled back in reverse order.
-+f swarm_saga[A: Agent, T](
-    swarm: &Swarm[A],
-    steps: &[(f(&A, &T) -> R[T, AgentError], f(&A, &T) -> R[(), AgentError])],
+pub fn swarm_saga<A: Agent, T>(
+    swarm: &Swarm<A>,
+    steps: &[(fn(&A, &T) -> Result<T, AgentError>, fn(&A, &T) -> Result<(), AgentError>)],
     input: T,
-) -> R[T, AgentError] / agent;
+) -> Result<T, AgentError> / agent;
 
 /// Fan-out: send the same task to N agents, collect all results.
-+f swarm_fan_out[A: Agent, T, R](
-    swarm: &Swarm[A],
+pub fn swarm_fan_out<A: Agent, T, R>(
+    swarm: &Swarm<A>,
     task: &T,
-) -> R[[R]~, AgentError] / agent;
+) -> Result<Vec<R>, AgentError> / agent;
 
 /// Race: send task to all agents, return the first successful result.
-+f swarm_race[A: Agent, T, R](
-    swarm: &Swarm[A],
+pub fn swarm_race<A: Agent, T, R>(
+    swarm: &Swarm<A>,
     task: &T,
-    timeout: std.time.Duration,
-) -> R[R, AgentError] / agent;
+    timeout: std::time::Duration,
+) -> Result<R, AgentError> / agent;
 
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
 
-+S AgentError {
+pub struct AgentError {
     kind: AgentErrorKind,
-    message: s,
+    message: String,
 }
 
-+E AgentErrorKind {
+pub enum AgentErrorKind {
     NotFound,
     CapabilityDenied,
     LeaseExpired,

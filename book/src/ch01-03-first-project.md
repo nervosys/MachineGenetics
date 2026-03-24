@@ -43,8 +43,8 @@ instead of crates, Forge instead of Cargo).
 ## The generated main.rdx
 
 ```rdx
-+f main() / io {
-    p"Hello from my_app!"
+pub fn main() / io {
+    println!("Hello from my_app!");
 }
 ```
 
@@ -61,14 +61,13 @@ json = "1.0"
 Then use them in your code:
 
 ```rdx
-u http.{Request, Response}
-u json.{parse, stringify}
+use http::{Request, Response};
+use json::{parse, stringify};
 
-+f main() / io, net {
-    v resp = Request.get("https://api.example.com/data").send()?
-    v data = parse(&resp.text()?)?
-    p"Got: {data}"
-}
+pub fn main() / io, net {
+    let resp = Request::get("https://api.example.com/data").send()?;
+    let data = parse(&resp.text()?)?;
+    println!("Got: {data}");
 ```
 
 The `/ io, net` annotation declares that `main` performs both I/O and network

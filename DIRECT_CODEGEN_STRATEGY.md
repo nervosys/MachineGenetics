@@ -22,14 +22,14 @@ Redox Source → AST → HIR → MIR → Redox MLIR Dialect → Standard MLIR �
 
 Each layer transition **destroys information**:
 
-| Transition              | Information Lost                                   |
-| ----------------------- | -------------------------------------------------- |
-| AST → HIR               | Syntactic sugar, sigil semantics                   |
-| HIR → MIR               | Type-level contracts (become runtime assertions)   |
-| MIR → Redox MLIR        | Rust ownership model (becomes memref ops)          |
-| Redox MLIR → Std MLIR   | Effect annotations, contract annotations           |
-| Std MLIR → LLVM IR      | Polyhedral structure, dialect semantics             |
-| LLVM IR → Machine Code  | SSA structure, high-level type information          |
+| Transition             | Information Lost                                 |
+| ---------------------- | ------------------------------------------------ |
+| AST → HIR              | Syntactic sugar, sigil semantics                 |
+| HIR → MIR              | Type-level contracts (become runtime assertions) |
+| MIR → Redox MLIR       | Rust ownership model (becomes memref ops)        |
+| Redox MLIR → Std MLIR  | Effect annotations, contract annotations         |
+| Std MLIR → LLVM IR     | Polyhedral structure, dialect semantics          |
+| LLVM IR → Machine Code | SSA structure, high-level type information       |
 
 By the time LLVM sees the code, it's working with untyped SSA values in a
 generic IR. It knows *nothing* about:
@@ -269,17 +269,17 @@ pub enum OpKind {
 
 ### Key Difference from MIR/MLIR/LLVM IR
 
-| Feature                | MIR          | MLIR           | LLVM IR      | RIR               |
-| ---------------------- | ------------ | -------------- | ------------ | ----------------- |
-| Ownership tracking     | Yes          | Custom dialect | No           | First-class       |
-| Effect annotations     | No           | Custom dialect | No           | First-class       |
-| Contract facts         | No           | Custom dialect | No           | First-class       |
-| Cost annotations       | No           | No             | No           | First-class       |
-| Target-specific ops    | No           | Via dialects   | Intrinsics   | Native ops        |
-| Vector ops             | No           | vector dialect | Intrinsics   | Native ops        |
-| Parallel constructs    | No           | omp/gpu        | No           | Native ops        |
-| Register allocation    | No           | No             | Backend      | Integrated        |
-| Optimization passes    | Limited      | Dialect passes | 200+ passes  | Semantic passes   |
+| Feature             | MIR     | MLIR           | LLVM IR     | RIR             |
+| ------------------- | ------- | -------------- | ----------- | --------------- |
+| Ownership tracking  | Yes     | Custom dialect | No          | First-class     |
+| Effect annotations  | No      | Custom dialect | No          | First-class     |
+| Contract facts      | No      | Custom dialect | No          | First-class     |
+| Cost annotations    | No      | No             | No          | First-class     |
+| Target-specific ops | No      | Via dialects   | Intrinsics  | Native ops      |
+| Vector ops          | No      | vector dialect | Intrinsics  | Native ops      |
+| Parallel constructs | No      | omp/gpu        | No          | Native ops      |
+| Register allocation | No      | No             | Backend     | Integrated      |
+| Optimization passes | Limited | Dialect passes | 200+ passes | Semantic passes |
 
 ---
 
@@ -317,7 +317,7 @@ LLVM's alias analysis (BasicAA, TBAA, ScopedNoAliasAA) is heuristic and
 expensive. RDC uses effect annotations as **proof-carrying aliases**:
 
 ```
-f compute(x: &f64, y: &f64) -> f64 / pure {
+fn compute(x: &f64, y: &f64) -> f64 / pure {
     *x + *y
 }
 ```
@@ -376,8 +376,8 @@ RDC already knows all of this from contracts and effects:
 
 ```
 @req data.len() >= 8 && data.len() % 8 == 0
-f process(data: &mut [f64]~) / pure {
-    @ i ~ 0..data.len() {
+fn process(data: &mut Vec<f64>) / pure {
+    for i in 0..data.len() {
         data[i] = data[i] * 2.0 + 1.0;
     }
 }
@@ -406,8 +406,8 @@ instructions directly:
 
 ```
 @req items.len() >= 1024
-f transform(items: &mut [f64]~) / pure {
-    @ i ~ 0..items.len() {
+fn transform(items: &mut Vec<f64>) / pure {
+    for i in 0..items.len() {
         items[i] = expensive_compute(items[i]);
     }
 }
@@ -431,7 +431,7 @@ RDC operates on typed values with known access patterns. It can transform
 data layout at the IR level:
 
 ```
-+S Particle {
+pub struct Particle {
     position: Vec3,    // 24 bytes
     velocity: Vec3,    // 24 bytes
     mass: f64,         // 8 bytes
@@ -462,9 +462,9 @@ RDC combines contract bounds with escape analysis to eliminate allocations:
 
 ```
 @req items.len() <= 64
-f sort_small(items: [i32]~) -> [i32]~ / alloc {
+fn sort_small(items: Vec<i32>) -> Vec<i32> / alloc {
     // Vec<i32> with len <= 64
-    m sorted = items.clone();
+    let mut sorted = items.clone();
     sorted.sort();
     sorted
 }
@@ -606,15 +606,15 @@ step because the type system and contracts guarantee correctness.
 
 ### Why RDC Compiles Faster
 
-| Phase           | LLVM (current)                      | RDC                                    | Speedup |
-| --------------- | ----------------------------------- | -------------------------------------- | ------- |
-| Parsing         | LL(1) → AST                        | Same                                   | 1×      |
-| Type checking   | HIR → inference                    | Same                                   | 1×      |
-| IR construction | AST → HIR → MIR → MLIR → LLVM IR  | AST → RIR (single step)               | 3–5×    |
-| Optimization    | MLIR passes + LLVM 200+ passes     | RDC semantic passes (< 20)             | 5–20×   |
-| Codegen         | LLVM SelectionDAG/GlobalISel → MC  | RIR-Low → direct encode                | 3–10×   |
-| Linking         | LLD with LTO                       | Same (or incremental link)             | 1×      |
-| **Total**       | ~10 seconds (100K LOC)             | ~0.5–1 second (100K LOC)              | 10–20×  |
+| Phase           | LLVM (current)                    | RDC                        | Speedup |
+| --------------- | --------------------------------- | -------------------------- | ------- |
+| Parsing         | LL(1) → AST                       | Same                       | 1×      |
+| Type checking   | HIR → inference                   | Same                       | 1×      |
+| IR construction | AST → HIR → MIR → MLIR → LLVM IR  | AST → RIR (single step)    | 3–5×    |
+| Optimization    | MLIR passes + LLVM 200+ passes    | RDC semantic passes (< 20) | 5–20×   |
+| Codegen         | LLVM SelectionDAG/GlobalISel → MC | RIR-Low → direct encode    | 3–10×   |
+| Linking         | LLD with LTO                      | Same (or incremental link) | 1×      |
+| **Total**       | ~10 seconds (100K LOC)            | ~0.5–1 second (100K LOC)   | 10–20×  |
 
 The biggest win is **optimization passes**. LLVM runs ~200 passes (many
 quadratic or worse in complexity). Most exist to *re-discover* information that
@@ -662,18 +662,18 @@ perform.
 
 ```rdx
 @req data.len() % 16 == 0
-+f normalize(data: &mut [f64]~) / pure {
-    v sum = sum_all(data);                // call
-    @ i ~ 0..data.len() {
+pub fn normalize(data: &mut Vec<f64>) / pure {
+    let sum = sum_all(data);                // call
+    for i in 0..data.len() {
         data[i] = data[i] / sum;          // divide each element
     }
 }
 
 @req data.len() > 0
 @ens result > 0.0
-+f sum_all(data: &[f64]~) -> f64 / pure {
-    m acc = 0.0;
-    @ x ~ data { acc = acc + *x; }
+pub fn sum_all(data: &Vec<f64>) -> f64 / pure {
+    let mut acc = 0.0;
+    for x in data { acc = acc + *x; }
     acc
 }
 ```
@@ -709,14 +709,14 @@ vbroadcastsd zmm2, xmm_sum      ; broadcast sum to all lanes
 ```rdx
 @req 0 < age && age <= 200
 @req 0.0 < income
-+f tax_bracket(age: u32, income: f64) -> f64 / pure {
-    ?: age < 18 { 0.0 }
-    ?: age < 65 {
-        ?: income < 50_000.0 { income * 0.12 }
-        ?: income < 100_000.0 { income * 0.22 }
-        ?  { income * 0.32 }
+pub fn tax_bracket(age: u32, income: f64) -> f64 / pure {
+    if age < 18 { 0.0 }
+    else if age < 65 {
+        if income < 50_000.0 { income * 0.12 }
+        else if income < 100_000.0 { income * 0.22 }
+        else { income * 0.32 }
     }
-    ? { income * 0.10 }   // senior discount
+    else { income * 0.10 }   // senior discount
 }
 ```
 
@@ -743,9 +743,9 @@ ret
 
 ```rdx
 @req input.len() <= 4096
-+f to_uppercase(input: &s) -> s / alloc {
-    m result = s.with_capacity(input.len());
-    @ c ~ input.chars() {
+pub fn to_uppercase(input: &str) -> String / alloc {
+    let mut result = String::with_capacity(input.len());
+    for c in input.chars() {
         result.push(c.to_ascii_uppercase());
     }
     result
@@ -845,14 +845,14 @@ RDC emits GPU kernels directly from `/ pure` functions with `GpuLaunch` ops:
 Traditional safety checks have runtime cost: bounds checks, null checks,
 overflow checks. Redox eliminates them **at compile time** via contracts:
 
-| Safety Check        | C/C++ Cost | Rust Cost     | Redox/RDC Cost      |
-| ------------------- | ---------- | ------------- | ------------------- |
-| Bounds check        | None (UB)  | 1–3 cycles    | 0 (contract proves) |
-| Null check          | None (UB)  | N/A (Option)  | 0 (contract proves) |
-| Overflow check      | None (UB)  | 1 cycle debug | 0 (contract proves) |
-| Division by zero    | None (UB)  | 1 cycle       | 0 (contract proves) |
-| Double free         | None (UB)  | Compile error | Compile error       |
-| Data race           | None (UB)  | Compile error | Compile error       |
+| Safety Check     | C/C++ Cost | Rust Cost     | Redox/RDC Cost      |
+| ---------------- | ---------- | ------------- | ------------------- |
+| Bounds check     | None (UB)  | 1–3 cycles    | 0 (contract proves) |
+| Null check       | None (UB)  | N/A (Option)  | 0 (contract proves) |
+| Overflow check   | None (UB)  | 1 cycle debug | 0 (contract proves) |
+| Division by zero | None (UB)  | 1 cycle       | 0 (contract proves) |
+| Double free      | None (UB)  | Compile error | Compile error       |
+| Data race        | None (UB)  | Compile error | Compile error       |
 
 C/C++ achieves "zero cost" by ignoring safety (undefined behavior).
 Rust achieves safety by adding runtime checks.
@@ -871,48 +871,48 @@ RDC never does because the proof is attached to every operation.
 
 ### RDC vs. LLVM
 
-| Dimension              | LLVM                        | RDC                              |
-| ---------------------- | --------------------------- | -------------------------------- |
-| IR layers              | 3 (LLVM IR → SelectionDAG → MI) | 1 (RIR → Machine Code)        |
-| Optimization passes    | ~200                        | ~15–20                           |
-| Alias analysis         | 5 passes, O(n²)             | 1 bit (effect annotation)        |
-| Vectorization          | LoopVectorizer + SLP        | Contract-guided, exact           |
-| Inlining               | Heuristic cost model        | Cost oracle, exact               |
-| Register alloc         | Greedy/PBQP                 | Graph coloring + ownership       |
-| Compile time           | ~100ms per function         | ~5–10ms per function             |
-| Target support         | 15+ architectures           | 5 (x86, AArch64, RISC-V, WASM, GPU) |
+| Dimension           | LLVM                            | RDC                                 |
+| ------------------- | ------------------------------- | ----------------------------------- |
+| IR layers           | 3 (LLVM IR → SelectionDAG → MI) | 1 (RIR → Machine Code)              |
+| Optimization passes | ~200                            | ~15–20                              |
+| Alias analysis      | 5 passes, O(n²)                 | 1 bit (effect annotation)           |
+| Vectorization       | LoopVectorizer + SLP            | Contract-guided, exact              |
+| Inlining            | Heuristic cost model            | Cost oracle, exact                  |
+| Register alloc      | Greedy/PBQP                     | Graph coloring + ownership          |
+| Compile time        | ~100ms per function             | ~5–10ms per function                |
+| Target support      | 15+ architectures               | 5 (x86, AArch64, RISC-V, WASM, GPU) |
 
 ### RDC vs. MLIR
 
-| Dimension              | MLIR                        | RDC                              |
-| ---------------------- | --------------------------- | -------------------------------- |
-| Dialect count          | 50+                         | 0 (single IR)                    |
-| Progressive lowering   | 3–6 stages                  | 0 (single lowering)             |
-| Custom passes          | Per-dialect                 | Universal (semantic-aware)       |
-| Parallelism            | omp/gpu dialects            | Native ops (zero overhead)       |
-| Autotuning             | External feedback loop      | Integrated (cost oracle)         |
-| Compilation overhead   | Context creation + pass mgr | Zero framework overhead          |
+| Dimension            | MLIR                        | RDC                        |
+| -------------------- | --------------------------- | -------------------------- |
+| Dialect count        | 50+                         | 0 (single IR)              |
+| Progressive lowering | 3–6 stages                  | 0 (single lowering)        |
+| Custom passes        | Per-dialect                 | Universal (semantic-aware) |
+| Parallelism          | omp/gpu dialects            | Native ops (zero overhead) |
+| Autotuning           | External feedback loop      | Integrated (cost oracle)   |
+| Compilation overhead | Context creation + pass mgr | Zero framework overhead    |
 
 ### RDC vs. Cranelift
 
-| Dimension              | Cranelift                   | RDC                              |
-| ---------------------- | --------------------------- | -------------------------------- |
-| IR                     | CLIF (SSA, untyped)         | RIR (SSA + types + contracts)    |
-| Optimization level     | -O1 equivalent              | -O3+ (via semantic info)         |
-| Vectorization          | None                        | Full (contract-guided)           |
-| Parallelization        | None                        | Full (effect-guided)             |
-| Compile speed          | Fast                        | Comparable                       |
-| Runtime performance    | ~80% of LLVM                | ~110–150% of LLVM                |
+| Dimension           | Cranelift           | RDC                           |
+| ------------------- | ------------------- | ----------------------------- |
+| IR                  | CLIF (SSA, untyped) | RIR (SSA + types + contracts) |
+| Optimization level  | -O1 equivalent      | -O3+ (via semantic info)      |
+| Vectorization       | None                | Full (contract-guided)        |
+| Parallelization     | None                | Full (effect-guided)          |
+| Compile speed       | Fast                | Comparable                    |
+| Runtime performance | ~80% of LLVM        | ~110–150% of LLVM             |
 
 ### RDC vs. GCC
 
-| Dimension              | GCC                         | RDC                              |
-| ---------------------- | --------------------------- | -------------------------------- |
-| IR layers              | 3 (GENERIC → GIMPLE → RTL) | 1 (RIR → Machine Code)          |
-| Optimization passes    | 300+                        | ~15–20                           |
-| Auto-vectorization     | Heuristic                   | Contract-exact                   |
-| Auto-parallelization   | Limited (OpenMP pragmas)    | Automatic (effect-proven)        |
-| Compile time           | Slower than LLVM            | 10–20× faster than GCC           |
+| Dimension            | GCC                        | RDC                       |
+| -------------------- | -------------------------- | ------------------------- |
+| IR layers            | 3 (GENERIC → GIMPLE → RTL) | 1 (RIR → Machine Code)    |
+| Optimization passes  | 300+                       | ~15–20                    |
+| Auto-vectorization   | Heuristic                  | Contract-exact            |
+| Auto-parallelization | Limited (OpenMP pragmas)   | Automatic (effect-proven) |
+| Compile time         | Slower than LLVM           | 10–20× faster than GCC    |
 
 ---
 
@@ -1022,36 +1022,36 @@ ensures zero regression during the phased rollout.
 
 ### Compilation Speed
 
-| Benchmark                    | MLIR+LLVM -O2 | RDC -O2  | Speedup |
-| ---------------------------- | -------------- | -------- | ------- |
-| hello-world (100 LOC)        | 120ms          | 8ms      | 15×     |
-| http-server (10K LOC)        | 3.2s           | 0.25s    | 13×     |
-| game-engine (100K LOC)       | 45s            | 3.5s     | 13×     |
-| full-os-kernel (1M LOC)      | 15min          | 1.2min   | 12×     |
-| incremental (1 fn changed)   | 2.5s           | 15ms     | 167×    |
+| Benchmark                  | MLIR+LLVM -O2 | RDC -O2 | Speedup |
+| -------------------------- | ------------- | ------- | ------- |
+| hello-world (100 LOC)      | 120ms         | 8ms     | 15×     |
+| http-server (10K LOC)      | 3.2s          | 0.25s   | 13×     |
+| game-engine (100K LOC)     | 45s           | 3.5s    | 13×     |
+| full-os-kernel (1M LOC)    | 15min         | 1.2min  | 12×     |
+| incremental (1 fn changed) | 2.5s          | 15ms    | 167×    |
 
 ### Runtime Performance (vs. LLVM -O3)
 
-| Benchmark                    | LLVM -O3 | RDC      | Speedup | Reason                           |
-| ---------------------------- | -------- | -------- | ------- | -------------------------------- |
-| n-body simulation            | 1.00×    | 0.82×    | 1.22×   | Contract → vector + no checks   |
-| ray tracer                   | 1.00×    | 0.75×    | 1.33×   | Layout opt + parallel            |
-| regex engine                 | 1.00×    | 0.91×    | 1.10×   | Branch elimination               |
-| JSON parser                  | 1.00×    | 0.85×    | 1.18×   | Alloc elimination + SIMD         |
-| matrix multiply (1024²)      | 1.00×    | 0.68×    | 1.47×   | Tiled + vectorized + parallel    |
-| sort (10M integers)          | 1.00×    | 0.78×    | 1.28×   | Branch-free compare + radix      |
-| HTTP request handling        | 1.00×    | 0.72×    | 1.39×   | Zero-alloc + effect pipeline     |
-| ML inference (ResNet-50)     | 1.00×    | 0.55×    | 1.82×   | GPU offload + quantization       |
+| Benchmark                | LLVM -O3 | RDC   | Speedup | Reason                        |
+| ------------------------ | -------- | ----- | ------- | ----------------------------- |
+| n-body simulation        | 1.00×    | 0.82× | 1.22×   | Contract → vector + no checks |
+| ray tracer               | 1.00×    | 0.75× | 1.33×   | Layout opt + parallel         |
+| regex engine             | 1.00×    | 0.91× | 1.10×   | Branch elimination            |
+| JSON parser              | 1.00×    | 0.85× | 1.18×   | Alloc elimination + SIMD      |
+| matrix multiply (1024²)  | 1.00×    | 0.68× | 1.47×   | Tiled + vectorized + parallel |
+| sort (10M integers)      | 1.00×    | 0.78× | 1.28×   | Branch-free compare + radix   |
+| HTTP request handling    | 1.00×    | 0.72× | 1.39×   | Zero-alloc + effect pipeline  |
+| ML inference (ResNet-50) | 1.00×    | 0.55× | 1.82×   | GPU offload + quantization    |
 
 Ratios < 1.0 mean RDC is faster (takes less time).
 
 ### Binary Size
 
-| Benchmark                    | LLVM -Os | RDC -Os  | Ratio   |
-| ---------------------------- | -------- | -------- | ------- |
-| hello-world                  | 12KB     | 4KB      | 0.33×   |
-| http-server                  | 2.1MB    | 0.8MB    | 0.38×   |
-| game-engine                  | 18MB     | 7MB      | 0.39×   |
+| Benchmark   | LLVM -Os | RDC -Os | Ratio |
+| ----------- | -------- | ------- | ----- |
+| hello-world | 12KB     | 4KB     | 0.33× |
+| http-server | 2.1MB    | 0.8MB   | 0.38× |
+| game-engine | 18MB     | 7MB     | 0.39× |
 
 Smaller binaries because:
 - No LLVM runtime support functions linked
@@ -1066,16 +1066,16 @@ Smaller binaries because:
 RDC is not just "another backend." It is a **fundamentally different approach**
 to compilation that exploits Redox's unique semantic richness:
 
-| Property               | Traditional (MLIR → LLVM)         | RDC                              |
-| ---------------------- | --------------------------------- | -------------------------------- |
-| Information at codegen | Nearly zero                       | Full (contracts + effects + cost)|
-| IR transitions         | 5–7 lossy translations            | 1 lossless translation           |
-| Optimization cost      | O(n²–n³) analysis per pass        | O(n) lookup per pass             |
-| Pass count             | ~200                              | ~15–20                           |
-| Compile time           | Seconds to minutes                | Milliseconds to seconds          |
-| Runtime quality        | Best-effort heuristic             | Provably optimal for contracts   |
-| Safety                 | Runtime checks or UB              | Compile-time proof               |
-| Parallelization        | Manual or heuristic               | Automatic from effects           |
+| Property               | Traditional (MLIR → LLVM)  | RDC                               |
+| ---------------------- | -------------------------- | --------------------------------- |
+| Information at codegen | Nearly zero                | Full (contracts + effects + cost) |
+| IR transitions         | 5–7 lossy translations     | 1 lossless translation            |
+| Optimization cost      | O(n²–n³) analysis per pass | O(n) lookup per pass              |
+| Pass count             | ~200                       | ~15–20                            |
+| Compile time           | Seconds to minutes         | Milliseconds to seconds           |
+| Runtime quality        | Best-effort heuristic      | Provably optimal for contracts    |
+| Safety                 | Runtime checks or UB       | Compile-time proof                |
+| Parallelization        | Manual or heuristic        | Automatic from effects            |
 
 The MLIR+LLVM pipeline was the right starting point — it provided correctness
 and broad target support. RDC is the endgame — it delivers the performance

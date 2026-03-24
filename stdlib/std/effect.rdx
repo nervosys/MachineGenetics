@@ -1,4 +1,4 @@
-//! # std.effect — Effect System
+//! # std::effect — Effect System
 //!
 //! Core types for algebraic effects and handlers.
 //! Effects are Redox's mechanism for controlled side effects.
@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 /// An algebraic effect that can be performed and handled.
-+T Effect {
+pub trait Effect {
     /// The type of the operation's input.
     type Input;
     /// The type of the operation's result.
@@ -24,16 +24,16 @@
 ///
 /// Example:
 /// ```
-/// +E Log: Effect {
-///     type Input = s;
+/// pub enum Log: Effect {
+///     type Input = String;
 ///     type Output = ();
 /// }
 ///
-/// +f log(msg: s) / Log {
-///     std.effect.perform[Log](msg);
+/// pub fn log(msg: String) / Log {
+///     std::effect::perform::<Log>(msg);
 /// }
 /// ```
-+f perform[E: Effect](input: E.Input) -> E.Output / E;
+pub fn perform<E: Effect>(input: E::Input) -> E::Output / E;
 
 // ---------------------------------------------------------------------------
 // Handler construction
@@ -43,21 +43,21 @@
 ///
 /// Example:
 /// ```
-/// v result = std.effect.handle[Log](
+/// let result = std::effect::handle::<Log>(
 ///     || { do_work(); },         // the effectful computation
-///     |msg| { println(msg); },   // the handler for Log operations
+///     |msg| { println!("{}", msg); },   // the handler for Log operations
 /// );
 /// ```
-+f handle[E: Effect, T](
-    body: f() -> T / E,
-    handler: f(E.Input, f(E.Output) -> T) -> T,
+pub fn handle<E: Effect, T>(
+    body: fn() -> T / E,
+    handler: fn(E::Input, fn(E::Output) -> T) -> T,
 ) -> T;
 
 /// Handle multiple effects at once.
-+f handle2[E1: Effect, E2: Effect, T](
-    body: f() -> T / E1 + E2,
-    h1: f(E1.Input, f(E1.Output) -> T) -> T,
-    h2: f(E2.Input, f(E2.Output) -> T) -> T,
+pub fn handle2<E1: Effect, E2: Effect, T>(
+    body: fn() -> T / E1 + E2,
+    h1: fn(E1::Input, fn(E1::Output) -> T) -> T,
+    h2: fn(E2::Input, fn(E2::Output) -> T) -> T,
 ) -> T;
 
 // ---------------------------------------------------------------------------
@@ -65,31 +65,31 @@
 // ---------------------------------------------------------------------------
 
 /// The I/O effect — file and stream operations.
-+E IoEffect: Effect {
+pub enum IoEffect: Effect {
     type Input = IoOp;
     type Output = IoResult;
 }
 
 /// The networking effect.
-+E NetEffect: Effect {
+pub enum NetEffect: Effect {
     type Input = NetOp;
     type Output = NetResult;
 }
 
 /// The async effect — task spawning and scheduling.
-+E AsyncEffect: Effect {
+pub enum AsyncEffect: Effect {
     type Input = AsyncOp;
     type Output = AsyncResult;
 }
 
 /// The agent effect — agent lifecycle and communication.
-+E AgentEffect: Effect {
+pub enum AgentEffect: Effect {
     type Input = AgentOp;
     type Output = AgentResult;
 }
 
 /// The RNG effect — random number generation.
-+E RngEffect: Effect {
+pub enum RngEffect: Effect {
     type Input = RngOp;
     type Output = u64;
 }
@@ -98,26 +98,26 @@
 // Placeholder operation types
 // ---------------------------------------------------------------------------
 
-+E IoOp      { Read, Write, Flush, Seek }
-+E IoResult  { Bytes([u8]~), Count(usize), Ok }
-+E NetOp     { Connect, Send, Recv, Listen }
-+E NetResult { Data([u8]~), Accepted, Ok }
-+E AsyncOp   { Spawn, Join, Sleep }
-+E AsyncResult { Handle(u64), Value, Ok }
-+E AgentOp   { Send, Recv, Lease, Release }
-+E AgentResult { Msg, Lease, Ok }
-+E RngOp     { NextU64, Range(i64, i64) }
+pub enum IoOp      { Read, Write, Flush, Seek }
+pub enum IoResult  { Bytes(Vec<u8>), Count(usize), Ok }
+pub enum NetOp     { Connect, Send, Recv, Listen }
+pub enum NetResult { Data(Vec<u8>), Accepted, Ok }
+pub enum AsyncOp   { Spawn, Join, Sleep }
+pub enum AsyncResult { Handle(u64), Value, Ok }
+pub enum AgentOp   { Send, Recv, Lease, Release }
+pub enum AgentResult { Msg, Lease, Ok }
+pub enum RngOp     { NextU64, Range(i64, i64) }
 
 // ---------------------------------------------------------------------------
 // Effect combinators
 // ---------------------------------------------------------------------------
 
 /// Check if a function has a specific effect.
-+f has_effect[E: Effect, F](f: &F) -> 1b;
+pub fn has_effect<E: Effect, F>(f: &F) -> bool;
 
 /// Remove an effect from a function's signature by providing a handler.
 /// Returns a pure (or reduced-effect) function.
-+f discharge[E: Effect, T](
-    f: f() -> T / E,
-    handler: f(E.Input) -> E.Output,
-) -> f() -> T;
+pub fn discharge<E: Effect, T>(
+    f: fn() -> T / E,
+    handler: fn(E::Input) -> E::Output,
+) -> fn() -> T;

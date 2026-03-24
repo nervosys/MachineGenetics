@@ -3,40 +3,40 @@
 ## Structs
 
 ```rdx
-S User {
-    name: s,
+struct User {
+    name: String,
     age: u32,
-    email: s,
+    email: String,
 }
 
-// Creating an instance (@ is struct-literal syntax)
-v user = User @{
+// Creating an instance
+let user = User {
     name: "Alice".into(),
     age: 30,
     email: "alice@example.com".into(),
-}
+};
 ```
 
 ### Tuple structs
 
 ```rdx
-S Point(f64, f64);
-S Color(u8, u8, u8);
+struct Point(f64, f64);
+struct Color(u8, u8, u8);
 
-v origin = Point(0.0, 0.0)
-v red = Color(255, 0, 0)
+let origin = Point(0.0, 0.0);
+let red = Color(255, 0, 0);
 ```
 
 ### Unit structs
 
 ```rdx
-S Marker;
+struct Marker;
 ```
 
 ## Enums
 
 ```rdx
-E Direction {
+enum Direction {
     North,
     South,
     East,
@@ -44,23 +44,23 @@ E Direction {
 }
 
 // Enum with data
-E Shape {
+enum Shape {
     Circle(f64),
     Rectangle(f64, f64),
     Triangle { a: f64, b: f64, c: f64 },
 }
 
 // Using enums
-v d = Direction.North
-v s = Shape.Circle(5.0)
+let d = Direction::North;
+let s = Shape::Circle(5.0);
 ```
 
 ## Tuples
 
 ```rdx
-v pair: (i32, s) = (42, "hello".into())
-v (x, y) = pair    // destructure
-v first = pair.0    // field access
+let pair: (i32, String) = (42, "hello".into());
+let (x, y) = pair;    // destructure
+let first = pair.0;    // field access
 ```
 
 ## Arrays
@@ -68,14 +68,14 @@ v first = pair.0    // field access
 Fixed-size arrays:
 
 ```rdx
-v data: [i32; 4] = [1, 2, 3, 4]
-v zeros = [0; 100]    // 100 zeros
+let data: [i32; 4] = [1, 2, 3, 4];
+let zeros = [0; 100];    // 100 zeros
 ```
 
 ## Slices
 
 ```rdx
-v slice: &[i32] = &data[1..3]
+let slice: &[i32] = &data[1..3];
 ```
 
 ## Type aliases

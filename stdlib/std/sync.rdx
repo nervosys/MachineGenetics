@@ -1,4 +1,4 @@
-//! # std.sync — Synchronization Primitives
+//! # std::sync — Synchronization Primitives
 //!
 //! Mutexes, read-write locks, channels, barriers, semaphores, and atomics.
 //! All blocking operations declare the `sync` effect.
@@ -7,119 +7,128 @@
 // Mutex
 // ---------------------------------------------------------------------------
 
-/// A mutual exclusion lock protecting data of type `T`.
-+S Mutex[T] {
+/// A mutual exclusion lock.
+pub struct Mutex<T> {
     _data: T,
-    _locked: 1b,
 }
 
-I Mutex[T] {
-    /// Create a new unlocked mutex wrapping `value`.
-    +f new(value: T) -> Mutex[T];
+impl Mutex<T> {
+    /// Create a new unlocked mutex.
+    pub fn new(value: T) -> Mutex<T>;
 
     /// Acquire the lock, blocking until available.
-    +f lock(&self) -> R[MutexGuard[T], SyncError] / sync;
+    pub fn lock(&self) -> Result<MutexGuard<T>, SyncError> / sync;
 
     /// Try to acquire the lock without blocking.
-    +f try_lock(&self) -> ?MutexGuard[T];
+    pub fn try_lock(&self) -> Result<MutexGuard<T>, SyncError>;
+
+    /// Check if the lock is poisoned.
+    pub fn is_poisoned(&self) -> bool;
 }
 
-/// RAII guard returned by `Mutex.lock()`. Releases the lock on drop.
-+S MutexGuard[T] {
-    _mutex: &Mutex[T],
+/// RAII guard for `Mutex`.
+pub struct MutexGuard<T> {
+    _lock: &Mutex<T>,
 }
 
-I Deref ~ MutexGuard[T] {
-    type Target = T;
-    +f deref(&self) -> &T;
-}
+impl MutexGuard<T> {
+    /// Access the protected data.
+    pub fn get(&self) -> &T;
 
-I DerefMut ~ MutexGuard[T] {
-    +f deref_mut(&!self) -> &!T;
+    /// Mutably access the protected data.
+    pub fn get_mut(&mut self) -> &mut T;
 }
 
 // ---------------------------------------------------------------------------
-// RwLock
+// Read-Write Lock
 // ---------------------------------------------------------------------------
 
-/// A reader-writer lock. Multiple readers or one writer.
-+S RwLock[T] {
+/// A reader-writer lock: multiple readers OR one writer.
+pub struct RwLock<T> {
     _data: T,
 }
 
-I RwLock[T] {
-    +f new(value: T) -> RwLock[T];
+impl RwLock<T> {
+    pub fn new(value: T) -> RwLock<T>;
 
-    /// Acquire a shared read lock.
-    +f read(&self) -> R[RwLockReadGuard[T], SyncError] / sync;
+    /// Acquire a read lock.
+    pub fn read(&self) -> Result<RwLockReadGuard<T>, SyncError> / sync;
 
-    /// Acquire an exclusive write lock.
-    +f write(&self) -> R[RwLockWriteGuard[T], SyncError] / sync;
+    /// Acquire a write lock.
+    pub fn write(&self) -> Result<RwLockWriteGuard<T>, SyncError> / sync;
 
-    +f try_read(&self) -> ?RwLockReadGuard[T];
-    +f try_write(&self) -> ?RwLockWriteGuard[T];
+    /// Try to acquire a read lock without blocking.
+    pub fn try_read(&self) -> Result<RwLockReadGuard<T>, SyncError>;
+
+    /// Try to acquire a write lock without blocking.
+    pub fn try_write(&self) -> Result<RwLockWriteGuard<T>, SyncError>;
 }
 
-+S RwLockReadGuard[T]  { _lock: &RwLock[T] }
-+S RwLockWriteGuard[T] { _lock: &RwLock[T] }
+pub struct RwLockReadGuard<T> { _lock: &RwLock<T> }
+pub struct RwLockWriteGuard<T> { _lock: &RwLock<T> }
+
+impl RwLockReadGuard<T> {
+    pub fn get(&self) -> &T;
+}
+
+impl RwLockWriteGuard<T> {
+    pub fn get(&self) -> &T;
+    pub fn get_mut(&mut self) -> &mut T;
+}
 
 // ---------------------------------------------------------------------------
 // Channel
 // ---------------------------------------------------------------------------
 
-/// Create a bounded MPSC channel with the given capacity.
-+f channel[T](cap: usize) -> (Sender[T], Receiver[T]);
+/// Create a bounded channel with the given capacity.
+pub fn channel<T>(capacity: usize) -> (Sender<T>, Receiver<T>);
 
-/// Create an unbounded MPSC channel.
-+f unbounded[T]() -> (Sender[T], Receiver[T]);
+/// Create an unbounded channel.
+pub fn unbounded<T>() -> (Sender<T>, Receiver<T>);
 
-/// Sending half of a channel.
-+S Sender[T] {
-    _inner: @_ChannelInner[T],
+/// The sending half of a channel.
+pub struct Sender<T> {
+    _inner: (),
 }
 
-I Sender[T] {
-    /// Send a value. Blocks if the channel is full.
-    +f send(&self, value: T) -> R[(), SendError[T]] / sync;
+impl Sender<T> {
+    /// Send a value. Blocks if the channel is full (bounded).
+    pub fn send(&self, value: T) -> Result<(), SyncError> / sync;
 
     /// Try to send without blocking.
-    +f try_send(&self, value: T) -> R[(), TrySendError[T]];
+    pub fn try_send(&self, value: T) -> Result<(), SyncError>;
 
-    /// Clone the sender (MPSC — multiple producers).
-    +f clone(&self) -> Sender[T];
+    /// Clone the sender (multiple-producer support).
+    pub fn clone(&self) -> Sender<T>;
 }
 
-/// Receiving half of a channel.
-+S Receiver[T] {
-    _inner: @_ChannelInner[T],
+/// The receiving half of a channel.
+pub struct Receiver<T> {
+    _inner: (),
 }
 
-I Receiver[T] {
-    /// Receive a value. Blocks until one is available.
-    +f recv(&self) -> R[T, RecvError] / sync;
+impl Receiver<T> {
+    /// Receive a value. Blocks if empty.
+    pub fn recv(&self) -> Result<T, SyncError> / sync;
 
     /// Try to receive without blocking.
-    +f try_recv(&self) -> ?T;
+    pub fn try_recv(&self) -> Result<T, SyncError>;
 
     /// Receive with a timeout.
-    +f recv_timeout(&self, dur: std.time.Duration) -> R[T, RecvError] / sync;
+    pub fn recv_timeout(&self, timeout: std::time::Duration) -> Result<T, SyncError> / sync;
 
-    /// Iterate over received values.
-    +f iter(&self) -> RecvIter[T];
+    /// Iterate over received values until the channel closes.
+    pub fn iter(&self) -> RecvIter<T>;
 }
 
-// ---------------------------------------------------------------------------
-// Channel errors
-// ---------------------------------------------------------------------------
+/// Iterator over values from a `Receiver`.
+pub struct RecvIter<T> {
+    _rx: &Receiver<T>,
+}
 
-+S SendError[T]    { value: T }
-+S RecvError       { _priv: () }
-+E TrySendError[T] { Full(T), Disconnected(T) }
-
-+S RecvIter[T] { _rx: &Receiver[T] }
-I Iterator ~ RecvIter[T] {
+impl Iterator for RecvIter<T> {
     type Item = T;
-    +f next(&!self) -> ?T / sync;
+    pub fn next(&mut self) -> Option<T> / sync;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,81 +136,57 @@ I Iterator ~ RecvIter[T] {
 // ---------------------------------------------------------------------------
 
 /// A synchronization barrier for N threads.
-+S Barrier {
+pub struct Barrier {
     _count: usize,
 }
 
-I Barrier {
-    +f new(n: usize) -> Barrier;
+impl Barrier {
+    pub fn new(count: usize) -> Barrier;
 
-    /// Block until all N threads have reached the barrier.
-    +f wait(&self) -> BarrierWaitResult / sync;
+    /// Wait until all threads reach the barrier.
+    pub fn wait(&self) -> BarrierWaitResult / sync;
 }
 
-+S BarrierWaitResult { is_leader: 1b }
+pub struct BarrierWaitResult {
+    is_leader: bool,
+}
+
+impl BarrierWaitResult {
+    /// Returns true for exactly one thread (the "leader").
+    pub fn is_leader(&self) -> bool { self.is_leader }
+}
 
 // ---------------------------------------------------------------------------
 // Semaphore
 // ---------------------------------------------------------------------------
 
 /// A counting semaphore.
-+S Semaphore {
+pub struct Semaphore {
     _permits: usize,
 }
 
-I Semaphore {
-    +f new(permits: usize) -> Semaphore;
+impl Semaphore {
+    pub fn new(permits: usize) -> Semaphore;
 
-    /// Acquire one permit. Blocks until available.
-    +f acquire(&self) -> R[SemaphorePermit, SyncError] / sync;
+    /// Acquire a permit, blocking until one is available.
+    pub fn acquire(&self) -> Result<SemaphorePermit, SyncError> / sync;
 
     /// Try to acquire without blocking.
-    +f try_acquire(&self) -> ?SemaphorePermit;
+    pub fn try_acquire(&self) -> Result<SemaphorePermit, SyncError>;
+
+    /// How many permits are currently available.
+    pub fn available(&self) -> usize;
 }
 
-+S SemaphorePermit { _sem: &Semaphore }
+pub struct SemaphorePermit {
+    _sem: &Semaphore,
+}
 
 // ---------------------------------------------------------------------------
 // Atomics
 // ---------------------------------------------------------------------------
 
-/// An atomic boolean.
-+S AtomicBool { _val: 1b }
-
-I AtomicBool {
-    +f new(v: 1b) -> AtomicBool;
-    +f load(&self, order: Ordering) -> 1b;
-    +f store(&self, v: 1b, order: Ordering);
-    +f swap(&self, v: 1b, order: Ordering) -> 1b;
-    +f compare_exchange(&self, current: 1b, new: 1b, success: Ordering, failure: Ordering) -> R[1b, 1b];
-}
-
-/// An atomic unsigned integer.
-+S AtomicUsize { _val: usize }
-
-I AtomicUsize {
-    +f new(v: usize) -> AtomicUsize;
-    +f load(&self, order: Ordering) -> usize;
-    +f store(&self, v: usize, order: Ordering);
-    +f swap(&self, v: usize, order: Ordering) -> usize;
-    +f fetch_add(&self, v: usize, order: Ordering) -> usize;
-    +f fetch_sub(&self, v: usize, order: Ordering) -> usize;
-    +f compare_exchange(&self, current: usize, new: usize, success: Ordering, failure: Ordering) -> R[usize, usize];
-}
-
-/// An atomic signed integer.
-+S AtomicI64 { _val: i64 }
-
-I AtomicI64 {
-    +f new(v: i64) -> AtomicI64;
-    +f load(&self, order: Ordering) -> i64;
-    +f store(&self, v: i64, order: Ordering);
-    +f fetch_add(&self, v: i64, order: Ordering) -> i64;
-    +f fetch_sub(&self, v: i64, order: Ordering) -> i64;
-}
-
-/// Memory ordering for atomic operations.
-+E Ordering {
+pub enum Ordering {
     Relaxed,
     Acquire,
     Release,
@@ -209,10 +194,88 @@ I AtomicI64 {
     SeqCst,
 }
 
+/// An atomic boolean.
+pub struct AtomicBool { _val: bool }
+
+impl AtomicBool {
+    pub fn new(v: bool) -> AtomicBool;
+    pub fn load(&self, order: Ordering) -> bool;
+    pub fn store(&self, val: bool, order: Ordering);
+    pub fn swap(&self, val: bool, order: Ordering) -> bool;
+    pub fn compare_exchange(
+        &self,
+        current: bool,
+        new: bool,
+        success: Ordering,
+        failure: Ordering,
+    ) -> Result<bool, bool>;
+}
+
+/// An atomic 64-bit integer.
+pub struct AtomicI64 { _val: i64 }
+
+impl AtomicI64 {
+    pub fn new(v: i64) -> AtomicI64;
+    pub fn load(&self, order: Ordering) -> i64;
+    pub fn store(&self, val: i64, order: Ordering);
+    pub fn fetch_add(&self, val: i64, order: Ordering) -> i64;
+    pub fn fetch_sub(&self, val: i64, order: Ordering) -> i64;
+    pub fn swap(&self, val: i64, order: Ordering) -> i64;
+    pub fn compare_exchange(
+        &self,
+        current: i64,
+        new: i64,
+        success: Ordering,
+        failure: Ordering,
+    ) -> Result<i64, i64>;
+}
+
+/// An atomic unsigned 64-bit integer.
+pub struct AtomicU64 { _val: u64 }
+
+impl AtomicU64 {
+    pub fn new(v: u64) -> AtomicU64;
+    pub fn load(&self, order: Ordering) -> u64;
+    pub fn store(&self, val: u64, order: Ordering);
+    pub fn fetch_add(&self, val: u64, order: Ordering) -> u64;
+    pub fn fetch_sub(&self, val: u64, order: Ordering) -> u64;
+    pub fn swap(&self, val: u64, order: Ordering) -> u64;
+    pub fn compare_exchange(
+        &self,
+        current: u64,
+        new: u64,
+        success: Ordering,
+        failure: Ordering,
+    ) -> Result<u64, u64>;
+}
+
 // ---------------------------------------------------------------------------
-// Common error
+// Once
 // ---------------------------------------------------------------------------
 
-+S SyncError {
-    message: s,
+/// A synchronization primitive for one-time initialization.
+pub struct Once {
+    _done: AtomicBool,
+}
+
+impl Once {
+    pub fn new() -> Once;
+
+    /// Call the given function exactly once, blocking other callers.
+    pub fn call_once(&self, f: fn()) / sync;
+
+    /// Whether `call_once` has completed.
+    pub fn is_completed(&self) -> bool;
+}
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
+pub struct SyncError {
+    message: String,
+}
+
+impl SyncError {
+    pub fn new(msg: &String) -> SyncError { SyncError { message: msg.to_owned() } }
 }

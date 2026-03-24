@@ -5,24 +5,24 @@ Every agent in Redox implements the `Agent` trait.
 ## Defining an agent
 
 ```rdx
-u std.agent.{Agent, AgentId, Message}
+use std::agent::{Agent, AgentId, Message};
 
-S Greeter {
-    name: s,
+struct Greeter {
+    name: String,
 }
 
-I Agent ~ Greeter {
-    +f handle(&!self, msg: Message[s]) -> R[s, AgentError] / agent {
-        v greeting = f"Hello, {msg.payload}! I'm {self.name}."
+impl Agent for Greeter {
+    pub fn handle(&mut self, msg: Message<String>) -> Result<String, AgentError> / agent {
+        let greeting = format!("Hello, {payload}! I'm {name}.", payload = msg.payload, name = self.name);
         Ok(greeting)
     }
 
-    +f id(&self) -> AgentId {
+    pub fn id(&self) -> AgentId {
         AgentId(1)
     }
 
-    +f capabilities(&self) -> [Capability]~ {
-        [Capability @{ name: "greet", scope: CapabilityScope.Instance }]~
+    pub fn capabilities(&self) -> Vec<Capability> {
+        vec![Capability { name: "greet", scope: CapabilityScope::Instance }]
     }
 }
 ```
@@ -30,32 +30,32 @@ I Agent ~ Greeter {
 ## The Agent trait interface
 
 ```rdx
-+T Agent {
+pub trait Agent {
     // Required: handle an incoming message
-    +f handle(&!self, msg: Message[s]) -> R[s, AgentError] / agent;
+    pub fn handle(&mut self, msg: Message<String>) -> Result<String, AgentError> / agent;
 
     // Required: unique identifier
-    +f id(&self) -> AgentId;
+    pub fn id(&self) -> AgentId;
 
     // Optional: lifecycle hooks
-    +f on_start(&!self) / agent { }
-    +f on_stop(&!self) / agent { }
+    pub fn on_start(&mut self) / agent { }
+    pub fn on_stop(&mut self) / agent { }
 
     // Optional: capability declaration
-    +f capabilities(&self) -> [Capability]~ { []~ }
+    pub fn capabilities(&self) -> Vec<Capability> { vec![] }
 }
 ```
 
 ## Creating and running agents
 
 ```rdx
-+f main() / agent, io {
-    m greeter = Greeter @{ name: "Bot".into() }
+pub fn main() / agent, io {
+    let mut greeter = Greeter { name: "Bot".into() };
 
     // Send a message directly
-    v msg = Message.new(AgentId(0), greeter.id(), "World")
-    v response = greeter.handle(msg)?
-    p"{response}"   // "Hello, World! I'm Bot."
+    let msg = Message::new(AgentId(0), greeter.id(), "World");
+    let response = greeter.handle(msg)?;
+    println!("{response}");   // "Hello, World! I'm Bot."
 }
 ```
 
@@ -71,28 +71,28 @@ I Agent ~ Greeter {
 A swarm can contain different agent types:
 
 ```rdx
-S Planner;
-S Coder;
-S Reviewer;
+struct Planner;
+struct Coder;
+struct Reviewer;
 
-I Agent ~ Planner {
-    +f handle(&!self, msg: Message[s]) -> R[s, AgentError] / agent {
-        Ok(f"Plan: decompose '{msg.payload}' into subtasks")
+impl Agent for Planner {
+    pub fn handle(&mut self, msg: Message<String>) -> Result<String, AgentError> / agent {
+        Ok(format!("Plan: decompose '{}' into subtasks", msg.payload))
     }
-    +f id(&self) -> AgentId { AgentId(10) }
+    pub fn id(&self) -> AgentId { AgentId(10) }
 }
 
-I Agent ~ Coder {
-    +f handle(&!self, msg: Message[s]) -> R[s, AgentError] / agent {
-        Ok(f"Code: implementing '{msg.payload}'")
+impl Agent for Coder {
+    pub fn handle(&mut self, msg: Message<String>) -> Result<String, AgentError> / agent {
+        Ok(format!("Code: implementing '{}'", msg.payload))
     }
-    +f id(&self) -> AgentId { AgentId(20) }
+    pub fn id(&self) -> AgentId { AgentId(20) }
 }
 
-I Agent ~ Reviewer {
-    +f handle(&!self, msg: Message[s]) -> R[s, AgentError] / agent {
-        Ok(f"Review: checking '{msg.payload}' for correctness")
+impl Agent for Reviewer {
+    pub fn handle(&mut self, msg: Message<String>) -> Result<String, AgentError> / agent {
+        Ok(format!("Review: checking '{}' for correctness", msg.payload))
     }
-    +f id(&self) -> AgentId { AgentId(30) }
+    pub fn id(&self) -> AgentId { AgentId(30) }
 }
 ```

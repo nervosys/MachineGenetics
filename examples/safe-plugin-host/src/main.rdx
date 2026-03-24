@@ -15,16 +15,16 @@
 //   - Contract specs on plugin interfaces
 //   - Pattern matching for capability checks
 
-u std.col;
-u std.fmt;
-u std.io;
+use std::col;
+use std::fmt;
+use std::io;
 
 // ─────────────────────────────────────────────────────────────────────
 // §1 — Capabilities: what a plugin may request
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone, PartialEq, Eq, Hash)
-+E Capability {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Capability {
     FileRead,
     FileWrite,
     NetworkAccess,
@@ -35,51 +35,51 @@ u std.io;
     EnvRead,
 }
 
-I fmt.Display ~ Capability {
-    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
-        ? self {
-            Capability.FileRead      => write!(f, "file:read"),
-            Capability.FileWrite     => write!(f, "file:write"),
-            Capability.NetworkAccess => write!(f, "net:access"),
-            Capability.MemoryAlloc   => write!(f, "mem:alloc"),
-            Capability.ProcessSpawn  => write!(f, "proc:spawn"),
-            Capability.FfiCall       => write!(f, "ffi:call"),
-            Capability.TimerAccess   => write!(f, "timer:access"),
-            Capability.EnvRead       => write!(f, "env:read"),
+impl fmt::Display for Capability {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Capability::FileRead      => write!(f, "file:read"),
+            Capability::FileWrite     => write!(f, "file:write"),
+            Capability::NetworkAccess => write!(f, "net:access"),
+            Capability::MemoryAlloc   => write!(f, "mem:alloc"),
+            Capability::ProcessSpawn  => write!(f, "proc:spawn"),
+            Capability::FfiCall       => write!(f, "ffi:call"),
+            Capability::TimerAccess   => write!(f, "timer:access"),
+            Capability::EnvRead       => write!(f, "env:read"),
         }
     }
 }
 
-I ~ Capability {
-    +f risk_level(&self) -> RiskLevel {
-        ? self {
-            Capability.FileRead | Capability.EnvRead | Capability.TimerAccess
-                => RiskLevel.Low,
-            Capability.MemoryAlloc | Capability.FileWrite
-                => RiskLevel.Medium,
-            Capability.NetworkAccess | Capability.FfiCall
-                => RiskLevel.High,
-            Capability.ProcessSpawn
-                => RiskLevel.Critical,
+impl Capability {
+    pub fn risk_level(&self) -> RiskLevel {
+        match self {
+            Capability::FileRead | Capability::EnvRead | Capability::TimerAccess
+                => RiskLevel::Low,
+            Capability::MemoryAlloc | Capability::FileWrite
+                => RiskLevel::Medium,
+            Capability::NetworkAccess | Capability::FfiCall
+                => RiskLevel::High,
+            Capability::ProcessSpawn
+                => RiskLevel::Critical,
         }
     }
 }
 
-@d(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)
-+E RiskLevel {
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum RiskLevel {
     Low,
     Medium,
     High,
     Critical,
 }
 
-I fmt.Display ~ RiskLevel {
-    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
-        ? self {
-            RiskLevel.Low      => write!(f, "LOW"),
-            RiskLevel.Medium   => write!(f, "MEDIUM"),
-            RiskLevel.High     => write!(f, "HIGH"),
-            RiskLevel.Critical => write!(f, "CRITICAL"),
+impl fmt::Display for RiskLevel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            RiskLevel::Low      => write!(f, "LOW"),
+            RiskLevel::Medium   => write!(f, "MEDIUM"),
+            RiskLevel::High     => write!(f, "HIGH"),
+            RiskLevel::Critical => write!(f, "CRITICAL"),
         }
     }
 }
@@ -88,17 +88,17 @@ I fmt.Display ~ RiskLevel {
 // §2 — Resource limits
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone)
-+S ResourceLimits {
+#[derive(Debug, Clone)]
+pub struct ResourceLimits {
     max_memory_bytes: u64,
     max_cpu_ms: u64,
     max_open_files: u32,
     max_network_connections: u32,
 }
 
-I ~ ResourceLimits {
-    +f restrictive() -> ResourceLimits {
-        ResourceLimits @{
+impl ResourceLimits {
+    pub fn restrictive() -> ResourceLimits {
+        ResourceLimits {
             max_memory_bytes: 16 * 1024 * 1024,     // 16 MB
             max_cpu_ms: 1000,                         // 1 second
             max_open_files: 4,
@@ -106,8 +106,8 @@ I ~ ResourceLimits {
         }
     }
 
-    +f standard() -> ResourceLimits {
-        ResourceLimits @{
+    pub fn standard() -> ResourceLimits {
+        ResourceLimits {
             max_memory_bytes: 256 * 1024 * 1024,     // 256 MB
             max_cpu_ms: 5000,                         // 5 seconds
             max_open_files: 32,
@@ -115,8 +115,8 @@ I ~ ResourceLimits {
         }
     }
 
-    +f permissive() -> ResourceLimits {
-        ResourceLimits @{
+    pub fn permissive() -> ResourceLimits {
+        ResourceLimits {
             max_memory_bytes: 1024 * 1024 * 1024,   // 1 GB
             max_cpu_ms: 30000,                        // 30 seconds
             max_open_files: 256,
@@ -129,55 +129,55 @@ I ~ ResourceLimits {
 // §3 — Sandbox policy: combines capabilities + limits + path rules
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone)
-+S SandboxPolicy {
-    name: s,
-    capabilities: {Capability},
+#[derive(Debug, Clone)]
+pub struct SandboxPolicy {
+    name: String,
+    capabilities: HashSet<Capability>,
     limits: ResourceLimits,
-    allowed_paths: [s]~,
-    denied_paths: [s]~,
+    allowed_paths: Vec<String>,
+    denied_paths: Vec<String>,
 }
 
-I ~ SandboxPolicy {
-    +f new(name: s) -> SandboxPolicy {
-        SandboxPolicy @{
+impl SandboxPolicy {
+    pub fn new(name: String) -> SandboxPolicy {
+        SandboxPolicy {
             name: name,
-            capabilities: HashSet.new(),
-            limits: ResourceLimits.restrictive(),
-            allowed_paths: []~,
-            denied_paths: []~,
+            capabilities: HashSet::new(),
+            limits: ResourceLimits::restrictive(),
+            allowed_paths: Vec::new(),
+            denied_paths: Vec::new(),
         }
     }
 
-    +f allow(&!self, cap: Capability) -> &!SandboxPolicy {
+    pub fn allow(&mut self, cap: Capability) -> &mut SandboxPolicy {
         self.capabilities.insert(cap);
         self
     }
 
-    +f with_limits(m self, limits: ResourceLimits) -> SandboxPolicy {
+    pub fn with_limits(mut self, limits: ResourceLimits) -> SandboxPolicy {
         self.limits = limits;
         self
     }
 
-    +f allow_path(m self, path: s) -> SandboxPolicy {
+    pub fn allow_path(mut self, path: String) -> SandboxPolicy {
         self.allowed_paths.push(path);
         self
     }
 
-    +f deny_path(m self, path: s) -> SandboxPolicy {
+    pub fn deny_path(mut self, path: String) -> SandboxPolicy {
         self.denied_paths.push(path);
         self
     }
 
-    +f has_capability(&self, cap: &Capability) -> bool {
+    pub fn has_capability(&self, cap: &Capability) -> bool {
         self.capabilities.contains(cap)
     }
 
-    +f max_risk(&self) -> RiskLevel {
-        m max = RiskLevel.Low;
-        @ cap ~ &self.capabilities {
-            v risk = cap.risk_level();
-            ?: risk > max {
+    pub fn max_risk(&self) -> RiskLevel {
+        let mut max = RiskLevel::Low;
+        for cap in &self.capabilities {
+            let risk = cap.risk_level();
+            if risk > max {
                 max = risk;
             }
         }
@@ -186,37 +186,37 @@ I ~ SandboxPolicy {
 }
 
 /// Pre-built policies for common plugin categories.
-+f linter_policy() -> SandboxPolicy {
-    m policy = SandboxPolicy.new("linter".to_string());
-    policy.allow(Capability.FileRead);
-    policy.allow(Capability.MemoryAlloc);
-    policy.allow(Capability.TimerAccess);
+pub fn linter_policy() -> SandboxPolicy {
+    let mut policy = SandboxPolicy::new("linter".to_string());
+    policy.allow(Capability::FileRead);
+    policy.allow(Capability::MemoryAlloc);
+    policy.allow(Capability::TimerAccess);
     policy
-        .with_limits(ResourceLimits.restrictive())
+        .with_limits(ResourceLimits::restrictive())
         .allow_path("/src/**".to_string())
         .deny_path("/secrets/**".to_string())
 }
 
-+f formatter_policy() -> SandboxPolicy {
-    m policy = SandboxPolicy.new("formatter".to_string());
-    policy.allow(Capability.FileRead);
-    policy.allow(Capability.FileWrite);
-    policy.allow(Capability.MemoryAlloc);
+pub fn formatter_policy() -> SandboxPolicy {
+    let mut policy = SandboxPolicy::new("formatter".to_string());
+    policy.allow(Capability::FileRead);
+    policy.allow(Capability::FileWrite);
+    policy.allow(Capability::MemoryAlloc);
     policy
-        .with_limits(ResourceLimits.standard())
+        .with_limits(ResourceLimits::standard())
         .allow_path("/src/**".to_string())
         .deny_path("/build/**".to_string())
 }
 
-+f codegen_policy() -> SandboxPolicy {
-    m policy = SandboxPolicy.new("codegen".to_string());
-    policy.allow(Capability.FileRead);
-    policy.allow(Capability.FileWrite);
-    policy.allow(Capability.MemoryAlloc);
-    policy.allow(Capability.NetworkAccess);
-    policy.allow(Capability.EnvRead);
+pub fn codegen_policy() -> SandboxPolicy {
+    let mut policy = SandboxPolicy::new("codegen".to_string());
+    policy.allow(Capability::FileRead);
+    policy.allow(Capability::FileWrite);
+    policy.allow(Capability::MemoryAlloc);
+    policy.allow(Capability::NetworkAccess);
+    policy.allow(Capability::EnvRead);
     policy
-        .with_limits(ResourceLimits.permissive())
+        .with_limits(ResourceLimits::permissive())
         .allow_path("/src/**".to_string())
         .allow_path("/generated/**".to_string())
 }
@@ -225,56 +225,56 @@ I ~ SandboxPolicy {
 // §4 — Plugin manifest and lifecycle
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone)
-+E PluginKind {
+#[derive(Debug, Clone)]
+pub enum PluginKind {
     Linter,
     Formatter,
     CodeGenerator,
     Analyzer,
-    Custom(s),
+    Custom(String),
 }
 
-I fmt.Display ~ PluginKind {
-    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
-        ? self {
-            PluginKind.Linter        => write!(f, "linter"),
-            PluginKind.Formatter     => write!(f, "formatter"),
-            PluginKind.CodeGenerator => write!(f, "codegen"),
-            PluginKind.Analyzer      => write!(f, "analyzer"),
-            PluginKind.Custom(name)  => write!(f, "custom({name})"),
+impl fmt::Display for PluginKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            PluginKind::Linter        => write!(f, "linter"),
+            PluginKind::Formatter     => write!(f, "formatter"),
+            PluginKind::CodeGenerator => write!(f, "codegen"),
+            PluginKind::Analyzer      => write!(f, "analyzer"),
+            PluginKind::Custom(name)  => write!(f, "custom({name})"),
         }
     }
 }
 
-@d(Debug, Clone)
-+S PluginManifest {
-    name: s,
-    version: s,
-    author: s,
+#[derive(Debug, Clone)]
+pub struct PluginManifest {
+    name: String,
+    version: String,
+    author: String,
     kind: PluginKind,
-    requested_capabilities: [Capability]~,
-    description: s,
+    requested_capabilities: Vec<Capability>,
+    description: String,
 }
 
-@d(Debug, Clone, PartialEq)
-+E PluginState {
+#[derive(Debug, Clone, PartialEq)]
+pub enum PluginState {
     Registered,
     Validated,
     Running,
     Completed,
-    Denied(s),
-    Failed(s),
+    Denied(String),
+    Failed(String),
 }
 
-I fmt.Display ~ PluginState {
-    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
-        ? self {
-            PluginState.Registered  => write!(f, "REGISTERED"),
-            PluginState.Validated   => write!(f, "VALIDATED"),
-            PluginState.Running     => write!(f, "RUNNING"),
-            PluginState.Completed   => write!(f, "COMPLETED"),
-            PluginState.Denied(msg) => write!(f, "DENIED: {msg}"),
-            PluginState.Failed(msg) => write!(f, "FAILED: {msg}"),
+impl fmt::Display for PluginState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            PluginState::Registered  => write!(f, "REGISTERED"),
+            PluginState::Validated   => write!(f, "VALIDATED"),
+            PluginState::Running     => write!(f, "RUNNING"),
+            PluginState::Completed   => write!(f, "COMPLETED"),
+            PluginState::Denied(msg) => write!(f, "DENIED: {msg}"),
+            PluginState::Failed(msg) => write!(f, "FAILED: {msg}"),
         }
     }
 }
@@ -283,21 +283,21 @@ I fmt.Display ~ PluginState {
 // §5 — Audit log: tamper-evident operation recording
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone)
-+S AuditEntry {
+#[derive(Debug, Clone)]
+pub struct AuditEntry {
     sequence: u64,
-    plugin_name: s,
-    operation: s,
-    capability: ?Capability,
+    plugin_name: String,
+    operation: String,
+    capability: Option<Capability>,
     allowed: bool,
-    detail: s,
+    detail: String,
 }
 
-I fmt.Display ~ AuditEntry {
-    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
-        v status = ?: self.allowed { "ALLOW" } : { "DENY" };
-        v cap = ? &self.capability {
-            Some(c) => f"[{c}]",
+impl fmt::Display for AuditEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let status = if self.allowed { "ALLOW" } else { "DENY" };
+        let cap = match &self.capability {
+            Some(c) => format!("[{c}]"),
             None => "[-]".to_string(),
         };
         write!(f, "#{seq:04} {status} {cap:<16} {plugin} — {detail}",
@@ -313,20 +313,20 @@ I fmt.Display ~ AuditEntry {
 // §6 — Plugin host: orchestrates the full lifecycle
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug)
-+S PluginHost {
-    policies: {s: SandboxPolicy},
-    plugins: [(PluginManifest, PluginState)]~,
-    audit: [AuditEntry]~,
+#[derive(Debug)]
+pub struct PluginHost {
+    policies: HashMap<String, SandboxPolicy>,
+    plugins: Vec<(PluginManifest, PluginState)>,
+    audit: Vec<AuditEntry>,
     next_seq: u64,
 }
 
-I ~ PluginHost {
-    +f new() -> PluginHost {
-        m host = PluginHost @{
-            policies: HashMap.new(),
-            plugins: []~,
-            audit: []~,
+impl PluginHost {
+    pub fn new() -> PluginHost {
+        let mut host = PluginHost {
+            policies: HashMap::new(),
+            plugins: Vec::new(),
+            audit: Vec::new(),
             next_seq: 1,
         };
 
@@ -337,12 +337,12 @@ I ~ PluginHost {
         host
     }
 
-    +f register_policy(&!self, policy: SandboxPolicy) {
+    pub fn register_policy(&mut self, policy: SandboxPolicy) {
         self.policies.insert(policy.name.clone(), policy);
     }
 
-    f log_audit(&!self, plugin: &s, op: s, cap: ?Capability, allowed: bool, detail: s) {
-        v entry = AuditEntry @{
+    fn log_audit(&mut self, plugin: &String, op: String, cap: Option<Capability>, allowed: bool, detail: String) {
+        let entry = AuditEntry {
             sequence: self.next_seq,
             plugin_name: plugin.clone(),
             operation: op,
@@ -358,122 +358,122 @@ I ~ PluginHost {
     ///
     /// @req  manifest.requested_capabilities is non-empty
     /// @ens  result is Validated or Denied
-    +f validate(&!self, manifest: &PluginManifest, policy_name: &s) -> PluginState / io {
-        p"  Validating '{manifest.name}' against policy '{policy_name}'...";
+    pub fn validate(&mut self, manifest: &PluginManifest, policy_name: &String) -> PluginState / io {
+        println!("  Validating '{}' against policy '{}'...", manifest.name, policy_name);
 
-        v policy = ? self.policies.get(policy_name) {
+        let policy = match self.policies.get(policy_name) {
             Some(p) => p.clone(),
             None => {
-                v msg = f"Unknown policy: {policy_name}";
-                self.log_audit(&manifest.name, "validate".to_string(), None, 0b, msg.clone());
-                ret PluginState.Denied(msg);
+                let msg = format!("Unknown policy: {policy_name}");
+                self.log_audit(&manifest.name, "validate".to_string(), None, false, msg.clone());
+                return PluginState::Denied(msg);
             },
         };
 
         // Check each requested capability against the policy.
-        @ cap ~ &manifest.requested_capabilities {
-            ?: !policy.has_capability(cap) {
-                v msg = f"Capability {cap} not granted by policy '{policy_name}'";
-                p"    ✗ {msg}";
+        for cap in &manifest.requested_capabilities {
+            if !policy.has_capability(cap) {
+                let msg = format!("Capability {cap} not granted by policy '{policy_name}'");
+                println!("    ✗ {}", msg);
                 self.log_audit(
                     &manifest.name,
                     "capability_check".to_string(),
                     Some(cap.clone()),
-                    0b,
+                    false,
                     msg.clone(),
                 );
-                ret PluginState.Denied(msg);
+                return PluginState::Denied(msg);
             }
-            p"    ✓ {cap} — granted (risk: {cap.risk_level()})";
+            println!("    ✓ {} — granted (risk: {})", cap, cap.risk_level());
             self.log_audit(
                 &manifest.name,
                 "capability_check".to_string(),
                 Some(cap.clone()),
-                1b,
+                true,
                 "granted".to_string(),
             );
         }
 
-        self.log_audit(&manifest.name, "validate".to_string(), None, 1b, "passed".to_string());
-        p"    ✓ Validation passed (max risk: {policy.max_risk()})";
-        PluginState.Validated
+        self.log_audit(&manifest.name, "validate".to_string(), None, true, "passed".to_string());
+        println!("    ✓ Validation passed (max risk: {})", policy.max_risk());
+        PluginState::Validated
     }
 
     /// Run a validated plugin inside its sandbox.
     ///
-    /// @req  state == PluginState.Validated
+    /// @req  state == PluginState::Validated
     /// @ens  result is Completed or Failed
-    +f run_plugin(&!self, manifest: &PluginManifest) -> PluginState / io {
-        p"  Running '{manifest.name}' ({manifest.kind})...";
+    pub fn run_plugin(&mut self, manifest: &PluginManifest) -> PluginState / io {
+        println!("  Running '{}' ({})...", manifest.name, manifest.kind);
         self.log_audit(
             &manifest.name,
             "execute".to_string(),
             None,
-            1b,
-            f"started ({manifest.kind})".to_string(),
+            true,
+            format!("started ({})", manifest.kind),
         );
 
         // Simulate plugin execution.
-        p"    ⚙ Processing files...";
-        p"    ⚙ Applying {manifest.kind} rules...";
-        p"    ⚙ Generating output...";
+        println!("    ⚙ Processing files...");
+        println!("    ⚙ Applying {} rules...", manifest.kind);
+        println!("    ⚙ Generating output...");
 
         self.log_audit(
             &manifest.name,
             "execute".to_string(),
             None,
-            1b,
+            true,
             "completed successfully".to_string(),
         );
-        p"    ✓ Plugin completed";
-        PluginState.Completed
+        println!("    ✓ Plugin completed");
+        PluginState::Completed
     }
 
     /// Load, validate, and run a plugin end-to-end.
-    +f load_and_run(&!self, manifest: PluginManifest, policy_name: &s) / io {
-        p"";
-        p"┌── Plugin: {manifest.name} v{manifest.version} ──";
-        p"│   Author: {manifest.author}";
-        p"│   Kind:   {manifest.kind}";
-        p"│   Caps:   {manifest.requested_capabilities:?}";
+    pub fn load_and_run(&mut self, manifest: PluginManifest, policy_name: &String) / io {
+        println!("");
+        println!("┌── Plugin: {} v{} ──", manifest.name, manifest.version);
+        println!("│   Author: {}", manifest.author);
+        println!("│   Kind:   {}", manifest.kind);
+        println!("│   Caps:   {:?}", manifest.requested_capabilities);
 
         // Validate.
-        v state = self.validate(&manifest, policy_name);
+        let state = self.validate(&manifest, policy_name);
 
         // Run if validated.
-        v final_state = ? state {
-            PluginState.Validated => self.run_plugin(&manifest),
+        let final_state = match state {
+            PluginState::Validated => self.run_plugin(&manifest),
             _ => state.clone(),
         };
 
-        p"└── Result: {final_state}";
+        println!("└── Result: {}", final_state);
         self.plugins.push((manifest, final_state));
     }
 
-    +f print_audit(&self) / io {
-        p"";
-        p"── Audit Trail ─────────────────────────────────────────";
-        @ entry ~ &self.audit {
-            p"  {entry}";
+    pub fn print_audit(&self) / io {
+        println!("");
+        println!("── Audit Trail ─────────────────────────────────────────");
+        for entry in &self.audit {
+            println!("  {}", entry);
         }
-        p"  Total entries: {self.audit.len()}";
+        println!("  Total entries: {}", self.audit.len());
     }
 
-    +f summary(&self) / io {
-        v total = self.plugins.len();
-        v approved = self.plugins.iter()
-            .filter(|(_, s)| *s == PluginState.Completed)
+    pub fn summary(&self) / io {
+        let total = self.plugins.len();
+        let approved = self.plugins.iter()
+            .filter(|(_, s)| *s == PluginState::Completed)
             .count();
-        v denied = self.plugins.iter()
-            .filter(|(_, s)| ? s { PluginState.Denied(_) => 1b, _ => 0b })
+        let denied = self.plugins.iter()
+            .filter(|(_, s)| match s { PluginState::Denied(_) => true, _ => false })
             .count();
 
-        p"";
-        p"── Plugin Host Summary ─────────────────────────────────";
-        p"  Plugins loaded: {total}";
-        p"  Completed:      {approved}";
-        p"  Denied:         {denied}";
-        p"  Policies:       {self.policies.len()}";
+        println!("");
+        println!("── Plugin Host Summary ─────────────────────────────────");
+        println!("  Plugins loaded: {}", total);
+        println!("  Completed:      {}", approved);
+        println!("  Denied:         {}", denied);
+        println!("  Policies:       {}", self.policies.len());
     }
 }
 
@@ -481,24 +481,24 @@ I ~ PluginHost {
 // §7 — Entry point: load several plugins into the sandbox
 // ─────────────────────────────────────────────────────────────────────
 
-+f main() / io {
-    p"╔═══════════════════════════════════════════════════════════╗";
-    p"║  Redox Safe Plugin Host                                  ║";
-    p"╚═══════════════════════════════════════════════════════════╝";
+pub fn main() / io {
+    println!("╔═══════════════════════════════════════════════════════════╗");
+    println!("║  Redox Safe Plugin Host                                  ║");
+    println!("╚═══════════════════════════════════════════════════════════╝");
 
-    m host = PluginHost.new();
+    let mut host = PluginHost::new();
 
     // Plugin 1: A well-behaved linter (should pass).
     host.load_and_run(
-        PluginManifest @{
+        PluginManifest {
             name: "redox-lint".to_string(),
             version: "2.1.0".to_string(),
             author: "lint-corp".to_string(),
-            kind: PluginKind.Linter,
-            requested_capabilities: [
-                Capability.FileRead,
-                Capability.MemoryAlloc,
-            ]~,
+            kind: PluginKind::Linter,
+            requested_capabilities: vec![
+                Capability::FileRead,
+                Capability::MemoryAlloc,
+            ],
             description: "Style and correctness linter".to_string(),
         },
         &"linter".to_string(),
@@ -506,16 +506,16 @@ I ~ PluginHost {
 
     // Plugin 2: A formatter that needs file write (should pass).
     host.load_and_run(
-        PluginManifest @{
+        PluginManifest {
             name: "rdxfmt".to_string(),
             version: "1.0.3".to_string(),
             author: "fmt-team".to_string(),
-            kind: PluginKind.Formatter,
-            requested_capabilities: [
-                Capability.FileRead,
-                Capability.FileWrite,
-                Capability.MemoryAlloc,
-            ]~,
+            kind: PluginKind::Formatter,
+            requested_capabilities: vec![
+                Capability::FileRead,
+                Capability::FileWrite,
+                Capability::MemoryAlloc,
+            ],
             description: "Opinionated code formatter".to_string(),
         },
         &"formatter".to_string(),
@@ -523,16 +523,16 @@ I ~ PluginHost {
 
     // Plugin 3: A malicious plugin requesting process spawn (should be DENIED).
     host.load_and_run(
-        PluginManifest @{
+        PluginManifest {
             name: "shady-tool".to_string(),
             version: "0.0.1".to_string(),
             author: "unknown".to_string(),
-            kind: PluginKind.Custom("suspicious".to_string()),
-            requested_capabilities: [
-                Capability.FileRead,
-                Capability.ProcessSpawn,
-                Capability.NetworkAccess,
-            ]~,
+            kind: PluginKind::Custom("suspicious".to_string()),
+            requested_capabilities: vec![
+                Capability::FileRead,
+                Capability::ProcessSpawn,
+                Capability::NetworkAccess,
+            ],
             description: "Definitely not malware".to_string(),
         },
         &"linter".to_string(),
@@ -540,18 +540,18 @@ I ~ PluginHost {
 
     // Plugin 4: A code generator with broad capabilities (should pass codegen policy).
     host.load_and_run(
-        PluginManifest @{
+        PluginManifest {
             name: "proto-gen".to_string(),
             version: "3.2.0".to_string(),
             author: "grpc-tools".to_string(),
-            kind: PluginKind.CodeGenerator,
-            requested_capabilities: [
-                Capability.FileRead,
-                Capability.FileWrite,
-                Capability.MemoryAlloc,
-                Capability.NetworkAccess,
-                Capability.EnvRead,
-            ]~,
+            kind: PluginKind::CodeGenerator,
+            requested_capabilities: vec![
+                Capability::FileRead,
+                Capability::FileWrite,
+                Capability::MemoryAlloc,
+                Capability::NetworkAccess,
+                Capability::EnvRead,
+            ],
             description: "Generate Redox bindings from .proto files".to_string(),
         },
         &"codegen".to_string(),
@@ -560,15 +560,15 @@ I ~ PluginHost {
     // Plugin 5: A codegen plugin trying to use FFI (should be DENIED — codegen policy
     // does not grant FfiCall).
     host.load_and_run(
-        PluginManifest @{
+        PluginManifest {
             name: "native-bridge".to_string(),
             version: "1.0.0".to_string(),
             author: "native-corp".to_string(),
-            kind: PluginKind.CodeGenerator,
-            requested_capabilities: [
-                Capability.FileRead,
-                Capability.FfiCall,
-            ]~,
+            kind: PluginKind::CodeGenerator,
+            requested_capabilities: vec![
+                Capability::FileRead,
+                Capability::FfiCall,
+            ],
             description: "Bridge to native C libraries".to_string(),
         },
         &"codegen".to_string(),
@@ -578,8 +578,8 @@ I ~ PluginHost {
     host.print_audit();
     host.summary();
 
-    p"";
-    p"═══════════════════════════════════════════════════════════";
-    p"  Plugin host shutdown. All sandboxes released.";
-    p"═══════════════════════════════════════════════════════════";
+    println!("");
+    println!("═══════════════════════════════════════════════════════════");
+    println!("  Plugin host shutdown. All sandboxes released.");
+    println!("═══════════════════════════════════════════════════════════");
 }

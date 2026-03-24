@@ -1,4 +1,4 @@
-//! # std.math — Mathematics
+//! # std::math — Mathematics
 //!
 //! Trigonometric, exponential, logarithmic functions, RNG, and SIMD.
 //! All functions are pure (no effects).
@@ -7,80 +7,80 @@
 // Constants
 // ---------------------------------------------------------------------------
 
-+v PI:      f64 = 3.14159265358979323846;
-+v TAU:     f64 = 6.28318530717958647692;
-+v E:       f64 = 2.71828182845904523536;
-+v SQRT_2:  f64 = 1.41421356237309504880;
-+v LN_2:    f64 = 0.69314718055994530941;
-+v LN_10:   f64 = 2.30258509299404568401;
-+v INFINITY:    f64 = f64.INFINITY;
-+v NEG_INFINITY: f64 = f64.NEG_INFINITY;
-+v NAN:     f64 = f64.NAN;
+pub const PI:      f64 = 3.14159265358979323846;
+pub const TAU:     f64 = 6.28318530717958647692;
+pub const E:       f64 = 2.71828182845904523536;
+pub const SQRT_2:  f64 = 1.41421356237309504880;
+pub const LN_2:    f64 = 0.69314718055994530941;
+pub const LN_10:   f64 = 2.30258509299404568401;
+pub const INFINITY:     f64 = f64::INFINITY;
+pub const NEG_INFINITY: f64 = f64::NEG_INFINITY;
+pub const NAN:     f64 = f64::NAN;
 
 // ---------------------------------------------------------------------------
 // Trigonometric
 // ---------------------------------------------------------------------------
 
-+f sin(x: f64) -> f64;
-+f cos(x: f64) -> f64;
-+f tan(x: f64) -> f64;
-+f asin(x: f64) -> f64;
-+f acos(x: f64) -> f64;
-+f atan(x: f64) -> f64;
-+f atan2(y: f64, x: f64) -> f64;
-+f sinh(x: f64) -> f64;
-+f cosh(x: f64) -> f64;
-+f tanh(x: f64) -> f64;
+pub fn sin(x: f64) -> f64;
+pub fn cos(x: f64) -> f64;
+pub fn tan(x: f64) -> f64;
+pub fn asin(x: f64) -> f64;
+pub fn acos(x: f64) -> f64;
+pub fn atan(x: f64) -> f64;
+pub fn atan2(y: f64, x: f64) -> f64;
+pub fn sinh(x: f64) -> f64;
+pub fn cosh(x: f64) -> f64;
+pub fn tanh(x: f64) -> f64;
 
 // ---------------------------------------------------------------------------
 // Exponential / Logarithmic
 // ---------------------------------------------------------------------------
 
-+f exp(x: f64) -> f64;
-+f exp2(x: f64) -> f64;
-+f ln(x: f64) -> f64;
-+f log2(x: f64) -> f64;
-+f log10(x: f64) -> f64;
-+f log(x: f64, base: f64) -> f64;
-+f pow(base: f64, exp: f64) -> f64;
-+f sqrt(x: f64) -> f64;
-+f cbrt(x: f64) -> f64;
-+f hypot(x: f64, y: f64) -> f64;
+pub fn exp(x: f64) -> f64;
+pub fn exp2(x: f64) -> f64;
+pub fn ln(x: f64) -> f64;
+pub fn log2(x: f64) -> f64;
+pub fn log10(x: f64) -> f64;
+pub fn log(x: f64, base: f64) -> f64;
+pub fn pow(base: f64, exp: f64) -> f64;
+pub fn sqrt(x: f64) -> f64;
+pub fn cbrt(x: f64) -> f64;
+pub fn hypot(x: f64, y: f64) -> f64;
 
 // ---------------------------------------------------------------------------
 // Rounding / Absolute
 // ---------------------------------------------------------------------------
 
-+f abs(x: f64) -> f64;
-+f floor(x: f64) -> f64;
-+f ceil(x: f64) -> f64;
-+f round(x: f64) -> f64;
-+f trunc(x: f64) -> f64;
-+f fract(x: f64) -> f64;
+pub fn abs(x: f64) -> f64;
+pub fn floor(x: f64) -> f64;
+pub fn ceil(x: f64) -> f64;
+pub fn round(x: f64) -> f64;
+pub fn trunc(x: f64) -> f64;
+pub fn fract(x: f64) -> f64;
 
 /// Clamp a value between a minimum and maximum.
-+f clamp(x: f64, min: f64, max: f64) -> f64 {
-    ? x < min { ~ min; }
-    ? x > max { ~ max; }
+pub fn clamp(x: f64, min: f64, max: f64) -> f64 {
+    if x < min { return min; }
+    if x > max { return max; }
     x
 }
 
 /// The minimum of two values.
-+f min(a: f64, b: f64) -> f64 { ? a < b { a } : { b } }
+pub fn min(a: f64, b: f64) -> f64 { if a < b { a } else { b } }
 
 /// The maximum of two values.
-+f max(a: f64, b: f64) -> f64 { ? a > b { a } : { b } }
+pub fn max(a: f64, b: f64) -> f64 { if a > b { a } else { b } }
 
 // ---------------------------------------------------------------------------
 // Integer math
 // ---------------------------------------------------------------------------
 
 /// Greatest common divisor.
-+f gcd(a: i64, b: i64) -> i64 {
-    m a = abs_i64(a);
-    m b = abs_i64(b);
-    @ b != 0 {
-        v t = b;
+pub fn gcd(a: i64, b: i64) -> i64 {
+    let mut a = abs_i64(a);
+    let mut b = abs_i64(b);
+    while b != 0 {
+        let t = b;
         b = a % b;
         a = t;
     }
@@ -88,80 +88,80 @@
 }
 
 /// Least common multiple.
-+f lcm(a: i64, b: i64) -> i64 {
-    ? a == 0 || b == 0 { ~ 0; }
+pub fn lcm(a: i64, b: i64) -> i64 {
+    if a == 0 || b == 0 { return 0; }
     abs_i64(a / gcd(a, b) * b)
 }
 
-f abs_i64(x: i64) -> i64 { ? x < 0 { -x } : { x } }
+fn abs_i64(x: i64) -> i64 { if x < 0 { -x } else { x } }
 
 // ---------------------------------------------------------------------------
 // Random — declares `rng` effect
 // ---------------------------------------------------------------------------
 
 /// A pseudo-random number generator.
-+S Rng {
+pub struct Rng {
     _state: u64,
 }
 
-I Rng {
+impl Rng {
     /// Create an RNG seeded from the system entropy source.
-    +f new() -> Rng / rng;
+    pub fn new() -> Rng / rng;
 
     /// Create an RNG from a specific seed (deterministic).
-    +f from_seed(seed: u64) -> Rng;
+    pub fn from_seed(seed: u64) -> Rng;
 
     /// Generate a random u64.
-    +f next_u64(&!self) -> u64;
+    pub fn next_u64(&mut self) -> u64;
 
     /// Generate a random f64 in [0.0, 1.0).
-    +f next_f64(&!self) -> f64;
+    pub fn next_f64(&mut self) -> f64;
 
     /// Generate a random integer in [low, high).
-    +f range_int(&!self, low: i64, high: i64) -> i64;
+    pub fn range_int(&mut self, low: i64, high: i64) -> i64;
 
     /// Generate a random float in [low, high).
-    +f range_f64(&!self, low: f64, high: f64) -> f64;
+    pub fn range_f64(&mut self, low: f64, high: f64) -> f64;
 
     /// Shuffle a slice in place.
-    +f shuffle[T](&!self, data: &![T]);
+    pub fn shuffle<T>(&mut self, data: &mut [T]);
 
     /// Pick a random element from a slice.
-    +f choose[T](&!self, data: &[T]) -> ?&T;
+    pub fn choose<T>(&mut self, data: &[T]) -> Option<&T>;
 }
 
 /// Convenience: generate a random u64 with a thread-local RNG.
-+f random_u64() -> u64 / rng;
+pub fn random_u64() -> u64 / rng;
 
 /// Convenience: generate a random f64 in [0.0, 1.0).
-+f random_f64() -> f64 / rng;
+pub fn random_f64() -> f64 / rng;
 
 // ---------------------------------------------------------------------------
 // SIMD (placeholder)
 // ---------------------------------------------------------------------------
 
 /// A 128-bit SIMD vector of 4 floats.
-+S f32x4 { _data: [f32; 4] }
+pub struct f32x4 { _data: [f32; 4] }
 
-I f32x4 {
-    +f splat(v: f32) -> f32x4;
-    +f from_array(a: [f32; 4]) -> f32x4;
-    +f to_array(&self) -> [f32; 4];
-    +f add(&self, other: &f32x4) -> f32x4;
-    +f sub(&self, other: &f32x4) -> f32x4;
-    +f mul(&self, other: &f32x4) -> f32x4;
-    +f div(&self, other: &f32x4) -> f32x4;
-    +f sum(&self) -> f32;
+impl f32x4 {
+    pub fn splat(v: f32) -> f32x4;
+    pub fn from_array(a: [f32; 4]) -> f32x4;
+    pub fn to_array(&self) -> [f32; 4];
+    pub fn add(&self, other: &f32x4) -> f32x4;
+    pub fn sub(&self, other: &f32x4) -> f32x4;
+    pub fn mul(&self, other: &f32x4) -> f32x4;
+    pub fn div(&self, other: &f32x4) -> f32x4;
+    pub fn sum(&self) -> f32;
 }
 
 /// A 256-bit SIMD vector of 4 doubles.
-+S f64x4 { _data: [f64; 4] }
+pub struct f64x4 { _data: [f64; 4] }
 
-I f64x4 {
-    +f splat(v: f64) -> f64x4;
-    +f from_array(a: [f64; 4]) -> f64x4;
-    +f to_array(&self) -> [f64; 4];
-    +f add(&self, other: &f64x4) -> f64x4;
-    +f mul(&self, other: &f64x4) -> f64x4;
-    +f sum(&self) -> f64;
+impl f64x4 {
+    pub fn splat(v: f64) -> f64x4;
+    pub fn from_array(a: [f64; 4]) -> f64x4;
+    pub fn to_array(&self) -> [f64; 4];
+    pub fn add(&self, other: &f64x4) -> f64x4;
+    pub fn mul(&self, other: &f64x4) -> f64x4;
+    pub fn sum(&self) -> f64;
 }

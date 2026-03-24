@@ -1,39 +1,37 @@
 # References & Borrowing
 
-Redox keeps Rust's borrowing rules but simplifies the syntax.
+Redox keeps Rust's borrowing rules and syntax unchanged.
 
 ## Shared references: `&T`
 
 ```rdx
-v name = "Alice".to_string()
-v r: &s = &name    // immutable borrow
-p"{r}"              // OK: reading through shared ref
+let name = "Alice".to_string();
+let r: &str = &name;    // immutable borrow
+println!("{r}");         // OK: reading through shared ref
 ```
 
 Multiple shared references are allowed:
 
 ```rdx
-v r1 = &name
-v r2 = &name    // OK: multiple &T at once
+let r1 = &name;
+let r2 = &name;    // OK: multiple &T at once
 ```
 
-## Exclusive references: `&!T`
-
-Redox uses `&!` instead of `&mut`:
+## Exclusive references: `&mut T`
 
 ```rdx
-m items = [1, 2, 3]~
-v r: &![i32]~ = &!items    // exclusive borrow
-r.push(4)                  // OK: exclusive access
+let mut items = vec![1, 2, 3];
+let r: &mut Vec<i32> = &mut items;    // exclusive borrow
+r.push(4);                            // OK: exclusive access
 ```
 
-Only one `&!T` at a time, and no `&T` while `&!T` exists:
+Only one `&mut T` at a time, and no `&T` while `&mut T` exists:
 
 ```rdx
-m x = 42
-v r = &!x
-// v r2 = &x     // ERROR: cannot borrow while exclusively borrowed
-*r += 1
+let mut x = 42;
+let r = &mut x;
+// let r2 = &x;     // ERROR: cannot borrow while exclusively borrowed
+*r += 1;
 ```
 
 ## Ownership and move
@@ -41,17 +39,17 @@ v r = &!x
 Values are moved by default (same as Rust):
 
 ```rdx
-v a = "hello".to_string()
-v b = a         // a is moved to b
-// p"{a}"       // ERROR: a has been moved
+let a = "hello".to_string();
+let b = a;         // a is moved to b
+// println!("{a}"); // ERROR: a has been moved
 ```
 
 Use `.clone()` for explicit copies:
 
 ```rdx
-v a = "hello".to_string()
-v b = a.clone()    // deep copy
-p"{a}"             // OK: a still valid
+let a = "hello".to_string();
+let b = a.clone();    // deep copy
+println!("{a}");      // OK: a still valid
 ```
 
 ## No lifetimes in syntax
@@ -73,13 +71,13 @@ impl<'a> Important<'a> {
 In Redox:
 
 ```rdx
-S Important {
-    content: &s,
+struct Important {
+    content: &str,
 }
 
-I Important {
-    +f new(content: &s) -> Self {
-        Important @{ content }
+impl Important {
+    pub fn new(content: &str) -> Self {
+        Important { content }
     }
 }
 ```
@@ -90,11 +88,11 @@ compiler verifies it when safety mode is `warnings` or `full`.
 ## Dereferencing
 
 ```rdx
-v x = 42
-v r = &x
-v val = *r    // dereference: 42
+let x = 42;
+let r = &x;
+let val = *r;    // dereference: 42
 
-m y = 10
-v mr = &!y
-*mr = 20      // write through exclusive ref
+let mut y = 10;
+let mr = &mut y;
+*mr = 20;        // write through exclusive ref
 ```

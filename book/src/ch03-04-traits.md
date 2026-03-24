@@ -1,27 +1,27 @@
 # Traits
 
-Traits define shared behavior, just like Rust. Redox uses `T` for trait
-declarations and `I Trait ~ Type` for implementations.
+Traits define shared behavior, just like Rust. Redox uses `trait` for
+declarations and `impl Trait for Type` for implementations.
 
 ## Defining traits
 
 ```rdx
-+T Summary {
-    +f summarize(&self) -> s;
+pub trait Summary {
+    pub fn summarize(&self) -> String;
 }
 ```
 
 ### With default methods
 
 ```rdx
-+T Summary {
-    +f summarize(&self) -> s;
+pub trait Summary {
+    pub fn summarize(&self) -> String;
 
-    +f preview(&self) -> s {
-        v summary = self.summarize()
-        ? summary.len() > 50 {
-            f"{&summary[..50]}..."
-        } : {
+    pub fn preview(&self) -> String {
+        let summary = self.summarize();
+        if summary.len() > 50 {
+            format!("{}...", &summary[..50])
+        } else {
             summary
         }
     }
@@ -31,23 +31,23 @@ declarations and `I Trait ~ Type` for implementations.
 ### With associated types
 
 ```rdx
-+T Iterator {
+pub trait Iterator {
     type Item;
-    +f next(&!self) -> ?Self.Item;
+    pub fn next(&mut self) -> Option<Self::Item>;
 }
 ```
 
 ## Implementing traits
 
 ```rdx
-S Article {
-    title: s,
-    body: s,
+struct Article {
+    title: String,
+    body: String,
 }
 
-I Summary ~ Article {
-    +f summarize(&self) -> s {
-        f"{self.title}: {&self.body[..100]}..."
+impl Summary for Article {
+    pub fn summarize(&self) -> String {
+        format!("{}: {}...", self.title, &self.body[..100])
     }
 }
 ```
@@ -55,40 +55,40 @@ I Summary ~ Article {
 ## Using trait objects
 
 ```rdx
-// Dynamic dispatch with ^
-+f print_summary(item: &^Summary) / io {
-    p"{item.summarize()}"
+// Dynamic dispatch with Box<dyn>
+pub fn print_summary(item: &Box<dyn Summary>) / io {
+    println!("{}", item.summarize());
 }
 
 // Or as a trait bound (static dispatch)
-+f print_summary[T: Summary](item: &T) / io {
-    p"{item.summarize()}"
+pub fn print_summary<T: Summary>(item: &T) / io {
+    println!("{}", item.summarize());
 }
 ```
 
-`^Summary` is `dyn Summary` — a trait object behind a Box.
+`Box<dyn Summary>` is a trait object — dynamic dispatch behind a Box.
 
 ## Common standard traits
 
-| Trait               | Purpose                | Derive                |
-| ------------------- | ---------------------- | --------------------- |
-| `Clone`             | Deep copy              | `@d(Clone)`           |
-| `Copy`              | Bitwise copy           | `@d(Copy)`            |
-| `Debug`             | Debug formatting       | `@d(Debug)`           |
-| `Display`           | User-facing formatting | Manual                |
-| `Eq`, `PartialEq`   | Equality               | `@d(Eq, PartialEq)`   |
-| `Ord`, `PartialOrd` | Ordering               | `@d(Ord, PartialOrd)` |
-| `Hash`              | Hashing                | `@d(Hash)`            |
-| `Default`           | Default values         | `@d(Default)`         |
-| `Serialize`         | JSON serialization     | `@d(Serialize)`       |
-| `Deserialize`       | JSON deserialization   | `@d(Deserialize)`     |
+| Trait               | Purpose                | Derive                       |
+| ------------------- | ---------------------- | ---------------------------- |
+| `Clone`             | Deep copy              | `#[derive(Clone)]`           |
+| `Copy`              | Bitwise copy           | `#[derive(Copy)]`            |
+| `Debug`             | Debug formatting       | `#[derive(Debug)]`           |
+| `Display`           | User-facing formatting | Manual                       |
+| `Eq`, `PartialEq`   | Equality               | `#[derive(Eq, PartialEq)]`   |
+| `Ord`, `PartialOrd` | Ordering               | `#[derive(Ord, PartialOrd)]` |
+| `Hash`              | Hashing                | `#[derive(Hash)]`            |
+| `Default`           | Default values         | `#[derive(Default)]`         |
+| `Serialize`         | JSON serialization     | `#[derive(Serialize)]`       |
+| `Deserialize`       | JSON deserialization   | `#[derive(Deserialize)]`     |
 
 ## Deriving traits
 
 ```rdx
-@d(Clone, Debug, PartialEq)
-+S Config {
-    name: s,
+#[derive(Clone, Debug, PartialEq)]
+pub struct Config {
+    name: String,
     value: i32,
 }
 ```

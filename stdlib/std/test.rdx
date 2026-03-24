@@ -1,187 +1,239 @@
-//! # std.test — Testing Framework
+//! # std::test — Testing & Benchmarking
 //!
-//! Assertions, benchmarking harness, and property-based testing.
-//! All test functions are pure (no effects by default).
+//! Assertions, test runners, benchmarking, and property-based testing.
 
 // ---------------------------------------------------------------------------
 // Assertions
 // ---------------------------------------------------------------------------
 
 /// Assert that a condition is true. Panics with `msg` if false.
-+f assert(cond: 1b, msg: &s);
+pub fn assert(cond: bool, msg: &String);
 
-/// Assert that a condition is true. Panics with a default message if false.
-+f assert_true(cond: 1b) {
-    assert(cond, "assertion failed");
-}
+/// Assert two values are equal.
+pub fn assert_eq<T: PartialEq + std::fmt::Debug>(left: &T, right: &T);
 
-/// Assert that two values are equal.
-+f assert_eq[T: Eq + std.fmt.Debug](left: &T, right: &T) {
-    ? left != right {
-        panic(f"assertion failed: left = {left:?}, right = {right:?}");
-    }
-}
+/// Assert two values are not equal.
+pub fn assert_ne<T: PartialEq + std::fmt::Debug>(left: &T, right: &T);
 
-/// Assert that two values are not equal.
-+f assert_ne[T: Eq + std.fmt.Debug](left: &T, right: &T) {
-    ? left == right {
-        panic(f"assertion failed: values are equal: {left:?}");
-    }
-}
+/// Assert that a float is within `epsilon` of an expected value.
+pub fn assert_approx(actual: f64, expected: f64, epsilon: f64);
 
-/// Assert that a Result is Ok.
-+f assert_ok[T, E: std.fmt.Debug](result: &R[T, E]) {
-    ? result.is_err() {
-        panic(f"expected Ok, got Err({result.unwrap_err():?})");
-    }
-}
+/// Assert that a `Result` is `Ok`.
+pub fn assert_ok<T, E: std::fmt::Debug>(result: &Result<T, E>);
 
-/// Assert that a Result is Err.
-+f assert_err[T: std.fmt.Debug, E](result: &R[T, E]) {
-    ? result.is_ok() {
-        panic(f"expected Err, got Ok({result.unwrap():?})");
-    }
-}
+/// Assert that a `Result` is `Err`.
+pub fn assert_err<T: std::fmt::Debug, E>(result: &Result<T, E>);
 
-/// Assert that an Option is Some.
-+f assert_some[T](opt: &?T) {
-    ? opt.is_none() {
-        panic("expected Some, got None");
-    }
-}
+/// Assert that an `Option` is `Some`.
+pub fn assert_some<T>(opt: &Option<T>);
 
-/// Assert that an Option is None.
-+f assert_none[T: std.fmt.Debug](opt: &?T) {
-    ? opt.is_some() {
-        panic(f"expected None, got Some({opt.unwrap():?})");
-    }
-}
+/// Assert that an `Option` is `None`.
+pub fn assert_none<T: std::fmt::Debug>(opt: &Option<T>);
 
-/// Assert that `left` approximately equals `right` within `epsilon`.
-+f assert_approx(left: f64, right: f64, epsilon: f64) {
-    v diff = std.math.abs(left - right);
-    ? diff > epsilon {
-        panic(f"assertion failed: |{left} - {right}| = {diff} > {epsilon}");
-    }
-}
+/// Assert that a string contains a substring.
+pub fn assert_contains(haystack: &String, needle: &String);
+
+/// Assert the closure panics.
+pub fn assert_panics(f: fn());
+
+// ---------------------------------------------------------------------------
+// Test attributes (by convention)
+// ---------------------------------------------------------------------------
+
+// Use `#[test]` attribute to mark a function as a test.
+// Use `#[test] #[ignore]` to mark a test as ignored.
+// Use `#[bench]` to mark a function as a benchmark.
 
 // ---------------------------------------------------------------------------
 // Benchmarking
 // ---------------------------------------------------------------------------
 
-/// A benchmark harness. The function under test is run repeatedly
-/// and execution statistics are collected.
-+S Bencher {
-    _iterations: u64,
-    _total_ns: u64,
+/// Handle passed to benchmark functions.
+pub struct Bencher {
+    _iters: u64,
 }
 
-I Bencher {
-    /// Run the closure `n` times and measure elapsed time.
-    +f iter(&!self, f: f()) / time;
+impl Bencher {
+    /// Run the given closure in a benchmarking loop.
+    pub fn iter(&mut self, f: fn());
 
-    /// Run the closure with black-box input to prevent optimization.
-    +f iter_with_setup[T](&!self, setup: f() -> T, body: f(T)) / time;
-
-    /// Get the average time per iteration in nanoseconds.
-    +f ns_per_iter(&self) -> u64;
-
-    /// Get the total number of iterations.
-    +f iterations(&self) -> u64 { self._iterations }
+    /// Control the number of iterations manually.
+    pub fn iter_custom(&mut self, f: fn(u64));
 }
 
 /// Result of a benchmark run.
-+S BenchResult {
-    name: s,
-    iterations: u64,
-    ns_per_iter: u64,
-    min_ns: u64,
-    max_ns: u64,
-    median_ns: u64,
+pub struct BenchResult {
+    pub name: String,
+    pub iterations: u64,
+    pub total_ns: u64,
+    pub ns_per_iter: f64,
 }
 
-I std.fmt.Display ~ BenchResult {
-    +f fmt(&self, f: &!std.fmt.Formatter) -> R[(), std.fmt.FmtError];
+impl BenchResult {
+    /// Format the result as a human-readable string.
+    pub fn display(&self) -> String {
+        std::fmt::format(
+            "{}: {} iterations, {:.2} ns/iter",
+            &self.name,
+            self.iterations,
+            self.ns_per_iter,
+        )
+    }
 }
-
-/// Prevent the compiler from optimizing away a value.
-+f black_box[T](value: T) -> T;
 
 // ---------------------------------------------------------------------------
 // Property-based testing
 // ---------------------------------------------------------------------------
 
-/// Run a property test with randomly generated inputs.
-///
-/// Example:
-/// ```
-/// std.test.prop(|a: i32, b: i32| {
-///     assert_eq(a + b, b + a);  // commutativity
-/// });
-/// ```
-+f prop[F](test_fn: F) / rng
-    ~> F: PropTestable;
+/// Trait for types that can generate arbitrary values.
+pub trait Arbitrary {
+    /// Generate a random instance.
+    pub fn arbitrary(rng: &mut std::math::Rng) -> Self;
 
-/// Configuration for property tests.
-+S PropConfig {
-    /// Number of random cases to generate (default 100).
-    cases: u64,
-    /// Maximum number of shrink steps (default 1000).
-    max_shrink: u64,
-    /// Seed for reproducibility (None = random).
-    seed: ?u64,
+    /// Optionally shrink a failing case to a smaller counterexample.
+    pub fn shrink(&self) -> Vec<Self> { Vec::new() }
 }
 
-I PropConfig {
-    +f new() -> PropConfig {
-        @PropConfig { cases: 100, max_shrink: 1000, seed: ? }
+// Standard implementations
+impl Arbitrary for i32 {
+    pub fn arbitrary(rng: &mut std::math::Rng) -> i32 {
+        rng.range_int(-1000, 1000) as i32
+    }
+}
+
+impl Arbitrary for i64 {
+    pub fn arbitrary(rng: &mut std::math::Rng) -> i64 {
+        rng.range_int(-100000, 100000)
+    }
+}
+
+impl Arbitrary for f64 {
+    pub fn arbitrary(rng: &mut std::math::Rng) -> f64 {
+        rng.range_f64(-1e6, 1e6)
+    }
+}
+
+impl Arbitrary for bool {
+    pub fn arbitrary(rng: &mut std::math::Rng) -> bool {
+        rng.next_u64() % 2 == 0
+    }
+}
+
+impl Arbitrary for String {
+    pub fn arbitrary(rng: &mut std::math::Rng) -> String {
+        let len = rng.range_int(0, 64) as usize;
+        let mut s = String::new();
+        for _i in 0..len {
+            let c = (rng.range_int(32, 127) as u8) as char;
+            s.push(c);
+        }
+        s
+    }
+}
+
+impl Arbitrary for Vec<T: Arbitrary> {
+    pub fn arbitrary(rng: &mut std::math::Rng) -> Vec<T> {
+        let len = rng.range_int(0, 20) as usize;
+        let mut v = Vec::new();
+        for _i in 0..len {
+            v.push(T::arbitrary(rng));
+        }
+        v
+    }
+}
+
+/// Run a property test with `num_cases` random inputs.
+pub fn prop_test<A: Arbitrary>(
+    name: &String,
+    num_cases: usize,
+    property: fn(A) -> bool,
+) -> PropTestResult / rng {
+    let mut rng = std::math::Rng::new();
+    for i in 0..num_cases {
+        let input = A::arbitrary(&mut rng);
+        if !property(input) {
+            return PropTestResult {
+                name: name.to_owned(),
+                passed: false,
+                cases_run: i + 1,
+                counterexample: Some(std::fmt::format("{:?}", &input)),
+            };
+        }
+    }
+    PropTestResult {
+        name: name.to_owned(),
+        passed: true,
+        cases_run: num_cases,
+        counterexample: None,
+    }
+}
+
+/// Property test with two arguments.
+pub fn prop_test2<A: Arbitrary, B: Arbitrary>(
+    name: &String,
+    num_cases: usize,
+    property: fn(A, B) -> bool,
+) -> PropTestResult / rng;
+
+pub struct PropTestResult {
+    pub name: String,
+    pub passed: bool,
+    pub cases_run: usize,
+    pub counterexample: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
+// Test suite runner
+// ---------------------------------------------------------------------------
+
+/// Represents a single test case.
+pub struct TestCase {
+    name: String,
+    run: fn(),
+    ignored: bool,
+}
+
+/// A collection of tests.
+pub struct TestSuite {
+    cases: Vec<TestCase>,
+}
+
+impl TestSuite {
+    pub fn new() -> TestSuite { TestSuite { cases: Vec::new() } }
+
+    pub fn add(&mut self, name: &String, run: fn()) {
+        self.cases.push(TestCase { name: name.to_owned(), run, ignored: false });
     }
 
-    +f cases(&!self, n: u64) -> &!PropConfig { self.cases = n; self }
-    +f max_shrink(&!self, n: u64) -> &!PropConfig { self.max_shrink = n; self }
-    +f seed(&!self, s: u64) -> &!PropConfig { self.seed = ?s; self }
+    pub fn add_ignored(&mut self, name: &String, run: fn()) {
+        self.cases.push(TestCase { name: name.to_owned(), run, ignored: true });
+    }
+
+    /// Run all tests and return results.
+    pub fn run(&self) -> TestSuiteResult {
+        let mut passed = 0usize;
+        let mut failed = 0usize;
+        let mut ignored = 0usize;
+        let mut failures = Vec::new();
+
+        for tc in &self.cases {
+            if tc.ignored {
+                ignored += 1;
+                continue;
+            }
+            // In a real runtime, we'd catch panics here.
+            (tc.run)();
+            passed += 1;
+        }
+
+        TestSuiteResult { total: self.cases.len(), passed, failed, ignored, failures }
+    }
 }
 
-/// Run a property test with custom configuration.
-+f prop_with_config[F](config: &PropConfig, test_fn: F) / rng
-    ~> F: PropTestable;
-
-/// Trait for types that can generate random test values.
-+T Arbitrary {
-    +f arbitrary(rng: &!std.math.Rng) -> Self;
-
-    /// Shrink a failing value to find a minimal counterexample.
-    +f shrink(&self) -> [Self]~ { [] }
-}
-
-/// Trait for functions that can be used as property tests.
-+T PropTestable {
-    +f test(&self, rng: &!std.math.Rng) -> R[(), PropFailure];
-}
-
-/// A property test failure with a minimal counterexample.
-+S PropFailure {
-    message: s,
-    /// The minimal counterexample after shrinking.
-    counterexample: s,
-    /// Number of shrink steps performed.
-    shrink_steps: u64,
-    /// The seed that reproduces this failure.
-    seed: u64,
-}
-
-// ---------------------------------------------------------------------------
-// Standard Arbitrary implementations
-// ---------------------------------------------------------------------------
-
-I Arbitrary ~ i32   { +f arbitrary(rng: &!std.math.Rng) -> i32; }
-I Arbitrary ~ i64   { +f arbitrary(rng: &!std.math.Rng) -> i64; }
-I Arbitrary ~ u32   { +f arbitrary(rng: &!std.math.Rng) -> u32; }
-I Arbitrary ~ u64   { +f arbitrary(rng: &!std.math.Rng) -> u64; }
-I Arbitrary ~ f64   { +f arbitrary(rng: &!std.math.Rng) -> f64; }
-I Arbitrary ~ 1b    { +f arbitrary(rng: &!std.math.Rng) -> 1b; }
-I Arbitrary ~ s     { +f arbitrary(rng: &!std.math.Rng) -> s; }
-I Arbitrary ~ char  { +f arbitrary(rng: &!std.math.Rng) -> char; }
-I Arbitrary ~ [T: Arbitrary]~ {
-    +f arbitrary(rng: &!std.math.Rng) -> [T]~;
+pub struct TestSuiteResult {
+    pub total: usize,
+    pub passed: usize,
+    pub failed: usize,
+    pub ignored: usize,
+    pub failures: Vec<String>,
 }

@@ -1,109 +1,105 @@
 # Type Sugar
 
-Redox's most distinctive feature is its **type sugar** — single sigils that
-replace verbose generic types. These are not aliases; they are built into the
-language grammar itself.
+In **standard syntax** (the default), Redox uses the same type names as Rust.
+The **compact syntax** mode (`#![syntax(compact)]`) provides single-sigil
+abbreviations for common types — see the
+[appendix](appendix-cheatsheet.md) for the full compact mapping.
 
-## The complete sugar table
+## Standard type names
 
-| Sugar     | Expansion           | Rust Equivalent |
-| --------- | ------------------- | --------------- |
-| `?T`      | `Option[T]`         | `Option<T>`     |
-| `R[T, E]` | `Result[T, E]`      | `Result<T, E>`  |
-| `[T]~`    | `Vec[T]`            | `Vec<T>`        |
-| `[T; N]`  | fixed array         | `[T; N]`        |
-| `[T]`     | slice               | `[T]`           |
-| `^T`      | `Box[T]`            | `Box<T>`        |
-| `$T`      | `Rc[T]`             | `Rc<T>`         |
-| `@T`      | `Arc[T]`            | `Arc<T>`        |
-| `{K: V}`  | `Map[K, V]`         | `HashMap<K, V>` |
-| `{K}`     | `Set[K]`            | `HashSet<K>`    |
-| `&T`      | shared reference    | `&T`            |
-| `&!T`     | exclusive reference | `&mut T`        |
-| `s`       | `String`            | `String`        |
-| `&s`      | string slice        | `&str`          |
+| Standard (Redox/Rust) | Compact Mode | Description        |
+| --------------------- | ------------ | ------------------ |
+| `Option<T>`           | `?T`         | Optional value     |
+| `Result<T, E>`        | `R[T, E]`    | Success or error   |
+| `Vec<T>`              | `[T]~`       | Growable vector    |
+| `Box<T>`              | `^T`         | Heap allocation    |
+| `Rc<T>`               | `$T`         | Reference counted  |
+| `Arc<T>`              | `@T`         | Atomic ref counted |
+| `HashMap<K, V>`       | `{K: V}`     | Hash map           |
+| `HashSet<K>`          | `{K}`        | Hash set           |
+| `&mut T`              | `&!T`        | Mutable reference  |
+| `String`              | `s`          | Owned string       |
+| `&str`                | `&s`         | String slice       |
 
-## Option: `?T`
+## Option
 
 ```rdx
-+f find(name: &s) -> ?User {
+pub fn find(name: &str) -> Option<User> {
     // Returns Some(user) or None
 }
 
-v result: ?i32 = Some(42)
-v nothing: ?i32 = None
+let result: Option<i32> = Some(42);
+let nothing: Option<i32> = None;
 ```
 
-## Result: `R[T, E]`
+## Result
 
 ```rdx
-+f parse(input: &s) -> R[Config, ParseError] {
+pub fn parse(input: &str) -> Result<Config, ParseError> {
     // Returns Ok(config) or Err(error)
 }
 ```
 
-## Vec: `[T]~`
-
-The tilde `~` means "growable" — a fixed array `[T; N]` becomes a dynamic
-vector `[T]~`:
+## Vec
 
 ```rdx
-v items = [1, 2, 3]~           // Vec literal
-v empty = [s]~.new()           // empty Vec<String>
-m buf = [u8]~.with_capacity(1024)
+let items = vec![1, 2, 3];
+let empty: Vec<String> = Vec::new();
+let mut buf: Vec<u8> = Vec::with_capacity(1024);
 ```
 
 ## Smart pointers
 
 ```rdx
-v boxed: ^i32 = ^42                    // Box::new(42)
-v shared: $Node = $.new(node)          // Rc::new(node)
-v atomic: @Config = @.new(config)      // Arc::new(config)
+let boxed: Box<i32> = Box::new(42);
+let shared: Rc<Node> = Rc::new(node);
+let atomic: Arc<Config> = Arc::new(config);
 ```
 
 ## Collections
 
 ```rdx
 // HashMap
-m scores: {s: i32} = {s: i32}.new()
-scores.insert("Alice", 100)
-scores.insert("Bob", 95)
+let mut scores: HashMap<String, i32> = HashMap::new();
+scores.insert("Alice".into(), 100);
+scores.insert("Bob".into(), 95);
 
 // HashSet
-m seen: {s} = {s}.new()
-seen.insert("hello")
+let mut seen: HashSet<String> = HashSet::new();
+seen.insert("hello".into());
 ```
 
-## Exclusive references: `&!`
+## Mutable references
 
-Rust's `&mut T` becomes `&!T` — the `!` emphasizes exclusivity:
+Rust's `&mut T` is used directly in Redox standard mode:
 
 ```rdx
-f push_item(list: &![i32]~, item: i32) {
-    list.push(item)
+fn push_item(list: &mut Vec<i32>, item: i32) {
+    list.push(item);
 }
 ```
 
-## Combining sugar
+## Combining types
 
-Sugar composes naturally:
+Types compose the same way as Rust:
 
 ```rdx
-v maybe_items: ?[i32]~  = Some([1, 2, 3]~)    // Option<Vec<i32>>
-v shared_map: @{s: [i32]~} = @.new(map)        // Arc<HashMap<String, Vec<i32>>>
-v result: R[?s, ^Error] = Ok(Some("hi".into()))  // Result<Option<String>, Box<Error>>
+let maybe_items: Option<Vec<i32>> = Some(vec![1, 2, 3]);
+let shared_map: Arc<HashMap<String, Vec<i32>>> = Arc::new(map);
+let result: Result<Option<String>, Box<dyn Error>> = Ok(Some("hi".into()));
 ```
 
-## Why sugar?
+## Why compact mode exists
 
-A side-by-side comparison shows the token savings:
+For AI agents emitting code token by token, compact syntax reduces token count
+significantly:
 
-| Rust                                           | Tokens | Redox                 | Tokens | Savings |
+| Standard (Rust-like)                           | Tokens | Compact               | Tokens | Savings |
 | ---------------------------------------------- | :----: | --------------------- | :----: | :-----: |
 | `Option<Vec<String>>`                          |   7    | `?[s]~`               |   4    |   43%   |
 | `Result<HashMap<String, i32>, Box<dyn Error>>` |   13   | `R[{s: i32}, ^Error]` |   8    |   38%   |
 | `Arc<Mutex<Vec<u8>>>`                          |   9    | `@Mutex[[u8]~]`       |   5    |   44%   |
 | `&mut Vec<(String, i32)>`                      |   9    | `&![(s, i32)]~`       |   6    |   33%   |
 
-For AI agents emitting code token by token, every saved token reduces latency,
-cost, and memory.
+To activate compact mode, add `#![syntax(compact)]` at the top of any `.rdx`
+file.

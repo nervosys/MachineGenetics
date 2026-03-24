@@ -1,44 +1,37 @@
 # Control Flow
 
-Redox uses `?` for conditionals and pattern matching, `@` for iteration, and
-`loop` for unbounded loops. There is no `if`, `else`, `match`, or `for` keyword.
+Redox uses standard `if`/`else` for conditionals, `match` for pattern matching,
+`for` for iteration, and `loop`/`while` for unbounded loops — identical to Rust.
 
-## Conditionals with `?`
-
-The `?` keyword replaces both `if` and `match`:
+## Conditionals
 
 ```rdx
 // Simple conditional
-? x > 0 {
-    p"positive"
+if x > 0 {
+    println!("positive");
 }
 
-// If-else (: = else)
-? x > 0 {
-    p"positive"
-} : {
-    p"non-positive"
+// If-else
+if x > 0 {
+    println!("positive");
+} else {
+    println!("non-positive");
 }
 
 // If-else-if chain
-? x > 0 {
-    p"positive"
-} : ? x == 0 {
-    p"zero"
-} : {
-    p"negative"
+if x > 0 {
+    println!("positive");
+} else if x == 0 {
+    println!("zero");
+} else {
+    println!("negative");
 }
 ```
 
-The `:` token means "else". Read `} : {` as "otherwise".
-
-## Pattern matching with `?`
-
-When `?` is followed by a value and `{` contains arms with `=>`, it acts as
-`match`:
+## Pattern matching
 
 ```rdx
-? shape {
+match shape {
     Circle(r) => PI * r * r,
     Rectangle(w, h) => w * h,
     Point => 0.0,
@@ -48,48 +41,44 @@ When `?` is followed by a value and `{` contains arms with `=>`, it acts as
 With guards:
 
 ```rdx
-? value {
-    x ? x > 0 => p"positive: {x}",
-    0 => p"zero",
-    x => p"negative: {x}",
+match value {
+    x if x > 0 => println!("positive: {x}"),
+    0 => println!("zero"),
+    x => println!("negative: {x}"),
 }
 ```
 
-## For loops with `@`
-
-The `@` keyword replaces `for`:
+## For loops
 
 ```rdx
 // Iterate over a collection
-@ item : items {
-    p"{item}"
+for item in items {
+    println!("{item}");
 }
 
 // With index
-@ (i, item) : items.iter().enumerate() {
-    p"{i}: {item}"
+for (i, item) in items.iter().enumerate() {
+    println!("{i}: {item}");
 }
 
 // Range
-@ i : 0..10 {
-    p"{i}"
+for i in 0..10 {
+    println!("{i}");
 }
 
 // Mutable iteration
-@ item : &!items {
-    *item *= 2
+for item in &mut items {
+    *item *= 2;
 }
 ```
 
 ## While loops
 
-`loop` with a condition:
-
 ```rdx
-m x = 10
-loop ? x > 0 {
-    p"{x}"
-    x -= 1
+let mut x = 10;
+while x > 0 {
+    println!("{x}");
+    x -= 1;
 }
 ```
 
@@ -97,11 +86,11 @@ loop ? x > 0 {
 
 ```rdx
 loop {
-    v input = stdin().read_line()?
-    ? input.trim() == "quit" {
-        break
+    let input = stdin().read_line()?;
+    if input.trim() == "quit" {
+        break;
     }
-    p"You said: {input}"
+    println!("You said: {input}");
 }
 ```
 
@@ -110,22 +99,22 @@ loop {
 Loops can produce values via `break`:
 
 ```rdx
-v result = loop {
-    v data = try_fetch()?
-    ? data.is_valid() {
-        break data
+let result = loop {
+    let data = try_fetch()?;
+    if data.is_valid() {
+        break data;
     }
-}
+};
 ```
 
 ## Early return
 
-Use `ret` instead of `return`:
+Use `return` for early returns:
 
 ```rdx
-f validate(input: &s) -> R[(), Error] {
-    ? input.is_empty() {
-        ret Err(Error.new("empty input"))
+fn validate(input: &str) -> Result<(), Error> {
+    if input.is_empty() {
+        return Err(Error::new("empty input"));
     }
     Ok(())
 }

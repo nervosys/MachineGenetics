@@ -1,15 +1,15 @@
 # Pattern Matching
 
-Redox inherits Rust's powerful pattern matching but uses `?` instead of `match`.
+Redox inherits Rust's powerful pattern matching with the same `match` keyword.
 
 ## Basic patterns
 
 ```rdx
-? value {
-    1 => p"one",
-    2 => p"two",
-    3 => p"three",
-    _ => p"other",
+match value {
+    1 => println!("one"),
+    2 => println!("two"),
+    3 => println!("three"),
+    _ => println!("other"),
 }
 ```
 
@@ -18,43 +18,43 @@ Redox inherits Rust's powerful pattern matching but uses `?` instead of `match`.
 ### Structs
 
 ```rdx
-? point {
-    Point { x: 0, y: 0 } => p"origin",
-    Point { x, y: 0 } => p"on x-axis at {x}",
-    Point { x: 0, y } => p"on y-axis at {y}",
-    Point { x, y } => p"at ({x}, {y})",
+match point {
+    Point { x: 0, y: 0 } => println!("origin"),
+    Point { x, y: 0 } => println!("on x-axis at {x}"),
+    Point { x: 0, y } => println!("on y-axis at {y}"),
+    Point { x, y } => println!("at ({x}, {y})"),
 }
 ```
 
 ### Enums
 
 ```rdx
-? result {
-    Ok(value) => p"got: {value}",
-    Err(e) => p"error: {e}",
+match result {
+    Ok(value) => println!("got: {value}"),
+    Err(e) => println!("error: {e}"),
 }
 ```
 
 ### Tuples
 
 ```rdx
-? (a, b) {
-    (0, 0) => p"origin",
-    (x, 0) | (0, x) => p"on axis: {x}",
-    (x, y) => p"({x}, {y})",
+match (a, b) {
+    (0, 0) => println!("origin"),
+    (x, 0) | (0, x) => println!("on axis: {x}"),
+    (x, y) => println!("({x}, {y})"),
 }
 ```
 
 ## Guards
 
-Add conditions with `?` after the pattern:
+Add conditions with `if` after the pattern:
 
 ```rdx
-? temperature {
-    t ? t < 0 => p"freezing",
-    t ? t < 20 => p"cold",
-    t ? t < 30 => p"comfortable",
-    t => p"hot: {t}°",
+match temperature {
+    t if t < 0 => println!("freezing"),
+    t if t < 20 => println!("cold"),
+    t if t < 30 => println!("comfortable"),
+    t => println!("hot: {t}°"),
 }
 ```
 
@@ -63,26 +63,24 @@ Add conditions with `?` after the pattern:
 Use `@` to bind a name to an entire pattern:
 
 ```rdx
-? msg {
-    m @ Message { priority: Priority.High, .. } => handle_urgent(m),
+match msg {
+    m @ Message { priority: Priority::High, .. } => handle_urgent(m),
     m @ Message { .. } => handle_normal(m),
 }
 ```
 
-## If-let equivalent
-
-Redox uses `?` with `=>` for `if let` patterns:
+## If-let
 
 ```rdx
-? value => Some(x) {
-    p"got {x}"
+if let Some(x) = value {
+    println!("got {x}");
 }
 
 // With else
-? value => Some(x) {
-    p"got {x}"
-} : {
-    p"nothing"
+if let Some(x) = value {
+    println!("got {x}");
+} else {
+    println!("nothing");
 }
 ```
 
@@ -92,7 +90,7 @@ Pattern matches must be exhaustive — the compiler verifies that all possible
 values are covered. Use `_` as a catch-all:
 
 ```rdx
-? direction {
+match direction {
     North => go_north(),
     South => go_south(),
     East => go_east(),

@@ -6,14 +6,14 @@ implementation. This is the key to testability, mocking, and effect composition.
 ## The `handle` function
 
 ```rdx
-u std.effect.{handle, perform}
+use std::effect::{handle, perform};
 
-+f main() / io {
+pub fn main() / io {
     // Run code with a custom IO handler
-    v result = handle[IoEffect, s](
+    let result = handle::<IoEffect, String>(
         || {
             // This code "performs" the io effect
-            v data = File.read("config.json")?
+            let data = File::read("config.json")?;
             parse(&data)
         },
         |input| {
@@ -21,7 +21,7 @@ u std.effect.{handle, perform}
             // Instead of real I/O, return mock data
             Ok(r#"{"key": "value"}"#.to_string())
         },
-    )
+    );
 }
 ```
 
@@ -32,13 +32,13 @@ u std.effect.{handle, perform}
 Replace real I/O with deterministic mocks:
 
 ```rdx
-@test
-f test_config_loading() {
-    v result = handle[IoEffect, Config](
+#[test]
+fn test_config_loading() {
+    let result = handle::<IoEffect, Config>(
         || load_config("test.json"),
         |_path| Ok(r#"{"debug": true}"#.to_string()),
-    )
-    assert_eq(result.debug, 1b)
+    );
+    assert_eq!(result.debug, true);
 }
 ```
 
@@ -47,12 +47,12 @@ f test_config_loading() {
 Wrap an effect to add logging:
 
 ```rdx
-f with_logging[T](f: f() -> T / io) -> T / io {
-    handle[IoEffect, T](
+fn with_logging<T>(f: fn() -> T / io) -> T / io {
+    handle::<IoEffect, T>(
         f,
         |input| {
-            p"IO operation: {input}"
-            perform[IoEffect](input)    // delegate to real handler
+            println!("IO operation: {input}");
+            perform::<IoEffect>(input)    // delegate to real handler
         },
     )
 }
@@ -64,13 +64,13 @@ Effects replace constructor-injected dependencies:
 
 ```rdx
 // Instead of:
-//   S Service { db: ^Database, http: ^HttpClient }
+//   struct Service { db: Box<Database>, http: Box<HttpClient> }
 
 // Use effects:
-+f process_order(order: &Order) -> R[Receipt, Error] / db, net {
-    v inventory = db_check(order.item_id)?
-    v payment = charge_card(order.payment)?
-    Ok(Receipt @{ order_id: order.id, amount: payment.amount })
+pub fn process_order(order: &Order) -> Result<Receipt, Error> / db, net {
+    let inventory = db_check(order.item_id)?;
+    let payment = charge_card(order.payment)?;
+    Ok(Receipt { order_id: order.id, amount: payment.amount })
 }
 
 // In tests, handle db and net effects with mocks
@@ -82,13 +82,13 @@ Effects replace constructor-injected dependencies:
 Handle multiple effects at once:
 
 ```rdx
-u std.effect.handle2
+use std::effect::handle2;
 
-v result = handle2[IoEffect, NetEffect, Response](
+let result = handle2::<IoEffect, NetEffect, Response>(
     || fetch_and_save("https://api.example.com", "data.json"),
     |io_input| mock_file_system(io_input),
     |net_input| mock_http_client(net_input),
-)
+);
 ```
 
 ## Effect discharge
@@ -96,11 +96,11 @@ v result = handle2[IoEffect, NetEffect, Response](
 Check whether a type has a particular effect and conditionally handle it:
 
 ```rdx
-u std.effect.{has_effect, discharge}
+use std::effect::{has_effect, discharge};
 
 // Remove the io effect by handling it
-f make_pure[T](f: f() -> T / io) -> T {
-    handle[IoEffect, T](f, |_| default_value())
+fn make_pure<T>(f: fn() -> T / io) -> T {
+    handle::<IoEffect, T>(f, |_| default_value())
 }
 ```
 

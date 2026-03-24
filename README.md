@@ -15,24 +15,24 @@ features designed for multi-agent AI development workflows. It compiles `.rdx`
 source files through a token-minimal, zero-ambiguity syntax to native code via
 MLIR and LLVM, targeting CPU, GPU, NPU, WASM, and RISC-V.
 
-```
-u std.io;
+```redox
+use std::io;
 
-@d(Debug, Clone)
-+S Task {
-    name: s,
+#[derive(Debug, Clone)]
+pub struct Task {
+    name: String,
     priority: i32,
 }
 
-+f main() / io {
-    v tasks = [
-        Task @{ name: "parse".into(), priority: 1 },
-        Task @{ name: "check".into(), priority: 2 },
-        Task @{ name: "emit".into(), priority: 3 },
-    ]~;
+pub fn main() / io {
+    let tasks = vec![
+        Task { name: "parse".into(), priority: 1 },
+        Task { name: "check".into(), priority: 2 },
+        Task { name: "emit".into(), priority: 3 },
+    ];
 
-    @ task ~ &tasks {
-        p"[{task.priority}] {task.name}";
+    for task in &tasks {
+        println!("[{task.priority}] {task.name}");
     }
 }
 ```
@@ -78,25 +78,25 @@ rdx2rs src/main.rdx --output rs/
 
 ## Syntax at a Glance
 
-| Redox   | Rust equivalent              | Redox    | Rust equivalent         |
-| ------- | ---------------------------- | -------- | ----------------------- |
-| `f`     | `fn`                         | `v`      | `let`                   |
-| `+f`    | `pub fn`                     | `m`      | `let mut`               |
-| `af`    | `async fn`                   | `?`      | `match`                 |
-| `uf`    | `unsafe fn`                  | `?:`     | `if`                    |
-| `+S`    | `pub struct`                 | `:?`     | `else if`               |
-| `+E`    | `pub enum`                   | `:`      | `else`                  |
-| `+T`    | `pub trait`                  | `@`      | `for .. in`             |
-| `I`     | `impl`                       | `@@`     | `loop`                  |
-| `u`     | `use`                        | `@w`     | `while`                 |
-| `.`     | `::` (path)                  | `!`      | `break`                 |
-| `@d()`  | `#[derive()]`                | `>>`     | `continue`              |
-| `p""`   | `println!()`                 | `1b`     | `true`                  |
-| `[T]~`  | `Vec<T>`                     | `0b`     | `false`                 |
-| `{K:V}` | `HashMap<K,V>`               | `?T`     | `Option<T>`             |
-| `{K}`   | `HashSet<K>`                 | `R[T,E]` | `Result<T,E>`           |
-| `/ io`  | effect annotation            | `@req`   | precondition contract   |
-| `@ens`  | postcondition contract       | `@inv`   | invariant contract      |
+| Redox   | Rust equivalent        | Redox    | Rust equivalent       |
+| ------- | ---------------------- | -------- | --------------------- |
+| `f`     | `fn`                   | `v`      | `let`                 |
+| `+f`    | `pub fn`               | `m`      | `let mut`             |
+| `af`    | `async fn`             | `?`      | `match`               |
+| `uf`    | `unsafe fn`            | `?:`     | `if`                  |
+| `+S`    | `pub struct`           | `:?`     | `else if`             |
+| `+E`    | `pub enum`             | `:`      | `else`                |
+| `+T`    | `pub trait`            | `@`      | `for .. in`           |
+| `I`     | `impl`                 | `@@`     | `loop`                |
+| `u`     | `use`                  | `@w`     | `while`               |
+| `.`     | `::` (path)            | `!`      | `break`               |
+| `@d()`  | `#[derive()]`          | `>>`     | `continue`            |
+| `p""`   | `println!()`           | `1b`     | `true`                |
+| `[T]~`  | `Vec<T>`               | `0b`     | `false`               |
+| `{K:V}` | `HashMap<K,V>`         | `?T`     | `Option<T>`           |
+| `{K}`   | `HashSet<K>`           | `R[T,E]` | `Result<T,E>`         |
+| `/ io`  | effect annotation      | `@req`   | precondition contract |
+| `@ens`  | postcondition contract | `@inv`   | invariant contract    |
 
 ## Project Structure
 
@@ -138,20 +138,20 @@ ci/                 CI/CD pipeline (lint → build → test → transpile → va
 Twelve self-contained projects in [`examples/`](examples/), each with a
 `Forge.toml` manifest and `src/main.rdx` entry point:
 
-| Project                                                         | Focus                            |
-| --------------------------------------------------------------- | -------------------------------- |
-| [hello-world](examples/hello-world/)                            | Entry point, printing, variables |
-| [data-structures](examples/data-structures/)                    | Structs, enums, generics, traits |
-| [http-client](examples/http-client/)                            | Async HTTP, effects, JSON        |
-| [cli-tool](examples/cli-tool/)                                  | File I/O, iterators, arguments   |
-| [agent-swarm](examples/agent-swarm/)                            | Multi-agent coordination         |
-| [effects-showcase](examples/effects-showcase/)                  | Effect declarations and handlers |
-| [autonomous-pipeline](examples/autonomous-pipeline/)            | Task decomposition and pipelines |
-| [swarm-code-review](examples/swarm-code-review/)                | Scatter/gather consensus review  |
-| [safe-plugin-host](examples/safe-plugin-host/)                  | Capability sandbox with auditing |
-| [live-compiler](examples/live-compiler/)                        | Hot reload and self-healing      |
-| [multilang-bindings](examples/multilang-bindings/)              | FFI bridge (C, Python, WASM)     |
-| [cost-aware-optimizer](examples/cost-aware-optimizer/)          | Cost-model strategy selection    |
+| Project                                                | Focus                            |
+| ------------------------------------------------------ | -------------------------------- |
+| [hello-world](examples/hello-world/)                   | Entry point, printing, variables |
+| [data-structures](examples/data-structures/)           | Structs, enums, generics, traits |
+| [http-client](examples/http-client/)                   | Async HTTP, effects, JSON        |
+| [cli-tool](examples/cli-tool/)                         | File I/O, iterators, arguments   |
+| [agent-swarm](examples/agent-swarm/)                   | Multi-agent coordination         |
+| [effects-showcase](examples/effects-showcase/)         | Effect declarations and handlers |
+| [autonomous-pipeline](examples/autonomous-pipeline/)   | Task decomposition and pipelines |
+| [swarm-code-review](examples/swarm-code-review/)       | Scatter/gather consensus review  |
+| [safe-plugin-host](examples/safe-plugin-host/)         | Capability sandbox with auditing |
+| [live-compiler](examples/live-compiler/)               | Hot reload and self-healing      |
+| [multilang-bindings](examples/multilang-bindings/)     | FFI bridge (C, Python, WASM)     |
+| [cost-aware-optimizer](examples/cost-aware-optimizer/) | Cost-model strategy selection    |
 
 ```bash
 cd examples/hello-world
@@ -160,19 +160,19 @@ rdx run
 
 ## Documentation
 
-| Document                                             | Description                                       |
-| ---------------------------------------------------- | ------------------------------------------------- |
-| [REDOX_SPEC.md](REDOX_SPEC.md)                      | Formal language specification                     |
-| [REDOX_ECOSYSTEM.md](REDOX_ECOSYSTEM.md)            | Ecosystem architecture (Forge, RAP, migration)    |
-| [REDOX_PROPOSAL.md](REDOX_PROPOSAL.md)              | Design philosophy and 24 design principles        |
-| [prototype/docs/BOOK.md](prototype/docs/BOOK.md)    | User guide (12 chapters)                          |
-| [prototype/docs/INTERNALS.md](prototype/docs/INTERNALS.md) | Compiler architecture (36 modules)         |
-| [agent-guide/](agent-guide/)                         | AI agent SDK (prompts, patterns, RAP methods)     |
-| [cookbook/](cookbook/)                                 | Practical recipes (I/O, HTTP, agents, concurrency)|
-| [migration-guide/](migration-guide/)                 | Rust → Redox migration                            |
-| [skb/](skb/)                                         | Safety Knowledge Base (9,157 rules, 6 categories) |
-| [training/](training/)                               | Training data and evaluation (100 samples)        |
-| [benchmarks/](benchmarks/)                           | 100-task evaluation corpus with metrics           |
+| Document                                                   | Description                                        |
+| ---------------------------------------------------------- | -------------------------------------------------- |
+| [REDOX_SPEC.md](REDOX_SPEC.md)                             | Formal language specification                      |
+| [REDOX_ECOSYSTEM.md](REDOX_ECOSYSTEM.md)                   | Ecosystem architecture (Forge, RAP, migration)     |
+| [REDOX_PROPOSAL.md](REDOX_PROPOSAL.md)                     | Design philosophy and 24 design principles         |
+| [prototype/docs/BOOK.md](prototype/docs/BOOK.md)           | User guide (12 chapters)                           |
+| [prototype/docs/INTERNALS.md](prototype/docs/INTERNALS.md) | Compiler architecture (36 modules)                 |
+| [agent-guide/](agent-guide/)                               | AI agent SDK (prompts, patterns, RAP methods)      |
+| [cookbook/](cookbook/)                                     | Practical recipes (I/O, HTTP, agents, concurrency) |
+| [migration-guide/](migration-guide/)                       | Rust → Redox migration                             |
+| [skb/](skb/)                                               | Safety Knowledge Base (9,157 rules, 6 categories)  |
+| [training/](training/)                                     | Training data and evaluation (100 samples)         |
+| [benchmarks/](benchmarks/)                                 | 100-task evaluation corpus with metrics            |
 
 ## Building from Source
 

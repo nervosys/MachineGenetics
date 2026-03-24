@@ -14,72 +14,72 @@
 
 // ── Struct definitions ───────────────────────────────────────
 
-S Point {
+struct Point {
     x: f64,
-    y: f64
+    y: f64,
 }
 
-S Rect {
+struct Rect {
     origin: Point,
     width: f64,
-    height: f64
+    height: f64,
 }
 
 // ── Enum definitions ─────────────────────────────────────────
 
-E Shape {
+enum Shape {
     Circle,
     Square,
-    Triangle
+    Triangle,
 }
 
 // ── Pure functions ───────────────────────────────────────────
 
-+f add(a: i32, b: i32) -> i32 {
+pub fn add(a: i32, b: i32) -> i32 {
     a + b
 }
 
-+f multiply(x: i32, y: i32) -> i32 {
+pub fn multiply(x: i32, y: i32) -> i32 {
     x * y
 }
 
-+f distance(p1: Point, p2: Point) -> f64 {
-    v dx: f64 = p2.x - p1.x;
-    v dy: f64 = p2.y - p1.y;
+pub fn distance(p1: Point, p2: Point) -> f64 {
+    let dx: f64 = p2.x - p1.x;
+    let dy: f64 = p2.y - p1.y;
     dx * dx + dy * dy
 }
 
 // ── Functions with effects ───────────────────────────────────
 
-+f greet(name: s) -> s {
+pub fn greet(name: String) -> String {
     name
 }
 
-+f read_config(path: s) -> s {
+pub fn read_config(path: String) -> String {
     path
 }
 
 // ── Nested scopes & shadowing ────────────────────────────────
 
-+f scopes() -> i32 {
-    v x: i32 = 10;
-    v y: i32 = 20;
-    v result: i32 = x + y;
+pub fn scopes() -> i32 {
+    let x: i32 = 10;
+    let y: i32 = 20;
+    let result: i32 = x + y;
     result
 }
 
 // ── Control flow ─────────────────────────────────────────────
 
-+f max_val(a: i32, b: i32) -> i32 {
-    ? a > b { a } : { b }
+pub fn max_val(a: i32, b: i32) -> i32 {
+    if a > b { a } else { b }
 }
 
 // ── Entry point ──────────────────────────────────────────────
 
-+f main() -> i32 {
-    v sum: i32 = add(3, 4);
-    v prod: i32 = multiply(sum, 2);
+pub fn main() -> i32 {
+    let sum: i32 = add(3, 4);
+    let prod: i32 = multiply(sum, 2);
     greet("Redox Pipeline Demo");
-    v best: i32 = max_val(sum, prod);
+    let best: i32 = max_val(sum, prod);
     best
 }

@@ -1,59 +1,40 @@
 # Redox Anti-Patterns
 
-> Common mistakes AI agents make when generating Redox code.  
+> Common mistakes AI agents make when generating Redox code.
 > Each entry shows the **wrong** code and the **correct** fix.
+> All examples use **standard syntax** (default). For compact mode, add `#![syntax(compact)]`.
 
 ---
 
-## Anti-Pattern 1: Using Rust Keywords
-
-**WRONG** — Rust syntax:
-```rust
-pub fn greet(name: &str) -> String {
-    format!("Hello, {name}")
-}
-```
-
-**CORRECT** — Redox syntax:
-```redox
-+f greet(name: &s) -> s {
-    f"Hello, {name}"
-}
-```
-
-**Rule:** Never use `fn`, `pub fn`, `let`, `let mut`, `struct`, `enum`, `trait`, `impl`, `mod`, `use`, `return`, `if`, `else`, `match`, `for`.
-
----
-
-## Anti-Pattern 2: Lifetime Annotations
+## Anti-Pattern 1: Lifetime Annotations
 
 **WRONG:**
 ```
-f longest<'a>(a: &'a s, b: &'a s) -> &'a s {
+fn longest<'a>(a: &'a str, b: &'a str) -> &'a str {
 ```
 
 **CORRECT:**
 ```redox
-f longest(a: &s, b: &s) -> &s {
+fn longest(a: &str, b: &str) -> &str {
 ```
 
 **Rule:** The SKB infers and proves lifetimes. Never write lifetime parameters.
 
 ---
 
-## Anti-Pattern 3: Missing Effect Annotations
+## Anti-Pattern 2: Missing Effect Annotations
 
 **WRONG:**
 ```redox
-+f save(data: &s) -> R[(), Error] {
-    fs.write("out.txt", data)?
+pub fn save(data: &str) -> Result<(), Error> {
+    fs::write("out.txt", data)?
 }
 ```
 
 **CORRECT:**
 ```redox
-+f save(data: &s) -> R[(), Error] / io {
-    fs.write("out.txt", data)?
+pub fn save(data: &str) -> Result<(), Error> / io {
+    fs::write("out.txt", data)?
 }
 ```
 
@@ -61,69 +42,19 @@ f longest(a: &s, b: &s) -> &s {
 
 ---
 
-## Anti-Pattern 4: Using `::` for Paths
-
-**WRONG:**
-```
-u std::io::File
-v path = std::env::current_dir()
-```
-
-**CORRECT:**
-```redox
-u std.io.File
-v path = std.env.current_dir()
-```
-
-**Rule:** Redox uses `.` (dot) as path separator, never `::`.
-
----
-
-## Anti-Pattern 5: Angle-Bracket Generics
-
-**WRONG:**
-```
-f first<T>(items: Vec<T>) -> Option<T> {
-```
-
-**CORRECT:**
-```redox
-f first[T](items: [T]~) -> ?T {
-```
-
-**Rule:** Use `[T]` for generics, never `<T>`. Also use type sugar: `[T]~` not `Vec[T]`, `?T` not `Option[T]`.
-
----
-
-## Anti-Pattern 6: Turbofish Syntax
-
-**WRONG:**
-```
-v nums = vec.iter().collect::<Vec<i32>>()
-```
-
-**CORRECT:**
-```redox
-v nums = vec.iter().collect[[i32]~]()
-```
-
-**Rule:** No turbofish. Just use `[Type]` directly on the function call.
-
----
-
-## Anti-Pattern 7: Using `unsafe` Blocks
+## Anti-Pattern 3: Using `unsafe` Blocks
 
 **WRONG:**
 ```
 unsafe {
-    v ptr = alloc(layout)
+    let ptr = alloc(layout);
     // ...
 }
 ```
 
 **CORRECT:**
 ```redox
-v cap = Capability.request("mem.alloc", layout)?
+let cap = Capability::request("mem.alloc", layout)?;
 // Use capability-gated safe abstractions
 ```
 
@@ -131,196 +62,178 @@ v cap = Capability.request("mem.alloc", layout)?
 
 ---
 
-## Anti-Pattern 8: Macro Invocation with `!`
-
-**WRONG:**
-```
-println!("count: {}", n)
-format!("{} items", n)
-vec![1, 2, 3]
-```
-
-**CORRECT:**
-```redox
-p"count: {n}"
-f"{n} items"
-[1, 2, 3]      // array literal; for Vec use [1, 2, 3].to_vec()
-```
-
-**Rule:** Redox replaces common macros with syntax sugar. No `!` invocations for these.
-
----
-
-## Anti-Pattern 9: Raw Concurrency Instead of Swarm
+## Anti-Pattern 4: Raw Concurrency Instead of Swarm
 
 **WRONG:**
 ```redox
-u std.sync.{@Mutex, thread}
+use std::sync::{Arc, Mutex};
+use std::thread;
 
-v handle = thread.spawn(|| {
+let handle = thread::spawn(|| {
     expensive_work()
-})
-v result = handle.join()?
+});
+let result = handle.join()?;
 ```
 
 **CORRECT:**
 ```redox
-u std.agent.{Agent, Swarm}
+use std::agent::{Agent, Swarm};
 
-+S Worker { input: s }
+pub struct Worker { input: String }
 
-I Agent ~ Worker {
-    +af execute(&!self) -> R[s, Error] / agent {
+impl Agent for Worker {
+    pub async fn execute(&mut self) -> Result<String, Error> / agent {
         expensive_work(&self.input)
     }
 }
 
-v swarm = Swarm.new()
-swarm.spawn(Worker @{ input: s.from("data") })
-v results = swarm.join_all().await?
+let swarm = Swarm::new();
+swarm.spawn(Worker { input: String::from("data") });
+let results = swarm.join_all().await?;
 ```
 
 **Rule:** Prefer `Swarm` for parallel work. It provides structured concurrency with capability checks.
 
 ---
 
-## Anti-Pattern 10: Struct Literals Without `@`
+## Anti-Pattern 5: Omitting Visibility on Public APIs
 
 **WRONG:**
 ```redox
-v point = Point { x: 1.0, y: 2.0 }
-```
-
-**CORRECT:**
-```redox
-v point = Point @{ x: 1.0, y: 2.0 }
-```
-
-**Rule:** Struct literals require the `@` prefix before `{`.
-
----
-
-## Anti-Pattern 11: Using `true` / `false` Literals
-
-**WRONG:**
-```redox
-v active = true
-v deleted = false
-```
-
-**CORRECT:**
-```redox
-v active = 1b
-v deleted = 0b
-```
-
-**Rule:** Use `1b` for true, `0b` for false.
-
----
-
-## Anti-Pattern 12: Using `if`/`else`/`match`/`for`/`return`
-
-**WRONG:**
-```
-if x > 0 {
-    return x
-} else {
-    return -x
-}
-
-for item in list {
-    process(item)
-}
-
-match status {
-    Status::Active => handle_active(),
-    _ => handle_other(),
-}
-```
-
-**CORRECT:**
-```redox
-? x > 0 {
-    ret x
-} : {
-    ret -x
-}
-
-@ item ~ list {
-    process(item)
-}
-
-? status {
-    Status.Active => handle_active(),
-    _ => handle_other(),
-}
-```
-
----
-
-## Anti-Pattern 13: Forgetting Crate Prefix
-
-**WRONG:**
-```redox
-u models.User
-u handlers.process
-```
-
-**CORRECT:**
-```redox
-u ~.models.User
-u ~.handlers.process
-```
-
-**Rule:** Use `~` for crate root in internal paths.
-
----
-
-## Anti-Pattern 14: `String` and `&str` Literals
-
-**WRONG:**
-```redox
-v name: String = String::from("Alice")
-v greeting: &str = "hello"
-```
-
-**CORRECT:**
-```redox
-v name: s = s.from("Alice")
-v greeting: &s = "hello"
-```
-
-**Rule:** Use `s` for `String`` and `&s` for `&str`.
-
----
-
-## Anti-Pattern 15: Omitting Visibility on Public APIs
-
-**WRONG:**
-```redox
-S Config {
-    host: s,
+struct Config {
+    host: String,
     port: u16,
 }
 
-f new_config() -> Config {
-    Config @{ host: s.from("localhost"), port: 8080 }
+fn new_config() -> Config {
+    Config { host: String::from("localhost"), port: 8080 }
 }
 ```
 
 **CORRECT:**
 ```redox
-+S Config {
-    +host: s,
-    +port: u16,
+pub struct Config {
+    pub host: String,
+    pub port: u16,
 }
 
-+f new_config() -> Config {
-    Config @{ host: s.from("localhost"), port: 8080 }
+pub fn new_config() -> Config {
+    Config { host: String::from("localhost"), port: 8080 }
 }
 ```
 
-**Rule:** Use `+` prefix for public items. Fields are private by default — use `+field_name` for public fields.
+**Rule:** Use `pub` for public items. Fields are private by default — use `pub field_name` for public fields.
+
+---
+
+## Anti-Pattern 6: Forgetting Effect Propagation
+
+**WRONG:**
+```redox
+fn process(url: &str) -> Result<String, Error> / net {
+    let data = fetch(url)?;        // fetch is / net
+    let parsed = parse(&data);     // parse is pure — OK
+    save_to_disk(&parsed)?         // save_to_disk is / io — MISSING!
+}
+```
+
+**CORRECT:**
+```redox
+fn process(url: &str) -> Result<String, Error> / io, net {
+    let data = fetch(url)?;        // fetch is / net
+    let parsed = parse(&data);     // parse is pure — OK
+    save_to_disk(&parsed)?         // save_to_disk is / io
+}
+```
+
+**Rule:** A function's effect set must be the union of all effects from its callees.
+
+---
+
+## Anti-Pattern 7: Not Using the Agent Trait
+
+**WRONG** — ad-hoc async task:
+```redox
+pub async fn do_work(input: String) -> Result<String, Error> / agent {
+    // logic here
+}
+```
+
+**CORRECT** — structured agent:
+```redox
+pub struct Worker {
+    input: String,
+}
+
+impl Agent for Worker {
+    pub async fn execute(&mut self) -> Result<String, Error> / agent {
+        // logic here
+    }
+}
+```
+
+**Rule:** For async work units, prefer implementing `Agent` over bare async functions. Agents get lifecycle management, observability, and swarm composition.
+
+---
+
+## Anti-Pattern 8: Missing Contract Annotations on APIs
+
+**WRONG:**
+```redox
+pub fn divide(a: f64, b: f64) -> f64 {
+    a / b
+}
+```
+
+**CORRECT:**
+```redox
+@req b != 0.0
+@ens result == a / b
+pub fn divide(a: f64, b: f64) -> f64 {
+    a / b
+}
+```
+
+**Rule:** Public functions should use `@req` (precondition) and `@ens` (postcondition) to document and verify contracts.
+
+---
+
+## Anti-Pattern 9: Ignoring Capability Checks
+
+**WRONG:**
+```redox
+pub fn read_secret(path: &str) -> Result<String, Error> / io {
+    fs::read_to_string(path)
+}
+```
+
+**CORRECT:**
+```redox
+pub fn read_secret(path: &str, cap: &Capability) -> Result<String, Error> / io {
+    cap.check("fs.read", path)?;
+    fs::read_to_string(path)
+}
+```
+
+**Rule:** Sensitive operations should require capability tokens, not just effect annotations.
+
+---
+
+## Anti-Pattern 10: Mixing Rust Crate Paths with Redox Stdlib
+
+**WRONG:**
+```redox
+use tokio::fs;
+use serde_json::Value;
+```
+
+**CORRECT:**
+```redox
+use std::fs;
+use std::json::Value;
+```
+
+**Rule:** Use Redox's `std::` modules. External Rust crates may not be compatible with the effect system.
 
 ---
 
@@ -328,13 +241,11 @@ f new_config() -> Config {
 
 Before submitting generated Redox code, verify:
 
-- [ ] No Rust keywords (`fn`, `let`, `struct`, `impl`, etc.)
 - [ ] No lifetime annotations (`'a`, `'static`)
-- [ ] No `::` paths (use `.` instead)
-- [ ] No angle brackets for generics (use `[T]`)
-- [ ] No `unsafe` blocks
-- [ ] No macro `!` calls for `println`, `format`, `vec`
+- [ ] No `unsafe` blocks (use `Capability` system)
 - [ ] All impure functions have `/ effect` annotations
-- [ ] Struct literals use `@{ }` syntax
-- [ ] Boolean literals use `1b` / `0b`
-- [ ] Control flow uses `?` / `:` / `@` / `ret`
+- [ ] Effect sets are the union of all callee effects
+- [ ] Async work uses `Agent` trait, not bare functions
+- [ ] Public APIs have `@req` / `@ens` contracts
+- [ ] Sensitive ops use `Capability` tokens
+- [ ] Using `std::` Redox modules, not external Rust crates

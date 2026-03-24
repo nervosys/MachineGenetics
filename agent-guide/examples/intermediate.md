@@ -1,6 +1,7 @@
 # Worked Examples: Intermediate
 
 > Prompt → Response pairs with generics, traits, effects, and error handling.
+> All examples use **standard syntax** (default).
 
 ---
 
@@ -10,36 +11,36 @@
 
 **Response:**
 ```redox
-u std.col.HashMap
+use std::collections::HashMap;
 
-+T Repository[T] {
-    f find(&self, id: u64) -> ?&T
-    f save(&!self, id: u64, item: T) -> R[(), Error] / io
-    f delete(&!self, id: u64) -> R[(), Error] / io
+pub trait Repository<T> {
+    fn find(&self, id: u64) -> Option<&T>;
+    fn save(&mut self, id: u64, item: T) -> Result<(), Error> / io;
+    fn delete(&mut self, id: u64) -> Result<(), Error> / io;
 }
 
-+S InMemoryStore[T] {
-    data: {u64: T},
+pub struct InMemoryStore<T> {
+    data: HashMap<u64, T>,
 }
 
-I[T] ~ InMemoryStore[T] {
-    +f new() -> Self {
-        Self @{ data: {u64: T}.new() }
+impl<T> InMemoryStore<T> {
+    pub fn new() -> Self {
+        Self { data: HashMap::new() }
     }
 }
 
-I[T] Repository[T] ~ InMemoryStore[T] {
-    f find(&self, id: u64) -> ?&T {
+impl<T> Repository<T> for InMemoryStore<T> {
+    fn find(&self, id: u64) -> Option<&T> {
         self.data.get(&id)
     }
 
-    f save(&!self, id: u64, item: T) -> R[(), Error] / io {
-        self.data.insert(id, item)
+    fn save(&mut self, id: u64, item: T) -> Result<(), Error> / io {
+        self.data.insert(id, item);
         Ok(())
     }
 
-    f delete(&!self, id: u64) -> R[(), Error] / io {
-        self.data.remove(&id)
+    fn delete(&mut self, id: u64) -> Result<(), Error> / io {
+        self.data.remove(&id);
         Ok(())
     }
 }
@@ -53,32 +54,32 @@ I[T] Repository[T] ~ InMemoryStore[T] {
 
 **Response:**
 ```redox
-u std.fmt
-u std.io
+use std::fmt;
+use std::io;
 
-@d(Debug)
-+E AppError {
-    Io(io.Error),
-    Json(serde_json.Error),
-    Custom(s),
+#[derive(Debug)]
+pub enum AppError {
+    Io(io::Error),
+    Json(serde_json::Error),
+    Custom(String),
 }
 
-I fmt.Display ~ AppError {
-    f fmt(&self, fmtr: &!fmt.Formatter) -> fmt.Result {
-        ? self {
-            AppError.Io(e) => fmtr.write_str(&f"I/O error: {e}"),
-            AppError.Json(e) => fmtr.write_str(&f"JSON error: {e}"),
-            AppError.Custom(msg) => fmtr.write_str(msg),
+impl fmt::Display for AppError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AppError::Io(e) => f.write_str(&format!("I/O error: {e}")),
+            AppError::Json(e) => f.write_str(&format!("JSON error: {e}")),
+            AppError::Custom(msg) => f.write_str(msg),
         }
     }
 }
 
-I From[io.Error] ~ AppError {
-    f from(e: io.Error) -> Self { AppError.Io(e) }
+impl From<io::Error> for AppError {
+    fn from(e: io::Error) -> Self { AppError::Io(e) }
 }
 
-I From[serde_json.Error] ~ AppError {
-    f from(e: serde_json.Error) -> Self { AppError.Json(e) }
+impl From<serde_json::Error> for AppError {
+    fn from(e: serde_json::Error) -> Self { AppError::Json(e) }
 }
 ```
 
@@ -90,19 +91,19 @@ I From[serde_json.Error] ~ AppError {
 
 **Response:**
 ```redox
-@d(Debug, Clone)
-+S Transaction {
-    +amount: f64,
-    +category: s,
+use std::collections::HashMap;
+
+#[derive(Debug, Clone)]
+pub struct Transaction {
+    pub amount: f64,
+    pub category: String,
 }
 
-u std.col.HashMap
-
-+f totals_by_category(txns: &[Transaction]~) -> {s: f64} {
-    m map = {s: f64}.new()
-    @ txn ~ txns {
-        v entry = map.entry(txn.category.clone()).or_insert(0.0)
-        *entry += txn.amount
+pub fn totals_by_category(txns: &Vec<Transaction>) -> HashMap<String, f64> {
+    let mut map = HashMap::new();
+    for txn in txns {
+        let entry = map.entry(txn.category.clone()).or_insert(0.0);
+        *entry += txn.amount;
     }
     map
 }
@@ -116,34 +117,34 @@ u std.col.HashMap
 
 **Response:**
 ```redox
-u std.fs
+use std::fs;
 
-+T Logger {
-    f info(&self, msg: &s) / io
+pub trait Logger {
+    fn info(&self, msg: &str) / io;
 }
 
-+S ConsoleLogger {}
+pub struct ConsoleLogger {}
 
-I Logger ~ ConsoleLogger {
-    f info(&self, msg: &s) / io {
-        p"[INFO] {msg}"
+impl Logger for ConsoleLogger {
+    fn info(&self, msg: &str) / io {
+        println!("[INFO] {msg}");
     }
 }
 
-+S FileLogger {
-    path: s,
+pub struct FileLogger {
+    path: String,
 }
 
-I Logger ~ FileLogger {
-    f info(&self, msg: &s) / io {
+impl Logger for FileLogger {
+    fn info(&self, msg: &str) / io {
         // Append to log file
-        v content = f"[INFO] {msg}\n"
-        fs.append(&self.path, &content).unwrap_or(())
+        let content = format!("[INFO] {msg}\n");
+        fs::append(&self.path, &content).unwrap_or(());
     }
 }
 
-+f log_event(logger: &dyn Logger, event: &s) / io {
-    logger.info(&f"Event occurred: {event}")
+pub fn log_event(logger: &dyn Logger, event: &str) / io {
+    logger.info(&format!("Event occurred: {event}"));
 }
 ```
 
@@ -155,25 +156,25 @@ I Logger ~ FileLogger {
 
 **Response:**
 ```redox
-u std.fs
-u std.json
+use std::fs;
+use std::json;
 
-@d(Debug, Clone)]
-+S Config {
-    +host: s,
-    +port: u16,
-    +debug: bool,
+#[derive(Debug, Clone)]
+pub struct Config {
+    pub host: String,
+    pub port: u16,
+    pub debug: bool,
 }
 
-+f load_config(path: &s) -> R[Config, AppError] / io {
-    v text = fs.read_to_string(path)?
-    v config = json.parse[Config](&text)?
+pub fn load_config(path: &str) -> Result<Config, AppError> / io {
+    let text = fs::read_to_string(path)?;
+    let config = json::parse::<Config>(&text)?;
 
-    ? config.host.is_empty() {
-        ret Err(AppError.Custom(s.from("host cannot be empty")))
+    if config.host.is_empty() {
+        return Err(AppError::Custom(String::from("host cannot be empty")));
     }
-    ? config.port == 0 {
-        ret Err(AppError.Custom(s.from("port must be non-zero")))
+    if config.port == 0 {
+        return Err(AppError::Custom(String::from("port must be non-zero")));
     }
 
     Ok(config)
@@ -188,21 +189,21 @@ u std.json
 
 **Response:**
 ```redox
-u std.json
+use std::json;
 
-@d(Debug, Clone)]
-+S ApiResponse {
-    +status: s,
-    +data: [s]~,
+#[derive(Debug, Clone)]
+pub struct ApiResponse {
+    pub status: String,
+    pub data: Vec<String>,
 }
 
-+af fetch_data(url: &s) -> R[ApiResponse, Error] / net {
-    v resp = http.get(url).await?
-    ? resp.status_code() != 200 {
-        ret Err(Error.new(f"HTTP {resp.status_code()}"))
+pub async fn fetch_data(url: &str) -> Result<ApiResponse, Error> / net {
+    let resp = http::get(url).await?;
+    if resp.status_code() != 200 {
+        return Err(Error::new(format!("HTTP {}", resp.status_code())));
     }
-    v body = resp.text().await?
-    v parsed = json.parse[ApiResponse](&body)?
+    let body = resp.text().await?;
+    let parsed = json::parse::<ApiResponse>(&body)?;
     Ok(parsed)
 }
 ```
@@ -215,41 +216,41 @@ u std.json
 
 **Response:**
 ```redox
-u std.fs
+use std::fs;
 
-+f read_setting(path: &s, key: &s) -> R[?s, io.Error] / io {
-    v content = fs.read_to_string(path)?
-    @ line ~ content.lines() {
-        ? line.starts_with(key) {
-            v value = line.splitn(2, '=').nth(1)
-                .map(|v| v.trim().to_string())
-            ret Ok(value)
+pub fn read_setting(path: &str, key: &str) -> Result<Option<String>, io::Error> / io {
+    let content = fs::read_to_string(path)?;
+    for line in content.lines() {
+        if line.starts_with(key) {
+            let value = line.splitn(2, '=').nth(1)
+                .map(|v| v.trim().to_string());
+            return Ok(value);
         }
     }
     Ok(None)
 }
 
-@cfg(test)
-M tests {
-    u super.*
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    @test
-    f test_read_setting() {
+    #[test]
+    fn test_read_setting() {
         handle io {
             read_to_string(_) => "host=localhost\nport=8080",
         } {
-            v result = read_setting("config.txt", "host")
-            assert_eq!(result.unwrap(), Some(s.from("localhost")))
+            let result = read_setting("config.txt", "host");
+            assert_eq!(result.unwrap(), Some(String::from("localhost")));
         }
     }
 
-    @test
-    f test_missing_key() {
+    #[test]
+    fn test_missing_key() {
         handle io {
             read_to_string(_) => "host=localhost",
         } {
-            v result = read_setting("config.txt", "missing")
-            assert_eq!(result.unwrap(), None)
+            let result = read_setting("config.txt", "missing");
+            assert_eq!(result.unwrap(), None);
         }
     }
 }
@@ -263,52 +264,52 @@ M tests {
 
 **Response:**
 ```redox
-@d(Debug, Clone)]
-+E OrderState {
+#[derive(Debug, Clone)]
+pub enum OrderState {
     Created,
     Paid,
     Shipped,
     Delivered,
 }
 
-@d(Debug)]
-+S Order {
-    +id: u64,
-    +state: OrderState,
+#[derive(Debug)]
+pub struct Order {
+    pub id: u64,
+    pub state: OrderState,
 }
 
-I ~ Order {
-    +f new(id: u64) -> Self {
-        Self @{ id, state: OrderState.Created }
+impl Order {
+    pub fn new(id: u64) -> Self {
+        Self { id, state: OrderState::Created }
     }
 
-    +f pay(&!self) -> R[(), s] {
-        ? self.state {
-            OrderState.Created => {
-                self.state = OrderState.Paid
+    pub fn pay(&mut self) -> Result<(), String> {
+        match self.state {
+            OrderState::Created => {
+                self.state = OrderState::Paid;
                 Ok(())
             },
-            _ => Err(s.from("Can only pay from Created state")),
+            _ => Err(String::from("Can only pay from Created state")),
         }
     }
 
-    +f ship(&!self) -> R[(), s] {
-        ? self.state {
-            OrderState.Paid => {
-                self.state = OrderState.Shipped
+    pub fn ship(&mut self) -> Result<(), String> {
+        match self.state {
+            OrderState::Paid => {
+                self.state = OrderState::Shipped;
                 Ok(())
             },
-            _ => Err(s.from("Can only ship from Paid state")),
+            _ => Err(String::from("Can only ship from Paid state")),
         }
     }
 
-    +f deliver(&!self) -> R[(), s] {
-        ? self.state {
-            OrderState.Shipped => {
-                self.state = OrderState.Delivered
+    pub fn deliver(&mut self) -> Result<(), String> {
+        match self.state {
+            OrderState::Shipped => {
+                self.state = OrderState::Delivered;
                 Ok(())
             },
-            _ => Err(s.from("Can only deliver from Shipped state")),
+            _ => Err(String::from("Can only deliver from Shipped state")),
         }
     }
 }

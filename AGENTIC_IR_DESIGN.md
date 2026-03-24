@@ -2,6 +2,8 @@
 
 This document defines how Redox is redesigned from the ground up so that **agentic intelligence is not a feature bolted onto a compiler — it is the compiler**. Every layer of the system — syntax, type system, intermediate representation, optimization passes, code generation, and runtime — is structured to maximize the productivity of AI agents writing, compiling, optimizing, and executing Redox code.
 
+> **Note on Syntax**: Redox v0.2.0 supports dual syntax modes. The **standard mode** (default) uses C-family keywords (`fn`, `let`, `struct`, `match`, `for`). The **compact mode** (`#![syntax(compact)]`) uses sigil-based forms (`+f`, `v`, `+S`, `?`, `@`) that reduce token counts for agent-generated code. Code examples in this document use compact syntax to illustrate the token economics. See [REDOX_SPEC.md](REDOX_SPEC.md) for the full dual-syntax specification.
+
 The three performance axes optimized simultaneously:
 
 1. **Coding performance** — How fast agents produce correct code

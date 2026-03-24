@@ -16,42 +16,42 @@
 //   - Pattern matching on enums
 //   - Contract specs on review functions
 
-u std.col;
-u std.fmt;
-u std.io;
+use std::col;
+use std::fmt;
+use std::io;
 
 // ─────────────────────────────────────────────────────────────────────
 // §1 — Code change representation
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone)
-+S FileDiff {
-    path: s,
+#[derive(Debug, Clone)]
+pub struct FileDiff {
+    path: String,
     additions: u32,
     deletions: u32,
-    hunks: [s]~,
+    hunks: Vec<String>,
 }
 
-@d(Debug, Clone)
-+S PullRequest {
+#[derive(Debug, Clone)]
+pub struct PullRequest {
     id: u64,
-    title: s,
-    author: s,
-    description: s,
-    files: [FileDiff]~,
-    labels: [s]~,
+    title: String,
+    author: String,
+    description: String,
+    files: Vec<FileDiff>,
+    labels: Vec<String>,
 }
 
-I ~ PullRequest {
-    +f total_changes(&self) -> u32 {
+impl PullRequest {
+    pub fn total_changes(&self) -> u32 {
         self.files.iter().map(|f| f.additions + f.deletions).sum()
     }
 
-    +f file_count(&self) -> usize {
+    pub fn file_count(&self) -> usize {
         self.files.len()
     }
 
-    +f has_label(&self, label: &s) -> bool {
+    pub fn has_label(&self, label: &String) -> bool {
         self.labels.iter().any(|l| l == label)
     }
 }
@@ -60,8 +60,8 @@ I ~ PullRequest {
 // §2 — Review agent roles
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone, PartialEq)
-+E ReviewRole {
+#[derive(Debug, Clone, PartialEq)]
+pub enum ReviewRole {
     Architect,
     Security,
     Performance,
@@ -69,14 +69,14 @@ I ~ PullRequest {
     Testing,
 }
 
-I fmt.Display ~ ReviewRole {
-    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
-        ? self {
-            ReviewRole.Architect   => write!(f, "🏗  Architect"),
-            ReviewRole.Security    => write!(f, "🔒 Security"),
-            ReviewRole.Performance => write!(f, "⚡ Performance"),
-            ReviewRole.Style       => write!(f, "🎨 Style"),
-            ReviewRole.Testing     => write!(f, "🧪 Testing"),
+impl fmt::Display for ReviewRole {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ReviewRole::Architect   => write!(f, "🏗  Architect"),
+            ReviewRole::Security    => write!(f, "🔒 Security"),
+            ReviewRole::Performance => write!(f, "⚡ Performance"),
+            ReviewRole::Style       => write!(f, "🎨 Style"),
+            ReviewRole::Testing     => write!(f, "🧪 Testing"),
         }
     }
 }
@@ -85,50 +85,50 @@ I fmt.Display ~ ReviewRole {
 // §3 — Findings: what each agent discovers
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone, PartialEq)
-+E Severity {
+#[derive(Debug, Clone, PartialEq)]
+pub enum Severity {
     Info,
     Warning,
     Error,
     Critical,
 }
 
-I ~ Severity {
-    f weight(&self) -> u32 {
-        ? self {
-            Severity.Info     => 1,
-            Severity.Warning  => 3,
-            Severity.Error    => 8,
-            Severity.Critical => 20,
+impl Severity {
+    fn weight(&self) -> u32 {
+        match self {
+            Severity::Info     => 1,
+            Severity::Warning  => 3,
+            Severity::Error    => 8,
+            Severity::Critical => 20,
         }
     }
 }
 
-I fmt.Display ~ Severity {
-    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
-        ? self {
-            Severity.Info     => write!(f, "INFO"),
-            Severity.Warning  => write!(f, "WARN"),
-            Severity.Error    => write!(f, "ERROR"),
-            Severity.Critical => write!(f, "CRIT"),
+impl fmt::Display for Severity {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Severity::Info     => write!(f, "INFO"),
+            Severity::Warning  => write!(f, "WARN"),
+            Severity::Error    => write!(f, "ERROR"),
+            Severity::Critical => write!(f, "CRIT"),
         }
     }
 }
 
-@d(Debug, Clone)
-+S Finding {
+#[derive(Debug, Clone)]
+pub struct Finding {
     role: ReviewRole,
     severity: Severity,
-    file: s,
-    line: ?u32,
-    message: s,
-    suggestion: ?s,
+    file: String,
+    line: Option<u32>,
+    message: String,
+    suggestion: Option<String>,
 }
 
-I fmt.Display ~ Finding {
-    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
-        v loc = ? self.line {
-            Some(l) => f"{}:{l}", self.file),
+impl fmt::Display for Finding {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let loc = match self.line {
+            Some(l) => format!("{}:{}", self.file, l),
             None => self.file.clone(),
         };
         write!(f, "[{sev}] {role} @ {loc}: {msg}",
@@ -143,20 +143,20 @@ I fmt.Display ~ Finding {
 // §4 — Specialized review agents
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug)
-+S ReviewAgent {
+#[derive(Debug)]
+pub struct ReviewAgent {
     id: u64,
     role: ReviewRole,
-    findings: [Finding]~,
+    findings: Vec<Finding>,
 }
 
-I ~ ReviewAgent {
-    +f new(id: u64, role: ReviewRole) -> ReviewAgent {
-        ReviewAgent @{ id: id, role: role, findings: []~ }
+impl ReviewAgent {
+    pub fn new(id: u64, role: ReviewRole) -> ReviewAgent {
+        ReviewAgent { id: id, role: role, findings: Vec::new() }
     }
 
-    +f add_finding(&!self, severity: Severity, file: s, line: ?u32, msg: s, suggestion: ?s) {
-        self.findings.push(Finding @{
+    pub fn add_finding(&mut self, severity: Severity, file: String, line: Option<u32>, msg: String, suggestion: Option<String>) {
+        self.findings.push(Finding {
             role: self.role.clone(),
             severity: severity,
             file: file,
@@ -166,7 +166,7 @@ I ~ ReviewAgent {
         });
     }
 
-    +f risk_score(&self) -> u32 {
+    pub fn risk_score(&self) -> u32 {
         self.findings.iter().map(|f| f.severity.weight()).sum()
     }
 
@@ -174,25 +174,25 @@ I ~ ReviewAgent {
     ///
     /// @req  pr.file_count() > 0     "must have files to review"
     /// @ens  self.findings.len() >= 0
-    +f review(&!self, pr: &PullRequest) / io {
-        p"  {self.role} reviewing {pr.file_count()} files...";
+    pub fn review(&mut self, pr: &PullRequest) / io {
+        println!("  {} reviewing {} files...", self.role, pr.file_count());
 
-        ? self.role {
-            ReviewRole.Architect => self.review_architecture(pr),
-            ReviewRole.Security => self.review_security(pr),
-            ReviewRole.Performance => self.review_performance(pr),
-            ReviewRole.Style => self.review_style(pr),
-            ReviewRole.Testing => self.review_testing(pr),
+        match self.role {
+            ReviewRole::Architect   => self.review_architecture(pr),
+            ReviewRole::Security    => self.review_security(pr),
+            ReviewRole::Performance => self.review_performance(pr),
+            ReviewRole::Style       => self.review_style(pr),
+            ReviewRole::Testing     => self.review_testing(pr),
         };
 
-        p"    → Found {self.findings.len()} issue(s), risk score: {self.risk_score()}";
+        println!("    → Found {} issue(s), risk score: {}", self.findings.len(), self.risk_score());
     }
 
-    f review_architecture(&!self, pr: &PullRequest) {
+    fn review_architecture(&mut self, pr: &PullRequest) {
         // Check for overly large changes.
-        ?: pr.total_changes() > 500 {
+        if pr.total_changes() > 500 {
             self.add_finding(
-                Severity.Warning,
+                Severity::Warning,
                 "overall".to_string(),
                 None,
                 "PR is very large — consider splitting into smaller changes".to_string(),
@@ -201,11 +201,11 @@ I ~ ReviewAgent {
         }
 
         // Check for new public API surface.
-        @ file ~ &pr.files {
-            @ hunk ~ &file.hunks {
-                ?: hunk.contains("+f ") || hunk.contains("+S ") || hunk.contains("+T ") {
+        for file in &pr.files {
+            for hunk in &file.hunks {
+                if hunk.contains("pub fn ") || hunk.contains("pub struct ") || hunk.contains("pub trait ") {
                     self.add_finding(
-                        Severity.Info,
+                        Severity::Info,
                         file.path.clone(),
                         None,
                         "New public API surface detected".to_string(),
@@ -216,13 +216,13 @@ I ~ ReviewAgent {
         }
     }
 
-    f review_security(&!self, pr: &PullRequest) {
-        @ file ~ &pr.files {
-            @ hunk ~ &file.hunks {
+    fn review_security(&mut self, pr: &PullRequest) {
+        for file in &pr.files {
+            for hunk in &file.hunks {
                 // Check for unsafe blocks.
-                ?: hunk.contains("uf ") || hunk.contains("unsafe") {
+                if hunk.contains("unsafe fn ") || hunk.contains("unsafe") {
                     self.add_finding(
-                        Severity.Error,
+                        Severity::Error,
                         file.path.clone(),
                         None,
                         "Unsafe code detected — requires manual audit".to_string(),
@@ -231,9 +231,9 @@ I ~ ReviewAgent {
                 }
 
                 // Check for raw SQL.
-                ?: hunk.contains("raw_sql") || hunk.contains("exec_raw") {
+                if hunk.contains("raw_sql") || hunk.contains("exec_raw") {
                     self.add_finding(
-                        Severity.Critical,
+                        Severity::Critical,
                         file.path.clone(),
                         None,
                         "Raw SQL query — potential injection vulnerability".to_string(),
@@ -242,37 +242,37 @@ I ~ ReviewAgent {
                 }
 
                 // Check for hardcoded secrets.
-                ?: hunk.contains("password =") || hunk.contains("api_key =") {
+                if hunk.contains("password =") || hunk.contains("api_key =") {
                     self.add_finding(
-                        Severity.Critical,
+                        Severity::Critical,
                         file.path.clone(),
                         None,
                         "Possible hardcoded credential".to_string(),
-                        Some("Use env.get() or a secret vault".to_string()),
+                        Some("Use env::get() or a secret vault".to_string()),
                     );
                 }
             }
         }
     }
 
-    f review_performance(&!self, pr: &PullRequest) {
-        @ file ~ &pr.files {
+    fn review_performance(&mut self, pr: &PullRequest) {
+        for file in &pr.files {
             // Flag files with many additions (potential hot paths).
-            ?: file.additions > 100 {
+            if file.additions > 100 {
                 self.add_finding(
-                    Severity.Info,
+                    Severity::Info,
                     file.path.clone(),
                     None,
-                    f"Large addition ({file.additions} lines) — profile for hot paths".to_string(),
+                    format!("Large addition ({} lines) — profile for hot paths", file.additions),
                     Some("Add @perf benchmark annotation".to_string()),
                 );
             }
 
-            @ hunk ~ &file.hunks {
+            for hunk in &file.hunks {
                 // Detect nested loops.
-                ?: hunk.contains("@ ") && hunk.matches("@ ").count() > 1 {
+                if hunk.contains("for ") && hunk.matches("for ").count() > 1 {
                     self.add_finding(
-                        Severity.Warning,
+                        Severity::Warning,
                         file.path.clone(),
                         None,
                         "Nested loops detected — potential O(n²) complexity".to_string(),
@@ -283,25 +283,19 @@ I ~ ReviewAgent {
         }
     }
 
-    f review_style(&!self, pr: &PullRequest) {
-        @ file ~ &pr.files {
-            // Check for Rust-style remnants.
-            @ hunk ~ &file.hunks {
-                ?: hunk.contains("fn ") {
-                    self.add_finding(
-                        Severity.Warning,
-                        file.path.clone(),
-                        None,
-                        "Rust-style `fn` keyword — use Redox `f` or `+f`".to_string(),
-                        None,
-                    );
+    fn review_style(&mut self, pr: &PullRequest) {
+        for file in &pr.files {
+            // Check for non-idiomatic patterns.
+            for hunk in &file.hunks {
+                if hunk.contains("println!(") {
+                    // println! is the standard macro in C-like syntax — no issue.
                 }
-                ?: hunk.contains("let ") {
+                if hunk.contains("unwrap()") {
                     self.add_finding(
-                        Severity.Warning,
+                        Severity::Warning,
                         file.path.clone(),
                         None,
-                        "Rust-style `let` keyword — use Redox `v` or `m`".to_string(),
+                        "Bare `.unwrap()` — prefer pattern matching or `?` operator".to_string(),
                         None,
                     );
                 }
@@ -309,16 +303,16 @@ I ~ ReviewAgent {
         }
     }
 
-    f review_testing(&!self, pr: &PullRequest) {
-        m has_test_file = 0b;
-        @ file ~ &pr.files {
-            ?: file.path.contains("test") || file.path.contains("spec") {
-                has_test_file = 1b;
+    fn review_testing(&mut self, pr: &PullRequest) {
+        let mut has_test_file = false;
+        for file in &pr.files {
+            if file.path.contains("test") || file.path.contains("spec") {
+                has_test_file = true;
             }
         }
-        ?: !has_test_file {
+        if !has_test_file {
             self.add_finding(
-                Severity.Error,
+                Severity::Error,
                 "overall".to_string(),
                 None,
                 "No test files modified — all new code needs tests".to_string(),
@@ -332,29 +326,29 @@ I ~ ReviewAgent {
 // §5 — Consensus voting
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone, PartialEq)
-+E VoteDecision {
+#[derive(Debug, Clone, PartialEq)]
+pub enum VoteDecision {
     Approve,
     RequestChanges,
     Reject,
 }
 
-I fmt.Display ~ VoteDecision {
-    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
-        ? self {
-            VoteDecision.Approve        => write!(f, "✅ Approve"),
-            VoteDecision.RequestChanges => write!(f, "🔄 Request Changes"),
-            VoteDecision.Reject         => write!(f, "❌ Reject"),
+impl fmt::Display for VoteDecision {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            VoteDecision::Approve        => write!(f, "✅ Approve"),
+            VoteDecision::RequestChanges => write!(f, "🔄 Request Changes"),
+            VoteDecision::Reject         => write!(f, "❌ Reject"),
         }
     }
 }
 
-@d(Debug, Clone)
-+S Vote {
+#[derive(Debug, Clone)]
+pub struct Vote {
     agent_id: u64,
     role: ReviewRole,
     decision: VoteDecision,
-    reason: s,
+    reason: String,
 }
 
 /// Compute each agent's vote based on their findings.
@@ -362,22 +356,22 @@ I fmt.Display ~ VoteDecision {
 /// @req  agent.findings is available
 /// @ens  result.decision reflects worst severity found
 /// @fx   pure
-f compute_vote(agent: &ReviewAgent) -> Vote {
-    v critical = agent.findings.iter().any(|f| f.severity == Severity.Critical);
-    v errors = agent.findings.iter().filter(|f| f.severity == Severity.Error).count();
-    v score = agent.risk_score();
+fn compute_vote(agent: &ReviewAgent) -> Vote {
+    let critical = agent.findings.iter().any(|f| f.severity == Severity::Critical);
+    let errors = agent.findings.iter().filter(|f| f.severity == Severity::Error).count();
+    let score = agent.risk_score();
 
-    v (decision, reason) = ?: critical {
-        (VoteDecision.Reject, "Critical issues found — cannot merge".to_string())
-    } :? errors > 2 {
-        (VoteDecision.RequestChanges, f"Found {errors} errors (risk score: {score})".to_string())
-    } :? score > 15 {
-        (VoteDecision.RequestChanges, f"High risk score ({score}) — needs attention".to_string())
-    } : {
-        (VoteDecision.Approve, f"Looks good (risk score: {score})".to_string())
+    let (decision, reason) = if critical {
+        (VoteDecision::Reject, "Critical issues found — cannot merge".to_string())
+    } else if errors > 2 {
+        (VoteDecision::RequestChanges, format!("Found {} errors (risk score: {})", errors, score))
+    } else if score > 15 {
+        (VoteDecision::RequestChanges, format!("High risk score ({}) — needs attention", score))
+    } else {
+        (VoteDecision::Approve, format!("Looks good (risk score: {})", score))
     };
 
-    Vote @{
+    Vote {
         agent_id: agent.id,
         role: agent.role.clone(),
         decision: decision,
@@ -385,19 +379,19 @@ f compute_vote(agent: &ReviewAgent) -> Vote {
     }
 }
 
-@d(Debug, Clone, PartialEq)
-+E ReviewOutcome {
+#[derive(Debug, Clone, PartialEq)]
+pub enum ReviewOutcome {
     Approved,
     ChangesRequested,
     Rejected,
 }
 
-I fmt.Display ~ ReviewOutcome {
-    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
-        ? self {
-            ReviewOutcome.Approved         => write!(f, "✅ APPROVED"),
-            ReviewOutcome.ChangesRequested => write!(f, "🔄 CHANGES REQUESTED"),
-            ReviewOutcome.Rejected         => write!(f, "❌ REJECTED"),
+impl fmt::Display for ReviewOutcome {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ReviewOutcome::Approved         => write!(f, "✅ APPROVED"),
+            ReviewOutcome::ChangesRequested => write!(f, "🔄 CHANGES REQUESTED"),
+            ReviewOutcome::Rejected         => write!(f, "❌ REJECTED"),
         }
     }
 }
@@ -408,17 +402,17 @@ I fmt.Display ~ ReviewOutcome {
 /// @req  votes.len() > 0                  "need at least one vote"
 /// @ens  result is deterministic
 /// @fx   pure
-f consensus(votes: &[Vote]~) -> ReviewOutcome {
-    v total = votes.len();
-    v approvals = votes.iter().filter(|v| v.decision == VoteDecision.Approve).count();
-    v rejections = votes.iter().filter(|v| v.decision == VoteDecision.Reject).count();
+fn consensus(votes: &Vec<Vote>) -> ReviewOutcome {
+    let total = votes.len();
+    let approvals = votes.iter().filter(|v| v.decision == VoteDecision::Approve).count();
+    let rejections = votes.iter().filter(|v| v.decision == VoteDecision::Reject).count();
 
-    ?: rejections > 0 {
-        ReviewOutcome.Rejected
-    } :? approvals * 3 > total * 2 {
-        ReviewOutcome.Approved
-    } : {
-        ReviewOutcome.ChangesRequested
+    if rejections > 0 {
+        ReviewOutcome::Rejected
+    } else if approvals * 3 > total * 2 {
+        ReviewOutcome::Approved
+    } else {
+        ReviewOutcome::ChangesRequested
     }
 }
 
@@ -426,28 +420,28 @@ f consensus(votes: &[Vote]~) -> ReviewOutcome {
 // §6 — Review history (memory recall)
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone)
-+S ReviewRecord {
+#[derive(Debug, Clone)]
+pub struct ReviewRecord {
     pr_id: u64,
-    pr_title: s,
+    pr_title: String,
     outcome: ReviewOutcome,
     finding_count: usize,
     total_risk: u32,
 }
 
-@d(Debug)]
-+S ReviewHistory {
-    records: [ReviewRecord]~,
+#[derive(Debug)]
+pub struct ReviewHistory {
+    records: Vec<ReviewRecord>,
 }
 
-I ~ ReviewHistory {
-    +f new() -> ReviewHistory {
-        ReviewHistory @{ records: []~ }
+impl ReviewHistory {
+    pub fn new() -> ReviewHistory {
+        ReviewHistory { records: Vec::new() }
     }
 
-    +f record(&!self, pr: &PullRequest, outcome: ReviewOutcome,
-              findings: &[Finding]~, risk: u32) {
-        self.records.push(ReviewRecord @{
+    pub fn record(&mut self, pr: &PullRequest, outcome: ReviewOutcome,
+              findings: &Vec<Finding>, risk: u32) {
+        self.records.push(ReviewRecord {
             pr_id: pr.id,
             pr_title: pr.title.clone(),
             outcome: outcome,
@@ -456,37 +450,37 @@ I ~ ReviewHistory {
         });
     }
 
-    +f approval_rate(&self) -> f64 {
-        ?: self.records.is_empty() {
-            ret 0.0;
+    pub fn approval_rate(&self) -> f64 {
+        if self.records.is_empty() {
+            return 0.0;
         }
-        v approved = self.records.iter()
-            .filter(|r| r.outcome == ReviewOutcome.Approved)
+        let approved = self.records.iter()
+            .filter(|r| r.outcome == ReviewOutcome::Approved)
             .count();
         approved as f64 / self.records.len() as f64 * 100.0
     }
 
-    +f avg_risk(&self) -> f64 {
-        ?: self.records.is_empty() {
-            ret 0.0;
+    pub fn avg_risk(&self) -> f64 {
+        if self.records.is_empty() {
+            return 0.0;
         }
-        v total: u32 = self.records.iter().map(|r| r.total_risk).sum();
+        let total: u32 = self.records.iter().map(|r| r.total_risk).sum();
         total as f64 / self.records.len() as f64
     }
 
-    +f report(&self) / io {
-        p"";
-        p"── Review History ─────────────────────────────────────";
-        p"  Total reviews:  {self.records.len()}";
-        p"  Approval rate:  {self.approval_rate():.1}%";
-        p"  Avg risk score: {self.avg_risk():.1}";
-        p"  ┌─────┬──────────────────────────┬─────────────────┐";
-        p"  │ PR  │ Title                    │ Outcome         │";
-        p"  ├─────┼──────────────────────────┼─────────────────┤";
-        @ rec ~ &self.records {
-            p"  │ {rec.pr_id:<3} │ {rec.pr_title:<24} │ {rec.outcome:<15} │";
+    pub fn report(&self) / io {
+        println!("");
+        println!("── Review History ─────────────────────────────────────");
+        println!("  Total reviews:  {}", self.records.len());
+        println!("  Approval rate:  {:.1}%", self.approval_rate());
+        println!("  Avg risk score: {:.1}", self.avg_risk());
+        println!("  ┌─────┬──────────────────────────┬─────────────────┐");
+        println!("  │ PR  │ Title                    │ Outcome         │");
+        println!("  ├─────┼──────────────────────────┼─────────────────┤");
+        for rec in &self.records {
+            println!("  │ {:<3} │ {:<24} │ {:<15} │", rec.pr_id, rec.pr_title, rec.outcome);
         }
-        p"  └─────┴──────────────────────────┴─────────────────┘";
+        println!("  └─────┴──────────────────────────┴─────────────────┘");
     }
 }
 
@@ -494,136 +488,136 @@ I ~ ReviewHistory {
 // §7 — Entry point: run a full code review
 // ─────────────────────────────────────────────────────────────────────
 
-+f main() / io {
-    p"╔═══════════════════════════════════════════════════════════╗";
-    p"║  Redox Swarm Code Review System                          ║";
-    p"╚═══════════════════════════════════════════════════════════╝";
-    p"";
+pub fn main() / io {
+    println!("╔═══════════════════════════════════════════════════════════╗");
+    println!("║  Redox Swarm Code Review System                          ║");
+    println!("╚═══════════════════════════════════════════════════════════╝");
+    println!("");
 
     // Simulate a pull request.
-    v pr = PullRequest @{
+    let pr = PullRequest {
         id: 42,
         title: "Add user authentication".to_string(),
         author: "developer-a".to_string(),
         description: "Implements JWT-based auth with refresh tokens".to_string(),
-        files: [
-            FileDiff @{
+        files: vec![
+            FileDiff {
                 path: "src/auth/mod.rdx".to_string(),
                 additions: 120,
                 deletions: 5,
-                hunks: [
-                    "+f verify_token(token: &s) -> R[Claims, AuthError]".to_string(),
-                    "+S Claims { user_id: u64, exp: u64 }".to_string(),
-                    "v api_key = \"sk-test-12345\"".to_string(),
-                ]~,
+                hunks: vec![
+                    "pub fn verify_token(token: &String) -> Result<Claims, AuthError>".to_string(),
+                    "pub struct Claims { user_id: u64, exp: u64 }".to_string(),
+                    "let api_key = \"sk-test-12345\"".to_string(),
+                ],
             },
-            FileDiff @{
+            FileDiff {
                 path: "src/auth/jwt.rdx".to_string(),
                 additions: 85,
                 deletions: 0,
-                hunks: [
-                    "+f sign(payload: &Claims, secret: &s) -> s".to_string(),
-                    "uf decode_raw(bytes: &[u8]) -> Claims".to_string(),
-                ]~,
+                hunks: vec![
+                    "pub fn sign(payload: &Claims, secret: &String) -> String".to_string(),
+                    "unsafe fn decode_raw(bytes: &[u8]) -> Claims".to_string(),
+                ],
             },
-            FileDiff @{
+            FileDiff {
                 path: "src/middleware.rdx".to_string(),
                 additions: 40,
                 deletions: 10,
-                hunks: [
-                    "+f auth_middleware(req: &Request) / net + io -> R[(), AuthError]".to_string(),
-                ]~,
+                hunks: vec![
+                    "pub fn auth_middleware(req: &Request) / net + io -> Result<(), AuthError>".to_string(),
+                ],
             },
-        ]~,
-        labels: ["feature", "auth"]~.iter().map(|s| s.to_string()).collect(),
+        ],
+        labels: vec!["feature", "auth"].iter().map(|s| s.to_string()).collect(),
     };
 
-    p"Pull Request #{pr.id}: {pr.title}";
-    p"  Author: {pr.author}";
-    p"  Files:  {pr.file_count()}";
-    p"  Changes: +{pr.files.iter().map(|f| f.additions).sum::<u32>()} / -{pr.files.iter().map(|f| f.deletions).sum::<u32>()}";
-    p"";
+    println!("Pull Request #{}: {}", pr.id, pr.title);
+    println!("  Author: {}", pr.author);
+    println!("  Files:  {}", pr.file_count());
+    println!("  Changes: +{} / -{}", pr.files.iter().map(|f| f.additions).sum::<u32>(), pr.files.iter().map(|f| f.deletions).sum::<u32>());
+    println!("");
 
     // Create the review swarm.
-    p"─── Assembling Review Swarm ──────────────────────────────";
-    m agents: [ReviewAgent]~ = [
-        ReviewAgent.new(1, ReviewRole.Architect),
-        ReviewAgent.new(2, ReviewRole.Security),
-        ReviewAgent.new(3, ReviewRole.Performance),
-        ReviewAgent.new(4, ReviewRole.Style),
-        ReviewAgent.new(5, ReviewRole.Testing),
-    ]~;
+    println!("─── Assembling Review Swarm ──────────────────────────────");
+    let mut agents: Vec<ReviewAgent> = vec![
+        ReviewAgent::new(1, ReviewRole::Architect),
+        ReviewAgent::new(2, ReviewRole::Security),
+        ReviewAgent::new(3, ReviewRole::Performance),
+        ReviewAgent::new(4, ReviewRole::Style),
+        ReviewAgent::new(5, ReviewRole::Testing),
+    ];
 
     // Each agent reviews independently (scatter phase).
-    p"";
-    p"─── Scatter: Independent Reviews ─────────────────────────";
-    @ agent ~ &!agents {
+    println!("");
+    println!("─── Scatter: Independent Reviews ─────────────────────────");
+    for agent in &mut agents {
         agent.review(&pr);
     }
 
     // Gather all findings.
-    p"";
-    p"─── Gather: Consolidated Findings ────────────────────────";
-    m all_findings: [Finding]~ = []~;
-    @ agent ~ &agents {
-        @ finding ~ &agent.findings {
-            p"  {finding}";
+    println!("");
+    println!("─── Gather: Consolidated Findings ────────────────────────");
+    let mut all_findings: Vec<Finding> = Vec::new();
+    for agent in &agents {
+        for finding in &agent.findings {
+            println!("  {}", finding);
             all_findings.push(finding.clone());
         }
     }
-    p"";
-    p"  Total findings: {all_findings.len()}";
+    println!("");
+    println!("  Total findings: {}", all_findings.len());
 
     // Vote on the PR.
-    p"";
-    p"─── Consensus: Voting ────────────────────────────────────";
-    m votes: [Vote]~ = []~;
-    @ agent ~ &agents {
-        v vote = compute_vote(agent);
-        p"  {vote.role}: {vote.decision} — {vote.reason}";
+    println!("");
+    println!("─── Consensus: Voting ────────────────────────────────────");
+    let mut votes: Vec<Vote> = Vec::new();
+    for agent in &agents {
+        let vote = compute_vote(agent);
+        println!("  {}: {} — {}", vote.role, vote.decision, vote.reason);
         votes.push(vote);
     }
 
-    v outcome = consensus(&votes);
-    v total_risk: u32 = agents.iter().map(|a| a.risk_score()).sum();
-    p"";
-    p"  ╔═══════════════════════════════════════╗";
-    p"  ║  Review Outcome: {outcome:<21}║";
-    p"  ║  Total Risk Score: {total_risk:<19}║";
-    p"  ╚═══════════════════════════════════════╝";
+    let outcome = consensus(&votes);
+    let total_risk: u32 = agents.iter().map(|a| a.risk_score()).sum();
+    println!("");
+    println!("  ╔═══════════════════════════════════╗");
+    println!("  ║  Review Outcome: {:<21}║", outcome);
+    println!("  ║  Total Risk Score: {:<19}║", total_risk);
+    println!("  ╚═══════════════════════════════════╝");
 
     // Record in history.
-    m history = ReviewHistory.new();
+    let mut history = ReviewHistory::new();
     history.record(&pr, outcome, &all_findings, total_risk);
 
     // Simulate a second clean PR.
-    v clean_pr = PullRequest @{
+    let clean_pr = PullRequest {
         id: 43,
         title: "Fix typo in README".to_string(),
         author: "developer-b".to_string(),
         description: "Minor documentation fix".to_string(),
-        files: [
-            FileDiff @{
+        files: vec![
+            FileDiff {
                 path: "README.md".to_string(),
                 additions: 1,
                 deletions: 1,
-                hunks: ["Fixed spelling of 'authentication'".to_string()]~,
+                hunks: vec!["Fixed spelling of 'authentication'".to_string()],
             },
-            FileDiff @{
+            FileDiff {
                 path: "tests/readme_test.rdx".to_string(),
                 additions: 5,
                 deletions: 0,
-                hunks: ["added doc link test".to_string()]~,
+                hunks: vec!["added doc link test".to_string()],
             },
-        ]~,
-        labels: ["docs"]~.iter().map(|s| s.to_string()).collect(),
+        ],
+        labels: vec!["docs"].iter().map(|s| s.to_string()).collect(),
     };
-    history.record(&clean_pr, ReviewOutcome.Approved, &[]~, 1);
+    history.record(&clean_pr, ReviewOutcome::Approved, &Vec::new(), 1);
 
     history.report();
 
-    p"";
-    p"═══════════════════════════════════════════════════════════";
-    p"  Review system complete.";
-    p"═══════════════════════════════════════════════════════════";
+    println!("");
+    println!("═══════════════════════════════════════════════════════════");
+    println!("  Review system complete.");
+    println!("═══════════════════════════════════════════════════════════");
 }

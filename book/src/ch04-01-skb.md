@@ -19,15 +19,15 @@ The SKB stores **rules** — formal safety invariants organized by category:
 
 ## Querying the SKB
 
-From code, use the `std.skb` module:
+From code, use the `std::skb` module:
 
 ```rdx
-u std.skb.{query, Rule}
+use std::skb::{query, Rule};
 
-+f check_rules() {
-    v rules = query().category("borrow").severity(Error).run()
-    @ rule : rules {
-        p"Rule {rule.id}: {rule.title}"
+pub fn check_rules() {
+    let rules = query().category("borrow").severity(Error).run();
+    for rule in rules {
+        println!("Rule {rule.id}: {rule.title}");
     }
 }
 ```
@@ -52,8 +52,8 @@ fn longest<'a>(a: &'a str, b: &'a str) -> &'a str {
 In Redox, the same function:
 
 ```rdx
-f longest(a: &s, b: &s) -> &s {
-    ? a.len() > b.len() { a } : { b }
+fn longest(a: &str, b: &str) -> &str {
+    if a.len() > b.len() { a } else { b }
 }
 ```
 

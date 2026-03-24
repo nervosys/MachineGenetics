@@ -1,76 +1,76 @@
-//! # std.net — Networking
+//! # std::net — Networking
 //!
 //! TCP, UDP, HTTP client/server, and DNS resolution.
 //! All networking functions declare the `net` effect.
 
-u std.io.{Read, Write, IoError, IoErrorKind};
+use std::io::{Read, Write, IoError, IoErrorKind};
 
 // ---------------------------------------------------------------------------
 // TCP
 // ---------------------------------------------------------------------------
 
 /// A TCP stream between a local and a remote socket.
-+S TcpStream {
+pub struct TcpStream {
     _fd: u64,
 }
 
-I TcpStream {
+impl TcpStream {
     /// Connect to a remote address.
-    +f connect(addr: &s) -> R[TcpStream, IoError] / net;
+    pub fn connect(addr: &String) -> Result<TcpStream, IoError> / net;
 
     /// Returns the remote address.
-    +f peer_addr(&self) -> R[SocketAddr, IoError];
+    pub fn peer_addr(&self) -> Result<SocketAddr, IoError>;
 
     /// Returns the local address.
-    +f local_addr(&self) -> R[SocketAddr, IoError];
+    pub fn local_addr(&self) -> Result<SocketAddr, IoError>;
 
     /// Shuts down the read, write, or both halves of the connection.
-    +f shutdown(&self, how: Shutdown) -> R[(), IoError] / net;
+    pub fn shutdown(&self, how: Shutdown) -> Result<(), IoError> / net;
 
     /// Set the read timeout.
-    +f set_read_timeout(&self, dur: ?std.time.Duration) -> R[(), IoError];
+    pub fn set_read_timeout(&self, dur: Option<std::time::Duration>) -> Result<(), IoError>;
 
     /// Set the write timeout.
-    +f set_write_timeout(&self, dur: ?std.time.Duration) -> R[(), IoError];
+    pub fn set_write_timeout(&self, dur: Option<std::time::Duration>) -> Result<(), IoError>;
 }
 
-I Read ~ TcpStream {
-    +f read(&!self, buf: &![u8]) -> R[usize, IoError] / net;
-    +f read_exact(&!self, buf: &![u8]) -> R[(), IoError] / net;
+impl Read for TcpStream {
+    pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, IoError> / net;
+    pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), IoError> / net;
 }
 
-I Write ~ TcpStream {
-    +f write(&!self, buf: &[u8]) -> R[usize, IoError] / net;
-    +f flush(&!self) -> R[(), IoError] / net;
+impl Write for TcpStream {
+    pub fn write(&mut self, buf: &[u8]) -> Result<usize, IoError> / net;
+    pub fn flush(&mut self) -> Result<(), IoError> / net;
 }
 
 /// A TCP socket listener.
-+S TcpListener {
+pub struct TcpListener {
     _fd: u64,
 }
 
-I TcpListener {
+impl TcpListener {
     /// Bind to the given address.
-    +f bind(addr: &s) -> R[TcpListener, IoError] / net;
+    pub fn bind(addr: &String) -> Result<TcpListener, IoError> / net;
 
     /// Accept a new incoming connection.
-    +f accept(&self) -> R[(TcpStream, SocketAddr), IoError] / net;
+    pub fn accept(&self) -> Result<(TcpStream, SocketAddr), IoError> / net;
 
     /// Returns an iterator over incoming connections.
-    +f incoming(&self) -> Incoming / net;
+    pub fn incoming(&self) -> Incoming / net;
 
     /// Returns the local address.
-    +f local_addr(&self) -> R[SocketAddr, IoError];
+    pub fn local_addr(&self) -> Result<SocketAddr, IoError>;
 }
 
 /// Iterator over incoming TCP connections.
-+S Incoming {
+pub struct Incoming {
     listener: &TcpListener,
 }
 
-I Iterator ~ Incoming {
-    type Item = R[TcpStream, IoError];
-    +f next(&!self) -> ?R[TcpStream, IoError] / net;
+impl Iterator for Incoming {
+    type Item = Result<TcpStream, IoError>;
+    pub fn next(&mut self) -> Option<Result<TcpStream, IoError>> / net;
 }
 
 // ---------------------------------------------------------------------------
@@ -78,25 +78,25 @@ I Iterator ~ Incoming {
 // ---------------------------------------------------------------------------
 
 /// A UDP socket.
-+S UdpSocket {
+pub struct UdpSocket {
     _fd: u64,
 }
 
-I UdpSocket {
+impl UdpSocket {
     /// Bind to the given address.
-    +f bind(addr: &s) -> R[UdpSocket, IoError] / net;
+    pub fn bind(addr: &String) -> Result<UdpSocket, IoError> / net;
 
     /// Send data to the given address.
-    +f send_to(&self, buf: &[u8], addr: &s) -> R[usize, IoError] / net;
+    pub fn send_to(&self, buf: &[u8], addr: &String) -> Result<usize, IoError> / net;
 
     /// Receive data, returning byte count and source address.
-    +f recv_from(&self, buf: &![u8]) -> R[(usize, SocketAddr), IoError] / net;
+    pub fn recv_from(&self, buf: &mut [u8]) -> Result<(usize, SocketAddr), IoError> / net;
 
     /// Connect to a remote address for subsequent `send`/`recv`.
-    +f connect(&self, addr: &s) -> R[(), IoError] / net;
+    pub fn connect(&self, addr: &String) -> Result<(), IoError> / net;
 
-    +f send(&self, buf: &[u8]) -> R[usize, IoError] / net;
-    +f recv(&self, buf: &![u8]) -> R[usize, IoError] / net;
+    pub fn send(&self, buf: &[u8]) -> Result<usize, IoError> / net;
+    pub fn recv(&self, buf: &mut [u8]) -> Result<usize, IoError> / net;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,26 +104,26 @@ I UdpSocket {
 // ---------------------------------------------------------------------------
 
 /// A socket address (IP + port).
-+E SocketAddr {
+pub enum SocketAddr {
     V4(SocketAddrV4),
     V6(SocketAddrV6),
 }
 
-+S SocketAddrV4 { ip: [u8; 4], port: u16 }
-+S SocketAddrV6 { ip: [u8; 16], port: u16 }
+pub struct SocketAddrV4 { ip: [u8; 4], port: u16 }
+pub struct SocketAddrV6 { ip: [u8; 16], port: u16 }
 
-+E Shutdown {
+pub enum Shutdown {
     Read,
     Write,
     Both,
 }
 
 // ---------------------------------------------------------------------------
-// HTTP — first-class in Redox (§5.2)
+// HTTP — first-class in Redox
 // ---------------------------------------------------------------------------
 
 /// HTTP request method.
-+E Method {
+pub enum Method {
     Get,
     Post,
     Put,
@@ -134,83 +134,83 @@ I UdpSocket {
 }
 
 /// An HTTP request.
-+S Request {
+pub struct Request {
     method: Method,
-    url: s,
-    headers: {s: s},
-    body: ?[u8]~,
+    url: String,
+    headers: HashMap<String, String>,
+    body: Option<Vec<u8>>,
 }
 
-I Request {
-    +f get(url: &s) -> Request {
-        @Request {
-            method: Method.Get,
+impl Request {
+    pub fn get(url: &String) -> Request {
+        Request {
+            method: Method::Get,
             url: url.to_owned(),
-            headers: {},
-            body: ?,
+            headers: HashMap::new(),
+            body: None,
         }
     }
 
-    +f post(url: &s) -> Request {
-        @Request {
-            method: Method.Post,
+    pub fn post(url: &String) -> Request {
+        Request {
+            method: Method::Post,
             url: url.to_owned(),
-            headers: {},
-            body: ?,
+            headers: HashMap::new(),
+            body: None,
         }
     }
 
-    +f header(&!self, key: &s, value: &s) -> &!Request {
+    pub fn header(&mut self, key: &String, value: &String) -> &mut Request {
         self.headers.insert(key.to_owned(), value.to_owned());
         self
     }
 
-    +f body(&!self, data: [u8]~) -> &!Request {
-        self.body = ?data;
+    pub fn body(&mut self, data: Vec<u8>) -> &mut Request {
+        self.body = Some(data);
         self
     }
 
-    +f json[T: std.json.Serialize](&!self, value: &T) -> &!Request {
-        self.body = ?std.json.stringify(value).into_bytes();
+    pub fn json<T: std::json::Serialize>(&mut self, value: &T) -> &mut Request {
+        self.body = Some(std::json::stringify(value).into_bytes());
         self.header("Content-Type", "application/json")
     }
 
     /// Send the request and return a response.
-    +f send(&self) -> R[Response, HttpError] / net;
+    pub fn send(&self) -> Result<Response, HttpError> / net;
 }
 
 /// An HTTP response.
-+S Response {
+pub struct Response {
     status: u16,
-    headers: {s: s},
-    body: [u8]~,
+    headers: HashMap<String, String>,
+    body: Vec<u8>,
 }
 
-I Response {
+impl Response {
     /// HTTP status code.
-    +f status(&self) -> u16 { self.status }
+    pub fn status(&self) -> u16 { self.status }
 
     /// Response body as a string.
-    +f text(&self) -> R[s, IoError] {
-        s.from_utf8(&self.body)
+    pub fn text(&self) -> Result<String, IoError> {
+        String::from_utf8(&self.body)
     }
 
     /// Deserialize JSON body.
-    +f json[T: std.json.Deserialize](&self) -> R[T, HttpError] {
-        std.json.parse(&self.text()?)
+    pub fn json<T: std::json::Deserialize>(&self) -> Result<T, HttpError> {
+        std::json::parse(&self.text()?)
     }
 
     /// Whether the status code indicates success (2xx).
-    +f is_success(&self) -> 1b { self.status >= 200 && self.status < 300 }
+    pub fn is_success(&self) -> bool { self.status >= 200 && self.status < 300 }
 }
 
 /// HTTP error type.
-+S HttpError {
+pub struct HttpError {
     kind: HttpErrorKind,
-    message: s,
+    message: String,
 }
 
-+E HttpErrorKind {
+pub enum HttpErrorKind {
     ConnectionFailed,
     Timeout,
     InvalidUrl,
@@ -224,7 +224,7 @@ I Response {
 // ---------------------------------------------------------------------------
 
 /// Resolve a hostname to IP addresses.
-+f resolve(host: &s) -> R[[SocketAddr]~, IoError] / net;
+pub fn resolve(host: &String) -> Result<Vec<SocketAddr>, IoError> / net;
 
 /// Reverse-resolve an IP address to a hostname.
-+f reverse_resolve(addr: &SocketAddr) -> R[s, IoError] / net;
+pub fn reverse_resolve(addr: &SocketAddr) -> Result<String, IoError> / net;

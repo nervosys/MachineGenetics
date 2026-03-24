@@ -1,199 +1,203 @@
-//! # std.str — String Utilities
+//! # std::str — Strings & Regular Expressions
 //!
-//! String manipulation, splitting, joining, regex, and encoding.
-//! String type `s` is a first-class built-in.
+//! String manipulation, searching, splitting, encoding, and regex.
 
 // ---------------------------------------------------------------------------
-// String methods (extensions on the `s` type)
+// Core string methods (impl String)
 // ---------------------------------------------------------------------------
 
-I s {
-    // --- Query ---
+impl String {
+    /// Length in bytes.
+    pub fn len(&self) -> usize;
 
-    /// Number of bytes.
-    +f len(&self) -> usize;
-
-    /// Number of Unicode characters.
-    +f chars_count(&self) -> usize;
+    /// Length in Unicode scalar values (chars).
+    pub fn char_count(&self) -> usize;
 
     /// Whether the string is empty.
-    +f is_empty(&self) -> 1b { self.len() == 0 }
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
 
-    /// Whether the string contains the given pattern.
-    +f contains(&self, pat: &s) -> 1b;
+    /// Returns a byte slice.
+    pub fn as_bytes(&self) -> &[u8];
 
-    /// Whether the string starts with the given prefix.
-    +f starts_with(&self, prefix: &s) -> 1b;
+    /// Create from UTF-8 bytes.
+    pub fn from_utf8(bytes: &[u8]) -> Result<String, StrError>;
 
-    /// Whether the string ends with the given suffix.
-    +f ends_with(&self, suffix: &s) -> 1b;
+    // -- Searching --
 
-    // --- Search ---
+    /// Whether the string contains a substring.
+    pub fn contains(&self, needle: &String) -> bool;
 
-    /// Find the byte index of the first occurrence of `pat`.
-    +f find(&self, pat: &s) -> ?usize;
+    /// Whether the string starts with a prefix.
+    pub fn starts_with(&self, prefix: &String) -> bool;
 
-    /// Find the byte index of the last occurrence of `pat`.
-    +f rfind(&self, pat: &s) -> ?usize;
+    /// Whether the string ends with a suffix.
+    pub fn ends_with(&self, suffix: &String) -> bool;
 
-    // --- Transformations ---
+    /// Find the byte index of the first occurrence.
+    pub fn find(&self, needle: &String) -> Option<usize>;
 
-    /// Convert to uppercase.
-    +f to_upper(&self) -> s;
+    /// Find the byte index of the last occurrence.
+    pub fn rfind(&self, needle: &String) -> Option<usize>;
 
-    /// Convert to lowercase.
-    +f to_lower(&self) -> s;
-
-    /// Remove leading and trailing whitespace.
-    +f trim(&self) -> &s;
-
-    /// Remove leading whitespace.
-    +f trim_start(&self) -> &s;
-
-    /// Remove trailing whitespace.
-    +f trim_end(&self) -> &s;
-
-    /// Replace all occurrences of `from` with `to`.
-    +f replace(&self, from: &s, to: &s) -> s;
-
-    /// Replace the first `n` occurrences.
-    +f replacen(&self, from: &s, to: &s, n: usize) -> s;
-
-    /// Repeat the string `n` times.
-    +f repeat(&self, n: usize) -> s;
-
-    // --- Split / Join ---
-
-    /// Split by a delimiter string.
-    +f split(&self, delim: &s) -> [s]~;
-
-    /// Split into at most `n` parts.
-    +f splitn(&self, n: usize, delim: &s) -> [s]~;
-
-    /// Split by whitespace.
-    +f words(&self) -> [s]~;
-
-    /// Split into lines.
-    +f lines(&self) -> [s]~;
-
-    // --- Conversion ---
-
-    /// Parse as an integer.
-    +f parse_int(&self) -> R[i64, ParseError];
-
-    /// Parse as a float.
-    +f parse_float(&self) -> R[f64, ParseError];
-
-    /// Parse as a boolean.
-    +f parse_bool(&self) -> R[1b, ParseError];
-
-    /// Convert to a byte slice.
-    +f as_bytes(&self) -> &[u8];
-
-    /// Create a string from a UTF-8 byte slice.
-    +f from_utf8(bytes: &[u8]) -> R[s, Utf8Error];
-
-    /// Owned copy.
-    +f to_owned(&self) -> s;
-
-    // --- Slicing ---
+    // -- Slicing / Splitting --
 
     /// Substring by byte range.
-    +f slice(&self, start: usize, end: usize) -> &s;
+    pub fn slice(&self, start: usize, end: usize) -> String;
 
-    /// Get a character at an index (by char position, not byte).
-    +f char_at(&self, idx: usize) -> ?char;
+    /// Split by a separator, returning all parts.
+    pub fn split(&self, sep: &String) -> Vec<String>;
 
-    /// Iterator over characters.
-    +f chars(&self) -> Chars;
+    /// Split into at most `n` parts.
+    pub fn splitn(&self, n: usize, sep: &String) -> Vec<String>;
+
+    /// Split into lines.
+    pub fn lines(&self) -> Vec<String>;
+
+    // -- Trimming --
+
+    /// Trim whitespace from both ends.
+    pub fn trim(&self) -> String;
+
+    /// Trim whitespace from the start.
+    pub fn trim_start(&self) -> String;
+
+    /// Trim whitespace from the end.
+    pub fn trim_end(&self) -> String;
+
+    // -- Case --
+
+    pub fn to_lowercase(&self) -> String;
+    pub fn to_uppercase(&self) -> String;
+
+    // -- Modification --
+
+    /// Replace all occurrences of `from` with `to`.
+    pub fn replace(&self, from: &String, to: &String) -> String;
+
+    /// Replace the first `n` occurrences.
+    pub fn replacen(&self, from: &String, to: &String, n: usize) -> String;
+
+    /// Repeat the string `n` times.
+    pub fn repeat(&self, n: usize) -> String;
+
+    /// Reverse the string (by chars, not bytes).
+    pub fn reverse(&self) -> String;
+
+    // -- Conversion --
+
+    /// Parse the string into a numeric type.
+    pub fn parse_int(&self) -> Result<i64, StrError>;
+    pub fn parse_float(&self) -> Result<f64, StrError>;
+
+    /// Convert to owned (clone).
+    pub fn to_owned(&self) -> String;
+
+    // -- Joining --
+
+    /// Join a list of strings with this string as separator.
+    pub fn join(sep: &String, parts: &[String]) -> String;
+
+    // -- Chars iterator --
+
+    /// Iterate over Unicode scalar values.
+    pub fn chars(&self) -> Chars;
 }
 
-/// Join a slice of strings with a separator.
-+f join(parts: &[s], sep: &s) -> s;
+/// Iterator over characters in a string.
+pub struct Chars {
+    _inner: String,
+    _pos: usize,
+}
+
+impl Iterator for Chars {
+    type Item = char;
+    pub fn next(&mut self) -> Option<char>;
+}
 
 // ---------------------------------------------------------------------------
-// Regex
+// Regular Expressions
 // ---------------------------------------------------------------------------
 
 /// A compiled regular expression.
-+S Regex {
-    _pattern: s,
+pub struct Regex {
+    _pattern: String,
 }
 
-I Regex {
-    /// Compile a regex pattern.
-    +f new(pattern: &s) -> R[Regex, RegexError];
+impl Regex {
+    /// Compile a regex pattern. Returns an error for invalid patterns.
+    pub fn new(pattern: &String) -> Result<Regex, StrError>;
 
-    /// Test if the string matches the pattern.
-    +f is_match(&self, text: &s) -> 1b;
+    /// Test whether the pattern matches anywhere in the text.
+    pub fn is_match(&self, text: &String) -> bool;
 
     /// Find the first match.
-    +f find(&self, text: &s) -> ?Match;
+    pub fn find(&self, text: &String) -> Option<Match>;
 
     /// Find all non-overlapping matches.
-    +f find_all(&self, text: &s) -> [Match]~;
+    pub fn find_all(&self, text: &String) -> Vec<Match>;
 
-    /// Capture groups from the first match.
-    +f captures(&self, text: &s) -> ?Captures;
+    /// Capture groups for the first match.
+    pub fn captures(&self, text: &String) -> Option<Captures>;
 
     /// Replace the first match.
-    +f replace(&self, text: &s, rep: &s) -> s;
+    pub fn replace(&self, text: &String, replacement: &String) -> String;
 
     /// Replace all matches.
-    +f replace_all(&self, text: &s, rep: &s) -> s;
+    pub fn replace_all(&self, text: &String, replacement: &String) -> String;
 
-    /// Split by the pattern.
-    +f split(&self, text: &s) -> [s]~;
+    /// Split text by the pattern.
+    pub fn split(&self, text: &String) -> Vec<String>;
 }
 
-+S Match {
-    start: usize,
-    end: usize,
-    text: s,
+/// A single regex match.
+pub struct Match {
+    pub start: usize,
+    pub end: usize,
+    pub text: String,
 }
 
-+S Captures {
-    groups: [?s]~,
+/// Capture groups from a regex match.
+pub struct Captures {
+    groups: Vec<Option<Match>>,
 }
 
-I Captures {
-    +f get(&self, idx: usize) -> ?&s;
-    +f name(&self, name: &s) -> ?&s;
-    +f len(&self) -> usize;
-}
+impl Captures {
+    /// Get a capture group by index (0 = full match).
+    pub fn get(&self, idx: usize) -> Option<&Match> {
+        match self.groups.get(idx) {
+            Some(m) => m.as_ref(),
+            None => None,
+        }
+    }
 
-+S RegexError { message: s }
+    /// Number of capture groups (including group 0).
+    pub fn len(&self) -> usize { self.groups.len() }
+}
 
 // ---------------------------------------------------------------------------
 // Encoding
 // ---------------------------------------------------------------------------
 
-/// Encode a string to UTF-16.
-+f encode_utf16(text: &s) -> [u16]~;
+/// Base64 encode a byte slice to a string.
+pub fn base64_encode(data: &[u8]) -> String;
 
-/// Decode a UTF-16 slice to a string.
-+f decode_utf16(data: &[u16]) -> R[s, Utf8Error];
+/// Base64 decode a string to bytes.
+pub fn base64_decode(s: &String) -> Result<Vec<u8>, StrError>;
 
-/// Encode a string to raw bytes using the given encoding.
-+f encode(text: &s, encoding: &s) -> R[[u8]~, EncodeError];
+/// Hex-encode a byte slice.
+pub fn hex_encode(data: &[u8]) -> String;
 
-/// Decode bytes to a string using the given encoding.
-+f decode(data: &[u8], encoding: &s) -> R[s, EncodeError];
+/// Hex-decode a string to bytes.
+pub fn hex_decode(s: &String) -> Result<Vec<u8>, StrError>;
 
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
 
-+S ParseError  { message: s }
-+S Utf8Error   { valid_up_to: usize }
-+S EncodeError { message: s }
+pub struct StrError {
+    message: String,
+}
 
-// ---------------------------------------------------------------------------
-// Iterator types
-// ---------------------------------------------------------------------------
-
-+S Chars { _s: &s, _pos: usize }
-I Iterator ~ Chars {
-    type Item = char;
-    +f next(&!self) -> ?char;
+impl StrError {
+    pub fn new(msg: &String) -> StrError { StrError { message: msg.to_owned() } }
 }

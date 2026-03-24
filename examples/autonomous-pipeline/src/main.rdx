@@ -14,52 +14,52 @@
 //   - Memory recall for caching intermediate results
 //   - Effect annotations (/ io, / db, / net)
 
-u std.col;
-u std.fmt;
-u std.io;
+use std::col;
+use std::fmt;
+use std::io;
 
 // ─────────────────────────────────────────────────────────────────────
 // §1 — Specification: the user's high-level request
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone)
-+S Specification {
-    description: s,
-    language: s,
-    targets: [s]~,
+#[derive(Debug, Clone)]
+pub struct Specification {
+    description: String,
+    language: String,
+    targets: Vec<String>,
     max_token_budget: usize,
     safety_level: SafetyLevel,
 }
 
-@d(Debug, Clone, PartialEq)
-+E SafetyLevel {
+#[derive(Debug, Clone, PartialEq)]
+pub enum SafetyLevel {
     Prototype,
     Development,
     Production,
     SafetyCritical,
 }
 
-I ~ SafetyLevel {
-    f requires_contracts(&self) -> bool {
-        ? self {
-            SafetyLevel.Production | SafetyLevel.SafetyCritical => 1b,
-            _ => 0b,
+impl SafetyLevel {
+    fn requires_contracts(&self) -> bool {
+        match self {
+            SafetyLevel::Production | SafetyLevel::SafetyCritical => true,
+            _ => false,
         }
     }
 
-    f requires_formal_verification(&self) -> bool {
-        ? self {
-            SafetyLevel.SafetyCritical => 1b,
-            _ => 0b,
+    fn requires_formal_verification(&self) -> bool {
+        match self {
+            SafetyLevel::SafetyCritical => true,
+            _ => false,
         }
     }
 
-    f min_test_coverage(&self) -> f64 {
-        ? self {
-            SafetyLevel.Prototype => 0.0,
-            SafetyLevel.Development => 0.60,
-            SafetyLevel.Production => 0.85,
-            SafetyLevel.SafetyCritical => 0.95,
+    fn min_test_coverage(&self) -> f64 {
+        match self {
+            SafetyLevel::Prototype => 0.0,
+            SafetyLevel::Development => 0.60,
+            SafetyLevel::Production => 0.85,
+            SafetyLevel::SafetyCritical => 0.95,
         }
     }
 }
@@ -68,8 +68,8 @@ I ~ SafetyLevel {
 // §2 — Task decomposition: break spec into executable units
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone)]
-+E TaskKind {
+#[derive(Debug, Clone)]
+pub enum TaskKind {
     DesignApi,
     DefineContracts,
     ImplementEndpoint,
@@ -80,34 +80,34 @@ I ~ SafetyLevel {
     IntegrationTest,
 }
 
-@d(Debug, Clone)
-+S Task {
+#[derive(Debug, Clone)]
+pub struct Task {
     id: u64,
-    name: s,
+    name: String,
     kind: TaskKind,
-    dependencies: [u64]~,
+    dependencies: Vec<u64>,
     token_estimate: usize,
     completed: bool,
 }
 
-I ~ Task {
-    +f new(id: u64, name: s, kind: TaskKind, token_est: usize) -> Task {
-        Task @{
+impl Task {
+    pub fn new(id: u64, name: String, kind: TaskKind, token_est: usize) -> Task {
+        Task {
             id: id,
             name: name,
             kind: kind,
-            dependencies: []~,
+            dependencies: Vec::new(),
             token_estimate: token_est,
-            completed: 0b,
+            completed: false,
         }
     }
 
-    +f depends_on(m self, deps: [u64]~) -> Task {
+    pub fn depends_on(mut self, deps: Vec<u64>) -> Task {
         self.dependencies = deps;
         self
     }
 
-    +f is_ready(&self, completed: &{u64}) -> bool {
+    pub fn is_ready(&self, completed: &HashSet<u64>) -> bool {
         self.dependencies.iter().all(|d| completed.contains(d))
     }
 }
@@ -117,90 +117,90 @@ I ~ Task {
 /// @req  spec.targets.len() > 0            "must target at least one platform"
 /// @ens  result.len() >= 3                 "minimal pipeline has design + implement + test"
 /// @fx   pure
-f decompose(spec: &Specification) -> [Task]~ {
-    m tasks: [Task]~ = []~;
-    m next_id: u64 = 1;
+fn decompose(spec: &Specification) -> Vec<Task> {
+    let mut tasks: Vec<Task> = Vec::new();
+    let mut next_id: u64 = 1;
 
     // Phase 1: Design the API surface.
-    v design = Task.new(next_id, "Design REST API surface".to_string(), TaskKind.DesignApi, 200);
+    let design = Task::new(next_id, "Design REST API surface".to_string(), TaskKind::DesignApi, 200);
     tasks.push(design);
-    v design_id = next_id;
+    let design_id = next_id;
     next_id = next_id + 1;
 
     // Phase 2: Define contracts (if safety level requires it).
-    m contract_id: ?u64 = None;
-    ?: spec.safety_level.requires_contracts() {
-        v contracts = Task.new(
+    let mut contract_id: Option<u64> = None;
+    if spec.safety_level.requires_contracts() {
+        let contracts = Task::new(
             next_id,
             "Define function contracts".to_string(),
-            TaskKind.DefineContracts,
+            TaskKind::DefineContracts,
             150,
-        ).depends_on([design_id]~);
+        ).depends_on(vec![design_id]);
         contract_id = Some(next_id);
         tasks.push(contracts);
         next_id = next_id + 1;
     }
 
     // Phase 3: Implement models and endpoints.
-    v model_deps = ? contract_id {
-        Some(cid) => [design_id, cid]~,
-        None => [design_id]~,
+    let model_deps = match contract_id {
+        Some(cid) => vec![design_id, cid],
+        None => vec![design_id],
     };
 
-    v model = Task.new(
+    let model = Task::new(
         next_id,
         "Implement User model".to_string(),
-        TaskKind.ImplementModel,
+        TaskKind::ImplementModel,
         300,
     ).depends_on(model_deps.clone());
-    v model_id = next_id;
+    let model_id = next_id;
     tasks.push(model);
     next_id = next_id + 1;
 
     // Endpoints depend on model.
-    v endpoints = ["create_user", "get_user", "update_user", "delete_user"];
-    m endpoint_ids: [u64]~ = []~;
-    @ name ~ &endpoints {
-        v ep = Task.new(
+    let endpoints = ["create_user", "get_user", "update_user", "delete_user"];
+    let mut endpoint_ids: Vec<u64> = Vec::new();
+    for name in &endpoints {
+        let ep = Task::new(
             next_id,
-            f"Implement {name} endpoint".to_string(),
-            TaskKind.ImplementEndpoint,
+            format!("Implement {name} endpoint"),
+            TaskKind::ImplementEndpoint,
             250,
-        ).depends_on([model_id]~);
+        ).depends_on(vec![model_id]);
         endpoint_ids.push(next_id);
         tasks.push(ep);
         next_id = next_id + 1;
     }
 
     // Phase 4: Generate tests.
-    v test_task = Task.new(
+    let test_task = Task::new(
         next_id,
         "Generate test suite".to_string(),
-        TaskKind.GenerateTests,
+        TaskKind::GenerateTests,
         400,
     ).depends_on(endpoint_ids.clone());
-    v test_id = next_id;
+    let test_id = next_id;
     tasks.push(test_task);
     next_id = next_id + 1;
 
     // Phase 5: Optimize for each target.
-    @ target ~ &spec.targets {
-        v opt = Task.new(
+    for target in &spec.targets {
+        let opt = Task::new(
             next_id,
-            f"Optimize for {target}".to_string(),
-            TaskKind.OptimizeForTarget,
+            format!("Optimize for {target}"),
+            TaskKind::OptimizeForTarget,
             180,
-        ).depends_on([test_id]~);
+        ).depends_on(vec![test_id]);
         tasks.push(opt);
         next_id = next_id + 1;
     }
 
     // Phase 6: Verify contracts (if safety-critical).
-    ?: spec.safety_level.requires_formal_verification() {
-        v verify = Task.new(
+    if spec.safety_level.requires_formal_verification() {
+        let verify = Task::new(
             next_id,
             "Formal contract verification".to_string(),
-            TaskKind.VerifyContracts,
+            TaskKind::VerifyContracts,
             500,
         ).depends_on(endpoint_ids.clone());
         tasks.push(verify);
@@ -213,28 +213,28 @@ f decompose(spec: &Specification) -> [Task]~ {
 // §3 — Contracts: specify what each generated function must satisfy
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone)
-+S ContractSpec {
-    fn_name: s,
-    preconditions: [s]~,
-    postconditions: [s]~,
+#[derive(Debug, Clone)]
+pub struct ContractSpec {
+    fn_name: String,
+    preconditions: Vec<String>,
+    postconditions: Vec<String>,
 }
 
-I ~ ContractSpec {
-    +f new(name: &s) -> ContractSpec {
-        ContractSpec @{
+impl ContractSpec {
+    pub fn new(name: &String) -> ContractSpec {
+        ContractSpec {
             fn_name: name.clone(),
-            preconditions: []~,
-            postconditions: []~,
+            preconditions: Vec::new(),
+            postconditions: Vec::new(),
         }
     }
 
-    +f pre(m self, cond: s) -> ContractSpec {
+    pub fn pre(mut self, cond: String) -> ContractSpec {
         self.preconditions.push(cond);
         self
     }
 
-    +f post(m self, cond: s) -> ContractSpec {
+    pub fn post(mut self, cond: String) -> ContractSpec {
         self.postconditions.push(cond);
         self
     }
@@ -244,60 +244,60 @@ I ~ ContractSpec {
 /// pre/postconditions that the generated code must satisfy.
 ///
 /// @fx pure
-f build_api_contracts() -> [ContractSpec]~ {
-    [
-        ContractSpec.new(&"create_user".to_string())
+fn build_api_contracts() -> Vec<ContractSpec> {
+    vec![
+        ContractSpec::new(&"create_user".to_string())
             .pre("email.len() > 0".to_string())
             .pre("email.contains('@')".to_string())
             .pre("password.len() >= 8".to_string())
             .post("result.is_ok() => db.contains(email)".to_string())
             .post("result.is_err() => db.unchanged()".to_string()),
 
-        ContractSpec.new(&"get_user".to_string())
+        ContractSpec::new(&"get_user".to_string())
             .pre("id > 0".to_string())
             .post("result.is_some() => result.unwrap().id == id".to_string()),
 
-        ContractSpec.new(&"update_user".to_string())
+        ContractSpec::new(&"update_user".to_string())
             .pre("id > 0".to_string())
             .pre("db.contains(id)".to_string())
             .post("result.is_ok() => db.get(id).version > old(db.get(id).version)".to_string()),
 
-        ContractSpec.new(&"delete_user".to_string())
+        ContractSpec::new(&"delete_user".to_string())
             .pre("id > 0".to_string())
             .post("result.is_ok() => !db.contains(id)".to_string()),
-    ]~
+    ]
 }
 
 // ─────────────────────────────────────────────────────────────────────
 // §4 — Pipeline: staged code generation
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone)
-+E StageResult {
-    Ok(s),
-    Err(s),
+#[derive(Debug, Clone)]
+pub enum StageResult {
+    Ok(String),
+    Err(String),
 }
 
-@d(Debug, Clone)
-+S PipelineStage {
-    name: s,
-    input_type: s,
-    output_type: s,
+#[derive(Debug, Clone)]
+pub struct PipelineStage {
+    name: String,
+    input_type: String,
+    output_type: String,
 }
 
-@d(Debug, Clone)
-+S GenerationPipeline {
-    stages: [PipelineStage]~,
-    results: {s: StageResult},
+#[derive(Debug, Clone)]
+pub struct GenerationPipeline {
+    stages: Vec<PipelineStage>,
+    results: HashMap<String, StageResult>,
 }
 
-I ~ GenerationPipeline {
-    +f new() -> GenerationPipeline {
-        GenerationPipeline @{ stages: []~, results: HashMap.new() }
+impl GenerationPipeline {
+    pub fn new() -> GenerationPipeline {
+        GenerationPipeline { stages: Vec::new(), results: HashMap::new() }
     }
 
-    +f stage(m self, name: s, input: s, output: s) -> GenerationPipeline {
-        self.stages.push(PipelineStage @{
+    pub fn stage(mut self, name: String, input: String, output: String) -> GenerationPipeline {
+        self.stages.push(PipelineStage {
             name: name,
             input_type: input,
             output_type: output,
@@ -310,36 +310,36 @@ I ~ GenerationPipeline {
     ///
     /// @req  self.stages.len() > 0          "pipeline must have stages"
     /// @ens  self.results.len() == self.stages.len()
-    +f run(&!self, initial_input: s) / io {
-        p"";
-        p"╔═══════════════════════════════════════════╗";
-        p"║     Code Generation Pipeline              ║";
-        p"╚═══════════════════════════════════════════╝";
+    pub fn run(&mut self, initial_input: String) / io {
+        println!("");
+        println!("╔═══════════════════════════════════════════╗");
+        println!("║     Code Generation Pipeline              ║");
+        println!("╚═══════════════════════════════════════════╝");
 
-        m current_input = initial_input;
-        @ (i, stage) ~ self.stages.iter().enumerate() {
-            p"  ┌─ Stage {i + 1}: {stage.name}";
-            p"  │  Input:  {stage.input_type} ({current_input.len()} chars)";
+        let mut current_input = initial_input;
+        for (i, stage) in self.stages.iter().enumerate() {
+            println!("  ┌─ Stage {}: {}", i + 1, stage.name);
+            println!("  │  Input:  {} ({} chars)", stage.input_type, current_input.len());
 
             // Simulate generation — in production this calls the LLM.
-            v output = f"// Generated by stage: {stage.name}\n{current_input}";
+            let output = format!("// Generated by stage: {}\n{}", stage.name, current_input);
 
-            p"  │  Output: {stage.output_type} ({output.len()} chars)";
-            p"  └─ ✓ Complete";
+            println!("  │  Output: {} ({} chars)", stage.output_type, output.len());
+            println!("  └─ ✓ Complete");
 
-            self.results.insert(stage.name.clone(), StageResult.Ok(output.clone()));
+            self.results.insert(stage.name.clone(), StageResult::Ok(output.clone()));
             current_input = output;
         }
-        p"";
-        p"Pipeline complete: {self.results.len()} stages executed.";
+        println!("");
+        println!("Pipeline complete: {} stages executed.", self.results.len());
     }
 }
 
 /// Build the standard code-generation pipeline.
 ///
 /// @fx pure
-f build_generation_pipeline() -> GenerationPipeline {
-    GenerationPipeline.new()
+fn build_generation_pipeline() -> GenerationPipeline {
+    GenerationPipeline::new()
         .stage(
             "parse_spec".to_string(),
             "NaturalLanguage".to_string(),
@@ -371,16 +371,16 @@ f build_generation_pipeline() -> GenerationPipeline {
 // §5 — Cost estimation: choose the best target
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone)
-+S TargetCost {
-    target: s,
+#[derive(Debug, Clone)]
+pub struct TargetCost {
+    target: String,
     latency_ms: f64,
     memory_mb: f64,
     energy_score: f64,
 }
 
-I fmt.Display ~ TargetCost {
-    f fmt(&self, f: &!fmt.Formatter) -> fmt.Result {
+impl fmt::Display for TargetCost {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}: {:.1}ms latency, {:.1}MB memory, energy={:.2}",
             self.target, self.latency_ms, self.memory_mb, self.energy_score)
     }
@@ -391,19 +391,19 @@ I fmt.Display ~ TargetCost {
 /// @req  targets.len() > 0
 /// @ens  result.len() == targets.len()
 /// @fx   pure
-f estimate_costs(targets: &[s]~, code_size_tokens: usize) -> [TargetCost]~ {
-    m costs: [TargetCost]~ = []~;
-    v base = code_size_tokens as f64;
+fn estimate_costs(targets: &Vec<String>, code_size_tokens: usize) -> Vec<TargetCost> {
+    let mut costs: Vec<TargetCost> = Vec::new();
+    let base = code_size_tokens as f64;
 
-    @ target ~ targets {
-        v (lat, mem, energy) = ? target.as_str() {
+    for target in targets {
+        let (lat, mem, energy) = match target.as_str() {
             "x86_64"  => (base * 0.012, base * 0.08,  0.85),
             "aarch64" => (base * 0.010, base * 0.07,  0.65),
             "wasm32"  => (base * 0.018, base * 0.12,  0.40),
             "riscv64" => (base * 0.015, base * 0.09,  0.55),
             _         => (base * 0.020, base * 0.15,  1.00),
         };
-        costs.push(TargetCost @{
+        costs.push(TargetCost {
             target: target.clone(),
             latency_ms: lat,
             memory_mb: mem,
@@ -417,14 +417,14 @@ f estimate_costs(targets: &[s]~, code_size_tokens: usize) -> [TargetCost]~ {
 ///
 /// @req  costs.len() > 0
 /// @fx   pure
-f select_optimal_target(costs: &[TargetCost]~) -> &TargetCost {
+fn select_optimal_target(costs: &Vec<TargetCost>) -> &TargetCost {
     // Multi-objective scoring: prefer low latency + low memory + low energy.
-    m best = &costs[0];
-    m best_score = best.latency_ms + best.memory_mb + best.energy_score * 100.0;
+    let mut best = &costs[0];
+    let mut best_score = best.latency_ms + best.memory_mb + best.energy_score * 100.0;
 
-    @ cost ~ costs.iter().skip(1) {
-        v score = cost.latency_ms + cost.memory_mb + cost.energy_score * 100.0;
-        ?: score < best_score {
+    for cost in costs.iter().skip(1) {
+        let score = cost.latency_ms + cost.memory_mb + cost.energy_score * 100.0;
+        if score < best_score {
             best = cost;
             best_score = score;
         }
@@ -436,49 +436,49 @@ f select_optimal_target(costs: &[TargetCost]~) -> &TargetCost {
 // §6 — Token budget tracking
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug)]
-+S TokenBudget {
+#[derive(Debug)]
+pub struct TokenBudget {
     max_tokens: usize,
     used_tokens: usize,
-    allocations: [(s, usize)]~,
+    allocations: Vec<(String, usize)>,
 }
 
-I ~ TokenBudget {
-    +f new(max: usize) -> TokenBudget {
-        TokenBudget @{ max_tokens: max, used_tokens: 0, allocations: []~ }
+impl TokenBudget {
+    pub fn new(max: usize) -> TokenBudget {
+        TokenBudget { max_tokens: max, used_tokens: 0, allocations: Vec::new() }
     }
 
-    +f allocate(&!self, label: s, tokens: usize) -> bool {
-        ?: self.used_tokens + tokens > self.max_tokens {
-            ret 0b;
+    pub fn allocate(&mut self, label: String, tokens: usize) -> bool {
+        if self.used_tokens + tokens > self.max_tokens {
+            return false;
         }
         self.used_tokens = self.used_tokens + tokens;
         self.allocations.push((label, tokens));
-        1b
+        true
     }
 
-    +f remaining(&self) -> usize {
+    pub fn remaining(&self) -> usize {
         self.max_tokens - self.used_tokens
     }
 
-    +f utilization(&self) -> f64 {
+    pub fn utilization(&self) -> f64 {
         self.used_tokens as f64 / self.max_tokens as f64 * 100.0
     }
 
-    +f report(&self) / io {
-        p"";
-        p"── Token Budget Report ──────────────────────";
-        p"  Total:     {self.max_tokens}";
-        p"  Used:      {self.used_tokens}";
-        p"  Remaining: {self.remaining()}";
-        p"  Util:      {self.utilization():.1}%";
-        p"  ┌───────────────────────────┬────────┐";
-        p"  │ Allocation                │ Tokens │";
-        p"  ├───────────────────────────┼────────┤";
-        @ (label, count) ~ &self.allocations {
-            p"  │ {label:<25} │ {count:>6} │";
+    pub fn report(&self) / io {
+        println!("");
+        println!("── Token Budget Report ──────────────────────");
+        println!("  Total:     {}", self.max_tokens);
+        println!("  Used:      {}", self.used_tokens);
+        println!("  Remaining: {}", self.remaining());
+        println!("  Util:      {:.1}%", self.utilization());
+        println!("  ┌───────────────────────────┬────────┐");
+        println!("  │ Allocation                │ Tokens │");
+        println!("  ├───────────────────────────┼────────┤");
+        for (label, count) in &self.allocations {
+            println!("  │ {:<25} │ {:>6} │", label, count);
         }
-        p"  └───────────────────────────┴────────┘";
+        println!("  └───────────────────────────┴────────┘");
     }
 }
 
@@ -486,33 +486,33 @@ I ~ TokenBudget {
 // §7 — Memory: cache intermediate generation results
 // ─────────────────────────────────────────────────────────────────────
 
-@d(Debug, Clone)
-+S CacheEntry {
-    key: s,
-    value: s,
+#[derive(Debug, Clone)]
+pub struct CacheEntry {
+    key: String,
+    value: String,
     hit_count: u64,
 }
 
-@d(Debug)]
-+S GenerationCache {
-    entries: {s: CacheEntry},
+#[derive(Debug)]
+pub struct GenerationCache {
+    entries: HashMap<String, CacheEntry>,
 }
 
-I ~ GenerationCache {
-    +f new() -> GenerationCache {
-        GenerationCache @{ entries: HashMap.new() }
+impl GenerationCache {
+    pub fn new() -> GenerationCache {
+        GenerationCache { entries: HashMap::new() }
     }
 
-    +f store(&!self, key: s, value: s) {
-        self.entries.insert(key.clone(), CacheEntry @{
+    pub fn store(&mut self, key: String, value: String) {
+        self.entries.insert(key.clone(), CacheEntry {
             key: key,
             value: value,
             hit_count: 0,
         });
     }
 
-    +f recall(&!self, key: &s) -> ?&s {
-        ? self.entries.get_mut(key) {
+    pub fn recall(&mut self, key: &String) -> Option<&String> {
+        match self.entries.get_mut(key) {
             Some(entry) => {
                 entry.hit_count = entry.hit_count + 1;
                 Some(&entry.value)
@@ -521,10 +521,10 @@ I ~ GenerationCache {
         }
     }
 
-    +f stats(&self) / io {
-        p"  Cache entries: {self.entries.len()}";
-        @ (key, entry) ~ &self.entries {
-            p"    {key}: {entry.hit_count} hits";
+    pub fn stats(&self) / io {
+        println!("  Cache entries: {}", self.entries.len());
+        for (key, entry) in &self.entries {
+            println!("    {}: {} hits", key, entry.hit_count);
         }
     }
 }
@@ -533,103 +533,103 @@ I ~ GenerationCache {
 // §8 — Entry point: orchestrate the full pipeline
 // ─────────────────────────────────────────────────────────────────────
 
-+f main() / io {
-    p"╔═══════════════════════════════════════════════════════════╗";
-    p"║  Redox Autonomous Code Generation Pipeline               ║";
-    p"╚═══════════════════════════════════════════════════════════╝";
-    p"";
+pub fn main() / io {
+    println!("╔═══════════════════════════════════════════════════════════╗");
+    println!("║  Redox Autonomous Code Generation Pipeline               ║");
+    println!("╚═══════════════════════════════════════════════════════════╝");
+    println!("");
 
     // Define the specification.
-    v spec = Specification @{
+    let spec = Specification {
         description: "Build a REST API for user management with CRUD operations".to_string(),
         language: "redox".to_string(),
-        targets: ["x86_64", "aarch64", "wasm32"]~.iter().map(|s| s.to_string()).collect(),
+        targets: vec!["x86_64", "aarch64", "wasm32"].iter().map(|s| s.to_string()).collect(),
         max_token_budget: 4096,
-        safety_level: SafetyLevel.Production,
+        safety_level: SafetyLevel::Production,
     };
 
-    p"Specification:";
-    p"  {spec.description}";
-    p"  Language: {spec.language}";
-    p"  Targets:  {spec.targets:?}";
-    p"  Safety:   {spec.safety_level:?}";
-    p"  Budget:   {spec.max_token_budget} tokens";
-    p"";
+    println!("Specification:");
+    println!("  {}", spec.description);
+    println!("  Language: {}", spec.language);
+    println!("  Targets:  {:?}", spec.targets);
+    println!("  Safety:   {:?}", spec.safety_level);
+    println!("  Budget:   {} tokens", spec.max_token_budget);
+    println!("");
 
     // Step 1: Decompose into tasks.
-    p"─── Step 1: Task Decomposition ───────────────────────────";
-    v tasks = decompose(&spec);
-    p"  Decomposed into {tasks.len()} tasks:";
-    @ task ~ &tasks {
-        v deps = ? task.dependencies.is_empty() {
-            0b => f" (depends on: {task.dependencies:?})",
-            1b => "".to_string(),
+    println!("─── Step 1: Task Decomposition ───────────────────────────");
+    let tasks = decompose(&spec);
+    println!("  Decomposed into {} tasks:", tasks.len());
+    for task in &tasks {
+        let deps = match task.dependencies.is_empty() {
+            false => format!(" (depends on: {:?})", task.dependencies),
+            true => "".to_string(),
         };
-        p"    [{task.id}] {task.name} (~{task.token_estimate} tokens){deps}";
+        println!("    [{}] {} (~{} tokens){}", task.id, task.name, task.token_estimate, deps);
     }
-    p"";
+    println!("");
 
     // Step 2: Build contracts.
-    p"─── Step 2: Contract Specification ───────────────────────";
-    v contracts = build_api_contracts();
-    @ contract ~ &contracts {
-        p"  {contract.fn_name}:";
-        @ pre ~ &contract.preconditions {
-            p"    @req {pre}";
+    println!("─── Step 2: Contract Specification ───────────────────────");
+    let contracts = build_api_contracts();
+    for contract in &contracts {
+        println!("  {}:", contract.fn_name);
+        for pre in &contract.preconditions {
+            println!("    @req {}", pre);
         }
-        @ post ~ &contract.postconditions {
-            p"    @ens {post}";
+        for post in &contract.postconditions {
+            println!("    @ens {}", post);
         }
     }
-    p"";
+    println!("");
 
     // Step 3: Track token budget across tasks.
-    p"─── Step 3: Token Budget Allocation ──────────────────────";
-    m budget = TokenBudget.new(spec.max_token_budget);
-    @ task ~ &tasks {
-        v ok = budget.allocate(task.name.clone(), task.token_estimate);
-        ?: !ok {
-            p"  ⚠  Budget exceeded at task: {task.name}";
+    println!("─── Step 3: Token Budget Allocation ──────────────────────");
+    let mut budget = TokenBudget::new(spec.max_token_budget);
+    for task in &tasks {
+        let ok = budget.allocate(task.name.clone(), task.token_estimate);
+        if !ok {
+            println!("  ⚠  Budget exceeded at task: {}", task.name);
         }
     }
     budget.report();
-    p"";
+    println!("");
 
     // Step 4: Run the generation pipeline.
-    p"─── Step 4: Generation Pipeline ──────────────────────────";
-    m pipeline = build_generation_pipeline();
+    println!("─── Step 4: Generation Pipeline ──────────────────────────");
+    let mut pipeline = build_generation_pipeline();
     pipeline.run(spec.description.clone());
-    p"";
+    println!("");
 
     // Step 5: Estimate costs and select target.
-    p"─── Step 5: Cost Estimation ──────────────────────────────";
-    v total_tokens = tasks.iter().map(|t| t.token_estimate).sum::<usize>();
-    v costs = estimate_costs(&spec.targets, total_tokens);
-    @ cost ~ &costs {
-        p"  {cost}";
+    println!("─── Step 5: Cost Estimation ──────────────────────────────");
+    let total_tokens = tasks.iter().map(|t| t.token_estimate).sum::<usize>();
+    let costs = estimate_costs(&spec.targets, total_tokens);
+    for cost in &costs {
+        println!("  {}", cost);
     }
-    v optimal = select_optimal_target(&costs);
-    p"";
-    p"  ★ Optimal target: {optimal}";
-    p"";
+    let optimal = select_optimal_target(&costs);
+    println!("");
+    println!("  ★ Optimal target: {}", optimal);
+    println!("");
 
     // Step 6: Cache results for future recall.
-    p"─── Step 6: Result Caching ───────────────────────────────";
-    m cache = GenerationCache.new();
+    println!("─── Step 6: Result Caching ───────────────────────────────");
+    let mut cache = GenerationCache::new();
     cache.store("api_design".to_string(), "User { id, email, name }".to_string());
-    cache.store("contracts".to_string(), f"{contracts.len()} contracts defined".to_string());
+    cache.store("contracts".to_string(), format!("{} contracts defined", contracts.len()));
     cache.store("optimal_target".to_string(), optimal.target.clone());
 
     // Simulate recall.
-    ? cache.recall(&"api_design".to_string()) {
-        Some(val) => p"  Recalled api_design: {val}",
-        None => p"  Cache miss",
+    match cache.recall(&"api_design".to_string()) {
+        Some(val) => println!("  Recalled api_design: {}", val),
+        None => println!("  Cache miss"),
     };
     cache.stats();
-    p"";
+    println!("");
 
-    p"═══════════════════════════════════════════════════════════";
-    p"  Pipeline complete. {tasks.len()} tasks, {contracts.len()} contracts,";
-    p"  {costs.len()} targets evaluated. Optimal: {optimal.target}";
-    p"═══════════════════════════════════════════════════════════";
+    println!("═══════════════════════════════════════════════════════════");
+    println!("  Pipeline complete. {} tasks, {} contracts,", tasks.len(), contracts.len());
+    println!("  {} targets evaluated. Optimal: {}", costs.len(), optimal.target);
+    println!("═══════════════════════════════════════════════════════════");
 }
