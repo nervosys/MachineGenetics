@@ -19,7 +19,7 @@
 | 24   | Complete the parser                | ✅      | Proper LL(1) with all MechGen syntax forms: contracts, specs, effects decl, capability blocks, swarm patterns, perf annotations     |
 | 25   | Structured Diagnostic Graph        | ✅      | Replace flat error strings with DiagnosticGraph (§6.2): fix candidates, confidence, causal chains, related errors                 |
 | 26   | Safety elision pass                | ✅      | Strip lifetimes, `unsafe`, `&mut`, `move`, `ref`, `Pin`, `PhantomData`, `Send`/`Sync` from AST in agentic mode                    |
-| 27   | Dual-syntax transpiler integration | ✅      | `--syntax=legacy` flag: accept Rust syntax via rust2rdx, feed canonical form to compiler                                          |
+| 27   | Dual-syntax transpiler integration | ✅      | `--syntax=legacy` flag: accept Rust syntax via rust2mg, feed canonical form to compiler                                          |
 | 28   | Token budget reporting             | ✅      | `--token-report` per-function/module token counts, compact vs expanded metrics                                                    |
 
 ## Phase B: Agentic Core Deepening (Steps 29–35)
@@ -94,7 +94,7 @@
 | Step | Title                                                                                                                   |
 | ---- | ----------------------------------------------------------------------------------------------------------------------- |
 | 1    | Prototype compiler (lexer, parser, AST, HIR, types, effects, MLIR, resolver)                                            |
-| 2    | rust2rdx transpiler                                                                                                     |
+| 2    | rust2mg transpiler                                                                                                     |
 | 3    | VS Code extension                                                                                                       |
 | 4    | Safety Knowledge Base (SKB)                                                                                             |
 | 5    | Benchmarks                                                                                                              |
@@ -107,7 +107,7 @@
 | 12   | Migration Guide                                                                                                         |
 | 13   | Internals Guide                                                                                                         |
 | 14   | Quick Start Guide                                                                                                       |
-| 15   | rdx2rs back-transpiler                                                                                                  |
+| 15   | mg2rs back-transpiler                                                                                                  |
 | 16   | Example projects                                                                                                        |
 | 17   | CI/CD pipeline                                                                                                          |
 | 18   | Editor configs                                                                                                          |

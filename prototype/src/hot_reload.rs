@@ -1,6 +1,6 @@
 // ── Hot-Reload Runtime ─────────────────────────────────────────────
 //
-// Function-level live patching for the Redox compiler pipeline.
+// Function-level live patching for the MechGen compiler pipeline.
 //
 // Provides:
 //   1. PatchUnit — a single function-level replacement

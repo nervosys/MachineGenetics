@@ -1,6 +1,6 @@
 # Migration from Rust
 
-The `rust2rdx` tool translates Rust source files into MechGen. Because MechGen's
+The `rust2mg` tool translates Rust source files into MechGen. Because MechGen's
 standard syntax closely mirrors Rust, migration is mostly straightforward — the
 main additions are effect annotations and the capability system.
 

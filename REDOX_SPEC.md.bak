@@ -943,11 +943,11 @@ where $\text{compatible}(b_i, b_j)$ holds iff both are shared or $i = j$.
 ### 8.1 Module Structure
 
 ```
-// File: src/lib.rdx (crate root)
-+M network;      // declares public module, loads from src/network.rdx or src/network/mod.rdx
+// File: src/lib.mg (crate root)
++M network;      // declares public module, loads from src/network.mg or src/network/mod.mg
 M internal;       // private module
 
-// File: src/network.rdx
+// File: src/network.mg
 +f connect(addr: s) -> R[Connection, Error] { ... }
 f resolve(host: s) -> R[Addr, Error] { ... }  // private
 ```

@@ -127,7 +127,7 @@ subdirectories.
 ```mg
 u std.fs
 
-+f find_rdx_files(dir: &s) -> R[[s]~, IoError] / io {
++f find_mg_files(dir: &s) -> R[[s]~, IoError] / io {
     m results = [s]~.new()
     v walker = fs.walk(dir)
 
@@ -140,7 +140,7 @@ u std.fs
 }
 
 +f main() / io {
-    v files = find_rdx_files("src")?
+    v files = find_mg_files("src")?
     p"Found {files.len()} .mg files"
     @ f : &files {
         p"  {f}"

@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-/// Create a new Redox project in a new directory.
+/// Create a new MechGen project in a new directory.
 pub fn new_project(name: &str, lib: bool, verbose: bool) -> Result<(), String> {
     let path = Path::new(name);
     if path.exists() {
@@ -11,7 +11,7 @@ pub fn new_project(name: &str, lib: bool, verbose: bool) -> Result<(), String> {
         .map_err(|e| format!("cannot create directory: {e}"))?;
 
     if verbose {
-        println!("Creating new Redox project `{name}`");
+        println!("Creating new MechGen project `{name}`");
     }
 
     write_forge_toml(path, name, lib)?;
@@ -22,7 +22,7 @@ pub fn new_project(name: &str, lib: bool, verbose: bool) -> Result<(), String> {
     Ok(())
 }
 
-/// Initialize a Redox project in the current directory.
+/// Initialize a MechGen project in the current directory.
 pub fn init_project(lib: bool, verbose: bool) -> Result<(), String> {
     let cwd = std::env::current_dir().map_err(|e| format!("cannot get cwd: {e}"))?;
     let name = cwd
@@ -35,7 +35,7 @@ pub fn init_project(lib: bool, verbose: bool) -> Result<(), String> {
     }
 
     if verbose {
-        println!("Initializing Redox project in {}", cwd.display());
+        println!("Initializing MechGen project in {}", cwd.display());
     }
 
     fs::create_dir_all(cwd.join("src"))
@@ -43,11 +43,11 @@ pub fn init_project(lib: bool, verbose: bool) -> Result<(), String> {
 
     write_forge_toml(&cwd, name, lib)?;
 
-    if !cwd.join("src").join(if lib { "lib.rdx" } else { "main.rdx" }).exists() {
+    if !cwd.join("src").join(if lib { "lib.mg" } else { "main.mg" }).exists() {
         write_main_file(&cwd, lib)?;
     }
 
-    println!("\x1b[32m  Initialized\x1b[0m Redox project in {}", cwd.display());
+    println!("\x1b[32m  Initialized\x1b[0m MechGen project in {}", cwd.display());
     Ok(())
 }
 
@@ -76,7 +76,7 @@ profile = "agent-dev"
 fn write_main_file(dir: &Path, lib: bool) -> Result<(), String> {
     let (filename, content) = if lib {
         (
-            "lib.rdx",
+            "lib.mg",
             r#"/// A sample library function.
 +f greet(name: &s) -> s {
     f"Hello, {name}!"
@@ -85,10 +85,10 @@ fn write_main_file(dir: &Path, lib: bool) -> Result<(), String> {
         )
     } else {
         (
-            "main.rdx",
+            "main.mg",
             r#"/// Entry point.
 +f main() / io {
-    io.println("Hello from Redox!");
+    io.println("Hello from MechGen!");
 }
 "#,
         )
@@ -117,14 +117,14 @@ mod tests {
         new_project(name, false, false).unwrap();
 
         assert!(dir.join("Forge.toml").exists());
-        assert!(dir.join("src/main.rdx").exists());
+        assert!(dir.join("src/main.mg").exists());
         assert!(dir.join(".gitignore").exists());
 
         let forge = fs::read_to_string(dir.join("Forge.toml")).unwrap();
         assert!(forge.contains("[module]"));
         assert!(forge.contains("edition = \"2025\""));
 
-        let main = fs::read_to_string(dir.join("src/main.rdx")).unwrap();
+        let main = fs::read_to_string(dir.join("src/main.mg")).unwrap();
         assert!(main.contains("+f main()"));
 
         fs::remove_dir_all(&dir).unwrap();
@@ -138,8 +138,8 @@ mod tests {
         let name = dir.to_str().unwrap();
         new_project(name, true, false).unwrap();
 
-        assert!(dir.join("src/lib.rdx").exists());
-        let lib = fs::read_to_string(dir.join("src/lib.rdx")).unwrap();
+        assert!(dir.join("src/lib.mg").exists());
+        let lib = fs::read_to_string(dir.join("src/lib.mg")).unwrap();
         assert!(lib.contains("+f greet"));
 
         fs::remove_dir_all(&dir).unwrap();

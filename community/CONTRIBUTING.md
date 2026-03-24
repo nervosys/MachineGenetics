@@ -21,7 +21,7 @@ get involved, from reporting bugs to proposing new language features.
 | Documentation      | Fix typos, improve examples, add cookbook entries |     Yes     |
 | Training data      | Add JSONL samples to `training/samples/`          |     Yes     |
 | Standard library   | Implement stubs in `stdlib/`                      |     Yes     |
-| Transpiler rules   | Add patterns to `rust2rdx` or `rdx2rs`            |   Medium    |
+| Transpiler rules   | Add patterns to `rust2mg` or `mg2rs`            |   Medium    |
 | SKB rules          | Propose new Safety Knowledge Base rules           |   Medium    |
 | Editor support     | Improve VS Code, Neovim, Helix, or Zed configs    |   Medium    |
 | Compiler internals | Work on parsing, lowering, or MLIR pipeline       |  Advanced   |
@@ -48,10 +48,10 @@ git clone https://github.com/nervosys/MechGen.git
 cd MechGen
 
 # Build the transpiler
-cd tools/rust2rdx && cargo build && cargo test && cd ../..
+cd tools/rust2mg && cargo build && cargo test && cd ../..
 
 # Build the reverse transpiler
-cd tools/rdx2rs && cargo build && cargo test && cd ../..
+cd tools/mg2rs && cargo build && cargo test && cd ../..
 
 # Build the CLI
 cd tools/mg && cargo build && cargo test && cd ../..
@@ -83,7 +83,7 @@ When contributing to `training/samples/`:
 
 ## Adding Transpiler Rules
 
-For `tools/rust2rdx/` or `tools/rdx2rs/`:
+For `tools/rust2mg/` or `tools/mg2rs/`:
 
 1. Add the translation rule to the appropriate function in `translate.rs`
 2. Add a test case in the test module

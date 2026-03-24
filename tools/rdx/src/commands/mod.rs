@@ -39,7 +39,7 @@ pub fn test(filter: Option<&str>, verbose: bool) -> Result<(), String> {
     let rdx_files = collect_rdx_files(&src_dir)?;
 
     if rdx_files.is_empty() {
-        println!("No .rdx source files found");
+        println!("No .mg source files found");
         return Ok(());
     }
 

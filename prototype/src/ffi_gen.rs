@@ -1,16 +1,16 @@
 // ── FFI Binding Generator ──────────────────────────────────────────
 //
-// Generates safe Redox wrappers for foreign function interfaces.
+// Generates safe MechGen wrappers for foreign function interfaces.
 //
 // Supported targets:
-//   - C headers  → Redox extern declarations + safe wrappers
+//   - C headers  → MechGen extern declarations + safe wrappers
 //   - Python     → .pyi stub files
 //   - WASM       → .wit component bindings
 //
 // Each target produces:
 //   1. Raw declarations (unsafe extern)
 //   2. Safe wrapper functions with contract annotations
-//   3. Type mappings from foreign types → Redox types
+//   3. Type mappings from foreign types → MechGen types
 
 use std::collections::BTreeMap;
 
@@ -128,7 +128,7 @@ pub enum BindingTarget {
 pub struct FfiGenerator {
     functions: Vec<ForeignFunction>,
     structs: Vec<ForeignStruct>,
-    type_overrides: BTreeMap<String, String>, // foreign name → redox name
+    type_overrides: BTreeMap<String, String>, // foreign name → MechGen name
 }
 
 impl FfiGenerator {
@@ -148,11 +148,11 @@ impl FfiGenerator {
         self.structs.push(s);
     }
 
-    pub fn add_type_override(&mut self, foreign: &str, redox: &str) {
-        self.type_overrides.insert(foreign.into(), redox.into());
+    pub fn add_type_override(&mut self, foreign: &str, MechGen: &str) {
+        self.type_overrides.insert(foreign.into(), MechGen.into());
     }
 
-    /// Generate raw extern declarations (Redox syntax).
+    /// Generate raw extern declarations (MechGen syntax).
     pub fn generate_extern_decls(&self) -> String {
         let mut out = String::new();
         for f in &self.functions {

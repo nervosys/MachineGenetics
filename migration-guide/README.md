@@ -61,7 +61,7 @@ their codebase to MechGen's compact syntax, effect system, and agent primitives.
 
 ## Quick Reference
 
-- **Automated tool:** `mg migrate path/to/rust/project` — runs rust2rdx on all `.rs` files
+- **Automated tool:** `mg migrate path/to/rust/project` — runs rust2mg on all `.rs` files
 - **Dry run:** `mg migrate --dry-run` — preview changes without writing
 - **Partial migration:** MechGen can depend on Rust crates via Forge.toml `[rust-dependencies]`
 - **Escape hatch:** Keep individual `.rs` files and compile them as Rust within the MechGen build

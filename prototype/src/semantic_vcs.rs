@@ -1,6 +1,6 @@
 // ── Semantic VCS ───────────────────────────────────────────────────
 //
-// Operation-log-based version control for Redox programs.
+// Operation-log-based version control for MechGen programs.
 //
 // Instead of text diffs, history is recorded as structured semantic
 // operations (add function, rename field, change contract, etc.).

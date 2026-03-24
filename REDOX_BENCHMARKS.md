@@ -27,7 +27,7 @@ This document validates the quantitative claims made in the Redox language propo
 
 - **Token counting**: Manual and automated comparison of equivalent Rust/Redox programs.
 - **Prototype measurement**: Using the `redox-parse` prototype (prototype/) to verify
-  parsing behavior on example `.rdx` files.
+  parsing behavior on example `.mg` files.
 - **Analytical modeling**: Deriving expected performance from known MLIR/LLVM pipeline
   characteristics and published benchmarks from similar systems.
 - **Statistical projection**: Estimating error rates and iteration counts from observed

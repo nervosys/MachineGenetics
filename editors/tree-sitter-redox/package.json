@@ -1,17 +1,17 @@
 {
-  "name": "tree-sitter-redox",
+  "name": "tree-sitter-MechGen",
   "version": "0.1.0",
-  "description": "Tree-sitter grammar for the Redox programming language.",
+  "description": "Tree-sitter grammar for the MechGen programming language.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nervosys/tree-sitter-redox"
+    "url": "https://github.com/nervosys/tree-sitter-MechGen"
   },
   "license": "MIT",
   "main": "bindings/node",
   "keywords": [
     "tree-sitter",
     "parser",
-    "redox",
+    "MechGen",
     "syntax"
   ],
   "dependencies": {
@@ -27,9 +27,9 @@
   },
   "tree-sitter": [
     {
-      "scope": "source.redox",
+      "scope": "source.MechGen",
       "file-types": ["rdx"],
-      "injection-regex": "^redox$"
+      "injection-regex": "^MechGen$"
     }
   ]
 }

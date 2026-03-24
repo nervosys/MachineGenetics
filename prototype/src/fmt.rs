@@ -1,7 +1,7 @@
-/// Redox Formatter (redoxfmt) — bidirectional pretty-printer.
+/// MechGen Formatter (redoxfmt) — bidirectional pretty-printer.
 ///
 /// Two modes:
-///   `compact`  — emit minimal-token Redox canonical form (sigils: f, +f, S, v, m …)
+///   `compact`  — emit minimal-token MechGen canonical form (sigils: f, +f, S, v, m …)
 ///   `expand`   — emit human-readable Rust-like form (fn, pub fn, struct, let …)
 ///
 /// Both modes round-trip losslessly through the AST: the semantic content is
@@ -10,7 +10,7 @@ use crate::ast::*;
 
 // ── Public API ───────────────────────────────────────────────────────
 
-/// Format a module in compact (minimal-token) Redox syntax.
+/// Format a module in compact (minimal-token) MechGen syntax.
 pub fn format_compact(module: &Module) -> String {
     let mut buf = String::new();
     for (i, item) in module.items.iter().enumerate() {

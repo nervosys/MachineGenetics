@@ -508,24 +508,24 @@ mod tests {
     fn sample_trace() -> RuntimeTrace {
         RuntimeTrace::new(vec![
             make_event(1, TraceEventKind::FunctionEntry { name: "process".to_string() },
-                "main.rdx", 10, "main"),
+                "main.mg", 10, "main"),
             make_event(2, TraceEventKind::Assignment { variable: "x".to_string(), value: "-1".to_string() },
-                "main.rdx", 12, "process"),
+                "main.mg", 12, "process"),
             make_event(3, TraceEventKind::BranchTaken { condition: "x > 0".to_string(), taken: false },
-                "main.rdx", 14, "process"),
+                "main.mg", 14, "process"),
             make_event(4, TraceEventKind::Assignment { variable: "idx".to_string(), value: "0".to_string() },
-                "main.rdx", 16, "process"),
+                "main.mg", 16, "process"),
             make_event(5, TraceEventKind::AssertionFailed { expression: "idx < len".to_string() },
-                "main.rdx", 20, "process"),
+                "main.mg", 20, "process"),
         ])
     }
 
     fn no_failure_trace() -> RuntimeTrace {
         RuntimeTrace::new(vec![
             make_event(1, TraceEventKind::FunctionEntry { name: "ok".to_string() },
-                "ok.rdx", 1, "ok"),
+                "ok.mg", 1, "ok"),
             make_event(2, TraceEventKind::FunctionExit { name: "ok".to_string() },
-                "ok.rdx", 5, "ok"),
+                "ok.mg", 5, "ok"),
         ])
     }
 
@@ -553,8 +553,8 @@ mod tests {
 
     #[test]
     fn source_location_display() {
-        let loc = SourceLocation::new("foo.rdx", 42, "bar");
-        assert_eq!(loc.to_string(), "foo.rdx:42 in bar");
+        let loc = SourceLocation::new("foo.mg", 42, "bar");
+        assert_eq!(loc.to_string(), "foo.mg:42 in bar");
     }
 
     // ── Runtime Trace ────────────────────────────────────────────────────
@@ -666,7 +666,7 @@ mod tests {
     fn candidate_display() {
         let c = RootCauseCandidate {
             event_seq: 2,
-            location: SourceLocation::new("main.rdx", 12, "process"),
+            location: SourceLocation::new("main.mg", 12, "process"),
             description: "x = -1".to_string(),
             score: 0.85,
             causal_chain_length: 3,
@@ -674,7 +674,7 @@ mod tests {
         };
         let s = format!("{c}");
         assert!(s.contains("85%"));
-        assert!(s.contains("main.rdx"));
+        assert!(s.contains("main.mg"));
     }
 
     // ── Debug Report ─────────────────────────────────────────────────────
@@ -718,10 +718,10 @@ mod tests {
     #[test]
     fn graph_lock_contention() {
         let trace = RuntimeTrace::new(vec![
-            make_event(1, TraceEventKind::LockAcquire { lock_id: "m1".to_string() }, "a.rdx", 1, "f"),
-            make_event(2, TraceEventKind::LockRelease { lock_id: "m1".to_string() }, "a.rdx", 2, "f"),
-            make_event(3, TraceEventKind::LockAcquire { lock_id: "m1".to_string() }, "a.rdx", 3, "g"),
-            make_event(4, TraceEventKind::Panic { message: "deadlock".to_string() }, "a.rdx", 4, "g"),
+            make_event(1, TraceEventKind::LockAcquire { lock_id: "m1".to_string() }, "a.mg", 1, "f"),
+            make_event(2, TraceEventKind::LockRelease { lock_id: "m1".to_string() }, "a.mg", 2, "f"),
+            make_event(3, TraceEventKind::LockAcquire { lock_id: "m1".to_string() }, "a.mg", 3, "g"),
+            make_event(4, TraceEventKind::Panic { message: "deadlock".to_string() }, "a.mg", 4, "g"),
         ]);
         let graph = build_causal_graph(&trace);
         let contention = graph.edges.iter().any(|e| e.relation == CausalRelation::ResourceContention);
@@ -733,8 +733,8 @@ mod tests {
     #[test]
     fn graph_memory_flow() {
         let trace = RuntimeTrace::new(vec![
-            make_event(1, TraceEventKind::MemAlloc { size: 64, address: 0x1000 }, "a.rdx", 1, "f"),
-            make_event(2, TraceEventKind::MemFree { address: 0x1000 }, "a.rdx", 2, "f"),
+            make_event(1, TraceEventKind::MemAlloc { size: 64, address: 0x1000 }, "a.mg", 1, "f"),
+            make_event(2, TraceEventKind::MemFree { address: 0x1000 }, "a.mg", 2, "f"),
         ]);
         let graph = build_causal_graph(&trace);
         assert!(graph.edges.iter().any(|e| e.relation == CausalRelation::DataFlow));

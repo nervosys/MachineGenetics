@@ -1,4 +1,4 @@
-// tree-sitter-redox — Tree-sitter grammar for the Redox language.
+// tree-sitter-MechGen — Tree-sitter grammar for the MechGen language.
 //
 // This grammar defines the concrete syntax tree structure used by
 // Neovim, Helix, Zed, and other tree-sitter-aware editors.
@@ -9,7 +9,7 @@
 /// <reference types="tree-sitter-cli/dsl" />
 
 module.exports = grammar({
-  name: 'redox',
+  name: 'MechGen',
 
   extras: $ => [
     /\s/,

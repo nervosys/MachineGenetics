@@ -1,71 +1,71 @@
 {
-  "name": "redox-language",
-  "displayName": "Redox Language",
-  "description": "Syntax highlighting and RAP integration for the Redox programming language",
+  "name": "mechgen-language",
+  "displayName": "MechGen Language",
+  "description": "Syntax highlighting and RAP integration for the MechGen programming language",
   "version": "0.1.0",
   "publisher": "nervosys",
   "license": "MIT OR Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nervosys/Redox.git"
+    "url": "https://github.com/nervosys/MechGen.git"
   },
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": ["Programming Languages"],
-  "activationEvents": ["onLanguage:redox"],
+  "activationEvents": ["onLanguage:mechgen"],
   "main": "./out/extension.js",
   "contributes": {
     "languages": [
       {
-        "id": "redox",
-        "aliases": ["Redox", "rdx"],
-        "extensions": [".rdx"],
+        "id": "mechgen",
+        "aliases": ["MechGen", "mg"],
+        "extensions": [".mg"],
         "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
       {
-        "language": "redox",
-        "scopeName": "source.redox",
-        "path": "./syntaxes/redox.tmLanguage.json"
+        "language": "mechgen",
+        "scopeName": "source.mechgen",
+        "path": "./syntaxes/mechgen.tmLanguage.json"
       }
     ],
     "commands": [
       {
-        "command": "redox.startRap",
-        "title": "Redox: Start RAP Server"
+        "command": "mechgen.startRap",
+        "title": "MechGen: Start RAP Server"
       },
       {
-        "command": "redox.stopRap",
-        "title": "Redox: Stop RAP Server"
+        "command": "mechgen.stopRap",
+        "title": "MechGen: Stop RAP Server"
       },
       {
-        "command": "redox.convertToRedox",
-        "title": "Convert to Redox (.rdx)"
+        "command": "mechgen.convertToMechGen",
+        "title": "Convert to MechGen (.mg)"
       }
     ],
     "menus": {
       "explorer/context": [
         {
           "when": "resourceExtname == .rs",
-          "command": "redox.convertToRedox",
-          "group": "redox"
+          "command": "mechgen.convertToMechGen",
+          "group": "mechgen"
         }
       ]
     },
     "configuration": {
-      "title": "Redox",
+      "title": "MechGen",
       "properties": {
-        "redox.rapAddress": {
+        "mechgen.rapAddress": {
           "type": "string",
           "default": "127.0.0.1:9876",
-          "description": "Address of the RAP (Redox Agent Protocol) server"
+          "description": "Address of the RAP (MechGen Agent Protocol) server"
         },
-        "redox.rapAutoStart": {
+        "mechgen.rapAutoStart": {
           "type": "boolean",
           "default": false,
-          "description": "Automatically start the RAP server when opening .rdx files"
+          "description": "Automatically start the RAP server when opening .mg files"
         }
       }
     }

@@ -23,7 +23,7 @@ _Redox Language — Package Registry, Migration Tooling, IDE Integration, Agent 
 
 The Redox package registry (**Forge**) serves as the central repository for Redox
 packages (called **crates** for Rust compatibility, **modules** in Redox terminology).
-Forge supports dual-format packages: native Redox (`.rdx`) and transpiled Rust (`.rs`).
+Forge supports dual-format packages: native Redox (`.mg`) and transpiled Rust (`.rs`).
 
 ### 1.2 Registry Data Model
 
@@ -32,7 +32,7 @@ Module
 ├── name: String                     # e.g., "http-client"
 ├── version: SemVer                  # e.g., 1.3.0
 ├── source: ModuleSource
-│   ├── rdx_files: [File]            # Native .rdx source
+│   ├── rdx_files: [File]            # Native .mg source
 │   ├── rs_files: [File]             # Optional Rust compatibility source
 │   └── mlir_cache: ?[MlirArtifact]  # Pre-lowered MLIR artifacts
 ├── metadata: ModuleMetadata
@@ -72,7 +72,7 @@ Forge maintains a compatibility layer with crates.io:
 
 | Feature                   | Mechanism                                                             |
 | ------------------------- | --------------------------------------------------------------------- |
-| **Import Rust crates**    | Auto-transpile on first use via `rust2rdx`                            |
+| **Import Rust crates**    | Auto-transpile on first use via `rust2mg`                            |
 | **Publish to both**       | `forge publish --also-crates-io` generates `.rs` wrapper              |
 | **Dependency resolution** | Unified resolver handles Rust + Redox deps                            |
 | **Version mapping**       | Redox `u http.Client` resolves to crates.io `reqwest` via alias table |
@@ -102,7 +102,7 @@ SKB rule changes.
 
 ## 2. Migration Tooling
 
-### 2.1 `rust2rdx` — Rust-to-Redox Transpiler
+### 2.1 `rust2mg` — Rust-to-Redox Transpiler
 
 Automated source-level translation from Rust to Redox.
 
@@ -116,7 +116,7 @@ Rust source (.rs)
     ├─ (3) Generate SKB rules from explicit annotations
     ├─ (4) Syntax transform: Rust → Redox canonical syntax
     ├─ (5) Verify: parse output with Redox parser
-    └─ (6) Emit .rdx files + module definition
+    └─ (6) Emit .mg files + module definition
 ```
 
 #### 2.1.2 Translation Rules
@@ -154,7 +154,7 @@ Rust source (.rs)
 #### 2.1.3 CLI Interface
 
 ```
-rust2rdx [OPTIONS] <INPUT>
+rust2mg [OPTIONS] <INPUT>
 
 Arguments:
   <INPUT>            Rust source file or directory
@@ -170,7 +170,7 @@ Options:
   --stats            Print token count comparison
 ```
 
-### 2.2 `rdx2rs` — Redox-to-Rust Back-Transpiler
+### 2.2 `mg2rs` — Redox-to-Rust Back-Transpiler
 
 For interoperability, Redox code can be transpiled back to Rust:
 
@@ -189,14 +189,14 @@ For interoperability, Redox code can be transpiled back to Rust:
 
 ```
 Phase 1: Analyze
-  $ rust2rdx --stats my_crate/
+  $ rust2mg --stats my_crate/
   → Report: 5,000 LOC Rust → ~2,350 LOC Redox (53% reduction)
   → 142 lifetime annotations → 0
   → 23 unsafe blocks → 0 (12 become capabilities, 11 become SKB rules)
 
 Phase 2: Translate
-  $ rust2rdx --crate my_crate/ -o my_crate_rdx/
-  → Generated 45 .rdx files
+  $ rust2mg --crate my_crate/ -o my_crate_rdx/
+  → Generated 45 .mg files
   → Generated 23 SKB rules
   → 100% parse validation passed
 
@@ -585,7 +585,7 @@ Commands:
   publish             Publish to Forge registry
   install             Install a binary from Forge
   update              Update dependencies
-  migrate             Run rust2rdx on a Rust project
+  migrate             Run rust2mg on a Rust project
   rap                 Start RAP language server
   swarm               Manage agent swarms
   skb                 Query/manage Safety Knowledge Base
@@ -715,8 +715,8 @@ Sorts a vector in place using an adaptive merge sort.
     ┌──────────┬───────────┼───────────┬──────────┐
     │          │           │           │          │
 ┌───┴───┐ ┌───┴───┐ ┌─────┴─────┐ ┌──┴───┐ ┌───┴───┐
-│ VS    │ │ Neovim│ │ rust2rdx  │ │ RAP  │ │ Swarm │
-│ Code  │ │ Helix │ │ rdx2rs    │ │Server│ │ CLI   │
+│ VS    │ │ Neovim│ │ rust2mg  │ │ RAP  │ │ Swarm │
+│ Code  │ │ Helix │ │ mg2rs    │ │Server│ │ CLI   │
 │Plugin │ │ Conf  │ │ Migration │ │      │ │       │
 └───────┘ └───────┘ └───────────┘ └──────┘ └───────┘
     │          │           │           │          │

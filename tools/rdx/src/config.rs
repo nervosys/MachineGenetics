@@ -3,7 +3,7 @@
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
-/// Redox project configuration — parsed from `Forge.toml`.
+/// MechGen project configuration — parsed from `Forge.toml`.
 #[derive(Debug, Deserialize)]
 pub struct ForgeConfig {
     pub module: ModuleConfig,

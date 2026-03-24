@@ -458,14 +458,14 @@ mod tests {
 
     fn sample_profile() -> ProgramProfile {
         ProgramProfile::new(vec![
-            ProfileEntry::new("matmul", "compute.rdx", 10, 50_000.0)
+            ProfileEntry::new("matmul", "compute.mg", 10, 50_000.0)
                 .with_calls(1)
                 .with_alloc(2_000_000)
                 .with_cache_misses(50_000)
                 .with_flops(1_000_000_000),
-            ProfileEntry::new("sort", "util.rdx", 50, 10_000.0).with_calls(100).with_alloc(500_000),
-            ProfileEntry::new("parse", "io.rdx", 5, 5_000.0).with_calls(50_000),
-            ProfileEntry::new("tiny", "misc.rdx", 1, 10.0).with_calls(1),
+            ProfileEntry::new("sort", "util.mg", 50, 10_000.0).with_calls(100).with_alloc(500_000),
+            ProfileEntry::new("parse", "io.mg", 5, 5_000.0).with_calls(50_000),
+            ProfileEntry::new("tiny", "misc.mg", 1, 10.0).with_calls(1),
         ])
     }
 
@@ -508,19 +508,19 @@ mod tests {
 
     #[test]
     fn avg_time_per_call() {
-        let entry = ProfileEntry::new("f", "a.rdx", 1, 1000.0).with_calls(10);
+        let entry = ProfileEntry::new("f", "a.mg", 1, 1000.0).with_calls(10);
         assert!((entry.avg_time_us() - 100.0).abs() < 0.01);
     }
 
     #[test]
     fn arithmetic_intensity_some() {
-        let entry = ProfileEntry::new("f", "a.rdx", 1, 100.0).with_alloc(1000).with_flops(10_000);
+        let entry = ProfileEntry::new("f", "a.mg", 1, 100.0).with_alloc(1000).with_flops(10_000);
         assert!((entry.arithmetic_intensity().unwrap() - 10.0).abs() < 0.01);
     }
 
     #[test]
     fn arithmetic_intensity_none() {
-        let entry = ProfileEntry::new("f", "a.rdx", 1, 100.0);
+        let entry = ProfileEntry::new("f", "a.mg", 1, 100.0);
         assert!(entry.arithmetic_intensity().is_none());
     }
 
@@ -645,7 +645,7 @@ mod tests {
         let s = PerfSuggestion {
             kind: SuggestionKind::Vectorize,
             region_name: "x".to_string(),
-            file: "x.rdx".to_string(),
+            file: "x.mg".to_string(),
             line: 1,
             message: String::new(),
             annotation: String::new(),
@@ -661,7 +661,7 @@ mod tests {
         let s = PerfSuggestion {
             kind: SuggestionKind::Tile,
             region_name: "matmul".to_string(),
-            file: "compute.rdx".to_string(),
+            file: "compute.mg".to_string(),
             line: 10,
             message: "high cache misses".to_string(),
             annotation: "#[perf::tile(32)]".to_string(),

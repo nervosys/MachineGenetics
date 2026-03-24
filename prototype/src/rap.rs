@@ -1,4 +1,4 @@
-/// RAP (Redox Agent Protocol) — JSON-RPC over TCP server skeleton.
+/// RAP (MechGen Agent Protocol) — JSON-RPC over TCP server skeleton.
 ///
 /// Provides language services for AI agents:
 ///   language/parse    — parse source to AST (JSON)
@@ -325,7 +325,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         }
 
         "format/compact" => {
-            // Return the compact (Redox canonical) form of source.
+            // Return the compact (MechGen canonical) form of source.
             let tokens = lexer::lex(source);
             match parser::parse(&tokens) {
                 Ok(module) => {
@@ -481,7 +481,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         }
 
         "attribute/compress" => {
-            // Compress a Rust attribute to Redox shorthand.
+            // Compress a Rust attribute to MechGen shorthand.
             let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
             match elision::compress_attribute_name(name) {
                 Some(compressed) => serde_json::json!({

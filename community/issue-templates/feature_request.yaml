@@ -1,5 +1,5 @@
 name: Feature Request
-description: Suggest a new feature or enhancement for Redox
+description: Suggest a new feature or enhancement for MechGen
 title: "[Feature]: "
 labels: ["enhancement", "triage"]
 body:
@@ -20,7 +20,7 @@ body:
         - SKB (Safety Knowledge Base)
         - Standard Library
         - Compiler / Parser
-        - Transpiler (rust2rdx / rdx2rs)
+        - Transpiler (rust2mg / mg2rs)
         - Build System (rdx CLI / Forge.toml)
         - Editor / IDE Support
         - Agent Training / ACI
@@ -42,10 +42,10 @@ body:
     id: solution
     attributes:
       label: Proposed Solution
-      description: How would this feature work? Show example Redox code if applicable.
+      description: How would this feature work? Show example MechGen code if applicable.
       value: |
         **Example usage:**
-        ```redox
+        ```MechGen
         // show how the feature would be used
         ```
     validations:

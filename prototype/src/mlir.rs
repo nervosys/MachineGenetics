@@ -1,6 +1,6 @@
-/// MLIR dialect output for the Redox compiler.
+/// MLIR dialect output for the MechGen compiler.
 ///
-/// Generates textual MLIR in the `redox` dialect from a type-checked,
+/// Generates textual MLIR in the `MechGen` dialect from a type-checked,
 /// effect-annotated AST.  This is the final stage of the prototype
 /// pipeline:  Lex → Parse → Resolve → TypeCheck → EffectInfer → MLIR.
 use crate::ast;
@@ -14,8 +14,8 @@ pub fn emit(module: &ast::Module, effects: &EffectInfer) -> String {
         EmitCtx { buf: String::with_capacity(4096), indent: 0, ssa: 0, effects: &effects.inferred };
 
     ctx.line("// ──────────────────────────────────────────────────────────────");
-    ctx.line("// Auto-generated Redox MLIR  ·  dialect: redox");
-    ctx.line("// https://github.com/nervosys/Redox");
+    ctx.line("// Auto-generated MechGen MLIR  ·  dialect: MechGen");
+    ctx.line("// https://github.com/nervosys/MechGen");
     ctx.line("// ──────────────────────────────────────────────────────────────");
     ctx.line("");
     ctx.line("module {");
@@ -70,7 +70,7 @@ impl<'a> EmitCtx<'a> {
             }
             ast::ItemKind::Const(c) => {
                 let ty = self.mlir_type(&c.ty);
-                self.line(&format!("redox.const @{} : {ty}", c.name));
+                self.line(&format!("MechGen.const @{} : {ty}", c.name));
             }
             ast::ItemKind::Module(m) => {
                 self.line(&format!("// module {}", m.name));
@@ -82,7 +82,7 @@ impl<'a> EmitCtx<'a> {
             ast::ItemKind::Spec(sp) => self.emit_spec(sp),
             ast::ItemKind::Static(sd) => {
                 let ty = self.mlir_type(&sd.ty);
-                self.line(&format!("redox.static @{} : {ty}", sd.name));
+                self.line(&format!("MechGen.static @{} : {ty}", sd.name));
             }
             ast::ItemKind::Agent(ad) => self.emit_agent(ad),
         }
@@ -110,7 +110,7 @@ impl<'a> EmitCtx<'a> {
             .return_type
             .as_ref()
             .map(|t| self.mlir_type(t))
-            .unwrap_or_else(|| "!redox.unit".into());
+            .unwrap_or_else(|| "!MechGen.unit".into());
 
         // Effect set attribute.
         let fx = self.effects.get(name).cloned().unwrap_or_default();
@@ -122,7 +122,7 @@ impl<'a> EmitCtx<'a> {
         };
 
         self.line(&format!(
-            "redox.func {vis_prefix}@{name}({}) -> {ret_ty}{fx_attr} {{",
+            "MechGen.func {vis_prefix}@{name}({}) -> {ret_ty}{fx_attr} {{",
             params.join(", ")
         ));
 
@@ -138,7 +138,7 @@ impl<'a> EmitCtx<'a> {
                 ast::ContractClauseKind::Ensures => "ensures",
                 ast::ContractClauseKind::Invariant => "invariant",
             };
-            self.line(&format!("redox.contract.{kind} \"{}\"", contract.condition));
+            self.line(&format!("MechGen.contract.{kind} \"{}\"", contract.condition));
         }
 
         // Emit performance annotations from custom effects with "perf:" prefix.
@@ -146,7 +146,7 @@ impl<'a> EmitCtx<'a> {
             for e in fx.iter() {
                 let label = e.to_string();
                 if label.starts_with("perf:") {
-                    self.line(&format!("redox.perf \"{}\"", &label[5..]));
+                    self.line(&format!("MechGen.perf \"{}\"", &label[5..]));
                 }
             }
         }
@@ -154,7 +154,7 @@ impl<'a> EmitCtx<'a> {
         self.emit_block(&f.body);
 
         let ret_val = self.fresh();
-        self.line(&format!("redox.return {ret_val} : {ret_ty}"));
+        self.line(&format!("MechGen.return {ret_val} : {ret_ty}"));
 
         self.indent -= 1;
         self.indent -= 1;
@@ -163,11 +163,11 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_struct(&mut self, s: &ast::StructDef) {
-        self.line(&format!("redox.struct @{} {{", s.name));
+        self.line(&format!("MechGen.struct @{} {{", s.name));
         self.indent += 1;
         for field in &s.fields {
             let ty = self.mlir_type(&field.ty);
-            self.line(&format!("redox.field \"{}\" : {ty}", field.name));
+            self.line(&format!("MechGen.field \"{}\" : {ty}", field.name));
         }
         for c in &s.contracts {
             let kind = match c.kind {
@@ -175,7 +175,7 @@ impl<'a> EmitCtx<'a> {
                 ast::ContractClauseKind::Requires => "requires",
                 ast::ContractClauseKind::Ensures => "ensures",
             };
-            self.line(&format!("redox.contract.{kind} \"{}\"", c.condition));
+            self.line(&format!("MechGen.contract.{kind} \"{}\"", c.condition));
         }
         self.indent -= 1;
         self.line("}");
@@ -183,16 +183,16 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_enum(&mut self, e: &ast::EnumDef) {
-        self.line(&format!("redox.enum @{} {{", e.name));
+        self.line(&format!("MechGen.enum @{} {{", e.name));
         self.indent += 1;
         for variant in &e.variants {
             match &variant.kind {
                 ast::VariantKind::Unit => {
-                    self.line(&format!("redox.variant \"{}\"", variant.name));
+                    self.line(&format!("MechGen.variant \"{}\"", variant.name));
                 }
                 ast::VariantKind::Tuple(types) => {
                     let tys: Vec<String> = types.iter().map(|t| self.mlir_type(t)).collect();
-                    self.line(&format!("redox.variant \"{}\"({})", variant.name, tys.join(", ")));
+                    self.line(&format!("MechGen.variant \"{}\"({})", variant.name, tys.join(", ")));
                 }
                 ast::VariantKind::Struct(fields) => {
                     let fs: Vec<String> = fields
@@ -203,7 +203,7 @@ impl<'a> EmitCtx<'a> {
                         })
                         .collect();
                     self.line(&format!(
-                        "redox.variant \"{}\" {{ {} }}",
+                        "MechGen.variant \"{}\" {{ {} }}",
                         variant.name,
                         fs.join(", ")
                     ));
@@ -221,7 +221,7 @@ impl<'a> EmitCtx<'a> {
         } else {
             format!(" : {}", t.super_traits.join(" + "))
         };
-        self.line(&format!("redox.trait @{}{supers} {{", t.name));
+        self.line(&format!("MechGen.trait @{}{supers} {{", t.name));
         self.indent += 1;
         for item in &t.items {
             if let ast::ItemKind::Function(f) = &item.kind {
@@ -229,10 +229,10 @@ impl<'a> EmitCtx<'a> {
                     .return_type
                     .as_ref()
                     .map(|t| self.mlir_type(t))
-                    .unwrap_or_else(|| "!redox.unit".into());
+                    .unwrap_or_else(|| "!MechGen.unit".into());
                 let params: Vec<String> = f.params.iter().map(|p| self.mlir_type(&p.ty)).collect();
                 self.line(&format!(
-                    "redox.method_decl \"{}\"({}) -> {ret}",
+                    "MechGen.method_decl \"{}\"({}) -> {ret}",
                     f.name,
                     params.join(", ")
                 ));
@@ -249,7 +249,7 @@ impl<'a> EmitCtx<'a> {
             Some(path) => format!(" : @{}", path.join(".")),
             None => " (inherent)".into(),
         };
-        self.line(&format!("redox.impl {target}{trait_part} {{"));
+        self.line(&format!("MechGen.impl {target}{trait_part} {{"));
         self.indent += 1;
         for item in &i.items {
             if let ast::ItemKind::Function(f) = &item.kind {
@@ -262,16 +262,16 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_effect_decl(&mut self, ef: &ast::EffectDef) {
-        self.line(&format!("redox.effect @{} {{", ef.name));
+        self.line(&format!("MechGen.effect @{} {{", ef.name));
         self.indent += 1;
         for op in &ef.operations {
             let ret = op
                 .return_type
                 .as_ref()
                 .map(|t| self.mlir_type(t))
-                .unwrap_or_else(|| "!redox.unit".into());
+                .unwrap_or_else(|| "!MechGen.unit".into());
             let params: Vec<String> = op.params.iter().map(|p| self.mlir_type(&p.ty)).collect();
-            self.line(&format!("redox.op \"{}\"({}) -> {ret}", op.name, params.join(", ")));
+            self.line(&format!("MechGen.op \"{}\"({}) -> {ret}", op.name, params.join(", ")));
         }
         self.indent -= 1;
         self.line("}");
@@ -279,25 +279,25 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_spec(&mut self, sp: &ast::SpecDef) {
-        self.line(&format!("redox.spec @{} {{", sp.name));
+        self.line(&format!("MechGen.spec @{} {{", sp.name));
         self.indent += 1;
         for item in &sp.items {
             match item {
                 ast::SpecItem::Require(cond) => {
-                    self.line(&format!("redox.contract.requires \"{cond}\""));
+                    self.line(&format!("MechGen.contract.requires \"{cond}\""));
                 }
                 ast::SpecItem::Ensure(cond) => {
-                    self.line(&format!("redox.contract.ensures \"{cond}\""));
+                    self.line(&format!("MechGen.contract.ensures \"{cond}\""));
                 }
                 ast::SpecItem::Invariant(cond) => {
-                    self.line(&format!("redox.contract.invariant \"{cond}\""));
+                    self.line(&format!("MechGen.contract.invariant \"{cond}\""));
                 }
                 ast::SpecItem::Performance(metric, bound) => {
-                    self.line(&format!("redox.perf \"{metric}\" bound=\"{bound}\""));
+                    self.line(&format!("MechGen.perf \"{metric}\" bound=\"{bound}\""));
                 }
                 ast::SpecItem::Effect(effects) => {
                     let fx: Vec<String> = effects.iter().map(|e| format!("\"{e}\"")).collect();
-                    self.line(&format!("redox.effect.set [{}]", fx.join(", ")));
+                    self.line(&format!("MechGen.effect.set [{}]", fx.join(", ")));
                 }
             }
         }
@@ -307,13 +307,13 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_agent(&mut self, ad: &ast::AgentDef) {
-        self.line(&format!("redox.agent @{} {{", ad.name));
+        self.line(&format!("MechGen.agent @{} {{", ad.name));
         self.indent += 1;
         for cap in &ad.capabilities {
-            self.line(&format!("redox.capability \"{cap}\""));
+            self.line(&format!("MechGen.capability \"{cap}\""));
         }
         for approval in &ad.requires_approval {
-            self.line(&format!("redox.requires_approval \"{approval}\""));
+            self.line(&format!("MechGen.requires_approval \"{approval}\""));
         }
         self.indent -= 1;
         self.line("}");
@@ -328,25 +328,25 @@ impl<'a> EmitCtx<'a> {
             ast::Expr::Unary { op, .. } if op == "*" => {
                 let v = self.fresh();
                 let out = self.fresh();
-                self.line(&format!("{out} = redox.ownership.deref {v}"));
+                self.line(&format!("{out} = MechGen.ownership.deref {v}"));
                 out
             }
             ast::Expr::Unary { op, .. } if op == "&" => {
                 let v = self.fresh();
                 let out = self.fresh();
-                self.line(&format!("{out} = redox.ownership.borrow {v}"));
+                self.line(&format!("{out} = MechGen.ownership.borrow {v}"));
                 out
             }
             ast::Expr::Unary { op, .. } if op == "&mut" => {
                 let v = self.fresh();
                 let out = self.fresh();
-                self.line(&format!("{out} = redox.ownership.borrow_mut {v}"));
+                self.line(&format!("{out} = MechGen.ownership.borrow_mut {v}"));
                 out
             }
             _ => {
                 // For non-ownership expressions, emit a move (default ownership transfer).
                 let v = self.fresh();
-                format!("redox.ownership.move {v}")
+                format!("MechGen.ownership.move {v}")
             }
         }
     }
@@ -371,12 +371,12 @@ impl<'a> EmitCtx<'a> {
                 let mlir_ty = ty
                     .as_ref()
                     .map(|t| self.mlir_type(t))
-                    .unwrap_or_else(|| "!redox.inferred".into());
+                    .unwrap_or_else(|| "!MechGen.inferred".into());
                 let pat_name = self.pattern_name(pattern);
                 let mut_key = if *mutable { "var" } else { "let" };
                 let val_str = self.expr_summary(&value);
                 self.line(&format!(
-                    "{ssa} = redox.{mut_key} \"{pat_name}\" : {mlir_ty} = {val_str}"
+                    "{ssa} = MechGen.{mut_key} \"{pat_name}\" : {mlir_ty} = {val_str}"
                 ));
             }
             ast::Stmt::Expr { expr } => {
@@ -411,108 +411,108 @@ impl<'a> EmitCtx<'a> {
                     ast::LiteralKind::Int => "i64",
                     ast::LiteralKind::Float => "f64",
                     ast::LiteralKind::Bool => "i1",
-                    ast::LiteralKind::String => "!redox.str",
-                    ast::LiteralKind::FormatString => "!redox.fstr",
-                    ast::LiteralKind::Char => "!redox.char",
+                    ast::LiteralKind::String => "!MechGen.str",
+                    ast::LiteralKind::FormatString => "!MechGen.fstr",
+                    ast::LiteralKind::Char => "!MechGen.char",
                     ast::LiteralKind::Byte => "i8",
                 };
-                format!("redox.const \"{value}\" : {ty}")
+                format!("MechGen.const \"{value}\" : {ty}")
             }
-            ast::Expr::Ident { name } => format!("redox.ref @{name}"),
+            ast::Expr::Ident { name } => format!("MechGen.ref @{name}"),
             ast::Expr::Binary { op, .. } => {
                 let l = self.fresh();
                 let r = self.fresh();
-                format!("redox.binop \"{op}\" {l}, {r}")
+                format!("MechGen.binop \"{op}\" {l}, {r}")
             }
             ast::Expr::Unary { op, .. } => {
                 let v = self.fresh();
-                format!("redox.unaryop \"{op}\" {v}")
+                format!("MechGen.unaryop \"{op}\" {v}")
             }
             ast::Expr::Call { func, args } => {
                 let f = self.expr_summary(func);
-                format!("redox.call {f}({} args)", args.len())
+                format!("MechGen.call {f}({} args)", args.len())
             }
             ast::Expr::MethodCall { receiver: _, method, args, .. } => {
                 let obj = self.fresh();
-                format!("redox.method {obj}.{method}({} args)", args.len())
+                format!("MechGen.method {obj}.{method}({} args)", args.len())
             }
             ast::Expr::FieldAccess { object: _, field } => {
                 let obj = self.fresh();
-                format!("redox.field {obj}.{field}")
+                format!("MechGen.field {obj}.{field}")
             }
             ast::Expr::Index { .. } => {
                 let obj = self.fresh();
                 let idx = self.fresh();
-                format!("redox.index {obj}[{idx}]")
+                format!("MechGen.index {obj}[{idx}]")
             }
             ast::Expr::StructLit { path, fields } => {
                 let name = path.join(".");
-                format!("redox.struct_lit @{name}({} fields)", fields.len())
+                format!("MechGen.struct_lit @{name}({} fields)", fields.len())
             }
             ast::Expr::TupleLit { elements } => {
-                format!("redox.tuple({} elems)", elements.len())
+                format!("MechGen.tuple({} elems)", elements.len())
             }
             ast::Expr::ArrayLit { elements } => {
-                format!("redox.array({} elems)", elements.len())
+                format!("MechGen.array({} elems)", elements.len())
             }
             ast::Expr::ArrayRepeat { .. } => {
-                format!("redox.array_repeat")
+                format!("MechGen.array_repeat")
             }
             ast::Expr::Closure { params, .. } => {
-                format!("redox.closure({} params)", params.len())
+                format!("MechGen.closure({} params)", params.len())
             }
             ast::Expr::If { .. } => {
                 let cond = self.fresh();
-                format!("redox.if {cond} then(...) else(...)")
+                format!("MechGen.if {cond} then(...) else(...)")
             }
             ast::Expr::Match { arms, .. } => {
-                format!("redox.match({} arms)", arms.len())
+                format!("MechGen.match({} arms)", arms.len())
             }
-            ast::Expr::Loop { .. } => format!("redox.loop {{ ... }}"),
-            ast::Expr::While { .. } => format!("redox.while {{ ... }}"),
-            ast::Expr::For { .. } => format!("redox.for {{ ... }}"),
+            ast::Expr::Loop { .. } => format!("MechGen.loop {{ ... }}"),
+            ast::Expr::While { .. } => format!("MechGen.while {{ ... }}"),
+            ast::Expr::For { .. } => format!("MechGen.for {{ ... }}"),
             ast::Expr::Block { block } => {
-                format!("redox.block({} stmts)", block.stmts.len())
+                format!("MechGen.block({} stmts)", block.stmts.len())
             }
             ast::Expr::Return { value } => {
                 if value.is_some() {
                     let v = self.fresh();
-                    format!("redox.return {v}")
+                    format!("MechGen.return {v}")
                 } else {
-                    format!("redox.return void")
+                    format!("MechGen.return void")
                 }
             }
-            ast::Expr::Break { .. } => format!("redox.break"),
-            ast::Expr::Continue => format!("redox.continue"),
+            ast::Expr::Break { .. } => format!("MechGen.break"),
+            ast::Expr::Continue => format!("MechGen.continue"),
             ast::Expr::Try { .. } => {
                 let v = self.fresh();
-                format!("redox.try {v}")
+                format!("MechGen.try {v}")
             }
             ast::Expr::Await { .. } => {
                 let v = self.fresh();
-                format!("redox.await {v}")
+                format!("MechGen.await {v}")
             }
             ast::Expr::Cast { expr: _, ty } => {
                 let v = self.fresh();
                 let target = self.mlir_type(ty);
-                format!("redox.cast {v} -> {target}")
+                format!("MechGen.cast {v} -> {target}")
             }
             ast::Expr::Assign { .. } => {
                 let t = self.fresh();
                 let v = self.fresh();
-                format!("redox.assign {t} = {v}")
+                format!("MechGen.assign {t} = {v}")
             }
             ast::Expr::Range { inclusive, .. } => {
                 let lo = self.fresh();
                 let hi = self.fresh();
-                format!("redox.range {lo}..{hi} (inclusive={inclusive})")
+                format!("MechGen.range {lo}..{hi} (inclusive={inclusive})")
             }
-            ast::Expr::Todo => format!("redox.todo"),
-            ast::Expr::Unimplemented => format!("redox.unimplemented"),
+            ast::Expr::Todo => format!("MechGen.todo"),
+            ast::Expr::Unimplemented => format!("MechGen.unimplemented"),
             ast::Expr::UnsafeBlock { block } => {
-                format!("redox.unsafe({} stmts)", block.stmts.len())
+                format!("MechGen.unsafe({} stmts)", block.stmts.len())
             }
-            ast::Expr::Error { message } => format!("redox.error \"{message}\""),
+            ast::Expr::Error { message } => format!("MechGen.error \"{message}\""),
         }
     }
 
@@ -528,66 +528,66 @@ impl<'a> EmitCtx<'a> {
                     "i32" => "i32".into(),
                     "i64" => "i64".into(),
                     "i128" => "i128".into(),
-                    "u8" => "!redox.u8".into(),
-                    "u16" => "!redox.u16".into(),
-                    "u32" => "!redox.u32".into(),
-                    "u64" => "!redox.u64".into(),
-                    "u128" => "!redox.u128".into(),
+                    "u8" => "!MechGen.u8".into(),
+                    "u16" => "!MechGen.u16".into(),
+                    "u32" => "!MechGen.u32".into(),
+                    "u64" => "!MechGen.u64".into(),
+                    "u128" => "!MechGen.u128".into(),
                     "f32" => "f32".into(),
                     "f64" => "f64".into(),
                     "bool" => "i1".into(),
-                    "s" | "str" => "!redox.str".into(),
-                    "char" => "!redox.char".into(),
-                    other => format!("!redox.named<\"{other}\">"),
+                    "s" | "str" => "!MechGen.str".into(),
+                    "char" => "!MechGen.char".into(),
+                    other => format!("!MechGen.named<\"{other}\">"),
                 };
                 if type_args.is_empty() {
                     base
                 } else {
                     let args: Vec<String> = type_args.iter().map(|t| self.mlir_type(t)).collect();
-                    format!("!redox.generic<\"{name}\", {}>", args.join(", "))
+                    format!("!MechGen.generic<\"{name}\", {}>", args.join(", "))
                 }
             }
             ast::Type::Reference { mutable, inner } => {
                 let inner_ty = self.mlir_type(inner);
                 if *mutable {
-                    format!("!redox.ref_mut<{inner_ty}>")
+                    format!("!MechGen.ref_mut<{inner_ty}>")
                 } else {
-                    format!("!redox.ref<{inner_ty}>")
+                    format!("!MechGen.ref<{inner_ty}>")
                 }
             }
             ast::Type::OwnedPtr { inner } => {
-                format!("!redox.owned<{}>", self.mlir_type(inner))
+                format!("!MechGen.owned<{}>", self.mlir_type(inner))
             }
             ast::Type::Rc { inner } => {
-                format!("!redox.rc<{}>", self.mlir_type(inner))
+                format!("!MechGen.rc<{}>", self.mlir_type(inner))
             }
             ast::Type::Arc { inner } => {
-                format!("!redox.arc<{}>", self.mlir_type(inner))
+                format!("!MechGen.arc<{}>", self.mlir_type(inner))
             }
             ast::Type::Slice { inner } => {
-                format!("!redox.slice<{}>", self.mlir_type(inner))
+                format!("!MechGen.slice<{}>", self.mlir_type(inner))
             }
             ast::Type::Array { inner, .. } => {
-                format!("!redox.array<{}>", self.mlir_type(inner))
+                format!("!MechGen.array<{}>", self.mlir_type(inner))
             }
             ast::Type::Vec { inner } => {
-                format!("!redox.vec<{}>", self.mlir_type(inner))
+                format!("!MechGen.vec<{}>", self.mlir_type(inner))
             }
             ast::Type::Tuple { elements } => {
                 let parts: Vec<String> = elements.iter().map(|t| self.mlir_type(t)).collect();
-                format!("!redox.tuple<{}>", parts.join(", "))
+                format!("!MechGen.tuple<{}>", parts.join(", "))
             }
             ast::Type::Option { inner } => {
-                format!("!redox.option<{}>", self.mlir_type(inner))
+                format!("!MechGen.option<{}>", self.mlir_type(inner))
             }
             ast::Type::Result { ok, err } => {
-                format!("!redox.result<{}, {}>", self.mlir_type(ok), self.mlir_type(err))
+                format!("!MechGen.result<{}, {}>", self.mlir_type(ok), self.mlir_type(err))
             }
             ast::Type::Map { key, value } => {
-                format!("!redox.map<{}, {}>", self.mlir_type(key), self.mlir_type(value))
+                format!("!MechGen.map<{}, {}>", self.mlir_type(key), self.mlir_type(value))
             }
             ast::Type::Ptr { inner } => {
-                format!("!redox.raw_ptr<{}>", self.mlir_type(inner))
+                format!("!MechGen.raw_ptr<{}>", self.mlir_type(inner))
             }
             ast::Type::Simd { inner, width } => {
                 format!("vector<{width}x{}>", self.mlir_type(inner))
@@ -595,30 +595,30 @@ impl<'a> EmitCtx<'a> {
             ast::Type::Fn { params, ret } => {
                 let ps: Vec<String> = params.iter().map(|t| self.mlir_type(t)).collect();
                 let r =
-                    ret.as_ref().map(|t| self.mlir_type(t)).unwrap_or_else(|| "!redox.unit".into());
+                    ret.as_ref().map(|t| self.mlir_type(t)).unwrap_or_else(|| "!MechGen.unit".into());
                 format!("({}) -> {r}", ps.join(", "))
             }
-            ast::Type::Never => "!redox.never".into(),
-            ast::Type::Inferred => "!redox.inferred".into(),
-            ast::Type::SelfType => "!redox.self".into(),
-            ast::Type::StringType => "!redox.str".into(),
+            ast::Type::Never => "!MechGen.never".into(),
+            ast::Type::Inferred => "!MechGen.inferred".into(),
+            ast::Type::SelfType => "!MechGen.self".into(),
+            ast::Type::StringType => "!MechGen.str".into(),
             ast::Type::Cow { inner } => {
-                format!("!redox.cow<{}>", self.mlir_type(inner))
+                format!("!MechGen.cow<{}>", self.mlir_type(inner))
             }
             ast::Type::Cell { inner } => {
-                format!("!redox.cell<{}>", self.mlir_type(inner))
+                format!("!MechGen.cell<{}>", self.mlir_type(inner))
             }
             ast::Type::RefCell { inner } => {
-                format!("!redox.refcell<{}>", self.mlir_type(inner))
+                format!("!MechGen.refcell<{}>", self.mlir_type(inner))
             }
             ast::Type::Mutex { inner } => {
-                format!("!redox.mutex<{}>", self.mlir_type(inner))
+                format!("!MechGen.mutex<{}>", self.mlir_type(inner))
             }
             ast::Type::RwLock { inner } => {
-                format!("!redox.rwlock<{}>", self.mlir_type(inner))
+                format!("!MechGen.rwlock<{}>", self.mlir_type(inner))
             }
             ast::Type::Set { inner } => {
-                format!("!redox.set<{}>", self.mlir_type(inner))
+                format!("!MechGen.set<{}>", self.mlir_type(inner))
             }
             ast::Type::Refined { base, .. } => {
                 // Refinement types lower to their base type in MLIR
@@ -652,7 +652,7 @@ mod tests {
     #[test]
     fn pure_function() {
         let mlir = emit_source("+f add(a: i32, b: i32) -> i32 { a }");
-        assert!(mlir.contains("redox.func pub @add"));
+        assert!(mlir.contains("MechGen.func pub @add"));
         assert!(mlir.contains("i32"));
         // pure function should NOT have effects attribute
         assert!(!mlir.contains("effects = ["));
@@ -661,22 +661,22 @@ mod tests {
     #[test]
     fn struct_emit() {
         let mlir = emit_source("S Point { x: f64, y: f64 }");
-        assert!(mlir.contains("redox.struct @Point"));
-        assert!(mlir.contains("redox.field \"x\" : f64"));
-        assert!(mlir.contains("redox.field \"y\" : f64"));
+        assert!(mlir.contains("MechGen.struct @Point"));
+        assert!(mlir.contains("MechGen.field \"x\" : f64"));
+        assert!(mlir.contains("MechGen.field \"y\" : f64"));
     }
 
     #[test]
     fn enum_emit() {
         let mlir = emit_source("E Color { Red, Green, Blue }");
-        assert!(mlir.contains("redox.enum @Color"));
-        assert!(mlir.contains("redox.variant \"Red\""));
+        assert!(mlir.contains("MechGen.enum @Color"));
+        assert!(mlir.contains("MechGen.variant \"Red\""));
     }
 
     #[test]
     fn let_binding() {
         let mlir = emit_source("+f foo() { v x: i32 = 42; }");
-        assert!(mlir.contains("redox.let \"x\""));
+        assert!(mlir.contains("MechGen.let \"x\""));
         assert!(mlir.contains("i32"));
     }
 
@@ -685,56 +685,56 @@ mod tests {
     #[test]
     fn function_with_contract() {
         let mlir = emit_source("@req(a > 0) @ens(result > 0) +f add(a: i32, b: i32) -> i32 { a }");
-        assert!(mlir.contains("redox.contract.requires \"a > 0\""));
-        assert!(mlir.contains("redox.contract.ensures \"result > 0\""));
+        assert!(mlir.contains("MechGen.contract.requires \"a > 0\""));
+        assert!(mlir.contains("MechGen.contract.ensures \"result > 0\""));
     }
 
     #[test]
     fn struct_with_invariant() {
         let mlir = emit_source("@inv(_.x >= 0) S Pos { x: f64 }");
         // The struct should contain an invariant contract op
-        assert!(mlir.contains("redox.struct @Pos"));
-        assert!(mlir.contains("redox.contract.invariant"));
+        assert!(mlir.contains("MechGen.struct @Pos"));
+        assert!(mlir.contains("MechGen.contract.invariant"));
         assert!(mlir.contains("x >= 0"));
     }
 
     #[test]
     fn agent_as_mlir_op() {
         let mlir = emit_source("agent Bot { capabilities: [read_source, net] }");
-        assert!(mlir.contains("redox.agent @Bot"));
-        assert!(mlir.contains("redox.capability \"read_source\""));
-        assert!(mlir.contains("redox.capability \"net\""));
+        assert!(mlir.contains("MechGen.agent @Bot"));
+        assert!(mlir.contains("MechGen.capability \"read_source\""));
+        assert!(mlir.contains("MechGen.capability \"net\""));
     }
 
     #[test]
     fn agent_with_approval() {
         let mlir = emit_source("agent Admin { capabilities: [fs] requires_approval: [exec] }");
-        assert!(mlir.contains("redox.agent @Admin"));
-        assert!(mlir.contains("redox.capability \"fs\""));
-        assert!(mlir.contains("redox.requires_approval \"exec\""));
+        assert!(mlir.contains("MechGen.agent @Admin"));
+        assert!(mlir.contains("MechGen.capability \"fs\""));
+        assert!(mlir.contains("MechGen.requires_approval \"exec\""));
     }
 
     #[test]
     fn spec_as_mlir_op() {
         let mlir = emit_source("spec add_spec { @req(a > 0) @ens(result > a) }");
-        assert!(mlir.contains("redox.spec @add_spec"));
-        assert!(mlir.contains("redox.contract.requires \"a > 0\""));
-        assert!(mlir.contains("redox.contract.ensures \"result > a\""));
+        assert!(mlir.contains("MechGen.spec @add_spec"));
+        assert!(mlir.contains("MechGen.contract.requires \"a > 0\""));
+        assert!(mlir.contains("MechGen.contract.ensures \"result > a\""));
     }
 
     #[test]
     fn effect_decl_as_mlir_op() {
         let mlir = emit_source("effect IO { f read() -> s; f write(data: s); }");
-        assert!(mlir.contains("redox.effect @IO"));
-        assert!(mlir.contains("redox.op \"read\""));
-        assert!(mlir.contains("redox.op \"write\""));
+        assert!(mlir.contains("MechGen.effect @IO"));
+        assert!(mlir.contains("MechGen.op \"read\""));
+        assert!(mlir.contains("MechGen.op \"write\""));
     }
 
     #[test]
     fn ownership_types_in_mlir() {
         let mlir = emit_source("+f foo(a: ^i32, b: $i32, c: #i32) {}");
-        assert!(mlir.contains("!redox.owned<i32>"));
-        assert!(mlir.contains("!redox.rc<i32>"));
-        assert!(mlir.contains("!redox.mutex<i32>"));
+        assert!(mlir.contains("!MechGen.owned<i32>"));
+        assert!(mlir.contains("!MechGen.rc<i32>"));
+        assert!(mlir.contains("!MechGen.mutex<i32>"));
     }
 }

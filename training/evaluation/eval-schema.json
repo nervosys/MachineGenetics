@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://redox-lang.org/schemas/eval-record-v1.json",
-  "title": "Redox Agent Evaluation Record",
+  "$id": "https://mechgen-lang.org/schemas/eval-record-v1.json",
+  "title": "MechGen Agent Evaluation Record",
   "description": "Schema for recording a single evaluation run against a held-out task",
   "type": "object",
   "required": ["task_id", "agent_id", "timestamp", "generated", "metrics"],
@@ -25,7 +25,7 @@
       "properties": {
         "rdx_source": {
           "type": "string",
-          "description": "The agent's generated Redox source code"
+          "description": "The agent's generated MechGen source code"
         },
         "token_count": {
           "type": "integer",

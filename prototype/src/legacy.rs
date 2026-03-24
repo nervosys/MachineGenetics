@@ -1,9 +1,9 @@
-/// Redox Legacy Syntax Support — Rust → Redox canonical syntax translator.
+/// MechGen Legacy Syntax Support — Rust → MechGen canonical syntax translator.
 ///
 /// When `--syntax=legacy` is active, this module translates standard Rust
-/// source into Redox canonical syntax before lexing/parsing.
+/// source into MechGen canonical syntax before lexing/parsing.
 ///
-/// This is the same algorithm as `tools/rust2rdx` but embedded in the
+/// This is the same algorithm as `tools/rust2mg` but embedded in the
 /// prototype compiler so that `--syntax=legacy` works in a single binary.
 ///
 /// Implements the translation rules from REDOX_PROPOSAL §5.3.4:
@@ -15,7 +15,7 @@
 ///   - Lifetime removal, match → `?=`, if/else → `?`/`:`
 ///   - `return` → `ret`
 
-/// Translate a complete Rust source file to Redox canonical syntax.
+/// Translate a complete Rust source file to MechGen canonical syntax.
 pub fn translate(source: &str) -> String {
     let mut output = String::with_capacity(source.len());
 

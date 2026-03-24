@@ -1,7 +1,7 @@
 // ── Swarm Message Bus ──────────────────────────────────────────────
 //
 // Typed, zero-copy-friendly message bus for inter-agent communication
-// in the Redox compiler swarm.
+// in the MechGen compiler swarm.
 //
 // Design:
 //   - `SwarmMessage` enum: typed payloads for all swarm operations

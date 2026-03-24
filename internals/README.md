@@ -31,7 +31,7 @@ This guide is for developers who want to:
 | 3   | [AST & HIR](03-ast-hir.md)                       | Abstract syntax tree, lowering to HIR, name resolution |
 | 4   | [Type System](04-type-system.md)                 | Inference, sugar desugaring, trait solving, generics   |
 | 5   | [Effects & Resolution](05-effects-resolution.md) | Effect inference, checking, capability validation      |
-| 6   | [MLIR Pipeline](06-mlir-pipeline.md)             | MechGen dialect, lowering passes, LLVM codegen           |
+| 6   | [MLIR Pipeline](06-mlir-pipeline.md)             | MechGen dialect, lowering passes, LLVM codegen         |
 | 7   | [RAP Server](07-rap-server.md)                   | Agent protocol, JSON-RPC, IDE integration, queries     |
 | 8   | [SKB & ACI](08-skb-aci.md)                       | Safety Knowledge Base, Agentic Compiler Intelligence   |
 
@@ -98,8 +98,8 @@ The compiler is organized into the following crates, mirroring the pipeline:
 
 ## Quick Links
 
-- [MechGen_PROPOSAL.md](../MechGen_PROPOSAL.md) — Language design proposal
+- [REDOX_PROPOSAL.md](../REDOX_PROPOSAL.md) — Language design proposal
 - [MECHGEN_SPEC.md](../MECHGEN_SPEC.md) — Formal language specification
-- [MechGen_ECOSYSTEM.md](../MechGen_ECOSYSTEM.md) — Ecosystem architecture
+- [REDOX_ECOSYSTEM.md](../REDOX_ECOSYSTEM.md) — Ecosystem architecture
 - [Agent Guide](../agent-guide/README.md) — AI agent coding patterns
 - [prototype/src/](../prototype/src/) — Working prototype implementation

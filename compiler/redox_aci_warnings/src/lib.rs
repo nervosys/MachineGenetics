@@ -687,7 +687,7 @@ mod tests {
     #[test]
     fn analyze_triggers_warning() {
         let rules = extract_warning_rules(&sample_bugs());
-        let snippet = CodeSnippet::new("main.rdx", 10, "for i in 0..len minus one loop index");
+        let snippet = CodeSnippet::new("main.mg", 10, "for i in 0..len minus one loop index");
         let warnings = analyze_code(&snippet, &rules);
         assert!(!warnings.is_empty(), "should detect pattern match");
     }
@@ -695,7 +695,7 @@ mod tests {
     #[test]
     fn analyze_no_match() {
         let rules = extract_warning_rules(&sample_bugs());
-        let snippet = CodeSnippet::new("clean.rdx", 1, "let x = 42;");
+        let snippet = CodeSnippet::new("clean.mg", 1, "let x = 42;");
         let warnings = analyze_code(&snippet, &rules);
         assert!(warnings.is_empty(), "clean code should not trigger warnings");
     }
@@ -704,7 +704,7 @@ mod tests {
     fn analyze_sorts_by_severity() {
         let rules = extract_warning_rules(&sample_bugs());
         // Snippet matches multiple categories
-        let snippet = CodeSnippet::new("bad.rdx", 1, "loop index unwrap option mutex lock");
+        let snippet = CodeSnippet::new("bad.mg", 1, "loop index unwrap option mutex lock");
         let warnings = analyze_code(&snippet, &rules);
         if warnings.len() >= 2 {
             assert!(warnings[0].severity >= warnings[1].severity);
@@ -722,7 +722,7 @@ mod tests {
             suggestion: "use if-let".to_string(),
             severity: 4,
             confidence: 0.8,
-            location: CodeLocation::new("main.rdx", 10, 1),
+            location: CodeLocation::new("main.mg", 10, 1),
         };
         assert!(w.is_actionable());
     }
@@ -736,19 +736,19 @@ mod tests {
             suggestion: String::new(),
             severity: 3,
             confidence: 0.6,
-            location: CodeLocation::new("file.rdx", 25, 5),
+            location: CodeLocation::new("file.mg", 25, 5),
         };
         let s = format!("{w}");
         assert!(s.contains("resource-leak"));
-        assert!(s.contains("file.rdx:25:5"));
+        assert!(s.contains("file.mg:25:5"));
     }
 
     // ── Code Location ────────────────────────────────────────────────────
 
     #[test]
     fn code_location_display() {
-        let loc = CodeLocation::new("src/main.rdx", 42, 10);
-        assert_eq!(loc.to_string(), "src/main.rdx:42:10");
+        let loc = CodeLocation::new("src/main.mg", 42, 10);
+        assert_eq!(loc.to_string(), "src/main.mg:42:10");
     }
 
     // ── Warning Engine ───────────────────────────────────────────────────
@@ -768,7 +768,7 @@ mod tests {
     #[test]
     fn engine_analyze() {
         let engine = WarningEngine::build(&sample_bugs(), &[], WarningEngineConfig::default());
-        let snippet = CodeSnippet::new("test.rdx", 1, "unwrap option none");
+        let snippet = CodeSnippet::new("test.mg", 1, "unwrap option none");
         let warnings = engine.analyze(&snippet);
         assert!(!warnings.is_empty());
     }
@@ -777,8 +777,8 @@ mod tests {
     fn engine_analyze_all() {
         let engine = WarningEngine::build(&sample_bugs(), &[], WarningEngineConfig::default());
         let snippets = vec![
-            CodeSnippet::new("a.rdx", 1, "loop index minus"),
-            CodeSnippet::new("b.rdx", 1, "unwrap option none"),
+            CodeSnippet::new("a.mg", 1, "loop index minus"),
+            CodeSnippet::new("b.mg", 1, "unwrap option none"),
         ];
         let warnings = engine.analyze_all(&snippets);
         assert!(warnings.len() >= 2);
@@ -788,7 +788,7 @@ mod tests {
     fn engine_min_severity_filter() {
         let config = WarningEngineConfig { min_severity: 5, ..Default::default() };
         let engine = WarningEngine::build(&sample_bugs(), &[], config);
-        let snippet = CodeSnippet::new("test.rdx", 1, "loop index len minus unwrap open file");
+        let snippet = CodeSnippet::new("test.mg", 1, "loop index len minus unwrap open file");
         let warnings = engine.analyze(&snippet);
         for w in &warnings {
             assert!(w.severity >= 5);
@@ -831,7 +831,7 @@ mod tests {
     #[test]
     fn empty_snippet() {
         let rules = extract_warning_rules(&sample_bugs());
-        let snippet = CodeSnippet::new("empty.rdx", 1, "");
+        let snippet = CodeSnippet::new("empty.mg", 1, "");
         let warnings = analyze_code(&snippet, &rules);
         assert!(warnings.is_empty());
     }

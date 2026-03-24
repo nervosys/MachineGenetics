@@ -1,8 +1,8 @@
 {
-  "name": "Redox Agent Training Benchmark Corpus",
+  "name": "MechGen Agent Training Benchmark Corpus",
   "version": "0.1.0",
-  "format": "redox-training-v1",
-  "description": "100 programming tasks across 10 categories for evaluating AI agent performance on the Redox language",
+  "format": "MechGen-training-v1",
+  "description": "100 programming tasks across 10 categories for evaluating AI agent performance on the MechGen language",
   "schema": "corpus-schema.json",
   "categories": [
     {

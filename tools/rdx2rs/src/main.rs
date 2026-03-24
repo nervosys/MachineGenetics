@@ -1,7 +1,7 @@
-/// Redox `rdx2rs` — Redox-to-Rust source-level back-transpiler.
+/// MechGen `mg2rs` — MechGen-to-Rust source-level back-transpiler.
 ///
 /// Applies the reverse translation rules from REDOX_ECOSYSTEM.md §2.2 to convert
-/// Redox canonical syntax (`.rdx`) files back into Rust source files.
+/// MechGen canonical syntax (`.mg`) files back into Rust source files.
 mod translate;
 
 use std::path::{Path, PathBuf};
@@ -80,12 +80,12 @@ fn parse_args(args: &[String]) -> Result<Opts, String> {
 }
 
 fn print_usage() {
-    eprintln!("rdx2rs — Redox to Rust back-transpiler");
+    eprintln!("mg2rs — MechGen to Rust back-transpiler");
     eprintln!();
-    eprintln!("Usage: rdx2rs [OPTIONS] <INPUT>");
+    eprintln!("Usage: mg2rs [OPTIONS] <INPUT>");
     eprintln!();
     eprintln!("Arguments:");
-    eprintln!("  <INPUT>         Redox source file (.rdx) or directory");
+    eprintln!("  <INPUT>         MechGen source file (.mg) or directory");
     eprintln!();
     eprintln!("Options:");
     eprintln!("  --output, -o    Output directory (default: ./rs/)");
@@ -173,7 +173,7 @@ fn process_directory(dir: &Path, opts: &Opts) {
         eprintln!();
         eprintln!("=== Back-Transpilation Summary ===");
         eprintln!("  Files processed: {count}");
-        eprintln!("  Redox bytes: {total_rdx_bytes}");
+        eprintln!("  MechGen bytes: {total_rdx_bytes}");
         eprintln!("  Rust bytes:  {total_rs_bytes}");
         if total_rdx_bytes > 0 {
             let pct = (total_rs_bytes as f64 / total_rdx_bytes as f64) * 100.0;
@@ -211,7 +211,7 @@ fn print_stats(path: &Path, rdx_src: &str, rs_src: &str) {
     let rs_tokens = rs_src.split_whitespace().count();
 
     eprintln!("--- Stats: {} ---", path.display());
-    eprintln!("  Redox: {rdx_lines} lines, {rdx_tokens} tokens, {} bytes", rdx_src.len());
+    eprintln!("  MechGen: {rdx_lines} lines, {rdx_tokens} tokens, {} bytes", rdx_src.len());
     eprintln!("  Rust:  {rs_lines} lines, {rs_tokens} tokens, {} bytes", rs_src.len());
     if rdx_tokens > 0 {
         let pct = (rs_tokens as f64 / rdx_tokens as f64) * 100.0;
@@ -225,7 +225,7 @@ fn print_diff(path: &Path, rdx_src: &str, rs_src: &str) {
     let rs_lines: Vec<&str> = rs_src.lines().collect();
     let max = rdx_lines.len().max(rs_lines.len());
 
-    println!("{:<50} │ {}", "Redox", "Rust");
+    println!("{:<50} │ {}", "MechGen", "Rust");
     println!("{:─<50}─┼─{:─<50}", "", "");
 
     for i in 0..max {

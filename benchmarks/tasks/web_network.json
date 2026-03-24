@@ -15,7 +15,7 @@
       "token_count": 108
     },
     "tests": [
-      { "input": "handle_greet(Request.with_query(\"name=Redox\"))", "expected": "Response(200, {\"message\":\"Hello, Redox!\"})" }
+      { "input": "handle_greet(Request.with_query(\"name=MechGen\"))", "expected": "Response(200, {\"message\":\"Hello, MechGen!\"})" }
     ]
   },
   {

@@ -1,16 +1,16 @@
 /// Compatibility layer between Forge and crates.io.
 ///
 /// Supports:
-/// - Auto-transpile Rust crates on first use via `rust2rdx`
+/// - Auto-transpile Rust crates on first use via `rust2mg`
 /// - Publish to both registries via `forge publish --also-crates-io`
-/// - Unified dependency resolution across Rust + Redox
+/// - Unified dependency resolution across Rust + MechGen
 /// - Version mapping (e.g. `u http.Client` → crates.io `reqwest`)
 /// - FFI bridge for using Rust crates directly
 
-/// A mapping from a Redox module path to a crates.io crate.
+/// A mapping from a MechGen module path to a crates.io crate.
 #[derive(Debug, Clone)]
 pub struct CrateAlias {
-    /// Redox-style import path, e.g. `http.Client`
+    /// MechGen-style import path, e.g. `http.Client`
     pub redox_path: String,
     /// Corresponding crates.io crate name, e.g. `reqwest`
     pub crate_name: String,
@@ -36,7 +36,7 @@ impl CrateAlias {
     }
 }
 
-/// The alias table that maps Redox imports to crates.io crates.
+/// The alias table that maps MechGen imports to crates.io crates.
 #[derive(Debug, Default)]
 pub struct AliasTable {
     aliases: Vec<CrateAlias>,
@@ -47,12 +47,12 @@ impl AliasTable {
         Self::default()
     }
 
-    /// Register a Redox → crates.io alias.
+    /// Register a MechGen → crates.io alias.
     pub fn register(&mut self, alias: CrateAlias) {
         self.aliases.push(alias);
     }
 
-    /// Look up the crates.io crate for a Redox import path.
+    /// Look up the crates.io crate for a MechGen import path.
     pub fn resolve(&self, redox_path: &str) -> Option<&CrateAlias> {
         self.aliases.iter().find(|a| a.redox_path == redox_path)
     }

@@ -1,12 +1,12 @@
 use super::collect_rdx_files;
 
-/// Format Redox source files.
+/// Format MechGen source files.
 pub fn fmt(check_only: bool, verbose: bool) -> Result<(), String> {
     let src_dir = super::find_src_dir()?;
     let rdx_files = collect_rdx_files(&src_dir)?;
 
     if rdx_files.is_empty() {
-        println!("No .rdx files to format");
+        println!("No .mg files to format");
         return Ok(());
     }
 

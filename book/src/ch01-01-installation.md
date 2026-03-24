@@ -22,7 +22,7 @@ This installs:
 - `mg` — the unified CLI (build, test, run, format, lint, etc.)
 - `rdxc` — the MechGen compiler
 - `rap` — the MechGen Agent Protocol language server
-- `rust2rdx` — the Rust-to-MechGen migration tool
+- `rust2mg` — the Rust-to-MechGen migration tool
 
 ### Verifying the installation
 

@@ -1,7 +1,7 @@
-/// Redox `rust2rdx` — Rust-to-Redox source-level transpiler.
+/// MechGen `rust2mg` — Rust-to-MechGen source-level transpiler.
 ///
 /// Applies the translation rules from REDOX_ECOSYSTEM.md §2.1.2 to convert
-/// Rust source files into Redox canonical syntax.
+/// Rust source files into MechGen canonical syntax.
 mod translate;
 
 use std::path::{Path, PathBuf};
@@ -80,9 +80,9 @@ fn parse_args(args: &[String]) -> Result<Opts, String> {
 }
 
 fn print_usage() {
-    eprintln!("rust2rdx — Rust to Redox transpiler");
+    eprintln!("rust2mg — Rust to MechGen transpiler");
     eprintln!();
-    eprintln!("Usage: rust2rdx [OPTIONS] <INPUT>");
+    eprintln!("Usage: rust2mg [OPTIONS] <INPUT>");
     eprintln!();
     eprintln!("Arguments:");
     eprintln!("  <INPUT>         Rust source file or directory");
@@ -174,7 +174,7 @@ fn process_directory(dir: &Path, opts: &Opts) {
         eprintln!("=== Migration Summary ===");
         eprintln!("  Files processed: {count}");
         eprintln!("  Rust bytes:  {total_rust_bytes}");
-        eprintln!("  Redox bytes: {total_rdx_bytes}");
+        eprintln!("  MechGen bytes: {total_rdx_bytes}");
         if total_rust_bytes > 0 {
             let pct = (total_rdx_bytes as f64 / total_rust_bytes as f64) * 100.0;
             eprintln!("  Ratio: {pct:.1}%");
@@ -202,7 +202,7 @@ fn visit_dir(dir: &Path, cb: &mut dyn FnMut(&Path)) {
 fn output_path(input: &Path, opts: &Opts) -> PathBuf {
     let stem = input.file_stem().unwrap_or_default();
     let out_dir = opts.output.clone().unwrap_or_else(|| PathBuf::from("rdx"));
-    out_dir.join(format!("{}.rdx", stem.to_string_lossy()))
+    out_dir.join(format!("{}.mg", stem.to_string_lossy()))
 }
 
 fn print_stats(path: &Path, rust_src: &str, rdx_src: &str) {
@@ -213,7 +213,7 @@ fn print_stats(path: &Path, rust_src: &str, rdx_src: &str) {
 
     eprintln!("--- Stats: {} ---", path.display());
     eprintln!("  Rust:  {rust_lines} lines, {rust_tokens} tokens, {} bytes", rust_src.len());
-    eprintln!("  Redox: {rdx_lines} lines, {rdx_tokens} tokens, {} bytes", rdx_src.len());
+    eprintln!("  MechGen: {rdx_lines} lines, {rdx_tokens} tokens, {} bytes", rdx_src.len());
     if rust_tokens > 0 {
         let pct = (rdx_tokens as f64 / rust_tokens as f64) * 100.0;
         eprintln!("  Token reduction: {:.1}%", 100.0 - pct);
@@ -227,7 +227,7 @@ fn print_diff(path: &Path, rust_src: &str, rdx_src: &str) {
     let max = rust_lines.len().max(rdx_lines.len());
 
     // Header.
-    println!("{:<50} │ {}", "Rust", "Redox");
+    println!("{:<50} │ {}", "Rust", "MechGen");
     println!("{:─<50}─┼─{:─<50}", "", "");
 
     for i in 0..max {

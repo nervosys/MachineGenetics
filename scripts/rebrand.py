@@ -3,7 +3,7 @@
 Rebrand script: rename all rustc_* compiler crates to redox_*.
 
 This script handles:
-1. Renaming compiler/ crate directories (rustc_* -> redox_*, rustc -> redox)
+1. Renaming compiler/ crate directories (rustc_* -> redox_*, rustc -> MechGen)
 2. Updating Cargo.toml package names and path dependencies
 3. Updating Rust source use/extern-crate/crate-path references
 4. Updating the workspace Cargo.toml
@@ -32,7 +32,7 @@ COMPILER_DIR = ROOT / "compiler"
 OLD_PREFIX = "rustc_"
 NEW_PREFIX = "redox_"
 OLD_DRIVER = "rustc"
-NEW_DRIVER = "redox"
+NEW_DRIVER = "MechGen"
 
 # External crates that happen to start with "rustc" but should NOT be renamed.
 # These use dashes (rustc-xxx) or are external dependencies.
@@ -52,7 +52,7 @@ EXTERNAL_CRATES = {
 # Patterns that contain rustc_ but should NOT be replaced (regexes).
 # These are upstream Rust concepts, not our crate names.
 SKIP_PATTERNS = [
-    # Redox OS target references (target_os = "redox" doesn't contain rustc_)
+    # MechGen OS target references (target_os = "MechGen" doesn't contain rustc_)
     # URLs to upstream rust-lang repo (we DO want to keep these as-is in comments)
     r'https?://github\.com/rust-lang/rust',
     r'https?://doc\.rust-lang\.org',
@@ -138,7 +138,7 @@ def build_replacements(rename_map):
         replacements.append((old_name, new_name))
 
     # The compiler driver binary package is "rustc-main" (with dash)
-    replacements.append(("rustc-main", "redox-main"))
+    replacements.append(("rustc-main", "MechGen-main"))
 
     return replacements
 
@@ -323,7 +323,7 @@ def main():
         return
 
     mode = "DRY RUN" if dry_run else "APPLYING"
-    print(f"=== Redox Rebrand Script ({mode}) ===")
+    print(f"=== MechGen Rebrand Script ({mode}) ===")
     print(f"Renaming {len(rename_map)} crates: {OLD_PREFIX}* -> {NEW_PREFIX}*")
     print()
 

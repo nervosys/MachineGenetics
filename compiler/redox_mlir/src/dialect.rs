@@ -1113,7 +1113,7 @@ mod tests {
         assert!(errors.is_empty(), "all ops should verify: {errors:?}");
 
         // Also add them to a module
-        let loc = crate::Location::file_line_col("test.rdx", 1, 0);
+        let loc = crate::Location::file_line_col("test.mg", 1, 0);
         let mut module = crate::Module::new_empty(&ctx, &loc).unwrap();
         for op in &ops {
             module.add_operation(op.op_name());

@@ -1,7 +1,7 @@
 // ── Capability-Based Sandbox ───────────────────────────────────────
 //
 // Per-agent isolation with resource limits, capability attenuation,
-// and audit logging for the Redox swarm runtime.
+// and audit logging for the MechGen swarm runtime.
 //
 // Provides:
 //   1. Capability tokens — fine-grained permission grants

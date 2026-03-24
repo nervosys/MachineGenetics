@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Forge Module Metadata",
-  "description": "Schema for validating Redox Forge module metadata",
+  "description": "Schema for validating MechGen Forge module metadata",
   "type": "object",
   "required": ["name", "version", "metadata"],
   "properties": {
@@ -55,7 +55,7 @@
         "edition": {
           "type": "string",
           "enum": ["2025"],
-          "description": "Redox language edition"
+          "description": "MechGen language edition"
         },
         "rust_compatibility": {
           "type": "string",

@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report a bug in the Redox language, compiler, or tools
+description: Report a bug in the MechGen language, compiler, or tools
 title: "[Bug]: "
 labels: ["bug", "triage"]
 body:
@@ -12,7 +12,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: Redox Version
+      label: MechGen Version
       description: Output of `rdx --version`
       placeholder: rdx 0.1.0
     validations:
@@ -22,11 +22,11 @@ body:
     id: component
     attributes:
       label: Component
-      description: Which part of Redox is affected?
+      description: Which part of MechGen is affected?
       options:
         - Compiler / Parser
-        - rust2rdx Transpiler
-        - rdx2rs Back-Transpiler
+        - rust2mg Transpiler
+        - mg2rs Back-Transpiler
         - rdx CLI
         - Standard Library
         - VS Code Extension
@@ -51,9 +51,9 @@ body:
       label: Reproduction Steps
       description: Minimal code and steps to reproduce the bug
       value: |
-        **Redox code:**
-        ```redox
-        // paste your .rdx code here
+        **MechGen code:**
+        ```MechGen
+        // paste your .mg code here
         ```
 
         **Steps:**

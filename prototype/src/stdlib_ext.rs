@@ -1,6 +1,6 @@
-// ── Redox Standard Library Extensions ──────────────────────────────
+// ── MechGen Standard Library Extensions ──────────────────────────────
 //
-// Extended stdlib types for the Redox agentic runtime:
+// Extended stdlib types for the MechGen agentic runtime:
 //
 //   - BatchApi       — batch operation helpers (map, filter, reduce, partition)
 //   - StreamBuf      — streaming I/O buffer with chunked reads/writes

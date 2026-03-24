@@ -1,9 +1,9 @@
-# Redox Agent Instructions
-# Standard configuration for AI agents working with Redox source code.
-# Place this file at .redox/agent-instructions.yaml in your project root,
+# MechGen Agent Instructions
+# Standard configuration for AI agents working with MechGen source code.
+# Place this file at .MechGen/agent-instructions.yaml in your project root,
 # or load it from the training/ directory as a reference.
 
-language: redox
+language: MechGen
 edition: "2025"
 version: "1.0"
 
@@ -133,7 +133,7 @@ patterns:
 
 # ─── Translation Reference ──────────────────────────────────────────
 
-# Quick reference table: Redox → Rust
+# Quick reference table: MechGen → Rust
 translation_table:
   "f / +f":            "fn / pub fn"
   "af / +af":          "async fn / pub async fn"

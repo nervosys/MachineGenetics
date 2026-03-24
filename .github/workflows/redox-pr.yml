@@ -1,9 +1,9 @@
-# Redox PR Check — fast feedback on pull requests.
+# MechGen PR Check — fast feedback on pull requests.
 #
-# Lightweight checks that run on every PR touching Redox ecosystem files.
+# Lightweight checks that run on every PR touching MechGen ecosystem files.
 # Focuses on speed: lint + test only, no multi-platform builds.
 
-name: Redox PR
+name: MechGen PR
 
 on:
   pull_request:
@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: redox-pr-${{ github.event.pull_request.number }}
+  group: MechGen-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 env:
@@ -52,24 +52,24 @@ jobs:
       # Format checks.
       - name: Format check
         run: |
-          cd tools/rust2rdx && cargo fmt --check
-          cd ../rdx2rs && cargo fmt --check
+          cd tools/RUST2MG && cargo fmt --check
+          cd ../MG2RS && cargo fmt --check
           cd ../rdx && cargo fmt --check
 
       # Clippy.
       - name: Clippy
         run: |
-          cd tools/rust2rdx && cargo clippy --all-targets -- -D warnings
-          cd ../rdx2rs && cargo clippy --all-targets -- -D warnings
+          cd tools/RUST2MG && cargo clippy --all-targets -- -D warnings
+          cd ../MG2RS && cargo clippy --all-targets -- -D warnings
           cd ../rdx && cargo clippy --all-targets -- -D warnings
 
       # Tests.
-      - name: Test rust2rdx
-        working-directory: tools/rust2rdx
+      - name: Test RUST2MG
+        working-directory: tools/RUST2MG
         run: cargo test
 
-      - name: Test rdx2rs
-        working-directory: tools/rdx2rs
+      - name: Test MG2RS
+        working-directory: tools/MG2RS
         run: cargo test
 
       - name: Test rdx CLI
@@ -86,7 +86,7 @@ jobs:
           for dir in examples/*/; do
             name=$(basename "$dir")
             [ -f "$dir/Forge.toml" ] || { echo "FAIL: $dir/Forge.toml missing"; exit 1; }
-            [ -f "$dir/src/main.rdx" ] || { echo "FAIL: $dir/src/main.rdx missing"; exit 1; }
+            [ -f "$dir/src/main.mg" ] || { echo "FAIL: $dir/src/main.mg missing"; exit 1; }
             echo "  OK: $name"
           done
 

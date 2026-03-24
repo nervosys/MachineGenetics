@@ -29,8 +29,8 @@ Per [mechgen_ECOSYSTEM.md](../mechgen_ECOSYSTEM.md) §8.3:
 | Lint      | Formatting    | `cargo fmt --check`        |      < 5s       |
 | Lint      | Linting       | `cargo clippy`             |      < 10s      |
 | Build     | Compile tools | `cargo build --release`    |      < 60s      |
-| Test      | rust2rdx      | `cargo test` (28 rules)    |      < 10s      |
-| Test      | rdx2rs        | `cargo test` (39 rules)    |      < 10s      |
+| Test      | rust2mg      | `cargo test` (28 rules)    |      < 10s      |
+| Test      | mg2rs        | `cargo test` (39 rules)    |      < 10s      |
 | Test      | mg CLI       | `cargo test` (12 commands) |      < 10s      |
 | Test      | prototype     | `cargo test` (43 tests)    |      < 15s      |
 | Transpile | Round-trip    | Rust → MechGen → Rust        |      < 30s      |
@@ -62,6 +62,6 @@ Per [mechgen_ECOSYSTEM.md](../mechgen_ECOSYSTEM.md) §8.3:
 
 | Binary     | Description                                |
 | ---------- | ------------------------------------------ |
-| `rust2rdx` | Rust → MechGen transpiler                    |
-| `rdx2rs`   | MechGen → Rust back-transpiler               |
+| `rust2mg` | Rust → MechGen transpiler                    |
+| `mg2rs`   | MechGen → Rust back-transpiler               |
 | `mg`      | MechGen CLI (build, test, run, fmt, migrate) |

@@ -4,12 +4,12 @@ import { RapClient } from "./rap-client";
 let rapClient: RapClient | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log("Redox extension activated");
+  console.log("MechGen extension activated");
 
   // Register RAP start/stop commands.
   context.subscriptions.push(
-    vscode.commands.registerCommand("redox.startRap", () => {
-      const config = vscode.workspace.getConfiguration("redox");
+    vscode.commands.registerCommand("MechGen.startRap", () => {
+      const config = vscode.workspace.getConfiguration("MechGen");
       const addr = config.get<string>("rapAddress", "127.0.0.1:9876");
       rapClient = new RapClient(addr);
       rapClient
@@ -20,7 +20,7 @@ export function activate(context: vscode.ExtensionContext) {
         );
     }),
 
-    vscode.commands.registerCommand("redox.stopRap", () => {
+    vscode.commands.registerCommand("MechGen.stopRap", () => {
       if (rapClient) {
         rapClient.disconnect();
         rapClient = undefined;
@@ -28,26 +28,26 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }),
 
-    // One-click Convert to Redox from .rs context menu.
-    vscode.commands.registerCommand("redox.convertToRedox", async (uri: vscode.Uri) => {
+    // One-click Convert to MechGen from .rs context menu.
+    vscode.commands.registerCommand("MechGen.convertToRedox", async (uri: vscode.Uri) => {
       if (!uri) {
         vscode.window.showWarningMessage("No file selected");
         return;
       }
       vscode.window.showInformationMessage(
-        `Migration: run \`rust2rdx ${uri.fsPath}\` to convert.`
+        `Migration: run \`rust2mg ${uri.fsPath}\` to convert.`
       );
     })
   );
 
   // Register diagnostics provider via RAP.
-  const diagnosticCollection = vscode.languages.createDiagnosticCollection("redox");
+  const diagnosticCollection = vscode.languages.createDiagnosticCollection("MechGen");
   context.subscriptions.push(diagnosticCollection);
 
-  // Trigger diagnostics on save for .rdx files.
+  // Trigger diagnostics on save for .mg files.
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument(async (doc) => {
-      if (doc.languageId !== "redox" || !rapClient) {
+      if (doc.languageId !== "MechGen" || !rapClient) {
         return;
       }
 
@@ -81,7 +81,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Hover provider — queries RAP for type info.
   context.subscriptions.push(
-    vscode.languages.registerHoverProvider("redox", {
+    vscode.languages.registerHoverProvider("MechGen", {
       async provideHover(doc, position) {
         if (!rapClient) return undefined;
 

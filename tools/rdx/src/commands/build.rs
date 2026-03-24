@@ -17,7 +17,7 @@ pub fn build(release: bool, verbose: bool) -> Result<(), String> {
     let rdx_files = collect_rdx_files(&src_dir)?;
 
     if rdx_files.is_empty() {
-        return Err("no .rdx source files found in src/".to_string());
+        return Err("no .mg source files found in src/".to_string());
     }
 
     // Parse each file to verify syntax
@@ -78,7 +78,7 @@ version = "0.1.0"
         std::env::set_current_dir(&dir).unwrap();
         let result = build(false, false);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("no .rdx source"));
+        assert!(result.unwrap_err().contains("no .mg source"));
         let _ = fs::remove_dir_all(&dir);
     }
 }

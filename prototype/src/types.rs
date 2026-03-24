@@ -1,10 +1,10 @@
-/// Redox Type Checker — bidirectional type checking with HM-style unification.
+/// MechGen Type Checker — bidirectional type checking with HM-style unification.
 ///
 /// Implements the type judgment:  Γ; Σ; Δ ⊢ e : τ ⊣ ε
 ///
 /// - Γ = type environment (name → Ty)
 /// - Constraint generation: walk the AST, emit τ₁ ≡ τ₂ constraints
-/// - Unification: Robinson's algorithm extended for Redox types
+/// - Unification: Robinson's algorithm extended for MechGen types
 /// - Substitution: apply solved constraints to resolve all type variables
 use crate::ast;
 use crate::hir::{
@@ -911,7 +911,7 @@ impl TypeChecker {
                 } else if value.ends_with("isize") {
                     Ty::Int(IntTy::Isize)
                 } else {
-                    // Default integer: i32 (Redox default).
+                    // Default integer: i32 (MechGen default).
                     Ty::Int(IntTy::I32)
                 }
             }

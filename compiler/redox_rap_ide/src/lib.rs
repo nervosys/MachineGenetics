@@ -870,7 +870,7 @@ impl ExtensionManifest {
             publisher: "nervosys".to_string(),
             description: "Redox language support via RAP server".to_string(),
             language_id: "redox".to_string(),
-            file_extensions: vec![".rdx".to_string(), ".redox".to_string()],
+            file_extensions: vec![".mg".to_string(), ".redox".to_string()],
             server_command: "redox-rap-server".to_string(),
             server_args: vec!["--stdio".to_string()],
         }
@@ -1069,8 +1069,8 @@ mod tests {
 
     #[test]
     fn document_uri_from_path() {
-        let uri = DocumentUri::from_path("/src/main.rdx");
-        assert_eq!(uri.to_path(), Some("/src/main.rdx"));
+        let uri = DocumentUri::from_path("/src/main.mg");
+        assert_eq!(uri.to_path(), Some("/src/main.mg"));
     }
 
     // ── Diagnostics ──
@@ -1093,7 +1093,7 @@ mod tests {
             "unused variable",
         )
         .with_related(DiagnosticRelated {
-            uri: DocumentUri::from_path("/src/lib.rdx"),
+            uri: DocumentUri::from_path("/src/lib.mg"),
             range: Range::single_line(20, 0, 10),
             message: "defined here".to_string(),
         });
@@ -1190,7 +1190,7 @@ mod tests {
     #[test]
     fn doc_sync_open_and_get() {
         let mut sync = DocumentSync::new();
-        let uri = DocumentUri::from_path("/src/main.rdx");
+        let uri = DocumentUri::from_path("/src/main.mg");
         sync.open(uri.clone(), "redox", 1, "f main() {}");
 
         assert_eq!(sync.count(), 1);
@@ -1202,7 +1202,7 @@ mod tests {
     #[test]
     fn doc_sync_full_change() {
         let mut sync = DocumentSync::new();
-        let uri = DocumentUri::from_path("/src/main.rdx");
+        let uri = DocumentUri::from_path("/src/main.mg");
         sync.open(uri.clone(), "redox", 1, "old content");
 
         sync.change(
@@ -1222,7 +1222,7 @@ mod tests {
     #[test]
     fn doc_sync_incremental_change() {
         let mut sync = DocumentSync::new();
-        let uri = DocumentUri::from_path("/src/main.rdx");
+        let uri = DocumentUri::from_path("/src/main.mg");
         sync.open(uri.clone(), "redox", 1, "hello world");
 
         // Replace "world" (chars 6-11) with "redox"
@@ -1243,7 +1243,7 @@ mod tests {
     #[test]
     fn doc_sync_close() {
         let mut sync = DocumentSync::new();
-        let uri = DocumentUri::from_path("/src/main.rdx");
+        let uri = DocumentUri::from_path("/src/main.mg");
         sync.open(uri.clone(), "redox", 1, "content");
 
         let closed = sync.close(&uri).unwrap();
@@ -1254,7 +1254,7 @@ mod tests {
     #[test]
     fn doc_sync_not_found_error() {
         let mut sync = DocumentSync::new();
-        let uri = DocumentUri::from_path("/nonexistent.rdx");
+        let uri = DocumentUri::from_path("/nonexistent.mg");
         let err = sync.close(&uri).unwrap_err();
         assert_eq!(err, IdeError::DocumentNotFound(uri));
     }
@@ -1264,7 +1264,7 @@ mod tests {
     #[test]
     fn diagnostic_bridge_publish_and_get() {
         let mut bridge = DiagnosticBridge::new();
-        let uri = DocumentUri::from_path("/src/main.rdx");
+        let uri = DocumentUri::from_path("/src/main.mg");
 
         bridge.publish(
             &uri,
@@ -1283,7 +1283,7 @@ mod tests {
     #[test]
     fn diagnostic_bridge_clear() {
         let mut bridge = DiagnosticBridge::new();
-        let uri = DocumentUri::from_path("/src/main.rdx");
+        let uri = DocumentUri::from_path("/src/main.mg");
         bridge.publish(&uri, vec![Diagnostic::error(Range::single_line(1, 0, 5), "err")]);
         bridge.clear(&uri);
         assert_eq!(bridge.get(&uri).len(), 0);
@@ -1356,7 +1356,7 @@ mod tests {
     fn extension_manifest_defaults() {
         let manifest = ExtensionManifest::default_redox();
         assert_eq!(manifest.language_id, "redox");
-        assert!(manifest.file_extensions.contains(&".rdx".to_string()));
+        assert!(manifest.file_extensions.contains(&".mg".to_string()));
         assert_eq!(manifest.server_command, "redox-rap-server");
     }
 
@@ -1428,7 +1428,7 @@ mod tests {
         session.initialize().unwrap();
 
         // Open a document
-        let uri = DocumentUri::from_path("/src/main.rdx");
+        let uri = DocumentUri::from_path("/src/main.mg");
         session.doc_sync.open(uri.clone(), "redox", 1, "f main() {\n  v x = 42\n}");
         assert_eq!(session.doc_sync.count(), 1);
 
@@ -1460,8 +1460,8 @@ mod tests {
         let err = IdeError::UnsupportedMethod("test".to_string());
         assert!(format!("{}", err).contains("test"));
 
-        let err = IdeError::DocumentNotFound(DocumentUri::from_path("/x.rdx"));
-        assert!(format!("{}", err).contains("/x.rdx"));
+        let err = IdeError::DocumentNotFound(DocumentUri::from_path("/x.mg"));
+        assert!(format!("{}", err).contains("/x.mg"));
 
         let err = IdeError::InvalidState {
             expected: IdeSessionState::Uninitialized,
@@ -1475,7 +1475,7 @@ mod tests {
     #[test]
     fn incremental_edit_multiline() {
         let mut sync = DocumentSync::new();
-        let uri = DocumentUri::from_path("/src/test.rdx");
+        let uri = DocumentUri::from_path("/src/test.mg");
         sync.open(uri.clone(), "redox", 1, "line1\nline2\nline3");
 
         // Replace "line2" (line 1, chars 0-5) with "REPLACED"

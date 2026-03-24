@@ -1,4 +1,4 @@
-; Zed tree-sitter highlight queries for Redox.
+; Zed tree-sitter highlight queries for MechGen.
 
 ; ── Comments ─────────────────────────────────────────────────────────
 (line_comment) @comment

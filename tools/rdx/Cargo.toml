@@ -4,7 +4,7 @@
 name = "rdx"
 version = "0.1.0"
 edition = "2024"
-description = "The Redox language CLI — build, check, test, format, and manage Redox projects"
+description = "The MechGen language CLI — build, check, test, format, and manage MechGen projects"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }

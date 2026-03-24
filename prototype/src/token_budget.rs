@@ -1,7 +1,7 @@
-/// Redox Token Budget Reporting
+/// MechGen Token Budget Reporting
 ///
 /// Implements `--token-report` (proposal §5.5 P29): per-function and
-/// per-module token counts in both compact (Redox) and expanded (Rust-
+/// per-module token counts in both compact (MechGen) and expanded (Rust-
 /// equivalent) forms.  Agents use this to track and optimise their
 /// token expenditure.
 use crate::ast::*;
@@ -16,7 +16,7 @@ pub struct TokenMetrics {
     pub name: String,
     /// Kind of item.
     pub kind: ItemMetricKind,
-    /// Token count in compact Redox syntax.
+    /// Token count in compact MechGen syntax.
     pub compact_tokens: u32,
     /// Estimated token count in expanded (Rust) syntax.
     pub expanded_tokens: u32,
@@ -151,7 +151,7 @@ fn count_item(item: &Item) -> TokenMetrics {
     }
 }
 
-// ── Compact (Redox) token counting ───────────────────────────────────
+// ── Compact (MechGen) token counting ───────────────────────────────────
 
 fn count_function_compact(f: &FunctionDef, vis: Visibility) -> u32 {
     let mut n: u32 = 0;
@@ -551,7 +551,7 @@ fn count_expr_compact(expr: &Expr) -> u32 {
 // ── Expanded (Rust-equivalent) token counting ─────────────────────────
 //
 // We estimate the Rust token count by applying the known expansion ratios:
-// - Compact keywords are 1 token each in Redox but expand to 1-2 in Rust
+// - Compact keywords are 1 token each in MechGen but expand to 1-2 in Rust
 //   (`+f` → `pub fn` = 2, `v` → `let` = 1, `m` → `let mut` = 2, etc.)
 // - Type wrappers like `?T` → `Option<T>` are +2 tokens, `^T` → `Box<T>` +2, etc.
 

@@ -1,10 +1,10 @@
-/// Source-level translation from Redox canonical syntax to Rust.
+/// Source-level translation from MechGen canonical syntax to Rust.
 ///
 /// Implements the reverse translation rules from REDOX_ECOSYSTEM.md §2.2.
-/// This is a text-level transformer — it processes Redox source line-by-line
+/// This is a text-level transformer — it processes MechGen source line-by-line
 /// and applies pattern-based rewriting rules to produce valid Rust.
 
-/// Translate a complete Redox source file to Rust.
+/// Translate a complete MechGen source file to Rust.
 pub fn translate(source: &str) -> String {
     let mut output = String::with_capacity(source.len());
 
@@ -21,7 +21,7 @@ pub fn translate(source: &str) -> String {
     output
 }
 
-/// Translate a single line of Redox to Rust.
+/// Translate a single line of MechGen to Rust.
 fn translate_line(line: &str) -> String {
     let indent = leading_whitespace(line);
     let trimmed = line.trim();

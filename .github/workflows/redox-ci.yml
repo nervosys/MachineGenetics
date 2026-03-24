@@ -1,14 +1,14 @@
-# Redox Ecosystem CI — runs on every push and PR to master.
+# MechGen Ecosystem CI — runs on every push and PR to master.
 #
 # Stages (per REDOX_ECOSYSTEM.md §8.3):
 #   1. Lint & Format  — cargo fmt/clippy on Rust tools
-#   2. Build          — compile rust2rdx, rdx2rs, rdx CLI
+#   2. Build          — compile RUST2MG, MG2RS, rdx CLI
 #   3. Test           — unit tests for all tools
-#   4. Transpile      — round-trip validation (Rust → Redox → Rust)
-#   5. Validate       — check .rdx examples, stdlib stubs, SKB rules
+#   4. Transpile      — round-trip validation (Rust → MechGen → Rust)
+#   5. Validate       — check .mg examples, stdlib stubs, SKB rules
 #   6. Benchmark      — (on push to master only)
 
-name: Redox CI
+name: MechGen CI
 
 on:
   push:
@@ -20,7 +20,7 @@ on:
       - "skb/**"
       - "prototype/**"
       - "benchmarks/**"
-      - ".github/workflows/redox-ci.yml"
+      - ".github/workflows/MechGen-ci.yml"
   pull_request:
     branches: [master]
     paths:
@@ -30,13 +30,13 @@ on:
       - "skb/**"
       - "prototype/**"
       - "benchmarks/**"
-      - ".github/workflows/redox-ci.yml"
+      - ".github/workflows/MechGen-ci.yml"
 
 permissions:
   contents: read
 
 concurrency:
-  group: redox-ci-${{ github.ref }}
+  group: MechGen-ci-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -66,24 +66,24 @@ jobs:
           key: cargo-lint-${{ hashFiles('tools/**/Cargo.toml') }}
           restore-keys: cargo-lint-
 
-      - name: Check formatting — rust2rdx
-        working-directory: tools/rust2rdx
+      - name: Check formatting — RUST2MG
+        working-directory: tools/RUST2MG
         run: cargo fmt --check
 
-      - name: Check formatting — rdx2rs
-        working-directory: tools/rdx2rs
+      - name: Check formatting — MG2RS
+        working-directory: tools/MG2RS
         run: cargo fmt --check
 
       - name: Check formatting — rdx CLI
         working-directory: tools/rdx
         run: cargo fmt --check
 
-      - name: Clippy — rust2rdx
-        working-directory: tools/rust2rdx
+      - name: Clippy — RUST2MG
+        working-directory: tools/RUST2MG
         run: cargo clippy --all-targets -- -D warnings
 
-      - name: Clippy — rdx2rs
-        working-directory: tools/rdx2rs
+      - name: Clippy — MG2RS
+        working-directory: tools/MG2RS
         run: cargo clippy --all-targets -- -D warnings
 
       - name: Clippy — rdx CLI
@@ -114,12 +114,12 @@ jobs:
           key: cargo-build-${{ matrix.os }}-${{ hashFiles('tools/**/Cargo.toml') }}
           restore-keys: cargo-build-${{ matrix.os }}-
 
-      - name: Build rust2rdx
-        working-directory: tools/rust2rdx
+      - name: Build RUST2MG
+        working-directory: tools/RUST2MG
         run: cargo build --release
 
-      - name: Build rdx2rs
-        working-directory: tools/rdx2rs
+      - name: Build MG2RS
+        working-directory: tools/MG2RS
         run: cargo build --release
 
       - name: Build rdx CLI
@@ -130,10 +130,10 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: redox-tools-${{ matrix.os }}
+          name: MechGen-tools-${{ matrix.os }}
           path: |
-            tools/rust2rdx/target/release/rust2rdx*
-            tools/rdx2rs/target/release/rdx2rs*
+            tools/RUST2MG/target/release/RUST2MG*
+            tools/MG2RS/target/release/MG2RS*
             tools/rdx/target/release/rdx*
           retention-days: 7
 
@@ -158,12 +158,12 @@ jobs:
           key: cargo-test-${{ hashFiles('tools/**/Cargo.toml') }}
           restore-keys: cargo-test-
 
-      - name: Test rust2rdx (28 translation rules)
-        working-directory: tools/rust2rdx
+      - name: Test RUST2MG (28 translation rules)
+        working-directory: tools/RUST2MG
         run: cargo test -- --nocapture
 
-      - name: Test rdx2rs (39 translation rules)
-        working-directory: tools/rdx2rs
+      - name: Test MG2RS (39 translation rules)
+        working-directory: tools/MG2RS
         run: cargo test -- --nocapture
 
       - name: Test rdx CLI (12 subcommands)
@@ -188,45 +188,45 @@ jobs:
 
       - name: Build transpilers
         run: |
-          cd tools/rust2rdx && cargo build --release
-          cd ../rdx2rs && cargo build --release
+          cd tools/RUST2MG && cargo build --release
+          cd ../MG2RS && cargo build --release
 
-      - name: Round-trip — Rust → Redox → Rust
+      - name: Round-trip — Rust → MechGen → Rust
         run: |
           set -euo pipefail
 
-          RUST2RDX=tools/rust2rdx/target/release/rust2rdx
-          RDX2RS=tools/rdx2rs/target/release/rdx2rs
+          RUST2MG=tools/RUST2MG/target/release/RUST2MG
+          MG2RS=tools/MG2RS/target/release/MG2RS
 
           # Create temp directories.
-          mkdir -p /tmp/rdx-roundtrip/rdx /tmp/rdx-roundtrip/rs
+          mkdir -p /tmp/mg-roundtrip/rdx /tmp/mg-roundtrip/rs
 
-          # Transpile prototype .rs files to .rdx.
+          # Transpile prototype .rs files to .mg.
           for f in prototype/src/*.rs; do
             [ -f "$f" ] || continue
             name=$(basename "$f" .rs)
-            echo "  rust2rdx: $f"
-            $RUST2RDX "$f" --output /tmp/rdx-roundtrip/rdx/ 2>/dev/null || true
+            echo "  RUST2MG: $f"
+            $RUST2MG "$f" --output /tmp/mg-roundtrip/rdx/ 2>/dev/null || true
           done
 
-          # Transpile .rdx back to .rs.
-          for f in /tmp/rdx-roundtrip/rdx/*.rdx; do
+          # Transpile .mg back to .rs.
+          for f in /tmp/mg-roundtrip/rdx/*.mg; do
             [ -f "$f" ] || continue
-            name=$(basename "$f" .rdx)
-            echo "  rdx2rs:   $f"
-            $RDX2RS "$f" --output /tmp/rdx-roundtrip/rs/ 2>/dev/null || true
+            name=$(basename "$f" .mg)
+            echo "  MG2RS:   $f"
+            $MG2RS "$f" --output /tmp/mg-roundtrip/rs/ 2>/dev/null || true
           done
 
           # Count results.
-          rdx_count=$(find /tmp/rdx-roundtrip/rdx -name '*.rdx' | wc -l)
-          rs_count=$(find /tmp/rdx-roundtrip/rs -name '*.rs' | wc -l)
+          rdx_count=$(find /tmp/mg-roundtrip/rdx -name '*.mg' | wc -l)
+          rs_count=$(find /tmp/mg-roundtrip/rs -name '*.rs' | wc -l)
           echo ""
           echo "Round-trip results:"
-          echo "  .rs → .rdx: $rdx_count files"
-          echo "  .rdx → .rs: $rs_count files"
+          echo "  .rs → .mg: $rdx_count files"
+          echo "  .mg → .rs: $rs_count files"
 
           if [ "$rdx_count" -eq 0 ]; then
-            echo "ERROR: No .rdx files produced"
+            echo "ERROR: No .mg files produced"
             exit 1
           fi
 
@@ -239,7 +239,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate .rdx example files exist
+      - name: Validate .mg example files exist
         run: |
           set -euo pipefail
           echo "Checking example projects..."
@@ -250,8 +250,8 @@ jobs:
               echo "  MISSING: $dir/Forge.toml"
               errors=$((errors + 1))
             fi
-            if [ ! -f "$dir/src/main.rdx" ]; then
-              echo "  MISSING: $dir/src/main.rdx"
+            if [ ! -f "$dir/src/main.mg" ]; then
+              echo "  MISSING: $dir/src/main.mg"
               errors=$((errors + 1))
             fi
             echo "  OK: $name"
@@ -266,15 +266,15 @@ jobs:
         run: |
           set -euo pipefail
           echo "Checking stdlib modules..."
-          count=$(find stdlib -name '*.rdx' | wc -l)
-          echo "  Found $count .rdx files"
+          count=$(find stdlib -name '*.mg' | wc -l)
+          echo "  Found $count .mg files"
           if [ "$count" -lt 10 ]; then
             echo "FAIL: expected >= 10 stdlib modules, found $count"
             exit 1
           fi
-          # Check mod.rdx exists.
-          if [ ! -f stdlib/std/mod.rdx ]; then
-            echo "FAIL: stdlib/std/mod.rdx missing"
+          # Check mod.mg exists.
+          if [ ! -f stdlib/std/mod.mg ]; then
+            echo "FAIL: stdlib/std/mod.mg missing"
             exit 1
           fi
           echo "stdlib stubs valid."
@@ -317,10 +317,10 @@ jobs:
 
       - name: Count ecosystem files
         run: |
-          echo "=== Redox Ecosystem Summary ==="
+          echo "=== MechGen Ecosystem Summary ==="
           echo "  Tools:      $(find tools -name '*.rs' | wc -l) .rs files"
-          echo "  Examples:   $(find examples -name '*.rdx' | wc -l) .rdx files"
-          echo "  Stdlib:     $(find stdlib -name '*.rdx' | wc -l) .rdx files"
+          echo "  Examples:   $(find examples -name '*.mg' | wc -l) .mg files"
+          echo "  Stdlib:     $(find stdlib -name '*.mg' | wc -l) .mg files"
           echo "  SKB rules:  $(find skb -name '*.json' | wc -l) .json files"
           echo "  Benchmarks: $(find benchmarks -name '*.json' | wc -l) .json files"
           echo "  Book:       $(find book -name '*.md' 2>/dev/null | wc -l) .md files"

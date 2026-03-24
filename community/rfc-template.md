@@ -61,8 +61,8 @@ How does this translate between Rust and MechGen?
 // MechGen version
 ```
 
-- Changes needed in `rust2rdx`
-- Changes needed in `rdx2rs`
+- Changes needed in `rust2mg`
+- Changes needed in `mg2rs`
 
 ## Examples
 
@@ -110,7 +110,7 @@ Which edition would this land in? Can `mg migrate` handle it automatically?
 
 ### Rust Interoperability
 
-Does this affect Rust compatibility? Can `rdx2rs` still produce valid Rust?
+Does this affect Rust compatibility? Can `mg2rs` still produce valid Rust?
 
 ## Prior Art
 

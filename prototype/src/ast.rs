@@ -1,4 +1,4 @@
-/// Redox AST — Abstract Syntax Tree for the Redox canonical syntax.
+/// MechGen AST — Abstract Syntax Tree for the MechGen canonical syntax.
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

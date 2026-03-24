@@ -1,10 +1,10 @@
-/// Source-level translation from Rust to Redox canonical syntax.
+/// Source-level translation from Rust to MechGen canonical syntax.
 ///
 /// Implements the translation rules from REDOX_ECOSYSTEM.md §2.1.2.
 /// This is a text-level transformer — it processes Rust source line-by-line
 /// and applies pattern-based rewriting rules.
 
-/// Translate a complete Rust source file to Redox.
+/// Translate a complete Rust source file to MechGen.
 pub fn translate(source: &str) -> String {
     let mut output = String::with_capacity(source.len());
 
@@ -22,7 +22,7 @@ pub fn translate(source: &str) -> String {
     output
 }
 
-/// Translate a single line of Rust to Redox.
+/// Translate a single line of Rust to MechGen.
 fn translate_line(line: &str) -> String {
     let indent = leading_whitespace(line);
     let trimmed = line.trim();
@@ -41,7 +41,7 @@ fn translate_line(line: &str) -> String {
 
     // pub fn → +f
     result = result.replace("pub fn ", "+f ");
-    // pub(crate) fn → f (crate-visible = private in Redox)
+    // pub(crate) fn → f (crate-visible = private in MechGen)
     result = result.replace("pub(crate) fn ", "f ");
     // fn → f (must come after pub fn)
     if !result.contains("+f ") {
@@ -489,7 +489,7 @@ fn translate_match(s: &str) -> String {
     // match expr { → ? expr {
     // (Only at statement start, not inside expressions.)
     result = replace_keyword_at_boundary(&result, "match ", "? ");
-    // => stays as => (Redox uses same pattern arm syntax)
+    // => stays as => (MechGen uses same pattern arm syntax)
     result
 }
 

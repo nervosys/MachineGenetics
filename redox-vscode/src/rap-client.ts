@@ -1,7 +1,7 @@
 import * as net from "net";
 
 /**
- * RAP (Redox Agent Protocol) client — JSON-RPC over TCP.
+ * RAP (MechGen Agent Protocol) client — JSON-RPC over TCP.
  *
  * Connects to the RAP server (prototype/src/rap.rs) and sends
  * line-delimited JSON-RPC requests.

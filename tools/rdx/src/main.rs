@@ -4,7 +4,7 @@ mod config;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "rdx", version, about = "The Redox language CLI")]
+#[command(name = "rdx", version, about = "The MechGen language CLI")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -20,7 +20,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Create a new Redox project
+    /// Create a new MechGen project
     New {
         /// Project name
         name: String,
@@ -28,7 +28,7 @@ enum Command {
         #[arg(long)]
         lib: bool,
     },
-    /// Initialize Redox in the current directory
+    /// Initialize MechGen in the current directory
     Init {
         /// Create a library project
         #[arg(long)]
@@ -59,7 +59,7 @@ enum Command {
         #[arg(trailing_var_arg = true)]
         args: Vec<String>,
     },
-    /// Run rust2rdx on a Rust project
+    /// Run rust2mg on a Rust project
     Migrate {
         /// Path to Rust source file or directory
         path: String,
@@ -91,7 +91,7 @@ enum Command {
     },
     /// Run the end-to-end pipeline (parse → check → MLIR)
     Pipeline {
-        /// Path to .rdx file
+        /// Path to .mg file
         path: String,
     },
     /// Generate documentation

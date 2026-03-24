@@ -348,17 +348,17 @@ mod tests {
     fn sample_files() -> Vec<SourceFile> {
         vec![
             SourceFile {
-                path: "lib.rdx".to_string(),
+                path: "lib.mg".to_string(),
                 content: "fn parse() { let x = vec.index(vec.len() - 1); }".to_string(),
                 dependencies: vec![],
             },
             SourceFile {
-                path: "main.rdx".to_string(),
+                path: "main.mg".to_string(),
                 content: "fn main() { let result = parse().unwrap(); matrix multiply here; }".to_string(),
-                dependencies: vec!["lib.rdx".to_string()],
+                dependencies: vec!["lib.mg".to_string()],
             },
             SourceFile {
-                path: "util.rdx".to_string(),
+                path: "util.mg".to_string(),
                 content: "fn helper() { allocate large buffer for processing data structures and algorithms }".to_string(),
                 dependencies: vec![],
             },
@@ -368,12 +368,12 @@ mod tests {
     fn error_files() -> Vec<SourceFile> {
         vec![
             SourceFile {
-                path: "bad.rdx".to_string(),
+                path: "bad.mg".to_string(),
                 content: "SYNTAX_ERROR here".to_string(),
                 dependencies: vec![],
             },
             SourceFile {
-                path: "also_bad.rdx".to_string(),
+                path: "also_bad.mg".to_string(),
                 content: "TYPE_ERROR in expression".to_string(),
                 dependencies: vec![],
             },
@@ -421,19 +421,19 @@ mod tests {
     fn pool_dependency_ordering() {
         let files = vec![
             SourceFile {
-                path: "a.rdx".to_string(),
+                path: "a.mg".to_string(),
                 content: "base module".to_string(),
                 dependencies: vec![],
             },
             SourceFile {
-                path: "b.rdx".to_string(),
+                path: "b.mg".to_string(),
                 content: "depends on a".to_string(),
-                dependencies: vec!["a.rdx".to_string()],
+                dependencies: vec!["a.mg".to_string()],
             },
             SourceFile {
-                path: "c.rdx".to_string(),
+                path: "c.mg".to_string(),
                 content: "depends on b".to_string(),
-                dependencies: vec!["b.rdx".to_string()],
+                dependencies: vec!["b.mg".to_string()],
             },
         ];
         let mut pool = SwarmPool::new(1);
@@ -441,9 +441,9 @@ mod tests {
         // All should compile in correct order
         assert_eq!(results.len(), 3);
         assert!(results.iter().all(|r| r.success));
-        assert_eq!(results[0].path, "a.rdx");
-        assert_eq!(results[1].path, "b.rdx");
-        assert_eq!(results[2].path, "c.rdx");
+        assert_eq!(results[0].path, "a.mg");
+        assert_eq!(results[1].path, "b.mg");
+        assert_eq!(results[2].path, "c.mg");
     }
 
     #[test]
@@ -451,7 +451,7 @@ mod tests {
         let mut pool = SwarmPool::new(1);
         let files = sample_files();
         pool.compile_all(&files);
-        assert!(pool.total_warnings() > 0); // unwrap() in main.rdx at least
+        assert!(pool.total_warnings() > 0); // unwrap() in main.mg at least
     }
 
     // ── Simulate compile ─────────────────────────────────────────────────
@@ -459,7 +459,7 @@ mod tests {
     #[test]
     fn compile_detects_unwrap() {
         let file = SourceFile {
-            path: "test.rdx".to_string(),
+            path: "test.mg".to_string(),
             content: "let x = foo.unwrap(); done".to_string(),
             dependencies: vec![],
         };
@@ -470,7 +470,7 @@ mod tests {
     #[test]
     fn compile_detects_unsafe() {
         let file = SourceFile {
-            path: "test.rdx".to_string(),
+            path: "test.mg".to_string(),
             content: "unsafe { ptr::read(p) }".to_string(),
             dependencies: vec![],
         };
@@ -481,7 +481,7 @@ mod tests {
     #[test]
     fn compile_clean_file() {
         let file = SourceFile {
-            path: "clean.rdx".to_string(),
+            path: "clean.mg".to_string(),
             content: "fn add(a: i32, b: i32) -> i32 { a + b }".to_string(),
             dependencies: vec![],
         };
@@ -499,13 +499,13 @@ mod tests {
         let enriched = enrich_with_aci(&files, &results);
         let obo = enriched.aci_warnings.iter()
             .any(|w| w.category == "OffByOne");
-        assert!(obo, "should detect off-by-one pattern in lib.rdx");
+        assert!(obo, "should detect off-by-one pattern in lib.mg");
     }
 
     #[test]
     fn aci_warning_deadlock() {
         let files = vec![SourceFile {
-            path: "concurrent.rdx".to_string(),
+            path: "concurrent.mg".to_string(),
             content: "loop { lock mutex; process(); }".to_string(),
             dependencies: vec![],
         }];
@@ -529,7 +529,7 @@ mod tests {
         let files = sample_files();
         let results: Vec<CompileResult> = files.iter().map(|f| simulate_compile(f)).collect();
         let enriched = enrich_with_aci(&files, &results);
-        // util.rdx should be long enough and contains "allocate"
+        // util.mg should be long enough and contains "allocate"
         // Content length check: "fn helper() { allocate large buffer for processing data structures and algorithms }" = 87 chars
         // Need >200 chars, so this won't trigger. Let's verify:
         let has_arena = enriched.perf_suggestions.iter().any(|p| p.suggestion.contains("arena"));
@@ -543,14 +543,14 @@ mod tests {
     fn aci_conflict_shared_deps() {
         let files = vec![
             SourceFile {
-                path: "a.rdx".to_string(),
+                path: "a.mg".to_string(),
                 content: "module a".to_string(),
-                dependencies: vec!["shared.rdx".to_string()],
+                dependencies: vec!["shared.mg".to_string()],
             },
             SourceFile {
-                path: "b.rdx".to_string(),
+                path: "b.mg".to_string(),
                 content: "module b".to_string(),
-                dependencies: vec!["shared.rdx".to_string()],
+                dependencies: vec!["shared.mg".to_string()],
             },
         ];
         let results: Vec<CompileResult> = files.iter().map(|f| simulate_compile(f)).collect();
@@ -563,14 +563,14 @@ mod tests {
     fn aci_no_conflict_independent() {
         let files = vec![
             SourceFile {
-                path: "a.rdx".to_string(),
+                path: "a.mg".to_string(),
                 content: "module a".to_string(),
-                dependencies: vec!["dep_a.rdx".to_string()],
+                dependencies: vec!["dep_a.mg".to_string()],
             },
             SourceFile {
-                path: "b.rdx".to_string(),
+                path: "b.mg".to_string(),
                 content: "module b".to_string(),
-                dependencies: vec!["dep_b.rdx".to_string()],
+                dependencies: vec!["dep_b.mg".to_string()],
             },
         ];
         let results: Vec<CompileResult> = files.iter().map(|f| simulate_compile(f)).collect();
@@ -612,7 +612,7 @@ mod tests {
     fn coordinated_compile_with_failures() {
         let mut files = sample_files();
         files.push(SourceFile {
-            path: "broken.rdx".to_string(),
+            path: "broken.mg".to_string(),
             content: "SYNTAX_ERROR and TYPE_ERROR".to_string(),
             dependencies: vec![],
         });

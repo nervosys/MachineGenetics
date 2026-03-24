@@ -1,10 +1,10 @@
-# Redox Compiler CI — verifies the rebranded compiler builds and passes basic tests.
+# MechGen Compiler CI — verifies the rebranded compiler builds and passes basic tests.
 #
 # Triggers on changes to compiler/, library/, or build infrastructure.
 # Runs a stage-0 check (cargo check on all compiler crates) and
 # the prototype test suite.
 
-name: Redox Compiler
+name: MechGen Compiler
 
 on:
   push:
@@ -15,7 +15,7 @@ on:
       - "src/bootstrap/**"
       - "Cargo.toml"
       - "Cargo.lock"
-      - ".github/workflows/redox-compiler.yml"
+      - ".github/workflows/MechGen-compiler.yml"
   pull_request:
     branches: [master]
     paths:
@@ -24,13 +24,13 @@ on:
       - "src/bootstrap/**"
       - "Cargo.toml"
       - "Cargo.lock"
-      - ".github/workflows/redox-compiler.yml"
+      - ".github/workflows/MechGen-compiler.yml"
 
 permissions:
   contents: read
 
 concurrency:
-  group: redox-compiler-${{ github.ref }}
+  group: MechGen-compiler-${{ github.ref }}
   cancel-in-progress: true
 
 env:

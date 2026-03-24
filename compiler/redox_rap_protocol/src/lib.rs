@@ -1109,7 +1109,7 @@ mod tests {
 
     #[test]
     fn request_with_params() {
-        let params = json_object(vec![("file", json_str("main.rdx")), ("line", json_int(42))]);
+        let params = json_object(vec![("file", json_str("main.mg")), ("line", json_int(42))]);
         let req = RpcRequest::with_params(1, "diagnostic.check", params);
         assert!(req.params.is_some());
     }

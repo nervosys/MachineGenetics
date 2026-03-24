@@ -9,8 +9,8 @@ use super::spec::SpecBlock;
 
 /// A published module in the Forge registry.
 ///
-/// Modules are the primary unit of distribution in Redox, analogous to
-/// crates in Rust. Each module supports dual-format source (`.rdx` + `.rs`),
+/// Modules are the primary unit of distribution in MechGen, analogous to
+/// crates in Rust. Each module supports dual-format source (`.mg` + `.rs`),
 /// MLIR artifact caching, and package-level safety rules.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Module {
@@ -32,10 +32,10 @@ pub struct Module {
     pub effects: Vec<EffectDecl>,
 }
 
-/// Source files for a module, supporting dual Redox/Rust format.
+/// Source files for a module, supporting dual MechGen/Rust format.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModuleSource {
-    /// Native Redox source files (.rdx)
+    /// Native MechGen source files (.mg)
     pub rdx_files: Vec<SourceFile>,
     /// Optional Rust compatibility source files (.rs)
     pub rs_files: Vec<SourceFile>,
@@ -70,8 +70,8 @@ pub struct MlirArtifact {
 /// MLIR dialect levels in the lowering pipeline.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MlirDialect {
-    /// Redox dialect (highest level)
-    Redox,
+    /// MechGen dialect (highest level)
+    MechGen,
     /// After Linalg lowering
     Linalg,
     /// After Affine lowering

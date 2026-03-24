@@ -5,4 +5,4 @@ you need to manage, build, and migrate projects.
 
 - **The `mg` CLI** — unified developer tool
 - **`Forge.toml`** — project configuration
-- **Migration from Rust** — using `rust2rdx`
+- **Migration from Rust** — using `rust2mg`

@@ -1,11 +1,11 @@
 [workspace]
 
 [package]
-name = "rdx2rs"
+name = "mg2rs"
 version = "0.1.0"
 edition = "2024"
-description = "Redox to Rust source-level transpiler"
+description = "MechGen to Rust source-level transpiler"
 
 [[bin]]
-name = "rdx2rs"
+name = "mg2rs"
 path = "src/main.rs"

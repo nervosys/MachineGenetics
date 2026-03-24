@@ -1,8 +1,8 @@
--- Redox language support for Neovim.
+-- MechGen language support for Neovim.
 --
 -- Installation:
---   1. Copy this file to ~/.config/nvim/lua/redox.lua
---   2. Add `require('redox')` to your init.lua
+--   1. Copy this file to ~/.config/nvim/lua/MechGen.lua
+--   2. Add `require('MechGen')` to your init.lua
 --
 -- Or with lazy.nvim, add this directory as a local plugin.
 
@@ -12,7 +12,7 @@ local M = {}
 
 vim.filetype.add({
   extension = {
-    rdx = 'redox',
+    rdx = 'MechGen',
   },
   filename = {
     ['Forge.toml'] = 'toml',
@@ -26,7 +26,7 @@ function M.setup_lsp(opts)
 
   local lspconfig_ok, lspconfig = pcall(require, 'lspconfig')
   if not lspconfig_ok then
-    vim.notify('redox: nvim-lspconfig not found', vim.log.levels.WARN)
+    vim.notify('MechGen: nvim-lspconfig not found', vim.log.levels.WARN)
     return
   end
 
@@ -37,7 +37,7 @@ function M.setup_lsp(opts)
     configs.rap = {
       default_config = {
         cmd = { opts.rap_cmd or 'rap' },
-        filetypes = { 'redox' },
+        filetypes = { 'MechGen' },
         root_dir = lspconfig.util.root_pattern('Forge.toml', '.git'),
         settings = {
           rap = {
@@ -75,14 +75,14 @@ function M.setup_treesitter()
   end
 
   local parser_config = parsers.get_parser_configs()
-  parser_config.redox = {
+  parser_config.MechGen = {
     install_info = {
-      -- When a tree-sitter-redox parser is published, point url here.
-      url = 'https://github.com/nervosys/tree-sitter-redox',
+      -- When a tree-sitter-MechGen parser is published, point url here.
+      url = 'https://github.com/nervosys/tree-sitter-MechGen',
       files = { 'src/parser.c' },
       branch = 'main',
     },
-    filetype = 'redox',
+    filetype = 'MechGen',
   }
 end
 
@@ -90,7 +90,7 @@ end
 
 function M.setup_syntax()
   vim.api.nvim_create_autocmd('FileType', {
-    pattern = 'redox',
+    pattern = 'MechGen',
     callback = function()
       local buf = vim.api.nvim_get_current_buf()
 
@@ -178,7 +178,7 @@ function M.setup_syntax()
         hi def link redoxBinNumber    Number
         hi def link redoxOperator     Operator
 
-        let b:current_syntax = 'redox'
+        let b:current_syntax = 'MechGen'
       ]])
     end,
   })
@@ -188,7 +188,7 @@ end
 
 function M.setup_keymaps()
   vim.api.nvim_create_autocmd('FileType', {
-    pattern = 'redox',
+    pattern = 'MechGen',
     callback = function(ev)
       local opts = { buffer = ev.buf, silent = true }
 

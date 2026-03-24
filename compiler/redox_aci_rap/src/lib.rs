@@ -558,11 +558,11 @@ mod tests {
     #[test]
     fn request_builder() {
         let req = RapRequest::new(AciEndpoint::Warnings, "analyze")
-            .with_param("file", "main.rdx")
+            .with_param("file", "main.mg")
             .with_body("source code here");
         assert_eq!(req.endpoint, AciEndpoint::Warnings);
         assert_eq!(req.action, "analyze");
-        assert_eq!(req.params["file"], "main.rdx");
+        assert_eq!(req.params["file"], "main.mg");
         assert_eq!(req.body.as_deref(), Some("source code here"));
     }
 
@@ -617,10 +617,10 @@ mod tests {
     fn router_warnings_analyze() {
         let mut router = AciRouter::new();
         let req = RapRequest::new(AciEndpoint::Warnings, "analyze")
-            .with_param("file", "main.rdx");
+            .with_param("file", "main.mg");
         let resp = router.dispatch(&req);
         assert_eq!(resp.status, RapStatus::Ok);
-        assert_eq!(resp.data["file"], "main.rdx");
+        assert_eq!(resp.data["file"], "main.mg");
     }
 
     #[test]

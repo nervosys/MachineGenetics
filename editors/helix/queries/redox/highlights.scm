@@ -1,7 +1,7 @@
-; Helix tree-sitter highlight queries for Redox.
+; Helix tree-sitter highlight queries for MechGen.
 ;
 ; These queries map tree-sitter node types to Helix highlight groups.
-; Requires a tree-sitter-redox parser to be installed.
+; Requires a tree-sitter-MechGen parser to be installed.
 
 ; ── Comments ─────────────────────────────────────────────────────────
 (line_comment) @comment.line

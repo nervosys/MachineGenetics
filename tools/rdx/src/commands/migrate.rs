@@ -1,16 +1,16 @@
 use std::path::Path;
 use std::process::Command;
 
-/// Migrate Rust source files to Redox using the rust2rdx transpiler.
+/// Migrate Rust source files to MechGen using the rust2mg transpiler.
 pub fn migrate(path: &str, diff: bool, stats: bool, verbose: bool) -> Result<(), String> {
     let input = Path::new(path);
     if !input.exists() {
         return Err(format!("input path does not exist: {path}"));
     }
 
-    // Locate the rust2rdx binary (try cargo run in the tools/rust2rdx directory,
+    // Locate the rust2mg binary (try cargo run in the tools/rust2mg directory,
     // or a pre-built binary on PATH).
-    let rust2rdx = find_rust2rdx()?;
+    let rust2mg = find_rust2mg()?;
 
     let mut files = Vec::new();
     if input.is_file() {
@@ -24,7 +24,7 @@ pub fn migrate(path: &str, diff: bool, stats: bool, verbose: bool) -> Result<(),
     }
 
     println!(
-        "\x1b[32m Migrating\x1b[0m {} Rust file(s) via rust2rdx",
+        "\x1b[32m Migrating\x1b[0m {} Rust file(s) via rust2mg",
         files.len()
     );
 
@@ -33,7 +33,7 @@ pub fn migrate(path: &str, diff: bool, stats: bool, verbose: bool) -> Result<(),
             println!("  processing {}", file.display());
         }
 
-        let mut cmd = Command::new(&rust2rdx);
+        let mut cmd = Command::new(&rust2mg);
         cmd.arg(file);
         if diff {
             cmd.arg("--diff");
@@ -44,7 +44,7 @@ pub fn migrate(path: &str, diff: bool, stats: bool, verbose: bool) -> Result<(),
 
         let output = cmd
             .output()
-            .map_err(|e| format!("failed to run rust2rdx: {e}"))?;
+            .map_err(|e| format!("failed to run rust2mg: {e}"))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -64,16 +64,16 @@ pub fn migrate(path: &str, diff: bool, stats: bool, verbose: bool) -> Result<(),
     Ok(())
 }
 
-/// Try to locate the rust2rdx binary.
-fn find_rust2rdx() -> Result<String, String> {
+/// Try to locate the rust2mg binary.
+fn find_rust2mg() -> Result<String, String> {
     // Check PATH first
-    if Command::new("rust2rdx").arg("--help").output().is_ok() {
-        return Ok("rust2rdx".into());
+    if Command::new("rust2mg").arg("--help").output().is_ok() {
+        return Ok("rust2mg".into());
     }
     // Check relative to workspace
     let candidates = [
-        "tools/rust2rdx/target/release/rust2rdx",
-        "tools/rust2rdx/target/debug/rust2rdx",
+        "tools/rust2mg/target/release/rust2mg",
+        "tools/rust2mg/target/debug/rust2mg",
     ];
     for c in &candidates {
         let p = Path::new(c);
@@ -83,8 +83,8 @@ fn find_rust2rdx() -> Result<String, String> {
     }
     // Windows variants with .exe
     let candidates_exe = [
-        "tools/rust2rdx/target/release/rust2rdx.exe",
-        "tools/rust2rdx/target/debug/rust2rdx.exe",
+        "tools/rust2mg/target/release/rust2mg.exe",
+        "tools/rust2mg/target/debug/rust2mg.exe",
     ];
     for c in &candidates_exe {
         let p = Path::new(c);
@@ -93,7 +93,7 @@ fn find_rust2rdx() -> Result<String, String> {
         }
     }
     Err(
-        "rust2rdx not found. Build it first:\n  cargo build --manifest-path tools/rust2rdx/Cargo.toml"
+        "rust2mg not found. Build it first:\n  cargo build --manifest-path tools/rust2mg/Cargo.toml"
             .into(),
     )
 }

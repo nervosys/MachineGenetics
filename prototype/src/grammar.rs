@@ -1,7 +1,7 @@
 /// Grammar Extension System — namespace-scoped discovery, registration, frequency promotion.
 ///
 /// `grammar_extension!` macro defines custom syntactic shorthands.
-/// Extensions register in `Redox.toml` and can be promoted to built-in
+/// Extensions register in `MechGen.toml` and can be promoted to built-in
 /// based on usage frequency.
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -40,7 +40,7 @@ impl ExtensionRegistry {
         reg
     }
 
-    /// Register the built-in core sigils that ship with Redox.
+    /// Register the built-in core sigils that ship with MechGen.
     fn register_builtins(&mut self) {
         let builtins = vec![
             // Core items
@@ -166,9 +166,9 @@ impl ExtensionRegistry {
     }
 }
 
-// ── Redox.toml parsing ──────────────────────────────────────────────
+// ── MechGen.toml parsing ──────────────────────────────────────────────
 
-/// Represents a `[grammar_extensions]` section in Redox.toml.
+/// Represents a `[grammar_extensions]` section in MechGen.toml.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GrammarExtensionConfig {
     pub sigil: String,

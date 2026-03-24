@@ -1,4 +1,4 @@
-/// Redox Effect Inference — bottom-up effect set computation.
+/// MechGen Effect Inference — bottom-up effect set computation.
 ///
 /// Implements the effect inference algorithm from REDOX_SPEC.md §5:
 ///   InferEffects(fn):

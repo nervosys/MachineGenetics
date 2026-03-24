@@ -16,7 +16,7 @@ pub fn check(verbose: bool) -> Result<(), String> {
     let rdx_files = collect_rdx_files(&src_dir)?;
 
     if rdx_files.is_empty() {
-        return Err("no .rdx source files found in src/".to_string());
+        return Err("no .mg source files found in src/".to_string());
     }
 
     let mut total_warnings = 0u32;

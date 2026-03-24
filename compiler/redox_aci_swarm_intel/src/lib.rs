@@ -433,14 +433,14 @@ mod tests {
         vec![SwarmSession {
             session_id: "s1".to_string(),
             tasks: vec![
-                make_task("h1", &["main.rdx", "util.rdx"], &["parse"], &[]),
-                make_task("h2", &["main.rdx"], &["compile"], &[]),
+                make_task("h1", &["main.mg", "util.mg"], &["parse"], &[]),
+                make_task("h2", &["main.mg"], &["compile"], &[]),
             ],
             conflicts: vec![ConflictRecord {
                 task_a: "h1".to_string(),
                 task_b: "h2".to_string(),
                 kind: ConflictKind::MergeConflict,
-                file: "main.rdx".to_string(),
+                file: "main.mg".to_string(),
                 resolution_secs: 30,
             }],
             total_duration_secs: 300,
@@ -454,8 +454,8 @@ mod tests {
     fn historical_rates() {
         let history = make_history();
         let rates = compute_historical_rates(&history);
-        assert!(rates["main.rdx"] > 0.0);
-        assert_eq!(rates.get("util.rdx").copied().unwrap_or(0.0), 0.0);
+        assert!(rates["main.mg"] > 0.0);
+        assert_eq!(rates.get("util.mg").copied().unwrap_or(0.0), 0.0);
     }
 
     // ── Feature Extraction ───────────────────────────────────────────────
@@ -463,8 +463,8 @@ mod tests {
     #[test]
     fn pair_features_file_overlap() {
         let tasks = vec![
-            make_task("a", &["f1.rdx", "f2.rdx"], &[], &[]),
-            make_task("b", &["f2.rdx", "f3.rdx"], &[], &[]),
+            make_task("a", &["f1.mg", "f2.mg"], &[], &[]),
+            make_task("b", &["f2.mg", "f3.mg"], &[], &[]),
         ];
         let features = extract_pair_features(&tasks, &[]);
         assert_eq!(features.len(), 1);
@@ -474,8 +474,8 @@ mod tests {
     #[test]
     fn pair_features_symbol_overlap() {
         let tasks = vec![
-            make_task("a", &["f1.rdx"], &["foo", "bar"], &[]),
-            make_task("b", &["f2.rdx"], &["bar", "baz"], &[]),
+            make_task("a", &["f1.mg"], &["foo", "bar"], &[]),
+            make_task("b", &["f2.mg"], &["bar", "baz"], &[]),
         ];
         let features = extract_pair_features(&tasks, &[]);
         assert_eq!(features[0].symbol_overlap, 1);
@@ -484,8 +484,8 @@ mod tests {
     #[test]
     fn pair_features_no_overlap() {
         let tasks = vec![
-            make_task("a", &["f1.rdx"], &["x"], &[]),
-            make_task("b", &["f2.rdx"], &["y"], &[]),
+            make_task("a", &["f1.mg"], &["x"], &[]),
+            make_task("b", &["f2.mg"], &["y"], &[]),
         ];
         let features = extract_pair_features(&tasks, &[]);
         assert_eq!(features[0].file_overlap, 0);
@@ -495,7 +495,7 @@ mod tests {
     #[test]
     fn pair_features_with_history() {
         let tasks =
-            vec![make_task("a", &["main.rdx"], &[], &[]), make_task("b", &["main.rdx"], &[], &[])];
+            vec![make_task("a", &["main.mg"], &[], &[]), make_task("b", &["main.mg"], &[], &[])];
         let history = make_history();
         let features = extract_pair_features(&tasks, &history);
         assert!(features[0].historical_conflict_rate > 0.0);
@@ -504,7 +504,7 @@ mod tests {
     #[test]
     fn pair_features_dependency() {
         let tasks =
-            vec![make_task("a", &["f1.rdx"], &[], &[]), make_task("b", &["f1.rdx"], &[], &["a"])];
+            vec![make_task("a", &["f1.mg"], &[], &[]), make_task("b", &["f1.mg"], &[], &["a"])];
         let features = extract_pair_features(&tasks, &[]);
         assert!(features[0].has_dependency);
     }
@@ -514,8 +514,8 @@ mod tests {
     #[test]
     fn predict_file_conflict() {
         let tasks = vec![
-            make_task("a", &["f1.rdx", "f2.rdx"], &[], &[]),
-            make_task("b", &["f2.rdx", "f3.rdx"], &[], &[]),
+            make_task("a", &["f1.mg", "f2.mg"], &[], &[]),
+            make_task("b", &["f2.mg", "f3.mg"], &[], &[]),
         ];
         let features = extract_pair_features(&tasks, &[]);
         let preds = predict_conflicts(&features);
@@ -527,8 +527,8 @@ mod tests {
     #[test]
     fn predict_symbol_conflict() {
         let tasks = vec![
-            make_task("a", &["f1.rdx"], &["foo"], &[]),
-            make_task("b", &["f1.rdx"], &["foo"], &[]),
+            make_task("a", &["f1.mg"], &["foo"], &[]),
+            make_task("b", &["f1.mg"], &["foo"], &[]),
         ];
         let features = extract_pair_features(&tasks, &[]);
         let preds = predict_conflicts(&features);
@@ -538,8 +538,8 @@ mod tests {
     #[test]
     fn predict_no_conflict() {
         let tasks = vec![
-            make_task("a", &["f1.rdx"], &["x"], &[]),
-            make_task("b", &["f2.rdx"], &["y"], &[]),
+            make_task("a", &["f1.mg"], &["x"], &[]),
+            make_task("b", &["f2.mg"], &["y"], &[]),
         ];
         let features = extract_pair_features(&tasks, &[]);
         let preds = predict_conflicts(&features);
@@ -549,12 +549,12 @@ mod tests {
     #[test]
     fn dependency_reduces_probability() {
         let tasks_no_dep = vec![
-            make_task("a", &["f1.rdx"], &["foo"], &[]),
-            make_task("b", &["f1.rdx"], &["foo"], &[]),
+            make_task("a", &["f1.mg"], &["foo"], &[]),
+            make_task("b", &["f1.mg"], &["foo"], &[]),
         ];
         let tasks_dep = vec![
-            make_task("a", &["f1.rdx"], &["foo"], &[]),
-            make_task("b", &["f1.rdx"], &["foo"], &["a"]),
+            make_task("a", &["f1.mg"], &["foo"], &[]),
+            make_task("b", &["f1.mg"], &["foo"], &["a"]),
         ];
         let f1 = extract_pair_features(&tasks_no_dep, &[]);
         let f2 = extract_pair_features(&tasks_dep, &[]);
@@ -566,9 +566,9 @@ mod tests {
     #[test]
     fn predictions_sorted_by_probability() {
         let tasks = vec![
-            make_task("a", &["f1.rdx", "f2.rdx"], &["x", "y"], &[]),
-            make_task("b", &["f1.rdx"], &[], &[]),
-            make_task("c", &["f1.rdx", "f2.rdx"], &["x", "y", "z"], &[]),
+            make_task("a", &["f1.mg", "f2.mg"], &["x", "y"], &[]),
+            make_task("b", &["f1.mg"], &[], &[]),
+            make_task("c", &["f1.mg", "f2.mg"], &["x", "y", "z"], &[]),
         ];
         let features = extract_pair_features(&tasks, &[]);
         let preds = predict_conflicts(&features);
@@ -611,7 +611,7 @@ mod tests {
     #[test]
     fn score_parallel_better_than_serial() {
         let tasks =
-            vec![make_task("a", &["f1.rdx"], &[], &[]), make_task("b", &["f2.rdx"], &[], &[])];
+            vec![make_task("a", &["f1.mg"], &[], &[]), make_task("b", &["f2.mg"], &[], &[])];
         let parallel = vec![
             TaskGroup { group_id: 0, task_ids: vec!["a".to_string()], depends_on: vec![] },
             TaskGroup { group_id: 1, task_ids: vec!["b".to_string()], depends_on: vec![] },
@@ -628,7 +628,7 @@ mod tests {
     #[test]
     fn score_with_history() {
         let tasks =
-            vec![make_task("a", &["main.rdx"], &[], &[]), make_task("b", &["main.rdx"], &[], &[])];
+            vec![make_task("a", &["main.mg"], &[], &[]), make_task("b", &["main.mg"], &[], &[])];
         let groups = vec![TaskGroup {
             group_id: 0,
             task_ids: vec!["a".to_string(), "b".to_string()],
@@ -644,12 +644,12 @@ mod tests {
     #[test]
     fn suggest_clusters_overlapping_files() {
         let tasks = vec![
-            make_task("a", &["f1.rdx", "f2.rdx"], &[], &[]),
-            make_task("b", &["f2.rdx", "f3.rdx"], &[], &[]),
-            make_task("c", &["f4.rdx"], &[], &[]),
+            make_task("a", &["f1.mg", "f2.mg"], &[], &[]),
+            make_task("b", &["f2.mg", "f3.mg"], &[], &[]),
+            make_task("c", &["f4.mg"], &[], &[]),
         ];
         let strategy = suggest_decomposition(&tasks, &[]);
-        // a and b should be in the same group (share f2.rdx), c separate
+        // a and b should be in the same group (share f2.mg), c separate
         assert!(strategy.task_groups.len() >= 2);
         let c_group =
             strategy.task_groups.iter().find(|g| g.task_ids.contains(&"c".to_string())).unwrap();
@@ -659,9 +659,9 @@ mod tests {
     #[test]
     fn suggest_all_independent() {
         let tasks = vec![
-            make_task("a", &["f1.rdx"], &[], &[]),
-            make_task("b", &["f2.rdx"], &[], &[]),
-            make_task("c", &["f3.rdx"], &[], &[]),
+            make_task("a", &["f1.mg"], &[], &[]),
+            make_task("b", &["f2.mg"], &[], &[]),
+            make_task("c", &["f3.mg"], &[], &[]),
         ];
         let strategy = suggest_decomposition(&tasks, &[]);
         assert_eq!(strategy.task_groups.len(), 3);
@@ -671,9 +671,9 @@ mod tests {
     #[test]
     fn suggest_all_overlapping() {
         let tasks = vec![
-            make_task("a", &["f1.rdx"], &[], &[]),
-            make_task("b", &["f1.rdx"], &[], &[]),
-            make_task("c", &["f1.rdx"], &[], &[]),
+            make_task("a", &["f1.mg"], &[], &[]),
+            make_task("b", &["f1.mg"], &[], &[]),
+            make_task("c", &["f1.mg"], &[], &[]),
         ];
         let strategy = suggest_decomposition(&tasks, &[]);
         assert_eq!(strategy.task_groups.len(), 1);
@@ -682,7 +682,7 @@ mod tests {
     #[test]
     fn suggest_with_dependencies() {
         let tasks =
-            vec![make_task("a", &["f1.rdx"], &[], &[]), make_task("b", &["f2.rdx"], &[], &["a"])];
+            vec![make_task("a", &["f1.mg"], &[], &[]), make_task("b", &["f2.mg"], &[], &["a"])];
         let strategy = suggest_decomposition(&tasks, &[]);
         // Different files → different groups, but b depends on a's group
         if strategy.task_groups.len() > 1 {

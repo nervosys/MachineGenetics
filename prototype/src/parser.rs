@@ -1,6 +1,6 @@
-/// Redox LL(1) Parser — recursive descent, zero backtracking.
+/// MechGen LL(1) Parser — recursive descent, zero backtracking.
 ///
-/// Parses the Redox canonical syntax into an AST.
+/// Parses the MechGen canonical syntax into an AST.
 /// Every decision point uses a single token of lookahead.
 use crate::ast::*;
 use crate::lexer::{Token, TokenKind};

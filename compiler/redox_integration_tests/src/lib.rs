@@ -242,8 +242,8 @@ pub fn run_phase1_scenario() -> ScenarioResult {
     notes.push(format!("Safety fully_enforced={enforced}, borrow_check={}", agent.borrow_check_active()));
 
     // Step 4: Emit diagnostics
-    agent.emit_borrow_conflict("src/main.rdx", 42, "cannot borrow `x` as mutable because it is also borrowed as immutable");
-    agent.emit_type_mismatch_warning("src/lib.rdx", 10, "expected `u32`, found `i32`");
+    agent.emit_borrow_conflict("src/main.mg", 42, "cannot borrow `x` as mutable because it is also borrowed as immutable");
+    agent.emit_type_mismatch_warning("src/lib.mg", 10, "expected `u32`, found `i32`");
     notes.push(format!("Emitted {} diagnostics ({} errors)", agent.all_diagnostics().len(), agent.error_count()));
 
     // Step 5: Query cost oracle
@@ -392,7 +392,7 @@ mod tests {
     #[test]
     fn emit_borrow_conflict_diagnostic() {
         let mut agent = SimulatedAgent::new("diag-test");
-        let graph = agent.emit_borrow_conflict("test.rdx", 5, "cannot borrow");
+        let graph = agent.emit_borrow_conflict("test.mg", 5, "cannot borrow");
         assert_eq!(graph.root.severity, DiagSeverity::Error);
         assert_eq!(graph.root.category, Some(SafetyCategory::BorrowConflict));
         assert!(!graph.fixes.is_empty());
@@ -401,7 +401,7 @@ mod tests {
     #[test]
     fn emit_type_mismatch_warning() {
         let mut agent = SimulatedAgent::new("diag-test");
-        let graph = agent.emit_type_mismatch_warning("test.rdx", 10, "type mismatch");
+        let graph = agent.emit_type_mismatch_warning("test.mg", 10, "type mismatch");
         assert_eq!(graph.root.severity, DiagSeverity::Warning);
         assert_eq!(graph.root.category, Some(SafetyCategory::TypeMismatch));
     }
@@ -409,9 +409,9 @@ mod tests {
     #[test]
     fn diagnostic_error_count() {
         let mut agent = SimulatedAgent::new("diag-test");
-        agent.emit_borrow_conflict("a.rdx", 1, "err1");
-        agent.emit_type_mismatch_warning("b.rdx", 2, "warn1");
-        agent.emit_borrow_conflict("c.rdx", 3, "err2");
+        agent.emit_borrow_conflict("a.mg", 1, "err1");
+        agent.emit_type_mismatch_warning("b.mg", 2, "warn1");
+        agent.emit_borrow_conflict("c.mg", 3, "err2");
         assert_eq!(agent.error_count(), 2);
         assert_eq!(agent.all_diagnostics().len(), 3);
     }
@@ -419,7 +419,7 @@ mod tests {
     #[test]
     fn diagnostic_has_fix_with_edit() {
         let mut agent = SimulatedAgent::new("fix-test");
-        agent.emit_borrow_conflict("x.rdx", 1, "borrow conflict");
+        agent.emit_borrow_conflict("x.mg", 1, "borrow conflict");
         let diag = &agent.all_diagnostics()[0];
         assert!(!diag.fixes.is_empty());
         assert!(!diag.fixes[0].edits.is_empty());
@@ -428,7 +428,7 @@ mod tests {
     #[test]
     fn diagnostic_has_context_note() {
         let mut agent = SimulatedAgent::new("ctx-test");
-        agent.emit_borrow_conflict("y.rdx", 10, "conflict");
+        agent.emit_borrow_conflict("y.mg", 10, "conflict");
         let diag = &agent.all_diagnostics()[0];
         assert!(!diag.context.is_empty());
     }
@@ -512,7 +512,7 @@ mod tests {
         // AgentDev preset skips borrow check
 
         // 4. Emit diagnostic
-        agent.emit_borrow_conflict("combo.rdx", 1, "test conflict");
+        agent.emit_borrow_conflict("combo.mg", 1, "test conflict");
         assert_eq!(agent.error_count(), 1);
 
         // 5. Query cost

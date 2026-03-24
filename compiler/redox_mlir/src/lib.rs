@@ -353,7 +353,7 @@ mod tests {
     #[test]
     fn module_add_operations() {
         let ctx = Context::new().unwrap();
-        let loc = Location::file_line_col("main.rdx", 1, 0);
+        let loc = Location::file_line_col("main.mg", 1, 0);
         let mut module = Module::new_empty(&ctx, &loc).unwrap();
         assert_eq!(module.num_operations(), 0);
         module.add_operation("redox.move");
@@ -404,7 +404,7 @@ mod tests {
         assert_eq!(ctx.num_registered_dialects(), 1);
 
         // Create a module
-        let loc = Location::file_line_col("smoke.rdx", 1, 0);
+        let loc = Location::file_line_col("smoke.mg", 1, 0);
         let mut module = Module::new_empty(&ctx, &loc).unwrap();
         assert!(module.is_alive());
 

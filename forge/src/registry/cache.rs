@@ -7,7 +7,7 @@ use crate::models::MlirDialect;
 /// Cache structure (per module, per version):
 /// ```text
 /// module-name/1.3.0/
-///   ├── redox-dialect.mlir
+///   ├── MechGen-dialect.mlir
 ///   ├── linalg-dialect.mlir
 ///   ├── affine-dialect.mlir
 ///   ├── llvm-dialect.mlir
@@ -91,7 +91,7 @@ impl MlirCache {
 /// Map a dialect to its cache filename.
 fn dialect_filename(dialect: &MlirDialect) -> &'static str {
     match dialect {
-        MlirDialect::Redox => "redox-dialect.mlir",
+        MlirDialect::MechGen => "MechGen-dialect.mlir",
         MlirDialect::Linalg => "linalg-dialect.mlir",
         MlirDialect::Affine => "affine-dialect.mlir",
         MlirDialect::Llvm => "llvm-dialect.mlir",
@@ -103,7 +103,7 @@ fn dialect_filename(dialect: &MlirDialect) -> &'static str {
 /// Attempt to infer the dialect from a cache filename.
 fn dialect_from_filename(name: &str) -> Option<MlirDialect> {
     match name {
-        "redox-dialect.mlir" => Some(MlirDialect::Redox),
+        "MechGen-dialect.mlir" => Some(MlirDialect::MechGen),
         "linalg-dialect.mlir" => Some(MlirDialect::Linalg),
         "affine-dialect.mlir" => Some(MlirDialect::Affine),
         "llvm-dialect.mlir" => Some(MlirDialect::Llvm),
@@ -130,14 +130,14 @@ mod tests {
     #[test]
     fn artifact_path_matches_spec() {
         let cache = MlirCache::new(Path::new("/tmp/cache"));
-        let path = cache.artifact_path("http-client", "1.3.0", &MlirDialect::Redox);
-        assert!(path.to_str().unwrap().ends_with("redox-dialect.mlir"));
+        let path = cache.artifact_path("http-client", "1.3.0", &MlirDialect::MechGen);
+        assert!(path.to_str().unwrap().ends_with("MechGen-dialect.mlir"));
     }
 
     #[test]
     fn dialect_roundtrip() {
         for dialect in &[
-            MlirDialect::Redox,
+            MlirDialect::MechGen,
             MlirDialect::Linalg,
             MlirDialect::Affine,
             MlirDialect::Llvm,

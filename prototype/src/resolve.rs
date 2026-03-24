@@ -1,4 +1,4 @@
-/// Redox Name Resolution — builds a symbol table and resolves identifiers.
+/// MechGen Name Resolution — builds a symbol table and resolves identifiers.
 ///
 /// Walks the AST to:
 /// 1. Collect all definitions (functions, structs, enums, traits, consts, effects, modules)

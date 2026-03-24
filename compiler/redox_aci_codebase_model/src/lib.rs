@@ -33,7 +33,7 @@ use std::fmt;
 /// A source of training data for the codebase model.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DataSourceKind {
-    /// Project source files (`.rdx`, `.rs`).
+    /// Project source files (`.mg`, `.rs`).
     ProjectSource,
     /// SKB entries (safety rules, patterns, constraints).
     SkbEntries,

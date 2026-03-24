@@ -63,7 +63,7 @@ fn main() {
         }
         Some("--fmt-compact") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: redox-parse --fmt-compact <file>");
+                eprintln!("Usage: MechGen-parse --fmt-compact <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -85,7 +85,7 @@ fn main() {
         }
         Some("--fmt-expand") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: redox-parse --fmt-expand <file>");
+                eprintln!("Usage: MechGen-parse --fmt-expand <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -107,7 +107,7 @@ fn main() {
         }
         Some("--check") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: redox-parse --check <file> [--no-elision] [--token-report]");
+                eprintln!("Usage: MechGen-parse --check <file> [--no-elision] [--token-report]");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -118,7 +118,7 @@ fn main() {
         }
         Some("--pipeline") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: redox-parse --pipeline <file> [--no-elision] [--syntax=legacy] [--token-report]");
+                eprintln!("Usage: MechGen-parse --pipeline <file> [--no-elision] [--syntax=legacy] [--token-report]");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -320,7 +320,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
 
 fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, token_report: bool) {
     eprintln!("╔══════════════════════════════════════════════════════════════╗");
-    eprintln!("║  Redox End-to-End Pipeline                                  ║");
+    eprintln!("║  MechGen End-to-End Pipeline                                  ║");
     eprintln!("╚══════════════════════════════════════════════════════════════╝");
     eprintln!();
 
@@ -328,7 +328,7 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
 
     // ── Phase 0: Legacy syntax translation ───────────────────────────
     let source = if legacy {
-        eprintln!("▸ Phase 0: Legacy syntax translation (Rust → Redox)");
+        eprintln!("▸ Phase 0: Legacy syntax translation (Rust → MechGen)");
         let translated = legacy::translate(source);
         eprintln!("  ✓ translated to canonical syntax");
         translated

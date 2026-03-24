@@ -33,7 +33,7 @@ mg run
 Any example can be back-transpiled to Rust with:
 
 ```bash
-rdx2rs src/main.mg --output rs/
+mg2rs src/main.mg --output rs/
 ```
 
 ## Project Structure

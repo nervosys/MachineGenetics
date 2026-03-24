@@ -15,7 +15,7 @@ pub struct ModuleMetadata {
     pub keywords: Vec<String>,
     /// Module categories
     pub categories: Vec<String>,
-    /// Redox edition (e.g., "2025")
+    /// MechGen edition (e.g., "2025")
     pub edition: String,
     /// Minimum Rust version if transpilable to Rust
     pub rust_compatibility: Option<String>,

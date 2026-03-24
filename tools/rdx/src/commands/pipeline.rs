@@ -1,6 +1,6 @@
 use std::path::Path;
 
-/// Run the full Redox pipeline on a source file:
+/// Run the full MechGen pipeline on a source file:
 /// parse → resolve → typecheck → effect-check → MLIR lowering.
 pub fn pipeline(path: &str, verbose: bool) -> Result<(), String> {
     let file = Path::new(path);
@@ -8,7 +8,7 @@ pub fn pipeline(path: &str, verbose: bool) -> Result<(), String> {
         return Err(format!("file not found: {path}"));
     }
     if file.extension().is_none_or(|e| e != "rdx") {
-        return Err(format!("expected a .rdx file, got: {path}"));
+        return Err(format!("expected a .mg file, got: {path}"));
     }
 
     let source = std::fs::read_to_string(file)
@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_pipeline_missing_file() {
-        let result = pipeline("/nonexistent.rdx", false);
+        let result = pipeline("/nonexistent.mg", false);
         assert!(result.is_err());
     }
 }

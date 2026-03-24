@@ -24,8 +24,8 @@ Fixes #(issue number)
 <!-- Which part of the project does this affect? -->
 
 - [ ] Compiler / Parser
-- [ ] rust2rdx Transpiler
-- [ ] rdx2rs Back-Transpiler
+- [ ] rust2mg Transpiler
+- [ ] mg2rs Back-Transpiler
 - [ ] mg CLI / Build System
 - [ ] Standard Library (`stdlib/`)
 - [ ] VS Code Extension

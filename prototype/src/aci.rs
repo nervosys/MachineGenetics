@@ -382,7 +382,7 @@ mod tests {
     use super::*;
 
     fn warn(code: &str, sev: Severity) -> Warning {
-        Warning { code: code.into(), message: format!("msg:{code}"), location: "file.rdx:1".into(), severity: sev, suppressed: false }
+        Warning { code: code.into(), message: format!("msg:{code}"), location: "file.mg:1".into(), severity: sev, suppressed: false }
     }
 
     // ── Dynamic Warning Engine ────────────────────────────────────
@@ -439,7 +439,7 @@ mod tests {
     #[test]
     fn diagnose_known_error() {
         let mut e = IntelligentDebugEngine::new();
-        let d = e.diagnose("E0505", "src/main.rdx:42");
+        let d = e.diagnose("E0505", "src/main.mg:42");
         assert!(d.confidence > 0.5);
         assert!(d.root_cause.contains("borrow"));
     }

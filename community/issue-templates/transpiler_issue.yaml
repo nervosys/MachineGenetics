@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this template to report issues with `rust2rdx` or `rdx2rs`
+        Use this template to report issues with `rust2mg` or `mg2rs`
         translation rules.
 
   - type: dropdown
@@ -15,8 +15,8 @@ body:
       label: Transpiler
       description: Which transpiler is affected?
       options:
-        - rust2rdx (Rust → Redox)
-        - rdx2rs (Redox → Rust)
+        - rust2mg (Rust → MechGen)
+        - mg2rs (MechGen → Rust)
     validations:
       required: true
 
@@ -51,7 +51,7 @@ body:
       label: Expected Output
       description: What the transpiler should produce
       value: |
-        ```redox
+        ```MechGen
         // paste expected output here
         ```
     validations:

@@ -70,10 +70,10 @@ cd my-project
 mg run
 
 # Transpile existing Rust code to MechGen
-rust2rdx src/main.rs --output src/main.mg
+rust2mg src/main.rs --output src/main.mg
 
 # Back-transpile to Rust
-rdx2rs src/main.mg --output rs/
+mg2rs src/main.mg --output rs/
 ```
 
 ## Syntax at a Glance

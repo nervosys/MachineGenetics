@@ -2,7 +2,7 @@
 {"input": "Compare Box alloc vs Rc clone cost", "output": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"cost/compare\",\"params\":{\"a\":\"Box alloc\",\"b\":\"Rc clone\",\"target\":\"x86_64\"}}"}
 {"input": "What effects does std.io.read_file have?", "output": "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"skb/query\",\"params\":{\"by\":\"fqn\",\"value\":\"std.io.read_file\"}}"}
 {"input": "Find all symbols requiring network capability", "output": "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"skb/query\",\"params\":{\"by\":\"capability\",\"value\":\"network\"}}"}
-{"input": "What is the Redox equivalent of HashMap?", "output": "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"skb/query\",\"params\":{\"by\":\"rust_alias\",\"value\":\"HashMap\"}}"}
+{"input": "What is the MechGen equivalent of HashMap?", "output": "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"skb/query\",\"params\":{\"by\":\"rust_alias\",\"value\":\"HashMap\"}}"}
 {"input": "Get the spec for std.io.read_file", "output": "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"skb/spec\",\"params\":{\"fqn\":\"std.io.read_file\"}}"}
 {"input": "Verify contracts for my_module.process with io effect", "output": "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"verify/contracts\",\"params\":{\"fqn\":\"my_module.process\",\"requires\":[\"input.len() > 0\"],\"ensures\":[\"ret.is_ok()\"],\"declared_effects\":[\"io\"],\"used_effects\":[\"io\"]}}"}
 {"input": "Heal this source code that has errors", "output": "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"build/heal\",\"params\":{\"source\":\"+f add(a: i32, b: i32) { a + b }\"}}"}

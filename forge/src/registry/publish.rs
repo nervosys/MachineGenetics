@@ -14,7 +14,7 @@ pub struct ValidationIssue {
 /// - Name is non-empty and uses valid characters
 /// - Version parses as valid semver
 /// - Metadata has at least a description and license
-/// - Source includes at least one `.rdx` or `.rs` file
+/// - Source includes at least one `.mg` or `.rs` file
 pub fn validate(module: &Module) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
@@ -53,7 +53,7 @@ pub fn validate(module: &Module) -> Vec<ValidationIssue> {
     if module.source.rdx_files.is_empty() && module.source.rs_files.is_empty() {
         issues.push(ValidationIssue {
             field: "source".into(),
-            message: "module must include at least one .rdx or .rs source file".into(),
+            message: "module must include at least one .mg or .rs source file".into(),
         });
     }
 
@@ -98,7 +98,7 @@ mod tests {
         };
         m.source = ModuleSource {
             rdx_files: vec![crate::models::SourceFile {
-                path: "lib.rdx".into(),
+                path: "lib.mg".into(),
                 size: 100,
                 sha256: "abc123".into(),
             }],

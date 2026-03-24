@@ -25,7 +25,7 @@ pub struct CostEstimate {
     pub allocations: u32,
     /// Estimated latency in nanoseconds.
     pub latency_ns: u64,
-    /// Token count to express this construct in Redox syntax.
+    /// Token count to express this construct in MechGen syntax.
     pub token_count: u32,
     /// Whether this is an exact cost or a statistical estimate.
     pub is_exact: bool,
@@ -52,7 +52,7 @@ pub struct CostComparison {
 
 // ── Built-in Cost Database ───────────────────────────────────────────
 
-/// Cost entries for common Redox constructs.
+/// Cost entries for common MechGen constructs.
 ///
 /// These are estimated costs for x86_64 at Release optimization.
 /// A real implementation would compute from MLIR cost models.
@@ -88,7 +88,7 @@ fn builtin_costs() -> Vec<CostEstimate> {
         cost(x86, rel, "std.sync.Mutex.lock", 15, 0, 0, 15, 3, 0.85),
         cost(x86, rel, "std.sync.RwLock.read", 10, 0, 0, 10, 3, 0.85),
         cost(x86, rel, "std.sync.Channel.send", 20, 0, 0, 18, 3, 0.8),
-        // Agent primitives (Redox-unique)
+        // Agent primitives (MechGen-unique)
         cost(x86, rel, "Swarm.broadcast", 100, 0, 0, 200, 3, 0.6),
         cost(x86, rel, "Bus.publish", 50, 128, 0, 80, 4, 0.6),
         cost(x86, rel, "Lease.acquire", 30, 64, 1, 40, 3, 0.5),

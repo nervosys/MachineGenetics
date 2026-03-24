@@ -1,4 +1,4 @@
-/// Redox LL(1) Lexer — tokenizes Redox canonical syntax.
+/// MechGen LL(1) Lexer — tokenizes MechGen canonical syntax.
 ///
 /// Design: single-pass, no backtracking, every token is unambiguous from
 /// its first character. Optimized for streaming (agent consumption).
