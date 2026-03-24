@@ -1,12 +1,12 @@
-# Redox Editor Support
+# MechGen Editor Support
 
-Configuration files for using Redox with various editors.
+Configuration files for using MechGen with various editors.
 
 ## Editors
 
 | Editor                      | Directory         | Status                          |
 | --------------------------- | ----------------- | ------------------------------- |
-| [VS Code](../redox-vscode/) | `redox-vscode/`   | Full extension (TextMate + RAP) |
+| [VS Code](../MechGen-vscode/) | `MechGen-vscode/`   | Full extension (TextMate + RAP) |
 | [Neovim](neovim/)           | `editors/neovim/` | LSP + tree-sitter + ftdetect    |
 | [Helix](helix/)             | `editors/helix/`  | Language config + queries       |
 | [Zed](zed/)                 | `editors/zed/`    | Extension manifest + highlights |
@@ -19,7 +19,7 @@ Configuration files for using Redox with various editors.
 -- Add to your init.lua or lazy.nvim config:
 require('lspconfig').rap.setup({
   cmd = { 'rap' },
-  filetypes = { 'redox' },
+  filetypes = { 'MechGen' },
   root_dir = function(fname)
     return require('lspconfig.util').root_pattern('Forge.toml')(fname)
   end,
@@ -31,17 +31,17 @@ require('lspconfig').rap.setup({
 ```bash
 # Copy language config into your Helix config directory:
 cp editors/helix/languages.toml ~/.config/helix/languages.toml
-cp -r editors/helix/queries ~/.config/helix/runtime/queries/redox
+cp -r editors/helix/queries ~/.config/helix/runtime/queries/MechGen
 ```
 
 ### Zed
 
 ```bash
 # Install from the Zed extension directory:
-cp -r editors/zed ~/.config/zed/extensions/redox
+cp -r editors/zed ~/.config/zed/extensions/MechGen
 ```
 
-## RAP (Redox Agent Protocol)
+## RAP (MechGen Agent Protocol)
 
 All editors connect to the same RAP language server for:
 - Diagnostics (errors, warnings, SKB violations)
@@ -49,10 +49,10 @@ All editors connect to the same RAP language server for:
 - Hover (type info, effect signatures, cost oracle)
 - Go-to-definition, find-references
 - Code actions (auto-fix, extract function, inline)
-- Formatting (`rdx fmt` integration)
+- Formatting (`mg fmt` integration)
 
 Start the server with:
 
 ```bash
-rdx rap
+mg rap
 ```

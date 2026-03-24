@@ -463,7 +463,7 @@ impl DevServer {
                 line: 1,
                 column: 1,
                 kind: ErrorKind::SyntaxError,
-                message: "Use Redox `fn` keyword instead of Rust `fn`".to_string(),
+                message: "Use MechGen `fn` keyword instead of Rust `fn`".to_string(),
             });
         }
 
@@ -483,7 +483,7 @@ impl DevServer {
                 line: 3,
                 column: 5,
                 kind: ErrorKind::SyntaxError,
-                message: "Use Redox `let` keyword instead of Rust `let`".to_string(),
+                message: "Use MechGen `let` keyword instead of Rust `let`".to_string(),
             });
         }
 
@@ -550,7 +550,7 @@ impl DevServer {
 
 pub fn main() / io {
     println!("╔═══════════════════════════════════════════════════════════╗");
-    println!("║  Redox Live Compiler — Hot-Reload Dev Server             ║");
+    println!("║  MechGen Live Compiler — Hot-Reload Dev Server             ║");
     println!("╚═══════════════════════════════════════════════════════════╝");
     println!("");
 
@@ -559,15 +559,15 @@ pub fn main() / io {
     // Load initial source files.
     println!("─── Loading Project ──────────────────────────────────────");
     server.add_file(
-        "src/lib.rdx".to_string(),
+        "src/lib.mg".to_string(),
         "pub fn greet(name: &String) -> String {\n    format!(\"Hello, {name}!\")\n}".to_string(),
     );
     server.add_file(
-        "src/math.rdx".to_string(),
+        "src/math.mg".to_string(),
         "fn add(a: i32, b: i32) -> i32 { a + b }\nfn mul(a: i32, b: i32) -> i32 { a * b }".to_string(),
     );
     server.add_file(
-        "src/api.rdx".to_string(),
+        "src/api.mg".to_string(),
         "pub fn handle_request(req: &Request) / io + net -> Result<Response, ApiError> {\n    let body = req.body();\n    Ok(Response::ok(body))\n}".to_string(),
     );
 
@@ -575,7 +575,7 @@ pub fn main() / io {
     println!("");
     println!("─── Edit 1: Clean Change ─────────────────────────────────");
     server.on_file_changed(
-        &"src/lib.rdx".to_string(),
+        &"src/lib.mg".to_string(),
         "pub fn greet(name: &String) -> String {\n    let greeting = format!(\"Hello, {name}!\");\n    greeting\n}".to_string(),
     );
 
@@ -583,7 +583,7 @@ pub fn main() / io {
     println!("");
     println!("─── Edit 2: Introduces Errors ────────────────────────────");
     server.on_file_changed(
-        &"src/math.rdx".to_string(),
+        &"src/math.mg".to_string(),
         "fn add(a: i32, b: i32) -> i32 { a + b }\nlet unused_x = 42;\nfn mul(a: i32, b: i32) -> i32 { a * b }".to_string(),
     );
 
@@ -591,7 +591,7 @@ pub fn main() / io {
     println!("");
     println!("─── Edit 3: Fix and Improve ──────────────────────────────");
     server.on_file_changed(
-        &"src/math.rdx".to_string(),
+        &"src/math.mg".to_string(),
         "fn add(a: i32, b: i32) -> i32 { a + b }\nfn mul(a: i32, b: i32) -> i32 { a * b }\nfn div(a: f64, b: f64) -> Result<f64, String>\n    @req b != 0.0\n{ Ok(a / b) }".to_string(),
     );
 
@@ -599,10 +599,10 @@ pub fn main() / io {
     println!("");
     println!("─── Edit 4: Regression Detected ──────────────────────────");
     server.on_file_changed(
-        &"src/api.rdx".to_string(),
+        &"src/api.mg".to_string(),
         "pub fn handle_request(req: &Request) / io + net -> Result<Response, ApiError> {\n    let undefined_var = process(req);\n    Ok(Response::ok(undefined_var))\n}".to_string(),
     );
-    server.simulate_regression(&"src/api.rdx".to_string());
+    server.simulate_regression(&"src/api.mg".to_string());
 
     // Final summary.
     server.summary();

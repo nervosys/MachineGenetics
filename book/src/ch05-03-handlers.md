@@ -5,7 +5,7 @@ implementation. This is the key to testability, mocking, and effect composition.
 
 ## The `handle` function
 
-```rdx
+```mg
 use std::effect::{handle, perform};
 
 pub fn main() / io {
@@ -31,7 +31,7 @@ pub fn main() / io {
 
 Replace real I/O with deterministic mocks:
 
-```rdx
+```mg
 #[test]
 fn test_config_loading() {
     let result = handle::<IoEffect, Config>(
@@ -46,7 +46,7 @@ fn test_config_loading() {
 
 Wrap an effect to add logging:
 
-```rdx
+```mg
 fn with_logging<T>(f: fn() -> T / io) -> T / io {
     handle::<IoEffect, T>(
         f,
@@ -62,7 +62,7 @@ fn with_logging<T>(f: fn() -> T / io) -> T / io {
 
 Effects replace constructor-injected dependencies:
 
-```rdx
+```mg
 // Instead of:
 //   struct Service { db: Box<Database>, http: Box<HttpClient> }
 
@@ -81,7 +81,7 @@ pub fn process_order(order: &Order) -> Result<Receipt, Error> / db, net {
 
 Handle multiple effects at once:
 
-```rdx
+```mg
 use std::effect::handle2;
 
 let result = handle2::<IoEffect, NetEffect, Response>(
@@ -95,7 +95,7 @@ let result = handle2::<IoEffect, NetEffect, Response>(
 
 Check whether a type has a particular effect and conditionally handle it:
 
-```rdx
+```mg
 use std::effect::{has_effect, discharge};
 
 // Remove the io effect by handling it

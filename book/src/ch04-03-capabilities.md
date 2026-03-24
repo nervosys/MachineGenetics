@@ -1,6 +1,6 @@
 # Capabilities
 
-Redox replaces `unsafe` blocks with a **capability system**. Instead of
+MechGen replaces `unsafe` blocks with a **capability system**. Instead of
 opting out of safety, you *request specific permissions* through capabilities
 that are tracked, leased, and revocable.
 
@@ -10,11 +10,11 @@ In Rust, `unsafe` is a binary switch: inside an `unsafe` block, *all* safety
 checks are suspended. This is too coarse-grained — calling a C function should
 not also permit arbitrary pointer arithmetic.
 
-## Capabilities in Redox
+## Capabilities in MechGen
 
 A capability is a fine-grained permission:
 
-```rdx
+```mg
 use std::agent::{Capability, Region};
 
 // Request the FFI capability
@@ -42,7 +42,7 @@ Region::enter(ffi_cap, || {
 
 Capabilities have a scope, preventing them from leaking:
 
-```rdx
+```mg
 use std::agent::{Capability, CapabilityScope};
 
 let cap = Capability {
@@ -61,7 +61,7 @@ let cap = Capability {
 
 Capabilities can be time-bounded with leases:
 
-```rdx
+```mg
 use std::agent::Lease;
 
 let lease = cap.lease(Duration::from_secs(60))?;
@@ -75,7 +75,7 @@ if lease.is_valid() {
 
 ## Why capabilities over `unsafe`
 
-| Aspect       |   Rust `unsafe`   | Redox Capabilities  |
+| Aspect       |   Rust `unsafe`   | MechGen Capabilities  |
 | ------------ | :---------------: | :-----------------: |
 | Granularity  |  All-or-nothing   |   Per-permission    |
 | Duration     |   Lexical scope   | Time-bounded leases |

@@ -1,6 +1,6 @@
-# Redox Cookbook
+# MechGen Cookbook
 
-A collection of practical recipes for common programming tasks in Redox.
+A collection of practical recipes for common programming tasks in MechGen.
 
 Each recipe is a **self-contained, copy-paste example** that solves a specific
 real-world problem. Recipes are organized by category and ordered from simple to

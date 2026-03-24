@@ -6,7 +6,7 @@
 
 # Getting Started
 
-- [Hello, Redox](ch01-00-hello-redox.md)
+- [Hello, MechGen](ch01-00-hello-mechgen.md)
   - [Installation](ch01-01-installation.md)
   - [Hello World](ch01-02-hello-world.md)
   - [Your First Project](ch01-03-first-project.md)
@@ -46,7 +46,7 @@
   - [Messages & Communication](ch06-03-messages.md)
   - [Capabilities & Leases](ch06-04-capabilities.md)
 
-# Practical Redox
+# Practical MechGen
 
 - [Standard Library Tour](ch07-00-stdlib.md)
   - [I/O and Files](ch07-01-io.md)
@@ -57,10 +57,10 @@
   - [Testing](ch07-06-testing.md)
 
 - [Build System & Tooling](ch08-00-tooling.md)
-  - [The rdx CLI](ch08-01-rdx-cli.md)
+  - [The mg CLI](ch08-01-mg-cli.md)
   - [Forge.toml Configuration](ch08-02-forge-toml.md)
   - [Migrating from Rust](ch08-03-migration.md)
 
 ---
 
-[Redox vs Rust Cheatsheet](appendix-cheatsheet.md)
+[MechGen vs Rust Cheatsheet](appendix-cheatsheet.md)

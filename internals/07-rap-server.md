@@ -1,6 +1,6 @@
 # Chapter 7: RAP Server
 
-RAP (Redox Agent Protocol) is the language-server component that exposes
+RAP (MechGen Agent Protocol) is the language-server component that exposes
 compiler capabilities to AI agents, IDEs, and external tools over a
 JSON-RPC protocol.
 
@@ -24,14 +24,14 @@ messages:
 ```
 ┌────────────┐        TCP (127.0.0.1:9876)        ┌──────────────┐
 │   Agent    │  ──── JSON-RPC newline-delimited ────▶   RAP Server │
-│ (LLM/IDE)  │  ◀──── JSON-RPC responses ───────────  (rdx rap)   │
+│ (LLM/IDE)  │  ◀──── JSON-RPC responses ───────────  (mg rap)   │
 └────────────┘                                     └──────────────┘
 ```
 
 Starting the server:
 
 ```bash
-rdx rap --bind 127.0.0.1:9876
+mg rap --bind 127.0.0.1:9876
 ```
 
 The prototype implementation (`prototype/src/rap.rs`) binds via
@@ -230,13 +230,13 @@ impl RapMethod for TokensMethod {
 
 ## 7.6 VS Code Integration
 
-The `redox-vscode` extension connects to the RAP server as an LSP-like
+The `MechGen-vscode` extension connects to the RAP server as an LSP-like
 client:
 
 ```
 ┌──────────────┐       JSON-RPC/TCP       ┌──────────────┐
 │  VS Code     │  ────────────────────▶   │  RAP Server  │
-│  Extension   │  ◀────────────────────   │  (rdx rap)   │
+│  Extension   │  ◀────────────────────   │  (mg rap)   │
 │              │                          │              │
 │  • Syntax    │  language/tokens ──────▶  │  • Lexer     │
 │  • Errors    │  build/check ─────────▶  │  • Parser    │
@@ -246,7 +246,7 @@ client:
 ```
 
 The extension provides:
-- **Syntax highlighting**: TextMate grammar for `.rdx` files
+- **Syntax highlighting**: TextMate grammar for `.mg` files
 - **Error underlining**: Maps `build/check` errors to VS Code diagnostics
 - **Hover information**: Maps `query/type` to tooltip display
 - **Completions**: Maps `query/completions` to VS Code completion items

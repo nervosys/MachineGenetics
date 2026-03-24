@@ -7,10 +7,10 @@
 
 ## Example 1: Hello World
 
-**Prompt:** Write a Redox program that prints "Hello, world!"
+**Prompt:** Write a MechGen program that prints "Hello, world!"
 
 **Response:**
-```redox
+```MechGen
 pub fn main() / io {
     println!("Hello, world!");
 }
@@ -20,10 +20,10 @@ pub fn main() / io {
 
 ## Example 2: Sum of a List
 
-**Prompt:** Write a Redox function that takes a vector of integers and returns their sum.
+**Prompt:** Write a MechGen function that takes a vector of integers and returns their sum.
 
 **Response:**
-```redox
+```MechGen
 fn sum(numbers: &Vec<i32>) -> i32 {
     numbers.iter().sum()
 }
@@ -33,10 +33,10 @@ fn sum(numbers: &Vec<i32>) -> i32 {
 
 ## Example 3: FizzBuzz
 
-**Prompt:** Write FizzBuzz in Redox, printing results for 1 to 100.
+**Prompt:** Write FizzBuzz in MechGen, printing results for 1 to 100.
 
 **Response:**
-```redox
+```MechGen
 pub fn main() / io {
     for n in 1..=100 {
         if n % 15 == 0 {
@@ -56,10 +56,10 @@ pub fn main() / io {
 
 ## Example 4: Struct with Constructor
 
-**Prompt:** Define a Redox struct `Rectangle` with width and height, and a method to compute area.
+**Prompt:** Define a MechGen struct `Rectangle` with width and height, and a method to compute area.
 
 **Response:**
-```redox
+```MechGen
 #[derive(Debug, Clone)]
 pub struct Rectangle {
     pub width: f64,
@@ -88,7 +88,7 @@ impl Rectangle {
 **Prompt:** Create a `Color` enum with Red, Green, Blue variants and a function that returns the hex code.
 
 **Response:**
-```redox
+```MechGen
 #[derive(Debug, Clone)]
 pub enum Color {
     Red,
@@ -112,7 +112,7 @@ pub fn to_hex(color: &Color) -> &str {
 **Prompt:** Write a function that finds the first even number in a list, returning None if there are no even numbers.
 
 **Response:**
-```redox
+```MechGen
 fn first_even(numbers: &Vec<i32>) -> Option<i32> {
     numbers.iter().find(|n| *n % 2 == 0).copied()
 }
@@ -125,7 +125,7 @@ fn first_even(numbers: &Vec<i32>) -> Option<i32> {
 **Prompt:** Write a function that takes a string and returns it reversed and uppercased.
 
 **Response:**
-```redox
+```MechGen
 fn reverse_upper(input: &str) -> String {
     input.chars().rev().collect::<String>().to_uppercase()
 }
@@ -138,7 +138,7 @@ fn reverse_upper(input: &str) -> String {
 **Prompt:** Given a vector of names, return a new vector with each name prefixed by "Hello, " and suffixed with "!".
 
 **Response:**
-```redox
+```MechGen
 fn greet_all(names: &Vec<String>) -> Vec<String> {
     names.iter()
         .map(|name| format!("Hello, {name}!"))
@@ -150,10 +150,10 @@ fn greet_all(names: &Vec<String>) -> Vec<String> {
 
 ## Example 9: Reading User Input
 
-**Prompt:** Write a Redox function that reads a line from stdin and returns it trimmed.
+**Prompt:** Write a MechGen function that reads a line from stdin and returns it trimmed.
 
 **Response:**
-```redox
+```MechGen
 use std::io;
 
 fn read_line() -> Result<String, io::Error> / io {
@@ -170,7 +170,7 @@ fn read_line() -> Result<String, io::Error> / io {
 **Prompt:** Write a function that reads a file, counts the lines, and prints the count.
 
 **Response:**
-```redox
+```MechGen
 use std::fs;
 
 pub fn count_lines(path: &str) -> Result<usize, io::Error> / io {

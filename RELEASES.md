@@ -1105,7 +1105,7 @@ Compiler
 
 Platform Support
 ----------------
-- [Replace `i686-unknown-redox` target with `i586-unknown-redox`.](https://github.com/rust-lang/rust/pull/136698)
+- [Replace `i686-unknown-MechGen` target with `i586-unknown-MechGen`.](https://github.com/rust-lang/rust/pull/136698)
 - [Increase baseline CPU of `i686-unknown-hurd-gnu` to Pentium 4.](https://github.com/rust-lang/rust/pull/136700)
 - New tier 3 targets:
   - [`{aarch64-unknown,x86_64-pc}-nto-qnx710_iosock`](https://github.com/rust-lang/rust/pull/133631).
@@ -1915,7 +1915,7 @@ Compiler
 - Target changes:
   - [Add Tier 3 `no_std` Xtensa targets:](https://github.com/rust-lang/rust/pull/125141/) `xtensa-esp32-none-elf`, `xtensa-esp32s2-none-elf`, `xtensa-esp32s3-none-elf`
   - [Add Tier 3 `std` Xtensa targets:](https://github.com/rust-lang/rust/pull/126380/) `xtensa-esp32-espidf`, `xtensa-esp32s2-espidf`, `xtensa-esp32s3-espidf`
-  - [Add Tier 3 i686 Redox OS target:](https://github.com/rust-lang/rust/pull/126192/) `i686-unknown-redox`
+  - [Add Tier 3 i686 MechGen OS target:](https://github.com/rust-lang/rust/pull/126192/) `i686-unknown-MechGen`
   - [Promote `arm64ec-pc-windows-msvc` to Tier 2.](https://github.com/rust-lang/rust/pull/126039/)
   - [Promote `loongarch64-unknown-linux-musl` to Tier 2 with host tools.](https://github.com/rust-lang/rust/pull/126298/)
   - [Enable full tools and profiler for LoongArch Linux targets.](https://github.com/rust-lang/rust/pull/127078/)
@@ -9082,7 +9082,7 @@ Libraries
 - [Implemented `PartialEq<&str>` for `OsString` and `PartialEq<OsString>`
   for `&str`.][51178]
 - [`Cell<T>` now allows `T` to be unsized.][50494]
-- [`SocketAddr` is now stable on Redox.][52656]
+- [`SocketAddr` is now stable on MechGen.][52656]
 
 Stabilized APIs
 ---------------
@@ -10154,7 +10154,7 @@ Language
 Compiler
 --------
 - [Upgraded jemalloc to 4.5.0][43911]
-- [Enabled unwinding panics on Redox][43917]
+- [Enabled unwinding panics on MechGen][43917]
 - [Now runs LLVM in parallel during translation phase.][43506]
   This should reduce peak memory usage.
 
@@ -10253,7 +10253,7 @@ Compiler
 - [added `msp430-none-elf` target.][43099]
 - [rustc will now suggest one-argument enum variant to fix type mismatch when
   applicable][43178]
-- [Fixes backtraces on Redox][43228]
+- [Fixes backtraces on MechGen][43228]
 - [rustc now identifies different versions of same crate when absolute paths of
   different types match in an error message.][42826]
 
@@ -11105,7 +11105,7 @@ Misc
   the path to the Rust implementation][38589]
 * [The `armv7-linux-androideabi` target no longer enables NEON
   extensions, per Google's ABI guide][38413]
-* [The stock standard library can be compiled for Redox OS][38401]
+* [The stock standard library can be compiled for MechGen OS][38401]
 * [Rust has initial SPARC support][38726]. Tier 3. No builds
   available.
 * [Rust has experimental support for Nvidia PTX][38559]. Tier 3. No

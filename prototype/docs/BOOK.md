@@ -1,6 +1,6 @@
-# The Redox Book
+# The MechGen Book
 
-> A comprehensive guide to the Redox programming language.
+> A comprehensive guide to the MechGen programming language.
 
 ---
 
@@ -8,7 +8,7 @@
 
 ### Chapter 1: Introduction
 
-Redox is a systems programming language designed for agentic compilation. It
+MechGen is a systems programming language designed for agentic compilation. It
 inherits Rust's safety and performance model while adding:
 
 - **Contract-first design** — preconditions, postconditions, and invariants are
@@ -22,28 +22,28 @@ inherits Rust's safety and performance model while adding:
 
 ```bash
 # Clone the repository
-git clone https://github.com/nervosys/Redox.git
-cd Redox/prototype
+git clone https://github.com/nervosys/MechGen.git
+cd MechGen/prototype
 
 # Build
 cargo build
 
-# Run a Redox file
+# Run a MechGen file
 cargo run -- input.rx
 
 # Run tests
 cargo test
 ```
 
-### Chapter 3: Hello, Redox
+### Chapter 3: Hello, MechGen
 
 ```
 +f main() {
-    p"Hello, Redox!"
+    p"Hello, MechGen!"
 }
 ```
 
-This defines a public function `main` that prints "Hello, Redox!" to stdout.
+This defines a public function `main` that prints "Hello, MechGen!" to stdout.
 
 - `+f` — public function (`pub fn` in Rust)
 - `p"..."` — print macro (`println!` in Rust)
@@ -56,7 +56,7 @@ This defines a public function `main` that prints "Hello, Redox!" to stdout.
 
 ```
 let x: i32 = 42;
-let mut name: s = "Redox".to_string();
+let mut name: s = "MechGen".to_string();
 let pi: f64 = 3.14159;
 let active: bool = true;
 ```
@@ -184,7 +184,7 @@ f find_item(items: &[i32], target: i32) -> i32? {
 
 ### Chapter 10: Contracts
 
-Contracts are first-class in Redox:
+Contracts are first-class in MechGen:
 
 ```
 f binary_search(arr: &[i32], target: i32) -> usize?
@@ -270,9 +270,9 @@ sandbox.grant(CapabilityToken.restricted("fs.read"));
 
 ## Part IV — Tooling
 
-### Chapter 15: The Redox Compiler
+### Chapter 15: The MechGen Compiler
 
-The Redox compiler pipeline:
+The MechGen compiler pipeline:
 
 1. **Lexer** — tokenises source into a stream of tokens
 2. **Parser** — builds an AST from the token stream
@@ -285,17 +285,17 @@ The Redox compiler pipeline:
 ### Chapter 16: Legacy Compatibility
 
 ```bash
-# Convert Rust to Redox
-redox transpile --from-rust src/main.rs -o src/main.rx
+# Convert Rust to MechGen
+MechGen transpile --from-rust src/main.rs -o src/main.rx
 
-# Convert Redox to Rust
-redox transpile --to-rust src/main.rx -o src/main.rs
+# Convert MechGen to Rust
+MechGen transpile --to-rust src/main.rx -o src/main.rs
 ```
 
 ### Chapter 17: Project Configuration
 
 ```toml
-# Redox.toml
+# MechGen.toml
 [package]
 name = "my-project"
 version = "0.1.0"
@@ -312,7 +312,7 @@ token_budget = 8192
 
 ## Appendix: Syntax Quick Reference
 
-| Redox  | Rust       | Meaning           |
+| MechGen  | Rust       | Meaning           |
 | ------ | ---------- | ----------------- |
 | `f`    | `fn`       | Function          |
 | `+f`   | `pub fn`   | Public function   |

@@ -8,7 +8,7 @@
 
 **Solution**:
 
-```rdx
+```mg
 u std.fs
 
 +f main() / io {
@@ -28,11 +28,11 @@ u std.fs
 
 **Solution**:
 
-```rdx
+```mg
 u std.fs
 
 +f main() / io {
-    fs.write("output.txt", "Hello, Redox!")?
+    fs.write("output.txt", "Hello, MechGen!")?
 }
 ```
 
@@ -47,7 +47,7 @@ u std.fs
 
 **Solution**:
 
-```rdx
+```mg
 u std.io.{File, BufReader, Read}
 
 +f main() / io {
@@ -79,7 +79,7 @@ system calls. Call `line.clear()` between iterations to reuse the allocation.
 
 **Solution**:
 
-```rdx
+```mg
 u std.fs
 u std.str.split
 
@@ -124,7 +124,7 @@ subdirectories.
 
 **Solution**:
 
-```rdx
+```mg
 u std.fs
 
 +f find_rdx_files(dir: &s) -> R[[s]~, IoError] / io {
@@ -132,7 +132,7 @@ u std.fs
     v walker = fs.walk(dir)
 
     @ entry : walker {
-        ? entry.is_file() && entry.path().ends_with(".rdx") {
+        ? entry.is_file() && entry.path().ends_with(".mg") {
             results.push(entry.path().to_string())
         }
     }
@@ -141,7 +141,7 @@ u std.fs
 
 +f main() / io {
     v files = find_rdx_files("src")?
-    p"Found {files.len()} .rdx files"
+    p"Found {files.len()} .mg files"
     @ f : &files {
         p"  {f}"
     }
@@ -156,7 +156,7 @@ u std.fs
 
 **Solution**:
 
-```rdx
+```mg
 u std.fs
 
 +f main() / io {
@@ -173,7 +173,7 @@ u std.fs
 
 **Solution**:
 
-```rdx
+```mg
 u std.fs.{TempFile, Write}
 
 +f main() / io {
@@ -193,7 +193,7 @@ u std.fs.{TempFile, Write}
 
 **Solution**:
 
-```rdx
+```mg
 u std.fs.{watch, WatchEvent}
 
 +f main() / io {
@@ -224,7 +224,7 @@ u std.fs.{watch, WatchEvent}
 
 **Solution**:
 
-```rdx
+```mg
 u std.env
 u std.fs
 

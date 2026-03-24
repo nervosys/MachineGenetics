@@ -1,6 +1,6 @@
 # Chapter 7: Testing & Quality Migration
 
-Migrate your Rust test suite to Redox: unit tests, integration tests, effect
+Migrate your Rust test suite to MechGen: unit tests, integration tests, effect
 mocking, benchmarks, and CI pipelines.
 
 ---
@@ -22,7 +22,7 @@ mocking, benchmarks, and CI pipelines.
 -     add(u32::MAX, 1);
 - }
 
-  // Redox
+  // MechGen
 + @test
 + f test_addition() {
 +     assert_eq!(add(2, 3), 5)
@@ -50,7 +50,7 @@ mocking, benchmarks, and CI pipelines.
 -     }
 - }
 
-  // Redox
+  // MechGen
 + @cfg(test)
 + M tests {
 +     u super.*
@@ -65,7 +65,7 @@ mocking, benchmarks, and CI pipelines.
 
 ### Assertion Macros
 
-| Rust                      | Redox                     | Notes     |
+| Rust                      | MechGen                     | Notes     |
 | ------------------------- | ------------------------- | --------- |
 | `assert!(cond)`           | `assert!(cond)`           | Identical |
 | `assert_eq!(a, b)`        | `assert_eq!(a, b)`        | Identical |
@@ -74,7 +74,7 @@ mocking, benchmarks, and CI pipelines.
 | `debug_assert!(cond)`     | `debug_assert!(cond)`     | Identical |
 | `assert_matches!(v, Pat)` | `assert_matches!(v, Pat)` | Identical |
 
-Assertion macros are unchanged — they are part of the Redox prelude.
+Assertion macros are unchanged — they are part of the MechGen prelude.
 
 ### Result-Returning Tests
 
@@ -87,7 +87,7 @@ Assertion macros are unchanged — they are part of the Redox prelude.
 -     Ok(())
 - }
 
-  // Redox
+  // MechGen
 + @test
 + f test_with_result() -> R[(), ^dyn Error] {
 +     v val = parse("42")?
@@ -106,7 +106,7 @@ Assertion macros are unchanged — they are part of the Redox prelude.
 -     assert!(!result.is_empty());
 - }
 
-  // Redox — built-in async test support
+  // MechGen — built-in async test support
 + @test
 + af test_fetch() / net {
 +     v result = fetch_data("https://example.com").await.unwrap()
@@ -119,7 +119,7 @@ built-in async runtime automatically.
 
 ## 7.3 Effect Mocking
 
-Redox's effect system enables test isolation without mock libraries.
+MechGen's effect system enables test isolation without mock libraries.
 
 ### Basic Effect Mocking
 
@@ -144,7 +144,7 @@ Redox's effect system enables test isolation without mock libraries.
 -     assert_eq!(result, "processed: value");
 - }
 
-  // Redox — handle block intercepts effects
+  // MechGen — handle block intercepts effects
 + // Production function that uses io effect
 + f read_config(path: &s) -> R[Config, Error] / io {
 +     v text = fs.read_to_string(path)?
@@ -182,7 +182,7 @@ Redox's effect system enables test isolation without mock libraries.
 -     assert!(result.ok);
 - }
 
-  // Redox — handle block replaces the HTTP calls
+  // MechGen — handle block replaces the HTTP calls
 + @test
 + af test_api_call() {
 +     v result = handle / net {
@@ -211,7 +211,7 @@ Redox's effect system enables test isolation without mock libraries.
 -     assert_eq!(result, "HELLO");
 - }
 
-  // Redox — mock io effects directly
+  // MechGen — mock io effects directly
 + @test
 + f test_file_ops() {
 +     m files = {s: s}.new()
@@ -247,8 +247,8 @@ Redox's effect system enables test isolation without mock libraries.
 -     assert_eq!(result, expected);
 - }
 
-  // Redox — tests/ directory
-  // tests/integration_test.rdx
+  // MechGen — tests/ directory
+  // tests/integration_test.mg
 + u my_crate.process
 +
 + @test
@@ -265,11 +265,11 @@ Redox's effect system enables test isolation without mock libraries.
 ```text
 my-project/
 ├── src/
-│   ├── main.rdx
-│   └── lib.rdx
+│   ├── main.mg
+│   └── lib.mg
 ├── tests/                  # Integration tests
-│   ├── api_test.rdx
-│   └── cli_test.rdx
+│   ├── api_test.mg
+│   └── cli_test.mg
 ├── fixtures/               # Test data
 │   ├── input.json
 │   └── expected.json
@@ -294,7 +294,7 @@ my-project/
 - criterion_group!(benches, bench_sort);
 - criterion_main!(benches);
 
-  // Redox — built-in benchmarks
+  // MechGen — built-in benchmarks
 + @bench
 + f bench_sort(b: &!Bencher) {
 +     v data_template = generate_data(1000)
@@ -308,10 +308,10 @@ my-project/
 Run benchmarks:
 
 ```bash
-rdx bench                # run all benchmarks
-rdx bench sort           # filter by name
-rdx bench --save base    # save as baseline
-rdx bench --compare base # compare to baseline
+mg bench                # run all benchmarks
+mg bench sort           # filter by name
+mg bench --save base    # save as baseline
+mg bench --compare base # compare to baseline
 ```
 
 ## 7.6 Property Testing
@@ -329,7 +329,7 @@ rdx bench --compare base # compare to baseline
 -     }
 - }
 
-  // Redox — built-in property testing
+  // MechGen — built-in property testing
 + u std.test.property
 +
 + @test
@@ -355,7 +355,7 @@ rdx bench --compare base # compare to baseline
 - #[cfg(target_os = "linux")]
 - fn linux_only() { /* ... */ }
 
-  // Redox
+  // MechGen
 + @test
 + @ignore
 + f expensive_test() { /* ... */ }
@@ -382,7 +382,7 @@ rdx bench --compare base # compare to baseline
 -     }
 - }
 
-  // Redox
+  // MechGen
 + @cfg(test)
 + M tests {
 +     f setup() -> TestContext {
@@ -415,18 +415,18 @@ rdx bench --compare base # compare to baseline
 -       - run: cargo clippy -- -D warnings
 -       - run: cargo fmt -- --check
 
-  # Redox CI
-+ name: Redox CI
+  # MechGen CI
++ name: MechGen CI
 + on: [push, pull_request]
 + jobs:
 +   test:
 +     runs-on: ubuntu-latest
 +     steps:
 +       - uses: actions/checkout@v4
-+       - uses: nervosys/setup-rdx@v1
-+       - run: rdx test
-+       - run: rdx lint
-+       - run: rdx fmt --check
++       - uses: nervosys/setup-mg@v1
++       - run: mg test
++       - run: mg lint
++       - run: mg fmt --check
 ```
 
 ### Dual CI (Migration Period)
@@ -443,13 +443,13 @@ jobs:
       - run: cargo test --workspace
       - run: cargo clippy -- -D warnings
 
-  redox:
+  MechGen:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: nervosys/setup-rdx@v1
-      - run: rdx test
-      - run: rdx lint
+      - uses: nervosys/setup-mg@v1
+      - run: mg test
+      - run: mg lint
 ```
 
 ## 7.9 Coverage
@@ -458,9 +458,9 @@ jobs:
 # Rust
 cargo tarpaulin --out Html
 
-# Redox
-rdx test --coverage
-rdx test --coverage --format html --output coverage/
+# MechGen
+mg test --coverage
+mg test --coverage --format html --output coverage/
 ```
 
 ### Coverage in CI
@@ -470,8 +470,8 @@ rdx test --coverage --format html --output coverage/
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: nervosys/setup-rdx@v1
-      - run: rdx test --coverage --format lcov --output coverage.lcov
+      - uses: nervosys/setup-mg@v1
+      - run: mg test --coverage --format lcov --output coverage.lcov
       - uses: codecov/codecov-action@v4
         with:
           files: coverage.lcov
@@ -488,8 +488,8 @@ rdx test --coverage --format html --output coverage/
 - [ ] Convert `#[tokio::test]` to `@test af` without runtime annotation
 - [ ] Migrate criterion benchmarks to `@bench` functions
 - [ ] Replace tempfile/tempdir with io effect mocking
-- [ ] Update CI pipeline: `cargo test` → `rdx test`
-- [ ] Update CI pipeline: `cargo clippy` → `rdx lint`
-- [ ] Update CI pipeline: `cargo fmt` → `rdx fmt`
-- [ ] Set up coverage: `rdx test --coverage`
-- [ ] Run full suite: `rdx test && rdx lint && rdx fmt --check`
+- [ ] Update CI pipeline: `cargo test` → `mg test`
+- [ ] Update CI pipeline: `cargo clippy` → `mg lint`
+- [ ] Update CI pipeline: `cargo fmt` → `mg fmt`
+- [ ] Set up coverage: `mg test --coverage`
+- [ ] Run full suite: `mg test && mg lint && mg fmt --check`

@@ -1,6 +1,6 @@
 # Syntax Reference
 
-Redox's syntax is built on a single principle: **every token must be
+MechGen's syntax is built on a single principle: **every token must be
 unambiguous**. The grammar is deterministic LL(1) — the parser never backtracks,
 never guesses, and never needs more than one token of lookahead.
 

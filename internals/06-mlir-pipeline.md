@@ -8,77 +8,77 @@ dialects to LLVM IR and finally machine code.
 
 ## 6.1 Why MLIR?
 
-Traditional compilers go directly from IR to LLVM IR. Redox interposes MLIR
+Traditional compilers go directly from IR to LLVM IR. MechGen interposes MLIR
 because:
 
 1. **Multi-target**: MLIR has dialects for CPU (LLVM), GPU (GPU/SPIR-V),
    WASM, and custom accelerators. One HIR → many backends.
-2. **Effect representation**: The Redox MLIR dialect encodes effects as
+2. **Effect representation**: The MechGen MLIR dialect encodes effects as
    first-class attributes, enabling effect-aware optimizations.
 3. **Cost oracle**: MLIR's analysis framework enables the cost oracle to
    estimate performance characteristics before codegen.
 4. **Autotuning**: MLIR passes can generate variant code for performance
    autotuning (`@pa` annotation).
 
-## 6.2 The Redox MLIR Dialect
+## 6.2 The MechGen MLIR Dialect
 
-The Redox dialect defines operations that map directly to Redox language
+The MechGen dialect defines operations that map directly to MechGen language
 constructs:
 
 ### Operations
 
 | Op                  | Description         | Operands                           |
 | ------------------- | ------------------- | ---------------------------------- |
-| `redox.func`        | Function definition | name, params, return type, effects |
-| `redox.call`        | Function call       | callee, args                       |
-| `redox.struct_def`  | Struct definition   | name, fields                       |
-| `redox.enum_def`    | Enum definition     | name, variants                     |
-| `redox.trait_def`   | Trait definition    | name, methods                      |
-| `redox.impl`        | Impl block          | type, trait, methods               |
-| `redox.const`       | Constant definition | name, type, value                  |
-| `redox.let`         | Variable binding    | name, type, value                  |
-| `redox.match`       | Pattern match       | scrutinee, arms                    |
-| `redox.for`         | For loop            | pattern, iterator, body            |
-| `redox.effect`      | Effect marker       | effect set                         |
-| `redox.handle`      | Handle block        | effects, body, handlers            |
-| `redox.agent_spawn` | Agent spawn         | agent value                        |
-| `redox.swarm_join`  | Swarm join          | swarm value                        |
+| `MechGen.func`        | Function definition | name, params, return type, effects |
+| `MechGen.call`        | Function call       | callee, args                       |
+| `MechGen.struct_def`  | Struct definition   | name, fields                       |
+| `MechGen.enum_def`    | Enum definition     | name, variants                     |
+| `MechGen.trait_def`   | Trait definition    | name, methods                      |
+| `MechGen.impl`        | Impl block          | type, trait, methods               |
+| `MechGen.const`       | Constant definition | name, type, value                  |
+| `MechGen.let`         | Variable binding    | name, type, value                  |
+| `MechGen.match`       | Pattern match       | scrutinee, arms                    |
+| `MechGen.for`         | For loop            | pattern, iterator, body            |
+| `MechGen.effect`      | Effect marker       | effect set                         |
+| `MechGen.handle`      | Handle block        | effects, body, handlers            |
+| `MechGen.agent_spawn` | Agent spawn         | agent value                        |
+| `MechGen.swarm_join`  | Swarm join          | swarm value                        |
 
 ### Type System
 
 ```mlir
 // Primitive types
-!redox.int<32>         // i32
-!redox.uint<64>        // u64
-!redox.float<64>       // f64
-!redox.bool
-!redox.str             // String
-!redox.unit            // ()
+!MechGen.int<32>         // i32
+!MechGen.uint<64>        // u64
+!MechGen.float<64>       // f64
+!MechGen.bool
+!MechGen.str             // String
+!MechGen.unit            // ()
 
 // Compound types
-!redox.vec<!redox.int<32>>            // [i32]~
-!redox.option<!redox.str>             // ?s
-!redox.result<!redox.str, !redox.err> // R[s, Error]
-!redox.map<!redox.str, !redox.int<32>> // {s: i32}
-!redox.box<!redox.str>                // ^s
-!redox.rc<!redox.str>                 // $s
-!redox.arc<!redox.str>                // @s
-!redox.ref<mutable=false, !redox.str> // &s
-!redox.ref<mutable=true, !redox.str>  // &!s
+!MechGen.vec<!MechGen.int<32>>            // [i32]~
+!MechGen.option<!MechGen.str>             // ?s
+!MechGen.result<!MechGen.str, !MechGen.err> // R[s, Error]
+!MechGen.map<!MechGen.str, !MechGen.int<32>> // {s: i32}
+!MechGen.box<!MechGen.str>                // ^s
+!MechGen.rc<!MechGen.str>                 // $s
+!MechGen.arc<!MechGen.str>                // @s
+!MechGen.ref<mutable=false, !MechGen.str> // &s
+!MechGen.ref<mutable=true, !MechGen.str>  // &!s
 ```
 
 ### Effect Attributes
 
 ```mlir
-redox.func @read_file(%path: !redox.ref<mutable=false, !redox.str>)
-    -> !redox.result<!redox.str, !redox.err>
+MechGen.func @read_file(%path: !MechGen.ref<mutable=false, !MechGen.str>)
+    -> !MechGen.result<!MechGen.str, !MechGen.err>
     attributes { effects = ["io"] }
 {
     // ...
 }
 ```
 
-## 6.3 Emitter: HIR → Redox MLIR
+## 6.3 Emitter: HIR → MechGen MLIR
 
 The emitter is in `rdx_mlir` (prototype: `prototype/src/mlir.rs`).
 
@@ -132,7 +132,7 @@ fn emit_function(&mut self, f: &FunctionDef, vis: &Visibility) {
         .unwrap_or_default();
 
     self.line(&format!(
-        "redox.func {} @{}({}){} attributes {{ sym_visibility = \"{}\"{} }} {{",
+        "MechGen.func {} @{}({}){} attributes {{ sym_visibility = \"{}\"{} }} {{",
         vis_attr, f.name, params.join(", "), ret, vis_attr, effects
     ));
 
@@ -151,39 +151,39 @@ fn mlir_type(&self, ty: &Type) -> String {
         Type::Path { segments, type_args } => {
             let name = segments.join(".");
             match name.as_str() {
-                "i8"    => "!redox.int<8>",
-                "i16"   => "!redox.int<16>",
-                "i32"   => "!redox.int<32>",
-                "i64"   => "!redox.int<64>",
-                "u8"    => "!redox.uint<8>",
-                "u32"   => "!redox.uint<32>",
-                "u64"   => "!redox.uint<64>",
-                "f32"   => "!redox.float<32>",
-                "f64"   => "!redox.float<64>",
-                "bool"  => "!redox.bool",
-                "usize" => "!redox.uint<64>",
+                "i8"    => "!MechGen.int<8>",
+                "i16"   => "!MechGen.int<16>",
+                "i32"   => "!MechGen.int<32>",
+                "i64"   => "!MechGen.int<64>",
+                "u8"    => "!MechGen.uint<8>",
+                "u32"   => "!MechGen.uint<32>",
+                "u64"   => "!MechGen.uint<64>",
+                "f32"   => "!MechGen.float<32>",
+                "f64"   => "!MechGen.float<64>",
+                "bool"  => "!MechGen.bool",
+                "usize" => "!MechGen.uint<64>",
                 _ => {
                     if type_args.is_empty() {
-                        format!("!redox.named<\"{}\">", name)
+                        format!("!MechGen.named<\"{}\">", name)
                     } else {
                         let args: Vec<String> = type_args.iter()
                             .map(|a| self.mlir_type(a)).collect();
-                        format!("!redox.named<\"{}\", {}>", name, args.join(", "))
+                        format!("!MechGen.named<\"{}\", {}>", name, args.join(", "))
                     }
                 }
             }
         }
-        Type::StringType => "!redox.str",
-        Type::Vec { inner } => format!("!redox.vec<{}>", self.mlir_type(inner)),
-        Type::Option { inner } => format!("!redox.option<{}>", self.mlir_type(inner)),
+        Type::StringType => "!MechGen.str",
+        Type::Vec { inner } => format!("!MechGen.vec<{}>", self.mlir_type(inner)),
+        Type::Option { inner } => format!("!MechGen.option<{}>", self.mlir_type(inner)),
         Type::Result { ok, err } => format!(
-            "!redox.result<{}, {}>", self.mlir_type(ok), self.mlir_type(err)
+            "!MechGen.result<{}, {}>", self.mlir_type(ok), self.mlir_type(err)
         ),
-        Type::OwnedPtr { inner } => format!("!redox.box<{}>", self.mlir_type(inner)),
-        Type::Arc { inner } => format!("!redox.arc<{}>", self.mlir_type(inner)),
-        Type::Rc { inner } => format!("!redox.rc<{}>", self.mlir_type(inner)),
+        Type::OwnedPtr { inner } => format!("!MechGen.box<{}>", self.mlir_type(inner)),
+        Type::Arc { inner } => format!("!MechGen.arc<{}>", self.mlir_type(inner)),
+        Type::Rc { inner } => format!("!MechGen.rc<{}>", self.mlir_type(inner)),
         Type::Reference { mutable, inner } => format!(
-            "!redox.ref<mutable={}, {}>", mutable, self.mlir_type(inner)
+            "!MechGen.ref<mutable={}, {}>", mutable, self.mlir_type(inner)
         ),
         // ... other types
     }
@@ -192,11 +192,11 @@ fn mlir_type(&self, ty: &Type) -> String {
 
 ## 6.4 Lowering Passes
 
-After emitting the Redox dialect, a series of MLIR passes lower it toward
+After emitting the MechGen dialect, a series of MLIR passes lower it toward
 LLVM:
 
 ```
-Redox MLIR
+MechGen MLIR
     │
     ▼
 ┌──────────────────────────┐
@@ -236,9 +236,9 @@ Converts effect markers into runtime validation:
 
 ### Sugar Lowering Pass
 
-Converts Redox type sugar to underlying representations:
+Converts MechGen type sugar to underlying representations:
 
-| Redox Type        | MLIR Lowering                      |
+| MechGen Type        | MLIR Lowering                      |
 | ----------------- | ---------------------------------- |
 | `[T]~` (Vec)      | Pointer + length + capacity struct |
 | `?T` (Option)     | Discriminant + union               |
@@ -252,7 +252,7 @@ Converts Redox type sugar to underlying representations:
 
 Converts agent primitives to runtime calls:
 
-| Redox Construct      | Lowered To                              |
+| MechGen Construct      | Lowered To                              |
 | -------------------- | --------------------------------------- |
 | `Swarm.new()`        | Thread pool allocation                  |
 | `swarm.spawn(agent)` | Task submission to pool + channel setup |
@@ -276,7 +276,7 @@ pub struct CostEstimate {
 The cost oracle is queried by:
 - The performance advisor (ACI)
 - The autotuning system (`@pa` annotation)
-- The `rdx bench --estimate` command
+- The `mg bench --estimate` command
 - Agents via `rap.query("cost", func_id)`
 
 ## 6.6 Multi-Target Code Generation
@@ -285,16 +285,16 @@ MLIR enables targeting multiple backends from the same HIR:
 
 | Target       | MLIR Path                           | Output         |
 | ------------ | ----------------------------------- | -------------- |
-| x86-64       | Redox → LLVM dialect → LLVM x86     | Native binary  |
-| AArch64      | Redox → LLVM dialect → LLVM AArch64 | Native binary  |
-| WASM         | Redox → LLVM dialect → LLVM WASM    | `.wasm` module |
-| GPU (NVIDIA) | Redox → GPU dialect → NVVM          | PTX kernel     |
-| GPU (AMD)    | Redox → GPU dialect → ROCDL         | AMDGPU ISA     |
-| SPIR-V       | Redox → SPIR-V dialect              | Vulkan compute |
+| x86-64       | MechGen → LLVM dialect → LLVM x86     | Native binary  |
+| AArch64      | MechGen → LLVM dialect → LLVM AArch64 | Native binary  |
+| WASM         | MechGen → LLVM dialect → LLVM WASM    | `.wasm` module |
+| GPU (NVIDIA) | MechGen → GPU dialect → NVVM          | PTX kernel     |
+| GPU (AMD)    | MechGen → GPU dialect → ROCDL         | AMDGPU ISA     |
+| SPIR-V       | MechGen → SPIR-V dialect              | Vulkan compute |
 
 The `@pt(target)` annotation controls target selection:
 
-```redox
+```MechGen
 @pt(auto)  // let the compiler choose (default)
 @pt(cpu)   // force CPU
 @pt(gpu)   // force GPU
@@ -314,8 +314,8 @@ fn test_emit_function() {
     let effects = EffectInfer::new();
     let mlir = emit(&ast, &effects);
 
-    assert!(mlir.contains("redox.func public @add"));
-    assert!(mlir.contains("!redox.int<32>"));
+    assert!(mlir.contains("MechGen.func public @add"));
+    assert!(mlir.contains("!MechGen.int<32>"));
 }
 ```
 
@@ -325,9 +325,9 @@ For lowering passes, verify that lowering then re-raising preserves
 semantics:
 
 ```bash
-rdx build --emit=mlir src/main.rdx > before.mlir
-rdx mlir-pass --lower-sugar before.mlir > lowered.mlir
-rdx mlir-pass --roundtrip lowered.mlir > after.mlir
+mg build --emit=mlir src/main.mg > before.mlir
+mg mlir-pass --lower-sugar before.mlir > lowered.mlir
+mg mlir-pass --roundtrip lowered.mlir > after.mlir
 diff before.mlir after.mlir  # structural equivalence
 ```
 
@@ -336,9 +336,9 @@ diff before.mlir after.mlir  # structural equivalence
 MLIR provides FileCheck for pattern-matching test output:
 
 ```
-// RUN: rdx build --emit=mlir %s | FileCheck %s
-// CHECK: redox.func public @main
-// CHECK-SAME: -> !redox.result<!redox.unit, !redox.box<!redox.named<"Error">>>
+// RUN: mg build --emit=mlir %s | FileCheck %s
+// CHECK: MechGen.func public @main
+// CHECK-SAME: -> !MechGen.result<!MechGen.unit, !MechGen.box<!MechGen.named<"Error">>>
 // CHECK-SAME: effects = ["io"]
 +f main() -> R[(), ^dyn Error] / io {
     p"hello"

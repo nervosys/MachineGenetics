@@ -1,10 +1,10 @@
 # References & Borrowing
 
-Redox keeps Rust's borrowing rules and syntax unchanged.
+MechGen keeps Rust's borrowing rules and syntax unchanged.
 
 ## Shared references: `&T`
 
-```rdx
+```mg
 let name = "Alice".to_string();
 let r: &str = &name;    // immutable borrow
 println!("{r}");         // OK: reading through shared ref
@@ -12,14 +12,14 @@ println!("{r}");         // OK: reading through shared ref
 
 Multiple shared references are allowed:
 
-```rdx
+```mg
 let r1 = &name;
 let r2 = &name;    // OK: multiple &T at once
 ```
 
 ## Exclusive references: `&mut T`
 
-```rdx
+```mg
 let mut items = vec![1, 2, 3];
 let r: &mut Vec<i32> = &mut items;    // exclusive borrow
 r.push(4);                            // OK: exclusive access
@@ -27,7 +27,7 @@ r.push(4);                            // OK: exclusive access
 
 Only one `&mut T` at a time, and no `&T` while `&mut T` exists:
 
-```rdx
+```mg
 let mut x = 42;
 let r = &mut x;
 // let r2 = &x;     // ERROR: cannot borrow while exclusively borrowed
@@ -38,7 +38,7 @@ let r = &mut x;
 
 Values are moved by default (same as Rust):
 
-```rdx
+```mg
 let a = "hello".to_string();
 let b = a;         // a is moved to b
 // println!("{a}"); // ERROR: a has been moved
@@ -46,7 +46,7 @@ let b = a;         // a is moved to b
 
 Use `.clone()` for explicit copies:
 
-```rdx
+```mg
 let a = "hello".to_string();
 let b = a.clone();    // deep copy
 println!("{a}");      // OK: a still valid
@@ -68,9 +68,9 @@ impl<'a> Important<'a> {
 }
 ```
 
-In Redox:
+In MechGen:
 
-```rdx
+```mg
 struct Important {
     content: &str,
 }
@@ -87,7 +87,7 @@ compiler verifies it when safety mode is `warnings` or `full`.
 
 ## Dereferencing
 
-```rdx
+```mg
 let x = 42;
 let r = &x;
 let val = *r;    // dereference: 42

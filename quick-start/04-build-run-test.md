@@ -2,21 +2,21 @@
 
 ## Project Structure
 
-A standard Redox project looks like this:
+A standard MechGen project looks like this:
 
 ```
 my-project/
-├── rdx.toml              # project manifest
+├── mg.toml              # project manifest
 ├── src/
-│   ├── main.rdx          # binary entry point
-│   └── lib.rdx           # library root (optional)
+│   ├── main.mg          # binary entry point
+│   └── lib.mg           # library root (optional)
 ├── tests/
-│   └── integration.rdx   # integration tests
+│   └── integration.mg   # integration tests
 └── benches/
-    └── perf.rdx          # benchmarks
+    └── perf.mg          # benchmarks
 ```
 
-## `rdx.toml`
+## `mg.toml`
 
 ```toml
 [package]
@@ -34,9 +34,9 @@ edition = "2026"
 ## Build
 
 ```bash
-rdx build                   # debug build
-rdx build --release         # optimized release build
-rdx build --target wasm32   # cross-compile to WASM
+mg build                   # debug build
+mg build --release         # optimized release build
+mg build --target wasm32   # cross-compile to WASM
 ```
 
 Output goes to `target/debug/` or `target/release/`.
@@ -44,15 +44,15 @@ Output goes to `target/debug/` or `target/release/`.
 ## Run
 
 ```bash
-rdx run                     # build + run (debug)
-rdx run --release            # build + run (release)
-rdx run src/main.rdx         # run a specific file
+mg run                     # build + run (debug)
+mg run --release            # build + run (release)
+mg run src/main.mg         # run a specific file
 ```
 
 ## Check (Type-Check Only)
 
 ```bash
-rdx check                   # fast — no codegen
+mg check                   # fast — no codegen
 ```
 
 Use this during development for quick feedback.
@@ -61,8 +61,8 @@ Use this during development for quick feedback.
 
 ### Writing Tests
 
-```redox
-// src/math.rdx
+```MechGen
+// src/math.mg
 
 +f add(a: i32, b: i32) -> i32 {
     a + b
@@ -93,9 +93,9 @@ f test_factorial() {
 ### Running Tests
 
 ```bash
-rdx test                     # run all tests
-rdx test test_add            # run tests matching a name
-rdx test --verbose           # show each test name
+mg test                     # run all tests
+mg test test_add            # run tests matching a name
+mg test --verbose           # show each test name
 ```
 
 Output:
@@ -111,29 +111,29 @@ test result: ok. 2 passed; 0 failed
 ## Format
 
 ```bash
-rdx fmt                      # format all .rdx files
-rdx fmt --check              # check formatting (CI mode)
-rdx fmt src/main.rdx         # format one file
+mg fmt                      # format all .mg files
+mg fmt --check              # check formatting (CI mode)
+mg fmt src/main.mg         # format one file
 ```
 
 ## Lint
 
 ```bash
-rdx lint                     # run all lints
-rdx lint --fix               # auto-fix where possible
+mg lint                     # run all lints
+mg lint --fix               # auto-fix where possible
 ```
 
 ## Generate Documentation
 
 ```bash
-rdx doc                      # generate HTML docs
-rdx doc --open               # generate and open in browser
+mg doc                      # generate HTML docs
+mg doc --open               # generate and open in browser
 ```
 
 ## Benchmarks
 
-```redox
-// benches/perf.rdx
+```MechGen
+// benches/perf.mg
 
 @bench
 f bench_factorial(b: &!Bencher) {
@@ -142,8 +142,8 @@ f bench_factorial(b: &!Bencher) {
 ```
 
 ```bash
-rdx bench                    # run all benchmarks
-rdx bench bench_factorial    # run specific benchmark
+mg bench                    # run all benchmarks
+mg bench bench_factorial    # run specific benchmark
 ```
 
 ## Common Workflows
@@ -151,26 +151,26 @@ rdx bench bench_factorial    # run specific benchmark
 ### Development Loop
 
 ```bash
-rdx check     # fast type-check
-rdx test      # run tests
-rdx run       # run the program
+mg check     # fast type-check
+mg test      # run tests
+mg run       # run the program
 ```
 
 ### CI Pipeline
 
 ```bash
-rdx fmt --check     # verify formatting
-rdx lint            # verify lint rules
-rdx check           # type-check
-rdx test            # run tests
-rdx build --release # build release binary
+mg fmt --check     # verify formatting
+mg lint            # verify lint rules
+mg check           # type-check
+mg test            # run tests
+mg build --release # build release binary
 ```
 
 ### REPL Experimentation
 
 ```bash
-rdx repl            # interactive mode
-rdx eval '2 + 3'    # one-shot expression evaluation
+mg repl            # interactive mode
+mg eval '2 + 3'    # one-shot expression evaluation
 ```
 
 ---

@@ -1,13 +1,13 @@
-# Redox Idiomatic Patterns
+# MechGen Idiomatic Patterns
 
-> Common patterns for generating correct, idiomatic Redox code.
+> Common patterns for generating correct, idiomatic MechGen code.
 > All examples use **standard syntax** (default).
 
 ---
 
 ## Pattern 1: Builder Pattern
 
-```redox
+```MechGen
 pub struct ServerConfig {
     host: String,
     port: u16,
@@ -48,7 +48,7 @@ let config = ServerConfig::new()
 
 ## Pattern 2: Error Handling with Custom Error Types
 
-```redox
+```MechGen
 use std::fmt;
 
 #[derive(Debug)]
@@ -77,7 +77,7 @@ impl From<io::Error> for AppError {
 
 ## Pattern 3: Iterator Chains
 
-```redox
+```MechGen
 // Collect filtered, transformed items
 fn active_names(users: &Vec<User>) -> Vec<String> {
     users.iter()
@@ -100,7 +100,7 @@ fn find_admin(users: &Vec<User>) -> Option<&User> {
 
 ## Pattern 4: Option Chaining
 
-```redox
+```MechGen
 // Prefer map/and_then over manual matching
 fn get_username(db: &Database, id: u64) -> Option<String> / io {
     db.find_user(id)?
@@ -119,7 +119,7 @@ fn display_name(user: &User) -> String {
 
 ## Pattern 5: Trait Object Dispatch
 
-```redox
+```MechGen
 pub trait Renderer {
     fn render(&self, data: &str) -> Result<String, Error> / io;
 }
@@ -147,7 +147,7 @@ pub fn render_output(renderer: &dyn Renderer, data: &str) -> Result<String, Erro
 
 ## Pattern 6: Newtype Pattern
 
-```redox
+```MechGen
 // Wrap primitive types for type safety
 pub struct UserId(u64);
 pub struct Email(String);
@@ -166,7 +166,7 @@ impl Temperature {
 
 ## Pattern 7: Agent with State Machine
 
-```redox
+```MechGen
 use std::agent::{Agent, Capability};
 
 pub enum PipelineState {
@@ -198,7 +198,7 @@ impl Agent for DataPipeline {
 
 ## Pattern 8: Effect-Bounded Generics
 
-```redox
+```MechGen
 // Accept any function with a known effect signature
 pub fn run_with_io<F, R>(work: F) -> R / io
 where
@@ -215,7 +215,7 @@ pub fn apply_twice<T>(x: T, transform: fn(T) -> T) -> T {
 
 ## Pattern 9: Capability-Gated Operations
 
-```redox
+```MechGen
 use std::agent::Capability;
 
 pub struct SecureStore {
@@ -239,7 +239,7 @@ impl SecureStore {
 
 ## Pattern 10: Swarm Fan-Out / Fan-In
 
-```redox
+```MechGen
 use std::agent::{Agent, Swarm};
 
 pub struct UrlChecker {
@@ -270,11 +270,11 @@ pub async fn check_health(urls: Vec<String>) -> Result<HashMap<String, u16>, Err
 
 ## Pattern 11: Module Organization
 
-```redox
-// lib.rdx — root module
-pub mod models;     // models/mod.rdx or models.rdx
-pub mod handlers;   // handlers/mod.rdx or handlers.rdx
-pub mod utils;      // utils/mod.rdx or utils.rdx
+```MechGen
+// lib.mg — root module
+pub mod models;     // models/mod.mg or models.mg
+pub mod handlers;   // handlers/mod.mg or handlers.mg
+pub mod utils;      // utils/mod.mg or utils.mg
 
 // Re-export key types
 pub use crate::models::User;
@@ -284,7 +284,7 @@ pub use crate::handlers::handle_request;
 
 ## Pattern 12: Test Organization
 
-```redox
+```MechGen
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -8,7 +8,7 @@
 
 **Solution**:
 
-```rdx
+```mg
 u std.agent.{Agent, Message, AgentRuntime}
 
 S Greeter { name: s }
@@ -40,7 +40,7 @@ I Agent ~ Greeter {
 
 **Solution**:
 
-```rdx
+```mg
 u std.agent.{Agent, Message}
 
 S Counter {
@@ -79,7 +79,7 @@ I Agent ~ Counter {
 
 **Solution**:
 
-```rdx
+```mg
 u std.agent.{Agent, Message, Swarm, Consensus}
 
 S Voter { id: s, bias: f64 }
@@ -118,7 +118,7 @@ I Agent ~ Voter {
 
 **Solution**:
 
-```rdx
+```mg
 u std.agent.{Agent, Message, Swarm}
 
 S Parser { id: s }
@@ -177,7 +177,7 @@ I Agent ~ Formatter {
 
 **Solution**:
 
-```rdx
+```mg
 u std.agent.{Agent, Message, Bus}
 
 S Logger { id: s }
@@ -220,7 +220,7 @@ I Agent ~ Monitor {
 
 **Solution**:
 
-```rdx
+```mg
 u std.agent.{Agent, Message, Capability, Lease}
 u std.time.Duration
 
@@ -263,7 +263,7 @@ against long-running uncontrolled access.
 
 **Solution**:
 
-```rdx
+```mg
 u std.agent.{Agent, Message, Swarm}
 u std.time.Duration
 

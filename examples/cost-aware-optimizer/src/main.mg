@@ -476,7 +476,7 @@ impl Optimizer {
 
 pub fn main() / io {
     println!("╔═══════════════════════════════════════════════════════════╗");
-    println!("║  Redox Cost-Aware Compilation Optimizer                   ║");
+    println!("║  MechGen Cost-Aware Compilation Optimizer                   ║");
     println!("╚═══════════════════════════════════════════════════════════╝");
     println!("");
 

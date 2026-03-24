@@ -5,7 +5,7 @@ consensus on shared decisions.
 
 ## Creating a swarm
 
-```rdx
+```mg
 use std::agent::{Swarm, ConsensusStrategy};
 
 pub fn main() / agent, io {
@@ -26,7 +26,7 @@ pub fn main() / agent, io {
 
 Send a message to all agents in the swarm:
 
-```rdx
+```mg
 let responses = swarm.broadcast("implement a sorting algorithm")?;
 for resp in responses {
     println!("Agent responded: {resp}");
@@ -37,7 +37,7 @@ for resp in responses {
 
 Send to a specific agent:
 
-```rdx
+```mg
 swarm.send(AgentId(20), "implement quicksort")?;
 ```
 
@@ -45,7 +45,7 @@ swarm.send(AgentId(20), "implement quicksort")?;
 
 When agents need to agree on a decision:
 
-```rdx
+```mg
 // Default: majority consensus
 let decision = swarm.consensus("Should we use quicksort or mergesort?")?;
 
@@ -70,7 +70,7 @@ let decision = swarm.consensus_with(
 
 ### Map-reduce
 
-```rdx
+```mg
 // Distribute subtasks, then merge results
 let subtasks = vec!["parse", "analyze", "generate"];
 let results = swarm.broadcast_all(subtasks)?;
@@ -79,7 +79,7 @@ let merged = merge_results(results);
 
 ### Pipeline
 
-```rdx
+```mg
 // Chain agents: planner → coder → reviewer
 let plan = swarm.send(planner_id, task)?;
 let code = swarm.send(coder_id, plan)?;
@@ -88,7 +88,7 @@ let review = swarm.send(reviewer_id, code)?;
 
 ### Supervisor
 
-```rdx
+```mg
 // One agent oversees others
 struct Supervisor {
     workers: Vec<AgentId>,

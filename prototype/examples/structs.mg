@@ -1,4 +1,4 @@
-// structs.rdx — structs, enums, impl blocks, generics
+// structs.mg — structs, enums, impl blocks, generics
 
 pub struct Point<T> {
     pub x: T,

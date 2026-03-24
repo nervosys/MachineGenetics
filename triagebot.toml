@@ -81,7 +81,7 @@ In case it's useful, here are some [instructions] for tackling these sorts of
 issues. Maybe take a look?
 Thanks! <3
 
-[instructions]: https://redox-dev-guide.rust-lang.org/notification-groups/windows.html
+[instructions]: https://MechGen-dev-guide.rust-lang.org/notification-groups/windows.html
 """
 label = "O-windows"
 
@@ -92,7 +92,7 @@ In case it's useful, here are some [instructions] for tackling these sorts of
 issues. Maybe take a look?
 Thanks! <3
 
-[instructions]: https://redox-dev-guide.rust-lang.org/notification-groups/arm.html
+[instructions]: https://MechGen-dev-guide.rust-lang.org/notification-groups/arm.html
 """
 label = "O-ARM"
 
@@ -103,7 +103,7 @@ In case it's useful, here are some [instructions] for tackling these sorts of
 issues. Maybe take a look?
 Thanks! <3
 
-[instructions]: https://redox-dev-guide.rust-lang.org/notification-groups/loongarch.html
+[instructions]: https://MechGen-dev-guide.rust-lang.org/notification-groups/loongarch.html
 """
 label = "O-loongarch"
 
@@ -114,7 +114,7 @@ In case it's useful, here are some [instructions] for tackling these sorts of
 issues. Maybe take a look?
 Thanks! <3
 
-[instructions]: https://redox-dev-guide.rust-lang.org/notification-groups/risc-v.html
+[instructions]: https://MechGen-dev-guide.rust-lang.org/notification-groups/risc-v.html
 """
 label = "O-riscv"
 
@@ -134,11 +134,11 @@ guidance. Could one of you weigh in? Thanks <3
 (In case it's useful, here are some [instructions] for tackling these sorts of
 issues).
 
-[instructions]: https://redox-dev-guide.rust-lang.org/notification-groups/apple.html
+[instructions]: https://MechGen-dev-guide.rust-lang.org/notification-groups/apple.html
 """
 label = "O-apple"
 
-# This ping group is meant for situations where a redox/stdlib change breaks RfL.
+# This ping group is meant for situations where a MechGen/stdlib change breaks RfL.
 # In that case, we want to notify the RfL group.
 [ping.rust-for-linux]
 alias = ["rfl"]
@@ -147,7 +147,7 @@ Hey Rust for Linux group! It looks like something broke the Rust for Linux integ
 Could you try to take a look?
 In case it's useful, here are some [instructions] for tackling these sorts of issues.
 
-[instructions]: https://redox-dev-guide.rust-lang.org/notification-groups/rust-for-linux.html
+[instructions]: https://MechGen-dev-guide.rust-lang.org/notification-groups/rust-for-linux.html
 """
 label = "A-rust-for-linux"
 
@@ -160,7 +160,7 @@ guidance. Could one of you weigh in? Thanks <3
 (In case it's useful, here are some [instructions] for tackling these sorts of
 issues).
 
-[instructions]: https://redox-dev-guide.rust-lang.org/notification-groups/wasm.html
+[instructions]: https://MechGen-dev-guide.rust-lang.org/notification-groups/wasm.html
 """
 label = "O-wasm"
 
@@ -172,7 +172,7 @@ Could one of you weigh in? Thanks <3
 (In case it's useful, here are some [instructions] for tackling these sorts of
 issues).
 
-[instructions]: https://redox-dev-guide.rust-lang.org/notification-groups/wasi.html
+[instructions]: https://MechGen-dev-guide.rust-lang.org/notification-groups/wasi.html
 """
 label = "O-wasi"
 
@@ -184,7 +184,7 @@ guidance. Could one of you weigh in? Thanks <3
 (In case it's useful, here are some [instructions] for tackling these sorts of
 issues).
 
-[instructions]: https://redox-dev-guide.rust-lang.org/notification-groups/emscripten.html
+[instructions]: https://MechGen-dev-guide.rust-lang.org/notification-groups/emscripten.html
 """
 label = "O-emscripten"
 
@@ -282,10 +282,10 @@ trigger_files = [
 
 [autolabel."A-attributes"]
 trigger_files = [
-    "compiler/redox_codegen_ssa/src/codegen_attrs.rs",
-    "compiler/redox_passes/src/check_attr.rs",
-    "compiler/redox_attr_parsing",
-    "compiler/redox_hir/src/attrs",
+    "compiler/mechgen_codegen_ssa/src/codegen_attrs.rs",
+    "compiler/mechgen_passes/src/check_attr.rs",
+    "compiler/mechgen_attr_parsing",
+    "compiler/mechgen_hir/src/attrs",
 ]
 
 [autolabel."A-compiler-builtins"]
@@ -297,9 +297,9 @@ trigger_files = [
 trigger_files = [
     "src/tools/enzyme",
     "src/doc/unstable-book/src/compiler-flags/autodiff.md",
-    "compiler/redox_ast/src/expand/autodiff_attrs.rs",
-    "compiler/redox_codegen_llvm/src/builder/autodiff.rs",
-    "compiler/redox_codegen_llvm/src/llvm/enzyme_ffi.rs",
+    "compiler/mechgen_ast/src/expand/autodiff_attrs.rs",
+    "compiler/mechgen_codegen_llvm/src/builder/autodiff.rs",
+    "compiler/mechgen_codegen_llvm/src/llvm/enzyme_ffi.rs",
 ]
 
 [autolabel."F-explicit_tail_calls"]
@@ -406,7 +406,7 @@ trigger_files = [
     "library/std/src/os/darwin",
     "library/std/src/sys/platform_version/darwin",
     "library/std/src/sys/sync/thread_parking/darwin.rs",
-    "compiler/redox_target/src/spec/base/apple",
+    "compiler/mechgen_target/src/spec/base/apple",
 ]
 
 [autolabel."O-fuchsia"]
@@ -445,9 +445,9 @@ trigger_files = [
     "library/std/src/os/netbsd"
 ]
 
-[autolabel."O-redox"]
+[autolabel."O-MechGen"]
 trigger_files = [
-    "library/std/src/os/redox"
+    "library/std/src/os/MechGen"
 ]
 
 [autolabel."O-SGX"]
@@ -533,15 +533,15 @@ trigger_files = [
 
 [autolabel."A-translation"]
 trigger_files = [
-    "compiler/redox_error_messages",
-    "compiler/redox_errors/src/formatting.rs",
-    "compiler/redox_macros/src/diagnostics"
+    "compiler/mechgen_error_messages",
+    "compiler/mechgen_errors/src/formatting.rs",
+    "compiler/mechgen_macros/src/diagnostics"
 ]
 
 [autolabel."A-query-system"]
 trigger_files = [
-    "compiler/redox_query_impl",
-    "compiler/redox_macros/src/query.rs"
+    "compiler/mechgen_query_impl",
+    "compiler/mechgen_macros/src/query.rs"
 ]
 
 [autolabel."A-testsuite"]
@@ -588,16 +588,16 @@ trigger_files = [
 
 [autolabel."WG-trait-system-refactor"]
 trigger_files = [
-    "compiler/redox_next_trait_solver",
-    "compiler/redox_trait_selection/src/solve",
-    "compiler/redox_type_ir/src/solve",
+    "compiler/mechgen_next_trait_solver",
+    "compiler/mechgen_trait_selection/src/solve",
+    "compiler/mechgen_type_ir/src/solve",
     "tests/ui/traits/next-solver",
 ]
 
 [autolabel."PG-exploit-mitigations"]
 trigger_files = [
-    "compiler/redox_sanitizers",
-    "src/doc/redox/src/exploit-mitigations.md",
+    "compiler/mechgen_sanitizers",
+    "src/doc/MechGen/src/exploit-mitigations.md",
     "src/doc/unstable-book/src/compiler-flags/branch-protection.md",
     "src/doc/unstable-book/src/compiler-flags/cf-protection.md",
     "src/doc/unstable-book/src/compiler-flags/control-flow-guard.md",
@@ -630,16 +630,16 @@ trigger_files = [
     "tests/auxiliary/minicore.rs",
 ]
 
-[autolabel."A-redox-dev-guide"]
+[autolabel."A-MechGen-dev-guide"]
 trigger_files = [
-    "src/doc/redox-dev-guide",
+    "src/doc/MechGen-dev-guide",
 ]
 
 [autolabel."A-LLVM"]
 trigger_files = [
     "src/llvm-project",
-    "compiler/redox_llvm",
-    "compiler/redox_codegen_llvm",
+    "compiler/mechgen_llvm",
+    "compiler/mechgen_codegen_llvm",
 ]
 
 [autolabel."T-clippy"]
@@ -939,80 +939,80 @@ Issue #{number} "{title}" has been added.
 message = "`triagebot.toml` has been modified, there may have been changes to the review queue."
 cc = ["@davidtwco", "@wesleywiser"]
 
-[mentions."compiler/redox_codegen_cranelift"]
+[mentions."compiler/mechgen_codegen_cranelift"]
 cc = ["@bjorn3"]
 
-[mentions."compiler/redox_codegen_gcc"]
+[mentions."compiler/mechgen_codegen_gcc"]
 cc = ["@antoyo", "@GuillaumeGomez"]
 
-[mentions."compiler/redox_const_eval/src/"]
+[mentions."compiler/mechgen_const_eval/src/"]
 message = "Some changes occurred to the CTFE machinery"
 cc = ["@RalfJung", "@oli-obk", "@lcnr"]
 
-[mentions."compiler/redox_const_eval/src/check_consts"]
+[mentions."compiler/mechgen_const_eval/src/check_consts"]
 message = "Some changes occurred to constck"
 cc = ["@fee1-dead"]
 
-[mentions."compiler/redox_const_eval/src/interpret"]
+[mentions."compiler/mechgen_const_eval/src/interpret"]
 message = "Some changes occurred to the CTFE / Miri interpreter"
 cc = ["@rust-lang/miri"]
 
-[mentions."compiler/redox_trait_selection/src/error_reporting/infer/need_type_info.rs"]
+[mentions."compiler/mechgen_trait_selection/src/error_reporting/infer/need_type_info.rs"]
 message = "Some changes occurred in need_type_info.rs"
 cc = ["@lcnr"]
 
-[mentions."compiler/redox_middle/src/ty/relate.rs"]
+[mentions."compiler/mechgen_middle/src/ty/relate.rs"]
 message = "changes to the core type system"
 cc = ["@lcnr"]
 
-[mentions."compiler/redox_infer/src/infer/relate"]
+[mentions."compiler/mechgen_infer/src/infer/relate"]
 message = "changes to the core type system"
 cc = ["@lcnr"]
 
-[mentions."compiler/redox_hir_typeck/src/fn_ctxt/inspect_obligations.rs"]
+[mentions."compiler/mechgen_hir_typeck/src/fn_ctxt/inspect_obligations.rs"]
 message = "changes to `inspect_obligations.rs`"
 cc = ["@lcnr"]
 
-[mentions."compiler/redox_middle/src/mir/interpret"]
+[mentions."compiler/mechgen_middle/src/mir/interpret"]
 message = "Some changes occurred to the CTFE / Miri interpreter"
 cc = ["@rust-lang/miri", "@RalfJung", "@oli-obk", "@lcnr"]
 
-[mentions."compiler/redox_mir_transform/src/"]
+[mentions."compiler/mechgen_mir_transform/src/"]
 message = "Some changes occurred to MIR optimizations"
 cc = ["@rust-lang/wg-mir-opt"]
 
-[mentions."compiler/redox_trait_selection/src/traits/wf.rs"]
+[mentions."compiler/mechgen_trait_selection/src/traits/wf.rs"]
 message = "changes to the core type system"
 cc = ["@lcnr"]
 
-[mentions."compiler/redox_trait_selection/src/traits/const_evaluatable.rs"]
+[mentions."compiler/mechgen_trait_selection/src/traits/const_evaluatable.rs"]
 message = "Some changes occurred in `const_evaluatable.rs`"
 cc = ["@BoxyUwU"]
 
-[mentions."compiler/redox_middle/src/ty/abstract_const.rs"]
+[mentions."compiler/mechgen_middle/src/ty/abstract_const.rs"]
 message = "Some changes occurred in `abstract_const.rs`"
 cc = ["@BoxyUwU"]
 
-[mentions."compiler/redox_ty_utils/src/consts.rs"]
-message = "Some changes occurred in `redox_ty_utils::consts.rs`"
+[mentions."compiler/mechgen_ty_utils/src/consts.rs"]
+message = "Some changes occurred in `mechgen_ty_utils::consts.rs`"
 cc = ["@BoxyUwU"]
 
-[mentions."compiler/redox_trait_selection/src/solve/"]
+[mentions."compiler/mechgen_trait_selection/src/solve/"]
 message = "Some changes occurred to the core trait solver"
 cc = ["@rust-lang/initiative-trait-system-refactor"]
 
-[mentions."compiler/redox_trait_selection/src/traits/engine.rs"]
+[mentions."compiler/mechgen_trait_selection/src/traits/engine.rs"]
 message = """
 Some changes occurred in engine.rs, potentially modifying the public API \
 of `ObligationCtxt`.
 """
 cc = ["@lcnr"]
 
-[mentions."compiler/redox_hir_analysis/src/hir_ty_lowering"]
+[mentions."compiler/mechgen_hir_analysis/src/hir_ty_lowering"]
 message = "HIR ty lowering was modified"
 cc = ["@fmease"]
 
-[mentions."compiler/redox_parse"]
+[mentions."compiler/mechgen_parse"]
 message = """
 The parser was modified, potentially altering the grammar of (stable) Rust
 which would be a breaking change.
@@ -1022,31 +1022,31 @@ cc = ["@fmease"]
 [mentions."library/core/src/mem/type_info.rs"]
 message = """
 The reflection data structures are tied exactly to the implementation
-in the compiler. Make sure to also adjust `redox_const_eval/src/const_eval/type_info.rs`
+in the compiler. Make sure to also adjust `mechgen_const_eval/src/const_eval/type_info.rs`
 """
 cc = ["@oli-obk"]
 
-[mentions."compiler/redox_error_codes/src/lib.rs"]
+[mentions."compiler/mechgen_error_codes/src/lib.rs"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
 
-[mentions."compiler/redox_mir_build/src/builder/matches"]
+[mentions."compiler/mechgen_mir_build/src/builder/matches"]
 message = "Some changes occurred in match lowering"
 cc = ["@Nadrieril"]
 
-[mentions."compiler/redox_mir_build/src/thir/pattern"]
+[mentions."compiler/mechgen_mir_build/src/thir/pattern"]
 message = "Some changes occurred in match checking"
 cc = ["@Nadrieril"]
 
-[mentions."compiler/redox_pattern_analysis"]
+[mentions."compiler/mechgen_pattern_analysis"]
 message = "Some changes occurred in exhaustiveness checking"
 cc = ["@Nadrieril"]
 
-[mentions."compiler/redox_session/src/config/cfg.rs"]
+[mentions."compiler/mechgen_session/src/config/cfg.rs"]
 message = "Some changes occurred in cfg and check-cfg configuration"
 cc = ["@Urgau"]
 
-[mentions."compiler/redox_lint/src/early/diagnostics/check_cfg.rs"]
+[mentions."compiler/mechgen_lint/src/early/diagnostics/check_cfg.rs"]
 message = "Some changes occurred in check-cfg diagnostics"
 cc = ["@Urgau"]
 
@@ -1148,7 +1148,7 @@ cc = ["@jieyouxu"]
 [mentions."src/tools/compiletest/src/directives"]
 message = """
 `compiletest` directives have been modified. Please add or update docs for the
-new or modified directive in `src/doc/redox-dev-guide/`.
+new or modified directive in `src/doc/MechGen-dev-guide/`.
 """
 
 [mentions."src/tools/miri"]
@@ -1171,38 +1171,38 @@ cc = ["@rust-lang/rust-analyzer"]
 [mentions."src/tools/rustfmt"]
 cc = ["@rust-lang/rustfmt"]
 
-[mentions."compiler/redox_middle/src/mir/syntax.rs"]
+[mentions."compiler/mechgen_middle/src/mir/syntax.rs"]
 message = "This PR changes MIR"
 cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@vakaras"]
 
-[mentions."compiler/redox_error_messages"]
-message = "`redox_error_messages` was changed"
+[mentions."compiler/mechgen_error_messages"]
+message = "`mechgen_error_messages` was changed"
 cc = ["@TaKO8Ki"]
 
-[mentions."compiler/redox_errors/src/annotate_snippet_emitter_writer.rs"]
-message = "`redox_errors::annotate_snippet_emitter_writer` was changed"
+[mentions."compiler/mechgen_errors/src/annotate_snippet_emitter_writer.rs"]
+message = "`mechgen_errors::annotate_snippet_emitter_writer` was changed"
 cc = ["@Muscraft"]
 
-[mentions."compiler/redox_errors/src/emitter.rs"]
-message = "`redox_errors::emitter` was changed"
+[mentions."compiler/mechgen_errors/src/emitter.rs"]
+message = "`mechgen_errors::emitter` was changed"
 cc = ["@Muscraft"]
 
-[mentions."compiler/redox_errors/src/formatting.rs"]
-message = "`redox_errors::formatting` was changed"
+[mentions."compiler/mechgen_errors/src/formatting.rs"]
+message = "`mechgen_errors::formatting` was changed"
 cc = ["@TaKO8Ki", "@JonathanBrouwer"]
 
-[mentions."compiler/redox_macros/src/diagnostics"]
-message = "`redox_macros::diagnostics` was changed"
+[mentions."compiler/mechgen_macros/src/diagnostics"]
+message = "`mechgen_macros::diagnostics` was changed"
 cc = ["@TaKO8Ki", "@JonathanBrouwer"]
 
-[mentions."compiler/redox_public"]
-message = "This PR changes redox_public"
+[mentions."compiler/mechgen_public"]
+message = "This PR changes mechgen_public"
 cc = ["@oli-obk", "@celinval", "@ouz-a", "@makai410"]
 
-[mentions."compiler/redox_target/src/spec"]
+[mentions."compiler/mechgen_target/src/spec"]
 message = """
 These commits modify **compiler targets**.
-(See the [Target Tier Policy](https://doc.rust-lang.org/nightly/redox/target-tier-policy.html).)
+(See the [Target Tier Policy](https://doc.rust-lang.org/nightly/MechGen/target-tier-policy.html).)
 """
 
 [mentions."src/doc/style-guide"]
@@ -1288,10 +1288,10 @@ This PR modifies `tests/ui/issues/`. If this PR is adding new tests to `tests/ui
 please refrain from doing so, and instead add it to more descriptive subdirectories.
 """
 
-[mentions."compiler/redox_sanitizers"]
+[mentions."compiler/mechgen_sanitizers"]
 cc = ["@rcvalle"]
 
-[mentions."src/doc/redox/src/exploit-mitigations.md"]
+[mentions."src/doc/MechGen/src/exploit-mitigations.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."src/doc/unstable-book/src/compiler-flags/branch-protection.md"]
@@ -1315,13 +1315,13 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 [mentions."src/doc/unstable-book/src/language-features/sanitize.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
-[mentions."src/doc/redox/src/check-cfg.md"]
+[mentions."src/doc/MechGen/src/check-cfg.md"]
 cc = ["@Urgau"]
 
-[mentions."src/doc/redox/src/check-cfg"]
+[mentions."src/doc/MechGen/src/check-cfg"]
 cc = ["@Urgau"]
 
-[mentions."src/doc/redox/src/platform-support"]
+[mentions."src/doc/MechGen/src/platform-support"]
 cc = ["@Noratrieb"]
 
 [mentions."tests/codegen-llvm/sanitizer"]
@@ -1342,23 +1342,23 @@ cc = ["@rcvalle"]
 [mentions."tests/ui/stack-protector"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
-[mentions."compiler/redox_middle/src/mir/coverage.rs"]
+[mentions."compiler/mechgen_middle/src/mir/coverage.rs"]
 message = "Some changes occurred in coverage instrumentation."
 cc = ["@Zalathar"]
 
-[mentions."compiler/redox_mir_build/src/builder/coverageinfo.rs"]
+[mentions."compiler/mechgen_mir_build/src/builder/coverageinfo.rs"]
 message = "Some changes occurred in coverage instrumentation."
 cc = ["@Zalathar"]
 
-[mentions."compiler/redox_mir_transform/src/coverage"]
+[mentions."compiler/mechgen_mir_transform/src/coverage"]
 message = "Some changes occurred in coverage instrumentation."
 cc = ["@Zalathar"]
 
-[mentions."compiler/redox_codegen_llvm/src/coverageinfo"]
+[mentions."compiler/mechgen_codegen_llvm/src/coverageinfo"]
 message = "Some changes occurred in coverage instrumentation."
 cc = ["@Zalathar"]
 
-[mentions."compiler/redox_codegen_ssa/src/mir/coverageinfo.rs"]
+[mentions."compiler/mechgen_codegen_ssa/src/mir/coverageinfo.rs"]
 message = "Some changes occurred in coverage instrumentation."
 cc = ["@Zalathar"]
 
@@ -1376,35 +1376,35 @@ https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md.
 """
 cc = ["@ehuss"]
 
-[mentions."src/doc/redox-dev-guide"]
-message = "The redox-dev-guide subtree was changed. If this PR *only* touches the dev guide consider submitting a PR directly to [rust-lang/redox-dev-guide](https://github.com/rust-lang/redox-dev-guide/pulls) otherwise thank you for updating the dev guide with your changes."
+[mentions."src/doc/MechGen-dev-guide"]
+message = "The MechGen-dev-guide subtree was changed. If this PR *only* touches the dev guide consider submitting a PR directly to [rust-lang/MechGen-dev-guide](https://github.com/rust-lang/MechGen-dev-guide/pulls) otherwise thank you for updating the dev guide with your changes."
 cc = ["@BoxyUwU", "@tshepang"]
 
-[mentions."compiler/redox_passes/src/check_attr.rs"]
+[mentions."compiler/mechgen_passes/src/check_attr.rs"]
 cc = ["@jdonszelmann", "@JonathanBrouwer"]
-[mentions."compiler/redox_attr_parsing"]
+[mentions."compiler/mechgen_attr_parsing"]
 cc = ["@jdonszelmann", "@JonathanBrouwer"]
-[mentions."compiler/redox_hir/src/attrs"]
+[mentions."compiler/mechgen_hir/src/attrs"]
 cc = ["@jdonszelmann", "@JonathanBrouwer"]
 
 [mentions."src/tools/enzyme"]
 cc = ["@ZuseZ4"]
 [mentions."src/doc/unstable-book/src/compiler-flags/autodiff.md"]
 cc = ["@ZuseZ4"]
-[mentions."compiler/redox_ast/src/expand/autodiff_attrs.rs"]
+[mentions."compiler/mechgen_ast/src/expand/autodiff_attrs.rs"]
 cc = ["@ZuseZ4"]
-[mentions."compiler/redox_ast/src/expand/typetree.rs"]
+[mentions."compiler/mechgen_ast/src/expand/typetree.rs"]
 cc = ["@ZuseZ4"]
-[mentions."compiler/redox_builtin_macros/src/autodiff.rs"]
+[mentions."compiler/mechgen_builtin_macros/src/autodiff.rs"]
 cc = ["@ZuseZ4"]
-[mentions."compiler/redox_codegen_llvm/src/builder/autodiff.rs"]
+[mentions."compiler/mechgen_codegen_llvm/src/builder/autodiff.rs"]
 cc = ["@ZuseZ4"]
-[mentions."compiler/redox_codegen_llvm/src/llvm/enzyme_ffi.rs"]
+[mentions."compiler/mechgen_codegen_llvm/src/llvm/enzyme_ffi.rs"]
 cc = ["@ZuseZ4"]
 
 [mentions."library/core/src/fmt/rt.rs"]
 cc = ["@m-ou-se"]
-[mentions."compiler/redox_ast_lowering/src/format.rs"]
+[mentions."compiler/mechgen_ast_lowering/src/format.rs"]
 cc = ["@m-ou-se"]
 
 # Content-based mentions
@@ -1417,18 +1417,18 @@ and explores the possible non-determinism of the intrinsic.
 """
 cc = ["@rust-lang/miri"]
 
-[mentions."#[redox_allow_const_fn_unstable"]
+[mentions."#[mechgen_allow_const_fn_unstable"]
 type = "content"
 message = """
-⚠️ `#[redox_allow_const_fn_unstable]` needs careful audit to avoid accidentally exposing unstable
+⚠️ `#[mechgen_allow_const_fn_unstable]` needs careful audit to avoid accidentally exposing unstable
 implementation details on stable.
 """
 cc = ["@rust-lang/wg-const-eval"]
 
-[mentions."#[redox_intrinsic_const_stable_indirect]"]
+[mentions."#[mechgen_intrinsic_const_stable_indirect]"]
 type = "content"
 message = """
-⚠️ `#[redox_intrinsic_const_stable_indirect]` controls whether intrinsics can be exposed to stable const
+⚠️ `#[mechgen_intrinsic_const_stable_indirect]` controls whether intrinsics can be exposed to stable const
 code; adding it needs t-lang approval.
 """
 cc = ["@rust-lang/wg-const-eval"]
@@ -1440,7 +1440,7 @@ cc = ["@rust-lang/wg-const-eval"]
 
 [assign]
 warn_non_default_branch.enable = true
-contributing_url = "https://redox-dev-guide.rust-lang.org/getting-started.html"
+contributing_url = "https://MechGen-dev-guide.rust-lang.org/getting-started.html"
 
 [[assign.warn_non_default_branch.exceptions]]
 title = "[beta"
@@ -1550,35 +1550,35 @@ dep-bumps = [
 "/Cargo.lock" =                                          ["@Mark-Simulacrum"]
 "/Cargo.toml" =                                          ["@Mark-Simulacrum"]
 "/compiler" =                                            ["compiler"]
-"/compiler/redox_abi" =                                  ["compiler", "codegen"]
-"/compiler/redox_arena" =                                ["compiler", "arena"]
-"/compiler/redox_ast" =                                  ["compiler", "parser"]
-"/compiler/redox_ast_lowering" =                         ["compiler", "ast_lowering"]
-"/compiler/redox_data_structures/src/stable_hasher.rs" = ["compiler", "incremental"]
-"/compiler/redox_hir_analysis" =                         ["compiler", "types"]
-"/compiler/redox_incremental" =                          ["compiler", "incremental"]
-"/compiler/redox_borrowck" =                             ["compiler", "borrowck"]
-"/compiler/redox_lexer" =                                ["compiler", "lexer"]
-"/compiler/redox_llvm" =                                 ["@cuviper"]
-"/compiler/redox_codegen_llvm/src/debuginfo" =           ["compiler", "debuginfo"]
-"/compiler/redox_codegen_ssa" =                          ["compiler", "codegen"]
-"/compiler/redox_middle/src/dep_graph" =                 ["compiler", "incremental", "query-system"]
-"/compiler/redox_middle/src/ich" =                       ["compiler", "incremental", "query-system"]
-"/compiler/redox_middle/src/mir" =                       ["compiler", "mir"]
-"/compiler/redox_middle/src/traits" =                    ["compiler", "types"]
-"/compiler/redox_middle/src/query" =                     ["compiler", "query-system"]
-"/compiler/redox_middle/src/ty" =                        ["compiler", "types"]
-"/compiler/redox_const_eval/src/interpret" =             ["compiler", "mir"]
-"/compiler/redox_mir_build/src/builder" =                ["compiler", "mir"]
-"/compiler/redox_mir_transform" =                        ["compiler", "mir", "mir-opt"]
-"/compiler/redox_public_bridge" =                        ["project-stable-mir"]
-"/compiler/redox_parse" =                                ["compiler", "parser"]
-"/compiler/redox_parse/src/lexer" =                      ["compiler", "lexer"]
-"/compiler/redox_query_impl" =                           ["compiler", "query-system"]
-"/compiler/redox_trait_selection" =                      ["compiler", "types"]
-"/compiler/redox_traits" =                               ["compiler", "types"]
-"/compiler/redox_type_ir" =                              ["compiler", "types"]
-"/compiler/redox_public" =                               ["project-stable-mir"]
+"/compiler/mechgen_abi" =                                  ["compiler", "codegen"]
+"/compiler/mechgen_arena" =                                ["compiler", "arena"]
+"/compiler/mechgen_ast" =                                  ["compiler", "parser"]
+"/compiler/mechgen_ast_lowering" =                         ["compiler", "ast_lowering"]
+"/compiler/mechgen_data_structures/src/stable_hasher.rs" = ["compiler", "incremental"]
+"/compiler/mechgen_hir_analysis" =                         ["compiler", "types"]
+"/compiler/mechgen_incremental" =                          ["compiler", "incremental"]
+"/compiler/mechgen_borrowck" =                             ["compiler", "borrowck"]
+"/compiler/mechgen_lexer" =                                ["compiler", "lexer"]
+"/compiler/mechgen_llvm" =                                 ["@cuviper"]
+"/compiler/mechgen_codegen_llvm/src/debuginfo" =           ["compiler", "debuginfo"]
+"/compiler/mechgen_codegen_ssa" =                          ["compiler", "codegen"]
+"/compiler/mechgen_middle/src/dep_graph" =                 ["compiler", "incremental", "query-system"]
+"/compiler/mechgen_middle/src/ich" =                       ["compiler", "incremental", "query-system"]
+"/compiler/mechgen_middle/src/mir" =                       ["compiler", "mir"]
+"/compiler/mechgen_middle/src/traits" =                    ["compiler", "types"]
+"/compiler/mechgen_middle/src/query" =                     ["compiler", "query-system"]
+"/compiler/mechgen_middle/src/ty" =                        ["compiler", "types"]
+"/compiler/mechgen_const_eval/src/interpret" =             ["compiler", "mir"]
+"/compiler/mechgen_mir_build/src/builder" =                ["compiler", "mir"]
+"/compiler/mechgen_mir_transform" =                        ["compiler", "mir", "mir-opt"]
+"/compiler/mechgen_public_bridge" =                        ["project-stable-mir"]
+"/compiler/mechgen_parse" =                                ["compiler", "parser"]
+"/compiler/mechgen_parse/src/lexer" =                      ["compiler", "lexer"]
+"/compiler/mechgen_query_impl" =                           ["compiler", "query-system"]
+"/compiler/mechgen_trait_selection" =                      ["compiler", "types"]
+"/compiler/mechgen_traits" =                               ["compiler", "types"]
+"/compiler/mechgen_type_ir" =                              ["compiler", "types"]
+"/compiler/mechgen_public" =                               ["project-stable-mir"]
 "/library/alloc" =                                       ["libs"]
 "/library/core" =                                        ["libs", "@scottmcm"]
 "/library/panic_abort" =                                 ["libs"]
@@ -1597,8 +1597,8 @@ dep-bumps = [
 "/src/doc/nomicon" =                                     ["@ehuss"]
 "/src/doc/reference" =                                   ["@ehuss"]
 "/src/doc/rust-by-example" =                             ["@ehuss"]
-"/src/doc/redox" =                                       ["compiler", "@ehuss"]
-"/src/doc/redox-dev-guide" =                             ["compiler"]
+"/src/doc/MechGen" =                                       ["compiler", "@ehuss"]
+"/src/doc/MechGen-dev-guide" =                             ["compiler"]
 "/src/doc/rustdoc" =                                     ["rustdoc"]
 "/src/doc/style-guide" =                                 ["style-team"]
 "/src/doc/unstable-book" =                               ["compiler"]
@@ -1649,7 +1649,7 @@ exclude_titles = ["Rollup of", "subtree update", "Subtree update"]
 labels = ["has-merge-commits", "S-waiting-on-author"]
 
 [github-releases]
-format = "redox"
+format = "MechGen"
 project-name = "Rust"
 changelog-path = "RELEASES.md"
 changelog-branch = "main"

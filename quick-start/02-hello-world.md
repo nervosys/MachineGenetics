@@ -3,7 +3,7 @@
 ## Create a Project
 
 ```bash
-rdx new hello
+mg new hello
 cd hello
 ```
 
@@ -11,18 +11,18 @@ This creates:
 
 ```
 hello/
-├── rdx.toml        # project config
+├── mg.toml        # project config
 ├── src/
-│   └── main.rdx    # entry point
+│   └── main.mg    # entry point
 └── tests/
-    └── main_test.rdx
+    └── main_test.mg
 ```
 
 ## Your First Program
 
-Open `src/main.rdx`:
+Open `src/main.mg`:
 
-```redox
+```MechGen
 +f main() {
     p"Hello, World!"
 }
@@ -39,25 +39,25 @@ That's the entire program. Let's break it down:
 ## Run It
 
 ```bash
-rdx run
+mg run
 # Hello, World!
 ```
 
 ## Make It Interactive
 
-Edit `src/main.rdx`:
+Edit `src/main.mg`:
 
-```redox
+```MechGen
 +f main() {
-    v name = "Redox"
+    v name = "MechGen"
     p"Hello, {name}!"
     p"2 + 3 = {2 + 3}"
 }
 ```
 
 ```bash
-rdx run
-# Hello, Redox!
+mg run
+# Hello, MechGen!
 # 2 + 3 = 5
 ```
 
@@ -68,7 +68,7 @@ rdx run
 
 ## Add a Function
 
-```redox
+```MechGen
 f greet(name: &s) -> s {
     f"Hello, {name}!"
 }
@@ -78,7 +78,7 @@ f greet(name: &s) -> s {
     p"{message}"
 
     // Or directly:
-    p"{greet("Redox")}"
+    p"{greet("MechGen")}"
 }
 ```
 
@@ -94,16 +94,16 @@ f greet(name: &s) -> s {
 For quick experiments, use the interactive REPL:
 
 ```bash
-rdx repl
+mg repl
 ```
 
 ```
-rdx> 2 + 3
+mg> 2 + 3
 5
-rdx> v xs = [1, 2, 3, 4, 5]~
-rdx> xs.iter().map(|x| x * 2).collect[Vec[i32]]()
+mg> v xs = [1, 2, 3, 4, 5]~
+mg> xs.iter().map(|x| x * 2).collect[Vec[i32]]()
 [2, 4, 6, 8, 10]
-rdx> :quit
+mg> :quit
 ```
 
 ---

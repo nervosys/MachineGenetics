@@ -8,7 +8,7 @@
 
 **Solution**:
 
-```rdx
+```mg
 u std.fmt.Display
 
 +E AppError {
@@ -40,7 +40,7 @@ I Display ~ AppError {
 
 **Solution**:
 
-```rdx
+```mg
 u std.io.IoError
 u std.json.JsonError
 
@@ -75,7 +75,7 @@ I From[JsonError] ~ AppError {
 
 **Solution**:
 
-```rdx
+```mg
 +E ContextError {
     WithContext { context: s, source: ^dyn Error },
 }
@@ -110,7 +110,7 @@ I From[JsonError] ~ AppError {
 
 **Solution**:
 
-```rdx
+```mg
 u std.time.Duration
 
 +af retry[T, E](
@@ -155,7 +155,7 @@ u std.time.Duration
 
 **Solution**:
 
-```rdx
+```mg
 +f load_setting(key: &s) -> R[s, Error] / io {
     // Try environment variable first
     ? env.var(key) => Ok(v) { ret Ok(v) }
@@ -183,7 +183,7 @@ stopping at the first.
 
 **Solution**:
 
-```rdx
+```mg
 +f validate_fields(form: &Form) -> R[(), [s]~] {
     m errors = [s]~.new()
 
@@ -227,7 +227,7 @@ stopping at the first.
 
 **Solution**:
 
-```rdx
+```mg
 +f main() / io {
     v port: u16 = env.var("PORT")
         .expect("PORT env var must be set")

@@ -1,6 +1,6 @@
-# Redox Compiler Internals
+# MechGen Compiler Internals
 
-> Architecture and implementation guide for the Redox prototype compiler.
+> Architecture and implementation guide for the MechGen prototype compiler.
 
 ---
 
@@ -29,7 +29,7 @@ Source (.rx)
 
 ### 2.1 Lexer (`lexer.rs`)
 
-The LL(1) lexer tokenises Redox source into a stream of `Token` values. Each
+The LL(1) lexer tokenises MechGen source into a stream of `Token` values. Each
 token has a `TokenKind` and a `Span` (line, column, offset).
 
 Key token kinds:
@@ -207,14 +207,14 @@ Extensible syntax via `grammar_extension!`:
 
 ### 4.2 Legacy Compatibility (`legacy.rs`)
 
-Bidirectional Redox ↔ Rust transpilation:
+Bidirectional MechGen ↔ Rust transpilation:
 - AST-level translation
 - Contract preservation as attributes
 - Effect annotation mapping
 
 ### 4.3 Manifest (`manifest.rs`)
 
-`Redox.toml` parsing:
+`MechGen.toml` parsing:
 - Package metadata
 - Dependency declarations
 - Agent configuration
@@ -379,8 +379,8 @@ prototype/
     ├── elision.rs           # Code elision
     ├── synthesis.rs         # Synthesis oracle
     ├── grammar.rs           # Grammar extensions
-    ├── legacy.rs            # Rust ↔ Redox compat
-    ├── manifest.rs          # Redox.toml parsing
+    ├── legacy.rs            # Rust ↔ MechGen compat
+    ├── manifest.rs          # MechGen.toml parsing
     ├── fmt.rs               # Code formatter
     ├── rap.rs               # REPL/Agent protocol
     ├── crdt.rs              # CRDTs

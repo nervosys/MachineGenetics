@@ -120,7 +120,7 @@ pub fn check_rules(hir: &HirModule, rules: &[Rule]) -> Vec<RuleMatch> {
 ## 8.2 How SKB Replaces Borrow-Checker Syntax
 
 In Rust, the programmer must annotate lifetimes, borrow modes, and
-ownership transfers explicitly. In Redox, the SKB engine applies these
+ownership transfers explicitly. In MechGen, the SKB engine applies these
 same rules silently:
 
 | Rust Syntax                         | SKB Rule                                              |
@@ -164,7 +164,7 @@ template.
 
 ### Auto-Fix Workflow
 
-1. Agent writes Redox code (no safety annotations)
+1. Agent writes MechGen code (no safety annotations)
 2. Compiler runs SKB matcher on the HIR
 3. SKB engine returns violations with `fix_template`
 4. Agent applies the fix template automatically
@@ -389,10 +389,10 @@ fn own_0042_allows_copy_types() {
 
 ### Coverage
 
-The `rdx skb coverage` command reports which rules have test cases:
+The `mg skb coverage` command reports which rules have test cases:
 
 ```bash
-rdx skb coverage
+mg skb coverage
 # OWN-0042  ✓ 3 positive, 2 negative
 # BR-0012   ✓ 2 positive, 1 negative
 # LT-0001   ✗ no tests
@@ -401,10 +401,10 @@ rdx skb coverage
 
 ### Rule Validation
 
-The `rdx skb validate` command checks all rules against the schema:
+The `mg skb validate` command checks all rules against the schema:
 
 ```bash
-rdx skb validate
+mg skb validate
 # ✓ 51 rules validated against rule-schema.json
 # ✗ PROJ-0001: missing required field "rationale"
 ```

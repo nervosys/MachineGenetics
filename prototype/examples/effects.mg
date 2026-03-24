@@ -1,4 +1,4 @@
-// effects.rdx — effect definitions, handlers, closures
+// effects.mg — effect definitions, handlers, closures
 
 effect io {
     fn read(fd: i32) -> Vec<u8>;

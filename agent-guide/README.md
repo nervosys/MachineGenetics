@@ -1,8 +1,8 @@
-# Redox Agent Guide
+# MechGen Agent Guide
 
 Structured instructions for AI agents generating, reviewing, and migrating
-Redox code. This guide is the **primary reference** for AI models working with
-the Redox programming language.
+MechGen code. This guide is the **primary reference** for AI models working with
+the MechGen programming language.
 
 ## Contents
 
@@ -10,10 +10,10 @@ the Redox programming language.
 | ------------------------------------------ | -------------------------------------------- | ---------------- |
 | [system-prompt.md](system-prompt.md)       | Drop-in system prompt for AI agents          | All AI models    |
 | [syntax-quick-ref.md](syntax-quick-ref.md) | Condensed syntax lookup table                | Fast reference   |
-| [patterns.md](patterns.md)                 | Idiomatic Redox patterns and conventions     | Code generation  |
+| [patterns.md](patterns.md)                 | Idiomatic MechGen patterns and conventions     | Code generation  |
 | [anti-patterns.md](anti-patterns.md)       | Common mistakes and how to avoid them        | Error prevention |
 | [effects.md](effects.md)                   | Effect annotation rules and decision tree    | Effect system    |
-| [migration.md](migration.md)               | Rust → Redox translation rules for agents    | Migration tasks  |
+| [migration.md](migration.md)               | Rust → MechGen translation rules for agents    | Migration tasks  |
 | [rap-agentic.md](rap-agentic.md)           | RAP agentic methods: heal, cost, SKB, verify | RAP clients      |
 | [examples/](examples/)                     | Worked prompt → response examples            | Training / eval  |
 
@@ -27,11 +27,11 @@ the Redox programming language.
 
 ## Project-Level Configuration
 
-Place an `agent-instructions.yaml` in `.redox/` at the project root to give
+Place an `agent-instructions.yaml` in `.MechGen/` at the project root to give
 agents project-specific context:
 
 ```yaml
-language: redox
+language: MechGen
 edition: "2025"
 safety_profile: "full"
 allowed_effects: ["io", "net", "async"]
@@ -48,4 +48,4 @@ The Agent Guide follows these principles:
 2. **Copy-paste ready** — Every example is syntactically valid
 3. **Negative examples** — Show what NOT to do, not just what to do
 4. **Effect-first** — Always annotate effects; pure is the default
-5. **Diff-friendly** — Show Rust → Redox side-by-side for migration
+5. **Diff-friendly** — Show Rust → MechGen side-by-side for migration

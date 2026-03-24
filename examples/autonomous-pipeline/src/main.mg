@@ -535,14 +535,14 @@ impl GenerationCache {
 
 pub fn main() / io {
     println!("╔═══════════════════════════════════════════════════════════╗");
-    println!("║  Redox Autonomous Code Generation Pipeline               ║");
+    println!("║  MechGen Autonomous Code Generation Pipeline               ║");
     println!("╚═══════════════════════════════════════════════════════════╝");
     println!("");
 
     // Define the specification.
     let spec = Specification {
         description: "Build a REST API for user management with CRUD operations".to_string(),
-        language: "redox".to_string(),
+        language: "MechGen".to_string(),
         targets: vec!["x86_64", "aarch64", "wasm32"].iter().map(|s| s.to_string()).collect(),
         max_token_budget: 4096,
         safety_level: SafetyLevel::Production,

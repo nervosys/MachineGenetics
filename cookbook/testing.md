@@ -9,7 +9,7 @@ duplicating test code.
 
 **Solution**:
 
-```rdx
+```mg
 u std.test.*
 
 f add(a: i32, b: i32) -> i32 { a + b }
@@ -39,7 +39,7 @@ f test_add() {
 
 **Solution**:
 
-```rdx
+```mg
 u std.test.*
 u std.fs
 
@@ -79,7 +79,7 @@ f test_read_data() / io {
 
 **Solution**:
 
-```rdx
+```mg
 u std.test.*
 u std.effect.handle
 
@@ -123,7 +123,7 @@ examples.
 
 **Solution**:
 
-```rdx
+```mg
 u std.test.{prop, assert_true}
 
 f reverse[T: Clone](items: &[T]~) -> [T]~ {
@@ -167,7 +167,7 @@ f test_sort_is_idempotent() {
 
 **Solution**:
 
-```rdx
+```mg
 u std.test.{Bencher, black_box}
 
 f fibonacci(n: u64) -> u64 {
@@ -193,7 +193,7 @@ f bench_fib_40(b: &!Bencher) {
 }
 ```
 
-Run with `rdx bench`.
+Run with `mg bench`.
 
 ---
 
@@ -203,7 +203,7 @@ Run with `rdx bench`.
 
 **Solution**:
 
-```rdx
+```mg
 u std.test.*
 
 +f divide(a: f64, b: f64) -> R[f64, s] {
@@ -240,7 +240,7 @@ f test_divide_ok() {
 
 **Solution**:
 
-```rdx
+```mg
 u std.test.*
 u std.fs
 
@@ -277,7 +277,7 @@ the test, or add a `UPDATE_SNAPSHOTS` environment check.
 
 **Solution**:
 
-```rdx
+```mg
 u std.test.*
 
 +af fetch_name(id: u64) -> R[s, Error] / net {

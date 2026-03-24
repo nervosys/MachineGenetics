@@ -1,16 +1,16 @@
-# Helix editor configuration for Redox.
+# Helix editor configuration for MechGen.
 #
 # Installation:
 #   cp languages.toml ~/.config/helix/languages.toml
-#   cp -r queries/redox ~/.config/helix/runtime/queries/redox
+#   cp -r queries/MechGen ~/.config/helix/runtime/queries/MechGen
 
 # ── Language definition ──────────────────────────────────────────────
 
 [[language]]
-name = "redox"
-scope = "source.redox"
-injection-regex = "redox|rdx"
-file-types = ["rdx"]
+name = "MechGen"
+scope = "source.MechGen"
+injection-regex = "MechGen|mg"
+file-types = ["mg"]
 roots = ["Forge.toml"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }

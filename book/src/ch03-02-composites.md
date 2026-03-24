@@ -2,7 +2,7 @@
 
 ## Structs
 
-```rdx
+```mg
 struct User {
     name: String,
     age: u32,
@@ -19,7 +19,7 @@ let user = User {
 
 ### Tuple structs
 
-```rdx
+```mg
 struct Point(f64, f64);
 struct Color(u8, u8, u8);
 
@@ -29,13 +29,13 @@ let red = Color(255, 0, 0);
 
 ### Unit structs
 
-```rdx
+```mg
 struct Marker;
 ```
 
 ## Enums
 
-```rdx
+```mg
 enum Direction {
     North,
     South,
@@ -57,7 +57,7 @@ let s = Shape::Circle(5.0);
 
 ## Tuples
 
-```rdx
+```mg
 let pair: (i32, String) = (42, "hello".into());
 let (x, y) = pair;    // destructure
 let first = pair.0;    // field access
@@ -67,20 +67,20 @@ let first = pair.0;    // field access
 
 Fixed-size arrays:
 
-```rdx
+```mg
 let data: [i32; 4] = [1, 2, 3, 4];
 let zeros = [0; 100];    // 100 zeros
 ```
 
 ## Slices
 
-```rdx
+```mg
 let slice: &[i32] = &data[1..3];
 ```
 
 ## Type aliases
 
-```rdx
+```mg
 type Id = u64
 type Result[T] = R[T, AppError]
 type Grid = [[f64]~]~

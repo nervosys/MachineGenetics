@@ -1,14 +1,14 @@
-# Redox Example Projects
+# MechGen Example Projects
 
-Complete, self-contained example projects demonstrating Redox language features
+Complete, self-contained example projects demonstrating MechGen language features
 and ecosystem patterns. Each project has a `Forge.toml` manifest and can be
-built with `rdx build`.
+built with `mg build`.
 
 ## Examples
 
 | Project                                       | Description                      | Key Features                                          |
 | --------------------------------------------- | -------------------------------- | ----------------------------------------------------- |
-| [hello-world](hello-world/)                   | Minimal Redox program            | Entry point, printing, variables                      |
+| [hello-world](hello-world/)                   | Minimal MechGen program            | Entry point, printing, variables                      |
 | [data-structures](data-structures/)           | Structs, enums, generics, traits | Type definitions, impl blocks, pattern matching       |
 | [http-client](http-client/)                   | Async HTTP client                | Effects, async/await, error handling, JSON            |
 | [cli-tool](cli-tool/)                         | Command-line grep utility        | File I/O, iterators, argument parsing                 |
@@ -25,7 +25,7 @@ built with `rdx build`.
 
 ```bash
 cd examples/hello-world
-rdx run
+mg run
 ```
 
 ## Transpiling to Rust
@@ -33,16 +33,16 @@ rdx run
 Any example can be back-transpiled to Rust with:
 
 ```bash
-rdx2rs src/main.rdx --output rs/
+rdx2rs src/main.mg --output rs/
 ```
 
 ## Project Structure
 
-Each example follows the standard Redox project layout:
+Each example follows the standard MechGen project layout:
 
 ```
 example-name/
 ├── Forge.toml          # Project manifest
 └── src/
-    └── main.rdx        # Entry point (or lib.rdx for libraries)
+    └── main.mg        # Entry point (or lib.mg for libraries)
 ```

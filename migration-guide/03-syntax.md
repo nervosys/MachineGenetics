@@ -1,7 +1,7 @@
 # Chapter 3: Syntax Migration
 
-The mechanical translation of Rust syntax to Redox syntax. Most of this can be
-automated with `rdx migrate`, but understanding each rule helps you fix edge
+The mechanical translation of Rust syntax to MechGen syntax. Most of this can be
+automated with `mg migrate`, but understanding each rule helps you fix edge
 cases and review the output.
 
 ---
@@ -12,16 +12,16 @@ Run the automated translator on your Rust source:
 
 ```bash
 # Migrate a single file
-rdx migrate src/lib.rs --output src/lib.rdx
+mg migrate src/lib.rs --output src/lib.mg
 
 # Migrate an entire directory
-rdx migrate src/ --output-dir src/
+mg migrate src/ --output-dir src/
 
 # Preview without writing (recommended first)
-rdx migrate src/ --dry-run
+mg migrate src/ --dry-run
 
 # Migrate with verbose diff output
-rdx migrate src/lib.rs --diff
+mg migrate src/lib.rs --diff
 ```
 
 The tool handles ~80% of translations automatically. The remaining 20%
@@ -335,12 +335,12 @@ replacement, and idiom adjustments.
 
 ## 3.10 Semicolons
 
-Redox uses the same semicolon rules as Rust: statements end with semicolons
+MechGen uses the same semicolon rules as Rust: statements end with semicolons
 (often optional in practice), and the last expression in a block is the return
 value without a semicolon.
 
 ```diff
-  // These are equivalent in Redox:
+  // These are equivalent in MechGen:
   v x = 42;
   v x = 42    // semicolon optional for bindings
 
@@ -354,7 +354,7 @@ value without a semicolon.
 
 For scripted migrations, these regexes cover the most common patterns:
 
-| Pattern      | Find (Rust)   | Replace (Redox) |
+| Pattern      | Find (Rust)   | Replace (MechGen) |
 | ------------ | ------------- | --------------- |
 | `pub fn`     | `pub fn `     | `+f `           |
 | `fn`         | `fn `         | `f `            |
@@ -374,4 +374,4 @@ For scripted migrations, these regexes cover the most common patterns:
 | `false`      | `\bfalse\b`   | `0b`            |
 
 > **Warning:** Naive regex substitution can break strings and comments. Always
-> use `rdx migrate` for production migrations — it parses the Rust AST properly.
+> use `mg migrate` for production migrations — it parses the Rust AST properly.

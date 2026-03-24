@@ -39,11 +39,11 @@ pub enum ItemKind {
 ```
 
 Every AST node is `Serialize`/`Deserialize` — the entire AST can be emitted
-as JSON for agent consumption via `rdx parse --emit ast`.
+as JSON for agent consumption via `mg parse --emit ast`.
 
 ### Type Representation
 
-The AST `Type` enum represents source-level type syntax, including all Redox
+The AST `Type` enum represents source-level type syntax, including all MechGen
 sugar:
 
 ```rust
@@ -68,7 +68,7 @@ pub enum Type {
 }
 ```
 
-Each variant directly maps to Redox syntax — no desugaring at this stage.
+Each variant directly maps to MechGen syntax — no desugaring at this stage.
 For example, `?T` in source becomes `Type::Option { inner: T }` in the AST.
 
 ### Expression Nodes
@@ -116,7 +116,7 @@ pub enum Stmt {
 }
 ```
 
-The `tail_expr` represents Redox's expression-oriented blocks: the last
+The `tail_expr` represents MechGen's expression-oriented blocks: the last
 expression without a semicolon is the block's value.
 
 ---
@@ -157,7 +157,7 @@ its parent module scope. Name lookup walks up the scope chain.
 
 ### Use Resolution
 
-```redox
+```MechGen
 u std.collections.{HashMap, HashSet}
 ```
 

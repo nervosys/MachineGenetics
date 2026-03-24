@@ -1,6 +1,6 @@
 # Chapter 2: Lexer & Parser Internals
 
-The Redox frontend converts source text into an AST through two stages:
+The MechGen frontend converts source text into an AST through two stages:
 tokenization (lexer) and parsing. Both are designed for LL(1) operation —
 no backtracking, no ambiguity, every decision resolved by looking at the
 current token.
@@ -63,7 +63,7 @@ features.
 
 ### Keyword vs Identifier Disambiguation
 
-Redox keywords are mostly single characters (`f`, `v`, `m`, `S`, `E`, `T`,
+MechGen keywords are mostly single characters (`f`, `v`, `m`, `S`, `E`, `T`,
 `I`, `M`, `u`, `c`). The lexer distinguishes keywords from identifiers using
 a lookup table after scanning the full identifier token:
 
@@ -142,7 +142,7 @@ stop compilation.
 
 Whitespace and comment tokens are produced by the lexer but filtered out
 before the parser sees them. They are preserved in the token stream for
-`rdx fmt` (the formatter) which needs them for layout preservation.
+`mg fmt` (the formatter) which needs them for layout preservation.
 
 ---
 
@@ -152,9 +152,9 @@ The parser is in `rdx_parser` (prototype: `prototype/src/parser.rs`).
 
 ### LL(1) Guarantee
 
-Redox's grammar is deliberately LL(1) — every production can be determined
+MechGen's grammar is deliberately LL(1) — every production can be determined
 by looking at exactly one token of lookahead. This is the foundational
-design decision that makes Redox agent-friendly.
+design decision that makes MechGen agent-friendly.
 
 **Why LL(1) matters for agents:**
 

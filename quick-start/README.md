@@ -1,12 +1,12 @@
-# Redox Quick Start
+# MechGen Quick Start
 
-Get from zero to running Redox code in 10 minutes.
+Get from zero to running MechGen code in 10 minutes.
 
 ---
 
-## What is Redox?
+## What is MechGen?
 
-Redox is the **agentic-first programming language** — designed for AI
+MechGen is the **agentic-first programming language** — designed for AI
 agents to read, write, and reason about code with minimal token cost.
 It compiles to native code via MLIR/LLVM with the safety of Rust and
 the conciseness of a purpose-built syntax.
@@ -15,7 +15,7 @@ the conciseness of a purpose-built syntax.
 
 | Step | Page                                     | Time  |
 | ---- | ---------------------------------------- | ----- |
-| 1    | [Install Redox](01-install.md)           | 2 min |
+| 1    | [Install MechGen](01-install.md)           | 2 min |
 | 2    | [Hello, World!](02-hello-world.md)       | 2 min |
 | 3    | [Syntax in 5 Minutes](03-syntax-tour.md) | 5 min |
 | 4    | [Build, Run, Test](04-build-run-test.md) | 2 min |
@@ -25,23 +25,23 @@ the conciseness of a purpose-built syntax.
 
 - A terminal (any OS)
 - A text editor (VS Code recommended — install the
-  [Redox extension](https://marketplace.visualstudio.com/items?itemName=nervosys.redox-vscode)
+  [MechGen extension](https://marketplace.visualstudio.com/items?itemName=nervosys.MechGen-vscode)
   for syntax highlighting)
 
 ## Quick Overview
 
-```redox
-// hello.rdx — your first Redox program
+```MechGen
+// hello.mg — your first MechGen program
 +f main() {
-    p"Hello, Redox!"
+    p"Hello, MechGen!"
 }
 ```
 
 ```bash
-rdx run hello.rdx
-# Hello, Redox!
+mg run hello.mg
+# Hello, MechGen!
 ```
 
 That's it. No boilerplate, no imports, no ceremony. Let's get started.
 
-**[Start: Install Redox →](01-install.md)**
+**[Start: Install MechGen →](01-install.md)**

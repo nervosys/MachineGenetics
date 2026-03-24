@@ -483,7 +483,7 @@ impl PluginHost {
 
 pub fn main() / io {
     println!("╔═══════════════════════════════════════════════════════════╗");
-    println!("║  Redox Safe Plugin Host                                  ║");
+    println!("║  MechGen Safe Plugin Host                                  ║");
     println!("╚═══════════════════════════════════════════════════════════╝");
 
     let mut host = PluginHost::new();
@@ -491,7 +491,7 @@ pub fn main() / io {
     // Plugin 1: A well-behaved linter (should pass).
     host.load_and_run(
         PluginManifest {
-            name: "redox-lint".to_string(),
+            name: "MechGen-lint".to_string(),
             version: "2.1.0".to_string(),
             author: "lint-corp".to_string(),
             kind: PluginKind::Linter,
@@ -552,7 +552,7 @@ pub fn main() / io {
                 Capability::NetworkAccess,
                 Capability::EnvRead,
             ],
-            description: "Generate Redox bindings from .proto files".to_string(),
+            description: "Generate MechGen bindings from .proto files".to_string(),
         },
         &"codegen".to_string(),
     );

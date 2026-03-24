@@ -1,10 +1,10 @@
 # Networking & HTTP
 
-Redox includes HTTP in the standard library — no external packages needed.
+MechGen includes HTTP in the standard library — no external packages needed.
 
 ## HTTP Client
 
-```rdx
+```mg
 use std::net::{Request, Response, Method};
 
 pub fn main() / io, net {
@@ -17,7 +17,7 @@ pub fn main() / io, net {
 
 ### POST with JSON body
 
-```rdx
+```mg
 use std::net::Request;
 use std::json::stringify;
 
@@ -39,7 +39,7 @@ pub fn create_user() -> Result<Response, NetError> / net {
 
 ### Request builder
 
-```rdx
+```mg
 let resp = Request::new(Method::Put, "https://api.example.com/data")
     .header("Authorization", &format!("Bearer {token}"))
     .header("Accept", "application/json")
@@ -49,7 +49,7 @@ let resp = Request::new(Method::Put, "https://api.example.com/data")
 
 ## TCP
 
-```rdx
+```mg
 use std::net::{TcpStream, TcpListener};
 
 // TCP server
@@ -73,7 +73,7 @@ fn handle_connection(mut stream: TcpStream) / io, net {
 
 ## UDP
 
-```rdx
+```mg
 use std::net::UdpSocket;
 
 pub fn main() / io, net {
@@ -87,7 +87,7 @@ pub fn main() / io, net {
 
 ## DNS
 
-```rdx
+```mg
 use std::net::dns;
 
 pub fn main() / net {

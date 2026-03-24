@@ -4,9 +4,9 @@
 name = "forge"
 version = "0.1.0"
 edition = "2021"
-description = "Forge — Redox package registry server and client library"
+description = "Forge — MechGen package registry server and client library"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/nervosys/Redox"
+repository = "https://github.com/nervosys/MechGen"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

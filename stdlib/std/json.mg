@@ -1,7 +1,7 @@
 //! # std::json — JSON (First-Class)
 //!
 //! JSON parsing, serialization, and dynamic value manipulation.
-//! JSON is first-class in Redox because AI agents communicate via JSON.
+//! JSON is first-class in MechGen because AI agents communicate via JSON.
 
 // ---------------------------------------------------------------------------
 // Serialize / Deserialize traits

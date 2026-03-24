@@ -1,6 +1,6 @@
 // multilang-bindings — Cross-Language FFI Bridge Generator.
 //
-// Define a library API once in Redox, then automatically generate
+// Define a library API once in MechGen, then automatically generate
 // bindings for C, C++, Python, and WebAssembly. Each target gets
 // type-safe wrappers, proper memory management annotations, and
 // a summary of the generated binding surface.
@@ -61,12 +61,12 @@ impl FfiTarget {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// §2 — Type mapping: Redox types → foreign types
+// §2 — Type mapping: MechGen types → foreign types
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
 pub struct TypeMapping {
-    redox_type: String,
+    MechGen_type: String,
     foreign_type: String,
     is_pointer: bool,
     is_nullable: bool,
@@ -78,7 +78,7 @@ impl fmt::Display for TypeMapping {
         let ptr = if self.is_pointer { "*" } else { "" };
         let null = if self.is_nullable { "?" } else { "" };
         write!(f, "{rdx} → {ptr}{foreign}{null}",
-            rdx = self.redox_type,
+            rdx = self.MechGen_type,
             ptr = ptr,
             foreign = self.foreign_type,
             null = null)
@@ -88,49 +88,49 @@ impl fmt::Display for TypeMapping {
 /// Build type mappings for a given target language.
 ///
 /// @req  target is a valid FfiTarget
-/// @ens  result contains mappings for all common Redox types
+/// @ens  result contains mappings for all common MechGen types
 /// @fx   pure
 fn type_mappings_for(target: &FfiTarget) -> Vec<TypeMapping> {
     match target {
         FfiTarget::C => vec![
-            TypeMapping { redox_type: "i32".into(), foreign_type: "int32_t".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "i64".into(), foreign_type: "int64_t".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "f64".into(), foreign_type: "double".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "bool".into(), foreign_type: "bool".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "String".into(), foreign_type: "char".into(), is_pointer: true, is_nullable: false, needs_free: true },
-            TypeMapping { redox_type: "&str".into(), foreign_type: "char".into(), is_pointer: true, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "Option<String>".into(), foreign_type: "char".into(), is_pointer: true, is_nullable: true, needs_free: true },
-            TypeMapping { redox_type: "Vec<u8>".into(), foreign_type: "uint8_t".into(), is_pointer: true, is_nullable: false, needs_free: true },
+            TypeMapping { MechGen_type: "i32".into(), foreign_type: "int32_t".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "i64".into(), foreign_type: "int64_t".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "f64".into(), foreign_type: "double".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "bool".into(), foreign_type: "bool".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "String".into(), foreign_type: "char".into(), is_pointer: true, is_nullable: false, needs_free: true },
+            TypeMapping { MechGen_type: "&str".into(), foreign_type: "char".into(), is_pointer: true, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "Option<String>".into(), foreign_type: "char".into(), is_pointer: true, is_nullable: true, needs_free: true },
+            TypeMapping { MechGen_type: "Vec<u8>".into(), foreign_type: "uint8_t".into(), is_pointer: true, is_nullable: false, needs_free: true },
         ],
         FfiTarget::Cpp => vec![
-            TypeMapping { redox_type: "i32".into(), foreign_type: "int32_t".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "i64".into(), foreign_type: "int64_t".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "f64".into(), foreign_type: "double".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "bool".into(), foreign_type: "bool".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "String".into(), foreign_type: "std::string".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "&str".into(), foreign_type: "std::string_view".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "Option<String>".into(), foreign_type: "std::optional<std::string>".into(), is_pointer: false, is_nullable: true, needs_free: false },
-            TypeMapping { redox_type: "Vec<u8>".into(), foreign_type: "std::vector<uint8_t>".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "i32".into(), foreign_type: "int32_t".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "i64".into(), foreign_type: "int64_t".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "f64".into(), foreign_type: "double".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "bool".into(), foreign_type: "bool".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "String".into(), foreign_type: "std::string".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "&str".into(), foreign_type: "std::string_view".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "Option<String>".into(), foreign_type: "std::optional<std::string>".into(), is_pointer: false, is_nullable: true, needs_free: false },
+            TypeMapping { MechGen_type: "Vec<u8>".into(), foreign_type: "std::vector<uint8_t>".into(), is_pointer: false, is_nullable: false, needs_free: false },
         ],
         FfiTarget::Python => vec![
-            TypeMapping { redox_type: "i32".into(), foreign_type: "int".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "i64".into(), foreign_type: "int".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "f64".into(), foreign_type: "float".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "bool".into(), foreign_type: "bool".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "String".into(), foreign_type: "str".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "&str".into(), foreign_type: "str".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "Option<String>".into(), foreign_type: "Optional[str]".into(), is_pointer: false, is_nullable: true, needs_free: false },
-            TypeMapping { redox_type: "Vec<u8>".into(), foreign_type: "bytes".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "i32".into(), foreign_type: "int".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "i64".into(), foreign_type: "int".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "f64".into(), foreign_type: "float".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "bool".into(), foreign_type: "bool".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "String".into(), foreign_type: "str".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "&str".into(), foreign_type: "str".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "Option<String>".into(), foreign_type: "Optional[str]".into(), is_pointer: false, is_nullable: true, needs_free: false },
+            TypeMapping { MechGen_type: "Vec<u8>".into(), foreign_type: "bytes".into(), is_pointer: false, is_nullable: false, needs_free: false },
         ],
         FfiTarget::Wasm => vec![
-            TypeMapping { redox_type: "i32".into(), foreign_type: "i32".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "i64".into(), foreign_type: "i64".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "f64".into(), foreign_type: "f64".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "bool".into(), foreign_type: "i32".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "String".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: false, needs_free: true },
-            TypeMapping { redox_type: "&str".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: false, needs_free: false },
-            TypeMapping { redox_type: "Option<String>".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: true, needs_free: true },
-            TypeMapping { redox_type: "Vec<u8>".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: false, needs_free: true },
+            TypeMapping { MechGen_type: "i32".into(), foreign_type: "i32".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "i64".into(), foreign_type: "i64".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "f64".into(), foreign_type: "f64".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "bool".into(), foreign_type: "i32".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "String".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: false, needs_free: true },
+            TypeMapping { MechGen_type: "&str".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "Option<String>".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: true, needs_free: true },
+            TypeMapping { MechGen_type: "Vec<u8>".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: false, needs_free: true },
         ],
     }
 }
@@ -142,7 +142,7 @@ fn type_mappings_for(target: &FfiTarget) -> Vec<TypeMapping> {
 #[derive(Debug, Clone)]
 pub struct FfiParam {
     name: String,
-    redox_type: String,
+    MechGen_type: String,
 }
 
 #[derive(Debug, Clone)]
@@ -166,7 +166,7 @@ impl FfiFunction {
     }
 
     pub fn param(mut self, name: String, ty: String) -> FfiFunction {
-        self.params.push(FfiParam { name: name, redox_type: ty });
+        self.params.push(FfiParam { name: name, MechGen_type: ty });
         self
     }
 
@@ -197,7 +197,7 @@ pub struct LibraryApi {
 /// @fx pure
 fn define_image_api() -> LibraryApi {
     LibraryApi {
-        name: "redox_image".to_string(),
+        name: "MechGen_image".to_string(),
         version: "1.0.0".to_string(),
         functions: vec![
             FfiFunction::new("image_open".to_string(), "Open an image file".to_string())
@@ -263,12 +263,12 @@ impl fmt::Display for GeneratedBinding {
     }
 }
 
-/// Look up the foreign type for a given Redox type in a target.
+/// Look up the foreign type for a given MechGen type in a target.
 ///
 /// @fx pure
-fn map_type(redox_type: &String, mappings: &Vec<TypeMapping>) -> String {
+fn map_type(MechGen_type: &String, mappings: &Vec<TypeMapping>) -> String {
     for mapping in mappings {
-        if mapping.redox_type == *redox_type {
+        if mapping.MechGen_type == *MechGen_type {
             let prefix = if mapping.is_pointer { "*" } else { "" };
             return format!("{prefix}{}", mapping.foreign_type);
         }
@@ -305,7 +305,7 @@ fn generate_c_binding(api: &LibraryApi, prefix: &String) -> GeneratedBinding {
         let ret_type = map_type(&func.return_type, &mappings);
         let mut params_str: Vec<String> = Vec::new();
         for param in &func.params {
-            let ty = map_type(&param.redox_type, &mappings);
+            let ty = map_type(&param.MechGen_type, &mappings);
             params_str.push(format!("{} {}", ty, param.name));
         }
         let params = if params_str.is_empty() { "void".to_string() } else { params_str.join(", ") };
@@ -337,7 +337,7 @@ fn generate_python_binding(api: &LibraryApi, prefix: &String) -> GeneratedBindin
     let mut lines: Vec<String> = Vec::new();
 
     lines.push(format!("# Auto-generated Python bindings for {} v{}", api.name, api.version));
-    lines.push(format!("# Generated by Redox FFI bridge"));
+    lines.push(format!("# Generated by MechGen FFI bridge"));
     lines.push("".to_string());
     lines.push("import ctypes".to_string());
     lines.push("from typing import Optional".to_string());
@@ -359,7 +359,7 @@ fn generate_python_binding(api: &LibraryApi, prefix: &String) -> GeneratedBindin
         lines.push(format!("# {}", func.doc));
         lines.push(format!("def {}(", func.name));
         for (i, param) in func.params.iter().enumerate() {
-            let py_type = map_type(&param.redox_type, &mappings);
+            let py_type = map_type(&param.MechGen_type, &mappings);
             let comma = if i < func.params.len() - 1 { "," } else { "" };
             lines.push(format!("    {}: {}{}", param.name, py_type, comma));
         }
@@ -402,7 +402,7 @@ fn generate_wasm_binding(api: &LibraryApi, prefix: &String) -> GeneratedBinding 
         lines.push(format!("  ;; {}", func.doc));
         let mut params_wasm: Vec<String> = Vec::new();
         for param in &func.params {
-            let wasm_ty = map_type(&param.redox_type, &mappings);
+            let wasm_ty = map_type(&param.MechGen_type, &mappings);
             params_wasm.push(format!("(param ${} {})", param.name, wasm_ty));
         }
         let ret_wasm = map_type(&func.return_type, &mappings);
@@ -431,13 +431,13 @@ fn generate_wasm_binding(api: &LibraryApi, prefix: &String) -> GeneratedBinding 
 
 pub fn main() / io {
     println!("╔═══════════════════════════════════════════════════════════╗");
-    println!("║  Redox Multi-Language FFI Bridge Generator                ║");
+    println!("║  MechGen Multi-Language FFI Bridge Generator                ║");
     println!("╚═══════════════════════════════════════════════════════════╝");
     println!("");
 
     // Define the API.
     let api = define_image_api();
-    let prefix = "rdx_";
+    let prefix = "mg_";
 
     println!("Library: {} v{}", api.name, api.version);
     println!("Functions: {}", api.functions.len());
@@ -447,7 +447,7 @@ pub fn main() / io {
     println!("─── API Surface ──────────────────────────────────────────");
     for func in &api.functions {
         let params: Vec<String> = func.params.iter()
-            .map(|p| format!("{}: {}", p.name, p.redox_type))
+            .map(|p| format!("{}: {}", p.name, p.MechGen_type))
             .collect();
         let unsafe_tag = if func.is_unsafe { " [unsafe]" } else { "" };
         println!("  pub fn {}({}) -> {}{}",
@@ -495,14 +495,14 @@ pub fn main() / io {
     // Type mapping summary.
     println!("─── Type Mapping Summary ─────────────────────────────────");
     println!("  ┌──────────┬──────────────┬───────────────────────┬──────────┐");
-    println!("  │ Redox    │ C            │ Python                │ WASM     │");
+    println!("  │ MechGen    │ C            │ Python                │ WASM     │");
     println!("  ├──────────┼──────────────┼───────────────────────┼──────────┤");
     let c_maps = type_mappings_for(&FfiTarget::C);
     let py_maps = type_mappings_for(&FfiTarget::Python);
     let wasm_maps = type_mappings_for(&FfiTarget::Wasm);
     for i in 0..c_maps.len() {
         println!("  │ {:<8} │ {:<12} │ {:<21} │ {:<8} │",
-            c_maps[i].redox_type,
+            c_maps[i].MechGen_type,
             c_maps[i].foreign_type,
             py_maps[i].foreign_type,
             wasm_maps[i].foreign_type);

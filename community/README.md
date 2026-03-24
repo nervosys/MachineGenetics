@@ -1,6 +1,6 @@
 # Community
 
-This directory contains community infrastructure for the Redox programming
+This directory contains community infrastructure for the MechGen programming
 language project: contribution guidelines, governance, issue/PR templates, and
 the RFC process.
 
@@ -26,7 +26,7 @@ community/
 
 | Resource                                | Description                             |
 | --------------------------------------- | --------------------------------------- |
-| [CONTRIBUTING.md](CONTRIBUTING.md)      | How to contribute to Redox              |
+| [CONTRIBUTING.md](CONTRIBUTING.md)      | How to contribute to MechGen              |
 | [GOVERNANCE.md](GOVERNANCE.md)          | Roles, decision-making, editions        |
 | [rfc-template.md](rfc-template.md)      | Template for proposing language changes |
 | [Issue Templates](issue-templates/)     | GitHub issue form templates             |

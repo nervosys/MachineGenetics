@@ -1,7 +1,7 @@
-# Redox Standard Library (`std`)
+# MechGen Standard Library (`std`)
 
-The Redox standard library provides the foundational types, traits, and functions
-for all Redox programs. Every module is designed with **algebraic effects**,
+The MechGen standard library provides the foundational types, traits, and functions
+for all MechGen programs. Every module is designed with **algebraic effects**,
 **first-class agent primitives**, and **safety-by-default** principles at its core.
 
 ## Module Hierarchy
@@ -21,7 +21,7 @@ for all Redox programs. Every module is designed with **algebraic effects**,
 | `std.json`    | First-class JSON support          | `Value`, `parse`, `stringify`, `Serialize`, `Deserialize` |
 | `std.env`     | Environment and directories       | `args`, `var`, `current_dir`, `home_dir`                  |
 | `std.process` | Process management and signals    | `Command`, `Child`, `exit`, `Signal`                      |
-| `std.agent`   | Agent primitives (Redox-unique)   | `Agent`, `Swarm`, `Message`, `Capability`, `Lease`        |
+| `std.agent`   | Agent primitives (MechGen-unique)   | `Agent`, `Swarm`, `Message`, `Capability`, `Lease`        |
 | `std.skb`     | Safety Knowledge Base queries     | `Rule`, `Query`, `validate`, `define_rule`                |
 | `std.effect`  | Algebraic effect system           | `Effect`, `perform`, `handle`, `discharge`                |
 | `std.spec`    | Design-by-contract verification   | `require`, `ensure`, `invariant`, `verify`                |
@@ -44,7 +44,7 @@ for all Redox programs. Every module is designed with **algebraic effects**,
    (`require`/`ensure`/`invariant`) directly into the type system, enabling
    runtime and static verification of program correctness.
 
-5. **Concise syntax.** Standard library types use Redox sugar where possible:
+5. **Concise syntax.** Standard library types use MechGen sugar where possible:
    `{K:V}` for `Map[K,V]`, `{K}` for `Set[K]`, `?T` for `Option[T]`,
    `R[T,E]` for `Result[T,E]`, `[T]~` for `Vec[T]`.
 
@@ -52,7 +52,7 @@ for all Redox programs. Every module is designed with **algebraic effects**,
 
 Modules are imported with the `u` keyword:
 
-```rdx
+```mg
 u std.io.{Read, Write, File}
 u std.net.{Request, Response}
 u std.json.{parse, stringify}
@@ -68,28 +68,28 @@ The prelude automatically imports the most common types:
 stdlib/
 ├── README.md          ← this file
 └── std/
-    ├── mod.rdx        ← root module (re-exports all submodules)
-    ├── io.rdx         ← I/O traits, File, buffered readers/writers
-    ├── net.rdx        ← TCP, UDP, HTTP, DNS
-    ├── fs.rdx         ← file system convenience functions
-    ├── col.rdx        ← Map, Set, BTree, VecDeque, LinkedList
-    ├── sync.rdx       ← Mutex, RwLock, Channel, atomics
-    ├── async.rdx      ← spawn, join, select, Future, Stream
-    ├── fmt.rdx        ← Display, Debug, Formatter, print
-    ├── str.rdx        ← string methods, Regex, encoding
-    ├── math.rdx       ← trig, exp, random, SIMD
-    ├── time.rdx       ← Duration, Instant, SystemTime
-    ├── json.rdx       ← Serialize/Deserialize, Value, parse
-    ├── env.rdx        ← args, env vars, directories
-    ├── process.rdx    ← Command, Child, exit, signals
-    ├── agent.rdx      ← Agent, Swarm, Message, Capability
-    ├── skb.rdx        ← Rule, Query, validate
-    ├── effect.rdx     ← Effect trait, perform, handle
-    ├── spec.rdx       ← require, ensure, invariant, verify
-    └── test.rdx       ← assertions, bench, property tests
+    ├── mod.mg        ← root module (re-exports all submodules)
+    ├── io.mg         ← I/O traits, File, buffered readers/writers
+    ├── net.mg        ← TCP, UDP, HTTP, DNS
+    ├── fs.mg         ← file system convenience functions
+    ├── col.mg        ← Map, Set, BTree, VecDeque, LinkedList
+    ├── sync.mg       ← Mutex, RwLock, Channel, atomics
+    ├── async.mg      ← spawn, join, select, Future, Stream
+    ├── fmt.mg        ← Display, Debug, Formatter, print
+    ├── str.mg        ← string methods, Regex, encoding
+    ├── math.mg       ← trig, exp, random, SIMD
+    ├── time.mg       ← Duration, Instant, SystemTime
+    ├── json.mg       ← Serialize/Deserialize, Value, parse
+    ├── env.mg        ← args, env vars, directories
+    ├── process.mg    ← Command, Child, exit, signals
+    ├── agent.mg      ← Agent, Swarm, Message, Capability
+    ├── skb.mg        ← Rule, Query, validate
+    ├── effect.mg     ← Effect trait, perform, handle
+    ├── spec.mg       ← require, ensure, invariant, verify
+    └── test.mg       ← assertions, bench, property tests
 ```
 
 ## Reference
 
-See [REDOX_ECOSYSTEM.md](../REDOX_ECOSYSTEM.md) §5 for the full design rationale
-and [REDOX_SPEC.md](../REDOX_SPEC.md) for the language specification.
+See [MechGen_ECOSYSTEM.md](../MechGen_ECOSYSTEM.md) §5 for the full design rationale
+and [MECHGEN_SPEC.md](../MECHGEN_SPEC.md) for the language specification.

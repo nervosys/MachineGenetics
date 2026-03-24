@@ -1,4 +1,4 @@
-# Redox Language Specification — Draft v0.1
+# MechGen Language Specification — Draft v0.1
 
 > Status: Working draft generated from the prototype compiler.
 
@@ -6,7 +6,7 @@
 
 ## 1. Overview
 
-**Redox** is a systems programming language designed for agentic compilation. It
+**MechGen** is a systems programming language designed for agentic compilation. It
 combines Rust's performance and safety model with contract-first design, an
 algebraic effect system, token-minimal syntax, and first-class support for
 multi-agent development workflows.
@@ -21,7 +21,7 @@ multi-agent development workflows.
    the type system.
 4. **Token-minimal** — canonical syntax minimises token count for efficient LLM
    processing.
-5. **Legacy-compatible** — a bidirectional transpiler maps Redox ↔ Rust.
+5. **Legacy-compatible** — a bidirectional transpiler maps MechGen ↔ Rust.
 
 ---
 
@@ -541,7 +541,7 @@ use crate.utils.{helper, Config};
 
 ### 13.3 Path Separator
 
-Redox uses `.` as the path separator (instead of `::`):
+MechGen uses `.` as the path separator (instead of `::`):
 
 ```
 std.fs.read_to_string(path)
@@ -569,7 +569,7 @@ M tests {
 
 ---
 
-## 15. Project Manifest (`Redox.toml`)
+## 15. Project Manifest (`MechGen.toml`)
 
 ```toml
 [package]
@@ -592,13 +592,13 @@ token_budget = 8192
 
 ## 16. Legacy Compatibility
 
-Redox provides bidirectional translation with Rust:
+MechGen provides bidirectional translation with Rust:
 
-- **Redox → Rust**: `redox transpile --to-rust src/main.rx`
-- **Rust → Redox**: `redox transpile --from-rust src/main.rs`
+- **MechGen → Rust**: `MechGen transpile --to-rust src/main.rx`
+- **Rust → MechGen**: `MechGen transpile --from-rust src/main.rs`
 - **Legacy mode**: Supports `fn`, `struct`, `enum`, `impl` as aliases.
 
-All valid Rust programs have an equivalent Redox representation, and vice
+All valid Rust programs have an equivalent MechGen representation, and vice
 versa. The transpiler preserves contracts, effects, and performance annotations
 as attributes in the Rust output.
 
@@ -666,6 +666,6 @@ loop_expr      = '@@' , block ;
 
 ---
 
-*This specification is derived from the Redox prototype compiler — lexer,
+*This specification is derived from the MechGen prototype compiler — lexer,
 parser, AST, HIR, MLIR, type system, effect system, and contract system.
 Semantic details may evolve as the compiler matures.*

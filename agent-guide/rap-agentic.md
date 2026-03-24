@@ -1,6 +1,6 @@
 # RAP Agentic Methods
 
-The Redox Agent Protocol (RAP) exposes agentic-first services over JSON-RPC.
+The MechGen Agent Protocol (RAP) exposes agentic-first services over JSON-RPC.
 Beyond the base `language/*` and `build/check` methods, RAP provides:
 
 ## Method Reference
@@ -88,7 +88,7 @@ Query the structured knowledge base. The `by` parameter selects the index:
 ```
 
 **Agent workflow**: When translating Rust code, use `skb/query` with
-`by=rust_alias` to find the Redox equivalent. When checking if a function
+`by=rust_alias` to find the MechGen equivalent. When checking if a function
 needs a capability, query `by=fqn`.
 
 ## `skb/spec`

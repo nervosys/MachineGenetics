@@ -1,10 +1,10 @@
 # Generics
 
-Redox uses `<T>` syntax for generic parameters, identical to Rust.
+MechGen uses `<T>` syntax for generic parameters, identical to Rust.
 
 ## Generic functions
 
-```rdx
+```mg
 pub fn max<T: Ord>(a: T, b: T) -> T {
     if a >= b { a } else { b }
 }
@@ -18,7 +18,7 @@ pub fn swap<T>(a: &mut T, b: &mut T) {
 
 ## Generic structs
 
-```rdx
+```mg
 pub struct Stack<T> {
     items: Vec<T>,
 }
@@ -46,7 +46,7 @@ impl<T> Stack<T> {
 
 Inline bounds:
 
-```rdx
+```mg
 pub fn print_all<T: Display>(items: &[T]) / io {
     for item in items {
         println!("{item}");
@@ -56,7 +56,7 @@ pub fn print_all<T: Display>(items: &[T]) / io {
 
 Multiple bounds with `+`:
 
-```rdx
+```mg
 pub fn sort_and_print<T: Ord + Display>(items: &mut Vec<T>) / io {
     items.sort();
     for item in items {
@@ -69,7 +69,7 @@ pub fn sort_and_print<T: Ord + Display>(items: &mut Vec<T>) / io {
 
 For complex bounds, use `where`:
 
-```rdx
+```mg
 pub fn merge<K, V>(a: HashMap<K, V>, b: HashMap<K, V>) -> HashMap<K, V>
     where K: Eq + Hash, V: Clone
 {
@@ -89,6 +89,6 @@ When the compiler can't infer the type, use turbofish syntax just like Rust:
 let x = Vec::<i32>::new();
 ```
 
-```rdx
-let x = Vec::<i32>::new();   // Same syntax in Redox
+```mg
+let x = Vec::<i32>::new();   // Same syntax in MechGen
 ```

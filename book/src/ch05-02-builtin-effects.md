@@ -1,6 +1,6 @@
 # Built-in Effects
 
-Redox defines a set of built-in effects for common side-effect categories.
+MechGen defines a set of built-in effects for common side-effect categories.
 
 ## Effect catalog
 
@@ -31,7 +31,7 @@ If your function declares `/ net`, it implicitly has `/ io` as well.
 
 You can define your own effects using the `Effect` trait:
 
-```rdx
+```mg
 use std::effect::Effect;
 
 pub struct DbEffect;
@@ -44,7 +44,7 @@ impl Effect for DbEffect {
 
 Then use it in function signatures:
 
-```rdx
+```mg
 pub fn run_query(q: &Query) -> Result<Rows, DbError> / db {
     perform::<DbEffect>(q.clone())
 }
@@ -54,7 +54,7 @@ pub fn run_query(q: &Query) -> Result<Rows, DbError> / db {
 
 Real applications combine effects naturally:
 
-```rdx
+```mg
 // A web handler: reads DB, writes logs, returns HTTP response
 pub fn handle_request(req: &Request) -> Result<Response, Error> / io, net, db {
     let user_id = req.param("id")?;
@@ -69,7 +69,7 @@ pub fn handle_request(req: &Request) -> Result<Response, Error> / io, net, db {
 Functions with no effect annotation are **pure** — they depend only on their
 inputs and can be freely cached, memoized, parallelized, and reordered:
 
-```rdx
+```mg
 // Pure: depends only on input
 pub fn fibonacci(n: u64) -> u64 {
     if n <= 1 { n } else { fibonacci(n - 1) + fibonacci(n - 2) }

@@ -1,6 +1,6 @@
-# Redox Governance
+# MechGen Governance
 
-This document describes the governance structure for the Redox programming
+This document describes the governance structure for the MechGen programming
 language project.
 
 ## Roles
@@ -10,7 +10,7 @@ language project.
 | **Core Team**        | Language design, compiler development | nervosys maintainers |
 | **SKB Curators**     | Safety Knowledge Base rule curation   | TBD                  |
 | **Forge Moderators** | Package registry quality control      | TBD                  |
-| **RFC Authors**      | Design proposals (Redox RFC process)  | Open to all          |
+| **RFC Authors**      | Design proposals (MechGen RFC process)  | Open to all          |
 | **ACI Trainers**     | AI Coding Intelligence model training | TBD                  |
 
 ## Decision Making
@@ -23,7 +23,7 @@ language project.
 
 ### Language Design Decisions
 
-Significant changes to Redox syntax, semantics, or the ecosystem require the
+Significant changes to MechGen syntax, semantics, or the ecosystem require the
 RFC process:
 
 1. **Proposal** — Author writes an RFC using `community/rfc-template.md`
@@ -45,7 +45,7 @@ Safety Knowledge Base rule changes follow a stricter process:
 
 ## Editions
 
-Redox uses an edition system for backward-compatible evolution:
+MechGen uses an edition system for backward-compatible evolution:
 
 | Edition | Year  | Key Features                                                   |
 | ------- | :---: | -------------------------------------------------------------- |
@@ -54,11 +54,11 @@ Redox uses an edition system for backward-compatible evolution:
 | 2027    | 2027  | Full ACI, Cost Oracle, hot-reload, swarm orchestration         |
 | 2028+   | 2028  | Self-hosting compiler, advanced synthesis, formal verification |
 
-Edition migration is automated via `rdx migrate --edition <year>`.
+Edition migration is automated via `mg migrate --edition <year>`.
 
 ## Code of Conduct
 
-All participants in the Redox project must follow the
+All participants in the MechGen project must follow the
 [Code of Conduct](../CODE_OF_CONDUCT.md). The core team is responsible for
 enforcing the Code of Conduct and may take action against participants who
 violate it.

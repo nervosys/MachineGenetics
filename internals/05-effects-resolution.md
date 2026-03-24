@@ -1,7 +1,7 @@
 # Chapter 5: Effects & Resolution
 
 The effect system tracks and validates what side effects a function may
-produce. Effects are Redox's alternative to Rust's `unsafe` keyword — they
+produce. Effects are MechGen's alternative to Rust's `unsafe` keyword — they
 express capabilities explicitly and hierarchically.
 
 ---
@@ -39,7 +39,7 @@ pub type EffectSet = BTreeSet<Effect>;
 
 Functions annotate their effects after the return type:
 
-```redox
+```MechGen
 f read_file(path: &s) -> R[s, Error] / io { ... }
 af fetch_url(url: &s) -> R[s, Error] / net, async { ... }
 f compute(x: i32) -> i32 { ... }  // pure — no effects
@@ -119,7 +119,7 @@ impl<'a> EffectChecker<'a> {
 The `handle` block is the effect system's key feature — it intercepts
 effects and provides alternative implementations:
 
-```redox
+```MechGen
 v result = handle / io {
     read_file("config.toml")
 } with {
@@ -178,9 +178,9 @@ Effects are checked against the capability grants in `Forge.toml`:
 
 ```toml
 [capabilities]
-allow-io = ["src/config.rdx", "src/server.rdx"]
-allow-net = ["src/server.rdx"]
-allow-unsafe = ["src/simd.rdx"]
+allow-io = ["src/config.mg", "src/server.mg"]
+allow-net = ["src/server.mg"]
+allow-unsafe = ["src/simd.mg"]
 ```
 
 ### Validation Flow
@@ -191,7 +191,7 @@ allow-unsafe = ["src/simd.rdx"]
    a. Collect all functions in the file
    b. For each function, get its effect set
    c. Check: is the file listed in the capability grant for each effect?
-   d. If not → ERROR: "src/foo.rdx uses `io` effect but is not listed in
+   d. If not → ERROR: "src/foo.mg uses `io` effect but is not listed in
       [capabilities] allow-io"
 ```
 
@@ -207,7 +207,7 @@ Some effects are always available:
 
 Functions can be generic over effects using effect bounds:
 
-```redox
+```MechGen
 f with_retry[F, R](op: F, retries: u32) -> R[R, Error]
 ~> F: Fn() -> R[R, Error] / * {
     // The `/ *` means "whatever effects F has"
@@ -229,7 +229,7 @@ effects the closure argument has."
 
 Users can define custom effects:
 
-```redox
+```MechGen
 effect Rng {
     f random_u32() -> u32
     f random_range(min: u32, max: u32) -> u32
@@ -239,7 +239,7 @@ effect Rng {
 This defines a new effect `Rng` with associated operations. Functions using
 randomness declare `/ Rng`:
 
-```redox
+```MechGen
 f shuffle[T](data: &![T]~) / Rng {
     @ i ~ (1..data.len()).rev() {
         v j = Rng.random_range(0, i as u32) as usize
@@ -250,7 +250,7 @@ f shuffle[T](data: &![T]~) / Rng {
 
 Tests can intercept the effect:
 
-```redox
+```MechGen
 @test
 f test_shuffle() {
     v result = handle / Rng {
@@ -270,7 +270,7 @@ f test_shuffle() {
 
 ```
 error[E0401]: function `save_data` performs `io` effect but does not declare it
-  --> src/data.rdx:15:1
+  --> src/data.mg:15:1
    |
 15 | f save_data(path: &s, data: &[u8]) -> R[(), Error] {
    |            ^^^^^^^^^ missing `/ io` effect annotation
@@ -282,22 +282,22 @@ error[E0401]: function `save_data` performs `io` effect but does not declare it
 ### Capability Violation
 
 ```
-error[E0402]: file `src/utils.rdx` uses `net` effect but is not authorized
-  --> src/utils.rdx:8:5
+error[E0402]: file `src/utils.mg` uses `net` effect but is not authorized
+  --> src/utils.mg:8:5
    |
  8 |     v resp = http.get(url).await?
    |              ^^^^^^^^^^^^^ `net` effect not permitted in this file
    |
    = note: add to Forge.toml:
            [capabilities]
-           allow-net = ["src/utils.rdx"]
+           allow-net = ["src/utils.mg"]
 ```
 
 ### Over-Declaration Warning
 
 ```
 warning[W0410]: function `compute` declares `/ io` effect but never uses it
-  --> src/math.rdx:3:1
+  --> src/math.mg:3:1
    |
  3 | f compute(x: f64) -> f64 / io {
    |                           ^^^^ unnecessary effect

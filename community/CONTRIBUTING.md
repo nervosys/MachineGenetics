@@ -1,16 +1,16 @@
-# Contributing to Redox
+# Contributing to MechGen
 
-Thank you for your interest in contributing to Redox! This guide covers how to
+Thank you for your interest in contributing to MechGen! This guide covers how to
 get involved, from reporting bugs to proposing new language features.
 
 ## Getting Started
 
 1. **Read the docs** — Start with the [Quick Start Guide](quick-start/README.md),
-   then the [Redox Book](book/README.md) for a deep dive into the language.
+   then the [MechGen Book](book/README.md) for a deep dive into the language.
 2. **Set up your environment** — Follow [INSTALL.md](INSTALL.md) to build
    the compiler and tools from source.
 3. **Join the conversation** — Open a
-   [GitHub Discussion](https://github.com/nervosys/Redox/discussions) to ask
+   [GitHub Discussion](https://github.com/nervosys/MechGen/discussions) to ask
    questions or share ideas.
 
 ## Ways to Contribute
@@ -34,7 +34,7 @@ get involved, from reporting bugs to proposing new language features.
 2. Propose    → RFC (for language changes) or Issue (for bugs/features)
 3. Branch     → Fork the repo and create a feature branch
 4. Implement  → Write code, tests, and documentation
-5. Test       → Run `rdx test` and `rdx fmt --check`
+5. Test       → Run `mg test` and `mg fmt --check`
 6. PR         → Open a pull request against `master`
 7. Review     → Address feedback from maintainers
 8. Merge      → After approval and CI passes
@@ -44,8 +44,8 @@ get involved, from reporting bugs to proposing new language features.
 
 ```bash
 # Clone the repository
-git clone https://github.com/nervosys/Redox.git
-cd Redox
+git clone https://github.com/nervosys/MechGen.git
+cd MechGen
 
 # Build the transpiler
 cd tools/rust2rdx && cargo build && cargo test && cd ../..
@@ -54,7 +54,7 @@ cd tools/rust2rdx && cargo build && cargo test && cd ../..
 cd tools/rdx2rs && cargo build && cargo test && cd ../..
 
 # Build the CLI
-cd tools/rdx && cargo build && cargo test && cd ../..
+cd tools/mg && cargo build && cargo test && cd ../..
 
 # Run all tests
 cargo test --workspace
@@ -62,7 +62,7 @@ cargo test --workspace
 
 ## Code Style
 
-- **Redox code** (`.rdx` files): Follow the conventions in
+- **MechGen code** (`.mg` files): Follow the conventions in
   [training/agent-instructions.yaml](training/agent-instructions.yaml)
 - **Rust code** (`.rs` files): Use `rustfmt` with the project's
   [rustfmt.toml](rustfmt.toml)
@@ -104,11 +104,11 @@ Minor changes (typos, doc fixes, small bug fixes) do not need an RFC.
 
 ## Reporting Bugs
 
-Use the [Bug Report](https://github.com/nervosys/Redox/issues/new?template=bug_report.yaml)
+Use the [Bug Report](https://github.com/nervosys/MechGen/issues/new?template=bug_report.yaml)
 issue template. Include:
 
-- Redox version (`rdx --version`)
-- Minimal reproduction code (`.rdx` source)
+- MechGen version (`mg --version`)
+- Minimal reproduction code (`.mg` source)
 - Expected vs. actual behavior
 - Error messages or backtraces
 

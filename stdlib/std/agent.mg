@@ -1,9 +1,12 @@
-//! # std::agent — Agent Primitives (Redox-unique)
+//! # std::agent — Agent Primitives (MechGen-unique)
 //!
 //! Core building blocks for AI agent systems: agents, swarms, messages,
 //! capability leases, code regions, and the swarm bus.
-//! This module is unique to Redox — there is no Rust equivalent.
+//! This module is unique to MechGen — there is no Rust equivalent.
 //! All agent operations declare the `agent` effect.
+//!
+//! MechGen agents combine neural reasoning (LLM, vision, RL) with
+//! symbolic knowledge (rules, facts, queries) for neurosymbolic AI.
 
 // ---------------------------------------------------------------------------
 // Agent trait

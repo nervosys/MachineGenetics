@@ -1,12 +1,12 @@
 # Your First Project
 
-Real Redox programs live in **projects** managed by the `rdx` CLI and configured
+Real MechGen programs live in **projects** managed by the `mg` CLI and configured
 with `Forge.toml`.
 
 ## Creating a project
 
 ```sh
-rdx new my_app
+mg new my_app
 cd my_app
 ```
 
@@ -16,9 +16,9 @@ This generates:
 my_app/
 ├── Forge.toml        # Project configuration
 ├── src/
-│   └── main.rdx      # Entry point
+│   └── main.mg      # Entry point
 └── tests/
-    └── main_test.rdx  # Test file
+    └── main_test.mg  # Test file
 ```
 
 ## Forge.toml
@@ -37,12 +37,12 @@ edition = "2025"
 target = ["x86_64"]
 ```
 
-This is analogous to Rust's `Cargo.toml` but uses Redox terminology (modules
+This is analogous to Rust's `Cargo.toml` but uses MechGen terminology (modules
 instead of crates, Forge instead of Cargo).
 
-## The generated main.rdx
+## The generated main.mg
 
-```rdx
+```mg
 pub fn main() / io {
     println!("Hello from my_app!");
 }
@@ -60,7 +60,7 @@ json = "1.0"
 
 Then use them in your code:
 
-```rdx
+```mg
 use http::{Request, Response};
 use json::{parse, stringify};
 
@@ -76,11 +76,11 @@ effects.
 ## Building and running
 
 ```sh
-rdx build          # Compile
-rdx run            # Build + run
-rdx check          # Type-check without codegen (fast)
-rdx test           # Run tests
-rdx fmt            # Format source files
+mg build          # Compile
+mg run            # Build + run
+mg check          # Type-check without codegen (fast)
+mg test           # Run tests
+mg fmt            # Format source files
 ```
 
 ## Project structure conventions
@@ -88,15 +88,15 @@ rdx fmt            # Format source files
 | Path                | Purpose             |
 | ------------------- | ------------------- |
 | `Forge.toml`        | Project manifest    |
-| `src/main.rdx`      | Binary entry point  |
-| `src/lib.rdx`       | Library entry point |
-| `src/**/*.rdx`      | Source modules      |
-| `tests/**/*.rdx`    | Integration tests   |
-| `benches/**/*.rdx`  | Benchmarks          |
-| `examples/**/*.rdx` | Example programs    |
+| `src/main.mg`      | Binary entry point  |
+| `src/lib.mg`       | Library entry point |
+| `src/**/*.mg`      | Source modules      |
+| `tests/**/*.mg`    | Integration tests   |
+| `benches/**/*.mg`  | Benchmarks          |
+| `examples/**/*.mg` | Example programs    |
 
 ## What's next?
 
 Now that you have a project, let's learn the language. The next chapter covers
-Redox's syntax — the keywords, operators, and forms that make it uniquely
+MechGen's syntax — the keywords, operators, and forms that make it uniquely
 concise.

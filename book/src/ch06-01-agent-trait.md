@@ -1,10 +1,10 @@
 # The Agent Trait
 
-Every agent in Redox implements the `Agent` trait.
+Every agent in MechGen implements the `Agent` trait.
 
 ## Defining an agent
 
-```rdx
+```mg
 use std::agent::{Agent, AgentId, Message};
 
 struct Greeter {
@@ -29,7 +29,7 @@ impl Agent for Greeter {
 
 ## The Agent trait interface
 
-```rdx
+```mg
 pub trait Agent {
     // Required: handle an incoming message
     pub fn handle(&mut self, msg: Message<String>) -> Result<String, AgentError> / agent;
@@ -48,7 +48,7 @@ pub trait Agent {
 
 ## Creating and running agents
 
-```rdx
+```mg
 pub fn main() / agent, io {
     let mut greeter = Greeter { name: "Bot".into() };
 
@@ -70,7 +70,7 @@ pub fn main() / agent, io {
 
 A swarm can contain different agent types:
 
-```rdx
+```mg
 struct Planner;
 struct Coder;
 struct Reviewer;

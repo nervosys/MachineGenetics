@@ -17,7 +17,7 @@
 | `u128`  | 128-bit | 0 to 2¹²⁸-1        |
 | `usize` | pointer | platform-dependent |
 
-```rdx
+```mg
 let count: i32 = 42;
 let big: i64 = 1_000_000;
 let byte: u8 = 0xFF;
@@ -31,14 +31,14 @@ let hex: u32 = 0xDEAD_BEEF;
 | `f32` | 32-bit | ~7 decimal digits  |
 | `f64` | 64-bit | ~15 decimal digits |
 
-```rdx
+```mg
 let pi: f64 = 3.14159;
 let small: f32 = 1.0e-6;
 ```
 
 ## Booleans
 
-```rdx
+```mg
 let yes = true;
 let no = false;
 ```
@@ -47,16 +47,16 @@ Standard `true`/`false` keywords.
 
 ## Characters
 
-```rdx
+```mg
 let letter: char = 'A';
 let emoji: char = '🦀';
 ```
 
 ## Strings
 
-The type `String` is Redox's owned string type (equivalent to Rust's `String`):
+The type `String` is MechGen's owned string type (equivalent to Rust's `String`):
 
-```rdx
+```mg
 let name: String = "Alice".into();
 let greeting = format!("Hello, {name}!");
 println!("The answer is {}", 40 + 2);
@@ -64,7 +64,7 @@ println!("The answer is {}", 40 + 2);
 
 String slices use `&str` (equivalent to Rust's `&str`):
 
-```rdx
+```mg
 fn first_word(text: &str) -> &str {
     if let Some(i) = text.find(' ') {
         &text[..i]
@@ -76,7 +76,7 @@ fn first_word(text: &str) -> &str {
 
 ## The unit type
 
-```rdx
+```mg
 let nothing: () = ();
 ```
 

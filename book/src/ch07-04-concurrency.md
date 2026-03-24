@@ -1,11 +1,11 @@
 # Concurrency
 
-Redox provides both synchronous primitives (`std::sync`) and async utilities
+MechGen provides both synchronous primitives (`std::sync`) and async utilities
 (`std::async`).
 
 ## Mutex
 
-```rdx
+```mg
 use std::sync::Mutex;
 
 pub fn main() / async {
@@ -28,7 +28,7 @@ pub fn main() / async {
 
 ## Channels
 
-```rdx
+```mg
 use std::sync::{channel, Sender, Receiver};
 
 pub fn main() / async, io {
@@ -50,7 +50,7 @@ pub fn main() / async, io {
 
 ## Async / Await
 
-```rdx
+```mg
 use std::async::{spawn, join, sleep};
 use std::time::Duration;
 
@@ -72,7 +72,7 @@ pub async fn fetch(url: &str) -> Result<String, Error> / net {
 
 ## Select (first completion)
 
-```rdx
+```mg
 use std::async::{spawn, select};
 
 pub async fn main() / async {
@@ -86,7 +86,7 @@ pub async fn main() / async {
 
 ## RwLock
 
-```rdx
+```mg
 use std::sync::RwLock;
 
 pub fn main() / async {
@@ -110,7 +110,7 @@ pub fn main() / async {
 
 For lock-free counters and flags:
 
-```rdx
+```mg
 use std::sync::{AtomicUsize, Ordering};
 
 let counter = AtomicUsize::new(0);

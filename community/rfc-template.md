@@ -21,7 +21,7 @@ solve? What is the expected outcome?
 
 Show the proposed syntax with examples:
 
-```redox
+```MechGen
 // Example of the proposed feature
 ```
 
@@ -51,14 +51,14 @@ Does this proposal affect Safety Knowledge Base rules? If so, describe:
 
 ### Transpiler Impact
 
-How does this translate between Rust and Redox?
+How does this translate between Rust and MechGen?
 
 ```rust
 // Rust equivalent
 ```
 
-```redox
-// Redox version
+```MechGen
+// MechGen version
 ```
 
 - Changes needed in `rust2rdx`
@@ -68,13 +68,13 @@ How does this translate between Rust and Redox?
 
 ### Basic Usage
 
-```redox
+```MechGen
 // Simple example
 ```
 
 ### Advanced Usage
 
-```redox
+```MechGen
 // More complex example showing edge cases
 ```
 
@@ -106,7 +106,7 @@ Is this a breaking change? If so, what migration path is provided?
 
 ### Edition Boundary
 
-Which edition would this land in? Can `rdx migrate` handle it automatically?
+Which edition would this land in? Can `mg migrate` handle it automatically?
 
 ### Rust Interoperability
 

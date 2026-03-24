@@ -1,15 +1,15 @@
 // ─────────────────────────────────────────────────────────────
-// Redox End-to-End Pipeline Demo
+// MechGen End-to-End Pipeline Demo
 //
-// This file exercises every stage of the Redox compiler pipeline:
+// This file exercises every stage of the MechGen compiler pipeline:
 //   1. Lexer    – tokens for keywords, sigils, literals, operators
 //   2. Parser   – structs, enums, functions, traits, impls
 //   3. Resolver – name binding across nested scopes
 //   4. Types    – bidirectional type inference, unification
 //   5. Effects  – bottom-up effect inference and verification
-//   6. MLIR     – lowering to redox dialect operations
+//   6. MLIR     – lowering to MechGen dialect operations
 //
-// Run:  cargo run -- --pipeline examples/pipeline_demo.rdx
+// Run:  cargo run -- --pipeline examples/pipeline_demo.mg
 // ─────────────────────────────────────────────────────────────
 
 // ── Struct definitions ───────────────────────────────────────
@@ -79,7 +79,7 @@ pub fn max_val(a: i32, b: i32) -> i32 {
 pub fn main() -> i32 {
     let sum: i32 = add(3, 4);
     let prod: i32 = multiply(sum, 2);
-    greet("Redox Pipeline Demo");
+    greet("MechGen Pipeline Demo");
     let best: i32 = max_val(sum, prod);
     best
 }

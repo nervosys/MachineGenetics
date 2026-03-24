@@ -8,7 +8,7 @@
 
 **Solution**:
 
-```rdx
+```mg
 u std.env
 
 S Args {
@@ -55,7 +55,7 @@ S Args {
 
 **Solution**:
 
-```rdx
+```mg
 u std.io.{stdout, Write}
 u std.time.Duration
 
@@ -94,7 +94,7 @@ u std.time.Duration
 
 **Solution**:
 
-```rdx
+```mg
 u std.io.{stdin, stdout, Write}
 
 +f prompt(question: &s) -> R[s, Error] / io {
@@ -119,7 +119,7 @@ u std.io.{stdin, stdout, Write}
 
 **Solution**:
 
-```rdx
+```mg
 u std.process.Command
 
 +f main() / io, process {
@@ -143,7 +143,7 @@ u std.process.Command
 
 **Solution**:
 
-```rdx
+```mg
 u std.io.{stdin, stdout, Write}
 
 E Command {
@@ -203,7 +203,7 @@ f parse_command(input: &s) -> Command {
 
 **Solution**:
 
-```rdx
+```mg
 u std.fs
 
 +f parse_config(path: &s) -> R[{s: s}, Error] / io {

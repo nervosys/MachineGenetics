@@ -1,6 +1,6 @@
 # Chapter 1: Architecture Overview
 
-The Redox compiler transforms `.rdx` source files into optimized machine code
+The MechGen compiler transforms `.mg` source files into optimized machine code
 through a pipeline of well-defined stages. Each stage is a separate crate with
 a clean query-based interface.
 
@@ -34,7 +34,7 @@ a clean query-based interface.
 │  ┌────────────────────────────────────────────────────┐  │
 │  │ Phase 1: Frontend                                  │  │
 │  │                                                    │  │
-│  │  .rdx files                                        │  │
+│  │  .mg files                                        │  │
 │  │      │                                             │  │
 │  │      ▼                                             │  │
 │  │  rdx_lexer ──→ Token Stream                        │  │
@@ -64,7 +64,7 @@ a clean query-based interface.
 │  ┌────────────────────────────────────────────────────┐  │
 │  │ Phase 3: Backend                                   │  │
 │  │                                                    │  │
-│  │  rdx_mlir ──→ Redox MLIR Dialect                   │  │
+│  │  rdx_mlir ──→ MechGen MLIR Dialect                   │  │
 │  │      │                                             │  │
 │  │      ▼                                             │  │
 │  │  MLIR Passes ──→ LLVM MLIR Dialect                 │  │

@@ -1,11 +1,11 @@
 # Testing
 
-Redox's test module includes assertions, benchmarking, and property-based
+MechGen's test module includes assertions, benchmarking, and property-based
 testing — all in the standard library.
 
 ## Basic assertions
 
-```rdx
+```mg
 use std::test::*;
 
 #[test]
@@ -37,16 +37,16 @@ fn test_result() {
 ## Running tests
 
 ```sh
-rdx test                    # Run all tests
-rdx test --filter "sort"    # Run tests containing "sort"
-rdx test -- --nocapture     # Show print output
+mg test                    # Run all tests
+mg test --filter "sort"    # Run tests containing "sort"
+mg test -- --nocapture     # Show print output
 ```
 
 ## Approximate equality
 
 For floating-point comparisons:
 
-```rdx
+```mg
 #[test]
 fn test_pi() {
     let computed_pi = 4.0 * (1.0 - 1.0/3.0 + 1.0/5.0 - 1.0/7.0);
@@ -56,7 +56,7 @@ fn test_pi() {
 
 ## Benchmarking
 
-```rdx
+```mg
 use std::test::{Bencher, black_box};
 
 #[bench]
@@ -74,14 +74,14 @@ fn bench_sort(b: &mut Bencher) {
 Run benchmarks:
 
 ```sh
-rdx bench
+mg bench
 ```
 
 ## Property-based testing
 
 Generate random inputs and verify properties:
 
-```rdx
+```mg
 use std::test::{prop, Arbitrary};
 
 #[test]
@@ -110,7 +110,7 @@ fn test_reverse_reverse_is_identity() {
 
 ### Custom Arbitrary implementations
 
-```rdx
+```mg
 use std::test::Arbitrary;
 
 struct Point { x: f64, y: f64 }
@@ -135,7 +135,7 @@ impl Arbitrary for Point {
 
 Property testing with custom config:
 
-```rdx
+```mg
 use std::test::PropConfig;
 
 #[test]

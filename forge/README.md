@@ -1,8 +1,8 @@
-# Forge — Redox Package Registry
+# Forge — MechGen Package Registry
 
-Forge is the package registry for the Redox programming language. It serves as
-the central repository for Redox modules, supporting dual-format packages
-(native `.rdx` and transpiled `.rs`), MLIR artifact caching, and crates.io
+Forge is the package registry for the MechGen programming language. It serves as
+the central repository for MechGen modules, supporting dual-format packages
+(native `.mg` and transpiled `.rs`), MLIR artifact caching, and crates.io
 compatibility.
 
 ## Directory Structure
@@ -86,9 +86,9 @@ forge/
 
 ## Key Features
 
-- **Dual-format packages**: Native Redox (`.rdx`) + optional Rust (`.rs`)
+- **Dual-format packages**: Native MechGen (`.mg`) + optional Rust (`.rs`)
 - **MLIR artifact caching**: Pre-lowered artifacts for fast builds (>95% hit rate)
-- **SAT-based dependency resolution**: Handles Redox + Rust deps together
+- **SAT-based dependency resolution**: Handles MechGen + Rust deps together
 - **Effect compatibility checking**: Rejects deps with incompatible effects
 - **SKB rule merging**: Combines package-level safety rules into project SKB
 - **Spec verification**: Verifies API contracts at resolution time
@@ -98,16 +98,16 @@ forge/
 
 ```bash
 # Publish a module to Forge
-rdx publish
+mg publish
 
 # Search for modules
-rdx search http
+mg search http
 
 # Install a binary
-rdx install my-tool
+mg install my-tool
 
 # Publish to both Forge and crates.io
-rdx publish --also-crates-io
+mg publish --also-crates-io
 ```
 
 ## Configuration

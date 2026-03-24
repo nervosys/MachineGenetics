@@ -1,13 +1,13 @@
 # Chapter 4: Type System Migration
 
-Migrate Rust's type system to Redox: type sugar, generic syntax, lifetime
+Migrate Rust's type system to MechGen: type sugar, generic syntax, lifetime
 removal, trait bounds, and smart pointer conversions.
 
 ---
 
 ## 4.1 Type Sugar Conversions
 
-Redox provides compact sugar for the most common standard library types:
+MechGen provides compact sugar for the most common standard library types:
 
 ### Standard Types
 
@@ -51,7 +51,7 @@ Redox provides compact sugar for the most common standard library types:
 
 ### Complete Type Mapping Table
 
-| Rust            | Redox     | Nesting Example                                   |
+| Rust            | MechGen     | Nesting Example                                   |
 | --------------- | --------- | ------------------------------------------------- |
 | `String`        | `s`       |                                                   |
 | `&str`          | `&s`      |                                                   |
@@ -82,7 +82,7 @@ Redox provides compact sugar for the most common standard library types:
 
 ## 4.2 Removing Lifetime Annotations
 
-Redox's SKB (Semantic Knowledge Base) infers and proves lifetimes automatically.
+MechGen's SKB (Semantic Knowledge Base) infers and proves lifetimes automatically.
 Remove all lifetime parameters during migration.
 
 ### Simple Cases
@@ -145,7 +145,7 @@ If the SKB can't prove safety, it reports a clear error:
 
 ```
 error[SKB001]: cannot prove reference safety
-  --> src/lib.rdx:42:5
+  --> src/lib.mg:42:5
    |
 42 |     ret &self.data[idx]
    |         ^^^^^^^^^^^^^^^ reference may outlive container

@@ -1,6 +1,6 @@
 # Chapter 1: Pre-Migration Assessment
 
-Before writing a single line of Redox, audit the Rust project to understand
+Before writing a single line of MechGen, audit the Rust project to understand
 scope, estimate effort, and plan a phased migration.
 
 ---
@@ -20,7 +20,7 @@ Classify each dependency:
 | Category          | Examples                       | Migration Impact                        |
 | ----------------- | ------------------------------ | --------------------------------------- |
 | **Pure logic**    | `serde`, `regex`, `itertools`  | Low — use via `[rust-dependencies]`     |
-| **Async runtime** | `tokio`, `async-std`           | High — replace with Redox async + Swarm |
+| **Async runtime** | `tokio`, `async-std`           | High — replace with MechGen async + Swarm |
 | **FFI / unsafe**  | `libc`, `winapi`, `nix`        | High — wrap with Capability system      |
 | **Build tools**   | `cc`, `bindgen`, `proc-macro2` | Medium — configure in Forge.toml        |
 | **Framework**     | `actix-web`, `rocket`, `axum`  | High — port handler by handler          |
@@ -33,9 +33,9 @@ For each crate dependency, decide:
 ```
 Can it be used as-is via [rust-dependencies]?
   ├── YES → Keep as Rust dependency, no migration needed
-  └── NO  → Is there a Redox equivalent in std?
+  └── NO  → Is there a MechGen equivalent in std?
               ├── YES → Replace with std module
-              └── NO  → Write a thin Redox wrapper with effects
+              └── NO  → Write a thin MechGen wrapper with effects
 ```
 
 ## 1.2 Unsafe Audit
@@ -47,7 +47,7 @@ grep -rn "unsafe" src/ --include="*.rs" | wc -l
 grep -rn "unsafe" src/ --include="*.rs"
 ```
 
-| Unsafe Pattern          | Redox Replacement                      |
+| Unsafe Pattern          | MechGen Replacement                      |
 | ----------------------- | -------------------------------------- |
 | Raw pointer dereference | `Capability.request("mem.deref", ...)` |
 | FFI function call       | `Capability.request("ffi.call", ...)`  |
@@ -57,7 +57,7 @@ grep -rn "unsafe" src/ --include="*.rs"
 | Inline assembly         | Platform-specific capability           |
 
 **Rule of thumb:** Each `unsafe` block becomes a `Capability.request()` call
-with the appropriate permission string. The Redox runtime enforces these at
+with the appropriate permission string. The MechGen runtime enforces these at
 startup via capability grants.
 
 ## 1.3 Async Runtime Assessment
@@ -72,7 +72,7 @@ grep -rn "tokio::spawn\|task::spawn" src/ --include="*.rs" | wc -l
 
 Map each async pattern:
 
-| Rust Async Pattern        | Redox Equivalent                      |
+| Rust Async Pattern        | MechGen Equivalent                      |
 | ------------------------- | ------------------------------------- |
 | `#[tokio::main]`          | `+af main() / async { }`              |
 | `tokio::spawn(future)`    | `Swarm.spawn(agent)`                  |
@@ -106,7 +106,7 @@ Estimated migration effort (person-hours):
 30 dependencies:
 
 ```
-10000 × 0.03 = 300 hours (syntax — but rdx migrate automates ~80%)
+10000 × 0.03 = 300 hours (syntax — but mg migrate automates ~80%)
 5 × 1.0      =   5 hours
 20 × 0.5     =  10 hours
 30 × 0.25    =   7.5 hours
@@ -119,21 +119,21 @@ Total        ≈  ~80 hours (with automation), ~320 hours (manual)
 Recommended migration phases:
 
 ### Phase 1: Dual-Build (Week 1-2)
-- Set up Redox project alongside existing Rust
+- Set up MechGen project alongside existing Rust
 - Wire `[rust-dependencies]` for all existing crates
 - Migrate one self-contained module as a proof of concept
-- Verify `rdx build` + `cargo build` both work
+- Verify `mg build` + `cargo build` both work
 
 ### Phase 2: Syntax Migration (Week 3-4)
-- Run `rdx migrate --dry-run` on all source files
+- Run `mg migrate --dry-run` on all source files
 - Review and accept automated translations
 - Fix edge cases the tool can't handle
-- Run `rdx check` until clean
+- Run `mg check` until clean
 
 ### Phase 3: Effect Annotation (Week 5-6)
 - Add `/ io`, `/ net`, etc. to all impure functions
 - Remove `unsafe` blocks, replace with Capabilities
-- Run `rdx check --effects` to validate effect propagation
+- Run `mg check --effects` to validate effect propagation
 
 ### Phase 4: Agent Adoption (Week 7-8)
 - Replace `tokio::spawn` with `Swarm.spawn`
@@ -144,16 +144,16 @@ Recommended migration phases:
 - Port all `#[test]` functions to `@test`
 - Add effect handler mocks for I/O-heavy tests
 - Run benchmarks, compare with Rust baseline
-- Set up CI with `rdx test` and `rdx bench`
+- Set up CI with `mg test` and `mg bench`
 
 ## 1.6 Go/No-Go Checklist
 
 Before starting migration, confirm:
 
 - [ ] All direct dependencies are available or can be used via `[rust-dependencies]`
-- [ ] Team has read the [Redox Book](../book/) chapters 1-4
-- [ ] `rdx` CLI is installed and `rdx new test-project` works
-- [ ] CI infrastructure can run `rdx build` and `rdx test`
+- [ ] Team has read the [MechGen Book](../book/) chapters 1-4
+- [ ] `mg` CLI is installed and `mg new test-project` works
+- [ ] CI infrastructure can run `mg build` and `mg test`
 - [ ] A single module has been migrated as proof-of-concept
 - [ ] Stakeholders approve the timeline estimate
 - [ ] Rollback plan exists (keep Rust source in a `rust-src/` backup)

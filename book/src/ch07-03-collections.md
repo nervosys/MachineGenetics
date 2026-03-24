@@ -5,7 +5,7 @@ data structures.
 
 ## HashMap
 
-```rdx
+```mg
 pub fn main() {
     let mut scores: HashMap<String, i32> = HashMap::new();
     scores.insert("Alice", 100);
@@ -30,7 +30,7 @@ pub fn main() {
 
 ## HashSet
 
-```rdx
+```mg
 pub fn main() {
     let mut fruits: HashSet<String> = HashSet::new();
     fruits.insert("apple");
@@ -52,7 +52,7 @@ pub fn main() {
 
 ## BTreeMap (ordered map)
 
-```rdx
+```mg
 use std::col::BTreeMap;
 
 pub fn main() {
@@ -75,7 +75,7 @@ pub fn main() {
 
 ## VecDeque (double-ended queue)
 
-```rdx
+```mg
 use std::col::VecDeque;
 
 pub fn main() {

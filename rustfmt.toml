@@ -37,7 +37,7 @@ ignore = [
     "src/doc/nomicon",
     "src/doc/reference",
     "src/doc/rust-by-example",
-    "src/doc/redox-dev-guide",
+    "src/doc/MechGen-dev-guide",
     "src/llvm-project",
     "src/tools/cargo",
     "src/tools/clippy",
@@ -49,9 +49,9 @@ ignore = [
     "src/gcc",
 
     # These are ignored by a standard cargo fmt run.
-    "compiler/redox_codegen_cranelift/scripts",
-    "compiler/redox_codegen_gcc/tests",
+    "compiler/mechgen_codegen_cranelift/scripts",
+    "compiler/mechgen_codegen_gcc/tests",
     # Code automatically generated and included.
-    "compiler/redox_codegen_gcc/src/intrinsic/archs.rs",
-    "compiler/redox_codegen_gcc/example",
+    "compiler/mechgen_codegen_gcc/src/intrinsic/archs.rs",
+    "compiler/mechgen_codegen_gcc/example",
 ]

@@ -9,6 +9,6 @@ license = "MIT"
 async-rt = { version = "0.5", features = ["multi-thread"] }
 
 [hot-reload]
-watch = ["src/**/*.rdx"]
+watch = ["src/**/*.mg"]
 debounce = "200ms"
 rollback-on-failure = true

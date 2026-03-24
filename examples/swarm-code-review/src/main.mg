@@ -490,7 +490,7 @@ impl ReviewHistory {
 
 pub fn main() / io {
     println!("╔═══════════════════════════════════════════════════════════╗");
-    println!("║  Redox Swarm Code Review System                          ║");
+    println!("║  MechGen Swarm Code Review System                          ║");
     println!("╚═══════════════════════════════════════════════════════════╝");
     println!("");
 
@@ -502,7 +502,7 @@ pub fn main() / io {
         description: "Implements JWT-based auth with refresh tokens".to_string(),
         files: vec![
             FileDiff {
-                path: "src/auth/mod.rdx".to_string(),
+                path: "src/auth/mod.mg".to_string(),
                 additions: 120,
                 deletions: 5,
                 hunks: vec![
@@ -512,7 +512,7 @@ pub fn main() / io {
                 ],
             },
             FileDiff {
-                path: "src/auth/jwt.rdx".to_string(),
+                path: "src/auth/jwt.mg".to_string(),
                 additions: 85,
                 deletions: 0,
                 hunks: vec![
@@ -521,7 +521,7 @@ pub fn main() / io {
                 ],
             },
             FileDiff {
-                path: "src/middleware.rdx".to_string(),
+                path: "src/middleware.mg".to_string(),
                 additions: 40,
                 deletions: 10,
                 hunks: vec![
@@ -604,7 +604,7 @@ pub fn main() / io {
                 hunks: vec!["Fixed spelling of 'authentication'".to_string()],
             },
             FileDiff {
-                path: "tests/readme_test.rdx".to_string(),
+                path: "tests/readme_test.mg".to_string(),
                 additions: 5,
                 deletions: 0,
                 hunks: vec!["added doc link test".to_string()],

@@ -1,11 +1,11 @@
 # Control Flow
 
-Redox uses standard `if`/`else` for conditionals, `match` for pattern matching,
+MechGen uses standard `if`/`else` for conditionals, `match` for pattern matching,
 `for` for iteration, and `loop`/`while` for unbounded loops — identical to Rust.
 
 ## Conditionals
 
-```rdx
+```mg
 // Simple conditional
 if x > 0 {
     println!("positive");
@@ -30,7 +30,7 @@ if x > 0 {
 
 ## Pattern matching
 
-```rdx
+```mg
 match shape {
     Circle(r) => PI * r * r,
     Rectangle(w, h) => w * h,
@@ -40,7 +40,7 @@ match shape {
 
 With guards:
 
-```rdx
+```mg
 match value {
     x if x > 0 => println!("positive: {x}"),
     0 => println!("zero"),
@@ -50,7 +50,7 @@ match value {
 
 ## For loops
 
-```rdx
+```mg
 // Iterate over a collection
 for item in items {
     println!("{item}");
@@ -74,7 +74,7 @@ for item in &mut items {
 
 ## While loops
 
-```rdx
+```mg
 let mut x = 10;
 while x > 0 {
     println!("{x}");
@@ -84,7 +84,7 @@ while x > 0 {
 
 ## Infinite loops
 
-```rdx
+```mg
 loop {
     let input = stdin().read_line()?;
     if input.trim() == "quit" {
@@ -98,7 +98,7 @@ loop {
 
 Loops can produce values via `break`:
 
-```rdx
+```mg
 let result = loop {
     let data = try_fetch()?;
     if data.is_valid() {
@@ -111,7 +111,7 @@ let result = loop {
 
 Use `return` for early returns:
 
-```rdx
+```mg
 fn validate(input: &str) -> Result<(), Error> {
     if input.is_empty() {
         return Err(Error::new("empty input"));
@@ -125,7 +125,7 @@ fn validate(input: &str) -> Result<(), Error> {
 The postfix `?` operator works exactly like Rust — it propagates errors from
 `Result` and `Option`:
 
-```rdx
+```mg
 f load_config() -> R[Config, Error] / io {
     v text = File.read("config.json")?   // propagates IoError
     v config = parse(&text)?              // propagates ParseError

@@ -1,4 +1,4 @@
-# Redox Syntax Quick Reference
+# MechGen Syntax Quick Reference
 
 > Optimized for AI agent context windows. Minimal prose, maximum density.
 > This shows **standard syntax** (default). For compact mode, add `#![syntax(compact)]`.
@@ -83,7 +83,7 @@ eprintln!("error: {e}")           error print
 #[cfg(test)]                      conditional compilation
 ```
 
-## Effects (Redox-unique)
+## Effects (MechGen-unique)
 
 ```
 fn pure_fn() -> i32                          // no effect = pure
@@ -100,7 +100,7 @@ net  ⊃  io        (net implies io)
 agent ⊃ async     (agent implies async)
 ```
 
-## Contract Annotations (Redox-unique)
+## Contract Annotations (MechGen-unique)
 
 ```
 @req condition        precondition
@@ -136,14 +136,14 @@ std::test       Testing (assert, mock, bench)
 ## Canonical Examples
 
 ### Hello World
-```redox
+```MechGen
 pub fn main() / io {
     println!("Hello, world!");
 }
 ```
 
 ### Fibonacci
-```redox
+```MechGen
 fn fib(n: u64) -> u64 {
     if n <= 1 { return n; }
     fib(n - 1) + fib(n - 2)
@@ -151,7 +151,7 @@ fn fib(n: u64) -> u64 {
 ```
 
 ### Read File
-```redox
+```MechGen
 use std::fs;
 
 fn read_config(path: &str) -> Result<String, io::Error> / io {
@@ -160,7 +160,7 @@ fn read_config(path: &str) -> Result<String, io::Error> / io {
 ```
 
 ### Struct with Methods
-```redox
+```MechGen
 #[derive(Debug, Clone)]
 pub struct Point {
     x: f64,
@@ -181,7 +181,7 @@ impl Point {
 ```
 
 ### Error Handling
-```redox
+```MechGen
 use std::io;
 use std::json;
 
@@ -193,7 +193,7 @@ pub fn load_config(path: &str) -> Result<Config, Error> / io {
 ```
 
 ### Agent
-```redox
+```MechGen
 use std::agent::{Agent, Swarm};
 
 pub struct Analyzer {

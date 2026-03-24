@@ -61,7 +61,7 @@ fn parse_args(args: Vec<String>) -> Result<Config, String> / io {
                 process::exit(0);
             },
             "--version" | "-V" => {
-                println!("rdx-grep {VERSION}");
+                println!("mg-grep {VERSION}");
                 process::exit(0);
             },
             "-i" | "--ignore-case" => ignore_case = true,
@@ -98,9 +98,9 @@ fn parse_args(args: Vec<String>) -> Result<Config, String> / io {
 }
 
 fn print_usage() / io {
-    eprintln!("rdx-grep — search for patterns in files");
+    eprintln!("mg-grep — search for patterns in files");
     eprintln!("");
-    eprintln!("Usage: rdx-grep [OPTIONS] <PATTERN> <FILE...>");
+    eprintln!("Usage: mg-grep [OPTIONS] <PATTERN> <FILE...>");
     eprintln!("");
     eprintln!("Options:");
     eprintln!("  -i, --ignore-case    Case-insensitive matching");

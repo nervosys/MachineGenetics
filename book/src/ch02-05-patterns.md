@@ -1,10 +1,10 @@
 # Pattern Matching
 
-Redox inherits Rust's powerful pattern matching with the same `match` keyword.
+MechGen inherits Rust's powerful pattern matching with the same `match` keyword.
 
 ## Basic patterns
 
-```rdx
+```mg
 match value {
     1 => println!("one"),
     2 => println!("two"),
@@ -17,7 +17,7 @@ match value {
 
 ### Structs
 
-```rdx
+```mg
 match point {
     Point { x: 0, y: 0 } => println!("origin"),
     Point { x, y: 0 } => println!("on x-axis at {x}"),
@@ -28,7 +28,7 @@ match point {
 
 ### Enums
 
-```rdx
+```mg
 match result {
     Ok(value) => println!("got: {value}"),
     Err(e) => println!("error: {e}"),
@@ -37,7 +37,7 @@ match result {
 
 ### Tuples
 
-```rdx
+```mg
 match (a, b) {
     (0, 0) => println!("origin"),
     (x, 0) | (0, x) => println!("on axis: {x}"),
@@ -49,7 +49,7 @@ match (a, b) {
 
 Add conditions with `if` after the pattern:
 
-```rdx
+```mg
 match temperature {
     t if t < 0 => println!("freezing"),
     t if t < 20 => println!("cold"),
@@ -62,7 +62,7 @@ match temperature {
 
 Use `@` to bind a name to an entire pattern:
 
-```rdx
+```mg
 match msg {
     m @ Message { priority: Priority::High, .. } => handle_urgent(m),
     m @ Message { .. } => handle_normal(m),
@@ -71,7 +71,7 @@ match msg {
 
 ## If-let
 
-```rdx
+```mg
 if let Some(x) = value {
     println!("got {x}");
 }
@@ -89,7 +89,7 @@ if let Some(x) = value {
 Pattern matches must be exhaustive — the compiler verifies that all possible
 values are covered. Use `_` as a catch-all:
 
-```rdx
+```mg
 match direction {
     North => go_north(),
     South => go_south(),

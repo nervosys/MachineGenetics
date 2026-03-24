@@ -1,7 +1,7 @@
 //! # std::effect — Effect System
 //!
 //! Core types for algebraic effects and handlers.
-//! Effects are Redox's mechanism for controlled side effects.
+//! Effects are MechGen's mechanism for controlled side effects.
 
 // ---------------------------------------------------------------------------
 // Effect trait
@@ -107,6 +107,51 @@ pub enum AsyncResult { Handle(u64), Value, Ok }
 pub enum AgentOp   { Send, Recv, Lease, Release }
 pub enum AgentResult { Msg, Lease, Ok }
 pub enum RngOp     { NextU64, Range(i64, i64) }
+
+// ---------------------------------------------------------------------------
+// AI-specific effects (MechGen-unique)
+// ---------------------------------------------------------------------------
+
+/// The GPU effect — tensor operations and neural network computation.
+pub enum GpuEffect: Effect {
+    type Input = GpuOp;
+    type Output = GpuResult;
+}
+
+/// The NPU effect — neural processing unit dispatch.
+pub enum NpuEffect: Effect {
+    type Input = NpuOp;
+    type Output = NpuResult;
+}
+
+/// The LLM effect — language model invocation.
+pub enum LlmEffect: Effect {
+    type Input = LlmOp;
+    type Output = LlmResult;
+}
+
+/// The evolution effect — evolutionary computation.
+pub enum EvolveEffect: Effect {
+    type Input = EvolveOp;
+    type Output = EvolveResult;
+}
+
+/// The learning effect — training and gradient descent.
+pub enum LearnEffect: Effect {
+    type Input = LearnOp;
+    type Output = LearnResult;
+}
+
+pub enum GpuOp      { Dispatch, Synchronize, Transfer }
+pub enum GpuResult   { Tensor, Ok }
+pub enum NpuOp       { Dispatch, Synchronize }
+pub enum NpuResult   { Tensor, Ok }
+pub enum LlmOp       { Generate, Embed, Analyze }
+pub enum LlmResult   { Text(String), Embedding(Vec<f32>), Analysis }
+pub enum EvolveOp    { Evaluate, Select, Crossover, Mutate }
+pub enum EvolveResult { Fitness(f64), Genome, Population, Ok }
+pub enum LearnOp     { Forward, Backward, Step }
+pub enum LearnResult { Loss(f64), Gradients, Ok }
 
 // ---------------------------------------------------------------------------
 // Effect combinators

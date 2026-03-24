@@ -8,7 +8,7 @@
 
 **Solution**:
 
-```rdx
+```mg
 u std.async.{spawn, join_all}
 
 +af compute_all(inputs: &[i32]~) -> [i64]~ / async {
@@ -38,7 +38,7 @@ f heavy_compute(n: i32) -> i64 {
 
 **Solution**:
 
-```rdx
+```mg
 u std.sync.{channel, Sender, Receiver}
 u std.async.spawn
 
@@ -73,7 +73,7 @@ u std.async.spawn
 
 **Solution**:
 
-```rdx
+```mg
 u std.sync.Mutex
 
 +f main() / async {
@@ -101,7 +101,7 @@ u std.sync.Mutex
 
 **Solution**:
 
-```rdx
+```mg
 u std.sync.Mutex
 u std.time.{Instant, Duration}
 
@@ -153,7 +153,7 @@ use, consider a token-bucket algorithm.
 
 **Solution**:
 
-```rdx
+```mg
 u std.sync.channel
 u std.async.spawn
 
@@ -197,7 +197,7 @@ u std.async.spawn
 
 **Solution**:
 
-```rdx
+```mg
 u std.async.{spawn, select}
 u std.time.Duration
 
@@ -235,7 +235,7 @@ u std.time.Duration
 
 **Solution**:
 
-```rdx
+```mg
 u std.async.{spawn, join_all}
 
 +af par_map[T: Send + Clone, R: Send](

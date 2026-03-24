@@ -8,7 +8,7 @@
 
 **Solution**:
 
-```rdx
+```mg
 u std.fs
 u std.json.{parse, Value}
 
@@ -36,7 +36,7 @@ u std.json.{parse, Value}
 
 **Solution**:
 
-```rdx
+```mg
 @d(Debug, Clone)
 S Employee { name: s, salary: f64 }
 
@@ -64,7 +64,7 @@ S Employee { name: s, salary: f64 }
 
 **Solution**:
 
-```rdx
+```mg
 +f group_by[T, K: Eq + Hash](items: &[T]~, key_fn: f(&T) -> K) -> {K: [&T]~} {
     m groups: {K: [&T]~} = {K: [&T]~}.new()
     @ item : items {
@@ -93,7 +93,7 @@ S Employee { name: s, salary: f64 }
 
 **Solution**:
 
-```rdx
+```mg
 +f main() / io {
     v numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]~
 
@@ -115,7 +115,7 @@ S Employee { name: s, salary: f64 }
 
 **Solution**:
 
-```rdx
+```mg
 +f word_freq(text: &s) -> {s: usize} {
     m counts: {s: usize} = {s: usize}.new()
     @ word : text.split_whitespace() {
@@ -147,7 +147,7 @@ S Employee { name: s, salary: f64 }
 
 **Solution**:
 
-```rdx
+```mg
 +f dedup[T: Eq + Hash + Clone](items: &[T]~) -> [T]~ {
     m seen: {&T} = {&T}.new()
     m result = [T]~.new()
@@ -174,7 +174,7 @@ S Employee { name: s, salary: f64 }
 
 **Solution**:
 
-```rdx
+```mg
 E Tree[T] {
     Leaf(T),
     Node([Tree[T]]~),
@@ -213,7 +213,7 @@ E Tree[T] {
 
 **Solution**:
 
-```rdx
+```mg
 S Stats {
     count: u64,
     sum: f64,

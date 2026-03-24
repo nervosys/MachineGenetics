@@ -1,7 +1,7 @@
-# Redox Direct Codegen: Bypassing MLIR and LLVM
+# MechGen Direct Codegen: Bypassing MLIR and LLVM
 
-This document defines the architecture for **Redox Direct Codegen (RDC)** — a
-compilation pipeline that translates high-level Redox source code directly to
+This document defines the architecture for **MechGen Direct Codegen (RDC)** — a
+compilation pipeline that translates high-level MechGen source code directly to
 machine code without passing through MLIR, LLVM IR, or any third-party
 intermediate representation. The result is faster compilation, smaller binaries,
 and faster runtime — because the compiler retains full semantic knowledge all
@@ -13,10 +13,10 @@ the way down to the instruction encoder.
 
 ### The Problem with Layered IRs
 
-The current Redox pipeline passes through **7 representation layers**:
+The current MechGen pipeline passes through **7 representation layers**:
 
 ```
-Redox Source → AST → HIR → MIR → Redox MLIR Dialect → Standard MLIR → LLVM IR → Machine Code
+MechGen Source → AST → HIR → MIR → MechGen MLIR Dialect → Standard MLIR → LLVM IR → Machine Code
        1        2     3     4           5                    6            7          8
 ```
 
@@ -26,8 +26,8 @@ Each layer transition **destroys information**:
 | ---------------------- | ------------------------------------------------ |
 | AST → HIR              | Syntactic sugar, sigil semantics                 |
 | HIR → MIR              | Type-level contracts (become runtime assertions) |
-| MIR → Redox MLIR       | Rust ownership model (becomes memref ops)        |
-| Redox MLIR → Std MLIR  | Effect annotations, contract annotations         |
+| MIR → MechGen MLIR       | Rust ownership model (becomes memref ops)        |
+| MechGen MLIR → Std MLIR  | Effect annotations, contract annotations         |
 | Std MLIR → LLVM IR     | Polyhedral structure, dialect semantics          |
 | LLVM IR → Machine Code | SSA structure, high-level type information       |
 
@@ -51,7 +51,7 @@ progressive lowering model assumes the compiler gradually refines high-level
 abstractions into target code. This is elegant for a language with limited
 semantic information.
 
-**Redox is not that language.** Redox has:
+**MechGen is not that language.** MechGen has:
 
 - **Verified contracts** (`@req`, `@ens`, `@inv`) that prove value ranges,
   nullability, termination, and aliasing at compile time.
@@ -71,12 +71,12 @@ instructions, keeping all information alive until the final byte is emitted.**
 
 ---
 
-## Architecture: Redox Direct Codegen (RDC)
+## Architecture: MechGen Direct Codegen (RDC)
 
 ### Pipeline Overview
 
 ```
-Redox Source (.rdx)
+MechGen Source (.mg)
   │
   ├─ Lexer + Parser (LL(1), zero-alloc hot path)
   └─ AST
@@ -89,7 +89,7 @@ Redox Source (.rdx)
   │
   v
 ┌──────────────────────────────────────────────────────────────┐
-│  RIR — Redox Intermediate Representation                     │
+│  RIR — MechGen Intermediate Representation                     │
 │  (SSA + ownership + effects + contracts + cost annotations)  │
 │  THIS IS THE ONLY IR. No MIR. No MLIR. No LLVM IR.          │
 └──────────────────────────────────────────────────────────────┘
@@ -127,7 +127,7 @@ vs. **8 layers** in the current pipeline.
 
 ---
 
-## RIR: The Redox Intermediate Representation
+## RIR: The MechGen Intermediate Representation
 
 ### Design Principles
 
@@ -138,7 +138,7 @@ vs. **8 layers** in the current pipeline.
    set, cost estimate, and ownership status. This information is never erased.
 
 3. **SSA with ownership** — Standard SSA form (phi nodes, dominance) plus
-   Redox ownership semantics (move, borrow, drop). Not bolt-on metadata —
+   MechGen ownership semantics (move, borrow, drop). Not bolt-on metadata —
    first-class IR semantics.
 
 4. **Target-aware from the start** — RIR nodes know the target architecture.
@@ -152,7 +152,7 @@ vs. **8 layers** in the current pipeline.
 ### RIR Node Structure
 
 ```rust
-/// The single intermediate representation for Redox Direct Codegen.
+/// The single intermediate representation for MechGen Direct Codegen.
 pub struct RirModule {
     pub name: Symbol,
     pub target: TargetSpec,
@@ -174,7 +174,7 @@ pub struct RirFunction {
 pub struct FnSignature {
     pub params: Vec<(Symbol, Type, Ownership)>,
     pub ret: Type,
-    pub abi: Abi,                     // cdecl, fastcall, redox, etc.
+    pub abi: Abi,                     // cdecl, fastcall, MechGen, etc.
 }
 
 pub struct Contract {
@@ -618,7 +618,7 @@ step because the type system and contracts guarantee correctness.
 
 The biggest win is **optimization passes**. LLVM runs ~200 passes (many
 quadratic or worse in complexity). Most exist to *re-discover* information that
-Redox already has (alias analysis, loop bounds, induction variables, escape
+MechGen already has (alias analysis, loop bounds, induction variables, escape
 analysis). RDC runs ~15–20 passes that directly *use* the information from
 contracts and effects.
 
@@ -627,7 +627,7 @@ contracts and effects.
 RDC's design enables surgical incremental recompilation:
 
 ```
-File changed: src/physics.rdx (function step() modified)
+File changed: src/physics.mg (function step() modified)
 
 RDC incremental:
   1. Re-parse changed function only                    — 0.2ms
@@ -660,7 +660,7 @@ perform.
 
 #### Example 1: Cross-Function Vectorization
 
-```rdx
+```mg
 @req data.len() % 16 == 0
 pub fn normalize(data: &mut Vec<f64>) / pure {
     let sum = sum_all(data);                // call
@@ -706,7 +706,7 @@ vbroadcastsd zmm2, xmm_sum      ; broadcast sum to all lanes
 
 #### Example 2: Branch-Free Hot Path
 
-```rdx
+```mg
 @req 0 < age && age <= 200
 @req 0.0 < income
 pub fn tax_bracket(age: u32, income: f64) -> f64 / pure {
@@ -741,7 +741,7 @@ ret
 
 #### Example 3: Zero-Allocation String Processing
 
-```rdx
+```mg
 @req input.len() <= 4096
 pub fn to_uppercase(input: &str) -> String / alloc {
     let mut result = String::with_capacity(input.len());
@@ -843,9 +843,9 @@ RDC emits GPU kernels directly from `/ pure` functions with `GpuLaunch` ops:
 ### Zero-Cost Safety (from PERFORMANCE_STRATEGY.md, strengthened)
 
 Traditional safety checks have runtime cost: bounds checks, null checks,
-overflow checks. Redox eliminates them **at compile time** via contracts:
+overflow checks. MechGen eliminates them **at compile time** via contracts:
 
-| Safety Check     | C/C++ Cost | Rust Cost     | Redox/RDC Cost      |
+| Safety Check     | C/C++ Cost | Rust Cost     | MechGen/RDC Cost      |
 | ---------------- | ---------- | ------------- | ------------------- |
 | Bounds check     | None (UB)  | 1–3 cycles    | 0 (contract proves) |
 | Null check       | None (UB)  | N/A (Option)  | 0 (contract proves) |
@@ -856,7 +856,7 @@ overflow checks. Redox eliminates them **at compile time** via contracts:
 
 C/C++ achieves "zero cost" by ignoring safety (undefined behavior).
 Rust achieves safety by adding runtime checks.
-**Redox achieves both** — safety is proven at compile time, then the checks
+**MechGen achieves both** — safety is proven at compile time, then the checks
 are provably dead code and eliminated. The generated machine code is
 *identical* to C's unsafe version, but with a proof of correctness.
 
@@ -931,7 +931,7 @@ RDC never does because the proof is attached to every operation.
 - [ ] AST → RIR lowering pass
 - [ ] RIR validator (well-formedness, SSA dominance, type correctness)
 
-**Crate**: `redox_rir`
+**Crate**: `MechGen_rir`
 
 ### Phase 2: Semantic Optimization Passes
 
@@ -946,7 +946,7 @@ RDC never does because the proof is attached to every operation.
 - [ ] Layout Optimization (AoS→SoA)
 - [ ] Allocation Elimination (stack promotion)
 
-**Crate**: `redox_rir_opt`
+**Crate**: `MechGen_rir_opt`
 
 ### Phase 3: Machine Code Encoders
 
@@ -960,7 +960,7 @@ RDC never does because the proof is attached to every operation.
 - [ ] DWARF debug info generation
 - [ ] Relocation support
 
-**Crate**: `redox_machine_encode`
+**Crate**: `MechGen_machine_encode`
 
 ### Phase 4: GPU Backend
 
@@ -971,11 +971,11 @@ RDC never does because the proof is attached to every operation.
 - [ ] SPIR-V encoder (Vulkan)
 - [ ] GPU kernel launch integration
 
-**Crate**: `redox_gpu_encode`
+**Crate**: `MechGen_gpu_encode`
 
 ### Phase 5: Integration and Benchmarking
 
-**Goal**: Wire RDC into the Redox compiler as an alternative backend.
+**Goal**: Wire RDC into the MechGen compiler as an alternative backend.
 
 - [ ] `--codegen=rdc` flag to select the direct backend
 - [ ] A/B benchmark suite: RDC vs MLIR+LLVM on all micro/macro benchmarks
@@ -1001,7 +1001,7 @@ RDC is the **primary** backend for maximum performance. The MLIR+LLVM pipeline
 remains as a **fallback** for:
 
 1. **Targets RDC doesn't support yet** — If a target architecture isn't
-   implemented in RDC, fall back to `redox_codegen_llvm`.
+   implemented in RDC, fall back to `MechGen_codegen_llvm`.
 
 2. **Features RDC doesn't have yet** — During development, any construct
    not yet lowered by RDC falls back to MLIR+LLVM.
@@ -1064,7 +1064,7 @@ Smaller binaries because:
 ## Summary
 
 RDC is not just "another backend." It is a **fundamentally different approach**
-to compilation that exploits Redox's unique semantic richness:
+to compilation that exploits MechGen's unique semantic richness:
 
 | Property               | Traditional (MLIR → LLVM)  | RDC                               |
 | ---------------------- | -------------------------- | --------------------------------- |
@@ -1082,5 +1082,5 @@ and broad target support. RDC is the endgame — it delivers the performance
 that only a language with contracts, effects, a cost oracle, and agent
 intelligence can achieve.
 
-**Redox with RDC doesn't just compete with C, C++, and Rust. It renders their
+**MechGen with RDC doesn't just compete with C, C++, and Rust. It renders their
 compilation model obsolete.**

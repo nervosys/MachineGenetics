@@ -8,7 +8,7 @@
 
 **Solution**:
 
-```rdx
+```mg
 u std.net.Request
 
 +f main() / io, net {
@@ -26,7 +26,7 @@ u std.net.Request
 
 **Solution**:
 
-```rdx
+```mg
 u std.net.Request
 u std.json.to_string
 
@@ -53,7 +53,7 @@ S CreateItem { name: s, quantity: u32 }
 
 **Solution**:
 
-```rdx
+```mg
 u std.net.Request
 u std.fs
 
@@ -80,7 +80,7 @@ u std.fs
 
 **Solution**:
 
-```rdx
+```mg
 u std.net.Request
 u std.json.from_str
 
@@ -90,7 +90,7 @@ S User { id: u64, login: s, name: ?s }
 +af fetch_user(username: &s) -> R[User, Error] / net {
     v url = f"https://api.github.com/users/{username}"
     v resp = Request.get(&url)
-        .header("User-Agent", "redox-app")
+        .header("User-Agent", "MechGen-app")
         .send().await?
     v body = resp.text().await?
     v user: User = from_str(&body)?
@@ -106,7 +106,7 @@ S User { id: u64, login: s, name: ?s }
 
 **Solution**:
 
-```rdx
+```mg
 u std.net.Request
 u std.async.{spawn, join_all}
 
@@ -141,7 +141,7 @@ you only need the first result.
 
 **Solution**:
 
-```rdx
+```mg
 u std.net.{TcpListener, TcpStream}
 u std.io.{Read, Write}
 
@@ -173,7 +173,7 @@ f handle(m stream: TcpStream) / io, net {
 
 **Solution**:
 
-```rdx
+```mg
 u std.net.Request
 u std.time.Duration
 
@@ -197,7 +197,7 @@ u std.time.Duration
 
 **Solution**:
 
-```rdx
+```mg
 u std.net.{TcpStream, dns}
 u std.time.Duration
 
@@ -224,7 +224,7 @@ u std.time.Duration
 
 **Solution**:
 
-```rdx
+```mg
 u std.net.{Request, Response, StatusCode}
 u std.json.{from_str, to_string}
 

@@ -1,10 +1,10 @@
 # JSON & Serialization
 
-JSON is a **first-class** feature of Redox — no external crate needed.
+JSON is a **first-class** feature of MechGen — no external crate needed.
 
 ## Parsing JSON
 
-```rdx
+```mg
 use std::json::{parse, Value};
 
 pub fn main() / io {
@@ -18,7 +18,7 @@ pub fn main() / io {
 
 ## Stringify
 
-```rdx
+```mg
 use std::json::{stringify, stringify_pretty};
 
 pub fn main() {
@@ -36,7 +36,7 @@ pub fn main() {
 
 Use `#[derive(Serialize, Deserialize)]` to derive JSON conversion:
 
-```rdx
+```mg
 use std::json::{from_str, to_string};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -62,7 +62,7 @@ pub fn main() / io {
 
 The `Value` enum:
 
-```rdx
+```mg
 pub enum Value {
     Null,
     Bool(bool),
@@ -76,7 +76,7 @@ pub enum Value {
 
 Accessing nested values:
 
-```rdx
+```mg
 let config = parse(text)?;
 
 // Dot-chained access with get/at
@@ -89,7 +89,7 @@ let first_item = config.get("items").at(0).as_str()?;
 
 HTTP and JSON work together naturally:
 
-```rdx
+```mg
 use std::net::Request;
 use std::json::{from_str, to_string};
 

@@ -26,7 +26,7 @@ Fixes #(issue number)
 - [ ] Compiler / Parser
 - [ ] rust2rdx Transpiler
 - [ ] rdx2rs Back-Transpiler
-- [ ] rdx CLI / Build System
+- [ ] mg CLI / Build System
 - [ ] Standard Library (`stdlib/`)
 - [ ] VS Code Extension
 - [ ] Editor Configs (Neovim / Helix / Zed)

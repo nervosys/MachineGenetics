@@ -1,4 +1,4 @@
-// Comprehensive Redox example — exercises name resolution, type checking, and effect inference.
+// Comprehensive MechGen example — exercises name resolution, type checking, and effect inference.
 
 // ── Pure computation ─────────────────────────────────────────────────
 

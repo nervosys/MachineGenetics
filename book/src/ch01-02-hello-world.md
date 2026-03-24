@@ -1,12 +1,12 @@
 # Hello World
 
-Let's write the simplest possible Redox program.
+Let's write the simplest possible MechGen program.
 
 ## Writing the program
 
-Create a file called `hello.rdx`:
+Create a file called `hello.mg`:
 
-```rdx
+```mg
 pub fn main() / io {
     println!("Hello, world!");
 }
@@ -41,21 +41,21 @@ annotation.
 ## Running the program
 
 ```sh
-rdx run hello.rdx
+mg run hello.mg
 # Hello, world!
 ```
 
 Or compile first, then run:
 
 ```sh
-rdx build hello.rdx
+mg build hello.mg
 ./hello
 # Hello, world!
 ```
 
 ## A slightly larger example
 
-```rdx
+```mg
 use std::io::File;
 use std::json::{parse, Value};
 

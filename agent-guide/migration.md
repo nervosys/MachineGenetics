@@ -1,23 +1,23 @@
-# Rust → Redox Migration Patterns
+# Rust → MechGen Migration Patterns
 
-> Side-by-side translation rules for AI agents converting Rust code to Redox.
+> Side-by-side translation rules for AI agents converting Rust code to MechGen.
 > All examples use **standard syntax** (default). Most Rust syntax carries over directly.
 
 ---
 
 ## What Changes?
 
-Redox standard syntax is intentionally close to Rust. Migration is primarily about:
+MechGen standard syntax is intentionally close to Rust. Migration is primarily about:
 
 1. **Adding effect annotations** (`/ io`, `/ net`, etc.) to impure functions
 2. **Removing lifetime annotations** (SKB infers them)
 3. **Removing `unsafe`** (use `Capability` system instead)
 4. **Adding contracts** (`@req`, `@ens`) to public APIs
-5. **Using Redox stdlib modules** (`std::agent`, `std::skb`, `std::effect`)
+5. **Using MechGen stdlib modules** (`std::agent`, `std::skb`, `std::effect`)
 
 ## What Stays the Same?
 
-| Feature           | Rust                   | Redox Standard         |
+| Feature           | Rust                   | MechGen Standard         |
 | ----------------- | ---------------------- | ---------------------- |
 | Functions         | `fn name()`            | `fn name()`            |
 | Public functions  | `pub fn name()`        | `pub fn name()`        |
@@ -47,7 +47,7 @@ Redox standard syntax is intentionally close to Rust. Migration is primarily abo
 | Closures          | `\|x\| x + 1`          | `\|x\| x + 1`          |
 | Async/await       | `async fn` / `.await`  | `async fn` / `.await`  |
 
-## What's New in Redox?
+## What's New in MechGen?
 
 | Feature             | Syntax                                          |
 | ------------------- | ----------------------------------------------- |
@@ -77,8 +77,8 @@ pub fn fibonacci(n: u64) -> u64 {
 }
 ```
 
-### Redox
-```redox
+### MechGen
+```MechGen
 pub fn fibonacci(n: u64) -> u64 {
     if n <= 1 {
         return n;
@@ -88,7 +88,7 @@ pub fn fibonacci(n: u64) -> u64 {
 ```
 
 **Steps applied:**
-1. Pure function — no changes needed! Rust syntax is valid Redox standard syntax.
+1. Pure function — no changes needed! Rust syntax is valid MechGen standard syntax.
 
 ---
 
@@ -123,8 +123,8 @@ impl fmt::Display for Point {
 }
 ```
 
-### Redox
-```redox
+### MechGen
+```MechGen
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -153,7 +153,7 @@ impl fmt::Display for Point {
 ```
 
 **Steps applied:**
-1. Pure struct with no I/O — no changes needed. Identical Rust and Redox.
+1. Pure struct with no I/O — no changes needed. Identical Rust and MechGen.
 
 ---
 
@@ -173,8 +173,8 @@ pub fn read_config(path: &str) -> Result<String, io::Error> {
 }
 ```
 
-### Redox
-```redox
+### MechGen
+```MechGen
 use std::fs;
 use std::io;
 
@@ -212,8 +212,8 @@ where
 }
 ```
 
-### Redox
-```redox
+### MechGen
+```MechGen
 use std::collections::HashMap;
 
 pub async fn fetch_all<T>(urls: Vec<String>) -> Result<HashMap<String, T>, Error> / net
@@ -232,7 +232,7 @@ where
 
 **Steps applied:**
 1. **Added `/ net`** — network requests (net implies io)
-2. `reqwest::get` → `http::get` — use Redox stdlib
+2. `reqwest::get` → `http::get` — use MechGen stdlib
 
 ---
 
@@ -247,8 +247,8 @@ pub trait Repository<T> {
 }
 ```
 
-### Redox
-```redox
+### MechGen
+```MechGen
 pub trait Repository<T> {
     fn find(&self, id: u64) -> Option<T>;
     fn save(&mut self, item: T) -> Result<(), Error> / io;
@@ -271,8 +271,8 @@ pub fn divide(a: f64, b: f64) -> f64 {
 }
 ```
 
-### Redox
-```redox
+### MechGen
+```MechGen
 @req b != 0.0
 @ens result == a / b
 pub fn divide(a: f64, b: f64) -> f64 {
@@ -297,8 +297,8 @@ pub fn read_raw_memory(ptr: *const u8, len: usize) -> Vec<u8> {
 }
 ```
 
-### Redox
-```redox
+### MechGen
+```MechGen
 pub fn read_raw_memory(ptr: *const u8, len: usize, cap: &Capability) -> Result<Vec<u8>, Error> {
     cap.check("mem.read", (ptr, len))?;
     std::mem::safe_read(ptr, len)
@@ -327,8 +327,8 @@ pub fn parallel_process(items: Vec<String>) -> Vec<Result<String, Error>> {
 }
 ```
 
-### Redox
-```redox
+### MechGen
+```MechGen
 use std::agent::{Agent, Swarm};
 
 pub struct ItemProcessor {
@@ -361,11 +361,11 @@ pub async fn parallel_process(items: Vec<String>) -> Vec<Result<String, Error>> 
 
 For each Rust file being migrated:
 
-1. [ ] Change file extension from `.rs` to `.rdx`
+1. [ ] Change file extension from `.rs` to `.mg`
 2. [ ] Add effect annotations (`/ io`, `/ net`, etc.) to all impure functions
 3. [ ] Remove lifetime annotations (SKB infers them)
 4. [ ] Remove `unsafe` blocks → use `Capability` system
 5. [ ] Add `@req` / `@ens` contracts to public APIs
 6. [ ] Replace raw threading with `Agent` / `Swarm` where appropriate
-7. [ ] Use Redox stdlib modules (`std::agent`, `std::skb`, `std::effect`)
+7. [ ] Use MechGen stdlib modules (`std::agent`, `std::skb`, `std::effect`)
 8. [ ] Optionally add `#![syntax(compact)]` for token-optimized files

@@ -1,15 +1,15 @@
 # Keywords & Declarations
 
-Redox uses familiar C-family keywords in its default **standard syntax** mode.
-If you know Rust, you already know Redox's keywords.
+MechGen uses familiar C-family keywords in its default **standard syntax** mode.
+If you know Rust, you already know MechGen's keywords.
 
-> **Compact mode:** Redox also supports a token-minimal compact syntax activated
+> **Compact mode:** MechGen also supports a token-minimal compact syntax activated
 > with `#![syntax(compact)]`. See the [appendix](appendix-cheatsheet.md) for the
 > full mapping.
 
 ## Declaration Keywords
 
-| Redox (Standard) | Rust Equivalent | Meaning           |
+| MechGen (Standard) | Rust Equivalent | Meaning           |
 | ---------------- | --------------- | ----------------- |
 | `fn`             | `fn`            | Function          |
 | `let`            | `let`           | Immutable binding |
@@ -26,7 +26,7 @@ If you know Rust, you already know Redox's keywords.
 
 Visibility uses the same keywords as Rust:
 
-```rdx
+```mg
 pub fn public_fn() { }         // pub fn
 pub(crate) fn crate_fn() { }   // pub(crate) fn
 fn private_fn() { }            // fn (private)
@@ -39,7 +39,7 @@ pub const PUBLIC_CONST: i32 = 42;
 
 ## Struct declarations
 
-```rdx
+```mg
 // A simple struct
 struct Point {
     x: f64,
@@ -61,7 +61,7 @@ struct Color(u8, u8, u8);
 
 ## Enum declarations
 
-```rdx
+```mg
 pub enum Shape {
     Circle(f64),          // radius
     Rectangle(f64, f64),  // width, height
@@ -86,7 +86,7 @@ impl<T> Option<T> {
 
 ## Trait declarations
 
-```rdx
+```mg
 pub trait Display {
     pub fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError>;
 }
@@ -103,7 +103,7 @@ pub trait Greet {
 
 ## Impl blocks
 
-```rdx
+```mg
 // Inherent impl
 impl Point {
     pub fn new(x: f64, y: f64) -> Self {
@@ -129,7 +129,7 @@ The `impl Display for Point` syntax is identical to Rust.
 
 ## Attributes
 
-```rdx
+```mg
 #[derive(Clone, Debug)]          // #[derive(Clone, Debug)]
 #[inline]                        // #[inline]
 #[inline(always)]                // #[inline(always)]
@@ -139,7 +139,7 @@ The `impl Display for Point` syntax is identical to Rust.
 
 ## Boolean literals
 
-```rdx
+```mg
 let yes = true;
 let no = false;
 ```

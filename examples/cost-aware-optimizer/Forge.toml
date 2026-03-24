@@ -5,11 +5,11 @@ edition = "2025"
 description = "Cost-model-aware compilation optimizer that selects strategies per target architecture"
 
 [dependencies]
-redox_cost_oracle = { path = "../../crates/redox_cost_oracle" }
-redox_cost_calibrate = { path = "../../crates/redox_cost_calibrate" }
-redox_agentic_bench = { path = "../../crates/redox_agentic_bench" }
-redox_pipeline_compose = { path = "../../crates/redox_pipeline_compose" }
-redox_token_budget = { path = "../../crates/redox_token_budget" }
+MechGen_cost_oracle = { path = "../../crates/MechGen_cost_oracle" }
+MechGen_cost_calibrate = { path = "../../crates/MechGen_cost_calibrate" }
+MechGen_agentic_bench = { path = "../../crates/MechGen_agentic_bench" }
+MechGen_pipeline_compose = { path = "../../crates/MechGen_pipeline_compose" }
+MechGen_token_budget = { path = "../../crates/MechGen_token_budget" }
 
 [agent]
 swarm-size = 4

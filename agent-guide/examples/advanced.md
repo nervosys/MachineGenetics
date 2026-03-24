@@ -10,7 +10,7 @@
 **Prompt:** Build an agent that scrapes a web page, extracts all links, and returns them.
 
 **Response:**
-```redox
+```MechGen
 use std::agent::{Agent, Capability};
 
 #[derive(Debug)]
@@ -52,7 +52,7 @@ fn extract_links(html: &str) -> Vec<String> {
 **Prompt:** Build a data pipeline using a swarm: one agent fetches data, another transforms it, another saves it.
 
 **Response:**
-```redox
+```MechGen
 use std::agent::{Agent, Swarm, Capability};
 use std::sync::channel;
 
@@ -124,7 +124,7 @@ pub async fn run_pipeline(url: String, output: String) -> Result<usize, Error> /
 **Prompt:** Build a secret manager agent that requires explicit capabilities to read or write secrets.
 
 **Response:**
-```redox
+```MechGen
 use std::agent::{Agent, Capability};
 use std::collections::HashMap;
 
@@ -176,7 +176,7 @@ impl SecretManager {
 **Prompt:** Check the health of multiple URLs in parallel using a swarm, with a 5-second timeout per check.
 
 **Response:**
-```redox
+```MechGen
 use std::agent::{Agent, Swarm};
 use std::time::Duration;
 
@@ -245,7 +245,7 @@ pub async fn check_all(urls: Vec<String>) -> Result<HashMap<String, HealthStatus
 **Prompt:** Build agents that communicate via channels: a producer generates events, a consumer processes them.
 
 **Response:**
-```redox
+```MechGen
 use std::agent::{Agent, Swarm};
 use std::sync::{channel, Sender, Receiver};
 
@@ -318,7 +318,7 @@ pub async fn run_pipeline() -> Result<usize, Error> / io, agent {
 **Prompt:** Build a middleware system where each middleware transforms a request, similar to HTTP middleware.
 
 **Response:**
-```redox
+```MechGen
 #[derive(Debug, Clone)]
 pub struct Request {
     pub path: String,
@@ -387,7 +387,7 @@ impl Handler for AppHandler {
 **Prompt:** Write an agent that queries the Semantic Knowledge Base for optimization rules and applies them.
 
 **Response:**
-```redox
+```MechGen
 use std::agent::{Agent, Capability};
 use std::skb::{Rule, Query, Proof};
 
@@ -440,7 +440,7 @@ pub async fn optimize_file(path: &str) -> Result<String, Error> / io, agent {
 **Prompt:** Build a complete CLI task manager application with add, list, complete, and delete operations.
 
 **Response:**
-```redox
+```MechGen
 use std::fs;
 use std::json;
 use std::env;

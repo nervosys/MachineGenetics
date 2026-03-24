@@ -1,4 +1,4 @@
-// hello-world — Minimal Redox program.
+// hello-world — Minimal MechGen program.
 //
 // Demonstrates:
 //   - Entry point (pub fn main)
@@ -9,7 +9,7 @@
 
 pub fn main() {
     // Simple print.
-    println!("Hello, Redox!");
+    println!("Hello, MechGen!");
 
     // Variable binding and format string.
     let name: String = "World";
@@ -22,9 +22,9 @@ pub fn main() {
     println!("Counter: {counter}");
 
     // Boolean literals.
-    let is_redox: bool = true;
+    let is_mechgen: bool = true;
     let is_legacy: bool = false;
-    println!("is_redox={is_redox}, is_legacy={is_legacy}");
+    println!("is_mechgen={is_mechgen}, is_legacy={is_legacy}");
 
     // Return value (implicit — last expression).
     println!("Goodbye!");

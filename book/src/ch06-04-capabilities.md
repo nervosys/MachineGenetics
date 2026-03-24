@@ -7,7 +7,7 @@ can only perform operations they have explicit permission for.
 
 A Capability declares what an agent is allowed to do:
 
-```rdx
+```mg
 use std::agent::{Capability, CapabilityScope};
 
 let cap = Capability {
@@ -20,7 +20,7 @@ let cap = Capability {
 
 Agents declare their capabilities in the `capabilities()` method:
 
-```rdx
+```mg
 impl Agent for FileWriter {
     pub fn capabilities(&self) -> Vec<Capability> {
         vec![
@@ -35,7 +35,7 @@ impl Agent for FileWriter {
 
 ### Checking capabilities at runtime
 
-```rdx
+```mg
 use std::agent::Region;
 
 pub fn safe_write(agent: &Box<dyn Agent>, path: &str, data: &str) -> Result<(), Error> / io, agent {
@@ -52,7 +52,7 @@ pub fn safe_write(agent: &Box<dyn Agent>, path: &str, data: &str) -> Result<(), 
 A **Lease** is a time-bounded capability — it grants permission for a specific
 duration and automatically expires:
 
-```rdx
+```mg
 use std::agent::Lease;
 
 // Acquire a lease for 5 minutes
@@ -82,7 +82,7 @@ lease.release();
 
 **Regions** create bounded scopes where specific capabilities are active:
 
-```rdx
+```mg
 use std::agent::Region;
 
 // Only FFI calls are permitted inside this region
@@ -95,7 +95,7 @@ let result = Region::enter(ffi_capability, || {
 
 Regions compose — nested regions combine capabilities:
 
-```rdx
+```mg
 Region::enter(file_cap, || {
     // Can read/write files here
     Region::enter(net_cap, || {

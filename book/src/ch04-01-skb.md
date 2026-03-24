@@ -1,6 +1,6 @@
 # The SKB Model
 
-The **Safety Knowledge Base (SKB)** is Redox's alternative to Rust's compile-time
+The **Safety Knowledge Base (SKB)** is MechGen's alternative to Rust's compile-time
 safety enforcement. Instead of encoding safety rules in syntax, they are stored
 in a structured database that both the compiler and agents can query.
 
@@ -21,7 +21,7 @@ The SKB stores **rules** — formal safety invariants organized by category:
 
 From code, use the `std::skb` module:
 
-```rdx
+```mg
 use std::skb::{query, Rule};
 
 pub fn check_rules() {
@@ -35,8 +35,8 @@ pub fn check_rules() {
 From the CLI:
 
 ```sh
-rdx skb query --category borrow
-rdx skb validate src/
+mg skb query --category borrow
+mg skb validate src/
 ```
 
 ## How the SKB replaces lifetimes
@@ -49,9 +49,9 @@ fn longest<'a>(a: &'a str, b: &'a str) -> &'a str {
 }
 ```
 
-In Redox, the same function:
+In MechGen, the same function:
 
-```rdx
+```mg
 fn longest(a: &str, b: &str) -> &str {
     if a.len() > b.len() { a } else { b }
 }
@@ -59,7 +59,7 @@ fn longest(a: &str, b: &str) -> &str {
 
 No lifetime annotations. The SKB rule `lifetime:return-borrow` ensures that
 the returned reference does not outlive either input. The compiler can verify
-this (with `rdx check --skb-enforce`), or an agent can query the rule directly.
+this (with `mg check --skb-enforce`), or an agent can query the rule directly.
 
 ## SKB safety profiles
 

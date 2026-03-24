@@ -1,20 +1,20 @@
 # Modules & Imports
 
-Redox uses `::` path separators and the `use` keyword for imports — identical to
+MechGen uses `::` path separators and the `use` keyword for imports — identical to
 Rust.
 
 ## Declaring modules
 
-```rdx
-// In src/main.rdx or src/lib.rdx
-pub mod network;   // declares a public module (loads from src/network.rdx
-                   // or src/network/mod.rdx)
+```mg
+// In src/main.mg or src/lib.mg
+pub mod network;   // declares a public module (loads from src/network.mg
+                   // or src/network/mod.mg)
 mod helpers;       // private module
 ```
 
 ## Importing with `use`
 
-```rdx
+```mg
 // Import specific items
 use std::io::{Read, Write, File};
 use std::collections::{HashMap, HashSet};
@@ -31,7 +31,7 @@ use std::collections::HashMap as Map;
 
 ## Module paths
 
-| Rust                        | Redox                       |
+| Rust                        | MechGen                       |
 | --------------------------- | --------------------------- |
 | `std::io::Read`             | `std::io::Read`             |
 | `std::collections::HashMap` | `std::collections::HashMap` |
@@ -44,28 +44,28 @@ Modules map to files the same way as Rust:
 
 ```
 src/
-├── main.rdx          // crate root
-├── network.rdx       // mod network (if flat)
+├── main.mg          // crate root
+├── network.mg       // mod network (if flat)
 ├── network/          // mod network (if nested)
-│   ├── mod.rdx       //   module root
-│   ├── tcp.rdx       //   mod tcp
-│   └── http.rdx      //   mod http
+│   ├── mod.mg       //   module root
+│   ├── tcp.mg       //   mod tcp
+│   └── http.mg      //   mod http
 └── util/
-    ├── mod.rdx
-    └── helpers.rdx
+    ├── mod.mg
+    └── helpers.mg
 ```
 
 ## Re-exports
 
-```rdx
-// In mod.rdx — re-export items for a cleaner public API
+```mg
+// In mod.mg — re-export items for a cleaner public API
 pub use tcp::TcpStream;
 pub use http::{Request, Response};
 ```
 
 ## Prelude
 
-Redox automatically imports common types without requiring `use`:
+MechGen automatically imports common types without requiring `use`:
 
 - `Option<T>` — `Some`, `None`
 - `Result<T, E>` — `Ok`, `Err`

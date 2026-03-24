@@ -10,11 +10,11 @@ Rust partially addresses this with `async` (marks functions that can yield) and
 `unsafe` (marks functions that bypass safety). But most side effects — I/O,
 networking, randomness — are invisible in function signatures.
 
-## Redox's solution: effect annotations
+## MechGen's solution: effect annotations
 
 Every function that performs a side effect declares it after `/`:
 
-```rdx
+```mg
 // Pure function — no effects
 pub fn add(a: i32, b: i32) -> i32 {
     a + b
@@ -43,7 +43,7 @@ pub fn roll_dice() -> u32 / rng {
 Effects propagate up the call chain. If `foo()` calls `bar() / io`, then `foo`
 must also declare `/ io` (or handle the effect):
 
-```rdx
+```mg
 fn bar() / io {
     println!("hello");
 }
@@ -60,7 +60,7 @@ fn foo() / io {
 
 Functions can have multiple effects, comma-separated:
 
-```rdx
+```mg
 pub fn scrape_and_save(url: &str, path: &str) -> Result<(), Error> / io, net {
     let data = Request::get(url).send()?.text()?;
     File::write(path, &data)?;
@@ -85,7 +85,7 @@ what a function can do without reading the implementation.
 
 The compiler tracks effects and reports violations:
 
-```rdx
+```mg
 // ERROR: function performs io but does not declare / io
 fn sneaky() {
     println!("I'm printing!");    // io effect not declared!

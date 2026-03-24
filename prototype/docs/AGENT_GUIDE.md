@@ -1,12 +1,12 @@
-# Redox Agent Guide
+# MechGen Agent Guide
 
-> How to build, deploy, and manage agents in the Redox ecosystem.
+> How to build, deploy, and manage agents in the MechGen ecosystem.
 
 ---
 
 ## 1. What is an Agentic Compiler?
 
-In Redox, the compiler is designed to be operated by AI agents — not just human
+In MechGen, the compiler is designed to be operated by AI agents — not just human
 developers. Every language construct is:
 
 - **Queryable** — agents can inspect types, contracts, effects, and costs.
@@ -21,7 +21,7 @@ developers. Every language construct is:
 
 ### 2.1 Swarm Model
 
-Redox supports multi-agent compilation through a swarm model:
+MechGen supports multi-agent compilation through a swarm model:
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
@@ -75,7 +75,7 @@ bus.subscribe("channel.name", |msg| {
 
 ### 3.2 Event Channels
 
-Standard channels in the Redox compiler:
+Standard channels in the MechGen compiler:
 
 | Channel             | Purpose                            |
 | ------------------- | ---------------------------------- |
@@ -90,7 +90,7 @@ Standard channels in the Redox compiler:
 ### 3.3 Consensus
 
 For decisions requiring agreement across agents (e.g., optimisation strategy),
-Redox provides a consensus module:
+MechGen provides a consensus module:
 
 ```
 let consensus = ConsensusManager.new();

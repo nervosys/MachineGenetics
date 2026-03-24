@@ -1,6 +1,6 @@
 # Forge.toml
 
-`Forge.toml` is the project manifest — Redox's equivalent of `Cargo.toml`.
+`Forge.toml` is the project manifest — MechGen's equivalent of `Cargo.toml`.
 
 ## Minimal example
 
@@ -19,7 +19,7 @@ name = "my_app"
 version = "1.2.3"
 edition = "2025"
 authors = ["Alice <alice@example.com>"]
-description = "An example Redox project"
+description = "An example MechGen project"
 license = "MIT"
 repository = "https://github.com/alice/my_app"
 

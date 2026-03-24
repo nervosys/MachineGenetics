@@ -4,7 +4,7 @@ Agents communicate through typed, structured **Messages** sent over a **Bus**.
 
 ## Message structure
 
-```rdx
+```mg
 use std::agent::Message;
 
 // Create a message
@@ -26,7 +26,7 @@ let corr = msg.correlation_id;    // for request-response tracking
 
 The **Bus** is a publish-subscribe message system for swarm-wide communication:
 
-```rdx
+```mg
 use std::agent::Bus;
 
 pub fn main() / agent {
@@ -49,7 +49,7 @@ pub fn main() / agent {
 
 Messages are generic over their payload type:
 
-```rdx
+```mg
 // String messages
 let text_msg: Message<String> = Message::new(id1, id2, "hello");
 
@@ -62,7 +62,7 @@ struct BuildRequest {
 
 let build_msg: Message<BuildRequest> = Message::new(
     id1, id2,
-    BuildRequest { file: "main.rdx".into(), optimize: true },
+    BuildRequest { file: "main.mg".into(), optimize: true },
 );
 ```
 
@@ -70,9 +70,9 @@ let build_msg: Message<BuildRequest> = Message::new(
 
 Use `correlation_id` to match responses to requests:
 
-```rdx
+```mg
 // Send a request
-let request = Message::new(my_id, worker_id, "compile main.rdx");
+let request = Message::new(my_id, worker_id, "compile main.mg");
 let corr_id = request.correlation_id;
 swarm.send_msg(request)?;
 
@@ -84,7 +84,7 @@ let response = wait_for_response(corr_id)?;
 
 Message operations can fail with `AgentError`:
 
-```rdx
+```mg
 use std::agent::{AgentError, AgentErrorKind};
 
 match swarm.send(target_id, "task") {

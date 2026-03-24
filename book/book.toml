@@ -1,7 +1,7 @@
 [book]
-title = "The Redox Programming Language"
-authors = ["The Redox Project"]
-description = "A comprehensive guide to the Redox agentic-first programming language"
+title = "The MechGen Programming Language"
+authors = ["The MechGen Project"]
+description = "A comprehensive guide to the MechGen agentic-first programming language"
 language = "en"
 src = "src"
 
@@ -12,5 +12,5 @@ create-missing = false
 [output.html]
 default-theme = "navy"
 preferred-dark-theme = "navy"
-git-repository-url = "https://github.com/nervosys/Redox"
-edit-url-template = "https://github.com/nervosys/Redox/edit/master/book/{path}"
+git-repository-url = "https://github.com/nervosys/MechGen"
+edit-url-template = "https://github.com/nervosys/MechGen/edit/master/book/{path}"

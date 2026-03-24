@@ -1,12 +1,12 @@
-# The Redox Programming Language
+# The MechGen Programming Language
 
-Welcome to *The Redox Programming Language*, the comprehensive guide to Redox —
+Welcome to *The MechGen Programming Language*, the comprehensive guide to MechGen —
 an **agentic-first** systems language that reimagines Rust for a world where AI
 agents are first-class participants in software development.
 
-## What Is Redox?
+## What Is MechGen?
 
-Redox takes Rust's unmatched safety guarantees and performance characteristics
+MechGen takes Rust's unmatched safety guarantees and performance characteristics
 and reimagines them for an era of AI-driven development:
 
 - **Zero-ambiguity syntax** — a deterministic LL(1) grammar that eliminates
@@ -29,11 +29,11 @@ and reimagines them for an era of AI-driven development:
 
 This book is for:
 
-- **Rust developers** who want to understand how Redox simplifies and extends
+- **Rust developers** who want to understand how MechGen simplifies and extends
   Rust's model for agentic workflows.
 - **AI/ML engineers** building agent swarms and wanting a language designed for
   multi-agent coordination.
-- **AI agents** that need a concise, unambiguous reference for generating Redox
+- **AI agents** that need a concise, unambiguous reference for generating MechGen
   code.
 - **Language enthusiasts** curious about algebraic effects, capability-based
   safety, and MLIR-native compilation.
@@ -42,24 +42,24 @@ This book is for:
 
 The book is organized in four parts:
 
-1. **Getting Started** — Install Redox, write your first program, create a
+1. **Getting Started** — Install MechGen, write your first program, create a
    project.
 2. **Language Fundamentals** — Syntax, types, ownership, and the SKB safety
    model.
 3. **Advanced Features** — Algebraic effects, agent primitives, and swarm
    orchestration.
-4. **Practical Redox** — Standard library tour, tooling, and migrating from
+4. **Practical MechGen** — Standard library tour, tooling, and migrating from
    Rust.
 
 If you're coming from Rust, start with the
-[Redox vs Rust Cheatsheet](appendix-cheatsheet.md) for a quick mapping, then
+[MechGen vs Rust Cheatsheet](appendix-cheatsheet.md) for a quick mapping, then
 dive into whichever chapter interests you.
 
 ## Conventions
 
-Code examples use Redox standard syntax throughout:
+Code examples use MechGen standard syntax throughout:
 
-```rdx
+```mg
 // A simple function that greets a user
 pub fn greet(name: &str) -> String {
     format!("Hello, {name}!")

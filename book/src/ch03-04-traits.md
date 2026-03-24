@@ -1,11 +1,11 @@
 # Traits
 
-Traits define shared behavior, just like Rust. Redox uses `trait` for
+Traits define shared behavior, just like Rust. MechGen uses `trait` for
 declarations and `impl Trait for Type` for implementations.
 
 ## Defining traits
 
-```rdx
+```mg
 pub trait Summary {
     pub fn summarize(&self) -> String;
 }
@@ -13,7 +13,7 @@ pub trait Summary {
 
 ### With default methods
 
-```rdx
+```mg
 pub trait Summary {
     pub fn summarize(&self) -> String;
 
@@ -30,7 +30,7 @@ pub trait Summary {
 
 ### With associated types
 
-```rdx
+```mg
 pub trait Iterator {
     type Item;
     pub fn next(&mut self) -> Option<Self::Item>;
@@ -39,7 +39,7 @@ pub trait Iterator {
 
 ## Implementing traits
 
-```rdx
+```mg
 struct Article {
     title: String,
     body: String,
@@ -54,7 +54,7 @@ impl Summary for Article {
 
 ## Using trait objects
 
-```rdx
+```mg
 // Dynamic dispatch with Box<dyn>
 pub fn print_summary(item: &Box<dyn Summary>) / io {
     println!("{}", item.summarize());
@@ -85,7 +85,7 @@ pub fn print_summary<T: Summary>(item: &T) / io {
 
 ## Deriving traits
 
-```rdx
+```mg
 #[derive(Clone, Debug, PartialEq)]
 pub struct Config {
     name: String,

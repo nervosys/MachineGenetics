@@ -1,4 +1,4 @@
-// effects-showcase — Algebraic effect system in Redox.
+// effects-showcase — Algebraic effect system in MechGen.
 //
 // Demonstrates:
 //   - Effect declarations (effect keyword)
@@ -322,7 +322,7 @@ fn print_receipt(order: &Order) / io + db + log {
 // ─────────────────────────────────────────────────────────────────────
 
 pub fn main() / io {
-    println!("=== Redox Effects Showcase ===");
+    println!("=== MechGen Effects Showcase ===");
     println!("");
 
     // §2 — Pure functions.
@@ -335,7 +335,7 @@ pub fn main() / io {
 
     // §3 — Single effect annotation.
     println!("-- Single effect (/ io) --");
-    greet("Redox");
+    greet("MechGen");
     println!("");
 
     // §5 — Effect polymorphism.

@@ -1,18 +1,18 @@
-# Redox CI/CD Pipeline
+# MechGen CI/CD Pipeline
 
-GitHub Actions workflows for the Redox language ecosystem.
+GitHub Actions workflows for the MechGen language ecosystem.
 
 ## Workflows
 
 | Workflow                                         | Trigger               | Purpose                  |
 | ------------------------------------------------ | --------------------- | ------------------------ |
-| [redox-ci.yml](workflows/redox-ci.yml)           | Push to `master`, PRs | Full CI pipeline         |
-| [redox-pr.yml](workflows/redox-pr.yml)           | PRs only              | Fast PR feedback         |
-| [redox-release.yml](workflows/redox-release.yml) | Version tags (`v*`)   | Build & publish releases |
+| [MechGen-ci.yml](workflows/MechGen-ci.yml)           | Push to `master`, PRs | Full CI pipeline         |
+| [MechGen-pr.yml](workflows/MechGen-pr.yml)           | PRs only              | Fast PR feedback         |
+| [MechGen-release.yml](workflows/MechGen-release.yml) | Version tags (`v*`)   | Build & publish releases |
 
 ## CI Pipeline Stages
 
-Per [REDOX_ECOSYSTEM.md](../REDOX_ECOSYSTEM.md) §8.3:
+Per [mechgen_ECOSYSTEM.md](../mechgen_ECOSYSTEM.md) §8.3:
 
 ```
 ┌─────────┐   ┌─────────┐   ┌──────────┐   ┌───────────┐   ┌──────────┐
@@ -31,11 +31,11 @@ Per [REDOX_ECOSYSTEM.md](../REDOX_ECOSYSTEM.md) §8.3:
 | Build     | Compile tools | `cargo build --release`    |      < 60s      |
 | Test      | rust2rdx      | `cargo test` (28 rules)    |      < 10s      |
 | Test      | rdx2rs        | `cargo test` (39 rules)    |      < 10s      |
-| Test      | rdx CLI       | `cargo test` (12 commands) |      < 10s      |
+| Test      | mg CLI       | `cargo test` (12 commands) |      < 10s      |
 | Test      | prototype     | `cargo test` (43 tests)    |      < 15s      |
-| Transpile | Round-trip    | Rust → Redox → Rust        |      < 30s      |
-| Validate  | Examples      | Check Forge.toml + .rdx    |      < 5s       |
-| Validate  | Stdlib        | Count .rdx modules         |      < 2s       |
+| Transpile | Round-trip    | Rust → MechGen → Rust        |      < 30s      |
+| Validate  | Examples      | Check Forge.toml + .mg    |      < 5s       |
+| Validate  | Stdlib        | Count .mg modules         |      < 2s       |
 | Validate  | SKB           | JSON parsing               |      < 2s       |
 | Validate  | Benchmarks    | JSON parsing               |      < 2s       |
 
@@ -43,7 +43,7 @@ Per [REDOX_ECOSYSTEM.md](../REDOX_ECOSYSTEM.md) §8.3:
 
 1. Tag a commit with a version: `git tag v0.1.0`
 2. Push the tag: `git push origin v0.1.0`
-3. The `redox-release` workflow automatically:
+3. The `MechGen-release` workflow automatically:
    - Runs all tests
    - Builds binaries for 5 platform targets
    - Creates a GitHub Release with tarballs and checksums
@@ -62,6 +62,6 @@ Per [REDOX_ECOSYSTEM.md](../REDOX_ECOSYSTEM.md) §8.3:
 
 | Binary     | Description                                |
 | ---------- | ------------------------------------------ |
-| `rust2rdx` | Rust → Redox transpiler                    |
-| `rdx2rs`   | Redox → Rust back-transpiler               |
-| `rdx`      | Redox CLI (build, test, run, fmt, migrate) |
+| `rust2rdx` | Rust → MechGen transpiler                    |
+| `rdx2rs`   | MechGen → Rust back-transpiler               |
+| `mg`      | MechGen CLI (build, test, run, fmt, migrate) |

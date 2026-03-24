@@ -1,6 +1,6 @@
-# Redox Cookbook
+# MechGen Cookbook
 
-> Practical recipes for common tasks in Redox.
+> Practical recipes for common tasks in MechGen.
 
 ---
 
@@ -147,7 +147,7 @@ f parallel_map(data: &[i32], transform: f(i32) -> i32) -> [i32]~
 ## Recipe 8: Agent Communication via Swarm Bus
 
 ```
-use redox.swarm.{SwarmBus, Message};
+use MechGen.swarm.{SwarmBus, Message};
 
 +af agent_pipeline()
     @fx io, async
@@ -188,7 +188,7 @@ f insertion_sort(arr: &mut [i32])
 ## Recipe 10: Capability-Sandboxed Agent
 
 ```
-use redox.sandbox.{SandboxManager, CapabilityToken, ResourceLimits};
+use MechGen.sandbox.{SandboxManager, CapabilityToken, ResourceLimits};
 
 f run_sandboxed_agent(agent_id: &s, code: &s) -> s!SandboxError
     @fx io, mem
@@ -215,7 +215,7 @@ f run_sandboxed_agent(agent_id: &s, code: &s) -> s!SandboxError
 ## Recipe 11: Cost-Aware Code Selection
 
 ```
-use redox.cost.{query_cost, OptLevel};
+use MechGen.cost.{query_cost, OptLevel};
 
 f choose_implementation(target: &s) -> s {
     let vec_cost = cost.query("Vec::push", target, Release);
@@ -232,7 +232,7 @@ f choose_implementation(target: &s) -> s {
 ## Recipe 12: FFI Binding
 
 ```
-use redox.ffi.{FfiGenerator, ForeignFunction, ForeignType};
+use MechGen.ffi.{FfiGenerator, ForeignFunction, ForeignType};
 
 f generate_bindings() -> s {
     let mut fg = FfiGenerator.new();
