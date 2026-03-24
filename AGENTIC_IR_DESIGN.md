@@ -1,11 +1,6 @@
 # Agentic by Design: Language, IR, and Runtime Co-Optimization
 
-This document defines how Redox is redesigned from the ground up so that
-**agentic intelligence is not a feature bolted onto a compiler — it is the
-compiler**. Every layer of the system — syntax, type system, intermediate
-representation, optimization passes, code generation, and runtime — is
-structured to maximize the productivity of AI agents writing, compiling,
-optimizing, and executing Redox code.
+This document defines how Redox is redesigned from the ground up so that **agentic intelligence is not a feature bolted onto a compiler — it is the compiler**. Every layer of the system — syntax, type system, intermediate representation, optimization passes, code generation, and runtime — is structured to maximize the productivity of AI agents writing, compiling, optimizing, and executing Redox code.
 
 The three performance axes optimized simultaneously:
 
@@ -13,8 +8,7 @@ The three performance axes optimized simultaneously:
 2. **Compilation performance** — How fast source becomes machine code
 3. **Runtime performance** — How fast the generated code executes
 
-Traditional languages optimize (3) at the expense of (1) and (2). Redox
-optimizes all three by making them reinforcing rather than competing.
+Traditional languages optimize (3) at the expense of (1) and (2). Redox optimizes all three by making them reinforcing rather than competing.
 
 ---
 
@@ -22,36 +16,34 @@ optimizes all three by making them reinforcing rather than competing.
 
 ### 1. Token Economics
 
-Every AI agent pays per token — input and output. The language syntax must
-minimize token count without losing semantic precision.
+Every AI agent pays per token — input and output. The language syntax must minimize token count without losing semantic precision.
 
 #### 1.1 Sigil Compression
 
 Redox sigils replace multi-token Rust keywords with single characters:
 
-| Rust                          | Tokens | Redox              | Tokens | Savings |
-| ----------------------------- | ------ | ------------------- | ------ | ------- |
-| `pub fn foo(x: i32) -> i32`  | 10     | `+f foo(x: i32) -> i32` | 8  | 20%     |
-| `let mut x = 5;`             | 5      | `m x = 5;`         | 4      | 20%     |
-| `pub struct Point`            | 3      | `+S Point`         | 2      | 33%     |
-| `pub enum Color`              | 3      | `+E Color`         | 2      | 33%     |
-| `match x { ... }`            | 4+     | `? x { ... }`      | 3+     | 25%     |
-| `if cond { ... }`            | 4      | `?: cond { ... }`   | 3      | 25%     |
-| `for i in 0..n`              | 5      | `@ i ~ 0..n`       | 4      | 20%     |
-| `println!("hello")`          | 4      | `p"hello"`         | 2      | 50%     |
-| `Vec<T>`                     | 4      | `[T]~`             | 3      | 25%     |
-| `HashMap<K, V>`              | 6      | `{K:V}`            | 3      | 50%     |
-| `Option<T>`                  | 4      | `?T`               | 2      | 50%     |
-| `Result<T, E>`               | 6      | `R[T,E]`           | 4      | 33%     |
-| `Box<T>`                     | 4      | `^T`               | 2      | 50%     |
-| `Rc<T>`                      | 4      | `$T`               | 2      | 50%     |
-| `Arc<T>`                     | 4      | `@T`               | 2      | 50%     |
-| `true` / `false`             | 1      | `1b` / `0b`        | 1      | 0%      |
-| `String`                     | 1      | `s`                | 1      | 0%      |
-| `::`                         | 1      | `.`                | 1      | 0%      |
+| Rust                        | Tokens | Redox                   | Tokens | Savings |
+| --------------------------- | ------ | ----------------------- | ------ | ------- |
+| `pub fn foo(x: i32) -> i32` | 10     | `+f foo(x: i32) -> i32` | 8      | 20%     |
+| `let mut x = 5;`            | 5      | `m x = 5;`              | 4      | 20%     |
+| `pub struct Point`          | 3      | `+S Point`              | 2      | 33%     |
+| `pub enum Color`            | 3      | `+E Color`              | 2      | 33%     |
+| `match x { ... }`           | 4+     | `? x { ... }`           | 3+     | 25%     |
+| `if cond { ... }`           | 4      | `?: cond { ... }`       | 3      | 25%     |
+| `for i in 0..n`             | 5      | `@ i ~ 0..n`            | 4      | 20%     |
+| `println!("hello")`         | 4      | `p"hello"`              | 2      | 50%     |
+| `Vec<T>`                    | 4      | `[T]~`                  | 3      | 25%     |
+| `HashMap<K, V>`             | 6      | `{K:V}`                 | 3      | 50%     |
+| `Option<T>`                 | 4      | `?T`                    | 2      | 50%     |
+| `Result<T, E>`              | 6      | `R[T,E]`                | 4      | 33%     |
+| `Box<T>`                    | 4      | `^T`                    | 2      | 50%     |
+| `Rc<T>`                     | 4      | `$T`                    | 2      | 50%     |
+| `Arc<T>`                    | 4      | `@T`                    | 2      | 50%     |
+| `true` / `false`            | 1      | `1b` / `0b`             | 1      | 0%      |
+| `String`                    | 1      | `s`                     | 1      | 0%      |
+| `::`                        | 1      | `.`                     | 1      | 0%      |
 
-**Aggregate savings**: Typical Redox code is **30–40% fewer tokens** than
-equivalent Rust, which means:
+**Aggregate savings**: Typical Redox code is **30–40% fewer tokens** than equivalent Rust, which means:
 - Agents generate code 30–40% faster (fewer output tokens)
 - Agents read code 30–40% faster (fewer input context tokens)
 - Context windows hold 40–60% more semantic content
@@ -59,8 +51,7 @@ equivalent Rust, which means:
 
 #### 1.2 Inference Eliminates Annotation Tokens
 
-Rust requires explicit lifetime annotations, borrow markers, Send/Sync bounds,
-and allocation strategy markers. Redox infers all of them:
+Rust requires explicit lifetime annotations, borrow markers, Send/Sync bounds, and allocation strategy markers. Redox infers all of them:
 
 ```
 // Rust: 47 tokens
@@ -80,15 +71,11 @@ where
 }
 ```
 
-The 5-phase inference pipeline (ownership → borrow mode → lifetime → dispatch
-→ allocation) eliminates ~60% of Rust's type-level annotations. Agents never
-generate lifetime parameters, borrow markers, or trait bounds that the compiler
-can derive.
+The 5-phase inference pipeline (ownership → borrow mode → lifetime → dispatch → allocation) eliminates ~60% of Rust's type-level annotations. Agents never generate lifetime parameters, borrow markers, or trait bounds that the compiler can derive.
 
 #### 1.3 Self-Evolving Grammar
 
-The grammar adapts to usage patterns. If agents consistently write a pattern,
-the compiler can promote it to a shorter form:
+The grammar adapts to usage patterns. If agents consistently write a pattern, the compiler can promote it to a shorter form:
 
 ```
 // Agents write this 10,000 times across the ecosystem:
@@ -100,14 +87,11 @@ v result = items.map!(transform);
 // Accepted by quorum → new syntactic sugar permanently available
 ```
 
-This creates a **positive feedback loop**: the language becomes optimized for
-the patterns agents actually use, which makes agents faster, which generates
-more data for further optimization.
+This creates a **positive feedback loop**: the language becomes optimized for the patterns agents actually use, which makes agents faster, which generates more data for further optimization.
 
 ### 2. Effect-Typed Functions
 
-Effects are not annotations — they are **part of the type system**. The effect
-signature of a function is as fundamental as its parameter types.
+Effects are not annotations — they are **part of the type system**. The effect signature of a function is as fundamental as its parameter types.
 
 ```
 // Effect is part of the function type
@@ -136,18 +120,13 @@ handle traced_compute(3.14) {
 
 Why this matters for agents:
 
-- **Without reading a function body**, the agent knows whether it does I/O,
-  allocates, touches the network, or is pure. This is impossible in C, C++,
-  Rust, Go, Java, or Python.
-- Effect composition is algebraic: `/ io + net` is the union. The agent knows
-  the complete side-effect surface from the type alone.
-- `/ pure` functions are automatically parallelizable — the agent doesn't need
-  to analyze the body for data races.
+- **Without reading a function body**, the agent knows whether it does I/O, allocates, touches the network, or is pure. This is impossible in C, C++, Rust, Go, Java, or Python.
+- Effect composition is algebraic: `/ io + net` is the union. The agent knows the complete side-effect surface from the type alone.
+- `/ pure` functions are automatically parallelizable — the agent doesn't need to analyze the body for data races.
 
 ### 3. Contract-Typed Functions
 
-Contracts are not comments or debug assertions — they are **machine-verifiable
-theorems** attached to every function:
+Contracts are not comments or debug assertions — they are **machine-verifiable theorems** attached to every function:
 
 ```
 @req items.len() > 0 && items.len() <= 65536
@@ -162,18 +141,10 @@ theorems** attached to every function:
 
 Why this matters for agents:
 
-- **Synthesis from spec**: An agent can write the `spec` block and the compiler
-  (or another agent) generates the implementation. The contract *is* the
-  program; the code is a proof that the contract holds.
-- **Call-site optimization**: When an agent calls `sort(data)` where
-  `data.len() == 1024`, the compiler propagates this fact into `sort` and
-  eliminates branches, selects optimal algorithm variants, and proves bounds.
-- **Verification without testing**: Contracts can be proven by SMT solver or
-  the SKB, giving agents mathematical confidence that their code is correct
-  without writing tests.
-- **Performance budgets**: `@perf latency_ms < 100` is not a wish — it's a
-  compile-time constraint. The compiler selects algorithms and lowering
-  strategies that provably meet the budget, or reports an error.
+- **Synthesis from spec**: An agent can write the `spec` block and the compiler (or another agent) generates the implementation. The contract *is* the program; the code is a proof that the contract holds.
+- **Call-site optimization**: When an agent calls `sort(data)` where `data.len() == 1024`, the compiler propagates this fact into `sort` and eliminates branches, selects optimal algorithm variants, and proves bounds.
+- **Verification without testing**: Contracts can be proven by SMT solver or the SKB, giving agents mathematical confidence that their code is correct without writing tests.
+- **Performance budgets**: `@perf latency_ms < 100` is not a wish — it's a compile-time constraint. The compiler selects algorithms and lowering strategies that provably meet the budget, or reports an error.
 
 ### 4. Agentic Communication Primitives
 
@@ -267,9 +238,7 @@ v sum: i64 = data.iter().sum(); // cost: 0 allocs, ~0.3ms (vectorized)
 
 ### 7. RIR Design: Agents as First-Class Compilation Participants
 
-The Redox Intermediate Representation is not designed for a compiler to
-consume — it is designed for **agents and the compiler to co-consume**. Every
-node in the IR is simultaneously:
+The Redox Intermediate Representation is not designed for a compiler to consume — it is designed for **agents and the compiler to co-consume**. Every node in the IR is simultaneously:
 
 1. A compilation artifact (for code generation)
 2. A query target (for agent reasoning)
@@ -418,9 +387,7 @@ pub trait RirQuery {
 }
 ```
 
-This means an agent doesn't need to "read the IR" — it **queries** the IR
-for exactly the information it needs. The compiler serves as a
-**semantic database** that agents interrogate.
+This means an agent doesn't need to "read the IR" — it **queries** the IR for exactly the information it needs. The compiler serves as a **semantic database** that agents interrogate.
 
 ### 10. Agent-Mutatable IR (Write Path)
 
@@ -510,6 +477,7 @@ pub enum ProposalResult {
 ```
 
 Every mutation is **verified** before application:
+
 1. Type-check the replacement
 2. Re-verify contracts hold
 3. Re-check effect annotations are consistent
@@ -519,8 +487,7 @@ Every mutation is **verified** before application:
 
 ### 11. Agent-Collaborative Optimization Passes
 
-The optimization pipeline is not a fixed sequence of compiler passes — it is a
-**collaborative negotiation** between compiler passes and agent intelligence:
+The optimization pipeline is not a fixed sequence of compiler passes — it is a **collaborative negotiation** between compiler passes and agent intelligence:
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
@@ -546,24 +513,24 @@ The optimization pipeline is not a fixed sequence of compiler passes — it is a
 ```
 
 Each optimization pass can:
+
 1. **Propose** transformations (compiler heuristic or agent reasoning)
 2. **Query** the cost oracle for profitability
 3. **Verify** against contracts and SKB
 4. **Apply** if verified, **reject** with explanation if not
 
-The agent isn't running the compiler — it's **advising** the compiler, and the
-compiler **proves** the advice is correct before acting on it.
+The agent isn't running the compiler — it's **advising** the compiler, and the compiler **proves** the advice is correct before acting on it.
 
 ### 12. Pass Schedule: Agentic vs. Traditional
 
-| Traditional Compiler              | Agentic Compiler (RDC)                      |
-| --------------------------------- | ------------------------------------------- |
-| Fixed pass order                  | Dynamic, cost-driven pass selection          |
-| Each pass runs unconditionally    | Each pass runs if profitable (cost oracle)   |
-| Passes cannot communicate         | Passes share facts through FactSet           |
-| No external input                 | Agent proposals merged into pass queue       |
-| Halts after fixed iterations      | Halts when cost converges (no profitable tx) |
-| ~200 passes                       | ~15–20 passes + unbounded agent proposals    |
+| Traditional Compiler           | Agentic Compiler (RDC)                       |
+| ------------------------------ | -------------------------------------------- |
+| Fixed pass order               | Dynamic, cost-driven pass selection          |
+| Each pass runs unconditionally | Each pass runs if profitable (cost oracle)   |
+| Passes cannot communicate      | Passes share facts through FactSet           |
+| No external input              | Agent proposals merged into pass queue       |
+| Halts after fixed iterations   | Halts when cost converges (no profitable tx) |
+| ~200 passes                    | ~15–20 passes + unbounded agent proposals    |
 
 The pass scheduler itself queries the cost oracle:
 
@@ -580,8 +547,7 @@ while there_exist_profitable_transforms(rir, cost_oracle) {
 }
 ```
 
-This converges because each accepted transform reduces cost (or the cost
-oracle reports no further improvement possible).
+This converges because each accepted transform reduces cost (or the cost oracle reports no further improvement possible).
 
 ---
 
@@ -713,8 +679,7 @@ oracle reports no further improvement possible).
 
 ### 14. Incremental Compilation (Sub-Millisecond Hot Path)
 
-Traditional incremental compilation re-compiles entire compilation units.
-Agentic incremental compilation re-compiles **individual functions**:
+Traditional incremental compilation re-compiles entire compilation units. Agentic incremental compilation re-compiles **individual functions**:
 
 ```
 Agent modifies function step() in physics.rdx:
@@ -737,8 +702,8 @@ Compare:
   Go:                 ~0.2–0.5 seconds (fast but no optimization)
 ```
 
-This enables **hot-reload**: the agent modifies code, the compiler patches
-the running binary in <2ms, and the program continues with updated logic.
+This enables **hot-reload**: the agent modifies code, the compiler patches the running binary in <2ms, and the program continues with updated logic.
+
 The development loop becomes:
 
 ```
@@ -769,8 +734,7 @@ $ rdx build --token-report
   Annualized savings (100 builds/day): $182.50
 ```
 
-This makes agent development **economically optimized** — the language is
-literally cheaper to work with than alternatives.
+This makes agent development **economically optimized** — the language is literally cheaper to work with than alternatives.
 
 ---
 
@@ -778,9 +742,7 @@ literally cheaper to work with than alternatives.
 
 ### 16. Zero-Overhead Agent Communication at Runtime
 
-When agents produce Redox programs that themselves contain agentic behavior
-(e.g., multi-agent systems, swarm applications), the runtime must be as fast
-as the compilation pipeline:
+When agents produce Redox programs that themselves contain agentic behavior (e.g., multi-agent systems, swarm applications), the runtime must be as fast as the compilation pipeline:
 
 ```rust
 /// Runtime agent message passing — compiled to hardware primitives.
@@ -813,6 +775,7 @@ impl RuntimeBus {
 ```
 
 The compiler knows this is a bus operation (from effect `/ bus`) and:
+
 - Selects hardware-optimal primitives per target
 - Proves message types are Send + Sync (from contracts)
 - Eliminates bounds checks on ring buffer (contract: capacity is power of 2)
@@ -845,9 +808,7 @@ f process(data: &[f64]~) -> [f64]~ / pure {
 //   jmp .gpu_path
 ```
 
-The key insight: the compiler generates **all three paths** and the runtime
-selects with a single branch. No dynamic dispatch overhead. No vtable lookup.
-No JIT compilation.
+The key insight: the compiler generates **all three paths** and the runtime selects with a single branch. No dynamic dispatch overhead. No vtable lookup. No JIT compilation.
 
 ### 18. Memory Model: Four-Tier Agent Learning
 
@@ -887,9 +848,7 @@ pub struct GlobalMemory {
 }
 ```
 
-Each tier feeds the next: ephemeral patterns that repeat across tasks become
-session patterns; session patterns that persist across builds become project
-patterns; project patterns common across the ecosystem become global patterns.
+Each tier feeds the next: ephemeral patterns that repeat across tasks become session patterns; session patterns that persist across builds become project patterns; project patterns common across the ecosystem become global patterns.
 
 ### 19. Hot-Reload Runtime
 
@@ -921,47 +880,46 @@ Constraints (enforced by compiler):
 
 ### 20. Coding Performance
 
-| Metric                        | C++       | Rust      | Redox     | Factor        |
-| ----------------------------- | --------- | --------- | --------- | ------------- |
-| Tokens per equivalent program | 1.5×      | 1.0×      | 0.60×     | 40% fewer     |
-| Annotations required          | Manual    | Many      | Inferred  | ~0 manual     |
-| Error messages per bug        | ~3        | ~5        | ~1 + fix  | Auto-repair   |
-| Time to correct program       | Minutes   | Minutes   | Seconds   | 10–100×       |
-| Context window utilization    | ~40%      | ~60%      | ~95%      | 1.6× density  |
-| Tests required for confidence | Many      | Fewer     | Minimal   | Contracts     |
+| Metric                        | C++     | Rust    | Redox    | Factor       |
+| ----------------------------- | ------- | ------- | -------- | ------------ |
+| Tokens per equivalent program | 1.5×    | 1.0×    | 0.60×    | 40% fewer    |
+| Annotations required          | Manual  | Many    | Inferred | ~0 manual    |
+| Error messages per bug        | ~3      | ~5      | ~1 + fix | Auto-repair  |
+| Time to correct program       | Minutes | Minutes | Seconds  | 10–100×      |
+| Context window utilization    | ~40%    | ~60%    | ~95%     | 1.6× density |
+| Tests required for confidence | Many    | Fewer   | Minimal  | Contracts    |
 
 ### 21. Compilation Performance
 
-| Metric                        | GCC       | Clang/LLVM | Redox RDC | Factor        |
-| ----------------------------- | --------- | ---------- | --------- | ------------- |
-| Parse speed (tokens/sec)      | ~100K     | ~150K      | ~500K     | 3–5×          |
-| Optimization passes           | ~300      | ~200       | ~15–20    | 10–15×        |
-| Alias analysis cost           | O(n²)     | O(n²)      | O(1)      | 1 bit (pure)  |
-| IR transitions                | 3         | 3          | 1         | 3×            |
-| Incremental recompile         | TU-level  | TU-level   | Fn-level  | 100–1000×     |
-| Codegen overhead              | High      | High       | Minimal   | Direct encode |
-| Average full build (100K LOC) | ~60s      | ~45s       | ~3s       | 15–20×        |
-| Incremental (1 fn)            | ~5s       | ~3s        | ~2ms      | 1500–2500×    |
+| Metric                        | GCC      | Clang/LLVM | Redox RDC | Factor        |
+| ----------------------------- | -------- | ---------- | --------- | ------------- |
+| Parse speed (tokens/sec)      | ~100K    | ~150K      | ~500K     | 3–5×          |
+| Optimization passes           | ~300     | ~200       | ~15–20    | 10–15×        |
+| Alias analysis cost           | O(n²)    | O(n²)      | O(1)      | 1 bit (pure)  |
+| IR transitions                | 3        | 3          | 1         | 3×            |
+| Incremental recompile         | TU-level | TU-level   | Fn-level  | 100–1000×     |
+| Codegen overhead              | High     | High       | Minimal   | Direct encode |
+| Average full build (100K LOC) | ~60s     | ~45s       | ~3s       | 15–20×        |
+| Incremental (1 fn)            | ~5s      | ~3s        | ~2ms      | 1500–2500×    |
 
 ### 22. Runtime Performance
 
-| Metric                        | C -O3     | LLVM -O3  | Redox RDC | Mechanism                |
-| ----------------------------- | --------- | --------- | --------- | ------------------------ |
-| Vectorization coverage        | ~40%      | ~50%      | ~90%      | Contract-exact bounds    |
-| Auto-parallelization          | Manual    | Heuristic | Automatic | Effect-proven purity     |
-| Branch misprediction rate     | ~5%       | ~5%       | ~1%       | Contract → branchless    |
-| Bounds check overhead         | 0% (UB)   | ~2–5%     | 0% (safe) | Contract-proven elision  |
-| Allocation overhead (hot)     | Manual    | ~3–8%     | ~0%       | Stack promotion          |
-| Cache miss rate               | ~5%       | ~5%       | ~2%       | Layout + prefetch        |
-| GPU offload availability      | Manual    | No        | Automatic | Effect + cost threshold  |
-| Binary size (relative -Os)    | 1.0×      | 1.1×      | 0.4×      | Dead code + tight encode |
+| Metric                     | C -O3   | LLVM -O3  | Redox RDC | Mechanism                |
+| -------------------------- | ------- | --------- | --------- | ------------------------ |
+| Vectorization coverage     | ~40%    | ~50%      | ~90%      | Contract-exact bounds    |
+| Auto-parallelization       | Manual  | Heuristic | Automatic | Effect-proven purity     |
+| Branch misprediction rate  | ~5%     | ~5%       | ~1%       | Contract → branchless    |
+| Bounds check overhead      | 0% (UB) | ~2–5%     | 0% (safe) | Contract-proven elision  |
+| Allocation overhead (hot)  | Manual  | ~3–8%     | ~0%       | Stack promotion          |
+| Cache miss rate            | ~5%     | ~5%       | ~2%       | Layout + prefetch        |
+| GPU offload availability   | Manual  | No        | Automatic | Effect + cost threshold  |
+| Binary size (relative -Os) | 1.0×    | 1.1×      | 0.4×      | Dead code + tight encode |
 
 ---
 
 ## Part VI: The Agentic Advantage Cascade
 
-The reason Redox is fundamentally faster and safer is not any single feature —
-it is the **compounding interaction** between all features:
+The reason Redox is fundamentally faster and safer is not any single feature — it is the **compounding interaction** between all features:
 
 ```
 Level 0: TOKEN COMPRESSION
@@ -1039,7 +997,7 @@ THE CASCADE EFFECT:
 
 ## Part VII: Implementation Crate Architecture
 
-```
+```shell
 compiler/
   redox_rir/                     # RIR data structures + construction
     src/
@@ -1115,76 +1073,68 @@ compiler/
 
 ### Language Design for Agents
 
-| Feature                    | C++      | Rust     | Go       | Python   | Redox    |
-| -------------------------- | -------- | -------- | -------- | -------- | -------- |
-| Token efficiency           | Poor     | Fair     | Good     | Good     | **Best** |
-| Type inference depth       | Partial  | Good     | Partial  | None*    | **Full** |
-| Effect tracking            | None     | Partial† | None     | None     | **Full** |
-| Contract system            | None     | None     | None     | None     | **Full** |
-| Cost transparency          | None     | None     | None     | None     | **Full** |
-| Auto-parallelization       | Manual   | Manual   | Limited  | None     | **Auto** |
-| Agent queryable IR         | N/A      | N/A      | N/A      | N/A      | **Yes**  |
-| Agent writable IR          | N/A      | N/A      | N/A      | N/A      | **Yes**  |
-| Self-evolving syntax       | No       | No       | No       | No       | **Yes**  |
-| Safety without overhead    | UB       | Runtime  | GC       | GC       | **Proof**|
+| Feature                 | C++     | Rust     | Go      | Python | Redox     |
+| ----------------------- | ------- | -------- | ------- | ------ | --------- |
+| Token efficiency        | Poor    | Fair     | Good    | Good   | **Best**  |
+| Type inference depth    | Partial | Good     | Partial | None*  | **Full**  |
+| Effect tracking         | None    | Partial† | None    | None   | **Full**  |
+| Contract system         | None    | None     | None    | None   | **Full**  |
+| Cost transparency       | None    | None     | None    | None   | **Full**  |
+| Auto-parallelization    | Manual  | Manual   | Limited | None   | **Auto**  |
+| Agent queryable IR      | N/A     | N/A      | N/A     | N/A    | **Yes**   |
+| Agent writable IR       | N/A     | N/A      | N/A     | N/A    | **Yes**   |
+| Self-evolving syntax    | No      | No       | No      | No     | **Yes**   |
+| Safety without overhead | UB      | Runtime  | GC      | GC     | **Proof** |
 
-\* Python has type hints but no compile-time checking without mypy
-† Rust's Send/Sync track thread safety but not I/O, network, or allocation effects
+\* Python has type hints but no compile-time checking without mypy† Rust's Send/Sync track thread safety but not I/O, network, or allocation effects
 
 ### IR Design for Agents
 
-| Feature                    | LLVM IR  | MLIR     | GCC GIMPLE | Cranelift | **RIR**   |
-| -------------------------- | -------- | -------- | ---------- | --------- | --------- |
-| Contract facts             | No       | Plugin   | No         | No        | **Native**|
-| Effect annotations         | No       | Plugin   | No         | No        | **Native**|
-| Cost per node              | No       | No       | No         | No        | **Native**|
-| Ownership tracking         | No       | Plugin   | No         | No        | **Native**|
-| Agent provenance           | No       | No       | No         | No        | **Native**|
-| Agent-queryable            | N/A      | Limited  | N/A        | N/A       | **Full**  |
-| Agent-mutatable (verified) | N/A      | No       | N/A        | N/A       | **Full**  |
-| Alternatives tracked       | No       | No       | No         | No        | **Yes**   |
-| SKB validation per node    | N/A      | N/A      | N/A        | N/A       | **Yes**   |
-| Convergent optimization    | Fixed    | Fixed    | Fixed      | Fixed     | **Dynamic**|
+| Feature                    | LLVM IR | MLIR    | GCC GIMPLE | Cranelift | **RIR**     |
+| -------------------------- | ------- | ------- | ---------- | --------- | ----------- |
+| Contract facts             | No      | Plugin  | No         | No        | **Native**  |
+| Effect annotations         | No      | Plugin  | No         | No        | **Native**  |
+| Cost per node              | No      | No      | No         | No        | **Native**  |
+| Ownership tracking         | No      | Plugin  | No         | No        | **Native**  |
+| Agent provenance           | No      | No      | No         | No        | **Native**  |
+| Agent-queryable            | N/A     | Limited | N/A        | N/A       | **Full**    |
+| Agent-mutatable (verified) | N/A     | No      | N/A        | N/A       | **Full**    |
+| Alternatives tracked       | No      | No      | No         | No        | **Yes**     |
+| SKB validation per node    | N/A     | N/A     | N/A        | N/A       | **Yes**     |
+| Convergent optimization    | Fixed   | Fixed   | Fixed      | Fixed     | **Dynamic** |
 
 ### Runtime for Agents
 
-| Feature                    | C runtime | Rust runtime | Go runtime | Redox runtime |
-| -------------------------- | --------- | ------------ | ---------- | ------------- |
-| Agent bus latency          | N/A       | N/A          | N/A        | **<50ns**     |
-| Hot-reload latency         | N/A       | N/A          | N/A        | **<2ms**      |
-| Auto-parallel dispatch     | No        | No           | Goroutines | **Effect-driven** |
-| GPU offload                | Manual    | Manual       | No         | **Automatic** |
-| 4-tier memory model        | No        | No           | No         | **Yes**       |
-| Capability sandboxing      | No        | No           | No         | **Yes**       |
+| Feature                | C runtime | Rust runtime | Go runtime | Redox runtime     |
+| ---------------------- | --------- | ------------ | ---------- | ----------------- |
+| Agent bus latency      | N/A       | N/A          | N/A        | **<50ns**         |
+| Hot-reload latency     | N/A       | N/A          | N/A        | **<2ms**          |
+| Auto-parallel dispatch | No        | No           | Goroutines | **Effect-driven** |
+| GPU offload            | Manual    | Manual       | No         | **Automatic**     |
+| 4-tier memory model    | No        | No           | No         | **Yes**           |
+| Capability sandboxing  | No        | No           | No         | **Yes**           |
 
 ---
 
 ## Summary
 
-Redox is not a programming language with agentic features. It is an
-**agentic system that happens to compile to machine code.**
+Redox is not a programming language with agentic features. It is an **agentic system that happens to compile to machine code.**
 
-Every design decision optimizes for the symbiosis of human intent, agent
-intelligence, and hardware execution:
+Every design decision optimizes for the symbiosis of human intent, agent intelligence, and hardware execution:
 
-| Layer        | Traditional Design          | Redox Agentic Design                    |
-| ------------ | --------------------------- | --------------------------------------- |
-| Syntax       | For human readability       | For agent token efficiency + readability |
-| Types        | For human annotation        | For compiler inference + agent query     |
-| Effects      | Implicit (hope for best)    | Explicit (prove for certain)             |
-| Contracts    | Comments (ignored)          | Theorems (enforced + exploited)          |
-| IR           | For compiler consumption    | For agent + compiler co-consumption      |
-| Optimization | Fixed heuristic pipeline    | Dynamic agent-advised convergence        |
-| Codegen      | Through 3+ abstraction layers | Direct to machine code               |
-| Runtime      | Passive execution          | Active agent communication + learning    |
-| Memory       | Stateless compilation       | 4-tier persistent learning               |
-| Evolution    | Committee-designed syntax   | Usage-driven self-evolution              |
+| Layer        | Traditional Design            | Redox Agentic Design                     |
+| ------------ | ----------------------------- | ---------------------------------------- |
+| Syntax       | For human readability         | For agent token efficiency + readability |
+| Types        | For human annotation          | For compiler inference + agent query     |
+| Effects      | Implicit (hope for best)      | Explicit (prove for certain)             |
+| Contracts    | Comments (ignored)            | Theorems (enforced + exploited)          |
+| IR           | For compiler consumption      | For agent + compiler co-consumption      |
+| Optimization | Fixed heuristic pipeline      | Dynamic agent-advised convergence        |
+| Codegen      | Through 3+ abstraction layers | Direct to machine code                   |
+| Runtime      | Passive execution             | Active agent communication + learning    |
+| Memory       | Stateless compilation         | 4-tier persistent learning               |
+| Evolution    | Committee-designed syntax     | Usage-driven self-evolution              |
 
-The result: agents write Redox code **faster** (40% fewer tokens, zero
-annotations, auto-repair), the compiler processes it **faster** (15–20×
-compilation speed, 1500× incremental), and the generated code runs **faster**
-(1.1–1.8× LLVM -O3 via contract + effect exploitation) and **safer** (zero
-runtime checks via compile-time proof).
+The result: agents write Redox code **faster** (40% fewer tokens, zero annotations, auto-repair), the compiler processes it **faster** (15–20× compilation speed, 1500× incremental), and the generated code runs **faster** (1.1–1.8× LLVM -O3 via contract + effect exploitation) and **safer** (zero runtime checks via compile-time proof).
 
-**This is not a compiler. It is a collaborative intelligence engine that
-produces machine code as a side effect of agent reasoning.**
+**This is not a compiler. It is a collaborative intelligence engine that produces machine code as a side effect of agent reasoning.**
