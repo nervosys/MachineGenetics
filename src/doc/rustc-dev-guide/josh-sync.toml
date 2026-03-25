@@ -1,3 +1,0 @@
-org = "rust-lang"
-repo = "redox-dev-guide"
-path = "src/doc/redox-dev-guide"

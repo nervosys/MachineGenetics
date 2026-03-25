@@ -1,1 +1,0 @@
-arithmetic-side-effects-allowed = ["redox_abi::Size", "redox_apfloat::ieee::IeeeFloat"]
