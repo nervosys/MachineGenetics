@@ -63,13 +63,13 @@ Redox supports **two interchangeable surface syntaxes** that parse to the same A
 | **Standard** | `.rdx`    | Human-readable, C-family style       | `pub fn main() -> i32 { ... }` |
 | **Compact**  | `.rdx`    | Machine/agent-optimized, sigil-based | `+f main() -> i32 { ... }`     |
 
-A `#![syntax(compact)]` pragma at the top of a file selects compact mode. **Standard mode is the default.**
+A `#![syntax(agent)]` pragma at the top of a file selects agent mode. **human mode is the default.**
 
 Both modes are byte-for-byte round-trippable via `rdx fmt --standard` and `rdx fmt --compact`. The compiler accepts both in the same project — individual files choose their mode.
 
 ### 2.1 Design Principle
 
-Standard mode uses **C-family keywords** wherever a direct C, C++, or Rust analogue exists:
+human mode uses **C-family keywords** wherever a direct C, C++, or Rust analogue exists:
 
 - C keywords: `if`, `else`, `for`, `return`, `struct`, `enum`, `union`, `const`, `true`, `false`
 - C++ keywords: `namespace` → `mod`, `template<T>` → `<T>`, `::` path separator
@@ -100,7 +100,7 @@ block_comment = '/*' { any_char | block_comment }* '*/' ;  /* nestable */
 
 All keywords are reserved and cannot be used as identifiers.
 
-**Standard mode keywords:**
+**human mode keywords:**
 
 ```
 keyword =
@@ -129,7 +129,7 @@ keyword =
     ;
 ```
 
-**Compact mode keywords** (mapped to standard equivalents — see Appendix B):
+**agent mode keywords** (mapped to human equivalents — see Appendix B):
 
 ```
 compact_keyword =
@@ -186,7 +186,7 @@ escape_sequence      = '\\' ( 'n' | 'r' | 't' | '\\' | '\'' | '"' | '0'
 /* Character literals */
 char_literal = '\'' ( any_char - ( '\'' | '\\' ) | escape_sequence ) '\'' ;
 
-/* Boolean literals — standard mode */
+/* Boolean literals — human mode */
 bool_literal = 'true' | 'false' ;
 
 /* Byte literals */
@@ -229,8 +229,8 @@ SEMI      = ';' ;   COMMA = ',' ;   DOT   = '.' ;
 COLON     = ':' ;   ARROW = '->' ;  FAT_ARROW = '=>' ;
 QUESTION  = '?' ;   HASH  = '#' ;   AT    = '@' ;
 DOTDOT    = '..' ;  DOTDOTEQ = '..=' ;
-SCOPE     = '::' ;  /* standard mode path separator */
-LT_ANGLE  = '<' ;   GT_ANGLE = '>' ;  /* standard mode generic delimiters */
+SCOPE     = '::' ;  /* human mode path separator */
+LT_ANGLE  = '<' ;   GT_ANGLE = '>' ;  /* human mode generic delimiters */
 ```
 
 ---
@@ -370,7 +370,7 @@ static_def  = 'static' IDENT ':' type '=' expression ';' ;
 
 ### 4.9 Types
 
-Standard mode uses `<>` angle brackets for generics and full type names for containers, matching C++/Rust conventions. All lifetime annotations remain inferred.
+human mode uses `<>` angle brackets for generics and full type names for containers, matching C++/Rust conventions. All lifetime annotations remain inferred.
 
 ```
 type = type_path
@@ -595,7 +595,7 @@ The last expression in a block (without trailing `;`) is the block's value (tail
 
 ### 4.14 Attributes
 
-Standard mode uses `#[...]` for most attributes, matching C++/Rust conventions. Redox-unique attributes retain the `@` prefix for contract, performance, and agent annotations.
+human mode uses `#[...]` for most attributes, matching C++/Rust conventions. Redox-unique attributes retain the `@` prefix for contract, performance, and agent annotations.
 
 ```
 attribute = '#' '[' attr_name [ '(' attr_args ')' ] ']'
@@ -637,7 +637,7 @@ effect_annotation = '/' effect_name { '+' effect_name }* ;
 effect_name       = IDENT ;
 ```
 
-Effects are Redox-unique and have no C analogue. The `/` syntax is shared between standard and compact modes.
+Effects are Redox-unique and have no C analogue. The `/` syntax is shared between standard and agent modes.
 
 ### 4.16 Spec Definitions
 
@@ -1202,7 +1202,7 @@ Every standard-mode construct has a compact-mode equivalent. The compiler desuga
 
 ### B.1 Declaration Keywords
 
-| Standard   | Compact | Meaning           |
+| Human   | Agent | Meaning           |
 | ---------- | ------- | ----------------- |
 | `fn`       | `f`     | Function          |
 | `let`      | `v`     | Immutable binding |
@@ -1221,7 +1221,7 @@ Every standard-mode construct has a compact-mode equivalent. The compiler desuga
 
 ### B.2 Control Flow Keywords
 
-| Standard     | Compact    | Meaning                    |
+| Human     | Agent    | Meaning                    |
 | ------------ | ---------- | -------------------------- |
 | `if`         | `?`        | Conditional                |
 | `else`       | `:`        | Else branch                |
@@ -1239,7 +1239,7 @@ Every standard-mode construct has a compact-mode equivalent. The compiler desuga
 
 ### B.3 Type Syntax
 
-| Standard              | Compact      | Meaning             |
+| Human              | Agent      | Meaning             |
 | --------------------- | ------------ | ------------------- |
 | `&T`                  | `&T`         | Shared reference    |
 | `&mut T`              | `&!T`        | Exclusive reference |
@@ -1262,7 +1262,7 @@ Every standard-mode construct has a compact-mode equivalent. The compiler desuga
 
 ### B.4 Path and Scope
 
-| Standard  | Compact  | Meaning        |
+| Human  | Agent  | Meaning        |
 | --------- | -------- | -------------- |
 | `::`      | `.`      | Path separator |
 | `crate::` | `~.`     | Crate root     |
@@ -1271,7 +1271,7 @@ Every standard-mode construct has a compact-mode equivalent. The compiler desuga
 
 ### B.5 Syntax Constructs
 
-| Standard              | Compact                | Meaning        |
+| Human              | Agent                | Meaning        |
 | --------------------- | ---------------------- | -------------- |
 | `\|x\| expr`          | `fn(x) => expr`        | Closure        |
 | `Type { field: val }` | `Type @{ field: val }` | Struct literal |
@@ -1284,7 +1284,7 @@ Every standard-mode construct has a compact-mode equivalent. The compiler desuga
 
 ### B.6 Attributes
 
-| Standard            | Compact     | Meaning       |
+| Human            | Agent     | Meaning       |
 | ------------------- | ----------- | ------------- |
 | `#[derive(...)]`    | `@d(...)`   | Derive        |
 | `#[repr(...)]`      | `@r(...)`   | Repr          |
@@ -1298,7 +1298,7 @@ Every standard-mode construct has a compact-mode equivalent. The compiler desuga
 
 ### B.7 Output Macros
 
-| Standard           | Compact   | Meaning       |
+| Human           | Agent   | Meaning       |
 | ------------------ | --------- | ------------- |
 | `println!("...")`  | `p"..."`  | Print line    |
 | `format!("...")`   | `f"..."`  | Format string |
@@ -1306,7 +1306,7 @@ Every standard-mode construct has a compact-mode equivalent. The compiler desuga
 
 ### B.8 Shared Syntax (Identical in Both Modes)
 
-The following are identical in standard and compact modes:
+The following are identical in standard and agent modes:
 - All numeric types (`i32`, `u64`, `f64`, etc.)
 - All arithmetic, comparison, logical, and bitwise operators
 - Semicolons, braces, parentheses

@@ -1,7 +1,7 @@
 # Migration from Rust
 
 The `rust2mg` tool translates Rust source files into MechGen. Because MechGen's
-standard syntax closely mirrors Rust, migration is mostly straightforward — the
+human syntax closely mirrors Rust, migration is mostly straightforward — the
 main additions are effect annotations and the capability system.
 
 ## Quick start
@@ -19,9 +19,9 @@ mg migrate src/main.rs --dry-run
 
 ## What stays the same
 
-Most Rust syntax is valid MechGen in standard mode:
+Most Rust syntax is valid MechGen in human mode:
 
-| Feature               | Rust                 | MechGen (Standard)     |
+| Feature               | Rust                 | MechGen (Human)     |
 | --------------------- | -------------------- | -------------------- |
 | Functions             | `pub fn foo()`       | `pub fn foo()`       |
 | Variables             | `let x = 5;`         | `let x = 5;`         |
@@ -73,7 +73,7 @@ pub fn count_words(text: &str) -> HashMap<String, usize> {
 }
 ```
 
-### MechGen output (standard syntax)
+### MechGen output (human syntax)
 
 ```mg
 use std::collections::HashMap;

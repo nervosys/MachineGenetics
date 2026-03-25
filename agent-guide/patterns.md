@@ -1,7 +1,7 @@
 # MechGen Idiomatic Patterns
 
 > Common patterns for generating correct, idiomatic MechGen code.
-> All examples use **standard syntax** (default).
+> All examples use **human syntax** (default).
 
 ---
 

@@ -1,8 +1,8 @@
 /// MechGen Formatter (redoxfmt) — bidirectional pretty-printer.
 ///
 /// Two modes:
-///   `compact`  — emit minimal-token MechGen canonical form (sigils: f, +f, S, v, m …)
-///   `expand`   — emit human-readable Rust-like form (fn, pub fn, struct, let …)
+///   `agent`   — emit minimal-token MechGen canonical form (sigils: f, +f, S, v, m …)
+///   `human`   — emit human-readable Rust-like form (fn, pub fn, struct, let …)
 ///
 /// Both modes round-trip losslessly through the AST: the semantic content is
 /// identical; only the surface syntax differs.
@@ -10,26 +10,26 @@ use crate::ast::*;
 
 // ── Public API ───────────────────────────────────────────────────────
 
-/// Format a module in compact (minimal-token) MechGen syntax.
-pub fn format_compact(module: &Module) -> String {
+/// Format a module in agent (minimal-token) MechGen syntax.
+pub fn format_agent(module: &Module) -> String {
     let mut buf = String::new();
     for (i, item) in module.items.iter().enumerate() {
         if i > 0 {
             buf.push('\n');
         }
-        emit_item(&mut buf, item, Mode::Compact, 0);
+        emit_item(&mut buf, item, Mode::Agent, 0);
     }
     buf
 }
 
-/// Format a module in expanded (human-readable Rust-like) syntax.
-pub fn format_expand(module: &Module) -> String {
+/// Format a module in human (human-readable Rust-like) syntax.
+pub fn format_human(module: &Module) -> String {
     let mut buf = String::new();
     for (i, item) in module.items.iter().enumerate() {
         if i > 0 {
             buf.push('\n');
         }
-        emit_item(&mut buf, item, Mode::Expand, 0);
+        emit_item(&mut buf, item, Mode::Human, 0);
     }
     buf
 }
@@ -38,8 +38,8 @@ pub fn format_expand(module: &Module) -> String {
 
 #[derive(Clone, Copy, PartialEq)]
 enum Mode {
-    Compact,
-    Expand,
+    Agent,
+    Human,
 }
 
 // ── Indentation helper ───────────────────────────────────────────────
@@ -100,7 +100,7 @@ fn emit_function(buf: &mut String, f: &FunctionDef, vis: Visibility, mode: Mode,
 
     indent(buf, depth);
     match mode {
-        Mode::Compact => {
+        Mode::Agent => {
             if f.is_async && f.is_unsafe {
                 if vis == Visibility::Public { buf.push_str("+auf "); } else { buf.push_str("auf "); }
             } else if f.is_async {
@@ -113,7 +113,7 @@ fn emit_function(buf: &mut String, f: &FunctionDef, vis: Visibility, mode: Mode,
                 buf.push_str("f ");
             }
         }
-        Mode::Expand => {
+        Mode::Human => {
             if vis == Visibility::Public { buf.push_str("pub "); }
             if f.is_async { buf.push_str("async "); }
             if f.is_unsafe { buf.push_str("unsafe "); }
@@ -171,10 +171,10 @@ fn emit_struct(buf: &mut String, s: &StructDef, vis: Visibility, mode: Mode, dep
 
     indent(buf, depth);
     match mode {
-        Mode::Compact => {
+        Mode::Agent => {
             if vis == Visibility::Public { buf.push_str("+S "); } else { buf.push_str("S "); }
         }
-        Mode::Expand => {
+        Mode::Human => {
             if vis == Visibility::Public { buf.push_str("pub "); }
             buf.push_str("struct ");
         }
@@ -190,8 +190,8 @@ fn emit_struct(buf: &mut String, s: &StructDef, vis: Visibility, mode: Mode, dep
             indent(buf, depth + 1);
             if field.visibility == Visibility::Public {
                 match mode {
-                    Mode::Compact => buf.push('+'),
-                    Mode::Expand => buf.push_str("pub "),
+                    Mode::Agent => buf.push('+'),
+                    Mode::Human => buf.push_str("pub "),
                 }
             }
             buf.push_str(&field.name);
@@ -209,10 +209,10 @@ fn emit_struct(buf: &mut String, s: &StructDef, vis: Visibility, mode: Mode, dep
 fn emit_enum(buf: &mut String, e: &EnumDef, vis: Visibility, mode: Mode, depth: usize) {
     indent(buf, depth);
     match mode {
-        Mode::Compact => {
+        Mode::Agent => {
             if vis == Visibility::Public { buf.push_str("+E "); } else { buf.push_str("E "); }
         }
-        Mode::Expand => {
+        Mode::Human => {
             if vis == Visibility::Public { buf.push_str("pub "); }
             buf.push_str("enum ");
         }
@@ -257,10 +257,10 @@ fn emit_enum(buf: &mut String, e: &EnumDef, vis: Visibility, mode: Mode, depth: 
 fn emit_trait(buf: &mut String, t: &TraitDef, vis: Visibility, mode: Mode, depth: usize) {
     indent(buf, depth);
     match mode {
-        Mode::Compact => {
+        Mode::Agent => {
             if vis == Visibility::Public { buf.push_str("+T "); } else { buf.push_str("T "); }
         }
-        Mode::Expand => {
+        Mode::Human => {
             if vis == Visibility::Public { buf.push_str("pub "); }
             buf.push_str("trait ");
         }
@@ -284,8 +284,8 @@ fn emit_trait(buf: &mut String, t: &TraitDef, vis: Visibility, mode: Mode, depth
 fn emit_impl(buf: &mut String, im: &ImplBlock, mode: Mode, depth: usize) {
     indent(buf, depth);
     match mode {
-        Mode::Compact => buf.push_str("I "),
-        Mode::Expand => buf.push_str("impl "),
+        Mode::Agent => buf.push_str("I "),
+        Mode::Human => buf.push_str("impl "),
     }
     emit_generics(buf, &im.generics);
     if let Some(ref tp) = im.trait_path {
@@ -306,10 +306,10 @@ fn emit_impl(buf: &mut String, im: &ImplBlock, mode: Mode, depth: usize) {
 fn emit_module(buf: &mut String, m: &ModuleDef, vis: Visibility, mode: Mode, depth: usize) {
     indent(buf, depth);
     match mode {
-        Mode::Compact => {
+        Mode::Agent => {
             if vis == Visibility::Public { buf.push_str("+M "); } else { buf.push_str("M "); }
         }
-        Mode::Expand => {
+        Mode::Human => {
             if vis == Visibility::Public { buf.push_str("pub "); }
             buf.push_str("mod ");
         }
@@ -333,10 +333,10 @@ fn emit_module(buf: &mut String, m: &ModuleDef, vis: Visibility, mode: Mode, dep
 fn emit_use(buf: &mut String, u: &UseDef, vis: Visibility, mode: Mode, depth: usize) {
     indent(buf, depth);
     match mode {
-        Mode::Compact => {
+        Mode::Agent => {
             if vis == Visibility::Public { buf.push_str("+u "); } else { buf.push_str("u "); }
         }
-        Mode::Expand => {
+        Mode::Human => {
             if vis == Visibility::Public { buf.push_str("pub "); }
             buf.push_str("use ");
         }
@@ -365,10 +365,10 @@ fn emit_use(buf: &mut String, u: &UseDef, vis: Visibility, mode: Mode, depth: us
 fn emit_type_alias(buf: &mut String, ta: &TypeAlias, vis: Visibility, mode: Mode, depth: usize) {
     indent(buf, depth);
     match mode {
-        Mode::Compact => {
+        Mode::Agent => {
             if vis == Visibility::Public { buf.push_str("+Y "); } else { buf.push_str("Y "); }
         }
-        Mode::Expand => {
+        Mode::Human => {
             if vis == Visibility::Public { buf.push_str("pub "); }
             buf.push_str("type ");
         }
@@ -389,10 +389,10 @@ fn emit_type_alias(buf: &mut String, ta: &TypeAlias, vis: Visibility, mode: Mode
 fn emit_const(buf: &mut String, c: &ConstDef, vis: Visibility, mode: Mode, depth: usize) {
     indent(buf, depth);
     match mode {
-        Mode::Compact => {
+        Mode::Agent => {
             if vis == Visibility::Public { buf.push_str("+C "); } else { buf.push_str("C "); }
         }
-        Mode::Expand => {
+        Mode::Human => {
             if vis == Visibility::Public { buf.push_str("pub "); }
             buf.push_str("const ");
         }
@@ -410,11 +410,11 @@ fn emit_const(buf: &mut String, c: &ConstDef, vis: Visibility, mode: Mode, depth
 fn emit_static(buf: &mut String, s: &StaticDef, vis: Visibility, mode: Mode, depth: usize) {
     indent(buf, depth);
     match mode {
-        Mode::Compact => {
+        Mode::Agent => {
             if vis == Visibility::Public { buf.push_str("+Z "); } else { buf.push_str("Z "); }
             if s.mutable { buf.push_str("m "); }
         }
-        Mode::Expand => {
+        Mode::Human => {
             if vis == Visibility::Public { buf.push_str("pub "); }
             buf.push_str("static ");
             if s.mutable { buf.push_str("mut "); }
@@ -609,8 +609,8 @@ fn emit_where_clause(buf: &mut String, wc: &[WherePredicate], mode: Mode) {
         return;
     }
     match mode {
-        Mode::Compact => buf.push_str(" ~> "),
-        Mode::Expand => buf.push_str(" where "),
+        Mode::Agent => buf.push_str(" ~> "),
+        Mode::Human => buf.push_str(" where "),
     }
     for (i, pred) in wc.iter().enumerate() {
         if i > 0 { buf.push_str(", "); }
@@ -639,8 +639,8 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
             buf.push('&');
             if *mutable {
                 match mode {
-                    Mode::Compact => buf.push_str("m "),
-                    Mode::Expand => buf.push_str("mut "),
+                    Mode::Agent => buf.push_str("m "),
+                    Mode::Human => buf.push_str("mut "),
                 }
             }
             emit_type(buf, inner, mode);
@@ -708,8 +708,8 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
         }
         Type::Fn { params, ret } => {
             match mode {
-                Mode::Compact => buf.push_str("f("),
-                Mode::Expand => buf.push_str("fn("),
+                Mode::Agent => buf.push_str("f("),
+                Mode::Human => buf.push_str("fn("),
             }
             for (i, t) in params.iter().enumerate() {
                 if i > 0 { buf.push_str(", "); }
@@ -866,8 +866,8 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         }
         Expr::If { cond, then_block, else_block } => {
             match mode {
-                Mode::Compact => buf.push_str("? "),
-                Mode::Expand => buf.push_str("if "),
+                Mode::Agent => buf.push_str("? "),
+                Mode::Human => buf.push_str("if "),
             }
             emit_expr(buf, cond, mode);
             buf.push_str(" {\n");
@@ -875,8 +875,8 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             buf.push('}');
             if let Some(eb) = else_block {
                 match mode {
-                    Mode::Compact => buf.push_str(" : {\n"),
-                    Mode::Expand => buf.push_str(" else {\n"),
+                    Mode::Agent => buf.push_str(" : {\n"),
+                    Mode::Human => buf.push_str(" else {\n"),
                 }
                 emit_block_body(buf, eb, mode, 1);
                 buf.push('}');
@@ -884,8 +884,8 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         }
         Expr::Match { scrutinee, arms } => {
             match mode {
-                Mode::Compact => buf.push_str("?= "),
-                Mode::Expand => buf.push_str("match "),
+                Mode::Agent => buf.push_str("?= "),
+                Mode::Human => buf.push_str("match "),
             }
             if let Some(s) = scrutinee {
                 emit_expr(buf, s, mode);
@@ -903,8 +903,8 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         }
         Expr::Loop { body } => {
             match mode {
-                Mode::Compact => buf.push_str("@@ "),
-                Mode::Expand => buf.push_str("loop "),
+                Mode::Agent => buf.push_str("@@ "),
+                Mode::Human => buf.push_str("loop "),
             }
             buf.push_str("{\n");
             emit_block_body(buf, body, mode, 1);
@@ -912,8 +912,8 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         }
         Expr::While { cond, body } => {
             match mode {
-                Mode::Compact => buf.push_str("@w "),
-                Mode::Expand => buf.push_str("while "),
+                Mode::Agent => buf.push_str("@w "),
+                Mode::Human => buf.push_str("while "),
             }
             emit_expr(buf, cond, mode);
             buf.push_str(" {\n");
@@ -922,8 +922,8 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         }
         Expr::For { pattern, iter, body } => {
             match mode {
-                Mode::Compact => buf.push_str("@ "),
-                Mode::Expand => buf.push_str("for "),
+                Mode::Agent => buf.push_str("@ "),
+                Mode::Human => buf.push_str("for "),
             }
             emit_pattern(buf, pattern);
             buf.push_str(" in ");
@@ -946,8 +946,8 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         }
         Expr::Break { value } => {
             match mode {
-                Mode::Compact => buf.push('!'),
-                Mode::Expand => buf.push_str("break"),
+                Mode::Agent => buf.push('!'),
+                Mode::Human => buf.push_str("break"),
             }
             if let Some(v) = value {
                 buf.push(' ');
@@ -956,8 +956,8 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         }
         Expr::Continue => {
             match mode {
-                Mode::Compact => buf.push_str(">>"),
-                Mode::Expand => buf.push_str("continue"),
+                Mode::Agent => buf.push_str(">>"),
+                Mode::Human => buf.push_str("continue"),
             }
         }
         Expr::Try { expr } => {
@@ -987,12 +987,12 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         Expr::Unimplemented => buf.push_str("unimplemented!()"),
         Expr::UnsafeBlock { block } => {
             match mode {
-                Mode::Compact => {
+                Mode::Agent => {
                     buf.push_str("{\n");
                     emit_block_body(buf, block, mode, 1);
                     buf.push('}');
                 }
-                Mode::Expand => {
+                Mode::Human => {
                     buf.push_str("unsafe {\n");
                     emit_block_body(buf, block, mode, 1);
                     buf.push('}');
@@ -1086,10 +1086,10 @@ fn emit_stmt(buf: &mut String, stmt: &Stmt, mode: Mode, depth: usize) {
         Stmt::Let { mutable, pattern, ty, value } => {
             indent(buf, depth);
             match mode {
-                Mode::Compact => {
+                Mode::Agent => {
                     if *mutable { buf.push_str("m "); } else { buf.push_str("v "); }
                 }
-                Mode::Expand => {
+                Mode::Human => {
                     buf.push_str("let ");
                     if *mutable { buf.push_str("mut "); }
                 }
@@ -1130,7 +1130,7 @@ mod tests {
     #[test]
     fn compact_function() {
         let m = parse_source("f greet(name: String) {}");
-        let out = format_compact(&m);
+        let out = format_agent(&m);
         assert!(out.contains("f greet("), "got: {out}");
         assert!(!out.contains("fn "));
     }
@@ -1138,28 +1138,28 @@ mod tests {
     #[test]
     fn expand_function() {
         let m = parse_source("f greet(name: String) {}");
-        let out = format_expand(&m);
+        let out = format_human(&m);
         assert!(out.contains("fn greet("), "got: {out}");
     }
 
     #[test]
     fn compact_pub_function() {
         let m = parse_source("+f main() {}");
-        let out = format_compact(&m);
+        let out = format_agent(&m);
         assert!(out.contains("+f main("), "got: {out}");
     }
 
     #[test]
     fn expand_pub_function() {
         let m = parse_source("+f main() {}");
-        let out = format_expand(&m);
+        let out = format_human(&m);
         assert!(out.contains("pub fn main("), "got: {out}");
     }
 
     #[test]
     fn compact_struct() {
         let m = parse_source("S Point { x: i32, y: i32 }");
-        let out = format_compact(&m);
+        let out = format_agent(&m);
         assert!(out.starts_with("S Point"), "got: {out}");
         assert!(!out.contains("struct"));
     }
@@ -1167,70 +1167,70 @@ mod tests {
     #[test]
     fn expand_struct() {
         let m = parse_source("S Point { x: i32, y: i32 }");
-        let out = format_expand(&m);
+        let out = format_human(&m);
         assert!(out.starts_with("struct Point"), "got: {out}");
     }
 
     #[test]
     fn compact_enum() {
         let m = parse_source("E Color { Red, Green, Blue }");
-        let out = format_compact(&m);
+        let out = format_agent(&m);
         assert!(out.starts_with("E Color"), "got: {out}");
     }
 
     #[test]
     fn expand_enum() {
         let m = parse_source("E Color { Red, Green, Blue }");
-        let out = format_expand(&m);
+        let out = format_human(&m);
         assert!(out.starts_with("enum Color"), "got: {out}");
     }
 
     #[test]
     fn compact_let_binding() {
         let m = parse_source("f main() { v x = 42; }");
-        let out = format_compact(&m);
+        let out = format_agent(&m);
         assert!(out.contains("v x = 42;"), "got: {out}");
     }
 
     #[test]
     fn expand_let_binding() {
         let m = parse_source("f main() { v x = 42; }");
-        let out = format_expand(&m);
+        let out = format_human(&m);
         assert!(out.contains("let x = 42;"), "got: {out}");
     }
 
     #[test]
     fn compact_let_mut() {
         let m = parse_source("f main() { m x = 0; }");
-        let out = format_compact(&m);
+        let out = format_agent(&m);
         assert!(out.contains("m x = 0;"), "got: {out}");
     }
 
     #[test]
     fn expand_let_mut() {
         let m = parse_source("f main() { m x = 0; }");
-        let out = format_expand(&m);
+        let out = format_human(&m);
         assert!(out.contains("let mut x = 0;"), "got: {out}");
     }
 
     #[test]
     fn compact_use() {
         let m = parse_source("u std.io;");
-        let out = format_compact(&m);
+        let out = format_agent(&m);
         assert!(out.contains("u std::io;"), "got: {out}");
     }
 
     #[test]
     fn expand_use() {
         let m = parse_source("u std.io;");
-        let out = format_expand(&m);
+        let out = format_human(&m);
         assert!(out.contains("use std::io;"), "got: {out}");
     }
 
     #[test]
     fn compact_contracts() {
         let m = parse_source("@req(n > 0)\nf positive(n: i32) {}");
-        let out = format_compact(&m);
+        let out = format_agent(&m);
         assert!(out.contains("@req(n > 0)"), "got: {out}");
         assert!(out.contains("f positive("), "got: {out}");
     }
@@ -1238,7 +1238,7 @@ mod tests {
     #[test]
     fn expand_contracts() {
         let m = parse_source("@req(n > 0)\nf positive(n: i32) {}");
-        let out = format_expand(&m);
+        let out = format_human(&m);
         assert!(out.contains("@req(n > 0)"), "got: {out}");
         assert!(out.contains("fn positive("), "got: {out}");
     }
@@ -1246,21 +1246,21 @@ mod tests {
     #[test]
     fn compact_type_alias() {
         let m = parse_source("Y Id = u64;");
-        let out = format_compact(&m);
+        let out = format_agent(&m);
         assert!(out.contains("Y Id = u64;"), "got: {out}");
     }
 
     #[test]
     fn expand_type_alias() {
         let m = parse_source("Y Id = u64;");
-        let out = format_expand(&m);
+        let out = format_human(&m);
         assert!(out.contains("type Id = u64;"), "got: {out}");
     }
 
     #[test]
     fn compact_agent() {
         let m = parse_source("agent Bot { capabilities: [read_source] requires_approval: [] }");
-        let out = format_compact(&m);
+        let out = format_agent(&m);
         assert!(out.contains("agent Bot"), "got: {out}");
     }
 
@@ -1268,9 +1268,9 @@ mod tests {
     fn roundtrip_compact_then_expand() {
         let src = "+f add(a: i32, b: i32) -> i32 { v result = a + b; }";
         let m = parse_source(src);
-        let compact = format_compact(&m);
+        let compact = format_agent(&m);
         assert!(compact.contains("+f add("), "compact: {compact}");
-        let expand = format_expand(&m);
+        let expand = format_human(&m);
         assert!(expand.contains("pub fn add("), "expand: {expand}");
     }
 }

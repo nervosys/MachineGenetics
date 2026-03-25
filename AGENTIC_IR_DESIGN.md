@@ -2,7 +2,7 @@
 
 This document defines how MechGen is redesigned from the ground up so that **agentic intelligence is not a feature bolted onto a compiler — it is the compiler**. Every layer of the system — syntax, type system, intermediate representation, optimization passes, code generation, and runtime — is structured to maximize the productivity of AI agents writing, compiling, optimizing, and executing MechGen code.
 
-> **Note on Syntax**: MechGen v0.2.0 supports dual syntax modes. The **standard mode** (default) uses C-family keywords (`fn`, `let`, `struct`, `match`, `for`). The **compact mode** (`#![syntax(compact)]`) uses sigil-based forms (`+f`, `v`, `+S`, `?`, `@`) that reduce token counts for agent-generated code. Code examples in this document use compact syntax to illustrate the token economics. See [MechGen_SPEC.md](MechGen_SPEC.md) for the full dual-syntax specification.
+> **Note on Syntax**: MechGen v0.2.0 supports dual syntax modes. The **human mode** (default) uses C-family keywords (`fn`, `let`, `struct`, `match`, `for`). The **agent mode** (`#![syntax(agent)]`) uses sigil-based forms (`+f`, `v`, `+S`, `?`, `@`) that reduce token counts for agent-generated code. Code examples in this document use agent syntax to illustrate the token economics. See [MechGen_SPEC.md](MechGen_SPEC.md) for the full dual-syntax specification.
 
 The three performance axes optimized simultaneously:
 

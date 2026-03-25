@@ -1,15 +1,15 @@
 # Keywords & Declarations
 
-MechGen uses familiar C-family keywords in its default **standard syntax** mode.
+MechGen uses familiar C-family keywords in its default **Human Syntax** mode.
 If you know Rust, you already know MechGen's keywords.
 
-> **Compact mode:** MechGen also supports a token-minimal compact syntax activated
-> with `#![syntax(compact)]`. See the [appendix](appendix-cheatsheet.md) for the
+> **agent mode:** MechGen also supports a token-minimal agent syntax activated
+> with `#![syntax(agent)]`. See the [appendix](appendix-cheatsheet.md) for the
 > full mapping.
 
 ## Declaration Keywords
 
-| MechGen (Standard) | Rust Equivalent | Meaning           |
+| MechGen (Human) | Rust Equivalent | Meaning           |
 | ---------------- | --------------- | ----------------- |
 | `fn`             | `fn`            | Function          |
 | `let`            | `let`           | Immutable binding |

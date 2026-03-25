@@ -116,7 +116,7 @@ pub enum TokenKind {
     KwPolicy, // policy
     KwReward, // reward
 
-    // ── Matrix-mode Greek symbols ────────────────────────────────
+    // ── Agent-mode Greek symbols ────────────────────────────────
     KwPsi,        // Ψ → net
     KwLambda,     // λ → layer
     KwPhi,        // Φ → tensor
@@ -615,7 +615,7 @@ impl<'a> Lexer<'a> {
             b'~' => self.make_token(TokenKind::Tilde, start, start_line, start_col),
             b'$' => self.make_token(TokenKind::Dollar, start, start_line, start_col),
 
-            // ── Matrix-mode Greek symbols & tensor operators (UTF-8) ──
+            // ── Agent-mode Greek symbols & tensor operators (UTF-8) ──
             0xCE => self.lex_greek_ce(start, start_line, start_col),
             0xCF => self.lex_greek_cf(start, start_line, start_col),
             0xE2 => self.lex_utf8_e2(start, start_line, start_col),

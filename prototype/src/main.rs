@@ -75,7 +75,7 @@ fn main() {
             match parser::parse(&tokens) {
                 Ok(module) => {
                     let module = if !no_elision { elision::elide(&module) } else { module };
-                    println!("{}", fmt::format_compact(&module));
+                    println!("{}", fmt::format_agent(&module));
                 }
                 Err(e) => {
                     eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
@@ -97,7 +97,7 @@ fn main() {
             match parser::parse(&tokens) {
                 Ok(module) => {
                     let module = if !no_elision { elision::elide(&module) } else { module };
-                    println!("{}", fmt::format_expand(&module));
+                    println!("{}", fmt::format_human(&module));
                 }
                 Err(e) => {
                     eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);

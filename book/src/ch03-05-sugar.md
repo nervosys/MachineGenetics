@@ -1,13 +1,13 @@
 # Type Sugar
 
-In **standard syntax** (the default), MechGen uses the same type names as Rust.
-The **compact syntax** mode (`#![syntax(compact)]`) provides single-sigil
+In **Human Syntax** (the default), MechGen uses the same type names as Rust.
+The **Agent Syntax** mode (`#![syntax(agent)]`) provides single-sigil
 abbreviations for common types — see the
 [appendix](appendix-cheatsheet.md) for the full compact mapping.
 
 ## Standard type names
 
-| Standard (MechGen/Rust) | Compact Mode | Description        |
+| Human (MechGen/Rust) | agent mode | Description        |
 | --------------------- | ------------ | ------------------ |
 | `Option<T>`           | `?T`         | Optional value     |
 | `Result<T, E>`        | `R[T, E]`    | Success or error   |
@@ -71,7 +71,7 @@ seen.insert("hello".into());
 
 ## Mutable references
 
-Rust's `&mut T` is used directly in MechGen standard mode:
+Rust's `&mut T` is used directly in MechGen human mode:
 
 ```mg
 fn push_item(list: &mut Vec<i32>, item: i32) {
@@ -89,9 +89,9 @@ let shared_map: Arc<HashMap<String, Vec<i32>>> = Arc::new(map);
 let result: Result<Option<String>, Box<dyn Error>> = Ok(Some("hi".into()));
 ```
 
-## Why compact mode exists
+## Why agent mode exists
 
-For AI agents emitting code token by token, compact syntax reduces token count
+For AI agents emitting code token by token, agent syntax reduces token count
 significantly:
 
 | Standard (Rust-like)                           | Tokens | Compact               | Tokens | Savings |
@@ -101,5 +101,5 @@ significantly:
 | `Arc<Mutex<Vec<u8>>>`                          |   9    | `@Mutex[[u8]~]`       |   5    |   44%   |
 | `&mut Vec<(String, i32)>`                      |   9    | `&![(s, i32)]~`       |   6    |   33%   |
 
-To activate compact mode, add `#![syntax(compact)]` at the top of any `.mg`
+To activate agent mode, add `#![syntax(agent)]` at the top of any `.mg`
 file.

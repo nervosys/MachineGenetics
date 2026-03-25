@@ -1,7 +1,7 @@
 # Worked Examples: Basic
 
 > Prompt → Response pairs for AI agent training and evaluation.
-> All examples use **standard syntax** (default).
+> All examples use **human syntax** (default).
 
 ---
 

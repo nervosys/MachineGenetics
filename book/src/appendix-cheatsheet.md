@@ -1,9 +1,9 @@
 # Appendix: MechGen Syntax Cheatsheet
 
 MechGen has two syntax modes: **standard** (default, C-like) and **compact**
-(`#![syntax(compact)]`). Standard syntax is nearly identical to Rust.
+(`#![syntax(agent)]`). human syntax is nearly identical to Rust.
 
-## Standard Syntax (Default)
+## Human Syntax (Default)
 
 ### Declarations
 
@@ -104,9 +104,9 @@ MechGen has two syntax modes: **standard** (default, C-like) and **compact**
 | Swarm operations   | `swarm.broadcast("task")?`                |
 | Effect handlers    | `handle::<IoEffect, T>(f, handler)`       |
 
-## Compact Syntax Reference
+## Agent Syntax Reference
 
-Activate with `#![syntax(compact)]` at the top of a `.mg` file.
+Activate with `#![syntax(agent)]` at the top of a `.mg` file.
 
 ### Compact Declarations
 

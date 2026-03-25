@@ -1,7 +1,7 @@
 # MechGen Effect Annotation Guide
 
 > Complete reference for the MechGen effect system, optimized for AI agents.
-> All examples use **standard syntax** (default).
+> All examples use **human syntax** (default).
 
 ---
 

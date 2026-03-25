@@ -1,13 +1,13 @@
 # Rust → MechGen Migration Patterns
 
 > Side-by-side translation rules for AI agents converting Rust code to MechGen.
-> All examples use **standard syntax** (default). Most Rust syntax carries over directly.
+> All examples use **human syntax** (default). Most Rust syntax carries over directly.
 
 ---
 
 ## What Changes?
 
-MechGen standard syntax is intentionally close to Rust. Migration is primarily about:
+MechGen human syntax is intentionally close to Rust. Migration is primarily about:
 
 1. **Adding effect annotations** (`/ io`, `/ net`, etc.) to impure functions
 2. **Removing lifetime annotations** (SKB infers them)
@@ -17,7 +17,7 @@ MechGen standard syntax is intentionally close to Rust. Migration is primarily a
 
 ## What Stays the Same?
 
-| Feature           | Rust                   | MechGen Standard         |
+| Feature           | Rust                   | MechGen Human         |
 | ----------------- | ---------------------- | ---------------------- |
 | Functions         | `fn name()`            | `fn name()`            |
 | Public functions  | `pub fn name()`        | `pub fn name()`        |
@@ -61,7 +61,7 @@ MechGen standard syntax is intentionally close to Rust. Migration is primarily a
 | Agent trait         | `impl Agent for MyAgent { async fn execute() }` |
 | Swarm               | `Swarm::new()`, `swarm.spawn(agent)`            |
 | Knowledge base      | `std::skb::{Rule, Query, Proof}`                |
-| Compact mode pragma | `#![syntax(compact)]` (opt-in sigil syntax)     |
+| agent mode pragma | `#![syntax(agent)]` (opt-in sigil syntax)     |
 
 ---
 
@@ -88,7 +88,7 @@ pub fn fibonacci(n: u64) -> u64 {
 ```
 
 **Steps applied:**
-1. Pure function — no changes needed! Rust syntax is valid MechGen standard syntax.
+1. Pure function — no changes needed! Rust syntax is valid MechGen human syntax.
 
 ---
 
@@ -368,4 +368,4 @@ For each Rust file being migrated:
 5. [ ] Add `@req` / `@ens` contracts to public APIs
 6. [ ] Replace raw threading with `Agent` / `Swarm` where appropriate
 7. [ ] Use MechGen stdlib modules (`std::agent`, `std::skb`, `std::effect`)
-8. [ ] Optionally add `#![syntax(compact)]` for token-optimized files
+8. [ ] Optionally add `#![syntax(agent)]` for token-optimized files

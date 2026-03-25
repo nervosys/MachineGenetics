@@ -1,7 +1,7 @@
 # MechGen Syntax Quick Reference
 
 > Optimized for AI agent context windows. Minimal prose, maximum density.
-> This shows **standard syntax** (default). For compact mode, add `#![syntax(compact)]`.
+> This shows **human syntax** (default). For agent mode, add `#![syntax(agent)]`.
 
 ## Declarations
 

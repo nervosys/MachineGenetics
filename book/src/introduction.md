@@ -11,8 +11,8 @@ and reimagines them for an era of AI-driven development:
 
 - **Zero-ambiguity syntax** — a deterministic LL(1) grammar that eliminates
   agent parsing errors entirely.
-- **Dual syntax modes** — a standard mode with familiar C-like keywords (`fn`,
-  `let`, `struct`, `impl`) and a compact mode (`#![syntax(compact)]`) with
+- **Dual syntax modes** — a human mode with familiar C-like keywords (`fn`,
+  `let`, `struct`, `impl`) and a agent mode (`#![syntax(agent)]`) with
   single-character tokens for maximum AI token efficiency.
 - **Safety via knowledge, not syntax** — lifetimes, borrow annotations, and
   `unsafe` blocks are eliminated from the source. Safety rules live in the
@@ -57,7 +57,7 @@ dive into whichever chapter interests you.
 
 ## Conventions
 
-Code examples use MechGen standard syntax throughout:
+Code examples use MechGen human syntax throughout:
 
 ```mg
 // A simple function that greets a user
@@ -69,7 +69,7 @@ pub fn greet(name: &str) -> String {
 Rust equivalents are shown in separate blocks when comparing:
 
 ```rust
-// The Rust equivalent — identical in standard mode!
+// The Rust equivalent — identical in human mode!
 pub fn greet(name: &str) -> String {
     format!("Hello, {name}!")
 }

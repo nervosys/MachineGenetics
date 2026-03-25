@@ -2,7 +2,7 @@
 
 > Common mistakes AI agents make when generating MechGen code.
 > Each entry shows the **wrong** code and the **correct** fix.
-> All examples use **standard syntax** (default). For compact mode, add `#![syntax(compact)]`.
+> All examples use **human syntax** (default). For agent mode, add `#![syntax(agent)]`.
 
 ---
 

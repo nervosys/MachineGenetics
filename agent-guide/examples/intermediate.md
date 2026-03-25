@@ -1,7 +1,7 @@
 # Worked Examples: Intermediate
 
 > Prompt → Response pairs with generics, traits, effects, and error handling.
-> All examples use **standard syntax** (default).
+> All examples use **human syntax** (default).
 
 ---
 

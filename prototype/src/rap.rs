@@ -324,8 +324,8 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             }
         }
 
-        "format/compact" => {
-            // Return the compact (MechGen canonical) form of source.
+        "format/agent" => {
+            // Return the agent (MechGen canonical) form of source.
             let tokens = lexer::lex(source);
             match parser::parse(&tokens) {
                 Ok(module) => {
@@ -342,8 +342,8 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             }
         }
 
-        "format/expand" => {
-            // Return the expanded (Rust-like) form of source — same as parse for now.
+        "format/human" => {
+            // Return the human (Rust-like) form of source — same as parse for now.
             let tokens = lexer::lex(source);
             match parser::parse(&tokens) {
                 Ok(module) => serde_json::json!({
@@ -386,8 +386,8 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                     serde_json::json!({
                         "ok": true,
                         "report": {
-                            "total_compact": report.total_compact,
-                            "total_expanded": report.total_expanded,
+                            "total_agent": report.total_agent,
+                            "total_human": report.total_human,
                             "overall_ratio": report.overall_ratio,
                             "items": serde_json::to_value(&report.items).unwrap_or_default()
                         }
@@ -746,15 +746,15 @@ mod tests {
     }
 
     #[test]
-    fn test_format_compact() {
-        let r = call("format/compact", src_params("f main() {}"));
+    fn test_format_agent() {
+        let r = call("format/agent", src_params("f main() {}"));
         assert_eq!(r["ok"], true);
         assert!(r.get("ast").is_some());
     }
 
     #[test]
-    fn test_format_expand() {
-        let r = call("format/expand", src_params("f main() {}"));
+    fn test_format_human() {
+        let r = call("format/human", src_params("f main() {}"));
         assert_eq!(r["ok"], true);
         assert!(r.get("ast").is_some());
     }
@@ -771,8 +771,8 @@ mod tests {
         let r = call("token/report", src_params("f main() {}"));
         assert_eq!(r["ok"], true);
         let report = &r["report"];
-        assert!(report.get("total_compact").is_some());
-        assert!(report.get("total_expanded").is_some());
+        assert!(report.get("total_agent").is_some());
+        assert!(report.get("total_human").is_some());
         assert!(report.get("overall_ratio").is_some());
     }
 

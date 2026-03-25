@@ -32,7 +32,7 @@
 16. [Appendix A: Full Grammar in BNF](#appendix-a-full-grammar-in-bnf)
 17. [Appendix B: Dual Syntax Mapping Table](#appendix-b-dual-syntax-mapping-table)
 18. [Appendix C: Operator Precedence](#appendix-c-operator-precedence)
-19. [Appendix D: Matrix Mode Symbol Reference](#appendix-d-matrix-mode-symbol-reference)
+19. [Appendix D: Agent Mode Symbol Reference](#appendix-d-Agent-mode-symbol-reference)
 
 ---
 
@@ -44,7 +44,7 @@ Machine Genetic Code (MechGen) is a systems programming language designed for th
 
 1. **Intelligence is a first-class construct.** Neural networks, knowledge bases, rule engines, and evolutionary algorithms are language-level declarations, not library calls. The compiler understands their structure, verifies their types, and targets optimal hardware.
 
-2. **Dual encoding.** Standard mode uses clean C-family keywords that any programmer can read. Matrix mode compresses every concept into minimal symbols — Greek letters for AI constructs, mathematical operators for tensor algebra — achieving the density of hexadecimal applied to intelligence.
+2. **Dual encoding.** Human mode uses clean C-family keywords that any programmer can read. Agent mode compresses every concept into minimal symbols — Greek letters for AI constructs, mathematical operators for tensor algebra — achieving the density of hexadecimal applied to intelligence.
 
 3. **Safety without ceremony.** Ownership, borrowing, and lifetimes are enforced but fully inferred. No lifetime annotations, no `PhantomData`, no `Pin`. The Safety Knowledge Base (SKB) encodes 9,157 rules that the compiler applies automatically.
 
@@ -71,7 +71,7 @@ UPPER_CASE        Non-terminal
 
 **LL(1) property**: All productions are LL(1)-parseable. No backtracking.
 
-**Encoding**: Source files are UTF-8. Matrix mode uses Unicode symbols from Greek, Mathematical Operators, and Arrows blocks.
+**Encoding**: Source files are UTF-8. Agent mode uses Unicode symbols from Greek, Mathematical Operators, and Arrows blocks.
 
 **File extension**: `.mg` (Machine Genetic code).
 
@@ -81,18 +81,18 @@ UPPER_CASE        Non-terminal
 
 MechGen supports two interchangeable surface syntaxes that parse to the same AST:
 
-| Mode         | Pragma               | Purpose                              | Density |
-| ------------ | -------------------- | ------------------------------------ | ------- |
-| **Standard** | (default)            | Human-readable, C-family keywords    | 1×      |
-| **Matrix**   | `#![syntax(matrix)]` | Machine-optimized, symbol-compressed | ~2.5×   |
+| Mode      | Pragma              | Purpose                              | Density |
+| --------- | ------------------- | ------------------------------------ | ------- |
+| **Human** | (default)           | Human-readable, C-family keywords    | 1×      |
+| **Agent** | `#![syntax(agent)]` | Machine-optimized, symbol-compressed | ~2.5×   |
 
-A `#![syntax(matrix)]` pragma at the top of a `.mg` file selects Matrix mode. Standard is the default.
+A `#![syntax(agent)]` pragma at the top of a `.mg` file selects Agent mode. Human is the default.
 
-Both modes are byte-for-byte round-trippable via `mg fmt --standard` and `mg fmt --matrix`. The compiler accepts both in the same project.
+Both modes are byte-for-byte round-trippable via `mg fmt --human` and `mg fmt --agent`. The compiler accepts both in the same project.
 
-### 2.1 Standard Mode Keywords
+### 2.1 Human mode Keywords
 
-Standard mode uses C-family keywords plus MechGen-unique AI constructs:
+Human mode uses C-family keywords plus MechGen-unique AI constructs:
 
 **From C/C++/Rust** (familiar to any systems programmer):
 `fn`, `let`, `mut`, `const`, `struct`, `enum`, `trait`, `impl`, `mod`, `use`,
@@ -105,11 +105,11 @@ Standard mode uses C-family keywords plus MechGen-unique AI constructs:
 `rule`, `query`, `evolve`, `genome`, `mutate`, `fitness`, `select`, `crossover`,
 `rl`, `policy`, `reward`, `effect`, `handle`, `spec`
 
-### 2.2 Matrix Mode Symbols
+### 2.2 Agent mode Symbols
 
-Matrix mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 bits into one symbol, Matrix mode compresses high-level concepts into atomic glyphs:
+Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 bits into one symbol, Agent mode compresses high-level concepts into atomic glyphs:
 
-| Concept        | Standard       | Matrix    | Category       |
+| Concept        | Human          | Agent     | Category       |
 | -------------- | -------------- | --------- | -------------- |
 | Function       | `fn`           | `f`       | Declaration    |
 | Public         | `pub`          | `+`       | Visibility     |
@@ -154,7 +154,7 @@ Matrix mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 
 | `HashMap<K,V>` | `HashMap<K,V>` | `{K:V}`   | Type           |
 | Path separator | `::`           | `.`       | Path           |
 
-See [Appendix D](#appendix-d-matrix-mode-symbol-reference) for the complete symbol table.
+See [Appendix D](#appendix-d-Agent-mode-symbol-reference) for the complete symbol table.
 
 ---
 
@@ -165,7 +165,7 @@ See [Appendix D](#appendix-d-matrix-mode-symbol-reference) for the complete symb
 ```
 source_file = BOM? PRAGMA? { token | whitespace | comment }* EOF ;
 BOM         = '\u{FEFF}' ;
-PRAGMA      = '#![syntax(matrix)]' ;
+PRAGMA      = '#![syntax(agent)]' ;
 ```
 
 ### 3.2 Whitespace and Comments
@@ -179,7 +179,7 @@ block_comment = '/*' { any_char | block_comment }* '*/' ;  /* nestable */
 
 ### 3.3 Keywords
 
-**Standard mode keywords:**
+**Human mode keywords:**
 
 ```
 keyword =
@@ -212,10 +212,10 @@ keyword =
     ;
 ```
 
-**Matrix mode keywords** (mapped to standard — see Appendix B):
+**Agent mode keywords** (mapped to human — see Appendix B):
 
 ```
-matrix_keyword =
+agent_keyword =
     /* Core declarations */
     | 'f' | 'v' | 'm' | 'c' | 'S' | 'E' | 'T' | 'I' | 'M' | 'U' | 'u'
     | '+' | '~'
@@ -233,7 +233,7 @@ matrix_keyword =
     | '?' | '@' | ':' | 'ret' | '1b' | '0b'
     /* Tensor ops */
     | '⊗' | '⊙' | '⊤' | '⊥'
-    /* Shared with standard */
+    /* Shared with human */
     | 'loop' | 'break' | 'continue' | 'yield'
     | 'effect' | 'handle' | 'spec' | 'extern' | 'unsafe'
     ;
@@ -308,7 +308,7 @@ AND = '&&' ;  OR = '||' ;  NOT = '!' ;
 /* Bitwise */
 BIT_AND = '&' ;  BIT_OR = '|' ;  BIT_XOR = '^' ;  SHL = '<<' ;  SHR = '>>' ;
 
-/* Tensor / linear algebra (standard mode) */
+/* Tensor / linear algebra (Human mode) */
 MATMUL    = '@' ;    /* matrix multiplication: A @ B */
 HADAMARD  = '.*' ;   /* element-wise multiply: A .* B */
 TRANSPOSE = '.T' ;   /* transpose: A.T */
@@ -333,7 +333,7 @@ SCOPE = '::' ;  LT_ANGLE = '<' ;  GT_ANGLE = '>' ;
 
 ## 4. Syntactic Grammar
 
-All productions use standard mode. Matrix equivalents are in Appendix B.
+All productions use Human mode. Agent equivalents are in Appendix B.
 
 ### 4.1 Compilation Unit
 
@@ -512,7 +512,7 @@ MechGen treats neural networks as first-class language constructs. A `net` block
 ### 5.1 Network Definition
 
 ```mg
-// Standard mode
+// Human mode
 net Classifier {
     layer dense(784, 256, relu)
     layer dropout(0.3)
@@ -522,7 +522,7 @@ net Classifier {
 ```
 
 ```mg
-// Matrix mode
+// Agent mode
 Ψ Classifier {
     λ δ(784, 256, relu)
     λ ∅(0.3)
@@ -665,7 +665,7 @@ let w: Param<f32, [512, 256]>;          // weight matrix
 let bias: Param<f32, [256]>;            // bias vector
 ```
 
-Matrix mode:
+Agent mode:
 ```mg
 v a: Φ[f32; 3, 224, 224]
 v w: Π[f32; 512, 256]
@@ -673,7 +673,7 @@ v w: Π[f32; 512, 256]
 
 ### 6.2 Tensor Operations
 
-| Operation             | Standard               | Matrix   | Description              |
+| Operation             | Human                  | Agent    | Description              |
 | --------------------- | ---------------------- | -------- | ------------------------ |
 | Matrix multiply       | `A @ B`                | `A ⊗ B`  | Shape: [M,K]×[K,N]→[M,N] |
 | Element-wise multiply | `A .* B`               | `A ⊙ B`  | Hadamard product         |
@@ -780,7 +780,7 @@ kb TypeRules {
 }
 ```
 
-Matrix mode:
+Agent mode:
 ```mg
 κ TypeRules {
     ⊢ numeric("i32")
@@ -870,7 +870,7 @@ evolve NeuralArchSearch {
 }
 ```
 
-Matrix mode:
+Agent mode:
 ```mg
 Ω NeuralArchSearch {
     Γ: [LayerGene]~,
@@ -1428,30 +1428,30 @@ let dot = (a * b).sum();
 
 ## Appendix B: Dual Syntax Mapping Table
 
-Every standard-mode construct has a Matrix-mode equivalent. Both parse to the same AST.
+Every Human-mode construct has a Agent-mode equivalent. Both parse to the same AST.
 
 ### B.1 Declaration Keywords
 
-| Standard     | Matrix | Meaning           |
-| ------------ | ------ | ----------------- |
-| `fn`         | `f`    | Function          |
-| `let`        | `v`    | Immutable binding |
-| `let mut`    | `m`    | Mutable binding   |
-| `const`      | `c`    | Constant          |
-| `struct`     | `S`    | Struct            |
-| `enum`       | `E`    | Enum              |
-| `trait`      | `T`    | Trait             |
-| `impl`       | `I`    | Impl block        |
-| `mod`        | `M`    | Module            |
-| `use`        | `u`    | Import            |
-| `pub`        | `+`    | Public prefix     |
-| `async fn`   | `af`   | Async function    |
-| `const fn`   | `c f`  | Const function    |
-| `pub(crate)` | `~`    | Crate-visible     |
+| Human        | Agent | Meaning           |
+| ------------ | ----- | ----------------- |
+| `fn`         | `f`   | Function          |
+| `let`        | `v`   | Immutable binding |
+| `let mut`    | `m`   | Mutable binding   |
+| `const`      | `c`   | Constant          |
+| `struct`     | `S`   | Struct            |
+| `enum`       | `E`   | Enum              |
+| `trait`      | `T`   | Trait             |
+| `impl`       | `I`   | Impl block        |
+| `mod`        | `M`   | Module            |
+| `use`        | `u`   | Import            |
+| `pub`        | `+`   | Public prefix     |
+| `async fn`   | `af`  | Async function    |
+| `const fn`   | `c f` | Const function    |
+| `pub(crate)` | `~`   | Crate-visible     |
 
 ### B.2 AI Constructs
 
-| Standard        | Matrix   | Meaning             |
+| Human           | Agent    | Meaning             |
 | --------------- | -------- | ------------------- |
 | `net`           | `Ψ`      | Neural network      |
 | `layer`         | `λ`      | Network layer       |
@@ -1480,7 +1480,7 @@ Every standard-mode construct has a Matrix-mode equivalent. Both parse to the sa
 
 ### B.3 Control Flow
 
-| Standard       | Matrix     | Meaning       |
+| Human          | Agent      | Meaning       |
 | -------------- | ---------- | ------------- |
 | `if`           | `?`        | Conditional   |
 | `else`         | `:`        | Else branch   |
@@ -1494,7 +1494,7 @@ Every standard-mode construct has a Matrix-mode equivalent. Both parse to the sa
 
 ### B.4 Type Syntax
 
-| Standard          | Matrix    | Meaning             |
+| Human             | Agent     | Meaning             |
 | ----------------- | --------- | ------------------- |
 | `String`          | `s`       | Owned string        |
 | `&str`            | `&s`      | String slice        |
@@ -1512,7 +1512,7 @@ Every standard-mode construct has a Matrix-mode equivalent. Both parse to the sa
 
 ### B.5 Tensor Operations
 
-| Standard              | Matrix       | Meaning          |
+| Human                 | Agent        | Meaning          |
 | --------------------- | ------------ | ---------------- |
 | `A @ B`               | `A ⊗ B`      | Matrix multiply  |
 | `A .* B`              | `A ⊙ B`      | Hadamard product |
@@ -1526,7 +1526,7 @@ Every standard-mode construct has a Matrix-mode equivalent. Both parse to the sa
 
 ### B.6 Path and Scope
 
-| Standard    | Matrix       | Meaning        |
+| Human       | Agent        | Meaning        |
 | ----------- | ------------ | -------------- |
 | `::`        | `.`          | Path separator |
 | `crate::`   | `~.`         | Crate root     |
@@ -1536,7 +1536,7 @@ Every standard-mode construct has a Matrix-mode equivalent. Both parse to the sa
 
 ### B.7 Attributes
 
-| Standard            | Matrix      | Meaning             |
+| Human               | Agent       | Meaning             |
 | ------------------- | ----------- | ------------------- |
 | `#[derive(...)]`    | `@d(...)`   | Derive              |
 | `#[test]`           | `@t`        | Test                |
@@ -1594,13 +1594,13 @@ From highest to lowest. Left-associative unless noted.
 
 ---
 
-## Appendix D: Matrix Mode Symbol Reference
+## Appendix D: Agent Mode Symbol Reference
 
-A complete lexicon of Matrix mode symbols, organized by category. This is the "genetic alphabet" of MechGen — each symbol encodes a high-level concept in minimal space.
+A complete lexicon of Agent mode symbols, organized by category. This is the "genetic alphabet" of MechGen — each symbol encodes a high-level concept in minimal space.
 
 ### D.1 Greek Letters — AI Constructs
 
-| Symbol | Unicode | Standard        | Domain     |
+| Symbol | Unicode | Human           | Domain     |
 | ------ | ------- | --------------- | ---------- |
 | `Ψ`    | U+03A8  | `net`           | Neural     |
 | `λ`    | U+03BB  | `layer`         | Neural     |
@@ -1626,7 +1626,7 @@ A complete lexicon of Matrix mode symbols, organized by category. This is the "g
 
 ### D.2 Mathematical Operators — Tensor Algebra
 
-| Symbol | Unicode | Standard     | Meaning          |
+| Symbol | Unicode | Human        | Meaning          |
 | ------ | ------- | ------------ | ---------------- |
 | `⊗`    | U+2297  | `@`          | Matrix multiply  |
 | `⊙`    | U+2299  | `.*`         | Hadamard product |
@@ -1638,7 +1638,7 @@ A complete lexicon of Matrix mode symbols, organized by category. This is the "g
 
 ### D.3 Arrows and Flow
 
-| Symbol | Unicode | Standard      | Meaning          |
+| Symbol | Unicode | Human         | Meaning          |
 | ------ | ------- | ------------- | ---------------- |
 | `→`    | U+2192  | `target`      | Target/goal      |
 | `▸`    | U+25B8  | `\|>`         | Pipeline         |
@@ -1647,7 +1647,7 @@ A complete lexicon of Matrix mode symbols, organized by category. This is the "g
 
 ### D.4 Declaration Sigils (from Core Language)
 
-| Symbol   | Standard       | Meaning            |
+| Symbol   | Human          | Meaning            |
 | -------- | -------------- | ------------------ |
 | `f`      | `fn`           | Function           |
 | `v`      | `let`          | Variable           |
@@ -1686,11 +1686,11 @@ A complete lexicon of Matrix mode symbols, organized by category. This is the "g
 
 ---
 
-## Appendix E: Side-by-Side — Standard vs Matrix
+## Appendix E: Side-by-Side — Human vs Agent
 
 ### E.1 Neural Network (Image Classifier)
 
-**Standard:**
+**Human:**
 ```mg
 use std::neural::{net, train, Metrics};
 use std::tensor::Tensor;
@@ -1723,9 +1723,9 @@ pub fn main() / io, gpu {
 }
 ```
 
-**Matrix:**
+**Agent:**
 ```mg
-#![syntax(matrix)]
+#![syntax(agent)]
 u std.neural.{Ψ, Θ, Metrics}
 u std.tensor.Φ
 
@@ -1759,7 +1759,7 @@ u std.tensor.Φ
 
 ### E.2 Evolutionary Neural Architecture Search
 
-**Standard:**
+**Human:**
 ```mg
 use std::evolve::{Genome, Gene, EvolveStats};
 use std::neural::net;
@@ -1801,9 +1801,9 @@ evolve NeuralArchSearch {
 }
 ```
 
-**Matrix:**
+**Agent:**
 ```mg
-#![syntax(matrix)]
+#![syntax(agent)]
 u std.evolve.{Γ, Gene, EvolveStats}
 u std.neural.Ψ
 
@@ -1842,7 +1842,7 @@ u std.neural.Ψ
 
 ### E.3 Neurosymbolic Agent (Code Reviewer with KB + LLM)
 
-**Standard:**
+**Human:**
 ```mg
 use std::agent::{Agent, Swarm, Message, Capability};
 use std::llm::{LLM, Prompt};
@@ -1882,9 +1882,9 @@ pub async fn review_codebase(files: Vec<String>) -> Vec<Review> / agent, llm, io
 }
 ```
 
-**Matrix:**
+**Agent:**
 ```mg
-#![syntax(matrix)]
+#![syntax(agent)]
 u std.agent.{α, Swarm, Message, Capability}
 u std.llm.{Λ, Prompt}
 u std.kb.Κ

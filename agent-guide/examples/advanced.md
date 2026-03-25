@@ -1,7 +1,7 @@
 # Worked Examples: Advanced
 
 > Prompt → Response pairs with agents, swarms, capabilities, and complex systems.
-> All examples use **standard syntax** (default).
+> All examples use **human syntax** (default).
 
 ---
 
