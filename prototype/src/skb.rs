@@ -1,6 +1,6 @@
 /// SKB — Safety Knowledge Base (proposal §15).
 ///
-/// Seven rule databases:
+/// Eight rule databases:
 ///   1. Ownership Rules  (OWN-*)
 ///   2. Borrow Patterns  (BOR-*)
 ///   3. Lifetime Rules   (LIF-*)
@@ -9,6 +9,8 @@
 ///   6. FFI Safety       (FFI-*)
 ///   7. Agent Elision    (AEL-*) — rules for safety constructs the compiler
 ///      handles automatically in agent mode so they can be elided from syntax.
+///   8. Swarm Safety     (SWM-*) — rules for multi-agent swarm coordination,
+///      consensus, topology, fault tolerance, and deadlock prevention.
 ///
 /// Plus the original symbol metadata entries used by the query API.
 ///
@@ -34,6 +36,9 @@ pub enum RuleDatabase {
     /// Agent elision — rules the compiler enforces so agent mode doesn't
     /// need explicit safety syntax.
     AgentElision,
+    /// Swarm safety — rules for multi-agent coordination, consensus,
+    /// topology, fault tolerance, and deadlock prevention.
+    SwarmSafety,
 }
 
 /// Severity of a rule violation.
@@ -95,11 +100,11 @@ fn rule(
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  Built-in Rule Databases — 240 rules across 7 databases
+//  Built-in Rule Databases — 255 rules across 8 databases
 // ══════════════════════════════════════════════════════════════════════
 
 fn builtin_rules() -> Vec<Rule> {
-    let mut rules = Vec::with_capacity(240);
+    let mut rules = Vec::with_capacity(255);
 
     // ── Ownership Rules (OWN-0001 .. OWN-0040) ──────────────────────
     rules.extend(ownership_rules());
@@ -115,6 +120,8 @@ fn builtin_rules() -> Vec<Rule> {
     rules.extend(ffi_rules());
     // ── Agent Elision (AEL-0001 .. AEL-0030) ────────────────────────
     rules.extend(agent_elision_rules());
+    // ── Swarm Safety (SWM-0001 .. SWM-0015) ──────────────────────────
+    rules.extend(swarm_safety_rules());
 
     rules
 }
@@ -2812,6 +2819,180 @@ fn agent_elision_rules() -> Vec<Rule> {
     ]
 }
 
+// ── Swarm Safety Rules (SWM-0001 .. SWM-0015) ──────────────────────
+
+fn swarm_safety_rules() -> Vec<Rule> {
+    use RuleDatabase::SwarmSafety as DB;
+    use RuleSeverity::*;
+    vec![
+        rule(
+            "SWM-0001",
+            DB,
+            "swarm-deadlock-prevention",
+            Error,
+            "Detect potential deadlocks in swarm message passing",
+            "Agents in a swarm must not form circular blocking dependencies; the compiler verifies message DAGs are acyclic",
+            None,
+            0.9,
+            &["swarm", "deadlock", "message-passing"],
+        ),
+        rule(
+            "SWM-0002",
+            DB,
+            "consensus-quorum-validation",
+            Error,
+            "Consensus strategy must be achievable given swarm size",
+            "A `unanimous` consensus with size > 1 requires all agents respond; `majority` requires size >= 3 for meaningful voting",
+            None,
+            1.0,
+            &["swarm", "consensus", "quorum"],
+        ),
+        rule(
+            "SWM-0003",
+            DB,
+            "topology-connectivity",
+            Warning,
+            "Swarm topology must be connected — no isolated agents",
+            "For `ring`, `mesh`, and `tree` topologies, the compiler verifies every agent is reachable from every other agent",
+            None,
+            1.0,
+            &["swarm", "topology", "connectivity"],
+        ),
+        rule(
+            "SWM-0004",
+            DB,
+            "agent-capability-propagation",
+            Error,
+            "Swarm inherits the union of its agents' required capabilities",
+            "A swarm dispatching to agents that require `llm` or `io` capabilities must itself hold those capabilities",
+            None,
+            1.0,
+            &["swarm", "capability", "propagation"],
+        ),
+        rule(
+            "SWM-0005",
+            DB,
+            "dispatch-type-safety",
+            Error,
+            "Dispatch block input/output types must match agent handler signatures",
+            "The data scattered to agents must be compatible with the agent's handle() method signature",
+            None,
+            1.0,
+            &["swarm", "dispatch", "type-safety"],
+        ),
+        rule(
+            "SWM-0006",
+            DB,
+            "aggregate-completeness",
+            Warning,
+            "Aggregate block should handle partial results for fault tolerance",
+            "When on_failure is not defined, the aggregate block must handle the case where fewer results return than dispatched",
+            None,
+            0.8,
+            &["swarm", "aggregate", "fault-tolerance"],
+        ),
+        rule(
+            "SWM-0007",
+            DB,
+            "swarm-effect-composition",
+            Error,
+            "Swarm operations compose effects from all constituent agents",
+            "A swarm combining agents with / llm and / io effects must declare both in its own effect signature",
+            None,
+            1.0,
+            &["swarm", "effects", "composition"],
+        ),
+        rule(
+            "SWM-0008",
+            DB,
+            "message-ordering-guarantee",
+            Info,
+            "Message delivery order depends on topology",
+            "Star topology: hub sees all messages; ring: sequential ordering; mesh: no ordering guarantee; broadcast: simultaneous",
+            None,
+            1.0,
+            &["swarm", "message", "ordering"],
+        ),
+        rule(
+            "SWM-0009",
+            DB,
+            "swarm-size-bounds",
+            Warning,
+            "Swarm size should be bounded to prevent resource exhaustion",
+            "Swarms without an explicit size or with size > 1024 generate a warning; use @perf contracts for large swarms",
+            None,
+            0.7,
+            &["swarm", "size", "resource"],
+        ),
+        rule(
+            "SWM-0010",
+            DB,
+            "failure-cascade-prevention",
+            Error,
+            "Swarm must not cascade failures across agents",
+            "An agent failure in a swarm must be isolated; the on_failure handler determines recovery (retry, skip, abort)",
+            None,
+            0.9,
+            &["swarm", "failure", "cascade"],
+        ),
+        rule(
+            "SWM-0011",
+            DB,
+            "broadcast-storm-prevention",
+            Warning,
+            "Broadcast topology with large swarms risks message storms",
+            "Broadcast to > 100 agents without rate limiting generates a warning; prefer scatter/gather patterns",
+            None,
+            0.8,
+            &["swarm", "broadcast", "storm"],
+        ),
+        rule(
+            "SWM-0012",
+            DB,
+            "consensus-timeout-required",
+            Warning,
+            "Consensus operations should have explicit timeouts",
+            "A swarm with consensus but no timeout may block indefinitely; the compiler inserts a default 30s timeout if omitted",
+            None,
+            0.9,
+            &["swarm", "consensus", "timeout"],
+        ),
+        rule(
+            "SWM-0013",
+            DB,
+            "swarm-send-sync-agents",
+            Error,
+            "Agents in a swarm must be Send + Sync for safe concurrent dispatch",
+            "The compiler verifies agent types satisfy Send + Sync bounds before allowing swarm membership",
+            None,
+            1.0,
+            &["swarm", "concurrency", "send-sync"],
+        ),
+        rule(
+            "SWM-0014",
+            DB,
+            "swarm-keyword-compression",
+            Info,
+            "Agent mode compression for swarm constructs",
+            "swarm→Σ/sw, topology→topo, consensus→cons in agent mode; human mode uses full keywords",
+            None,
+            1.0,
+            &["swarm", "agent-elision", "compression"],
+        ),
+        rule(
+            "SWM-0015",
+            DB,
+            "swarm-determinism-annotation",
+            Info,
+            "Non-deterministic swarm operations should be annotated",
+            "Swarms with mesh topology or weighted consensus produce non-deterministic output; @inv contracts can constrain this",
+            None,
+            0.7,
+            &["swarm", "determinism", "annotation"],
+        ),
+    ]
+}
+
 // ══════════════════════════════════════════════════════════════════════
 //  Rule Query API
 // ══════════════════════════════════════════════════════════════════════
@@ -2861,7 +3042,7 @@ pub fn rule_count() -> usize {
 /// Count rules per database.
 pub fn rule_counts_by_db() -> Vec<(RuleDatabase, usize)> {
     use RuleDatabase::*;
-    [Ownership, Borrow, Lifetime, TypeSafety, Concurrency, FFI, AgentElision]
+    [Ownership, Borrow, Lifetime, TypeSafety, Concurrency, FFI, AgentElision, SwarmSafety]
         .into_iter()
         .map(|db| {
             let count = builtin_rules().iter().filter(|r| r.database == db).count();
@@ -3217,7 +3398,7 @@ mod tests {
 
     #[test]
     fn rule_total_count_210() {
-        assert_eq!(rule_count(), 240);
+        assert_eq!(rule_count(), 255);
     }
 
     #[test]
@@ -3232,6 +3413,7 @@ mod tests {
         assert_eq!(map["Concurrency"], 35);
         assert_eq!(map["FFI"], 20);
         assert_eq!(map["AgentElision"], 30);
+        assert_eq!(map["SwarmSafety"], 15);
     }
 
     #[test]

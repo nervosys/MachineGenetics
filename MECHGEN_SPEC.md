@@ -109,62 +109,63 @@ Human mode uses C-family keywords plus MechGen-unique AI constructs:
 
 Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 bits into one symbol, Agent mode compresses high-level concepts into atomic glyphs:
 
-| Concept        | Human          | Agent     | Category       |
-| -------------- | -------------- | --------- | -------------- |
-| Function       | `fn`           | `f`       | Declaration    |
-| Public         | `pub`          | `+`       | Visibility     |
-| Variable       | `let`          | `v`       | Declaration    |
-| Mutable        | `let mut`      | `m`       | Declaration    |
-| Struct         | `struct`       | `S`       | Declaration    |
-| Enum           | `enum`         | `E`       | Declaration    |
-| Trait          | `trait`        | `T`       | Declaration    |
-| Impl           | `impl`         | `I`       | Declaration    |
-| Module         | `mod`          | `M`       | Declaration    |
-| Use            | `use`          | `u`       | Declaration    |
-| Neural net     | `net`          | `Ψ`       | AI — Neural    |
-| Layer          | `layer`        | `λ`       | AI — Neural    |
-| Tensor         | `Tensor`       | `Φ`       | AI — Algebra   |
-| Parameter      | `Param`        | `Π`       | AI — Algebra   |
-| Train          | `train`        | `Θ`       | AI — Learning  |
-| Gradient       | `grad`         | `∇`       | AI — Algebra   |
-| Agent          | `agent`        | `α`       | AI — Agent     |
-| Knowledge base | `kb`           | `κ`       | AI — Symbolic  |
-| Rule           | `rule`         | `ρ`       | AI — Symbolic  |
-| Fact           | `fact`         | `⊢`       | AI — Symbolic  |
-| Evolve         | `evolve`       | `Ω`       | AI — Evolution |
-| Genome         | `Genome`       | `Γ`       | AI — Evolution |
-| Fitness        | `fitness`      | `φ`       | AI — Evolution |
-| Policy         | `Policy`       | `Ξ`       | AI — RL        |
-| Reward         | `reward`       | `ψ`       | AI — RL        |
-| If             | `if`           | `?`       | Control        |
-| Else           | `else`         | `:`       | Control        |
-| Match          | `match`        | `?=`      | Control        |
-| For            | `for`          | `@`       | Control        |
-| Loop           | `loop`         | `@@`      | Control        |
-| While          | `while`        | `@w`      | Control        |
-| Break          | `break`        | `!`       | Control        |
-| Continue       | `continue`     | `>>`      | Control        |
-| Return         | `return`       | `ret`     | Control        |
-| Yield          | `yield`        | `yl`      | Control        |
-| Effect         | `effect`       | `fx`      | Effects        |
-| Handle         | `handle`       | `hx`      | Effects        |
-| Spec           | `spec`         | `sp`      | Contracts      |
-| Extern         | `extern`       | `xn`      | FFI            |
-| Await          | `.await`       | `.w`      | Async          |
-| Unsafe         | `unsafe`       | *(elided)*| Safety→SKB     |
-| True / False   | `true`/`false` | `1b`/`0b` | Literal        |
-| Matmul         | `@`            | `⊗`       | Tensor op      |
-| Hadamard       | `.*`           | `⊙`       | Tensor op      |
-| Transpose      | `.T`           | `⊤`       | Tensor op      |
-| Flatten        | `.flatten()`   | `⊥`       | Tensor op      |
-| String         | `String`       | `s`       | Type           |
-| `&str`         | `&str`         | `&s`      | Type           |
-| `Vec<T>`       | `Vec<T>`       | `[T]~`    | Type           |
-| `Option<T>`    | `Option<T>`    | `?T`      | Type           |
-| `Result<T,E>`  | `Result<T,E>`  | `R[T,E]`  | Type           |
-| `Box<T>`       | `Box<T>`       | `^T`      | Type           |
-| `HashMap<K,V>` | `HashMap<K,V>` | `{K:V}`   | Type           |
-| Path separator | `::`           | `.`       | Path           |
+| Concept        | Human          | Agent      | Category       |
+| -------------- | -------------- | ---------- | -------------- |
+| Function       | `fn`           | `f`        | Declaration    |
+| Public         | `pub`          | `+`        | Visibility     |
+| Variable       | `let`          | `v`        | Declaration    |
+| Mutable        | `let mut`      | `m`        | Declaration    |
+| Struct         | `struct`       | `S`        | Declaration    |
+| Enum           | `enum`         | `E`        | Declaration    |
+| Trait          | `trait`        | `T`        | Declaration    |
+| Impl           | `impl`         | `I`        | Declaration    |
+| Module         | `mod`          | `M`        | Declaration    |
+| Use            | `use`          | `u`        | Declaration    |
+| Neural net     | `net`          | `Ψ`        | AI — Neural    |
+| Layer          | `layer`        | `λ`        | AI — Neural    |
+| Tensor         | `Tensor`       | `Φ`        | AI — Algebra   |
+| Parameter      | `Param`        | `Π`        | AI — Algebra   |
+| Train          | `train`        | `Θ`        | AI — Learning  |
+| Gradient       | `grad`         | `∇`        | AI — Algebra   |
+| Agent          | `agent`        | `α`        | AI — Agent     |
+| Swarm          | `swarm`        | `Σ`        | AI — Agent     |
+| Knowledge base | `kb`           | `κ`        | AI — Symbolic  |
+| Rule           | `rule`         | `ρ`        | AI — Symbolic  |
+| Fact           | `fact`         | `⊢`        | AI — Symbolic  |
+| Evolve         | `evolve`       | `Ω`        | AI — Evolution |
+| Genome         | `Genome`       | `Γ`        | AI — Evolution |
+| Fitness        | `fitness`      | `φ`        | AI — Evolution |
+| Policy         | `Policy`       | `Ξ`        | AI — RL        |
+| Reward         | `reward`       | `ψ`        | AI — RL        |
+| If             | `if`           | `?`        | Control        |
+| Else           | `else`         | `:`        | Control        |
+| Match          | `match`        | `?=`       | Control        |
+| For            | `for`          | `@`        | Control        |
+| Loop           | `loop`         | `@@`       | Control        |
+| While          | `while`        | `@w`       | Control        |
+| Break          | `break`        | `!`        | Control        |
+| Continue       | `continue`     | `>>`       | Control        |
+| Return         | `return`       | `ret`      | Control        |
+| Yield          | `yield`        | `yl`       | Control        |
+| Effect         | `effect`       | `fx`       | Effects        |
+| Handle         | `handle`       | `hx`       | Effects        |
+| Spec           | `spec`         | `sp`       | Contracts      |
+| Extern         | `extern`       | `xn`       | FFI            |
+| Await          | `.await`       | `.w`       | Async          |
+| Unsafe         | `unsafe`       | *(elided)* | Safety→SKB     |
+| True / False   | `true`/`false` | `1b`/`0b`  | Literal        |
+| Matmul         | `@`            | `⊗`        | Tensor op      |
+| Hadamard       | `.*`           | `⊙`        | Tensor op      |
+| Transpose      | `.T`           | `⊤`        | Tensor op      |
+| Flatten        | `.flatten()`   | `⊥`        | Tensor op      |
+| String         | `String`       | `s`        | Type           |
+| `&str`         | `&str`         | `&s`       | Type           |
+| `Vec<T>`       | `Vec<T>`       | `[T]~`     | Type           |
+| `Option<T>`    | `Option<T>`    | `?T`       | Type           |
+| `Result<T,E>`  | `Result<T,E>`  | `R[T,E]`   | Type           |
+| `Box<T>`       | `Box<T>`       | `^T`       | Type           |
+| `HashMap<K,V>` | `HashMap<K,V>` | `{K:V}`    | Type           |
+| Path separator | `::`           | `.`        | Path           |
 
 See [Appendix D](#appendix-d-Agent-mode-symbol-reference) for the complete symbol table.
 
@@ -219,6 +220,8 @@ keyword =
     | 'rl' | 'policy' | 'reward'
     /* Effects & contracts */
     | 'effect' | 'handle' | 'spec'
+    /* Agents & swarms */
+    | 'agent' | 'swarm'
     /* FFI & safety */
     | 'extern' | 'unsafe'
     ;
@@ -235,6 +238,8 @@ agent_keyword =
     | 'Ψ' | 'λ' | 'Φ' | 'Π' | 'Θ' | '∇'
     /* Agent */
     | 'α'
+    /* Swarm */
+    | 'Σ' | 'sw' /* swarm */
     /* Symbolic AI */
     | 'κ' | 'ρ'
     /* Evolution */
@@ -1048,7 +1053,87 @@ agent_field  = IDENT ':' type ',' ;
 agent_method = visibility? function_def ;
 ```
 
-### 9.2 Swarm Operations
+### 9.2 Swarm Definition (First-Class Construct)
+
+Swarms are first-class language constructs that manage a coordinated group of agents:
+
+**Human mode:**
+```mg
+swarm ReviewTeam {
+    agent: CodeReviewer;
+    size: 5;
+    topology: mesh;
+    consensus: majority;
+
+    dispatch {
+        scatter files |agent, file| {
+            agent.review(file)
+        }
+    }
+
+    aggregate {
+        gather results |reviews| {
+            reviews.consensus()
+        }
+    }
+
+    on_failure {
+        retry(3, backoff: exponential)
+    }
+}
+```
+
+**Agent mode (Σ):**
+```mg
+Σ ReviewTeam {
+    α: CodeReviewer;
+    size: 5;
+    topo: mesh;
+    cons: majority;
+    dispatch { ... }
+    aggregate { ... }
+    on_failure { ... }
+}
+```
+
+**Grammar:**
+```ebnf
+swarm_def = 'swarm' IDENT '{' { swarm_field }* '}' ;
+
+swarm_field = 'agent' ':' IDENT ';'
+            | 'size' ':' expr ';'
+            | 'topology' ':' IDENT ';'     (* star | ring | mesh | broadcast | tree *)
+            | 'consensus' ':' IDENT ';'    (* majority | unanimous | weighted | quorum *)
+            | 'dispatch' block
+            | 'aggregate' block
+            | 'on_failure' block ;
+```
+
+**Topologies:**
+
+| Topology    | Description                           | Ordering      |
+| ----------- | ------------------------------------- | ------------- |
+| `star`      | Hub-and-spoke, coordinator routes all | Hub sees all  |
+| `ring`      | Sequential pipeline                   | Ordered       |
+| `mesh`      | All-to-all, fully connected           | No guarantee  |
+| `broadcast` | Simultaneous fan-out to all agents    | Simultaneous  |
+| `tree`      | Hierarchical, sub-coordinators        | Level-ordered |
+
+**Consensus strategies:**
+
+| Strategy    | Description                           |
+| ----------- | ------------------------------------- |
+| `majority`  | > 50% of agents must agree            |
+| `unanimous` | All agents must agree                 |
+| `weighted`  | Agents vote with configurable weights |
+| `quorum`    | Configurable threshold (e.g., 3 of 5) |
+
+The compiler enforces swarm safety rules (SWM-*) from the SKB: deadlock prevention,
+capability propagation, topology connectivity, and agent Send+Sync requirements.
+
+### 9.3 Swarm Operations (Library API)
+
+For dynamic swarm usage, a library API is also available:
 
 ```mg
 use std::agent::{Swarm, SwarmConfig, ConsensusStrategy};
@@ -1070,7 +1155,7 @@ pub async fn distributed_review(files: Vec<String>) -> Vec<Review> / agent, io {
 }
 ```
 
-### 9.3 Capability-Based Security
+### 9.4 Capability-Based Security
 
 All agent operations are gated by capabilities — fine-grained permissions that can be requested, leased, and revoked:
 
@@ -1479,6 +1564,7 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 | `train`         | `Θ`      | Training block      |
 | `grad`          | `∇`      | Gradient            |
 | `agent`         | `α`      | Agent               |
+| `swarm`         | `Σ`      | Multi-agent swarm   |
 | `kb`            | `κ`      | Knowledge base      |
 | `fact`          | `⊢`      | Fact assertion      |
 | `rule`          | `ρ`      | Inference rule      |
@@ -1583,17 +1669,17 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 
 In agent mode, safety constructs are **fully handled by the compiler and SKB** (Safety Knowledge Base). The following constructs are unnecessary in agent mode:
 
-| Human Syntax                     | Agent Mode Handling                           | SKB Rules    |
-| -------------------------------- | --------------------------------------------- | ------------ |
-| `unsafe { ... }`                 | Elided — compiler verifies via OWN/BOR/FFI    | AEL-0001     |
-| `unsafe fn`                      | Elided — compiler detects from body analysis  | AEL-0002     |
-| Lifetime annotations (`'a`)      | Inferred by compiler's LIF rules              | AEL-0003     |
-| `&mut T` explicit annotation     | Inferred — compiler determines mutability      | AEL-0004     |
-| `Send` / `Sync` bounds           | Derived automatically from type structure     | AEL-0005     |
-| `move` keyword on closures       | Inferred — compiler determines capture mode   | AEL-0006     |
-| `Pin<T>` wrapping                | Handled automatically for self-referential types | AEL-0007  |
-| `dyn` / `impl` dispatch choice   | Compiler selects based on call-site analysis  | AEL-0008     |
-| `PhantomData<T>`                 | Inserted automatically by compiler            | AEL-0012     |
+| Human Syntax                   | Agent Mode Handling                              | SKB Rules |
+| ------------------------------ | ------------------------------------------------ | --------- |
+| `unsafe { ... }`               | Elided — compiler verifies via OWN/BOR/FFI       | AEL-0001  |
+| `unsafe fn`                    | Elided — compiler detects from body analysis     | AEL-0002  |
+| Lifetime annotations (`'a`)    | Inferred by compiler's LIF rules                 | AEL-0003  |
+| `&mut T` explicit annotation   | Inferred — compiler determines mutability        | AEL-0004  |
+| `Send` / `Sync` bounds         | Derived automatically from type structure        | AEL-0005  |
+| `move` keyword on closures     | Inferred — compiler determines capture mode      | AEL-0006  |
+| `Pin<T>` wrapping              | Handled automatically for self-referential types | AEL-0007  |
+| `dyn` / `impl` dispatch choice | Compiler selects based on call-site analysis     | AEL-0008  |
+| `PhantomData<T>`               | Inserted automatically by compiler               | AEL-0012  |
 
 This design maximizes token efficiency (fewer tokens in the LLM context window) while maintaining full safety guarantees through compiler infrastructure rather than language syntax.
 
@@ -1642,6 +1728,7 @@ A complete lexicon of Agent mode symbols, organized by category. This is the "ge
 | `Θ`    | U+0398  | `train`         | Learning   |
 | `∇`    | U+2207  | `grad`          | Algebra    |
 | `α`    | U+03B1  | `agent`         | Agent      |
+| `Σ`    | U+03A3  | `swarm`         | Agent      |
 | `κ`    | U+03BA  | `kb`            | Symbolic   |
 | `ρ`    | U+03C1  | `rule`          | Symbolic   |
 | `Ω`    | U+03A9  | `evolve`        | Evolution  |
@@ -1719,35 +1806,48 @@ A complete lexicon of Agent mode symbols, organized by category. This is the "ge
 
 ### D.5 Control Flow & Effect Compressions (Agent Mode)
 
-| Symbol | Human      | Meaning               |
-| ------ | ---------- | --------------------- |
-| `@@`   | `loop`     | Infinite loop         |
-| `@w`   | `while`    | While loop            |
-| `!`    | `break`    | Break from loop       |
-| `>>`   | `continue` | Continue loop         |
-| `ret`  | `return`   | Return value          |
-| `yl`   | `yield`    | Yield from generator  |
-| `fx`   | `effect`   | Effect declaration    |
-| `hx`   | `handle`   | Effect handler        |
-| `sp`   | `spec`     | Spec/contract block   |
-| `xn`   | `extern`   | FFI extern block      |
-| `.w`   | `.await`   | Async await           |
-| `?=`   | `match`    | Pattern match         |
-| `:?`   | `else if`  | Else-if chain         |
+| Symbol | Human      | Meaning              |
+| ------ | ---------- | -------------------- |
+| `@@`   | `loop`     | Infinite loop        |
+| `@w`   | `while`    | While loop           |
+| `!`    | `break`    | Break from loop      |
+| `>>`   | `continue` | Continue loop        |
+| `ret`  | `return`   | Return value         |
+| `yl`   | `yield`    | Yield from generator |
+| `fx`   | `effect`   | Effect declaration   |
+| `hx`   | `handle`   | Effect handler       |
+| `sp`   | `spec`     | Spec/contract block  |
+| `xn`   | `extern`   | FFI extern block     |
+| `.w`   | `.await`   | Async await          |
+| `?=`   | `match`    | Pattern match        |
+| `:?`   | `else if`  | Else-if chain        |
+| `sw`   | `swarm`    | Multi-agent swarm    |
 
 ### D.6 Safety Elision (Agent Mode — Handled by Compiler)
 
 In agent mode, the following constructs have **no syntax** — the compiler's SKB handles them:
 
-| Human Syntax        | Agent Equivalent | Compiler Handling       |
-| ------------------- | ---------------- | ----------------------- |
-| `unsafe { ... }`    | `{ ... }`        | SKB verifies operations |
-| `unsafe fn`         | `f`              | Compiler detects unsafe |
-| `'a` lifetimes      | *(omitted)*      | LIF rules infer all     |
-| `Send + Sync`       | *(omitted)*      | CON rules derive bounds |
-| `Pin<T>`            | *(omitted)*      | Compiler wraps as needed|
-| `PhantomData<T>`    | *(omitted)*      | Compiler inserts marker |
-| `move \|x\|`       | `\|x\|`          | Capture mode inferred   |
+| Human Syntax     | Agent Equivalent | Compiler Handling        |
+| ---------------- | ---------------- | ------------------------ |
+| `unsafe { ... }` | `{ ... }`        | SKB verifies operations  |
+| `unsafe fn`      | `f`              | Compiler detects unsafe  |
+| `'a` lifetimes   | *(omitted)*      | LIF rules infer all      |
+| `Send + Sync`    | *(omitted)*      | CON rules derive bounds  |
+| `Pin<T>`         | *(omitted)*      | Compiler wraps as needed |
+| `PhantomData<T>` | *(omitted)*      | Compiler inserts marker  |
+| `move \|x\|`     | `\|x\|`          | Capture mode inferred    |
+
+### D.7 Swarm Constructs
+
+| Human Field  | Agent Field  | Meaning                | SKB Rule |
+| ------------ | ------------ | ---------------------- | -------- |
+| `swarm`      | `Σ` / `sw`   | Swarm definition       | SWM-0014 |
+| `agent:`     | `α:`         | Agent type in swarm    | SWM-0004 |
+| `topology:`  | `topo:`      | Communication topology | SWM-0003 |
+| `consensus:` | `cons:`      | Consensus strategy     | SWM-0002 |
+| `dispatch`   | `dispatch`   | Scatter/map block      | SWM-0005 |
+| `aggregate`  | `aggregate`  | Gather/reduce block    | SWM-0006 |
+| `on_failure` | `on_failure` | Fault tolerance block  | SWM-0010 |
 
 ---
 

@@ -53,6 +53,7 @@ pub enum TokenKind {
     KwHandle, // handle
     KwSpec,   // spec
     KwAgent,  // agent
+    KwSwarm,  // swarm
     KwExtern, // extern
     KwReq,    // @req (precondition — parsed as @ + req ident)
     KwEns,    // @ens (postcondition)
@@ -124,6 +125,7 @@ pub enum TokenKind {
     KwTheta,      // Θ → train
     KwNabla,      // ∇ → grad
     KwAlpha,      // α → agent
+    KwSigma,      // Σ → swarm
     KwKappa,      // κ → kb
     KwRho,        // ρ → rule
     KwOmega,      // Ω → evolve
@@ -643,6 +645,10 @@ impl<'a> Lexer<'a> {
                 self.advance();
                 TokenKind::KwPi
             } // Π
+            Some(0xA3) => {
+                self.advance();
+                TokenKind::KwSigma
+            } // Σ
             Some(0xA6) => {
                 self.advance();
                 TokenKind::KwPhi
@@ -974,6 +980,8 @@ impl<'a> Lexer<'a> {
             "spec" => TokenKind::KwSpec,
             "sp" => TokenKind::KwSpec, // agent mode alias
             "agent" => TokenKind::KwAgent,
+            "swarm" => TokenKind::KwSwarm,
+            "sw" => TokenKind::KwSwarm, // agent mode alias
             "extern" => TokenKind::KwExtern,
             "xn" => TokenKind::KwExtern, // agent mode alias
             "unsafe" => TokenKind::KwUnsafe,

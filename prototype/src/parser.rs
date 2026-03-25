@@ -173,6 +173,7 @@ impl<'a> Parser<'a> {
             TokenKind::KwEffect => self.parse_effect_def().map(ItemKind::Effect),
             TokenKind::KwSpec => self.parse_spec_def().map(ItemKind::Spec),
             TokenKind::KwAgent => self.parse_agent_def().map(ItemKind::Agent),
+            TokenKind::KwSwarm => self.parse_swarm_def().map(ItemKind::Swarm),
             TokenKind::KwNet => self.parse_net_def().map(ItemKind::Net),
             TokenKind::KwKb => self.parse_kb_def().map(ItemKind::Kb),
             TokenKind::KwEvolve => self.parse_evolve_def().map(ItemKind::Evolve),
@@ -836,6 +837,94 @@ impl<'a> Parser<'a> {
         }
         self.expect(TokenKind::RBrace)?;
         Ok(AgentDef { name, capabilities, requires_approval })
+    }
+
+    // ── Swarm ───────────────────────────────────────────────
+
+    /// Parse: `swarm Name { agent: Type; size: N; topology: topo; consensus: strat; dispatch { ... } aggregate { ... } on_failure { ... } }`
+    fn parse_swarm_def(&mut self) -> Result<SwarmDef, ParseError> {
+        self.expect(TokenKind::KwSwarm)?;
+        let name = self.expect_ident()?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut agent_type = String::new();
+        let mut size = None;
+        let mut topology = None;
+        let mut consensus = None;
+        let mut on_dispatch = None;
+        let mut on_aggregate = None;
+        let mut on_failure = None;
+
+        while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
+            match self.peek() {
+                // `agent` is a keyword, so handle it explicitly
+                TokenKind::KwAgent => {
+                    self.advance();
+                    self.expect(TokenKind::Colon)?;
+                    agent_type = self.expect_ident()?;
+                    if self.peek() == TokenKind::Semi {
+                        self.advance();
+                    }
+                }
+                TokenKind::Ident => {
+                    let label = self.advance();
+                    let label_text = label.text.clone();
+                    match label_text.as_str() {
+                        "size" => {
+                            self.expect(TokenKind::Colon)?;
+                            size = Some(self.parse_expr()?);
+                            if self.peek() == TokenKind::Semi {
+                                self.advance();
+                            }
+                        }
+                        "topology" | "topo" => {
+                            self.expect(TokenKind::Colon)?;
+                            topology = Some(self.expect_ident()?);
+                            if self.peek() == TokenKind::Semi {
+                                self.advance();
+                            }
+                        }
+                        "consensus" | "cons" => {
+                            self.expect(TokenKind::Colon)?;
+                            consensus = Some(self.expect_ident()?);
+                            if self.peek() == TokenKind::Semi {
+                                self.advance();
+                            }
+                        }
+                        "dispatch" => {
+                            on_dispatch = Some(self.parse_block()?);
+                        }
+                        "aggregate" => {
+                            on_aggregate = Some(self.parse_block()?);
+                        }
+                        "on_failure" => {
+                            on_failure = Some(self.parse_block()?);
+                        }
+                        other => {
+                            return Err(self.error(&format!("unknown swarm field `{}`", other)));
+                        }
+                    }
+                }
+                TokenKind::Comma | TokenKind::Semi => {
+                    self.advance();
+                }
+                _ => {
+                    return Err(self
+                        .error(&format!("expected swarm field or `}}`, found {:?}", self.peek())));
+                }
+            }
+        }
+        self.expect(TokenKind::RBrace)?;
+        Ok(SwarmDef {
+            name,
+            agent_type,
+            size,
+            topology,
+            consensus,
+            on_dispatch,
+            on_aggregate,
+            on_failure,
+        })
     }
 
     // ── Net ─────────────────────────────────────────────────

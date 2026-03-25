@@ -46,6 +46,7 @@ pub enum ItemKind {
     Kb(KbDef),
     Evolve(EvolveDef),
     Train(TrainDef),
+    Swarm(SwarmDef),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -497,4 +498,24 @@ pub struct TrainDef {
     pub loss: Option<Expr>,
     pub epochs: Option<Expr>,
     pub body: Block,
+}
+
+/// Multi-agent swarm definition: `swarm Name { agent: Type; size: N; ... }`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SwarmDef {
+    pub name: String,
+    /// The agent type that populates this swarm.
+    pub agent_type: String,
+    /// Number of agents in the swarm.
+    pub size: Option<Expr>,
+    /// Communication topology: "star", "ring", "mesh", "broadcast", "tree".
+    pub topology: Option<String>,
+    /// Consensus strategy: "majority", "unanimous", "weighted", "quorum".
+    pub consensus: Option<String>,
+    /// Dispatch / scatter logic.
+    pub on_dispatch: Option<Block>,
+    /// Aggregation / gather logic.
+    pub on_aggregate: Option<Block>,
+    /// Failure handler.
+    pub on_failure: Option<Block>,
 }

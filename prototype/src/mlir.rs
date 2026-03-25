@@ -89,6 +89,7 @@ impl<'a> EmitCtx<'a> {
             ast::ItemKind::Kb(k) => self.emit_kb(k),
             ast::ItemKind::Evolve(e) => self.emit_evolve(e),
             ast::ItemKind::Train(t) => self.emit_train(t),
+            ast::ItemKind::Swarm(s) => self.emit_swarm(s),
         }
     }
 
@@ -374,6 +375,44 @@ impl<'a> EmitCtx<'a> {
         self.indent += 1;
         self.line(&format!("MechGen.train.net @{}", t.net));
         self.emit_block(&t.body);
+        self.indent -= 1;
+        self.line("}");
+        self.line("");
+    }
+
+    fn emit_swarm(&mut self, s: &ast::SwarmDef) {
+        self.line(&format!("MechGen.swarm @{} {{", s.name));
+        self.indent += 1;
+        if !s.agent_type.is_empty() {
+            self.line(&format!("MechGen.swarm.agent @{}", s.agent_type));
+        }
+        if let Some(ref topo) = s.topology {
+            self.line(&format!("MechGen.swarm.topology \"{topo}\""));
+        }
+        if let Some(ref cons) = s.consensus {
+            self.line(&format!("MechGen.swarm.consensus \"{cons}\""));
+        }
+        if let Some(ref dispatch) = s.on_dispatch {
+            self.line("MechGen.swarm.dispatch {");
+            self.indent += 1;
+            self.emit_block(dispatch);
+            self.indent -= 1;
+            self.line("}");
+        }
+        if let Some(ref aggregate) = s.on_aggregate {
+            self.line("MechGen.swarm.aggregate {");
+            self.indent += 1;
+            self.emit_block(aggregate);
+            self.indent -= 1;
+            self.line("}");
+        }
+        if let Some(ref on_failure) = s.on_failure {
+            self.line("MechGen.swarm.on_failure {");
+            self.indent += 1;
+            self.emit_block(on_failure);
+            self.indent -= 1;
+            self.line("}");
+        }
         self.indent -= 1;
         self.line("}");
         self.line("");

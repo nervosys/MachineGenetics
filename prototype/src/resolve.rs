@@ -25,6 +25,7 @@ pub enum SymbolKind {
     Effect,
     Spec,
     Agent,
+    Swarm,
     Net,
     Kb,
     Evolve,
@@ -244,6 +245,9 @@ impl Resolver {
             ast::ItemKind::Agent(ad) => {
                 self.define_value(&ad.name, SymbolKind::Agent);
             }
+            ast::ItemKind::Swarm(s) => {
+                self.define_value(&s.name, SymbolKind::Swarm);
+            }
             ast::ItemKind::Net(n) => {
                 self.define_type(&n.name, SymbolKind::Net);
             }
@@ -278,6 +282,7 @@ impl Resolver {
             ast::ItemKind::Effect(ed) => self.resolve_effect(ed),
             ast::ItemKind::Spec(_) => { /* spec bodies are declarative, skip for now */ }
             ast::ItemKind::Agent(_) => { /* agent bodies are declarative, skip for now */ }
+            ast::ItemKind::Swarm(_) => { /* swarm bodies are declarative, skip for now */ }
             ast::ItemKind::Net(_) => { /* net bodies resolved later */ }
             ast::ItemKind::Kb(_) => { /* kb bodies resolved later */ }
             ast::ItemKind::Evolve(_) => { /* evolve bodies resolved later */ }

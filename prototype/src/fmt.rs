@@ -86,6 +86,7 @@ fn emit_item(buf: &mut String, item: &Item, mode: Mode, depth: usize) {
         ItemKind::Kb(k) => emit_kb(buf, k, mode, depth),
         ItemKind::Evolve(e) => emit_evolve(buf, e, mode, depth),
         ItemKind::Train(t) => emit_train(buf, t, mode, depth),
+        ItemKind::Swarm(s) => emit_swarm(buf, s, mode, depth),
     }
 }
 
@@ -689,6 +690,68 @@ fn emit_train(buf: &mut String, t: &TrainDef, mode: Mode, depth: usize) {
     buf.push_str("net: ");
     buf.push_str(&t.net);
     buf.push_str("\n");
+    indent(buf, depth);
+    buf.push_str("}\n");
+}
+
+fn emit_swarm(buf: &mut String, s: &SwarmDef, mode: Mode, depth: usize) {
+    indent(buf, depth);
+    match mode {
+        Mode::Agent => buf.push_str("\u{03A3} "), // Σ
+        Mode::Human => buf.push_str("swarm "),
+    }
+    buf.push_str(&s.name);
+    buf.push_str(" {\n");
+    // agent type
+    if !s.agent_type.is_empty() {
+        indent(buf, depth + 1);
+        match mode {
+            Mode::Agent => buf.push_str("\u{03B1}: "), // α:
+            Mode::Human => buf.push_str("agent: "),
+        }
+        buf.push_str(&s.agent_type);
+        buf.push_str(";\n");
+    }
+    // size
+    if s.size.is_some() {
+        indent(buf, depth + 1);
+        buf.push_str("size: ...\n");
+    }
+    // topology
+    if let Some(ref topo) = s.topology {
+        indent(buf, depth + 1);
+        match mode {
+            Mode::Agent => buf.push_str("topo: "),
+            Mode::Human => buf.push_str("topology: "),
+        }
+        buf.push_str(topo);
+        buf.push_str(";\n");
+    }
+    // consensus
+    if let Some(ref cons) = s.consensus {
+        indent(buf, depth + 1);
+        match mode {
+            Mode::Agent => buf.push_str("cons: "),
+            Mode::Human => buf.push_str("consensus: "),
+        }
+        buf.push_str(cons);
+        buf.push_str(";\n");
+    }
+    // dispatch block
+    if s.on_dispatch.is_some() {
+        indent(buf, depth + 1);
+        buf.push_str("dispatch { ... }\n");
+    }
+    // aggregate block
+    if s.on_aggregate.is_some() {
+        indent(buf, depth + 1);
+        buf.push_str("aggregate { ... }\n");
+    }
+    // on_failure block
+    if s.on_failure.is_some() {
+        indent(buf, depth + 1);
+        buf.push_str("on_failure { ... }\n");
+    }
     indent(buf, depth);
     buf.push_str("}\n");
 }

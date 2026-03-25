@@ -51,6 +51,7 @@ fn elide_item_kind(kind: &ItemKind) -> ItemKind {
         ItemKind::Kb(k) => ItemKind::Kb(k.clone()),
         ItemKind::Evolve(e) => ItemKind::Evolve(e.clone()),
         ItemKind::Train(t) => ItemKind::Train(t.clone()),
+        ItemKind::Swarm(s) => ItemKind::Swarm(s.clone()),
     }
 }
 
