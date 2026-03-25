@@ -55,9 +55,17 @@ pub fn report(module: &Module) -> TokenReport {
     let items: Vec<TokenMetrics> = module.items.iter().map(count_item).collect();
     let total_agent: u32 = items.iter().map(|m| m.agent_tokens).sum();
     let total_human: u32 = items.iter().map(|m| m.human_tokens).sum();
-    let overall_ratio =
-        if total_human > 0 { total_agent as f64 / total_human as f64 } else { 1.0 };
-    TokenReport { items, total_agent, total_human, overall_ratio }
+    let overall_ratio = if total_human > 0 {
+        total_agent as f64 / total_human as f64
+    } else {
+        1.0
+    };
+    TokenReport {
+        items,
+        total_agent,
+        total_human,
+        overall_ratio,
+    }
 }
 
 /// Count tokens for a single item.
@@ -66,7 +74,11 @@ fn count_item(item: &Item) -> TokenMetrics {
         ItemKind::Function(f) => {
             let compact = count_function_agent(f, item.visibility);
             let expanded = count_function_human(f, item.visibility);
-            let ratio = if expanded > 0 { compact as f64 / expanded as f64 } else { 1.0 };
+            let ratio = if expanded > 0 {
+                compact as f64 / expanded as f64
+            } else {
+                1.0
+            };
             TokenMetrics {
                 name: f.name.clone(),
                 kind: ItemMetricKind::Function,
@@ -78,7 +90,11 @@ fn count_item(item: &Item) -> TokenMetrics {
         ItemKind::Struct(s) => {
             let compact = count_struct_agent(s, item.visibility);
             let expanded = count_struct_human(s, item.visibility);
-            let ratio = if expanded > 0 { compact as f64 / expanded as f64 } else { 1.0 };
+            let ratio = if expanded > 0 {
+                compact as f64 / expanded as f64
+            } else {
+                1.0
+            };
             TokenMetrics {
                 name: s.name.clone(),
                 kind: ItemMetricKind::Struct,
@@ -90,7 +106,11 @@ fn count_item(item: &Item) -> TokenMetrics {
         ItemKind::Enum(e) => {
             let compact = count_enum_agent(e, item.visibility);
             let expanded = count_enum_human(e, item.visibility);
-            let ratio = if expanded > 0 { compact as f64 / expanded as f64 } else { 1.0 };
+            let ratio = if expanded > 0 {
+                compact as f64 / expanded as f64
+            } else {
+                1.0
+            };
             TokenMetrics {
                 name: e.name.clone(),
                 kind: ItemMetricKind::Enum,
@@ -102,7 +122,11 @@ fn count_item(item: &Item) -> TokenMetrics {
         ItemKind::Trait(t) => {
             let compact = count_trait_agent(t, item.visibility);
             let expanded = count_trait_human(t, item.visibility);
-            let ratio = if expanded > 0 { compact as f64 / expanded as f64 } else { 1.0 };
+            let ratio = if expanded > 0 {
+                compact as f64 / expanded as f64
+            } else {
+                1.0
+            };
             TokenMetrics {
                 name: t.name.clone(),
                 kind: ItemMetricKind::Trait,
@@ -114,7 +138,11 @@ fn count_item(item: &Item) -> TokenMetrics {
         ItemKind::Impl(i) => {
             let compact = count_impl_agent(i);
             let expanded = count_impl_human(i);
-            let ratio = if expanded > 0 { compact as f64 / expanded as f64 } else { 1.0 };
+            let ratio = if expanded > 0 {
+                compact as f64 / expanded as f64
+            } else {
+                1.0
+            };
             let name = format!("impl {}", type_name(&i.self_type));
             TokenMetrics {
                 name,
@@ -127,7 +155,11 @@ fn count_item(item: &Item) -> TokenMetrics {
         ItemKind::Module(m) => {
             let compact = count_module_agent(m, item.visibility);
             let expanded = count_module_human(m, item.visibility);
-            let ratio = if expanded > 0 { compact as f64 / expanded as f64 } else { 1.0 };
+            let ratio = if expanded > 0 {
+                compact as f64 / expanded as f64
+            } else {
+                1.0
+            };
             TokenMetrics {
                 name: m.name.clone(),
                 kind: ItemMetricKind::Module,
@@ -164,7 +196,7 @@ fn count_function_agent(f: &FunctionDef, vis: Visibility) -> u32 {
         n += 1;
     }
     n += 1; // name
-    // Generics
+            // Generics
     n += count_generics_agent(&f.generics);
     // Params
     n += 1; // (
@@ -175,7 +207,7 @@ fn count_function_agent(f: &FunctionDef, vis: Visibility) -> u32 {
         n += 1; // , (or close)
     }
     n += 1; // )
-    // Return type
+            // Return type
     if let Some(ret) = &f.return_type {
         n += 1; // ->
         n += count_type_agent(ret);
@@ -332,7 +364,10 @@ fn count_where_agent(preds: &[WherePredicate]) -> u32 {
 
 fn count_type_agent(ty: &Type) -> u32 {
     match ty {
-        Type::Path { segments, type_args } => {
+        Type::Path {
+            segments,
+            type_args,
+        } => {
             let mut n = segments.len() as u32;
             if !type_args.is_empty() {
                 n += 1; // [
@@ -386,8 +421,12 @@ fn count_type_agent(ty: &Type) -> u32 {
             }
             n
         }
-        Type::Never | Type::Inferred | Type::SelfType | Type::StringType
-        | Type::KnowledgeBase | Type::LlmType => 1,
+        Type::Never
+        | Type::Inferred
+        | Type::SelfType
+        | Type::StringType
+        | Type::KnowledgeBase
+        | Type::LlmType => 1,
         Type::Tensor { inner, shape } => 2 + count_type_agent(inner) + shape.len() as u32,
         Type::ParamTy { inner, shape } => 2 + count_type_agent(inner) + shape.len() as u32,
         Type::Genome { inner } => 2 + count_type_agent(inner),
@@ -409,7 +448,9 @@ fn count_block_agent(block: &Block) -> u32 {
 
 fn count_stmt_agent(stmt: &Stmt) -> u32 {
     match stmt {
-        Stmt::Let { mutable, ty, value, .. } => {
+        Stmt::Let {
+            mutable, ty, value, ..
+        } => {
             let mut n: u32 = 1; // v or m
             if *mutable { /* m already counted */ }
             n += 1; // pattern name
@@ -492,7 +533,11 @@ fn count_expr_agent(expr: &Expr) -> u32 {
             n += count_expr_agent(body);
             n
         }
-        Expr::If { cond, then_block, else_block } => {
+        Expr::If {
+            cond,
+            then_block,
+            else_block,
+        } => {
             let mut n = 1 + count_expr_agent(cond) + count_block_agent(then_block); // ?
             if let Some(eb) = else_block {
                 n += 1 + count_block_agent(eb); // :
@@ -536,7 +581,7 @@ fn count_expr_agent(expr: &Expr) -> u32 {
             }
             n
         }
-        Expr::Continue => 1,                                     // >>
+        Expr::Continue => 1,                                   // >>
         Expr::Try { expr } => count_expr_agent(expr) + 1,      // ~
         Expr::Await { expr } => count_expr_agent(expr) + 1,    // .await
         Expr::Cast { expr, .. } => count_expr_agent(expr) + 2, // as T
@@ -557,21 +602,21 @@ fn count_expr_agent(expr: &Expr) -> u32 {
 //
 // We estimate the Rust token count by applying the known expansion ratios:
 // - Compact keywords are 1 token each in MechGen but expand to 1-2 in Rust
-//   (`+f` → `pub fn` = 2, `v` → `let` = 1, `m` → `let mut` = 2, etc.)
+//   (`+f` → `exp def` = 2, `v` → `val` = 1, `m` → `var` = 1, etc.)
 // - Type wrappers like `?T` → `Option<T>` are +2 tokens, `^T` → `Box<T>` +2, etc.
 
 fn count_function_human(f: &FunctionDef, vis: Visibility) -> u32 {
     let mut n: u32 = 0;
     if vis == Visibility::Public {
-        n += 1; // pub
+        n += 1; // exp
     }
     if f.is_async {
-        n += 1; // async
+        n += 1; // par
     }
     if f.is_unsafe {
-        n += 1; // unsafe
+        n += 1; // raw
     }
-    n += 1; // fn
+    n += 1; // def
     n += 1; // name
     n += count_generics_human(&f.generics);
     n += 1; // (
@@ -597,13 +642,13 @@ fn count_struct_human(s: &StructDef, vis: Visibility) -> u32 {
     if vis == Visibility::Public {
         n += 1;
     }
-    n += 1; // struct
+    n += 1; // rec
     n += 1; // name
     n += count_generics_human(&s.generics);
     n += 1; // {
     for field in &s.fields {
         if field.visibility == Visibility::Public {
-            n += 1; // pub
+            n += 1; // exp
         }
         n += 1; // name
         n += 1; // :
@@ -619,7 +664,7 @@ fn count_enum_human(e: &EnumDef, vis: Visibility) -> u32 {
     if vis == Visibility::Public {
         n += 1;
     }
-    n += 1; // enum
+    n += 1; // sum
     n += 1; // name
     n += count_generics_human(&e.generics);
     n += 1; // {
@@ -656,7 +701,7 @@ fn count_trait_human(t: &TraitDef, vis: Visibility) -> u32 {
     if vis == Visibility::Public {
         n += 1;
     }
-    n += 1; // trait
+    n += 1; // sig
     n += 1; // name
     n += count_generics_human(&t.generics);
     if !t.super_traits.is_empty() {
@@ -673,11 +718,11 @@ fn count_trait_human(t: &TraitDef, vis: Visibility) -> u32 {
 }
 
 fn count_impl_human(i: &ImplBlock) -> u32 {
-    let mut n: u32 = 1; // impl
+    let mut n: u32 = 1; // ext
     n += count_generics_human(&i.generics);
     if let Some(trait_path) = &i.trait_path {
         n += trait_path.len() as u32;
-        n += 1; // for
+        n += 1; // on
     }
     n += count_type_human(&i.self_type);
     n += 1; // {
@@ -693,7 +738,7 @@ fn count_module_human(m: &ModuleDef, vis: Visibility) -> u32 {
     if vis == Visibility::Public {
         n += 1;
     }
-    n += 1; // mod
+    n += 1; // ns
     n += 1; // name
     if let Some(items) = &m.items {
         n += 1;
@@ -729,7 +774,7 @@ fn count_where_human(preds: &[WherePredicate]) -> u32 {
     if preds.is_empty() {
         return 0;
     }
-    let mut n: u32 = 1; // where
+    let mut n: u32 = 1; // given
     for p in preds {
         n += 1; // type
         n += 1; // :
@@ -742,7 +787,10 @@ fn count_where_human(preds: &[WherePredicate]) -> u32 {
 
 fn count_type_human(ty: &Type) -> u32 {
     match ty {
-        Type::Path { segments, type_args } => {
+        Type::Path {
+            segments,
+            type_args,
+        } => {
             // In Rust: path::segments<T1, T2>
             let mut n = segments.len() as u32;
             n += (segments.len().saturating_sub(1)) as u32; // :: separators
@@ -759,7 +807,7 @@ fn count_type_human(ty: &Type) -> u32 {
         Type::Reference { mutable, inner } => {
             let mut n: u32 = 1; // &
             if *mutable {
-                n += 1; // mut
+                n += 1; // var
             }
             n + count_type_human(inner)
         }
@@ -794,7 +842,7 @@ fn count_type_human(ty: &Type) -> u32 {
         Type::Ptr { inner } => 3 + count_type_human(inner),
         Type::Simd { inner, .. } => 5 + count_type_human(inner),
         Type::Fn { params, ret } => {
-            let mut n: u32 = 3; // fn ( )
+            let mut n: u32 = 3; // def ( )
             for p in params {
                 n += count_type_human(p);
                 n += 1;
@@ -805,8 +853,12 @@ fn count_type_human(ty: &Type) -> u32 {
             }
             n
         }
-        Type::Never | Type::Inferred | Type::SelfType | Type::StringType
-        | Type::KnowledgeBase | Type::LlmType => 1,
+        Type::Never
+        | Type::Inferred
+        | Type::SelfType
+        | Type::StringType
+        | Type::KnowledgeBase
+        | Type::LlmType => 1,
         Type::Tensor { inner, shape } => 3 + count_type_human(inner) + shape.len() as u32,
         Type::ParamTy { inner, shape } => 3 + count_type_human(inner) + shape.len() as u32,
         Type::Genome { inner } => 3 + count_type_human(inner),
@@ -828,11 +880,10 @@ fn count_block_human(block: &Block) -> u32 {
 
 fn count_stmt_human(stmt: &Stmt) -> u32 {
     match stmt {
-        Stmt::Let { mutable, ty, value, .. } => {
-            let mut n: u32 = 1; // let
-            if *mutable {
-                n += 1; // mut
-            }
+        Stmt::Let {
+            ty, value, ..
+        } => {
+            let mut n: u32 = 1; // val or var
             n += 1; // pattern
             if ty.is_some() {
                 n += 1; // :
@@ -852,9 +903,7 @@ fn count_expr_human(expr: &Expr) -> u32 {
     match expr {
         Expr::Literal { .. } => 1,
         Expr::Ident { .. } => 1,
-        Expr::Binary { left, right, .. } => {
-            1 + count_expr_human(left) + count_expr_human(right)
-        }
+        Expr::Binary { left, right, .. } => 1 + count_expr_human(left) + count_expr_human(right),
         Expr::Unary { operand, .. } => 1 + count_expr_human(operand),
         Expr::Call { func, args } => {
             let mut n = count_expr_human(func) + 2;
@@ -873,9 +922,7 @@ fn count_expr_human(expr: &Expr) -> u32 {
             n
         }
         Expr::FieldAccess { object, .. } => count_expr_human(object) + 2,
-        Expr::Index { object, index } => {
-            count_expr_human(object) + 2 + count_expr_human(index)
-        }
+        Expr::Index { object, index } => count_expr_human(object) + 2 + count_expr_human(index),
         Expr::StructLit { fields, .. } => {
             let mut n: u32 = 2;
             for f in fields {
@@ -904,24 +951,26 @@ fn count_expr_human(expr: &Expr) -> u32 {
             }
             n
         }
-        Expr::ArrayRepeat { value, count } => {
-            3 + count_expr_human(value) + count_expr_human(count)
-        }
+        Expr::ArrayRepeat { value, count } => 3 + count_expr_human(value) + count_expr_human(count),
         Expr::Closure { params, body } => {
             let mut n: u32 = 2; // | |
             n += params.len() as u32 * 3; // name : type per param (Rust is more verbose)
             n += count_expr_human(body);
             n
         }
-        Expr::If { cond, then_block, else_block } => {
+        Expr::If {
+            cond,
+            then_block,
+            else_block,
+        } => {
             let mut n = 1 + count_expr_human(cond) + count_block_human(then_block);
             if let Some(eb) = else_block {
-                n += 1 + count_block_human(eb); // else
+                n += 1 + count_block_human(eb); // or
             }
             n
         }
         Expr::Match { scrutinee, arms } => {
-            let mut n: u32 = 1; // match
+            let mut n: u32 = 1; // case
             if let Some(s) = scrutinee {
                 n += count_expr_human(s);
             }
@@ -955,15 +1004,13 @@ fn count_expr_human(expr: &Expr) -> u32 {
         }
         Expr::Continue => 1,
         Expr::Try { expr } => count_expr_human(expr) + 1,
-        Expr::Await { expr } => count_expr_human(expr) + 2, // .await
+        Expr::Await { expr } => count_expr_human(expr) + 2, // .go
         Expr::Cast { expr, .. } => count_expr_human(expr) + 2,
-        Expr::Assign { target, value } => {
-            count_expr_human(target) + 1 + count_expr_human(value)
-        }
+        Expr::Assign { target, value } => count_expr_human(target) + 1 + count_expr_human(value),
         Expr::Range { start, end, .. } => count_expr_human(start) + 1 + count_expr_human(end),
-        Expr::Todo => 2,                                                // todo!()
-        Expr::Unimplemented => 2,                                       // unimplemented!()
-        Expr::UnsafeBlock { block } => 1 + count_block_human(block), // unsafe
+        Expr::Todo => 2,                                             // todo!()
+        Expr::Unimplemented => 2,                                    // unimplemented!()
+        Expr::UnsafeBlock { block } => 1 + count_block_human(block), // raw
         Expr::Error { .. } => 1,
     }
 }
@@ -1066,7 +1113,7 @@ mod tests {
     fn pub_function_more_human() {
         let m = parse_module("+f greet(name: s) -> s { name }");
         let r = report(&m);
-        // pub fn in expanded Rust adds at least: `pub` and `fn` as separate tokens
+        // exp def in expanded Human adds at least: `exp` and `def` as separate tokens
         // plus Rust uses `String` (1 token) where we use `s` (1 token), so types are same.
         // The expanded count should be >= compact count.
         assert!(
@@ -1090,17 +1137,26 @@ mod tests {
         let m = parse_module("f foo() { 1 }\nf bar() { 2 }");
         let r = report(&m);
         assert_eq!(r.items.len(), 2);
-        assert_eq!(r.total_agent, r.items[0].agent_tokens + r.items[1].agent_tokens);
+        assert_eq!(
+            r.total_agent,
+            r.items[0].agent_tokens + r.items[1].agent_tokens
+        );
     }
 
     #[test]
     fn option_type_more_agent() {
         // ?i32 (1 token) vs Option<i32> (3 tokens)
         let compact = count_type_agent(&Type::Option {
-            inner: Box::new(Type::Path { segments: vec!["i32".to_string()], type_args: vec![] }),
+            inner: Box::new(Type::Path {
+                segments: vec!["i32".to_string()],
+                type_args: vec![],
+            }),
         });
         let expanded = count_type_human(&Type::Option {
-            inner: Box::new(Type::Path { segments: vec!["i32".to_string()], type_args: vec![] }),
+            inner: Box::new(Type::Path {
+                segments: vec!["i32".to_string()],
+                type_args: vec![],
+            }),
         });
         assert!(compact < expanded, "compact={compact} expanded={expanded}");
     }

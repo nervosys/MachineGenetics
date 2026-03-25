@@ -1883,7 +1883,9 @@ impl<'a> Parser<'a> {
                     // If expression: ? cond { ... } : { ... }
                     let cond = self.parse_expr()?;
                     let then_block = self.parse_block()?;
-                    let else_block = if self.peek() == TokenKind::Colon {
+                    let else_block = if self.peek() == TokenKind::Colon
+                        || self.peek() == TokenKind::KwOr
+                    {
                         self.advance();
                         Some(self.parse_block()?)
                     } else {
@@ -1893,11 +1895,16 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            // For loop: @ pattern : iter { ... }
+            // For loop: @ pattern : iter { ... } or each pattern of iter { ... }
             TokenKind::At => {
                 self.advance();
                 let pattern = self.parse_pattern()?;
-                self.expect(TokenKind::Colon)?;
+                // Accept both `:` (agent mode) and `of` (human mode)
+                if self.peek() == TokenKind::KwOf {
+                    self.advance();
+                } else {
+                    self.expect(TokenKind::Colon)?;
+                }
                 let iter = self.parse_expr()?;
                 let body = self.parse_block()?;
                 Ok(Expr::For { pattern, iter: Box::new(iter), body })

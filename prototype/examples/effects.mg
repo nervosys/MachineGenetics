@@ -1,34 +1,34 @@
 // effects.mg — effect definitions, handlers, closures
 
 effect io {
-    fn read(fd: i32) -> Vec<u8>;
-    fn write(fd: i32, data: &[u8]) -> i32;
+    def read(fd: i32) -> Vec<u8>;
+    def write(fd: i32, data: &[u8]) -> i32;
 }
 
 effect async {
-    fn suspend() -> ();
+    def suspend() -> ();
 }
 
-pub fn process_data(input: &[u8]) -> Result<i32, Error> {
-    let result = 0;
-    for byte in input {
-        if byte > 127 {
-            return Result::Err(Error::new("invalid byte"));
+exp def process_data(input: &[u8]) -> Result<i32, Error> {
+    val result = 0;
+    each byte of input {
+        when byte > 127 {
+            emit Result::Err(Error::new("invalid byte"));
         }
         result = result + byte;
     }
     Result::Ok(result)
 }
 
-fn transform<T, U>(items: Vec<T>, mapper: fn(T) -> U) -> Vec<U> {
-    let out = Vec::new();
-    for item in items {
+def transform<T, U>(items: Vec<T>, mapper: def(T) -> U) -> Vec<U> {
+    val out = Vec::new();
+    each item of items {
         out.push(mapper(item));
     }
     out
 }
 
-fn example() {
-    let doubled = transform(vec![1, 2, 3], |x| x * 2);
-    let filtered = transform(doubled, |x| x + 1);
+def example() {
+    val doubled = transform(vec![1, 2, 3], |x| x * 2);
+    val filtered = transform(doubled, |x| x + 1);
 }

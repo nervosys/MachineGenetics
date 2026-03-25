@@ -2,32 +2,32 @@
 
 // ── Pure computation ─────────────────────────────────────────────────
 
-pub fn add(a: i32, b: i32) -> i32 {
+exp def add(a: i32, b: i32) -> i32 {
     a + b
 }
 
-fn double(x: i32) -> i32 {
+def double(x: i32) -> i32 {
     x * 2
 }
 
-fn quadruple(x: i32) -> i32 {
+def quadruple(x: i32) -> i32 {
     double(double(x))
 }
 
-// ── Struct and field access ──────────────────────────────────────────
+// ── Record and field access ──────────────────────────────────────────
 
-pub struct Point {
-    pub x: f64,
-    pub y: f64,
+exp rec Point {
+    exp x: f64,
+    exp y: f64,
 }
 
-fn distance_sq(p: Point) -> f64 {
+def distance_sq(p: Point) -> f64 {
     p.x * p.x + p.y * p.y
 }
 
-// ── Enum ─────────────────────────────────────────────────────────────
+// ── Sum type ─────────────────────────────────────────────────────────
 
-enum Shape {
+sum Shape {
     Circle,
     Square,
     Triangle,
@@ -35,58 +35,58 @@ enum Shape {
 
 // ── Generics ─────────────────────────────────────────────────────────
 
-fn identity<T>(val: T) -> T {
+def identity<T>(val: T) -> T {
     val
 }
 
 // ── Option and Result types ──────────────────────────────────────────
 
-fn safe_div(a: f64, b: f64) -> Option<f64> {
+def safe_div(a: f64, b: f64) -> Option<f64> {
     a
 }
 
-fn fallible(x: i32) -> Result<i32, str> {
+def fallible(x: i32) -> Result<i32, str> {
     x
 }
 
 // ── Control flow ─────────────────────────────────────────────────────
 
-fn abs(x: i32) -> i32 {
-    if x > 0 { x } else { 0 - x }
+def abs(x: i32) -> i32 {
+    when x > 0 { x } or { 0 - x }
 }
 
-fn classify(n: i32) -> str {
-    if n > 0 { "positive" } else { "non-positive" }
+def classify(n: i32) -> str {
+    when n > 0 { "positive" } or { "non-positive" }
 }
 
-// ── Let bindings and closures ────────────────────────────────────────
+// ── Val bindings and closures ────────────────────────────────────────
 
-fn compute() -> i32 {
-    let x: i32 = 10;
-    let y: i32 = 20;
-    let sum: i32 = add(x, y);
-    let doubled: i32 = double(sum);
+def compute() -> i32 {
+    val x: i32 = 10;
+    val y: i32 = 20;
+    val sum: i32 = add(x, y);
+    val doubled: i32 = double(sum);
     doubled
 }
 
-fn apply_twice() -> i32 {
-    let inc = |x: i32| x + 1;
+def apply_twice() -> i32 {
+    val inc = |x: i32| x + 1;
     inc(inc(0))
 }
 
 // ── Effectful functions ──────────────────────────────────────────────
 
-fn greet(name: str) -> () {
+def greet(name: str) -> () {
     println(name)
 }
 
-fn write_data() -> () {
+def write_data() -> () {
     open();
     println("done")
 }
 
-fn main() -> () {
+def main() -> () {
     greet("world");
-    let result: i32 = compute();
+    val result: i32 = compute();
     println("calculated")
 }

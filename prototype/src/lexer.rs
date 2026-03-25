@@ -75,6 +75,8 @@ pub enum TokenKind {
     KwLoop,           // loop (legacy — canonical is @@)
     KwBreak,          // break (legacy — canonical is !)
     KwContinue,       // continue (legacy — canonical is >>)
+    KwOf,             // of (human mode `for` separator — `each x of list`)
+    KwOr,             // or (human mode `else` — `when cond {} or {}`)
     KwOk,             // Ok
     KwErr,            // Err
     KwSome,           // Some
@@ -948,7 +950,7 @@ impl<'a> Lexer<'a> {
         }
 
         let kind = match text {
-            // Single-char declaration keywords
+            // ── Agent-mode single-char declaration keywords ──────
             "f" => TokenKind::KwF,
             "af" => TokenKind::KwAf,
             "uf" => TokenKind::KwUf,
@@ -966,7 +968,34 @@ impl<'a> Lexer<'a> {
             "Z" => TokenKind::KwZ,
             "s" => TokenKind::Ident, // 's' is a type, not a keyword; parser handles
 
-            // Multi-char keywords
+            // ── Human-mode keywords ──────────────────────────────
+            "def" => TokenKind::KwF,           // function
+            "exp" => TokenKind::Plus,         // export/public — same as agent's +
+            "val" => TokenKind::KwV,           // immutable binding
+            "var" => TokenKind::KwM,           // mutable binding
+            "fix" => TokenKind::KwC,           // const
+            "rec" => TokenKind::KwS,           // record (struct)
+            "sum" => TokenKind::KwE,           // sum type (enum)
+            "sig" => TokenKind::KwT,           // signature (trait)
+            "ext" => TokenKind::KwI,           // extend (impl)
+            "ns" => TokenKind::KwMod,          // namespace (module)
+            "bring" => TokenKind::KwUse,       // import
+            "alias" => TokenKind::KwType,      // type alias
+            "held" => TokenKind::KwStatic,     // static storage
+            "raw" => TokenKind::KwUnsafe,      // raw/unsafe
+            "par" => TokenKind::KwAf,          // parallel (async)
+            "when" => TokenKind::Question,     // if
+            "case" => TokenKind::QuestionEq,   // match
+            "each" => TokenKind::At,           // for loop
+            "till" => TokenKind::AtW,          // while
+            "spin" => TokenKind::KwLoop,       // loop (infinite)
+            "halt" => TokenKind::KwBreak,      // break
+            "skip" => TokenKind::KwContinue,   // continue
+            "emit" => TokenKind::KwRet,        // return
+            "of" => TokenKind::KwOf,           // for separator (each x of list)
+            "or" => TokenKind::KwOr,           // else (when cond {} or {})
+
+            // ── Multi-char keywords (shared) ─────────────────────
             "loop" => TokenKind::KwLoop,
             "break" => TokenKind::KwBreak,
             "continue" => TokenKind::KwContinue,
@@ -988,6 +1017,7 @@ impl<'a> Lexer<'a> {
             "type" => TokenKind::KwType,
             "static" => TokenKind::KwStatic,
             "for" => TokenKind::KwFor,
+            "given" => TokenKind::TildeArrow,  // where clause (human)
 
             // Built-in result/option variants
             "Ok" => TokenKind::KwOk,

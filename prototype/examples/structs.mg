@@ -1,25 +1,25 @@
-// structs.mg — structs, enums, impl blocks, generics
+// structs.mg — records, sums, extensions, generics
 
-pub struct Point<T> {
-    pub x: T,
-    pub y: T,
+exp rec Point<T> {
+    exp x: T,
+    exp y: T,
 }
 
-enum Shape {
+sum Shape {
     Circle(f64),
     Rect(f64, f64),
     Poly(Vec<Point<f64>>),
 }
 
-impl Point<T: Copy> {
-    pub fn distance(&self, other: &Point<T>) -> f64 {
-        let dx = self.x - other.x;
-        let dy = self.y - other.y;
+ext Point<T: Copy> {
+    exp def distance(&self, other: &Point<T>) -> f64 {
+        val dx = self.x - other.x;
+        val dy = self.y - other.y;
         (dx * dx + dy * dy)
     }
 }
 
-pub fn make_origin() -> Point<f64> {
-    let p = Point { x: 0.0, y: 0.0 };
+exp def make_origin() -> Point<f64> {
+    val p = Point { x: 0.0, y: 0.0 };
     p
 }

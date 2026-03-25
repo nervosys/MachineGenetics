@@ -5,10 +5,7 @@
 
 ---
 
-> *Just as DNA encodes biological life through a compact molecular language,*
-> *MechGen encodes intelligent systems through a compact computational language.*
-> *It is the genetic code for machines — a language in which AI writes, reasons,*
-> *optimizes, and evolves itself.*
+> Just as DNA encodes biological life through a compact molecular language, MechGen encodes intelligent systems through a compact computational language. It is the genetic code for machines — a language in which AI writes, reasons, optimizes, and evolves itself.
 
 ---
 
@@ -44,9 +41,9 @@ Machine Genetic Code (MechGen) is a systems programming language designed for th
 
 1. **Intelligence is a first-class construct.** Neural networks, knowledge bases, rule engines, and evolutionary algorithms are language-level declarations, not library calls. The compiler understands their structure, verifies their types, and targets optimal hardware.
 
-2. **Dual encoding.** Human mode uses clean C-family keywords that any programmer can read. Agent mode compresses every concept into minimal symbols — Greek letters for AI constructs, mathematical operators for tensor algebra — achieving the density of hexadecimal applied to intelligence.
+2. **Dual encoding.** Human mode uses terse, expressive keywords designed for clarity and efficiency — drawing from the best of ML, type-theory, and systems programming traditions. Agent mode compresses every concept into minimal symbols — Greek letters for AI constructs, mathematical operators for tensor algebra — achieving the density of hexadecimal applied to intelligence.
 
-3. **Safety without ceremony.** Ownership, borrowing, and lifetimes are enforced but fully inferred. No lifetime annotations, no `PhantomData`, no `Pin`. The Safety Knowledge Base (SKB) encodes 9,157 rules that the compiler applies automatically. In agent mode, **all safety constructs are handled by the compiler and SKB** — `unsafe` blocks, lifetime annotations, `Send`/`Sync` bounds, and `Pin<T>` are entirely elided from the language surface, maximizing token efficiency while the compiler maintains full safety guarantees.
+3. **Safety without ceremony.** Ownership, borrowing, and lifetimes are enforced but fully inferred. No lifetime annotations, no `PhantomData`, no `Pin`. The Safety Knowledge Base (SKB) encodes 9,157 rules that the compiler applies automatically. In agent mode, **all safety constructs are handled by the compiler and SKB** — `raw` blocks, lifetime annotations, `Send`/`Sync` bounds, and `Pin<T>` are entirely elided from the language surface, maximizing token efficiency while the compiler maintains full safety guarantees.
 
 4. **Effects make side effects visible.** Every function declares its effects (`/ io`, `/ gpu`, `/ llm`). Pure functions have no annotation. Algebraic effect handlers provide structured concurrency and composable I/O.
 
@@ -83,7 +80,7 @@ MechGen supports two interchangeable surface syntaxes that parse to the same AST
 
 | Mode      | Pragma              | Purpose                              | Density |
 | --------- | ------------------- | ------------------------------------ | ------- |
-| **Human** | (default)           | Human-readable, C-family keywords    | 1×      |
+| **Human** | (default)           | Human-readable, terse keywords   | 1×      |
 | **Agent** | `#![syntax(agent)]` | Machine-optimized, symbol-compressed | ~3×     |
 
 A `#![syntax(agent)]` pragma at the top of a `.mg` file selects Agent mode. Human is the default.
@@ -92,18 +89,61 @@ Both modes are byte-for-byte round-trippable via `mg fmt --human` and `mg fmt --
 
 ### 2.1 Human mode Keywords
 
-Human mode uses C-family keywords plus MechGen-unique AI constructs:
+Human mode uses short, distinct keywords designed for terseness, clarity, and expressiveness — a genuinely new language surface rather than a C-family veneer:
 
-**From C/C++/Rust** (familiar to any systems programmer):
-`fn`, `let`, `mut`, `const`, `struct`, `enum`, `trait`, `impl`, `mod`, `use`,
-`pub`, `if`, `else`, `for`, `in`, `match`, `loop`, `while`, `break`, `continue`,
-`return`, `yield`, `true`, `false`, `async`, `await`, `as`, `where`, `self`,
-`Self`, `crate`, `super`, `type`, `static`, `extern`, `unsafe`
+**Core declarations:**
+`def`, `val`, `var`, `fix`, `rec`, `sum`, `sig`, `ext`, `ns`, `bring`,
+`exp`, `alias`, `held`, `raw`, `par`
+
+**Control flow:**
+`when`, `or`, `each`, `of`, `case`, `spin`, `till`, `halt`, `skip`,
+`emit`, `yield`
+
+**Shared with Rust (unchanged):**
+`true`, `false`, `as`, `self`, `Self`, `crate`, `super`, `extern`
+
+**Clauses:** `given`
+
+**Async:** `par` (async), `.go` (await)
 
 **MechGen-unique — AI constructs:**
 `net`, `layer`, `tensor`, `param`, `train`, `grad`, `agent`, `kb`, `fact`,
 `rule`, `query`, `evolve`, `genome`, `mutate`, `fitness`, `select`, `crossover`,
 `rl`, `policy`, `reward`, `effect`, `handle`, `spec`
+
+**Keyword mapping from Rust:**
+
+| Rust           | MechGen Human | Rationale                       |
+| -------------- | ------------- | ------------------------------- |
+| `fn`           | `def`         | "define" — universal            |
+| `pub`          | `exp`         | "export" — what leaves a module |
+| `let`          | `val`         | "value" — immutable binding     |
+| `let mut`      | `var`         | "variable" — single token       |
+| `const`        | `fix`         | "fixed" — compile-time          |
+| `struct`       | `rec`         | "record" — ML-family            |
+| `enum`         | `sum`         | "sum type" — type theory        |
+| `trait`        | `sig`         | "signature" — interfaces        |
+| `impl`         | `ext`         | "extend" — add behaviours       |
+| `mod`          | `ns`          | "namespace"                     |
+| `use`          | `bring`       | "bring into scope"              |
+| `type`         | `alias`       | "type alias"                    |
+| `static`       | `held`        | "held" — process-lifetime       |
+| `unsafe`       | `raw`         | "raw access"                    |
+| `async`        | `par`         | "parallel"                      |
+| `.await`       | `.go`         | "go" — execute                  |
+| `if`           | `when`        | "when condition"                |
+| `else`         | `or`          | "or else"                       |
+| `match`        | `case`        | "case analysis"                 |
+| `for`          | `each`        | "each item"                     |
+| `in`           | `of`          | "of collection"                 |
+| `while`        | `till`        | "loop till false"               |
+| `loop`         | `spin`        | "spin forever"                  |
+| `break`        | `halt`        | "halt loop"                     |
+| `continue`     | `skip`        | "skip to next"                  |
+| `return`       | `emit`        | "emit value"                    |
+| `where`        | `given`       | "given constraints"             |
+| `&mut`         | `&var`        | "variable reference"            |
+| `impl X for Y` | `ext X on Y`  | "extend X on Y"                 |
 
 ### 2.2 Agent mode Symbols
 
@@ -111,16 +151,19 @@ Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 b
 
 | Concept        | Human          | Agent      | Category       |
 | -------------- | -------------- | ---------- | -------------- |
-| Function       | `fn`           | `f`        | Declaration    |
-| Public         | `pub`          | `+`        | Visibility     |
-| Variable       | `let`          | `v`        | Declaration    |
-| Mutable        | `let mut`      | `m`        | Declaration    |
-| Struct         | `struct`       | `S`        | Declaration    |
-| Enum           | `enum`         | `E`        | Declaration    |
-| Trait          | `trait`        | `T`        | Declaration    |
-| Impl           | `impl`         | `I`        | Declaration    |
-| Module         | `mod`          | `M`        | Declaration    |
-| Use            | `use`          | `u`        | Declaration    |
+| Function       | `def`          | `f`        | Declaration    |
+| Public         | `exp`          | `+`        | Visibility     |
+| Variable       | `val`          | `v`        | Declaration    |
+| Mutable        | `var`          | `m`        | Declaration    |
+| Constant       | `fix`          | `c`        | Declaration    |
+| Struct         | `rec`          | `S`        | Declaration    |
+| Enum           | `sum`          | `E`        | Declaration    |
+| Trait          | `sig`          | `T`        | Declaration    |
+| Impl           | `ext`          | `I`        | Declaration    |
+| Module         | `ns`           | `M`        | Declaration    |
+| Import         | `bring`        | `u`        | Declaration    |
+| Type alias     | `alias`        | `Y`        | Declaration    |
+| Static         | `held`         | `Z`        | Declaration    |
 | Neural net     | `net`          | `Ψ`        | AI — Neural    |
 | Layer          | `layer`        | `λ`        | AI — Neural    |
 | Tensor         | `Tensor`       | `Φ`        | AI — Algebra   |
@@ -137,22 +180,26 @@ Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 b
 | Fitness        | `fitness`      | `φ`        | AI — Evolution |
 | Policy         | `Policy`       | `Ξ`        | AI — RL        |
 | Reward         | `reward`       | `ψ`        | AI — RL        |
-| If             | `if`           | `?`        | Control        |
-| Else           | `else`         | `:`        | Control        |
-| Match          | `match`        | `?=`       | Control        |
-| For            | `for`          | `@`        | Control        |
-| Loop           | `loop`         | `@@`       | Control        |
-| While          | `while`        | `@w`       | Control        |
-| Break          | `break`        | `!`        | Control        |
-| Continue       | `continue`     | `>>`       | Control        |
-| Return         | `return`       | `ret`      | Control        |
+| If             | `when`         | `?`        | Control        |
+| Else           | `or`           | `:`        | Control        |
+| Match          | `case`         | `?=`       | Control        |
+| For            | `each`         | `@`        | Control        |
+| In (for sep)   | `of`           | `:`        | Control        |
+| Loop           | `spin`         | `@@`       | Control        |
+| While          | `till`         | `@w`       | Control        |
+| Break          | `halt`         | `!`        | Control        |
+| Continue       | `skip`         | `>>`       | Control        |
+| Return         | `emit`         | `ret`      | Control        |
 | Yield          | `yield`        | `yl`       | Control        |
 | Effect         | `effect`       | `fx`       | Effects        |
 | Handle         | `handle`       | `hx`       | Effects        |
 | Spec           | `spec`         | `sp`       | Contracts      |
 | Extern         | `extern`       | `xn`       | FFI            |
-| Await          | `.await`       | `.w`       | Async          |
-| Unsafe         | `unsafe`       | *(elided)* | Safety→SKB     |
+| Await          | `.go`          | `.w`       | Async          |
+| Async          | `par`          | `af`       | Async          |
+| Unsafe         | `raw`          | *(elided)* | Safety→SKB     |
+| Where          | `given`        | `~>`       | Clause         |
+| Mutable ref    | `&var`         | `&m`       | Type           |
 | True / False   | `true`/`false` | `1b`/`0b`  | Literal        |
 | Matmul         | `@`            | `⊗`        | Tensor op      |
 | Hadamard       | `.*`           | `⊙`        | Tensor op      |
@@ -197,19 +244,19 @@ block_comment = '/*' { any_char | block_comment }* '*/' ;  /* nestable */
 ```
 keyword =
     /* Core declarations */
-    | 'fn' | 'let' | 'mut' | 'const' | 'struct' | 'enum' | 'trait'
-    | 'impl' | 'mod' | 'union' | 'use' | 'type' | 'static'
+    | 'def' | 'val' | 'var' | 'fix' | 'rec' | 'sum' | 'sig'
+    | 'ext' | 'ns' | 'bring' | 'alias' | 'held'
     /* Visibility */
-    | 'pub'
+    | 'exp'
     /* Control flow */
-    | 'if' | 'else' | 'for' | 'in' | 'match' | 'loop' | 'while'
-    | 'break' | 'continue' | 'return' | 'yield'
+    | 'when' | 'or' | 'each' | 'of' | 'case' | 'spin' | 'till'
+    | 'halt' | 'skip' | 'emit' | 'yield'
     /* Boolean */
     | 'true' | 'false'
     /* Async */
-    | 'async' | 'await'
+    | 'par'   /* async */
     /* Special */
-    | 'as' | 'where' | 'self' | 'Self' | 'crate' | 'super'
+    | 'as' | 'given' | 'self' | 'Self' | 'crate' | 'super'
     /* Neural AI */
     | 'net' | 'layer' | 'tensor' | 'param' | 'train' | 'grad'
     /* Symbolic AI */
@@ -223,7 +270,7 @@ keyword =
     /* Agents & swarms */
     | 'agent' | 'swarm'
     /* FFI & safety */
-    | 'extern' | 'unsafe'
+    | 'extern' | 'raw'
     ;
 ```
 
@@ -259,7 +306,7 @@ agent_keyword =
     /* Async */
     | '.w' /* .await */
     /* Safety — elided (handled by compiler SKB) */
-    /* 'unsafe' is NEVER needed in agent mode */
+    /* 'raw' is NEVER needed in agent mode */
     ;
 ```
 
@@ -366,7 +413,7 @@ compilation_unit = { item }* ;
 
 item = { attribute }* visibility? item_kind ;
 
-visibility = 'pub' [ '(' 'crate' ')' ] ;
+visibility = 'exp' [ '(' 'crate' ')' ] ;
 
 item_kind = function_def | struct_def | enum_def | trait_def | impl_block
           | module_def | use_decl | type_alias | const_def | static_def
@@ -378,21 +425,21 @@ item_kind = function_def | struct_def | enum_def | trait_def | impl_block
 ### 4.2 Function Definitions
 
 ```
-function_def = 'fn' IDENT [ generic_params ] '(' [ param_list ] ')'
+function_def = 'def' IDENT [ generic_params ] '(' [ param_list ] ')'
                [ '->' type ] [ where_clause ] [ effect_annotation ]
                block ;
 
-async_function_def = 'async' function_def ;
+async_function_def = 'par' function_def ;
 
 param_list   = param { ',' param }* [ ',' ] ;
 param        = IDENT ':' type ;
-self_param   = '&' 'self' | '&' 'mut' 'self' | 'self' ;
+self_param   = '&' 'self' | '&' 'var' 'self' | 'self' ;
 
 generic_params    = '<' generic_param { ',' generic_param }* '>' ;
 generic_param     = IDENT [ ':' type_bound_list ] [ '=' type ] ;
 type_bound_list   = type_bound { '+' type_bound }* ;
 
-where_clause      = 'where' where_predicate { ',' where_predicate }* ;
+where_clause      = 'given' where_predicate { ',' where_predicate }* ;
 where_predicate   = type ':' type_bound_list ;
 
 effect_annotation = '/' effect_name { ',' effect_name }* ;
@@ -401,22 +448,22 @@ effect_annotation = '/' effect_name { ',' effect_name }* ;
 ### 4.3 Data Types
 
 ```
-struct_def = 'struct' IDENT [ generic_params ] [ where_clause ]
+struct_def = 'rec' IDENT [ generic_params ] [ where_clause ]
              ( '{' { struct_field }* '}' | '(' type_list ')' ';' | ';' ) ;
 struct_field = visibility? IDENT ':' type [ ',' ] ;
 
-enum_def = 'enum' IDENT [ generic_params ] [ where_clause ]
+enum_def = 'sum' IDENT [ generic_params ] [ where_clause ]
            '{' enum_variant { ',' enum_variant }* [ ',' ] '}' ;
 enum_variant = IDENT [ '(' type_list ')' | '{' struct_field_list '}' | '=' expression ] ;
 
-trait_def = 'trait' IDENT [ generic_params ] [ ':' type_bound_list ] [ where_clause ]
+trait_def = 'sig' IDENT [ generic_params ] [ ':' type_bound_list ] [ where_clause ]
             '{' { trait_item }* '}' ;
-trait_item = 'fn' IDENT [ generic_params ] '(' [ self_param [ ',' param_list ] ] ')'
+trait_item = 'def' IDENT [ generic_params ] '(' [ self_param [ ',' param_list ] ] ')'
              [ '->' type ] [ block | ';' ]
-           | 'type' IDENT [ ':' type_bound_list ] [ '=' type ] ';'
-           | 'const' IDENT ':' type [ '=' expression ] ';' ;
+           | 'alias' IDENT [ ':' type_bound_list ] [ '=' type ] ';'
+           | 'fix' IDENT ':' type [ '=' expression ] ';' ;
 
-impl_block = 'impl' [ generic_params ] type [ 'for' type ] [ where_clause ]
+impl_block = 'ext' [ generic_params ] type [ 'on' type ] [ where_clause ]
              '{' { impl_item }* '}' ;
 impl_item  = visibility? ( function_def | type_alias | const_def ) ;
 ```
@@ -424,15 +471,15 @@ impl_item  = visibility? ( function_def | type_alias | const_def ) ;
 ### 4.4 Modules and Imports
 
 ```
-module_def = 'mod' IDENT ( '{' { item }* '}' | ';' ) ;
-use_decl   = 'use' use_path ';' ;
+module_def = 'ns' IDENT ( '{' { item }* '}' | ';' ) ;
+use_decl   = 'bring' use_path ';' ;
 use_path   = path_segment { '::' path_segment }* [ '::' ( '*' | '{' use_tree_list '}' ) ] ;
 ```
 
 ### 4.5 Types
 
 ```
-type = type_path | '&' type | '&' 'mut' type
+type = type_path | '&' type | '&' 'var' type
      | 'Box' '<' type '>'      | 'Rc' '<' type '>'    | 'Arc' '<' type '>'
      | 'Vec' '<' type '>'      | 'Option' '<' type '>' | 'Result' '<' type ',' type '>'
      | 'HashMap' '<' type ',' type '>' | 'HashSet' '<' type '>'
@@ -444,7 +491,7 @@ type = type_path | '&' type | '&' 'mut' type
      | 'LLM'                               /* language model handle */
      | '[' type ';' expression ']'  | '&' '[' type ']'
      | '(' [ type { ',' type }* ] ')'
-     | 'fn' '(' [ type_list ] ')' [ '->' type ]
+     | 'def' '(' [ type_list ] ')' [ '->' type ]
      | '*const' type | '*mut' type
      | '!' | '_' | 'String' | 'str'
      ;
@@ -475,7 +522,7 @@ matmul_expr  = expression '@' expression ;
 grad_expr    = 'grad' '(' expression ',' expression ')' ;
 
 /* Standard  expressions (identical to Rust) */
-prefix_expr  = ( '-' | '!' | '&' | '&' 'mut' | '*' ) expression ;
+prefix_expr  = ( '-' | '!' | '&' | '&' 'var' | '*' ) expression ;
 infix_expr   = expression binop expression ;
 postfix_expr = expression '?' ;
 call_expr    = expression '(' [ arg_list ] ')' ;
@@ -484,20 +531,22 @@ index_expr   = expression '[' expression ']' ;
 field_expr   = expression '.' IDENT ;
 struct_expr  = type_path '{' [ field_init_list ] '}' ;
 closure_expr = '|' [ param_list ] '|' ( expression | block ) ;
-if_expr      = 'if' expression block [ 'else' block ] ;
-match_expr   = 'match' expression '{' { pattern '=>' expression ',' }* '}' ;
-for_expr     = 'for' pattern 'in' expression block ;
-loop_expr    = 'loop' block ;
-while_expr   = 'while' expression block ;
-return_expr  = 'return' [ expression ] ;
-await_expr   = expression '.' 'await' ;
+when_expr    = 'when' expression block [ 'or' block ] ;
+case_expr    = 'case' expression '{' { pattern '=>' expression ',' }* '}' ;
+each_expr    = 'each' pattern 'of' expression block ;
+spin_expr    = 'spin' block ;
+till_expr    = 'till' expression block ;
+emit_expr    = 'emit' [ expression ] ;
+halt_expr    = 'halt' [ expression ] ;
+skip_expr    = 'skip' ;
+await_expr   = expression '.' 'go' ;
 try_expr     = expression '?' ;
 ```
 
 ### 4.7 Statements
 
 ```
-statement = 'let' [ 'mut' ] pattern [ ':' type ] '=' expression ';'
+statement = ( 'val' | 'var' ) pattern [ ':' type ] '=' expression ';'
           | expression ';'
           | item ;
 ```
@@ -569,7 +618,7 @@ layer_kind = 'dense' | 'conv2d' | 'conv3d' | 'lstm' | 'gru'
            | 'dropout' | 'flatten' | 'reshape'
            | 'residual' | 'pool2d' | IDENT ;   /* extensible */
 
-forward_def = 'fn' 'forward' '(' param_list ')' '->' type block ;
+forward_def = 'def' 'forward' '(' param_list ')' '->' type block ;
 ```
 
 ### 5.2 Layer Types
@@ -605,7 +654,7 @@ train mnist_training {
     epochs: 100,
     batch_size: 64,
 
-    fn on_epoch(epoch: u32, metrics: &Metrics) {
+    def on_epoch(epoch: u32, metrics: &Metrics) {
         println!("Epoch {epoch}: loss={metrics.loss:.4}, acc={metrics.accuracy:.2}%");
     }
 }
@@ -622,7 +671,7 @@ train_field = 'model' ':' expression ','
             | 'loss' ':' expression ','
             | 'epochs' ':' expression ','
             | 'batch_size' ':' expression ','
-            | 'fn' IDENT '(' param_list ')' block   /* callbacks */
+            | 'def' IDENT '(' param_list ')' block   /* callbacks */
             ;
 ```
 
@@ -631,12 +680,12 @@ train_field = 'model' ':' expression ','
 MechGen provides native types for language model invocation:
 
 ```mg
-use std::llm::{LLM, Prompt, Response};
+bring std::llm::{LLM, Prompt, Response};
 
-pub fn summarize(text: &str) -> String / llm {
-    let model = LLM::load("local://llama-3-8b");
-    let prompt = Prompt::new("Summarize the following text:\n{text}");
-    let response = model.generate(prompt, max_tokens: 256);
+exp def summarize(text: &str) -> String / llm {
+    val model = LLM::load("local://llama-3-8b");
+    val prompt = Prompt::new("Summarize the following text:\n{text}");
+    val response = model.generate(prompt, max_tokens: 256);
     response.text()
 }
 ```
@@ -648,13 +697,13 @@ The `/ llm` effect annotation makes LLM usage explicit and handleable.
 The `grad` keyword computes gradients automatically:
 
 ```mg
-pub fn train_step(model: &mut Classifier, x: Tensor<f32, [B, 784]>,
+exp def train_step(model: &var Classifier, x: Tensor<f32, [B, 784]>,
                   y: Tensor<i64, [B]>) -> f32 / gpu {
-    let logits = model.forward(x);
-    let loss = cross_entropy(logits, y);
+    val logits = model.forward(x);
+    val loss = cross_entropy(logits, y);
 
     // Compute gradients of loss w.r.t. all model parameters
-    let grads = grad(loss, model.params());
+    val grads = grad(loss, model.params());
 
     // Update parameters
     model.apply_grads(grads, lr: 0.001);
@@ -680,13 +729,13 @@ Tensors are first-class types with compile-time shape checking and automatic har
 
 ```mg
 // Statically shaped tensors
-let a: Tensor<f32, [3, 224, 224]>;      // 3×224×224 image
-let b: Tensor<f64, [1000]>;             // 1000-element vector
-let c: Tensor<f16, [B, 512, 512]>;      // batched matrix (B is generic)
+val a: Tensor<f32, [3, 224, 224]>;      // 3×224×224 image
+val b: Tensor<f64, [1000]>;             // 1000-element vector
+val c: Tensor<f16, [B, 512, 512]>;      // batched matrix (B is generic)
 
 // Learnable parameters (tracked for autograd)
-let w: Param<f32, [512, 256]>;          // weight matrix
-let bias: Param<f32, [256]>;            // bias vector
+val w: Param<f32, [512, 256]>;          // weight matrix
+val bias: Param<f32, [256]>;            // bias vector
 ```
 
 Agent mode:
@@ -718,18 +767,18 @@ v w: Π[f32; 512, 256]
 The compiler verifies tensor shape compatibility at compile time:
 
 ```mg
-let a: Tensor<f32, [3, 4]>;
-let b: Tensor<f32, [4, 5]>;
-let c = a @ b;               // OK: c is Tensor<f32, [3, 5]>
+val a: Tensor<f32, [3, 4]>;
+val b: Tensor<f32, [4, 5]>;
+val c = a @ b;               // OK: c is Tensor<f32, [3, 5]>
 
-let d: Tensor<f32, [2, 3]>;
-let e = a @ d;               // COMPILE ERROR: shape mismatch [3,4] @ [2,3]
+val d: Tensor<f32, [2, 3]>;
+val e = a @ d;               // COMPILE ERROR: shape mismatch [3,4] @ [2,3]
 ```
 
 Shape variables allow generic tensor functions:
 
 ```mg
-fn linear<const M: usize, const N: usize, const K: usize>(
+def linear<const M: usize, const N: usize, const K: usize>(
     x: Tensor<f32, [M, K]>,
     w: Param<f32, [K, N]>,
     b: Param<f32, [N]>,
@@ -757,19 +806,19 @@ Annotations override automatic dispatch:
 
 ```mg
 // Vector literal
-let v = tensor![1.0, 2.0, 3.0, 4.0];
+val v = tensor![1.0, 2.0, 3.0, 4.0];
 
 // Matrix literal
-let m = tensor![
+val m = tensor![
     [1.0, 0.0, 0.0],
     [0.0, 1.0, 0.0],
     [0.0, 0.0, 1.0],
 ];
 
 // Zeros/ones/random constructors
-let z = Tensor::<f32, [3, 3]>::zeros();
-let o = Tensor::<f32, [256]>::ones();
-let r = Tensor::<f32, [64, 784]>::randn();
+val z = Tensor::<f32, [3, 3]>::zeros();
+val o = Tensor::<f32, [256]>::ones();
+val r = Tensor::<f32, [64, 784]>::randn();
 ```
 
 ---
@@ -833,10 +882,10 @@ rule_term = IDENT '(' arg_list ')'
 ### 7.2 Runtime Querying
 
 ```mg
-use std::kb::KnowledgeBase;
+bring std::kb::KnowledgeBase;
 
-pub fn check_types(from: &str, to: &str) -> bool {
-    let kb = TypeRules::new();
+exp def check_types(from: &str, to: &str) -> bool {
+    val kb = TypeRules::new();
     kb.query("can_cast", &[from, to]).is_some()
 }
 ```
@@ -854,9 +903,9 @@ The SKB from the compiler is itself a `kb` instance with 9,157 rules across:
 Agents can query the SKB at compile time:
 
 ```mg
-use std::skb;
+bring std::skb;
 
-pub fn validate_borrow(code: &str) -> Vec<Diagnostic> {
+exp def validate_borrow(code: &str) -> Vec<Diagnostic> {
     skb::query()
         .category("borrow")
         .severity("error")
@@ -878,8 +927,8 @@ evolve NeuralArchSearch {
     population: 200,
     generations: 1000,
 
-    fn fitness(&self) -> f64 / gpu {
-        let model = self.genome.build_net();
+    def fitness(&self) -> f64 / gpu {
+        val model = self.genome.build_net();
         model |> train(mnist, epochs: 5) |> evaluate(test_set)
     }
 
@@ -888,7 +937,7 @@ evolve NeuralArchSearch {
     mutate gaussian(sigma: 0.02),
     target fitness > 0.98,
 
-    fn on_generation(gen: u32, best: &Self, stats: &EvolveStats) {
+    def on_generation(gen: u32, best: &Self, stats: &EvolveStats) {
         println!("Gen {gen}: best_fitness={best.fitness():.4}");
     }
 }
@@ -929,7 +978,7 @@ evolve_field = 'genome' ':' type ','
              | callback_def
              ;
 
-fitness_def = 'fn' 'fitness' '(' '&' 'self' ')' '->' 'f64' [ effect_annotation ] block ;
+fitness_def = 'def' 'fitness' '(' '&' 'self' ')' '->' 'f64' [ effect_annotation ] block ;
 
 selection_strategy  = 'tournament' '(' kvp_list ')'
                     | 'roulette' | 'rank' | 'elitist' '(' kvp_list ')' ;
@@ -944,14 +993,14 @@ mutation_strategy   = 'gaussian' '(' kvp_list ')'
 ```mg
 // A genome is a typed genotype that can be crossed over and mutated.
 #[derive(Genome)]
-pub struct ArchGenome {
+exp rec ArchGenome {
     layers: Vec<LayerGene>,
     learning_rate: f64,
     dropout_rate: f64,
 }
 
 #[derive(Gene)]
-pub enum LayerGene {
+exp sum LayerGene {
     Dense { units: u32, activation: Activation },
     Conv2d { filters: u32, kernel: u32 },
     Attention { heads: u32, dim: u32 },
@@ -964,21 +1013,21 @@ The `#[derive(Genome)]` macro generates `crossover`, `mutate`, and `random` impl
 ### 8.3 Reinforcement Learning
 
 ```mg
-use std::rl::{Env, Policy, PPO, Trajectory};
+bring std::rl::{Env, Policy, PPO, Trajectory};
 
-pub fn train_agent(env: &mut impl Env) -> Policy<f32, f32> / gpu {
-    let mut agent = PPO::new(
+exp def train_agent(env: &var impl Env) -> Policy<f32, f32> / gpu {
+    var agent = PPO::new(
         obs_dim: env.observation_space(),
         act_dim: env.action_space(),
         hidden: 256,
         lr: 3e-4,
     );
 
-    for episode in 0..10_000 {
-        let trajectory = env.rollout(&agent);
-        let metrics = agent.update(&trajectory);
+    each episode of 0..10_000 {
+        val trajectory = env.rollout(&agent);
+        val metrics = agent.update(&trajectory);
 
-        if episode % 100 == 0 {
+        when episode % 100 == 0 {
             println!("Episode {episode}: reward={metrics.mean_reward:.2}");
         }
     }
@@ -998,10 +1047,10 @@ evolve CompilerOptimizer {
     population: 50,
     generations: 500,
 
-    fn fitness(&self) -> f64 {
-        let compiler = Compiler::with_passes(&self.genome);
-        let binary = compiler.compile(benchmark_suite);
-        let perf = binary.run_benchmarks();
+    def fitness(&self) -> f64 {
+        val compiler = Compiler::with_passes(&self.genome);
+        val binary = compiler.compile(benchmark_suite);
+        val perf = binary.run_benchmarks();
         perf.throughput / perf.binary_size  // multi-objective
     }
 
@@ -1026,15 +1075,15 @@ agent CodeReviewer {
     kb: KnowledgeBase,
     memory: Vec<Review>,
 
-    fn handle(&mut self, msg: Message<CodeSubmission>) -> Result<Review, AgentError> / agent, llm {
-        let rules = self.kb.query("style_rules");
-        let analysis = self.brain.analyze(&msg.payload.code, context: &rules);
-        let review = Review::from(analysis);
+    def handle(&var self, msg: Message<CodeSubmission>) -> Result<Review, AgentError> / agent, llm {
+        val rules = self.kb.query("style_rules");
+        val analysis = self.brain.analyze(&msg.payload.code, context: &rules);
+        val review = Review::from(analysis);
         self.memory.push(review.clone());
         Ok(review)
     }
 
-    fn capabilities(&self) -> Vec<Capability> {
+    def capabilities(&self) -> Vec<Capability> {
         vec![
             Capability::new("llm", CapabilityScope::Instance),
             Capability::new("io", CapabilityScope::Sandboxed),
@@ -1136,20 +1185,20 @@ capability propagation, topology connectivity, and agent Send+Sync requirements.
 For dynamic swarm usage, a library API is also available:
 
 ```mg
-use std::agent::{Swarm, SwarmConfig, ConsensusStrategy};
+bring std::agent::{Swarm, SwarmConfig, ConsensusStrategy};
 
-pub async fn distributed_review(files: Vec<String>) -> Vec<Review> / agent, io {
-    let config = SwarmConfig {
+exp par def distributed_review(files: Vec<String>) -> Vec<Review> / agent, io {
+    val config = SwarmConfig {
         size: 5,
         consensus: ConsensusStrategy::Majority,
         timeout: Duration::from_secs(30),
     };
-    let mut swarm = Swarm::<CodeReviewer>::new(config);
+    var swarm = Swarm::<CodeReviewer>::new(config);
 
-    let reviews: Vec<Review> = swarm.map(files, |agent, file| {
-        let code = std::fs::read(&file)?;
+    val reviews: Vec<Review> = swarm.map(files, |agent, file| {
+        val code = std::fs::read(&file)?;
         agent.handle(Message::new(CodeSubmission { code }))
-    }).await?;
+    }).go?;
 
     reviews
 }
@@ -1160,10 +1209,10 @@ pub async fn distributed_review(files: Vec<String>) -> Vec<Review> / agent, io {
 All agent operations are gated by capabilities — fine-grained permissions that can be requested, leased, and revoked:
 
 ```mg
-use std::agent::{Capability, Region};
+bring std::agent::{Capability, Region};
 
-pub fn sandboxed_analysis(code: &str) -> Result<Analysis, Error> / agent {
-    let cap = Capability::request("analyze")?;
+exp def sandboxed_analysis(code: &str) -> Result<Analysis, Error> / agent {
+    val cap = Capability::request("analyze")?;
     Region::enter(cap, || {
         // Only analysis operations allowed here.
         // No file I/O, no network, no LLM calls unless explicitly granted.
@@ -1295,7 +1344,7 @@ Effects are inferred bottom-up. Explicit annotations are optional documentation.
 @ens(result.balance == old.balance - amount, "correct deduction")
 @perf(time: O(1))
 @fx(pure)
-pub fn withdraw(account: &mut Account, amount: u64) -> Receipt {
+exp def withdraw(account: &var Account, amount: u64) -> Receipt {
     // ...
 }
 
@@ -1345,18 +1394,18 @@ $$
 
 ```mg
 // File: src/lib.mg (crate root)
-pub mod network;
-mod internal;
+exp ns network;
+ns internal;
 
 // Import paths use :: separators
-use std::tensor::{Tensor, Param};
-use std::neural::{net, layer, train};
-use std::evolve::{Genome, evolve};
-use std::kb::KnowledgeBase;
-use std::agent::{Agent, Swarm, Message};
-use std::rl::{Env, Policy, PPO};
-use std::io;
-use std::collections::HashMap;
+bring std::tensor::{Tensor, Param};
+bring std::neural::{net, layer, train};
+bring std::evolve::{Genome, evolve};
+bring std::kb::KnowledgeBase;
+bring std::agent::{Agent, Swarm, Message};
+bring std::rl::{Env, Policy, PPO};
+bring std::io;
+bring std::collections::HashMap;
 ```
 
 ### 14.2 Standard Library Structure
@@ -1427,15 +1476,15 @@ DispatchStrategy:
 
 ```mg
 // Built-in SIMD types
-let a: f32x4;     // 128-bit, 4 × f32
-let b: f32x8;     // 256-bit, 8 × f32
-let c: f64x4;     // 256-bit, 4 × f64
-let d: f32x16;    // 512-bit, 16 × f32 (AVX-512)
+val a: f32x4;     // 128-bit, 4 × f32
+val b: f32x8;     // 256-bit, 8 × f32
+val c: f64x4;     // 256-bit, 4 × f64
+val d: f32x16;    // 512-bit, 16 × f32 (AVX-512)
 
 // SIMD operations
-let sum = a + b;
-let product = a * b;
-let dot = (a * b).sum();
+val sum = a + b;
+val product = a * b;
+val dot = (a * b).sum();
 ```
 
 ---
@@ -1448,7 +1497,7 @@ let dot = (a * b).sum();
 
 <item>     ::= <attribute_list> <visibility> <item_kind>
              | <attribute_list> <item_kind>
-<visibility> ::= "pub" | "pub" "(" "crate" ")"
+<visibility> ::= "exp" | "exp" "(" "crate" ")"
 
 <item_kind> ::= <function_def> | <struct_def> | <enum_def>
               | <trait_def> | <impl_block> | <module_def>
@@ -1457,18 +1506,18 @@ let dot = (a * b).sum();
               | <net_def> | <kb_def> | <evolve_def> | <agent_def>
               | <train_def>
 
-<function_def> ::= "fn" IDENT <opt_generics> "(" <opt_params> ")"
+<function_def> ::= "def" IDENT <opt_generics> "(" <opt_params> ")"
                    <opt_return> <opt_where> <opt_effects> <block>
-<async_fn_def> ::= "async" <function_def>
+<async_fn_def> ::= "par" <function_def>
 
-<struct_def> ::= "struct" IDENT <opt_generics> <opt_where> "{" <field_list> "}"
-<enum_def>   ::= "enum" IDENT <opt_generics> <opt_where> "{" <variant_list> "}"
-<trait_def>  ::= "trait" IDENT <opt_generics> <opt_supertrait> <opt_where>
+<struct_def> ::= "rec" IDENT <opt_generics> <opt_where> "{" <field_list> "}"
+<enum_def>   ::= "sum" IDENT <opt_generics> <opt_where> "{" <variant_list> "}"
+<trait_def>  ::= "sig" IDENT <opt_generics> <opt_supertrait> <opt_where>
                  "{" <trait_items> "}"
-<impl_block> ::= "impl" <opt_generics> <type> <opt_for> <opt_where>
+<impl_block> ::= "ext" <opt_generics> <type> <opt_on> <opt_where>
                  "{" <impl_items> "}"
-<module_def> ::= "mod" IDENT "{" <item_list> "}" | "mod" IDENT ";"
-<use_decl>   ::= "use" <use_path> ";"
+<module_def> ::= "ns" IDENT "{" <item_list> "}" | "ns" IDENT ";"
+<use_decl>   ::= "bring" <use_path> ";"
 
 <net_def>    ::= "net" IDENT <opt_generics> <opt_supertrait>
                  "{" <layer_list> <opt_forward> "}"
@@ -1505,7 +1554,7 @@ let dot = (a * b).sum();
                  | <function_def>
 
 <type> ::= <type_path>
-         | "&" <type> | "&" "mut" <type>
+         | "&" <type> | "&" "var" <type>
          | "Box" "<" <type> ">"
          | "Rc" "<" <type> ">"
          | "Arc" "<" <type> ">"
@@ -1522,7 +1571,7 @@ let dot = (a * b).sum();
          | "[" <type> ";" <expression> "]"
          | "&" "[" <type> "]"
          | "(" <type_list_opt> ")"
-         | "fn" "(" <type_list_opt> ")" <opt_return>
+         | "def" "(" <type_list_opt> ")" <opt_return>
          | "!" | "_" | "String" | "str"
 
 <shape> ::= "[" <int_list> "]" | "_"
@@ -1538,20 +1587,20 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 
 | Human        | Agent | Meaning           |
 | ------------ | ----- | ----------------- |
-| `fn`         | `f`   | Function          |
-| `let`        | `v`   | Immutable binding |
-| `let mut`    | `m`   | Mutable binding   |
-| `const`      | `c`   | Constant          |
-| `struct`     | `S`   | Struct            |
-| `enum`       | `E`   | Enum              |
-| `trait`      | `T`   | Trait             |
-| `impl`       | `I`   | Impl block        |
-| `mod`        | `M`   | Module            |
-| `use`        | `u`   | Import            |
-| `pub`        | `+`   | Public prefix     |
-| `async fn`   | `af`  | Async function    |
-| `const fn`   | `c f` | Const function    |
-| `pub(crate)` | `~`   | Crate-visible     |
+| `def`        | `f`   | Function          |
+| `val`        | `v`   | Immutable binding |
+| `var`        | `m`   | Mutable binding   |
+| `fix`        | `c`   | Constant          |
+| `rec`        | `S`   | Struct            |
+| `sum`        | `E`   | Enum              |
+| `sig`        | `T`   | Trait             |
+| `ext`        | `I`   | Impl block        |
+| `ns`         | `M`   | Module            |
+| `bring`      | `u`   | Import            |
+| `exp`        | `+`   | Public prefix     |
+| `par def`    | `af`  | Async function    |
+| `fix def`    | `c f` | Const function    |
+| `exp(crate)` | `~`   | Crate-visible     |
 
 ### B.2 AI Constructs
 
@@ -1587,14 +1636,18 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 
 | Human          | Agent      | Meaning       |
 | -------------- | ---------- | ------------- |
-| `if`           | `?`        | Conditional   |
-| `else`         | `:`        | Else branch   |
-| `else if`      | `:?`       | Else-if       |
-| `match`        | `? expr {` | Pattern match |
-| `for x in y`   | `@ x ~ y`  | For loop      |
-| `loop`         | `loop`     | Infinite loop |
-| `while`        | `loop ?`   | While loop    |
-| `return`       | `ret`      | Return        |
+| `when`         | `?`        | Conditional   |
+| `or`           | `:`        | Else branch   |
+| `or when`      | `:?`       | Else-if       |
+| `case`         | `? expr {` | Pattern match |
+| `each x of y`  | `@ x ~ y`  | For loop      |
+| `spin`         | `loop`     | Infinite loop |
+| `till`         | `loop ?`   | While loop    |
+| `emit`         | `ret`      | Return        |
+| `halt`         | `!`        | Break         |
+| `skip`         | `>>`       | Continue      |
+| `halt`         | `!`        | Break         |
+| `skip`         | `>>`       | Continue      |
 | `true`/`false` | `1b`/`0b`  | Booleans      |
 
 ### B.4 Type Syntax
@@ -1611,8 +1664,8 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 | `Arc<T>`          | `@T`      | Atomic ref counted  |
 | `HashMap<K,V>`    | `{K:V}`   | Hash map            |
 | `HashSet<K>`      | `{K}`     | Hash set            |
-| `&mut T`          | `&!T`     | Exclusive reference |
-| `fn(T)->U`        | `f(T)->U` | Function pointer    |
+| `&var T`          | `&!T`     | Exclusive reference |
+| `def(T)->U`       | `f(T)->U` | Function pointer    |
 | `T<A>` (generics) | `T[A]`    | Generic parameters  |
 
 ### B.5 Tensor Operations
@@ -1671,10 +1724,10 @@ In agent mode, safety constructs are **fully handled by the compiler and SKB** (
 
 | Human Syntax                   | Agent Mode Handling                              | SKB Rules |
 | ------------------------------ | ------------------------------------------------ | --------- |
-| `unsafe { ... }`               | Elided — compiler verifies via OWN/BOR/FFI       | AEL-0001  |
-| `unsafe fn`                    | Elided — compiler detects from body analysis     | AEL-0002  |
+| `raw { ... }`                  | Elided — compiler verifies via OWN/BOR/FFI       | AEL-0001  |
+| `raw def`                      | Elided — compiler detects from body analysis     | AEL-0002  |
 | Lifetime annotations (`'a`)    | Inferred by compiler's LIF rules                 | AEL-0003  |
-| `&mut T` explicit annotation   | Inferred — compiler determines mutability        | AEL-0004  |
+| `&var T` explicit annotation   | Inferred — compiler determines mutability        | AEL-0004  |
 | `Send` / `Sync` bounds         | Derived automatically from type structure        | AEL-0005  |
 | `move` keyword on closures     | Inferred — compiler determines capture mode      | AEL-0006  |
 | `Pin<T>` wrapping              | Handled automatically for self-referential types | AEL-0007  |
@@ -1695,7 +1748,7 @@ From highest to lowest. Left-associative unless noted.
 | 15   | `f()` call, `.m()` method     | Invocation       | Left    |
 | 14   | `?`                           | Try/unwrap       | Postfix |
 | 13   | `.T`                          | Transpose        | Postfix |
-| 12   | `-` `!` `&` `&mut` `*` `grad` | Unary prefix     | Right   |
+| 12   | `-` `!` `&` `&var` `*` `grad` | Unary prefix     | Right   |
 | 11   | `as`                          | Type cast        | Left    |
 | 10   | `@` `.*`                      | Matmul, Hadamard | Left    |
 | 9    | `*` `/` `%`                   | Multiplicative   | Left    |
@@ -1709,7 +1762,7 @@ From highest to lowest. Left-associative unless noted.
 | 1    | `\|\|`                        | Logical OR       | Left    |
 | 0    | `\|>`                         | Pipeline         | Left    |
 | -1   | `=` `+=` `-=` `*=` etc.       | Assignment       | Right   |
-| -2   | `return` `break` `yield`      | Control flow     | —       |
+| -2   | `emit` `halt` `yield`         | Control flow     | —       |
 
 ---
 
@@ -1769,21 +1822,23 @@ A complete lexicon of Agent mode symbols, organized by category. This is the "ge
 
 | Symbol   | Human          | Meaning            |
 | -------- | -------------- | ------------------ |
-| `f`      | `fn`           | Function           |
-| `v`      | `let`          | Variable           |
-| `m`      | `let mut`      | Mutable variable   |
-| `S`      | `struct`       | Struct             |
-| `E`      | `enum`         | Enum               |
-| `T`      | `trait`        | Trait              |
-| `I`      | `impl`         | Implementation     |
-| `M`      | `mod`          | Module             |
-| `u`      | `use`          | Import             |
-| `+`      | `pub`          | Public             |
-| `~`      | `pub(crate)`   | Crate visibility   |
-| `?`      | `if`/`match`   | Conditional/match  |
-| `:`      | `else`         | Else               |
-| `@`      | `for`          | For loop           |
-| `ret`    | `return`       | Return             |
+| `f`      | `def`          | Function           |
+| `v`      | `val`          | Variable           |
+| `m`      | `var`          | Mutable variable   |
+| `S`      | `rec`          | Struct             |
+| `E`      | `sum`          | Enum               |
+| `T`      | `sig`          | Trait              |
+| `I`      | `ext`          | Implementation     |
+| `M`      | `ns`           | Module             |
+| `u`      | `bring`        | Import             |
+| `+`      | `exp`          | Public             |
+| `~`      | `exp(crate)`   | Crate visibility   |
+| `?`      | `when`/`case`  | Conditional/match  |
+| `:`      | `or`           | Else               |
+| `@`      | `each`         | For loop           |
+| `ret`    | `emit`         | Return             |
+| `!`      | `halt`         | Break              |
+| `>>`     | `skip`         | Continue           |
 | `1b`     | `true`         | Boolean true       |
 | `0b`     | `false`        | Boolean false      |
 | `s`      | `String`       | String type        |
@@ -1796,32 +1851,32 @@ A complete lexicon of Agent mode symbols, organized by category. This is the "ge
 | `@T`     | `Arc<T>`       | Atomic ref counted |
 | `{K:V}`  | `HashMap<K,V>` | Hash map           |
 | `{K}`    | `HashSet<K>`   | Hash set           |
-| `&!T`    | `&mut T`       | Mutable reference  |
+| `&!T`    | `&var T`       | Mutable reference  |
 | `.`      | `::`           | Path separator     |
 | `~.`     | `crate::`      | Crate root         |
 | `@d()`   | `#[derive()]`  | Derive             |
 | `@t`     | `#[test]`      | Test               |
-| `p""   ` | `println!()`   | Print              |
-| `f""   ` | `format!()`    | Format             |
+| `p""`    | `println!()`   | Print              |
+| `f""`    | `format!()`    | Format             |
 
 ### D.5 Control Flow & Effect Compressions (Agent Mode)
 
-| Symbol | Human      | Meaning              |
-| ------ | ---------- | -------------------- |
-| `@@`   | `loop`     | Infinite loop        |
-| `@w`   | `while`    | While loop           |
-| `!`    | `break`    | Break from loop      |
-| `>>`   | `continue` | Continue loop        |
-| `ret`  | `return`   | Return value         |
-| `yl`   | `yield`    | Yield from generator |
-| `fx`   | `effect`   | Effect declaration   |
-| `hx`   | `handle`   | Effect handler       |
-| `sp`   | `spec`     | Spec/contract block  |
-| `xn`   | `extern`   | FFI extern block     |
-| `.w`   | `.await`   | Async await          |
-| `?=`   | `match`    | Pattern match        |
-| `:?`   | `else if`  | Else-if chain        |
-| `sw`   | `swarm`    | Multi-agent swarm    |
+| Symbol | Human     | Meaning              |
+| ------ | --------- | -------------------- |
+| `@@`   | `spin`    | Infinite loop        |
+| `@w`   | `till`    | While loop           |
+| `!`    | `halt`    | Break from loop      |
+| `>>`   | `skip`    | Continue loop        |
+| `ret`  | `emit`    | Return value         |
+| `yl`   | `yield`   | Yield from generator |
+| `fx`   | `effect`  | Effect declaration   |
+| `hx`   | `handle`  | Effect handler       |
+| `sp`   | `spec`    | Spec/contract block  |
+| `xn`   | `extern`  | FFI extern block     |
+| `.w`   | `.go`     | Async await          |
+| `?=`   | `case`    | Pattern match        |
+| `:?`   | `or when` | Else-if chain        |
+| `sw`   | `swarm`   | Multi-agent swarm    |
 
 ### D.6 Safety Elision (Agent Mode — Handled by Compiler)
 
@@ -1829,8 +1884,8 @@ In agent mode, the following constructs have **no syntax** — the compiler's SK
 
 | Human Syntax     | Agent Equivalent | Compiler Handling        |
 | ---------------- | ---------------- | ------------------------ |
-| `unsafe { ... }` | `{ ... }`        | SKB verifies operations  |
-| `unsafe fn`      | `f`              | Compiler detects unsafe  |
+| `raw { ... }`    | `{ ... }`        | SKB verifies operations  |
+| `raw def`        | `f`              | Compiler detects unsafe  |
 | `'a` lifetimes   | *(omitted)*      | LIF rules infer all      |
 | `Send + Sync`    | *(omitted)*      | CON rules derive bounds  |
 | `Pin<T>`         | *(omitted)*      | Compiler wraps as needed |
@@ -1853,12 +1908,8 @@ In agent mode, the following constructs have **no syntax** — the compiler's SK
 
 ## Appendix E: Side-by-Side — Human vs Agent
 
-### E.1 Neural Network (Image Classifier)
-
-**Human:**
-```mg
-use std::neural::{net, train, Metrics};
-use std::tensor::Tensor;
+bring std::neural::{net, train, Metrics};
+bring std::tensor::Tensor;
 
 net ImageClassifier {
     layer conv2d(3, 32, 3, 1, 1)
@@ -1870,9 +1921,9 @@ net ImageClassifier {
     layer dense(128, 10, softmax)
 }
 
-pub fn main() / io, gpu {
-    let model = ImageClassifier::new();
-    let data = Dataset::load("cifar10");
+exp def main() / io, gpu {
+    val model = ImageClassifier::new();
+    val data = Dataset::load("cifar10");
 
     train cifar_train {
         model: model,
@@ -1883,7 +1934,7 @@ pub fn main() / io, gpu {
         batch_size: 128,
     }
 
-    let accuracy = model.evaluate(data.test());
+    val accuracy = model.evaluate(data.test());
     println!("Test accuracy: {accuracy:.2}%");
 }
 ```
@@ -1922,22 +1973,18 @@ u std.tensor.Φ
 }
 ```
 
-### E.2 Evolutionary Neural Architecture Search
-
-**Human:**
-```mg
-use std::evolve::{Genome, Gene, EvolveStats};
-use std::neural::net;
+bring std::evolve::{Genome, Gene, EvolveStats};
+bring std::neural::net;
 
 #[derive(Genome)]
-pub struct ArchGenome {
+exp rec ArchGenome {
     layers: Vec<LayerGene>,
     lr: f64,
     dropout: f64,
 }
 
 #[derive(Gene)]
-pub enum LayerGene {
+exp sum LayerGene {
     Dense { units: u32, activation: Activation },
     Conv2d { filters: u32, kernel: u32 },
     Attention { heads: u32, dim: u32 },
@@ -1949,9 +1996,9 @@ evolve NeuralArchSearch {
     population: 200,
     generations: 500,
 
-    fn fitness(&self) -> f64 / gpu {
-        let model = self.genome.build_net();
-        let data = Dataset::load("cifar10");
+    def fitness(&self) -> f64 / gpu {
+        val model = self.genome.build_net();
+        val data = Dataset::load("cifar10");
         model |> train_quick(data, epochs: 5) |> evaluate(data.test())
     }
 
@@ -1960,7 +2007,7 @@ evolve NeuralArchSearch {
     mutate gaussian(sigma: 0.02),
     target fitness > 0.95,
 
-    fn on_generation(gen: u32, best: &Self, stats: &EvolveStats) {
+    def on_generation(gen: u32, best: &Self, stats: &EvolveStats) {
         println!("Gen {gen}: best={best.fitness():.4}, mean={stats.mean:.4}");
     }
 }
@@ -2005,13 +2052,9 @@ u std.neural.Ψ
 }
 ```
 
-### E.3 Neurosymbolic Agent (Code Reviewer with KB + LLM)
-
-**Human:**
-```mg
-use std::agent::{Agent, Swarm, Message, Capability};
-use std::llm::{LLM, Prompt};
-use std::kb::KnowledgeBase;
+bring std::agent::{Agent, Swarm, Message, Capability};
+bring std::llm::{LLM, Prompt};
+bring std::kb::KnowledgeBase;
 
 kb StyleRules {
     fact max_line_length(120);
@@ -2026,24 +2069,24 @@ agent CodeReviewer {
     rules: KnowledgeBase,
     history: Vec<Review>,
 
-    fn handle(&mut self, msg: Message<String>) -> Result<Review, AgentError> / agent, llm {
-        let violations = self.rules.query("violation", &[&msg.payload]);
-        let analysis = self.brain.generate(
+    def handle(&var self, msg: Message<String>) -> Result<Review, AgentError> / agent, llm {
+        val violations = self.rules.query("violation", &[&msg.payload]);
+        val analysis = self.brain.generate(
             Prompt::new("Review this code. Known violations: {violations}\n\n{msg.payload}"),
             max_tokens: 512,
         );
-        let review = Review { violations, analysis: analysis.text(), score: analysis.score() };
+        val review = Review { violations, analysis: analysis.text(), score: analysis.score() };
         self.history.push(review.clone());
         Ok(review)
     }
 }
 
-pub async fn review_codebase(files: Vec<String>) -> Vec<Review> / agent, llm, io {
-    let mut swarm = Swarm::<CodeReviewer>::new(SwarmConfig { size: 4 });
+exp par def review_codebase(files: Vec<String>) -> Vec<Review> / agent, llm, io {
+    var swarm = Swarm::<CodeReviewer>::new(SwarmConfig { size: 4 });
     swarm.map(files, |agent, file| {
-        let code = std::fs::read(&file)?;
+        val code = std::fs::read(&file)?;
         agent.handle(Message::new(code))
-    }).await
+    }).go
 }
 ```
 
