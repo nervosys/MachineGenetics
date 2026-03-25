@@ -1,8 +1,8 @@
 //! # redoxfmt — Redox Formatter
 //!
 //! Two modes:
-//! - `--compact`: minimum-token canonical form (all abbreviations applied)
-//! - `--expand`: fully-expanded human-readable Rust form
+//! - `--agent`: minimum-token canonical form (all abbreviations applied)
+//! - `--human`: fully-expanded human-readable Rust form
 //!
 //! Round-trip invariant: `compact(expand(src)) == compact(src)`
 
@@ -22,7 +22,7 @@ pub fn expand_source(input: &str) -> String {
 mod tests {
     use super::*;
 
-    // --- Compact mode tests ---
+    // --- Agent mode tests ---
 
     #[test]
     fn compact_pub_fn() {

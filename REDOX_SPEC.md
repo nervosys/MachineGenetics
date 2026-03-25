@@ -60,12 +60,12 @@ Redox supports **two interchangeable surface syntaxes** that parse to the same A
 
 | Mode         | Extension | Purpose                              | Example                        |
 | ------------ | --------- | ------------------------------------ | ------------------------------ |
-| **Standard** | `.rdx`    | Human-readable, C-family style       | `pub fn main() -> i32 { ... }` |
-| **Compact**  | `.rdx`    | Machine/agent-optimized, sigil-based | `+f main() -> i32 { ... }`     |
+| **Human**    | `.rdx`    | Human-readable, C-family style       | `pub fn main() -> i32 { ... }` |
+| **Agent**    | `.rdx`    | Machine/agent-optimized, sigil-based | `+f main() -> i32 { ... }`     |
 
 A `#![syntax(agent)]` pragma at the top of a file selects agent mode. **human mode is the default.**
 
-Both modes are byte-for-byte round-trippable via `rdx fmt --standard` and `rdx fmt --compact`. The compiler accepts both in the same project — individual files choose their mode.
+Both modes are byte-for-byte round-trippable via `rdx fmt --human` and `rdx fmt --agent`. The compiler accepts both in the same project — individual files choose their mode.
 
 ### 2.1 Design Principle
 
@@ -237,7 +237,7 @@ LT_ANGLE  = '<' ;   GT_ANGLE = '>' ;  /* human mode generic delimiters */
 
 ## 4. Syntactic Grammar (EBNF)
 
-All productions below use **standard (C-like) mode**. Compact-mode equivalents are listed in Appendix B.
+All productions below use **human (C-like) mode**. Agent-mode equivalents are listed in Appendix B.
 
 ### 4.1 Compilation Unit
 
@@ -1198,7 +1198,7 @@ For tooling interoperability, here is the complete grammar in pure BNF (no EBNF 
 
 ## Appendix B: Dual Syntax Mapping Table
 
-Every standard-mode construct has a compact-mode equivalent. The compiler desugars both to the same AST.
+Every human-mode construct has an agent-mode equivalent. The compiler desugars both to the same AST.
 
 ### B.1 Declaration Keywords
 

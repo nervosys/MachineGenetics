@@ -386,7 +386,7 @@ fn collect_braced_rest(lines: &[&str], i: &mut usize) -> String {
 pub struct FileReport {
     pub path: String,
     pub total_tokens: usize,
-    pub compact_tokens: Option<usize>,
+    pub agent_tokens: Option<usize>,
     pub items: Vec<ItemTokens>,
 }
 
@@ -395,18 +395,18 @@ impl FileReport {
     pub fn from_source(path: &str, source: &str) -> Self {
         let total_tokens = count_tokens(source);
         let items = extract_items(source);
-        Self { path: path.to_string(), total_tokens, compact_tokens: None, items }
+        Self { path: path.to_string(), total_tokens, agent_tokens: None, items }
     }
 
     /// Set the compact token count (from a compact-formatted version of same source).
-    pub fn with_compact_tokens(mut self, compact_tokens: usize) -> Self {
-        self.compact_tokens = Some(compact_tokens);
+    pub fn with_agent_tokens(mut self, agent_tokens: usize) -> Self {
+        self.agent_tokens = Some(agent_tokens);
         self
     }
 
     /// Compute savings percentage vs compact form.
     pub fn savings_percent(&self) -> Option<f64> {
-        self.compact_tokens.map(|ct| {
+        self.agent_tokens.map(|ct| {
             if self.total_tokens > 0 {
                 ((self.total_tokens - ct) as f64 / self.total_tokens as f64) * 100.0
             } else {
@@ -430,7 +430,7 @@ impl FileReport {
         let mut out = String::new();
         out.push_str(&format!("File: {}\n", self.path));
         out.push_str(&format!("  Total tokens: {}\n", self.total_tokens));
-        if let Some(ct) = self.compact_tokens {
+        if let Some(ct) = self.agent_tokens {
             out.push_str(&format!("  Compact tokens: {}\n", ct));
             if let Some(pct) = self.savings_percent() {
                 out.push_str(&format!("  Savings: {:.1}%\n", pct));
@@ -469,10 +469,10 @@ impl ModuleReport {
         self.files.iter().map(|f| f.total_tokens).sum()
     }
 
-    pub fn total_compact_tokens(&self) -> Option<usize> {
+    pub fn total_agent_tokens(&self) -> Option<usize> {
         let mut total = 0;
         for f in &self.files {
-            total += f.compact_tokens?;
+            total += f.agent_tokens?;
         }
         Some(total)
     }
@@ -487,7 +487,7 @@ impl ModuleReport {
 
     pub fn savings_percent(&self) -> Option<f64> {
         let total = self.total_tokens();
-        let compact = self.total_compact_tokens()?;
+        let compact = self.total_agent_tokens()?;
         if total > 0 { Some(((total - compact) as f64 / total as f64) * 100.0) } else { Some(0.0) }
     }
 }
@@ -587,8 +587,8 @@ impl BuildReport {
                 out.push_str("        {\n");
                 out.push_str(&format!("          \"path\": \"{}\",\n", escape_json(&file.path)));
                 out.push_str(&format!("          \"total_tokens\": {},\n", file.total_tokens));
-                if let Some(ct) = file.compact_tokens {
-                    out.push_str(&format!("          \"compact_tokens\": {},\n", ct));
+                if let Some(ct) = file.agent_tokens {
+                    out.push_str(&format!("          \"agent_tokens\": {},\n", ct));
                 }
                 out.push_str("          \"items\": [\n");
 
@@ -932,7 +932,7 @@ mod tests {
     #[test]
     fn test_file_report_savings() {
         let source = "fn main() {\n    let x = 1;\n}\n";
-        let report = FileReport::from_source("main.rs", source).with_compact_tokens(5);
+        let report = FileReport::from_source("main.rs", source).with_agent_tokens(5);
         assert!(report.savings_percent().unwrap() > 0.0);
     }
 
@@ -1093,17 +1093,17 @@ fn long_function() {
         let report = FileReport {
             path: "empty.rs".to_string(),
             total_tokens: 0,
-            compact_tokens: Some(0),
+            agent_tokens: Some(0),
             items: Vec::new(),
         };
         assert_eq!(report.savings_percent(), Some(0.0));
     }
 
     #[test]
-    fn test_module_no_compact_tokens() {
+    fn test_module_no_agent_tokens() {
         let mut module = ModuleReport::new("m");
         module.add_file(FileReport::from_source("a.rs", "fn a() {}"));
-        assert!(module.total_compact_tokens().is_none());
+        assert!(module.total_agent_tokens().is_none());
         assert!(module.savings_percent().is_none());
     }
 

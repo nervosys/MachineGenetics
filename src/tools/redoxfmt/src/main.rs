@@ -3,18 +3,18 @@ use std::io::{self, Read};
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
-    let mut mode = Mode::Compact;
+    let mut mode = Mode::Agent;
     let mut file_arg = None;
 
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
-            "--compact" => mode = Mode::Compact,
-            "--expand" => mode = Mode::Expand,
+            "--agent" => mode = Mode::Agent,
+            "--human" => mode = Mode::Human,
             arg if !arg.starts_with('-') => file_arg = Some(arg.to_string()),
             other => {
                 eprintln!("Unknown option: {other}");
-                eprintln!("Usage: redoxfmt [--compact|--expand] [FILE]");
+                eprintln!("Usage: redoxfmt [--agent|--human] [FILE]");
                 std::process::exit(1);
             }
         }
@@ -36,14 +36,14 @@ fn main() {
     };
 
     let output = match mode {
-        Mode::Compact => redoxfmt::compact(&input),
-        Mode::Expand => redoxfmt::expand_source(&input),
+        Mode::Agent => redoxfmt::compact(&input),
+        Mode::Human => redoxfmt::expand_source(&input),
     };
 
     print!("{output}");
 }
 
 enum Mode {
-    Compact,
-    Expand,
+    Agent,
+    Human,
 }

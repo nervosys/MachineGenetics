@@ -2,7 +2,7 @@
 
 A step-by-step guide for migrating Rust projects to MechGen. Written for Rust
 developers who know Cargo, ownership, traits, and async — and want to move
-their codebase to MechGen's compact syntax, effect system, and agent primitives.
+their codebase to MechGen's agent syntax, effect system, and agent primitives.
 
 ## Who This Guide Is For
 

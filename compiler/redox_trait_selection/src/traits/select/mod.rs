@@ -256,7 +256,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let candidate = match self.select_from_obligation(obligation) {
             Err(SelectionError::Overflow(OverflowError::Canonical)) => {
-                // In standard mode, overflow must have been caught and reported
+                // In human mode, overflow must have been caught and reported
                 // earlier.
                 assert!(self.query_mode == TraitQueryMode::Canonical);
                 return Err(SelectionError::Overflow(OverflowError::Canonical));

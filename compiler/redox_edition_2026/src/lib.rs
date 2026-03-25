@@ -251,17 +251,17 @@ pub struct EditionConfig {
     pub edition: Edition,
     pub enabled_features: Vec<Feature>,
     pub feature_overrides: HashMap<String, bool>,
-    pub compact_mode: CompactMode,
+    pub agent_mode: AgentMode,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CompactMode {
+pub enum AgentMode {
     Off,
     Canonical,
     Aggressive,
 }
 
-impl fmt::Display for CompactMode {
+impl fmt::Display for AgentMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Off => write!(f, "off"),
@@ -277,7 +277,7 @@ impl EditionConfig {
             edition: Edition::Redox2026,
             enabled_features: all_2026_features(),
             feature_overrides: HashMap::new(),
-            compact_mode: CompactMode::Canonical,
+            agent_mode: AgentMode::Canonical,
         }
     }
 
@@ -286,7 +286,7 @@ impl EditionConfig {
             edition: Edition::Redox2024,
             enabled_features: Vec::new(),
             feature_overrides: HashMap::new(),
-            compact_mode: CompactMode::Off,
+            agent_mode: AgentMode::Off,
         }
     }
 
@@ -323,7 +323,7 @@ impl EditionConfig {
 impl fmt::Display for EditionConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Edition: {}", self.edition)?;
-        writeln!(f, "Compact mode: {}", self.compact_mode)?;
+        writeln!(f, "Agent mode: {}", self.agent_mode)?;
         writeln!(f, "Features ({}):", self.enabled_features.len())?;
         for feat in &self.enabled_features {
             writeln!(f, "  {} [{}]", feat, feat.stability())?;
@@ -556,8 +556,8 @@ mod tests {
     }
 
     #[test]
-    fn test_compact_mode_display() {
-        assert_eq!(format!("{}", CompactMode::Canonical), "canonical");
+    fn test_agent_mode_display() {
+        assert_eq!(format!("{}", AgentMode::Canonical), "canonical");
     }
 
     #[test]

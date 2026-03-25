@@ -1049,7 +1049,7 @@ The Redox compiler enforces these token economy properties:
 
 1. **No construct requires more tokens than its Rust equivalent** — every Redox form is ≤ the token count of the corresponding Rust form
 2. **High-frequency constructs get the shortest forms** — token length is inversely proportional to usage frequency across all known Rust codebases
-3. **`redoxfmt --compact`** produces the minimum-token canonical form; **`redoxfmt --expand`** produces the human-readable expanded form
+3. **`redoxfmt --agent`** produces the minimum-token canonical form; **`redoxfmt --human`** produces the human-readable expanded form
 4. **Token budget reporting**: `redox build --token-report` emits per-function and per-module token counts, enabling agents to track and optimize their token expenditure
 5. **Standard abbreviation registry**: all compact forms are deterministic, documented, and version-stable — agents never need to guess abbreviations
 
@@ -2418,8 +2418,8 @@ RAP Server
 │   └── Proof certificate emission
 │
 ├── Format Service (replaces rustfmt)
-│   ├── `--compact` mode: minimum-token canonical form for agents
-│   ├── `--expand` mode: human-readable verbose form
+│   ├── `--agent` mode: minimum-token canonical form for agents
+│   ├── `--human` mode: human-readable verbose form
 │   ├── Bidirectional lossless conversion (compact ↔ expanded)
 │   ├── Token budget reporting per function/module
 │   └── Style-aware formatting with semantic preservation
@@ -2987,7 +2987,7 @@ let pipeline = compose![
 - [ ] Implement safety elision pass (P33): strip all lifetime, borrow, ownership syntax in agentic mode
 - [ ] Implement safety-free type inference: compiler infers `&`/`&mut`, `move`/`ref`, `dyn`/`impl` from usage
 - [ ] Build dual-syntax transpiler (legacy Rust → canonical Redox compact form)
-- [ ] Implement `redoxfmt --compact` (minimum-token canonical form) and `redoxfmt --expand` (human-readable form)
+- [ ] Implement `redoxfmt --agent` (minimum-token canonical form) and `redoxfmt --human` (human-readable form)
 - [ ] Stabilize `redox_public` API to cover all MIR, HIR, and type system constructs
 - [ ] Define Redox MLIR dialect: ownership, effects, contracts, perf annotations as first-class MLIR ops
 - [ ] Implement MIR → MLIR (Redox Dialect) translation layer (thin boundary, dialect-as-semantics)

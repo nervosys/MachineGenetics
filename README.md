@@ -1,8 +1,8 @@
 <div align="center">
 
-# MechGen
+# Machine Genetic Code (MechGen)
 
-**An agentic-first programming language built on Rust.**
+**Agentic-first Programming Language and Compiler Infra for Recursive Self-Improvement**
 
 [Specification](mechgen_SPEC.md) · [Ecosystem](mechgen_ECOSYSTEM.md) · [Proposal](mechgen_PROPOSAL.md) · [Examples](examples/) · [Contributing](CONTRIBUTING.md)
 
@@ -78,7 +78,7 @@ mg2rs src/main.mg --output rs/
 
 ## Syntax at a Glance
 
-| MechGen   | Rust equivalent        | MechGen    | Rust equivalent       |
+| MechGen | Rust equivalent        | MechGen  | Rust equivalent       |
 | ------- | ---------------------- | -------- | --------------------- |
 | `f`     | `fn`                   | `v`      | `let`                 |
 | `+f`    | `pub fn`               | `m`      | `let mut`             |
@@ -162,14 +162,14 @@ mg run
 
 | Document                                                   | Description                                        |
 | ---------------------------------------------------------- | -------------------------------------------------- |
-| [mechgen_SPEC.md](mechgen_SPEC.md)                             | Formal language specification                      |
-| [mechgen_ECOSYSTEM.md](mechgen_ECOSYSTEM.md)                   | Ecosystem architecture (Forge, RAP, migration)     |
-| [mechgen_PROPOSAL.md](mechgen_PROPOSAL.md)                     | Design philosophy and 24 design principles         |
+| [mechgen_SPEC.md](mechgen_SPEC.md)                         | Formal language specification                      |
+| [mechgen_ECOSYSTEM.md](mechgen_ECOSYSTEM.md)               | Ecosystem architecture (Forge, RAP, migration)     |
+| [mechgen_PROPOSAL.md](mechgen_PROPOSAL.md)                 | Design philosophy and 24 design principles         |
 | [prototype/docs/BOOK.md](prototype/docs/BOOK.md)           | User guide (12 chapters)                           |
 | [prototype/docs/INTERNALS.md](prototype/docs/INTERNALS.md) | Compiler architecture (36 modules)                 |
 | [agent-guide/](agent-guide/)                               | AI agent SDK (prompts, patterns, RAP methods)      |
 | [cookbook/](cookbook/)                                     | Practical recipes (I/O, HTTP, agents, concurrency) |
-| [migration-guide/](migration-guide/)                       | Rust → MechGen migration                             |
+| [migration-guide/](migration-guide/)                       | Rust → MechGen migration                           |
 | [skb/](skb/)                                               | Safety Knowledge Base (9,157 rules, 6 categories)  |
 | [training/](training/)                                     | Training data and evaluation (100 samples)         |
 | [benchmarks/](benchmarks/)                                 | 100-task evaluation corpus with metrics            |

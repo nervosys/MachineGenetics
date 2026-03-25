@@ -843,7 +843,7 @@ pub fn expand_all(inputs: &[&str], registry: &AbbreviationRegistry) -> Vec<Resul
 }
 
 /// Compute the token savings ratio for a compress operation.
-/// Returns (expanded_tokens, compact_tokens, savings_percent).
+/// Returns (human_tokens, agent_tokens, savings_percent).
 pub fn token_savings(expanded: &str, compact: &str) -> (usize, usize, f64) {
     let exp_tokens = count_tokens(expanded);
     let comp_tokens = count_tokens(compact);
