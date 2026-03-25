@@ -966,11 +966,16 @@ impl<'a> Lexer<'a> {
             "continue" => TokenKind::KwContinue,
             "ret" => TokenKind::KwRet,
             "yield" => TokenKind::KwYield,
+            "yl" => TokenKind::KwYield, // agent mode alias
             "effect" => TokenKind::KwEffect,
+            "fx" => TokenKind::KwEffect, // agent mode alias
             "handle" => TokenKind::KwHandle,
+            "hx" => TokenKind::KwHandle, // agent mode alias
             "spec" => TokenKind::KwSpec,
+            "sp" => TokenKind::KwSpec, // agent mode alias
             "agent" => TokenKind::KwAgent,
             "extern" => TokenKind::KwExtern,
+            "xn" => TokenKind::KwExtern, // agent mode alias
             "unsafe" => TokenKind::KwUnsafe,
             "type" => TokenKind::KwType,
             "static" => TokenKind::KwStatic,

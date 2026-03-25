@@ -58,10 +58,10 @@ UPPER_CASE        Non-terminal defined elsewhere
 
 Redox supports **two interchangeable surface syntaxes** that parse to the same AST:
 
-| Mode         | Extension | Purpose                              | Example                        |
-| ------------ | --------- | ------------------------------------ | ------------------------------ |
-| **Human**    | `.rdx`    | Human-readable, C-family style       | `pub fn main() -> i32 { ... }` |
-| **Agent**    | `.rdx`    | Machine/agent-optimized, sigil-based | `+f main() -> i32 { ... }`     |
+| Mode      | Extension | Purpose                              | Example                        |
+| --------- | --------- | ------------------------------------ | ------------------------------ |
+| **Human** | `.rdx`    | Human-readable, C-family style       | `pub fn main() -> i32 { ... }` |
+| **Agent** | `.rdx`    | Machine/agent-optimized, sigil-based | `+f main() -> i32 { ... }`     |
 
 A `#![syntax(agent)]` pragma at the top of a file selects agent mode. **human mode is the default.**
 
@@ -1202,26 +1202,26 @@ Every human-mode construct has an agent-mode equivalent. The compiler desugars b
 
 ### B.1 Declaration Keywords
 
-| Human   | Agent | Meaning           |
-| ---------- | ------- | ----------------- |
-| `fn`       | `f`     | Function          |
-| `let`      | `v`     | Immutable binding |
-| `let mut`  | `m`     | Mutable binding   |
-| `const`    | `c`     | Constant          |
-| `struct`   | `S`     | Struct            |
-| `enum`     | `E`     | Enum              |
-| `trait`    | `T`     | Trait             |
-| `impl`     | `I`     | Impl block        |
-| `mod`      | `M`     | Module            |
-| `union`    | `U`     | Union             |
-| `use`      | `u`     | Use import        |
-| `pub`      | `+`     | Public (prefix)   |
-| `async fn` | `af`    | Async function    |
-| `const fn` | `c f`   | Const function    |
+| Human      | Agent | Meaning           |
+| ---------- | ----- | ----------------- |
+| `fn`       | `f`   | Function          |
+| `let`      | `v`   | Immutable binding |
+| `let mut`  | `m`   | Mutable binding   |
+| `const`    | `c`   | Constant          |
+| `struct`   | `S`   | Struct            |
+| `enum`     | `E`   | Enum              |
+| `trait`    | `T`   | Trait             |
+| `impl`     | `I`   | Impl block        |
+| `mod`      | `M`   | Module            |
+| `union`    | `U`   | Union             |
+| `use`      | `u`   | Use import        |
+| `pub`      | `+`   | Public (prefix)   |
+| `async fn` | `af`  | Async function    |
+| `const fn` | `c f` | Const function    |
 
 ### B.2 Control Flow Keywords
 
-| Human     | Agent    | Meaning                    |
+| Human        | Agent      | Meaning                    |
 | ------------ | ---------- | -------------------------- |
 | `if`         | `?`        | Conditional                |
 | `else`       | `:`        | Else branch                |
@@ -1239,7 +1239,7 @@ Every human-mode construct has an agent-mode equivalent. The compiler desugars b
 
 ### B.3 Type Syntax
 
-| Human              | Agent      | Meaning             |
+| Human                 | Agent        | Meaning             |
 | --------------------- | ------------ | ------------------- |
 | `&T`                  | `&T`         | Shared reference    |
 | `&mut T`              | `&!T`        | Exclusive reference |
@@ -1262,7 +1262,7 @@ Every human-mode construct has an agent-mode equivalent. The compiler desugars b
 
 ### B.4 Path and Scope
 
-| Human  | Agent  | Meaning        |
+| Human     | Agent    | Meaning        |
 | --------- | -------- | -------------- |
 | `::`      | `.`      | Path separator |
 | `crate::` | `~.`     | Crate root     |
@@ -1271,7 +1271,7 @@ Every human-mode construct has an agent-mode equivalent. The compiler desugars b
 
 ### B.5 Syntax Constructs
 
-| Human              | Agent                | Meaning        |
+| Human                 | Agent                  | Meaning        |
 | --------------------- | ---------------------- | -------------- |
 | `\|x\| expr`          | `fn(x) => expr`        | Closure        |
 | `Type { field: val }` | `Type @{ field: val }` | Struct literal |
@@ -1284,7 +1284,7 @@ Every human-mode construct has an agent-mode equivalent. The compiler desugars b
 
 ### B.6 Attributes
 
-| Human            | Agent     | Meaning       |
+| Human               | Agent       | Meaning       |
 | ------------------- | ----------- | ------------- |
 | `#[derive(...)]`    | `@d(...)`   | Derive        |
 | `#[repr(...)]`      | `@r(...)`   | Repr          |
@@ -1298,7 +1298,7 @@ Every human-mode construct has an agent-mode equivalent. The compiler desugars b
 
 ### B.7 Output Macros
 
-| Human           | Agent   | Meaning       |
+| Human              | Agent     | Meaning       |
 | ------------------ | --------- | ------------- |
 | `println!("...")`  | `p"..."`  | Print line    |
 | `format!("...")`   | `f"..."`  | Format string |

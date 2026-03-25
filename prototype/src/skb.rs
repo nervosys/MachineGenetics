@@ -1,12 +1,14 @@
 /// SKB — Safety Knowledge Base (proposal §15).
 ///
-/// Six rule databases:
+/// Seven rule databases:
 ///   1. Ownership Rules  (OWN-*)
 ///   2. Borrow Patterns  (BOR-*)
 ///   3. Lifetime Rules   (LIF-*)
 ///   4. Type Safety      (TYP-*)
 ///   5. Concurrency      (CON-*)
 ///   6. FFI Safety       (FFI-*)
+///   7. Agent Elision    (AEL-*) — rules for safety constructs the compiler
+///      handles automatically in agent mode so they can be elided from syntax.
 ///
 /// Plus the original symbol metadata entries used by the query API.
 ///
@@ -20,7 +22,7 @@ use serde::{Deserialize, Serialize};
 //  Rule Data Model (proposal §15.1)
 // ══════════════════════════════════════════════════════════════════════
 
-/// Which of the six rule databases a rule belongs to.
+/// Which of the seven rule databases a rule belongs to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum RuleDatabase {
     Ownership,
@@ -29,6 +31,9 @@ pub enum RuleDatabase {
     TypeSafety,
     Concurrency,
     FFI,
+    /// Agent elision — rules the compiler enforces so agent mode doesn't
+    /// need explicit safety syntax.
+    AgentElision,
 }
 
 /// Severity of a rule violation.
@@ -90,11 +95,11 @@ fn rule(
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  Built-in Rule Databases — 210 rules across 6 databases
+//  Built-in Rule Databases — 240 rules across 7 databases
 // ══════════════════════════════════════════════════════════════════════
 
 fn builtin_rules() -> Vec<Rule> {
-    let mut rules = Vec::with_capacity(210);
+    let mut rules = Vec::with_capacity(240);
 
     // ── Ownership Rules (OWN-0001 .. OWN-0040) ──────────────────────
     rules.extend(ownership_rules());
@@ -108,6 +113,8 @@ fn builtin_rules() -> Vec<Rule> {
     rules.extend(concurrency_rules());
     // ── FFI Safety (FFI-0001 .. FFI-0020) ────────────────────────────
     rules.extend(ffi_rules());
+    // ── Agent Elision (AEL-0001 .. AEL-0030) ────────────────────────
+    rules.extend(agent_elision_rules());
 
     rules
 }
@@ -2464,6 +2471,347 @@ fn ffi_rules() -> Vec<Rule> {
     ]
 }
 
+// ── Agent Elision Rules (AEL-0001 .. AEL-0030) ─────────────────────
+// These rules describe safety constructs the compiler handles automatically
+// in agent mode, allowing their syntax to be elided from the language.
+
+fn agent_elision_rules() -> Vec<Rule> {
+    use RuleDatabase::AgentElision as DB;
+    use RuleSeverity::*;
+    vec![
+        rule(
+            "AEL-0001",
+            DB,
+            "unsafe-block-elision",
+            Info,
+            "Compiler infers unsafe boundaries from SKB rules in agent mode",
+            "Agent mode elides `unsafe` blocks; the compiler uses OWN/BOR/FFI rules to verify safety",
+            None,
+            1.0,
+            &["agent-elision", "unsafe", "safety"],
+        ),
+        rule(
+            "AEL-0002",
+            DB,
+            "unsafe-fn-elision",
+            Info,
+            "Compiler marks functions as unsafe internally based on body analysis",
+            "Agent mode does not require `unsafe fn` — the compiler detects FFI calls, raw pointer ops, and union access",
+            None,
+            1.0,
+            &["agent-elision", "unsafe", "function"],
+        ),
+        rule(
+            "AEL-0003",
+            DB,
+            "lifetime-annotation-elision",
+            Info,
+            "Compiler infers all lifetime annotations in agent mode",
+            "Explicit lifetime annotations are elided; the compiler's LIF rules resolve all borrows",
+            None,
+            1.0,
+            &["agent-elision", "lifetime", "annotation"],
+        ),
+        rule(
+            "AEL-0004",
+            DB,
+            "mutability-inference",
+            Info,
+            "Compiler infers &mut from usage context in agent mode",
+            "&T vs &mut T is determined by the compiler from write operations on the reference",
+            None,
+            1.0,
+            &["agent-elision", "mutability", "reference"],
+        ),
+        rule(
+            "AEL-0005",
+            DB,
+            "send-sync-inference",
+            Info,
+            "Compiler derives Send/Sync bounds automatically in agent mode",
+            "Send and Sync bounds are inferred from type structure; no explicit annotations needed",
+            None,
+            0.95,
+            &["agent-elision", "send", "sync", "concurrency"],
+        ),
+        rule(
+            "AEL-0006",
+            DB,
+            "closure-capture-inference",
+            Info,
+            "Compiler infers move vs borrow capture for closures in agent mode",
+            "The `move` keyword is unnecessary; compiler determines capture mode from usage",
+            None,
+            1.0,
+            &["agent-elision", "closure", "move", "capture"],
+        ),
+        rule(
+            "AEL-0007",
+            DB,
+            "pin-inference",
+            Info,
+            "Compiler handles Pin<T> wrapping for self-referential types",
+            "Pin requirements are detected and enforced without explicit syntax",
+            None,
+            0.90,
+            &["agent-elision", "pin", "self-referential"],
+        ),
+        rule(
+            "AEL-0008",
+            DB,
+            "dyn-impl-inference",
+            Info,
+            "Compiler chooses between static and dynamic dispatch automatically",
+            "No `dyn`/`impl` distinction needed — compiler selects based on call site analysis",
+            None,
+            0.90,
+            &["agent-elision", "dispatch", "trait-object"],
+        ),
+        rule(
+            "AEL-0009",
+            DB,
+            "borrow-check-relaxation",
+            Info,
+            "Borrow checker runs post-hoc in agent mode, not as syntax constraint",
+            "Agent code is accepted without explicit borrow annotations; violations detected as compiler diagnostics",
+            None,
+            1.0,
+            &["agent-elision", "borrow", "check"],
+        ),
+        rule(
+            "AEL-0010",
+            DB,
+            "bounds-check-elision",
+            Info,
+            "Runtime bounds checks may be elided when compiler proves safety",
+            "Index operations skip bounds checks when the compiler can prove the index is in range",
+            Some("Compiler inserts `unreachable_unchecked()` for proven bounds"),
+            0.85,
+            &["agent-elision", "bounds", "performance"],
+        ),
+        rule(
+            "AEL-0011",
+            DB,
+            "overflow-check-elision",
+            Info,
+            "Arithmetic overflow checks elided when compiler proves no overflow",
+            "Agent mode skips overflow checks for operations proved to be in range",
+            None,
+            0.80,
+            &["agent-elision", "overflow", "arithmetic"],
+        ),
+        rule(
+            "AEL-0012",
+            DB,
+            "phantom-data-elision",
+            Info,
+            "PhantomData<T> fields inserted automatically by compiler",
+            "Variance and drop-check markers handled internally without explicit PhantomData",
+            None,
+            0.95,
+            &["agent-elision", "phantom", "variance"],
+        ),
+        rule(
+            "AEL-0013",
+            DB,
+            "async-await-compression",
+            Info,
+            "`.await` compressed to `.w` in agent mode syntax",
+            "Agent mode minimizes token count; `.w` is a 4-character saving per await point",
+            None,
+            1.0,
+            &["agent-elision", "async", "await", "compression"],
+        ),
+        rule(
+            "AEL-0014",
+            DB,
+            "return-compression",
+            Info,
+            "`return` compressed to `ret` in agent mode syntax",
+            "Agent mode uses `ret` for 3-character saving per return statement",
+            None,
+            1.0,
+            &["agent-elision", "return", "compression"],
+        ),
+        rule(
+            "AEL-0015",
+            DB,
+            "effect-compression",
+            Info,
+            "`effect` compressed to `fx` in agent mode syntax",
+            "Agent mode uses `fx` for 4-character saving per effect declaration",
+            None,
+            1.0,
+            &["agent-elision", "effect", "compression"],
+        ),
+        rule(
+            "AEL-0016",
+            DB,
+            "handle-compression",
+            Info,
+            "`handle` compressed to `hx` in agent mode syntax",
+            "Agent mode uses `hx` for 4-character saving per handler",
+            None,
+            1.0,
+            &["agent-elision", "handle", "compression"],
+        ),
+        rule(
+            "AEL-0017",
+            DB,
+            "spec-compression",
+            Info,
+            "`spec` compressed to `sp` in agent mode syntax",
+            "Agent mode uses `sp` for 2-character saving per spec block",
+            None,
+            1.0,
+            &["agent-elision", "spec", "compression"],
+        ),
+        rule(
+            "AEL-0018",
+            DB,
+            "extern-compression",
+            Info,
+            "`extern` compressed to `xn` in agent mode syntax",
+            "Agent mode uses `xn` for 4-character saving per extern block",
+            None,
+            1.0,
+            &["agent-elision", "extern", "ffi", "compression"],
+        ),
+        rule(
+            "AEL-0019",
+            DB,
+            "yield-compression",
+            Info,
+            "`yield` compressed to `yl` in agent mode syntax",
+            "Agent mode uses `yl` for 3-character saving per yield expression",
+            None,
+            1.0,
+            &["agent-elision", "yield", "compression"],
+        ),
+        rule(
+            "AEL-0020",
+            DB,
+            "unsafe-skb-coverage",
+            Warning,
+            "Unsafe op detected — SKB rules OWN/BOR/FFI provide compile-time verification",
+            "The compiler cross-references unsafe operations against SKB rules to verify correctness without language-level `unsafe` syntax",
+            Some("Verify operation is covered by existing SKB rule; if not, add a new AEL rule"),
+            0.90,
+            &["agent-elision", "unsafe", "verification"],
+        ),
+        rule(
+            "AEL-0021",
+            DB,
+            "raw-pointer-inference",
+            Info,
+            "Raw pointer operations (*const T, *mut T) verified via SKB without `unsafe` block",
+            "The compiler detects raw pointer dereferences and verifies alignment, validity, and aliasing via FFI and OWN rules",
+            None,
+            0.85,
+            &["agent-elision", "raw-pointer", "unsafe"],
+        ),
+        rule(
+            "AEL-0022",
+            DB,
+            "union-access-inference",
+            Info,
+            "Union field access verified via type rules without `unsafe` block",
+            "The compiler ensures discriminant is checked before union field access",
+            None,
+            0.85,
+            &["agent-elision", "union", "unsafe"],
+        ),
+        rule(
+            "AEL-0023",
+            DB,
+            "global-mut-inference",
+            Info,
+            "Mutable static access verified via concurrency rules without `unsafe` block",
+            "The compiler ensures mutable statics are only accessed under proper synchronization",
+            None,
+            0.80,
+            &["agent-elision", "static-mut", "concurrency"],
+        ),
+        rule(
+            "AEL-0024",
+            DB,
+            "extern-fn-inference",
+            Info,
+            "Extern function calls verified via FFI rules without `unsafe` block",
+            "The compiler validates argument types, nullable pointers, and calling conventions for extern calls",
+            None,
+            0.90,
+            &["agent-elision", "extern", "ffi", "unsafe"],
+        ),
+        rule(
+            "AEL-0025",
+            DB,
+            "transmute-inference",
+            Info,
+            "Transmute operations verified via type layout rules without `unsafe` block",
+            "The compiler ensures size, alignment, and validity invariants hold for transmutations",
+            Some("Verify source and target types have compatible layouts"),
+            0.75,
+            &["agent-elision", "transmute", "unsafe", "layout"],
+        ),
+        rule(
+            "AEL-0026",
+            DB,
+            "inline-asm-inference",
+            Info,
+            "Inline assembly verified via platform rules without `unsafe` block",
+            "The compiler validates register constraints and side effects for inline asm",
+            None,
+            0.70,
+            &["agent-elision", "asm", "unsafe", "platform"],
+        ),
+        rule(
+            "AEL-0027",
+            DB,
+            "ai-construct-compression",
+            Info,
+            "AI construct keywords compressed to Greek symbols in agent mode",
+            "net→Ψ, layer→λ, tensor→Φ, train→Θ, agent→α, kb→κ, evolve→Ω enable 3-5× density",
+            None,
+            1.0,
+            &["agent-elision", "ai", "compression", "greek"],
+        ),
+        rule(
+            "AEL-0028",
+            DB,
+            "type-sigil-compression",
+            Info,
+            "Type constructors compressed to sigils in agent mode",
+            "Box→^, Rc→$, Arc→@, Mutex→#, Vec→[]~, Option→?, Result→R[] enable compact type expressions",
+            None,
+            1.0,
+            &["agent-elision", "type", "compression", "sigil"],
+        ),
+        rule(
+            "AEL-0029",
+            DB,
+            "control-flow-compression",
+            Info,
+            "Control flow keywords compressed to operators in agent mode",
+            "if→?, else→:, for→@, loop→@@, break→!, continue→>>, match→?= minimize control flow tokens",
+            None,
+            1.0,
+            &["agent-elision", "control-flow", "compression"],
+        ),
+        rule(
+            "AEL-0030",
+            DB,
+            "declaration-sigil-compression",
+            Info,
+            "Declaration keywords compressed to single characters in agent mode",
+            "fn→f, let→v, let mut→m, struct→S, enum→E, trait→T, impl→I, mod→M, use→u, pub→+",
+            None,
+            1.0,
+            &["agent-elision", "declaration", "compression"],
+        ),
+    ]
+}
+
 // ══════════════════════════════════════════════════════════════════════
 //  Rule Query API
 // ══════════════════════════════════════════════════════════════════════
@@ -2513,7 +2861,7 @@ pub fn rule_count() -> usize {
 /// Count rules per database.
 pub fn rule_counts_by_db() -> Vec<(RuleDatabase, usize)> {
     use RuleDatabase::*;
-    [Ownership, Borrow, Lifetime, TypeSafety, Concurrency, FFI]
+    [Ownership, Borrow, Lifetime, TypeSafety, Concurrency, FFI, AgentElision]
         .into_iter()
         .map(|db| {
             let count = builtin_rules().iter().filter(|r| r.database == db).count();
@@ -2869,7 +3217,7 @@ mod tests {
 
     #[test]
     fn rule_total_count_210() {
-        assert_eq!(rule_count(), 210);
+        assert_eq!(rule_count(), 240);
     }
 
     #[test]
@@ -2883,6 +3231,7 @@ mod tests {
         assert_eq!(map["TypeSafety"], 40);
         assert_eq!(map["Concurrency"], 35);
         assert_eq!(map["FFI"], 20);
+        assert_eq!(map["AgentElision"], 30);
     }
 
     #[test]

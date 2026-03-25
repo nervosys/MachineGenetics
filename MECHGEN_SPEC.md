@@ -46,7 +46,7 @@ Machine Genetic Code (MechGen) is a systems programming language designed for th
 
 2. **Dual encoding.** Human mode uses clean C-family keywords that any programmer can read. Agent mode compresses every concept into minimal symbols — Greek letters for AI constructs, mathematical operators for tensor algebra — achieving the density of hexadecimal applied to intelligence.
 
-3. **Safety without ceremony.** Ownership, borrowing, and lifetimes are enforced but fully inferred. No lifetime annotations, no `PhantomData`, no `Pin`. The Safety Knowledge Base (SKB) encodes 9,157 rules that the compiler applies automatically.
+3. **Safety without ceremony.** Ownership, borrowing, and lifetimes are enforced but fully inferred. No lifetime annotations, no `PhantomData`, no `Pin`. The Safety Knowledge Base (SKB) encodes 9,157 rules that the compiler applies automatically. In agent mode, **all safety constructs are handled by the compiler and SKB** — `unsafe` blocks, lifetime annotations, `Send`/`Sync` bounds, and `Pin<T>` are entirely elided from the language surface, maximizing token efficiency while the compiler maintains full safety guarantees.
 
 4. **Effects make side effects visible.** Every function declares its effects (`/ io`, `/ gpu`, `/ llm`). Pure functions have no annotation. Algebraic effect handlers provide structured concurrency and composable I/O.
 
@@ -84,7 +84,7 @@ MechGen supports two interchangeable surface syntaxes that parse to the same AST
 | Mode      | Pragma              | Purpose                              | Density |
 | --------- | ------------------- | ------------------------------------ | ------- |
 | **Human** | (default)           | Human-readable, C-family keywords    | 1×      |
-| **Agent** | `#![syntax(agent)]` | Machine-optimized, symbol-compressed | ~2.5×   |
+| **Agent** | `#![syntax(agent)]` | Machine-optimized, symbol-compressed | ~3×     |
 
 A `#![syntax(agent)]` pragma at the top of a `.mg` file selects Agent mode. Human is the default.
 
@@ -130,6 +130,7 @@ Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 b
 | Agent          | `agent`        | `α`       | AI — Agent     |
 | Knowledge base | `kb`           | `κ`       | AI — Symbolic  |
 | Rule           | `rule`         | `ρ`       | AI — Symbolic  |
+| Fact           | `fact`         | `⊢`       | AI — Symbolic  |
 | Evolve         | `evolve`       | `Ω`       | AI — Evolution |
 | Genome         | `Genome`       | `Γ`       | AI — Evolution |
 | Fitness        | `fitness`      | `φ`       | AI — Evolution |
@@ -137,9 +138,20 @@ Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 b
 | Reward         | `reward`       | `ψ`       | AI — RL        |
 | If             | `if`           | `?`       | Control        |
 | Else           | `else`         | `:`       | Control        |
-| Match          | `match`        | `?`       | Control        |
+| Match          | `match`        | `?=`      | Control        |
 | For            | `for`          | `@`       | Control        |
+| Loop           | `loop`         | `@@`      | Control        |
+| While          | `while`        | `@w`      | Control        |
+| Break          | `break`        | `!`       | Control        |
+| Continue       | `continue`     | `>>`      | Control        |
 | Return         | `return`       | `ret`     | Control        |
+| Yield          | `yield`        | `yl`      | Control        |
+| Effect         | `effect`       | `fx`      | Effects        |
+| Handle         | `handle`       | `hx`      | Effects        |
+| Spec           | `spec`         | `sp`      | Contracts      |
+| Extern         | `extern`       | `xn`      | FFI            |
+| Await          | `.await`       | `.w`      | Async          |
+| Unsafe         | `unsafe`       | *(elided)*| Safety→SKB     |
 | True / False   | `true`/`false` | `1b`/`0b` | Literal        |
 | Matmul         | `@`            | `⊗`       | Tensor op      |
 | Hadamard       | `.*`           | `⊙`       | Tensor op      |
@@ -230,12 +242,19 @@ agent_keyword =
     /* RL */
     | 'Ξ' | 'ψ'
     /* Control flow */
-    | '?' | '@' | ':' | 'ret' | '1b' | '0b'
+    | '?' | '@' | '@@' | '@w' | ':' | ':?' | 'ret' | '1b' | '0b'
+    /* Control flow — compressed */
+    | '!' /* break */ | '>>' /* continue */ | 'yl' /* yield */
     /* Tensor ops */
     | '⊗' | '⊙' | '⊤' | '⊥'
-    /* Shared with human */
-    | 'loop' | 'break' | 'continue' | 'yield'
-    | 'effect' | 'handle' | 'spec' | 'extern' | 'unsafe'
+    /* Effects & contracts — compressed */
+    | 'fx' /* effect */ | 'hx' /* handle */ | 'sp' /* spec */
+    /* FFI */
+    | 'xn' /* extern */
+    /* Async */
+    | '.w' /* .await */
+    /* Safety — elided (handled by compiler SKB) */
+    /* 'unsafe' is NEVER needed in agent mode */
     ;
 ```
 
@@ -1553,16 +1572,30 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 - Arithmetic, comparison, logical, bitwise operators
 - Semicolons, braces, parentheses
 - Comments (`//`, `/* */`, `///`, `//!`)
-- `loop`, `break`, `continue`, `yield`
 - Effect annotations (`/ io`, `/ gpu`, `/ llm`)
 - Contract attributes (`@req`, `@ens`, `@inv`, `@perf`, `@fx`, `@spec`)
-- `effect`, `handle`, `spec` keywords
-- `unsafe`, `extern` keywords
 - Range operators (`..`, `..=`)
 - Try operator (`?` postfix)
-- Await (`.await`)
 - Closures (`|x| expr`)
 - `tensor!` literals
+
+### B.9 Agent Mode Safety Philosophy
+
+In agent mode, safety constructs are **fully handled by the compiler and SKB** (Safety Knowledge Base). The following constructs are unnecessary in agent mode:
+
+| Human Syntax                     | Agent Mode Handling                           | SKB Rules    |
+| -------------------------------- | --------------------------------------------- | ------------ |
+| `unsafe { ... }`                 | Elided — compiler verifies via OWN/BOR/FFI    | AEL-0001     |
+| `unsafe fn`                      | Elided — compiler detects from body analysis  | AEL-0002     |
+| Lifetime annotations (`'a`)      | Inferred by compiler's LIF rules              | AEL-0003     |
+| `&mut T` explicit annotation     | Inferred — compiler determines mutability      | AEL-0004     |
+| `Send` / `Sync` bounds           | Derived automatically from type structure     | AEL-0005     |
+| `move` keyword on closures       | Inferred — compiler determines capture mode   | AEL-0006     |
+| `Pin<T>` wrapping                | Handled automatically for self-referential types | AEL-0007  |
+| `dyn` / `impl` dispatch choice   | Compiler selects based on call-site analysis  | AEL-0008     |
+| `PhantomData<T>`                 | Inserted automatically by compiler            | AEL-0012     |
+
+This design maximizes token efficiency (fewer tokens in the LLM context window) while maintaining full safety guarantees through compiler infrastructure rather than language syntax.
 
 ---
 
@@ -1683,6 +1716,38 @@ A complete lexicon of Agent mode symbols, organized by category. This is the "ge
 | `@t`     | `#[test]`      | Test               |
 | `p""   ` | `println!()`   | Print              |
 | `f""   ` | `format!()`    | Format             |
+
+### D.5 Control Flow & Effect Compressions (Agent Mode)
+
+| Symbol | Human      | Meaning               |
+| ------ | ---------- | --------------------- |
+| `@@`   | `loop`     | Infinite loop         |
+| `@w`   | `while`    | While loop            |
+| `!`    | `break`    | Break from loop       |
+| `>>`   | `continue` | Continue loop         |
+| `ret`  | `return`   | Return value          |
+| `yl`   | `yield`    | Yield from generator  |
+| `fx`   | `effect`   | Effect declaration    |
+| `hx`   | `handle`   | Effect handler        |
+| `sp`   | `spec`     | Spec/contract block   |
+| `xn`   | `extern`   | FFI extern block      |
+| `.w`   | `.await`   | Async await           |
+| `?=`   | `match`    | Pattern match         |
+| `:?`   | `else if`  | Else-if chain         |
+
+### D.6 Safety Elision (Agent Mode — Handled by Compiler)
+
+In agent mode, the following constructs have **no syntax** — the compiler's SKB handles them:
+
+| Human Syntax        | Agent Equivalent | Compiler Handling       |
+| ------------------- | ---------------- | ----------------------- |
+| `unsafe { ... }`    | `{ ... }`        | SKB verifies operations |
+| `unsafe fn`         | `f`              | Compiler detects unsafe |
+| `'a` lifetimes      | *(omitted)*      | LIF rules infer all     |
+| `Send + Sync`       | *(omitted)*      | CON rules derive bounds |
+| `Pin<T>`            | *(omitted)*      | Compiler wraps as needed|
+| `PhantomData<T>`    | *(omitted)*      | Compiler inserts marker |
+| `move \|x\|`       | `\|x\|`          | Capture mode inferred   |
 
 ---
 
