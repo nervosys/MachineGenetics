@@ -1,5 +1,6 @@
 mod aci;
 mod ast;
+mod autograd;
 mod bench;
 mod certs;
 mod consensus;
@@ -9,6 +10,7 @@ mod crdt;
 mod decompose;
 mod effects;
 mod elision;
+mod evolve_gen;
 mod ffi_gen;
 mod fmt;
 mod forge;
@@ -19,6 +21,7 @@ mod hot_reload;
 mod lease;
 mod legacy;
 mod lexer;
+mod logic;
 mod manifest;
 mod mlir;
 mod parser;
@@ -27,6 +30,7 @@ mod rap;
 mod resolve;
 mod sandbox;
 mod semantic_vcs;
+mod shape;
 mod skb;
 mod stdlib_ext;
 mod swarm_bus;
@@ -396,6 +400,98 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     }
     eprintln!("  ✓ {} type diagnostics", checker.diagnostics.len());
 
+    // ── Phase 4.5: AI subsystem compilation ──────────────────────────
+    eprintln!("▸ Phase 4.5: AI subsystem compilation");
+    let mut ai_errors = 0;
+    let mut ai_info: Vec<String> = Vec::new();
+
+    // Shape inference on net blocks.
+    for item in &module.items {
+        if let ast::ItemKind::Net(net) = &item.kind {
+            let mut infer = shape::ShapeInfer::new();
+            // Use a fresh variable as placeholder input shape.
+            let input_shape = vec![infer.fresh_dim(), infer.fresh_dim()];
+            let out_shape = infer.infer_net(net, &input_shape);
+            for diag in &infer.diagnostics {
+                eprintln!("  {filename}: {diag}");
+                if diag.severity == hir::Severity::Error {
+                    ai_errors += 1;
+                }
+            }
+            let resolved = infer.resolve_shape(&out_shape);
+            let dims: Vec<String> = resolved.iter().map(|d| format!("{d:?}")).collect();
+            ai_info.push(format!("net {}: output shape [{}]", net.name, dims.join(", ")));
+        }
+    }
+
+    // Autograd on train blocks.
+    for item in &module.items {
+        if let ast::ItemKind::Train(train) = &item.kind {
+            let tape = autograd::build_tape_from_train(train);
+            let loss_id = if tape.nodes.is_empty() { 0 } else { tape.nodes.len() - 1 };
+            let param_names: Vec<String> = tape.nodes.iter().filter_map(|n| {
+                if let autograd::GradOp::Param(name) = &n.op { Some(name.clone()) } else { None }
+            }).collect();
+            let grad_result = autograd::backward(&tape, loss_id, &param_names);
+            ai_info.push(format!(
+                "train {}: {} forward ops, {} backward ops",
+                train.name, tape.nodes.len(), grad_result.mlir_ops.len()
+            ));
+            for diag in &grad_result.diagnostics {
+                eprintln!("  {filename}: {diag}");
+                if diag.severity == hir::Severity::Error {
+                    ai_errors += 1;
+                }
+            }
+        }
+    }
+
+    // Logic engine on kb blocks.
+    for item in &module.items {
+        if let ast::ItemKind::Kb(kb_def) = &item.kind {
+            let mut kb = logic::build_kb(kb_def);
+            kb.materialize();
+            for diag in &kb.diagnostics {
+                eprintln!("  {filename}: {diag}");
+                if diag.severity == hir::Severity::Error {
+                    ai_errors += 1;
+                }
+            }
+            ai_info.push(format!("kb {}: {} facts materialized", kb.name, kb.fact_count()));
+        }
+    }
+
+    // Evolve codegen on evolve blocks.
+    for item in &module.items {
+        if let ast::ItemKind::Evolve(evolve_def) = &item.kind {
+            match evolve_gen::build_evolve_plan(evolve_def) {
+                Ok(plan) => {
+                    let mlir_ops = plan.emit_mlir();
+                    ai_info.push(format!(
+                        "evolve {}: pop={}, gen={}, {} MLIR ops",
+                        plan.name, plan.population_size, plan.generations, mlir_ops.len()
+                    ));
+                }
+                Err(diags) => {
+                    for diag in &diags {
+                        eprintln!("  {filename}: {diag}");
+                        if diag.severity == hir::Severity::Error {
+                            ai_errors += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for info in &ai_info {
+        eprintln!("  ✓ {info}");
+    }
+    if ai_info.is_empty() {
+        eprintln!("  - no AI subsystem blocks");
+    }
+    total_errors += ai_errors;
+
     // ── Phase 5: Effect inference ────────────────────────────────────
     eprintln!("▸ Phase 5/7: Effect inference");
     let effect_infer = effects::infer_effects(&module);
@@ -482,6 +578,7 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     eprintln!("  Symbols:         {}", resolver.symbols.len());
     eprintln!("  Functions:       {}", effect_infer.inferred.len());
     eprintln!("  Contracts:       {contract_total} (verified: {contract_verified})");
+    eprintln!("  AI subsystems:   {}", ai_info.len());
     eprintln!("  MLIR lines:      {mlir_lines}");
     eprintln!("  Fix candidates:  {fix_count}");
     eprintln!("  Errors:          {total_errors}");
