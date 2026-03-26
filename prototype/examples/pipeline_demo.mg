@@ -14,12 +14,12 @@
 
 // ── Record definitions ───────────────────────────────────────
 
-rec Point {
+struct Point {
     x: f64,
     y: f64,
 }
 
-rec Rect {
+struct Rect {
     origin: Point,
     width: f64,
     height: f64,
@@ -27,7 +27,7 @@ rec Rect {
 
 // ── Sum type definitions ─────────────────────────────────────
 
-sum Shape {
+enum Shape {
     Circle,
     Square,
     Triangle,
@@ -35,51 +35,51 @@ sum Shape {
 
 // ── Pure functions ───────────────────────────────────────────
 
-exp def add(a: i32, b: i32) -> i32 {
+pub fn add(a: i32, b: i32) -> i32 {
     a + b
 }
 
-exp def multiply(x: i32, y: i32) -> i32 {
+pub fn multiply(x: i32, y: i32) -> i32 {
     x * y
 }
 
-exp def distance(p1: Point, p2: Point) -> f64 {
-    val dx: f64 = p2.x - p1.x;
-    val dy: f64 = p2.y - p1.y;
+pub fn distance(p1: Point, p2: Point) -> f64 {
+    let dx: f64 = p2.x - p1.x;
+    let dy: f64 = p2.y - p1.y;
     dx * dx + dy * dy
 }
 
 // ── Functions with effects ───────────────────────────────────
 
-exp def greet(name: String) -> String {
+pub fn greet(name: String) -> String {
     name
 }
 
-exp def read_config(path: String) -> String {
+pub fn read_config(path: String) -> String {
     path
 }
 
 // ── Nested scopes & shadowing ────────────────────────────────
 
-exp def scopes() -> i32 {
-    val x: i32 = 10;
-    val y: i32 = 20;
-    val result: i32 = x + y;
+pub fn scopes() -> i32 {
+    let x: i32 = 10;
+    let y: i32 = 20;
+    let result: i32 = x + y;
     result
 }
 
 // ── Control flow ─────────────────────────────────────────────
 
-exp def max_val(a: i32, b: i32) -> i32 {
-    when a > b { a } or { b }
+pub fn max_val(a: i32, b: i32) -> i32 {
+    if a > b { a } else { b }
 }
 
 // ── Entry point ──────────────────────────────────────────────
 
-exp def main() -> i32 {
-    val sum: i32 = add(3, 4);
-    val prod: i32 = multiply(sum, 2);
+pub fn main() -> i32 {
+    let sum: i32 = add(3, 4);
+    let prod: i32 = multiply(sum, 2);
     greet("MechGen Pipeline Demo");
-    val best: i32 = max_val(sum, prod);
+    let best: i32 = max_val(sum, prod);
     best
 }

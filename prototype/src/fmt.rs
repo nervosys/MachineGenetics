@@ -118,15 +118,15 @@ fn emit_function(buf: &mut String, f: &FunctionDef, vis: Visibility, mode: Mode,
         }
         Mode::Human => {
             if vis == Visibility::Public {
-                buf.push_str("exp ");
+                buf.push_str("pub ");
             }
             if f.is_async {
-                buf.push_str("par ");
+                buf.push_str("async ");
             }
             if f.is_unsafe {
-                buf.push_str("raw ");
+                buf.push_str("unsafe ");
             }
-            buf.push_str("def ");
+            buf.push_str("fn ");
         }
     }
 
@@ -191,9 +191,9 @@ fn emit_struct(buf: &mut String, s: &StructDef, vis: Visibility, mode: Mode, dep
         }
         Mode::Human => {
             if vis == Visibility::Public {
-                buf.push_str("exp ");
+                buf.push_str("pub ");
             }
-            buf.push_str("rec ");
+            buf.push_str("struct ");
         }
     }
     buf.push_str(&s.name);
@@ -208,7 +208,7 @@ fn emit_struct(buf: &mut String, s: &StructDef, vis: Visibility, mode: Mode, dep
             if field.visibility == Visibility::Public {
                 match mode {
                     Mode::Agent => buf.push('+'),
-                    Mode::Human => buf.push_str("exp "),
+                    Mode::Human => buf.push_str("pub "),
                 }
             }
             buf.push_str(&field.name);
@@ -235,9 +235,9 @@ fn emit_enum(buf: &mut String, e: &EnumDef, vis: Visibility, mode: Mode, depth: 
         }
         Mode::Human => {
             if vis == Visibility::Public {
-                buf.push_str("exp ");
+                buf.push_str("pub ");
             }
-            buf.push_str("sum ");
+            buf.push_str("enum ");
         }
     }
     buf.push_str(&e.name);
@@ -291,9 +291,9 @@ fn emit_trait(buf: &mut String, t: &TraitDef, vis: Visibility, mode: Mode, depth
         }
         Mode::Human => {
             if vis == Visibility::Public {
-                buf.push_str("exp ");
+                buf.push_str("pub ");
             }
-            buf.push_str("sig ");
+            buf.push_str("trait ");
         }
     }
     buf.push_str(&t.name);
@@ -316,14 +316,14 @@ fn emit_impl(buf: &mut String, im: &ImplBlock, mode: Mode, depth: usize) {
     indent(buf, depth);
     match mode {
         Mode::Agent => buf.push_str("I "),
-        Mode::Human => buf.push_str("ext "),
+        Mode::Human => buf.push_str("impl "),
     }
     emit_generics(buf, &im.generics);
     if let Some(ref tp) = im.trait_path {
         buf.push_str(&tp.join("::"));
         match mode {
             Mode::Agent => buf.push_str(" for "),
-            Mode::Human => buf.push_str(" on "),
+            Mode::Human => buf.push_str(" for "),
         }
     }
     emit_type(buf, &im.self_type, mode);
@@ -349,9 +349,9 @@ fn emit_module(buf: &mut String, m: &ModuleDef, vis: Visibility, mode: Mode, dep
         }
         Mode::Human => {
             if vis == Visibility::Public {
-                buf.push_str("exp ");
+                buf.push_str("pub ");
             }
-            buf.push_str("ns ");
+            buf.push_str("mod ");
         }
     }
     buf.push_str(&m.name);
@@ -382,9 +382,9 @@ fn emit_use(buf: &mut String, u: &UseDef, vis: Visibility, mode: Mode, depth: us
         }
         Mode::Human => {
             if vis == Visibility::Public {
-                buf.push_str("exp ");
+                buf.push_str("pub ");
             }
-            buf.push_str("bring ");
+            buf.push_str("use ");
         }
     }
     buf.push_str(&u.path.join("::"));
@@ -422,9 +422,9 @@ fn emit_type_alias(buf: &mut String, ta: &TypeAlias, vis: Visibility, mode: Mode
         }
         Mode::Human => {
             if vis == Visibility::Public {
-                buf.push_str("exp ");
+                buf.push_str("pub ");
             }
-            buf.push_str("alias ");
+            buf.push_str("type ");
         }
     }
     buf.push_str(&ta.name);
@@ -452,9 +452,9 @@ fn emit_const(buf: &mut String, c: &ConstDef, vis: Visibility, mode: Mode, depth
         }
         Mode::Human => {
             if vis == Visibility::Public {
-                buf.push_str("exp ");
+                buf.push_str("pub ");
             }
-            buf.push_str("fix ");
+            buf.push_str("const ");
         }
     }
     buf.push_str(&c.name);
@@ -482,11 +482,11 @@ fn emit_static(buf: &mut String, s: &StaticDef, vis: Visibility, mode: Mode, dep
         }
         Mode::Human => {
             if vis == Visibility::Public {
-                buf.push_str("exp ");
+                buf.push_str("pub ");
             }
-            buf.push_str("held ");
+            buf.push_str("static ");
             if s.mutable {
-                buf.push_str("var ");
+                buf.push_str("mut ");
             }
         }
     }
@@ -812,7 +812,7 @@ fn emit_where_clause(buf: &mut String, wc: &[WherePredicate], mode: Mode) {
     }
     match mode {
         Mode::Agent => buf.push_str(" ~> "),
-        Mode::Human => buf.push_str(" given "),
+        Mode::Human => buf.push_str(" where "),
     }
     for (i, pred) in wc.iter().enumerate() {
         if i > 0 {
@@ -846,7 +846,7 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
             if *mutable {
                 match mode {
                     Mode::Agent => buf.push_str("m "),
-                    Mode::Human => buf.push_str("var "),
+                    Mode::Human => buf.push_str("mut "),
                 }
             }
             emit_type(buf, inner, mode);
@@ -948,7 +948,7 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
         Type::Fn { params, ret } => {
             match mode {
                 Mode::Agent => buf.push_str("f("),
-                Mode::Human => buf.push_str("def("),
+                Mode::Human => buf.push_str("fn("),
             }
             for (i, t) in params.iter().enumerate() {
                 if i > 0 {
@@ -1120,7 +1120,7 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         Expr::If { cond, then_block, else_block } => {
             match mode {
                 Mode::Agent => buf.push_str("? "),
-                Mode::Human => buf.push_str("when "),
+                Mode::Human => buf.push_str("if "),
             }
             emit_expr(buf, cond, mode);
             buf.push_str(" {\n");
@@ -1138,7 +1138,7 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         Expr::Match { scrutinee, arms } => {
             match mode {
                 Mode::Agent => buf.push_str("?= "),
-                Mode::Human => buf.push_str("case "),
+                Mode::Human => buf.push_str("match "),
             }
             if let Some(s) = scrutinee {
                 emit_expr(buf, s, mode);
@@ -1157,7 +1157,7 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         Expr::Loop { body } => {
             match mode {
                 Mode::Agent => buf.push_str("@@ "),
-                Mode::Human => buf.push_str("spin "),
+                Mode::Human => buf.push_str("loop "),
             }
             buf.push_str("{\n");
             emit_block_body(buf, body, mode, 1);
@@ -1166,7 +1166,7 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         Expr::While { cond, body } => {
             match mode {
                 Mode::Agent => buf.push_str("@w "),
-                Mode::Human => buf.push_str("till "),
+                Mode::Human => buf.push_str("while "),
             }
             emit_expr(buf, cond, mode);
             buf.push_str(" {\n");
@@ -1176,12 +1176,12 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         Expr::For { pattern, iter, body } => {
             match mode {
                 Mode::Agent => buf.push_str("@ "),
-                Mode::Human => buf.push_str("each "),
+                Mode::Human => buf.push_str("for "),
             }
             emit_pattern(buf, pattern);
             match mode {
                 Mode::Agent => buf.push_str(" : "),
-                Mode::Human => buf.push_str(" of "),
+                Mode::Human => buf.push_str(" in "),
             }
             emit_expr(buf, iter, mode);
             buf.push_str(" {\n");
@@ -1196,7 +1196,7 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         Expr::Return { value } => {
             match mode {
                 Mode::Agent => buf.push_str("ret"),
-                Mode::Human => buf.push_str("emit"),
+                Mode::Human => buf.push_str("return"),
             }
             if let Some(v) = value {
                 buf.push(' ');
@@ -1206,7 +1206,7 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         Expr::Break { value } => {
             match mode {
                 Mode::Agent => buf.push('!'),
-                Mode::Human => buf.push_str("halt"),
+                Mode::Human => buf.push_str("break"),
             }
             if let Some(v) = value {
                 buf.push(' ');
@@ -1215,7 +1215,7 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         }
         Expr::Continue => match mode {
             Mode::Agent => buf.push_str(">>"),
-            Mode::Human => buf.push_str("skip"),
+            Mode::Human => buf.push_str("continue"),
         },
         Expr::Try { expr } => {
             emit_expr(buf, expr, mode);
@@ -1225,7 +1225,7 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             emit_expr(buf, expr, mode);
             match mode {
                 Mode::Agent => buf.push_str(".w"),
-                Mode::Human => buf.push_str(".go"),
+                Mode::Human => buf.push_str(".await"),
             }
         }
         Expr::Cast { expr, ty } => {
@@ -1256,7 +1256,7 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
                 buf.push('}');
             }
             Mode::Human => {
-                buf.push_str("raw {\n");
+                buf.push_str("unsafe {\n");
                 emit_block_body(buf, block, mode, 1);
                 buf.push('}');
             }
@@ -1369,9 +1369,9 @@ fn emit_stmt(buf: &mut String, stmt: &Stmt, mode: Mode, depth: usize) {
                 }
                 Mode::Human => {
                     if *mutable {
-                        buf.push_str("var ");
+                        buf.push_str("let mut ");
                     } else {
-                        buf.push_str("val ");
+                        buf.push_str("let ");
                     }
                 }
             }
@@ -1420,7 +1420,7 @@ mod tests {
     fn expand_function() {
         let m = parse_source("f greet(name: String) {}");
         let out = format_human(&m);
-        assert!(out.contains("def greet("), "got: {out}");
+        assert!(out.contains("fn greet("), "got: {out}");
     }
 
     #[test]
@@ -1434,7 +1434,7 @@ mod tests {
     fn expand_pub_function() {
         let m = parse_source("+f main() {}");
         let out = format_human(&m);
-        assert!(out.contains("exp def main("), "got: {out}");
+        assert!(out.contains("pub fn main("), "got: {out}");
     }
 
     #[test]
@@ -1449,7 +1449,7 @@ mod tests {
     fn expand_struct() {
         let m = parse_source("S Point { x: i32, y: i32 }");
         let out = format_human(&m);
-        assert!(out.starts_with("rec Point"), "got: {out}");
+        assert!(out.starts_with("struct Point"), "got: {out}");
     }
 
     #[test]
@@ -1463,7 +1463,7 @@ mod tests {
     fn expand_enum() {
         let m = parse_source("E Color { Red, Green, Blue }");
         let out = format_human(&m);
-        assert!(out.starts_with("sum Color"), "got: {out}");
+        assert!(out.starts_with("enum Color"), "got: {out}");
     }
 
     #[test]
@@ -1477,7 +1477,7 @@ mod tests {
     fn expand_let_binding() {
         let m = parse_source("f main() { v x = 42; }");
         let out = format_human(&m);
-        assert!(out.contains("val x = 42;"), "got: {out}");
+        assert!(out.contains("let x = 42;"), "got: {out}");
     }
 
     #[test]
@@ -1491,7 +1491,7 @@ mod tests {
     fn expand_let_mut() {
         let m = parse_source("f main() { m x = 0; }");
         let out = format_human(&m);
-        assert!(out.contains("var x = 0;"), "got: {out}");
+        assert!(out.contains("let mut x = 0;"), "got: {out}");
     }
 
     #[test]
@@ -1505,7 +1505,7 @@ mod tests {
     fn expand_use() {
         let m = parse_source("u std.io;");
         let out = format_human(&m);
-        assert!(out.contains("bring std::io;"), "got: {out}");
+        assert!(out.contains("use std::io;"), "got: {out}");
     }
 
     #[test]
@@ -1521,7 +1521,7 @@ mod tests {
         let m = parse_source("@req(n > 0)\nf positive(n: i32) {}");
         let out = format_human(&m);
         assert!(out.contains("@req(n > 0)"), "got: {out}");
-        assert!(out.contains("def positive("), "got: {out}");
+        assert!(out.contains("fn positive("), "got: {out}");
     }
 
     #[test]
@@ -1535,7 +1535,7 @@ mod tests {
     fn expand_type_alias() {
         let m = parse_source("Y Id = u64;");
         let out = format_human(&m);
-        assert!(out.contains("alias Id = u64;"), "got: {out}");
+        assert!(out.contains("type Id = u64;"), "got: {out}");
     }
 
     #[test]
@@ -1552,6 +1552,6 @@ mod tests {
         let compact = format_agent(&m);
         assert!(compact.contains("+f add("), "compact: {compact}");
         let expand = format_human(&m);
-        assert!(expand.contains("exp def add("), "expand: {expand}");
+        assert!(expand.contains("pub fn add("), "expand: {expand}");
     }
 }

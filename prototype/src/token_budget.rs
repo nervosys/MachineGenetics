@@ -602,21 +602,21 @@ fn count_expr_agent(expr: &Expr) -> u32 {
 //
 // We estimate the Rust token count by applying the known expansion ratios:
 // - Compact keywords are 1 token each in MechGen but expand to 1-2 in Rust
-//   (`+f` → `exp def` = 2, `v` → `val` = 1, `m` → `var` = 1, etc.)
+//   (`+f` → `pub fn` = 2, `v` → `let` = 1, `m` → `let mut` = 2, etc.)
 // - Type wrappers like `?T` → `Option<T>` are +2 tokens, `^T` → `Box<T>` +2, etc.
 
 fn count_function_human(f: &FunctionDef, vis: Visibility) -> u32 {
     let mut n: u32 = 0;
     if vis == Visibility::Public {
-        n += 1; // exp
+        n += 1; // pub
     }
     if f.is_async {
-        n += 1; // par
+        n += 1; // async
     }
     if f.is_unsafe {
-        n += 1; // raw
+        n += 1; // unsafe
     }
-    n += 1; // def
+    n += 1; // fn
     n += 1; // name
     n += count_generics_human(&f.generics);
     n += 1; // (
@@ -642,13 +642,13 @@ fn count_struct_human(s: &StructDef, vis: Visibility) -> u32 {
     if vis == Visibility::Public {
         n += 1;
     }
-    n += 1; // rec
+    n += 1; // struct
     n += 1; // name
     n += count_generics_human(&s.generics);
     n += 1; // {
     for field in &s.fields {
         if field.visibility == Visibility::Public {
-            n += 1; // exp
+            n += 1; // pub
         }
         n += 1; // name
         n += 1; // :
@@ -664,7 +664,7 @@ fn count_enum_human(e: &EnumDef, vis: Visibility) -> u32 {
     if vis == Visibility::Public {
         n += 1;
     }
-    n += 1; // sum
+    n += 1; // enum
     n += 1; // name
     n += count_generics_human(&e.generics);
     n += 1; // {
@@ -701,7 +701,7 @@ fn count_trait_human(t: &TraitDef, vis: Visibility) -> u32 {
     if vis == Visibility::Public {
         n += 1;
     }
-    n += 1; // sig
+    n += 1; // trait
     n += 1; // name
     n += count_generics_human(&t.generics);
     if !t.super_traits.is_empty() {

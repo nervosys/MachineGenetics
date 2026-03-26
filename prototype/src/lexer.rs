@@ -968,38 +968,33 @@ impl<'a> Lexer<'a> {
             "Z" => TokenKind::KwZ,
             "s" => TokenKind::Ident, // 's' is a type, not a keyword; parser handles
 
-            // ── Human-mode keywords ──────────────────────────────
-            "def" => TokenKind::KwF,           // function
-            "exp" => TokenKind::Plus,         // export/public — same as agent's +
-            "val" => TokenKind::KwV,           // immutable binding
-            "var" => TokenKind::KwM,           // mutable binding
-            "fix" => TokenKind::KwC,           // const
-            "rec" => TokenKind::KwS,           // record (struct)
-            "sum" => TokenKind::KwE,           // sum type (enum)
-            "sig" => TokenKind::KwT,           // signature (trait)
-            "ext" => TokenKind::KwI,           // extend (impl)
-            "ns" => TokenKind::KwMod,          // namespace (module)
-            "bring" => TokenKind::KwUse,       // import
-            "alias" => TokenKind::KwType,      // type alias
-            "held" => TokenKind::KwStatic,     // static storage
-            "raw" => TokenKind::KwUnsafe,      // raw/unsafe
-            "par" => TokenKind::KwAf,          // parallel (async)
-            "when" => TokenKind::Question,     // if
-            "case" => TokenKind::QuestionEq,   // match
-            "each" => TokenKind::At,           // for loop
-            "till" => TokenKind::AtW,          // while
-            "spin" => TokenKind::KwLoop,       // loop (infinite)
-            "halt" => TokenKind::KwBreak,      // break
-            "skip" => TokenKind::KwContinue,   // continue
-            "emit" => TokenKind::KwRet,        // return
-            "of" => TokenKind::KwOf,           // for separator (each x of list)
-            "or" => TokenKind::KwOr,           // else (when cond {} or {})
+            // ── Human-mode keywords (Rust-compatible) ─────────────────
+            "fn" => TokenKind::KwF,            // function
+            "pub" => TokenKind::Plus,          // public — same as agent's +
+            "let" => TokenKind::KwV,           // immutable binding (let)
+            "mut" => TokenKind::KwM,           // mutable — qualifier on let/&
+            "const" => TokenKind::KwC,         // const
+            "struct" => TokenKind::KwS,        // struct
+            "enum" => TokenKind::KwE,          // enum
+            "trait" => TokenKind::KwT,         // trait
+            "impl" => TokenKind::KwI,          // impl
+            "mod" => TokenKind::KwMod,         // module
+            "use" => TokenKind::KwUse,         // import
+            "async" => TokenKind::KwAf,        // async
+            "if" => TokenKind::Question,       // if
+            "match" => TokenKind::QuestionEq,  // match
+            "for" => TokenKind::At,            // for loop
+            "in" => TokenKind::KwOf,           // for separator (for x in list)
+            "while" => TokenKind::AtW,         // while
+            "else" => TokenKind::KwOr,         // else (if cond {} else {})
+            "where" => TokenKind::TildeArrow,  // where clause
 
             // ── Multi-char keywords (shared) ─────────────────────
             "loop" => TokenKind::KwLoop,
             "break" => TokenKind::KwBreak,
             "continue" => TokenKind::KwContinue,
-            "ret" => TokenKind::KwRet,
+            "return" => TokenKind::KwRet,
+            "ret" => TokenKind::KwRet,         // agent mode alias
             "yield" => TokenKind::KwYield,
             "yl" => TokenKind::KwYield, // agent mode alias
             "effect" => TokenKind::KwEffect,
@@ -1016,8 +1011,6 @@ impl<'a> Lexer<'a> {
             "unsafe" => TokenKind::KwUnsafe,
             "type" => TokenKind::KwType,
             "static" => TokenKind::KwStatic,
-            "for" => TokenKind::KwFor,
-            "given" => TokenKind::TildeArrow,  // where clause (human)
 
             // Built-in result/option variants
             "Ok" => TokenKind::KwOk,
