@@ -59,9 +59,15 @@ fn handle_connection(stream: std::net::TcpStream) -> Result<(), Box<dyn std::err
         }
 
         let request: serde_json::Value = serde_json::from_str(&line)?;
-        let id = request.get("id").cloned().unwrap_or(serde_json::Value::Null);
+        let id = request
+            .get("id")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
         let method = request.get("method").and_then(|v| v.as_str()).unwrap_or("");
-        let params = request.get("params").cloned().unwrap_or(serde_json::Value::Null);
+        let params = request
+            .get("params")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
 
         let result = dispatch(method, &params);
 
@@ -176,7 +182,10 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 diagnostics.push(hir::Diagnostic {
                     severity: hir::Severity::Error,
                     message: e.message.clone(),
-                    span: Some(hir::Span { line: e.line as u32, col: e.col as u32 }),
+                    span: Some(hir::Span {
+                        line: e.line as u32,
+                        col: e.col as u32,
+                    }),
                     id: None,
                     category: Some(hir::DiagnosticCategory::SyntaxError),
                 });
@@ -191,9 +200,19 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
 
         "cost/query" => {
             // Query per-construct cost estimate (P19).
-            let construct = params.get("construct").and_then(|v| v.as_str()).unwrap_or("");
-            let target = params.get("target").and_then(|v| v.as_str()).unwrap_or("x86_64");
-            let opt = match params.get("opt").and_then(|v| v.as_str()).unwrap_or("release") {
+            let construct = params
+                .get("construct")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let target = params
+                .get("target")
+                .and_then(|v| v.as_str())
+                .unwrap_or("x86_64");
+            let opt = match params
+                .get("opt")
+                .and_then(|v| v.as_str())
+                .unwrap_or("release")
+            {
                 "debug" => cost::OptLevel::Debug,
                 "release_lto" => cost::OptLevel::ReleaseLto,
                 _ => cost::OptLevel::Release,
@@ -214,7 +233,10 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         "cost/compare" => {
             let a = params.get("a").and_then(|v| v.as_str()).unwrap_or("");
             let b = params.get("b").and_then(|v| v.as_str()).unwrap_or("");
-            let target = params.get("target").and_then(|v| v.as_str()).unwrap_or("x86_64");
+            let target = params
+                .get("target")
+                .and_then(|v| v.as_str())
+                .unwrap_or("x86_64");
             let opt = cost::OptLevel::Release;
 
             match cost::compare(a, b, target, opt) {
@@ -272,22 +294,38 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             let requires: Vec<String> = params
                 .get("requires")
                 .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default();
             let ensures: Vec<String> = params
                 .get("ensures")
                 .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default();
             let declared_effects: Vec<String> = params
                 .get("declared_effects")
                 .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default();
             let used_effects: Vec<String> = params
                 .get("used_effects")
                 .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default();
 
             let spec_input = if requires.is_empty() && ensures.is_empty() {
@@ -296,7 +334,10 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 Some(verify::SpecInput { requires, ensures })
             };
 
-            let effects = verify::EffectAnalysis { declared: declared_effects, used: used_effects };
+            let effects = verify::EffectAnalysis {
+                declared: declared_effects,
+                used: used_effects,
+            };
             let result = verify::verify_contracts(fqn, spec_input.as_ref(), &effects);
 
             serde_json::json!({
@@ -501,8 +542,10 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             match parser::parse(&tokens) {
                 Ok(module) => {
                     let results = verify::verify_module(&module);
-                    let agent_results: Vec<_> =
-                        results.iter().filter(|r| r.fqn.starts_with("agent.")).collect();
+                    let agent_results: Vec<_> = results
+                        .iter()
+                        .filter(|r| r.fqn.starts_with("agent."))
+                        .collect();
                     serde_json::json!({
                         "ok": agent_results.iter().all(|r| r.status == verify::VerifyStatus::Verified),
                         "results": serde_json::to_value(&agent_results).unwrap_or_default()
@@ -537,7 +580,10 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 diagnostics.push(hir::Diagnostic {
                     severity: hir::Severity::Error,
                     message: e.message.clone(),
-                    span: Some(hir::Span { line: e.line as u32, col: e.col as u32 }),
+                    span: Some(hir::Span {
+                        line: e.line as u32,
+                        col: e.col as u32,
+                    }),
                     id: None,
                     category: Some(hir::DiagnosticCategory::SyntaxError),
                 });
@@ -612,8 +658,14 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
 
         "manifest/generate" => {
             // Generate a capability manifest for the parsed module.
-            let crate_name = params.get("crate_name").and_then(|v| v.as_str()).unwrap_or("unnamed");
-            let version = params.get("version").and_then(|v| v.as_str()).unwrap_or("0.0.0");
+            let crate_name = params
+                .get("crate_name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unnamed");
+            let version = params
+                .get("version")
+                .and_then(|v| v.as_str())
+                .unwrap_or("0.0.0");
             let tokens = lexer::lex(source);
             match parser::parse(&tokens) {
                 Ok(module) => {
@@ -811,7 +863,10 @@ mod tests {
 
     #[test]
     fn test_attribute_compress() {
-        let r = call("attribute/compress", serde_json::json!({ "name": "derive" }));
+        let r = call(
+            "attribute/compress",
+            serde_json::json!({ "name": "derive" }),
+        );
         assert_eq!(r["ok"], true);
         assert_eq!(r["compressed"], "d");
     }
