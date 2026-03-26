@@ -1,8 +1,10 @@
 mod aci;
+mod agent_runtime;
 mod ast;
 mod autograd;
 mod bench;
 mod certs;
+mod codegen_bridge;
 mod consensus;
 mod cost;
 mod cost_calibration;
@@ -24,6 +26,7 @@ mod lexer;
 mod logic;
 mod manifest;
 mod mlir;
+mod nl_engine;
 mod parser;
 mod perf_annot;
 mod rap;
@@ -74,11 +77,19 @@ fn main() {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            let source = if syntax_legacy { legacy::translate(&source) } else { source };
+            let source = if syntax_legacy {
+                legacy::translate(&source)
+            } else {
+                source
+            };
             let tokens = lexer::lex(&source);
             match parser::parse(&tokens) {
                 Ok(module) => {
-                    let module = if !no_elision { elision::elide(&module) } else { module };
+                    let module = if !no_elision {
+                        elision::elide(&module)
+                    } else {
+                        module
+                    };
                     println!("{}", fmt::format_agent(&module));
                 }
                 Err(e) => {
@@ -96,11 +107,19 @@ fn main() {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            let source = if syntax_legacy { legacy::translate(&source) } else { source };
+            let source = if syntax_legacy {
+                legacy::translate(&source)
+            } else {
+                source
+            };
             let tokens = lexer::lex(&source);
             match parser::parse(&tokens) {
                 Ok(module) => {
-                    let module = if !no_elision { elision::elide(&module) } else { module };
+                    let module = if !no_elision {
+                        elision::elide(&module)
+                    } else {
+                        module
+                    };
                     println!("{}", fmt::format_human(&module));
                 }
                 Err(e) => {
@@ -147,7 +166,11 @@ fn main() {
 }
 
 fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token_report: bool) {
-    let source = if legacy { legacy::translate(source) } else { source.to_string() };
+    let source = if legacy {
+        legacy::translate(source)
+    } else {
+        source.to_string()
+    };
     let tokens = lexer::lex(&source);
 
     let mut error_count = 0;
@@ -163,7 +186,11 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token
 
     match parser::parse(&tokens) {
         Ok(module) => {
-            let module = if do_elision { elision::elide(&module) } else { module };
+            let module = if do_elision {
+                elision::elide(&module)
+            } else {
+                module
+            };
             if token_report {
                 let report = token_budget::report(&module);
                 eprintln!("{}", report.display());
@@ -173,7 +200,10 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token
             }
         }
         Err(e) => {
-            eprintln!("{filename}:{}:{}: parse error: {}", e.line, e.col, e.message);
+            eprintln!(
+                "{filename}:{}:{}: parse error: {}",
+                e.line, e.col, e.message
+            );
             std::process::exit(1);
         }
     }
@@ -185,7 +215,11 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token
 
 fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token_report: bool) {
     // Phase 0: Legacy syntax translation (if active).
-    let source = if legacy { legacy::translate(source) } else { source.to_string() };
+    let source = if legacy {
+        legacy::translate(source)
+    } else {
+        source.to_string()
+    };
 
     // Phase 1: Lex.
     let tokens = lexer::lex(&source);
@@ -205,13 +239,20 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     let module = match parser::parse(&tokens) {
         Ok(m) => m,
         Err(e) => {
-            eprintln!("{filename}:{}:{}: parse error: {}", e.line, e.col, e.message);
+            eprintln!(
+                "{filename}:{}:{}: parse error: {}",
+                e.line, e.col, e.message
+            );
             std::process::exit(1);
         }
     };
 
     // Phase 2.5: Safety elision (agentic mode default).
-    let module = if do_elision { elision::elide(&module) } else { module };
+    let module = if do_elision {
+        elision::elide(&module)
+    } else {
+        module
+    };
 
     // Phase 3: Name resolution.
     let resolver = resolve::resolve(&module);
@@ -247,10 +288,14 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     // Phase 5.5: Contract verification.
     let verifications = verify::verify_module(&module);
     let contract_count = verifications.len();
-    let verified_count =
-        verifications.iter().filter(|v| v.status == verify::VerifyStatus::Verified).count();
-    let failed_count =
-        verifications.iter().filter(|v| v.status == verify::VerifyStatus::Failed).count();
+    let verified_count = verifications
+        .iter()
+        .filter(|v| v.status == verify::VerifyStatus::Verified)
+        .count();
+    let failed_count = verifications
+        .iter()
+        .filter(|v| v.status == verify::VerifyStatus::Failed)
+        .count();
 
     // Phase 6: Self-healing — generate fix candidates for all diagnostics.
     let mut all_diagnostics: Vec<hir::Diagnostic> = Vec::new();
@@ -302,7 +347,11 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
             if !h.fixes.is_empty() {
                 eprintln!("    ▸ {}: {} fix(es)", h.diagnostic.message, h.fixes.len());
                 for fix in &h.fixes {
-                    eprintln!("      - [conf={:.0}%] {}", fix.confidence * 100.0, fix.description);
+                    eprintln!(
+                        "      - [conf={:.0}%] {}",
+                        fix.confidence * 100.0,
+                        fix.description
+                    );
                 }
             }
         }
@@ -346,7 +395,10 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     let mut lex_errors = 0;
     for tok in &tokens {
         if tok.kind == lexer::TokenKind::Error {
-            eprintln!("  {filename}:{}:{}: lexer error", tok.span.line, tok.span.col);
+            eprintln!(
+                "  {filename}:{}:{}: lexer error",
+                tok.span.line, tok.span.col
+            );
             lex_errors += 1;
         }
     }
@@ -420,7 +472,11 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
             }
             let resolved = infer.resolve_shape(&out_shape);
             let dims: Vec<String> = resolved.iter().map(|d| format!("{d:?}")).collect();
-            ai_info.push(format!("net {}: output shape [{}]", net.name, dims.join(", ")));
+            ai_info.push(format!(
+                "net {}: output shape [{}]",
+                net.name,
+                dims.join(", ")
+            ));
         }
     }
 
@@ -428,14 +484,28 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     for item in &module.items {
         if let ast::ItemKind::Train(train) = &item.kind {
             let tape = autograd::build_tape_from_train(train);
-            let loss_id = if tape.nodes.is_empty() { 0 } else { tape.nodes.len() - 1 };
-            let param_names: Vec<String> = tape.nodes.iter().filter_map(|n| {
-                if let autograd::GradOp::Param(name) = &n.op { Some(name.clone()) } else { None }
-            }).collect();
+            let loss_id = if tape.nodes.is_empty() {
+                0
+            } else {
+                tape.nodes.len() - 1
+            };
+            let param_names: Vec<String> = tape
+                .nodes
+                .iter()
+                .filter_map(|n| {
+                    if let autograd::GradOp::Param(name) = &n.op {
+                        Some(name.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
             let grad_result = autograd::backward(&tape, loss_id, &param_names);
             ai_info.push(format!(
                 "train {}: {} forward ops, {} backward ops",
-                train.name, tape.nodes.len(), grad_result.mlir_ops.len()
+                train.name,
+                tape.nodes.len(),
+                grad_result.mlir_ops.len()
             ));
             for diag in &grad_result.diagnostics {
                 eprintln!("  {filename}: {diag}");
@@ -457,7 +527,11 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
                     ai_errors += 1;
                 }
             }
-            ai_info.push(format!("kb {}: {} facts materialized", kb.name, kb.fact_count()));
+            ai_info.push(format!(
+                "kb {}: {} facts materialized",
+                kb.name,
+                kb.fact_count()
+            ));
         }
     }
 
@@ -469,7 +543,10 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
                     let mlir_ops = plan.emit_mlir();
                     ai_info.push(format!(
                         "evolve {}: pop={}, gen={}, {} MLIR ops",
-                        plan.name, plan.population_size, plan.generations, mlir_ops.len()
+                        plan.name,
+                        plan.population_size,
+                        plan.generations,
+                        mlir_ops.len()
                     ));
                 }
                 Err(diags) => {
@@ -514,10 +591,14 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     eprintln!("▸ Phase 5.5: Contract verification");
     let verifications = verify::verify_module(&module);
     let contract_total = verifications.len();
-    let contract_verified =
-        verifications.iter().filter(|v| v.status == verify::VerifyStatus::Verified).count();
-    let contract_failed =
-        verifications.iter().filter(|v| v.status == verify::VerifyStatus::Failed).count();
+    let contract_verified = verifications
+        .iter()
+        .filter(|v| v.status == verify::VerifyStatus::Verified)
+        .count();
+    let contract_failed = verifications
+        .iter()
+        .filter(|v| v.status == verify::VerifyStatus::Failed)
+        .count();
     if contract_total > 0 {
         eprintln!(
             "  ✓ {contract_total} symbols checked (verified: {contract_verified}, failed: {contract_failed})"
@@ -552,12 +633,20 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
 
     let healed = heal::heal(&all_diags);
     let fix_count: usize = healed.iter().map(|h| h.fixes.len()).sum();
-    eprintln!("  ✓ {} diagnostics analyzed, {} fix candidates", all_diags.len(), fix_count);
+    eprintln!(
+        "  ✓ {} diagnostics analyzed, {} fix candidates",
+        all_diags.len(),
+        fix_count
+    );
 
     if fix_count > 0 {
         for h in &healed {
             for fix in &h.fixes {
-                eprintln!("    ▸ [conf={:.0}%] {}", fix.confidence * 100.0, fix.description);
+                eprintln!(
+                    "    ▸ [conf={:.0}%] {}",
+                    fix.confidence * 100.0,
+                    fix.description
+                );
             }
         }
     }
