@@ -1,6 +1,6 @@
 // hello.mg — minimal MechGen example
 
-exp def main() {
-    val greeting: String = "Hello, MechGen!";
+pub fn main() {
+    let greeting: String = "Hello, MechGen!";
     io::println(greeting);
 }
