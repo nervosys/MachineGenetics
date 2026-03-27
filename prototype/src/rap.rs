@@ -682,6 +682,58 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             }
         }
 
+
+        // ── Natural Language endpoints ──────────────
+        "nl/generate" => {
+            let prompt = params.get("prompt").and_then(|v| v.as_str()).unwrap_or("hello world");
+            let mut engine = crate::nl_engine::NlEngine::new();
+            let response = engine.process(prompt);
+            serde_json::json!({
+                "ok": response.ok,
+                "code_human": response.code_human,
+                "code_agent": response.code_agent,
+                "explanation": response.explanation,
+                "diagnostics": response.diagnostics.len(),
+                "fixes": response.fixes.len(),
+                "verification": response.verification_summary
+            })
+        }
+
+        "nl/explain" => {
+            let source = params.get("source").and_then(|v| v.as_str()).unwrap_or("");
+            let prompt = format!("explain this code\n{}", source);
+            let mut engine = crate::nl_engine::NlEngine::new();
+            let response = engine.process(&prompt);
+            serde_json::json!({
+                "ok": response.ok,
+                "explanation": response.explanation
+            })
+        }
+
+        "nl/refactor" => {
+            let source = params.get("source").and_then(|v| v.as_str()).unwrap_or("");
+            let prompt = format!("refactor this code\n{}", source);
+            let mut engine = crate::nl_engine::NlEngine::new();
+            let response = engine.process(&prompt);
+            serde_json::json!({
+                "ok": response.ok,
+                "code_human": response.code_human,
+                "code_agent": response.code_agent,
+                "explanation": response.explanation
+            })
+        }
+
+        "nl/query" => {
+            let prompt = params.get("prompt").and_then(|v| v.as_str()).unwrap_or("");
+            let mut engine = crate::nl_engine::NlEngine::new();
+            let response = engine.process(prompt);
+            serde_json::json!({
+                "ok": true,
+                "explanation": response.explanation,
+                "kb_results": response.kb_results
+            })
+        }
+
         _ => serde_json::json!({
             "error": format!("unknown method: {method}")
         }),

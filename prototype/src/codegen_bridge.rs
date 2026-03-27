@@ -309,15 +309,30 @@ impl CodegenBridge {
         ))
     }
 
+    /// Extract the inner body from a synthesis candidate that may already be a complete
+    /// function definition. Returns just the inner content between the outermost braces.
+    /// If the body is not a complete function definition, returns it unchanged.
+    fn strip_function_wrapper(body: &str) -> &str {
+        let trimmed = body.trim();
+        if trimmed.starts_with("fn ") {
+            if let (Some(open), Some(close)) = (trimmed.find('{'), trimmed.rfind('}')) {
+                if close > open + 1 {
+                    return trimmed[open + 1..close].trim();
+                }
+            }
+        }
+        body
+    }
+
     /// Compile a candidate body through the full pipeline.
     fn compile_candidate(
         &self,
         spec: &SynthesisSpec,
         body: &str,
     ) -> CompileResult {
-        // Wrap the body in a function with the spec's signature.
-        let source = self.wrap_in_function(spec, body);
-
+        // Strip any outer function wrapper from synthesis output before re-wrapping.
+        let inner = Self::strip_function_wrapper(body);
+        let source = self.wrap_in_function(spec, inner);
         // Lex.
         let tokens = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| lexer::lex(&source))) {
             Ok(t) => t,
