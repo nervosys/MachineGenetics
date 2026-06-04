@@ -2,8 +2,12 @@ mod aci;
 mod agent_runtime;
 mod ast;
 mod autograd;
+mod backends;
 mod bench;
+#[cfg(feature = "cuda")]
+mod cuda_backend;
 mod certs;
+mod cli_manifest;
 mod codegen_bridge;
 mod consensus;
 mod cost;
@@ -27,10 +31,18 @@ mod logic;
 mod manifest;
 mod mlir;
 mod nl_engine;
+mod ontology;
 mod parser;
 mod perf_annot;
 mod rap;
+mod recover;
 mod resolve;
+mod rmi_ontology_adapter;
+mod rmi_runtime_adapter;
+mod rmib;
+mod rmil_bridge;
+mod rmil_compute;
+mod rmil_shape;
 mod sandbox;
 mod semantic_vcs;
 mod shape;
@@ -50,6 +62,26 @@ fn main() {
     let no_elision = args.iter().any(|a| a == "--no-elision");
     let syntax_legacy = args.iter().any(|a| a == "--syntax=legacy");
     let token_report = args.iter().any(|a| a == "--token-report");
+    // Optional --backend=<name> selects hardware accelerator for any
+    // subsequent --run=rmil-bytes / --target=rmil-run dispatch. Lives
+    // outside the main flag table so it can attach to any dispatching
+    // subcommand without per-command plumbing. Default: cpu.
+    let backend_name: String = args
+        .iter()
+        .find_map(|a| a.strip_prefix("--backend=").map(str::to_string))
+        .unwrap_or_else(|| "cpu".to_string());
+    // Optional --backends-file <path> registers extra backend
+    // descriptors at runtime. Stacks with env/home loading so
+    // operators can layer per-deployment overrides.
+    let backends_file: Option<String> = args
+        .iter()
+        .find_map(|a| a.strip_prefix("--backends-file=").map(str::to_string));
+    if let Some(path) = &backends_file {
+        match backends::register_descriptors_from_file(path) {
+            Ok(n) => eprintln!("// registered {n} backend descriptor(s) from {path}"),
+            Err(e) => eprintln!("// --backends-file: {e}"),
+        }
+    }
     // Collect positional-ish args (skip flag-style args)
     let filtered: Vec<&str> = args
         .iter()
@@ -58,15 +90,45 @@ fn main() {
             !matches!(
                 a.as_str(),
                 "--no-elision" | "--syntax=legacy" | "--syntax=canonical" | "--token-report"
-            )
+            ) && !a.starts_with("--backend=")
+              && !a.starts_with("--backends-file=")
         })
         .map(|s| s.as_str())
         .collect();
 
     match filtered.first().copied() {
+        Some("--manifest") => {
+            // Agent-facing capability index (cheap discovery root).
+            print!("{}", cli_manifest::manifest());
+        }
+        Some("--describe") => {
+            match filtered.get(1).copied().and_then(cli_manifest::describe) {
+                Some(d) => println!("{d}"),
+                None => {
+                    eprintln!("unknown mode; valid modes:");
+                    eprint!("{}", cli_manifest::manifest());
+                    std::process::exit(2);
+                }
+            }
+        }
         Some("--rap") => {
             let addr = filtered.get(1).copied().unwrap_or("127.0.0.1:9876");
             rap::serve(addr);
+        }
+        Some("--emit-ontology") => {
+            // Dump the complete ontology to disk as static JSON.
+            // `--emit-ontology [path]` (default: MECHGEN_ONTOLOGY.json).
+            let out = filtered.get(1).copied().unwrap_or("MECHGEN_ONTOLOGY.json");
+            let value = ontology::build();
+            let json = serde_json::to_string_pretty(&value).unwrap_or_else(|e| {
+                eprintln!("emit-ontology: serialize: {e}");
+                std::process::exit(1);
+            });
+            if let Err(e) = std::fs::write(out, &json) {
+                eprintln!("emit-ontology: write {out}: {e}");
+                std::process::exit(1);
+            }
+            println!("wrote {} bytes to {out}", json.len());
         }
         Some("--fmt-compact") => {
             let path = filtered.get(1).unwrap_or_else(|| {
@@ -139,6 +201,309 @@ fn main() {
             });
             run_check(&source, path, !no_elision, syntax_legacy, token_report);
         }
+        Some("--target=rmil-bytes") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --target=rmil-bytes <file.mg> [<out.rmib>]");
+                std::process::exit(1);
+            });
+            let out_path = filtered.get(2).map(|s| s.to_string());
+            let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            let source = if syntax_legacy {
+                legacy::translate(&source)
+            } else {
+                source
+            };
+            let tokens = lexer::lex(&source);
+            match parser::parse(&tokens) {
+                Ok(module) => {
+                    let module = if !no_elision {
+                        elision::elide(&module)
+                    } else {
+                        module
+                    };
+                    run_emit_rmil_bytes(&module, path, out_path.as_deref());
+                }
+                Err(e) => {
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("--from=rmil-bytes") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --from=rmil-bytes <file.rmib>");
+                std::process::exit(1);
+            });
+            let blob = std::fs::read(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            run_decode_rmil_bytes(&blob, path);
+        }
+        Some("--run=rmil-bytes") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --run=rmil-bytes <file.rmib>");
+                std::process::exit(1);
+            });
+            let blob = std::fs::read(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            run_dispatch_rmil_bytes(&blob, path, &backend_name);
+        }
+        Some("--target=rmil-generate") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --target=rmil-generate <file>");
+                std::process::exit(1);
+            });
+            let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            let source = if syntax_legacy {
+                legacy::translate(&source)
+            } else {
+                source
+            };
+            let tokens = lexer::lex(&source);
+            match parser::parse(&tokens) {
+                Ok(module) => {
+                    let module = if !no_elision {
+                        elision::elide(&module)
+                    } else {
+                        module
+                    };
+                    run_generate(&module, path);
+                }
+                Err(e) => {
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("--target=rmil-infer") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --target=rmil-infer <file>");
+                std::process::exit(1);
+            });
+            let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            let source = if syntax_legacy {
+                legacy::translate(&source)
+            } else {
+                source
+            };
+            let tokens = lexer::lex(&source);
+            match parser::parse(&tokens) {
+                Ok(module) => {
+                    let module = if !no_elision {
+                        elision::elide(&module)
+                    } else {
+                        module
+                    };
+                    run_infer(&module, path);
+                }
+                Err(e) => {
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("--target=rmil-train") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --target=rmil-train <file>");
+                std::process::exit(1);
+            });
+            let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            let source = if syntax_legacy {
+                legacy::translate(&source)
+            } else {
+                source
+            };
+            let tokens = lexer::lex(&source);
+            match parser::parse(&tokens) {
+                Ok(module) => {
+                    let module = if !no_elision {
+                        elision::elide(&module)
+                    } else {
+                        module
+                    };
+                    run_train(&module, path);
+                }
+                Err(e) => {
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("--target=rmil-compute") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --target=rmil-compute <file>");
+                std::process::exit(1);
+            });
+            let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            let source = if syntax_legacy {
+                legacy::translate(&source)
+            } else {
+                source
+            };
+            let tokens = lexer::lex(&source);
+            match parser::parse(&tokens) {
+                Ok(module) => {
+                    let module = if !no_elision {
+                        elision::elide(&module)
+                    } else {
+                        module
+                    };
+                    let lowered = rmil_bridge::lower_module(&module);
+                    let backend = rmi::compute::cpu::CpuBackend::new();
+                    println!("// MechGen → RMIL → CpuBackend dispatch for {path}");
+                    for (name, expr) in &lowered.items {
+                        // Pre-flight: infer shapes and report mismatches.
+                        let shape_report = rmil_shape::infer_shape(expr, &[8]);
+                        for m in &shape_report.mismatches {
+                            eprintln!(
+                                "shape error in {name}: op {:?} expected last={} but got shape {:?}",
+                                m.op, m.expected_last, m.got
+                            );
+                        }
+                        let inferred = rmil_compute::infer_input_shape(expr);
+                        let shape: Vec<usize> = inferred.unwrap_or_else(|| vec![8]);
+                        match rmil_compute::run_pipeline(&backend, expr, &shape, 1.0) {
+                            Ok(r) => println!(
+                                "// {name}: dispatched={} unsupported={:?} output_sum={:.4} shape={:?} (input={:?})",
+                                r.dispatched, r.unsupported, r.output_sum, r.output.shape, shape
+                            ),
+                            Err(e) => println!("// {name}: backend error: {e} (input={shape:?})"),
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("--target=rmil-run") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --target=rmil-run <file>");
+                std::process::exit(1);
+            });
+            let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            let source = if syntax_legacy {
+                legacy::translate(&source)
+            } else {
+                source
+            };
+            let tokens = lexer::lex(&source);
+            match parser::parse(&tokens) {
+                Ok(module) => {
+                    let module = if !no_elision {
+                        elision::elide(&module)
+                    } else {
+                        module
+                    };
+                    let lowered = rmil_bridge::lower_module(&module);
+                    let mut vm = rmi::lang::Vm::new();
+                    println!("// MechGen → RMIL → VM execution for {path}");
+                    for (name, expr) in &lowered.items {
+                        let families = rmil_bridge::expr_op_families(expr);
+                        let stub_families: Vec<_> = families
+                            .iter()
+                            .filter(|f| rmil_bridge::is_stubbed_family(**f))
+                            .map(|f| format!("{f:?}"))
+                            .collect();
+                        // JIT path: pure-math fragments compile, neural/symbolic/agent
+                        // ops transparently fall back to the tree-walking interpreter.
+                        match vm.eval_jit(expr) {
+                            Ok(val) => println!(
+                                "// {name}: ok  (hash={:016x} result={:?})",
+                                expr.content_hash(),
+                                val
+                            ),
+                            Err(_) if !stub_families.is_empty() => println!(
+                                "// {name}: stub (hash={:016x} families={} — neural/symbolic/agent ops require compute backend, not VM)",
+                                expr.content_hash(),
+                                stub_families.join(",")
+                            ),
+                            Err(e) => println!(
+                                "// {name}: err (hash={:016x} error={:?})",
+                                expr.content_hash(),
+                                e
+                            ),
+                        }
+                    }
+                    for diag in &lowered.diagnostics {
+                        eprintln!("warning: {diag}");
+                    }
+                }
+                Err(e) => {
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("--target=rmil") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --target=rmil <file>");
+                std::process::exit(1);
+            });
+            let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            let source = if syntax_legacy {
+                legacy::translate(&source)
+            } else {
+                source
+            };
+            let tokens = lexer::lex(&source);
+            match parser::parse(&tokens) {
+                Ok(module) => {
+                    let module = if !no_elision {
+                        elision::elide(&module)
+                    } else {
+                        module
+                    };
+                    let lowered = rmil_bridge::lower_module(&module);
+                    let (mlir_items, rmil_items) = rmil_bridge::OpFamilyRouter::partition(&module);
+                    println!("// MechGen → RMIL lowering for {path}");
+                    println!("// MLIR-routed items: {}", mlir_items.len());
+                    println!("// RMIL-routed items: {}", rmil_items.len());
+                    for diag in &lowered.diagnostics {
+                        eprintln!("warning: {diag}");
+                    }
+                    for (name, expr) in &lowered.items {
+                        let bytes = rmi::lang::codec::Encoder::encode_expr_only(expr);
+                        println!(
+                            "// {name}: nodes={} depth={} hash={:016x} wire={}B",
+                            expr.node_count(),
+                            expr.depth(),
+                            expr.content_hash(),
+                            bytes.len()
+                        );
+                    }
+                }
+                Err(e) => {
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
         Some("--pipeline") => {
             let path = filtered.get(1).unwrap_or_else(|| {
                 eprintln!("Usage: MechGen-parse --pipeline <file> [--no-elision] [--syntax=legacy] [--token-report]");
@@ -163,6 +528,1481 @@ fn main() {
             run_parse(&source, "<stdin>", !no_elision, syntax_legacy, token_report);
         }
     }
+}
+
+/// Drive `--target=rmil-train`: find each `train` block, locate its named
+/// `net`, lower the net to RMIL, run N epochs of SGD on a synthetic
+/// dataset, and report per-step loss.
+///
+/// Defaults when the `.mg` source omits them:
+/// - **epochs:** 50
+/// - **learning rate:** 0.05
+/// - **dataset:** four samples of the form `y = sum(x)` matching the
+///   net's first Linear input dim and final output dim.
+/// Magic bytes for the per-module RMIL-bytes container format. Distinct
+/// from the per-expression `MGPS` checkpoint magic.
+const RMIB_MAGIC: &[u8; 4] = b"RMIB";
+const RMIB_VERSION: u16 = 1;
+
+/// Drive `--target=rmil-bytes`: lower every RMIL-routed item in the module
+/// to binary RMIL via the bridge + RMI codec, then write a single framed
+/// blob to disk (or stdout-summarise if no out path given).
+///
+/// Container layout:
+/// ```text
+///   magic    "RMIB" (4 bytes)
+///   version  u16 = 1
+///   count    u32  — number of items
+///   for each item:
+///     name_len u32
+///     name     UTF-8 bytes
+///     expr_len u32
+///     expr     codec::Encoder::encode_expr_only output
+/// ```
+fn run_emit_rmil_bytes(module: &ast::Module, src_path: &str, out_path: Option<&str>) {
+    let lowered_diags = rmil_bridge::lower_module(module).diagnostics;
+    let (blob, per_item_summary) = rmib::encode_module(module);
+    if per_item_summary.is_empty() {
+        println!("// {src_path}: no RMIL-routed items (no net/kb/agent/swarm/train/evolve)");
+        return;
+    }
+
+    let text_bytes = std::fs::metadata(src_path).map(|m| m.len()).unwrap_or(0);
+    let total_rmil = blob.len() as u64;
+
+    println!("// MechGen → RMIL bytes for {src_path}");
+    println!(
+        "// text source: {} bytes    RMIL container: {} bytes    ratio: {:.3} ({:.1}% reduction)",
+        text_bytes,
+        total_rmil,
+        if text_bytes > 0 { total_rmil as f64 / text_bytes as f64 } else { 0.0 },
+        if text_bytes > 0 { (1.0 - total_rmil as f64 / text_bytes as f64) * 100.0 } else { 0.0 },
+    );
+    for (name, sz, hash) in &per_item_summary {
+        println!("//   {name}: {sz}B  hash={hash:016x}");
+    }
+    for d in &lowered_diags {
+        eprintln!("warning: {d}");
+    }
+
+    if let Some(out) = out_path {
+        match std::fs::write(out, &blob) {
+            Ok(()) => println!("// wrote {} bytes to {}", blob.len(), out),
+            Err(e) => eprintln!("write {out}: {e}"),
+        }
+    }
+}
+
+/// Drive `--from=rmil-bytes`: read a `.rmib` container, decode every item
+/// via the RMI codec, decompile each to a MechGen `net`/`kb` declaration via
+/// the bridge's existing decompiler, and print the resulting `.mg` source.
+fn run_decode_rmil_bytes(blob: &[u8], path: &str) {
+    let mut pos = 0usize;
+    fn take<'a>(buf: &'a [u8], pos: &mut usize, n: usize, what: &str) -> Option<&'a [u8]> {
+        if *pos + n > buf.len() {
+            eprintln!("{what}: unexpected EOF at offset {}", *pos);
+            return None;
+        }
+        let s = &buf[*pos..*pos + n];
+        *pos += n;
+        Some(s)
+    }
+    let magic = match take(blob, &mut pos, 4, "magic") {
+        Some(m) => m,
+        None => return,
+    };
+    if magic != RMIB_MAGIC {
+        eprintln!("{path}: bad magic {:?} (expected RMIB)", magic);
+        return;
+    }
+    let ver = u16::from_le_bytes(match take(blob, &mut pos, 2, "version") {
+        Some(b) => b.try_into().unwrap(),
+        None => return,
+    });
+    if ver != RMIB_VERSION {
+        eprintln!("{path}: unsupported version {}", ver);
+        return;
+    }
+    let count = u32::from_le_bytes(match take(blob, &mut pos, 4, "count") {
+        Some(b) => b.try_into().unwrap(),
+        None => return,
+    }) as usize;
+
+    println!("// RMIL → MechGen decompiled view of {path}");
+    println!("// container: {} bytes, {} item(s)", blob.len(), count);
+
+    for i in 0..count {
+        let nl = u32::from_le_bytes(match take(blob, &mut pos, 4, "name_len") {
+            Some(b) => b.try_into().unwrap(),
+            None => return,
+        }) as usize;
+        let name = match take(blob, &mut pos, nl, "name") {
+            Some(b) => std::str::from_utf8(b).unwrap_or("<bad-utf8>").to_string(),
+            None => return,
+        };
+        let el = u32::from_le_bytes(match take(blob, &mut pos, 4, "expr_len") {
+            Some(b) => b.try_into().unwrap(),
+            None => return,
+        }) as usize;
+        let expr_bytes = match take(blob, &mut pos, el, "expr") {
+            Some(b) => b,
+            None => return,
+        };
+        match rmi::lang::codec::Decoder::decode_expr_only(expr_bytes) {
+            Ok(expr) => {
+                let result = rmil_bridge::decompile(&expr, &name);
+                println!("\n// item {i}: {name} ({} bytes expr)", el);
+                let mut layer_lines = Vec::new();
+                for layer in &result.net.layers {
+                    let type_name = match &layer.layer_type {
+                        ast::Type::Path { segments, .. } => {
+                            segments.last().cloned().unwrap_or_default()
+                        }
+                        _ => "?".to_string(),
+                    };
+                    let args = if layer.args.is_empty() {
+                        String::new()
+                    } else {
+                        let parts: Vec<String> = layer.args.iter().filter_map(|a| match a {
+                            ast::Expr::Literal { value, .. } => Some(value.clone()),
+                            _ => None,
+                        }).collect();
+                        if parts.is_empty() { String::new() } else { format!("({})", parts.join(", ")) }
+                    };
+                    layer_lines.push(format!("    layer {}: {}{};", layer.name, type_name, args));
+                }
+                if !result.skipped.is_empty() {
+                    println!("// skipped (no canonical name): {:?}", result.skipped);
+                }
+                println!("net {} {{", name);
+                for l in &layer_lines {
+                    println!("{l}");
+                }
+                println!("    forward {{ {} }}", result.net.layers.first().map(|l| l.name.as_str()).unwrap_or(""));
+                println!("}}");
+            }
+            Err(e) => eprintln!("item {i}: decode error: {e:?}"),
+        }
+    }
+}
+
+/// Drive `--run=rmil-bytes`: decode every item in a RMIB container and
+/// dispatch it to the CPU backend via `rmil_compute::run_pipeline`,
+/// completely **skipping the text round-trip**. This is the
+/// agent-canonical execution path:
+///
+/// ```text
+///   bytes (.rmib) → Decoder → Expr → dispatch → CpuBackend → result
+/// ```
+///
+/// Items that contain neural/symbolic/agent opcodes the dispatcher can
+/// run are executed (activation chains, Linear with cached params, etc.);
+/// items that lower entirely to stub opcodes are reported as `stub`
+/// rather than failing.
+fn run_dispatch_rmil_bytes(blob: &[u8], path: &str, backend_name: &str) {
+    use rmi::compute::cpu::CpuBackend;
+    // Resolve agent's --backend=<name> choice into a SelectedBackend.
+    // Falls back to CpuBackend on error so the dispatch still happens;
+    // we surface the message so an agent knows why their request was
+    // downgraded.
+    let selected = match crate::backends::select_backend(backend_name) {
+        Ok(b) => {
+            if b.name() != "cpu" {
+                eprintln!("// backend: {}", b.name());
+            }
+            Some(b)
+        }
+        Err(e) => {
+            eprintln!("// backend selection: {e} - using cpu");
+            None
+        }
+    };
+    // CUDA dispatch (P98-P101): `--features cuda` + `--backend=cuda`
+    // routes ops through CudaBackend's Backend impl. Per-op routes
+    // currently bounce through CpuBackend internally (TODO markers
+    // in cuda_backend.rs); replacing each with IA cuBLASLt / NVRTC
+    // dispatch is the per-op ratchet.
+    #[cfg(feature = "cuda")]
+    if let Some(crate::backends::SelectedBackend::Cuda(b)) = &selected {
+        eprintln!(
+            "// CUDA device acquired (id={}); ops dispatch via Cuda Backend impl",
+            b.device_id(),
+        );
+    }
+    // If the selected backend is subprocess-dispatchable (P94), hand
+    // off the full RMIB blob + path metadata to the wrapper and
+    // print whatever it returns. No per-item CPU dispatch below;
+    // the wrapper owns the loop.
+    if let Some(crate::backends::SelectedBackend::Subprocess { name, command }) = &selected {
+        eprintln!("// dispatching via subprocess backend '{name}': {command}");
+        match crate::backends::dispatch_via_subprocess(
+            name, command, path, &[], blob,
+        ) {
+            Ok(r) => {
+                println!(
+                    "// {name}: ok={} dispatched={} output_shape={:?} output_sum={:.4}",
+                    r.ok, r.dispatched, r.output_shape, r.output_sum
+                );
+                if let Some(err) = r.error {
+                    eprintln!("// {name}: wrapper reported error: {err}");
+                }
+            }
+            Err(e) => eprintln!("// {name}: subprocess dispatch failed: {e}"),
+        }
+        return;
+    }
+    let mut pos = 0usize;
+    fn take<'a>(buf: &'a [u8], pos: &mut usize, n: usize, what: &str) -> Option<&'a [u8]> {
+        if *pos + n > buf.len() {
+            eprintln!("{what}: unexpected EOF at offset {}", *pos);
+            return None;
+        }
+        let s = &buf[*pos..*pos + n];
+        *pos += n;
+        Some(s)
+    }
+    let magic = match take(blob, &mut pos, 4, "magic") {
+        Some(m) => m,
+        None => return,
+    };
+    if magic != RMIB_MAGIC {
+        eprintln!("{path}: bad magic {:?} (expected RMIB)", magic);
+        return;
+    }
+    let ver = u16::from_le_bytes(match take(blob, &mut pos, 2, "version") {
+        Some(b) => b.try_into().unwrap(),
+        None => return,
+    });
+    if ver != RMIB_VERSION {
+        eprintln!("{path}: unsupported version {}", ver);
+        return;
+    }
+    let count = u32::from_le_bytes(match take(blob, &mut pos, 4, "count") {
+        Some(b) => b.try_into().unwrap(),
+        None => return,
+    }) as usize;
+
+    // P101: dispatch through whichever Backend the agent selected.
+    // CPU is the floor; CUDA (when --features cuda + --backend=cuda)
+    // routes through CudaBackend's Backend impl - per-op routes
+    // currently bounce back to CPU via the impl's `cpu` field, but
+    // the dispatch path itself is polymorphic, so each TODO swap in
+    // cuda_backend.rs lights up real GPU dispatch with zero changes
+    // to main.rs / rmil_compute.rs.
+    let cpu_backend = CpuBackend::new();
+    #[cfg(feature = "cuda")]
+    let backend: &dyn rmi::compute::Backend = match &selected {
+        Some(crate::backends::SelectedBackend::Cuda(c)) => c,
+        _ => &cpu_backend,
+    };
+    #[cfg(not(feature = "cuda"))]
+    let backend: &dyn rmi::compute::Backend = &cpu_backend;
+    let backend_name = backend.backend_type();
+    println!("// RMIL bytes → {backend_name:?} dispatch for {path}");
+    println!("// container: {} bytes, {} item(s)", blob.len(), count);
+
+    for i in 0..count {
+        let nl = u32::from_le_bytes(match take(blob, &mut pos, 4, "name_len") {
+            Some(b) => b.try_into().unwrap(),
+            None => return,
+        }) as usize;
+        let name = match take(blob, &mut pos, nl, "name") {
+            Some(b) => std::str::from_utf8(b).unwrap_or("<bad-utf8>").to_string(),
+            None => return,
+        };
+        let el = u32::from_le_bytes(match take(blob, &mut pos, 4, "expr_len") {
+            Some(b) => b.try_into().unwrap(),
+            None => return,
+        }) as usize;
+        let expr_bytes = match take(blob, &mut pos, el, "expr") {
+            Some(b) => b,
+            None => return,
+        };
+        let expr = match rmi::lang::codec::Decoder::decode_expr_only(expr_bytes) {
+            Ok(e) => e,
+            Err(e) => {
+                eprintln!("item {i} ({name}): decode error: {e:?}");
+                continue;
+            }
+        };
+        // Diagnose stub-only items (Phase-4 classification) without trying
+        // to dispatch — they'd just return unsupported.
+        let families = rmil_bridge::expr_op_families(&expr);
+        let stub_families: Vec<_> = families
+            .iter()
+            .filter(|f| rmil_bridge::is_stubbed_family(**f))
+            .filter(|f| !matches!(**f, rmi::lang::OpFamily::Neural))
+            .map(|f| format!("{f:?}"))
+            .collect();
+        if !stub_families.is_empty() && !families.contains(&rmi::lang::OpFamily::Neural) {
+            println!(
+                "//   item {i}: {name} ({el}B)  stub  families={}  (symbolic/agent — needs distributed runtime)",
+                stub_families.join(",")
+            );
+            continue;
+        }
+
+        let shape: Vec<usize> = rmil_compute::infer_input_shape(&expr)
+            .unwrap_or_else(|| vec![8]);
+        match rmil_compute::run_pipeline(backend, &expr, &shape, 1.0) {
+            Ok(r) => println!(
+                "//   item {i}: {name} ({el}B)  dispatched={} unsupported={:?} output_sum={:.4} shape={:?} (input={:?})",
+                r.dispatched, r.unsupported, r.output_sum, r.output.shape, shape
+            ),
+            Err(e) => eprintln!("//   item {i}: {name}: backend error: {e}"),
+        }
+    }
+
+    // Post-dispatch observability: surface real-GPU op counters so a
+    // caller can tell whether the cuBLASLt path was actually exercised
+    // vs the CPU fallback. Only prints if there's something to report.
+    #[cfg(feature = "cuda")]
+    if let Some(crate::backends::SelectedBackend::Cuda(c)) = &selected {
+        let mm = c.matmul_gpu_count();
+        let ew = c.elementwise_gpu_count();
+        if mm > 0 || ew > 0 {
+            println!("// gpu_ops: matmul={mm} (cuBLASLt) elementwise={ew} (NVRTC)");
+        } else {
+            println!(
+                "// gpu_ops: matmul=0 elementwise=0 (no GPU path taken — driver missing or all inputs ineligible)"
+            );
+        }
+    }
+}
+
+/// Drive `--target=rmil-generate`: load checkpoint + prompt, autoregressively
+/// generate up to `max_tokens` new tokens via greedy argmax decoding.
+///
+/// The model is expected to be an LM: input is `[seq]` of integer token ids,
+/// output is `[seq, vocab]` logits at each position. Generation takes the
+/// last-position logits, argmaxes for the next token, and appends to the
+/// running sequence.
+fn run_generate(module: &ast::Module, path: &str) {
+    use rmi::compute::cpu::CpuBackend;
+    use rmi::compute::Backend;
+    let backend = CpuBackend::new();
+
+    println!("// MechGen → RMIL → autoregressive generation for {path}");
+
+    let mut nets: std::collections::HashMap<&str, &ast::NetDef> = Default::default();
+    for item in &module.items {
+        if let ast::ItemKind::Net(n) = &item.kind {
+            nets.insert(n.name.as_str(), n);
+        }
+    }
+
+    let mut found_any = false;
+    for item in &module.items {
+        let train = match &item.kind {
+            ast::ItemKind::Train(t) => t,
+            _ => continue,
+        };
+        found_any = true;
+        let net = match nets.get(train.net.as_str()) {
+            Some(n) => n,
+            None => {
+                eprintln!("generate `{}`: net `{}` not found", train.name, train.net);
+                continue;
+            }
+        };
+        // Load weights if a checkpoint exists; otherwise warn and use fresh.
+        let ckpt_path = extract_string_literal(train.checkpoint.as_ref());
+        let mut params = match ckpt_path.as_ref().and_then(|p| std::fs::read(p).ok()) {
+            Some(blob) => match rmil_compute::ParamStore::load(&blob, &backend) {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("generate `{}`: load checkpoint: {e}", train.name);
+                    continue;
+                }
+            },
+            None => {
+                eprintln!("generate `{}`: no checkpoint available — using fresh weights", train.name);
+                rmil_compute::ParamStore::new()
+            }
+        };
+
+        let lowered = rmil_bridge::NetTranslator::translate(net);
+
+        // Extract prompt: either nested `[[1, 2, 3]]` or flat `[1, 2, 3]`.
+        let mut tokens: Vec<usize> = match extract_nested_floats(train.prompt.as_ref()) {
+            Some(rows) if !rows.is_empty() => rows[0].iter().map(|v| v.round() as usize).collect(),
+            _ => match extract_flat_floats(train.prompt.as_ref()) {
+                Some(flat) if !flat.is_empty() => flat.iter().map(|v| v.round() as usize).collect(),
+                _ => {
+                    eprintln!("generate `{}`: no `prompt:` array of token ids — nothing to seed", train.name);
+                    continue;
+                }
+            },
+        };
+        let max_new = extract_int_from_expr(train.max_tokens.as_ref()).unwrap_or(16) as usize;
+        let temperature = extract_f32_from_expr(train.temperature.as_ref()).unwrap_or(0.0);
+        let top_k = extract_int_from_expr(train.top_k.as_ref())
+            .map(|n| n.max(0) as usize)
+            .unwrap_or(0);
+        let top_p = extract_f32_from_expr(train.top_p.as_ref()).unwrap_or(0.0).clamp(0.0, 1.0);
+        let mut rng_state: u64 = extract_int_from_expr(train.seed.as_ref())
+            .map(|n| n as u64)
+            .unwrap_or(0xC0FFEE_5EEDu64);
+
+        // Determine vocab size from the last Linear in the net (output head).
+        let vocab = last_linear_out(net).unwrap_or_else(|| {
+            // Fallback: try EMBED args (the embedding's vocab matches the head).
+            embedding_vocab(net).unwrap_or(0)
+        });
+        if vocab == 0 {
+            eprintln!("generate `{}`: cannot determine vocab size from net — need final Linear", train.name);
+            continue;
+        }
+
+        let sample_mode = if temperature > 0.0 {
+            let mut parts = vec![format!("T={temperature}")];
+            if top_k > 0 { parts.push(format!("top_k={top_k}")); }
+            if top_p > 0.0 { parts.push(format!("top_p={top_p}")); }
+            format!("sampling({})", parts.join(", "))
+        } else {
+            "argmax".to_string()
+        };
+        println!(
+            "// generate `{}` → net `{}`  prompt={:?} max_tokens={} vocab={} mode={} ckpt={}",
+            train.name, train.net, tokens, max_new, vocab, sample_mode,
+            ckpt_path.as_deref().unwrap_or("<none>")
+        );
+
+        for step in 0..max_new {
+            // Run forward on the current sequence.
+            let input_f: Vec<f32> = tokens.iter().map(|&t| t as f32).collect();
+            let handle = match backend.from_slice_f32(&input_f, &[input_f.len()]) {
+                Ok(h) => h,
+                Err(e) => {
+                    eprintln!("  step {step}: alloc: {e}");
+                    break;
+                }
+            };
+            let out_handle = match rmil_compute::forward_pass(&backend, &lowered.expr, handle, &mut params) {
+                Ok(h) => h,
+                Err(e) => {
+                    eprintln!("  step {step}: forward: {e}");
+                    break;
+                }
+            };
+            let bytes = backend.copy_to_host(&out_handle).unwrap_or_default();
+            let logits: Vec<f32> = bytes
+                .chunks_exact(4)
+                .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+                .collect();
+            // logits shape: [seq, vocab] (or [seq * vocab] flat). Last-position
+            // logits live in the tail.
+            if logits.len() < vocab {
+                eprintln!("  step {step}: output too small ({}) for vocab {}", logits.len(), vocab);
+                break;
+            }
+            let tail = &logits[logits.len() - vocab..];
+            let next = if temperature > 0.0 {
+                sample_token(tail, temperature, top_k, top_p, &mut rng_state)
+            } else {
+                tail.iter()
+                    .enumerate()
+                    .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+                    .map(|(i, _)| i)
+                    .unwrap_or(0)
+            };
+            tokens.push(next);
+        }
+
+        println!("// generated sequence: {:?}", tokens);
+    }
+
+    if !found_any {
+        eprintln!("// no `train` blocks found in {path}");
+    }
+}
+
+/// Sample a token index from logits via temperature + top-k + top-p.
+///
+/// Steps:
+/// 1. Scale logits by `1/temperature` (sharpens or flattens).
+/// 2. If `top_k > 0`, keep only the k highest logits (others → −∞).
+/// 3. If `top_p > 0`, after softmax keep the smallest set whose cumulative
+///    probability ≥ p (others zeroed). Top-k is applied first if both set.
+/// 4. Re-normalise the surviving probabilities and CDF-walk a uniform draw.
+fn sample_token(logits: &[f32], temperature: f32, top_k: usize, top_p: f32, rng_state: &mut u64) -> usize {
+    let inv_t = 1.0 / temperature.max(1e-6);
+    let mut scaled: Vec<f32> = logits.iter().map(|&l| l * inv_t).collect();
+
+    if top_k > 0 && top_k < scaled.len() {
+        let mut sorted = scaled.clone();
+        sorted.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+        let threshold = sorted[top_k - 1];
+        for v in scaled.iter_mut() {
+            if *v < threshold {
+                *v = f32::NEG_INFINITY;
+            }
+        }
+    }
+
+    // Softmax with max-subtraction.
+    let max = scaled.iter().copied().filter(|v| v.is_finite()).fold(f32::MIN, f32::max);
+    let mut probs: Vec<f32> = scaled.iter().map(|&v| {
+        if v.is_finite() { (v - max).exp() } else { 0.0 }
+    }).collect();
+    let sum: f32 = probs.iter().sum();
+    if sum <= 0.0 { return 0; }
+    for p in probs.iter_mut() { *p /= sum; }
+
+    // Top-p nucleus: walk sorted probs until cumsum ≥ p; zero everything else.
+    if top_p > 0.0 && top_p < 1.0 {
+        let mut indexed: Vec<(usize, f32)> = probs.iter().copied().enumerate().collect();
+        indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        let mut keep = std::collections::HashSet::new();
+        let mut cum = 0.0f32;
+        for (i, p) in &indexed {
+            keep.insert(*i);
+            cum += *p;
+            if cum >= top_p { break; }
+        }
+        for (i, p) in probs.iter_mut().enumerate() {
+            if !keep.contains(&i) {
+                *p = 0.0;
+            }
+        }
+        let s: f32 = probs.iter().sum();
+        if s > 0.0 {
+            for p in probs.iter_mut() { *p /= s; }
+        }
+    }
+
+    // CDF walk.
+    *rng_state = rng_state
+        .wrapping_mul(6364136223846793005)
+        .wrapping_add(1442695040888963407);
+    let u = ((*rng_state >> 33) as u32 as f32) / (u32::MAX as f32);
+    let mut acc = 0.0f32;
+    for (i, &p) in probs.iter().enumerate() {
+        acc += p;
+        if acc >= u {
+            return i;
+        }
+    }
+    probs.len() - 1
+}
+
+/// Extract a flat array literal of floats: `[1.0, 2.0, 3.0]` → vec.
+fn extract_flat_floats(expr: Option<&ast::Expr>) -> Option<Vec<f32>> {
+    match expr? {
+        ast::Expr::ArrayLit { elements } => elements.iter().map(extract_f32_literal).collect(),
+        _ => None,
+    }
+}
+
+/// Find the output dim of the last Linear layer in a net (the LM head).
+fn last_linear_out(net: &ast::NetDef) -> Option<usize> {
+    for layer in net.layers.iter().rev() {
+        let is_linear = matches!(
+            &layer.layer_type,
+            ast::Type::Path { segments, .. } if segments.last().map(|s| s.as_str()) == Some("Linear")
+        );
+        if !is_linear {
+            continue;
+        }
+        let dims: Vec<i64> = layer.args.iter().filter_map(|a| match a {
+            ast::Expr::Literal { value, kind: ast::LiteralKind::Int } => value.parse().ok(),
+            _ => None,
+        }).collect();
+        if dims.len() >= 2 {
+            return Some(dims[1] as usize);
+        }
+    }
+    None
+}
+
+/// Find the vocab size from the first Embedding layer.
+fn embedding_vocab(net: &ast::NetDef) -> Option<usize> {
+    for layer in &net.layers {
+        let is_emb = matches!(
+            &layer.layer_type,
+            ast::Type::Path { segments, .. }
+                if matches!(segments.last().map(|s| s.as_str()), Some("Embedding") | Some("Embed"))
+        );
+        if !is_emb {
+            continue;
+        }
+        let dims: Vec<i64> = layer.args.iter().filter_map(|a| match a {
+            ast::Expr::Literal { value, kind: ast::LiteralKind::Int } => value.parse().ok(),
+            _ => None,
+        }).collect();
+        if !dims.is_empty() {
+            return Some(dims[0] as usize);
+        }
+    }
+    None
+}
+
+/// Drive `--target=rmil-infer`: for each `train` block, load its checkpoint,
+/// run forward on its `inputs:` data, and print per-sample predictions.
+/// Requires both `checkpoint:` and `inputs:` to be set.
+fn run_infer(module: &ast::Module, path: &str) {
+    use rmi::compute::cpu::CpuBackend;
+    use rmi::compute::Backend;
+    let backend = CpuBackend::new();
+
+    println!("// MechGen → RMIL → CpuBackend inference for {path}");
+
+    let mut nets: std::collections::HashMap<&str, &ast::NetDef> = Default::default();
+    for item in &module.items {
+        if let ast::ItemKind::Net(n) = &item.kind {
+            nets.insert(n.name.as_str(), n);
+        }
+    }
+
+    let mut found_any = false;
+    for item in &module.items {
+        let train = match &item.kind {
+            ast::ItemKind::Train(t) => t,
+            _ => continue,
+        };
+        found_any = true;
+        let net = match nets.get(train.net.as_str()) {
+            Some(n) => n,
+            None => {
+                eprintln!("infer `{}`: net `{}` not found", train.name, train.net);
+                continue;
+            }
+        };
+        let ckpt_path = match extract_string_literal(train.checkpoint.as_ref()) {
+            Some(p) => p,
+            None => {
+                eprintln!("infer `{}`: no `checkpoint:` field — nothing to load", train.name);
+                continue;
+            }
+        };
+        let blob = match std::fs::read(&ckpt_path) {
+            Ok(b) => b,
+            Err(e) => {
+                eprintln!("infer `{}`: read {ckpt_path}: {e}", train.name);
+                continue;
+            }
+        };
+        let mut params = match rmil_compute::ParamStore::load(&blob, &backend) {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("infer `{}`: load checkpoint: {e}", train.name);
+                continue;
+            }
+        };
+
+        let lowered = rmil_bridge::NetTranslator::translate(net);
+        let (in_dim, out_dim) = first_last_linear_dims(net).unwrap_or((1, 1));
+
+        let xs = match extract_nested_floats(train.inputs.as_ref()) {
+            Some(xs) if !xs.is_empty() => xs,
+            _ => {
+                eprintln!(
+                    "infer `{}`: no `inputs:` array literal — nothing to predict",
+                    train.name
+                );
+                continue;
+            }
+        };
+
+        println!(
+            "// infer `{}` → net `{}`  in_dim={} out_dim={} samples={} checkpoint={} weights={}",
+            train.name, train.net, in_dim, out_dim, xs.len(), ckpt_path, params.len()
+        );
+
+        for (i, row) in xs.iter().enumerate() {
+            if row.len() != in_dim {
+                eprintln!("  sample {i}: dim mismatch (have {}, expected {})", row.len(), in_dim);
+                continue;
+            }
+            let h = match backend.from_slice_f32(row, &[1, in_dim]) {
+                Ok(h) => h,
+                Err(e) => {
+                    eprintln!("  sample {i}: alloc: {e}");
+                    continue;
+                }
+            };
+            match rmil_compute::forward_pass(&backend, &lowered.expr, h, &mut params) {
+                Ok(out) => {
+                    let bytes = backend.copy_to_host(&out).unwrap_or_default();
+                    let preds: Vec<f32> = bytes
+                        .chunks_exact(4)
+                        .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+                        .collect();
+                    let pred_str = preds.iter().map(|v| format!("{v:.4}")).collect::<Vec<_>>().join(", ");
+                    let input_str = row.iter().map(|v| format!("{v:.4}")).collect::<Vec<_>>().join(", ");
+                    println!("//   input=[{input_str}] → pred=[{pred_str}]");
+                }
+                Err(e) => eprintln!("  sample {i}: forward: {e}"),
+            }
+        }
+    }
+
+    if !found_any {
+        eprintln!("// no `train` blocks found in {path}");
+    }
+}
+
+fn run_train(module: &ast::Module, path: &str) {
+    use rmi::compute::cpu::CpuBackend;
+    let backend = CpuBackend::new();
+
+    println!("// MechGen → RMIL → SGD training for {path}");
+
+    // Index nets by name so train blocks can look them up.
+    let mut nets: std::collections::HashMap<&str, &ast::NetDef> = Default::default();
+    for item in &module.items {
+        if let ast::ItemKind::Net(n) = &item.kind {
+            nets.insert(n.name.as_str(), n);
+        }
+    }
+
+    let mut found_any = false;
+    for item in &module.items {
+        let train = match &item.kind {
+            ast::ItemKind::Train(t) => t,
+            _ => continue,
+        };
+        found_any = true;
+
+        let net = match nets.get(train.net.as_str()) {
+            Some(n) => n,
+            None => {
+                eprintln!(
+                    "train `{}`: net `{}` not found in module",
+                    train.name, train.net
+                );
+                continue;
+            }
+        };
+
+        let lowered = rmil_bridge::NetTranslator::translate(net);
+        if !lowered.unknown_layers.is_empty() {
+            eprintln!(
+                "train `{}`: net `{}` has unknown layers {:?} — using IDENTITY fallback",
+                train.name, train.net, lowered.unknown_layers
+            );
+        }
+
+        // Determine input / output dims from the net's first and last Linear.
+        let (in_dim, out_dim) = first_last_linear_dims(net).unwrap_or((2, 1));
+        let epochs = extract_int_from_expr(train.epochs.as_ref()).unwrap_or(50) as usize;
+        // Learning rate: prefer `optimizer: SGD(0.01)` if present, else default 0.05.
+        let lr = extract_lr_from_optimizer(train.optimizer.as_ref()).unwrap_or(0.05);
+
+        // Dataset selection precedence:
+        //   1. inline `inputs:` + `targets:` array literals
+        //   2. `dataset:` CSV file path (first in_dim cols = x, last out_dim = y)
+        //   3. fallback synthetic y = sum(x)
+        let (x, y, batch, dataset_source) = if let (Some(xs), Some(ys)) = (
+            extract_nested_floats(train.inputs.as_ref()),
+            extract_nested_floats(train.targets.as_ref()),
+        ) {
+            let bs = xs.len();
+            let xs_flat: Vec<f32> = xs.iter().flatten().copied().collect();
+            let ys_flat: Vec<f32> = ys.iter().flatten().copied().collect();
+            if xs_flat.len() != bs * in_dim || ys_flat.len() != bs * out_dim {
+                eprintln!(
+                    "train `{}`: dataset dims mismatch — got {}x{} inputs, {}x{} targets; expected {}x{} and {}x{}",
+                    train.name, xs.len(), xs_flat.len() / bs.max(1), ys.len(), ys_flat.len() / bs.max(1), bs, in_dim, bs, out_dim
+                );
+                continue;
+            }
+            (xs_flat, ys_flat, bs, "inline".to_string())
+        } else if let Some(csv_path) = extract_string_literal(train.dataset.as_ref()) {
+            match load_csv(&csv_path, in_dim, out_dim) {
+                Ok((xs, ys, n)) => (xs, ys, n, format!("csv:{csv_path}")),
+                Err(e) => {
+                    eprintln!("train `{}`: dataset error: {e}", train.name);
+                    continue;
+                }
+            }
+        } else {
+            let batch = 4usize;
+            let mut x = Vec::with_capacity(batch * in_dim);
+            let mut y = Vec::with_capacity(batch * out_dim);
+            for b in 0..batch {
+                let base = (b + 1) as f32 * 0.25;
+                for i in 0..in_dim {
+                    x.push(base + (i as f32) * 0.1);
+                }
+                let target = x[b * in_dim..(b + 1) * in_dim].iter().sum::<f32>();
+                for _ in 0..out_dim {
+                    y.push(target);
+                }
+            }
+            (x, y, batch, "synthetic".to_string())
+        };
+
+        // Optimizer: pick from `optimizer: Adam(...)` vs `SGD(...)`.
+        let optim = extract_optimizer(train.optimizer.as_ref());
+        // Loss: pick from `loss: CrossEntropy` vs `MSE`.
+        let loss_kind = extract_loss(train.loss.as_ref());
+        // Optional checkpoint path: load weights if file exists; save after.
+        let ckpt_path = extract_string_literal(train.checkpoint.as_ref());
+        // Mini-batch size: defaults to full-batch (entire train set per step).
+        let batch_size = extract_int_from_expr(train.batch_size.as_ref())
+            .map(|n| n.max(1) as usize);
+        // Early-stopping patience: 0/None disables.
+        let patience = extract_int_from_expr(train.patience.as_ref())
+            .map(|n| n.max(0) as usize);
+        // Validation split: hold out the last `val_split` fraction.
+        let split = extract_f32_from_expr(train.val_split.as_ref()).unwrap_or(0.0).clamp(0.0, 0.99);
+        let n_val = ((batch as f32) * split) as usize;
+        let n_train = batch.saturating_sub(n_val);
+        let train_x = &x[..n_train * in_dim];
+        let train_y = &y[..n_train * out_dim];
+        let val_x = &x[n_train * in_dim..];
+        let val_y = &y[n_train * out_dim..];
+
+        let bs = batch_size.unwrap_or(n_train).min(n_train).max(1);
+        let batches_per_epoch = (n_train + bs - 1) / bs;
+        let clip = extract_f32_from_expr(train.clip_grad.as_ref()).filter(|v| *v > 0.0);
+        let wd = extract_f32_from_expr(train.weight_decay.as_ref()).filter(|v| *v > 0.0);
+        let tied = matches!(
+            train.tied_embeddings.as_ref(),
+            Some(ast::Expr::Literal { value, kind: ast::LiteralKind::Bool }) if value == "true"
+        ) || matches!(
+            train.tied_embeddings.as_ref(),
+            Some(ast::Expr::Ident { name }) if name == "true" || name == "1b"
+        );
+        let warmup = extract_int_from_expr(train.warmup_steps.as_ref())
+            .map(|n| n.max(0) as u64)
+            .unwrap_or(0);
+        let schedule = match train.lr_schedule.as_ref() {
+            Some(ast::Expr::Ident { name }) if name == "cosine" => LrSchedule::Cosine,
+            Some(ast::Expr::Ident { name }) if name == "plateau" => LrSchedule::Plateau,
+            _ => LrSchedule::None,
+        };
+        let plateau_pat = extract_int_from_expr(train.plateau_patience.as_ref())
+            .map(|n| n.max(1) as usize)
+            .unwrap_or(5);
+        let lr_factor = extract_f32_from_expr(train.lr_factor.as_ref())
+            .filter(|v| *v > 0.0 && *v < 1.0)
+            .unwrap_or(0.5);
+        let total_steps = (epochs as u64) * (batches_per_epoch as u64);
+        println!(
+            "// train `{}` → net `{}`  in_dim={} out_dim={} epochs={} lr={} optim={} loss={} dataset={} train={} val={} batch_size={} patience={} clip={} warmup={} sched={}",
+            train.name, train.net, in_dim, out_dim, epochs, lr, optim_label(optim),
+            loss_label(loss_kind), dataset_source, n_train, n_val, bs,
+            patience.map(|p| p.to_string()).unwrap_or_else(|| "off".to_string()),
+            clip.map(|c| format!("{c}")).unwrap_or_else(|| "off".to_string()),
+            warmup,
+            match schedule {
+                LrSchedule::Cosine => "cosine",
+                LrSchedule::Plateau => "plateau",
+                LrSchedule::None => "none",
+            },
+        );
+
+        // Parameter-count report: walk net.layers, sum weight + bias counts
+        // for each known op. Doesn't allocate anything in ParamStore yet
+        // (those happen lazily on first forward).
+        let (per_layer_params, total_params) = count_params(net);
+        if total_params > 0 {
+            println!("// train `{}` parameters: {} total", train.name, total_params);
+            for (name, count) in &per_layer_params {
+                println!("//   {name}: {count}");
+            }
+        }
+        if let Some(wd) = wd {
+            println!("// train `{}`: weight_decay={}", train.name, wd);
+        }
+        if tied {
+            println!("// train `{}`: tied_embeddings=true", train.name);
+        }
+        // Compute tied-weight signature: embedding (V, E) + final Linear (E, V).
+        let tied_keys: Option<(Vec<i64>, Vec<i64>)> = if tied {
+            tied_weight_keys(net)
+        } else {
+            None
+        };
+        if tied && tied_keys.is_none() {
+            eprintln!(
+                "train `{}`: tied_embeddings requested but model lacks Embedding(V,E) + final Linear(E,V)",
+                train.name
+            );
+        }
+
+        // Plateau-scheduling: tracked externally; the closure below honours
+        // warmup + cosine but the plateau schedule is applied to `current_lr`
+        // in the epoch loop after each val-loss check.
+        let mut current_lr = lr;
+        let step_lr = |step_idx: u64, base_lr: f32| -> f32 {
+            if warmup > 0 && step_idx < warmup {
+                return base_lr * (step_idx as f32 / warmup as f32);
+            }
+            match schedule {
+                LrSchedule::Cosine if total_steps > warmup => {
+                    let progress = (step_idx.saturating_sub(warmup)) as f32
+                        / (total_steps.saturating_sub(warmup)) as f32;
+                    let progress = progress.clamp(0.0, 1.0);
+                    0.5 * base_lr * (1.0 + (std::f32::consts::PI * progress).cos())
+                }
+                _ => base_lr,
+            }
+        };
+
+        let mut params = match ckpt_path.as_ref().and_then(|p| std::fs::read(p).ok()) {
+            Some(blob) => match rmil_compute::ParamStore::load(&blob, &backend) {
+                Ok(p) => {
+                    println!("// train `{}`: loaded {} weight tensors from {}", train.name, p.len(), ckpt_path.as_deref().unwrap());
+                    p
+                }
+                Err(e) => {
+                    eprintln!("train `{}`: checkpoint load failed: {e}", train.name);
+                    rmil_compute::ParamStore::new()
+                }
+            },
+            None => rmil_compute::ParamStore::new(),
+        };
+        let mut state = rmil_compute::OptimState::new();
+        state.clip_grad = clip;
+        state.weight_decay = wd;
+        let mut first_loss = None;
+        let mut last_loss = 0.0f32;
+        let mut last_val = f32::NAN;
+        let report_every = (epochs / 5).max(1);
+        // Simple LCG for deterministic shuffling.
+        let mut rng_state: u64 = 0x9E37_79B9_7F4A_7C15u64.wrapping_add(epochs as u64);
+        let mut best_val = f32::INFINITY;
+        let mut epochs_since_improvement = 0usize;
+        // Plateau tracking is independent of early-stop's counter so a
+        // model can use one without enabling the other.
+        let mut plateau_best = f32::INFINITY;
+        let mut plateau_wait = 0usize;
+        let mut early_stopped_at: Option<usize> = None;
+        let mut idx: Vec<usize> = (0..n_train).collect();
+        let mut batch_x = vec![0.0f32; bs * in_dim];
+        let mut batch_y = vec![0.0f32; bs * out_dim];
+
+        'epoch_loop: for step in 0..epochs {
+            // Shuffle when mini-batching, leave alone for full-batch.
+            if batch_size.is_some() && n_train > 1 {
+                for i in (1..n_train).rev() {
+                    rng_state = rng_state
+                        .wrapping_mul(6364136223846793005)
+                        .wrapping_add(1442695040888963407);
+                    let j = (rng_state >> 33) as usize % (i + 1);
+                    idx.swap(i, j);
+                }
+            }
+
+            let mut epoch_loss_sum = 0.0f32;
+            for batch_i in 0..batches_per_epoch {
+                let start = batch_i * bs;
+                let end = (start + bs).min(n_train);
+                let cur_bs = end - start;
+                // Pack the mini-batch into contiguous buffers.
+                for (k, &row) in idx[start..end].iter().enumerate() {
+                    batch_x[k * in_dim..(k + 1) * in_dim]
+                        .copy_from_slice(&train_x[row * in_dim..(row + 1) * in_dim]);
+                    batch_y[k * out_dim..(k + 1) * out_dim]
+                        .copy_from_slice(&train_y[row * out_dim..(row + 1) * out_dim]);
+                }
+                // OptimState.step advances inside train_one_step; we use its
+                // current value here for the LR schedule. For plateau the
+                // base is `current_lr` (mutated by the plateau guard).
+                let base = match schedule {
+                    LrSchedule::Plateau => current_lr,
+                    _ => lr,
+                };
+                let cur_lr = step_lr(state.step, base);
+                let r = match rmil_compute::train_one_step_with_optim_loss(
+                    &backend,
+                    &lowered.expr,
+                    &batch_x[..cur_bs * in_dim],
+                    &[cur_bs, in_dim],
+                    &batch_y[..cur_bs * out_dim],
+                    &[cur_bs, out_dim],
+                    cur_lr,
+                    optim,
+                    loss_kind,
+                    &mut params,
+                    &mut state,
+                ) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        eprintln!("train `{}`: epoch {step} batch {batch_i} failed: {e}", train.name);
+                        break 'epoch_loop;
+                    }
+                };
+                epoch_loss_sum += r.loss;
+                // Tied embeddings: after each batch, copy embedding table
+                // (V, E) into the final Linear's weight (E, V) transposed.
+                if let Some((emb_key, head_key)) = &tied_keys {
+                    if let Err(e) = sync_tied_embedding(&backend, &mut params, emb_key, head_key) {
+                        eprintln!("train `{}`: tie-weights: {e}", train.name);
+                    }
+                }
+            }
+            let epoch_loss = epoch_loss_sum / batches_per_epoch as f32;
+            if first_loss.is_none() {
+                first_loss = Some(epoch_loss);
+            }
+            last_loss = epoch_loss;
+            let val_loss = if n_val > 0 {
+                compute_val_loss(&backend, &lowered.expr, val_x, in_dim, val_y, out_dim, n_val, &mut params)
+                    .unwrap_or(f32::NAN)
+            } else {
+                f32::NAN
+            };
+            last_val = val_loss;
+            if step == 0 || step == epochs - 1 || step % report_every == 0 {
+                if n_val > 0 {
+                    println!("//   epoch {step:>4}: train_loss={:.6} val_loss={:.6}", epoch_loss, val_loss);
+                } else {
+                    println!("//   epoch {step:>4}: loss={:.6}", epoch_loss);
+                }
+            }
+            // Plateau LR schedule: drop current LR when val loss hasn't
+            // improved for `plateau_patience` epochs. Independent counter
+            // so the plateau schedule works whether or not early-stop is on.
+            if matches!(schedule, LrSchedule::Plateau) && n_val > 0 && val_loss.is_finite() {
+                if val_loss < plateau_best - 1e-6 {
+                    plateau_best = val_loss;
+                    plateau_wait = 0;
+                } else {
+                    plateau_wait += 1;
+                    if plateau_wait >= plateau_pat {
+                        let new_lr = current_lr * lr_factor;
+                        println!(
+                            "//   epoch {step}: plateau LR drop {:.6} → {:.6} (no improvement {} epochs)",
+                            current_lr, new_lr, plateau_pat
+                        );
+                        current_lr = new_lr;
+                        plateau_wait = 0;
+                    }
+                }
+            }
+            // Early stopping: only when val is available + patience set.
+            if let (Some(p), true) = (patience, n_val > 0) {
+                if p > 0 {
+                    if val_loss < best_val - 1e-6 {
+                        best_val = val_loss;
+                        epochs_since_improvement = 0;
+                    } else {
+                        epochs_since_improvement += 1;
+                        if epochs_since_improvement >= p {
+                            early_stopped_at = Some(step);
+                            println!("//   epoch {step}: early stop (val didn't improve in {p} epochs; best={best_val:.6})");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        let first_loss = first_loss.unwrap_or(f32::NAN);
+        let delta = first_loss - last_loss;
+        let pct = if first_loss > 1e-9 { delta / first_loss * 100.0 } else { 0.0 };
+        let stop_note = match early_stopped_at {
+            Some(e) => format!(" early_stop@{e}"),
+            None => String::new(),
+        };
+        if n_val > 0 {
+            println!(
+                "// train `{}` done: first_loss={:.6} last_loss={:.6} reduction={:.2}% final_val={:.6}{}",
+                train.name, first_loss, last_loss, pct, last_val, stop_note
+            );
+        } else {
+            println!(
+                "// train `{}` done: first_loss={:.6} last_loss={:.6} reduction={:.2}%{}",
+                train.name, first_loss, last_loss, pct, stop_note
+            );
+        }
+
+        // Persist trained weights if requested.
+        if let Some(path) = &ckpt_path {
+            match params.save(&backend) {
+                Ok(blob) => match std::fs::write(path, &blob) {
+                    Ok(()) => println!("// train `{}`: saved {} weight tensors to {} ({} bytes)", train.name, params.len(), path, blob.len()),
+                    Err(e) => eprintln!("train `{}`: write checkpoint {path}: {e}", train.name),
+                },
+                Err(e) => eprintln!("train `{}`: serialize checkpoint: {e}", train.name),
+            }
+        }
+    }
+
+    if !found_any {
+        eprintln!("// no `train` blocks found in {path}");
+    }
+}
+
+fn first_last_linear_dims(net: &ast::NetDef) -> Option<(usize, usize)> {
+    let mut first_in: Option<usize> = None;
+    let mut last_out: Option<usize> = None;
+    for layer in &net.layers {
+        let name = match &layer.layer_type {
+            ast::Type::Path { segments, .. } => segments.last().map(|s| s.as_str()),
+            _ => None,
+        };
+        let dims: Vec<i64> = layer
+            .args
+            .iter()
+            .filter_map(|a| match a {
+                ast::Expr::Literal { value, kind: ast::LiteralKind::Int } => value.parse().ok(),
+                _ => None,
+            })
+            .collect();
+        match name {
+            // Embedding(vocab, embed) at the head means the actual model
+            // input is a sequence of indices, in-dim = 1 per token.
+            Some("Embedding") | Some("Embed") if first_in.is_none() => {
+                first_in = Some(1);
+            }
+            // Linear(in, out [, bias]) is both input candidate and output.
+            Some("Linear") if dims.len() >= 2 => {
+                if first_in.is_none() {
+                    first_in = Some(dims[0] as usize);
+                }
+                last_out = Some(dims[1] as usize);
+            }
+            _ => {}
+        }
+    }
+    match (first_in, last_out) {
+        (Some(a), Some(b)) => Some((a, b)),
+        _ => None,
+    }
+}
+
+fn extract_int_from_expr(expr: Option<&ast::Expr>) -> Option<i64> {
+    match expr? {
+        ast::Expr::Literal { value, kind: ast::LiteralKind::Int } => value.parse().ok(),
+        _ => None,
+    }
+}
+
+/// Extract a learning rate from an `optimizer: ...` expression.
+///
+/// Recognises `SGD(0.01)`, `Adam(0.001)`, etc. — pulls the first
+/// floating-point arg. Falls back to `None` if the optimizer carries no
+/// numeric arg.
+/// Extract an array-of-arrays float literal from a MechGen Expr.
+/// Recognises `[[1.0, 2.0], [3.0, 4.0]]`-style ArrayLit nesting.
+fn extract_nested_floats(expr: Option<&ast::Expr>) -> Option<Vec<Vec<f32>>> {
+    let outer = match expr? {
+        ast::Expr::ArrayLit { elements } => elements,
+        _ => return None,
+    };
+    let mut rows = Vec::with_capacity(outer.len());
+    for row_expr in outer {
+        let row = match row_expr {
+            ast::Expr::ArrayLit { elements } => elements,
+            _ => return None,
+        };
+        let mut row_vals = Vec::with_capacity(row.len());
+        for v in row {
+            row_vals.push(extract_f32_literal(v)?);
+        }
+        rows.push(row_vals);
+    }
+    Some(rows)
+}
+
+fn extract_f32_literal(expr: &ast::Expr) -> Option<f32> {
+    match expr {
+        ast::Expr::Literal { value, kind: ast::LiteralKind::Float } => value.parse().ok(),
+        ast::Expr::Literal { value, kind: ast::LiteralKind::Int } => value.parse().ok(),
+        ast::Expr::Unary { op, operand } if op == "-" => extract_f32_literal(operand).map(|v| -v),
+        _ => None,
+    }
+}
+
+/// Extract a string literal from an Expr. Handles plain string literals.
+fn extract_string_literal(expr: Option<&ast::Expr>) -> Option<String> {
+    match expr? {
+        ast::Expr::Literal { value, kind: ast::LiteralKind::String } => {
+            // Surface literals include their quotes; strip them.
+            let v = value.trim_matches('"').to_string();
+            Some(v)
+        }
+        _ => None,
+    }
+}
+
+/// Load a CSV dataset. Skips empty lines and any line starting with `#`.
+/// Each remaining row must have exactly `in_dim + out_dim` comma-separated
+/// floats. Returns `(inputs_flat, targets_flat, n_rows)`.
+fn load_csv(path: &str, in_dim: usize, out_dim: usize) -> Result<(Vec<f32>, Vec<f32>, usize), String> {
+    let content = std::fs::read_to_string(path).map_err(|e| format!("read {path}: {e}"))?;
+    let want = in_dim + out_dim;
+    let mut xs = Vec::new();
+    let mut ys = Vec::new();
+    let mut n = 0usize;
+    for (lineno, line) in content.lines().enumerate() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let cols: Vec<&str> = line.split(',').map(|c| c.trim()).collect();
+        if cols.len() != want {
+            return Err(format!(
+                "{path}:{}: expected {} columns ({} inputs + {} targets), got {}",
+                lineno + 1, want, in_dim, out_dim, cols.len()
+            ));
+        }
+        for (i, c) in cols.iter().enumerate() {
+            let v: f32 = c.parse().map_err(|e| {
+                format!("{path}:{}: column {}: parse error: {e}", lineno + 1, i + 1)
+            })?;
+            if i < in_dim {
+                xs.push(v);
+            } else {
+                ys.push(v);
+            }
+        }
+        n += 1;
+    }
+    if n == 0 {
+        return Err(format!("{path}: empty dataset"));
+    }
+    Ok((xs, ys, n))
+}
+
+/// Decide which [`rmil_compute::Optimizer`] the `optimizer:` field requests.
+///
+/// `SGD` / `SGD(lr)` → `Optimizer::Sgd`. `Adam` / `Adam(lr)` → Adam with
+/// default hyperparameters. Defaults to SGD when absent.
+fn extract_optimizer(expr: Option<&ast::Expr>) -> rmil_compute::Optimizer {
+    let name = match expr {
+        Some(ast::Expr::Call { func, .. }) => match func.as_ref() {
+            ast::Expr::Ident { name } => name.as_str(),
+            _ => return rmil_compute::Optimizer::Sgd,
+        },
+        Some(ast::Expr::Ident { name }) => name.as_str(),
+        _ => return rmil_compute::Optimizer::Sgd,
+    };
+    match name {
+        "Adam" | "ADAM" | "adam" => rmil_compute::Optimizer::adam_default(),
+        _ => rmil_compute::Optimizer::Sgd,
+    }
+}
+
+/// Pick a [`rmil_compute::Loss`] from a `loss:` expression. Recognises
+/// `CrossEntropy`, `CE`, otherwise defaults to MSE.
+fn extract_loss(expr: Option<&ast::Expr>) -> rmil_compute::Loss {
+    let name = match expr {
+        Some(ast::Expr::Ident { name }) => name.as_str(),
+        Some(ast::Expr::Call { func, .. }) => match func.as_ref() {
+            ast::Expr::Ident { name } => name.as_str(),
+            _ => return rmil_compute::Loss::Mse,
+        },
+        _ => return rmil_compute::Loss::Mse,
+    };
+    match name {
+        "CrossEntropy" | "CE" | "cross_entropy" => rmil_compute::Loss::CrossEntropy,
+        _ => rmil_compute::Loss::Mse,
+    }
+}
+
+/// Estimate trainable parameter counts per layer + total.
+///
+/// Walks `net.layers`, inspects each layer's type and int args, and computes
+/// the same `[weight] + [bias?]` count that the dispatcher would allocate.
+/// Returns `(per_layer_named_counts, total)`. Unknown/parameterless layers
+/// contribute 0.
+fn count_params(net: &ast::NetDef) -> (Vec<(String, usize)>, usize) {
+    let mut entries = Vec::new();
+    let mut total = 0usize;
+    for layer in &net.layers {
+        let name = match &layer.layer_type {
+            ast::Type::Path { segments, .. } => segments.last().map(|s| s.as_str()).unwrap_or(""),
+            _ => "",
+        };
+        let dims: Vec<i64> = layer.args.iter().filter_map(|a| match a {
+            ast::Expr::Literal { value, kind: ast::LiteralKind::Int } => value.parse().ok(),
+            _ => None,
+        }).collect();
+        let count = match (name, dims.as_slice()) {
+            ("Linear", [a, b]) => (*a as usize) * (*b as usize),
+            ("Linear", [a, b, bias]) => {
+                let w = (*a as usize) * (*b as usize);
+                w + if *bias != 0 { *b as usize } else { 0 }
+            }
+            ("Conv2D", [ic, oc, k]) => (*oc as usize) * (*ic as usize) * (*k as usize) * (*k as usize),
+            ("Conv2D", [ic, oc, k, bias]) => {
+                let w = (*oc as usize) * (*ic as usize) * (*k as usize) * (*k as usize);
+                w + if *bias != 0 { *oc as usize } else { 0 }
+            }
+            ("Embedding", [v, e]) | ("Embed", [v, e]) => (*v as usize) * (*e as usize),
+            ("LearnedPE", [m, e]) | ("LearnedPositionalEmbedding", [m, e]) => (*m as usize) * (*e as usize),
+            ("Attention", [_in, model]) => 4 * (*model as usize) * (*model as usize), // rough: Q/K/V/O each [in, model]
+            ("Attention", [in_d, model, _h]) => 4 * (*in_d as usize) * (*model as usize),
+            ("Attention", [in_d, model, _h, _c]) => 4 * (*in_d as usize) * (*model as usize),
+            ("LayerNorm", [d]) => 2 * (*d as usize), // γ + β
+            _ => 0,
+        };
+        if count > 0 {
+            entries.push((format!("{} {}", layer.name, name), count));
+            total += count;
+        }
+    }
+    (entries, total)
+}
+
+/// Locate the (Embedding key, final-Linear-head key) pair for tied weights.
+///
+/// Returns `Some(embedding_key, head_key)` only when the net has both an
+/// `Embedding(V, E)` layer and a trailing `Linear(E, V[, bias])` layer with
+/// matching `V` and `E`. The keys match the ParamStore-canonical forms used
+/// in `dispatch_embed` and the Linear dispatch path.
+fn tied_weight_keys(net: &ast::NetDef) -> Option<(Vec<i64>, Vec<i64>)> {
+    let mut embedding: Option<(i64, i64)> = None;
+    let mut last_linear: Option<(i64, i64)> = None;
+    for layer in &net.layers {
+        let name = match &layer.layer_type {
+            ast::Type::Path { segments, .. } => segments.last().map(|s| s.as_str()),
+            _ => None,
+        };
+        let dims: Vec<i64> = layer.args.iter().filter_map(|a| match a {
+            ast::Expr::Literal { value, kind: ast::LiteralKind::Int } => value.parse().ok(),
+            _ => None,
+        }).collect();
+        match name {
+            Some("Embedding") | Some("Embed") if dims.len() >= 2 && embedding.is_none() => {
+                embedding = Some((dims[0], dims[1]));
+            }
+            Some("Linear") if dims.len() >= 2 => {
+                last_linear = Some((dims[0], dims[1]));
+            }
+            _ => {}
+        }
+    }
+    match (embedding, last_linear) {
+        (Some((v, e)), Some((le, lv))) if v == lv && e == le => {
+            Some((vec![v, e], vec![e, v]))
+        }
+        _ => None,
+    }
+}
+
+/// Copy the embedding table (`[V, E]`) into the head Linear's weight
+/// (`[E, V]`) by transposing rows ↔ columns.
+fn sync_tied_embedding(
+    backend: &rmi::compute::cpu::CpuBackend,
+    params: &mut rmil_compute::ParamStore,
+    emb_key: &[i64],
+    head_key: &[i64],
+) -> Result<(), String> {
+    use rmi::compute::Backend;
+    let v = emb_key[0] as usize;
+    let e = emb_key[1] as usize;
+    let emb_handle = params
+        .get_handle(rmi::lang::Op::EMBED, emb_key)
+        .ok_or_else(|| format!("embedding key {:?} not in ParamStore", emb_key))?;
+    let emb_bytes = backend.copy_to_host(&emb_handle).map_err(|e| e.to_string())?;
+    let emb: Vec<f32> = emb_bytes
+        .chunks_exact(4)
+        .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        .collect();
+    if emb.len() != v * e {
+        return Err(format!(
+            "tied: embedding has {} f32s, expected {} × {} = {}",
+            emb.len(), v, e, v * e
+        ));
+    }
+    // Transpose: head[i*v + j] = emb[j*e + i]
+    let mut head = vec![0.0f32; e * v];
+    for i in 0..e {
+        for j in 0..v {
+            head[i * v + j] = emb[j * e + i];
+        }
+    }
+    let new_h = backend.from_slice_f32(&head, &[e, v]).map_err(|e| e.to_string())?;
+    params.replace_public(rmi::lang::Op::LINEAR, head_key, new_h);
+    Ok(())
+}
+
+#[derive(Clone, Copy)]
+enum LrSchedule {
+    None,
+    Cosine,
+    Plateau,
+}
+
+fn loss_label(loss: rmil_compute::Loss) -> &'static str {
+    match loss {
+        rmil_compute::Loss::Mse => "MSE",
+        rmil_compute::Loss::CrossEntropy => "CrossEntropy",
+    }
+}
+
+fn optim_label(opt: rmil_compute::Optimizer) -> &'static str {
+    match opt {
+        rmil_compute::Optimizer::Sgd => "SGD",
+        rmil_compute::Optimizer::Adam { .. } => "Adam",
+    }
+}
+
+/// Compute MSE loss on a held-out validation set without updating weights.
+fn compute_val_loss(
+    backend: &rmi::compute::cpu::CpuBackend,
+    expr: &rmi::lang::Expr,
+    val_x: &[f32],
+    in_dim: usize,
+    val_y: &[f32],
+    out_dim: usize,
+    n_val: usize,
+    params: &mut rmil_compute::ParamStore,
+) -> Option<f32> {
+    use rmi::compute::Backend;
+    // When in_dim=1 the model is index-driven (Embedding head). Avoid
+    // shaping val_x as [n_val, 1] which would feed a 2-D handle into
+    // `dispatch_embed` and inflate the output shape with a stray dim.
+    let shape: Vec<usize> = if in_dim == 1 {
+        vec![n_val]
+    } else {
+        vec![n_val, in_dim]
+    };
+    let handle = backend.from_slice_f32(val_x, &shape).ok()?;
+    let out_handle = rmil_compute::forward_pass(backend, expr, handle, params).ok()?;
+    let out_bytes = backend.copy_to_host(&out_handle).ok()?;
+    let pred: Vec<f32> = out_bytes
+        .chunks_exact(4)
+        .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        .collect();
+    let want = n_val * out_dim;
+    if pred.len() != want || val_y.len() != want {
+        return None;
+    }
+    let mse: f32 = pred
+        .iter()
+        .zip(val_y.iter())
+        .map(|(p, t)| (p - t).powi(2))
+        .sum::<f32>()
+        / (want as f32);
+    Some(mse)
+}
+
+fn extract_f32_from_expr(expr: Option<&ast::Expr>) -> Option<f32> {
+    match expr? {
+        ast::Expr::Literal { value, kind: ast::LiteralKind::Float } => value.parse().ok(),
+        ast::Expr::Literal { value, kind: ast::LiteralKind::Int } => value.parse().ok(),
+        _ => None,
+    }
+}
+
+fn extract_lr_from_optimizer(expr: Option<&ast::Expr>) -> Option<f32> {
+    let call = match expr? {
+        ast::Expr::Call { args, .. } => args,
+        _ => return None,
+    };
+    for arg in call {
+        match arg {
+            ast::Expr::Literal { value, kind: ast::LiteralKind::Float } => {
+                if let Ok(n) = value.parse::<f32>() {
+                    return Some(n);
+                }
+            }
+            ast::Expr::Literal { value, kind: ast::LiteralKind::Int } => {
+                if let Ok(n) = value.parse::<f32>() {
+                    return Some(n);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token_report: bool) {

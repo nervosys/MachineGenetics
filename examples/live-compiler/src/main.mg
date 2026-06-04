@@ -23,7 +23,7 @@ use std::io;
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct SourceFile {
+pub data SourceFile {
     path: String,
     content: String,
     version: u64,
@@ -31,9 +31,9 @@ pub struct SourceFile {
     last_modified: u64,
 }
 
-impl SourceFile {
+extend SourceFile {
     pub fn new(path: String, content: String) -> SourceFile {
-        let tokens = count_tokens(&content);
+        val tokens = count_tokens(&content);
         SourceFile {
             path: path,
             content: content,
@@ -63,7 +63,7 @@ fn count_tokens(source: &String) -> usize {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ErrorKind {
+pub data ErrorKind {
     TypeMismatch,
     UndefinedVariable,
     MissingImport,
@@ -74,7 +74,7 @@ pub enum ErrorKind {
     AmbiguousType,
 }
 
-impl fmt::Display for ErrorKind {
+extend ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ErrorKind::TypeMismatch     => write!(f, "type mismatch"),
@@ -90,12 +90,12 @@ impl fmt::Display for ErrorKind {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Severity {
+pub data Severity {
     Warning,
     Error,
 }
 
-impl fmt::Display for Severity {
+extend Severity {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Severity::Warning => write!(f, "warning"),
@@ -104,7 +104,7 @@ impl fmt::Display for Severity {
     }
 }
 
-impl ErrorKind {
+extend ErrorKind {
     pub fn severity(&self) -> Severity {
         match self {
             ErrorKind::UnusedVariable => Severity::Warning,
@@ -114,7 +114,7 @@ impl ErrorKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct Diagnostic {
+pub data Diagnostic {
     file: String,
     line: u32,
     column: u32,
@@ -122,7 +122,7 @@ pub struct Diagnostic {
     message: String,
 }
 
-impl fmt::Display for Diagnostic {
+extend Diagnostic {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{sev}[{kind}]: {file}:{line}:{col} — {msg}",
             sev = self.kind.severity(),
@@ -139,14 +139,14 @@ impl fmt::Display for Diagnostic {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct RepairCandidate {
+pub data RepairCandidate {
     description: String,
     patch_text: String,
     confidence: f64,
     kind: ErrorKind,
 }
 
-impl fmt::Display for RepairCandidate {
+extend RepairCandidate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "[{conf:.0}%] {desc}: {patch}",
             conf = self.confidence * 100.0,
@@ -160,8 +160,8 @@ impl fmt::Display for RepairCandidate {
 /// @req  diagnostic.kind.severity() == Severity::Error || Severity::Warning
 /// @ens  result candidates sorted by confidence descending
 /// @fx   pure
-fn propose_repairs(diag: &Diagnostic) -> Vec<RepairCandidate> {
-    let mut candidates: Vec<RepairCandidate> = Vec::new();
+fn propose_repairs(diag: &Diagnostic) -> [RepairCandidate]~ {
+    var candidates: [RepairCandidate]~ = []~.new();
 
     match diag.kind {
         ErrorKind::TypeMismatch => {
@@ -181,7 +181,7 @@ fn propose_repairs(diag: &Diagnostic) -> Vec<RepairCandidate> {
         ErrorKind::UndefinedVariable => {
             candidates.push(RepairCandidate {
                 description: "Declare the variable".to_string(),
-                patch_text: format!("let {}: _ = todo!();", diag.message),
+                patch_text: format!("val {}: _ = todo!();", diag.message),
                 confidence: 0.50,
                 kind: ErrorKind::UndefinedVariable,
             });
@@ -203,7 +203,7 @@ fn propose_repairs(diag: &Diagnostic) -> Vec<RepairCandidate> {
         ErrorKind::UnusedVariable => {
             candidates.push(RepairCandidate {
                 description: "Prefix with underscore".to_string(),
-                patch_text: format!("let _{} = ...", diag.message),
+                patch_text: format!("val _{} = ...", diag.message),
                 confidence: 0.95,
                 kind: ErrorKind::UnusedVariable,
             });
@@ -234,14 +234,14 @@ fn propose_repairs(diag: &Diagnostic) -> Vec<RepairCandidate> {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub enum PatchStatus {
+pub data PatchStatus {
     Pending,
     Applied,
     RolledBack,
     Failed,
 }
 
-impl fmt::Display for PatchStatus {
+extend PatchStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             PatchStatus::Pending    => write!(f, "PENDING"),
@@ -253,7 +253,7 @@ impl fmt::Display for PatchStatus {
 }
 
 #[derive(Debug, Clone)]
-pub struct FunctionPatch {
+pub data FunctionPatch {
     id: u64,
     function_name: String,
     from_version: u64,
@@ -262,7 +262,7 @@ pub struct FunctionPatch {
     description: String,
 }
 
-impl fmt::Display for FunctionPatch {
+extend FunctionPatch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Patch #{id}: {name} v{from}→v{to} [{status}]",
             id = self.id,
@@ -274,19 +274,19 @@ impl fmt::Display for FunctionPatch {
 }
 
 #[derive(Debug)]
-pub struct HotReloadRuntime {
-    functions: HashMap<String, u64>,     // function name → current version
-    patches: Vec<FunctionPatch>,
-    rollbacks: Vec<String>,
+pub data HotReloadRuntime {
+    functions: {String: u64},     // function name → current version
+    patches: [FunctionPatch]~,
+    rollbacks: [String]~,
     next_patch_id: u64,
 }
 
-impl HotReloadRuntime {
+extend HotReloadRuntime {
     pub fn new() -> HotReloadRuntime {
         HotReloadRuntime {
-            functions: HashMap::new(),
-            patches: Vec::new(),
-            rollbacks: Vec::new(),
+            functions: {}.new(),
+            patches: []~.new(),
+            rollbacks: []~.new(),
             next_patch_id: 1,
         }
     }
@@ -299,17 +299,17 @@ impl HotReloadRuntime {
     ///
     /// @req  self.functions.contains(function_name)
     /// @ens  patch is recorded in self.patches
-    pub fn apply_patch(&mut self, function_name: &String, description: String) -> Result<u64, String> / io {
-        let current = match self.functions.get(function_name) {
+    pub fn apply_patch(&mut self, function_name: &String, description: String) -> u64 or String / io {
+        val current = match self.functions.get(function_name) {
             Some(v) => *v,
             None => return Err(format!("Function '{}' not registered", function_name)),
         };
 
-        let patch_id = self.next_patch_id;
+        val patch_id = self.next_patch_id;
         self.next_patch_id = self.next_patch_id + 1;
-        let new_version = current + 1;
+        val new_version = current + 1;
 
-        let patch = FunctionPatch {
+        val patch = FunctionPatch {
             id: patch_id,
             function_name: function_name.clone(),
             from_version: current,
@@ -327,10 +327,10 @@ impl HotReloadRuntime {
     /// Roll back the last patch for a function.
     ///
     /// @req  function has at least one applied patch
-    pub fn rollback(&mut self, function_name: &String) -> Result<(), String> / io {
+    pub fn rollback(&mut self, function_name: &String) -> () or String / io {
         // Find the last applied patch for this function.
-        let mut found_idx: Option<usize> = None;
-        let mut i = self.patches.len();
+        var found_idx: ?usize = None;
+        var i = self.patches.len();
         for _ in 0..self.patches.len() {
             i = i - 1;
             if self.patches[i].function_name == *function_name
@@ -340,12 +340,12 @@ impl HotReloadRuntime {
             }
         }
 
-        let idx = match found_idx {
+        val idx = match found_idx {
             Some(i) => i,
             None => return Err(format!("No applied patches for '{}'", function_name)),
         };
 
-        let patch = &mut self.patches[idx];
+        val patch = &mut self.patches[idx];
         patch.status = PatchStatus::RolledBack;
         self.functions.insert(function_name.clone(), patch.from_version);
 
@@ -354,7 +354,7 @@ impl HotReloadRuntime {
         Ok(())
     }
 
-    pub fn version_of(&self, function_name: &String) -> Option<u64> {
+    pub fn version_of(&self, function_name: &String) -> ?u64 {
         self.functions.get(function_name).copied()
     }
 
@@ -383,27 +383,27 @@ impl HotReloadRuntime {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug)]
-pub struct DevServer {
-    files: HashMap<String, SourceFile>,
+pub data DevServer {
+    files: {String: SourceFile},
     runtime: HotReloadRuntime,
-    diagnostics: Vec<Diagnostic>,
+    diagnostics: [Diagnostic]~,
     repairs_applied: u32,
     total_rebuilds: u32,
 }
 
-impl DevServer {
+extend DevServer {
     pub fn new() -> DevServer {
         DevServer {
-            files: HashMap::new(),
-            runtime: HotReloadRuntime::new(),
-            diagnostics: Vec::new(),
+            files: {}.new(),
+            runtime: HotReloadRuntime.new(),
+            diagnostics: []~.new(),
             repairs_applied: 0,
             total_rebuilds: 0,
         }
     }
 
     pub fn add_file(&mut self, path: String, content: String) / io {
-        let file = SourceFile::new(path.clone(), content);
+        val file = SourceFile.new(path.clone(), content);
         println!("  📄 Loaded: {} ({} tokens, v{})", path, file.token_count, file.version);
 
         // Register all functions found in the file.
@@ -417,7 +417,7 @@ impl DevServer {
         println!("");
         println!("  🔄 File changed: {}", path);
 
-        let file = match self.files.get_mut(path) {
+        val file = match self.files.get_mut(path) {
             Some(f) => f,
             None => {
                 println!("    ⚠ Unknown file: {}", path);
@@ -425,18 +425,18 @@ impl DevServer {
             },
         };
 
-        let old_version = file.version;
+        val old_version = file.version;
         file.update(new_content);
         println!("    Updated: v{} → v{} ({} tokens)", old_version, file.version, file.token_count);
         self.total_rebuilds = self.total_rebuilds + 1;
 
         // Compile and check for errors.
-        let errors = self.compile(path);
+        val errors = self.compile(path);
 
         if errors.is_empty() {
             // No errors — apply hot patch.
             println!("    ✓ Compilation successful");
-            let _ = self.runtime.apply_patch(
+            val _ = self.runtime.apply_patch(
                 path,
                 format!("Rebuild #{}", self.total_rebuilds),
             );
@@ -448,10 +448,10 @@ impl DevServer {
     }
 
     /// Simulate compilation — returns diagnostics.
-    fn compile(&mut self, path: &String) -> Vec<Diagnostic> / io {
-        let mut errors: Vec<Diagnostic> = Vec::new();
+    fn compile(&mut self, path: &String) -> [Diagnostic]~ / io {
+        var errors: [Diagnostic]~ = []~.new();
 
-        let file = match self.files.get(path) {
+        val file = match self.files.get(path) {
             Some(f) => f,
             None => return errors,
         };
@@ -477,7 +477,7 @@ impl DevServer {
             });
         }
 
-        if file.content.contains("let ") {
+        if file.content.contains("val ") {
             errors.push(Diagnostic {
                 file: path.clone(),
                 line: 3,
@@ -505,11 +505,11 @@ impl DevServer {
     }
 
     /// Attempt to heal errors automatically.
-    fn heal_errors(&mut self, errors: &Vec<Diagnostic>) / io {
+    fn heal_errors(&mut self, errors: &[Diagnostic]~) / io {
         for diag in errors {
-            let repairs = propose_repairs(diag);
+            val repairs = propose_repairs(diag);
             if !repairs.is_empty() {
-                let best = &repairs[0];
+                val best = &repairs[0];
                 println!("    💡 {}", best);
                 if best.confidence > 0.5 {
                     println!("    ✓ Auto-applied repair (confidence {:.0}%)", best.confidence * 100.0);
@@ -538,7 +538,7 @@ impl DevServer {
         println!("  Total rebuilds:   {}", self.total_rebuilds);
         println!("  Diagnostics:      {}", self.diagnostics.len());
         println!("  Auto-repairs:     {}", self.repairs_applied);
-        let total_tokens: usize = self.files.values().map(|f| f.token_count).sum();
+        val total_tokens: usize = self.files.values().map(|f| f.token_count).sum();
         println!("  Total tokens:     {}", total_tokens);
         self.runtime.report();
     }
@@ -554,7 +554,7 @@ pub fn main() / io {
     println!("╚═══════════════════════════════════════════════════════════╝");
     println!("");
 
-    let mut server = DevServer::new();
+    var server = DevServer.new();
 
     // Load initial source files.
     println!("─── Loading Project ──────────────────────────────────────");
@@ -568,7 +568,7 @@ pub fn main() / io {
     );
     server.add_file(
         "src/api.mg".to_string(),
-        "pub fn handle_request(req: &Request) / io + net -> Result<Response, ApiError> {\n    let body = req.body();\n    Ok(Response::ok(body))\n}".to_string(),
+        "pub fn handle_request(req: &Request) / io + net -> Response or ApiError {\n    val body = req.body();\n    Ok(Response::ok(body))\n}".to_string(),
     );
 
     // Simulate editing a file — clean change.
@@ -576,7 +576,7 @@ pub fn main() / io {
     println!("─── Edit 1: Clean Change ─────────────────────────────────");
     server.on_file_changed(
         &"src/lib.mg".to_string(),
-        "pub fn greet(name: &String) -> String {\n    let greeting = format!(\"Hello, {name}!\");\n    greeting\n}".to_string(),
+        "pub fn greet(name: &String) -> String {\n    val greeting = format!(\"Hello, {name}!\");\n    greeting\n}".to_string(),
     );
 
     // Simulate editing with an error — triggers self-healing.
@@ -592,7 +592,7 @@ pub fn main() / io {
     println!("─── Edit 3: Fix and Improve ──────────────────────────────");
     server.on_file_changed(
         &"src/math.mg".to_string(),
-        "fn add(a: i32, b: i32) -> i32 { a + b }\nfn mul(a: i32, b: i32) -> i32 { a * b }\nfn div(a: f64, b: f64) -> Result<f64, String>\n    @req b != 0.0\n{ Ok(a / b) }".to_string(),
+        "fn add(a: i32, b: i32) -> i32 { a + b }\nfn mul(a: i32, b: i32) -> i32 { a * b }\nfn div(a: f64, b: f64) -> f64 or String\n    @req b != 0.0\n{ Ok(a / b) }".to_string(),
     );
 
     // Simulate a regression — trigger rollback.
@@ -600,7 +600,7 @@ pub fn main() / io {
     println!("─── Edit 4: Regression Detected ──────────────────────────");
     server.on_file_changed(
         &"src/api.mg".to_string(),
-        "pub fn handle_request(req: &Request) / io + net -> Result<Response, ApiError> {\n    let undefined_var = process(req);\n    Ok(Response::ok(undefined_var))\n}".to_string(),
+        "pub fn handle_request(req: &Request) / io + net -> Response or ApiError {\n    val undefined_var = process(req);\n    Ok(Response::ok(undefined_var))\n}".to_string(),
     );
     server.simulate_regression(&"src/api.mg".to_string());
 

@@ -3,12 +3,13 @@
 // Demonstrates:
 //   - Async functions (pub async fn, async fn)
 //   - Effect annotations (/ io, / net)
-//   - Error handling with Result<T, E>
+//   - Error handling with T or E (error union)
 //   - JSON deserialization
-//   - Struct + derive (#[derive])
-//   - For loops (for item in iter)
-//   - String formatting (format!("..."))
-//   - Print macros (println!("..."), eprintln!("..."))
+//   - data keyword + extend blocks
+//   - val / var bindings
+//   - guard for early exit
+//   - defer for cleanup
+//   - Pipeline operator |>
 
 use std::io;
 use std::net;
@@ -41,13 +42,13 @@ pub enum ApiError {
     RateLimited { retry_after: u64 },
 }
 
-impl fmt::Display for ApiError {
+extend ApiError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ApiError::NetworkError(msg) => write!(f, "network error: {msg}"),
             ApiError::ParseError(msg) => write!(f, "parse error: {msg}"),
             ApiError::NotFound => write!(f, "resource not found"),
-            ApiError::RateLimited { retry_after } =>
+            ApiError::RateLimited(retry_after) =>
                 write!(f, "rate limited, retry after {retry_after}s"),
         }
     }
@@ -55,43 +56,38 @@ impl fmt::Display for ApiError {
 
 // ── HTTP client wrapper ──────────────────────────────────────────────
 
-pub struct ApiClient {
-    base_url: String,
-    timeout_ms: u64,
-}
+data ApiClient(base_url: String, timeout_ms: u64 = 5000)
 
-impl ApiClient {
-    pub fn new(base_url: String) -> ApiClient {
+extend ApiClient {
+    pub fn new(base_url: String) -> ApiClient =
         ApiClient { base_url: base_url, timeout_ms: 5000 }
-    }
 
-    pub fn with_timeout(base_url: String, timeout_ms: u64) -> ApiClient {
+    pub fn with_timeout(base_url: String, timeout_ms: u64) -> ApiClient =
         ApiClient { base_url: base_url, timeout_ms: timeout_ms }
-    }
 
     /// Fetch a single resource by path.
-    pub async fn get<T: json::Deserialize>(&self, path: &str) -> Result<T, ApiError> / net, io {
-        let url = format!("{self.base_url}{path}");
-        let response = net::get(&url)
+    pub async fn get[T: json::Deserialize](&self, path: &str) -> T or ApiError / net, io {
+        val url = format!("{self.base_url}{path}");
+        val response = net::get(&url)
             .timeout(self.timeout_ms)
             .send()
             .await
             .map_err(|e| ApiError::NetworkError(format!("{e}")))?;
 
-        if response.status() != 200 {
+        guard response.status() == 200 else {
             if response.status() == 404 {
                 return Err(ApiError::NotFound);
             }
             if response.status() == 429 {
-                let retry = response.header("Retry-After")
-                    .and_then(|v| v.parse::<u64>().ok())
+                val retry = response.header("Retry-After")
+                    .and_then(|v| v.parse().ok())
                     .unwrap_or(60);
-                return Err(ApiError::RateLimited { retry_after: retry });
+                return Err(ApiError::RateLimited(retry));
             }
             return Err(ApiError::NetworkError(format!("HTTP {response.status()}")));
         }
 
-        let body = response.text().await
+        val body = response.text().await
             .map_err(|e| ApiError::NetworkError(format!("{e}")))?;
 
         json::from_str(&body)
@@ -99,7 +95,7 @@ impl ApiClient {
     }
 
     /// Fetch a list of resources.
-    pub async fn list<T: json::Deserialize>(&self, path: &str) -> Result<Vec<T>, ApiError> / net, io {
+    pub async fn list[T: json::Deserialize](&self, path: &str) -> [T]~ or ApiError / net, io {
         self.get(path).await
     }
 }
@@ -107,21 +103,21 @@ impl ApiClient {
 // ── Application logic ────────────────────────────────────────────────
 
 async fn fetch_user_posts(client: &ApiClient, user_id: u64)
-    -> Result<Vec<Post>, ApiError> / net, io
+    -> [Post]~ or ApiError / net, io
 {
-    let path = format!("/users/{user_id}/posts");
-    client.list::<Post>(&path).await
+    val path = format!("/users/{user_id}/posts");
+    client.list[Post](&path).await
 }
 
 async fn display_user_summary(client: &ApiClient, user_id: u64)
-    -> Result<(), ApiError> / net, io
+    -> () or ApiError / net, io
 {
     // Fetch user and posts concurrently.
-    let user_future = client.get::<User>(&format!("/users/{user_id}"));
-    let posts_future = fetch_user_posts(client, user_id);
+    val user_future = client.get[User](&format!("/users/{user_id}"));
+    val posts_future = fetch_user_posts(client, user_id);
 
-    let user = user_future.await?;
-    let posts = posts_future.await?;
+    val user = user_future.await?;
+    val posts = posts_future.await?;
 
     println!("");
     println!("=== User: {user.name} ===");
@@ -139,19 +135,19 @@ async fn display_user_summary(client: &ApiClient, user_id: u64)
 
 // ── Entry point ──────────────────────────────────────────────────────
 
-pub async fn main() -> Result<(), ApiError> / net, io {
-    let client = ApiClient::new("https://api.example.com".to_string());
+pub async fn main() -> () or ApiError / net, io {
+    val client = ApiClient.new("https://api.example.com".to_string());
 
     println!("Fetching users...");
 
     // Fetch and display multiple users.
-    let user_ids: Vec<u64> = vec![1, 2, 3];
+    val user_ids: [u64]~ = [1, 2, 3];
 
     for id in &user_ids {
         match display_user_summary(&client, *id).await {
             Ok(()) => {},
             Err(ApiError::NotFound) => eprintln!("User {id} not found, skipping."),
-            Err(ApiError::RateLimited { retry_after }) => {
+            Err(ApiError::RateLimited(retry_after)) => {
                 eprintln!("Rate limited. Waiting {retry_after}s...");
                 async_rt::sleep(retry_after * 1000).await;
                 // Retry once.

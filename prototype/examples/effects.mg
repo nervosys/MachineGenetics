@@ -1,7 +1,14 @@
 // effects.mg — effect definitions, handlers, closures
+//
+// Demonstrates:
+//   - Effect declarations
+//   - Error union types (T or Error)
+//   - guard for early exit
+//   - val bindings
+//   - Pipeline operator (|>)
 
 effect io {
-    fn read(fd: i32) -> Vec<u8>;
+    fn read(fd: i32) -> [u8]~;
     fn write(fd: i32, data: &[u8]) -> i32;
 }
 
@@ -9,19 +16,21 @@ effect async {
     fn suspend() -> ();
 }
 
-pub fn process_data(input: &[u8]) -> Result<i32, Error> {
-    let result = 0;
+// Error union: `i32 or Error` replaces Result<i32, Error>.
+pub fn process_data(input: &[u8]) -> i32 or Error {
+    var result = 0;
     for byte in input {
-        if byte > 127 {
-            return Result::Err(Error::new("invalid byte"));
+        // guard for early-exit on invalid data.
+        guard byte <= 127 else {
+            return Err(Error.new("invalid byte"));
         }
         result = result + byte;
     }
-    Result::Ok(result)
+    Ok(result)
 }
 
-fn transform<T, U>(items: Vec<T>, mapper: fn(T) -> U) -> Vec<U> {
-    let out = Vec::new();
+fn transform[T, U](items: [T]~, mapper: fn(T) -> U) -> [U]~ {
+    var out = [U]~.new();
     for item in items {
         out.push(mapper(item));
     }
@@ -29,6 +38,8 @@ fn transform<T, U>(items: Vec<T>, mapper: fn(T) -> U) -> Vec<U> {
 }
 
 fn example() {
-    let doubled = transform(vec![1, 2, 3], |x| x * 2);
-    let filtered = transform(doubled, |x| x + 1);
+    // Pipeline: chain transformations left-to-right.
+    val result = [1, 2, 3]
+        |> transform(|x| x * 2)
+        |> transform(|x| x + 1);
 }

@@ -285,6 +285,7 @@ impl NlEngine {
                 .map(|(n, t)| Param {
                     name: n.clone(),
                     ty: parse_type_str(t),
+                    default: None,
                 })
                 .collect(),
             return_type: return_type.as_ref().map(|t| parse_type_str(t)),
@@ -296,6 +297,7 @@ impl NlEngine {
                 &intent.invariants,
             ),
             body: body.clone(),
+            body_expr: None,
         };
 
         let module = Module {
@@ -475,6 +477,7 @@ impl NlEngine {
                             .map(|(pn, pt)| Param {
                                 name: pn.clone(),
                                 ty: parse_type_str(pt),
+                                default: None,
                             })
                             .collect(),
                         return_type: mret.as_ref().map(|t| parse_type_str(t)),
@@ -485,6 +488,7 @@ impl NlEngine {
                             stmts: Vec::new(),
                             tail_expr: None,
                         },
+                        body_expr: None,
                     }),
                 })
                 .collect(),
@@ -794,6 +798,7 @@ impl NlEngine {
             on_dispatch: None,
             on_aggregate: None,
             on_failure: None,
+            transport: None,
         };
 
         let module = Module {

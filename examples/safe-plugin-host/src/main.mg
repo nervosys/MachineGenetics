@@ -24,7 +24,7 @@ use std::io;
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Capability {
+pub data Capability {
     FileRead,
     FileWrite,
     NetworkAccess,
@@ -35,7 +35,7 @@ pub enum Capability {
     EnvRead,
 }
 
-impl fmt::Display for Capability {
+extend Capability {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Capability::FileRead      => write!(f, "file:read"),
@@ -50,7 +50,7 @@ impl fmt::Display for Capability {
     }
 }
 
-impl Capability {
+extend Capability {
     pub fn risk_level(&self) -> RiskLevel {
         match self {
             Capability::FileRead | Capability::EnvRead | Capability::TimerAccess
@@ -66,14 +66,14 @@ impl Capability {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum RiskLevel {
+pub data RiskLevel {
     Low,
     Medium,
     High,
     Critical,
 }
 
-impl fmt::Display for RiskLevel {
+extend RiskLevel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             RiskLevel::Low      => write!(f, "LOW"),
@@ -89,14 +89,14 @@ impl fmt::Display for RiskLevel {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct ResourceLimits {
+pub data ResourceLimits {
     max_memory_bytes: u64,
     max_cpu_ms: u64,
     max_open_files: u32,
     max_network_connections: u32,
 }
 
-impl ResourceLimits {
+extend ResourceLimits {
     pub fn restrictive() -> ResourceLimits {
         ResourceLimits {
             max_memory_bytes: 16 * 1024 * 1024,     // 16 MB
@@ -130,22 +130,22 @@ impl ResourceLimits {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct SandboxPolicy {
+pub data SandboxPolicy {
     name: String,
-    capabilities: HashSet<Capability>,
+    capabilities: {Capability},
     limits: ResourceLimits,
-    allowed_paths: Vec<String>,
-    denied_paths: Vec<String>,
+    allowed_paths: [String]~,
+    denied_paths: [String]~,
 }
 
-impl SandboxPolicy {
+extend SandboxPolicy {
     pub fn new(name: String) -> SandboxPolicy {
         SandboxPolicy {
             name: name,
-            capabilities: HashSet::new(),
+            capabilities: {}.new(),
             limits: ResourceLimits::restrictive(),
-            allowed_paths: Vec::new(),
-            denied_paths: Vec::new(),
+            allowed_paths: []~.new(),
+            denied_paths: []~.new(),
         }
     }
 
@@ -174,9 +174,9 @@ impl SandboxPolicy {
     }
 
     pub fn max_risk(&self) -> RiskLevel {
-        let mut max = RiskLevel::Low;
+        var max = RiskLevel::Low;
         for cap in &self.capabilities {
-            let risk = cap.risk_level();
+            val risk = cap.risk_level();
             if risk > max {
                 max = risk;
             }
@@ -187,7 +187,7 @@ impl SandboxPolicy {
 
 /// Pre-built policies for common plugin categories.
 pub fn linter_policy() -> SandboxPolicy {
-    let mut policy = SandboxPolicy::new("linter".to_string());
+    var policy = SandboxPolicy.new("linter".to_string());
     policy.allow(Capability::FileRead);
     policy.allow(Capability::MemoryAlloc);
     policy.allow(Capability::TimerAccess);
@@ -198,7 +198,7 @@ pub fn linter_policy() -> SandboxPolicy {
 }
 
 pub fn formatter_policy() -> SandboxPolicy {
-    let mut policy = SandboxPolicy::new("formatter".to_string());
+    var policy = SandboxPolicy.new("formatter".to_string());
     policy.allow(Capability::FileRead);
     policy.allow(Capability::FileWrite);
     policy.allow(Capability::MemoryAlloc);
@@ -209,7 +209,7 @@ pub fn formatter_policy() -> SandboxPolicy {
 }
 
 pub fn codegen_policy() -> SandboxPolicy {
-    let mut policy = SandboxPolicy::new("codegen".to_string());
+    var policy = SandboxPolicy.new("codegen".to_string());
     policy.allow(Capability::FileRead);
     policy.allow(Capability::FileWrite);
     policy.allow(Capability::MemoryAlloc);
@@ -226,7 +226,7 @@ pub fn codegen_policy() -> SandboxPolicy {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub enum PluginKind {
+pub data PluginKind {
     Linter,
     Formatter,
     CodeGenerator,
@@ -234,7 +234,7 @@ pub enum PluginKind {
     Custom(String),
 }
 
-impl fmt::Display for PluginKind {
+extend PluginKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             PluginKind::Linter        => write!(f, "linter"),
@@ -247,17 +247,17 @@ impl fmt::Display for PluginKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct PluginManifest {
+pub data PluginManifest {
     name: String,
     version: String,
     author: String,
     kind: PluginKind,
-    requested_capabilities: Vec<Capability>,
+    requested_capabilities: [Capability]~,
     description: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum PluginState {
+pub data PluginState {
     Registered,
     Validated,
     Running,
@@ -266,7 +266,7 @@ pub enum PluginState {
     Failed(String),
 }
 
-impl fmt::Display for PluginState {
+extend PluginState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             PluginState::Registered  => write!(f, "REGISTERED"),
@@ -284,19 +284,19 @@ impl fmt::Display for PluginState {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct AuditEntry {
+pub data AuditEntry {
     sequence: u64,
     plugin_name: String,
     operation: String,
-    capability: Option<Capability>,
+    capability: ?Capability,
     allowed: bool,
     detail: String,
 }
 
-impl fmt::Display for AuditEntry {
+extend AuditEntry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let status = if self.allowed { "ALLOW" } else { "DENY" };
-        let cap = match &self.capability {
+        val status = if self.allowed { "ALLOW" } else { "DENY" };
+        val cap = match &self.capability {
             Some(c) => format!("[{c}]"),
             None => "[-]".to_string(),
         };
@@ -314,19 +314,19 @@ impl fmt::Display for AuditEntry {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug)]
-pub struct PluginHost {
-    policies: HashMap<String, SandboxPolicy>,
-    plugins: Vec<(PluginManifest, PluginState)>,
-    audit: Vec<AuditEntry>,
+pub data PluginHost {
+    policies: {String: SandboxPolicy},
+    plugins: [(PluginManifest, PluginState)]~,
+    audit: [AuditEntry]~,
     next_seq: u64,
 }
 
-impl PluginHost {
+extend PluginHost {
     pub fn new() -> PluginHost {
-        let mut host = PluginHost {
-            policies: HashMap::new(),
-            plugins: Vec::new(),
-            audit: Vec::new(),
+        var host = PluginHost {
+            policies: {}.new(),
+            plugins: []~.new(),
+            audit: []~.new(),
             next_seq: 1,
         };
 
@@ -341,8 +341,8 @@ impl PluginHost {
         self.policies.insert(policy.name.clone(), policy);
     }
 
-    fn log_audit(&mut self, plugin: &String, op: String, cap: Option<Capability>, allowed: bool, detail: String) {
-        let entry = AuditEntry {
+    fn log_audit(&mut self, plugin: &String, op: String, cap: ?Capability, allowed: bool, detail: String) {
+        val entry = AuditEntry {
             sequence: self.next_seq,
             plugin_name: plugin.clone(),
             operation: op,
@@ -361,10 +361,10 @@ impl PluginHost {
     pub fn validate(&mut self, manifest: &PluginManifest, policy_name: &String) -> PluginState / io {
         println!("  Validating '{}' against policy '{}'...", manifest.name, policy_name);
 
-        let policy = match self.policies.get(policy_name) {
+        val policy = match self.policies.get(policy_name) {
             Some(p) => p.clone(),
             None => {
-                let msg = format!("Unknown policy: {policy_name}");
+                val msg = format!("Unknown policy: {policy_name}");
                 self.log_audit(&manifest.name, "validate".to_string(), None, false, msg.clone());
                 return PluginState::Denied(msg);
             },
@@ -373,7 +373,7 @@ impl PluginHost {
         // Check each requested capability against the policy.
         for cap in &manifest.requested_capabilities {
             if !policy.has_capability(cap) {
-                let msg = format!("Capability {cap} not granted by policy '{policy_name}'");
+                val msg = format!("Capability {cap} not granted by policy '{policy_name}'");
                 println!("    ✗ {}", msg);
                 self.log_audit(
                     &manifest.name,
@@ -438,10 +438,10 @@ impl PluginHost {
         println!("│   Caps:   {:?}", manifest.requested_capabilities);
 
         // Validate.
-        let state = self.validate(&manifest, policy_name);
+        val state = self.validate(&manifest, policy_name);
 
         // Run if validated.
-        let final_state = match state {
+        val final_state = match state {
             PluginState::Validated => self.run_plugin(&manifest),
             _ => state.clone(),
         };
@@ -460,11 +460,11 @@ impl PluginHost {
     }
 
     pub fn summary(&self) / io {
-        let total = self.plugins.len();
-        let approved = self.plugins.iter()
+        val total = self.plugins.len();
+        val approved = self.plugins.iter()
             .filter(|(_, s)| *s == PluginState::Completed)
             .count();
-        let denied = self.plugins.iter()
+        val denied = self.plugins.iter()
             .filter(|(_, s)| match s { PluginState::Denied(_) => true, _ => false })
             .count();
 
@@ -486,7 +486,7 @@ pub fn main() / io {
     println!("║  MechGen Safe Plugin Host                                  ║");
     println!("╚═══════════════════════════════════════════════════════════╝");
 
-    let mut host = PluginHost::new();
+    var host = PluginHost.new();
 
     // Plugin 1: A well-behaved linter (should pass).
     host.load_and_run(

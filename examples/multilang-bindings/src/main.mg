@@ -23,14 +23,14 @@ use std::io;
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum FfiTarget {
+pub data FfiTarget {
     C,
     Cpp,
     Python,
     Wasm,
 }
 
-impl fmt::Display for FfiTarget {
+extend FfiTarget {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             FfiTarget::C      => write!(f, "C"),
@@ -41,7 +41,7 @@ impl fmt::Display for FfiTarget {
     }
 }
 
-impl FfiTarget {
+extend FfiTarget {
     pub fn file_extension(&self) -> &String {
         match self {
             FfiTarget::C      => "h",
@@ -65,7 +65,7 @@ impl FfiTarget {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct TypeMapping {
+pub data TypeMapping {
     MechGen_type: String,
     foreign_type: String,
     is_pointer: bool,
@@ -73,10 +73,10 @@ pub struct TypeMapping {
     needs_free: bool,
 }
 
-impl fmt::Display for TypeMapping {
+extend TypeMapping {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let ptr = if self.is_pointer { "*" } else { "" };
-        let null = if self.is_nullable { "?" } else { "" };
+        val ptr = if self.is_pointer { "*" } else { "" };
+        val null = if self.is_nullable { "?" } else { "" };
         write!(f, "{rdx} → {ptr}{foreign}{null}",
             rdx = self.MechGen_type,
             ptr = ptr,
@@ -90,7 +90,7 @@ impl fmt::Display for TypeMapping {
 /// @req  target is a valid FfiTarget
 /// @ens  result contains mappings for all common MechGen types
 /// @fx   pure
-fn type_mappings_for(target: &FfiTarget) -> Vec<TypeMapping> {
+fn type_mappings_for(target: &FfiTarget) -> [TypeMapping]~ {
     match target {
         FfiTarget::C => vec![
             TypeMapping { MechGen_type: "i32".into(), foreign_type: "int32_t".into(), is_pointer: false, is_nullable: false, needs_free: false },
@@ -99,8 +99,8 @@ fn type_mappings_for(target: &FfiTarget) -> Vec<TypeMapping> {
             TypeMapping { MechGen_type: "bool".into(), foreign_type: "bool".into(), is_pointer: false, is_nullable: false, needs_free: false },
             TypeMapping { MechGen_type: "String".into(), foreign_type: "char".into(), is_pointer: true, is_nullable: false, needs_free: true },
             TypeMapping { MechGen_type: "&str".into(), foreign_type: "char".into(), is_pointer: true, is_nullable: false, needs_free: false },
-            TypeMapping { MechGen_type: "Option<String>".into(), foreign_type: "char".into(), is_pointer: true, is_nullable: true, needs_free: true },
-            TypeMapping { MechGen_type: "Vec<u8>".into(), foreign_type: "uint8_t".into(), is_pointer: true, is_nullable: false, needs_free: true },
+            TypeMapping { MechGen_type: "?String".into(), foreign_type: "char".into(), is_pointer: true, is_nullable: true, needs_free: true },
+            TypeMapping { MechGen_type: "[u8]~".into(), foreign_type: "uint8_t".into(), is_pointer: true, is_nullable: false, needs_free: true },
         ],
         FfiTarget::Cpp => vec![
             TypeMapping { MechGen_type: "i32".into(), foreign_type: "int32_t".into(), is_pointer: false, is_nullable: false, needs_free: false },
@@ -109,8 +109,8 @@ fn type_mappings_for(target: &FfiTarget) -> Vec<TypeMapping> {
             TypeMapping { MechGen_type: "bool".into(), foreign_type: "bool".into(), is_pointer: false, is_nullable: false, needs_free: false },
             TypeMapping { MechGen_type: "String".into(), foreign_type: "std::string".into(), is_pointer: false, is_nullable: false, needs_free: false },
             TypeMapping { MechGen_type: "&str".into(), foreign_type: "std::string_view".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { MechGen_type: "Option<String>".into(), foreign_type: "std::optional<std::string>".into(), is_pointer: false, is_nullable: true, needs_free: false },
-            TypeMapping { MechGen_type: "Vec<u8>".into(), foreign_type: "std::vector<uint8_t>".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "?String".into(), foreign_type: "std::optional<std::string>".into(), is_pointer: false, is_nullable: true, needs_free: false },
+            TypeMapping { MechGen_type: "[u8]~".into(), foreign_type: "std::vector<uint8_t>".into(), is_pointer: false, is_nullable: false, needs_free: false },
         ],
         FfiTarget::Python => vec![
             TypeMapping { MechGen_type: "i32".into(), foreign_type: "int".into(), is_pointer: false, is_nullable: false, needs_free: false },
@@ -119,8 +119,8 @@ fn type_mappings_for(target: &FfiTarget) -> Vec<TypeMapping> {
             TypeMapping { MechGen_type: "bool".into(), foreign_type: "bool".into(), is_pointer: false, is_nullable: false, needs_free: false },
             TypeMapping { MechGen_type: "String".into(), foreign_type: "str".into(), is_pointer: false, is_nullable: false, needs_free: false },
             TypeMapping { MechGen_type: "&str".into(), foreign_type: "str".into(), is_pointer: false, is_nullable: false, needs_free: false },
-            TypeMapping { MechGen_type: "Option<String>".into(), foreign_type: "Optional[str]".into(), is_pointer: false, is_nullable: true, needs_free: false },
-            TypeMapping { MechGen_type: "Vec<u8>".into(), foreign_type: "bytes".into(), is_pointer: false, is_nullable: false, needs_free: false },
+            TypeMapping { MechGen_type: "?String".into(), foreign_type: "Optional[str]".into(), is_pointer: false, is_nullable: true, needs_free: false },
+            TypeMapping { MechGen_type: "[u8]~".into(), foreign_type: "bytes".into(), is_pointer: false, is_nullable: false, needs_free: false },
         ],
         FfiTarget::Wasm => vec![
             TypeMapping { MechGen_type: "i32".into(), foreign_type: "i32".into(), is_pointer: false, is_nullable: false, needs_free: false },
@@ -129,8 +129,8 @@ fn type_mappings_for(target: &FfiTarget) -> Vec<TypeMapping> {
             TypeMapping { MechGen_type: "bool".into(), foreign_type: "i32".into(), is_pointer: false, is_nullable: false, needs_free: false },
             TypeMapping { MechGen_type: "String".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: false, needs_free: true },
             TypeMapping { MechGen_type: "&str".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: false, needs_free: false },
-            TypeMapping { MechGen_type: "Option<String>".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: true, needs_free: true },
-            TypeMapping { MechGen_type: "Vec<u8>".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: false, needs_free: true },
+            TypeMapping { MechGen_type: "?String".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: true, needs_free: true },
+            TypeMapping { MechGen_type: "[u8]~".into(), foreign_type: "i32".into(), is_pointer: true, is_nullable: false, needs_free: true },
         ],
     }
 }
@@ -140,25 +140,25 @@ fn type_mappings_for(target: &FfiTarget) -> Vec<TypeMapping> {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct FfiParam {
+pub data FfiParam {
     name: String,
     MechGen_type: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct FfiFunction {
+pub data FfiFunction {
     name: String,
-    params: Vec<FfiParam>,
+    params: [FfiParam]~,
     return_type: String,
     is_unsafe: bool,
     doc: String,
 }
 
-impl FfiFunction {
+extend FfiFunction {
     pub fn new(name: String, doc: String) -> FfiFunction {
         FfiFunction {
             name: name,
-            params: Vec::new(),
+            params: []~.new(),
             return_type: "()".to_string(),
             is_unsafe: false,
             doc: doc,
@@ -186,10 +186,10 @@ impl FfiFunction {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct LibraryApi {
+pub data LibraryApi {
     name: String,
     version: String,
-    functions: Vec<FfiFunction>,
+    functions: [FfiFunction]~,
 }
 
 /// Define a sample image-processing library API.
@@ -200,40 +200,40 @@ fn define_image_api() -> LibraryApi {
         name: "MechGen_image".to_string(),
         version: "1.0.0".to_string(),
         functions: vec![
-            FfiFunction::new("image_open".to_string(), "Open an image file".to_string())
+            FfiFunction.new("image_open".to_string(), "Open an image file".to_string())
                 .param("path".to_string(), "&str".to_string())
-                .returns("Option<ImageHandle>".to_string()),
+                .returns("?ImageHandle".to_string()),
 
-            FfiFunction::new("image_width".to_string(), "Get image width in pixels".to_string())
+            FfiFunction.new("image_width".to_string(), "Get image width in pixels".to_string())
                 .param("handle".to_string(), "ImageHandle".to_string())
                 .returns("i32".to_string()),
 
-            FfiFunction::new("image_height".to_string(), "Get image height in pixels".to_string())
+            FfiFunction.new("image_height".to_string(), "Get image height in pixels".to_string())
                 .param("handle".to_string(), "ImageHandle".to_string())
                 .returns("i32".to_string()),
 
-            FfiFunction::new("image_resize".to_string(), "Resize image to target dimensions".to_string())
+            FfiFunction.new("image_resize".to_string(), "Resize image to target dimensions".to_string())
                 .param("handle".to_string(), "ImageHandle".to_string())
                 .param("width".to_string(), "i32".to_string())
                 .param("height".to_string(), "i32".to_string())
                 .returns("bool".to_string()),
 
-            FfiFunction::new("image_to_grayscale".to_string(), "Convert image to grayscale".to_string())
+            FfiFunction.new("image_to_grayscale".to_string(), "Convert image to grayscale".to_string())
                 .param("handle".to_string(), "ImageHandle".to_string())
                 .returns("bool".to_string()),
 
-            FfiFunction::new("image_pixels".to_string(), "Get raw pixel data".to_string())
+            FfiFunction.new("image_pixels".to_string(), "Get raw pixel data".to_string())
                 .param("handle".to_string(), "ImageHandle".to_string())
-                .returns("Vec<u8>".to_string())
+                .returns("[u8]~".to_string())
                 .unsafe_fn(),
 
-            FfiFunction::new("image_save".to_string(), "Save image to file".to_string())
+            FfiFunction.new("image_save".to_string(), "Save image to file".to_string())
                 .param("handle".to_string(), "ImageHandle".to_string())
                 .param("path".to_string(), "&str".to_string())
                 .param("format".to_string(), "&str".to_string())
                 .returns("bool".to_string()),
 
-            FfiFunction::new("image_close".to_string(), "Close and free image resources".to_string())
+            FfiFunction.new("image_close".to_string(), "Close and free image resources".to_string())
                 .param("handle".to_string(), "ImageHandle".to_string())
                 .returns("()".to_string()),
         ],
@@ -245,7 +245,7 @@ fn define_image_api() -> LibraryApi {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct GeneratedBinding {
+pub data GeneratedBinding {
     target: FfiTarget,
     filename: String,
     code: String,
@@ -253,7 +253,7 @@ pub struct GeneratedBinding {
     line_count: usize,
 }
 
-impl fmt::Display for GeneratedBinding {
+extend GeneratedBinding {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{target} → {file} ({funcs} functions, {lines} lines)",
             target = self.target,
@@ -266,10 +266,10 @@ impl fmt::Display for GeneratedBinding {
 /// Look up the foreign type for a given MechGen type in a target.
 ///
 /// @fx pure
-fn map_type(MechGen_type: &String, mappings: &Vec<TypeMapping>) -> String {
+fn map_type(MechGen_type: &String, mappings: &[TypeMapping]~) -> String {
     for mapping in mappings {
         if mapping.MechGen_type == *MechGen_type {
-            let prefix = if mapping.is_pointer { "*" } else { "" };
+            val prefix = if mapping.is_pointer { "*" } else { "" };
             return format!("{prefix}{}", mapping.foreign_type);
         }
     }
@@ -282,7 +282,7 @@ fn map_type(MechGen_type: &String, mappings: &Vec<TypeMapping>) -> String {
 /// @ens  result.code contains proper extern "C" declarations
 /// @fx   pure
 fn generate_c_binding(api: &LibraryApi, prefix: &String) -> GeneratedBinding {
-    let mut lines: Vec<String> = Vec::new();
+    var lines: [String]~ = []~.new();
 
     lines.push(format!("/* Auto-generated C bindings for {} v{} */", api.name, api.version));
     lines.push(format!("#ifndef {}{}_{}", prefix.to_uppercase(), api.name.to_uppercase(), "H"));
@@ -298,17 +298,17 @@ fn generate_c_binding(api: &LibraryApi, prefix: &String) -> GeneratedBinding {
     lines.push("#endif".to_string());
     lines.push("".to_string());
 
-    let mappings = type_mappings_for(&FfiTarget::C);
+    val mappings = type_mappings_for(&FfiTarget::C);
 
     for func in &api.functions {
         lines.push(format!("/* {} */", func.doc));
-        let ret_type = map_type(&func.return_type, &mappings);
-        let mut params_str: Vec<String> = Vec::new();
+        val ret_type = map_type(&func.return_type, &mappings);
+        var params_str: [String]~ = []~.new();
         for param in &func.params {
-            let ty = map_type(&param.MechGen_type, &mappings);
+            val ty = map_type(&param.MechGen_type, &mappings);
             params_str.push(format!("{} {}", ty, param.name));
         }
-        let params = if params_str.is_empty() { "void".to_string() } else { params_str.join(", ") };
+        val params = if params_str.is_empty() { "void".to_string() } else { params_str.join(", ") };
         lines.push(format!("{} {}{}({});", ret_type, prefix, func.name, params));
         lines.push("".to_string());
     }
@@ -319,8 +319,8 @@ fn generate_c_binding(api: &LibraryApi, prefix: &String) -> GeneratedBinding {
     lines.push("".to_string());
     lines.push(format!("#endif /* {}{}_{} */", prefix.to_uppercase(), api.name.to_uppercase(), "H"));
 
-    let code = lines.join("\n");
-    let lc = lines.len();
+    val code = lines.join("\n");
+    val lc = lines.len();
     GeneratedBinding {
         target: FfiTarget::C,
         filename: format!("{}{}.h", prefix, api.name),
@@ -334,7 +334,7 @@ fn generate_c_binding(api: &LibraryApi, prefix: &String) -> GeneratedBinding {
 ///
 /// @fx pure
 fn generate_python_binding(api: &LibraryApi, prefix: &String) -> GeneratedBinding {
-    let mut lines: Vec<String> = Vec::new();
+    var lines: [String]~ = []~.new();
 
     lines.push(format!("# Auto-generated Python bindings for {} v{}", api.name, api.version));
     lines.push(format!("# Generated by MechGen FFI bridge"));
@@ -346,8 +346,8 @@ fn generate_python_binding(api: &LibraryApi, prefix: &String) -> GeneratedBindin
     lines.push(format!("_lib = ctypes.CDLL(\"lib{}{}.so\")", prefix, api.name));
     lines.push("".to_string());
 
-    let mappings = type_mappings_for(&FfiTarget::Python);
-    let ctypes_map = vec![
+    val mappings = type_mappings_for(&FfiTarget::Python);
+    val ctypes_map = vec![
         ("int", "ctypes.c_int32"),
         ("float", "ctypes.c_double"),
         ("bool", "ctypes.c_bool"),
@@ -359,23 +359,23 @@ fn generate_python_binding(api: &LibraryApi, prefix: &String) -> GeneratedBindin
         lines.push(format!("# {}", func.doc));
         lines.push(format!("def {}(", func.name));
         for (i, param) in func.params.iter().enumerate() {
-            let py_type = map_type(&param.MechGen_type, &mappings);
-            let comma = if i < func.params.len() - 1 { "," } else { "" };
+            val py_type = map_type(&param.MechGen_type, &mappings);
+            val comma = if i < func.params.len() - 1 { "," } else { "" };
             lines.push(format!("    {}: {}{}", param.name, py_type, comma));
         }
-        let ret_py = map_type(&func.return_type, &mappings);
+        val ret_py = map_type(&func.return_type, &mappings);
         lines.push(format!(") -> {}:", ret_py));
         lines.push(format!("    return _lib.{}{}(", prefix, func.name));
         for (i, param) in func.params.iter().enumerate() {
-            let comma = if i < func.params.len() - 1 { "," } else { "" };
+            val comma = if i < func.params.len() - 1 { "," } else { "" };
             lines.push(format!("        {}{}", param.name, comma));
         }
         lines.push("    )".to_string());
         lines.push("".to_string());
     }
 
-    let code = lines.join("\n");
-    let lc = lines.len();
+    val code = lines.join("\n");
+    val lc = lines.len();
     GeneratedBinding {
         target: FfiTarget::Python,
         filename: format!("{}.py", api.name),
@@ -389,33 +389,33 @@ fn generate_python_binding(api: &LibraryApi, prefix: &String) -> GeneratedBindin
 ///
 /// @fx pure
 fn generate_wasm_binding(api: &LibraryApi, prefix: &String) -> GeneratedBinding {
-    let mut lines: Vec<String> = Vec::new();
+    var lines: [String]~ = []~.new();
 
     lines.push(format!(";; Auto-generated WASM imports for {} v{}", api.name, api.version));
     lines.push("(module".to_string());
     lines.push(format!("  ;; Import host functions from \"{}\"", api.name));
     lines.push("".to_string());
 
-    let mappings = type_mappings_for(&FfiTarget::Wasm);
+    val mappings = type_mappings_for(&FfiTarget::Wasm);
 
     for func in &api.functions {
         lines.push(format!("  ;; {}", func.doc));
-        let mut params_wasm: Vec<String> = Vec::new();
+        var params_wasm: [String]~ = []~.new();
         for param in &func.params {
-            let wasm_ty = map_type(&param.MechGen_type, &mappings);
+            val wasm_ty = map_type(&param.MechGen_type, &mappings);
             params_wasm.push(format!("(param ${} {})", param.name, wasm_ty));
         }
-        let ret_wasm = map_type(&func.return_type, &mappings);
-        let result = if func.return_type == "()" { "".to_string() } else { format!(" (result {})", ret_wasm) };
-        let params = params_wasm.join(" ");
+        val ret_wasm = map_type(&func.return_type, &mappings);
+        val result = if func.return_type == "()" { "".to_string() } else { format!(" (result {})", ret_wasm) };
+        val params = params_wasm.join(" ");
         lines.push(format!("  (import \"{}\" \"{}{}\" (func ${} {}{}))", api.name, prefix, func.name, func.name, params, result));
         lines.push("".to_string());
     }
 
     lines.push(")".to_string());
 
-    let code = lines.join("\n");
-    let lc = lines.len();
+    val code = lines.join("\n");
+    val lc = lines.len();
     GeneratedBinding {
         target: FfiTarget::Wasm,
         filename: format!("{}.wat", api.name),
@@ -436,8 +436,8 @@ pub fn main() / io {
     println!("");
 
     // Define the API.
-    let api = define_image_api();
-    let prefix = "mg_";
+    val api = define_image_api();
+    val prefix = "mg_";
 
     println!("Library: {} v{}", api.name, api.version);
     println!("Functions: {}", api.functions.len());
@@ -446,10 +446,10 @@ pub fn main() / io {
 
     println!("─── API Surface ──────────────────────────────────────────");
     for func in &api.functions {
-        let params: Vec<String> = func.params.iter()
+        val params: [String]~ = func.params.iter()
             .map(|p| format!("{}: {}", p.name, p.MechGen_type))
             .collect();
-        let unsafe_tag = if func.is_unsafe { " [unsafe]" } else { "" };
+        val unsafe_tag = if func.is_unsafe { " [unsafe]" } else { "" };
         println!("  pub fn {}({}) -> {}{}",
             func.name,
             params.join(", "),
@@ -459,13 +459,13 @@ pub fn main() / io {
     println!("");
 
     // Generate bindings for each target.
-    let targets = vec![FfiTarget::C, FfiTarget::Python, FfiTarget::Wasm];
-    let mut bindings: Vec<GeneratedBinding> = Vec::new();
+    val targets = vec![FfiTarget::C, FfiTarget::Python, FfiTarget::Wasm];
+    var bindings: [GeneratedBinding]~ = []~.new();
 
     for target in &targets {
         println!("─── Generating {} Bindings ─────────────────────", target);
 
-        let binding = match target {
+        val binding = match target {
             FfiTarget::C      => generate_c_binding(&api, &prefix.to_string()),
             FfiTarget::Python => generate_python_binding(&api, &prefix.to_string()),
             FfiTarget::Wasm   => generate_wasm_binding(&api, &prefix.to_string()),
@@ -479,7 +479,7 @@ pub fn main() / io {
         println!("");
 
         // Show a preview (first 15 lines).
-        let preview_lines: Vec<&str> = binding.code.lines().take(15).collect();
+        val preview_lines: [&str]~ = binding.code.lines().take(15).collect();
         println!("  Preview:");
         for line in &preview_lines {
             println!("    {}", line);
@@ -497,9 +497,9 @@ pub fn main() / io {
     println!("  ┌──────────┬──────────────┬───────────────────────┬──────────┐");
     println!("  │ MechGen    │ C            │ Python                │ WASM     │");
     println!("  ├──────────┼──────────────┼───────────────────────┼──────────┤");
-    let c_maps = type_mappings_for(&FfiTarget::C);
-    let py_maps = type_mappings_for(&FfiTarget::Python);
-    let wasm_maps = type_mappings_for(&FfiTarget::Wasm);
+    val c_maps = type_mappings_for(&FfiTarget::C);
+    val py_maps = type_mappings_for(&FfiTarget::Python);
+    val wasm_maps = type_mappings_for(&FfiTarget::Wasm);
     for i in 0..c_maps.len() {
         println!("  │ {:<8} │ {:<12} │ {:<21} │ {:<8} │",
             c_maps[i].MechGen_type,
@@ -512,8 +512,8 @@ pub fn main() / io {
     // Final summary.
     println!("");
     println!("═══════════════════════════════════════════════════════════");
-    let total_lines: usize = bindings.iter().map(|b| b.line_count).sum();
-    let total_funcs: usize = bindings.iter().map(|b| b.function_count).sum();
+    val total_lines: usize = bindings.iter().map(|b| b.line_count).sum();
+    val total_funcs: usize = bindings.iter().map(|b| b.function_count).sum();
     println!("  Generated {} binding files:", bindings.len());
     for b in &bindings {
         println!("    - {} ({})", b.filename, b.target);

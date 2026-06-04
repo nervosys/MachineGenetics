@@ -465,6 +465,10 @@ fn count_stmt_agent(stmt: &Stmt) -> u32 {
         }
         Stmt::Expr { expr } => count_expr_agent(expr) + 1, // expr ;
         Stmt::Item { item } => count_item(item).agent_tokens,
+        Stmt::Guard { cond, else_block } => {
+            1 + count_expr_agent(cond) + count_block_agent(else_block) // gd cond { }
+        }
+        Stmt::Defer { expr } => 1 + count_expr_agent(expr), // df expr
     }
 }
 
@@ -521,6 +525,13 @@ fn count_expr_agent(expr: &Expr) -> u32 {
             for e in elements {
                 n += count_expr_agent(e);
                 n += 1;
+            }
+            n
+        }
+        Expr::MapLit { entries } => {
+            let mut n: u32 = 2; // { }
+            for (k, v) in entries {
+                n += count_expr_agent(k) + count_expr_agent(v) + 2; // : ,
             }
             n
         }
@@ -594,6 +605,10 @@ fn count_expr_agent(expr: &Expr) -> u32 {
         Expr::Todo => 1,          // ??
         Expr::Unimplemented => 1, // ???
         Expr::UnsafeBlock { block } => 1 + count_block_agent(block),
+        Expr::Pipeline { left, right } => {
+            count_expr_agent(left) + 1 + count_expr_agent(right) // |>
+        }
+        Expr::Is { expr, .. } => count_expr_agent(expr) + 2, // is Pattern
         Expr::Error { .. } => 1,
     }
 }
@@ -896,6 +911,10 @@ fn count_stmt_human(stmt: &Stmt) -> u32 {
         }
         Stmt::Expr { expr } => count_expr_human(expr) + 1,
         Stmt::Item { item } => count_item(item).human_tokens,
+        Stmt::Guard { cond, else_block } => {
+            1 + count_expr_human(cond) + count_block_human(else_block) // guard cond else { }
+        }
+        Stmt::Defer { expr } => 1 + count_expr_human(expr), // defer expr
     }
 }
 
@@ -948,6 +967,13 @@ fn count_expr_human(expr: &Expr) -> u32 {
             for e in elements {
                 n += count_expr_human(e);
                 n += 1;
+            }
+            n
+        }
+        Expr::MapLit { entries } => {
+            let mut n: u32 = 2;
+            for (k, v) in entries {
+                n += count_expr_human(k) + count_expr_human(v) + 2;
             }
             n
         }
@@ -1011,6 +1037,10 @@ fn count_expr_human(expr: &Expr) -> u32 {
         Expr::Todo => 2,                                             // todo!()
         Expr::Unimplemented => 2,                                    // unimplemented!()
         Expr::UnsafeBlock { block } => 1 + count_block_human(block), // raw
+        Expr::Pipeline { left, right } => {
+            count_expr_human(left) + 1 + count_expr_human(right) // |>
+        }
+        Expr::Is { expr, .. } => count_expr_human(expr) + 2, // is Pattern
         Expr::Error { .. } => 1,
     }
 }

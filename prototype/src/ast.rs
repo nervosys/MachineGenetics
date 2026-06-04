@@ -47,6 +47,8 @@ pub enum ItemKind {
     Evolve(EvolveDef),
     Train(TrainDef),
     Swarm(SwarmDef),
+    Data(DataDef),
+    Extend(ExtendBlock),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,6 +63,7 @@ pub struct FunctionDef {
     pub effects: Vec<String>,
     pub contracts: Vec<ContractClause>,
     pub body: Block,
+    pub body_expr: Option<Box<Expr>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,6 +77,7 @@ pub struct GenericParam {
 pub struct Param {
     pub name: String,
     pub ty: Type,
+    pub default: Option<Expr>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -186,45 +190,153 @@ pub struct Block {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Stmt {
-    Let { mutable: bool, pattern: Pattern, ty: Option<Type>, value: Expr },
-    Expr { expr: Expr },
-    Item { item: Box<Item> },
+    Let {
+        mutable: bool,
+        pattern: Pattern,
+        ty: Option<Type>,
+        value: Expr,
+    },
+    Expr {
+        expr: Expr,
+    },
+    Item {
+        item: Box<Item>,
+    },
+    Guard {
+        cond: Expr,
+        else_block: Block,
+    },
+    Defer {
+        expr: Expr,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Expr {
-    Literal { value: String, kind: LiteralKind },
-    Ident { name: String },
-    Binary { op: String, left: Box<Expr>, right: Box<Expr> },
-    Unary { op: String, operand: Box<Expr> },
-    Call { func: Box<Expr>, args: Vec<Expr> },
-    MethodCall { receiver: Box<Expr>, method: String, type_args: Vec<Type>, args: Vec<Expr> },
-    FieldAccess { object: Box<Expr>, field: String },
-    Index { object: Box<Expr>, index: Box<Expr> },
-    StructLit { path: Vec<String>, fields: Vec<FieldInit> },
-    TupleLit { elements: Vec<Expr> },
-    ArrayLit { elements: Vec<Expr> },
-    ArrayRepeat { value: Box<Expr>, count: Box<Expr> },
-    Closure { params: Vec<Param>, body: Box<Expr> },
-    If { cond: Box<Expr>, then_block: Block, else_block: Option<Block> },
-    Match { scrutinee: Option<Box<Expr>>, arms: Vec<MatchArm> },
-    Loop { body: Block },
-    While { cond: Box<Expr>, body: Block },
-    For { pattern: Pattern, iter: Box<Expr>, body: Block },
-    Block { block: Block },
-    Return { value: Option<Box<Expr>> },
-    Break { value: Option<Box<Expr>> },
+    Literal {
+        value: String,
+        kind: LiteralKind,
+    },
+    Ident {
+        name: String,
+    },
+    Binary {
+        op: String,
+        left: Box<Expr>,
+        right: Box<Expr>,
+    },
+    Unary {
+        op: String,
+        operand: Box<Expr>,
+    },
+    Call {
+        func: Box<Expr>,
+        args: Vec<Expr>,
+    },
+    MethodCall {
+        receiver: Box<Expr>,
+        method: String,
+        type_args: Vec<Type>,
+        args: Vec<Expr>,
+    },
+    FieldAccess {
+        object: Box<Expr>,
+        field: String,
+    },
+    Index {
+        object: Box<Expr>,
+        index: Box<Expr>,
+    },
+    StructLit {
+        path: Vec<String>,
+        fields: Vec<FieldInit>,
+    },
+    TupleLit {
+        elements: Vec<Expr>,
+    },
+    ArrayLit {
+        elements: Vec<Expr>,
+    },
+    ArrayRepeat {
+        value: Box<Expr>,
+        count: Box<Expr>,
+    },
+    /// Map literal: `{}` or `{k: v, k: v, ...}`.
+    /// Pairs are positional; type inference figures out K and V.
+    MapLit {
+        entries: Vec<(Expr, Expr)>,
+    },
+    Closure {
+        params: Vec<Param>,
+        body: Box<Expr>,
+    },
+    If {
+        cond: Box<Expr>,
+        then_block: Block,
+        else_block: Option<Block>,
+    },
+    Match {
+        scrutinee: Option<Box<Expr>>,
+        arms: Vec<MatchArm>,
+    },
+    Loop {
+        body: Block,
+    },
+    While {
+        cond: Box<Expr>,
+        body: Block,
+    },
+    For {
+        pattern: Pattern,
+        iter: Box<Expr>,
+        body: Block,
+    },
+    Block {
+        block: Block,
+    },
+    Return {
+        value: Option<Box<Expr>>,
+    },
+    Break {
+        value: Option<Box<Expr>>,
+    },
     Continue,
-    Try { expr: Box<Expr> },
-    Await { expr: Box<Expr> },
-    Cast { expr: Box<Expr>, ty: Type },
-    Assign { target: Box<Expr>, value: Box<Expr> },
-    Range { start: Box<Expr>, end: Box<Expr>, inclusive: bool },
+    Try {
+        expr: Box<Expr>,
+    },
+    Await {
+        expr: Box<Expr>,
+    },
+    Cast {
+        expr: Box<Expr>,
+        ty: Type,
+    },
+    Assign {
+        target: Box<Expr>,
+        value: Box<Expr>,
+    },
+    Range {
+        start: Box<Expr>,
+        end: Box<Expr>,
+        inclusive: bool,
+    },
+    Pipeline {
+        left: Box<Expr>,
+        right: Box<Expr>,
+    },
+    Is {
+        expr: Box<Expr>,
+        pattern: Pattern,
+    },
     Todo,
     Unimplemented,
-    UnsafeBlock { block: Block },
-    Error { message: String },
+    UnsafeBlock {
+        block: Block,
+    },
+    Error {
+        message: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -253,15 +365,34 @@ pub struct MatchArm {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Pattern {
-    Ident { name: String },
-    Literal { value: String },
+    Ident {
+        name: String,
+    },
+    Literal {
+        value: String,
+    },
     Wildcard,
-    Tuple { elements: Vec<Pattern> },
-    Struct { path: Vec<String>, fields: Vec<FieldPattern> },
-    Enum { path: Vec<String>, elements: Vec<Pattern> },
-    Slice { elements: Vec<Pattern>, rest: bool },
-    Or { patterns: Vec<Pattern> },
-    Ref { pattern: Box<Pattern> },
+    Tuple {
+        elements: Vec<Pattern>,
+    },
+    Struct {
+        path: Vec<String>,
+        fields: Vec<FieldPattern>,
+    },
+    Enum {
+        path: Vec<String>,
+        elements: Vec<Pattern>,
+    },
+    Slice {
+        elements: Vec<Pattern>,
+        rest: bool,
+    },
+    Or {
+        patterns: Vec<Pattern>,
+    },
+    Ref {
+        pattern: Box<Pattern>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -498,6 +629,68 @@ pub struct TrainDef {
     pub loss: Option<Expr>,
     pub epochs: Option<Expr>,
     pub body: Block,
+    /// Optional inline training inputs as an array-of-arrays literal:
+    /// `inputs: [[0.5, 0.5], [1.0, 0.0]]`. When present alongside
+    /// `targets`, replaces the synthetic dataset in `--target=rmil-train`.
+    pub inputs: Option<Expr>,
+    /// Optional inline training targets, paired one-to-one with `inputs`.
+    pub targets: Option<Expr>,
+    /// Optional path to a CSV file containing the training set. First
+    /// `in_dim` columns are inputs, last `out_dim` columns are targets.
+    /// Overridden by `inputs`/`targets` when those are present.
+    pub dataset: Option<Expr>,
+    /// Optional validation split as a fraction in `[0.0, 1.0)` — the last
+    /// fraction of the dataset is held out for per-epoch val loss.
+    pub val_split: Option<Expr>,
+    /// Optional path for saving/loading trained weights. If the file
+    /// exists at train start, weights are loaded; after training they
+    /// are written back, allowing iterative refinement across runs.
+    pub checkpoint: Option<Expr>,
+    /// Optional mini-batch size. When set, each epoch shuffles the train
+    /// set and iterates through `ceil(n_train / batch_size)` mini-batches
+    /// per epoch. Defaults to full-batch (no shuffle).
+    pub batch_size: Option<Expr>,
+    /// Optional early-stopping patience: halt if validation loss hasn't
+    /// improved for this many consecutive epochs. Requires `val_split > 0`.
+    pub patience: Option<Expr>,
+    /// Optional generation prompt: array of integer token IDs.
+    /// Used by `--target=rmil-generate` as the seed sequence.
+    pub prompt: Option<Expr>,
+    /// Optional max tokens to generate (default 16) when
+    /// `--target=rmil-generate` is invoked.
+    pub max_tokens: Option<Expr>,
+    /// Generation sampling temperature. `0` or absent means greedy argmax;
+    /// `1.0` is raw softmax sampling; `<1.0` sharpens, `>1.0` flattens.
+    pub temperature: Option<Expr>,
+    /// Restrict generation sampling to the top-k logits. `0` or absent
+    /// means full vocab sampling. Combines with `temperature`.
+    pub top_k: Option<Expr>,
+    /// Restrict generation sampling to the smallest set of tokens whose
+    /// cumulative softmax probability ≥ `top_p`. `0` or absent disables.
+    pub top_p: Option<Expr>,
+    /// LCG seed for deterministic generation sampling (and shuffling).
+    pub seed: Option<Expr>,
+    /// Per-tensor gradient clipping by L2 norm. If `||g||₂ > clip_grad`,
+    /// scale `g` by `clip_grad / ||g||₂` before the optimiser step.
+    pub clip_grad: Option<Expr>,
+    /// Linear LR warmup over this many initial steps (lr ramps 0 → base).
+    pub warmup_steps: Option<Expr>,
+    /// LR schedule after warmup: `none` (default) or `cosine` (half-cycle
+    /// cosine decay to 0 over `epochs · batches_per_epoch − warmup_steps`).
+    pub lr_schedule: Option<Expr>,
+    /// Decoupled weight decay coefficient (AdamW-style). `0` or absent
+    /// disables. Applied as `w ← w − lr · wd · w` after the optimiser step.
+    pub weight_decay: Option<Expr>,
+    /// When `true`, share the Embedding table with the final Linear head's
+    /// weight (transposed). Requires `Embedding(V, E)` and a trailing
+    /// `Linear(E, V, ...)` with matching V and E.
+    pub tied_embeddings: Option<Expr>,
+    /// For `lr_schedule: plateau`: epochs without ≥1e-6 val-loss
+    /// improvement before multiplying the LR by `lr_factor`.
+    pub plateau_patience: Option<Expr>,
+    /// Multiplier applied to the LR when the plateau guard triggers
+    /// (e.g. `0.5` halves the LR). Defaults to `0.5`.
+    pub lr_factor: Option<Expr>,
 }
 
 /// Multi-agent swarm definition: `swarm Name { agent: Type; size: N; ... }`
@@ -512,10 +705,48 @@ pub struct SwarmDef {
     pub topology: Option<String>,
     /// Consensus strategy: "majority", "unanimous", "weighted", "quorum".
     pub consensus: Option<String>,
+    /// Transport: "local" (MechGen swarm_bus), "rmi-quic", "rmi-tcp" (rmi::distributed::transport).
+    pub transport: Option<String>,
     /// Dispatch / scatter logic.
     pub on_dispatch: Option<Block>,
     /// Aggregation / gather logic.
     pub on_aggregate: Option<Block>,
     /// Failure handler.
     pub on_failure: Option<Block>,
+}
+
+// ── Data / Extend definitions ────────────────────────────────
+
+/// `data Point(x: f64, y: f64)` or `data Tree[T] = Leaf(T) | Branch(Tree[T], Tree[T])`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataDef {
+    pub name: String,
+    pub generics: Vec<GenericParam>,
+    pub kind: DataKind,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DataKind {
+    Record(Vec<DataField>),
+    Sum(Vec<DataVariant>),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataField {
+    pub name: String,
+    pub ty: Type,
+    pub default: Option<Expr>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataVariant {
+    pub name: String,
+    pub fields: Vec<Type>,
+}
+
+/// `extend Type { fn method() { ... } }`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExtendBlock {
+    pub target_type: Type,
+    pub items: Vec<Item>,
 }

@@ -9,7 +9,7 @@
 //   - Process exit codes
 //   - Constants (pub const)
 //   - If/else
-//   - Mutable variables (let mut)
+//   - val / var bindings (replaces let / let mut)\r\n//   - guard for early exit\r\n//   - data keyword for simple types\r\n//   - extend blocks
 
 use std::env;
 use std::fs;
@@ -39,9 +39,9 @@ struct Match {
 
 // ── Argument parsing ─────────────────────────────────────────────────
 
-fn parse_args(args: Vec<String>) -> Result<Config, String> / io {
-    let mut pattern: Option<String> = None;
-    let mut files: Vec<String> = Vec::new();
+fn parse_args(args: [String]~) -> Config or String / io {
+    let mut pattern: ?String = None;
+    let mut files: [String]~ = [String]~.new();
     let mut ignore_case = false;
     let mut line_numbers = false;
     let mut count_only = false;
@@ -113,11 +113,11 @@ fn print_usage() / io {
 
 // ── Search logic ─────────────────────────────────────────────────────
 
-fn search_file(path: &str, config: &Config) -> Result<Vec<Match>, String> / io {
+fn search_file(path: &str, config: &Config) -> [Match]~ or String / io {
     let content = fs::read_to_string(path)
         .map_err(|e| format!("cannot read {path}: {e}"))?;
 
-    let mut matches: Vec<Match> = Vec::new();
+    let mut matches: [Match]~ = [Match]~.new();
 
     let search_pattern = if config.ignore_case {
         config.pattern.to_lowercase()
@@ -149,7 +149,7 @@ fn search_file(path: &str, config: &Config) -> Result<Vec<Match>, String> / io {
 
 // ── Output ───────────────────────────────────────────────────────────
 
-fn print_matches(matches: &Vec<Match>, config: &Config, multi_file: bool) / io {
+fn print_matches(matches: &[Match]~, config: &Config, multi_file: bool) / io {
     if config.count_only {
         if multi_file {
             // Group by file.
@@ -207,7 +207,7 @@ pub fn main() / io {
     };
 
     let multi_file = config.files.len() > 1;
-    let mut all_matches: Vec<Match> = Vec::new();
+    let mut all_matches: [Match]~ = Vec::new();
     let mut had_error = false;
 
     for file in &config.files {

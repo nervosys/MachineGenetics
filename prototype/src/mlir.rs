@@ -10,8 +10,12 @@ use std::collections::HashMap;
 
 /// Emit MLIR textual representation for a checked module.
 pub fn emit(module: &ast::Module, effects: &EffectInfer) -> String {
-    let mut ctx =
-        EmitCtx { buf: String::with_capacity(4096), indent: 0, ssa: 0, effects: &effects.inferred };
+    let mut ctx = EmitCtx {
+        buf: String::with_capacity(4096),
+        indent: 0,
+        ssa: 0,
+        effects: &effects.inferred,
+    };
 
     ctx.line("// ──────────────────────────────────────────────────────────────");
     ctx.line("// Auto-generated MechGen MLIR  ·  dialect: MechGen");
@@ -90,6 +94,15 @@ impl<'a> EmitCtx<'a> {
             ast::ItemKind::Evolve(e) => self.emit_evolve(e),
             ast::ItemKind::Train(t) => self.emit_train(t),
             ast::ItemKind::Swarm(s) => self.emit_swarm(s),
+            ast::ItemKind::Data(d) => {
+                self.line(&format!("// data {}", d.name));
+            }
+            ast::ItemKind::Extend(e) => {
+                self.line("// extend block");
+                for item in &e.items {
+                    self.emit_item(item);
+                }
+            }
         }
     }
 
@@ -143,7 +156,10 @@ impl<'a> EmitCtx<'a> {
                 ast::ContractClauseKind::Ensures => "ensures",
                 ast::ContractClauseKind::Invariant => "invariant",
             };
-            self.line(&format!("MechGen.contract.{kind} \"{}\"", contract.condition));
+            self.line(&format!(
+                "MechGen.contract.{kind} \"{}\"",
+                contract.condition
+            ));
         }
 
         // Emit performance annotations from custom effects with "perf:" prefix.
@@ -197,7 +213,11 @@ impl<'a> EmitCtx<'a> {
                 }
                 ast::VariantKind::Tuple(types) => {
                     let tys: Vec<String> = types.iter().map(|t| self.mlir_type(t)).collect();
-                    self.line(&format!("MechGen.variant \"{}\"({})", variant.name, tys.join(", ")));
+                    self.line(&format!(
+                        "MechGen.variant \"{}\"({})",
+                        variant.name,
+                        tys.join(", ")
+                    ));
                 }
                 ast::VariantKind::Struct(fields) => {
                     let fs: Vec<String> = fields
@@ -276,7 +296,11 @@ impl<'a> EmitCtx<'a> {
                 .map(|t| self.mlir_type(t))
                 .unwrap_or_else(|| "!MechGen.unit".into());
             let params: Vec<String> = op.params.iter().map(|p| self.mlir_type(&p.ty)).collect();
-            self.line(&format!("MechGen.op \"{}\"({}) -> {ret}", op.name, params.join(", ")));
+            self.line(&format!(
+                "MechGen.op \"{}\"({}) -> {ret}",
+                op.name,
+                params.join(", ")
+            ));
         }
         self.indent -= 1;
         self.line("}");
@@ -464,7 +488,12 @@ impl<'a> EmitCtx<'a> {
 
     fn emit_stmt(&mut self, stmt: &ast::Stmt) {
         match stmt {
-            ast::Stmt::Let { pattern, ty, value, mutable } => {
+            ast::Stmt::Let {
+                pattern,
+                ty,
+                value,
+                mutable,
+            } => {
                 let ssa = self.fresh();
                 let mlir_ty = ty
                     .as_ref()
@@ -484,6 +513,16 @@ impl<'a> EmitCtx<'a> {
             }
             ast::Stmt::Item { item } => {
                 self.emit_item(item);
+            }
+            ast::Stmt::Guard { cond, .. } => {
+                let ssa = self.fresh();
+                let c = self.expr_summary(cond);
+                self.line(&format!("{ssa} = MechGen.guard {c} else {{ ... }}"));
+            }
+            ast::Stmt::Defer { expr } => {
+                let ssa = self.fresh();
+                let v = self.expr_summary(expr);
+                self.line(&format!("{ssa} = MechGen.defer {v}"));
             }
         }
     }
@@ -530,7 +569,12 @@ impl<'a> EmitCtx<'a> {
                 let f = self.expr_summary(func);
                 format!("MechGen.call {f}({} args)", args.len())
             }
-            ast::Expr::MethodCall { receiver: _, method, args, .. } => {
+            ast::Expr::MethodCall {
+                receiver: _,
+                method,
+                args,
+                ..
+            } => {
                 let obj = self.fresh();
                 format!("MechGen.method {obj}.{method}({} args)", args.len())
             }
@@ -552,6 +596,9 @@ impl<'a> EmitCtx<'a> {
             }
             ast::Expr::ArrayLit { elements } => {
                 format!("MechGen.array({} elems)", elements.len())
+            }
+            ast::Expr::MapLit { entries } => {
+                format!("MechGen.map({} entries)", entries.len())
             }
             ast::Expr::ArrayRepeat { .. } => {
                 format!("MechGen.array_repeat")
@@ -611,6 +658,15 @@ impl<'a> EmitCtx<'a> {
                 format!("MechGen.unsafe({} stmts)", block.stmts.len())
             }
             ast::Expr::Error { message } => format!("MechGen.error \"{message}\""),
+            ast::Expr::Pipeline { .. } => {
+                let l = self.fresh();
+                let r = self.fresh();
+                format!("MechGen.pipeline {l} |> {r}")
+            }
+            ast::Expr::Is { .. } => {
+                let v = self.fresh();
+                format!("MechGen.is {v} pattern")
+            }
         }
     }
 
@@ -618,7 +674,10 @@ impl<'a> EmitCtx<'a> {
 
     fn mlir_type(&self, ty: &ast::Type) -> String {
         match ty {
-            ast::Type::Path { segments, type_args } => {
+            ast::Type::Path {
+                segments,
+                type_args,
+            } => {
                 let name = segments.join(".");
                 let base = match name.as_str() {
                     "i8" => "i8".into(),
@@ -679,10 +738,18 @@ impl<'a> EmitCtx<'a> {
                 format!("!MechGen.option<{}>", self.mlir_type(inner))
             }
             ast::Type::Result { ok, err } => {
-                format!("!MechGen.result<{}, {}>", self.mlir_type(ok), self.mlir_type(err))
+                format!(
+                    "!MechGen.result<{}, {}>",
+                    self.mlir_type(ok),
+                    self.mlir_type(err)
+                )
             }
             ast::Type::Map { key, value } => {
-                format!("!MechGen.map<{}, {}>", self.mlir_type(key), self.mlir_type(value))
+                format!(
+                    "!MechGen.map<{}, {}>",
+                    self.mlir_type(key),
+                    self.mlir_type(value)
+                )
             }
             ast::Type::Ptr { inner } => {
                 format!("!MechGen.raw_ptr<{}>", self.mlir_type(inner))
@@ -732,7 +799,11 @@ impl<'a> EmitCtx<'a> {
                         ast::TensorDim::Var(v) => format!("?/*{v}*/"),
                     })
                     .collect();
-                format!("!MechGen.tensor<{}x{}>", dims.join("x"), self.mlir_type(inner))
+                format!(
+                    "!MechGen.tensor<{}x{}>",
+                    dims.join("x"),
+                    self.mlir_type(inner)
+                )
             }
             ast::Type::ParamTy { inner, shape } => {
                 let dims: Vec<String> = shape
@@ -742,13 +813,21 @@ impl<'a> EmitCtx<'a> {
                         ast::TensorDim::Var(v) => format!("?/*{v}*/"),
                     })
                     .collect();
-                format!("!MechGen.param<{}x{}>", dims.join("x"), self.mlir_type(inner))
+                format!(
+                    "!MechGen.param<{}x{}>",
+                    dims.join("x"),
+                    self.mlir_type(inner)
+                )
             }
             ast::Type::Genome { inner } => {
                 format!("!MechGen.genome<{}>", self.mlir_type(inner))
             }
             ast::Type::Policy { state, action } => {
-                format!("!MechGen.policy<{}, {}>", self.mlir_type(state), self.mlir_type(action))
+                format!(
+                    "!MechGen.policy<{}, {}>",
+                    self.mlir_type(state),
+                    self.mlir_type(action)
+                )
             }
             ast::Type::KnowledgeBase => "!MechGen.kb".into(),
             ast::Type::LlmType => "!MechGen.llm".into(),

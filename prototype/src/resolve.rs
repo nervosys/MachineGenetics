@@ -260,6 +260,12 @@ impl Resolver {
             ast::ItemKind::Train(t) => {
                 self.define_value(&t.name, SymbolKind::Train);
             }
+            ast::ItemKind::Data(dd) => {
+                self.define_type(&dd.name, SymbolKind::Struct);
+            }
+            ast::ItemKind::Extend(_) => {
+                // Extend blocks don't introduce a new name
+            }
             ast::ItemKind::Impl(_) | ast::ItemKind::Use(_) => {
                 // Impl blocks and use decls don't introduce a single name
             }
@@ -291,6 +297,15 @@ impl Resolver {
                 self.resolve_ast_type(&sd.ty);
                 self.resolve_expr(&sd.value);
             }
+            ast::ItemKind::Data(_) => { /* data fields are simple, skip for now */ }
+            ast::ItemKind::Extend(eb) => {
+                self.push_scope();
+                self.resolve_ast_type(&eb.target_type);
+                for item in &eb.items {
+                    self.resolve_item(item);
+                }
+                self.pop_scope();
+            }
         }
     }
 
@@ -314,7 +329,11 @@ impl Resolver {
         }
 
         // Body.
-        self.resolve_block(&fd.body);
+        if let Some(be) = &fd.body_expr {
+            self.resolve_expr(be);
+        } else {
+            self.resolve_block(&fd.body);
+        }
 
         self.pop_scope();
     }
@@ -538,6 +557,13 @@ impl Resolver {
                 self.collect_item_name(item);
                 self.resolve_item(item);
             }
+            ast::Stmt::Guard { cond, else_block } => {
+                self.resolve_expr(cond);
+                self.resolve_block(else_block);
+            }
+            ast::Stmt::Defer { expr } => {
+                self.resolve_expr(expr);
+            }
         }
     }
 
@@ -671,6 +697,12 @@ impl Resolver {
                     self.resolve_expr(el);
                 }
             }
+            ast::Expr::MapLit { entries } => {
+                for (k, v) in entries {
+                    self.resolve_expr(k);
+                    self.resolve_expr(v);
+                }
+            }
             ast::Expr::ArrayRepeat { value, count } => {
                 self.resolve_expr(value);
                 self.resolve_expr(count);
@@ -740,6 +772,13 @@ impl Resolver {
             ast::Expr::Range { start, end, .. } => {
                 self.resolve_expr(start);
                 self.resolve_expr(end);
+            }
+            ast::Expr::Pipeline { left, right } => {
+                self.resolve_expr(left);
+                self.resolve_expr(right);
+            }
+            ast::Expr::Is { expr, .. } => {
+                self.resolve_expr(expr);
             }
             ast::Expr::Error { .. } => {}
         }

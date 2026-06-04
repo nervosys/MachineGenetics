@@ -1,0 +1,150 @@
+[package]
+name = "rmi"
+version = "1.0.0"
+edition = "2021"
+authors = ["NERVOSYS <opensource@nervosys.ai>"]
+description = "RecursiveMachineIntelligence — the built-in agentic-first AI framework of MachineGenetics (MechGen): designed for multi-agent AI systems, not humans. Self-describing ontology, token-compact manifest, binary-first protocol, effect-mapped safety."
+license = "Apache-2.0"
+repository = "https://github.com/nervosys/MachineGenetics"
+homepage = "https://nervosys.ai"
+keywords = [
+    "ai",
+    "multi-agent",
+    "neurosymbolic",
+    "ontology",
+    "machine-reasoning",
+]
+categories = ["science", "algorithms", "concurrency"]
+readme = "README.md"
+documentation = "https://docs.rs/rmi"
+rust-version = "1.75"
+# Keep local logs / paper sources / CI internals out of the published crate.
+exclude = ["wgpu_clippy.log", "paper/", ".github/", "tests/*.proptest-regressions"]
+
+[features]
+default = ["cpu"]
+cpu = []
+cuda = ["dep:cudarc"]  # legacy; new CUDA path is in prototype/src/cuda_backend.rs via IronAccelerator (P99)
+gpu = ["dep:wgpu", "dep:pollster"]
+wasm = [
+    "dep:wasm-bindgen",
+    "dep:js-sys",
+    "dep:web-sys",
+    "dep:getrandom",
+    "uuid/js",
+]
+full = ["cuda", "gpu"]
+
+[dependencies]
+# Serialization - binary-first for agent communication
+rmp-serde = "1.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_bytes = "0.11"
+
+# Compression
+lz4_flex = "0.11"
+
+# Hashing
+xxhash-rust = { version = "0.8", features = ["xxh64", "xxh3"] }
+sha2 = "0.10"
+hex = "0.4"
+
+# Async runtime for agent coordination
+tokio = { version = "1.35", features = ["sync"] }
+async-trait = "0.1"
+
+# Tensor operations
+ndarray = { version = "0.15", features = ["rayon", "serde"] }
+num-traits = "0.2"
+# Half-precision (F16/BF16) conversion for the `cast` op. Already present
+# in the build tree transitively, so this is a free direct dependency.
+half = "2"
+rand = "0.8"
+rand_distr = "0.4"
+
+# Parallelism
+rayon = "1.8"
+crossbeam = "0.8"
+
+# System info
+num_cpus = "1.16"
+
+# Utilities
+bitflags = "2.4"
+lazy_static = "1.4"
+
+# Error handling
+thiserror = "1.0"
+
+# Logging (structured for machine parsing)
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json"] }
+
+# UUID for agent identity
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Graph structures for ontology
+petgraph = { version = "0.6", features = ["serde-1"] }
+
+# Optional CUDA support
+# cudarc 0.10 (CUDA 11/12). The existing cuda_full.rs (~1800 LOC)
+# was written against this API and uses `CudaDevice`, `LaunchAsync`,
+# Display'd `CublasError`. Migrating to cudarc 0.19 (which adds
+# cuda-13020 ABI feature for real CUDA 13.2 support) requires
+# refactoring cuda_full.rs: CudaDevice -> CudaContext, kernel-launch
+# builder rewrite, CublasError Display via `{:?}`, raw-pointer cast
+# cleanup. Tracked as the P99+ follow-on; current pin keeps the
+# existing kernels building on CUDA 11/12 hosts.
+cudarc = { version = "0.10", optional = true }
+# `cust` was an unused legacy dep; removed (P98).
+
+# Optional GPU support (wgpu for WebGPU/Vulkan/Metal/DX12)
+wgpu = { version = "24", optional = true }
+pollster = { version = "0.4", optional = true }
+
+# Optional WASM support
+wasm-bindgen = { version = "0.2", optional = true }
+js-sys = { version = "0.3", optional = true }
+web-sys = { version = "0.3", optional = true, features = ["console"] }
+getrandom = { version = "0.2", optional = true, features = ["js"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.35", features = ["full"] }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest = "1.4"
+tempfile = "3.25.0"
+tokio-test = "0.4"
+
+[[bench]]
+name = "benchmark"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+
+[profile.bench]
+lto = true
+opt-level = 3
+
+# Profile-guided optimization: instrumented build (generates profiling data).
+# Usage: RUSTFLAGS="-Cprofile-generate=./target/pgo" cargo build --profile pgo-gen
+[profile.pgo-gen]
+inherits = "release"
+lto = false
+
+# Profile-guided optimization: optimized build (consumes merged profile).
+# Usage: RUSTFLAGS="-Cprofile-use=./target/pgo/merged.profdata" cargo build --profile pgo-use
+[profile.pgo-use]
+inherits = "release"
+
+# Workspace members will be added as the framework expands
+# [workspace]
+# members = []

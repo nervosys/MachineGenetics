@@ -28,7 +28,7 @@ pub enum Role {
     Verifier,
 }
 
-impl fmt::Display for Role {
+extend  {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Role::Orchestrator => write!(f, "Orchestrator"),
@@ -52,7 +52,7 @@ pub enum SemanticRegion {
     TypeDef(String),
 }
 
-impl fmt::Display for SemanticRegion {
+extend  {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             SemanticRegion::Function(name) => write!(f, "fn {name}"),
@@ -81,7 +81,7 @@ pub struct Lease {
     version: u64,
 }
 
-impl Lease {
+extend  {
     pub fn new(region: SemanticRegion, kind: LeaseKind, holder: u64) -> Lease {
         Lease { region: region, kind: kind, holder: holder, version: 0 }
     }
@@ -110,12 +110,12 @@ pub struct Task {
     id: u64,
     description: String,
     region: SemanticRegion,
-    assigned_to: Option<u64>,
+    assigned_to: ?u64,
     status: TaskStatus,
-    dependencies: Vec<u64>,
+    dependencies: [u64]~,
 }
 
-impl Task {
+extend  {
     pub fn new(id: u64, description: String, region: SemanticRegion) -> Task {
         Task {
             id: id,
@@ -123,11 +123,11 @@ impl Task {
             region: region,
             assigned_to: None,
             status: TaskStatus::Pending,
-            dependencies: Vec::new(),
+            dependencies: []~.new(),
         }
     }
 
-    pub fn with_deps(id: u64, description: String, region: SemanticRegion, deps: Vec<u64>) -> Task {
+    pub fn with_deps(id: u64, description: String, region: SemanticRegion, deps: [u64]~) -> Task {
         Task {
             id: id,
             description: description,
@@ -138,7 +138,7 @@ impl Task {
         }
     }
 
-    pub fn is_ready(&self, completed: &HashSet<u64>) -> bool {
+    pub fn is_ready(&self, completed: &{u64}) -> bool {
         self.dependencies.iter().all(|d| completed.contains(d))
     }
 }
@@ -149,17 +149,17 @@ impl Task {
 pub struct Agent {
     id: u64,
     role: Role,
-    active_lease: Option<Lease>,
+    active_lease: ?Lease,
     tasks_completed: u64,
 }
 
-impl Agent {
+extend  {
     pub fn new(id: u64, role: Role) -> Agent {
         Agent { id: id, role: role, active_lease: None, tasks_completed: 0 }
     }
 
     pub fn acquire_lease(&mut self, region: SemanticRegion, kind: LeaseKind) -> Lease {
-        let lease = Lease::new(region, kind, self.id);
+        let lease = Lease.new(region, kind, self.id);
         self.active_lease = Some(lease.clone());
         println!("  Agent {self.id} ({self.role}) acquired {lease.kind:?} on {lease.region}");
         lease
@@ -173,7 +173,7 @@ impl Agent {
         self.active_lease = None;
     }
 
-    pub async fn execute_task(&mut self, task: &mut Task) -> Result<(), String> {
+    pub async fn execute_task(&mut self, task: &mut Task) -> () or String {
         println!("  Agent {self.id} ({self.role}) working on: {task.description}");
         task.assigned_to = Some(self.id);
         task.status = TaskStatus::InProgress;
@@ -192,17 +192,17 @@ impl Agent {
 
 #[derive(Debug)]
 pub struct Swarm {
-    agents: Vec<Agent>,
-    tasks: Vec<Task>,
-    completed_ids: HashSet<u64>,
+    agents: [Agent]~,
+    tasks: [Task]~,
+    completed_ids: {u64},
 }
 
-impl Swarm {
+extend  {
     pub fn new() -> Swarm {
         Swarm {
-            agents: Vec::new(),
-            tasks: Vec::new(),
-            completed_ids: HashSet::new(),
+            agents: []~.new(),
+            tasks: []~.new(),
+            completed_ids: {u64}.new(),
         }
     }
 
@@ -217,7 +217,7 @@ impl Swarm {
     }
 
     /// Run all tasks respecting dependency ordering.
-    pub async fn run(&mut self) -> Result<(), String> {
+    pub async fn run(&mut self) -> () or String {
         println!("");
         println!("=== Swarm Execution ===");
         println!("  Agents: {self.agents.len()}");
@@ -232,7 +232,7 @@ impl Swarm {
             }
 
             // Find ready tasks.
-            let mut ready_indices: Vec<usize> = Vec::new();
+            let mut ready_indices: [usize]~ = []~.new();
             for (i, task) in self.tasks.iter().enumerate() {
                 if task.is_ready(&self.completed_ids) {
                     match task.status {
@@ -286,31 +286,31 @@ impl Swarm {
 
 // ── Entry point ──────────────────────────────────────────────────────
 
-pub async fn main() -> Result<(), String> {
+pub async fn main() -> () or String {
     // Create a swarm with specialized agents.
-    let mut swarm = Swarm::new();
+    let mut swarm = Swarm.new();
 
-    swarm.add_agent(Agent::new(1, Role::Architect));
-    swarm.add_agent(Agent::new(2, Role::Synthesizer));
-    swarm.add_agent(Agent::new(3, Role::Synthesizer));
-    swarm.add_agent(Agent::new(4, Role::Verifier));
+    swarm.add_agent(Agent.new(1, Role::Architect));
+    swarm.add_agent(Agent.new(2, Role::Synthesizer));
+    swarm.add_agent(Agent.new(3, Role::Synthesizer));
+    swarm.add_agent(Agent.new(4, Role::Verifier));
 
     // Define tasks with dependencies.
     // Task 1: Design the API (no deps — Architect does this).
-    swarm.add_task(Task::new(
+    swarm.add_task(Task.new(
         1,
         "Design user module API".to_string(),
         SemanticRegion::Module("user".to_string()),
     ));
 
     // Tasks 2-3: Implement functions (depend on task 1).
-    swarm.add_task(Task::with_deps(
+    swarm.add_task(Task.with_deps(
         2,
         "Implement create_user".to_string(),
         SemanticRegion::Function("create_user".to_string()),
         vec![1],
     ));
-    swarm.add_task(Task::with_deps(
+    swarm.add_task(Task.with_deps(
         3,
         "Implement validate_email".to_string(),
         SemanticRegion::Function("validate_email".to_string()),
@@ -318,7 +318,7 @@ pub async fn main() -> Result<(), String> {
     ));
 
     // Task 4: Verify all implementations (depends on 2 and 3).
-    swarm.add_task(Task::with_deps(
+    swarm.add_task(Task.with_deps(
         4,
         "Verify user module contracts".to_string(),
         SemanticRegion::Module("user".to_string()),
@@ -326,7 +326,7 @@ pub async fn main() -> Result<(), String> {
     ));
 
     // Task 5: Integration test (depends on 4).
-    swarm.add_task(Task::with_deps(
+    swarm.add_task(Task.with_deps(
         5,
         "Run integration tests".to_string(),
         SemanticRegion::Module("user".to_string()),

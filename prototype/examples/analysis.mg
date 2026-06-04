@@ -1,52 +1,53 @@
 // Comprehensive MechGen example — exercises name resolution, type checking, and effect inference.
+//
+// Demonstrates:
+//   - data records and sums
+//   - extend blocks
+//   - val / var bindings
+//   - guard early-exit
+//   - defer cleanup
+//   - Pipeline operator |>
+//   - is pattern matching
+//   - T or E error union
+//   - Expression-body functions
+//   - Default parameters
 
 // ── Pure computation ─────────────────────────────────────────────────
 
-pub fn add(a: i32, b: i32) -> i32 {
-    a + b
-}
+pub fn add(a: i32, b: i32) -> i32 = a + b
 
-fn double(x: i32) -> i32 {
-    x * 2
-}
+fn double(x: i32) -> i32 = x * 2
 
-fn quadruple(x: i32) -> i32 {
-    double(double(x))
-}
+fn quadruple(x: i32) -> i32 = double(double(x))
 
 // ── Record and field access ──────────────────────────────────────────
 
-pub struct Point {
-    pub x: f64,
-    pub y: f64,
-}
+data Point(pub x: f64, pub y: f64)
 
-fn distance_sq(p: Point) -> f64 {
-    p.x * p.x + p.y * p.y
+// Extension block: attach methods to a type.
+extend Point {
+    fn distance_sq(&self) -> f64 = self.x * self.x + self.y * self.y
 }
 
 // ── Sum type ─────────────────────────────────────────────────────────
 
-enum Shape {
-    Circle,
-    Square,
-    Triangle,
-}
+data Shape = Circle | Square | Triangle
 
 // ── Generics ─────────────────────────────────────────────────────────
 
-fn identity<T>(val: T) -> T {
-    val
+fn identity[T](v: T) -> T = v
+
+// ── Option and error union types ─────────────────────────────────────
+
+fn safe_div(a: f64, b: f64) -> ?f64 {
+    guard b != 0.0 else { return None; }
+    Some(a / b)
 }
 
-// ── Option and Result types ──────────────────────────────────────────
-
-fn safe_div(a: f64, b: f64) -> Option<f64> {
-    a
-}
-
-fn fallible(x: i32) -> Result<i32, str> {
-    x
+// Error union: i32 or str replaces Result<i32, str>.
+fn fallible(x: i32) -> i32 or str {
+    guard x >= 0 else { return Err("negative"); }
+    Ok(x)
 }
 
 // ── Control flow ─────────────────────────────────────────────────────
@@ -59,19 +60,30 @@ fn classify(n: i32) -> str {
     if n > 0 { "positive" } else { "non-positive" }
 }
 
-// ── Let bindings and closures ──────────────────────────────────────────
+// ── Val/var bindings, pipeline, closures ─────────────────────────────
 
 fn compute() -> i32 {
-    let x: i32 = 10;
-    let y: i32 = 20;
-    let sum: i32 = add(x, y);
-    let doubled: i32 = double(sum);
-    doubled
+    val x: i32 = 10;
+    val y: i32 = 20;
+    // Pipeline: chain through add and double.
+    x |> add(y) |> double()
 }
 
 fn apply_twice() -> i32 {
-    let inc = |x: i32| x + 1;
+    val inc = |x: i32| x + 1;
     inc(inc(0))
+}
+
+// ── Guard, defer, is ─────────────────────────────────────────────────
+
+fn process(input: ?String) -> String or str {
+    // Guard: exit early when None.
+    guard input is Some(_) else { return Err("missing input"); }
+
+    // Defer: log when scope exits.
+    defer io.println("process done");
+
+    Ok("ok")
 }
 
 // ── Effectful functions ──────────────────────────────────────────────
@@ -87,6 +99,6 @@ fn write_data() -> () {
 
 fn main() -> () {
     greet("world");
-    let result: i32 = compute();
+    val result: i32 = compute();
     println("calculated")
 }

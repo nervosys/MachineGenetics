@@ -4,12 +4,53 @@
 name = "MechGen-prototype"
 version = "0.1.0"
 edition = "2024"
-description = "Prototype lexer, parser, and RAP server for the MechGen agentic language"
+description = "MachineGenetics (MechGen) prototype compiler — lexer, parser, RMIL pipeline, and RAP server for the agentic-first language; RecursiveMachineIntelligence (rmi) is the built-in AI framework"
+license = "Apache-2.0"
+repository = "https://github.com/nervosys/MachineGenetics"
+authors = ["NERVOSYS <opensource@nervosys.ai>"]
+# Not published to crates.io (path-dep on the embedded rmi crate); metadata
+# above is for provenance in the source release.
+publish = false
+
+[features]
+default = []
+# Compile in real CUDA 13.2 dispatch via IronAccelerator's CUDA crate
+# (libloading - no build-time CUDA_PATH required). Operators with the
+# CUDA driver installed get full GPU acceleration; without the driver
+# the build still succeeds because IA uses dlopen at runtime.
+cuda = ["dep:ironaccelerator-cuda", "dep:async-trait"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+rmi = { path = "../RecursiveMachineIntelligence", default-features = false, features = ["cpu"] }
+uuid = { version = "1.6", features = ["v4", "v5"] }
+proc-macro2 = "1"
+# IronAccelerator CUDA crate: production-quality cudarc-compat layer
+# explicitly targeting CUDA Toolkit 13.2. Activated only when prototype
+# is built `--features cuda`. Avoids RecursiveMachineIntelligence's stale cudarc-0.10
+# cuda_full.rs path entirely (P99).
+ironaccelerator-cuda = { path = "../../../utilities/IronAccelerator/crates/ironaccelerator-cuda", optional = true }
+# async-trait: needed for `impl Backend for CudaBackend` (RecursiveMachineIntelligence's
+# Backend trait is `#[async_trait]`). Gated to the cuda feature since
+# only the CUDA backend impl uses it.
+async-trait = { version = "0.1", optional = true }
 
 [[bin]]
 name = "MechGen-parse"
 path = "src/main.rs"
+
+[[bin]]
+name = "token-bench"
+path = "src/bin/token_bench.rs"
+
+[[bin]]
+name = "reliability-bench"
+path = "src/bin/reliability_bench.rs"
+
+# CPU-vs-GPU wall-clock harness for the P-storage win. Only meaningful
+# with `--features cuda`; without it the bin compiles to a stub that
+# prints how to enable it (so `cargo build` of all bins still succeeds).
+[[bin]]
+name = "cuda-bench"
+path = "src/bin/cuda_bench.rs"
