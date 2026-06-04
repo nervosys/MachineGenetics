@@ -366,16 +366,17 @@ A structured knowledge graph of AI progress from McCulloch-Pitts (1943) to prese
 
 ```bash
 # Clone and build
-git clone https://github.com/nervosys/RecursiveMachineIntelligence.git
+git clone https://github.com/nervosys/MachineGenetics.git
 cd RecursiveMachineIntelligence
 cargo build --release
 ```
 
-Or add as a dependency in your `Cargo.toml`:
+Or add as a dependency in your `Cargo.toml` (the `rmi` crate is vendored in
+the MachineGenetics monorepo and resolved by package name):
 
 ```toml
 [dependencies]
-rmi = { git = "https://github.com/nervosys/RecursiveMachineIntelligence" }
+rmi = { git = "https://github.com/nervosys/MachineGenetics", package = "rmi" }
 ```
 
 ### Feature Flags
@@ -390,10 +391,10 @@ rmi = { git = "https://github.com/nervosys/RecursiveMachineIntelligence" }
 
 ```toml
 # CUDA support
-rmi = { git = "https://github.com/nervosys/RecursiveMachineIntelligence", features = ["cuda"] }
+rmi = { git = "https://github.com/nervosys/MachineGenetics", features = ["cuda"] }
 
 # All GPU backends
-rmi = { git = "https://github.com/nervosys/RecursiveMachineIntelligence", features = ["full"] }
+rmi = { git = "https://github.com/nervosys/MachineGenetics", features = ["full"] }
 ```
 
 ## Project Structure
@@ -552,6 +553,6 @@ Apache 2.0 — see [LICENSE](LICENSE) for details.
   title={RMI: Recursive Machine Intelligence},
   author={Nervosys},
   year={2026},
-  url={https://github.com/nervosys/RecursiveMachineIntelligence}
+  url={https://github.com/nervosys/MachineGenetics}
 }
 ```
