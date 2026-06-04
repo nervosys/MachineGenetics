@@ -1,6 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
-  "prototype",
   "compiler/*",
+]
+exclude = [
+  "prototype",
+  "RecursiveMachineIntelligence",
+  "compiler/redox_grammar",
 ]

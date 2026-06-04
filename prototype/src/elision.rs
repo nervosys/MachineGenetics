@@ -19,7 +19,9 @@ const ELIMINATED_TYPES: &[&str] = &["PhantomData", "Pin"];
 
 /// Apply safety elision to an entire module, returning the transformed module.
 pub fn elide(module: &Module) -> Module {
-    Module { items: module.items.iter().map(elide_item).collect() }
+    Module {
+        items: module.items.iter().map(elide_item).collect(),
+    }
 }
 
 // ── Items ────────────────────────────────────────────────────────────
@@ -52,6 +54,8 @@ fn elide_item_kind(kind: &ItemKind) -> ItemKind {
         ItemKind::Evolve(e) => ItemKind::Evolve(e.clone()),
         ItemKind::Train(t) => ItemKind::Train(t.clone()),
         ItemKind::Swarm(s) => ItemKind::Swarm(s.clone()),
+        ItemKind::Data(d) => ItemKind::Data(d.clone()),
+        ItemKind::Extend(e) => ItemKind::Extend(e.clone()),
     }
 }
 
@@ -67,6 +71,7 @@ fn elide_function(f: &FunctionDef) -> FunctionDef {
         effects: f.effects.clone(),
         contracts: f.contracts.clone(),
         body: elide_block(&f.body),
+        body_expr: f.body_expr.as_ref().map(|e| Box::new(elide_expr(e))),
     }
 }
 
@@ -129,7 +134,10 @@ fn elide_impl(i: &ImplBlock) -> ImplBlock {
 fn elide_module(m: &ModuleDef) -> ModuleDef {
     ModuleDef {
         name: m.name.clone(),
-        items: m.items.as_ref().map(|items| items.iter().map(elide_item).collect()),
+        items: m
+            .items
+            .as_ref()
+            .map(|items| items.iter().map(elide_item).collect()),
     }
 }
 
@@ -153,7 +161,11 @@ fn elide_type_alias(ta: &TypeAlias) -> TypeAlias {
 }
 
 fn elide_const(c: &ConstDef) -> ConstDef {
-    ConstDef { name: c.name.clone(), ty: elide_type(&c.ty), value: elide_expr(&c.value) }
+    ConstDef {
+        name: c.name.clone(),
+        ty: elide_type(&c.ty),
+        value: elide_expr(&c.value),
+    }
 }
 
 fn elide_static(s: &StaticDef) -> StaticDef {
@@ -193,7 +205,11 @@ fn elide_where_clause(preds: &[WherePredicate]) -> Vec<WherePredicate> {
 
 /// Remove safety-related bounds from a bound list.
 fn strip_safety_bounds(bounds: &[String]) -> Vec<String> {
-    bounds.iter().filter(|b| !is_safety_bound(b)).cloned().collect()
+    bounds
+        .iter()
+        .filter(|b| !is_safety_bound(b))
+        .cloned()
+        .collect()
 }
 
 /// Is this bound a safety-related bound that should be elided?
@@ -228,12 +244,16 @@ fn is_lifetime_name(name: &str) -> bool {
 fn elide_type(ty: &Type) -> Type {
     match ty {
         // References: strip mutability distinction, keep as immutable ref
-        Type::Reference { inner, .. } => {
-            Type::Reference { mutable: false, inner: Box::new(elide_type(inner)) }
-        }
+        Type::Reference { inner, .. } => Type::Reference {
+            mutable: false,
+            inner: Box::new(elide_type(inner)),
+        },
 
         // Eliminated wrapper types: Pin<T> → T, PhantomData<T> → elided
-        Type::Path { segments, type_args } if is_eliminated_type(segments) => {
+        Type::Path {
+            segments,
+            type_args,
+        } if is_eliminated_type(segments) => {
             if segments.last().map(|s| s.as_str()) == Some("PhantomData") {
                 // PhantomData<T> → Unit (field can be removed by later passes)
                 Type::Tuple { elements: vec![] }
@@ -248,38 +268,71 @@ fn elide_type(ty: &Type) -> Type {
         }
 
         // Recurse into compound types
-        Type::Path { segments, type_args } => Type::Path {
+        Type::Path {
+            segments,
+            type_args,
+        } => Type::Path {
             segments: segments.clone(),
             type_args: type_args.iter().map(elide_type).collect(),
         },
-        Type::OwnedPtr { inner } => Type::OwnedPtr { inner: Box::new(elide_type(inner)) },
-        Type::Rc { inner } => Type::Rc { inner: Box::new(elide_type(inner)) },
-        Type::Arc { inner } => Type::Arc { inner: Box::new(elide_type(inner)) },
-        Type::Cow { inner } => Type::Cow { inner: Box::new(elide_type(inner)) },
-        Type::Cell { inner } => Type::Cell { inner: Box::new(elide_type(inner)) },
-        Type::RefCell { inner } => Type::RefCell { inner: Box::new(elide_type(inner)) },
-        Type::Mutex { inner } => Type::Mutex { inner: Box::new(elide_type(inner)) },
-        Type::RwLock { inner } => Type::RwLock { inner: Box::new(elide_type(inner)) },
-        Type::Slice { inner } => Type::Slice { inner: Box::new(elide_type(inner)) },
-        Type::Array { inner, size } => {
-            Type::Array { inner: Box::new(elide_type(inner)), size: Box::new(elide_expr(size)) }
-        }
-        Type::Vec { inner } => Type::Vec { inner: Box::new(elide_type(inner)) },
-        Type::Set { inner } => Type::Set { inner: Box::new(elide_type(inner)) },
-        Type::Tuple { elements } => {
-            Type::Tuple { elements: elements.iter().map(elide_type).collect() }
-        }
-        Type::Option { inner } => Type::Option { inner: Box::new(elide_type(inner)) },
-        Type::Result { ok, err } => {
-            Type::Result { ok: Box::new(elide_type(ok)), err: Box::new(elide_type(err)) }
-        }
-        Type::Map { key, value } => {
-            Type::Map { key: Box::new(elide_type(key)), value: Box::new(elide_type(value)) }
-        }
-        Type::Ptr { inner } => Type::Ptr { inner: Box::new(elide_type(inner)) },
-        Type::Simd { inner, width } => {
-            Type::Simd { inner: Box::new(elide_type(inner)), width: *width }
-        }
+        Type::OwnedPtr { inner } => Type::OwnedPtr {
+            inner: Box::new(elide_type(inner)),
+        },
+        Type::Rc { inner } => Type::Rc {
+            inner: Box::new(elide_type(inner)),
+        },
+        Type::Arc { inner } => Type::Arc {
+            inner: Box::new(elide_type(inner)),
+        },
+        Type::Cow { inner } => Type::Cow {
+            inner: Box::new(elide_type(inner)),
+        },
+        Type::Cell { inner } => Type::Cell {
+            inner: Box::new(elide_type(inner)),
+        },
+        Type::RefCell { inner } => Type::RefCell {
+            inner: Box::new(elide_type(inner)),
+        },
+        Type::Mutex { inner } => Type::Mutex {
+            inner: Box::new(elide_type(inner)),
+        },
+        Type::RwLock { inner } => Type::RwLock {
+            inner: Box::new(elide_type(inner)),
+        },
+        Type::Slice { inner } => Type::Slice {
+            inner: Box::new(elide_type(inner)),
+        },
+        Type::Array { inner, size } => Type::Array {
+            inner: Box::new(elide_type(inner)),
+            size: Box::new(elide_expr(size)),
+        },
+        Type::Vec { inner } => Type::Vec {
+            inner: Box::new(elide_type(inner)),
+        },
+        Type::Set { inner } => Type::Set {
+            inner: Box::new(elide_type(inner)),
+        },
+        Type::Tuple { elements } => Type::Tuple {
+            elements: elements.iter().map(elide_type).collect(),
+        },
+        Type::Option { inner } => Type::Option {
+            inner: Box::new(elide_type(inner)),
+        },
+        Type::Result { ok, err } => Type::Result {
+            ok: Box::new(elide_type(ok)),
+            err: Box::new(elide_type(err)),
+        },
+        Type::Map { key, value } => Type::Map {
+            key: Box::new(elide_type(key)),
+            value: Box::new(elide_type(value)),
+        },
+        Type::Ptr { inner } => Type::Ptr {
+            inner: Box::new(elide_type(inner)),
+        },
+        Type::Simd { inner, width } => Type::Simd {
+            inner: Box::new(elide_type(inner)),
+            width: *width,
+        },
         Type::Fn { params, ret } => Type::Fn {
             params: params.iter().map(elide_type).collect(),
             ret: ret.as_ref().map(|r| Box::new(elide_type(r))),
@@ -294,34 +347,47 @@ fn elide_type(ty: &Type) -> Type {
         | Type::LlmType => ty.clone(),
 
         // AI types: recurse into inner types
-        Type::Tensor { inner, shape } => {
-            Type::Tensor { inner: Box::new(elide_type(inner)), shape: shape.clone() }
-        }
-        Type::ParamTy { inner, shape } => {
-            Type::ParamTy { inner: Box::new(elide_type(inner)), shape: shape.clone() }
-        }
-        Type::Genome { inner } => Type::Genome { inner: Box::new(elide_type(inner)) },
+        Type::Tensor { inner, shape } => Type::Tensor {
+            inner: Box::new(elide_type(inner)),
+            shape: shape.clone(),
+        },
+        Type::ParamTy { inner, shape } => Type::ParamTy {
+            inner: Box::new(elide_type(inner)),
+            shape: shape.clone(),
+        },
+        Type::Genome { inner } => Type::Genome {
+            inner: Box::new(elide_type(inner)),
+        },
         Type::Policy { state, action } => Type::Policy {
             state: Box::new(elide_type(state)),
             action: Box::new(elide_type(action)),
         },
 
         // Refinement types: recurse into base type, preserve predicate
-        Type::Refined { base, predicate } => {
-            Type::Refined { base: Box::new(elide_type(base)), predicate: predicate.clone() }
-        }
+        Type::Refined { base, predicate } => Type::Refined {
+            base: Box::new(elide_type(base)),
+            predicate: predicate.clone(),
+        },
     }
 }
 
 /// Is this a type name that should be eliminated entirely?
 fn is_eliminated_type(segments: &[String]) -> bool {
-    if let Some(last) = segments.last() { ELIMINATED_TYPES.contains(&last.as_str()) } else { false }
+    if let Some(last) = segments.last() {
+        ELIMINATED_TYPES.contains(&last.as_str())
+    } else {
+        false
+    }
 }
 
 // ── Params ───────────────────────────────────────────────────────────
 
 fn elide_param(p: &Param) -> Param {
-    Param { name: p.name.clone(), ty: elide_type(&p.ty) }
+    Param {
+        name: p.name.clone(),
+        ty: elide_type(&p.ty),
+        default: p.default.as_ref().map(elide_expr),
+    }
 }
 
 // ── Blocks & Statements ──────────────────────────────────────────────
@@ -335,14 +401,30 @@ fn elide_block(block: &Block) -> Block {
 
 fn elide_stmt(stmt: &Stmt) -> Stmt {
     match stmt {
-        Stmt::Let { mutable, pattern, ty, value } => Stmt::Let {
+        Stmt::Let {
+            mutable,
+            pattern,
+            ty,
+            value,
+        } => Stmt::Let {
             mutable: *mutable,
             pattern: elide_pattern(pattern),
             ty: ty.as_ref().map(elide_type),
             value: elide_expr(value),
         },
-        Stmt::Expr { expr } => Stmt::Expr { expr: elide_expr(expr) },
-        Stmt::Item { item } => Stmt::Item { item: Box::new(elide_item(item)) },
+        Stmt::Expr { expr } => Stmt::Expr {
+            expr: elide_expr(expr),
+        },
+        Stmt::Item { item } => Stmt::Item {
+            item: Box::new(elide_item(item)),
+        },
+        Stmt::Guard { cond, else_block } => Stmt::Guard {
+            cond: elide_expr(cond),
+            else_block: elide_block(else_block),
+        },
+        Stmt::Defer { expr } => Stmt::Defer {
+            expr: elide_expr(expr),
+        },
     }
 }
 
@@ -351,7 +433,9 @@ fn elide_stmt(stmt: &Stmt) -> Stmt {
 fn elide_expr(expr: &Expr) -> Expr {
     match expr {
         // UnsafeBlock → plain Block (strip unsafe wrapper)
-        Expr::UnsafeBlock { block } => Expr::Block { block: elide_block(block) },
+        Expr::UnsafeBlock { block } => Expr::Block {
+            block: elide_block(block),
+        },
 
         // Recurse into all expression forms
         Expr::Literal { .. }
@@ -366,25 +450,33 @@ fn elide_expr(expr: &Expr) -> Expr {
             left: Box::new(elide_expr(left)),
             right: Box::new(elide_expr(right)),
         },
-        Expr::Unary { op, operand } => {
-            Expr::Unary { op: op.clone(), operand: Box::new(elide_expr(operand)) }
-        }
+        Expr::Unary { op, operand } => Expr::Unary {
+            op: op.clone(),
+            operand: Box::new(elide_expr(operand)),
+        },
         Expr::Call { func, args } => Expr::Call {
             func: Box::new(elide_expr(func)),
             args: args.iter().map(elide_expr).collect(),
         },
-        Expr::MethodCall { receiver, method, type_args, args } => Expr::MethodCall {
+        Expr::MethodCall {
+            receiver,
+            method,
+            type_args,
+            args,
+        } => Expr::MethodCall {
             receiver: Box::new(elide_expr(receiver)),
             method: method.clone(),
             type_args: type_args.iter().map(elide_type).collect(),
             args: args.iter().map(elide_expr).collect(),
         },
-        Expr::FieldAccess { object, field } => {
-            Expr::FieldAccess { object: Box::new(elide_expr(object)), field: field.clone() }
-        }
-        Expr::Index { object, index } => {
-            Expr::Index { object: Box::new(elide_expr(object)), index: Box::new(elide_expr(index)) }
-        }
+        Expr::FieldAccess { object, field } => Expr::FieldAccess {
+            object: Box::new(elide_expr(object)),
+            field: field.clone(),
+        },
+        Expr::Index { object, index } => Expr::Index {
+            object: Box::new(elide_expr(object)),
+            index: Box::new(elide_expr(index)),
+        },
         Expr::StructLit { path, fields } => Expr::StructLit {
             path: path.clone(),
             fields: fields
@@ -395,12 +487,18 @@ fn elide_expr(expr: &Expr) -> Expr {
                 })
                 .collect(),
         },
-        Expr::TupleLit { elements } => {
-            Expr::TupleLit { elements: elements.iter().map(elide_expr).collect() }
-        }
-        Expr::ArrayLit { elements } => {
-            Expr::ArrayLit { elements: elements.iter().map(elide_expr).collect() }
-        }
+        Expr::TupleLit { elements } => Expr::TupleLit {
+            elements: elements.iter().map(elide_expr).collect(),
+        },
+        Expr::ArrayLit { elements } => Expr::ArrayLit {
+            elements: elements.iter().map(elide_expr).collect(),
+        },
+        Expr::MapLit { entries } => Expr::MapLit {
+            entries: entries
+                .iter()
+                .map(|(k, v)| (elide_expr(k), elide_expr(v)))
+                .collect(),
+        },
         Expr::ArrayRepeat { value, count } => Expr::ArrayRepeat {
             value: Box::new(elide_expr(value)),
             count: Box::new(elide_expr(count)),
@@ -409,7 +507,11 @@ fn elide_expr(expr: &Expr) -> Expr {
             params: params.iter().map(elide_param).collect(),
             body: Box::new(elide_expr(body)),
         },
-        Expr::If { cond, then_block, else_block } => Expr::If {
+        Expr::If {
+            cond,
+            then_block,
+            else_block,
+        } => Expr::If {
             cond: Box::new(elide_expr(cond)),
             then_block: elide_block(then_block),
             else_block: else_block.as_ref().map(elide_block),
@@ -424,35 +526,64 @@ fn elide_expr(expr: &Expr) -> Expr {
                 })
                 .collect(),
         },
-        Expr::Loop { body } => Expr::Loop { body: elide_block(body) },
-        Expr::While { cond, body } => {
-            Expr::While { cond: Box::new(elide_expr(cond)), body: elide_block(body) }
-        }
-        Expr::For { pattern, iter, body } => Expr::For {
+        Expr::Loop { body } => Expr::Loop {
+            body: elide_block(body),
+        },
+        Expr::While { cond, body } => Expr::While {
+            cond: Box::new(elide_expr(cond)),
+            body: elide_block(body),
+        },
+        Expr::For {
+            pattern,
+            iter,
+            body,
+        } => Expr::For {
             pattern: elide_pattern(pattern),
             iter: Box::new(elide_expr(iter)),
             body: elide_block(body),
         },
-        Expr::Block { block } => Expr::Block { block: elide_block(block) },
-        Expr::Return { value } => {
-            Expr::Return { value: value.as_ref().map(|v| Box::new(elide_expr(v))) }
-        }
-        Expr::Break { value } => {
-            Expr::Break { value: value.as_ref().map(|v| Box::new(elide_expr(v))) }
-        }
-        Expr::Try { expr: inner } => Expr::Try { expr: Box::new(elide_expr(inner)) },
-        Expr::Await { expr: inner } => Expr::Await { expr: Box::new(elide_expr(inner)) },
-        Expr::Cast { expr: inner, ty } => {
-            Expr::Cast { expr: Box::new(elide_expr(inner)), ty: elide_type(ty) }
-        }
+        Expr::Block { block } => Expr::Block {
+            block: elide_block(block),
+        },
+        Expr::Return { value } => Expr::Return {
+            value: value.as_ref().map(|v| Box::new(elide_expr(v))),
+        },
+        Expr::Break { value } => Expr::Break {
+            value: value.as_ref().map(|v| Box::new(elide_expr(v))),
+        },
+        Expr::Try { expr: inner } => Expr::Try {
+            expr: Box::new(elide_expr(inner)),
+        },
+        Expr::Await { expr: inner } => Expr::Await {
+            expr: Box::new(elide_expr(inner)),
+        },
+        Expr::Cast { expr: inner, ty } => Expr::Cast {
+            expr: Box::new(elide_expr(inner)),
+            ty: elide_type(ty),
+        },
         Expr::Assign { target, value } => Expr::Assign {
             target: Box::new(elide_expr(target)),
             value: Box::new(elide_expr(value)),
         },
-        Expr::Range { start, end, inclusive } => Expr::Range {
+        Expr::Range {
+            start,
+            end,
+            inclusive,
+        } => Expr::Range {
             start: Box::new(elide_expr(start)),
             end: Box::new(elide_expr(end)),
             inclusive: *inclusive,
+        },
+        Expr::Pipeline { left, right } => Expr::Pipeline {
+            left: Box::new(elide_expr(left)),
+            right: Box::new(elide_expr(right)),
+        },
+        Expr::Is {
+            expr: inner,
+            pattern,
+        } => Expr::Is {
+            expr: Box::new(elide_expr(inner)),
+            pattern: elide_pattern(pattern),
         },
     }
 }
@@ -465,9 +596,9 @@ fn elide_pattern(pat: &Pattern) -> Pattern {
         Pattern::Ref { pattern } => elide_pattern(pattern),
 
         // Recurse
-        Pattern::Tuple { elements } => {
-            Pattern::Tuple { elements: elements.iter().map(elide_pattern).collect() }
-        }
+        Pattern::Tuple { elements } => Pattern::Tuple {
+            elements: elements.iter().map(elide_pattern).collect(),
+        },
         Pattern::Struct { path, fields } => Pattern::Struct {
             path: path.clone(),
             fields: fields
@@ -482,12 +613,13 @@ fn elide_pattern(pat: &Pattern) -> Pattern {
             path: path.clone(),
             elements: elements.iter().map(elide_pattern).collect(),
         },
-        Pattern::Slice { elements, rest } => {
-            Pattern::Slice { elements: elements.iter().map(elide_pattern).collect(), rest: *rest }
-        }
-        Pattern::Or { patterns } => {
-            Pattern::Or { patterns: patterns.iter().map(elide_pattern).collect() }
-        }
+        Pattern::Slice { elements, rest } => Pattern::Slice {
+            elements: elements.iter().map(elide_pattern).collect(),
+            rest: *rest,
+        },
+        Pattern::Or { patterns } => Pattern::Or {
+            patterns: patterns.iter().map(elide_pattern).collect(),
+        },
 
         // Leaf patterns pass through
         Pattern::Ident { .. } | Pattern::Literal { .. } | Pattern::Wildcard => pat.clone(),
@@ -542,7 +674,11 @@ pub fn expand_attribute(attr: &Attribute) -> Attribute {
     let expanded_name = expand_attribute_name(&attr.name)
         .map(|s| s.to_string())
         .unwrap_or_else(|| attr.name.clone());
-    Attribute { name: expanded_name, args: attr.args.clone(), bang: attr.bang }
+    Attribute {
+        name: expanded_name,
+        args: attr.args.clone(),
+        bang: attr.bang,
+    }
 }
 
 /// Expand all compressed attributes in an item.
@@ -664,7 +800,10 @@ mod tests {
         // Pin<T> path type should be unwrapped to just T
         let pin_ty = Type::Path {
             segments: vec!["Pin".to_string()],
-            type_args: vec![Type::Path { segments: vec!["Fut".to_string()], type_args: vec![] }],
+            type_args: vec![Type::Path {
+                segments: vec!["Fut".to_string()],
+                type_args: vec![],
+            }],
         };
         let elided = elide_type(&pin_ty);
         match elided {
@@ -679,7 +818,10 @@ mod tests {
     fn phantom_data_becomes_unit() {
         let pd_ty = Type::Path {
             segments: vec!["PhantomData".to_string()],
-            type_args: vec![Type::Path { segments: vec!["T".to_string()], type_args: vec![] }],
+            type_args: vec![Type::Path {
+                segments: vec!["T".to_string()],
+                type_args: vec![],
+            }],
         };
         let elided = elide_type(&pd_ty);
         match elided {
@@ -692,7 +834,11 @@ mod tests {
 
     #[test]
     fn ref_pattern_unwrapped() {
-        let pat = Pattern::Ref { pattern: Box::new(Pattern::Ident { name: "x".to_string() }) };
+        let pat = Pattern::Ref {
+            pattern: Box::new(Pattern::Ident {
+                name: "x".to_string(),
+            }),
+        };
         let elided = elide_pattern(&pat);
         match elided {
             Pattern::Ident { name } => assert_eq!(name, "x"),
@@ -703,7 +849,10 @@ mod tests {
     #[test]
     fn where_clause_lifetime_predicates_stripped() {
         let preds = vec![
-            WherePredicate { type_param: "'a".to_string(), bounds: vec!["'static".to_string()] },
+            WherePredicate {
+                type_param: "'a".to_string(),
+                bounds: vec!["'static".to_string()],
+            },
             WherePredicate {
                 type_param: "T".to_string(),
                 bounds: vec!["Clone".to_string(), "Send".to_string()],
@@ -782,8 +931,11 @@ mod tests {
 
     #[test]
     fn expand_attribute_struct() {
-        let attr =
-            Attribute { name: "d".into(), args: vec!["Eq".into(), "Hash".into()], bang: false };
+        let attr = Attribute {
+            name: "d".into(),
+            args: vec!["Eq".into(), "Hash".into()],
+            bang: false,
+        };
         let expanded = expand_attribute(&attr);
         assert_eq!(expanded.name, "derive");
         assert_eq!(expanded.args, vec!["Eq", "Hash"]);
@@ -792,7 +944,11 @@ mod tests {
 
     #[test]
     fn expand_attribute_with_bang() {
-        let attr = Attribute { name: "pi".into(), args: vec![], bang: true };
+        let attr = Attribute {
+            name: "pi".into(),
+            args: vec![],
+            bang: true,
+        };
         let expanded = expand_attribute(&attr);
         assert_eq!(expanded.name, "proc_macro");
         assert!(expanded.bang);

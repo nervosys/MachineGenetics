@@ -5,11 +5,18 @@
 ///   language/tokens   — tokenize source
 ///   build/check       — check syntax (parse + report errors)
 ///   build/heal        — check + generate fix candidates (P22)
+///   build/recover     — apply 3-stage recovery, return final source + stage
 ///   cost/query        — query per-construct cost estimates (P19)
 ///   cost/compare      — compare costs of two constructs
 ///   skb/query         — query structured knowledge base (P14)
 ///   skb/spec          — lookup spec block for a symbol
 ///   verify/contracts  — verify function contracts (P21)
+///   ontology/full     — return the complete language + IR + protocol ontology
+///   ontology/section  — return one named section of the ontology
+///   pipeline/recover-and-encode — source → 3-stage recover → RMIB bytes in one call
+///   rmil/encode       — source → RMIB bytes (hex) for application/rmib transport
+///   rmil/decode       — RMIB bytes (hex) → decompiled per-item view
+///   rmil/run          — source → encode → CpuBackend dispatch (no text round-trip)
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 
@@ -24,8 +31,54 @@ use crate::skb;
 use crate::token_budget;
 use crate::verify;
 
+/// True if `addr` names a non-loopback bind target — i.e. something other than
+/// `127.0.0.0/8` or `::1` (a literal `localhost` is treated as safe). A wildcard
+/// (`0.0.0.0`, `::`, or an empty host) is non-loopback. Used to gate the
+/// unauthenticated RAP socket against accidental network exposure.
+fn is_non_loopback(addr: &str) -> bool {
+    // Whole-string loopback forms (bare IPv6 has no brackets, so port-splitting
+    // is ambiguous — check these first).
+    if addr == "::1" || addr == "localhost" {
+        return false;
+    }
+    // Extract the host portion. Bracketed IPv6: "[host]:port". Otherwise take
+    // everything before the last ':' (host:port), or the whole thing if no port.
+    let host = if let Some(rest) = addr.strip_prefix('[') {
+        rest.split(']').next().unwrap_or("")
+    } else {
+        addr.rsplit_once(':').map(|(h, _)| h).unwrap_or(addr)
+    };
+    match host {
+        "localhost" | "::1" => false,
+        "" | "0.0.0.0" | "::" => true,
+        h if h.starts_with("127.") => false,
+        _ => true,
+    }
+}
+
 /// Start the RAP server on `addr` (e.g. "127.0.0.1:9876").
+///
+/// Security (MITRE ATT&CK T1190/T1071): the RAP socket has **no authentication
+/// or transport encryption**. It is meant for loopback use by a local agent.
+/// Binding a non-loopback / wildcard address exposes an unauthenticated control
+/// plane to the network, so we refuse it unless the operator explicitly opts in
+/// via `MECHGEN_RAP_ALLOW_REMOTE=1` (and even then warn). See SECURITY_AUDIT.md.
 pub fn serve(addr: &str) {
+    if is_non_loopback(addr) {
+        let allow = std::env::var("MECHGEN_RAP_ALLOW_REMOTE").as_deref() == Ok("1");
+        if !allow {
+            eprintln!(
+                "rap: REFUSING to bind non-loopback address {addr}: the RAP control plane is \
+                 unauthenticated and unencrypted. Bind 127.0.0.1, or front it with a reverse \
+                 proxy doing authN/Z + TLS and set MECHGEN_RAP_ALLOW_REMOTE=1 to override."
+            );
+            std::process::exit(2);
+        }
+        eprintln!(
+            "rap: WARNING binding non-loopback {addr} with no auth/TLS \
+             (MECHGEN_RAP_ALLOW_REMOTE=1). Do not expose to untrusted networks."
+        );
+    }
     let listener = TcpListener::bind(addr).unwrap_or_else(|e| {
         eprintln!("rap: failed to bind {addr}: {e}");
         std::process::exit(1);
@@ -734,6 +787,257 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             })
         }
 
+        // Return the complete machine-readable ontology over the
+        // MechGen language, the RMIL IR, and the RAP protocol. Single
+        // self-contained payload so an autonomous agent can discover
+        // every construct, opcode, and method without prior training.
+        "ontology/full" => crate::ontology::build(),
+
+        // Return one named section of the ontology. Useful when an
+        // agent only needs (e.g.) the IR op catalog and doesn't want
+        // the whole payload.
+        "ontology/section" => {
+            let name = params.get("section").and_then(|v| v.as_str()).unwrap_or("");
+            match crate::ontology::section(name) {
+                Some(data) => serde_json::json!({
+                    "ok": true,
+                    "section": name,
+                    "data": data,
+                }),
+                None => serde_json::json!({
+                    "ok": false,
+                    "error": format!("unknown ontology section: {name:?}"),
+                    "available": [
+                        "sigils", "keywords", "types", "ast_kinds", "ir_ops",
+                        "op_families", "layer_map", "rap_methods",
+                        "heal_patterns", "recovery_stages", "rmib", "examples",
+                        "framewerx_modules", "cli_flags", "bench_backends",
+                        "effects", "wrapper_protocol", "project_layout",
+                        "docs", "ci_floors", "hardware_accelerators",
+                    ],
+                }),
+            }
+        }
+
+        // Apply the bench's 3-stage recovery pipeline to broken source.
+        // Returns the final source plus which stage produced it, so the
+        // caller can decide whether to trust the recovery or re-prompt.
+        "build/recover" => {
+            let r = crate::recover::recover(source);
+            serde_json::json!({
+                "ok": r.parsed_ok,
+                "stage": r.stage.as_str(),
+                "candidates_tried": r.candidates_tried,
+                "source": r.source,
+                "changed": r.source != source,
+            })
+        }
+
+        // ── RMIL binary IR transport (application/rmib) ──────────
+
+        // One-shot path: broken source → 3-stage mechanical recover →
+        // parse → encode RMIB. Saves an agent two round-trips. Returns
+        // `ok=false` only if even the recovered source fails to parse
+        // (so the caller knows to fall back to refine).
+        "pipeline/recover-and-encode" => {
+            let r = crate::recover::recover(source);
+            if !r.parsed_ok {
+                return serde_json::json!({
+                    "ok": false,
+                    "stage": r.stage.as_str(),
+                    "candidates_tried": r.candidates_tried,
+                    "error": "recovery exhausted; refine required",
+                });
+            }
+            let tokens = lexer::lex(&r.source);
+            let module = match parser::parse(&tokens) {
+                Ok(m) => m,
+                Err(e) => {
+                    return serde_json::json!({
+                        "ok": false,
+                        "stage": r.stage.as_str(),
+                        "error": format!("recovered source still failed to parse: {}:{}: {}", e.line, e.col, e.message),
+                    });
+                }
+            };
+            let (blob, summary) = crate::rmib::encode_module(&module);
+            let items: Vec<serde_json::Value> = summary
+                .iter()
+                .map(|(n, sz, h)| {
+                    serde_json::json!({
+                        "name": n,
+                        "expr_bytes": sz,
+                        "content_hash": format!("{h:016x}"),
+                    })
+                })
+                .collect();
+            serde_json::json!({
+                "ok": true,
+                "recover_stage": r.stage.as_str(),
+                "candidates_tried": r.candidates_tried,
+                "changed": r.source != source,
+                "recovered_source": r.source,
+                "container_bytes": blob.len(),
+                "items": items,
+                "rmib_hex": crate::rmib::to_hex(&blob),
+            })
+        }
+
+        // Source → RMIB bytes (hex-encoded for JSON channel).
+        "rmil/encode" => {
+            let tokens = lexer::lex(source);
+            match parser::parse(&tokens) {
+                Ok(module) => {
+                    let (blob, summary) = crate::rmib::encode_module(&module);
+                    let items: Vec<serde_json::Value> = summary
+                        .iter()
+                        .map(|(n, sz, h)| serde_json::json!({
+                            "name": n,
+                            "expr_bytes": sz,
+                            "content_hash": format!("{h:016x}"),
+                        }))
+                        .collect();
+                    serde_json::json!({
+                        "ok": true,
+                        "magic": "RMIB",
+                        "version": crate::rmib::RMIB_VERSION,
+                        "container_bytes": blob.len(),
+                        "items": items,
+                        "rmib_hex": crate::rmib::to_hex(&blob),
+                    })
+                }
+                Err(e) => serde_json::json!({
+                    "ok": false,
+                    "error": { "line": e.line, "col": e.col, "message": e.message },
+                }),
+            }
+        }
+
+        // RMIB bytes (hex) → decompiled MechGen view + per-item summary.
+        "rmil/decode" => {
+            let hex = params.get("rmib_hex").and_then(|v| v.as_str()).unwrap_or("");
+            let blob = match crate::rmib::from_hex(hex) {
+                Ok(b) => b,
+                Err(e) => return serde_json::json!({ "ok": false, "error": format!("hex: {e}") }),
+            };
+            match crate::rmib::decode_container(&blob) {
+                Ok(items) => {
+                    let decoded: Vec<serde_json::Value> = items
+                        .iter()
+                        .map(|it| {
+                            let result = crate::rmil_bridge::decompile(&it.expr, &it.name);
+                            let layers: Vec<serde_json::Value> = result
+                                .net
+                                .layers
+                                .iter()
+                                .map(|l| {
+                                    let type_name = match &l.layer_type {
+                                        crate::ast::Type::Path { segments, .. } => {
+                                            segments.last().cloned().unwrap_or_default()
+                                        }
+                                        _ => "?".to_string(),
+                                    };
+                                    serde_json::json!({
+                                        "name": l.name,
+                                        "type": type_name,
+                                    })
+                                })
+                                .collect();
+                            let skipped: Vec<String> =
+                                result.skipped.iter().map(|op| format!("{op:?}")).collect();
+                            serde_json::json!({
+                                "name": it.name,
+                                "expr_bytes": it.expr_bytes_len,
+                                "content_hash": format!("{:016x}", it.expr.content_hash()),
+                                "layers": layers,
+                                "skipped": skipped,
+                            })
+                        })
+                        .collect();
+                    serde_json::json!({
+                        "ok": true,
+                        "container_bytes": blob.len(),
+                        "items": decoded,
+                    })
+                }
+                Err(e) => serde_json::json!({ "ok": false, "error": e }),
+            }
+        }
+
+        // Source → encode → CpuBackend dispatch (text-roundtrip-free path).
+        "rmil/run" => {
+            let tokens = lexer::lex(source);
+            let module = match parser::parse(&tokens) {
+                Ok(m) => m,
+                Err(e) => {
+                    return serde_json::json!({
+                        "ok": false,
+                        "stage": "parse",
+                        "error": { "line": e.line, "col": e.col, "message": e.message },
+                    });
+                }
+            };
+            let (blob, _) = crate::rmib::encode_module(&module);
+            let items = match crate::rmib::decode_container(&blob) {
+                Ok(i) => i,
+                Err(e) => return serde_json::json!({
+                    "ok": false,
+                    "stage": "decode",
+                    "error": e,
+                }),
+            };
+            let backend = rmi::compute::cpu::CpuBackend::new();
+            let runs: Vec<serde_json::Value> = items
+                .iter()
+                .map(|it| {
+                    let families = crate::rmil_bridge::expr_op_families(&it.expr);
+                    let stub_families: Vec<String> = families
+                        .iter()
+                        .filter(|f| crate::rmil_bridge::is_stubbed_family(**f))
+                        .filter(|f| !matches!(**f, rmi::lang::OpFamily::Neural))
+                        .map(|f| format!("{f:?}"))
+                        .collect();
+                    if !stub_families.is_empty()
+                        && !families.contains(&rmi::lang::OpFamily::Neural)
+                    {
+                        return serde_json::json!({
+                            "name": it.name,
+                            "status": "stub",
+                            "families": stub_families,
+                        });
+                    }
+                    let inferred = crate::rmil_compute::infer_input_shape(&it.expr);
+                    let shape: Vec<usize> = inferred.unwrap_or_else(|| vec![8]);
+                    match crate::rmil_compute::run_pipeline(&backend, &it.expr, &shape, 1.0) {
+                        Ok(r) => {
+                            let unsupported: Vec<String> =
+                                r.unsupported.iter().map(|op| format!("{op:?}")).collect();
+                            serde_json::json!({
+                                "name": it.name,
+                                "status": "dispatched",
+                                "dispatched": r.dispatched,
+                                "unsupported": unsupported,
+                                "output_sum": r.output_sum,
+                                "output_shape": r.output.shape,
+                                "input_shape": shape,
+                            })
+                        }
+                        Err(e) => serde_json::json!({
+                            "name": it.name,
+                            "status": "error",
+                            "error": format!("{e}"),
+                            "input_shape": shape,
+                        }),
+                    }
+                })
+                .collect();
+            serde_json::json!({
+                "ok": true,
+                "container_bytes": blob.len(),
+                "runs": runs,
+            })
+        }
+
         _ => serde_json::json!({
             "error": format!("unknown method: {method}")
         }),
@@ -748,6 +1052,18 @@ mod tests {
 
     fn call(method: &str, params: serde_json::Value) -> serde_json::Value {
         dispatch(method, &params)
+    }
+
+    #[test]
+    fn loopback_detection_gates_remote_bind() {
+        // Loopback / localhost are safe (no gate).
+        for a in ["127.0.0.1:9876", "127.0.0.1", "localhost:9876", "[::1]:9876", "::1"] {
+            assert!(!is_non_loopback(a), "{a} should be loopback");
+        }
+        // Wildcard / routable hosts are gated.
+        for a in ["0.0.0.0:9876", "0.0.0.0", "[::]:9876", "::", "192.168.1.10:9876", "example.com:80"] {
+            assert!(is_non_loopback(a), "{a} should be non-loopback");
+        }
     }
 
     fn src_params(source: &str) -> serde_json::Value {
@@ -1012,5 +1328,177 @@ mod tests {
     fn test_unknown_method() {
         let r = call("nonexistent/method", serde_json::json!({}));
         assert!(r.get("error").is_some());
+    }
+
+    // ── ontology ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_ontology_full_returns_all_sections() {
+        let r = call("ontology/full", serde_json::json!({}));
+        assert_eq!(r["ok"], true);
+        let sections = r["sections"].as_object().expect("sections object");
+        for name in [
+            "sigils", "keywords", "ast_kinds", "ir_ops",
+            "op_families", "layer_map", "rap_methods",
+            "heal_patterns", "recovery_stages", "rmib",
+        ] {
+            assert!(sections.contains_key(name), "missing section: {name}");
+        }
+        assert!(r["counts"]["ir_ops"].as_u64().unwrap() > 50);
+    }
+
+    #[test]
+    fn test_ontology_section_ir_ops() {
+        let r = call("ontology/section", serde_json::json!({ "section": "ir_ops" }));
+        assert_eq!(r["ok"], true);
+        assert_eq!(r["section"], "ir_ops");
+        assert!(r["data"].as_array().unwrap().len() > 50);
+    }
+
+    #[test]
+    fn test_ontology_section_unknown() {
+        let r = call("ontology/section", serde_json::json!({ "section": "bogus" }));
+        assert_eq!(r["ok"], false);
+        assert!(r["available"].as_array().unwrap().len() >= 10);
+    }
+
+    // ── build/recover ────────────────────────────────────────────
+
+    #[test]
+    fn test_build_recover_already_valid() {
+        let r = call("build/recover", src_params("+f main() {}"));
+        assert_eq!(r["ok"], true);
+        assert_eq!(r["stage"], "already-valid");
+        assert_eq!(r["changed"], false);
+    }
+
+    #[test]
+    fn test_build_recover_brace_balance() {
+        let r = call("build/recover", src_params("+f main() { v x = 1;"));
+        assert_eq!(r["ok"], true);
+        let stage = r["stage"].as_str().unwrap();
+        assert!(
+            matches!(stage, "structural-balance" | "pattern-heal"),
+            "stage was {stage}"
+        );
+        assert_eq!(r["changed"], true);
+    }
+
+    #[test]
+    fn test_build_recover_failed_returns_original() {
+        let r = call("build/recover", src_params("@@@!!!###"));
+        assert_eq!(r["ok"], false);
+        assert_eq!(r["stage"], "failed");
+        assert_eq!(r["changed"], false);
+    }
+
+    // ── pipeline/recover-and-encode ─────────────────────────────
+
+    #[test]
+    fn test_pipeline_recover_and_encode_clean_source() {
+        let src = "net tiny { layer fc: Linear(8, 4); forward { fc } }";
+        let r = call("pipeline/recover-and-encode", src_params(src));
+        assert_eq!(r["ok"], true);
+        assert_eq!(r["recover_stage"], "already-valid");
+        assert_eq!(r["changed"], false);
+        assert!(r["rmib_hex"].as_str().unwrap().starts_with("524d4942"));
+    }
+
+    #[test]
+    fn test_pipeline_recover_and_encode_brace_balance() {
+        // Source missing closing brace — structural-balance saves it,
+        // then we encode the net.
+        let src = "net tiny { layer fc: Linear(8, 4); forward { fc } ";
+        let r = call("pipeline/recover-and-encode", src_params(src));
+        assert_eq!(r["ok"], true);
+        let stage = r["recover_stage"].as_str().unwrap();
+        assert!(
+            matches!(stage, "structural-balance" | "pattern-heal"),
+            "stage was {stage}"
+        );
+        assert_eq!(r["changed"], true);
+        assert!(r["container_bytes"].as_u64().unwrap() > 0);
+    }
+
+    #[test]
+    fn test_pipeline_recover_and_encode_unrecoverable() {
+        let r = call("pipeline/recover-and-encode", src_params("@@@!!!###"));
+        assert_eq!(r["ok"], false);
+        assert_eq!(r["stage"], "failed");
+        assert!(r["error"].as_str().unwrap().contains("refine"));
+    }
+
+    // ── application/rmib transport ──────────────────────────────
+
+    const RMIB_NET: &str = "net tiny { layer fc: Linear(8, 4); forward { fc } }";
+
+    #[test]
+    fn test_rmil_encode_returns_container() {
+        let r = call("rmil/encode", src_params(RMIB_NET));
+        assert_eq!(r["ok"], true);
+        assert_eq!(r["magic"], "RMIB");
+        let bytes = r["container_bytes"].as_u64().unwrap();
+        let hex = r["rmib_hex"].as_str().unwrap();
+        assert_eq!(hex.len() as u64, bytes * 2);
+        assert!(hex.starts_with("524d4942")); // "RMIB"
+        let items = r["items"].as_array().unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0]["name"], "tiny");
+    }
+
+    #[test]
+    fn test_rmil_encode_parse_error_surfaces() {
+        let r = call("rmil/encode", src_params("@@@ garbage"));
+        assert_eq!(r["ok"], false);
+        assert!(r["error"]["message"].is_string());
+    }
+
+    #[test]
+    fn test_rmil_encode_decode_round_trip() {
+        let enc = call("rmil/encode", src_params(RMIB_NET));
+        let hex = enc["rmib_hex"].as_str().unwrap().to_string();
+        let dec = call("rmil/decode", serde_json::json!({ "rmib_hex": hex }));
+        assert_eq!(dec["ok"], true);
+        let items = dec["items"].as_array().unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0]["name"], "tiny");
+        assert_eq!(items[0]["content_hash"], enc["items"][0]["content_hash"]);
+    }
+
+    #[test]
+    fn test_rmil_decode_bad_hex() {
+        let r = call("rmil/decode", serde_json::json!({ "rmib_hex": "not hex!!" }));
+        assert_eq!(r["ok"], false);
+        assert!(r["error"].as_str().unwrap().starts_with("hex:"));
+    }
+
+    #[test]
+    fn test_rmil_decode_bad_magic() {
+        // Valid hex but wrong magic bytes.
+        let r = call("rmil/decode", serde_json::json!({ "rmib_hex": "deadbeef" }));
+        assert_eq!(r["ok"], false);
+        assert!(r["error"].as_str().unwrap().contains("magic"));
+    }
+
+    #[test]
+    fn test_rmil_run_dispatches() {
+        let r = call("rmil/run", src_params(RMIB_NET));
+        assert_eq!(r["ok"], true);
+        let runs = r["runs"].as_array().unwrap();
+        assert_eq!(runs.len(), 1);
+        // Status must be one of the three documented values; Linear should
+        // dispatch on the CpuBackend without falling through to stub.
+        let status = runs[0]["status"].as_str().unwrap();
+        assert!(
+            matches!(status, "dispatched" | "stub" | "error"),
+            "unexpected status: {status}"
+        );
+    }
+
+    #[test]
+    fn test_rmil_run_parse_error_surfaces() {
+        let r = call("rmil/run", src_params("@@@ garbage"));
+        assert_eq!(r["ok"], false);
+        assert_eq!(r["stage"], "parse");
     }
 }

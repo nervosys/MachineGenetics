@@ -1,5 +1,5 @@
 > **DEPRECATED**: This specification is superseded by [MECHGEN_SPEC.md](MECHGEN_SPEC.md).
-> The Redox language has been renamed to **Machine Genetic Code (MechGen)**.
+> The Redox language has been renamed to **MachineGenetics (MechGen)**.
 > This file is retained for historical reference only.
 
 # Redox Language Formal Specification

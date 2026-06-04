@@ -8,6 +8,9 @@
 //   - Pure functions (no effect annotation)
 //   - Effect handlers (handle keyword)
 //   - Effect constraints in specs (@fx)
+//   - val / var bindings, extend blocks
+//   - T or E error union types
+//   - guard for early exit, defer for cleanup
 //   - Practical patterns: logging, database, async I/O
 
 use std::io;
@@ -66,9 +69,9 @@ fn fibonacci(n: u64) -> u64 {
     fibonacci(n - 1) + fibonacci(n - 2)
 }
 
-fn reverse<T: Clone>(items: &Vec<T>) -> Vec<T> {
-    let mut result: Vec<T> = Vec::new();
-    let mut i = items.len();
+fn reverse[T: Clone](items: &[T]~) -> [T]~ {
+    var result: [T]~ = [T]~.new();
+    var i = items.len();
     for _ in 0..items.len() {
         i = i - 1;
         result.push(items[i].clone());
@@ -139,8 +142,8 @@ fn process_request(user_id: &str) / io + db + log -> Result<String, String> {
 // Generic functions can be polymorphic over an effect variable `E`,
 // so they work with any effect set determined by their arguments.
 
-fn transform<T, U, E>(items: &Vec<T>, func: fn(&T) -> E U) -> E Vec<U> {
-    let mut results: Vec<U> = Vec::new();
+fn transform[T, U, E](items: &[T]~, func: fn(&T) -> E U) -> E [U]~ {
+    var results: [U]~ = [U]~.new();
     for item in items {
         results.push(func(item));
     }
@@ -152,14 +155,14 @@ fn transform<T, U, E>(items: &Vec<T>, func: fn(&T) -> E U) -> E Vec<U> {
 // effect.
 
 fn demo_polymorphism() / io {
-    let numbers = vec![1, 2, 3, 4, 5];
+    val numbers = [1, 2, 3, 4, 5];
 
     // Pure usage — transform inherits no effects.
-    let doubled = transform(&numbers, |n| n * 2);
+    val doubled = transform(&numbers, |n| n * 2);
     println!("Doubled: {doubled:?}");
 
     // Effectful usage — transform inherits / io from the closure.
-    let printed = transform(&numbers, |n| {
+    val printed = transform(&numbers, |n| {
         println!("  processing {n}");
         n * 10
     });
@@ -174,12 +177,10 @@ fn demo_polymorphism() / io {
 // implementations.  This separates policy from mechanism.
 
 // A console-based log handler.
-struct ConsoleLogger;
+data ConsoleLogger
 
-impl ConsoleLogger {
-    fn new() -> ConsoleLogger {
-        ConsoleLogger
-    }
+extend ConsoleLogger {
+    fn new() -> ConsoleLogger = ConsoleLogger
 }
 
 handle log for ConsoleLogger {
@@ -195,14 +196,10 @@ handle log for ConsoleLogger {
 }
 
 // An in-memory database handler (useful for testing).
-struct MemoryDb {
-    store: HashMap<String, String>,
-}
+data MemoryDb(store: {String: String})
 
-impl MemoryDb {
-    fn new() -> MemoryDb {
-        MemoryDb { store: HashMap::new() }
-    }
+extend MemoryDb {
+    fn new() -> MemoryDb = MemoryDb { store: {String: String}.new() }
 }
 
 handle db for MemoryDb {
@@ -218,9 +215,7 @@ handle db for MemoryDb {
 }
 
 // A deterministic RNG handler (repeatable tests).
-struct FixedRng {
-    value: u64,
-}
+data FixedRng(value: u64)
 
 handle rng for FixedRng {
     fn next_u64() -> u64 {
@@ -238,7 +233,7 @@ handle rng for FixedRng {
 // Specs can use @fx to constrain which effects a conforming
 // implementation may use.
 
-spec PureSort<T: Ord> {
+spec PureSort[T: Ord] {
     @fx();                          // must be pure — no effects allowed
     @req(items.len() > 0);
     @ens(|result| result.len() == items.len());
@@ -259,12 +254,7 @@ spec DatabaseService {
 //   - Presentation layer adds io
 
 // Domain layer — pure business rules.
-struct Order {
-    id: u64,
-    item: String,
-    quantity: u32,
-    price_cents: u64,
-}
+data Order(id: u64, item: String, quantity: u32, price_cents: u64)
 
 fn calculate_total(order: &Order) -> u64 {
     order.quantity as u64 * order.price_cents
@@ -274,21 +264,17 @@ fn apply_discount(total: u64, percent: u32) -> u64 {
     total - (total * percent as u64 / 100)
 }
 
-fn validate_order(order: &Order) -> Result<(), String> {
-    if order.quantity == 0 {
-        return Err("quantity must be > 0".to_string());
-    }
-    if order.price_cents == 0 {
-        return Err("price must be > 0".to_string());
-    }
+fn validate_order(order: &Order) -> () or String {
+    guard order.quantity != 0 else { return Err("quantity must be > 0".to_string()); }
+    guard order.price_cents != 0 else { return Err("price must be > 0".to_string()); }
     Ok(())
 }
 
 // Application layer — orchestrated with db + log effects.
-fn save_order(order: &Order) / db + log -> Result<(), String> {
+fn save_order(order: &Order) / db + log -> () or String {
     validate_order(order)?;
-    let total = calculate_total(order);
-    let discounted = apply_discount(total, 10);
+    val total = calculate_total(order);
+    val discounted = apply_discount(total, 10);
 
     db::put(
         &format!("{order.id}"),
@@ -300,8 +286,11 @@ fn save_order(order: &Order) / db + log -> Result<(), String> {
 
 // Presentation layer — adds io for user interaction.
 fn print_receipt(order: &Order) / io + db + log {
-    let total = calculate_total(order);
-    let discounted = apply_discount(total, 10);
+    val total = calculate_total(order);
+    val discounted = apply_discount(total, 10);
+
+    // defer: log after receipt printing completes.
+    defer log::info(&format!("Receipt printed for order {order.id}"));
 
     println!("╔══════════════════════════╗");
     println!("║       RECEIPT            ║");
@@ -313,8 +302,6 @@ fn print_receipt(order: &Order) / io + db + log {
     println!("║ Discount: 10%            ║");
     println!("║ Total:    {discounted:<15}║");
     println!("╚══════════════════════════╝");
-
-    log::info(&format!("Receipt printed for order {order.id}"));
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -329,7 +316,7 @@ pub fn main() / io {
     println!("-- Pure functions --");
     println!("add(3, 4) = {add(3, 4)}");
     println!("fibonacci(10) = {fibonacci(10)}");
-    let items = vec![1, 2, 3];
+    val items = [1, 2, 3];
     println!("reverse([1,2,3]) = {reverse(&items):?}");
     println!("");
 
@@ -345,10 +332,10 @@ pub fn main() / io {
 
     // §6 + §8 — Handlers + layered architecture.
     println!("-- Layered architecture with handlers --");
-    let mut db_handler = MemoryDb::new();
-    let logger = ConsoleLogger::new();
+    var db_handler = MemoryDb.new();
+    val logger = ConsoleLogger.new();
 
-    let order = Order {
+    val order = Order {
         id: 1001,
         item: "Widget".to_string(),
         quantity: 3,

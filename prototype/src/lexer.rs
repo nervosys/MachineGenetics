@@ -76,7 +76,16 @@ pub enum TokenKind {
     KwBreak,          // break (legacy — canonical is !)
     KwContinue,       // continue (legacy — canonical is >>)
     KwOf,             // of (human mode `for` separator — `each x of list`)
-    KwOr,             // or (human mode `else` — `when cond {} or {}`)
+    KwOr,             // or (error-union type: T or E)
+    KwElse,           // else (if cond {} else {})
+    KwData,           // data (record/sum type with auto-derive)
+    KwVal,            // val (immutable binding — human mode)
+    KwVar,            // var (mutable binding — human mode)
+    KwGuard,          // guard ... else { early-exit }
+    KwDefer,          // defer expr (run on scope exit)
+    KwExtend,         // extend Type { methods }
+    KwIs,             // is (pattern test)
+    Pipe,             // |> (pipeline operator)
     KwOk,             // Ok
     KwErr,            // Err
     KwSome,           // Some
@@ -269,7 +278,13 @@ struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     fn new(source: &'a str) -> Self {
-        Self { source, bytes: source.as_bytes(), pos: 0, line: 1, col: 1 }
+        Self {
+            source,
+            bytes: source.as_bytes(),
+            pos: 0,
+            line: 1,
+            col: 1,
+        }
     }
 
     fn peek(&self) -> Option<u8> {
@@ -323,7 +338,12 @@ impl<'a> Lexer<'a> {
     ) -> Token {
         Token {
             kind,
-            span: Span { offset: start, len: self.pos - start, line: start_line, col: start_col },
+            span: Span {
+                offset: start,
+                len: self.pos - start,
+                line: start_line,
+                col: start_col,
+            },
             text: self.source[start..self.pos].to_string(),
         }
     }
@@ -518,6 +538,10 @@ impl<'a> Lexer<'a> {
             b'|' if self.peek() == Some(b'|') => {
                 self.advance();
                 self.make_token(TokenKind::Or, start, start_line, start_col)
+            }
+            b'|' if self.peek() == Some(b'>') => {
+                self.advance();
+                self.make_token(TokenKind::Pipe, start, start_line, start_col)
             }
             b'|' if self.peek() == Some(b'=') => {
                 self.advance();
@@ -761,9 +785,30 @@ impl<'a> Lexer<'a> {
         start_col: usize,
         kind: TokenKind,
     ) -> Token {
+        // F-strings (FormatString, PrintString, EprintString) carry
+        // `{...}` interpolations whose argument can itself contain
+        // `"`, `,`, etc. While inside a top-level `{...}` group, the
+        // outer `"` MUST NOT close the string. Track brace depth so
+        // those inner tokens are passed through.
+        let is_interp = matches!(
+            kind,
+            TokenKind::FormatString | TokenKind::PrintString | TokenKind::EprintString
+        );
+        let mut interp_depth: u32 = 0;
         loop {
             match self.advance() {
-                Some(b'"') => break,
+                Some(b'{') if is_interp => {
+                    // `{{` is a literal `{` escape — skip both.
+                    if self.peek() == Some(b'{') {
+                        self.advance();
+                    } else {
+                        interp_depth += 1;
+                    }
+                }
+                Some(b'}') if is_interp && interp_depth > 0 => {
+                    interp_depth -= 1;
+                }
+                Some(b'"') if interp_depth == 0 => break,
                 Some(b'\\') => {
                     self.advance();
                 }
@@ -811,7 +856,11 @@ impl<'a> Lexer<'a> {
                     self.lex_int_suffix();
                     return self.make_token(TokenKind::IntLiteral, start, start_line, start_col);
                 }
-                Some(b'b') if self.peek2().is_some_and(|c| c == b'0' || c == b'1' || c == b'_') => {
+                Some(b'b')
+                    if self
+                        .peek2()
+                        .is_some_and(|c| c == b'0' || c == b'1' || c == b'_') =>
+                {
                     self.advance();
                     while let Some(b) = self.peek() {
                         if b == b'0' || b == b'1' || b == b'_' {
@@ -874,9 +923,16 @@ impl<'a> Lexer<'a> {
             let text = &self.source[start..self.pos];
             if (text == "0" || text == "1") && self.peek() == Some(b'b') {
                 // Check that next char after 'b' is not alphanumeric (not 0b... binary literal)
-                if !self.peek2().is_some_and(|c| c.is_ascii_alphanumeric() || c == b'_') {
+                if !self
+                    .peek2()
+                    .is_some_and(|c| c.is_ascii_alphanumeric() || c == b'_')
+                {
                     self.advance();
-                    let kind = if text == "1" { TokenKind::True } else { TokenKind::False };
+                    let kind = if text == "1" {
+                        TokenKind::True
+                    } else {
+                        TokenKind::False
+                    };
                     return self.make_token(kind, start, start_line, start_col);
                 }
             }
@@ -945,7 +1001,11 @@ impl<'a> Lexer<'a> {
         }
         if (text == "f" || text == "p") && self.peek() == Some(b'"') {
             self.advance(); // consume opening quote
-            let kind = if text == "f" { TokenKind::FormatString } else { TokenKind::PrintString };
+            let kind = if text == "f" {
+                TokenKind::FormatString
+            } else {
+                TokenKind::PrintString
+            };
             return self.lex_string(start, start_line, start_col, kind);
         }
 
@@ -969,32 +1029,32 @@ impl<'a> Lexer<'a> {
             "s" => TokenKind::Ident, // 's' is a type, not a keyword; parser handles
 
             // ── Human-mode keywords (Rust-compatible) ─────────────────
-            "fn" => TokenKind::KwF,            // function
-            "pub" => TokenKind::Plus,          // public — same as agent's +
-            "let" => TokenKind::KwV,           // immutable binding (let)
-            "mut" => TokenKind::KwM,           // mutable — qualifier on let/&
-            "const" => TokenKind::KwC,         // const
-            "struct" => TokenKind::KwS,        // struct
-            "enum" => TokenKind::KwE,          // enum
-            "trait" => TokenKind::KwT,         // trait
-            "impl" => TokenKind::KwI,          // impl
-            "mod" => TokenKind::KwMod,         // module
-            "use" => TokenKind::KwUse,         // import
-            "async" => TokenKind::KwAf,        // async
-            "if" => TokenKind::Question,       // if
-            "match" => TokenKind::QuestionEq,  // match
-            "for" => TokenKind::At,            // for loop
-            "in" => TokenKind::KwOf,           // for separator (for x in list)
-            "while" => TokenKind::AtW,         // while
-            "else" => TokenKind::KwOr,         // else (if cond {} else {})
-            "where" => TokenKind::TildeArrow,  // where clause
+            "fn" => TokenKind::KwF,           // function
+            "pub" => TokenKind::Plus,         // public — same as agent's +
+            "let" => TokenKind::KwV,          // immutable binding (let)
+            "mut" => TokenKind::KwM,          // mutable — qualifier on let/&
+            "const" => TokenKind::KwC,        // const
+            "struct" => TokenKind::KwS,       // struct
+            "enum" => TokenKind::KwE,         // enum
+            "trait" => TokenKind::KwT,        // trait
+            "impl" => TokenKind::KwI,         // impl
+            "mod" => TokenKind::KwMod,        // module
+            "use" => TokenKind::KwUse,        // import
+            "async" => TokenKind::KwAf,       // async
+            "if" => TokenKind::Question,      // if
+            "match" => TokenKind::QuestionEq, // match
+            "for" => TokenKind::At,           // for loop
+            "in" => TokenKind::KwOf,          // for separator (for x in list)
+            "while" => TokenKind::AtW,        // while
+            "else" => TokenKind::KwElse,      // else (if cond {} else {})
+            "where" => TokenKind::TildeArrow, // where clause
 
             // ── Multi-char keywords (shared) ─────────────────────
             "loop" => TokenKind::KwLoop,
             "break" => TokenKind::KwBreak,
             "continue" => TokenKind::KwContinue,
             "return" => TokenKind::KwRet,
-            "ret" => TokenKind::KwRet,         // agent mode alias
+            "ret" => TokenKind::KwRet, // agent mode alias
             "yield" => TokenKind::KwYield,
             "yl" => TokenKind::KwYield, // agent mode alias
             "effect" => TokenKind::KwEffect,
@@ -1011,6 +1071,22 @@ impl<'a> Lexer<'a> {
             "unsafe" => TokenKind::KwUnsafe,
             "type" => TokenKind::KwType,
             "static" => TokenKind::KwStatic,
+
+            // ── New human-mode keywords ────────────────────────────
+            "data" => TokenKind::KwData,
+            "val" => TokenKind::KwVal,
+            "var" => TokenKind::KwVar,
+            "guard" => TokenKind::KwGuard,
+            "defer" => TokenKind::KwDefer,
+            "extend" => TokenKind::KwExtend,
+            "is" => TokenKind::KwIs,
+            "or" => TokenKind::KwOr,
+
+            // ── Agent-mode aliases for new keywords ────────────────
+            "D" => TokenKind::KwData,
+            "gd" => TokenKind::KwGuard,
+            "df" => TokenKind::KwDefer,
+            "xd" => TokenKind::KwExtend,
 
             // Built-in result/option variants
             "Ok" => TokenKind::KwOk,
@@ -1290,7 +1366,12 @@ mod tests {
             .collect();
         assert_eq!(
             kinds,
-            vec![TokenKind::KwKb, TokenKind::KwFact, TokenKind::KwRule, TokenKind::KwQuery,]
+            vec![
+                TokenKind::KwKb,
+                TokenKind::KwFact,
+                TokenKind::KwRule,
+                TokenKind::KwQuery,
+            ]
         );
     }
 
@@ -1325,7 +1406,10 @@ mod tests {
             .filter(|t| t.kind != TokenKind::Whitespace && t.kind != TokenKind::Eof)
             .map(|t| t.kind)
             .collect();
-        assert_eq!(kinds, vec![TokenKind::KwRl, TokenKind::KwPolicy, TokenKind::KwReward]);
+        assert_eq!(
+            kinds,
+            vec![TokenKind::KwRl, TokenKind::KwPolicy, TokenKind::KwReward]
+        );
     }
 
     #[test]

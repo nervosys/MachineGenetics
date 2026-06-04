@@ -1,0 +1,4453 @@
+{
+  "builtin_framework": "Framewerx (rmi crate) — the built-in agentic-first AI framework",
+  "counts": {
+    "ast_kinds": 18,
+    "bench_backends": 4,
+    "ci_floors": 6,
+    "cli_flags": 17,
+    "docs": 7,
+    "effects": 15,
+    "examples": 10,
+    "framewerx_modules": 256,
+    "hardware_accelerators": 8,
+    "ir_ops": 107,
+    "keywords": 12,
+    "op_families": 7,
+    "project_layout": 22,
+    "rap_methods": 37,
+    "recovery_stages": 7,
+    "sigils": 38,
+    "types": 30,
+    "wrapper_protocol": 9
+  },
+  "ok": true,
+  "organization": "NERVOSYS",
+  "project": "MachineGenetics",
+  "schema_version": 1,
+  "sections": {
+    "ast_kinds": [
+      {
+        "kind": "Function",
+        "summary": "Function definition (incl. async / unsafe variants)"
+      },
+      {
+        "kind": "Struct",
+        "summary": "Struct definition"
+      },
+      {
+        "kind": "Enum",
+        "summary": "Enum definition"
+      },
+      {
+        "kind": "Trait",
+        "summary": "Trait definition"
+      },
+      {
+        "kind": "Impl",
+        "summary": "impl block"
+      },
+      {
+        "kind": "Mod",
+        "summary": "Module declaration"
+      },
+      {
+        "kind": "Use",
+        "summary": "use import"
+      },
+      {
+        "kind": "Const",
+        "summary": "const declaration"
+      },
+      {
+        "kind": "Static",
+        "summary": "static declaration"
+      },
+      {
+        "kind": "TypeAlias",
+        "summary": "type alias"
+      },
+      {
+        "kind": "NetDef",
+        "summary": "AI: neural network (RMIL-routed)"
+      },
+      {
+        "kind": "KbDef",
+        "summary": "AI: symbolic knowledge base (RMIL-routed)"
+      },
+      {
+        "kind": "AgentDef",
+        "summary": "AI: agent role (RMIL-routed)"
+      },
+      {
+        "kind": "SwarmDef",
+        "summary": "AI: swarm topology (RMIL-routed)"
+      },
+      {
+        "kind": "TrainDef",
+        "summary": "AI: training pipeline (RMIL-routed)"
+      },
+      {
+        "kind": "EvolveDef",
+        "summary": "AI: evolutionary search (RMIL-routed)"
+      },
+      {
+        "kind": "EffectDef",
+        "summary": "Effect declaration"
+      },
+      {
+        "kind": "SpecBlock",
+        "summary": "Spec / contract block"
+      }
+    ],
+    "bench_backends": [
+      {
+        "mode": "default",
+        "name": "file-oracle",
+        "purpose": "Echo the corpus reference solution. Upper bound on parse rate."
+      },
+      {
+        "mode": "deterministic_noise",
+        "name": "perturbed",
+        "purpose": "Reference + 1 of 8 mutations (drop-`;`, drop-`}`, drop-`)`, swap let/mut, stray `,`, truncate-75%, dup-`;`, swap-words). Simulates near-correct LLM output."
+      },
+      {
+        "mode": "external",
+        "name": "subprocess:<cmd>",
+        "purpose": "Spawn external process per task. stdin=task description, stdout=MechGen source. Plug in a real LLM here."
+      },
+      {
+        "mode": "hybrid",
+        "name": "perturbed+refine:<cmd>",
+        "purpose": "perturbed for propose, subprocess for refine. Measures Stage-3 contribution layered on the perturbed baseline."
+      }
+    ],
+    "ci_floors": [
+      {
+        "name": "MIN_PARSE",
+        "protects": "File-oracle parse rate (100-task corpus) must not regress",
+        "threshold": ">= 98"
+      },
+      {
+        "name": "file-oracle structural-heal",
+        "protects": "Trim-bad-token mechanism (P51) must keep contributing",
+        "threshold": ">= 2"
+      },
+      {
+        "name": "MIN_HEAL",
+        "protects": "Perturbed-8 pattern-heal recovery count must not regress",
+        "threshold": ">= 40"
+      },
+      {
+        "name": "refine smoke",
+        "protects": "Stage-3 refine wrapper protocol must fire end-to-end",
+        "threshold": "> 0"
+      },
+      {
+        "name": "subprocess echo smoke",
+        "protects": "Subprocess agent backend must be invocable",
+        "threshold": "no-op"
+      },
+      {
+        "name": "native-lexer ratio",
+        "protects": "MechGen text size must stay within 10% of equivalent Rust",
+        "threshold": "<= 1.100"
+      }
+    ],
+    "cli_flags": [
+      {
+        "flag": "--rap",
+        "purpose": "Start the RAP JSON-RPC server on the given addr (default 127.0.0.1:9876)",
+        "takes_path": false
+      },
+      {
+        "flag": "--emit-ontology",
+        "purpose": "Dump the complete ontology to disk as static JSON",
+        "takes_path": true
+      },
+      {
+        "flag": "--check",
+        "purpose": "Lex + parse + resolve; report diagnostics",
+        "takes_path": true
+      },
+      {
+        "flag": "--fmt-compact",
+        "purpose": "Reformat source in agent-canonical sigil mode",
+        "takes_path": true
+      },
+      {
+        "flag": "--fmt-expand",
+        "purpose": "Reformat source in human-readable keyword mode",
+        "takes_path": true
+      },
+      {
+        "flag": "--target=rmil",
+        "purpose": "Print per-item RMIL stats (nodes/depth/hash/bytes)",
+        "takes_path": true
+      },
+      {
+        "flag": "--target=rmil-bytes",
+        "purpose": "Encode RMIL-routed items to a binary RMIB container",
+        "takes_path": true
+      },
+      {
+        "flag": "--from=rmil-bytes",
+        "purpose": "Decode a RMIB container back to MechGen view",
+        "takes_path": true
+      },
+      {
+        "flag": "--run=rmil-bytes",
+        "purpose": "Decode RMIB and dispatch each item on CpuBackend",
+        "takes_path": true
+      },
+      {
+        "flag": "--target=rmil-generate",
+        "purpose": "Autoregressive generation from a trained checkpoint",
+        "takes_path": true
+      },
+      {
+        "flag": "--target=rmil-infer",
+        "purpose": "Inference over a `train` block's saved weights",
+        "takes_path": true
+      },
+      {
+        "flag": "--target=rmil-train",
+        "purpose": "Train every `train` block in the module",
+        "takes_path": true
+      },
+      {
+        "flag": "--target=rmil-compute",
+        "purpose": "Forward pass without training over RMIL items",
+        "takes_path": true
+      },
+      {
+        "flag": "--target=rmil-run",
+        "purpose": "End-to-end run of RMIL-routed items",
+        "takes_path": true
+      },
+      {
+        "flag": "--pipeline",
+        "purpose": "Run the full lex+parse+resolve+effects+verify pipeline",
+        "takes_path": true
+      },
+      {
+        "flag": "--backend=<name>",
+        "purpose": "Select hardware accelerator for dispatch (default: cpu). See ontology.hardware_accelerators for the catalog.",
+        "takes_path": false
+      },
+      {
+        "flag": "--backends-file=<path>",
+        "purpose": "Register additional backend descriptors at runtime from a JSON file. Stacks with RDX_BACKENDS_PATH env var and ~/.mechgen/backends.json. Schema: [{ name, family, vendor, requires, summary, available_at_runtime, tags }].",
+        "takes_path": true
+      }
+    ],
+    "docs": [
+      {
+        "audience": "human",
+        "path": "UNIFICATION.md",
+        "purpose": "Per-phase architecture history and final-state grid"
+      },
+      {
+        "audience": "human/agent",
+        "path": "benchmarks/STATUS.md",
+        "purpose": "One-page current-state snapshot"
+      },
+      {
+        "audience": "agent",
+        "path": "MECHGEN_ONTOLOGY.json",
+        "purpose": "This ontology as static JSON (agent bootstrap)"
+      },
+      {
+        "audience": "agent",
+        "path": "framework/framewerx/README.md",
+        "purpose": "Framewerx-MG architecture (JAX:FLAX :: RMI:Framewerx-MG)"
+      },
+      {
+        "audience": "agent",
+        "path": "scripts/agent_wrappers/README.md",
+        "purpose": "Subprocess wrapper protocol specification"
+      },
+      {
+        "audience": "human/agent",
+        "path": "MECHGEN_SPEC.md",
+        "purpose": "Language specification: sigils, keywords, grammar"
+      },
+      {
+        "audience": "agent/reference",
+        "path": "../../utilities/IronAccelerator/",
+        "purpose": "External reference: production HW-agnostic driver substrate + per-model accelerator ontology (NVIDIA / AMD / Apple / Qualcomm / Intel / Google / AWS / open APIs). Drill in for model-specific guidance; MechGen's hardware_accelerators section stays at the backend-family level."
+      }
+    ],
+    "effects": [
+      {
+        "name": "@fx",
+        "purpose": "Effect list: enumerate side effects the body may produce. `@fx()` = pure.",
+        "slot": "spec/fn"
+      },
+      {
+        "name": "@req",
+        "purpose": "Precondition: predicate over parameters; checked at entry",
+        "slot": "spec/fn"
+      },
+      {
+        "name": "@ens",
+        "purpose": "Postcondition: predicate over result; checked at exit",
+        "slot": "spec/fn"
+      },
+      {
+        "name": "@inv",
+        "purpose": "Invariant: predicate that must hold across all methods",
+        "slot": "spec/struct"
+      },
+      {
+        "name": "@perf",
+        "purpose": "Performance contract: latency / throughput target",
+        "slot": "spec/fn"
+      },
+      {
+        "name": "io",
+        "purpose": "Standard input/output",
+        "slot": "effect_name"
+      },
+      {
+        "name": "fs",
+        "purpose": "Filesystem access",
+        "slot": "effect_name"
+      },
+      {
+        "name": "net",
+        "purpose": "Network access",
+        "slot": "effect_name"
+      },
+      {
+        "name": "db",
+        "purpose": "Database access",
+        "slot": "effect_name"
+      },
+      {
+        "name": "log",
+        "purpose": "Logging",
+        "slot": "effect_name"
+      },
+      {
+        "name": "async",
+        "purpose": "Asynchronous execution",
+        "slot": "effect_name"
+      },
+      {
+        "name": "llm",
+        "purpose": "LLM invocation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "tools",
+        "purpose": "External tool use",
+        "slot": "effect_name"
+      },
+      {
+        "name": "rand",
+        "purpose": "Nondeterministic randomness",
+        "slot": "effect_name"
+      },
+      {
+        "name": "time",
+        "purpose": "Wall-clock access",
+        "slot": "effect_name"
+      }
+    ],
+    "examples": [
+      {
+        "bytes": 35,
+        "description": "Minimal public function returning a string literal.",
+        "exercises": [
+          "+f",
+          "->",
+          "s"
+        ],
+        "name": "hello-world",
+        "source": "+f hello() -> s { \"Hello, World!\" }"
+      },
+      {
+        "bytes": 54,
+        "description": "Immutable and mutable bindings; arithmetic.",
+        "exercises": [
+          "+f",
+          "v",
+          "m"
+        ],
+        "name": "let-bindings",
+        "source": "+f compute() -> i32 { v x = 1; m y = 2; y = x + y; y }"
+      },
+      {
+        "bytes": 69,
+        "description": "Sigil-mode if/else returning a value.",
+        "exercises": [
+          "?",
+          ":"
+        ],
+        "name": "if-else",
+        "source": "+f sign(x: i32) -> i32 { ? x > 0 { 1 } : { ? x < 0 { -1 } : { 0 } } }"
+      },
+      {
+        "bytes": 67,
+        "description": "Match on an Option<T> using ?T sugar.",
+        "exercises": [
+          "?=",
+          "?T",
+          "Some",
+          "None"
+        ],
+        "name": "match-option",
+        "source": "+f opt_or_zero(o: ?i32) -> i32 { ?= o { Some(n) => n, None => 0 } }"
+      },
+      {
+        "bytes": 82,
+        "description": "Struct definition with an impl block. Uses @T sigil for struct literal.",
+        "exercises": [
+          "S",
+          "I",
+          "+f",
+          "_T",
+          "@T"
+        ],
+        "name": "struct-impl",
+        "source": "S Point { x: i32, y: i32 } I Point { +f origin() -> _T { @Point { x: 0, y: 0 } } }"
+      },
+      {
+        "bytes": 68,
+        "description": "Iterate a range using `for` keyword (Phase 56: range in iter position).",
+        "exercises": [
+          "+f",
+          "m",
+          "for",
+          ".."
+        ],
+        "name": "for-loop",
+        "source": "+f sum_to(n: i32) -> i32 { m s = 0; for i in 0..n { s = s + i; } s }"
+      },
+      {
+        "bytes": 51,
+        "description": "Minimal neural net: one Linear layer (lowers to RMIL).",
+        "exercises": [
+          "net",
+          "layer",
+          "forward"
+        ],
+        "name": "net-linear",
+        "source": "net tiny { layer fc: Linear(8, 4); forward { fc } }"
+      },
+      {
+        "bytes": 75,
+        "description": "Linear + ReLU chain inside a forward pass.",
+        "exercises": [
+          "net",
+          "layer",
+          "forward"
+        ],
+        "name": "net-activation-chain",
+        "source": "net mlp { layer fc1: Linear(16, 8); layer act: ReLU; forward { act(fc1) } }"
+      },
+      {
+        "bytes": 92,
+        "description": "Symbolic knowledge base with facts and a rule (lowers to RMIL).",
+        "exercises": [
+          "kb",
+          "fact",
+          "rule"
+        ],
+        "name": "kb-rule",
+        "source": "kb FamilyKb { fact parent(a, b); fact parent(b, c); rule grandparent(x: i32, y: i32) { x } }"
+      },
+      {
+        "bytes": 46,
+        "description": "Agent role declaration with required capabilities.",
+        "exercises": [
+          "agent"
+        ],
+        "name": "agent-role",
+        "source": "agent Bot { capabilities: [net, read_source] }"
+      }
+    ],
+    "framewerx_modules": [
+      {
+        "category": "trait",
+        "name": "Module",
+        "path": "framework/framewerx/src/module.mg",
+        "summary": "Base trait: forward(self, Tensor) -> Tensor"
+      },
+      {
+        "category": "composition",
+        "name": "Sequential",
+        "path": "framework/framewerx/src/module.mg",
+        "summary": "Apply a list of modules left-to-right"
+      },
+      {
+        "category": "composition",
+        "name": "Residual",
+        "path": "framework/framewerx/src/module.mg",
+        "summary": "y = x + f(x); standard transformer block pattern"
+      },
+      {
+        "category": "composition",
+        "name": "Branch",
+        "path": "framework/framewerx/src/module.mg",
+        "summary": "Parallel: apply N modules to same input, return tuple"
+      },
+      {
+        "category": "layer",
+        "name": "Linear",
+        "path": "framework/framewerx/src/layers/linear.mg",
+        "summary": "Affine transform y = xW^T + b; lowers to opcode 0x0002"
+      },
+      {
+        "category": "layer",
+        "name": "Conv2D",
+        "path": "framework/framewerx/src/layers/conv.mg",
+        "summary": "2-D convolution; lowers to opcode 0x0003"
+      },
+      {
+        "category": "layer",
+        "name": "MaxPool",
+        "path": "framework/framewerx/src/layers/conv.mg",
+        "summary": "Spatial max pooling"
+      },
+      {
+        "category": "layer",
+        "name": "AvgPool",
+        "path": "framework/framewerx/src/layers/conv.mg",
+        "summary": "Spatial average pooling"
+      },
+      {
+        "category": "layer",
+        "name": "GlobalAvgPool",
+        "path": "framework/framewerx/src/layers/conv.mg",
+        "summary": "Global average pooling over spatial dims"
+      },
+      {
+        "category": "embedding",
+        "name": "Embedding",
+        "path": "framework/framewerx/src/layers/embedding.mg",
+        "summary": "Token embedding table; opcode 0x0005"
+      },
+      {
+        "category": "embedding",
+        "name": "PositionalEmbedding",
+        "path": "framework/framewerx/src/layers/embedding.mg",
+        "summary": "Sinusoidal positional embedding (frozen at init)"
+      },
+      {
+        "category": "embedding",
+        "name": "LearnedPositionEmbedding",
+        "path": "framework/framewerx/src/layers/embedding.mg",
+        "summary": "Trainable positional embedding table"
+      },
+      {
+        "category": "embedding",
+        "name": "RotaryEmbedding",
+        "path": "framework/framewerx/src/layers/embedding.mg",
+        "summary": "Rotary position embedding (RoPE) for attention"
+      },
+      {
+        "category": "regularisation",
+        "name": "Dropout",
+        "path": "framework/framewerx/src/layers/dropout.mg",
+        "summary": "Stochastic activation dropout; opcode 0x0006"
+      },
+      {
+        "category": "regularisation",
+        "name": "Dropout2D",
+        "path": "framework/framewerx/src/layers/dropout.mg",
+        "summary": "Spatial dropout: drops entire feature maps"
+      },
+      {
+        "category": "regularisation",
+        "name": "DropPath",
+        "path": "framework/framewerx/src/layers/dropout.mg",
+        "summary": "Stochastic depth: drops residual branches"
+      },
+      {
+        "category": "activation",
+        "name": "ReLU",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "max(0, x); opcode 0x0010"
+      },
+      {
+        "category": "activation",
+        "name": "GELU",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "Gaussian Error Linear Unit; opcode 0x0011"
+      },
+      {
+        "category": "activation",
+        "name": "SiLU",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "x * sigmoid(x); opcode 0x0012"
+      },
+      {
+        "category": "activation",
+        "name": "Sigmoid",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "1 / (1 + exp(-x)); opcode 0x0013"
+      },
+      {
+        "category": "activation",
+        "name": "Tanh",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "Hyperbolic tangent; opcode 0x0014"
+      },
+      {
+        "category": "activation",
+        "name": "Softmax",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "Softmax over a chosen axis; opcode 0x0007"
+      },
+      {
+        "category": "activation",
+        "name": "SELU",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "Self-normalising scaled exponential linear unit"
+      },
+      {
+        "category": "activation",
+        "name": "ELU",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "Exponential linear unit"
+      },
+      {
+        "category": "activation",
+        "name": "LeakyReLU",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "ReLU with non-zero negative-slope leak"
+      },
+      {
+        "category": "activation",
+        "name": "Mish",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "x * tanh(softplus(x)); opcode 0x0015"
+      },
+      {
+        "category": "activation",
+        "name": "Softplus",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "ln(1 + exp(x)); opcode 0x0016"
+      },
+      {
+        "category": "activation",
+        "name": "HardSwish",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "Edge-friendly Swish approximation"
+      },
+      {
+        "category": "activation",
+        "name": "HardSigmoid",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "Edge-friendly Sigmoid approximation"
+      },
+      {
+        "category": "activation",
+        "name": "SwiGLU",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "Gated linear unit with Swish; used in modern LLMs"
+      },
+      {
+        "category": "activation",
+        "name": "GeGLU",
+        "path": "framework/framewerx/src/layers/activation.mg",
+        "summary": "Gated linear unit with GELU"
+      },
+      {
+        "category": "norm",
+        "name": "LayerNorm",
+        "path": "framework/framewerx/src/layers/norm.mg",
+        "summary": "Layer normalisation; opcode 0x0020"
+      },
+      {
+        "category": "norm",
+        "name": "RMSNorm",
+        "path": "framework/framewerx/src/layers/norm.mg",
+        "summary": "RMS normalisation; opcode 0x0022"
+      },
+      {
+        "category": "norm",
+        "name": "BatchNorm",
+        "path": "framework/framewerx/src/layers/norm.mg",
+        "summary": "Batch normalisation; opcode 0x0021"
+      },
+      {
+        "category": "attention",
+        "name": "Attention",
+        "path": "framework/framewerx/src/layers/attention.mg",
+        "summary": "Multi-head attention; opcode 0x0004"
+      },
+      {
+        "category": "recurrent",
+        "name": "RNNCell",
+        "path": "framework/framewerx/src/layers/recurrent.mg",
+        "summary": "Basic Elman RNN cell"
+      },
+      {
+        "category": "recurrent",
+        "name": "LSTMCell",
+        "path": "framework/framewerx/src/layers/recurrent.mg",
+        "summary": "Long Short-Term Memory cell"
+      },
+      {
+        "category": "recurrent",
+        "name": "GRUCell",
+        "path": "framework/framewerx/src/layers/recurrent.mg",
+        "summary": "Gated Recurrent Unit cell"
+      },
+      {
+        "category": "recurrent",
+        "name": "RNN",
+        "path": "framework/framewerx/src/layers/recurrent.mg",
+        "summary": "Multi-layer RNN with optional bidirectional / dropout"
+      },
+      {
+        "category": "recurrent",
+        "name": "LSTM",
+        "path": "framework/framewerx/src/layers/recurrent.mg",
+        "summary": "Multi-layer LSTM with optional bidirectional / dropout"
+      },
+      {
+        "category": "recurrent",
+        "name": "GRU",
+        "path": "framework/framewerx/src/layers/recurrent.mg",
+        "summary": "Multi-layer GRU with optional bidirectional / dropout"
+      },
+      {
+        "category": "graph",
+        "name": "GCNLayer",
+        "path": "framework/framewerx/src/layers/graph.mg",
+        "summary": "Graph convolution layer (Kipf & Welling)"
+      },
+      {
+        "category": "graph",
+        "name": "GATLayer",
+        "path": "framework/framewerx/src/layers/graph.mg",
+        "summary": "Graph attention layer (Velickovic et al.)"
+      },
+      {
+        "category": "graph",
+        "name": "GraphSAGELayer",
+        "path": "framework/framewerx/src/layers/graph.mg",
+        "summary": "Sampled neighbour aggregation: mean / max"
+      },
+      {
+        "category": "graph",
+        "name": "EdgeConv",
+        "path": "framework/framewerx/src/layers/graph.mg",
+        "summary": "k-NN edge convolution (PointNet, DGCNN)"
+      },
+      {
+        "category": "graph",
+        "name": "GlobalMeanPool",
+        "path": "framework/framewerx/src/layers/graph.mg",
+        "summary": "Graph-level mean readout"
+      },
+      {
+        "category": "state_space",
+        "name": "S4Layer",
+        "path": "framework/framewerx/src/layers/state_space.mg",
+        "summary": "Structured state-space (HiPPO init)"
+      },
+      {
+        "category": "state_space",
+        "name": "S5Layer",
+        "path": "framework/framewerx/src/layers/state_space.mg",
+        "summary": "Parallel scan-based MIMO SSM"
+      },
+      {
+        "category": "state_space",
+        "name": "MambaBlock",
+        "path": "framework/framewerx/src/layers/state_space.mg",
+        "summary": "Selective SSM with input-dependent dt/B/C"
+      },
+      {
+        "category": "state_space",
+        "name": "H3Layer",
+        "path": "framework/framewerx/src/layers/state_space.mg",
+        "summary": "Hybrid SSM/attention layer"
+      },
+      {
+        "category": "architecture",
+        "name": "CNN",
+        "path": "framework/framewerx/src/architectures/cnn.mg",
+        "summary": "Plain CNN: Nx (Conv -> ReLU -> Pool) + head"
+      },
+      {
+        "category": "architecture",
+        "name": "ResNetBlock",
+        "path": "framework/framewerx/src/architectures/cnn.mg",
+        "summary": "Two-conv residual block"
+      },
+      {
+        "category": "architecture",
+        "name": "DepthwiseSeparable",
+        "path": "framework/framewerx/src/architectures/cnn.mg",
+        "summary": "MobileNet-style depthwise+pointwise conv"
+      },
+      {
+        "category": "architecture",
+        "name": "UNet",
+        "path": "framework/framewerx/src/architectures/cnn.mg",
+        "summary": "Encoder-decoder with skip connections"
+      },
+      {
+        "category": "architecture",
+        "name": "TransformerEncoder",
+        "path": "framework/framewerx/src/architectures/transformer.mg",
+        "summary": "Stack of pre-norm encoder blocks"
+      },
+      {
+        "category": "architecture",
+        "name": "TransformerDecoder",
+        "path": "framework/framewerx/src/architectures/transformer.mg",
+        "summary": "GPT-style causal decoder"
+      },
+      {
+        "category": "architecture",
+        "name": "EncoderDecoder",
+        "path": "framework/framewerx/src/architectures/transformer.mg",
+        "summary": "T5/BART-style encoder-decoder with cross-attention"
+      },
+      {
+        "category": "architecture",
+        "name": "ViT",
+        "path": "framework/framewerx/src/architectures/transformer.mg",
+        "summary": "Vision Transformer: patches + position + encoder"
+      },
+      {
+        "category": "architecture",
+        "name": "VAE",
+        "path": "framework/framewerx/src/architectures/generative.mg",
+        "summary": "Variational Autoencoder"
+      },
+      {
+        "category": "architecture",
+        "name": "CVAE",
+        "path": "framework/framewerx/src/architectures/generative.mg",
+        "summary": "Conditional VAE"
+      },
+      {
+        "category": "architecture",
+        "name": "GAN",
+        "path": "framework/framewerx/src/architectures/generative.mg",
+        "summary": "Generator + Discriminator pair"
+      },
+      {
+        "category": "architecture",
+        "name": "WGAN_GP",
+        "path": "framework/framewerx/src/architectures/generative.mg",
+        "summary": "Wasserstein GAN with gradient penalty"
+      },
+      {
+        "category": "architecture",
+        "name": "DDPM",
+        "path": "framework/framewerx/src/architectures/generative.mg",
+        "summary": "Denoising Diffusion Probabilistic Model"
+      },
+      {
+        "category": "architecture",
+        "name": "LatentDiffusion",
+        "path": "framework/framewerx/src/architectures/generative.mg",
+        "summary": "Diffusion in VAE latent space (Stable Diffusion family)"
+      },
+      {
+        "category": "architecture",
+        "name": "GCN",
+        "path": "framework/framewerx/src/architectures/graph_nets.mg",
+        "summary": "Graph Convolutional Network"
+      },
+      {
+        "category": "architecture",
+        "name": "GAT",
+        "path": "framework/framewerx/src/architectures/graph_nets.mg",
+        "summary": "Graph Attention Network"
+      },
+      {
+        "category": "architecture",
+        "name": "GraphSAGE",
+        "path": "framework/framewerx/src/architectures/graph_nets.mg",
+        "summary": "GraphSAGE: sampled aggregation"
+      },
+      {
+        "category": "architecture",
+        "name": "MPNN",
+        "path": "framework/framewerx/src/architectures/graph_nets.mg",
+        "summary": "Message Passing Neural Network base"
+      },
+      {
+        "category": "architecture",
+        "name": "LSTMLanguageModel",
+        "path": "framework/framewerx/src/architectures/sequence.mg",
+        "summary": "Plain LSTM language model"
+      },
+      {
+        "category": "architecture",
+        "name": "Mamba",
+        "path": "framework/framewerx/src/architectures/sequence.mg",
+        "summary": "Selective SSM language model"
+      },
+      {
+        "category": "architecture",
+        "name": "Hyena",
+        "path": "framework/framewerx/src/architectures/sequence.mg",
+        "summary": "Long-convolution sequence model"
+      },
+      {
+        "category": "architecture",
+        "name": "RWKV",
+        "path": "framework/framewerx/src/architectures/sequence.mg",
+        "summary": "Receptance-weighted key-value: hybrid attention+RNN"
+      },
+      {
+        "category": "optimizer",
+        "name": "SGD",
+        "path": "framework/framewerx/src/optim/sgd.mg",
+        "summary": "Stochastic gradient descent with optional momentum"
+      },
+      {
+        "category": "optimizer",
+        "name": "Adam",
+        "path": "framework/framewerx/src/optim/adam.mg",
+        "summary": "Adam: adaptive moment estimation"
+      },
+      {
+        "category": "loss",
+        "name": "MSE",
+        "path": "framework/framewerx/src/loss.mg",
+        "summary": "Mean squared error"
+      },
+      {
+        "category": "loss",
+        "name": "CrossEntropy",
+        "path": "framework/framewerx/src/loss.mg",
+        "summary": "Categorical cross-entropy"
+      },
+      {
+        "category": "loss",
+        "name": "BCE",
+        "path": "framework/framewerx/src/loss.mg",
+        "summary": "Binary cross-entropy"
+      },
+      {
+        "category": "training",
+        "name": "TrainState",
+        "path": "framework/framewerx/src/train.mg",
+        "summary": "Bundles params + optimizer state + step counter"
+      },
+      {
+        "category": "neural_attention",
+        "name": "FlashAttention",
+        "path": "framework/framewerx/src/neural/attention_variants.mg",
+        "summary": "Tiled exact attention with O(N) memory"
+      },
+      {
+        "category": "neural_attention",
+        "name": "SlidingWindowAttention",
+        "path": "framework/framewerx/src/neural/attention_variants.mg",
+        "summary": "Each token sees only window_size tokens behind"
+      },
+      {
+        "category": "neural_attention",
+        "name": "LongformerAttention",
+        "path": "framework/framewerx/src/neural/attention_variants.mg",
+        "summary": "Sliding window + global tokens"
+      },
+      {
+        "category": "neural_attention",
+        "name": "LinearAttention",
+        "path": "framework/framewerx/src/neural/attention_variants.mg",
+        "summary": "O(N) attention via kernel feature maps"
+      },
+      {
+        "category": "neural_attention",
+        "name": "PerformerAttention",
+        "path": "framework/framewerx/src/neural/attention_variants.mg",
+        "summary": "FAVOR+ random-feature attention"
+      },
+      {
+        "category": "neural_attention",
+        "name": "GroupedQueryAttention",
+        "path": "framework/framewerx/src/neural/attention_variants.mg",
+        "summary": "Query heads share KV heads (Llama-2/3)"
+      },
+      {
+        "category": "neural_attention",
+        "name": "MultiQueryAttention",
+        "path": "framework/framewerx/src/neural/attention_variants.mg",
+        "summary": "One KV head shared across all queries"
+      },
+      {
+        "category": "neural_attention",
+        "name": "CrossAttention",
+        "path": "framework/framewerx/src/neural/attention_variants.mg",
+        "summary": "Query from one sequence, KV from another"
+      },
+      {
+        "category": "neural_attention",
+        "name": "KVCache",
+        "path": "framework/framewerx/src/neural/attention_variants.mg",
+        "summary": "Stateful per-layer KV buffer for decoding"
+      },
+      {
+        "category": "moe",
+        "name": "Expert",
+        "path": "framework/framewerx/src/neural/moe.mg",
+        "summary": "Single FF sub-network the router can dispatch to"
+      },
+      {
+        "category": "moe",
+        "name": "TopKRouter",
+        "path": "framework/framewerx/src/neural/moe.mg",
+        "summary": "Picks top-K highest-scoring experts per token"
+      },
+      {
+        "category": "moe",
+        "name": "SwitchRouter",
+        "path": "framework/framewerx/src/neural/moe.mg",
+        "summary": "Switch-Transformer always-top-1 capacity-limited"
+      },
+      {
+        "category": "moe",
+        "name": "ExpertChoiceRouter",
+        "path": "framework/framewerx/src/neural/moe.mg",
+        "summary": "Each expert picks K tokens"
+      },
+      {
+        "category": "moe",
+        "name": "SparseMoE",
+        "path": "framework/framewerx/src/neural/moe.mg",
+        "summary": "Router + N experts + load-balancing loss"
+      },
+      {
+        "category": "moe",
+        "name": "MixtureOfDepths",
+        "path": "framework/framewerx/src/neural/moe.mg",
+        "summary": "Token-level skip via per-block router"
+      },
+      {
+        "category": "adapter",
+        "name": "LoRA",
+        "path": "framework/framewerx/src/neural/adapters.mg",
+        "summary": "Low-rank adapter W' = W + B*A"
+      },
+      {
+        "category": "adapter",
+        "name": "QLoRA",
+        "path": "framework/framewerx/src/neural/adapters.mg",
+        "summary": "LoRA over 4-bit-quantized base weights"
+      },
+      {
+        "category": "adapter",
+        "name": "DoRA",
+        "path": "framework/framewerx/src/neural/adapters.mg",
+        "summary": "Weight-decomposed LoRA"
+      },
+      {
+        "category": "adapter",
+        "name": "IA3",
+        "path": "framework/framewerx/src/neural/adapters.mg",
+        "summary": "Scale activations rather than add weights"
+      },
+      {
+        "category": "adapter",
+        "name": "PrefixTuning",
+        "path": "framework/framewerx/src/neural/adapters.mg",
+        "summary": "Learnable KV prefix per attention layer"
+      },
+      {
+        "category": "adapter",
+        "name": "PromptTuning",
+        "path": "framework/framewerx/src/neural/adapters.mg",
+        "summary": "Learnable virtual tokens prepended to input"
+      },
+      {
+        "category": "adapter",
+        "name": "Adapter",
+        "path": "framework/framewerx/src/neural/adapters.mg",
+        "summary": "Houlsby bottleneck FF block after each sublayer"
+      },
+      {
+        "category": "quantization",
+        "name": "Int8Linear",
+        "path": "framework/framewerx/src/neural/quantization.mg",
+        "summary": "8-bit integer Linear layer"
+      },
+      {
+        "category": "quantization",
+        "name": "Int4Linear",
+        "path": "framework/framewerx/src/neural/quantization.mg",
+        "summary": "4-bit Linear with grouped quantization"
+      },
+      {
+        "category": "quantization",
+        "name": "BitNetLinear",
+        "path": "framework/framewerx/src/neural/quantization.mg",
+        "summary": "Ternary {-1, 0, 1} weights"
+      },
+      {
+        "category": "quantization",
+        "name": "GPTQConfig",
+        "path": "framework/framewerx/src/neural/quantization.mg",
+        "summary": "GPTQ quantization recipe"
+      },
+      {
+        "category": "quantization",
+        "name": "AWQConfig",
+        "path": "framework/framewerx/src/neural/quantization.mg",
+        "summary": "Activation-aware weight quantization"
+      },
+      {
+        "category": "quantization",
+        "name": "MixedPrecision",
+        "path": "framework/framewerx/src/neural/quantization.mg",
+        "summary": "FP8 / BF16 mixed-precision training config"
+      },
+      {
+        "category": "dynamical",
+        "name": "NeuralODE",
+        "path": "framework/framewerx/src/neural/dynamical.mg",
+        "summary": "Continuous-time hidden-state network"
+      },
+      {
+        "category": "dynamical",
+        "name": "NeuralSDE",
+        "path": "framework/framewerx/src/neural/dynamical.mg",
+        "summary": "Stochastic continuous-time model"
+      },
+      {
+        "category": "dynamical",
+        "name": "LiquidCell",
+        "path": "framework/framewerx/src/neural/dynamical.mg",
+        "summary": "Closed-form continuous-time cell"
+      },
+      {
+        "category": "dynamical",
+        "name": "LIF",
+        "path": "framework/framewerx/src/neural/dynamical.mg",
+        "summary": "Leaky Integrate-and-Fire spiking neuron"
+      },
+      {
+        "category": "dynamical",
+        "name": "ALIF",
+        "path": "framework/framewerx/src/neural/dynamical.mg",
+        "summary": "Adaptive LIF with spike-frequency adaptation"
+      },
+      {
+        "category": "dynamical",
+        "name": "ModernHopfield",
+        "path": "framework/framewerx/src/neural/dynamical.mg",
+        "summary": "Modern dense associative memory"
+      },
+      {
+        "category": "dynamical",
+        "name": "SpikingTransformer",
+        "path": "framework/framewerx/src/neural/dynamical.mg",
+        "summary": "Surrogate-gradient spiking transformer"
+      },
+      {
+        "category": "energy",
+        "name": "EBM",
+        "path": "framework/framewerx/src/neural/energy_based.mg",
+        "summary": "Energy-based model with MCMC sampling"
+      },
+      {
+        "category": "energy",
+        "name": "RBM",
+        "path": "framework/framewerx/src/neural/energy_based.mg",
+        "summary": "Restricted Boltzmann Machine"
+      },
+      {
+        "category": "energy",
+        "name": "ScoreModel",
+        "path": "framework/framewerx/src/neural/energy_based.mg",
+        "summary": "Score-based generative (NCSN/VESDE)"
+      },
+      {
+        "category": "energy",
+        "name": "NormalizingFlow",
+        "path": "framework/framewerx/src/neural/energy_based.mg",
+        "summary": "Invertible NN density estimator"
+      },
+      {
+        "category": "energy",
+        "name": "RealNVPCoupling",
+        "path": "framework/framewerx/src/neural/energy_based.mg",
+        "summary": "Real-NVP affine coupling layer"
+      },
+      {
+        "category": "energy",
+        "name": "CNF",
+        "path": "framework/framewerx/src/neural/energy_based.mg",
+        "summary": "Continuous Normalising Flow"
+      },
+      {
+        "category": "memory_aug",
+        "name": "NeuralTuringMachine",
+        "path": "framework/framewerx/src/neural/memory.mg",
+        "summary": "Controller + R/W heads over external memory matrix"
+      },
+      {
+        "category": "memory_aug",
+        "name": "DNC",
+        "path": "framework/framewerx/src/neural/memory.mg",
+        "summary": "Differentiable Neural Computer (DeepMind)"
+      },
+      {
+        "category": "memory_aug",
+        "name": "MemoryNetwork",
+        "path": "framework/framewerx/src/neural/memory.mg",
+        "summary": "Multi-hop attention over a memory bank"
+      },
+      {
+        "category": "memory_aug",
+        "name": "PointerNetwork",
+        "path": "framework/framewerx/src/neural/memory.mg",
+        "summary": "Attention as a pointer to input positions"
+      },
+      {
+        "category": "memory_aug",
+        "name": "VSABinder",
+        "path": "framework/framewerx/src/neural/memory.mg",
+        "summary": "Vector Symbolic Architecture binding (HRR/MAP/FHRR/BSC)"
+      },
+      {
+        "category": "multimodal",
+        "name": "CLIP",
+        "path": "framework/framewerx/src/neural/multimodal.mg",
+        "summary": "Image-text contrastive pretraining"
+      },
+      {
+        "category": "multimodal",
+        "name": "BLIP2",
+        "path": "framework/framewerx/src/neural/multimodal.mg",
+        "summary": "Q-Former bridging vision and LLM"
+      },
+      {
+        "category": "multimodal",
+        "name": "LLaVAProjector",
+        "path": "framework/framewerx/src/neural/multimodal.mg",
+        "summary": "Linear projection from vision to LLM tokens"
+      },
+      {
+        "category": "multimodal",
+        "name": "FlamingoBlock",
+        "path": "framework/framewerx/src/neural/multimodal.mg",
+        "summary": "Gated cross-attention vision<->language"
+      },
+      {
+        "category": "multimodal",
+        "name": "PerceiverIO",
+        "path": "framework/framewerx/src/neural/multimodal.mg",
+        "summary": "Cross-attention bottleneck on fixed latent array"
+      },
+      {
+        "category": "multimodal",
+        "name": "WaveNet",
+        "path": "framework/framewerx/src/neural/multimodal.mg",
+        "summary": "Dilated causal conv stack for audio"
+      },
+      {
+        "category": "multimodal",
+        "name": "Conformer",
+        "path": "framework/framewerx/src/neural/multimodal.mg",
+        "summary": "Conv-augmented transformer for speech"
+      },
+      {
+        "category": "world_model",
+        "name": "JEPA",
+        "path": "framework/framewerx/src/neural/world_models.mg",
+        "summary": "Joint-Embedding Predictive Architecture (LeCun)"
+      },
+      {
+        "category": "world_model",
+        "name": "IJEPA",
+        "path": "framework/framewerx/src/neural/world_models.mg",
+        "summary": "Image JEPA over patch embeddings"
+      },
+      {
+        "category": "world_model",
+        "name": "VJEPA",
+        "path": "framework/framewerx/src/neural/world_models.mg",
+        "summary": "Video JEPA"
+      },
+      {
+        "category": "world_model",
+        "name": "DreamerV3",
+        "path": "framework/framewerx/src/neural/world_models.mg",
+        "summary": "Dreamer-V3 world-model agent"
+      },
+      {
+        "category": "world_model",
+        "name": "SimSiam",
+        "path": "framework/framewerx/src/neural/world_models.mg",
+        "summary": "Self-supervised siamese without negatives"
+      },
+      {
+        "category": "world_model",
+        "name": "BYOL",
+        "path": "framework/framewerx/src/neural/world_models.mg",
+        "summary": "Bootstrap Your Own Latent"
+      },
+      {
+        "category": "world_model",
+        "name": "DINO",
+        "path": "framework/framewerx/src/neural/world_models.mg",
+        "summary": "Self-distillation with no labels"
+      },
+      {
+        "category": "world_model",
+        "name": "MAE",
+        "path": "framework/framewerx/src/neural/world_models.mg",
+        "summary": "Masked Autoencoder (75% patch mask)"
+      },
+      {
+        "category": "diffusion",
+        "name": "DiT",
+        "path": "framework/framewerx/src/neural/diffusion_advanced.mg",
+        "summary": "Diffusion Transformer (Peebles & Xie)"
+      },
+      {
+        "category": "diffusion",
+        "name": "EDMSchedule",
+        "path": "framework/framewerx/src/neural/diffusion_advanced.mg",
+        "summary": "Karras et al. noise schedule"
+      },
+      {
+        "category": "diffusion",
+        "name": "ConsistencyModel",
+        "path": "framework/framewerx/src/neural/diffusion_advanced.mg",
+        "summary": "Direct noise->data mapping"
+      },
+      {
+        "category": "diffusion",
+        "name": "RectifiedFlow",
+        "path": "framework/framewerx/src/neural/diffusion_advanced.mg",
+        "summary": "Straight-line probability paths"
+      },
+      {
+        "category": "diffusion",
+        "name": "FlowMatching",
+        "path": "framework/framewerx/src/neural/diffusion_advanced.mg",
+        "summary": "Continuous flow matching with OT"
+      },
+      {
+        "category": "diffusion",
+        "name": "ClassifierFreeGuidance",
+        "path": "framework/framewerx/src/neural/diffusion_advanced.mg",
+        "summary": "Conditional/unconditional guidance scaling"
+      },
+      {
+        "category": "symbolic_logic",
+        "name": "Term",
+        "path": "framework/framewerx/src/symbolic/logic.mg",
+        "summary": "Variable / Constant / Function term"
+      },
+      {
+        "category": "symbolic_logic",
+        "name": "HornClause",
+        "path": "framework/framewerx/src/symbolic/logic.mg",
+        "summary": "head :- body Horn clause"
+      },
+      {
+        "category": "symbolic_logic",
+        "name": "Unifier",
+        "path": "framework/framewerx/src/symbolic/logic.mg",
+        "summary": "Most-general unifier engine"
+      },
+      {
+        "category": "symbolic_logic",
+        "name": "SLDResolver",
+        "path": "framework/framewerx/src/symbolic/logic.mg",
+        "summary": "Prolog-style backward chaining"
+      },
+      {
+        "category": "symbolic_logic",
+        "name": "ForwardChainer",
+        "path": "framework/framewerx/src/symbolic/logic.mg",
+        "summary": "Forward production rule system"
+      },
+      {
+        "category": "symbolic_logic",
+        "name": "BackwardChainer",
+        "path": "framework/framewerx/src/symbolic/logic.mg",
+        "summary": "Goal-driven proof-tree builder"
+      },
+      {
+        "category": "symbolic_logic",
+        "name": "DLOntology",
+        "path": "framework/framewerx/src/symbolic/logic.mg",
+        "summary": "Description-logic ontology (TBox/ABox/RBox)"
+      },
+      {
+        "category": "symbolic_logic",
+        "name": "TableauReasoner",
+        "path": "framework/framewerx/src/symbolic/logic.mg",
+        "summary": "Tableau-based DL reasoner (ALC/SHOIQ)"
+      },
+      {
+        "category": "symbolic_solver",
+        "name": "SATSolver",
+        "path": "framework/framewerx/src/symbolic/solvers.mg",
+        "summary": "CDCL SAT solver"
+      },
+      {
+        "category": "symbolic_solver",
+        "name": "SMTSolver",
+        "path": "framework/framewerx/src/symbolic/solvers.mg",
+        "summary": "SAT + theory combination"
+      },
+      {
+        "category": "symbolic_solver",
+        "name": "CSPSolver",
+        "path": "framework/framewerx/src/symbolic/solvers.mg",
+        "summary": "Constraint satisfaction with AC-3 / backtracking"
+      },
+      {
+        "category": "symbolic_solver",
+        "name": "MILPSolver",
+        "path": "framework/framewerx/src/symbolic/solvers.mg",
+        "summary": "Mixed-integer linear programming"
+      },
+      {
+        "category": "symbolic_solver",
+        "name": "TheoremProver",
+        "path": "framework/framewerx/src/symbolic/solvers.mg",
+        "summary": "Resolution / superposition theorem prover"
+      },
+      {
+        "category": "symbolic_solver",
+        "name": "TermRewriteSystem",
+        "path": "framework/framewerx/src/symbolic/solvers.mg",
+        "summary": "Equational term rewriting"
+      },
+      {
+        "category": "planning",
+        "name": "PDDLAction",
+        "path": "framework/framewerx/src/symbolic/planning.mg",
+        "summary": "Preconditions + effects action schema"
+      },
+      {
+        "category": "planning",
+        "name": "STRIPSPlanner",
+        "path": "framework/framewerx/src/symbolic/planning.mg",
+        "summary": "STRIPS forward-search planner"
+      },
+      {
+        "category": "planning",
+        "name": "HTNPlanner",
+        "path": "framework/framewerx/src/symbolic/planning.mg",
+        "summary": "Hierarchical Task Network planner"
+      },
+      {
+        "category": "planning",
+        "name": "POPPlanner",
+        "path": "framework/framewerx/src/symbolic/planning.mg",
+        "summary": "Partial-order causal-link planner"
+      },
+      {
+        "category": "planning",
+        "name": "MCTS",
+        "path": "framework/framewerx/src/symbolic/planning.mg",
+        "summary": "Monte Carlo Tree Search (UCT)"
+      },
+      {
+        "category": "planning",
+        "name": "MDP",
+        "path": "framework/framewerx/src/symbolic/planning.mg",
+        "summary": "Markov Decision Process spec"
+      },
+      {
+        "category": "planning",
+        "name": "POMDP",
+        "path": "framework/framewerx/src/symbolic/planning.mg",
+        "summary": "Partially-observable MDP"
+      },
+      {
+        "category": "planning",
+        "name": "ValueIteration",
+        "path": "framework/framewerx/src/symbolic/planning.mg",
+        "summary": "Value iteration solver"
+      },
+      {
+        "category": "planning",
+        "name": "PolicyIteration",
+        "path": "framework/framewerx/src/symbolic/planning.mg",
+        "summary": "Policy iteration solver"
+      },
+      {
+        "category": "probabilistic",
+        "name": "BayesianNetwork",
+        "path": "framework/framewerx/src/symbolic/probabilistic.mg",
+        "summary": "Directed graphical model"
+      },
+      {
+        "category": "probabilistic",
+        "name": "VariableElimination",
+        "path": "framework/framewerx/src/symbolic/probabilistic.mg",
+        "summary": "Exact inference by variable elimination"
+      },
+      {
+        "category": "probabilistic",
+        "name": "BeliefPropagation",
+        "path": "framework/framewerx/src/symbolic/probabilistic.mg",
+        "summary": "Sum-product message passing"
+      },
+      {
+        "category": "probabilistic",
+        "name": "JunctionTree",
+        "path": "framework/framewerx/src/symbolic/probabilistic.mg",
+        "summary": "Clique-tree exact inference"
+      },
+      {
+        "category": "probabilistic",
+        "name": "MarkovRandomField",
+        "path": "framework/framewerx/src/symbolic/probabilistic.mg",
+        "summary": "Undirected graphical model"
+      },
+      {
+        "category": "probabilistic",
+        "name": "HMM",
+        "path": "framework/framewerx/src/symbolic/probabilistic.mg",
+        "summary": "Hidden Markov Model"
+      },
+      {
+        "category": "probabilistic",
+        "name": "ParticleFilter",
+        "path": "framework/framewerx/src/symbolic/probabilistic.mg",
+        "summary": "Sequential Monte Carlo"
+      },
+      {
+        "category": "probabilistic",
+        "name": "MCMCSampler",
+        "path": "framework/framewerx/src/symbolic/probabilistic.mg",
+        "summary": "NUTS / HMC / Metropolis sampler"
+      },
+      {
+        "category": "probabilistic",
+        "name": "VariationalInference",
+        "path": "framework/framewerx/src/symbolic/probabilistic.mg",
+        "summary": "Mean-field / structured variational"
+      },
+      {
+        "category": "probabilistic",
+        "name": "StructuralCausalModel",
+        "path": "framework/framewerx/src/symbolic/probabilistic.mg",
+        "summary": "Pearl's structural causal model"
+      },
+      {
+        "category": "probabilistic",
+        "name": "DoCalculus",
+        "path": "framework/framewerx/src/symbolic/probabilistic.mg",
+        "summary": "Interventional reasoning"
+      },
+      {
+        "category": "knowledge",
+        "name": "KnowledgeGraph",
+        "path": "framework/framewerx/src/symbolic/knowledge.mg",
+        "summary": "Subject-predicate-object triple store"
+      },
+      {
+        "category": "knowledge",
+        "name": "TripleStore",
+        "path": "framework/framewerx/src/symbolic/knowledge.mg",
+        "summary": "Triple store with multi-index"
+      },
+      {
+        "category": "knowledge",
+        "name": "SPARQLEngine",
+        "path": "framework/framewerx/src/symbolic/knowledge.mg",
+        "summary": "SPARQL-like query engine"
+      },
+      {
+        "category": "knowledge",
+        "name": "TransE",
+        "path": "framework/framewerx/src/symbolic/knowledge.mg",
+        "summary": "Translation-based KG embedding"
+      },
+      {
+        "category": "knowledge",
+        "name": "DistMult",
+        "path": "framework/framewerx/src/symbolic/knowledge.mg",
+        "summary": "Bilinear-diagonal KG embedding"
+      },
+      {
+        "category": "knowledge",
+        "name": "RotatE",
+        "path": "framework/framewerx/src/symbolic/knowledge.mg",
+        "summary": "Complex-rotation KG embedding"
+      },
+      {
+        "category": "knowledge",
+        "name": "ComplEx",
+        "path": "framework/framewerx/src/symbolic/knowledge.mg",
+        "summary": "Complex-bilinear KG embedding"
+      },
+      {
+        "category": "knowledge",
+        "name": "OWLReasoner",
+        "path": "framework/framewerx/src/symbolic/knowledge.mg",
+        "summary": "OWL EL/RL/QL reasoner"
+      },
+      {
+        "category": "knowledge",
+        "name": "SemanticNetwork",
+        "path": "framework/framewerx/src/symbolic/knowledge.mg",
+        "summary": "Node-edge semantic network"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "LogicTensorNetwork",
+        "path": "framework/framewerx/src/neurosymbolic/differentiable_logic.mg",
+        "summary": "LTN: real-logic FOL on tensors"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "DeepProbLog",
+        "path": "framework/framewerx/src/neurosymbolic/differentiable_logic.mg",
+        "summary": "ProbLog atoms parameterised by NNs"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "SemanticLoss",
+        "path": "framework/framewerx/src/neurosymbolic/differentiable_logic.mg",
+        "summary": "Constraint-violation penalty"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "DifferentiableSAT",
+        "path": "framework/framewerx/src/neurosymbolic/differentiable_logic.mg",
+        "summary": "NeuroSAT / SATNet differentiable SAT"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "NeuralTheoremProver",
+        "path": "framework/framewerx/src/neurosymbolic/differentiable_logic.mg",
+        "summary": "Differentiable backward-chaining (NTP)"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "TNorm",
+        "path": "framework/framewerx/src/neurosymbolic/differentiable_logic.mg",
+        "summary": "Product/Godel/Lukasiewicz/nilpotent t-norms"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "MarkovLogicNetwork",
+        "path": "framework/framewerx/src/neurosymbolic/differentiable_logic.mg",
+        "summary": "Weighted first-order formulae"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "ConceptBottleneckModel",
+        "path": "framework/framewerx/src/neurosymbolic/reasoning.mg",
+        "summary": "Features -> concepts -> task"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "NeuralAlgorithmicReasoner",
+        "path": "framework/framewerx/src/neurosymbolic/reasoning.mg",
+        "summary": "GNN that mimics a classical algorithm"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "DifferentiableIndex",
+        "path": "framework/framewerx/src/neurosymbolic/reasoning.mg",
+        "summary": "Soft attention into a key-value store"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "RAG",
+        "path": "framework/framewerx/src/neurosymbolic/reasoning.mg",
+        "summary": "Retrieval-augmented generation"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "Atlas",
+        "path": "framework/framewerx/src/neurosymbolic/reasoning.mg",
+        "summary": "End-to-end-trained REALM-style RAG"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "VectorIndex",
+        "path": "framework/framewerx/src/neurosymbolic/reasoning.mg",
+        "summary": "FAISS-style HNSW / IVF-PQ index"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "ToolCall",
+        "path": "framework/framewerx/src/neurosymbolic/reasoning.mg",
+        "summary": "Function-calling tool spec"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "ToolUsingAgent",
+        "path": "framework/framewerx/src/neurosymbolic/reasoning.mg",
+        "summary": "LLM that dispatches to external tools"
+      },
+      {
+        "category": "verification",
+        "name": "NeuralVerifier",
+        "path": "framework/framewerx/src/neurosymbolic/verification.mg",
+        "summary": "Sound NN verification (CROWN/IBP/Marabou)"
+      },
+      {
+        "category": "verification",
+        "name": "RandomizedSmoothing",
+        "path": "framework/framewerx/src/neurosymbolic/verification.mg",
+        "summary": "Certified-robust via randomized smoothing"
+      },
+      {
+        "category": "verification",
+        "name": "ConstraintProjection",
+        "path": "framework/framewerx/src/neurosymbolic/verification.mg",
+        "summary": "Project output into feasible polytope"
+      },
+      {
+        "category": "verification",
+        "name": "ConformalPredictor",
+        "path": "framework/framewerx/src/neurosymbolic/verification.mg",
+        "summary": "Distribution-free coverage guarantee"
+      },
+      {
+        "category": "verification",
+        "name": "AbstentionGate",
+        "path": "framework/framewerx/src/neurosymbolic/verification.mg",
+        "summary": "Confidence-threshold refusal gate"
+      },
+      {
+        "category": "verification",
+        "name": "ConstitutionalGuard",
+        "path": "framework/framewerx/src/neurosymbolic/verification.mg",
+        "summary": "Rule-set veto on outputs"
+      },
+      {
+        "category": "agentic_pattern",
+        "name": "ChainOfThought",
+        "path": "framework/framewerx/src/agentic/reasoning_patterns.mg",
+        "summary": "Step-by-step reasoning wrapper"
+      },
+      {
+        "category": "agentic_pattern",
+        "name": "TreeOfThoughts",
+        "path": "framework/framewerx/src/agentic/reasoning_patterns.mg",
+        "summary": "Branching exploration over reasoning paths"
+      },
+      {
+        "category": "agentic_pattern",
+        "name": "GraphOfThoughts",
+        "path": "framework/framewerx/src/agentic/reasoning_patterns.mg",
+        "summary": "DAG over partial-result nodes"
+      },
+      {
+        "category": "agentic_pattern",
+        "name": "ReAct",
+        "path": "framework/framewerx/src/agentic/reasoning_patterns.mg",
+        "summary": "Interleaved Reason / Act / Observe loop"
+      },
+      {
+        "category": "agentic_pattern",
+        "name": "Reflexion",
+        "path": "framework/framewerx/src/agentic/reasoning_patterns.mg",
+        "summary": "Self-critique then retry"
+      },
+      {
+        "category": "agentic_pattern",
+        "name": "SelfConsistency",
+        "path": "framework/framewerx/src/agentic/reasoning_patterns.mg",
+        "summary": "Majority-vote over sampled CoT paths"
+      },
+      {
+        "category": "agentic_pattern",
+        "name": "PlanAndSolve",
+        "path": "framework/framewerx/src/agentic/reasoning_patterns.mg",
+        "summary": "Explicit plan before execution"
+      },
+      {
+        "category": "agentic_pattern",
+        "name": "SkeletonOfThought",
+        "path": "framework/framewerx/src/agentic/reasoning_patterns.mg",
+        "summary": "Parallel completion of independent points"
+      },
+      {
+        "category": "agentic_multi",
+        "name": "MultiAgentDebate",
+        "path": "framework/framewerx/src/agentic/multi_agent.mg",
+        "summary": "Agents argue, judge picks winner"
+      },
+      {
+        "category": "agentic_multi",
+        "name": "ConstitutionalAI",
+        "path": "framework/framewerx/src/agentic/multi_agent.mg",
+        "summary": "Critic-revisor loop guided by principles"
+      },
+      {
+        "category": "agentic_multi",
+        "name": "RLHF",
+        "path": "framework/framewerx/src/agentic/multi_agent.mg",
+        "summary": "Reward model + PPO on policy"
+      },
+      {
+        "category": "agentic_multi",
+        "name": "DPO",
+        "path": "framework/framewerx/src/agentic/multi_agent.mg",
+        "summary": "Direct Preference Optimization"
+      },
+      {
+        "category": "agentic_multi",
+        "name": "HierarchicalAgent",
+        "path": "framework/framewerx/src/agentic/multi_agent.mg",
+        "summary": "Planner delegates to worker agents"
+      },
+      {
+        "category": "agentic_multi",
+        "name": "SwarmOrchestrator",
+        "path": "framework/framewerx/src/agentic/multi_agent.mg",
+        "summary": "Role-based dispatch + shared workspace"
+      },
+      {
+        "category": "agentic_multi",
+        "name": "SkillLibrary",
+        "path": "framework/framewerx/src/agentic/multi_agent.mg",
+        "summary": "Retrievable named-skill registry"
+      },
+      {
+        "category": "agentic_multi",
+        "name": "WorldModelAgent",
+        "path": "framework/framewerx/src/agentic/multi_agent.mg",
+        "summary": "Plans via rollouts in learned world model"
+      },
+      {
+        "category": "decoding",
+        "name": "GreedyDecode",
+        "path": "framework/framewerx/src/agentic/decoding.mg",
+        "summary": "Argmax at each step"
+      },
+      {
+        "category": "decoding",
+        "name": "BeamSearch",
+        "path": "framework/framewerx/src/agentic/decoding.mg",
+        "summary": "Width-K beam with length penalty"
+      },
+      {
+        "category": "decoding",
+        "name": "TopKSampling",
+        "path": "framework/framewerx/src/agentic/decoding.mg",
+        "summary": "Sample from top-K logits"
+      },
+      {
+        "category": "decoding",
+        "name": "TopPSampling",
+        "path": "framework/framewerx/src/agentic/decoding.mg",
+        "summary": "Nucleus (top-p) sampling"
+      },
+      {
+        "category": "decoding",
+        "name": "MinPSampling",
+        "path": "framework/framewerx/src/agentic/decoding.mg",
+        "summary": "Min-p sampling threshold"
+      },
+      {
+        "category": "decoding",
+        "name": "MirostatSampling",
+        "path": "framework/framewerx/src/agentic/decoding.mg",
+        "summary": "Target-perplexity sampling"
+      },
+      {
+        "category": "decoding",
+        "name": "SpeculativeDecoding",
+        "path": "framework/framewerx/src/agentic/decoding.mg",
+        "summary": "Draft model proposes, target verifies"
+      },
+      {
+        "category": "decoding",
+        "name": "Medusa",
+        "path": "framework/framewerx/src/agentic/decoding.mg",
+        "summary": "Multi-head self-speculative decoding"
+      },
+      {
+        "category": "decoding",
+        "name": "ConstrainedDecode",
+        "path": "framework/framewerx/src/agentic/decoding.mg",
+        "summary": "Grammar / regex / JSON-schema constrained"
+      },
+      {
+        "category": "decoding",
+        "name": "StructuredGenerator",
+        "path": "framework/framewerx/src/agentic/decoding.mg",
+        "summary": "Schema-driven structured generation"
+      },
+      {
+        "category": "decoding",
+        "name": "SelfSpeculative",
+        "path": "framework/framewerx/src/agentic/decoding.mg",
+        "summary": "Self-speculative drafting"
+      },
+      {
+        "category": "spec",
+        "name": "ModuleForward",
+        "path": "framework/framewerx/src/specs.mg",
+        "summary": "Pure forward pass; output shape must be non-empty"
+      },
+      {
+        "category": "spec",
+        "name": "OptimStep",
+        "path": "framework/framewerx/src/specs.mg",
+        "summary": "Optimizer update; step counter strictly increases"
+      },
+      {
+        "category": "spec",
+        "name": "LossEvaluation",
+        "path": "framework/framewerx/src/specs.mg",
+        "summary": "Loss function: pure, shape-matched, non-negative output"
+      },
+      {
+        "category": "spec",
+        "name": "HybridVerification",
+        "path": "framework/framewerx/src/specs.mg",
+        "summary": "Hybrid output: verified flag or non-empty rationale"
+      },
+      {
+        "category": "spec",
+        "name": "TrainStep",
+        "path": "framework/framewerx/src/specs.mg",
+        "summary": "Training step: io-effect-only, increments step by 1"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "Hybrid",
+        "path": "framework/framewerx/src/neurosymbolic.mg",
+        "summary": "Compose net (neural) with kb (symbolic) for verified output"
+      },
+      {
+        "category": "neurosymbolic",
+        "name": "HybridOutput",
+        "path": "framework/framewerx/src/neurosymbolic.mg",
+        "summary": "Output of a Hybrid: { value, verified, rationale }"
+      },
+      {
+        "category": "example",
+        "name": "mlp_classifier",
+        "path": "framework/framewerx/examples/mlp_classifier.mg",
+        "summary": "784->128->64->10 MLP for digit classification"
+      },
+      {
+        "category": "example",
+        "name": "transformer_block",
+        "path": "framework/framewerx/examples/transformer_block.mg",
+        "summary": "Pre-norm transformer block: norm/attn/norm/ffn"
+      },
+      {
+        "category": "example",
+        "name": "neurosymbolic_qa",
+        "path": "framework/framewerx/examples/neurosymbolic_qa.mg",
+        "summary": "Neural Retriever validated against symbolic FactBase"
+      },
+      {
+        "category": "example",
+        "name": "resnet_classifier",
+        "path": "framework/framewerx/examples/resnet_classifier.mg",
+        "summary": "ResNet-style image classifier (conv stem + residual blocks)"
+      },
+      {
+        "category": "example",
+        "name": "vit_classifier",
+        "path": "framework/framewerx/examples/vit_classifier.mg",
+        "summary": "Vision Transformer for image classification"
+      },
+      {
+        "category": "example",
+        "name": "lstm_lm",
+        "path": "framework/framewerx/examples/lstm_lm.mg",
+        "summary": "LSTM-based language model over 50k vocab"
+      },
+      {
+        "category": "example",
+        "name": "mamba_lm",
+        "path": "framework/framewerx/examples/mamba_lm.mg",
+        "summary": "Mamba-style state-space language model"
+      },
+      {
+        "category": "example",
+        "name": "vae_mnist",
+        "path": "framework/framewerx/examples/vae_mnist.mg",
+        "summary": "Variational Autoencoder for MNIST (encoder + decoder pair)"
+      },
+      {
+        "category": "example",
+        "name": "gan_simple",
+        "path": "framework/framewerx/examples/gan_simple.mg",
+        "summary": "Generator + Discriminator pair for image GAN training"
+      },
+      {
+        "category": "example",
+        "name": "flash_attention_block",
+        "path": "framework/framewerx/examples/flash_attention_block.mg",
+        "summary": "Transformer block with FlashAttention variant (exercises P78 mapping)"
+      },
+      {
+        "category": "example",
+        "name": "gqa_llama_style",
+        "path": "framework/framewerx/examples/gqa_llama_style.mg",
+        "summary": "Llama-style decoder: GQA + RMSNorm + SwiGLU"
+      },
+      {
+        "category": "example",
+        "name": "lora_finetune",
+        "path": "framework/framewerx/examples/lora_finetune.mg",
+        "summary": "LoRA fine-tuning template over a frozen Linear base"
+      },
+      {
+        "category": "example",
+        "name": "mixture_of_experts",
+        "path": "framework/framewerx/examples/mixture_of_experts.mg",
+        "summary": "Sparse MoE block with TopKRouter and N experts"
+      }
+    ],
+    "hardware_accelerators": [
+      {
+        "available_at_runtime": true,
+        "family": "cpu",
+        "name": "cpu",
+        "requires": "always",
+        "source": "builtin",
+        "summary": "Pure-Rust CPU dispatch. Always available. Default backend.",
+        "tags": [],
+        "vendor": "any"
+      },
+      {
+        "available_at_runtime": false,
+        "family": "gpu",
+        "name": "cuda",
+        "requires": "build --features cuda. Uses IronAccelerator's CUDA 13.2 libloading path - the build does NOT require CUDA_PATH set, so cargo build --features cuda succeeds on dev boxes without the SDK. At dispatch time `--backend=cuda` calls into the NVIDIA driver via dlopen; install the driver before runtime use.",
+        "source": "builtin",
+        "summary": "NVIDIA GPU via IronAccelerator's cudarc-compat layer (CUDA 13.2 ABI). Device acquisition + cuBLASLt + NVRTC. Production-quality wrapper; faster than cudarc 0.19 on host-side hot paths per IA bench.",
+        "tags": [],
+        "vendor": "NVIDIA"
+      },
+      {
+        "available_at_runtime": false,
+        "family": "gpu",
+        "name": "metal",
+        "requires": "feature:metal + macOS",
+        "source": "builtin",
+        "summary": "Apple Metal GPU (M-series and Intel Macs with discrete GPU).",
+        "tags": [],
+        "vendor": "Apple"
+      },
+      {
+        "available_at_runtime": false,
+        "family": "npu",
+        "name": "apple_ane",
+        "requires": "feature:apple_ane + macOS 13+",
+        "source": "builtin",
+        "summary": "Apple Neural Engine. Low-power inference on M1/M2/M3 SoC.",
+        "tags": [],
+        "vendor": "Apple"
+      },
+      {
+        "available_at_runtime": false,
+        "family": "gpu",
+        "name": "vulkan",
+        "requires": "feature:vulkan + Vulkan loader",
+        "source": "builtin",
+        "summary": "Cross-vendor GPU via Vulkan. Linux + Windows support.",
+        "tags": [],
+        "vendor": "any (AMD/Intel/NVIDIA)"
+      },
+      {
+        "available_at_runtime": false,
+        "family": "gpu",
+        "name": "webgpu",
+        "requires": "feature:webgpu",
+        "source": "builtin",
+        "summary": "wgpu-based cross-platform GPU. Same backend works in browser.",
+        "tags": [],
+        "vendor": "any"
+      },
+      {
+        "available_at_runtime": false,
+        "family": "npu",
+        "name": "qualcomm",
+        "requires": "feature:qualcomm + Hexagon SDK",
+        "source": "builtin",
+        "summary": "Qualcomm Hexagon DSP/NPU. Mobile / edge inference.",
+        "tags": [],
+        "vendor": "Qualcomm"
+      },
+      {
+        "available_at_runtime": false,
+        "family": "cpu",
+        "name": "blas",
+        "requires": "feature:blas + BLAS library (OpenBLAS/MKL/Accelerate)",
+        "source": "builtin",
+        "summary": "CPU accelerated via vendor BLAS. Faster matmul than pure Rust.",
+        "tags": [],
+        "vendor": "any"
+      }
+    ],
+    "heal_patterns": [
+      {
+        "name": "missing-return-type"
+      },
+      {
+        "name": "unexpected-token"
+      },
+      {
+        "name": "undeclared-effect"
+      },
+      {
+        "name": "type-mismatch"
+      },
+      {
+        "name": "unknown-identifier"
+      },
+      {
+        "name": "spec-violation"
+      },
+      {
+        "name": "missing-closing-paren"
+      },
+      {
+        "name": "missing-closing-bracket"
+      },
+      {
+        "name": "borrow-conflict"
+      },
+      {
+        "name": "move-after-use"
+      },
+      {
+        "name": "unused-variable"
+      },
+      {
+        "name": "missing-field"
+      },
+      {
+        "name": "contract-precondition-fail"
+      },
+      {
+        "name": "contract-postcondition-fail"
+      },
+      {
+        "name": "invariant-violation"
+      },
+      {
+        "name": "capability-denied"
+      },
+      {
+        "name": "performance-budget-exceeded"
+      },
+      {
+        "name": "parse-missing-semi"
+      },
+      {
+        "name": "parse-missing-rbrace"
+      },
+      {
+        "name": "parse-missing-rparen"
+      },
+      {
+        "name": "parse-missing-rbrack"
+      },
+      {
+        "name": "parse-missing-type-colon"
+      },
+      {
+        "name": "parse-empty-block"
+      },
+      {
+        "name": "parse-stray-comma-in-name-position"
+      },
+      {
+        "name": "parse-stray-semi-in-item-position"
+      },
+      {
+        "name": "parse-insert-missing-semi"
+      },
+      {
+        "name": "parse-truncated-expr-at-eof"
+      },
+      {
+        "name": "parse-truncated-ident-at-eof"
+      },
+      {
+        "name": "parse-stray-semi"
+      },
+      {
+        "name": "parse-empty-where-expr-expected"
+      },
+      {
+        "name": "parse-stray-comma"
+      },
+      {
+        "name": "parse-missing-colon-before-comma"
+      },
+      {
+        "name": "parse-missing-init"
+      },
+      {
+        "name": "parse-stray-arrow"
+      }
+    ],
+    "ir_ops": [
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "matmul",
+        "opcode": "0x0001",
+        "stateful": false,
+        "summary": "[m,k]×[k,n]→[m,n]"
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 0,
+        "has_params": true,
+        "name": "linear",
+        "opcode": "0x0002",
+        "stateful": false,
+        "summary": "x·Wᵀ+b"
+      },
+      {
+        "arity": 3,
+        "differentiable": true,
+        "family": 0,
+        "has_params": true,
+        "name": "conv2d",
+        "opcode": "0x0003",
+        "stateful": false,
+        "summary": "2d cross-correlation"
+      },
+      {
+        "arity": 0,
+        "differentiable": true,
+        "family": 0,
+        "has_params": true,
+        "name": "attn",
+        "opcode": "0x0004",
+        "stateful": false,
+        "summary": "scaled dot-product attention"
+      },
+      {
+        "arity": 0,
+        "differentiable": true,
+        "family": 0,
+        "has_params": true,
+        "name": "embed",
+        "opcode": "0x0005",
+        "stateful": false,
+        "summary": "lookup table"
+      },
+      {
+        "arity": 1,
+        "differentiable": false,
+        "family": 0,
+        "has_params": false,
+        "name": "drop",
+        "opcode": "0x0006",
+        "stateful": true,
+        "summary": "stochastic zero-mask"
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "softmax",
+        "opcode": "0x0007",
+        "stateful": false,
+        "summary": "exp(x)/Σexp(x)"
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "relu",
+        "opcode": "0x0010",
+        "stateful": false,
+        "summary": "max(0,x)"
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "gelu",
+        "opcode": "0x0011",
+        "stateful": false,
+        "summary": "x·Φ(x)"
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "silu",
+        "opcode": "0x0012",
+        "stateful": false,
+        "summary": "x·σ(x)"
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "sigmoid",
+        "opcode": "0x0013",
+        "stateful": false,
+        "summary": "1/(1+e⁻ˣ)"
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "tanh",
+        "opcode": "0x0014",
+        "stateful": false,
+        "summary": "(eˣ-e⁻ˣ)/(eˣ+e⁻ˣ)"
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "mish",
+        "opcode": "0x0015",
+        "stateful": false,
+        "summary": "x·tanh(softplus(x))"
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "softplus",
+        "opcode": "0x0016",
+        "stateful": false,
+        "summary": "ln(1+eˣ)"
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": true,
+        "name": "layer_norm",
+        "opcode": "0x0020",
+        "stateful": false,
+        "summary": "(x-μ)/σ (layer)"
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": true,
+        "name": "batch_norm",
+        "opcode": "0x0021",
+        "stateful": true,
+        "summary": "(x-μ)/σ (batch)"
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": true,
+        "name": "rms_norm",
+        "opcode": "0x0022",
+        "stateful": false,
+        "summary": "x/√(mean(x²))"
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": true,
+        "name": "group_norm",
+        "opcode": "0x0023",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": true,
+        "name": "instance_norm",
+        "opcode": "0x0024",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "max_pool",
+        "opcode": "0x0030",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "avg_pool",
+        "opcode": "0x0031",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "adaptive_pool",
+        "opcode": "0x0032",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "global_pool",
+        "opcode": "0x0033",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "mse_loss",
+        "opcode": "0x0040",
+        "stateful": false,
+        "summary": "mean((y-ŷ)²)"
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "cross_entropy",
+        "opcode": "0x0041",
+        "stateful": false,
+        "summary": "-Σy·log(ŷ)"
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "bce_loss",
+        "opcode": "0x0042",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "nll_loss",
+        "opcode": "0x0043",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "huber_loss",
+        "opcode": "0x0044",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "kl_div",
+        "opcode": "0x0045",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "sgd_step",
+        "opcode": "0x0050",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "adam_step",
+        "opcode": "0x0051",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "adamw_step",
+        "opcode": "0x0052",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "rmsprop_step",
+        "opcode": "0x0053",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": true,
+        "family": 0,
+        "has_params": true,
+        "name": "rnn",
+        "opcode": "0x0060",
+        "stateful": true,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": true,
+        "family": 0,
+        "has_params": true,
+        "name": "lstm",
+        "opcode": "0x0061",
+        "stateful": true,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": true,
+        "family": 0,
+        "has_params": true,
+        "name": "gru",
+        "opcode": "0x0062",
+        "stateful": true,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "sinusoidal_pe",
+        "opcode": "0x0070",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "rope",
+        "opcode": "0x0071",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": true,
+        "family": 0,
+        "has_params": true,
+        "name": "learned_pe",
+        "opcode": "0x0072",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": true,
+        "family": 0,
+        "has_params": false,
+        "name": "alibi",
+        "opcode": "0x0073",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 1,
+        "has_params": false,
+        "name": "unify",
+        "opcode": "0x0100",
+        "stateful": false,
+        "summary": "mgu(t1,t2)"
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 1,
+        "has_params": false,
+        "name": "resolve",
+        "opcode": "0x0101",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 1,
+        "has_params": false,
+        "name": "infer",
+        "opcode": "0x0102",
+        "stateful": false,
+        "summary": "fwd-chain KB"
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 1,
+        "has_params": false,
+        "name": "match",
+        "opcode": "0x0103",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 1,
+        "has_params": false,
+        "name": "rewrite",
+        "opcode": "0x0104",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 1,
+        "has_params": false,
+        "name": "assert",
+        "opcode": "0x0105",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 1,
+        "has_params": false,
+        "name": "query_kb",
+        "opcode": "0x0106",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 1,
+        "has_params": false,
+        "name": "plan",
+        "opcode": "0x0107",
+        "stateful": false,
+        "summary": "goal→actions"
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 1,
+        "has_params": false,
+        "name": "bind",
+        "opcode": "0x0108",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 1,
+        "has_params": false,
+        "name": "subsume",
+        "opcode": "0x0109",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "seq",
+        "opcode": "0x0200",
+        "stateful": false,
+        "summary": "a>>b (category composition)"
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "par",
+        "opcode": "0x0201",
+        "stateful": false,
+        "summary": "a‖b (product)"
+      },
+      {
+        "arity": 3,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "cond",
+        "opcode": "0x0202",
+        "stateful": false,
+        "summary": "if p then a else b"
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "loop",
+        "opcode": "0x0203",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "map",
+        "opcode": "0x0204",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "reduce",
+        "opcode": "0x0205",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "scan",
+        "opcode": "0x0206",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "fold",
+        "opcode": "0x0207",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "zip",
+        "opcode": "0x0208",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "fork",
+        "opcode": "0x0209",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "join",
+        "opcode": "0x020a",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "res_add",
+        "opcode": "0x0210",
+        "stateful": false,
+        "summary": "x+f(x) (skip connection)"
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "res_cat",
+        "opcode": "0x0211",
+        "stateful": false,
+        "summary": "cat(x,f(x))"
+      },
+      {
+        "arity": 1,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "identity",
+        "opcode": "0x0212",
+        "stateful": false,
+        "summary": "passthrough"
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 2,
+        "has_params": false,
+        "name": "repeat",
+        "opcode": "0x0213",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 3,
+        "has_params": false,
+        "name": "alloc",
+        "opcode": "0x0300",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": false,
+        "family": 3,
+        "has_params": false,
+        "name": "free",
+        "opcode": "0x0301",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 3,
+        "has_params": false,
+        "name": "load",
+        "opcode": "0x0302",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 3,
+        "has_params": false,
+        "name": "store",
+        "opcode": "0x0303",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 3,
+        "has_params": false,
+        "name": "copy",
+        "opcode": "0x0304",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": false,
+        "family": 3,
+        "has_params": false,
+        "name": "reshape",
+        "opcode": "0x0305",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": false,
+        "family": 3,
+        "has_params": false,
+        "name": "transpose",
+        "opcode": "0x0306",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 3,
+        "has_params": false,
+        "name": "slice",
+        "opcode": "0x0307",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 3,
+        "has_params": false,
+        "name": "concat",
+        "opcode": "0x0308",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 3,
+        "has_params": false,
+        "name": "gather",
+        "opcode": "0x0309",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 3,
+        "has_params": false,
+        "name": "scatter",
+        "opcode": "0x030a",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 4,
+        "has_params": false,
+        "name": "send",
+        "opcode": "0x0400",
+        "stateful": false,
+        "summary": "msg→agent"
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 4,
+        "has_params": false,
+        "name": "recv",
+        "opcode": "0x0401",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 4,
+        "has_params": false,
+        "name": "spawn",
+        "opcode": "0x0402",
+        "stateful": false,
+        "summary": "create child agent"
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 4,
+        "has_params": false,
+        "name": "kill",
+        "opcode": "0x0403",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 4,
+        "has_params": false,
+        "name": "publish",
+        "opcode": "0x0404",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 4,
+        "has_params": false,
+        "name": "subscribe",
+        "opcode": "0x0405",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 4,
+        "has_params": false,
+        "name": "delegate",
+        "opcode": "0x0406",
+        "stateful": false,
+        "summary": "route task by capability"
+      },
+      {
+        "arity": 0,
+        "differentiable": false,
+        "family": 4,
+        "has_params": false,
+        "name": "broadcast",
+        "opcode": "0x0407",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": false,
+        "family": 5,
+        "has_params": false,
+        "name": "hash",
+        "opcode": "0x0500",
+        "stateful": false,
+        "summary": "xxh3(expr)"
+      },
+      {
+        "arity": 1,
+        "differentiable": false,
+        "family": 5,
+        "has_params": false,
+        "name": "type_of",
+        "opcode": "0x0501",
+        "stateful": false,
+        "summary": "structural type query"
+      },
+      {
+        "arity": 1,
+        "differentiable": false,
+        "family": 5,
+        "has_params": false,
+        "name": "shape_of",
+        "opcode": "0x0502",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 5,
+        "has_params": false,
+        "name": "compose",
+        "opcode": "0x0503",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": false,
+        "family": 5,
+        "has_params": false,
+        "name": "decompose",
+        "opcode": "0x0504",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": false,
+        "family": 5,
+        "has_params": false,
+        "name": "self_ref",
+        "opcode": "0x0505",
+        "stateful": false,
+        "summary": "quine access"
+      },
+      {
+        "arity": 2,
+        "differentiable": false,
+        "family": 5,
+        "has_params": false,
+        "name": "mutate",
+        "opcode": "0x0506",
+        "stateful": false,
+        "summary": "structural expr rewrite"
+      },
+      {
+        "arity": 1,
+        "differentiable": false,
+        "family": 5,
+        "has_params": false,
+        "name": "introspect",
+        "opcode": "0x0507",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "add",
+        "opcode": "0x0600",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "sub",
+        "opcode": "0x0601",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "mul",
+        "opcode": "0x0602",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "div",
+        "opcode": "0x0603",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "neg",
+        "opcode": "0x0604",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "abs",
+        "opcode": "0x0605",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "exp",
+        "opcode": "0x0606",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "log",
+        "opcode": "0x0607",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "sqrt",
+        "opcode": "0x0608",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "pow",
+        "opcode": "0x0609",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "max",
+        "opcode": "0x060a",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 2,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "min",
+        "opcode": "0x060b",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 3,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "clamp",
+        "opcode": "0x060c",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "sin",
+        "opcode": "0x060d",
+        "stateful": false,
+        "summary": ""
+      },
+      {
+        "arity": 1,
+        "differentiable": true,
+        "family": 6,
+        "has_params": false,
+        "name": "cos",
+        "opcode": "0x060e",
+        "stateful": false,
+        "summary": ""
+      }
+    ],
+    "keywords": [
+      {
+        "introduces": "NetDef",
+        "keyword": "net",
+        "summary": "neural network definition; lowers to RMIL"
+      },
+      {
+        "introduces": "KbDef",
+        "keyword": "kb",
+        "summary": "symbolic knowledge base; lowers to RMIL"
+      },
+      {
+        "introduces": "AgentDef",
+        "keyword": "agent",
+        "summary": "agent role; lowers to RMIL agent ops"
+      },
+      {
+        "introduces": "SwarmDef",
+        "keyword": "swarm",
+        "summary": "agent swarm topology; lowers to RMIL"
+      },
+      {
+        "introduces": "TrainDef",
+        "keyword": "train",
+        "summary": "training pipeline; lowers to RMIL compute"
+      },
+      {
+        "introduces": "EvolveDef",
+        "keyword": "evolve",
+        "summary": "evolutionary search; lowers to RMIL meta"
+      },
+      {
+        "introduces": "Layer",
+        "keyword": "layer",
+        "summary": "neural-net layer inside a net block"
+      },
+      {
+        "introduces": "Forward",
+        "keyword": "forward",
+        "summary": "forward pass inside a net block"
+      },
+      {
+        "introduces": "Effect",
+        "keyword": "effect",
+        "summary": "effect declaration"
+      },
+      {
+        "introduces": "Handle",
+        "keyword": "handle",
+        "summary": "effect handler"
+      },
+      {
+        "introduces": "Spec",
+        "keyword": "spec",
+        "summary": "spec/contract block"
+      },
+      {
+        "introduces": "Extern",
+        "keyword": "extern",
+        "summary": "FFI block"
+      }
+    ],
+    "layer_map": [
+      {
+        "family": 0,
+        "op_name": "linear",
+        "opcode": "0x0002",
+        "surface_name": "Linear"
+      },
+      {
+        "family": 0,
+        "op_name": "conv2d",
+        "opcode": "0x0003",
+        "surface_name": "Conv2D"
+      },
+      {
+        "family": 0,
+        "op_name": "attn",
+        "opcode": "0x0004",
+        "surface_name": "Attention"
+      },
+      {
+        "family": 0,
+        "op_name": "embed",
+        "opcode": "0x0005",
+        "surface_name": "Embed"
+      },
+      {
+        "family": 0,
+        "op_name": "drop",
+        "opcode": "0x0006",
+        "surface_name": "Dropout"
+      },
+      {
+        "family": 0,
+        "op_name": "softmax",
+        "opcode": "0x0007",
+        "surface_name": "Softmax"
+      },
+      {
+        "family": 0,
+        "op_name": "relu",
+        "opcode": "0x0010",
+        "surface_name": "ReLU"
+      },
+      {
+        "family": 0,
+        "op_name": "gelu",
+        "opcode": "0x0011",
+        "surface_name": "GELU"
+      },
+      {
+        "family": 0,
+        "op_name": "silu",
+        "opcode": "0x0012",
+        "surface_name": "SiLU"
+      },
+      {
+        "family": 0,
+        "op_name": "sigmoid",
+        "opcode": "0x0013",
+        "surface_name": "Sigmoid"
+      },
+      {
+        "family": 0,
+        "op_name": "tanh",
+        "opcode": "0x0014",
+        "surface_name": "Tanh"
+      },
+      {
+        "family": 0,
+        "op_name": "mish",
+        "opcode": "0x0015",
+        "surface_name": "Mish"
+      },
+      {
+        "family": 0,
+        "op_name": "softplus",
+        "opcode": "0x0016",
+        "surface_name": "Softplus"
+      },
+      {
+        "family": 0,
+        "op_name": "layer_norm",
+        "opcode": "0x0020",
+        "surface_name": "LayerNorm"
+      },
+      {
+        "family": 0,
+        "op_name": "batch_norm",
+        "opcode": "0x0021",
+        "surface_name": "BatchNorm"
+      },
+      {
+        "family": 0,
+        "op_name": "rms_norm",
+        "opcode": "0x0022",
+        "surface_name": "RMSNorm"
+      },
+      {
+        "family": 0,
+        "op_name": "group_norm",
+        "opcode": "0x0023",
+        "surface_name": "GroupNorm"
+      },
+      {
+        "family": 0,
+        "op_name": "instance_norm",
+        "opcode": "0x0024",
+        "surface_name": "InstanceNorm"
+      },
+      {
+        "family": 0,
+        "op_name": "max_pool",
+        "opcode": "0x0030",
+        "surface_name": "MaxPool"
+      },
+      {
+        "family": 0,
+        "op_name": "avg_pool",
+        "opcode": "0x0031",
+        "surface_name": "AvgPool"
+      },
+      {
+        "family": 0,
+        "op_name": "global_pool",
+        "opcode": "0x0033",
+        "surface_name": "GlobalAvgPool"
+      }
+    ],
+    "op_families": [
+      {
+        "code": 0,
+        "name": "Neural",
+        "summary": "Differentiable neural-network operations"
+      },
+      {
+        "code": 1,
+        "name": "Symbolic",
+        "summary": "Symbolic reasoning: unification, inference, planning"
+      },
+      {
+        "code": 2,
+        "name": "Control",
+        "summary": "Control flow: seq, par, cond, loop"
+      },
+      {
+        "code": 3,
+        "name": "Memory",
+        "summary": "Memory management: alloc, reshape, transpose"
+      },
+      {
+        "code": 4,
+        "name": "Agent",
+        "summary": "Agent communication: send, recv, spawn, delegate"
+      },
+      {
+        "code": 5,
+        "name": "Meta",
+        "summary": "Meta / introspection: hash, typeof, mutate, decompose"
+      },
+      {
+        "code": 6,
+        "name": "Math",
+        "summary": "Elementwise math: add, mul, exp, log, sin, ..."
+      }
+    ],
+    "project_layout": [
+      {
+        "path": "prototype/",
+        "purpose": "Rust compiler + RAP server + benches"
+      },
+      {
+        "path": "prototype/src/",
+        "purpose": "Lexer / parser / heal / recover / rmil_bridge / rap / ontology"
+      },
+      {
+        "path": "prototype/src/bin/",
+        "purpose": "reliability-bench, token-bench"
+      },
+      {
+        "path": "prototype/examples/",
+        "purpose": "Inline `.mg` examples used by parser tests"
+      },
+      {
+        "path": "Framewerx/",
+        "purpose": "RMI Rust crate: binary IR, opcodes, codec, CpuBackend"
+      },
+      {
+        "path": "Framewerx/src/lang/",
+        "purpose": "Op enum, OpFamily, codec"
+      },
+      {
+        "path": "Framewerx/src/compute/",
+        "purpose": "CpuBackend + dispatch"
+      },
+      {
+        "path": "framework/framewerx/",
+        "purpose": "Framewerx-MG (this framework: FLAX-equivalent in MechGen)"
+      },
+      {
+        "path": "framework/framewerx/src/",
+        "purpose": "Module / layers / optim / loss / train / specs / neurosymbolic"
+      },
+      {
+        "path": "framework/framewerx/src/neural/",
+        "purpose": "Modern neural: attention variants, MoE, adapters, quantization, dynamical, energy, memory, multimodal, world models, advanced diffusion"
+      },
+      {
+        "path": "framework/framewerx/src/symbolic/",
+        "purpose": "Classical symbolic: logic, solvers, planning, probabilistic, knowledge"
+      },
+      {
+        "path": "framework/framewerx/src/neurosymbolic/",
+        "purpose": "Bridging: differentiable_logic, reasoning, verification"
+      },
+      {
+        "path": "framework/framewerx/src/agentic/",
+        "purpose": "Orchestration: reasoning_patterns, multi_agent, decoding"
+      },
+      {
+        "path": "framework/framewerx/examples/",
+        "purpose": "Parse-verified, end-to-end-compile-tested examples"
+      },
+      {
+        "path": "benchmarks/",
+        "purpose": "Reliability + token benches; corpus + reports"
+      },
+      {
+        "path": "benchmarks/tasks/",
+        "purpose": "100-task reference corpus"
+      },
+      {
+        "path": "scripts/agent_wrappers/",
+        "purpose": "Subprocess wrappers for the agent protocol"
+      },
+      {
+        "path": "scripts/demo_agent_workflow.sh",
+        "purpose": "One-command end-to-end demo of the agent flow"
+      },
+      {
+        "path": "examples/",
+        "purpose": "Standalone `.mg` examples (agent-swarm, http-client, cli-tool, etc.)"
+      },
+      {
+        "path": "UNIFICATION.md",
+        "purpose": "Architecture doc with per-phase history"
+      },
+      {
+        "path": "MECHGEN_ONTOLOGY.json",
+        "purpose": "Static dump of this ontology (refresh via --emit-ontology)"
+      },
+      {
+        "path": ".github/workflows/redox-ci.yml",
+        "purpose": "CI with floors on parse / heal / refine / token-ratio"
+      }
+    ],
+    "rap_methods": [
+      {
+        "method": "language/parse",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "ast",
+          "error"
+        ],
+        "summary": "Parse source to AST (JSON)."
+      },
+      {
+        "method": "language/tokens",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "tokens"
+        ],
+        "summary": "Tokenize source."
+      },
+      {
+        "method": "build/check",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "diagnostics"
+        ],
+        "summary": "Lex + parse + report diagnostics."
+      },
+      {
+        "method": "build/heal",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "diagnostics"
+        ],
+        "summary": "Generate fix candidates for diagnostics."
+      },
+      {
+        "method": "build/recover",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "stage",
+          "candidates_tried",
+          "source",
+          "changed"
+        ],
+        "summary": "Run the 5-stage recovery pipeline; return final source."
+      },
+      {
+        "method": "rmil/encode",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "magic",
+          "version",
+          "container_bytes",
+          "items",
+          "rmib_hex"
+        ],
+        "summary": "Source -> RMIB bytes (hex)."
+      },
+      {
+        "method": "rmil/decode",
+        "params": [
+          "rmib_hex"
+        ],
+        "returns": [
+          "ok",
+          "container_bytes",
+          "items"
+        ],
+        "summary": "RMIB bytes (hex) -> decompiled per-item view."
+      },
+      {
+        "method": "rmil/run",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "container_bytes",
+          "runs"
+        ],
+        "summary": "Source -> encode -> CpuBackend dispatch."
+      },
+      {
+        "method": "pipeline/recover-and-encode",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "recover_stage",
+          "recovered_source",
+          "rmib_hex",
+          "items"
+        ],
+        "summary": "Recover then encode RMIB in one call."
+      },
+      {
+        "method": "cost/query",
+        "params": [
+          "construct",
+          "target",
+          "opt"
+        ],
+        "returns": [
+          "construct",
+          "target",
+          "opt",
+          "estimate"
+        ],
+        "summary": "Per-construct cost estimate."
+      },
+      {
+        "method": "cost/compare",
+        "params": [
+          "a",
+          "b",
+          "target",
+          "opt"
+        ],
+        "returns": [
+          "a",
+          "b",
+          "winner"
+        ],
+        "summary": "Compare costs of two constructs."
+      },
+      {
+        "method": "skb/query",
+        "params": [
+          "query"
+        ],
+        "returns": [
+          "results"
+        ],
+        "summary": "Query structured knowledge base."
+      },
+      {
+        "method": "skb/spec",
+        "params": [
+          "fqn"
+        ],
+        "returns": [
+          "found",
+          "spec"
+        ],
+        "summary": "Lookup spec block for a symbol."
+      },
+      {
+        "method": "skb/rules",
+        "params": [],
+        "returns": [
+          "rules"
+        ],
+        "summary": "List SKB rules."
+      },
+      {
+        "method": "verify/contracts",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "results"
+        ],
+        "summary": "Verify function contracts (req/ens/inv)."
+      },
+      {
+        "method": "verify/module",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "results"
+        ],
+        "summary": "Verify entire module."
+      },
+      {
+        "method": "format/agent",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "formatted"
+        ],
+        "summary": "Format source in agent-canonical sigil mode."
+      },
+      {
+        "method": "format/human",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "formatted"
+        ],
+        "summary": "Format source in human-readable keyword mode."
+      },
+      {
+        "method": "lint/check",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "lints"
+        ],
+        "summary": "Run lints on source."
+      },
+      {
+        "method": "token/report",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "report"
+        ],
+        "summary": "Per-construct token cost report for source."
+      },
+      {
+        "method": "effects/infer",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "effects"
+        ],
+        "summary": "Infer effects of each function."
+      },
+      {
+        "method": "effects/check",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "results"
+        ],
+        "summary": "Check declared effects against inferred."
+      },
+      {
+        "method": "elision/apply",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "elided"
+        ],
+        "summary": "Apply elision rules to compact source."
+      },
+      {
+        "method": "attribute/expand",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "expanded"
+        ],
+        "summary": "Expand attribute shorthand."
+      },
+      {
+        "method": "attribute/compress",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "compressed"
+        ],
+        "summary": "Compress attributes back to shorthand."
+      },
+      {
+        "method": "capability/check",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "capabilities"
+        ],
+        "summary": "List capabilities required by source."
+      },
+      {
+        "method": "heal/graph",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "graph"
+        ],
+        "summary": "Heal-pipeline diagnostic graph."
+      },
+      {
+        "method": "sandbox/policy",
+        "params": [
+          "name"
+        ],
+        "returns": [
+          "ok",
+          "policy"
+        ],
+        "summary": "Lookup sandbox policy by name."
+      },
+      {
+        "method": "doc/query",
+        "params": [
+          "fqn"
+        ],
+        "returns": [
+          "found",
+          "doc"
+        ],
+        "summary": "Lookup documentation by FQN."
+      },
+      {
+        "method": "grammar/list",
+        "params": [],
+        "returns": [
+          "ok",
+          "extensions"
+        ],
+        "summary": "List grammar extensions."
+      },
+      {
+        "method": "manifest/generate",
+        "params": [
+          "source",
+          "crate_name",
+          "version"
+        ],
+        "returns": [
+          "ok",
+          "manifest"
+        ],
+        "summary": "Generate capability manifest for a module."
+      },
+      {
+        "method": "nl/generate",
+        "params": [
+          "prompt"
+        ],
+        "returns": [
+          "ok",
+          "code_human",
+          "code_agent"
+        ],
+        "summary": "Generate MechGen from a natural-language prompt."
+      },
+      {
+        "method": "nl/explain",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "explanation"
+        ],
+        "summary": "Explain source in natural language."
+      },
+      {
+        "method": "nl/refactor",
+        "params": [
+          "source"
+        ],
+        "returns": [
+          "ok",
+          "code_human",
+          "code_agent"
+        ],
+        "summary": "Refactor source via natural-language request."
+      },
+      {
+        "method": "nl/query",
+        "params": [
+          "prompt"
+        ],
+        "returns": [
+          "ok",
+          "explanation",
+          "kb_results"
+        ],
+        "summary": "General NL query against the SKB."
+      },
+      {
+        "method": "ontology/full",
+        "params": [],
+        "returns": [
+          "ok",
+          "version",
+          "sections"
+        ],
+        "summary": "Return this complete ontology."
+      },
+      {
+        "method": "ontology/section",
+        "params": [
+          "section"
+        ],
+        "returns": [
+          "ok",
+          "section",
+          "data"
+        ],
+        "summary": "Return one named section of the ontology."
+      }
+    ],
+    "recovery_stages": [
+      {
+        "order": 0,
+        "stage": "already-valid",
+        "summary": "Source parsed on first try; no recovery applied."
+      },
+      {
+        "order": 1,
+        "stage": "pattern-heal",
+        "summary": "Multi-pass over ranked heal::heal_one candidates."
+      },
+      {
+        "order": 2,
+        "stage": "structural-balance",
+        "summary": "Append matching closers at EOF for unbalanced (/[/{."
+      },
+      {
+        "order": 3,
+        "stage": "structural-completion",
+        "summary": "Splice ()/0/_ placeholder after trailing operator, then re-balance."
+      },
+      {
+        "order": 4,
+        "stage": "trim-bad-token",
+        "summary": "Delete the bad token at the parse error position, or its neighbor."
+      },
+      {
+        "order": 5,
+        "stage": "agent.refine",
+        "summary": "Stage 3: re-prompt the agent backend with broken source + parse error."
+      },
+      {
+        "order": 6,
+        "stage": "failed",
+        "summary": "All stages exhausted; source unchanged."
+      }
+    ],
+    "rmib": {
+      "format": [
+        "magic    : 4 bytes (\"RMIB\")",
+        "version  : u16 LE",
+        "count    : u32 LE",
+        "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }"
+      ],
+      "magic": "RMIB",
+      "media_type": "application/rmib",
+      "version": 1
+    },
+    "sigils": [
+      {
+        "ast_kind": "Function",
+        "sigil": "+f",
+        "summary": "pub fn — public function declaration"
+      },
+      {
+        "ast_kind": "Function",
+        "sigil": "+af",
+        "summary": "pub async fn"
+      },
+      {
+        "ast_kind": "Function",
+        "sigil": "+uf",
+        "summary": "pub unsafe fn"
+      },
+      {
+        "ast_kind": "Function",
+        "sigil": "f",
+        "summary": "fn — private function"
+      },
+      {
+        "ast_kind": "Let",
+        "sigil": "v",
+        "summary": "let — immutable binding"
+      },
+      {
+        "ast_kind": "Let",
+        "sigil": "m",
+        "summary": "let mut — mutable binding"
+      },
+      {
+        "ast_kind": "Const",
+        "sigil": "C",
+        "summary": "const declaration"
+      },
+      {
+        "ast_kind": "Static",
+        "sigil": "Z",
+        "summary": "static declaration"
+      },
+      {
+        "ast_kind": "Struct",
+        "sigil": "S",
+        "summary": "struct declaration"
+      },
+      {
+        "ast_kind": "Enum",
+        "sigil": "E",
+        "summary": "enum declaration"
+      },
+      {
+        "ast_kind": "Trait",
+        "sigil": "T",
+        "summary": "trait declaration"
+      },
+      {
+        "ast_kind": "Impl",
+        "sigil": "I",
+        "summary": "impl block"
+      },
+      {
+        "ast_kind": "Mod",
+        "sigil": "M",
+        "summary": "module declaration"
+      },
+      {
+        "ast_kind": "Use",
+        "sigil": "u",
+        "summary": "use import"
+      },
+      {
+        "ast_kind": "TypeAlias",
+        "sigil": "Y",
+        "summary": "type alias"
+      },
+      {
+        "ast_kind": "If/Option/Try",
+        "sigil": "?",
+        "summary": "if expression, or Option type prefix, or try operator"
+      },
+      {
+        "ast_kind": "Match",
+        "sigil": "?=",
+        "summary": "match expression"
+      },
+      {
+        "ast_kind": "If",
+        "sigil": "?:",
+        "summary": "human-mode if (sugar for ?)"
+      },
+      {
+        "ast_kind": "For/Attr/Arc",
+        "sigil": "@",
+        "summary": "for loop, attribute, struct literal, or Arc type"
+      },
+      {
+        "ast_kind": "Loop",
+        "sigil": "@@",
+        "summary": "infinite loop"
+      },
+      {
+        "ast_kind": "While",
+        "sigil": "@w",
+        "summary": "while loop"
+      },
+      {
+        "ast_kind": "RefType",
+        "sigil": "&T",
+        "summary": "shared reference type"
+      },
+      {
+        "ast_kind": "MutRefType",
+        "sigil": "&!T",
+        "summary": "mutable reference type"
+      },
+      {
+        "ast_kind": "ArcType",
+        "sigil": "@T",
+        "summary": "Arc<T> shared ownership"
+      },
+      {
+        "ast_kind": "OptionType",
+        "sigil": "?T",
+        "summary": "Option<T> sugar"
+      },
+      {
+        "ast_kind": "ResultType",
+        "sigil": "R[T,E]",
+        "summary": "Result<T, E>"
+      },
+      {
+        "ast_kind": "Slice",
+        "sigil": "[T]",
+        "summary": "slice type"
+      },
+      {
+        "ast_kind": "Vec",
+        "sigil": "[T]~",
+        "summary": "Vec<T>"
+      },
+      {
+        "ast_kind": "Str",
+        "sigil": "s",
+        "summary": "string type"
+      },
+      {
+        "ast_kind": "Bool",
+        "sigil": "1b",
+        "summary": "true"
+      },
+      {
+        "ast_kind": "Bool",
+        "sigil": "0b",
+        "summary": "false"
+      },
+      {
+        "ast_kind": "SelfVal",
+        "sigil": "_",
+        "summary": "self value"
+      },
+      {
+        "ast_kind": "SelfType",
+        "sigil": "_T",
+        "summary": "Self type"
+      },
+      {
+        "ast_kind": "Return",
+        "sigil": "^",
+        "summary": "return expression"
+      },
+      {
+        "ast_kind": "Break/Not",
+        "sigil": "!",
+        "summary": "break, or logical not, or assert"
+      },
+      {
+        "ast_kind": "Continue",
+        "sigil": ">>",
+        "summary": "continue"
+      },
+      {
+        "ast_kind": "Todo",
+        "sigil": "??",
+        "summary": "todo!()"
+      },
+      {
+        "ast_kind": "Unimplemented",
+        "sigil": "???",
+        "summary": "unimplemented!()"
+      }
+    ],
+    "types": [
+      {
+        "category": "scalar",
+        "name": "i8",
+        "summary": "signed 8-bit integer"
+      },
+      {
+        "category": "scalar",
+        "name": "i16",
+        "summary": "signed 16-bit integer"
+      },
+      {
+        "category": "scalar",
+        "name": "i32",
+        "summary": "signed 32-bit integer (default int)"
+      },
+      {
+        "category": "scalar",
+        "name": "i64",
+        "summary": "signed 64-bit integer"
+      },
+      {
+        "category": "scalar",
+        "name": "isize",
+        "summary": "pointer-sized signed integer"
+      },
+      {
+        "category": "scalar",
+        "name": "u8",
+        "summary": "unsigned 8-bit (also: byte)"
+      },
+      {
+        "category": "scalar",
+        "name": "u16",
+        "summary": "unsigned 16-bit integer"
+      },
+      {
+        "category": "scalar",
+        "name": "u32",
+        "summary": "unsigned 32-bit integer"
+      },
+      {
+        "category": "scalar",
+        "name": "u64",
+        "summary": "unsigned 64-bit integer"
+      },
+      {
+        "category": "scalar",
+        "name": "usize",
+        "summary": "pointer-sized unsigned integer"
+      },
+      {
+        "category": "scalar",
+        "name": "f32",
+        "summary": "32-bit IEEE-754 float"
+      },
+      {
+        "category": "scalar",
+        "name": "f64",
+        "summary": "64-bit IEEE-754 float (default float)"
+      },
+      {
+        "category": "scalar",
+        "name": "bool",
+        "summary": "boolean; literals `1b` (true) / `0b` (false)"
+      },
+      {
+        "category": "scalar",
+        "name": "char",
+        "summary": "Unicode scalar value"
+      },
+      {
+        "category": "string",
+        "name": "s",
+        "summary": "string slice (Rust `&str`); sigil shorthand"
+      },
+      {
+        "category": "string",
+        "name": "S",
+        "summary": "owned string (Rust `String`); sigil shorthand"
+      },
+      {
+        "category": "unit",
+        "name": "()",
+        "summary": "unit type; sole value `()`; implicit fn return"
+      },
+      {
+        "category": "ref",
+        "name": "&T",
+        "summary": "shared reference (Rust `&T`)"
+      },
+      {
+        "category": "ref",
+        "name": "&!T",
+        "summary": "mutable reference (Rust `&mut T`)"
+      },
+      {
+        "category": "smart",
+        "name": "@T",
+        "summary": "Arc<T>; shared atomic ownership"
+      },
+      {
+        "category": "option",
+        "name": "?T",
+        "summary": "Option<T>; sigil shorthand"
+      },
+      {
+        "category": "result",
+        "name": "R[T,E]",
+        "summary": "Result<T, E>; sigil shorthand"
+      },
+      {
+        "category": "slice",
+        "name": "[T]",
+        "summary": "slice type (fixed-view, Rust `&[T]`)"
+      },
+      {
+        "category": "array",
+        "name": "[T; N]",
+        "summary": "fixed-size array (length N at compile time)"
+      },
+      {
+        "category": "vec",
+        "name": "[T]~",
+        "summary": "Vec<T>; owned dynamic array; sigil shorthand"
+      },
+      {
+        "category": "tuple",
+        "name": "(T1,T2,...)",
+        "summary": "tuple type; positional fields"
+      },
+      {
+        "category": "map",
+        "name": "Map[K,V]",
+        "summary": "HashMap<K, V>; standard map type"
+      },
+      {
+        "category": "set",
+        "name": "Set[T]",
+        "summary": "HashSet<T>; standard set type"
+      },
+      {
+        "category": "smart",
+        "name": "Box[T]",
+        "summary": "Box<T>; heap-owned single value"
+      },
+      {
+        "category": "fn",
+        "name": "f(T)->R",
+        "summary": "function pointer type; (T) -> R signature"
+      }
+    ],
+    "wrapper_protocol": [
+      {
+        "kind": "env",
+        "name": "RDX_BENCH_MODE",
+        "purpose": "`propose` (first call) or `refine` (Stage-3 re-prompt)"
+      },
+      {
+        "kind": "env",
+        "name": "RDX_TASK_ID",
+        "purpose": "Stable task identifier; set on every call"
+      },
+      {
+        "kind": "env",
+        "name": "RDX_TASK_DESCRIPTION",
+        "purpose": "Original task description; set on refine only (stdin carries broken source)"
+      },
+      {
+        "kind": "env",
+        "name": "RDX_PARSE_ERROR",
+        "purpose": "Parse error that triggered refine; set on refine only"
+      },
+      {
+        "kind": "stream",
+        "name": "stdin (propose)",
+        "purpose": "Natural-language task description"
+      },
+      {
+        "kind": "stream",
+        "name": "stdin (refine)",
+        "purpose": "Broken MechGen source the mechanical pipeline could not save"
+      },
+      {
+        "kind": "stream",
+        "name": "stdout",
+        "purpose": "MechGen source to evaluate. Empty / unchanged input = no contribution."
+      },
+      {
+        "kind": "stream",
+        "name": "stderr",
+        "purpose": "Human-readable diagnostics; surfaces as `agent refused: <text>` on non-zero exit"
+      },
+      {
+        "kind": "stream",
+        "name": "exit code",
+        "purpose": "0 = success; non-zero = agent refused / no candidate"
+      }
+    ]
+  },
+  "short_name": "MechGen",
+  "version": "1.0"
+}

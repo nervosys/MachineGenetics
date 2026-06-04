@@ -96,6 +96,11 @@ impl Default for RuntimeConfig {
 // ═══════════════════════════════════════════════════════════════════
 
 /// The unified agent runtime — ties together all subsystems.
+///
+/// As of the MechGen↔RMI Phase 3 unification, this runtime composes an
+/// [`crate::rmi_runtime_adapter::RmiAdapter`] alongside MechGen's native
+/// swarm primitives. Each registered agent gets a UUID derived from its id
+/// so it can write to the shared workspace and receive delegated tasks.
 pub struct AgentRuntime {
     config: RuntimeConfig,
     // --- Agents ---
@@ -104,12 +109,14 @@ pub struct AgentRuntime {
     // --- Core engines ---
     nl_engine: NlEngine,
     codegen: CodegenBridge,
-    // --- Swarm infrastructure ---
+    // --- MechGen swarm infrastructure ---
     sandbox_mgr: SandboxManager,
     lease_mgr: LeaseManager,
     bus: MessageBus,
     consensus: ConsensusEngine,
     task_dag: TaskDag,
+    // --- RMI subsystems (shared workspace, task delegation, registries) ---
+    rmi: crate::rmi_runtime_adapter::RmiAdapter,
 }
 
 impl AgentRuntime {
@@ -128,8 +135,29 @@ impl AgentRuntime {
             bus: MessageBus::new(),
             consensus: ConsensusEngine::new(),
             task_dag: TaskDag::new(),
+            rmi: crate::rmi_runtime_adapter::RmiAdapter::new(),
             config,
         }
+    }
+
+    /// Borrow the embedded RMI adapter (SharedWorkspace + TaskDelegator
+    /// + model registry, all from `rmi::core::collaboration`).
+    pub fn rmi(&self) -> &crate::rmi_runtime_adapter::RmiAdapter {
+        &self.rmi
+    }
+
+    /// Mutably borrow the embedded RMI adapter.
+    pub fn rmi_mut(&mut self) -> &mut crate::rmi_runtime_adapter::RmiAdapter {
+        &mut self.rmi
+    }
+
+    /// Post a note from an agent into the shared RMI workspace.
+    ///
+    /// Derives a UUID for the agent from its id so workspace authorship is
+    /// stable across calls. Returns the new workspace version.
+    pub fn post_to_shared_workspace(&self, agent_id: &str, key: &str, value: &str) -> u64 {
+        let author = uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_OID, agent_id.as_bytes());
+        self.rmi.post_note(key, value, author)
     }
 
     // ─── Agent lifecycle ───────────────────────────────────────────
@@ -594,5 +622,22 @@ mod tests {
 
         let msgs = rt.receive_messages(&a2);
         assert!(msgs.len() >= 1 || true); // Bus routing depends on subscriptions
+    }
+
+    #[test]
+    fn agent_runtime_exposes_embedded_rmi_adapter() {
+        let rt = AgentRuntime::new();
+        // Smoke test: both sides of the fusion are live.
+        let _workspace = rt.rmi().workspace();
+        let _delegator = rt.rmi().delegator();
+    }
+
+    #[test]
+    fn agent_can_post_to_shared_workspace_via_runtime() {
+        let mut rt = AgentRuntime::new();
+        let agent_id = rt.register_agent("worker", &["compute"]);
+        let v1 = rt.post_to_shared_workspace(&agent_id, "result", "42");
+        let v2 = rt.post_to_shared_workspace(&agent_id, "result", "43");
+        assert!(v2 > v1, "workspace versions should increase monotonically");
     }
 }

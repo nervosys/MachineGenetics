@@ -70,6 +70,13 @@ struct ErrorPattern {
     generate: fn(&Diagnostic) -> Vec<FixCandidate>,
 }
 
+/// Public enumeration of all built-in heal pattern names. Used by the
+/// ontology endpoint so agents can discover what mechanical fixes are
+/// available without invoking the full registry construction.
+pub fn pattern_names() -> Vec<&'static str> {
+    builtin_patterns().into_iter().map(|p| p.name).collect()
+}
+
 /// The built-in pattern registry.
 fn builtin_patterns() -> Vec<ErrorPattern> {
     vec![
@@ -448,6 +455,415 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
                     confidence: 0.3,
                     semantics_preserving: false,
                     token_cost: 10,
+                }]
+            },
+        },
+
+        // ── Parse-error patterns (added Phase 37, driven by the
+        // `reliability-bench` failure clusters). These target the
+        // structured `expected X, found Y` messages the parser emits.
+        // The heal strategy is intentionally conservative — we insert
+        // the missing punctuation at the error column rather than
+        // attempting deeper restructuring, so the worst case is a
+        // re-parse that still fails (caller already handles that).
+
+        // expected Semi, found ... → insert `;` before the offending token
+        ErrorPattern {
+            name: "parse-missing-semi",
+            matches: |msg| msg.starts_with("expected Semi, found ")
+                || msg.contains("expected Semi"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "insert-semi-before-token".into(),
+                    description: "Insert `;` at the parser's error position".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        new_text: ";".into(),
+                    }],
+                    confidence: 0.65,
+                    semantics_preserving: true,
+                    token_cost: 1,
+                }]
+            },
+        },
+
+        // expected RBrace, found ... → insert `}` to close an unbalanced block
+        ErrorPattern {
+            name: "parse-missing-rbrace",
+            matches: |msg| msg.starts_with("expected RBrace, found ")
+                || msg.contains("expected RBrace"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "insert-rbrace-before-token".into(),
+                    description: "Insert `}` at the parser's error position".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        new_text: "}".into(),
+                    }],
+                    confidence: 0.55,
+                    semantics_preserving: true,
+                    token_cost: 1,
+                }]
+            },
+        },
+
+        // expected RParen, found ... → insert `)`
+        ErrorPattern {
+            name: "parse-missing-rparen",
+            matches: |msg| msg.starts_with("expected RParen, found ")
+                || msg.contains("expected RParen"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "insert-rparen-before-token".into(),
+                    description: "Insert `)` at the parser's error position".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        new_text: ")".into(),
+                    }],
+                    confidence: 0.55,
+                    semantics_preserving: true,
+                    token_cost: 1,
+                }]
+            },
+        },
+
+        // expected RBrack, found ... → insert `]`
+        ErrorPattern {
+            name: "parse-missing-rbrack",
+            matches: |msg| msg.starts_with("expected RBrack, found ")
+                || msg.contains("expected RBrack"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "insert-rbrack-before-token".into(),
+                    description: "Insert `]` at the parser's error position".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        new_text: "]".into(),
+                    }],
+                    confidence: 0.55,
+                    semantics_preserving: true,
+                    token_cost: 1,
+                }]
+            },
+        },
+
+        // expected Colon, found RParen → unit struct field (`x: ()`) or
+        // bare type-needed slot. Insert `: _` for type inference.
+        ErrorPattern {
+            name: "parse-missing-type-colon",
+            matches: |msg| msg.starts_with("expected Colon, found RParen"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "insert-colon-inferred-type".into(),
+                    description: "Insert `: _` (inferred type) at the parser's error position".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        new_text: ": _".into(),
+                    }],
+                    confidence: 0.45,
+                    semantics_preserving: false,
+                    token_cost: 2,
+                }]
+            },
+        },
+
+        // expected LBrace, found Semi → empty block instead of bare ;
+        ErrorPattern {
+            name: "parse-empty-block",
+            matches: |msg| msg.starts_with("expected LBrace, found Semi"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "replace-semi-with-empty-block".into(),
+                    description: "Replace `;` with `{ }` for empty body".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col + 1).unwrap_or(2),
+                        new_text: "{ }".into(),
+                    }],
+                    confidence: 0.5,
+                    semantics_preserving: false,
+                    token_cost: 2,
+                }]
+            },
+        },
+
+        // expected identifier, found Comma → stray comma where the
+        // parser expected a name (param list, generic-param list,
+        // use-group, struct field, etc.). Delete the offending `,`.
+        ErrorPattern {
+            name: "parse-stray-comma-in-name-position",
+            matches: |msg| msg.starts_with("expected identifier, found Comma"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "delete-stray-comma-name".into(),
+                    description: "Delete stray `,` where an identifier was expected".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col + 1).unwrap_or(2),
+                        new_text: String::new(),
+                    }],
+                    confidence: 0.65,
+                    semantics_preserving: true,
+                    token_cost: 0,
+                }]
+            },
+        },
+
+        // expected KwF, found Semi → fn keyword consumed but body or
+        // signature ended with a stray `;` where the next item should
+        // start. Delete the `;` and continue.
+        ErrorPattern {
+            name: "parse-stray-semi-in-item-position",
+            matches: |msg| msg.starts_with("expected KwF, found Semi"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "delete-stray-semi-item".into(),
+                    description: "Delete stray `;` where an item was expected".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col + 1).unwrap_or(2),
+                        new_text: String::new(),
+                    }],
+                    confidence: 0.6,
+                    semantics_preserving: true,
+                    token_cost: 0,
+                }]
+            },
+        },
+
+        // expected Semi, found Ident → previous statement ended without
+        // a `;` (e.g. dropped trailing semicolon mutation). Insert `;`
+        // before the offending identifier.
+        ErrorPattern {
+            name: "parse-insert-missing-semi",
+            matches: |msg| msg.starts_with("expected Semi, found Ident"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "insert-missing-semi".into(),
+                    description: "Insert missing `;` before the next identifier".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        new_text: ";".to_string(),
+                    }],
+                    confidence: 0.6,
+                    semantics_preserving: true,
+                    token_cost: 1,
+                }]
+            },
+        },
+
+        // expected expression, found Eof → truncated mid-expression
+        // (75%-truncation mutation cuts before the expression
+        // completes). Splice `()` placeholder at the end and let the
+        // structural-balance pass close any open braces afterward.
+        ErrorPattern {
+            name: "parse-truncated-expr-at-eof",
+            matches: |msg| msg.starts_with("expected expression, found Eof"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "insert-unit-at-eof".into(),
+                    description: "Insert `()` placeholder at EOF".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        new_text: "()".to_string(),
+                    }],
+                    confidence: 0.4,
+                    semantics_preserving: false,
+                    token_cost: 2,
+                }]
+            },
+        },
+
+        // expected identifier, found Eof → truncated at a name slot
+        // (cut just before an identifier). Splice `_` placeholder.
+        ErrorPattern {
+            name: "parse-truncated-ident-at-eof",
+            matches: |msg| msg.starts_with("expected identifier, found Eof"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "insert-underscore-at-eof".into(),
+                    description: "Insert `_` placeholder identifier at EOF".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        new_text: "_".to_string(),
+                    }],
+                    confidence: 0.4,
+                    semantics_preserving: false,
+                    token_cost: 1,
+                }]
+            },
+        },
+
+        // expected expression, found Semi → stray semicolon where an
+        // expression should start. Common shape from duplicate-`;`
+        // perturbations (`x = ;y;`) and from accidentally-typed extras.
+        // Delete the offending `;`.
+        ErrorPattern {
+            name: "parse-stray-semi",
+            matches: |msg| msg.starts_with("expected expression, found Semi"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "delete-stray-semi".into(),
+                    description: "Delete stray `;` at the parser's error position".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col + 1).unwrap_or(2),
+                        new_text: String::new(),
+                    }],
+                    confidence: 0.7,
+                    semantics_preserving: true,
+                    token_cost: 0,
+                }]
+            },
+        },
+
+        // expected expression, found RBrace → block / arg / index list
+        // closed prematurely. Splice a `()` placeholder before the `}`
+        // so the structural shape stays well-formed; downstream may
+        // type-error but the parse succeeds.
+        ErrorPattern {
+            name: "parse-empty-where-expr-expected",
+            matches: |msg| msg.starts_with("expected expression, found RBrace"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "insert-unit-before-rbrace".into(),
+                    description: "Insert `()` placeholder before `}`".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        new_text: "()".to_string(),
+                    }],
+                    confidence: 0.55,
+                    semantics_preserving: false,
+                    token_cost: 2,
+                }]
+            },
+        },
+
+        // expected expression, found Comma → stray comma at the start of a
+        // group or after another comma. Delete it. Common shape from
+        // dropped first element / stray token mutations.
+        ErrorPattern {
+            name: "parse-stray-comma",
+            matches: |msg| msg.starts_with("expected expression, found Comma"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "delete-stray-comma".into(),
+                    description: "Delete stray `,` at the parser's error position".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col + 1).unwrap_or(2),
+                        new_text: String::new(),
+                    }],
+                    confidence: 0.6,
+                    semantics_preserving: true,
+                    token_cost: 0,
+                }]
+            },
+        },
+
+        // expected Colon, found Comma → missing type annotation between
+        // a name and the next list element. Insert `: _` (inferred type)
+        // before the comma so `name, NextName` becomes `name: _, NextName`.
+        ErrorPattern {
+            name: "parse-missing-colon-before-comma",
+            matches: |msg| msg.starts_with("expected Colon, found Comma"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "insert-colon-inferred-before-comma".into(),
+                    description: "Insert `: _` for missing type annotation".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        new_text: ": _".into(),
+                    }],
+                    confidence: 0.45,
+                    semantics_preserving: false,
+                    token_cost: 2,
+                }]
+            },
+        },
+
+        // expected Assign, found Semi → declaration without an initializer
+        // (`let x;`). Insert ` = ()` (unit value) before the semicolon.
+        ErrorPattern {
+            name: "parse-missing-init",
+            matches: |msg| msg.starts_with("expected Assign, found Semi"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "insert-unit-init".into(),
+                    description: "Insert ` = ()` for missing initializer".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        new_text: " = ()".into(),
+                    }],
+                    confidence: 0.4,
+                    semantics_preserving: false,
+                    token_cost: 3,
+                }]
+            },
+        },
+
+        // expected identifier, found Arrow → missing return-type slot
+        // got pushed in. Drop the `->` so the function header completes.
+        ErrorPattern {
+            name: "parse-stray-arrow",
+            matches: |msg| msg.starts_with("expected identifier, found Arrow"),
+            generate: |diag| {
+                vec![FixCandidate {
+                    id: "delete-stray-arrow".into(),
+                    description: "Delete misplaced `->` at parser's error position".into(),
+                    edits: vec![TextEdit {
+                        start_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        start_col: diag.span.map(|s| s.col).unwrap_or(1),
+                        end_line: diag.span.map(|s| s.line).unwrap_or(1),
+                        end_col: diag.span.map(|s| s.col + 2).unwrap_or(3),
+                        new_text: String::new(),
+                    }],
+                    confidence: 0.4,
+                    semantics_preserving: false,
+                    token_cost: 0,
                 }]
             },
         },

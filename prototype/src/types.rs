@@ -507,7 +507,11 @@ impl TypeChecker {
         }
 
         // Infer body type.
-        let body_ty = self.infer_block(&fd.body);
+        let body_ty = if let Some(be) = &fd.body_expr {
+            self.infer_expr(be)
+        } else {
+            self.infer_block(&fd.body)
+        };
 
         // Unify body type with declared return type.
         let ret_ty = fd.return_type.as_ref().map(|t| self.lower_type(t)).unwrap_or(Ty::Unit);
@@ -555,6 +559,16 @@ impl TypeChecker {
             ast::Stmt::Item { item } => {
                 self.collect_item_sig(item);
                 self.check_item(item);
+            }
+            ast::Stmt::Guard { cond, else_block } => {
+                let cond_ty = self.infer_expr(cond);
+                if let Err(e) = unify(&mut self.subst, &cond_ty, &Ty::Bool) {
+                    self.emit_error(format!("guard condition must be bool: {e}"));
+                }
+                self.infer_block(else_block);
+            }
+            ast::Stmt::Defer { expr } => {
+                self.infer_expr(expr);
             }
         }
     }
@@ -825,6 +839,30 @@ impl TypeChecker {
                 Ty::Array(Box::new(self.subst.apply(&first)), elements.len() as u64)
             }
 
+            ast::Expr::MapLit { entries } => {
+                if entries.is_empty() {
+                    return Ty::Map(Box::new(self.fresh()), Box::new(self.fresh()));
+                }
+                let (k0, v0) = (
+                    self.infer_expr(&entries[0].0),
+                    self.infer_expr(&entries[0].1),
+                );
+                for (k, v) in &entries[1..] {
+                    let kt = self.infer_expr(k);
+                    let vt = self.infer_expr(v);
+                    if let Err(e) = unify(&mut self.subst, &k0, &kt) {
+                        self.emit_error(format!("map key type mismatch: {e}"));
+                    }
+                    if let Err(e) = unify(&mut self.subst, &v0, &vt) {
+                        self.emit_error(format!("map value type mismatch: {e}"));
+                    }
+                }
+                Ty::Map(
+                    Box::new(self.subst.apply(&k0)),
+                    Box::new(self.subst.apply(&v0)),
+                )
+            }
+
             ast::Expr::ArrayRepeat { value, .. } => {
                 let t = self.infer_expr(value);
                 Ty::Array(Box::new(t), 0) // size unknown at type level
@@ -975,6 +1013,16 @@ impl TypeChecker {
                 }
                 // Range<T> — simplified.
                 self.fresh()
+            }
+
+            ast::Expr::Pipeline { left, right } => {
+                self.infer_expr(left);
+                self.infer_expr(right)
+            }
+
+            ast::Expr::Is { expr, .. } => {
+                self.infer_expr(expr);
+                Ty::Bool
             }
 
             ast::Expr::Error { .. } => Ty::Error,

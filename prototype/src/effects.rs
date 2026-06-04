@@ -135,6 +135,13 @@ impl EffectInfer {
                     let _ = fd;
                 }
             }
+            ast::Stmt::Guard { cond, else_block } => {
+                self.collect_calls_in_expr(cond, callees, local_effects);
+                self.collect_calls_in_block(else_block, callees, local_effects);
+            }
+            ast::Stmt::Defer { expr } => {
+                self.collect_calls_in_expr(expr, callees, local_effects);
+            }
         }
     }
 
@@ -254,6 +261,12 @@ impl EffectInfer {
                     self.collect_calls_in_expr(el, callees, local_effects);
                 }
             }
+            ast::Expr::MapLit { entries } => {
+                for (k, v) in entries {
+                    self.collect_calls_in_expr(k, callees, local_effects);
+                    self.collect_calls_in_expr(v, callees, local_effects);
+                }
+            }
             ast::Expr::ArrayRepeat { value, count } => {
                 self.collect_calls_in_expr(value, callees, local_effects);
                 self.collect_calls_in_expr(count, callees, local_effects);
@@ -265,6 +278,13 @@ impl EffectInfer {
             | ast::Expr::Todo
             | ast::Expr::Unimplemented
             | ast::Expr::Error { .. } => {}
+            ast::Expr::Pipeline { left, right } => {
+                self.collect_calls_in_expr(left, callees, local_effects);
+                self.collect_calls_in_expr(right, callees, local_effects);
+            }
+            ast::Expr::Is { expr, .. } => {
+                self.collect_calls_in_expr(expr, callees, local_effects);
+            }
         }
     }
 

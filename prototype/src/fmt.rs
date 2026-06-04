@@ -87,6 +87,8 @@ fn emit_item(buf: &mut String, item: &Item, mode: Mode, depth: usize) {
         ItemKind::Evolve(e) => emit_evolve(buf, e, mode, depth),
         ItemKind::Train(t) => emit_train(buf, t, mode, depth),
         ItemKind::Swarm(s) => emit_swarm(buf, s, mode, depth),
+        ItemKind::Data(d) => emit_data(buf, d, item.visibility, mode, depth),
+        ItemKind::Extend(e) => emit_extend(buf, e, mode, depth),
     }
 }
 
@@ -154,8 +156,11 @@ fn emit_function(buf: &mut String, f: &FunctionDef, vis: Visibility, mode: Mode,
         buf.push(')');
     }
 
-    if f.body.stmts.is_empty() && f.body.tail_expr.is_none() {
+    if f.body.stmts.is_empty() && f.body.tail_expr.is_none() && f.body_expr.is_none() {
         buf.push_str(" {}");
+    } else if let Some(ref expr) = f.body_expr {
+        buf.push_str(" = ");
+        emit_expr(buf, expr, mode);
     } else {
         buf.push_str(" {\n");
         emit_block_body(buf, &f.body, mode, depth + 1);
@@ -169,6 +174,10 @@ fn emit_param(buf: &mut String, p: &Param, mode: Mode) {
     buf.push_str(&p.name);
     buf.push_str(": ");
     emit_type(buf, &p.ty, mode);
+    if let Some(ref default) = p.default {
+        buf.push_str(" = ");
+        emit_expr(buf, default, mode);
+    }
 }
 
 // ── Structs ──────────────────────────────────────────────────────────
@@ -759,6 +768,93 @@ fn emit_swarm(buf: &mut String, s: &SwarmDef, mode: Mode, depth: usize) {
     buf.push_str("}\n");
 }
 
+// ── Data ─────────────────────────────────────────────────────────────
+
+fn emit_data(buf: &mut String, d: &DataDef, vis: Visibility, mode: Mode, depth: usize) {
+    indent(buf, depth);
+    match mode {
+        Mode::Agent => {
+            if vis == Visibility::Public {
+                buf.push_str("+D ");
+            } else {
+                buf.push_str("D ");
+            }
+        }
+        Mode::Human => {
+            if vis == Visibility::Public {
+                buf.push_str("pub ");
+            }
+            buf.push_str("data ");
+        }
+    }
+    buf.push_str(&d.name);
+    emit_generics(buf, &d.generics);
+
+    match &d.kind {
+        DataKind::Record(fields) => {
+            if fields.is_empty() {
+                buf.push('\n');
+            } else {
+                buf.push('(');
+                for (i, f) in fields.iter().enumerate() {
+                    if i > 0 {
+                        buf.push_str(", ");
+                    }
+                    buf.push_str(&f.name);
+                    buf.push_str(": ");
+                    emit_type(buf, &f.ty, mode);
+                    if let Some(ref default) = f.default {
+                        buf.push_str(" = ");
+                        emit_expr(buf, default, mode);
+                    }
+                }
+                buf.push_str(")\n");
+            }
+        }
+        DataKind::Sum(variants) => {
+            buf.push_str(" = ");
+            for (i, v) in variants.iter().enumerate() {
+                if i > 0 {
+                    buf.push_str(" | ");
+                }
+                buf.push_str(&v.name);
+                if !v.fields.is_empty() {
+                    buf.push('(');
+                    for (j, ty) in v.fields.iter().enumerate() {
+                        if j > 0 {
+                            buf.push_str(", ");
+                        }
+                        emit_type(buf, ty, mode);
+                    }
+                    buf.push(')');
+                }
+            }
+            buf.push('\n');
+        }
+    }
+}
+
+// ── Extend ───────────────────────────────────────────────────────────
+
+fn emit_extend(buf: &mut String, e: &ExtendBlock, mode: Mode, depth: usize) {
+    indent(buf, depth);
+    match mode {
+        Mode::Agent => buf.push_str("xd "),
+        Mode::Human => buf.push_str("extend "),
+    }
+    emit_type(buf, &e.target_type, mode);
+    if e.items.is_empty() {
+        buf.push_str(" {}\n");
+    } else {
+        buf.push_str(" {\n");
+        for item in &e.items {
+            emit_item(buf, item, mode, depth + 1);
+        }
+        indent(buf, depth);
+        buf.push_str("}\n");
+    }
+}
+
 // ── Contracts ────────────────────────────────────────────────────────
 
 fn emit_contract(buf: &mut String, c: &ContractClause) {
@@ -828,7 +924,10 @@ fn emit_where_clause(buf: &mut String, wc: &[WherePredicate], mode: Mode) {
 
 fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
     match ty {
-        Type::Path { segments, type_args } => {
+        Type::Path {
+            segments,
+            type_args,
+        } => {
             buf.push_str(&segments.join("::"));
             if !type_args.is_empty() {
                 buf.push('<');
@@ -919,13 +1018,20 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
             buf.push('?');
             emit_type(buf, inner, mode);
         }
-        Type::Result { ok, err } => {
-            buf.push_str("R[");
-            emit_type(buf, ok, mode);
-            buf.push_str(", ");
-            emit_type(buf, err, mode);
-            buf.push(']');
-        }
+        Type::Result { ok, err } => match mode {
+            Mode::Agent => {
+                buf.push_str("R[");
+                emit_type(buf, ok, mode);
+                buf.push_str(", ");
+                emit_type(buf, err, mode);
+                buf.push(']');
+            }
+            Mode::Human => {
+                emit_type(buf, ok, mode);
+                buf.push_str(" or ");
+                emit_type(buf, err, mode);
+            }
+        },
         Type::Map { key, value } => {
             buf.push('{');
             emit_type(buf, key, mode);
@@ -1040,7 +1146,12 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             }
             buf.push(')');
         }
-        Expr::MethodCall { receiver, method, args, .. } => {
+        Expr::MethodCall {
+            receiver,
+            method,
+            args,
+            ..
+        } => {
             emit_expr(buf, receiver, mode);
             buf.push('.');
             buf.push_str(method);
@@ -1099,6 +1210,18 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             }
             buf.push(']');
         }
+        Expr::MapLit { entries } => {
+            buf.push('{');
+            for (i, (k, v)) in entries.iter().enumerate() {
+                if i > 0 {
+                    buf.push_str(", ");
+                }
+                emit_expr(buf, k, mode);
+                buf.push_str(": ");
+                emit_expr(buf, v, mode);
+            }
+            buf.push('}');
+        }
         Expr::ArrayRepeat { value, count } => {
             buf.push('[');
             emit_expr(buf, value, mode);
@@ -1117,7 +1240,11 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             buf.push_str("| ");
             emit_expr(buf, body, mode);
         }
-        Expr::If { cond, then_block, else_block } => {
+        Expr::If {
+            cond,
+            then_block,
+            else_block,
+        } => {
             match mode {
                 Mode::Agent => buf.push_str("? "),
                 Mode::Human => buf.push_str("if "),
@@ -1173,7 +1300,11 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             emit_block_body(buf, body, mode, 1);
             buf.push('}');
         }
-        Expr::For { pattern, iter, body } => {
+        Expr::For {
+            pattern,
+            iter,
+            body,
+        } => {
             match mode {
                 Mode::Agent => buf.push_str("@ "),
                 Mode::Human => buf.push_str("for "),
@@ -1238,7 +1369,11 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             buf.push_str(" = ");
             emit_expr(buf, value, mode);
         }
-        Expr::Range { start, end, inclusive } => {
+        Expr::Range {
+            start,
+            end,
+            inclusive,
+        } => {
             emit_expr(buf, start, mode);
             if *inclusive {
                 buf.push_str("..=");
@@ -1265,6 +1400,16 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             buf.push_str("/* error: ");
             buf.push_str(message);
             buf.push_str(" */");
+        }
+        Expr::Pipeline { left, right } => {
+            emit_expr(buf, left, mode);
+            buf.push_str(" |> ");
+            emit_expr(buf, right, mode);
+        }
+        Expr::Is { expr, pattern } => {
+            emit_expr(buf, expr, mode);
+            buf.push_str(" is ");
+            emit_pattern(buf, pattern);
         }
     }
 }
@@ -1357,7 +1502,12 @@ fn emit_block_body(buf: &mut String, block: &Block, mode: Mode, depth: usize) {
 
 fn emit_stmt(buf: &mut String, stmt: &Stmt, mode: Mode, depth: usize) {
     match stmt {
-        Stmt::Let { mutable, pattern, ty, value } => {
+        Stmt::Let {
+            mutable,
+            pattern,
+            ty,
+            value,
+        } => {
             indent(buf, depth);
             match mode {
                 Mode::Agent => {
@@ -1369,9 +1519,9 @@ fn emit_stmt(buf: &mut String, stmt: &Stmt, mode: Mode, depth: usize) {
                 }
                 Mode::Human => {
                     if *mutable {
-                        buf.push_str("let mut ");
+                        buf.push_str("var ");
                     } else {
-                        buf.push_str("let ");
+                        buf.push_str("val ");
                     }
                 }
             }
@@ -1391,6 +1541,31 @@ fn emit_stmt(buf: &mut String, stmt: &Stmt, mode: Mode, depth: usize) {
         }
         Stmt::Item { item } => {
             emit_item(buf, item, mode, depth);
+        }
+        Stmt::Guard { cond, else_block } => {
+            indent(buf, depth);
+            match mode {
+                Mode::Agent => buf.push_str("gd "),
+                Mode::Human => buf.push_str("guard "),
+            }
+            emit_expr(buf, cond, mode);
+            match mode {
+                Mode::Agent => buf.push_str(" : "),
+                Mode::Human => buf.push_str(" else "),
+            }
+            buf.push_str("{\n");
+            emit_block_body(buf, else_block, mode, depth + 1);
+            indent(buf, depth);
+            buf.push_str("}\n");
+        }
+        Stmt::Defer { expr } => {
+            indent(buf, depth);
+            match mode {
+                Mode::Agent => buf.push_str("df "),
+                Mode::Human => buf.push_str("defer "),
+            }
+            emit_expr(buf, expr, mode);
+            buf.push_str(";\n");
         }
     }
 }
@@ -1477,7 +1652,7 @@ mod tests {
     fn expand_let_binding() {
         let m = parse_source("f main() { v x = 42; }");
         let out = format_human(&m);
-        assert!(out.contains("let x = 42;"), "got: {out}");
+        assert!(out.contains("val x = 42;"), "got: {out}");
     }
 
     #[test]
@@ -1491,7 +1666,7 @@ mod tests {
     fn expand_let_mut() {
         let m = parse_source("f main() { m x = 0; }");
         let out = format_human(&m);
-        assert!(out.contains("let mut x = 0;"), "got: {out}");
+        assert!(out.contains("var x = 0;"), "got: {out}");
     }
 
     #[test]
@@ -1553,5 +1728,111 @@ mod tests {
         assert!(compact.contains("+f add("), "compact: {compact}");
         let expand = format_human(&m);
         assert!(expand.contains("pub fn add("), "expand: {expand}");
+    }
+
+    // ── New syntax formatting tests ──────────────────────────────────
+
+    #[test]
+    fn expand_val_var() {
+        let m = parse_source("f main() { v x = 1; m y = 2; }");
+        let out = format_human(&m);
+        assert!(out.contains("val x = 1;"), "val: {out}");
+        assert!(out.contains("var y = 2;"), "var: {out}");
+    }
+
+    #[test]
+    fn compact_val_var() {
+        let m = parse_source("f main() { val x = 1; var y = 2; }");
+        let out = format_agent(&m);
+        assert!(out.contains("v x = 1;"), "v: {out}");
+        assert!(out.contains("m y = 2;"), "m: {out}");
+    }
+
+    #[test]
+    fn expand_guard() {
+        let m = parse_source("f foo(x: i32) { gd x > 0 else { return 0; } }");
+        let out = format_human(&m);
+        assert!(out.contains("guard"), "should contain guard: {out}");
+        assert!(out.contains("else"), "should contain else: {out}");
+    }
+
+    #[test]
+    fn compact_guard() {
+        let m = parse_source("f foo(x: i32) { guard x > 0 else { return 0; } }");
+        let out = format_agent(&m);
+        assert!(out.contains("gd"), "should contain gd: {out}");
+    }
+
+    #[test]
+    fn expand_defer() {
+        let m = parse_source("f foo() { df close(); }");
+        let out = format_human(&m);
+        assert!(out.contains("defer"), "should contain defer: {out}");
+    }
+
+    #[test]
+    fn compact_defer() {
+        let m = parse_source("f foo() { defer close(); }");
+        let out = format_agent(&m);
+        assert!(out.contains("df"), "should contain df: {out}");
+    }
+
+    #[test]
+    fn expand_pipeline() {
+        let m = parse_source("f main() { x |> foo }");
+        let out = format_human(&m);
+        assert!(out.contains("|>"), "should contain |>: {out}");
+    }
+
+    #[test]
+    fn expand_data_record() {
+        let m = parse_source("D Point(x: f64, y: f64)");
+        let out = format_human(&m);
+        assert!(
+            out.contains("data Point"),
+            "should contain data Point: {out}"
+        );
+    }
+
+    #[test]
+    fn compact_data_record() {
+        let m = parse_source("data Point(x: f64, y: f64)");
+        let out = format_agent(&m);
+        assert!(out.contains("D Point"), "should contain D Point: {out}");
+    }
+
+    #[test]
+    fn expand_extend() {
+        let m = parse_source("xd Point { f foo() -> i32 { 0 } }");
+        let out = format_human(&m);
+        assert!(out.contains("extend"), "should contain extend: {out}");
+    }
+
+    #[test]
+    fn compact_extend() {
+        let m = parse_source("extend Point { f foo() -> i32 { 0 } }");
+        let out = format_agent(&m);
+        assert!(out.contains("xd"), "should contain xd: {out}");
+    }
+
+    #[test]
+    fn expand_expr_body_fn() {
+        let m = parse_source("f double(x: i32) -> i32 = x * 2");
+        let out = format_human(&m);
+        assert!(out.contains("= x * 2"), "should contain = expr: {out}");
+    }
+
+    #[test]
+    fn expand_error_union() {
+        let m = parse_source("f read() -> String or IoError { }");
+        let out = format_human(&m);
+        assert!(out.contains("or"), "human mode should use 'or': {out}");
+    }
+
+    #[test]
+    fn compact_error_union() {
+        let m = parse_source("f read() -> String or IoError { }");
+        let out = format_agent(&m);
+        assert!(out.contains("R["), "agent mode should use R[]: {out}");
     }
 }

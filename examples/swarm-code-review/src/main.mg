@@ -25,24 +25,24 @@ use std::io;
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct FileDiff {
+pub data FileDiff {
     path: String,
     additions: u32,
     deletions: u32,
-    hunks: Vec<String>,
+    hunks: [String]~,
 }
 
 #[derive(Debug, Clone)]
-pub struct PullRequest {
+pub data PullRequest {
     id: u64,
     title: String,
     author: String,
     description: String,
-    files: Vec<FileDiff>,
-    labels: Vec<String>,
+    files: [FileDiff]~,
+    labels: [String]~,
 }
 
-impl PullRequest {
+extend PullRequest {
     pub fn total_changes(&self) -> u32 {
         self.files.iter().map(|f| f.additions + f.deletions).sum()
     }
@@ -61,7 +61,7 @@ impl PullRequest {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ReviewRole {
+pub data ReviewRole {
     Architect,
     Security,
     Performance,
@@ -69,7 +69,7 @@ pub enum ReviewRole {
     Testing,
 }
 
-impl fmt::Display for ReviewRole {
+extend ReviewRole {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ReviewRole::Architect   => write!(f, "🏗  Architect"),
@@ -86,14 +86,14 @@ impl fmt::Display for ReviewRole {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Severity {
+pub data Severity {
     Info,
     Warning,
     Error,
     Critical,
 }
 
-impl Severity {
+extend Severity {
     fn weight(&self) -> u32 {
         match self {
             Severity::Info     => 1,
@@ -104,7 +104,7 @@ impl Severity {
     }
 }
 
-impl fmt::Display for Severity {
+extend Severity {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Severity::Info     => write!(f, "INFO"),
@@ -116,18 +116,18 @@ impl fmt::Display for Severity {
 }
 
 #[derive(Debug, Clone)]
-pub struct Finding {
+pub data Finding {
     role: ReviewRole,
     severity: Severity,
     file: String,
-    line: Option<u32>,
+    line: ?u32,
     message: String,
-    suggestion: Option<String>,
+    suggestion: ?String,
 }
 
-impl fmt::Display for Finding {
+extend Finding {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let loc = match self.line {
+        val loc = match self.line {
             Some(l) => format!("{}:{}", self.file, l),
             None => self.file.clone(),
         };
@@ -144,18 +144,18 @@ impl fmt::Display for Finding {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug)]
-pub struct ReviewAgent {
+pub data ReviewAgent {
     id: u64,
     role: ReviewRole,
-    findings: Vec<Finding>,
+    findings: [Finding]~,
 }
 
-impl ReviewAgent {
+extend ReviewAgent {
     pub fn new(id: u64, role: ReviewRole) -> ReviewAgent {
-        ReviewAgent { id: id, role: role, findings: Vec::new() }
+        ReviewAgent { id: id, role: role, findings: []~.new() }
     }
 
-    pub fn add_finding(&mut self, severity: Severity, file: String, line: Option<u32>, msg: String, suggestion: Option<String>) {
+    pub fn add_finding(&mut self, severity: Severity, file: String, line: ?u32, msg: String, suggestion: ?String) {
         self.findings.push(Finding {
             role: self.role.clone(),
             severity: severity,
@@ -304,7 +304,7 @@ impl ReviewAgent {
     }
 
     fn review_testing(&mut self, pr: &PullRequest) {
-        let mut has_test_file = false;
+        var has_test_file = false;
         for file in &pr.files {
             if file.path.contains("test") || file.path.contains("spec") {
                 has_test_file = true;
@@ -327,13 +327,13 @@ impl ReviewAgent {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum VoteDecision {
+pub data VoteDecision {
     Approve,
     RequestChanges,
     Reject,
 }
 
-impl fmt::Display for VoteDecision {
+extend VoteDecision {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             VoteDecision::Approve        => write!(f, "✅ Approve"),
@@ -344,7 +344,7 @@ impl fmt::Display for VoteDecision {
 }
 
 #[derive(Debug, Clone)]
-pub struct Vote {
+pub data Vote {
     agent_id: u64,
     role: ReviewRole,
     decision: VoteDecision,
@@ -357,11 +357,11 @@ pub struct Vote {
 /// @ens  result.decision reflects worst severity found
 /// @fx   pure
 fn compute_vote(agent: &ReviewAgent) -> Vote {
-    let critical = agent.findings.iter().any(|f| f.severity == Severity::Critical);
-    let errors = agent.findings.iter().filter(|f| f.severity == Severity::Error).count();
-    let score = agent.risk_score();
+    val critical = agent.findings.iter().any(|f| f.severity == Severity::Critical);
+    val errors = agent.findings.iter().filter(|f| f.severity == Severity::Error).count();
+    val score = agent.risk_score();
 
-    let (decision, reason) = if critical {
+    val (decision, reason) = if critical {
         (VoteDecision::Reject, "Critical issues found — cannot merge".to_string())
     } else if errors > 2 {
         (VoteDecision::RequestChanges, format!("Found {} errors (risk score: {})", errors, score))
@@ -380,13 +380,13 @@ fn compute_vote(agent: &ReviewAgent) -> Vote {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ReviewOutcome {
+pub data ReviewOutcome {
     Approved,
     ChangesRequested,
     Rejected,
 }
 
-impl fmt::Display for ReviewOutcome {
+extend ReviewOutcome {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ReviewOutcome::Approved         => write!(f, "✅ APPROVED"),
@@ -402,10 +402,10 @@ impl fmt::Display for ReviewOutcome {
 /// @req  votes.len() > 0                  "need at least one vote"
 /// @ens  result is deterministic
 /// @fx   pure
-fn consensus(votes: &Vec<Vote>) -> ReviewOutcome {
-    let total = votes.len();
-    let approvals = votes.iter().filter(|v| v.decision == VoteDecision::Approve).count();
-    let rejections = votes.iter().filter(|v| v.decision == VoteDecision::Reject).count();
+fn consensus(votes: &[Vote]~) -> ReviewOutcome {
+    val total = votes.len();
+    val approvals = votes.iter().filter(|v| v.decision == VoteDecision::Approve).count();
+    val rejections = votes.iter().filter(|v| v.decision == VoteDecision::Reject).count();
 
     if rejections > 0 {
         ReviewOutcome::Rejected
@@ -421,7 +421,7 @@ fn consensus(votes: &Vec<Vote>) -> ReviewOutcome {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct ReviewRecord {
+pub data ReviewRecord {
     pr_id: u64,
     pr_title: String,
     outcome: ReviewOutcome,
@@ -430,17 +430,17 @@ pub struct ReviewRecord {
 }
 
 #[derive(Debug)]
-pub struct ReviewHistory {
-    records: Vec<ReviewRecord>,
+pub data ReviewHistory {
+    records: [ReviewRecord]~,
 }
 
-impl ReviewHistory {
+extend ReviewHistory {
     pub fn new() -> ReviewHistory {
-        ReviewHistory { records: Vec::new() }
+        ReviewHistory { records: []~.new() }
     }
 
     pub fn record(&mut self, pr: &PullRequest, outcome: ReviewOutcome,
-              findings: &Vec<Finding>, risk: u32) {
+              findings: &[Finding]~, risk: u32) {
         self.records.push(ReviewRecord {
             pr_id: pr.id,
             pr_title: pr.title.clone(),
@@ -454,7 +454,7 @@ impl ReviewHistory {
         if self.records.is_empty() {
             return 0.0;
         }
-        let approved = self.records.iter()
+        val approved = self.records.iter()
             .filter(|r| r.outcome == ReviewOutcome::Approved)
             .count();
         approved as f64 / self.records.len() as f64 * 100.0
@@ -464,7 +464,7 @@ impl ReviewHistory {
         if self.records.is_empty() {
             return 0.0;
         }
-        let total: u32 = self.records.iter().map(|r| r.total_risk).sum();
+        val total: u32 = self.records.iter().map(|r| r.total_risk).sum();
         total as f64 / self.records.len() as f64
     }
 
@@ -495,7 +495,7 @@ pub fn main() / io {
     println!("");
 
     // Simulate a pull request.
-    let pr = PullRequest {
+    val pr = PullRequest {
         id: 42,
         title: "Add user authentication".to_string(),
         author: "developer-a".to_string(),
@@ -506,9 +506,9 @@ pub fn main() / io {
                 additions: 120,
                 deletions: 5,
                 hunks: vec![
-                    "pub fn verify_token(token: &String) -> Result<Claims, AuthError>".to_string(),
+                    "pub fn verify_token(token: &String) -> Claims or AuthError".to_string(),
                     "pub struct Claims { user_id: u64, exp: u64 }".to_string(),
-                    "let api_key = \"sk-test-12345\"".to_string(),
+                    "val api_key = \"sk-test-12345\"".to_string(),
                 ],
             },
             FileDiff {
@@ -525,7 +525,7 @@ pub fn main() / io {
                 additions: 40,
                 deletions: 10,
                 hunks: vec![
-                    "pub fn auth_middleware(req: &Request) / net + io -> Result<(), AuthError>".to_string(),
+                    "pub fn auth_middleware(req: &Request) / net + io -> () or AuthError".to_string(),
                 ],
             },
         ],
@@ -540,12 +540,12 @@ pub fn main() / io {
 
     // Create the review swarm.
     println!("─── Assembling Review Swarm ──────────────────────────────");
-    let mut agents: Vec<ReviewAgent> = vec![
-        ReviewAgent::new(1, ReviewRole::Architect),
-        ReviewAgent::new(2, ReviewRole::Security),
-        ReviewAgent::new(3, ReviewRole::Performance),
-        ReviewAgent::new(4, ReviewRole::Style),
-        ReviewAgent::new(5, ReviewRole::Testing),
+    var agents: [ReviewAgent]~ = vec![
+        ReviewAgent.new(1, ReviewRole::Architect),
+        ReviewAgent.new(2, ReviewRole::Security),
+        ReviewAgent.new(3, ReviewRole::Performance),
+        ReviewAgent.new(4, ReviewRole::Style),
+        ReviewAgent.new(5, ReviewRole::Testing),
     ];
 
     // Each agent reviews independently (scatter phase).
@@ -558,7 +558,7 @@ pub fn main() / io {
     // Gather all findings.
     println!("");
     println!("─── Gather: Consolidated Findings ────────────────────────");
-    let mut all_findings: Vec<Finding> = Vec::new();
+    var all_findings: [Finding]~ = []~.new();
     for agent in &agents {
         for finding in &agent.findings {
             println!("  {}", finding);
@@ -571,15 +571,15 @@ pub fn main() / io {
     // Vote on the PR.
     println!("");
     println!("─── Consensus: Voting ────────────────────────────────────");
-    let mut votes: Vec<Vote> = Vec::new();
+    var votes: [Vote]~ = []~.new();
     for agent in &agents {
-        let vote = compute_vote(agent);
+        val vote = compute_vote(agent);
         println!("  {}: {} — {}", vote.role, vote.decision, vote.reason);
         votes.push(vote);
     }
 
-    let outcome = consensus(&votes);
-    let total_risk: u32 = agents.iter().map(|a| a.risk_score()).sum();
+    val outcome = consensus(&votes);
+    val total_risk: u32 = agents.iter().map(|a| a.risk_score()).sum();
     println!("");
     println!("  ╔═══════════════════════════════════╗");
     println!("  ║  Review Outcome: {:<21}║", outcome);
@@ -587,11 +587,11 @@ pub fn main() / io {
     println!("  ╚═══════════════════════════════════╝");
 
     // Record in history.
-    let mut history = ReviewHistory::new();
+    var history = ReviewHistory.new();
     history.record(&pr, outcome, &all_findings, total_risk);
 
     // Simulate a second clean PR.
-    let clean_pr = PullRequest {
+    val clean_pr = PullRequest {
         id: 43,
         title: "Fix typo in README".to_string(),
         author: "developer-b".to_string(),
@@ -612,7 +612,7 @@ pub fn main() / io {
         ],
         labels: vec!["docs"].iter().map(|s| s.to_string()).collect(),
     };
-    history.record(&clean_pr, ReviewOutcome::Approved, &Vec::new(), 1);
+    history.record(&clean_pr, ReviewOutcome::Approved, &[]~.new(), 1);
 
     history.report();
 

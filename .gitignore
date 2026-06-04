@@ -26,10 +26,16 @@ Session.vim
 .cargo
 
 ## Build
-/target
+# Any target/ at any depth — debug binaries/PDBs/dep-files embed absolute
+# local paths (machine username), so build output must never be tracked.
+**/target/
 /build
 /dist/
-prototype/target
+
+## Run artifacts (regenerable; some embed local paths)
+*.ckpt
+*.rmib
+prototype/examples/*.csv
 
 ## ICE reports
 rustc-ice-*.txt
@@ -77,3 +83,5 @@ flake.lock
 /default.nix
 
 # Before adding new lines, see the comment at the top.
+.git.standalone-backup/
+RecursiveMachineIntelligence/.git.standalone-backup/

@@ -22,14 +22,14 @@ use std::io;
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Architecture {
+pub data Architecture {
     X86_64,
     Aarch64,
     Wasm32,
     RiscV64,
 }
 
-impl fmt::Display for Architecture {
+extend Architecture {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Architecture::X86_64  => write!(f, "x86_64"),
@@ -41,7 +41,7 @@ impl fmt::Display for Architecture {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct CostVector {
+pub data CostVector {
     latency_ms: f64,        // Execution latency.
     throughput_ops_sec: f64, // Operations per second.
     code_size_kb: f64,      // Binary size.
@@ -49,7 +49,7 @@ pub struct CostVector {
     compile_time_ms: f64,   // Time to compile.
 }
 
-impl fmt::Display for CostVector {
+extend CostVector {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "lat={lat:.1}ms thr={thr:.0}op/s size={sz:.1}KB energy={e:.1}mJ compile={ct:.1}ms",
             lat = self.latency_ms,
@@ -60,24 +60,24 @@ impl fmt::Display for CostVector {
     }
 }
 
-impl CostVector {
+extend CostVector {
     /// Compute a weighted score (lower is better).
     ///
     /// @req weights.len() == 5
     /// @ens result >= 0.0
     /// @fx  pure
     pub fn score(&self, weights: &CostWeights) -> f64 {
-        let lat_score = self.latency_ms * weights.latency;
-        let thr_score = (1.0 / self.throughput_ops_sec.max(1.0)) * weights.throughput * 1000.0;
-        let size_score = self.code_size_kb * weights.code_size;
-        let energy_score = self.energy_mj * weights.energy;
-        let compile_score = self.compile_time_ms * weights.compile_time;
+        val lat_score = self.latency_ms * weights.latency;
+        val thr_score = (1.0 / self.throughput_ops_sec.max(1.0)) * weights.throughput * 1000.0;
+        val size_score = self.code_size_kb * weights.code_size;
+        val energy_score = self.energy_mj * weights.energy;
+        val compile_score = self.compile_time_ms * weights.compile_time;
         lat_score + thr_score + size_score + energy_score + compile_score
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct CostWeights {
+pub data CostWeights {
     latency: f64,
     throughput: f64,
     code_size: f64,
@@ -85,7 +85,7 @@ pub struct CostWeights {
     compile_time: f64,
 }
 
-impl CostWeights {
+extend CostWeights {
     /// Cloud server profile: latency and throughput dominant.
     pub fn server() -> CostWeights {
         CostWeights {
@@ -136,7 +136,7 @@ impl CostWeights {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum OptLevel {
+pub data OptLevel {
     None,     // -O0
     Basic,    // -O1
     Standard, // -O2
@@ -145,7 +145,7 @@ pub enum OptLevel {
     MinSize,  // -Oz
 }
 
-impl fmt::Display for OptLevel {
+extend OptLevel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             OptLevel::None     => write!(f, "O0"),
@@ -159,7 +159,7 @@ impl fmt::Display for OptLevel {
 }
 
 #[derive(Debug, Clone)]
-pub struct Strategy {
+pub data Strategy {
     name: String,
     opt_level: OptLevel,
     lto: bool,
@@ -169,9 +169,9 @@ pub struct Strategy {
     strip_debug: bool,
 }
 
-impl fmt::Display for Strategy {
+extend Strategy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut flags = Vec::<&str>::new();
+        var flags = [&str]~.new();
         if self.lto { flags.push("lto"); }
         if self.vectorize { flags.push("vec"); }
         if self.unroll_loops { flags.push("unroll"); }
@@ -187,7 +187,7 @@ impl fmt::Display for Strategy {
 /// Predefined strategy catalog.
 ///
 /// @fx pure
-fn strategy_catalog() -> Vec<Strategy> {
+fn strategy_catalog() -> [Strategy]~ {
     vec![
         Strategy {
             name: "debug".to_string(),
@@ -258,7 +258,7 @@ fn strategy_catalog() -> Vec<Strategy> {
 /// @fx   pure
 fn predict_cost(strategy: &Strategy, arch: &Architecture) -> CostVector {
     // Base costs per optimization level.
-    let (base_lat, base_thr, base_size, base_compile) = match strategy.opt_level {
+    val (base_lat, base_thr, base_size, base_compile) = match strategy.opt_level {
         OptLevel::None     => (50.0,  1000.0,  200.0, 100.0),
         OptLevel::Basic    => (30.0,  3000.0,  180.0, 150.0),
         OptLevel::Standard => (15.0,  8000.0,  160.0, 300.0),
@@ -268,7 +268,7 @@ fn predict_cost(strategy: &Strategy, arch: &Architecture) -> CostVector {
     };
 
     // Architecture scaling factors.
-    let (arch_lat, arch_thr, arch_size, arch_energy) = match arch {
+    val (arch_lat, arch_thr, arch_size, arch_energy) = match arch {
         Architecture::X86_64  => (1.0, 1.0, 1.0, 1.0),
         Architecture::Aarch64 => (0.9, 1.1, 0.95, 0.7),
         Architecture::Wasm32  => (2.5, 0.4, 0.6, 0.3),
@@ -276,26 +276,26 @@ fn predict_cost(strategy: &Strategy, arch: &Architecture) -> CostVector {
     };
 
     // LTO adjustments.
-    let lto_factor = if strategy.lto { 0.85 } else { 1.0 };
-    let lto_compile = if strategy.lto { 1.5 } else { 1.0 };
-    let lto_size = if strategy.lto { 0.8 } else { 1.0 };
+    val lto_factor = if strategy.lto { 0.85 } else { 1.0 };
+    val lto_compile = if strategy.lto { 1.5 } else { 1.0 };
+    val lto_size = if strategy.lto { 0.8 } else { 1.0 };
 
     // Vectorization boost.
-    let vec_thr = if strategy.vectorize { 1.4 } else { 1.0 };
-    let vec_size = if strategy.vectorize { 1.1 } else { 1.0 };
+    val vec_thr = if strategy.vectorize { 1.4 } else { 1.0 };
+    val vec_size = if strategy.vectorize { 1.1 } else { 1.0 };
 
     // Loop unrolling.
-    let unroll_thr = if strategy.unroll_loops { 1.2 } else { 1.0 };
-    let unroll_size = if strategy.unroll_loops { 1.3 } else { 1.0 };
+    val unroll_thr = if strategy.unroll_loops { 1.2 } else { 1.0 };
+    val unroll_size = if strategy.unroll_loops { 1.3 } else { 1.0 };
 
     // Strip debug info.
-    let strip_size = if strategy.strip_debug { 0.7 } else { 1.0 };
+    val strip_size = if strategy.strip_debug { 0.7 } else { 1.0 };
 
-    let final_lat = base_lat * arch_lat * lto_factor;
-    let final_thr = base_thr * arch_thr * vec_thr * unroll_thr;
-    let final_size = base_size * arch_size * lto_size * vec_size * unroll_size * strip_size;
-    let final_energy = final_lat * 0.8 * arch_energy;
-    let final_compile = base_compile * lto_compile;
+    val final_lat = base_lat * arch_lat * lto_factor;
+    val final_thr = base_thr * arch_thr * vec_thr * unroll_thr;
+    val final_size = base_size * arch_size * lto_size * vec_size * unroll_size * strip_size;
+    val final_energy = final_lat * 0.8 * arch_energy;
+    val final_compile = base_compile * lto_compile;
 
     CostVector {
         latency_ms: final_lat,
@@ -311,7 +311,7 @@ fn predict_cost(strategy: &Strategy, arch: &Architecture) -> CostVector {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct BenchmarkResult {
+pub data BenchmarkResult {
     strategy_name: String,
     architecture: Architecture,
     measured_latency_ms: f64,
@@ -320,15 +320,15 @@ pub struct BenchmarkResult {
 }
 
 #[derive(Debug, Clone)]
-pub struct CalibrationData {
-    benchmarks: Vec<BenchmarkResult>,
+pub data CalibrationData {
+    benchmarks: [BenchmarkResult]~,
     drift_factor: f64,  // How much predictions deviated from reality.
 }
 
-impl CalibrationData {
+extend CalibrationData {
     pub fn new() -> CalibrationData {
         CalibrationData {
-            benchmarks: Vec::new(),
+            benchmarks: []~.new(),
             drift_factor: 1.0,
         }
     }
@@ -341,20 +341,20 @@ impl CalibrationData {
     /// Calculate the drift between predicted and measured.
     ///
     /// @ens self.drift_factor > 0.0
-    pub fn calibrate(&mut self, strategies: &Vec<Strategy>) {
+    pub fn calibrate(&mut self, strategies: &[Strategy]~) {
         if self.benchmarks.is_empty() {
             return;
         }
 
-        let mut total_drift = 0.0;
-        let mut count = 0u32;
+        var total_drift = 0.0;
+        var count = 0u32;
 
         for bench in &self.benchmarks {
             for strat in strategies {
                 if strat.name == bench.strategy_name {
-                    let predicted = predict_cost(strat, &bench.architecture);
-                    let lat_drift = bench.measured_latency_ms / predicted.latency_ms;
-                    let thr_drift = bench.measured_throughput / predicted.throughput_ops_sec;
+                    val predicted = predict_cost(strat, &bench.architecture);
+                    val lat_drift = bench.measured_latency_ms / predicted.latency_ms;
+                    val thr_drift = bench.measured_throughput / predicted.throughput_ops_sec;
                     total_drift = total_drift + lat_drift + thr_drift;
                     count = count + 2;
                 }
@@ -385,15 +385,15 @@ impl CalibrationData {
 // ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct OptimizationResult {
+pub data OptimizationResult {
     architecture: Architecture,
     chosen_strategy: String,
     cost: CostVector,
     score: f64,
-    alternatives: Vec<(String, f64)>, // (name, score) of runners-up.
+    alternatives: [(String, f64)]~, // (name, score) of runners-up.
 }
 
-impl fmt::Display for OptimizationResult {
+extend OptimizationResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "[{arch}] → {strat} (score={sc:.2}) | {cost}",
             arch = self.architecture,
@@ -404,17 +404,17 @@ impl fmt::Display for OptimizationResult {
 }
 
 #[derive(Debug)]
-pub struct Optimizer {
-    strategies: Vec<Strategy>,
+pub data Optimizer {
+    strategies: [Strategy]~,
     calibration: CalibrationData,
     budget_ceiling_ms: f64,
 }
 
-impl Optimizer {
+extend Optimizer {
     pub fn new(budget_ceiling_ms: f64) -> Optimizer {
         Optimizer {
             strategies: strategy_catalog(),
-            calibration: CalibrationData::new(),
+            calibration: CalibrationData.new(),
             budget_ceiling_ms: budget_ceiling_ms,
         }
     }
@@ -425,27 +425,27 @@ impl Optimizer {
     /// @ens  result.score >= 0.0
     /// @fx   pure
     pub fn optimize(&self, arch: &Architecture, weights: &CostWeights) -> OptimizationResult {
-        let mut results: Vec<(String, CostVector, f64)> = Vec::new();
+        var results: [(String, CostVector, f64)]~ = []~.new();
 
         for strat in &self.strategies {
-            let raw_cost = predict_cost(strat, arch);
-            let cost = self.calibration.adjust(raw_cost);
+            val raw_cost = predict_cost(strat, arch);
+            val cost = self.calibration.adjust(raw_cost);
 
             // Budget pruning: skip strategies that exceed the time ceiling.
             if cost.compile_time_ms > self.budget_ceiling_ms {
                 continue;
             }
 
-            let sc = cost.score(weights);
+            val sc = cost.score(weights);
             results.push((strat.name.clone(), cost, sc));
         }
 
         // Sort by score ascending (lower = better).
         results.sort_by(|a, b| a.2.partial_cmp(&b.2).unwrap_or(std::cmp::Ordering::Equal));
 
-        let (best_name, best_cost, best_score) = results[0].clone();
+        val (best_name, best_cost, best_score) = results[0].clone();
 
-        let alts: Vec<(String, f64)> = results.iter()
+        val alts: [(String, f64)]~ = results.iter()
             .skip(1)
             .take(3)
             .map(|(name, _, sc)| (name.clone(), *sc))
@@ -461,8 +461,8 @@ impl Optimizer {
     }
 
     /// Optimize all target architectures.
-    pub fn optimize_all(&self, targets: &Vec<Architecture>, weights: &CostWeights) -> Vec<OptimizationResult> {
-        let mut results: Vec<OptimizationResult> = Vec::new();
+    pub fn optimize_all(&self, targets: &[Architecture]~, weights: &CostWeights) -> [OptimizationResult]~ {
+        var results: [OptimizationResult]~ = []~.new();
         for arch in targets {
             results.push(self.optimize(arch, weights));
         }
@@ -481,7 +481,7 @@ pub fn main() / io {
     println!("");
 
     // Create optimizer with a 1-second compile budget.
-    let mut optimizer = Optimizer::new(1000.0);
+    var optimizer = Optimizer.new(1000.0);
 
     // Simulate historical benchmarks for calibration.
     println!("─── Calibration ──────────────────────────────────────────");
@@ -512,7 +512,7 @@ pub fn main() / io {
     println!("");
 
     // Define targets.
-    let targets = vec![
+    val targets = vec![
         Architecture::X86_64,
         Architecture::Aarch64,
         Architecture::Wasm32,
@@ -520,7 +520,7 @@ pub fn main() / io {
     ];
 
     // Run optimization with different weight profiles.
-    let profiles: Vec<(&str, CostWeights)> = vec![
+    val profiles: [(&str, CostWeights)]~ = vec![
         ("Server",        CostWeights::server()),
         ("Embedded",      CostWeights::embedded()),
         ("WASM Client",   CostWeights::wasm_client()),
@@ -532,13 +532,13 @@ pub fn main() / io {
         println!("  Weights: lat={weights.latency} thr={weights.throughput} size={weights.code_size} energy={weights.energy} compile={weights.compile_time}");
         println!("");
 
-        let results = optimizer.optimize_all(&targets, weights);
+        val results = optimizer.optimize_all(&targets, weights);
 
         for result in &results {
             println!("  {result}");
 
             if !result.alternatives.is_empty() {
-                let mut alt_strs: Vec<String> = Vec::new();
+                var alt_strs: [String]~ = []~.new();
                 for (name, sc) in &result.alternatives {
                     alt_strs.push(format!("{name}={sc:.2}"));
                 }
@@ -550,19 +550,19 @@ pub fn main() / io {
 
     // Strategy coverage matrix.
     println!("─── Strategy × Architecture Cost Matrix ──────────────────");
-    let strategies = strategy_catalog();
-    let server_weights = CostWeights::server();
+    val strategies = strategy_catalog();
+    val server_weights = CostWeights::server();
 
     println!("  ┌──────────────┬──────────┬──────────┬──────────┬──────────┐");
     println!("  │ Strategy     │ x86_64   │ aarch64  │ wasm32   │ riscv64  │");
     println!("  ├──────────────┼──────────┼──────────┼──────────┼──────────┤");
 
     for strat in &strategies {
-        let mut scores: Vec<String> = Vec::new();
+        var scores: [String]~ = []~.new();
         for arch in &targets {
-            let cost = predict_cost(strat, arch);
-            let cost = optimizer.calibration.adjust(cost);
-            let sc = cost.score(&server_weights);
+            val cost = predict_cost(strat, arch);
+            val cost = optimizer.calibration.adjust(cost);
+            val sc = cost.score(&server_weights);
             scores.push(format!("{sc:>7.1}"));
         }
         println!("  │ {name:<12} │ {s0} │ {s1} │ {s2} │ {s3} │",
@@ -578,8 +578,8 @@ pub fn main() / io {
     println!("  Compile-time ceiling: {optimizer.budget_ceiling_ms}ms");
     println!("  Strategies within budget:");
     for strat in &strategies {
-        let cost = predict_cost(strat, &Architecture::X86_64);
-        let within = if cost.compile_time_ms <= optimizer.budget_ceiling_ms { "✓" } else { "✗" };
+        val cost = predict_cost(strat, &Architecture::X86_64);
+        val within = if cost.compile_time_ms <= optimizer.budget_ceiling_ms { "✓" } else { "✗" };
         println!("    {within} {strat.name}: {cost.compile_time_ms:.0}ms");
     }
     println!("");

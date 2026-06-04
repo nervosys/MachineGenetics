@@ -207,11 +207,12 @@ mod tests {
                     kind: ItemKind::Function(FunctionDef {
                         name: "check".into(),
                         generics: vec![],
-                        params: vec![Param { name: "x".into(), ty: path_type("i32") }],
+                        params: vec![Param { name: "x".into(), ty: path_type("i32"), default: None }],
                         return_type: Some(path_type("bool")),
                         where_clause: vec![],
                         effects: vec![],
                         body: Block { stmts: vec![], tail_expr: None },
+                        body_expr: None,
                         contracts: vec![ContractClause {
                             kind: ContractClauseKind::Requires,
                             condition: "x > 0".into(),
@@ -260,6 +261,7 @@ mod tests {
                                 params: vec![Param {
                                     name: "data".into(),
                                     ty: path_type("String"),
+                                    default: None,
                                 }],
                                 return_type: None,
                             },

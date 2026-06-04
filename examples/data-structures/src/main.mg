@@ -1,43 +1,34 @@
-// data-structures — Structs, enums, generics, traits, pattern matching.
+// data-structures — Data types, extensions, generics, pattern matching.
 //
 // Demonstrates:
-//   - Struct definitions (pub struct, struct)
-//   - Enum definitions (pub enum, enum)
-//   - Generic types <T>
+//   - data keyword for records and sums (replaces struct/enum for simple types)
+//   - struct/enum still available for complex cases (derive, named fields)
+//   - extend keyword (replaces impl)
 //   - Trait definitions (pub trait)
-//   - Impl blocks (impl Type, impl Trait for Type)
-//   - Derive attributes (#[derive])
-//   - Pattern matching (match value { ... })
-//   - Vec<T>, Option<T>, Result<T, E>
-//   - Box<T>, Rc<T>, Arc<T>
-//   - HashMap<K, V>
-//   - Mutable references (&mut T)
+//   - val / var (replaces let / let mut)
+//   - guard for early exit
+//   - is pattern (pattern test expression)
+//   - T or E (error union)
+//   - Expression-body functions
 
-// ── Structs ──────────────────────────────────────────────────────────
+// ── Data types (concise form) ────────────────────────────────────────
 
-#[derive(Debug, Clone)]
-pub struct Point<T> {
-    pub x: T,
-    pub y: T,
-}
+// Records: positional fields with named access.
+data Point[T](pub x: T, pub y: T)
+
+// Sums: algebraic data types.
+data Color = Red | Green | Blue | Custom(u8, u8, u8)
+
+// ── Structs (when you need derive or named enum fields) ──────────────
 
 #[derive(Debug)]
 pub struct Person {
     name: String,
     age: u32,
-    email: Option<String>,
+    email: ?String,
 }
 
-// ── Enums ────────────────────────────────────────────────────────────
-
-#[derive(Debug)]
-pub enum Color {
-    Red,
-    Green,
-    Blue,
-    Custom(u8, u8, u8),
-}
-
+// Named enum fields still use struct-style syntax.
 #[derive(Debug)]
 pub enum Shape {
     Circle { radius: f64 },
@@ -60,16 +51,14 @@ pub trait Describe {
     }
 }
 
-// ── Impl blocks ──────────────────────────────────────────────────────
+// ── Extend blocks (replace impl) ────────────────────────────────────
 
-impl Point<f64> {
-    pub fn origin() -> Point<f64> {
-        Point { x: 0.0, y: 0.0 }
-    }
+extend Point[f64] {
+    pub fn origin() -> Point[f64] = Point { x: 0.0, y: 0.0 }
 
-    pub fn distance(&self, other: &Point<f64>) -> f64 {
-        let dx = self.x - other.x;
-        let dy = self.y - other.y;
+    pub fn distance(&self, other: &Point[f64]) -> f64 {
+        val dx = self.x - other.x;
+        val dy = self.y - other.y;
         (dx * dx + dy * dy).sqrt()
     }
 
@@ -79,7 +68,7 @@ impl Point<f64> {
     }
 }
 
-impl Area for Shape {
+extend Shape {
     fn area(&self) -> f64 {
         match self {
             Shape::Circle { radius } => std::f64::consts::PI * radius * radius,
@@ -87,9 +76,7 @@ impl Area for Shape {
             Shape::Triangle { base, height } => 0.5 * base * height,
         }
     }
-}
 
-impl Describe for Shape {
     fn describe(&self) -> String {
         match self {
             Shape::Circle { radius } => format!("Circle with radius {radius}"),
@@ -99,7 +86,7 @@ impl Describe for Shape {
     }
 }
 
-impl Describe for Color {
+extend Color {
     fn describe(&self) -> String {
         match self {
             Color::Red => "Red".to_string(),
@@ -113,34 +100,24 @@ impl Describe for Color {
 // ── Generic container ────────────────────────────────────────────────
 
 #[derive(Debug)]
-pub struct Stack<T> {
-    items: Vec<T>,
+pub struct Stack[T] {
+    items: [T]~,
 }
 
-impl<T> Stack<T> {
-    pub fn new() -> Stack<T> {
-        Stack { items: Vec::new() }
-    }
+extend Stack[T] {
+    pub fn new() -> Stack[T] = Stack { items: [T]~.new() }
 
     pub fn push(&mut self, item: T) {
         self.items.push(item);
     }
 
-    pub fn pop(&mut self) -> Option<T> {
-        self.items.pop()
-    }
+    pub fn pop(&mut self) -> ?T = self.items.pop()
 
-    pub fn peek(&self) -> Option<&T> {
-        self.items.last()
-    }
+    pub fn peek(&self) -> ?&T = self.items.last()
 
-    pub fn len(&self) -> usize {
-        self.items.len()
-    }
+    pub fn len(&self) -> usize = self.items.len()
 
-    pub fn is_empty(&self) -> bool {
-        self.items.is_empty()
-    }
+    pub fn is_empty(&self) -> bool = self.items.is_empty()
 }
 
 // ── Smart pointer examples ───────────────────────────────────────────
@@ -148,11 +125,11 @@ impl<T> Stack<T> {
 #[derive(Debug)]
 struct TreeNode {
     value: i32,
-    left: Option<Box<TreeNode>>,
-    right: Option<Box<TreeNode>>,
+    left: ?^TreeNode,
+    right: ?^TreeNode,
 }
 
-impl TreeNode {
+extend TreeNode {
     fn leaf(value: i32) -> TreeNode {
         TreeNode { value: value, left: None, right: None }
     }
@@ -160,17 +137,17 @@ impl TreeNode {
     fn branch(value: i32, left: TreeNode, right: TreeNode) -> TreeNode {
         TreeNode {
             value: value,
-            left: Some(Box::new(left)),
-            right: Some(Box::new(right)),
+            left: Some(Box.new(left)),
+            right: Some(Box.new(right)),
         }
     }
 
     fn sum(&self) -> i32 {
-        let left_sum = match &self.left {
+        val left_sum = match &self.left {
             Some(node) => node.sum(),
             None => 0,
         };
-        let right_sum = match &self.right {
+        val right_sum = match &self.right {
             Some(node) => node.sum(),
             None => 0,
         };
@@ -180,51 +157,46 @@ impl TreeNode {
 
 // ── Collection examples ──────────────────────────────────────────────
 
-pub fn word_count(text: &str) -> HashMap<String, usize> {
-    let mut counts: HashMap<String, usize> = HashMap::new();
+pub fn word_count(text: &str) -> {String: usize} {
+    var counts: {String: usize} = HashMap.new();
     for word in text.split_whitespace() {
-        let counter = counts.entry(word.to_string()).or_insert(0);
+        val counter = counts.entry(word.to_string()).or_insert(0);
         *counter = *counter + 1;
     }
     counts
 }
 
-pub fn unique_words(text: &str) -> HashSet<String> {
-    let mut set: HashSet<String> = HashSet::new();
+pub fn unique_words(text: &str) -> {String} {
+    var set: {String} = HashSet.new();
     for word in text.split_whitespace() {
         set.insert(word.to_string());
     }
     set
 }
 
-// ── Error handling ───────────────────────────────────────────────────
+// ── Error handling with error unions ─────────────────────────────────
 
-#[derive(Debug)]
-pub enum AppError {
-    NotFound(String),
-    InvalidInput(String),
-    IoError(String),
-}
+data AppError = NotFound(String) | InvalidInput(String) | IoError(String)
 
-pub fn parse_age(input: &str) -> Result<u32, AppError> {
-    match input.parse::<u32>() {
+// T or E replaces Result<T, E>.
+pub fn parse_age(input: &str) -> u32 or AppError {
+    match input.parse() {
         Ok(age) => {
-            if age > 150 {
-                Err(AppError::InvalidInput(format!("age {age} is unrealistic")))
-            } else {
-                Ok(age)
+            guard age <= 150 else {
+                return Err(AppError.InvalidInput(format!("age {age} is unrealistic")));
             }
+            Ok(age)
         },
-        Err(_) => Err(AppError::InvalidInput(format!("'{input}' is not a number"))),
+        Err(_) => Err(AppError.InvalidInput(format!("'{input}' is not a number"))),
     }
 }
 
 // ── Main ─────────────────────────────────────────────────────────────
 
 pub fn main() {
-    // Struct construction.
-    let mut p = Point { x: 3.0, y: 4.0 };
-    let origin = Point::<f64>::origin();
+    // Data construction.
+    var p = Point { x: 3.0, y: 4.0 };
+    val origin = Point[f64].origin();
     println!("Distance from origin: {p.distance(&origin)}");
 
     // Mutation via mutable reference.
@@ -232,7 +204,7 @@ pub fn main() {
     println!("After translate: ({p.x}, {p.y})");
 
     // Enum + pattern matching.
-    let shapes: Vec<Shape> = vec![
+    val shapes: [Shape]~ = [
         Shape::Circle { radius: 5.0 },
         Shape::Rectangle { width: 10.0, height: 3.0 },
         Shape::Triangle { base: 6.0, height: 4.0 },
@@ -243,7 +215,7 @@ pub fn main() {
     }
 
     // Generic stack.
-    let mut stack = Stack::<i32>::new();
+    var stack = Stack[i32].new();
     stack.push(1);
     stack.push(2);
     stack.push(3);
@@ -251,23 +223,24 @@ pub fn main() {
     println!("Popped: {stack.pop():?}");
 
     // Binary tree.
-    let tree = TreeNode::branch(
+    val tree = TreeNode.branch(
         1,
-        TreeNode::branch(2, TreeNode::leaf(4), TreeNode::leaf(5)),
-        TreeNode::leaf(3),
+        TreeNode.branch(2, TreeNode.leaf(4), TreeNode.leaf(5)),
+        TreeNode.leaf(3),
     );
     println!("Tree sum: {tree.sum()}");
 
-    // HashMap.
-    let text = "the quick brown fox jumps over the lazy fox";
-    let counts = word_count(text);
+    // HashMap using map type syntax.
+    val text = "the quick brown fox jumps over the lazy fox";
+    val counts = word_count(text);
     println!("Word counts: {counts:?}");
 
-    // Error handling.
-    match parse_age("25") {
-        Ok(age) => println!("Parsed age: {age}"),
-        Err(e) => println!("Error: {e:?}"),
+    // Error handling with pattern test (is).
+    val result = parse_age("25");
+    if result is Ok(_) {
+        println!("Valid age");
     }
+
     match parse_age("xyz") {
         Ok(age) => println!("Parsed age: {age}"),
         Err(e) => println!("Error: {e:?}"),

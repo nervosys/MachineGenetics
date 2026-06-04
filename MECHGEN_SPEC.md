@@ -1,4 +1,4 @@
-# Machine Genetic Code (MechGen) Language Specification
+# MachineGenetics (MechGen) Language Specification
 
 **Version**: 1.0.0 (Draft)
 **Status**: Pre-implementation specification
@@ -35,13 +35,13 @@
 
 ## 1. Introduction
 
-Machine Genetic Code (MechGen) is a systems programming language designed for the age of artificial intelligence. It fuses the safety and performance of Rust with first-class primitives for neural computation, symbolic reasoning, evolutionary optimization, and multi-agent coordination — all within a dual-syntax system that serves both human programmers and AI agents.
+MachineGenetics (MechGen) is a systems programming language designed for the age of artificial intelligence. It combines the safety and performance model of Rust with modern language design, first-class primitives for neural computation, symbolic reasoning, evolutionary optimization, and multi-agent coordination — all within a dual-syntax system that serves both human programmers and AI agents.
 
 ### 1.1 Design Principles
 
 1. **Intelligence is a first-class construct.** Neural networks, knowledge bases, rule engines, and evolutionary algorithms are language-level declarations, not library calls. The compiler understands their structure, verifies their types, and targets optimal hardware.
 
-2. **Dual encoding.** Human mode uses Rust's well-known keywords for core constructs, ensuring zero learning curve for Rust developers. Agent mode compresses every concept into minimal symbols — Greek letters for AI constructs, mathematical operators for tensor algebra — achieving the density of hexadecimal applied to intelligence.
+2. **Dual encoding.** Human mode uses clear, modern keywords (`val`, `var`, `data`, `extend`, `guard`, `defer`) that improve on Rust's conventions while remaining instantly readable. Agent mode compresses every concept into minimal symbols — Greek letters for AI constructs, mathematical operators for tensor algebra — achieving the density of hexadecimal applied to intelligence.
 
 3. **Safety without ceremony.** Ownership, borrowing, and lifetimes are enforced but fully inferred. No lifetime annotations, no `PhantomData`, no `Pin`. The Safety Knowledge Base (SKB) encodes 9,157 rules that the compiler applies automatically. In agent mode, **all safety constructs are handled by the compiler and SKB** — `unsafe` blocks, lifetime annotations, `Send`/`Sync` bounds, and `Pin<T>` are entirely elided from the language surface, maximizing token efficiency while the compiler maintains full safety guarantees.
 
@@ -89,10 +89,10 @@ Both modes are byte-for-byte round-trippable via `mg fmt --human` and `mg fmt --
 
 ### 2.1 Human mode Keywords
 
-Human mode uses Rust's well-known keywords for core declarations and control flow, ensuring zero learning curve for Rust developers and maximizing familiarity across the ecosystem. The novel surface is in MechGen's AI-specific constructs.
+Human mode uses clear, modern keywords that improve on Rust's conventions. Core declarations use `val`/`var` (instead of `let`/`let mut`), `data` (unifying `struct` and `enum`), and `extend` (instead of `impl`). Collection and wrapper types use lightweight literal syntax: `[T]~` for growable arrays, `?T` for optionals, `T or E` for error unions, `{K: V}` for maps. Modern control constructs include `guard`, `defer`, `|>` pipeline, and `is` pattern checks.
 
 **Core declarations (Rust-compatible):**
-`fn`, `let`, `const`, `struct`, `enum`, `trait`, `impl`, `mod`, `use`,
+`fn`, `val`, `var`, `const`, `data`, `trait`, `extend`, `mod`, `use`,
 `pub`, `type`, `static`, `unsafe`, `async`
 
 **Control flow (Rust-compatible):**
@@ -119,13 +119,13 @@ Human mode preserves Rust keywords 1:1. The only additions are MechGen's AI and 
 | -------------- | -------------- | --------- |
 | `fn`           | `fn`           | Identical |
 | `pub`          | `pub`          | Identical |
-| `let`          | `let`          | Identical |
-| `let mut`      | `let mut`      | Identical |
+| `let`           | `val`           | ~~Immutable binding~~ → clearer intent |
+| `let mut`       | `var`           | ~~Mutable binding~~ → single keyword   |
 | `const`        | `const`        | Identical |
-| `struct`       | `struct`       | Identical |
-| `enum`         | `enum`         | Identical |
+| `struct`        | `data`          | Unified data declaration (record form) |
+| `enum`          | `data`          | Unified data declaration (sum form)    |
 | `trait`        | `trait`        | Identical |
-| `impl`         | `impl`         | Identical |
+| `impl`          | `extend`        | Method extension blocks                |
 | `mod`          | `mod`          | Identical |
 | `use`          | `use`          | Identical |
 | `type`         | `type`         | Identical |
@@ -145,7 +145,7 @@ Human mode preserves Rust keywords 1:1. The only additions are MechGen's AI and 
 | `return`       | `return`       | Identical |
 | `where`        | `where`        | Identical |
 | `&mut`         | `&mut`         | Identical |
-| `impl X for Y` | `impl X for Y` | Identical |
+| `impl X for Y`  | `extend X for Y`| Trait implementation                   |
 
 ### 2.2 Agent mode Symbols
 
@@ -155,13 +155,13 @@ Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 b
 | -------------- | -------------- | ---------- | -------------- |
 | Function       | `fn`           | `f`        | Declaration    |
 | Public         | `pub`          | `+`        | Visibility     |
-| Variable       | `let`          | `v`        | Declaration    |
-| Mutable        | `let mut`      | `m`        | Declaration    |
+| Variable       | `val`          | `v`        | Declaration    |
+| Mutable        | `var`          | `m`        | Declaration    |
 | Constant       | `const`        | `c`        | Declaration    |
-| Struct         | `struct`       | `S`        | Declaration    |
-| Enum           | `enum`         | `E`        | Declaration    |
+| Data (record)  | `data`         | `D`        | Declaration    |
+| Data (sum)     | `data`         | `D`        | Declaration    |
 | Trait          | `trait`        | `T`        | Declaration    |
-| Impl           | `impl`         | `I`        | Declaration    |
+| Extend         | `extend`       | `xd`       | Declaration    |
 | Module         | `mod`          | `M`        | Declaration    |
 | Import         | `use`          | `u`        | Declaration    |
 | Type alias     | `type`         | `Y`        | Declaration    |
@@ -209,11 +209,11 @@ Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 b
 | Flatten        | `.flatten()`   | `⊥`        | Tensor op      |
 | String         | `String`       | `s`        | Type           |
 | `&str`         | `&str`         | `&s`       | Type           |
-| `Vec<T>`       | `Vec<T>`       | `[T]~`     | Type           |
-| `Option<T>`    | `Option<T>`    | `?T`       | Type           |
+| `[T]~`       | `[T]~`       | `[T]~`     | Type           |
+| `?T`    | `?T`    | `?T`       | Type           |
 | `Result<T,E>`  | `Result<T,E>`  | `R[T,E]`   | Type           |
-| `Box<T>`       | `Box<T>`       | `^T`       | Type           |
-| `HashMap<K,V>` | `HashMap<K,V>` | `{K:V}`    | Type           |
+| `^T`       | `^T`       | `^T`       | Type           |
+| `{K: V}` | `{K: V}` | `{K:V}`    | Type           |
 | Path separator | `::`           | `.`        | Path           |
 
 See [Appendix D](#appendix-d-Agent-mode-symbol-reference) for the complete symbol table.
@@ -246,8 +246,8 @@ block_comment = '/*' { any_char | block_comment }* '*/' ;  /* nestable */
 ```
 keyword =
     /* Core declarations */
-    | 'fn' | 'let' | 'const' | 'struct' | 'enum' | 'trait'
-    | 'impl' | 'mod' | 'use' | 'type' | 'static'
+    | 'fn' | 'val' | 'var' | 'const' | 'data' | 'trait'
+    | 'extend' | 'mod' | 'use' | 'type' | 'static'
     /* Visibility */
     | 'pub'
     /* Control flow */
@@ -281,7 +281,7 @@ keyword =
 ```
 agent_keyword =
     /* Core declarations */
-    | 'f' | 'v' | 'm' | 'c' | 'S' | 'E' | 'T' | 'I' | 'M' | 'U' | 'u'
+    | 'f' | 'v' | 'm' | 'c' | 'D' | 'T' | 'xd' | 'M' | 'U' | 'u'
     | '+' | '~'
     /* Neural AI */
     | 'Ψ' | 'λ' | 'Φ' | 'Π' | 'Θ' | '∇'
@@ -386,6 +386,7 @@ MATMUL    = '@' ;    /* matrix multiplication: A @ B */
 HADAMARD  = '.*' ;   /* element-wise multiply: A .* B */
 TRANSPOSE = '.T' ;   /* transpose: A.T */
 PIPE      = '|>' ;   /* pipeline operator: x |> f |> g */
+IS        = 'is' ;   /* pattern check: x is Some(v) */
 
 /* Assignment */
 ASSIGN = '=' ;  PLUS_EQ = '+=' ;  MINUS_EQ = '-=' ;  STAR_EQ = '*=' ;
@@ -417,7 +418,7 @@ item = { attribute }* visibility? item_kind ;
 
 visibility = 'pub' [ '(' 'crate' ')' ] ;
 
-item_kind = function_def | struct_def | enum_def | trait_def | impl_block
+item_kind = function_def | data_def | data_def | trait_def | extend_block
           | module_def | use_decl | type_alias | const_def | static_def
           | effect_def | spec_def
           | net_def | kb_def | evolve_def | agent_def
@@ -450,11 +451,11 @@ effect_annotation = '/' effect_name { ',' effect_name }* ;
 ### 4.3 Data Types
 
 ```
-struct_def = 'struct' IDENT [ generic_params ] [ where_clause ]
+data_def = 'data' IDENT [ generic_params ] [ where_clause ]
              ( '{' { struct_field }* '}' | '(' type_list ')' ';' | ';' ) ;
 struct_field = visibility? IDENT ':' type [ ',' ] ;
 
-enum_def = 'enum' IDENT [ generic_params ] [ where_clause ]
+data_def = 'data' IDENT [ generic_params ] [ where_clause ]
            '{' enum_variant { ',' enum_variant }* [ ',' ] '}' ;
 enum_variant = IDENT [ '(' type_list ')' | '{' struct_field_list '}' | '=' expression ] ;
 
@@ -465,9 +466,9 @@ trait_item = 'fn' IDENT [ generic_params ] '(' [ self_param [ ',' param_list ] ]
            | 'type' IDENT [ ':' type_bound_list ] [ '=' type ] ';'
            | 'const' IDENT ':' type [ '=' expression ] ';' ;
 
-impl_block = 'impl' [ generic_params ] type [ 'for' type ] [ where_clause ]
-             '{' { impl_item }* '}' ;
-impl_item  = visibility? ( function_def | type_alias | const_def ) ;
+extend_block = 'extend' [ generic_params ] type [ 'for' type ] [ where_clause ]
+             '{' { extend_item }* '}' ;
+extend_item  = visibility? ( function_def | type_alias | const_def ) ;
 ```
 
 ### 4.4 Modules and Imports
@@ -483,7 +484,8 @@ use_path   = path_segment { '::' path_segment }* [ '::' ( '*' | '{' use_tree_lis
 ```
 type = type_path | '&' type | '&' 'mut' type
      | 'Box' '<' type '>'      | 'Rc' '<' type '>'    | 'Arc' '<' type '>'
-     | 'Vec' '<' type '>'      | 'Option' '<' type '>' | 'Result' '<' type ',' type '>'
+     | '[' type ']' '~'              /* growable array */
+     | '?' type | 'Result' '<' type ',' type '>'
      | 'HashMap' '<' type ',' type '>' | 'HashSet' '<' type '>'
      | 'Tensor' '<' type ',' shape '>'     /* tensor type */
      | 'Param' '<' type ',' shape '>'      /* learnable parameter */
@@ -548,7 +550,7 @@ try_expr     = expression '?' ;
 ### 4.7 Statements
 
 ```
-statement = ( 'let' | 'let' 'mut' ) pattern [ ':' type ] '=' expression ';'
+statement = ( 'val' | 'var' ) pattern [ ':' type ] '=' expression ';'
           | expression ';'
           | item ;
 ```
@@ -650,7 +652,7 @@ Built-in activations: `relu`, `sigmoid`, `tanh`, `softmax`, `gelu`, `swish`, `le
 ```mg
 train mnist_training {
     model: Classifier,
-    data: Dataset::load("mnist"),
+    data: Dataset.load("mnist"),
     optimizer: Adam { lr: 0.001, betas: (0.9, 0.999) },
     loss: cross_entropy,
     epochs: 100,
@@ -685,9 +687,9 @@ MechGen provides native types for language model invocation:
 use std::llm::{LLM, Prompt, Response};
 
 pub fn summarize(text: &str) -> String / llm {
-    let model = LLM::load("local://llama-3-8b");
-    let prompt = Prompt::new("Summarize the following text:\n{text}");
-    let response = model.generate(prompt, max_tokens: 256);
+    val model = LLM.load("local://llama-3-8b");
+    val prompt = Prompt.new("Summarize the following text:\n{text}");
+    val response = model.generate(prompt, max_tokens: 256);
     response.text()
 }
 ```
@@ -701,11 +703,11 @@ The `grad` keyword computes gradients automatically:
 ```mg
 pub fn train_step(model: &mut Classifier, x: Tensor<f32, [B, 784]>,
                   y: Tensor<i64, [B]>) -> f32 / gpu {
-    let logits = model.forward(x);
-    let loss = cross_entropy(logits, y);
+    val logits = model.forward(x);
+    val loss = cross_entropy(logits, y);
 
     // Compute gradients of loss w.r.t. all model parameters
-    let grads = grad(loss, model.params());
+    val grads = grad(loss, model.params());
 
     // Update parameters
     model.apply_grads(grads, lr: 0.001);
@@ -731,13 +733,13 @@ Tensors are first-class types with compile-time shape checking and automatic har
 
 ```mg
 // Statically shaped tensors
-let a: Tensor<f32, [3, 224, 224]>;      // 3×224×224 image
-let b: Tensor<f64, [1000]>;             // 1000-element vector
-let c: Tensor<f16, [B, 512, 512]>;      // batched matrix (B is generic)
+val a: Tensor<f32, [3, 224, 224]>;      // 3×224×224 image
+val b: Tensor<f64, [1000]>;             // 1000-element vector
+val c: Tensor<f16, [B, 512, 512]>;      // batched matrix (B is generic)
 
 // Learnable parameters (tracked for autograd)
-let w: Param<f32, [512, 256]>;          // weight matrix
-let bias: Param<f32, [256]>;            // bias vector
+val w: Param<f32, [512, 256]>;          // weight matrix
+val bias: Param<f32, [256]>;            // bias vector
 ```
 
 Agent mode:
@@ -769,12 +771,12 @@ v w: Π[f32; 512, 256]
 The compiler verifies tensor shape compatibility at compile time:
 
 ```mg
-let a: Tensor<f32, [3, 4]>;
-let b: Tensor<f32, [4, 5]>;
-let c = a @ b;               // OK: c is Tensor<f32, [3, 5]>
+val a: Tensor<f32, [3, 4]>;
+val b: Tensor<f32, [4, 5]>;
+val c = a @ b;               // OK: c is Tensor<f32, [3, 5]>
 
-let d: Tensor<f32, [2, 3]>;
-let e = a @ d;               // COMPILE ERROR: shape mismatch [3,4] @ [2,3]
+val d: Tensor<f32, [2, 3]>;
+val e = a @ d;               // COMPILE ERROR: shape mismatch [3,4] @ [2,3]
 ```
 
 Shape variables allow generic tensor functions:
@@ -808,19 +810,19 @@ Annotations override automatic dispatch:
 
 ```mg
 // Vector literal
-let v = tensor![1.0, 2.0, 3.0, 4.0];
+val v = tensor![1.0, 2.0, 3.0, 4.0];
 
 // Matrix literal
-let m = tensor![
+val m = tensor![
     [1.0, 0.0, 0.0],
     [0.0, 1.0, 0.0],
     [0.0, 0.0, 1.0],
 ];
 
 // Zeros/ones/random constructors
-let z = Tensor::<f32, [3, 3]>::zeros();
-let o = Tensor::<f32, [256]>::ones();
-let r = Tensor::<f32, [64, 784]>::randn();
+val z = Tensor::<f32, [3, 3]>::zeros();
+val o = Tensor::<f32, [256]>::ones();
+val r = Tensor::<f32, [64, 784]>::randn();
 ```
 
 ---
@@ -887,7 +889,7 @@ rule_term = IDENT '(' arg_list ')'
 use std::kb::KnowledgeBase;
 
 pub fn check_types(from: &str, to: &str) -> bool {
-    let kb = TypeRules::new();
+    val kb = TypeRules.new();
     kb.query("can_cast", &[from, to]).is_some()
 }
 ```
@@ -907,7 +909,7 @@ Agents can query the SKB at compile time:
 ```mg
 use std::skb;
 
-pub fn validate_borrow(code: &str) -> Vec<Diagnostic> {
+pub fn validate_borrow(code: &str) -> [Diagnostic]~ {
     skb::query()
         .category("borrow")
         .severity("error")
@@ -925,12 +927,12 @@ MechGen has first-class support for genetic algorithms, neuroevolution, and evol
 
 ```mg
 evolve NeuralArchSearch {
-    genome: Vec<LayerGene>,
+    genome: [LayerGene]~,
     population: 200,
     generations: 1000,
 
     fn fitness(&self) -> f64 / gpu {
-        let model = self.genome.build_net();
+        val model = self.genome.build_net();
         model |> train(mnist, epochs: 5) |> evaluate(test_set)
     }
 
@@ -995,14 +997,14 @@ mutation_strategy   = 'gaussian' '(' kvp_list ')'
 ```mg
 // A genome is a typed genotype that can be crossed over and mutated.
 #[derive(Genome)]
-pub struct ArchGenome {
-    layers: Vec<LayerGene>,
+pub data ArchGenome {
+    layers: [LayerGene]~,
     learning_rate: f64,
     dropout_rate: f64,
 }
 
 #[derive(Gene)]
-pub enum LayerGene {
+pub data LayerGene {
     Dense { units: u32, activation: Activation },
     Conv2d { filters: u32, kernel: u32 },
     Attention { heads: u32, dim: u32 },
@@ -1018,7 +1020,7 @@ The `#[derive(Genome)]` macro generates `crossover`, `mutate`, and `random` impl
 use std::rl::{Env, Policy, PPO, Trajectory};
 
 pub fn train_agent(env: &mut impl Env) -> Policy<f32, f32> / gpu {
-    let mut agent = PPO::new(
+    var agent = PPO.new(
         obs_dim: env.observation_space(),
         act_dim: env.action_space(),
         hidden: 256,
@@ -1026,8 +1028,8 @@ pub fn train_agent(env: &mut impl Env) -> Policy<f32, f32> / gpu {
     );
 
     for episode in 0..10_000 {
-        let trajectory = env.rollout(&agent);
-        let metrics = agent.update(&trajectory);
+        val trajectory = env.rollout(&agent);
+        val metrics = agent.update(&trajectory);
 
         if episode % 100 == 0 {
             println!("Episode {episode}: reward={metrics.mean_reward:.2}");
@@ -1045,14 +1047,14 @@ The combination of evolutionary computation and neural networks enables **recurs
 ```mg
 // A MechGen program that evolves its own compiler optimization passes.
 evolve CompilerOptimizer {
-    genome: Vec<OptimizationPass>,
+    genome: [OptimizationPass]~,
     population: 50,
     generations: 500,
 
     fn fitness(&self) -> f64 {
-        let compiler = Compiler::with_passes(&self.genome);
-        let binary = compiler.compile(benchmark_suite);
-        let perf = binary.run_benchmarks();
+        val compiler = Compiler.with_passes(&self.genome);
+        val binary = compiler.compile(benchmark_suite);
+        val perf = binary.run_benchmarks();
         perf.throughput / perf.binary_size  // multi-objective
     }
 
@@ -1075,20 +1077,20 @@ Agents are autonomous computational entities that combine neural reasoning, symb
 agent CodeReviewer {
     brain: LLM,
     kb: KnowledgeBase,
-    memory: Vec<Review>,
+    memory: [Review]~,
 
-    fn handle(&mut self, msg: Message<CodeSubmission>) -> Result<Review, AgentError> / agent, llm {
-        let rules = self.kb.query("style_rules");
-        let analysis = self.brain.analyze(&msg.payload.code, context: &rules);
-        let review = Review::from(analysis);
+    fn handle(&mut self, msg: Message<CodeSubmission>) -> Review or AgentError / agent, llm {
+        val rules = self.kb.query("style_rules");
+        val analysis = self.brain.analyze(&msg.payload.code, context: &rules);
+        val review = Review.from(analysis);
         self.memory.push(review.clone());
         Ok(review)
     }
 
-    fn capabilities(&self) -> Vec<Capability> {
+    fn capabilities(&self) -> [Capability]~ {
         vec![
-            Capability::new("llm", CapabilityScope::Instance),
-            Capability::new("io", CapabilityScope::Sandboxed),
+            Capability.new("llm", CapabilityScope::Instance),
+            Capability.new("io", CapabilityScope::Sandboxed),
         ]
     }
 }
@@ -1189,17 +1191,17 @@ For dynamic swarm usage, a library API is also available:
 ```mg
 use std::agent::{Swarm, SwarmConfig, ConsensusStrategy};
 
-pub async fn distributed_review(files: Vec<String>) -> Vec<Review> / agent, io {
-    let config = SwarmConfig {
+pub async fn distributed_review(files: [String]~) -> [Review]~ / agent, io {
+    val config = SwarmConfig {
         size: 5,
         consensus: ConsensusStrategy::Majority,
         timeout: Duration::from_secs(30),
     };
-    let mut swarm = Swarm::<CodeReviewer>::new(config);
+    var swarm = Swarm::<CodeReviewer>::new(config);
 
-    let reviews: Vec<Review> = swarm.map(files, |agent, file| {
-        let code = std::fs::read(&file)?;
-        agent.handle(Message::new(CodeSubmission { code }))
+    val reviews: [Review]~ = swarm.map(files, |agent, file| {
+        val code = std::fs::read(&file)?;
+        agent.handle(Message.new(CodeSubmission { code }))
     }).await?;
 
     reviews
@@ -1213,9 +1215,9 @@ All agent operations are gated by capabilities — fine-grained permissions that
 ```mg
 use std::agent::{Capability, Region};
 
-pub fn sandboxed_analysis(code: &str) -> Result<Analysis, Error> / agent {
-    let cap = Capability::request("analyze")?;
-    Region::enter(cap, || {
+pub fn sandboxed_analysis(code: &str) -> Analysis or Error / agent {
+    val cap = Capability.request("analyze")?;
+    Region.enter(cap, || {
         // Only analysis operations allowed here.
         // No file I/O, no network, no LLM calls unless explicitly granted.
         parse_and_analyze(code)
@@ -1264,7 +1266,7 @@ $$
 $$
 
 $$
-\frac{\Gamma \vdash e : \tau \dashv \varepsilon \quad \Gamma, x : \tau \vdash e' : \tau' \dashv \varepsilon'}{\Gamma \vdash \text{let } x = e; \; e' : \tau' \dashv \varepsilon \cup \varepsilon'} \quad \text{[T-Let]}
+\frac{\Gamma \vdash e : \tau \dashv \varepsilon \quad \Gamma, x : \tau \vdash e' : \tau' \dashv \varepsilon'}{\Gamma \vdash \text{val } x = e; \; e' : \tau' \dashv \varepsilon \cup \varepsilon'} \quad \text{[T-Let]}
 $$
 
 ### 10.4 Tensor Typing Rules
@@ -1286,7 +1288,7 @@ $$
 Bidirectional type checking with Hindley-Milner unification, extended for:
 - **Shape unification**: tensor dimension variables solved via arithmetic constraints
 - **Effect unification**: effect variables solved via set-union constraints
-- **Genome type derivation**: crossover/mutate signatures inferred from struct fields
+- **Genome type derivation**: crossover/mutate signatures inferred from data fields
 
 ---
 
@@ -1346,7 +1348,7 @@ Effects are inferred bottom-up. Explicit annotations are optional documentation.
 @ens(result.balance == old.balance - amount, "correct deduction")
 @perf(time: O(1))
 @fx(pure)
-pub fn withdraw(account: &mut Account, amount: u64) -> Receipt {
+pub fn withdraw(account: &mut Account, amount: u64) -> Receipt or Error {
     // ...
 }
 
@@ -1478,15 +1480,15 @@ DispatchStrategy:
 
 ```mg
 // Built-in SIMD types
-let a: f32x4;     // 128-bit, 4 × f32
-let b: f32x8;     // 256-bit, 8 × f32
-let c: f64x4;     // 256-bit, 4 × f64
-let d: f32x16;    // 512-bit, 16 × f32 (AVX-512)
+val a: f32x4;     // 128-bit, 4 × f32
+val b: f32x8;     // 256-bit, 8 × f32
+val c: f64x4;     // 256-bit, 4 × f64
+val d: f32x16;    // 512-bit, 16 × f32 (AVX-512)
 
 // SIMD operations
-let sum = a + b;
-let product = a * b;
-let dot = (a * b).sum();
+val sum = a + b;
+val product = a * b;
+val dot = (a * b).sum();
 ```
 
 ---
@@ -1501,8 +1503,8 @@ let dot = (a * b).sum();
              | <attribute_list> <item_kind>
 <visibility> ::= "exp" | "exp" "(" "crate" ")"
 
-<item_kind> ::= <function_def> | <struct_def> | <enum_def>
-              | <trait_def> | <impl_block> | <module_def>
+<item_kind> ::= <function_def> | <data_def> | <data_def>
+              | <trait_def> | <extend_block> | <module_def>
               | <use_decl> | <type_alias> | <const_def>
               | <static_def> | <effect_def> | <spec_def>
               | <net_def> | <kb_def> | <evolve_def> | <agent_def>
@@ -1512,12 +1514,12 @@ let dot = (a * b).sum();
                    <opt_return> <opt_where> <opt_effects> <block>
 <async_fn_def> ::= "par" <function_def>
 
-<struct_def> ::= "rec" IDENT <opt_generics> <opt_where> "{" <field_list> "}"
-<enum_def>   ::= "sum" IDENT <opt_generics> <opt_where> "{" <variant_list> "}"
+<data_def> ::= "rec" IDENT <opt_generics> <opt_where> "{" <field_list> "}"
+<data_def>   ::= "sum" IDENT <opt_generics> <opt_where> "{" <variant_list> "}"
 <trait_def>  ::= "sig" IDENT <opt_generics> <opt_supertrait> <opt_where>
                  "{" <trait_items> "}"
-<impl_block> ::= "ext" <opt_generics> <type> <opt_on> <opt_where>
-                 "{" <impl_items> "}"
+<extend_block> ::= "ext" <opt_generics> <type> <opt_on> <opt_where>
+                 "{" <extend_items> "}"
 <module_def> ::= "ns" IDENT "{" <item_list> "}" | "ns" IDENT ";"
 <use_decl>   ::= "bring" <use_path> ";"
 
@@ -1590,13 +1592,13 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 | Human          | Agent | Meaning           |
 | -------------- | ----- | ----------------- |
 | `fn`           | `f`   | Function          |
-| `let`          | `v`   | Immutable binding |
-| `let mut`      | `m`   | Mutable binding   |
+| `val`          | `v`   | Immutable binding |
+| `var`          | `m`   | Mutable binding   |
 | `const`        | `c`   | Constant          |
-| `struct`       | `S`   | Struct            |
-| `enum`         | `E`   | Enum              |
+| `data`         | `D`   | Data declaration  |
+| `data (sum)`   | `D`   | Sum type          |
 | `trait`        | `T`   | Trait             |
-| `impl`         | `I`   | Impl block        |
+| `extend`       | `xd`  | Extend block      |
 | `mod`          | `M`   | Module            |
 | `use`          | `u`   | Import            |
 | `pub`          | `+`   | Public prefix     |
@@ -1658,14 +1660,14 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 | ----------------- | --------- | ------------------- |
 | `String`          | `s`       | Owned string        |
 | `&str`            | `&s`      | String slice        |
-| `Vec<T>`          | `[T]~`    | Growable array      |
-| `Option<T>`       | `?T`      | Optional            |
+| `[T]~`          | `[T]~`    | Growable array      |
+| `?T`       | `?T`      | Optional            |
 | `Result<T,E>`     | `R[T,E]`  | Result              |
-| `Box<T>`          | `^T`      | Heap pointer        |
+| `^T`          | `^T`      | Heap pointer        |
 | `Rc<T>`           | `$T`      | Reference counted   |
 | `Arc<T>`          | `@T`      | Atomic ref counted  |
-| `HashMap<K,V>`    | `{K:V}`   | Hash map            |
-| `HashSet<K>`      | `{K}`     | Hash set            |
+| `{K: V}`    | `{K:V}`   | Hash map            |
+| `{K}`      | `{K}`     | Hash set            |
 | `&mut T`        | `&!T`     | Exclusive reference |
 | `fn(T)->U`      | `f(T)->U` | Function pointer    |
 | `T<A>` (generics) | `T[A]`    | Generic parameters  |
@@ -1825,12 +1827,12 @@ A complete lexicon of Agent mode symbols, organized by category. This is the "ge
 | Symbol   | Human            | Meaning            |
 | -------- | ---------------- | ------------------ |
 | `f`      | `fn`             | Function           |
-| `v`      | `let`            | Variable           |
-| `m`      | `let mut`        | Mutable variable   |
-| `S`      | `struct`         | Struct             |
-| `E`      | `enum`           | Enum               |
+| `v`      | `val`            | Variable           |
+| `m`      | `var`            | Mutable variable   |
+| `D`      | `data`           | Data declaration   |
+| `D`      | `data (sum)`     | Sum type           |
 | `T`      | `trait`          | Trait              |
-| `I`      | `impl`           | Implementation     |
+| `xd`     | `extend`         | Extend block       |
 | `M`      | `mod`            | Module             |
 | `u`      | `use`            | Import             |
 | `+`      | `pub`            | Public             |
@@ -1845,14 +1847,14 @@ A complete lexicon of Agent mode symbols, organized by category. This is the "ge
 | `0b`     | `false`        | Boolean false      |
 | `s`      | `String`       | String type        |
 | `&s`     | `&str`         | String slice       |
-| `[T]~`   | `Vec<T>`       | Vector             |
-| `?T`     | `Option<T>`    | Optional           |
+| `[T]~`   | `[T]~`       | Vector             |
+| `?T`     | `?T`    | Optional           |
 | `R[T,E]` | `Result<T,E>`  | Result             |
-| `^T`     | `Box<T>`       | Heap box           |
+| `^T`     | `^T`       | Heap box           |
 | `$T`     | `Rc<T>`        | Ref counted        |
 | `@T`     | `Arc<T>`       | Atomic ref counted |
-| `{K:V}`  | `HashMap<K,V>` | Hash map           |
-| `{K}`    | `HashSet<K>`   | Hash set           |
+| `{K:V}`  | `{K: V}` | Hash map           |
+| `{K}`    | `{K}`   | Hash set           |
 | `&!T`    | `&mut T`       | Mutable reference  |
 | `.`      | `::`           | Path separator     |
 | `~.`     | `crate::`      | Crate root         |
@@ -1924,8 +1926,8 @@ net ImageClassifier {
 }
 
 pub fn main() / io, gpu {
-    let model = ImageClassifier::new();
-    let data = Dataset::load("cifar10");
+    val model = ImageClassifier.new();
+    val data = Dataset.load("cifar10");
 
     train cifar_train {
         model: model,
@@ -1936,7 +1938,7 @@ pub fn main() / io, gpu {
         batch_size: 128,
     }
 
-    let accuracy = model.evaluate(data.test());
+    val accuracy = model.evaluate(data.test());
     println!("Test accuracy: {accuracy:.2}%");
 }
 ```
@@ -1979,14 +1981,14 @@ use std::evolve::{Genome, Gene, EvolveStats};
 use std::neural::net;
 
 #[derive(Genome)]
-pub struct ArchGenome {
-    layers: Vec<LayerGene>,
+pub data ArchGenome {
+    layers: [LayerGene]~,
     lr: f64,
     dropout: f64,
 }
 
 #[derive(Gene)]
-pub enum LayerGene {
+pub data LayerGene {
     Dense { units: u32, activation: Activation },
     Conv2d { filters: u32, kernel: u32 },
     Attention { heads: u32, dim: u32 },
@@ -1999,8 +2001,8 @@ evolve NeuralArchSearch {
     generations: 500,
 
     fn fitness(&self) -> f64 / gpu {
-        let model = self.genome.build_net();
-        let data = Dataset::load("cifar10");
+        val model = self.genome.build_net();
+        val data = Dataset.load("cifar10");
         model |> train_quick(data, epochs: 5) |> evaluate(data.test())
     }
 
@@ -2069,25 +2071,25 @@ kb StyleRules {
 agent CodeReviewer {
     brain: LLM,
     rules: KnowledgeBase,
-    history: Vec<Review>,
+    history: [Review]~,
 
-    fn handle(&mut self, msg: Message<String>) -> Result<Review, AgentError> / agent, llm {
-        let violations = self.rules.query("violation", &[&msg.payload]);
-        let analysis = self.brain.generate(
-            Prompt::new("Review this code. Known violations: {violations}\n\n{msg.payload}"),
+    fn handle(&mut self, msg: Message<String>) -> Review or AgentError / agent, llm {
+        val violations = self.rules.query("violation", &[&msg.payload]);
+        val analysis = self.brain.generate(
+            Prompt.new("Review this code. Known violations: {violations}\n\n{msg.payload}"),
             max_tokens: 512,
         );
-        let review = Review { violations, analysis: analysis.text(), score: analysis.score() };
+        val review = Review { violations, analysis: analysis.text(), score: analysis.score() };
         self.history.push(review.clone());
         Ok(review)
     }
 }
 
-pub async fn review_codebase(files: Vec<String>) -> Vec<Review> / agent, llm, io {
-    let mut swarm = Swarm::<CodeReviewer>::new(SwarmConfig { size: 4 });
+pub async fn review_codebase(files: [String]~) -> [Review]~ / agent, llm, io {
+    var swarm = Swarm::<CodeReviewer>::new(SwarmConfig { size: 4 });
     swarm.map(files, |agent, file| {
-        let code = std::fs::read(&file)?;
-        agent.handle(Message::new(code))
+        val code = std::fs::read(&file)?;
+        agent.handle(Message.new(code))
     }).await
 }
 ```
@@ -2135,4 +2137,4 @@ u std.kb.Κ
 
 ---
 
-*End of Machine Genetic Code (MechGen) Language Specification v1.0.0*
+*End of MachineGenetics (MechGen) Language Specification v1.0.0*
