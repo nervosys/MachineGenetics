@@ -653,7 +653,7 @@ fn main() {
 /// Magic bytes for the per-module Machine Language-bytes container format. Distinct
 /// from the per-expression `MGPS` checkpoint magic.
 const MACHINE_MAGIC: &[u8; 4] = b"MACH";
-const MACHINE_VERSION: u16 = 1;
+const MACHINE_VERSION: u16 = 2;
 
 /// Drive `--target=ml-bytes`: lower every Machine Language-routed item in the module
 /// to binary Machine Language via the bridge + RMI codec, then write a single framed
@@ -712,6 +712,9 @@ fn run_emit_machine_bytes(module: &ast::Module, src_path: &str, out_path: Option
 fn run_describe_machine_bytes(blob: &[u8]) {
     match machine::decode_container(blob) {
         Ok(items) => {
+            // Symbol table (v2): lets us recover predicate/rule NAMES for kb items.
+            let symbols = machine::decode_symbols(blob).unwrap_or_default();
+            let sym_name = |id: u32| -> Option<String> { symbols.get(id as usize).cloned() };
             let items_json: Vec<serde_json::Value> = items
                 .iter()
                 .map(|item| {
@@ -760,24 +763,28 @@ fn run_describe_machine_bytes(blob: &[u8]) {
                         // Names are NOT in the artifact (symbol table not serialized).
                         {
                             map.insert("kind".into(), "kb".into());
-                            map.insert(
-                                "facts".into(),
-                                serde_json::json!(sym
-                                    .fact_arities
-                                    .iter()
-                                    .map(|a| serde_json::json!({ "arity": a }))
-                                    .collect::<Vec<_>>()),
-                            );
-                            map.insert(
-                                "rules".into(),
-                                serde_json::json!(sym
-                                    .rule_param_counts
-                                    .iter()
-                                    .map(|p| serde_json::json!({ "params": p }))
-                                    .collect::<Vec<_>>()),
-                            );
+                            let facts: Vec<serde_json::Value> = sym
+                                .fact_arities
+                                .iter()
+                                .zip(&sym.fact_syms)
+                                .map(|(arity, &id)| match sym_name(id) {
+                                    Some(name) => serde_json::json!({ "name": name, "arity": arity }),
+                                    None => serde_json::json!({ "arity": arity }),
+                                })
+                                .collect();
+                            let rules: Vec<serde_json::Value> = sym
+                                .rule_param_counts
+                                .iter()
+                                .zip(&sym.rule_syms)
+                                .map(|(params, &id)| match sym_name(id) {
+                                    Some(name) => serde_json::json!({ "name": name, "params": params }),
+                                    None => serde_json::json!({ "params": params }),
+                                })
+                                .collect();
+                            map.insert("facts".into(), serde_json::Value::Array(facts));
+                            map.insert("rules".into(), serde_json::Value::Array(rules));
                             map.insert("note".into(),
-                                "predicate names/terms are not stored in the artifact (symbolic IR: arities + inference only)".into());
+                                "ground argument terms are not stored (symbolic IR: predicate names + arities + inference structure)".into());
                         }
                     }
                     entry

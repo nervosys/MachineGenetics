@@ -164,12 +164,12 @@ U0002 unknown-kind, U0003 duplicate-name; per-item errors are index-prefixed).
 `--describe=ml` then reports each item's kind and structure from the single
 artifact.
 
-> Honest limitation (kb): the symbol table is **not** serialized into the
-> container, so a kb artifact stores predicate **arities + the unify→infer rule
-> structure**, not ground argument terms or predicate names. That *is* the
-> symbolic IR the VM executes; `--describe=ml` reports the arities/counts and
-> says so. Validation runs on the spec (names/refs present), so
-> reject-by-construction is fully enforced before names are elided.
+> kb artifact fidelity: the container serializes its **symbol table** (format
+> v2), so a kb artifact is fully self-describing — `--describe=ml` recovers
+> predicate **names + arities** and the unify→infer rule structure. The one
+> thing not stored is **ground argument terms** (`parent(a,b)` keeps `parent/2`,
+> not the `a`,`b`) — that is the symbolic IR the VM executes, and describe says
+> so. Validation runs on the full spec, so reject-by-construction is complete.
 
 Verified properties (all property/regression-tested):
 - **reject-by-construction**, both directions: 6000 generated net specs — no valid

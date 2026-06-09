@@ -22,7 +22,7 @@ use crate::machine_bridge;
 use rmi::lang::Expr;
 
 pub const MACHINE_MAGIC: &[u8; 4] = b"MACH";
-pub const MACHINE_VERSION: u16 = 1;
+pub const MACHINE_VERSION: u16 = 2;
 
 /// One decoded item from a Machine Language container.
 #[derive(Debug)]
@@ -51,21 +51,38 @@ pub fn encode_module(module: &ast::Module) -> (Vec<u8>, Vec<(String, usize, u64)
         blob.extend_from_slice(&expr_bytes);
         summary.push((name.clone(), expr_bytes.len(), expr.content_hash()));
     }
+    // Symbol-table section (v2): every interned name, in id order. This makes a
+    // symbolic (`kb`) artifact fully self-describing — predicate/rule NAMES are
+    // recoverable on decode, not just arities. Deterministic (id order is fixed).
+    let syms = &lowered.symbols;
+    blob.extend_from_slice(&(syms.len() as u32).to_le_bytes());
+    for i in 0..syms.len() {
+        let name = syms.resolve(rmi::lang::Sym(i as u32));
+        blob.extend_from_slice(&(name.len() as u32).to_le_bytes());
+        blob.extend_from_slice(name.as_bytes());
+    }
     (blob, summary)
 }
 
-/// Decode a Machine Language container into its items. Returns a structured error string
-/// rather than panicking, so the RAP layer can surface it as JSON.
-pub fn decode_container(blob: &[u8]) -> Result<Vec<MachineItem>, String> {
-    let mut pos = 0usize;
-    fn take<'a>(buf: &'a [u8], pos: &mut usize, n: usize, what: &str) -> Result<&'a [u8], String> {
-        if *pos + n > buf.len() {
-            return Err(format!("{what}: unexpected EOF at offset {}", *pos));
-        }
-        let s = &buf[*pos..*pos + n];
-        *pos += n;
-        Ok(s)
+fn take<'a>(buf: &'a [u8], pos: &mut usize, n: usize, what: &str) -> Result<&'a [u8], String> {
+    if *pos + n > buf.len() {
+        return Err(format!("{what}: unexpected EOF at offset {}", *pos));
     }
+    let s = &buf[*pos..*pos + n];
+    *pos += n;
+    Ok(s)
+}
+
+fn read_u32(buf: &[u8], pos: &mut usize, what: &str) -> Result<usize, String> {
+    Ok(u32::from_le_bytes(
+        take(buf, pos, 4, what)?.try_into().map_err(|_| format!("{what} slice"))?,
+    ) as usize)
+}
+
+/// Decode the header + items, returning them plus the offset just past the last
+/// item (where the symbol-table section begins).
+fn decode_items(blob: &[u8]) -> Result<(Vec<MachineItem>, usize), String> {
+    let mut pos = 0usize;
     let magic = take(blob, &mut pos, 4, "magic")?;
     if magic != MACHINE_MAGIC {
         return Err(format!("bad magic {magic:?} (expected Machine Language)"));
@@ -78,37 +95,46 @@ pub fn decode_container(blob: &[u8]) -> Result<Vec<MachineItem>, String> {
     if ver != MACHINE_VERSION {
         return Err(format!("unsupported Machine Language version {ver}"));
     }
-    let count = u32::from_le_bytes(
-        take(blob, &mut pos, 4, "count")?
-            .try_into()
-            .map_err(|_| "count slice".to_string())?,
-    ) as usize;
-
+    let count = read_u32(blob, &mut pos, "count")?;
     let mut items = Vec::with_capacity(count);
     for i in 0..count {
-        let nl = u32::from_le_bytes(
-            take(blob, &mut pos, 4, "name_len")?
-                .try_into()
-                .map_err(|_| "name_len slice".to_string())?,
-        ) as usize;
+        let nl = read_u32(blob, &mut pos, "name_len")?;
         let name = std::str::from_utf8(take(blob, &mut pos, nl, "name")?)
             .map_err(|e| format!("item {i} name utf8: {e}"))?
             .to_string();
-        let el = u32::from_le_bytes(
-            take(blob, &mut pos, 4, "expr_len")?
-                .try_into()
-                .map_err(|_| "expr_len slice".to_string())?,
-        ) as usize;
+        let el = read_u32(blob, &mut pos, "expr_len")?;
         let expr_bytes = take(blob, &mut pos, el, "expr")?;
         let expr = rmi::lang::codec::Decoder::decode_expr_only(expr_bytes)
             .map_err(|e| format!("item {i} ({name}): decode error: {e:?}"))?;
-        items.push(MachineItem {
-            name,
-            expr,
-            expr_bytes_len: el,
-        });
+        items.push(MachineItem { name, expr, expr_bytes_len: el });
     }
-    Ok(items)
+    Ok((items, pos))
+}
+
+/// Decode a Machine Language container into its items. Returns a structured error
+/// string rather than panicking, so the RAP layer can surface it as JSON.
+pub fn decode_container(blob: &[u8]) -> Result<Vec<MachineItem>, String> {
+    Ok(decode_items(blob)?.0)
+}
+
+/// Decode the container's symbol table (names in id order). Empty if the
+/// container has no symbol section. Lets a decoder resolve the `Sym` ids inside
+/// decoded exprs back to names (e.g. kb predicate names) with NO execution.
+pub fn decode_symbols(blob: &[u8]) -> Result<Vec<String>, String> {
+    let (_items, mut pos) = decode_items(blob)?;
+    if pos >= blob.len() {
+        return Ok(Vec::new());
+    }
+    let count = read_u32(blob, &mut pos, "sym_count")?;
+    let mut names = Vec::with_capacity(count);
+    for i in 0..count {
+        let nl = read_u32(blob, &mut pos, "sym_name_len")?;
+        let name = std::str::from_utf8(take(blob, &mut pos, nl, "sym_name")?)
+            .map_err(|e| format!("symbol {i} utf8: {e}"))?
+            .to_string();
+        names.push(name);
+    }
+    Ok(names)
 }
 
 /// Lowercase hex encoder — pure, no deps. Used by the RAP layer to ship

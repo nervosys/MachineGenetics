@@ -238,10 +238,10 @@ pub fn build_schema() -> serde_json::Value {
                 "rules": [["grandparent", ["x", "y"], ["parent"]]]
             },
             "artifact_note":
-                "the lowered Machine Language kb artifact stores predicate ARITIES and the \
-                 unify->infer rule structure — NOT ground argument terms or predicate names \
-                 (the symbol table is not serialized). That is the symbolic IR the VM executes; \
-                 --describe=ml reports the recoverable arities/counts.",
+                "the lowered Machine Language kb artifact stores predicate NAMES + arities and \
+                 the unify->infer rule structure (the symbol table is serialized into the \
+                 container) — but NOT ground argument terms. That is the symbolic IR the VM \
+                 executes; --describe=ml reports predicate names, arities, and rule param-counts.",
             "errors": [
                 {"code": "K0001", "when": "kb name is empty",                       "fix": "set a non-empty \"kb\" field"},
                 {"code": "K0002", "when": "kb has no facts and no rules",           "fix": "add at least one fact or rule"},
@@ -655,6 +655,17 @@ mod tests {
         let view = crate::machine_bridge::decompile_symbolic(&items[0].expr);
         assert_eq!(view.fact_arities, vec![2, 2, 1], "fact arities must round-trip");
         assert_eq!(view.rule_param_counts, vec![2], "rule param-count must round-trip");
+
+        // Symbol table (v2): predicate NAMES round-trip too (no execution).
+        let symbols = crate::machine::decode_symbols(&blob).expect("decode symbols");
+        let names: Vec<&str> = view
+            .fact_syms
+            .iter()
+            .map(|&id| symbols.get(id as usize).map(|s| s.as_str()).unwrap_or(""))
+            .collect();
+        assert_eq!(names, vec!["parent", "parent", "male"], "fact names must round-trip");
+        let rule_name = symbols.get(view.rule_syms[0] as usize).map(|s| s.as_str());
+        assert_eq!(rule_name, Some("grandparent"), "rule name must round-trip");
     }
 
     #[test]
