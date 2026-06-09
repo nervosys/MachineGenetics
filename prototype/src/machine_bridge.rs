@@ -651,26 +651,17 @@ impl KbTranslator {
 pub struct AgentTranslator;
 
 impl AgentTranslator {
-    /// Produce an Machine Language expression that spawns this agent.
-    ///
-    /// The agent's name is interned into the supplied symbol table; the
-    /// resulting `SPAWN` carries the symbol and a literal capability count.
+    /// Produce an Machine Language expression that spawns this agent:
+    /// `SPAWN(agent_sym, cap_sym1, …, cap_symN)`. The agent name and every
+    /// capability name are interned into the symbol table, so the artifact is
+    /// fully self-describing (names recover on decode; the VM ignores the args).
     pub fn translate(agent: &ast::AgentDef, symbols: &mut SymbolTable) -> Expr {
-        let name_sym = symbols.intern(&agent.name);
-        Expr::op2(
-            Op::SPAWN,
-            Expr::sym(name_sym),
-            Expr::int(agent_capability_count(agent) as i64),
-        )
+        let mut args = vec![Expr::sym(symbols.intern(&agent.name))];
+        for cap in &agent.capabilities {
+            args.push(Expr::sym(symbols.intern(cap)));
+        }
+        Expr::op(Op::SPAWN, args)
     }
-}
-
-fn agent_capability_count(agent: &ast::AgentDef) -> usize {
-    // AgentDef carries a `capabilities: Vec<String>` field in the MechGen AST;
-    // we look it up via reflection on the public field if present, else 0.
-    // This indirection lets us evolve AgentDef without breaking the bridge.
-    let _ = agent; // suppress unused warning; full field access added in §3
-    0
 }
 
 /// Translate a MechGen [`ast::SwarmDef`] into a multi-agent Machine Language expression:
@@ -717,10 +708,14 @@ impl SwarmTranslator {
 }
 
 fn swarm_size(swarm: &ast::SwarmDef) -> i64 {
-    // SwarmDef.size is `Option<Expr>`; we conservatively default to 1.
-    // Constant-folding of the size expression is the frontend's job.
-    let _ = swarm;
-    1
+    // Fold a literal `size: N`; default 1 if absent or non-literal. This is the
+    // value the artifact actually carries (SPAWN's int arg), so it round-trips.
+    match &swarm.size {
+        Some(ast::Expr::Literal { value, kind: ast::LiteralKind::Int }) => {
+            value.parse().unwrap_or(1)
+        }
+        _ => 1,
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -993,6 +988,83 @@ fn first_sym(args: &[Expr]) -> Option<u32> {
         Expr::Ref(s) => Some(s.0),
         _ => None,
     })
+}
+
+/// The recoverable structure of an *agentic* artifact (agent or swarm).
+///
+/// Agent lowering: `SPAWN(agent_sym, cap_syms…)`. Swarm lowering:
+/// `SPAWN(agent_sym, int(size)) >> SEND/RECV[transport] >> REDUCE`. The exact
+/// topology is NOT recoverable (ring/mesh/star/tree all lower to send>>recv) —
+/// only the comm pattern is.
+#[derive(Debug, Clone, Default)]
+pub struct AgenticView {
+    /// True if this is a swarm (has the REDUCE aggregate); else a bare agent.
+    pub is_swarm: bool,
+    /// Symbol id of the spawned agent / agent-type (SPAWN's first arg).
+    pub spawn_sym: Option<u32>,
+    /// Capability symbol ids (agent only — SPAWN's `Ref` args after the first).
+    pub cap_syms: Vec<u32>,
+    /// Swarm size (SPAWN's int arg), if present.
+    pub size: Option<i64>,
+    /// Transport symbol id carried on SEND/RECV, if any.
+    pub transport_sym: Option<u32>,
+    /// Comm pattern observed (for swarms): saw a SEND / saw a RECV.
+    pub has_send: bool,
+    pub has_recv: bool,
+}
+
+/// Decompile an agentic (`agent`/`swarm`) expression. `None` if it contains no
+/// `SPAWN` (i.e. it is not agentic).
+pub fn decompile_agentic(expr: &Expr) -> Option<AgenticView> {
+    let mut v = AgenticView::default();
+    walk_agentic(expr, &mut v);
+    if v.spawn_sym.is_some() {
+        Some(v)
+    } else {
+        None
+    }
+}
+
+fn walk_agentic(expr: &Expr, v: &mut AgenticView) {
+    match expr {
+        Expr::Seq(a, b) | Expr::Par(a, b) => {
+            walk_agentic(a, v);
+            walk_agentic(b, v);
+        }
+        Expr::App(op, args) => {
+            match *op {
+                Op::SPAWN => {
+                    v.spawn_sym = first_sym(args);
+                    // First Ref is the agent; any further Refs are capabilities.
+                    let mut refs = args.iter().filter_map(|a| match a {
+                        Expr::Ref(s) => Some(s.0),
+                        _ => None,
+                    });
+                    let _agent = refs.next();
+                    v.cap_syms = refs.collect();
+                    v.size = first_int(args);
+                }
+                Op::SEND => {
+                    v.has_send = true;
+                    if let Some(s) = first_sym(args) {
+                        v.transport_sym = Some(s);
+                    }
+                }
+                Op::RECV => {
+                    v.has_recv = true;
+                    if let Some(s) = first_sym(args) {
+                        v.transport_sym = Some(s);
+                    }
+                }
+                Op::REDUCE => v.is_swarm = true,
+                _ => {}
+            }
+            for a in args {
+                walk_agentic(a, v);
+            }
+        }
+        _ => {}
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════

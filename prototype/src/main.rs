@@ -295,6 +295,24 @@ fn main() {
                 if !errs.is_empty() { reject(errs); }
                 let n = spec.facts.len() + spec.rules.len();
                 (builder::to_mg_source_kb(&spec), "kb", spec.kb.clone(), n)
+            } else if value.get("swarm").is_some() {
+                // `swarm` before `agent` — a swarm spec also has an "agent" field.
+                let spec: builder::SwarmSpec = serde_json::from_value(value).unwrap_or_else(|e| {
+                    reject(vec![builder::BuildError::malformed(format!("bad swarm spec: {e}"))]);
+                    unreachable!()
+                });
+                let errs = builder::validate_swarm(&spec);
+                if !errs.is_empty() { reject(errs); }
+                (builder::to_mg_source_swarm(&spec), "swarm", spec.swarm.clone(), 1)
+            } else if value.get("agent").is_some() {
+                let spec: builder::AgentSpec = serde_json::from_value(value).unwrap_or_else(|e| {
+                    reject(vec![builder::BuildError::malformed(format!("bad agent spec: {e}"))]);
+                    unreachable!()
+                });
+                let errs = builder::validate_agent(&spec);
+                if !errs.is_empty() { reject(errs); }
+                let n = spec.capabilities.len();
+                (builder::to_mg_source_agent(&spec), "agent", spec.agent.clone(), n)
             } else {
                 let spec: builder::NetSpec = serde_json::from_value(value).unwrap_or_else(|e| {
                     reject(vec![builder::BuildError::malformed(format!("bad net spec: {e}"))]);
@@ -729,8 +747,38 @@ fn run_describe_machine_bytes(blob: &[u8]) {
                     // (decompile() would otherwise surface them as pseudo-"layers").
                     let sym = machine_bridge::decompile_symbolic(&item.expr);
                     let is_kb = !sym.fact_arities.is_empty() || !sym.rule_param_counts.is_empty();
+                    // Agentic ops (SPAWN) appear only in agent/swarm artifacts.
+                    let ag = if is_kb { None } else { machine_bridge::decompile_agentic(&item.expr) };
                     let net = machine_bridge::decompile(&item.expr, &item.name);
-                    if !is_kb && !net.net.layers.is_empty() {
+                    if let Some(ag) = &ag {
+                        if ag.is_swarm {
+                            map.insert("kind".into(), "swarm".into());
+                            if let Some(n) = ag.spawn_sym.and_then(sym_name) {
+                                map.insert("agent".into(), n.into());
+                            }
+                            if let Some(sz) = ag.size {
+                                map.insert("size".into(), sz.into());
+                            }
+                            let comm = match (ag.has_send, ag.has_recv) {
+                                (true, true) => "send-recv",
+                                (true, false) => "send",
+                                (false, true) => "recv",
+                                (false, false) => "none",
+                            };
+                            map.insert("comm".into(), comm.into());
+                            map.insert("note".into(),
+                                "exact topology label not stored — only the comm pattern".into());
+                        } else {
+                            map.insert("kind".into(), "agent".into());
+                            let caps: Vec<serde_json::Value> = ag
+                                .cap_syms
+                                .iter()
+                                .filter_map(|&id| sym_name(id))
+                                .map(serde_json::Value::from)
+                                .collect();
+                            map.insert("capabilities".into(), serde_json::Value::Array(caps));
+                        }
+                    } else if !is_kb && !net.net.layers.is_empty() {
                         // Neural item: reconstruct the layer chain.
                         let layers: Vec<serde_json::Value> = net
                             .net

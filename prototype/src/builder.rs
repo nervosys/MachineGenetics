@@ -60,6 +60,32 @@ pub struct KbSpec {
     pub rules: Vec<RuleSpec>,
 }
 
+/// An agent construction spec — an agentic role with named capabilities.
+/// Lowers to `SPAWN(agent, caps…)`; the artifact carries the agent name and
+/// every capability name.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AgentSpec {
+    pub agent: String,
+    #[serde(default)]
+    pub capabilities: Vec<String>,
+}
+
+/// A swarm construction spec — a multi-agent topology. Lowers to
+/// `SPAWN(agent_type, size) >> comm >> REDUCE`. The artifact carries the agent
+/// type, size, comm pattern, and (for `rmi-*`) the transport; the exact
+/// topology label is not recoverable (it only selects the comm pattern).
+#[derive(Debug, Clone, Deserialize)]
+pub struct SwarmSpec {
+    pub swarm: String,
+    pub agent: String,
+    #[serde(default)]
+    pub size: Option<i64>,
+    #[serde(default)]
+    pub topology: Option<String>,
+    #[serde(default)]
+    pub transport: Option<String>,
+}
+
 /// A unified construction spec: one Machine Language container holding MANY
 /// items of mixed kinds (nets + knowledge bases) — i.e. build a whole
 /// *neurosymbolic* application (a model AND its knowledge base) in one artifact.
@@ -76,6 +102,10 @@ pub enum ItemSpec {
     Net(NetSpec),
     /// A symbolic knowledge-base item.
     Kb(KbSpec),
+    /// An agent item.
+    Agent(AgentSpec),
+    /// A swarm item.
+    Swarm(SwarmSpec),
 }
 
 impl ItemSpec {
@@ -84,6 +114,8 @@ impl ItemSpec {
         match self {
             ItemSpec::Net(n) => &n.net,
             ItemSpec::Kb(k) => &k.kb,
+            ItemSpec::Agent(a) => &a.agent,
+            ItemSpec::Swarm(s) => &s.swarm,
         }
     }
     /// Validate this item with its kind-specific rules.
@@ -91,6 +123,8 @@ impl ItemSpec {
         match self {
             ItemSpec::Net(n) => validate(n),
             ItemSpec::Kb(k) => validate_kb(k),
+            ItemSpec::Agent(a) => validate_agent(a),
+            ItemSpec::Swarm(s) => validate_swarm(s),
         }
     }
     /// Render this item as canonical MechGen source.
@@ -98,26 +132,39 @@ impl ItemSpec {
         match self {
             ItemSpec::Net(n) => to_mg_source(n),
             ItemSpec::Kb(k) => to_mg_source_kb(k),
+            ItemSpec::Agent(a) => to_mg_source_agent(a),
+            ItemSpec::Swarm(s) => to_mg_source_swarm(s),
         }
     }
 }
 
 /// Detect and deserialize one unified item by its discriminating key
-/// (`net` or `kb`). `U0002` if it is neither, or fails to deserialize.
+/// (`net`/`kb`/`agent`/`swarm`). `U0002` if none match or it fails to
+/// deserialize. `swarm` is checked before `agent` because a swarm spec also
+/// carries an `agent` field.
 pub fn classify_item(v: &serde_json::Value) -> Result<ItemSpec, BuildError> {
+    let de = |kind: &str| -> Result<ItemSpec, BuildError> {
+        match kind {
+            "net" => serde_json::from_value(v.clone()).map(ItemSpec::Net),
+            "kb" => serde_json::from_value(v.clone()).map(ItemSpec::Kb),
+            "swarm" => serde_json::from_value(v.clone()).map(ItemSpec::Swarm),
+            _ => serde_json::from_value(v.clone()).map(ItemSpec::Agent),
+        }
+        .map_err(|e| BuildError::new("U0002", format!("bad {kind} item: {e}"), "match the spec format (see --build=schema)"))
+    };
     if v.get("net").is_some() {
-        serde_json::from_value(v.clone())
-            .map(ItemSpec::Net)
-            .map_err(|e| BuildError::new("U0002", format!("bad net item: {e}"), "match the net spec format"))
+        de("net")
     } else if v.get("kb").is_some() {
-        serde_json::from_value(v.clone())
-            .map(ItemSpec::Kb)
-            .map_err(|e| BuildError::new("U0002", format!("bad kb item: {e}"), "match the kb spec format"))
+        de("kb")
+    } else if v.get("swarm").is_some() {
+        de("swarm")
+    } else if v.get("agent").is_some() {
+        de("agent")
     } else {
         Err(BuildError::new(
             "U0002",
-            "item has neither a \"net\" nor a \"kb\" key".into(),
-            "each item must be a net or kb spec",
+            "item has no \"net\"/\"kb\"/\"agent\"/\"swarm\" key".into(),
+            "each item must be a net, kb, agent, or swarm spec",
         ))
     }
 }
@@ -248,6 +295,35 @@ pub fn build_schema() -> serde_json::Value {
                 {"code": "K0003", "when": "an identifier is invalid",               "fix": "use [A-Za-z_][A-Za-z0-9_]* for predicates, rules, params, terms"},
                 {"code": "K0004", "when": "a predicate is used at two arities",     "fix": "use a consistent arity for each predicate"},
                 {"code": "K0006", "when": "a rule references an unknown predicate", "fix": "reference a declared fact-predicate or rule"}
+            ]
+        },
+        "agent": {
+            "spec_format": {
+                "agent": "string identifier — the agent's name",
+                "capabilities": "array of capability identifier strings (recoverable from the artifact)"
+            },
+            "example": {"agent": "Worker", "capabilities": ["read_source", "query_types"]},
+            "errors": [
+                {"code": "A0001", "when": "agent name is not a valid identifier", "fix": "use [A-Za-z_][A-Za-z0-9_]*"},
+                {"code": "A0002", "when": "a capability is empty",                "fix": "use non-empty capability names"}
+            ]
+        },
+        "swarm": {
+            "spec_format": {
+                "swarm": "string identifier — the swarm's name",
+                "agent": "string identifier — the agent type populating the swarm",
+                "size": "positive integer (optional, default 1)",
+                "topology": "one of: star, ring, mesh, broadcast, tree (optional)"
+            },
+            "example": {"swarm": "Workers", "agent": "Worker", "size": 4, "topology": "ring"},
+            "artifact_note":
+                "the artifact carries the agent type, size, and comm pattern; the exact topology \
+                 label is not recoverable (ring/mesh/star/tree all lower to the same send>>recv).",
+            "errors": [
+                {"code": "S0001", "when": "swarm name is not a valid identifier", "fix": "use [A-Za-z_][A-Za-z0-9_]*"},
+                {"code": "S0002", "when": "agent type is not a valid identifier", "fix": "use [A-Za-z_][A-Za-z0-9_]*"},
+                {"code": "S0003", "when": "size is not positive",                 "fix": "use a positive integer size"},
+                {"code": "S0004", "when": "unknown topology",                     "fix": "use star, ring, mesh, broadcast, or tree"}
             ]
         },
         "unified": {
@@ -444,6 +520,70 @@ pub fn to_mg_source_kb(spec: &KbSpec) -> String {
         // first param so the body type-resolves, else a literal.
         let body = params.first().cloned().unwrap_or_else(|| "0".to_string());
         s.push_str(&format!("    rule {name}({}) {{\n        {body}\n    }}\n", typed.join(", ")));
+    }
+    s.push_str("}\n");
+    s
+}
+
+/// Valid swarm communication topologies (each selects a comm pattern).
+const TOPOLOGIES: &[&str] = &["star", "ring", "mesh", "broadcast", "tree"];
+
+/// Validate an agent spec. A0001 invalid/empty name; A0002 empty capability.
+pub fn validate_agent(spec: &AgentSpec) -> Vec<BuildError> {
+    let mut errs = Vec::new();
+    if !is_ident(&spec.agent) {
+        errs.push(BuildError::new("A0001", format!("agent name `{}` is not a valid identifier", spec.agent), "use [A-Za-z_][A-Za-z0-9_]*"));
+    }
+    for (i, c) in spec.capabilities.iter().enumerate() {
+        if !is_ident(c) {
+            errs.push(BuildError::new("A0002", format!("capability #{i} (`{c}`) is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]* capability names"));
+        }
+    }
+    errs
+}
+
+/// Validate a swarm spec. S0001 bad swarm name; S0002 bad agent type;
+/// S0003 non-positive size; S0004 unknown topology.
+pub fn validate_swarm(spec: &SwarmSpec) -> Vec<BuildError> {
+    let mut errs = Vec::new();
+    if !is_ident(&spec.swarm) {
+        errs.push(BuildError::new("S0001", format!("swarm name `{}` is not a valid identifier", spec.swarm), "use [A-Za-z_][A-Za-z0-9_]*"));
+    }
+    if !is_ident(&spec.agent) {
+        errs.push(BuildError::new("S0002", format!("agent type `{}` is not a valid identifier", spec.agent), "use [A-Za-z_][A-Za-z0-9_]*"));
+    }
+    if let Some(n) = spec.size {
+        if n <= 0 {
+            errs.push(BuildError::new("S0003", format!("size must be positive, got {n}"), "use a positive integer size"));
+        }
+    }
+    if let Some(t) = &spec.topology {
+        if !TOPOLOGIES.contains(&t.as_str()) {
+            errs.push(BuildError::new("S0004", format!("unknown topology `{t}`"), "use one of: star, ring, mesh, broadcast, tree"));
+        }
+    }
+    errs
+}
+
+/// Render an agent spec as canonical MechGen source.
+pub fn to_mg_source_agent(spec: &AgentSpec) -> String {
+    let mut s = format!("agent {} {{\n", spec.agent);
+    if !spec.capabilities.is_empty() {
+        // Capabilities are bare identifiers in the grammar (parse_bracket_string_list).
+        s.push_str(&format!("    capabilities: [{}]\n", spec.capabilities.join(", ")));
+    }
+    s.push_str("}\n");
+    s
+}
+
+/// Render a swarm spec as canonical MechGen source.
+pub fn to_mg_source_swarm(spec: &SwarmSpec) -> String {
+    let mut s = format!("swarm {} {{\n    agent: {};\n", spec.swarm, spec.agent);
+    if let Some(n) = spec.size {
+        s.push_str(&format!("    size: {n};\n"));
+    }
+    if let Some(t) = &spec.topology {
+        s.push_str(&format!("    topology: {t};\n"));
     }
     s.push_str("}\n");
     s
@@ -761,6 +901,74 @@ mod tests {
         for c in ["U0001", "U0002", "U0003"] {
             assert!(codes.contains(c), "unified schema missing {c}");
         }
+    }
+
+    #[test]
+    fn agent_lowers_and_capabilities_round_trip() {
+        let s: AgentSpec = serde_json::from_str(
+            r#"{"agent":"Worker","capabilities":["read_source","query_types"]}"#,
+        ).unwrap();
+        assert!(validate_agent(&s).is_empty(), "{:?}", validate_agent(&s));
+        let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_agent(&s))).expect("agent parses");
+        let (blob, _) = crate::machine::encode_module(&module);
+        let items = crate::machine::decode_container(&blob).expect("decode");
+        let symbols = crate::machine::decode_symbols(&blob).expect("symbols");
+        let ag = crate::machine_bridge::decompile_agentic(&items[0].expr).expect("agentic");
+        assert!(!ag.is_swarm, "agent is not a swarm");
+        let caps: Vec<&str> = ag.cap_syms.iter().map(|&id| symbols[id as usize].as_str()).collect();
+        assert_eq!(caps, vec!["read_source", "query_types"], "capability names round-trip");
+    }
+
+    #[test]
+    fn swarm_lowers_with_size_and_comm() {
+        let s: SwarmSpec = serde_json::from_str(
+            r#"{"swarm":"Workers","agent":"Worker","size":4,"topology":"ring"}"#,
+        ).unwrap();
+        assert!(validate_swarm(&s).is_empty(), "{:?}", validate_swarm(&s));
+        let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_swarm(&s))).expect("swarm parses");
+        let (blob, _) = crate::machine::encode_module(&module);
+        let items = crate::machine::decode_container(&blob).expect("decode");
+        let symbols = crate::machine::decode_symbols(&blob).expect("symbols");
+        let ag = crate::machine_bridge::decompile_agentic(&items[0].expr).expect("agentic");
+        assert!(ag.is_swarm, "swarm has REDUCE aggregate");
+        assert_eq!(ag.size, Some(4), "size round-trips");
+        assert_eq!(ag.spawn_sym.map(|id| symbols[id as usize].as_str()), Some("Worker"));
+        assert!(ag.has_send && ag.has_recv, "ring topology lowers to send>>recv");
+    }
+
+    #[test]
+    fn agent_swarm_reject_by_construction() {
+        let bad_agent: AgentSpec = serde_json::from_str(r#"{"agent":"2bad","capabilities":[""]}"#).unwrap();
+        let e = validate_agent(&bad_agent);
+        assert!(e.iter().any(|x| x.code == "A0001"));
+        assert!(e.iter().any(|x| x.code == "A0002"));
+        let bad_swarm: SwarmSpec = serde_json::from_str(r#"{"swarm":"W","agent":"Worker","size":0,"topology":"clique"}"#).unwrap();
+        let e = validate_swarm(&bad_swarm);
+        assert!(e.iter().any(|x| x.code == "S0003"), "non-positive size");
+        assert!(e.iter().any(|x| x.code == "S0004"), "unknown topology");
+    }
+
+    #[test]
+    fn schema_documents_agent_and_swarm() {
+        let schema = build_schema();
+        assert!(schema["agent"]["spec_format"]["capabilities"].is_string());
+        assert!(schema["swarm"]["spec_format"]["topology"].is_string());
+    }
+
+    #[test]
+    fn unified_can_mix_all_four_kinds() {
+        let s = unifiedspec(
+            r#"{"items":[
+                {"net":"N","layers":[["a","ReLU",[]]]},
+                {"kb":"K","facts":[["f",["x"]]],"rules":[]},
+                {"agent":"Ag","capabilities":["c1"]},
+                {"swarm":"Sw","agent":"Ag2","size":2,"topology":"mesh"}
+            ]}"#,
+        );
+        assert!(validate_unified(&s).is_empty(), "{:?}", validate_unified(&s));
+        let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_unified(&s))).expect("parses");
+        let (_blob, summary) = crate::machine::encode_module(&module);
+        assert_eq!(summary.len(), 4, "four mixed items → four container entries");
     }
 
     #[test]
