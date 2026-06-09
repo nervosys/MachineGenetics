@@ -158,11 +158,16 @@ carries its own reject-by-construction codes (K0001–K0006: empty kb, invalid
 identifier, **arity conflict**, **dangling reference**), and `--describe=ml`
 classifies each item (`kind: net|kb`) and reports the recoverable structure.
 
-A `{"items":[..]}` **unified** spec builds a whole neurosymbolic application —
-a model *and* its knowledge base — into ONE container (codes U0001 empty,
-U0002 unknown-kind, U0003 duplicate-name; per-item errors are index-prefixed).
-`--describe=ml` then reports each item's kind and structure from the single
-artifact.
+The loop covers **all four IR item kinds**: `net` (neural), `kb` (symbolic),
+`agent` (a role + capability names; `SPAWN(agent, caps…)`, A0001–A0002), and
+`swarm` (agent type + size + comm pattern; S0001–S0004). agent/swarm got real
+lowering fidelity first — capability names are interned (recoverable), and the
+swarm size is folded from the spec rather than hardcoded.
+
+A `{"items":[..]}` **unified** spec builds a whole application — any mix of the
+four kinds — into ONE container (codes U0001 empty, U0002 unknown-kind, U0003
+duplicate-name; per-item errors are index-prefixed). `--describe=ml` then
+reports each item's kind and structure from the single artifact.
 
 > kb artifact fidelity: the container serializes its **symbol table** (format
 > v2), so a kb artifact is fully self-describing — `--describe=ml` recovers
