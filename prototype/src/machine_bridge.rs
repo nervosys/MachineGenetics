@@ -934,6 +934,12 @@ pub struct SymbolicView {
     pub fact_arities: Vec<i64>,
     /// Parameter count of each rule, in artifact order (one per `UNIFY`).
     pub rule_param_counts: Vec<i64>,
+    /// Symbol id of each fact predicate (parallel to `fact_arities`). Resolve
+    /// against the container's symbol table ([`crate::machine::decode_symbols`])
+    /// to recover the predicate name.
+    pub fact_syms: Vec<u32>,
+    /// Symbol id of each rule (parallel to `rule_param_counts`).
+    pub rule_syms: Vec<u32>,
 }
 
 /// Decompile a symbolic (`kb`) expression into its recoverable [`SymbolicView`].
@@ -956,11 +962,13 @@ fn walk_symbolic(expr: &Expr, v: &mut SymbolicView) {
                 Op::RESOLVE => {
                     if let Some(n) = first_int(args) {
                         v.fact_arities.push(n);
+                        v.fact_syms.push(first_sym(args).unwrap_or(0));
                     }
                 }
                 Op::UNIFY => {
                     if let Some(n) = first_int(args) {
                         v.rule_param_counts.push(n);
+                        v.rule_syms.push(first_sym(args).unwrap_or(0));
                     }
                 }
                 _ => {}
@@ -976,6 +984,13 @@ fn walk_symbolic(expr: &Expr, v: &mut SymbolicView) {
 fn first_int(args: &[Expr]) -> Option<i64> {
     args.iter().find_map(|a| match a {
         Expr::Lit(Val::I64(n)) => Some(*n),
+        _ => None,
+    })
+}
+
+fn first_sym(args: &[Expr]) -> Option<u32> {
+    args.iter().find_map(|a| match a {
+        Expr::Ref(s) => Some(s.0),
         _ => None,
     })
 }
