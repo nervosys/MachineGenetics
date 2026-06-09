@@ -60,6 +60,68 @@ pub struct KbSpec {
     pub rules: Vec<RuleSpec>,
 }
 
+/// A unified construction spec: one Machine Language container holding MANY
+/// items of mixed kinds (nets + knowledge bases) — i.e. build a whole
+/// *neurosymbolic* application (a model AND its knowledge base) in one artifact.
+/// Each item is a `net` or `kb` spec; the kind is detected by its key.
+#[derive(Debug, Clone, Deserialize)]
+pub struct UnifiedSpec {
+    pub items: Vec<serde_json::Value>,
+}
+
+/// A classified item within a [`UnifiedSpec`].
+#[derive(Debug, Clone)]
+pub enum ItemSpec {
+    /// A neural net item.
+    Net(NetSpec),
+    /// A symbolic knowledge-base item.
+    Kb(KbSpec),
+}
+
+impl ItemSpec {
+    /// The item's declared name (its container key).
+    pub fn name(&self) -> &str {
+        match self {
+            ItemSpec::Net(n) => &n.net,
+            ItemSpec::Kb(k) => &k.kb,
+        }
+    }
+    /// Validate this item with its kind-specific rules.
+    pub fn validate(&self) -> Vec<BuildError> {
+        match self {
+            ItemSpec::Net(n) => validate(n),
+            ItemSpec::Kb(k) => validate_kb(k),
+        }
+    }
+    /// Render this item as canonical MechGen source.
+    pub fn source(&self) -> String {
+        match self {
+            ItemSpec::Net(n) => to_mg_source(n),
+            ItemSpec::Kb(k) => to_mg_source_kb(k),
+        }
+    }
+}
+
+/// Detect and deserialize one unified item by its discriminating key
+/// (`net` or `kb`). `U0002` if it is neither, or fails to deserialize.
+pub fn classify_item(v: &serde_json::Value) -> Result<ItemSpec, BuildError> {
+    if v.get("net").is_some() {
+        serde_json::from_value(v.clone())
+            .map(ItemSpec::Net)
+            .map_err(|e| BuildError::new("U0002", format!("bad net item: {e}"), "match the net spec format"))
+    } else if v.get("kb").is_some() {
+        serde_json::from_value(v.clone())
+            .map(ItemSpec::Kb)
+            .map_err(|e| BuildError::new("U0002", format!("bad kb item: {e}"), "match the kb spec format"))
+    } else {
+        Err(BuildError::new(
+            "U0002",
+            "item has neither a \"net\" nor a \"kb\" key".into(),
+            "each item must be a net or kb spec",
+        ))
+    }
+}
+
 /// A machine-readable construction error (the reliability surface).
 #[derive(Debug, Clone)]
 pub struct BuildError {
@@ -186,6 +248,22 @@ pub fn build_schema() -> serde_json::Value {
                 {"code": "K0003", "when": "an identifier is invalid",               "fix": "use [A-Za-z_][A-Za-z0-9_]* for predicates, rules, params, terms"},
                 {"code": "K0004", "when": "a predicate is used at two arities",     "fix": "use a consistent arity for each predicate"},
                 {"code": "K0006", "when": "a rule references an unknown predicate", "fix": "reference a declared fact-predicate or rule"}
+            ]
+        },
+        "unified": {
+            "spec_format": {
+                "items": "array of net and/or kb specs — build a whole neurosymbolic application (model + knowledge base) into ONE Machine Language container"
+            },
+            "example": {
+                "items": [
+                    {"net": "Encoder", "layers": [["fc1", "Linear", [8, 4]]]},
+                    {"kb": "Rules", "facts": [["valid", ["x"]]], "rules": []}
+                ]
+            },
+            "errors": [
+                {"code": "U0001", "when": "no items",                          "fix": "add at least one net or kb item"},
+                {"code": "U0002", "when": "an item is neither a net nor a kb", "fix": "each item must carry a \"net\" or \"kb\" key"},
+                {"code": "U0003", "when": "two items share a name",            "fix": "give each item a unique name"}
             ]
         }
     })
@@ -368,6 +446,61 @@ pub fn to_mg_source_kb(spec: &KbSpec) -> String {
         s.push_str(&format!("    rule {name}({}) {{\n        {body}\n    }}\n", typed.join(", ")));
     }
     s.push_str("}\n");
+    s
+}
+
+/// Validate a unified multi-item spec: every item is validated with its own
+/// kind-specific rules (errors prefixed with the item index), plus:
+/// - U0001 the spec has no items
+/// - U0002 an item is neither a net nor a kb (via [`classify_item`])
+/// - U0003 two items share a name (ambiguous in the container, which is keyed
+///   by name)
+pub fn validate_unified(spec: &UnifiedSpec) -> Vec<BuildError> {
+    use std::collections::HashMap;
+    let mut errs = Vec::new();
+    if spec.items.is_empty() {
+        errs.push(BuildError::new("U0001", "unified spec has no items".into(), "add at least one net or kb item"));
+        return errs;
+    }
+    let mut names: HashMap<String, usize> = HashMap::new();
+    for (i, v) in spec.items.iter().enumerate() {
+        match classify_item(v) {
+            Ok(item) => {
+                for mut e in item.validate() {
+                    e.message = format!("item #{i}: {}", e.message);
+                    errs.push(e);
+                }
+                let nm = item.name().to_string();
+                if let Some(&j) = names.get(&nm) {
+                    errs.push(BuildError::new(
+                        "U0003",
+                        format!("item #{i}: duplicate name `{nm}` (already used by item #{j})"),
+                        "give each item a unique name",
+                    ));
+                } else {
+                    names.insert(nm, i);
+                }
+            }
+            Err(mut e) => {
+                e.message = format!("item #{i}: {}", e.message);
+                errs.push(e);
+            }
+        }
+    }
+    errs
+}
+
+/// Render a validated unified spec as one MechGen module (each item's canonical
+/// source, concatenated). Assumes [`validate_unified`] passed; unclassifiable
+/// items are skipped.
+pub fn to_mg_source_unified(spec: &UnifiedSpec) -> String {
+    let mut s = String::new();
+    for v in &spec.items {
+        if let Ok(item) = classify_item(v) {
+            s.push_str(&item.source());
+            s.push('\n');
+        }
+    }
     s
 }
 
@@ -560,6 +693,62 @@ mod tests {
             .collect();
         for c in ["K0001", "K0002", "K0003", "K0004", "K0006"] {
             assert!(codes.contains(c), "kb schema missing {c}");
+        }
+    }
+
+    fn unifiedspec(json: &str) -> UnifiedSpec {
+        serde_json::from_str(json).expect("parse unified spec")
+    }
+
+    #[test]
+    fn unified_builds_a_multi_item_neurosymbolic_container() {
+        // A model AND its knowledge base in ONE artifact.
+        let s = unifiedspec(
+            r#"{"items":[
+                {"net":"Encoder","layers":[["fc1","Linear",[8,4]],["a","ReLU",[]]]},
+                {"kb":"Rules","facts":[["valid",["x"]]],"rules":[["ok",["y"],["valid"]]]}
+            ]}"#,
+        );
+        assert!(validate_unified(&s).is_empty(), "{:?}", validate_unified(&s));
+        let src = to_mg_source_unified(&s);
+        let module = crate::parser::parse(&crate::lexer::lex(&src)).expect("unified source parses");
+        let (blob, summary) = crate::machine::encode_module(&module);
+        assert_eq!(summary.len(), 2, "two items → two container entries");
+        // Byte-stable, and both items decode (net + kb).
+        let (blob2, _) = crate::machine::encode_module(&module);
+        assert_eq!(blob, blob2, "unified container not byte-stable");
+        let items = crate::machine::decode_container(&blob).expect("decode");
+        assert_eq!(items.len(), 2);
+        // item 0 is the net (has layer ops), item 1 is the kb (has RESOLVE/UNIFY).
+        assert!(!crate::machine_bridge::decompile(&items[0].expr, &items[0].name).net.layers.is_empty());
+        let kb_view = crate::machine_bridge::decompile_symbolic(&items[1].expr);
+        assert_eq!(kb_view.fact_arities, vec![1]);
+        assert_eq!(kb_view.rule_param_counts, vec![1]);
+    }
+
+    #[test]
+    fn unified_rejects_dupes_empty_unknown_and_prefixes_item_errors() {
+        // duplicate names
+        let dup = unifiedspec(r#"{"items":[{"net":"M","layers":[["a","ReLU",[]]]},{"net":"M","layers":[["b","ReLU",[]]]}]}"#);
+        assert!(validate_unified(&dup).iter().any(|e| e.code == "U0003"), "dup: {:?}", validate_unified(&dup));
+        // empty
+        assert!(validate_unified(&unifiedspec(r#"{"items":[]}"#)).iter().any(|e| e.code == "U0001"));
+        // unknown item kind
+        assert!(validate_unified(&unifiedspec(r#"{"items":[{"foo":1}]}"#)).iter().any(|e| e.code == "U0002"));
+        // item-level error is prefixed with the item index
+        let bad = unifiedspec(r#"{"items":[{"net":"A","layers":[["a","ReLU",[]]]},{"net":"B","layers":[["x","Linear",[3,8]],["y","Linear",[4,1]]]}]}"#);
+        let e = validate_unified(&bad);
+        assert!(e.iter().any(|x| x.code == "B0006" && x.message.contains("item #1")), "prefixed shape error: {e:?}");
+    }
+
+    #[test]
+    fn schema_documents_unified_kind() {
+        let u = &build_schema()["unified"];
+        assert!(u["spec_format"]["items"].is_string());
+        let codes: std::collections::HashSet<&str> = u["errors"].as_array().unwrap()
+            .iter().map(|e| e["code"].as_str().unwrap()).collect();
+        for c in ["U0001", "U0002", "U0003"] {
+            assert!(codes.contains(c), "unified schema missing {c}");
         }
     }
 
