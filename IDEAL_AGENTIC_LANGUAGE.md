@@ -152,15 +152,31 @@ The paradigm is now a closed, three-step, no-exec loop over the binary artifact:
        what it built without ever running it.
 ```
 
+The loop spans **both halves of the neurosymbolic IR**: a `{"net":..}` spec
+(neural layer stack) or a `{"kb":..}` spec (symbolic facts + rules). The kb path
+carries its own reject-by-construction codes (K0001–K0006: empty kb, invalid
+identifier, **arity conflict**, **dangling reference**), and `--describe=ml`
+classifies each item (`kind: net|kb`) and reports the recoverable structure.
+
+> Honest limitation (kb): the symbol table is **not** serialized into the
+> container, so a kb artifact stores predicate **arities + the unify→infer rule
+> structure**, not ground argument terms or predicate names. That *is* the
+> symbolic IR the VM executes; `--describe=ml` reports the arities/counts and
+> says so. Validation runs on the spec (names/refs present), so
+> reject-by-construction is fully enforced before names are elided.
+
 Verified properties (all property/regression-tested):
-- **reject-by-construction**, both directions: 6000 generated specs — no valid net
-  refused, no invalid net ever reaches an artifact (`builder.rs`).
-- **byte-stable construction**: same spec → byte-identical `.ml` across builds.
+- **reject-by-construction**, both directions: 6000 generated net specs — no valid
+  net refused, no invalid net ever reaches an artifact; plus kb validation
+  (arity-conflict, dangling-ref, identifier, empty) (`builder.rs`).
+- **byte-stable construction**: same spec → byte-identical `.ml` across builds
+  (net and kb).
 - **drift-proof schema**: the `--build=schema` op catalog and error codes are
   derived from the same `OPS` table the validator uses, with a test that fails on
   divergence — the agent's grounding can't drift from enforcement.
 - **faithful no-exec round-trip**: `build → describe` recovers the exact op/dim
-  structure; the describe content-hash equals the encode content-hash.
+  structure (net) and fact-arities/rule-param-counts (kb); the describe
+  content-hash equals the encode content-hash.
 
 This is where the leverage the token floor denies the text track actually lives:
 discoverability (self-describing schema), reliability (reject-by-construction),

@@ -921,6 +921,65 @@ fn decompile_arg(arg: &Expr) -> Option<ast::Expr> {
     }
 }
 
+/// The recoverable structure of a *symbolic* (`kb`) Machine Language artifact:
+/// one arity per fact (`RESOLVE`) and one parameter-count per rule (`UNIFY`).
+///
+/// Predicate **names are not recoverable** from the artifact — the symbol table
+/// is not serialized into the container. What the artifact carries (and the VM
+/// executes) is the symbolic *structure*: predicate arities and the
+/// unify→infer rule pipeline. This view reports exactly that, no more.
+#[derive(Debug, Clone, Default)]
+pub struct SymbolicView {
+    /// Arity of each fact, in artifact order (one per `RESOLVE`).
+    pub fact_arities: Vec<i64>,
+    /// Parameter count of each rule, in artifact order (one per `UNIFY`).
+    pub rule_param_counts: Vec<i64>,
+}
+
+/// Decompile a symbolic (`kb`) expression into its recoverable [`SymbolicView`].
+/// Empty result ⇒ the expression is not symbolic (e.g. it's a net).
+pub fn decompile_symbolic(expr: &Expr) -> SymbolicView {
+    let mut v = SymbolicView::default();
+    walk_symbolic(expr, &mut v);
+    v
+}
+
+fn walk_symbolic(expr: &Expr, v: &mut SymbolicView) {
+    match expr {
+        Expr::Seq(a, b) | Expr::Par(a, b) => {
+            walk_symbolic(a, v);
+            walk_symbolic(b, v);
+        }
+        Expr::App(op, args) => {
+            match *op {
+                // KbTranslator: fact → RESOLVE(sym, arity); rule → UNIFY(sym, params) >> INFER.
+                Op::RESOLVE => {
+                    if let Some(n) = first_int(args) {
+                        v.fact_arities.push(n);
+                    }
+                }
+                Op::UNIFY => {
+                    if let Some(n) = first_int(args) {
+                        v.rule_param_counts.push(n);
+                    }
+                }
+                _ => {}
+            }
+            for a in args {
+                walk_symbolic(a, v);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn first_int(args: &[Expr]) -> Option<i64> {
+    args.iter().find_map(|a| match a {
+        Expr::Lit(Val::I64(n)) => Some(*n),
+        _ => None,
+    })
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // Tests
 // ═══════════════════════════════════════════════════════════════════
