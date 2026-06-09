@@ -33,6 +33,33 @@ pub struct NetSpec {
     pub layers: Vec<LayerSpec>,
 }
 
+/// One fact: (predicate, args). Positional. Arity = `args.len()`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct FactSpec(pub String, pub Vec<String>);
+
+/// One rule: (name, params, refs). The rule defines a predicate of arity
+/// `params.len()`; `refs` lists the predicates its body depends on (each must
+/// resolve to a declared fact-predicate or rule — checked by construction).
+#[derive(Debug, Clone, Deserialize)]
+pub struct RuleSpec(pub String, pub Vec<String>, pub Vec<String>);
+
+/// A knowledge-base construction spec — the *symbolic* half of the
+/// neurosymbolic IR. The agent emits this instead of `kb { ... }` source.
+///
+/// NOTE: the lowered Machine Language artifact stores predicate **arities** and
+/// the unify→infer rule structure — not ground argument terms or predicate
+/// names (the symbol table is not serialized). Validation operates on the spec,
+/// where names/arities/refs are still present, so reject-by-construction is
+/// fully enforced before the names are elided.
+#[derive(Debug, Clone, Deserialize)]
+pub struct KbSpec {
+    pub kb: String,
+    #[serde(default)]
+    pub facts: Vec<FactSpec>,
+    #[serde(default)]
+    pub rules: Vec<RuleSpec>,
+}
+
 /// A machine-readable construction error (the reliability surface).
 #[derive(Debug, Clone)]
 pub struct BuildError {
@@ -44,6 +71,10 @@ pub struct BuildError {
 impl BuildError {
     fn new(code: &'static str, message: String, fix: &'static str) -> Self {
         BuildError { code, message, fix }
+    }
+    /// A malformed-spec (`B0000`) error — for JSON that doesn't match a spec shape.
+    pub fn malformed(message: String) -> Self {
+        BuildError::new("B0000", message, "emit a valid spec; see `--build=schema`")
     }
     /// Machine-parseable one-line form (matches the --check --json spirit).
     pub fn as_json(&self) -> serde_json::Value {
@@ -132,7 +163,31 @@ pub fn build_schema() -> serde_json::Value {
             {"code": "B0004", "when": "wrong dim count for the op",            "fix": "match the op's `dims` arity"},
             {"code": "B0005", "when": "a dim is not a positive integer",       "fix": "use positive integers for dims"},
             {"code": "B0006", "when": "shape mismatch in the layer chain",     "fix": "make each Linear's input dim equal the previous output dim"}
-        ]
+        ],
+        "kb": {
+            "spec_format": {
+                "kb": "string, non-empty — the knowledge base's name",
+                "facts": "array of [predicate, [args]] tuples (arity = number of args)",
+                "rules": "array of [name, [params], [refs]] tuples; the rule defines a predicate of arity = params.len(); every ref must resolve to a declared fact-predicate or rule"
+            },
+            "example": {
+                "kb": "Family",
+                "facts": [["parent", ["a", "b"]], ["parent", ["b", "c"]]],
+                "rules": [["grandparent", ["x", "y"], ["parent"]]]
+            },
+            "artifact_note":
+                "the lowered Machine Language kb artifact stores predicate ARITIES and the \
+                 unify->infer rule structure — NOT ground argument terms or predicate names \
+                 (the symbol table is not serialized). That is the symbolic IR the VM executes; \
+                 --describe=ml reports the recoverable arities/counts.",
+            "errors": [
+                {"code": "K0001", "when": "kb name is empty",                       "fix": "set a non-empty \"kb\" field"},
+                {"code": "K0002", "when": "kb has no facts and no rules",           "fix": "add at least one fact or rule"},
+                {"code": "K0003", "when": "an identifier is invalid",               "fix": "use [A-Za-z_][A-Za-z0-9_]* for predicates, rules, params, terms"},
+                {"code": "K0004", "when": "a predicate is used at two arities",     "fix": "use a consistent arity for each predicate"},
+                {"code": "K0006", "when": "a rule references an unknown predicate", "fix": "reference a declared fact-predicate or rule"}
+            ]
+        }
     })
 }
 
@@ -212,6 +267,107 @@ pub fn to_mg_source(spec: &NetSpec) -> String {
     // single layer name ⇒ "run all declared layers in order" (lowering convention)
     let first = &spec.layers[0].0;
     s.push_str(&format!("    forward {{ {first} }}\n}}\n"));
+    s
+}
+
+/// A name is a valid predicate/rule identifier: `[A-Za-z_][A-Za-z0-9_]*`.
+fn is_ident(s: &str) -> bool {
+    let mut cs = s.chars();
+    matches!(cs.next(), Some(c) if c == '_' || c.is_ascii_alphabetic())
+        && cs.all(|c| c == '_' || c.is_ascii_alphanumeric())
+}
+
+/// Validate a knowledge-base spec fully (collect ALL errors). Empty ⇒ valid.
+/// Reject-by-construction for the symbolic IR:
+/// - K0001 empty kb name, K0002 empty kb (no facts and no rules)
+/// - K0003 invalid predicate/rule/arg identifier
+/// - K0004 arity conflict (a predicate used at two different arities)
+/// - K0006 dangling reference (a rule ref that resolves to no declared predicate)
+pub fn validate_kb(spec: &KbSpec) -> Vec<BuildError> {
+    use std::collections::HashMap;
+    let mut errs = Vec::new();
+    if spec.kb.trim().is_empty() {
+        errs.push(BuildError::new("K0001", "kb has no name".into(), "set a non-empty \"kb\" field"));
+    }
+    if spec.facts.is_empty() && spec.rules.is_empty() {
+        errs.push(BuildError::new("K0002", "kb has no facts or rules".into(), "add at least one fact or rule"));
+        return errs;
+    }
+    // Collect predicate declarations (facts and rules both define predicates),
+    // checking identifiers as we go.
+    let mut decls: Vec<(&str, usize, &str)> = Vec::new(); // (name, arity, kind)
+    for FactSpec(name, args) in &spec.facts {
+        if !is_ident(name) {
+            errs.push(BuildError::new("K0003", format!("fact predicate `{name}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]*"));
+            continue;
+        }
+        for arg in args {
+            if !is_ident(arg) {
+                errs.push(BuildError::new("K0003", format!("fact `{name}` arg `{arg}` is not a valid term identifier"), "use [A-Za-z_][A-Za-z0-9_]* for terms"));
+            }
+        }
+        decls.push((name, args.len(), "fact"));
+    }
+    for RuleSpec(name, params, _refs) in &spec.rules {
+        if !is_ident(name) {
+            errs.push(BuildError::new("K0003", format!("rule `{name}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]*"));
+            continue;
+        }
+        for p in params {
+            if !is_ident(p) {
+                errs.push(BuildError::new("K0003", format!("rule `{name}` param `{p}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]* for params"));
+            }
+        }
+        decls.push((name, params.len(), "rule"));
+    }
+    // Arity-consistency check: a predicate may not appear at two arities.
+    let mut arity: HashMap<&str, usize> = HashMap::new();
+    for &(name, a, what) in &decls {
+        match arity.get(name) {
+            Some(&prev) if prev != a => errs.push(BuildError::new(
+                "K0004",
+                format!("predicate `{name}` ({what}) has arity {a} but was already declared with arity {prev}"),
+                "use a consistent arity for each predicate",
+            )),
+            Some(_) => {}
+            None => {
+                arity.insert(name, a);
+            }
+        }
+    }
+    // Dangling-reference check: every ref must resolve to a declared predicate.
+    for RuleSpec(name, _params, refs) in &spec.rules {
+        for r in refs {
+            if !arity.contains_key(r.as_str()) {
+                errs.push(BuildError::new(
+                    "K0006",
+                    format!("rule `{name}` references unknown predicate `{r}`"),
+                    "reference a declared fact-predicate or rule (or add it)",
+                ));
+            }
+        }
+    }
+    errs
+}
+
+/// Render a validated kb spec as canonical MechGen `kb` source. Internal bridge
+/// to the tested lexer→parser→Machine Language pipeline. Deterministic.
+///
+/// The rule body does not affect the lowered artifact (only the param count is
+/// encoded, as `UNIFY(sym, params)`), so a canonical placeholder body is used.
+pub fn to_mg_source_kb(spec: &KbSpec) -> String {
+    let mut s = format!("kb {} {{\n", spec.kb);
+    for FactSpec(name, args) in &spec.facts {
+        s.push_str(&format!("    fact {name}({});\n", args.join(", ")));
+    }
+    for RuleSpec(name, params, _refs) in &spec.rules {
+        let typed: Vec<String> = params.iter().map(|p| format!("{p}: i32")).collect();
+        // Body is a placeholder (param count is all that's encoded); use the
+        // first param so the body type-resolves, else a literal.
+        let body = params.first().cloned().unwrap_or_else(|| "0".to_string());
+        s.push_str(&format!("    rule {name}({}) {{\n        {body}\n    }}\n", typed.join(", ")));
+    }
+    s.push_str("}\n");
     s
 }
 
@@ -339,6 +495,72 @@ mod tests {
             })
             .collect();
         assert_eq!(dims, vec![vec![4, 16], vec![], vec![16, 3]], "decoded dims must match the spec");
+    }
+
+    fn kbspec(json: &str) -> KbSpec {
+        serde_json::from_str(json).expect("parse kb spec")
+    }
+
+    #[test]
+    fn valid_kb_lowers_and_describes_structure_no_exec() {
+        // Build → encode → decode (pure data) recovers the symbolic STRUCTURE:
+        // one arity per fact, one param-count per rule. Names are not in the
+        // artifact, by design — so we assert on arities/counts, deterministically.
+        let s = kbspec(
+            r#"{"kb":"Family","facts":[["parent",["a","b"]],["parent",["b","c"]],["male",["a"]]],"rules":[["grandparent",["x","y"],["parent"]]]}"#,
+        );
+        assert!(validate_kb(&s).is_empty(), "{:?}", validate_kb(&s));
+        let src = to_mg_source_kb(&s);
+        let module = crate::parser::parse(&crate::lexer::lex(&src)).expect("generated kb parses");
+
+        let (blob, summary) = crate::machine::encode_module(&module);
+        assert_eq!(summary.len(), 1, "one kb → one item");
+        let (blob2, _) = crate::machine::encode_module(&module);
+        assert_eq!(blob, blob2, "kb artifact is not byte-stable");
+
+        let items = crate::machine::decode_container(&blob).expect("decode pure data");
+        let view = crate::machine_bridge::decompile_symbolic(&items[0].expr);
+        assert_eq!(view.fact_arities, vec![2, 2, 1], "fact arities must round-trip");
+        assert_eq!(view.rule_param_counts, vec![2], "rule param-count must round-trip");
+    }
+
+    #[test]
+    fn kb_rejects_arity_conflict_dangling_ref_and_bad_ident() {
+        // parent/2 then parent/3 → K0004; rule refs unknown `ancestor` → K0006;
+        // bad identifier `2bad` → K0003.
+        let s = kbspec(
+            r#"{"kb":"K","facts":[["parent",["a","b"]],["parent",["a","b","c"]],["2bad",["x"]]],"rules":[["r",["x"],["ancestor"]]]}"#,
+        );
+        let e = validate_kb(&s);
+        assert!(e.iter().any(|x| x.code == "K0004"), "arity conflict: {e:?}");
+        assert!(e.iter().any(|x| x.code == "K0006"), "dangling ref: {e:?}");
+        assert!(e.iter().any(|x| x.code == "K0003"), "bad identifier: {e:?}");
+    }
+
+    #[test]
+    fn kb_rejects_empty() {
+        assert!(validate_kb(&kbspec(r#"{"kb":"","facts":[],"rules":[]}"#))
+            .iter()
+            .any(|x| x.code == "K0001"));
+        assert!(validate_kb(&kbspec(r#"{"kb":"K","facts":[],"rules":[]}"#))
+            .iter()
+            .any(|x| x.code == "K0002"));
+    }
+
+    #[test]
+    fn schema_documents_kb_kind() {
+        let schema = build_schema();
+        let kb = &schema["kb"];
+        assert!(kb["spec_format"]["facts"].is_string(), "kb spec_format present");
+        let codes: std::collections::HashSet<&str> = kb["errors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e["code"].as_str().unwrap())
+            .collect();
+        for c in ["K0001", "K0002", "K0003", "K0004", "K0006"] {
+            assert!(codes.contains(c), "kb schema missing {c}");
+        }
     }
 
     #[test]

@@ -246,9 +246,10 @@ fn main() {
             }
         }
         Some("--build=ml") => {
-            // Tool-mediated construction: agent emits a compact JSON net spec
-            // (not source text), we validate it structurally and lower the
-            // result to the deterministic Machine Language artifact. See builder.rs.
+            // Tool-mediated construction: agent emits a compact JSON spec (not
+            // source text) — a `net` (neural) or `kb` (symbolic) spec — which we
+            // validate structurally (reject-by-construction) and lower to the
+            // deterministic Machine Language artifact. See builder.rs.
             let path = filtered.get(1).unwrap_or_else(|| {
                 eprintln!("Usage: MechGen-parse --build=ml <spec.json> [<out.ml>]");
                 std::process::exit(1);
@@ -258,34 +259,51 @@ fn main() {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            let spec: builder::NetSpec = match serde_json::from_str(&json) {
-                Ok(s) => s,
+            // Detect the spec kind from its discriminating key.
+            let value: serde_json::Value = match serde_json::from_str(&json) {
+                Ok(v) => v,
                 Err(e) => {
                     println!(
                         "{}",
                         serde_json::json!({"ok": false, "errors": [
                             {"code":"B0000","message": format!("malformed spec JSON: {e}"),
-                             "fix":"emit a valid net spec: {\"net\":\"..\",\"layers\":[[name,op,[dims]]]}"}]})
+                             "fix":"emit a valid spec ({\"net\":..} or {\"kb\":..}); see --build=schema"}]})
                     );
                     std::process::exit(1);
                 }
             };
-            let errs = builder::validate(&spec);
-            if !errs.is_empty() {
-                // Reject by construction — machine-readable, no artifact produced.
+            let reject = |errs: Vec<builder::BuildError>| {
                 let arr: Vec<_> = errs.iter().map(|e| e.as_json()).collect();
                 println!("{}", serde_json::json!({"ok": false, "errors": arr}));
                 std::process::exit(1);
-            }
-            // Valid → construct canonical net → reuse the tested Machine Language lowering.
-            let src = builder::to_mg_source(&spec);
+            };
+            let (src, kind, name, count) = if value.get("kb").is_some() {
+                let spec: builder::KbSpec = serde_json::from_value(value).unwrap_or_else(|e| {
+                    reject(vec![builder::BuildError::malformed(format!("bad kb spec: {e}"))]);
+                    unreachable!()
+                });
+                let errs = builder::validate_kb(&spec);
+                if !errs.is_empty() { reject(errs); }
+                let n = spec.facts.len() + spec.rules.len();
+                (builder::to_mg_source_kb(&spec), "kb", spec.kb.clone(), n)
+            } else {
+                let spec: builder::NetSpec = serde_json::from_value(value).unwrap_or_else(|e| {
+                    reject(vec![builder::BuildError::malformed(format!("bad net spec: {e}"))]);
+                    unreachable!()
+                });
+                let errs = builder::validate(&spec);
+                if !errs.is_empty() { reject(errs); }
+                let n = spec.layers.len();
+                (builder::to_mg_source(&spec), "net", spec.net.clone(), n)
+            };
+            // Valid → construct canonical source → reuse the tested lowering.
             match parser::parse(&lexer::lex(&src)) {
                 Ok(module) => {
                     run_emit_machine_bytes(&module, path, out_path.as_deref());
-                    eprintln!("// built `{}` from spec ({} layers) → Machine Language", spec.net, spec.layers.len());
+                    eprintln!("// built `{name}` from {kind} spec ({count} items) → Machine Language");
                 }
                 Err(e) => {
-                    eprintln!("internal: generated net failed to parse: {}:{} {}", e.line, e.col, e.message);
+                    eprintln!("internal: generated {kind} failed to parse: {}:{} {}", e.line, e.col, e.message);
                     std::process::exit(1);
                 }
             }
@@ -688,35 +706,72 @@ fn run_describe_machine_bytes(blob: &[u8]) {
             let items_json: Vec<serde_json::Value> = items
                 .iter()
                 .map(|item| {
-                    let result = machine_bridge::decompile(&item.expr, &item.name);
-                    let layers: Vec<serde_json::Value> = result
-                        .net
-                        .layers
-                        .iter()
-                        .map(|layer| {
-                            let op = match &layer.layer_type {
-                                ast::Type::Path { segments, .. } => {
-                                    segments.last().cloned().unwrap_or_default()
-                                }
-                                _ => "?".to_string(),
-                            };
-                            let dims: Vec<i64> = layer
-                                .args
-                                .iter()
-                                .filter_map(|a| match a {
-                                    ast::Expr::Literal { value, .. } => value.parse::<i64>().ok(),
-                                    _ => None,
-                                })
-                                .collect();
-                            serde_json::json!({ "name": layer.name, "op": op, "dims": dims })
-                        })
-                        .collect();
-                    serde_json::json!({
+                    let mut entry = serde_json::json!({
                         "name": item.name,
                         "expr_bytes": item.expr_bytes_len,
                         "content_hash": format!("{:016x}", item.expr.content_hash()),
-                        "layers": layers,
-                    })
+                    });
+                    let map = entry.as_object_mut().unwrap();
+                    // Symbolic ops (RESOLVE/UNIFY) appear ONLY in kb artifacts, so a
+                    // non-empty symbolic view is the precise net-vs-kb discriminator
+                    // (decompile() would otherwise surface them as pseudo-"layers").
+                    let sym = machine_bridge::decompile_symbolic(&item.expr);
+                    let is_kb = !sym.fact_arities.is_empty() || !sym.rule_param_counts.is_empty();
+                    let net = machine_bridge::decompile(&item.expr, &item.name);
+                    if !is_kb && !net.net.layers.is_empty() {
+                        // Neural item: reconstruct the layer chain.
+                        let layers: Vec<serde_json::Value> = net
+                            .net
+                            .layers
+                            .iter()
+                            .map(|layer| {
+                                let op = match &layer.layer_type {
+                                    ast::Type::Path { segments, .. } => {
+                                        segments.last().cloned().unwrap_or_default()
+                                    }
+                                    _ => "?".to_string(),
+                                };
+                                let dims: Vec<i64> = layer
+                                    .args
+                                    .iter()
+                                    .filter_map(|a| match a {
+                                        ast::Expr::Literal { value, .. } => value.parse::<i64>().ok(),
+                                        _ => None,
+                                    })
+                                    .collect();
+                                serde_json::json!({ "name": layer.name, "op": op, "dims": dims })
+                            })
+                            .collect();
+                        map.insert("kind".into(), "net".into());
+                        map.insert("layers".into(), serde_json::Value::Array(layers));
+                    } else if !is_kb {
+                        map.insert("kind".into(), "unknown".into());
+                    } else {
+                        // Symbolic (kb) item: recover fact arities + rule param-counts.
+                        // Names are NOT in the artifact (symbol table not serialized).
+                        {
+                            map.insert("kind".into(), "kb".into());
+                            map.insert(
+                                "facts".into(),
+                                serde_json::json!(sym
+                                    .fact_arities
+                                    .iter()
+                                    .map(|a| serde_json::json!({ "arity": a }))
+                                    .collect::<Vec<_>>()),
+                            );
+                            map.insert(
+                                "rules".into(),
+                                serde_json::json!(sym
+                                    .rule_param_counts
+                                    .iter()
+                                    .map(|p| serde_json::json!({ "params": p }))
+                                    .collect::<Vec<_>>()),
+                            );
+                            map.insert("note".into(),
+                                "predicate names/terms are not stored in the artifact (symbolic IR: arities + inference only)".into());
+                        }
+                    }
+                    entry
                 })
                 .collect();
             let out = serde_json::json!({
