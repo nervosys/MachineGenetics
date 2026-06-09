@@ -158,6 +158,12 @@ carries its own reject-by-construction codes (K0001–K0006: empty kb, invalid
 identifier, **arity conflict**, **dangling reference**), and `--describe=ml`
 classifies each item (`kind: net|kb`) and reports the recoverable structure.
 
+A `{"items":[..]}` **unified** spec builds a whole neurosymbolic application —
+a model *and* its knowledge base — into ONE container (codes U0001 empty,
+U0002 unknown-kind, U0003 duplicate-name; per-item errors are index-prefixed).
+`--describe=ml` then reports each item's kind and structure from the single
+artifact.
+
 > Honest limitation (kb): the symbol table is **not** serialized into the
 > container, so a kb artifact stores predicate **arities + the unify→infer rule
 > structure**, not ground argument terms or predicate names. That *is* the

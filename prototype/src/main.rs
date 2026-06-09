@@ -277,7 +277,16 @@ fn main() {
                 println!("{}", serde_json::json!({"ok": false, "errors": arr}));
                 std::process::exit(1);
             };
-            let (src, kind, name, count) = if value.get("kb").is_some() {
+            let (src, kind, name, count) = if value.get("items").is_some() {
+                let spec: builder::UnifiedSpec = serde_json::from_value(value).unwrap_or_else(|e| {
+                    reject(vec![builder::BuildError::malformed(format!("bad unified spec: {e}"))]);
+                    unreachable!()
+                });
+                let errs = builder::validate_unified(&spec);
+                if !errs.is_empty() { reject(errs); }
+                let n = spec.items.len();
+                (builder::to_mg_source_unified(&spec), "unified", format!("{n}-item container"), n)
+            } else if value.get("kb").is_some() {
                 let spec: builder::KbSpec = serde_json::from_value(value).unwrap_or_else(|e| {
                     reject(vec![builder::BuildError::malformed(format!("bad kb spec: {e}"))]);
                     unreachable!()
