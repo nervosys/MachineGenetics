@@ -631,7 +631,7 @@ pub struct TrainDef {
     pub body: Block,
     /// Optional inline training inputs as an array-of-arrays literal:
     /// `inputs: [[0.5, 0.5], [1.0, 0.0]]`. When present alongside
-    /// `targets`, replaces the synthetic dataset in `--target=rmil-train`.
+    /// `targets`, replaces the synthetic dataset in `--target=ml-train`.
     pub inputs: Option<Expr>,
     /// Optional inline training targets, paired one-to-one with `inputs`.
     pub targets: Option<Expr>,
@@ -654,10 +654,10 @@ pub struct TrainDef {
     /// improved for this many consecutive epochs. Requires `val_split > 0`.
     pub patience: Option<Expr>,
     /// Optional generation prompt: array of integer token IDs.
-    /// Used by `--target=rmil-generate` as the seed sequence.
+    /// Used by `--target=ml-generate` as the seed sequence.
     pub prompt: Option<Expr>,
     /// Optional max tokens to generate (default 16) when
-    /// `--target=rmil-generate` is invoked.
+    /// `--target=ml-generate` is invoked.
     pub max_tokens: Option<Expr>,
     /// Generation sampling temperature. `0` or absent means greedy argmax;
     /// `1.0` is raw softmax sampling; `<1.0` sharpens, `>1.0` flattens.

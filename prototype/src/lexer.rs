@@ -81,6 +81,9 @@ pub enum TokenKind {
     KwData,           // data (record/sum type with auto-derive)
     KwVal,            // val (immutable binding — human mode)
     KwVar,            // var (mutable binding — human mode)
+    KwLet,            // let — REMOVED binding keyword; lexed to its own token
+                      // only so the parser can emit a helpful "use val/var"
+                      // diagnostic instead of a cryptic cascade failure
     KwGuard,          // guard ... else { early-exit }
     KwDefer,          // defer expr (run on scope exit)
     KwExtend,         // extend Type { methods }
@@ -1009,139 +1012,83 @@ impl<'a> Lexer<'a> {
             return self.lex_string(start, start_line, start_col, kind);
         }
 
-        let kind = match text {
-            // ── Agent-mode single-char declaration keywords ──────
-            "f" => TokenKind::KwF,
-            "af" => TokenKind::KwAf,
-            "uf" => TokenKind::KwUf,
-            "m" => TokenKind::KwM,
-            "v" => TokenKind::KwV,
-            "C" => TokenKind::KwC,
-            "S" => TokenKind::KwS,
-            "E" => TokenKind::KwE,
-            "T" => TokenKind::KwT,
-            "I" => TokenKind::KwI,
-            "M" => TokenKind::KwMod,
-            "U" => TokenKind::KwU,
-            "u" => TokenKind::KwUse,
-            "Y" => TokenKind::KwY,
-            "Z" => TokenKind::KwZ,
-            "s" => TokenKind::Ident, // 's' is a type, not a keyword; parser handles
-
-            // ── Human-mode keywords (Rust-compatible) ─────────────────
-            "fn" => TokenKind::KwF,           // function
-            "pub" => TokenKind::Plus,         // public — same as agent's +
-            "let" => TokenKind::KwV,          // immutable binding (let)
-            "mut" => TokenKind::KwM,          // mutable — qualifier on let/&
-            "const" => TokenKind::KwC,        // const
-            "struct" => TokenKind::KwS,       // struct
-            "enum" => TokenKind::KwE,         // enum
-            "trait" => TokenKind::KwT,        // trait
-            "impl" => TokenKind::KwI,         // impl
-            "mod" => TokenKind::KwMod,        // module
-            "use" => TokenKind::KwUse,        // import
-            "async" => TokenKind::KwAf,       // async
-            "if" => TokenKind::Question,      // if
-            "match" => TokenKind::QuestionEq, // match
-            "for" => TokenKind::At,           // for loop
-            "in" => TokenKind::KwOf,          // for separator (for x in list)
-            "while" => TokenKind::AtW,        // while
-            "else" => TokenKind::KwElse,      // else (if cond {} else {})
-            "where" => TokenKind::TildeArrow, // where clause
-
-            // ── Multi-char keywords (shared) ─────────────────────
-            "loop" => TokenKind::KwLoop,
-            "break" => TokenKind::KwBreak,
-            "continue" => TokenKind::KwContinue,
-            "return" => TokenKind::KwRet,
-            "ret" => TokenKind::KwRet, // agent mode alias
-            "yield" => TokenKind::KwYield,
-            "yl" => TokenKind::KwYield, // agent mode alias
-            "effect" => TokenKind::KwEffect,
-            "fx" => TokenKind::KwEffect, // agent mode alias
-            "handle" => TokenKind::KwHandle,
-            "hx" => TokenKind::KwHandle, // agent mode alias
-            "spec" => TokenKind::KwSpec,
-            "sp" => TokenKind::KwSpec, // agent mode alias
-            "agent" => TokenKind::KwAgent,
-            "swarm" => TokenKind::KwSwarm,
-            "sw" => TokenKind::KwSwarm, // agent mode alias
-            "extern" => TokenKind::KwExtern,
-            "xn" => TokenKind::KwExtern, // agent mode alias
-            "unsafe" => TokenKind::KwUnsafe,
-            "type" => TokenKind::KwType,
-            "static" => TokenKind::KwStatic,
-
-            // ── New human-mode keywords ────────────────────────────
-            "data" => TokenKind::KwData,
-            "val" => TokenKind::KwVal,
-            "var" => TokenKind::KwVar,
-            "guard" => TokenKind::KwGuard,
-            "defer" => TokenKind::KwDefer,
-            "extend" => TokenKind::KwExtend,
-            "is" => TokenKind::KwIs,
-            "or" => TokenKind::KwOr,
-
-            // ── Agent-mode aliases for new keywords ────────────────
-            "D" => TokenKind::KwData,
-            "gd" => TokenKind::KwGuard,
-            "df" => TokenKind::KwDefer,
-            "xd" => TokenKind::KwExtend,
-
-            // Built-in result/option variants
-            "Ok" => TokenKind::KwOk,
-            "Err" => TokenKind::KwErr,
-            "Some" => TokenKind::KwSome,
-            "None" => TokenKind::KwNone,
-
-            // Swarm orchestration pattern keywords
-            "swarm_map_reduce" => TokenKind::KwSwarmMapReduce,
-            "swarm_pipeline" => TokenKind::KwSwarmPipeline,
-            "swarm_saga" => TokenKind::KwSwarmSaga,
-            "swarm_fan_out" => TokenKind::KwSwarmFanOut,
-            "swarm_race" => TokenKind::KwSwarmRace,
-            "pipeline" => TokenKind::KwPipeline,
-            "grammar_extension" => TokenKind::KwGrammarExt,
-
-            // AI / Neural keywords
-            "net" => TokenKind::KwNet,
-            "layer" => TokenKind::KwLayer,
-            "tensor" => TokenKind::KwTensor,
-            "param" => TokenKind::KwParam,
-            "train" => TokenKind::KwTrain,
-            "grad" => TokenKind::KwGrad,
-            "forward" => TokenKind::KwForward,
-
-            // AI / Knowledge Base keywords
-            "kb" => TokenKind::KwKb,
-            "fact" => TokenKind::KwFact,
-            "rule" => TokenKind::KwRule,
-            "query" => TokenKind::KwQuery,
-
-            // AI / Evolution keywords
-            "evolve" => TokenKind::KwEvolve,
-            "genome" => TokenKind::KwGenome,
-            "mutate" => TokenKind::KwMutate,
-            "fitness" => TokenKind::KwFitness,
-            "select" => TokenKind::KwSelect,
-            "crossover" => TokenKind::KwCrossover,
-            "population" => TokenKind::KwPopulation,
-            "generations" => TokenKind::KwGenerations,
-
-            // AI / Reinforcement Learning keywords
-            "rl" => TokenKind::KwRl,
-            "policy" => TokenKind::KwPolicy,
-            "reward" => TokenKind::KwReward,
-
-            // Special identifiers
-            "_" => TokenKind::Underscore,
-            "_T" => TokenKind::UnderscoreT,
-
-            _ => TokenKind::Ident,
-        };
+        // Single source of truth: look the spelling up in the canonical
+        // KEYWORDS table (also consumed by the ontology, so the self-describing
+        // ontology can never drift from what the lexer actually recognises).
+        let kind = keyword_kind(text).unwrap_or(TokenKind::Ident);
 
         self.make_token(kind, start, start_line, start_col)
     }
+}
+
+/// The canonical keyword table: every reserved spelling MechGen recognises,
+/// mapped to the token it produces. This is the **single source of truth** —
+/// the lexer looks words up here, and the self-describing ontology
+/// (`ontology::keywords_section`) enumerates this same table, so the ontology
+/// an agent grounds in can never drift from what the compiler actually accepts.
+/// To add/remove a keyword, edit this one table.
+pub const KEYWORDS: &[(&str, TokenKind)] = &[
+    // Agent-mode single-char declaration keywords
+    ("f", TokenKind::KwF), ("af", TokenKind::KwAf), ("uf", TokenKind::KwUf),
+    ("m", TokenKind::KwM), ("v", TokenKind::KwV), ("C", TokenKind::KwC),
+    ("S", TokenKind::KwS), ("E", TokenKind::KwE), ("T", TokenKind::KwT),
+    ("I", TokenKind::KwI), ("M", TokenKind::KwMod), ("U", TokenKind::KwU),
+    ("u", TokenKind::KwUse), ("Y", TokenKind::KwY), ("Z", TokenKind::KwZ),
+    // Human-mode keywords (Rust-compatible); some map to symbol tokens
+    ("fn", TokenKind::KwF), ("pub", TokenKind::Plus), ("let", TokenKind::KwLet),
+    ("mut", TokenKind::KwM), ("const", TokenKind::KwC), ("struct", TokenKind::KwS),
+    ("enum", TokenKind::KwE), ("trait", TokenKind::KwT), ("impl", TokenKind::KwI),
+    ("mod", TokenKind::KwMod), ("use", TokenKind::KwUse), ("async", TokenKind::KwAf),
+    ("if", TokenKind::Question), ("match", TokenKind::QuestionEq), ("for", TokenKind::At),
+    ("in", TokenKind::KwOf), ("while", TokenKind::AtW), ("else", TokenKind::KwElse),
+    ("where", TokenKind::TildeArrow),
+    // Multi-char keywords (shared) + agent-mode aliases
+    ("loop", TokenKind::KwLoop), ("break", TokenKind::KwBreak),
+    ("continue", TokenKind::KwContinue), ("return", TokenKind::KwRet),
+    ("ret", TokenKind::KwRet), ("yield", TokenKind::KwYield), ("yl", TokenKind::KwYield),
+    ("effect", TokenKind::KwEffect), ("fx", TokenKind::KwEffect),
+    ("handle", TokenKind::KwHandle), ("hx", TokenKind::KwHandle),
+    ("spec", TokenKind::KwSpec), ("sp", TokenKind::KwSpec), ("agent", TokenKind::KwAgent),
+    ("swarm", TokenKind::KwSwarm), ("sw", TokenKind::KwSwarm), ("extern", TokenKind::KwExtern),
+    ("xn", TokenKind::KwExtern), ("unsafe", TokenKind::KwUnsafe), ("type", TokenKind::KwType),
+    ("static", TokenKind::KwStatic),
+    // New human-mode keywords + agent-mode aliases
+    ("data", TokenKind::KwData), ("val", TokenKind::KwVal), ("var", TokenKind::KwVar),
+    ("guard", TokenKind::KwGuard), ("defer", TokenKind::KwDefer), ("extend", TokenKind::KwExtend),
+    ("is", TokenKind::KwIs), ("or", TokenKind::KwOr),
+    ("D", TokenKind::KwData), ("gd", TokenKind::KwGuard), ("df", TokenKind::KwDefer),
+    ("xd", TokenKind::KwExtend),
+    // Built-in result/option variants
+    ("Ok", TokenKind::KwOk), ("Err", TokenKind::KwErr), ("Some", TokenKind::KwSome),
+    ("None", TokenKind::KwNone),
+    // Swarm orchestration patterns
+    ("swarm_map_reduce", TokenKind::KwSwarmMapReduce), ("swarm_pipeline", TokenKind::KwSwarmPipeline),
+    ("swarm_saga", TokenKind::KwSwarmSaga), ("swarm_fan_out", TokenKind::KwSwarmFanOut),
+    ("swarm_race", TokenKind::KwSwarmRace), ("pipeline", TokenKind::KwPipeline),
+    ("grammar_extension", TokenKind::KwGrammarExt),
+    // AI / Neural
+    ("net", TokenKind::KwNet), ("layer", TokenKind::KwLayer), ("tensor", TokenKind::KwTensor),
+    ("param", TokenKind::KwParam), ("train", TokenKind::KwTrain), ("grad", TokenKind::KwGrad),
+    ("forward", TokenKind::KwForward),
+    // AI / Knowledge Base
+    ("kb", TokenKind::KwKb), ("fact", TokenKind::KwFact), ("rule", TokenKind::KwRule),
+    ("query", TokenKind::KwQuery),
+    // AI / Evolution
+    ("evolve", TokenKind::KwEvolve), ("genome", TokenKind::KwGenome), ("mutate", TokenKind::KwMutate),
+    ("fitness", TokenKind::KwFitness), ("select", TokenKind::KwSelect),
+    ("crossover", TokenKind::KwCrossover), ("population", TokenKind::KwPopulation),
+    ("generations", TokenKind::KwGenerations),
+    // AI / Reinforcement Learning
+    ("rl", TokenKind::KwRl), ("policy", TokenKind::KwPolicy), ("reward", TokenKind::KwReward),
+    // Special identifiers
+    ("_", TokenKind::Underscore), ("_T", TokenKind::UnderscoreT),
+];
+
+/// Look up a spelling in the canonical [`KEYWORDS`] table. `None` ⇒ ordinary
+/// identifier. (`"s"` is intentionally absent — it is a type name the parser
+/// handles, not a keyword.)
+pub fn keyword_kind(text: &str) -> Option<TokenKind> {
+    KEYWORDS.iter().find(|(s, _)| *s == text).map(|(_, k)| *k)
 }
 
 #[cfg(test)]

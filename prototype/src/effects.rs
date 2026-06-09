@@ -55,25 +55,34 @@ impl EffectInfer {
             self.infer_function(name);
         }
 
-        // Pass 3: verify declared ⊆ inferred.
-        for (name, declared) in &self.declared {
-            if let Some(inferred) = self.inferred.get(name) {
-                // Check that inferred effects are a subset of declared effects.
-                let undeclared: Vec<&Effect> =
-                    inferred.iter().filter(|e| !declared.contains(e)).collect();
-
-                if !undeclared.is_empty() {
-                    let effects: Vec<String> = undeclared.iter().map(|e| e.to_string()).collect();
-                    self.diagnostics.push(Diagnostic::categorized(
-                        crate::hir::Severity::Error,
-                        format!(
-                            "function `{name}` performs undeclared effects: [{}]",
-                            effects.join(", ")
-                        ),
-                        DiagnosticCategory::UndeclaredEffect,
-                        None,
-                    ));
-                }
+        // Pass 3: SOUND effect checking — inferred ⊆ declared for EVERY
+        // function, with an absent annotation meaning "pure" (declared = ∅).
+        // This makes effects mandatory in signatures (as the language design
+        // states: "side effects explicit in function signatures") so the
+        // capability gate is non-bypassable — you cannot perform a net/fs/io
+        // effect without declaring it. Sorted iteration keeps diagnostics
+        // deterministic.
+        let mut names: Vec<&String> = self.inferred.keys().collect();
+        names.sort();
+        for name in names {
+            let inferred = &self.inferred[name];
+            if inferred.is_empty() {
+                continue;
+            }
+            let declared = self.declared.get(name).cloned().unwrap_or_else(pure);
+            let undeclared: Vec<&Effect> =
+                inferred.iter().filter(|e| !declared.contains(e)).collect();
+            if !undeclared.is_empty() {
+                let effects: Vec<String> = undeclared.iter().map(|e| e.to_string()).collect();
+                self.diagnostics.push(Diagnostic::categorized(
+                    crate::hir::Severity::Error,
+                    format!(
+                        "function `{name}` performs undeclared effects: [{}] — add them to its `/ effect` annotation",
+                        effects.join(", ")
+                    ),
+                    DiagnosticCategory::UndeclaredEffect,
+                    None,
+                ));
             }
         }
     }
@@ -343,9 +352,17 @@ impl EffectInfer {
         // Start with any locally-performed effects.
         let mut effects = self.inferred.get(name).cloned().unwrap_or_else(pure);
 
-        // Accumulate effects from callees.
+        // Accumulate effects from callees. A callee contributes BOTH its
+        // inferred body effects AND its *declared* effects: a function
+        // annotated `/ io` performs io by contract even if its body just wraps
+        // a builtin/FFI whose effect wasn't inferred. Without this, a caller
+        // could smuggle a network/exec effect past a pure signature — the
+        // propagation that makes effect annotations a real capability gate.
         for callee in &callees {
-            let callee_effects = self.infer_function(callee);
+            let mut callee_effects = self.infer_function(callee);
+            if let Some(declared) = self.declared.get(callee) {
+                callee_effects.extend(declared.iter().cloned());
+            }
             effects.extend(callee_effects);
         }
 
@@ -357,6 +374,36 @@ impl EffectInfer {
     /// Get the inferred effect set for a function. Returns `pure` if unknown.
     pub fn effects_of(&self, name: &str) -> EffectSet {
         self.inferred.get(name).cloned().unwrap_or_else(pure)
+    }
+
+    /// The module's full **effect (capability) surface**, for agent policy
+    /// gating: every function with its declared effects (the contract it
+    /// claims) and its inferred effects (what the compiler computed it
+    /// actually performs, transitively). Returned sorted by function name so
+    /// the output is deterministic. An agent runtime can sandbox or refuse
+    /// generated code by inspecting this BEFORE running it — and it covers
+    /// *every* function, not only the annotated ones.
+    pub fn effect_surface(&self) -> Vec<(String, Vec<String>, Vec<String>)> {
+        let mut names: Vec<&String> =
+            self.inferred.keys().chain(self.declared.keys()).collect();
+        names.sort();
+        names.dedup();
+        names
+            .into_iter()
+            .map(|name| {
+                let to_sorted = |set: Option<&EffectSet>| {
+                    let mut v: Vec<String> =
+                        set.map(|s| s.iter().map(|e| e.to_string()).collect()).unwrap_or_default();
+                    v.sort();
+                    v
+                };
+                (
+                    name.clone(),
+                    to_sorted(self.declared.get(name)),
+                    to_sorted(self.inferred.get(name)),
+                )
+            })
+            .collect()
     }
 }
 
@@ -446,6 +493,70 @@ mod tests {
         let ei = infer_source(src);
         assert!(ei.effects_of("double").is_empty());
         assert!(ei.effects_of("quadruple").is_empty());
+    }
+
+    #[test]
+    fn undeclared_effect_is_caught() {
+        // A function declaring `/ io` that performs a `net` effect must be
+        // flagged — the capability gate. (Regression: the block-body parser
+        // path used to drop declared effects, silently disabling this.)
+        let ei = infer_source("f x() / io { connect(); }\n");
+        assert!(
+            ei.diagnostics.iter().any(|d| d.message.contains("undeclared effect")),
+            "expected an undeclared-effect error, got {:?}",
+            ei.diagnostics.iter().map(|d| d.message.clone()).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn unannotated_effectful_function_is_unsound() {
+        // Sound-by-default: a function with NO annotation that performs an
+        // effect is an error (absent annotation = pure). This is what makes
+        // the capability gate non-bypassable.
+        let ei = infer_source("f leak() { println(\"x\"); }\n");
+        assert!(
+            ei.diagnostics.iter().any(|d| d.message.contains("undeclared effects")),
+            "unannotated effectful fn must be flagged, got {:?}",
+            ei.diagnostics.iter().map(|d| d.message.clone()).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn pure_function_needs_no_annotation() {
+        // The flip side: a genuinely pure function needs no annotation and is
+        // clean — so the soundness rule costs zero tokens for pure code.
+        let ei = infer_source("f add(a: i32, b: i32) -> i32 { a + b }\n");
+        assert!(
+            !ei.diagnostics.iter().any(|d| d.message.contains("undeclared effects")),
+            "pure fn must not require an annotation"
+        );
+    }
+
+    #[test]
+    fn effect_surface_reports_declared_and_inferred() {
+        // The capability surface lists every function (sorted) with declared
+        // vs inferred effects — the data an agent gates generated code on.
+        let ei = infer_source(
+            "f pure_calc(a: i32, b: i32) -> i32 { a + b }\nf worker() / io { connect(); }\n",
+        );
+        let surface = ei.effect_surface();
+        // Sorted by name → pure_calc before worker.
+        let calc = surface.iter().find(|(n, ..)| n == "pure_calc").expect("pure_calc");
+        assert!(calc.1.is_empty() && calc.2.is_empty(), "pure fn has empty surface");
+        let worker = surface.iter().find(|(n, ..)| n == "worker").expect("worker");
+        assert_eq!(worker.1, vec!["IO".to_string()], "declared IO");
+        assert_eq!(worker.2, vec!["Net".to_string()], "inferred Net (the smuggle)");
+    }
+
+    #[test]
+    fn declared_effect_satisfied_is_clean() {
+        // Declaring the effect you actually perform must NOT error.
+        let ei = infer_source("f x() / net { connect(); }\n");
+        assert!(
+            !ei.diagnostics.iter().any(|d| d.message.contains("undeclared effect")),
+            "correctly-declared effect should be clean, got {:?}",
+            ei.diagnostics.iter().map(|d| d.message.clone()).collect::<Vec<_>>()
+        );
     }
 
     #[test]

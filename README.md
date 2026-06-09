@@ -25,7 +25,7 @@ pub struct Task {
 }
 
 pub fn main() / io {
-    let tasks = vec![
+    val tasks = vec![
         Task { name: "parse".into(), priority: 1 },
         Task { name: "check".into(), priority: 2 },
         Task { name: "emit".into(), priority: 3 },
@@ -41,7 +41,7 @@ pub fn main() / io {
 
 > **Honest framing (2026-05):** MechGen's value for agents lives in
 > two places: (1) a structurally reliable text surface — LL(1) grammar,
-> effects, contracts, SKB, self-healing — and (2) the **RMIL binary IR**,
+> effects, contracts, SKB, self-healing — and (2) the **Machine Language binary IR**,
 > where a full neural-network module fits in **~300 bytes**
 > (~83 % smaller than the equivalent text).
 >
@@ -54,9 +54,9 @@ pub fn main() / io {
 
 - **Zero-Ambiguity Syntax** — Deterministic LL(1) grammar eliminates parsing failures for both humans and AI agents. No backtracking, no ambiguity.
 
-- **Binary IR for Agents (RMIL)** — A transformer block encodes to **47 bytes** of RMIL, a 5-item module to ~300 bytes (vs ~1.8 KB of text). Agents target the IR directly via `--target=rmil-bytes`; the text surface is a human-readable view via the round-trip decompiler.
+- **Binary IR for Agents (Machine Language)** — A transformer block encodes to **47 bytes** of Machine Language, a 5-item module to ~300 bytes (vs ~1.8 KB of text). Agents target the IR directly via `--target=ml-bytes`; the text surface is a human-readable view via the round-trip decompiler.
 
-- **Sigil-Based Text Surface** — Canonical forms (`+f` = pub fn, `v` = let, `?` = match, `@` = for) keep the human view compact. On the benchmark corpus the text is ~tied with idiomatic Rust on raw bytes (declaration-heavy code wins 4–14 %, expression-heavy code loses 8–15 %). The structural reliability matters more than the byte delta.
+- **Sigil-Based Text Surface** — Canonical forms (`+f` = pub fn, `v`/`val` = immutable binding, `m`/`var` = mutable binding, `?` = match, `@` = for) keep the human view compact. (`let` is *not* a keyword — bindings are always `val`/`var`; the compiler rejects a stray `let` with a fix hint.) On the benchmark corpus the text is ~tied with idiomatic Rust on raw bytes (declaration-heavy code wins 4–14 %, expression-heavy code loses 8–15 %). The structural reliability matters more than the byte delta.
 
 - **Algebraic Effects** — A tracked effect system (`/ io`, `/ net`, `/ io + net`) makes side effects explicit in function signatures, enabling composition without monadic boilerplate.
 
@@ -74,7 +74,7 @@ pub fn main() / io {
 
 - **Hardware-Agnostic Compilation** — MLIR-native dialect with lowering passes for LLVM, SPIR-V, WASM, and RISC-V. Autotuning selects optimal strategies per target.
 
-- **Built-in AI Framework (RecursiveMachineIntelligence)** — The [`RecursiveMachineIntelligence/`](RecursiveMachineIntelligence/) `rmi` crate ships inside the project: RMIL binary neurosymbolic IR, compute backends (CPU + CUDA via IronAccelerator — tensor-core F16/BF16, calibrated INT8/INT4 quantization), a self-describing ontology with a token-compact `manifest()`/`describe()` front door, machine-parseable error diagnostics, and effect-mapped safety. The compiler's `--target=rmil-*` modes lower straight onto it.
+- **Built-in AI Framework (RecursiveMachineIntelligence)** — The [`RecursiveMachineIntelligence/`](RecursiveMachineIntelligence/) `rmi` crate ships inside the project: Machine Language binary neurosymbolic IR, compute backends (CPU + CUDA via IronAccelerator — tensor-core F16/BF16, calibrated INT8/INT4 quantization), a self-describing ontology with a token-compact `manifest()`/`describe()` front door, machine-parseable error diagnostics, and effect-mapped safety. The compiler's `--target=ml-*` modes lower straight onto it.
 
 - **Complete Ontologies, End to End** — Every layer self-describes for agents: the language/compiler (`MechGen-parse --emit-ontology`, `--manifest`), the framework (`rmi::core::manifest`, `FrameworkOntology`), and the CLI (effect-classed mode index). Deterministic output everywhere — agents can cache, diff, and gate without prose docs.
 
@@ -103,15 +103,15 @@ work; see [`UNIFICATION.md`](UNIFICATION.md) for the full phase log.
 
 ```sh
 MechGen-parse <file.mg>                  # parse + check + report
-MechGen-parse --target=rmil <file>       # lowering summary (sizes, hashes)
-MechGen-parse --target=rmil-bytes <file> [out.rmib]
-                                         # emit binary RMIL container
-MechGen-parse --from=rmil-bytes <file.rmib>
+MechGen-parse --target=ml <file>       # lowering summary (sizes, hashes)
+MechGen-parse --target=ml-bytes <file> [out.ml]
+                                         # emit binary Machine Language container
+MechGen-parse --from=ml-bytes <file.ml>
                                          # decode bytes → human-readable .mg
-MechGen-parse --target=rmil-compute <file>   # dispatch nets to CpuBackend
-MechGen-parse --target=rmil-train    <file>   # SGD/Adam training loop
-MechGen-parse --target=rmil-infer    <file>   # load checkpoint, predict
-MechGen-parse --target=rmil-generate <file>   # autoregressive decode
+MechGen-parse --target=ml-compute <file>   # dispatch nets to CpuBackend
+MechGen-parse --target=ml-train    <file>   # SGD/Adam training loop
+MechGen-parse --target=ml-infer    <file>   # load checkpoint, predict
+MechGen-parse --target=ml-generate <file>   # autoregressive decode
 ```
 
 ```sh
@@ -124,8 +124,8 @@ cargo run --bin token-bench --manifest-path prototype/Cargo.toml
 
 | MechGen | Rust equivalent        | MechGen  | Rust equivalent       |
 | ------- | ---------------------- | -------- | --------------------- |
-| `f`     | `fn`                   | `v`      | `let`                 |
-| `+f`    | `pub fn`               | `m`      | `let mut`             |
+| `f`     | `fn`                   | `v`/`val` | `let` (immutable)    |
+| `+f`    | `pub fn`               | `m`/`var` | `let mut` (mutable)  |
 | `af`    | `async fn`             | `?`      | `match`               |
 | `uf`    | `unsafe fn`            | `?:`     | `if`                  |
 | `+S`    | `pub struct`           | `:?`     | `else if`             |
@@ -164,7 +164,7 @@ compiler/           150+ mechgen_* crates — the full compiler
   ...
 
 library/            Standard library (core, alloc, std)
-RecursiveMachineIntelligence/          Built-in agentic-first AI framework (`rmi` crate): RMIL
+RecursiveMachineIntelligence/          Built-in agentic-first AI framework (`rmi` crate): Machine Language
                     binary IR, compute backends (CPU/CUDA, F32→F16/BF16→INT8/4),
                     self-describing ontology + token-compact manifest
 prototype/          Working compiler prototype (36 modules, 920+ tests)

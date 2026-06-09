@@ -15,33 +15,33 @@
 #     }
 #   }
 #
-# Then `MechGen-parse --backend=my_accelerator --run=rmil-bytes model.rmib`
+# Then `MechGen-parse --backend=my_accelerator --run=ml-bytes model.ml`
 # spawns this script with:
-#   - stdin   = the full RMIB container (binary)
-#   - env     = RDX_BACKEND, RDX_ITEM_NAME (path of the .rmib), RDX_INPUT_SHAPE
+#   - stdin   = the full Machine Language container (binary)
+#   - env     = RDX_BACKEND, RDX_ITEM_NAME (path of the .ml), RDX_INPUT_SHAPE
 #   - stdout  = MUST be JSON matching `SubprocessResult` schema:
 #       { "ok": bool, "dispatched": int, "output_shape": [int...],
 #         "output_sum": float, "error": null | string }
 #   - exit 0  = success; non-zero exit OR malformed stdout = wrapper error
 #
 # This reference script doesn't actually dispatch to any hardware -
-# it counts the RMIB bytes, echoes a stub result, and exits 0. Real
+# it counts the Machine Language bytes, echoes a stub result, and exits 0. Real
 # wrappers replace the body with a call to vendor SDK CLI tools, an
 # HTTP request to a remote inference service, etc.
 
 set -euo pipefail
 
-# Capture stdin RMIB to a temp so we can both measure it and pass it
+# Capture stdin Machine Language to a temp so we can both measure it and pass it
 # along if the real wrapper wants it as a file.
-RMIB=$(mktemp --suffix=.rmib)
-trap "rm -f '$RMIB'" EXIT
-cat > "$RMIB"
+Machine Language=$(mktemp --suffix=.ml)
+trap "rm -f '$Machine Language'" EXIT
+cat > "$Machine Language"
 
-SIZE=$(wc -c < "$RMIB")
+SIZE=$(wc -c < "$Machine Language")
 
 # Reference wrapper: emit a stub SubprocessResult that proves the
 # protocol works. A real backend would:
-#   1. Parse the RMIB container (see prototype/src/rmib.rs)
+#   1. Parse the Machine Language container (see prototype/src/machine.rs)
 #   2. For each item: decompile to its compute primitives
 #   3. Dispatch to the vendor SDK / driver / remote API
 #   4. Aggregate per-item results into the response below

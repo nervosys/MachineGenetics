@@ -39,12 +39,12 @@
 // +f discover_units(project_root: &s) -> [CompilationUnit]~
 //     @fx fs, io
 // {
-//     let files = std.fs.read_dir(project_root)?;
-//     let mut units = Vec.new();
+//     val files = std.fs.read_dir(project_root)?;
+//     var units = Vec.new();
 //     @ entry in files {
-//         let source = std.fs.read_to_string(entry.path())?;
-//         let contracts = extract_contracts(&source);
-//         let effects = extract_effects(&source);
+//         val source = std.fs.read_to_string(entry.path())?;
+//         val contracts = extract_contracts(&source);
+//         val effects = extract_effects(&source);
 //         units.push(CompilationUnit {
 //             name: entry.file_name().to_string(),
 //             source,
@@ -62,7 +62,7 @@
 // f audit_unit(unit: &CompilationUnit) -> [AuditFinding]~
 //     @fx pure
 // {
-//     let mut findings = Vec.new();
+//     var findings = Vec.new();
 //
 //     // Check: all public functions should have contracts
 //     ?: unit.contracts.is_empty() {
@@ -101,11 +101,11 @@
 // f aggregate(all_findings: [([AuditFinding]~)]~, total_units: u32) -> AuditReport
 //     @fx pure
 // {
-//     let findings: [AuditFinding]~ = all_findings.into_iter().flatten().collect();
-//     let error_count = findings.iter()
+//     val findings: [AuditFinding]~ = all_findings.into_iter().flatten().collect();
+//     val error_count = findings.iter()
 //         .filter(|f| matches!(f.severity, AuditSeverity.Error))
 //         .count() as u32;
-//     let pass_rate = ?: total_units > 0 {
+//     val pass_rate = ?: total_units > 0 {
 //         (total_units - error_count) as f64 / total_units as f64
 //     } _ { 1.0 };
 //
@@ -117,24 +117,24 @@
 // +af run_swarm_audit(project_root: &s) -> AuditReport
 //     @fx io, fs, async
 // {
-//     let bus = SwarmBus.new();
+//     val bus = SwarmBus.new();
 //
 //     // Phase 1: Discovery
-//     let units = discover_units(project_root);
+//     val units = discover_units(project_root);
 //     @ unit in &units {
 //         bus.publish("audit.unit", unit.clone());
 //     }
 //
 //     // Phase 2: Audit (parallel agents)
-//     let mut all_findings = Vec.new();
+//     var all_findings = Vec.new();
 //     @ unit in &units {
-//         let findings = audit_unit(unit);
+//         val findings = audit_unit(unit);
 //         all_findings.push(findings);
 //         bus.publish("audit.finding", findings.clone());
 //     }
 //
 //     // Phase 3: Aggregate
-//     let report = aggregate(all_findings, units.len() as u32);
+//     val report = aggregate(all_findings, units.len() as u32);
 //     bus.publish("audit.report", report.clone());
 //
 //     p"Audit complete: {report.units_audited} units, {report.pass_rate:.0%} pass rate";

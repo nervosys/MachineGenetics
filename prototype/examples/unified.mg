@@ -2,11 +2,11 @@
 //
 // Demonstrates the dual-IR pipeline:
 //   - `fn` items lower to MLIR  (systems code)
-//   - `net`, `kb`, `agent`, `swarm` items lower to RMIL (neurosymbolic IR)
+//   - `net`, `kb`, `agent`, `swarm` items lower to Machine Language (neurosymbolic IR)
 //
-// Run: MechGen-parse --target=rmil prototype/examples/unified.mg
+// Run: MechGen-parse --target=ml prototype/examples/unified.mg
 //
-// Expected output: per-item RMIL stats (nodes, depth, content hash,
+// Expected output: per-item Machine Language stats (nodes, depth, content hash,
 // binary wire size). A full transformer block fits in ~50 bytes.
 
 // ── Systems code (→ MLIR) ──────────────────────────────────────────
@@ -16,10 +16,10 @@ pub fn add(a: i32, b: i32) -> i32 {
 }
 
 pub fn main() {
-    let x = add(2, 3);
+    val x = add(2, 3);
 }
 
-// ── Neural network (→ RMIL pipeline) ───────────────────────────────
+// ── Neural network (→ Machine Language pipeline) ───────────────────────────────
 
 net TransformerBlock {
     layer ln1: LayerNorm;
@@ -50,7 +50,7 @@ net ResNetStage {
     forward { conv1 }
 }
 
-// ── Multi-agent swarm with distributed transport (→ RMIL agent ops) ──
+// ── Multi-agent swarm with distributed transport (→ Machine Language agent ops) ──
 
 swarm Workers {
     agent: Worker;
@@ -59,7 +59,7 @@ swarm Workers {
     transport: rmi_quic;
 }
 
-// ── Knowledge base (→ RMIL symbolic ops) ───────────────────────────
+// ── Knowledge base (→ Machine Language symbolic ops) ───────────────────────────
 
 kb FamilyKb {
     fact parent(a, b);

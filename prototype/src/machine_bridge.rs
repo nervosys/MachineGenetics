@@ -1,7 +1,7 @@
-//! # MechGen ↔ RMIL Bridge
+//! # MechGen ↔ Machine Language Bridge
 //!
 //! Translates MechGen AST nodes that describe neural, symbolic, or agent
-//! constructs into RMIL ([`rmi::lang`]) expression trees. The bridge is the
+//! constructs into Machine Language ([`rmi::lang`]) expression trees. The bridge is the
 //! seam where MechGen's surface language meets RMI's binary neurosymbolic IR.
 //!
 //! ## Routing
@@ -11,15 +11,15 @@
 //! | MechGen item              | IR     | Backend                          |
 //! |---------------------------|--------|----------------------------------|
 //! | `fn` (systems code)       | MLIR   | LLVM, Cranelift, GCC             |
-//! | `net` / `train` / `kb`    | RMIL   | RMI VM, CUDA, Metal, WebGPU, ANE |
-//! | `agent` / `swarm`         | RMIL   | RMI agent runtime + transport    |
-//! | `evolve`                  | both   | RMIL pop loop + MLIR fitness     |
+//! | `net` / `train` / `kb`    | Machine Language   | RMI VM, CUDA, Metal, WebGPU, ANE |
+//! | `agent` / `swarm`         | Machine Language   | RMI agent runtime + transport    |
+//! | `evolve`                  | both   | Machine Language pop loop + MLIR fitness     |
 //!
 //! [`OpFamilyRouter`] decides per-item. [`NetTranslator`], [`KbTranslator`],
-//! [`AgentTranslator`] produce the actual RMIL [`rmi::lang::Expr`].
+//! [`AgentTranslator`] produce the actual Machine Language [`rmi::lang::Expr`].
 //!
 //! The bridge intentionally does **no** typechecking; it consumes an AST that
-//! the MechGen frontend has already resolved + checked, and emits RMIL whose
+//! the MechGen frontend has already resolved + checked, and emits Machine Language whose
 //! shape/type errors surface via [`rmi::lang::Vm`] or the RMI verifier.
 
 use std::collections::HashMap;
@@ -42,7 +42,7 @@ pub fn is_stubbed_family(f: OpFamily) -> bool {
     matches!(f, OpFamily::Neural | OpFamily::Symbolic | OpFamily::Agent)
 }
 
-/// Collect every distinct [`OpFamily`] referenced by an RMIL expression
+/// Collect every distinct [`OpFamily`] referenced by an Machine Language expression
 /// tree. Useful for routing decisions and VM diagnostics.
 pub fn expr_op_families(expr: &Expr) -> Vec<OpFamily> {
     let mut out = Vec::new();
@@ -75,8 +75,8 @@ pub fn expr_op_families(expr: &Expr) -> Vec<OpFamily> {
 pub enum IrTarget {
     /// Lower to MechGen MLIR dialect → LLVM/Cranelift/GCC.
     Mlir,
-    /// Lower to RMIL → RMI VM / compute backends / agent runtime.
-    Rmil,
+    /// Lower to Machine Language → RMI VM / compute backends / agent runtime.
+    Machine,
     /// Hybrid: emit both; runtime selects.
     Both,
 }
@@ -89,8 +89,8 @@ impl OpFamilyRouter {
     pub fn route(item: &ast::Item) -> IrTarget {
         use ast::ItemKind::*;
         match &item.kind {
-            Net(_) | Kb(_) | Train(_) => IrTarget::Rmil,
-            Agent(_) | Swarm(_) => IrTarget::Rmil,
+            Net(_) | Kb(_) | Train(_) => IrTarget::Machine,
+            Agent(_) | Swarm(_) => IrTarget::Machine,
             Evolve(_) => IrTarget::Both,
             Function(_) | Struct(_) | Enum(_) | Trait(_) | Impl(_) | Module(_) | Use(_)
             | TypeAlias(_) | Const(_) | Static(_) | Effect(_) | Spec(_) | Data(_)
@@ -98,30 +98,30 @@ impl OpFamilyRouter {
         }
     }
 
-    /// Partition a module into (mlir_items, rmil_items). `Both` items appear in
+    /// Partition a module into (mlir_items, machine_items). `Both` items appear in
     /// each.
     pub fn partition(module: &ast::Module) -> (Vec<&ast::Item>, Vec<&ast::Item>) {
         let mut mlir = Vec::new();
-        let mut rmil = Vec::new();
+        let mut ml = Vec::new();
         for item in &module.items {
             match Self::route(item) {
                 IrTarget::Mlir => mlir.push(item),
-                IrTarget::Rmil => rmil.push(item),
+                IrTarget::Machine => ml.push(item),
                 IrTarget::Both => {
                     mlir.push(item);
-                    rmil.push(item);
+                    ml.push(item);
                 }
             }
         }
-        (mlir, rmil)
+        (mlir, ml)
     }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// Layer name → RMIL Op lookup
+// Layer name → Machine Language Op lookup
 // ═══════════════════════════════════════════════════════════════════
 
-/// Map a MechGen layer type name to its RMIL opcode.
+/// Map a MechGen layer type name to its Machine Language opcode.
 ///
 /// Returns `None` if the name does not correspond to a known neural primitive
 /// — callers may treat that as a user-defined layer and fall back to a
@@ -244,7 +244,7 @@ fn type_tail_name(ty: &ast::Type) -> Option<&str> {
     }
 }
 
-/// Inverse of [`layer_name_to_op`] — map an RMIL opcode back to a canonical
+/// Inverse of [`layer_name_to_op`] — map an Machine Language opcode back to a canonical
 /// MechGen layer surface name. Returns `None` for non-neural opcodes.
 ///
 /// The chosen names are the first variant per family from
@@ -312,7 +312,7 @@ pub fn op_to_layer_name(op: Op) -> Option<&'static str> {
 // Translators
 // ═══════════════════════════════════════════════════════════════════
 
-/// Translate a MechGen [`ast::NetDef`] into an RMIL pipeline expression.
+/// Translate a MechGen [`ast::NetDef`] into an Machine Language pipeline expression.
 ///
 /// Each layer becomes a unary opcode; layers are composed with `>>` in
 /// declaration order. The resulting [`Expr`] is content-addressable and
@@ -325,9 +325,9 @@ pub struct NetTranslator;
 /// Outcome of a [`NetTranslator`] run.
 #[derive(Debug, Clone)]
 pub struct NetTranslation {
-    /// The RMIL expression tree for the network's forward pass.
+    /// The Machine Language expression tree for the network's forward pass.
     pub expr: Expr,
-    /// Layer names that did not resolve to a known RMIL opcode.
+    /// Layer names that did not resolve to a known Machine Language opcode.
     pub unknown_layers: Vec<String>,
 }
 
@@ -413,7 +413,7 @@ impl NetTranslator {
 
 // ─── Literal translation ────────────────────────────────────────────
 
-/// Count the number of `Expr::App` nodes in an RMIL tree.
+/// Count the number of `Expr::App` nodes in an Machine Language tree.
 fn count_app_nodes(expr: &Expr) -> usize {
     match expr {
         Expr::App(_, args) => 1 + args.iter().map(count_app_nodes).sum::<usize>(),
@@ -429,7 +429,7 @@ fn count_app_nodes(expr: &Expr) -> usize {
     }
 }
 
-/// Translate a MechGen literal expression into an RMIL literal expression.
+/// Translate a MechGen literal expression into an Machine Language literal expression.
 ///
 /// Returns `None` for non-literal expressions; the bridge silently drops
 /// non-literals from layer args because shape inference is the frontend's job
@@ -465,11 +465,11 @@ fn translate_literal(expr: &ast::Expr) -> Option<Expr> {
 // ═══════════════════════════════════════════════════════════════════
 
 /// Walks a MechGen `Block` representing a `forward { ... }` body and emits
-/// an RMIL [`Expr`] that respects the user-written data flow.
+/// an Machine Language [`Expr`] that respects the user-written data flow.
 ///
 /// Recognised shapes:
 ///
-/// | MechGen forward block       | RMIL produced                                |
+/// | MechGen forward block       | Machine Language produced                                |
 /// |-----------------------------|----------------------------------------------|
 /// | `{ fc1 }` (single ident)    | declaration-order fallback (handled upstream)|
 /// | `{ x \|> l1 \|> l2 }`       | `App(l1) >> App(l2)`                         |
@@ -602,7 +602,7 @@ impl<'a> ForwardWalker<'a> {
         }
     }
 
-    /// If `name` is a declared layer, return its RMIL App with carried args.
+    /// If `name` is a declared layer, return its Machine Language App with carried args.
     fn layer_app(&self, name: &str) -> Option<Expr> {
         let (op, args) = self.layers.get(name)?;
         if args.is_empty() {
@@ -613,7 +613,7 @@ impl<'a> ForwardWalker<'a> {
     }
 }
 
-/// Translate a MechGen [`ast::KbDef`] into RMIL symbolic operations.
+/// Translate a MechGen [`ast::KbDef`] into Machine Language symbolic operations.
 ///
 /// Each rule becomes a `UNIFY`-then-`INFER` pipeline; facts become `RESOLVE`
 /// applications. The resulting expression evaluates the KB closure via the
@@ -621,7 +621,7 @@ impl<'a> ForwardWalker<'a> {
 pub struct KbTranslator;
 
 impl KbTranslator {
-    /// Translate a `kb` definition into an RMIL expression.
+    /// Translate a `kb` definition into an Machine Language expression.
     pub fn translate(kb: &ast::KbDef, symbols: &mut SymbolTable) -> Expr {
         let mut stages: Vec<Expr> = Vec::new();
 
@@ -647,11 +647,11 @@ impl KbTranslator {
     }
 }
 
-/// Translate a MechGen [`ast::AgentDef`] into an RMIL `SPAWN` expression.
+/// Translate a MechGen [`ast::AgentDef`] into an Machine Language `SPAWN` expression.
 pub struct AgentTranslator;
 
 impl AgentTranslator {
-    /// Produce an RMIL expression that spawns this agent.
+    /// Produce an Machine Language expression that spawns this agent.
     ///
     /// The agent's name is interned into the supplied symbol table; the
     /// resulting `SPAWN` carries the symbol and a literal capability count.
@@ -673,12 +673,12 @@ fn agent_capability_count(agent: &ast::AgentDef) -> usize {
     0
 }
 
-/// Translate a MechGen [`ast::SwarmDef`] into a multi-agent RMIL expression:
+/// Translate a MechGen [`ast::SwarmDef`] into a multi-agent Machine Language expression:
 /// `SPAWN(size) >> SEND/RECV on topology >> aggregate`.
 pub struct SwarmTranslator;
 
 impl SwarmTranslator {
-    /// Build an RMIL expression for a swarm.
+    /// Build an Machine Language expression for a swarm.
     ///
     /// If `swarm.transport` is one of `"rmi-quic"`, `"rmi-tcp"`, or
     /// `"rmi-grpc"`, the SEND/RECV ops are emitted with a transport-tag
@@ -727,9 +727,9 @@ fn swarm_size(swarm: &ast::SwarmDef) -> i64 {
 // Module-level driver
 // ═══════════════════════════════════════════════════════════════════
 
-/// Result of translating a MechGen module to RMIL.
-pub struct ModuleRmil {
-    /// Top-level RMIL expressions, one per RMIL-routed item, paired with the
+/// Result of translating a MechGen module to Machine Language.
+pub struct MachineModule {
+    /// Top-level Machine Language expressions, one per Machine Language-routed item, paired with the
     /// originating item's display name.
     pub items: Vec<(String, Expr)>,
     /// Symbol table populated during translation. Must be serialized
@@ -740,10 +740,10 @@ pub struct ModuleRmil {
     pub diagnostics: Vec<String>,
 }
 
-/// Translate every RMIL-routed item in a [`ast::Module`] to RMIL.
+/// Translate every Machine Language-routed item in a [`ast::Module`] to Machine Language.
 ///
 /// Items routed to MLIR are skipped; use [`crate::mlir::emit`] for those.
-pub fn lower_module(module: &ast::Module) -> ModuleRmil {
+pub fn lower_module(module: &ast::Module) -> MachineModule {
     let mut symbols = SymbolTable::new();
     let mut items = Vec::new();
     let mut diagnostics = Vec::new();
@@ -793,11 +793,11 @@ pub fn lower_module(module: &ast::Module) -> ModuleRmil {
                     Expr::op1(Op::MAP) >> Expr::op1(Op::REDUCE),
                 ));
             }
-            _ => unreachable!("router said RMIL but kind unmatched"),
+            _ => unreachable!("router said Machine Language but kind unmatched"),
         }
     }
 
-    ModuleRmil {
+    MachineModule {
         items,
         symbols,
         diagnostics,
@@ -805,15 +805,15 @@ pub fn lower_module(module: &ast::Module) -> ModuleRmil {
 }
 
 // Suppress unused-import warnings for re-exports we want available to
-// downstream modules that `use crate::rmil_bridge::*`.
+// downstream modules that `use crate::machine_bridge::*`.
 #[allow(dead_code)]
 fn _exports(_: &Sym, _: &Ty, _: &Val) {}
 
 // ═══════════════════════════════════════════════════════════════════
-// Decompiler — RMIL Expr → MechGen NetDef
+// Decompiler — Machine Language Expr → MechGen NetDef
 // ═══════════════════════════════════════════════════════════════════
 
-/// Decompile an RMIL [`Expr`] into a MechGen [`ast::NetDef`].
+/// Decompile an Machine Language [`Expr`] into a MechGen [`ast::NetDef`].
 ///
 /// Walks a `Seq` chain of neural `App` nodes and emits one [`ast::LayerDef`]
 /// per recognised opcode. Args carried in each `App` are converted back to
@@ -902,7 +902,7 @@ fn decompile_walk(
     }
 }
 
-/// Translate an RMIL literal arg back to a MechGen literal expression.
+/// Translate an Machine Language literal arg back to a MechGen literal expression.
 fn decompile_arg(arg: &Expr) -> Option<ast::Expr> {
     match arg {
         Expr::Lit(Val::I64(n)) => Some(ast::Expr::Literal {
@@ -1034,7 +1034,7 @@ mod tests {
                 forward: make_block(),
             }),
         };
-        assert_eq!(OpFamilyRouter::route(&net_item), IrTarget::Rmil);
+        assert_eq!(OpFamilyRouter::route(&net_item), IrTarget::Machine);
     }
 
     fn make_layer_with_args(name: &str, type_name: &str, args: Vec<ast::Expr>) -> ast::LayerDef {
@@ -1089,7 +1089,7 @@ mod tests {
     }
 
     #[test]
-    fn layer_args_propagate_to_rmil_app() {
+    fn layer_args_propagate_to_machine_app() {
         // net { layer fc1: Linear(784, 256); forward { fc1(x) } }
         let net = ast::NetDef {
             name: "WithArgs".into(),
@@ -1258,7 +1258,7 @@ mod tests {
 
     #[test]
     fn vm_evaluates_math_in_translated_kb_expression() {
-        // Independent end-to-end smoke test: build a small RMIL expression
+        // Independent end-to-end smoke test: build a small Machine Language expression
         // through the bridge primitives, encode-decode it, and verify the VM
         // evaluates an embedded math expression.
         use rmi::lang::Vm;
@@ -1275,7 +1275,7 @@ mod tests {
 
     #[test]
     fn jit_path_falls_back_for_neural_ops_without_error() {
-        // The CLI uses Vm::eval_jit for the rmil-run path. JIT can compile
+        // The CLI uses Vm::eval_jit for the ml-run path. JIT can compile
         // pure math; neural ops must fall back gracefully (not panic, not
         // produce a wrong answer). This test mirrors the CLI behavior.
         use rmi::lang::Vm;
@@ -1353,7 +1353,7 @@ mod tests {
         assert_eq!(
             t1.expr.content_hash(),
             t2.expr.content_hash(),
-            "decompile→lower must reproduce the same RMIL hash"
+            "decompile→lower must reproduce the same Machine Language hash"
         );
     }
 

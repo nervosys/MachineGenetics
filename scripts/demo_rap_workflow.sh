@@ -9,8 +9,8 @@
 # Steps:
 #   1. ontology/full              - discover what's available
 #   2. ontology/section { ... }   - drill into one section
-#   3. pipeline/recover-and-encode - source -> RMIB in one call
-#   4. rmil/run                    - dispatch on CpuBackend
+#   3. pipeline/recover-and-encode - source -> Machine Language in one call
+#   4. ml/run                    - dispatch on CpuBackend
 #   5. build/recover               - heal broken source for comparison
 
 set -uo pipefail
@@ -107,11 +107,11 @@ echo "  $OK"
 echo "  $STAGE"
 echo "  $BYTES (vs ${#SOURCE} bytes text)"
 
-# Step 4: rmil/run
+# Step 4: ml/run
 separator
-echo "STEP 4  rmil/run on the same source"
+echo "STEP 4  ml/run on the same source"
 separator
-RESP=$(call "rmil/run" "$PAYLOAD")
+RESP=$(call "ml/run" "$PAYLOAD")
 STATUS=$(echo "$RESP" | grep -oE '"status":"[^"]+"' | head -1)
 DISPATCHED=$(echo "$RESP" | grep -oE '"dispatched":[0-9]+' | head -1)
 OUT_SHAPE=$(echo "$RESP" | grep -oE '"output_shape":\[[^]]+\]' | head -1)

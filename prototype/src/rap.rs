@@ -13,10 +13,10 @@
 ///   verify/contracts  — verify function contracts (P21)
 ///   ontology/full     — return the complete language + IR + protocol ontology
 ///   ontology/section  — return one named section of the ontology
-///   pipeline/recover-and-encode — source → 3-stage recover → RMIB bytes in one call
-///   rmil/encode       — source → RMIB bytes (hex) for application/rmib transport
-///   rmil/decode       — RMIB bytes (hex) → decompiled per-item view
-///   rmil/run          — source → encode → CpuBackend dispatch (no text round-trip)
+///   pipeline/recover-and-encode — source → 3-stage recover → Machine Language bytes in one call
+///   ml/encode       — source → Machine Language bytes (hex) for application/machine transport
+///   ml/decode       — Machine Language bytes (hex) → decompiled per-item view
+///   ml/run          — source → encode → CpuBackend dispatch (no text round-trip)
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 
@@ -788,7 +788,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         }
 
         // Return the complete machine-readable ontology over the
-        // MechGen language, the RMIL IR, and the RAP protocol. Single
+        // MechGen language, the Machine Language IR, and the RAP protocol. Single
         // self-contained payload so an autonomous agent can discover
         // every construct, opcode, and method without prior training.
         "ontology/full" => crate::ontology::build(),
@@ -810,7 +810,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                     "available": [
                         "sigils", "keywords", "types", "ast_kinds", "ir_ops",
                         "op_families", "layer_map", "rap_methods",
-                        "heal_patterns", "recovery_stages", "rmib", "examples",
+                        "heal_patterns", "recovery_stages", "machine", "examples",
                         "framewerx_modules", "cli_flags", "bench_backends",
                         "effects", "wrapper_protocol", "project_layout",
                         "docs", "ci_floors", "hardware_accelerators",
@@ -833,10 +833,10 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             })
         }
 
-        // ── RMIL binary IR transport (application/rmib) ──────────
+        // ── Machine Language binary IR transport (application/machine) ──────────
 
         // One-shot path: broken source → 3-stage mechanical recover →
-        // parse → encode RMIB. Saves an agent two round-trips. Returns
+        // parse → encode Machine Language. Saves an agent two round-trips. Returns
         // `ok=false` only if even the recovered source fails to parse
         // (so the caller knows to fall back to refine).
         "pipeline/recover-and-encode" => {
@@ -860,7 +860,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                     });
                 }
             };
-            let (blob, summary) = crate::rmib::encode_module(&module);
+            let (blob, summary) = crate::machine::encode_module(&module);
             let items: Vec<serde_json::Value> = summary
                 .iter()
                 .map(|(n, sz, h)| {
@@ -879,16 +879,16 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 "recovered_source": r.source,
                 "container_bytes": blob.len(),
                 "items": items,
-                "rmib_hex": crate::rmib::to_hex(&blob),
+                "ml_hex": crate::machine::to_hex(&blob),
             })
         }
 
-        // Source → RMIB bytes (hex-encoded for JSON channel).
-        "rmil/encode" => {
+        // Source → Machine Language bytes (hex-encoded for JSON channel).
+        "ml/encode" => {
             let tokens = lexer::lex(source);
             match parser::parse(&tokens) {
                 Ok(module) => {
-                    let (blob, summary) = crate::rmib::encode_module(&module);
+                    let (blob, summary) = crate::machine::encode_module(&module);
                     let items: Vec<serde_json::Value> = summary
                         .iter()
                         .map(|(n, sz, h)| serde_json::json!({
@@ -899,11 +899,11 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                         .collect();
                     serde_json::json!({
                         "ok": true,
-                        "magic": "RMIB",
-                        "version": crate::rmib::RMIB_VERSION,
+                        "magic": "MACH",
+                        "version": crate::machine::MACHINE_VERSION,
                         "container_bytes": blob.len(),
                         "items": items,
-                        "rmib_hex": crate::rmib::to_hex(&blob),
+                        "ml_hex": crate::machine::to_hex(&blob),
                     })
                 }
                 Err(e) => serde_json::json!({
@@ -913,19 +913,19 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             }
         }
 
-        // RMIB bytes (hex) → decompiled MechGen view + per-item summary.
-        "rmil/decode" => {
-            let hex = params.get("rmib_hex").and_then(|v| v.as_str()).unwrap_or("");
-            let blob = match crate::rmib::from_hex(hex) {
+        // Machine Language bytes (hex) → decompiled MechGen view + per-item summary.
+        "ml/decode" => {
+            let hex = params.get("ml_hex").and_then(|v| v.as_str()).unwrap_or("");
+            let blob = match crate::machine::from_hex(hex) {
                 Ok(b) => b,
                 Err(e) => return serde_json::json!({ "ok": false, "error": format!("hex: {e}") }),
             };
-            match crate::rmib::decode_container(&blob) {
+            match crate::machine::decode_container(&blob) {
                 Ok(items) => {
                     let decoded: Vec<serde_json::Value> = items
                         .iter()
                         .map(|it| {
-                            let result = crate::rmil_bridge::decompile(&it.expr, &it.name);
+                            let result = crate::machine_bridge::decompile(&it.expr, &it.name);
                             let layers: Vec<serde_json::Value> = result
                                 .net
                                 .layers
@@ -965,7 +965,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         }
 
         // Source → encode → CpuBackend dispatch (text-roundtrip-free path).
-        "rmil/run" => {
+        "ml/run" => {
             let tokens = lexer::lex(source);
             let module = match parser::parse(&tokens) {
                 Ok(m) => m,
@@ -977,8 +977,8 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                     });
                 }
             };
-            let (blob, _) = crate::rmib::encode_module(&module);
-            let items = match crate::rmib::decode_container(&blob) {
+            let (blob, _) = crate::machine::encode_module(&module);
+            let items = match crate::machine::decode_container(&blob) {
                 Ok(i) => i,
                 Err(e) => return serde_json::json!({
                     "ok": false,
@@ -990,10 +990,10 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             let runs: Vec<serde_json::Value> = items
                 .iter()
                 .map(|it| {
-                    let families = crate::rmil_bridge::expr_op_families(&it.expr);
+                    let families = crate::machine_bridge::expr_op_families(&it.expr);
                     let stub_families: Vec<String> = families
                         .iter()
-                        .filter(|f| crate::rmil_bridge::is_stubbed_family(**f))
+                        .filter(|f| crate::machine_bridge::is_stubbed_family(**f))
                         .filter(|f| !matches!(**f, rmi::lang::OpFamily::Neural))
                         .map(|f| format!("{f:?}"))
                         .collect();
@@ -1006,9 +1006,9 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                             "families": stub_families,
                         });
                     }
-                    let inferred = crate::rmil_compute::infer_input_shape(&it.expr);
+                    let inferred = crate::machine_compute::infer_input_shape(&it.expr);
                     let shape: Vec<usize> = inferred.unwrap_or_else(|| vec![8]);
-                    match crate::rmil_compute::run_pipeline(&backend, &it.expr, &shape, 1.0) {
+                    match crate::machine_compute::run_pipeline(&backend, &it.expr, &shape, 1.0) {
                         Ok(r) => {
                             let unsupported: Vec<String> =
                                 r.unsupported.iter().map(|op| format!("{op:?}")).collect();
@@ -1340,7 +1340,7 @@ mod tests {
         for name in [
             "sigils", "keywords", "ast_kinds", "ir_ops",
             "op_families", "layer_map", "rap_methods",
-            "heal_patterns", "recovery_stages", "rmib",
+            "heal_patterns", "recovery_stages", "machine",
         ] {
             assert!(sections.contains_key(name), "missing section: {name}");
         }
@@ -1401,7 +1401,7 @@ mod tests {
         assert_eq!(r["ok"], true);
         assert_eq!(r["recover_stage"], "already-valid");
         assert_eq!(r["changed"], false);
-        assert!(r["rmib_hex"].as_str().unwrap().starts_with("524d4942"));
+        assert!(r["ml_hex"].as_str().unwrap().starts_with("4d414348"));
     }
 
     #[test]
@@ -1428,36 +1428,36 @@ mod tests {
         assert!(r["error"].as_str().unwrap().contains("refine"));
     }
 
-    // ── application/rmib transport ──────────────────────────────
+    // ── application/machine transport ──────────────────────────────
 
-    const RMIB_NET: &str = "net tiny { layer fc: Linear(8, 4); forward { fc } }";
+    const MACHINE_NET: &str = "net tiny { layer fc: Linear(8, 4); forward { fc } }";
 
     #[test]
-    fn test_rmil_encode_returns_container() {
-        let r = call("rmil/encode", src_params(RMIB_NET));
+    fn test_machine_encode_returns_container() {
+        let r = call("ml/encode", src_params(MACHINE_NET));
         assert_eq!(r["ok"], true);
-        assert_eq!(r["magic"], "RMIB");
+        assert_eq!(r["magic"], "MACH");
         let bytes = r["container_bytes"].as_u64().unwrap();
-        let hex = r["rmib_hex"].as_str().unwrap();
+        let hex = r["ml_hex"].as_str().unwrap();
         assert_eq!(hex.len() as u64, bytes * 2);
-        assert!(hex.starts_with("524d4942")); // "RMIB"
+        assert!(hex.starts_with("4d414348")); // "MACH"
         let items = r["items"].as_array().unwrap();
         assert_eq!(items.len(), 1);
         assert_eq!(items[0]["name"], "tiny");
     }
 
     #[test]
-    fn test_rmil_encode_parse_error_surfaces() {
-        let r = call("rmil/encode", src_params("@@@ garbage"));
+    fn test_machine_encode_parse_error_surfaces() {
+        let r = call("ml/encode", src_params("@@@ garbage"));
         assert_eq!(r["ok"], false);
         assert!(r["error"]["message"].is_string());
     }
 
     #[test]
-    fn test_rmil_encode_decode_round_trip() {
-        let enc = call("rmil/encode", src_params(RMIB_NET));
-        let hex = enc["rmib_hex"].as_str().unwrap().to_string();
-        let dec = call("rmil/decode", serde_json::json!({ "rmib_hex": hex }));
+    fn test_machine_encode_decode_round_trip() {
+        let enc = call("ml/encode", src_params(MACHINE_NET));
+        let hex = enc["ml_hex"].as_str().unwrap().to_string();
+        let dec = call("ml/decode", serde_json::json!({ "ml_hex": hex }));
         assert_eq!(dec["ok"], true);
         let items = dec["items"].as_array().unwrap();
         assert_eq!(items.len(), 1);
@@ -1466,23 +1466,23 @@ mod tests {
     }
 
     #[test]
-    fn test_rmil_decode_bad_hex() {
-        let r = call("rmil/decode", serde_json::json!({ "rmib_hex": "not hex!!" }));
+    fn test_machine_decode_bad_hex() {
+        let r = call("ml/decode", serde_json::json!({ "ml_hex": "not hex!!" }));
         assert_eq!(r["ok"], false);
         assert!(r["error"].as_str().unwrap().starts_with("hex:"));
     }
 
     #[test]
-    fn test_rmil_decode_bad_magic() {
+    fn test_machine_decode_bad_magic() {
         // Valid hex but wrong magic bytes.
-        let r = call("rmil/decode", serde_json::json!({ "rmib_hex": "deadbeef" }));
+        let r = call("ml/decode", serde_json::json!({ "ml_hex": "deadbeef" }));
         assert_eq!(r["ok"], false);
         assert!(r["error"].as_str().unwrap().contains("magic"));
     }
 
     #[test]
-    fn test_rmil_run_dispatches() {
-        let r = call("rmil/run", src_params(RMIB_NET));
+    fn test_machine_run_dispatches() {
+        let r = call("ml/run", src_params(MACHINE_NET));
         assert_eq!(r["ok"], true);
         let runs = r["runs"].as_array().unwrap();
         assert_eq!(runs.len(), 1);
@@ -1496,8 +1496,8 @@ mod tests {
     }
 
     #[test]
-    fn test_rmil_run_parse_error_surfaces() {
-        let r = call("rmil/run", src_params("@@@ garbage"));
+    fn test_machine_run_parse_error_surfaces() {
+        let r = call("ml/run", src_params("@@@ garbage"));
         assert_eq!(r["ok"], false);
         assert_eq!(r["stage"], "parse");
     }

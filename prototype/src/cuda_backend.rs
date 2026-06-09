@@ -16,7 +16,7 @@
 //! This module is the agent-visible CUDA surface. It supplies the
 //! `SelectedBackend::Cuda` variant a handle, exposes device id /
 //! info, and prepares the ground for the generic-over-Backend
-//! `rmil_compute::run_pipeline` refactor (follow-on phase) that
+//! `machine_compute::run_pipeline` refactor (follow-on phase) that
 //! routes actual op dispatch through the GPU.
 
 #![cfg(feature = "cuda")]
@@ -41,7 +41,7 @@ use std::sync::{Arc, OnceLock, RwLock};
 ///     default stream)
 ///   - An inner `CpuBackend` for ops we haven't yet routed through
 ///     the GPU. Lets the `Backend` trait surface be complete TODAY so
-///     `rmil_compute::run_pipeline(&cuda_backend, ...)` compiles and
+///     `machine_compute::run_pipeline(&cuda_backend, ...)` compiles and
 ///     runs (CPU semantics, with GPU acquired for downstream use).
 ///
 /// **Why this hybrid shape**: P100 made `run_pipeline` generic over

@@ -46,11 +46,14 @@ pub const MODES: &[CliMode] = &[
     },
     CliMode {
         flag: "--check",
-        args: "<file.mg>",
+        args: "<file.mg> [--json]",
         summary: "parse + typecheck + effect-check; structured diagnostics; no output files",
         effect: "read_local",
         detail: "Full front-end pass (lex, parse, resolve, typecheck, effects) without\n\
                  lowering. Exit 0 = clean. Diagnostics go to stderr with spans.\n\
+                 With --json: emit a deterministic, machine-readable diagnostic stream\n\
+                 on stdout — {code, severity, line, col, category, message, fix} per\n\
+                 diagnostic, sorted (byte-stable). Parse structurally; don't scrape prose.\n\
                  The cheapest way for an agent to validate generated MechGen.",
     },
     CliMode {
@@ -69,25 +72,25 @@ pub const MODES: &[CliMode] = &[
         detail: "Inverse of --fmt-compact; same determinism guarantee.",
     },
     CliMode {
-        flag: "--target=rmil-bytes",
-        args: "<file.mg> [out.rmib]",
-        summary: "lower RMIL-routed items to a framed binary RMIB container",
+        flag: "--target=ml-bytes",
+        args: "<file.mg> [out.ml]",
+        summary: "lower Machine Language-routed items to a framed binary Machine Language container",
         effect: "write_local",
-        detail: "Container: magic \"RMIB\" + u16 version + u32 count + per-item\n\
+        detail: "Container: magic \"Machine Language\" + u16 version + u32 count + per-item\n\
                  (name_len, name, expr_len, expr). Without [out]: stdout summary only\n\
                  (read_local). Byte-stable for caching/diffing.",
     },
     CliMode {
-        flag: "--from=rmil-bytes",
-        args: "<file.rmib>",
-        summary: "decode an RMIB container back to a summary",
+        flag: "--from=ml-bytes",
+        args: "<file.ml>",
+        summary: "decode an Machine Language container back to a summary",
         effect: "read_local",
         detail: "Round-trip check for the binary path; prints item names and sizes.",
     },
     CliMode {
-        flag: "--run=rmil-bytes",
-        args: "<file.rmib> [--backend=<name>]",
-        summary: "dispatch a compiled RMIB container through a compute backend",
+        flag: "--run=ml-bytes",
+        args: "<file.ml> [--backend=<name>]",
+        summary: "dispatch a compiled Machine Language container through a compute backend",
         effect: "read_local",
         detail: "Executes each item via run_pipeline on the selected Backend\n\
                  (cpu default; cuda with --features cuda + driver; subprocess backends\n\
@@ -95,15 +98,15 @@ pub const MODES: &[CliMode] = &[
                  Prints per-item output shape + checksum; `// gpu_ops:` line on CUDA.",
     },
     CliMode {
-        flag: "--target=rmil-compute",
+        flag: "--target=ml-compute",
         args: "<file.mg>",
         summary: "lower nets and run a forward pass on the compute backend",
         effect: "read_local",
-        detail: "End-to-end: parse → bridge → RMIL → run_pipeline. Reports dispatched\n\
+        detail: "End-to-end: parse → bridge → Machine Language → run_pipeline. Reports dispatched\n\
                  op count, unsupported ops, output checksum.",
     },
     CliMode {
-        flag: "--target=rmil-train",
+        flag: "--target=ml-train",
         args: "<file.mg>",
         summary: "find train blocks and run SGD epochs (synthetic data defaults)",
         effect: "write_local",
@@ -111,32 +114,32 @@ pub const MODES: &[CliMode] = &[
                  checkpoint (.ckpt) when the train block names one. Prints per-step loss.",
     },
     CliMode {
-        flag: "--target=rmil-infer",
+        flag: "--target=ml-infer",
         args: "<file.mg>",
         summary: "load a checkpoint and run inference",
         effect: "read_local",
-        detail: "Pairs with --target=rmil-train; reads the .ckpt the source names.",
+        detail: "Pairs with --target=ml-train; reads the .ckpt the source names.",
     },
     CliMode {
-        flag: "--target=rmil-generate",
+        flag: "--target=ml-generate",
         args: "<file.mg>",
         summary: "autoregressive generation from a trained LM checkpoint",
         effect: "read_local",
         detail: "Greedy decode using the checkpointed tiny-LM weights.",
     },
     CliMode {
-        flag: "--target=rmil-run",
+        flag: "--target=ml-run",
         args: "<file.mg>",
         summary: "full pipeline: lower, train if needed, infer",
         effect: "write_local",
         detail: "Convenience composition of compute/train/infer.",
     },
     CliMode {
-        flag: "--target=rmil",
+        flag: "--target=ml",
         args: "<file.mg>",
-        summary: "print the RMIL lowering of each routed item (text form)",
+        summary: "print the Machine Language lowering of each routed item (text form)",
         effect: "read_local",
-        detail: "Human/agent-readable RMIL expressions; no binary output.",
+        detail: "Human/agent-readable Machine Language expressions; no binary output.",
     },
     CliMode {
         flag: "--pipeline",
@@ -152,7 +155,7 @@ pub const MODES: &[CliMode] = &[
         summary: "dump the complete system ontology as JSON",
         effect: "write_local",
         detail: "Default path MECHGEN_ONTOLOGY.json. The deep machine-readable map of\n\
-                 the language + compiler + RMIL; --manifest is the cheap index.",
+                 the language + compiler + Machine Language; --manifest is the cheap index.",
     },
     CliMode {
         flag: "--rap",
@@ -241,7 +244,7 @@ mod tests {
     fn describe_resolves_flags_with_and_without_dashes() {
         assert!(describe("--check").is_some());
         assert!(describe("check").is_some());
-        assert!(describe("rmil-bytes").is_some(), "matches --target=rmil-bytes by value");
+        assert!(describe("ml-bytes").is_some(), "matches --target=ml-bytes by value");
         assert!(describe("nonsense-mode").is_none());
         let rap = describe("rap").unwrap();
         assert!(rap.contains("{network}"), "rap is effect-classified: {rap}");

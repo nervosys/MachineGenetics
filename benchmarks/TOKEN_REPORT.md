@@ -32,11 +32,11 @@ MechGen counted by `prototype::lexer` (atomic sigils like `+f` = 1 token). Rust 
 | concurrency | 10 | 1318 | 1191 | 1.107 | -10.7% |
 | data-structures | 15 | 1154 | 1217 | 0.948 | 5.2% |
 | error-handling | 5 | 754 | 786 | 0.959 | 4.1% |
-| full-applications | 10 | 4275 | 4378 | 0.976 | 2.4% |
+| full-applications | 10 | 4265 | 4378 | 0.974 | 2.6% |
 | generics-traits | 5 | 890 | 870 | 1.023 | -2.3% |
 | systems | 10 | 1913 | 1770 | 1.081 | -8.1% |
-| web-network | 10 | 1125 | 1305 | 0.862 | 13.8% |
-| **Total** | **100** | **15282** | **15310** | **0.998** | **0.2%** |
+| web-network | 10 | 1121 | 1305 | 0.859 | 14.1% |
+| **Total** | **100** | **15268** | **15310** | **0.997** | **0.3%** |
 
 ## Shared-rule cross-check
 
@@ -190,7 +190,7 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | err-004 | rust | 150 | 167 | +17 |
 | err-005 | mechgen | 100 | 180 | +80 |
 | err-005 | rust | 170 | 208 | +38 |
-| app-001 | mechgen | 250 | 342 | +92 |
+| app-001 | mechgen | 250 | 338 | +88 |
 | app-002 | mechgen | 320 | 357 | +37 |
 | app-002 | rust | 480 | 419 | -61 |
 | app-003 | mechgen | 290 | 392 | +102 |
@@ -201,7 +201,7 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | app-006 | mechgen | 280 | 348 | +68 |
 | app-006 | rust | 360 | 282 | -78 |
 | app-007 | mechgen | 250 | 356 | +106 |
-| app-008 | mechgen | 330 | 565 | +235 |
+| app-008 | mechgen | 330 | 559 | +229 |
 | app-008 | rust | 520 | 573 | +53 |
 | app-009 | mechgen | 260 | 362 | +102 |
 | app-009 | rust | 400 | 357 | -43 |

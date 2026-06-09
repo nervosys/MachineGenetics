@@ -159,7 +159,7 @@ extend  {
     }
 
     pub fn acquire_lease(&mut self, region: SemanticRegion, kind: LeaseKind) -> Lease {
-        let lease = Lease.new(region, kind, self.id);
+        val lease = Lease.new(region, kind, self.id);
         self.active_lease = Some(lease.clone());
         println!("  Agent {self.id} ({self.role}) acquired {lease.kind:?} on {lease.region}");
         lease
@@ -224,7 +224,7 @@ extend  {
         println!("  Tasks:  {self.tasks.len()}");
         println!("");
 
-        let mut remaining: usize = self.tasks.len();
+        var remaining: usize = self.tasks.len();
 
         for _ in 0..self.tasks.len() * 2 {
             if remaining == 0 {
@@ -232,7 +232,7 @@ extend  {
             }
 
             // Find ready tasks.
-            let mut ready_indices: [usize]~ = []~.new();
+            var ready_indices: [usize]~ = []~.new();
             for (i, task) in self.tasks.iter().enumerate() {
                 if task.is_ready(&self.completed_ids) {
                     match task.status {
@@ -243,14 +243,14 @@ extend  {
             }
 
             // Assign ready tasks to available agents.
-            let mut agent_idx: usize = 0;
+            var agent_idx: usize = 0;
             for task_idx in &ready_indices {
                 if agent_idx >= self.agents.len() {
                     return Ok(());  // No more agents available this round.
                 }
 
-                let agent = &mut self.agents[agent_idx];
-                let task = &mut self.tasks[*task_idx];
+                val agent = &mut self.agents[agent_idx];
+                val task = &mut self.tasks[*task_idx];
 
                 // Acquire lease.
                 agent.acquire_lease(task.region.clone(), LeaseKind::ExclusiveWrite);
@@ -288,7 +288,7 @@ extend  {
 
 pub async fn main() -> () or String {
     // Create a swarm with specialized agents.
-    let mut swarm = Swarm.new();
+    var swarm = Swarm.new();
 
     swarm.add_agent(Agent.new(1, Role::Architect));
     swarm.add_agent(Agent.new(2, Role::Synthesizer));

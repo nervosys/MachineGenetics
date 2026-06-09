@@ -1,4 +1,4 @@
-//! Complete ontology over the MechGen language, the RMIL IR, and the
+//! Complete ontology over the MechGen language, the Machine Language IR, and the
 //! RAP protocol surface. Built so an autonomous agent can discover
 //! "what exists" without prior training on this codebase.
 //!
@@ -12,12 +12,12 @@
 //!                      `Op::ALL` + `OpMeta`)
 //! - **`op_families`** — The 7 `OpFamily` buckets and their semantics
 //! - **`layer_map`**  — Surface layer name → opcode (from
-//!                      `rmil_bridge::layer_name_to_op`)
+//!                      `machine_bridge::layer_name_to_op`)
 //! - **`rap_methods`** — Protocol method catalog with input / output keys
 //! - **`heal_patterns`** — Mechanical heal patterns (from
 //!                          `heal::pattern_names`)
 //! - **`recovery_stages`** — The 4-stage recovery pipeline + agent.refine
-//! - **`rmib`**       — Binary IR container format constants
+//! - **`machine`**       — Binary IR container format constants
 //!
 //! Single entry point: [`build`] returns a `serde_json::Value`. The RAP
 //! method `ontology/full` calls it; `ontology/section` returns just one
@@ -68,20 +68,31 @@ const SIGILS: &[(&str, &str, &str)] = &[
     ("???", "Unimplemented", "unimplemented!()"),
 ];
 
-/// Static keyword table for AI-specific constructs (net/kb/agent/swarm).
-const KEYWORDS: &[(&str, &str, &str)] = &[
-    ("net", "NetDef", "neural network definition; lowers to RMIL"),
-    ("kb", "KbDef", "symbolic knowledge base; lowers to RMIL"),
-    ("agent", "AgentDef", "agent role; lowers to RMIL agent ops"),
-    ("swarm", "SwarmDef", "agent swarm topology; lowers to RMIL"),
-    ("train", "TrainDef", "training pipeline; lowers to RMIL compute"),
-    ("evolve", "EvolveDef", "evolutionary search; lowers to RMIL meta"),
+/// Curated summaries for notable keywords. NOT the keyword list itself — the
+/// authoritative spelling set is `crate::lexer::KEYWORDS` (the same table the
+/// lexer uses), which `keywords_section` enumerates in full so the ontology is
+/// complete and can never drift. This map only adds prose where it helps; any
+/// keyword without an entry still appears, with a generated summary.
+const KEYWORD_DOCS: &[(&str, &str, &str)] = &[
+    ("net", "NetDef", "neural network definition; lowers to Machine Language"),
+    ("kb", "KbDef", "symbolic knowledge base; lowers to Machine Language"),
+    ("agent", "AgentDef", "agent role; lowers to Machine Language agent ops"),
+    ("swarm", "SwarmDef", "agent swarm topology; lowers to Machine Language"),
+    ("train", "TrainDef", "training pipeline; lowers to Machine Language compute"),
+    ("evolve", "EvolveDef", "evolutionary search; lowers to Machine Language meta"),
     ("layer", "Layer", "neural-net layer inside a net block"),
     ("forward", "Forward", "forward pass inside a net block"),
     ("effect", "Effect", "effect declaration"),
     ("handle", "Handle", "effect handler"),
     ("spec", "Spec", "spec/contract block"),
     ("extern", "Extern", "FFI block"),
+    ("val", "Let", "immutable binding (also `v`)"),
+    ("var", "Let", "mutable binding (also `m`)"),
+    ("data", "Data", "record or sum type (also `D`)"),
+    ("extend", "Extend", "inherent/trait methods on a type (also `xd`)"),
+    ("match", "Match", "pattern match (sigil `?`)"),
+    ("guard", "Guard", "early-exit guard (also `gd`)"),
+    ("defer", "Defer", "run expression on scope exit (also `df`)"),
 ];
 
 /// Built-in type catalog. Covers scalar types, the composite type
@@ -141,12 +152,12 @@ const AST_KINDS: &[(&str, &str)] = &[
     ("Const", "const declaration"),
     ("Static", "static declaration"),
     ("TypeAlias", "type alias"),
-    ("NetDef", "AI: neural network (RMIL-routed)"),
-    ("KbDef", "AI: symbolic knowledge base (RMIL-routed)"),
-    ("AgentDef", "AI: agent role (RMIL-routed)"),
-    ("SwarmDef", "AI: swarm topology (RMIL-routed)"),
-    ("TrainDef", "AI: training pipeline (RMIL-routed)"),
-    ("EvolveDef", "AI: evolutionary search (RMIL-routed)"),
+    ("NetDef", "AI: neural network (Machine Language-routed)"),
+    ("KbDef", "AI: symbolic knowledge base (Machine Language-routed)"),
+    ("AgentDef", "AI: agent role (Machine Language-routed)"),
+    ("SwarmDef", "AI: swarm topology (Machine Language-routed)"),
+    ("TrainDef", "AI: training pipeline (Machine Language-routed)"),
+    ("EvolveDef", "AI: evolutionary search (Machine Language-routed)"),
     ("EffectDef", "Effect declaration"),
     ("SpecBlock", "Spec / contract block"),
 ];
@@ -163,7 +174,7 @@ const OP_FAMILIES: &[(&str, u8, &str)] = &[
 ];
 
 /// Canonical layer surface names that lower to an `Op`. Pulled from the
-/// authoritative mapping in `rmil_bridge::layer_name_to_op`.
+/// authoritative mapping in `machine_bridge::layer_name_to_op`.
 const LAYER_SURFACE_NAMES: &[&str] = &[
     "Linear", "Conv2D", "Attention", "Embed", "Dropout", "Softmax",
     "ReLU", "GELU", "SiLU", "Sigmoid", "Tanh", "Mish", "Softplus",
@@ -189,14 +200,14 @@ const RAP_METHODS: &[(&str, &str, &[&str], &[&str])] = &[
         &["source"], &["ok", "diagnostics"]),
     ("build/recover", "Run the 5-stage recovery pipeline; return final source.",
         &["source"], &["ok", "stage", "candidates_tried", "source", "changed"]),
-    ("rmil/encode", "Source -> RMIB bytes (hex).",
-        &["source"], &["ok", "magic", "version", "container_bytes", "items", "rmib_hex"]),
-    ("rmil/decode", "RMIB bytes (hex) -> decompiled per-item view.",
-        &["rmib_hex"], &["ok", "container_bytes", "items"]),
-    ("rmil/run", "Source -> encode -> CpuBackend dispatch.",
+    ("ml/encode", "Source -> Machine Language bytes (hex).",
+        &["source"], &["ok", "magic", "version", "container_bytes", "items", "ml_hex"]),
+    ("ml/decode", "Machine Language bytes (hex) -> decompiled per-item view.",
+        &["ml_hex"], &["ok", "container_bytes", "items"]),
+    ("ml/run", "Source -> encode -> CpuBackend dispatch.",
         &["source"], &["ok", "container_bytes", "runs"]),
-    ("pipeline/recover-and-encode", "Recover then encode RMIB in one call.",
-        &["source"], &["ok", "recover_stage", "recovered_source", "rmib_hex", "items"]),
+    ("pipeline/recover-and-encode", "Recover then encode Machine Language in one call.",
+        &["source"], &["ok", "recover_stage", "recovered_source", "ml_hex", "items"]),
     ("cost/query", "Per-construct cost estimate.",
         &["construct", "target", "opt"], &["construct", "target", "opt", "estimate"]),
     ("cost/compare", "Compare costs of two constructs.",
@@ -299,15 +310,15 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--check", "Lex + parse + resolve; report diagnostics", true),
     ("--fmt-compact", "Reformat source in agent-canonical sigil mode", true),
     ("--fmt-expand", "Reformat source in human-readable keyword mode", true),
-    ("--target=rmil", "Print per-item RMIL stats (nodes/depth/hash/bytes)", true),
-    ("--target=rmil-bytes", "Encode RMIL-routed items to a binary RMIB container", true),
-    ("--from=rmil-bytes", "Decode a RMIB container back to MechGen view", true),
-    ("--run=rmil-bytes", "Decode RMIB and dispatch each item on CpuBackend", true),
-    ("--target=rmil-generate", "Autoregressive generation from a trained checkpoint", true),
-    ("--target=rmil-infer", "Inference over a `train` block's saved weights", true),
-    ("--target=rmil-train", "Train every `train` block in the module", true),
-    ("--target=rmil-compute", "Forward pass without training over RMIL items", true),
-    ("--target=rmil-run", "End-to-end run of RMIL-routed items", true),
+    ("--target=ml", "Print per-item Machine Language stats (nodes/depth/hash/bytes)", true),
+    ("--target=ml-bytes", "Encode Machine Language-routed items to a binary Machine Language container", true),
+    ("--from=ml-bytes", "Decode a Machine Language container back to MechGen view", true),
+    ("--run=ml-bytes", "Decode Machine Language and dispatch each item on CpuBackend", true),
+    ("--target=ml-generate", "Autoregressive generation from a trained checkpoint", true),
+    ("--target=ml-infer", "Inference over a `train` block's saved weights", true),
+    ("--target=ml-train", "Train every `train` block in the module", true),
+    ("--target=ml-compute", "Forward pass without training over Machine Language items", true),
+    ("--target=ml-run", "End-to-end run of Machine Language-routed items", true),
     ("--pipeline", "Run the full lex+parse+resolve+effects+verify pipeline", true),
     ("--backend=<name>",
         "Select hardware accelerator for dispatch (default: cpu). See ontology.hardware_accelerators for the catalog.",
@@ -385,7 +396,7 @@ const WRAPPER_PROTOCOL: &[(&str, &str, &str)] = &[
 /// Columns: `(path, purpose)`.
 const PROJECT_LAYOUT: &[(&str, &str)] = &[
     ("prototype/", "Rust compiler + RAP server + benches"),
-    ("prototype/src/", "Lexer / parser / heal / recover / rmil_bridge / rap / ontology"),
+    ("prototype/src/", "Lexer / parser / heal / recover / machine_bridge / rap / ontology"),
     ("prototype/src/bin/", "reliability-bench, token-bench"),
     ("prototype/examples/", "Inline `.mg` examples used by parser tests"),
     ("RecursiveMachineIntelligence/", "RMI Rust crate: binary IR, opcodes, codec, CpuBackend"),
@@ -491,7 +502,7 @@ const EXAMPLES: &[(&str, &str, &str, &[&str])] = &[
     ),
     (
         "net-linear",
-        "Minimal neural net: one Linear layer (lowers to RMIL).",
+        "Minimal neural net: one Linear layer (lowers to Machine Language).",
         "net tiny { layer fc: Linear(8, 4); forward { fc } }",
         &["net", "layer", "forward"],
     ),
@@ -503,7 +514,7 @@ const EXAMPLES: &[(&str, &str, &str, &[&str])] = &[
     ),
     (
         "kb-rule",
-        "Symbolic knowledge base with facts and a rule (lowers to RMIL).",
+        "Symbolic knowledge base with facts and a rule (lowers to Machine Language).",
         "kb FamilyKb { fact parent(a, b); fact parent(b, c); rule grandparent(x: i32, y: i32) { x } }",
         &["kb", "fact", "rule"],
     ),
@@ -1151,7 +1162,7 @@ pub fn build() -> serde_json::Value {
             "rap_methods": rap_methods_section(),
             "heal_patterns": heal_patterns_section(),
             "recovery_stages": recovery_stages_section(),
-            "rmib": rmib_section(),
+            "machine": machine_section(),
             "examples": examples_section(),
             "framewerx_modules": framewerx_modules_section(),
             "cli_flags": cli_flags_section(),
@@ -1165,7 +1176,7 @@ pub fn build() -> serde_json::Value {
         },
         "counts": {
             "sigils": SIGILS.len(),
-            "keywords": KEYWORDS.len(),
+            "keywords": crate::lexer::KEYWORDS.len(),
             "types": TYPES.len(),
             "ast_kinds": AST_KINDS.len(),
             "ir_ops": Op::ALL.len(),
@@ -1199,7 +1210,7 @@ pub fn section(name: &str) -> Option<serde_json::Value> {
         "rap_methods" => rap_methods_section(),
         "heal_patterns" => heal_patterns_section(),
         "recovery_stages" => recovery_stages_section(),
-        "rmib" => rmib_section(),
+        "machine" => machine_section(),
         "examples" => examples_section(),
         "framewerx_modules" => framewerx_modules_section(),
         "cli_flags" => cli_flags_section(),
@@ -1223,7 +1234,25 @@ fn sigils_section() -> serde_json::Value {
 }
 
 fn keywords_section() -> serde_json::Value {
-    let items: Vec<_> = KEYWORDS
+    // Enumerate the AUTHORITATIVE keyword table the lexer uses, so the ontology
+    // covers every reserved word the compiler accepts (no drift, no gaps).
+    // Sorted by spelling for deterministic output. Curated prose is merged from
+    // KEYWORD_DOCS where available; otherwise a summary is generated from the
+    // token the spelling produces.
+    let mut rows: Vec<(&str, String, String)> = crate::lexer::KEYWORDS
+        .iter()
+        .map(|(spelling, kind)| {
+            if let Some((_, introduces, summary)) =
+                KEYWORD_DOCS.iter().find(|(w, _, _)| w == spelling)
+            {
+                (*spelling, introduces.to_string(), summary.to_string())
+            } else {
+                (*spelling, format!("{kind:?}"), format!("reserved word → {kind:?} token"))
+            }
+        })
+        .collect();
+    rows.sort_by(|a, b| a.0.cmp(b.0));
+    let items: Vec<_> = rows
         .iter()
         .map(|(w, k, d)| serde_json::json!({ "keyword": w, "introduces": k, "summary": d }))
         .collect();
@@ -1280,7 +1309,7 @@ fn layer_map_section() -> serde_json::Value {
     let items: Vec<_> = LAYER_SURFACE_NAMES
         .iter()
         .filter_map(|name| {
-            crate::rmil_bridge::layer_name_to_op(name).map(|op| {
+            crate::machine_bridge::layer_name_to_op(name).map(|op| {
                 serde_json::json!({
                     "surface_name": name,
                     "opcode": format!("0x{:04x}", op.0),
@@ -1456,23 +1485,48 @@ fn examples_section() -> serde_json::Value {
     serde_json::json!(items)
 }
 
-fn rmib_section() -> serde_json::Value {
+fn machine_section() -> serde_json::Value {
     serde_json::json!({
-        "magic": std::str::from_utf8(crate::rmib::RMIB_MAGIC).unwrap_or("RMIB"),
-        "version": crate::rmib::RMIB_VERSION,
+        "magic": std::str::from_utf8(crate::machine::MACHINE_MAGIC).unwrap_or("Machine Language"),
+        "version": crate::machine::MACHINE_VERSION,
         "format": [
-            "magic    : 4 bytes (\"RMIB\")",
+            "magic    : 4 bytes (\"Machine Language\")",
             "version  : u16 LE",
             "count    : u32 LE",
             "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }",
         ],
-        "media_type": "application/rmib",
+        "media_type": "application/machine",
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ontology_keywords_cover_every_lexer_keyword() {
+        // Drift guard: the ontology's keyword section must list EVERY spelling
+        // the lexer recognises — so an agent grounding in the ontology sees the
+        // complete, ground-truth keyword surface (no gaps, can't drift).
+        let section = keywords_section();
+        let listed: std::collections::HashSet<String> = section
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e["keyword"].as_str().unwrap().to_string())
+            .collect();
+        for (spelling, _) in crate::lexer::KEYWORDS {
+            assert!(
+                listed.contains(*spelling),
+                "ontology keyword section is missing `{spelling}` (lexer recognises it)"
+            );
+        }
+        assert_eq!(
+            listed.len(),
+            crate::lexer::KEYWORDS.len(),
+            "ontology keyword count must equal the lexer keyword table"
+        );
+    }
 
     #[test]
     fn build_returns_all_sections() {
@@ -1482,7 +1536,7 @@ mod tests {
         let sections = o["sections"].as_object().expect("sections obj");
         for required in [
             "sigils", "keywords", "types", "ast_kinds", "ir_ops", "op_families",
-            "layer_map", "rap_methods", "heal_patterns", "recovery_stages", "rmib",
+            "layer_map", "rap_methods", "heal_patterns", "recovery_stages", "machine",
             "examples", "framewerx_modules",
             // P82 - operational discoverability
             "cli_flags", "bench_backends", "effects", "wrapper_protocol",
@@ -1492,9 +1546,9 @@ mod tests {
         ] {
             assert!(sections.contains_key(required), "missing section: {required}");
             assert!(!sections[required].is_null(), "null section: {required}");
-            // `rmib` is an object describing the container layout;
+            // `machine` is an object describing the container layout;
             // every other section is an array.
-            if required != "rmib" {
+            if required != "machine" {
                 let arr = sections[required].as_array()
                     .unwrap_or_else(|| panic!("section {required} not an array"));
                 assert!(!arr.is_empty(), "section {required} is empty");
@@ -1511,8 +1565,8 @@ mod tests {
         let v = arr.as_array().unwrap();
         let names: Vec<&str> = v.iter().filter_map(|e| e["flag"].as_str()).collect();
         for required in ["--rap", "--check", "--emit-ontology",
-                         "--target=rmil-bytes", "--from=rmil-bytes",
-                         "--run=rmil-bytes", "--fmt-compact", "--fmt-expand"] {
+                         "--target=ml-bytes", "--from=ml-bytes",
+                         "--run=ml-bytes", "--fmt-compact", "--fmt-expand"] {
             assert!(names.contains(&required), "missing flag: {required}");
         }
     }
@@ -1650,7 +1704,7 @@ mod tests {
         assert!(names.contains(&"ontology/full"));
         assert!(names.contains(&"ontology/section"));
         assert!(names.contains(&"build/recover"));
-        assert!(names.contains(&"rmil/encode"));
+        assert!(names.contains(&"ml/encode"));
     }
 
     #[test]
@@ -1831,14 +1885,14 @@ mod tests {
 
     /// End-to-end integration test of the JAX:FLAX :: RMI:RecursiveMachineIntelligence-MG
     /// architecture. Walks every RecursiveMachineIntelligence-MG example through the full
-    /// stack: source -> parse -> rmil_bridge::lower_module -> RMIB
+    /// stack: source -> parse -> machine_bridge::lower_module -> Machine Language
     /// encode -> decode -> assert per-item structural invariants.
     ///
-    /// If the bridge stops routing `net` blocks to RMIL, or the codec
+    /// If the bridge stops routing `net` blocks to Machine Language, or the codec
     /// loses fidelity, this test fires - end-to-end at the layer where
     /// agents actually use the framework.
     #[test]
-    fn framewerx_examples_compile_to_rmib() {
+    fn framewerx_examples_compile_to_ml() {
         let cwd = std::env::current_dir().unwrap();
         let roots: Vec<std::path::PathBuf> = vec![
             cwd.clone(),
@@ -1884,24 +1938,24 @@ mod tests {
             let module = crate::parser::parse(&tokens)
                 .unwrap_or_else(|e| panic!("{}: parse: {e:?}", file.display()));
 
-            // 2. lower via the bridge - should produce RMIL items
-            let lowered = crate::rmil_bridge::lower_module(&module);
+            // 2. lower via the bridge - should produce Machine Language items
+            let lowered = crate::machine_bridge::lower_module(&module);
             assert!(
                 !lowered.items.is_empty(),
-                "{}: bridge produced no RMIL items (net block not recognized?)",
+                "{}: bridge produced no Machine Language items (net block not recognized?)",
                 file.display()
             );
 
-            // 3. round-trip through the RMIB codec
-            let (blob, summary) = crate::rmib::encode_module(&module);
-            assert!(blob.len() > 8, "{}: RMIB blob too small", file.display());
+            // 3. round-trip through the Machine Language codec
+            let (blob, summary) = crate::machine::encode_module(&module);
+            assert!(blob.len() > 8, "{}: Machine Language blob too small", file.display());
             assert_eq!(
                 summary.len(),
                 lowered.items.len(),
                 "{}: summary count mismatch",
                 file.display()
             );
-            let decoded = crate::rmib::decode_container(&blob)
+            let decoded = crate::machine::decode_container(&blob)
                 .unwrap_or_else(|e| panic!("{}: decode: {e}", file.display()));
             assert_eq!(
                 decoded.len(),
@@ -1930,7 +1984,7 @@ mod tests {
     }
 
     /// **P88 CI-floor**: every framework example listed below must
-    /// not only compile to RMIB but DISPATCH cleanly on the CpuBackend
+    /// not only compile to Machine Language but DISPATCH cleanly on the CpuBackend
     /// with the auto-inferred input shape, producing a non-degenerate
     /// output shape. CI-locks the P86 sweep so future bridge / op /
     /// inference changes can't silently regress dispatch coverage.
@@ -1987,17 +2041,17 @@ mod tests {
             any_resolved = true;
             tested += 1;
 
-            // Compile to RMIB, decode each item, dispatch via CpuBackend.
+            // Compile to Machine Language, decode each item, dispatch via CpuBackend.
             let source = std::fs::read_to_string(&file).unwrap();
             let tokens = crate::lexer::lex(&source);
             let module = crate::parser::parse(&tokens)
                 .unwrap_or_else(|e| panic!("{}: parse: {e:?}", file.display()));
-            let lowered = crate::rmil_bridge::lower_module(&module);
+            let lowered = crate::machine_bridge::lower_module(&module);
 
             for (name, expr) in &lowered.items {
-                let shape = crate::rmil_compute::infer_input_shape(expr)
+                let shape = crate::machine_compute::infer_input_shape(expr)
                     .unwrap_or_else(|| vec![8]);
-                match crate::rmil_compute::run_pipeline(&backend, expr, &shape, 1.0) {
+                match crate::machine_compute::run_pipeline(&backend, expr, &shape, 1.0) {
                     Ok(r) => {
                         // Output shape sanity: rank >= 2, batch > 0,
                         // and at least one op was dispatched (no
@@ -2033,7 +2087,7 @@ mod tests {
 
         if !any_resolved {
             // Running from a tree without the framework/ sibling -
-            // skip silently (matches the existing -compile_to_rmib
+            // skip silently (matches the existing -compile_to_ml
             // test's behaviour).
             return;
         }

@@ -3,7 +3,7 @@
 // Maps to RMI opcode 0x0005 (EMBED). The bridge already lowers
 // `layer e: Embed(vocab, dim)` to that opcode. Higher-level wrappers
 // here let agents declare positional / rotary variants without
-// inventing new RMIL opcodes.
+// inventing new Machine Language opcodes.
 
 S Embedding {
     vocab_size: usize,

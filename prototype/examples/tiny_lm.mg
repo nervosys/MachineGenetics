@@ -1,9 +1,9 @@
 // Phase-21 tiny LM: trains to memorise a 5-token cycle, then generates.
 //
 // Step 1 — train:
-//   MechGen-parse --target=rmil-train prototype/examples/tiny_lm.mg
+//   MechGen-parse --target=ml-train prototype/examples/tiny_lm.mg
 // Step 2 — generate:
-//   MechGen-parse --target=rmil-generate prototype/examples/tiny_lm.mg
+//   MechGen-parse --target=ml-generate prototype/examples/tiny_lm.mg
 
 net TinyLM {
     layer tok: Embedding(8, 4);

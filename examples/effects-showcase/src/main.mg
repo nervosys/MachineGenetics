@@ -121,7 +121,7 @@ fn initialize_db(entries: &Vec<(&str, &str)>) / db + log {
 fn process_request(user_id: &str) / io + db + log -> Result<String, String> {
     log::info(&format!("Processing request for user {user_id}"));
 
-    let user = db::get(user_id);
+    val user = db::get(user_id);
     match user {
         Some(name) => {
             println!("Found user: {name}");

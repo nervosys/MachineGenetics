@@ -19,7 +19,7 @@ I TrainState {
 }
 
 // Standard supervised-learning step: forward, loss, backward, update.
-// Lowers to a `train` block via the RMIL bridge.
+// Lowers to a `train` block via the Machine Language bridge.
 //
 //   train classifier {
 //       loss: cross_entropy;
