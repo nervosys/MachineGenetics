@@ -3,7 +3,7 @@
 // Demonstrates:
 //   - Entry point (pub fn main)
 //   - Value binding (val) — replaces `let`
-//   - Mutable variable (var) — replaces `let mut`
+//   - Mutable variable (var) — replaces `val mut`
 //   - String type (String)
 //   - Print macro (println!("..."))
 //   - Format strings (format!("..."))

@@ -4,6 +4,7 @@ mod ast;
 mod autograd;
 mod backends;
 mod bench;
+mod builder;
 #[cfg(feature = "cuda")]
 mod cuda_backend;
 mod certs;
@@ -19,6 +20,8 @@ mod elision;
 mod evolve_gen;
 mod ffi_gen;
 mod fmt;
+#[cfg(test)]
+mod fuzz;
 mod forge;
 mod grammar;
 mod heal;
@@ -39,10 +42,10 @@ mod recover;
 mod resolve;
 mod rmi_ontology_adapter;
 mod rmi_runtime_adapter;
-mod rmib;
-mod rmil_bridge;
-mod rmil_compute;
-mod rmil_shape;
+mod machine;
+mod machine_bridge;
+mod machine_compute;
+mod machine_shape;
 mod sandbox;
 mod semantic_vcs;
 mod shape;
@@ -52,6 +55,7 @@ mod swarm_bus;
 mod swarm_sdk;
 mod synthesis;
 mod token_budget;
+mod token_canonical;
 mod types;
 mod verify;
 
@@ -62,8 +66,12 @@ fn main() {
     let no_elision = args.iter().any(|a| a == "--no-elision");
     let syntax_legacy = args.iter().any(|a| a == "--syntax=legacy");
     let token_report = args.iter().any(|a| a == "--token-report");
+    // `--check --json` emits a deterministic, machine-readable diagnostic
+    // stream instead of human prose, so an agent parses errors structurally
+    // (code/span/category/fix) rather than scraping stderr.
+    let json_out = args.iter().any(|a| a == "--json");
     // Optional --backend=<name> selects hardware accelerator for any
-    // subsequent --run=rmil-bytes / --target=rmil-run dispatch. Lives
+    // subsequent --run=ml-bytes / --target=ml-run dispatch. Lives
     // outside the main flag table so it can attach to any dispatching
     // subcommand without per-command plumbing. Default: cpu.
     let backend_name: String = args
@@ -90,6 +98,7 @@ fn main() {
             !matches!(
                 a.as_str(),
                 "--no-elision" | "--syntax=legacy" | "--syntax=canonical" | "--token-report"
+                    | "--json"
             ) && !a.starts_with("--backend=")
               && !a.starts_with("--backends-file=")
         })
@@ -199,11 +208,15 @@ fn main() {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_check(&source, path, !no_elision, syntax_legacy, token_report);
+            if json_out {
+                run_check_json(&source, path, !no_elision, syntax_legacy);
+            } else {
+                run_check(&source, path, !no_elision, syntax_legacy, token_report);
+            }
         }
-        Some("--target=rmil-bytes") => {
+        Some("--target=ml-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=rmil-bytes <file.mg> [<out.rmib>]");
+                eprintln!("Usage: MechGen-parse --target=ml-bytes <file.mg> [<out.ml>]");
                 std::process::exit(1);
             });
             let out_path = filtered.get(2).map(|s| s.to_string());
@@ -224,7 +237,7 @@ fn main() {
                     } else {
                         module
                     };
-                    run_emit_rmil_bytes(&module, path, out_path.as_deref());
+                    run_emit_machine_bytes(&module, path, out_path.as_deref());
                 }
                 Err(e) => {
                     eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
@@ -232,31 +245,102 @@ fn main() {
                 }
             }
         }
-        Some("--from=rmil-bytes") => {
+        Some("--build=ml") => {
+            // Tool-mediated construction: agent emits a compact JSON net spec
+            // (not source text), we validate it structurally and lower the
+            // result to the deterministic Machine Language artifact. See builder.rs.
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --from=rmil-bytes <file.rmib>");
+                eprintln!("Usage: MechGen-parse --build=ml <spec.json> [<out.ml>]");
+                std::process::exit(1);
+            });
+            let out_path = filtered.get(2).map(|s| s.to_string());
+            let json = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            let spec: builder::NetSpec = match serde_json::from_str(&json) {
+                Ok(s) => s,
+                Err(e) => {
+                    println!(
+                        "{}",
+                        serde_json::json!({"ok": false, "errors": [
+                            {"code":"B0000","message": format!("malformed spec JSON: {e}"),
+                             "fix":"emit a valid net spec: {\"net\":\"..\",\"layers\":[[name,op,[dims]]]}"}]})
+                    );
+                    std::process::exit(1);
+                }
+            };
+            let errs = builder::validate(&spec);
+            if !errs.is_empty() {
+                // Reject by construction — machine-readable, no artifact produced.
+                let arr: Vec<_> = errs.iter().map(|e| e.as_json()).collect();
+                println!("{}", serde_json::json!({"ok": false, "errors": arr}));
+                std::process::exit(1);
+            }
+            // Valid → construct canonical net → reuse the tested Machine Language lowering.
+            let src = builder::to_mg_source(&spec);
+            match parser::parse(&lexer::lex(&src)) {
+                Ok(module) => {
+                    run_emit_machine_bytes(&module, path, out_path.as_deref());
+                    eprintln!("// built `{}` from spec ({} layers) → Machine Language", spec.net, spec.layers.len());
+                }
+                Err(e) => {
+                    eprintln!("internal: generated net failed to parse: {}:{} {}", e.line, e.col, e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("--build=schema") => {
+            // Tool-mediated construction, step 1: emit the typed, self-describing
+            // construction schema. An agent fetches this ONCE (prompt-cacheable)
+            // and then emits specs that validate first-try — the amortized-token
+            // + discoverability half of the paradigm. Deterministic JSON.
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&builder::build_schema())
+                    .unwrap_or_else(|_| "{}".to_string())
+            );
+        }
+        Some("--describe=ml") => {
+            // Tool-mediated construction, step 3: no-exec structured
+            // introspection. Loading the artifact is pure bounds-checked data
+            // decode — it NEVER executes code — and yields a machine-readable
+            // description the agent can verify against its spec.
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --describe=ml <file.ml>");
                 std::process::exit(1);
             });
             let blob = std::fs::read(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_decode_rmil_bytes(&blob, path);
+            run_describe_machine_bytes(&blob);
         }
-        Some("--run=rmil-bytes") => {
+        Some("--from=ml-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --run=rmil-bytes <file.rmib>");
+                eprintln!("Usage: MechGen-parse --from=ml-bytes <file.ml>");
                 std::process::exit(1);
             });
             let blob = std::fs::read(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_dispatch_rmil_bytes(&blob, path, &backend_name);
+            run_decode_machine_bytes(&blob, path);
         }
-        Some("--target=rmil-generate") => {
+        Some("--run=ml-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=rmil-generate <file>");
+                eprintln!("Usage: MechGen-parse --run=ml-bytes <file.ml>");
+                std::process::exit(1);
+            });
+            let blob = std::fs::read(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            run_dispatch_machine_bytes(&blob, path, &backend_name);
+        }
+        Some("--target=ml-generate") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --target=ml-generate <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -284,9 +368,9 @@ fn main() {
                 }
             }
         }
-        Some("--target=rmil-infer") => {
+        Some("--target=ml-infer") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=rmil-infer <file>");
+                eprintln!("Usage: MechGen-parse --target=ml-infer <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -314,9 +398,9 @@ fn main() {
                 }
             }
         }
-        Some("--target=rmil-train") => {
+        Some("--target=ml-train") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=rmil-train <file>");
+                eprintln!("Usage: MechGen-parse --target=ml-train <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -344,9 +428,9 @@ fn main() {
                 }
             }
         }
-        Some("--target=rmil-compute") => {
+        Some("--target=ml-compute") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=rmil-compute <file>");
+                eprintln!("Usage: MechGen-parse --target=ml-compute <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -366,21 +450,21 @@ fn main() {
                     } else {
                         module
                     };
-                    let lowered = rmil_bridge::lower_module(&module);
+                    let lowered = machine_bridge::lower_module(&module);
                     let backend = rmi::compute::cpu::CpuBackend::new();
-                    println!("// MechGen → RMIL → CpuBackend dispatch for {path}");
+                    println!("// MechGen → Machine Language → CpuBackend dispatch for {path}");
                     for (name, expr) in &lowered.items {
                         // Pre-flight: infer shapes and report mismatches.
-                        let shape_report = rmil_shape::infer_shape(expr, &[8]);
+                        let shape_report = machine_shape::infer_shape(expr, &[8]);
                         for m in &shape_report.mismatches {
                             eprintln!(
                                 "shape error in {name}: op {:?} expected last={} but got shape {:?}",
                                 m.op, m.expected_last, m.got
                             );
                         }
-                        let inferred = rmil_compute::infer_input_shape(expr);
+                        let inferred = machine_compute::infer_input_shape(expr);
                         let shape: Vec<usize> = inferred.unwrap_or_else(|| vec![8]);
-                        match rmil_compute::run_pipeline(&backend, expr, &shape, 1.0) {
+                        match machine_compute::run_pipeline(&backend, expr, &shape, 1.0) {
                             Ok(r) => println!(
                                 "// {name}: dispatched={} unsupported={:?} output_sum={:.4} shape={:?} (input={:?})",
                                 r.dispatched, r.unsupported, r.output_sum, r.output.shape, shape
@@ -395,9 +479,9 @@ fn main() {
                 }
             }
         }
-        Some("--target=rmil-run") => {
+        Some("--target=ml-run") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=rmil-run <file>");
+                eprintln!("Usage: MechGen-parse --target=ml-run <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -417,14 +501,14 @@ fn main() {
                     } else {
                         module
                     };
-                    let lowered = rmil_bridge::lower_module(&module);
+                    let lowered = machine_bridge::lower_module(&module);
                     let mut vm = rmi::lang::Vm::new();
-                    println!("// MechGen → RMIL → VM execution for {path}");
+                    println!("// MechGen → Machine Language → VM execution for {path}");
                     for (name, expr) in &lowered.items {
-                        let families = rmil_bridge::expr_op_families(expr);
+                        let families = machine_bridge::expr_op_families(expr);
                         let stub_families: Vec<_> = families
                             .iter()
-                            .filter(|f| rmil_bridge::is_stubbed_family(**f))
+                            .filter(|f| machine_bridge::is_stubbed_family(**f))
                             .map(|f| format!("{f:?}"))
                             .collect();
                         // JIT path: pure-math fragments compile, neural/symbolic/agent
@@ -457,9 +541,9 @@ fn main() {
                 }
             }
         }
-        Some("--target=rmil") => {
+        Some("--target=ml") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=rmil <file>");
+                eprintln!("Usage: MechGen-parse --target=ml <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -479,11 +563,11 @@ fn main() {
                     } else {
                         module
                     };
-                    let lowered = rmil_bridge::lower_module(&module);
-                    let (mlir_items, rmil_items) = rmil_bridge::OpFamilyRouter::partition(&module);
-                    println!("// MechGen → RMIL lowering for {path}");
+                    let lowered = machine_bridge::lower_module(&module);
+                    let (mlir_items, machine_items) = machine_bridge::OpFamilyRouter::partition(&module);
+                    println!("// MechGen → Machine Language lowering for {path}");
                     println!("// MLIR-routed items: {}", mlir_items.len());
-                    println!("// RMIL-routed items: {}", rmil_items.len());
+                    println!("// Machine Language-routed items: {}", machine_items.len());
                     for diag in &lowered.diagnostics {
                         eprintln!("warning: {diag}");
                     }
@@ -530,8 +614,8 @@ fn main() {
     }
 }
 
-/// Drive `--target=rmil-train`: find each `train` block, locate its named
-/// `net`, lower the net to RMIL, run N epochs of SGD on a synthetic
+/// Drive `--target=ml-train`: find each `train` block, locate its named
+/// `net`, lower the net to Machine Language, run N epochs of SGD on a synthetic
 /// dataset, and report per-step loss.
 ///
 /// Defaults when the `.mg` source omits them:
@@ -539,18 +623,18 @@ fn main() {
 /// - **learning rate:** 0.05
 /// - **dataset:** four samples of the form `y = sum(x)` matching the
 ///   net's first Linear input dim and final output dim.
-/// Magic bytes for the per-module RMIL-bytes container format. Distinct
+/// Magic bytes for the per-module Machine Language-bytes container format. Distinct
 /// from the per-expression `MGPS` checkpoint magic.
-const RMIB_MAGIC: &[u8; 4] = b"RMIB";
-const RMIB_VERSION: u16 = 1;
+const MACHINE_MAGIC: &[u8; 4] = b"MACH";
+const MACHINE_VERSION: u16 = 1;
 
-/// Drive `--target=rmil-bytes`: lower every RMIL-routed item in the module
-/// to binary RMIL via the bridge + RMI codec, then write a single framed
+/// Drive `--target=ml-bytes`: lower every Machine Language-routed item in the module
+/// to binary Machine Language via the bridge + RMI codec, then write a single framed
 /// blob to disk (or stdout-summarise if no out path given).
 ///
 /// Container layout:
 /// ```text
-///   magic    "RMIB" (4 bytes)
+///   magic    "Machine Language" (4 bytes)
 ///   version  u16 = 1
 ///   count    u32  — number of items
 ///   for each item:
@@ -559,24 +643,24 @@ const RMIB_VERSION: u16 = 1;
 ///     expr_len u32
 ///     expr     codec::Encoder::encode_expr_only output
 /// ```
-fn run_emit_rmil_bytes(module: &ast::Module, src_path: &str, out_path: Option<&str>) {
-    let lowered_diags = rmil_bridge::lower_module(module).diagnostics;
-    let (blob, per_item_summary) = rmib::encode_module(module);
+fn run_emit_machine_bytes(module: &ast::Module, src_path: &str, out_path: Option<&str>) {
+    let lowered_diags = machine_bridge::lower_module(module).diagnostics;
+    let (blob, per_item_summary) = machine::encode_module(module);
     if per_item_summary.is_empty() {
-        println!("// {src_path}: no RMIL-routed items (no net/kb/agent/swarm/train/evolve)");
+        println!("// {src_path}: no Machine Language-routed items (no net/kb/agent/swarm/train/evolve)");
         return;
     }
 
     let text_bytes = std::fs::metadata(src_path).map(|m| m.len()).unwrap_or(0);
-    let total_rmil = blob.len() as u64;
+    let total_ml = blob.len() as u64;
 
-    println!("// MechGen → RMIL bytes for {src_path}");
+    println!("// MechGen → Machine Language bytes for {src_path}");
     println!(
-        "// text source: {} bytes    RMIL container: {} bytes    ratio: {:.3} ({:.1}% reduction)",
+        "// text source: {} bytes    Machine Language container: {} bytes    ratio: {:.3} ({:.1}% reduction)",
         text_bytes,
-        total_rmil,
-        if text_bytes > 0 { total_rmil as f64 / text_bytes as f64 } else { 0.0 },
-        if text_bytes > 0 { (1.0 - total_rmil as f64 / text_bytes as f64) * 100.0 } else { 0.0 },
+        total_ml,
+        if text_bytes > 0 { total_ml as f64 / text_bytes as f64 } else { 0.0 },
+        if text_bytes > 0 { (1.0 - total_ml as f64 / text_bytes as f64) * 100.0 } else { 0.0 },
     );
     for (name, sz, hash) in &per_item_summary {
         println!("//   {name}: {sz}B  hash={hash:016x}");
@@ -593,10 +677,67 @@ fn run_emit_rmil_bytes(module: &ast::Module, src_path: &str, out_path: Option<&s
     }
 }
 
-/// Drive `--from=rmil-bytes`: read a `.rmib` container, decode every item
+/// Drive `--describe=ml`: decode a `.ml` container as PURE DATA (no
+/// execution) and emit a deterministic, machine-readable JSON description —
+/// container size, per-item content hash, and the reconstructed layer
+/// structure. This is the introspection half of the tool-mediated paradigm:
+/// the agent verifies what it built without ever running it.
+fn run_describe_machine_bytes(blob: &[u8]) {
+    match machine::decode_container(blob) {
+        Ok(items) => {
+            let items_json: Vec<serde_json::Value> = items
+                .iter()
+                .map(|item| {
+                    let result = machine_bridge::decompile(&item.expr, &item.name);
+                    let layers: Vec<serde_json::Value> = result
+                        .net
+                        .layers
+                        .iter()
+                        .map(|layer| {
+                            let op = match &layer.layer_type {
+                                ast::Type::Path { segments, .. } => {
+                                    segments.last().cloned().unwrap_or_default()
+                                }
+                                _ => "?".to_string(),
+                            };
+                            let dims: Vec<i64> = layer
+                                .args
+                                .iter()
+                                .filter_map(|a| match a {
+                                    ast::Expr::Literal { value, .. } => value.parse::<i64>().ok(),
+                                    _ => None,
+                                })
+                                .collect();
+                            serde_json::json!({ "name": layer.name, "op": op, "dims": dims })
+                        })
+                        .collect();
+                    serde_json::json!({
+                        "name": item.name,
+                        "expr_bytes": item.expr_bytes_len,
+                        "content_hash": format!("{:016x}", item.expr.content_hash()),
+                        "layers": layers,
+                    })
+                })
+                .collect();
+            let out = serde_json::json!({
+                "ok": true,
+                "container_bytes": blob.len(),
+                "exec": false, // load is pure data decode — no code execution
+                "items": items_json,
+            });
+            println!("{}", serde_json::to_string_pretty(&out).unwrap_or_else(|_| "{}".to_string()));
+        }
+        Err(e) => {
+            println!("{}", serde_json::json!({ "ok": false, "error": e }));
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Drive `--from=ml-bytes`: read a `.ml` container, decode every item
 /// via the RMI codec, decompile each to a MechGen `net`/`kb` declaration via
 /// the bridge's existing decompiler, and print the resulting `.mg` source.
-fn run_decode_rmil_bytes(blob: &[u8], path: &str) {
+fn run_decode_machine_bytes(blob: &[u8], path: &str) {
     let mut pos = 0usize;
     fn take<'a>(buf: &'a [u8], pos: &mut usize, n: usize, what: &str) -> Option<&'a [u8]> {
         if *pos + n > buf.len() {
@@ -611,15 +752,15 @@ fn run_decode_rmil_bytes(blob: &[u8], path: &str) {
         Some(m) => m,
         None => return,
     };
-    if magic != RMIB_MAGIC {
-        eprintln!("{path}: bad magic {:?} (expected RMIB)", magic);
+    if magic != MACHINE_MAGIC {
+        eprintln!("{path}: bad magic {:?} (expected Machine Language)", magic);
         return;
     }
     let ver = u16::from_le_bytes(match take(blob, &mut pos, 2, "version") {
         Some(b) => b.try_into().unwrap(),
         None => return,
     });
-    if ver != RMIB_VERSION {
+    if ver != MACHINE_VERSION {
         eprintln!("{path}: unsupported version {}", ver);
         return;
     }
@@ -628,7 +769,7 @@ fn run_decode_rmil_bytes(blob: &[u8], path: &str) {
         None => return,
     }) as usize;
 
-    println!("// RMIL → MechGen decompiled view of {path}");
+    println!("// Machine Language → MechGen decompiled view of {path}");
     println!("// container: {} bytes, {} item(s)", blob.len(), count);
 
     for i in 0..count {
@@ -650,7 +791,7 @@ fn run_decode_rmil_bytes(blob: &[u8], path: &str) {
         };
         match rmi::lang::codec::Decoder::decode_expr_only(expr_bytes) {
             Ok(expr) => {
-                let result = rmil_bridge::decompile(&expr, &name);
+                let result = machine_bridge::decompile(&expr, &name);
                 println!("\n// item {i}: {name} ({} bytes expr)", el);
                 let mut layer_lines = Vec::new();
                 for layer in &result.net.layers {
@@ -686,20 +827,20 @@ fn run_decode_rmil_bytes(blob: &[u8], path: &str) {
     }
 }
 
-/// Drive `--run=rmil-bytes`: decode every item in a RMIB container and
-/// dispatch it to the CPU backend via `rmil_compute::run_pipeline`,
+/// Drive `--run=ml-bytes`: decode every item in a Machine Language container and
+/// dispatch it to the CPU backend via `machine_compute::run_pipeline`,
 /// completely **skipping the text round-trip**. This is the
 /// agent-canonical execution path:
 ///
 /// ```text
-///   bytes (.rmib) → Decoder → Expr → dispatch → CpuBackend → result
+///   bytes (.ml) → Decoder → Expr → dispatch → CpuBackend → result
 /// ```
 ///
 /// Items that contain neural/symbolic/agent opcodes the dispatcher can
 /// run are executed (activation chains, Linear with cached params, etc.);
 /// items that lower entirely to stub opcodes are reported as `stub`
 /// rather than failing.
-fn run_dispatch_rmil_bytes(blob: &[u8], path: &str, backend_name: &str) {
+fn run_dispatch_machine_bytes(blob: &[u8], path: &str, backend_name: &str) {
     use rmi::compute::cpu::CpuBackend;
     // Resolve agent's --backend=<name> choice into a SelectedBackend.
     // Falls back to CpuBackend on error so the dispatch still happens;
@@ -730,7 +871,7 @@ fn run_dispatch_rmil_bytes(blob: &[u8], path: &str, backend_name: &str) {
         );
     }
     // If the selected backend is subprocess-dispatchable (P94), hand
-    // off the full RMIB blob + path metadata to the wrapper and
+    // off the full Machine Language blob + path metadata to the wrapper and
     // print whatever it returns. No per-item CPU dispatch below;
     // the wrapper owns the loop.
     if let Some(crate::backends::SelectedBackend::Subprocess { name, command }) = &selected {
@@ -765,15 +906,15 @@ fn run_dispatch_rmil_bytes(blob: &[u8], path: &str, backend_name: &str) {
         Some(m) => m,
         None => return,
     };
-    if magic != RMIB_MAGIC {
-        eprintln!("{path}: bad magic {:?} (expected RMIB)", magic);
+    if magic != MACHINE_MAGIC {
+        eprintln!("{path}: bad magic {:?} (expected Machine Language)", magic);
         return;
     }
     let ver = u16::from_le_bytes(match take(blob, &mut pos, 2, "version") {
         Some(b) => b.try_into().unwrap(),
         None => return,
     });
-    if ver != RMIB_VERSION {
+    if ver != MACHINE_VERSION {
         eprintln!("{path}: unsupported version {}", ver);
         return;
     }
@@ -788,7 +929,7 @@ fn run_dispatch_rmil_bytes(blob: &[u8], path: &str, backend_name: &str) {
     // currently bounce back to CPU via the impl's `cpu` field, but
     // the dispatch path itself is polymorphic, so each TODO swap in
     // cuda_backend.rs lights up real GPU dispatch with zero changes
-    // to main.rs / rmil_compute.rs.
+    // to main.rs / machine_compute.rs.
     let cpu_backend = CpuBackend::new();
     #[cfg(feature = "cuda")]
     let backend: &dyn rmi::compute::Backend = match &selected {
@@ -798,7 +939,7 @@ fn run_dispatch_rmil_bytes(blob: &[u8], path: &str, backend_name: &str) {
     #[cfg(not(feature = "cuda"))]
     let backend: &dyn rmi::compute::Backend = &cpu_backend;
     let backend_name = backend.backend_type();
-    println!("// RMIL bytes → {backend_name:?} dispatch for {path}");
+    println!("// Machine Language bytes → {backend_name:?} dispatch for {path}");
     println!("// container: {} bytes, {} item(s)", blob.len(), count);
 
     for i in 0..count {
@@ -827,10 +968,10 @@ fn run_dispatch_rmil_bytes(blob: &[u8], path: &str, backend_name: &str) {
         };
         // Diagnose stub-only items (Phase-4 classification) without trying
         // to dispatch — they'd just return unsupported.
-        let families = rmil_bridge::expr_op_families(&expr);
+        let families = machine_bridge::expr_op_families(&expr);
         let stub_families: Vec<_> = families
             .iter()
-            .filter(|f| rmil_bridge::is_stubbed_family(**f))
+            .filter(|f| machine_bridge::is_stubbed_family(**f))
             .filter(|f| !matches!(**f, rmi::lang::OpFamily::Neural))
             .map(|f| format!("{f:?}"))
             .collect();
@@ -842,9 +983,9 @@ fn run_dispatch_rmil_bytes(blob: &[u8], path: &str, backend_name: &str) {
             continue;
         }
 
-        let shape: Vec<usize> = rmil_compute::infer_input_shape(&expr)
+        let shape: Vec<usize> = machine_compute::infer_input_shape(&expr)
             .unwrap_or_else(|| vec![8]);
-        match rmil_compute::run_pipeline(backend, &expr, &shape, 1.0) {
+        match machine_compute::run_pipeline(backend, &expr, &shape, 1.0) {
             Ok(r) => println!(
                 "//   item {i}: {name} ({el}B)  dispatched={} unsupported={:?} output_sum={:.4} shape={:?} (input={:?})",
                 r.dispatched, r.unsupported, r.output_sum, r.output.shape, shape
@@ -870,7 +1011,7 @@ fn run_dispatch_rmil_bytes(blob: &[u8], path: &str, backend_name: &str) {
     }
 }
 
-/// Drive `--target=rmil-generate`: load checkpoint + prompt, autoregressively
+/// Drive `--target=ml-generate`: load checkpoint + prompt, autoregressively
 /// generate up to `max_tokens` new tokens via greedy argmax decoding.
 ///
 /// The model is expected to be an LM: input is `[seq]` of integer token ids,
@@ -882,7 +1023,7 @@ fn run_generate(module: &ast::Module, path: &str) {
     use rmi::compute::Backend;
     let backend = CpuBackend::new();
 
-    println!("// MechGen → RMIL → autoregressive generation for {path}");
+    println!("// MechGen → Machine Language → autoregressive generation for {path}");
 
     let mut nets: std::collections::HashMap<&str, &ast::NetDef> = Default::default();
     for item in &module.items {
@@ -908,7 +1049,7 @@ fn run_generate(module: &ast::Module, path: &str) {
         // Load weights if a checkpoint exists; otherwise warn and use fresh.
         let ckpt_path = extract_string_literal(train.checkpoint.as_ref());
         let mut params = match ckpt_path.as_ref().and_then(|p| std::fs::read(p).ok()) {
-            Some(blob) => match rmil_compute::ParamStore::load(&blob, &backend) {
+            Some(blob) => match machine_compute::ParamStore::load(&blob, &backend) {
                 Ok(p) => p,
                 Err(e) => {
                     eprintln!("generate `{}`: load checkpoint: {e}", train.name);
@@ -917,11 +1058,11 @@ fn run_generate(module: &ast::Module, path: &str) {
             },
             None => {
                 eprintln!("generate `{}`: no checkpoint available — using fresh weights", train.name);
-                rmil_compute::ParamStore::new()
+                machine_compute::ParamStore::new()
             }
         };
 
-        let lowered = rmil_bridge::NetTranslator::translate(net);
+        let lowered = machine_bridge::NetTranslator::translate(net);
 
         // Extract prompt: either nested `[[1, 2, 3]]` or flat `[1, 2, 3]`.
         let mut tokens: Vec<usize> = match extract_nested_floats(train.prompt.as_ref()) {
@@ -978,7 +1119,7 @@ fn run_generate(module: &ast::Module, path: &str) {
                     break;
                 }
             };
-            let out_handle = match rmil_compute::forward_pass(&backend, &lowered.expr, handle, &mut params) {
+            let out_handle = match machine_compute::forward_pass(&backend, &lowered.expr, handle, &mut params) {
                 Ok(h) => h,
                 Err(e) => {
                     eprintln!("  step {step}: forward: {e}");
@@ -1137,7 +1278,7 @@ fn embedding_vocab(net: &ast::NetDef) -> Option<usize> {
     None
 }
 
-/// Drive `--target=rmil-infer`: for each `train` block, load its checkpoint,
+/// Drive `--target=ml-infer`: for each `train` block, load its checkpoint,
 /// run forward on its `inputs:` data, and print per-sample predictions.
 /// Requires both `checkpoint:` and `inputs:` to be set.
 fn run_infer(module: &ast::Module, path: &str) {
@@ -1145,7 +1286,7 @@ fn run_infer(module: &ast::Module, path: &str) {
     use rmi::compute::Backend;
     let backend = CpuBackend::new();
 
-    println!("// MechGen → RMIL → CpuBackend inference for {path}");
+    println!("// MechGen → Machine Language → CpuBackend inference for {path}");
 
     let mut nets: std::collections::HashMap<&str, &ast::NetDef> = Default::default();
     for item in &module.items {
@@ -1182,7 +1323,7 @@ fn run_infer(module: &ast::Module, path: &str) {
                 continue;
             }
         };
-        let mut params = match rmil_compute::ParamStore::load(&blob, &backend) {
+        let mut params = match machine_compute::ParamStore::load(&blob, &backend) {
             Ok(p) => p,
             Err(e) => {
                 eprintln!("infer `{}`: load checkpoint: {e}", train.name);
@@ -1190,7 +1331,7 @@ fn run_infer(module: &ast::Module, path: &str) {
             }
         };
 
-        let lowered = rmil_bridge::NetTranslator::translate(net);
+        let lowered = machine_bridge::NetTranslator::translate(net);
         let (in_dim, out_dim) = first_last_linear_dims(net).unwrap_or((1, 1));
 
         let xs = match extract_nested_floats(train.inputs.as_ref()) {
@@ -1221,7 +1362,7 @@ fn run_infer(module: &ast::Module, path: &str) {
                     continue;
                 }
             };
-            match rmil_compute::forward_pass(&backend, &lowered.expr, h, &mut params) {
+            match machine_compute::forward_pass(&backend, &lowered.expr, h, &mut params) {
                 Ok(out) => {
                     let bytes = backend.copy_to_host(&out).unwrap_or_default();
                     let preds: Vec<f32> = bytes
@@ -1246,7 +1387,7 @@ fn run_train(module: &ast::Module, path: &str) {
     use rmi::compute::cpu::CpuBackend;
     let backend = CpuBackend::new();
 
-    println!("// MechGen → RMIL → SGD training for {path}");
+    println!("// MechGen → Machine Language → SGD training for {path}");
 
     // Index nets by name so train blocks can look them up.
     let mut nets: std::collections::HashMap<&str, &ast::NetDef> = Default::default();
@@ -1275,7 +1416,7 @@ fn run_train(module: &ast::Module, path: &str) {
             }
         };
 
-        let lowered = rmil_bridge::NetTranslator::translate(net);
+        let lowered = machine_bridge::NetTranslator::translate(net);
         if !lowered.unknown_layers.is_empty() {
             eprintln!(
                 "train `{}`: net `{}` has unknown layers {:?} — using IDENTITY fallback",
@@ -1443,19 +1584,19 @@ fn run_train(module: &ast::Module, path: &str) {
         };
 
         let mut params = match ckpt_path.as_ref().and_then(|p| std::fs::read(p).ok()) {
-            Some(blob) => match rmil_compute::ParamStore::load(&blob, &backend) {
+            Some(blob) => match machine_compute::ParamStore::load(&blob, &backend) {
                 Ok(p) => {
                     println!("// train `{}`: loaded {} weight tensors from {}", train.name, p.len(), ckpt_path.as_deref().unwrap());
                     p
                 }
                 Err(e) => {
                     eprintln!("train `{}`: checkpoint load failed: {e}", train.name);
-                    rmil_compute::ParamStore::new()
+                    machine_compute::ParamStore::new()
                 }
             },
-            None => rmil_compute::ParamStore::new(),
+            None => machine_compute::ParamStore::new(),
         };
-        let mut state = rmil_compute::OptimState::new();
+        let mut state = machine_compute::OptimState::new();
         state.clip_grad = clip;
         state.weight_decay = wd;
         let mut first_loss = None;
@@ -1507,7 +1648,7 @@ fn run_train(module: &ast::Module, path: &str) {
                     _ => lr,
                 };
                 let cur_lr = step_lr(state.step, base);
-                let r = match rmil_compute::train_one_step_with_optim_loss(
+                let r = match machine_compute::train_one_step_with_optim_loss(
                     &backend,
                     &lowered.expr,
                     &batch_x[..cur_bs * in_dim],
@@ -1759,39 +1900,39 @@ fn load_csv(path: &str, in_dim: usize, out_dim: usize) -> Result<(Vec<f32>, Vec<
     Ok((xs, ys, n))
 }
 
-/// Decide which [`rmil_compute::Optimizer`] the `optimizer:` field requests.
+/// Decide which [`machine_compute::Optimizer`] the `optimizer:` field requests.
 ///
 /// `SGD` / `SGD(lr)` → `Optimizer::Sgd`. `Adam` / `Adam(lr)` → Adam with
 /// default hyperparameters. Defaults to SGD when absent.
-fn extract_optimizer(expr: Option<&ast::Expr>) -> rmil_compute::Optimizer {
+fn extract_optimizer(expr: Option<&ast::Expr>) -> machine_compute::Optimizer {
     let name = match expr {
         Some(ast::Expr::Call { func, .. }) => match func.as_ref() {
             ast::Expr::Ident { name } => name.as_str(),
-            _ => return rmil_compute::Optimizer::Sgd,
+            _ => return machine_compute::Optimizer::Sgd,
         },
         Some(ast::Expr::Ident { name }) => name.as_str(),
-        _ => return rmil_compute::Optimizer::Sgd,
+        _ => return machine_compute::Optimizer::Sgd,
     };
     match name {
-        "Adam" | "ADAM" | "adam" => rmil_compute::Optimizer::adam_default(),
-        _ => rmil_compute::Optimizer::Sgd,
+        "Adam" | "ADAM" | "adam" => machine_compute::Optimizer::adam_default(),
+        _ => machine_compute::Optimizer::Sgd,
     }
 }
 
-/// Pick a [`rmil_compute::Loss`] from a `loss:` expression. Recognises
+/// Pick a [`machine_compute::Loss`] from a `loss:` expression. Recognises
 /// `CrossEntropy`, `CE`, otherwise defaults to MSE.
-fn extract_loss(expr: Option<&ast::Expr>) -> rmil_compute::Loss {
+fn extract_loss(expr: Option<&ast::Expr>) -> machine_compute::Loss {
     let name = match expr {
         Some(ast::Expr::Ident { name }) => name.as_str(),
         Some(ast::Expr::Call { func, .. }) => match func.as_ref() {
             ast::Expr::Ident { name } => name.as_str(),
-            _ => return rmil_compute::Loss::Mse,
+            _ => return machine_compute::Loss::Mse,
         },
-        _ => return rmil_compute::Loss::Mse,
+        _ => return machine_compute::Loss::Mse,
     };
     match name {
-        "CrossEntropy" | "CE" | "cross_entropy" => rmil_compute::Loss::CrossEntropy,
-        _ => rmil_compute::Loss::Mse,
+        "CrossEntropy" | "CE" | "cross_entropy" => machine_compute::Loss::CrossEntropy,
+        _ => machine_compute::Loss::Mse,
     }
 }
 
@@ -1880,7 +2021,7 @@ fn tied_weight_keys(net: &ast::NetDef) -> Option<(Vec<i64>, Vec<i64>)> {
 /// (`[E, V]`) by transposing rows ↔ columns.
 fn sync_tied_embedding(
     backend: &rmi::compute::cpu::CpuBackend,
-    params: &mut rmil_compute::ParamStore,
+    params: &mut machine_compute::ParamStore,
     emb_key: &[i64],
     head_key: &[i64],
 ) -> Result<(), String> {
@@ -1920,17 +2061,17 @@ enum LrSchedule {
     Plateau,
 }
 
-fn loss_label(loss: rmil_compute::Loss) -> &'static str {
+fn loss_label(loss: machine_compute::Loss) -> &'static str {
     match loss {
-        rmil_compute::Loss::Mse => "MSE",
-        rmil_compute::Loss::CrossEntropy => "CrossEntropy",
+        machine_compute::Loss::Mse => "MSE",
+        machine_compute::Loss::CrossEntropy => "CrossEntropy",
     }
 }
 
-fn optim_label(opt: rmil_compute::Optimizer) -> &'static str {
+fn optim_label(opt: machine_compute::Optimizer) -> &'static str {
     match opt {
-        rmil_compute::Optimizer::Sgd => "SGD",
-        rmil_compute::Optimizer::Adam { .. } => "Adam",
+        machine_compute::Optimizer::Sgd => "SGD",
+        machine_compute::Optimizer::Adam { .. } => "Adam",
     }
 }
 
@@ -1943,7 +2084,7 @@ fn compute_val_loss(
     val_y: &[f32],
     out_dim: usize,
     n_val: usize,
-    params: &mut rmil_compute::ParamStore,
+    params: &mut machine_compute::ParamStore,
 ) -> Option<f32> {
     use rmi::compute::Backend;
     // When in_dim=1 the model is index-driven (Embedding head). Avoid
@@ -1955,7 +2096,7 @@ fn compute_val_loss(
         vec![n_val, in_dim]
     };
     let handle = backend.from_slice_f32(val_x, &shape).ok()?;
-    let out_handle = rmil_compute::forward_pass(backend, expr, handle, params).ok()?;
+    let out_handle = machine_compute::forward_pass(backend, expr, handle, params).ok()?;
     let out_bytes = backend.copy_to_host(&out_handle).ok()?;
     let pred: Vec<f32> = out_bytes
         .chunks_exact(4)
@@ -2048,6 +2189,122 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token
         }
     }
 
+    if error_count > 0 {
+        std::process::exit(1);
+    }
+}
+
+/// Machine-readable diagnostic stream for `--check --json`.
+///
+/// Deterministic by construction: diagnostics are sorted by (line, col, code,
+/// message) and the schema is stable, so identical input yields byte-identical
+/// output and an agent parses errors structurally — `{code, severity, line,
+/// col, category, message, fix}` — instead of scraping human prose. Every
+/// diagnostic carries a stable error code and an actionable `fix` hint.
+fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool) {
+    use hir::Severity;
+
+    let source = if legacy { legacy::translate(source) } else { source.to_string() };
+
+    let mut diags: Vec<serde_json::Value> = Vec::new();
+    let mut push = |sev: &str, line: u32, col: u32, code: &str, cat: &str, msg: String, fix: &str| {
+        diags.push(serde_json::json!({
+            "severity": sev,
+            "line": line,
+            "col": col,
+            "code": code,
+            "category": cat,
+            "message": msg,
+            "fix": fix,
+        }));
+    };
+
+    let tokens = lexer::lex(&source);
+    for tok in &tokens {
+        if tok.kind == lexer::TokenKind::Error {
+            push(
+                "error",
+                tok.span.line as u32,
+                tok.span.col as u32,
+                "E0000",
+                "LexError",
+                "unexpected character".to_string(),
+                "remove or correct the invalid token",
+            );
+        }
+    }
+
+    let parsed = parser::parse(&tokens);
+    let module = match parsed {
+        Ok(m) => Some(m),
+        Err(e) => {
+            let cat = hir::DiagnosticCategory::SyntaxError;
+            push(
+                "error",
+                e.line as u32,
+                e.col as u32,
+                cat.code(),
+                "SyntaxError",
+                e.message.clone(),
+                cat.fix_hint(),
+            );
+            None
+        }
+    };
+
+    // Effect (capability) surface, populated when the module parses.
+    let mut effect_surface: Vec<serde_json::Value> = Vec::new();
+    if let Some(module) = module {
+        let module = if do_elision { elision::elide(&module) } else { module };
+        let mut all: Vec<hir::Diagnostic> = Vec::new();
+        all.extend(resolve::resolve(&module).diagnostics);
+        all.extend(types::check(&module).diagnostics);
+        let effect_infer = effects::infer_effects(&module);
+        all.extend(effect_infer.diagnostics.clone());
+        for (func, declared, inferred) in effect_infer.effect_surface() {
+            effect_surface.push(serde_json::json!({
+                "function": func,
+                "declared": declared,
+                "inferred": inferred,
+            }));
+        }
+        for d in &all {
+            let cat = d.category.unwrap_or(hir::DiagnosticCategory::Other);
+            let (line, col) = d.span.map(|s| (s.line, s.col)).unwrap_or((0, 0));
+            let sev = match d.severity {
+                Severity::Error => "error",
+                Severity::Warning => "warning",
+                Severity::Info => "note",
+            };
+            let code = d.id.clone().unwrap_or_else(|| cat.code().to_string());
+            push(sev, line, col, &code, &format!("{cat:?}"), d.message.clone(), cat.fix_hint());
+        }
+    }
+
+    // Deterministic order so output is cacheable/diffable across runs.
+    diags.sort_by(|a, b| {
+        let key = |v: &serde_json::Value| {
+            (
+                v["line"].as_u64().unwrap_or(0),
+                v["col"].as_u64().unwrap_or(0),
+                v["code"].as_str().unwrap_or("").to_string(),
+                v["message"].as_str().unwrap_or("").to_string(),
+            )
+        };
+        key(a).cmp(&key(b))
+    });
+
+    let error_count = diags.iter().filter(|d| d["severity"] == "error").count();
+    let out = serde_json::json!({
+        "ok": error_count == 0,
+        "file": filename,
+        "error_count": error_count,
+        "diagnostics": diags,
+        // Capability surface: per-function declared vs inferred effects, so an
+        // agent runtime can gate/sandbox generated code before running it.
+        "effects": effect_surface,
+    });
+    println!("{}", serde_json::to_string_pretty(&out).unwrap());
     if error_count > 0 {
         std::process::exit(1);
     }

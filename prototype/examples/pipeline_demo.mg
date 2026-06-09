@@ -12,7 +12,7 @@
 // Demonstrates:
 //   - data keyword (record and sum forms)
 //   - extend keyword (replaces impl)
-//   - val / var (replaces let / let mut)
+//   - val / var (replaces val / val mut)
 //   - guard ... else { } (early exit)
 //   - defer expr (cleanup on scope exit)
 //   - Pipeline operator |> (data transformation chains)

@@ -54,13 +54,13 @@ pub const IRONACCELERATOR_REFERENCE: &str =
      + agent-queryable ontology (per-model). Surfaced as a docs pointer, \
      not inlined here, so MechGen's ontology stays at the actionable level.";
 
-/// How a registered backend executes RMIB bytecode.
+/// How a registered backend executes Machine Language bytecode.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DispatchKind {
     /// Built-in compiled backend. Today: only CPU.
     Builtin,
-    /// Spawn an external process per dispatch. stdin = RMIB blob,
+    /// Spawn an external process per dispatch. stdin = Machine Language blob,
     /// env carries metadata (`RDX_BACKEND`, `RDX_ITEM_NAME`,
     /// `RDX_INPUT_SHAPE`), stdout = JSON result `{ ok, output_shape,
     /// output_sum, dispatched }`. Mirrors the P47 refine wrapper
@@ -98,7 +98,7 @@ pub struct BackendDescriptor {
     /// How to execute on this backend. Defaults to `Builtin`; a
     /// registered descriptor can override to `Subprocess` for any
     /// accelerator with a CLI wrapper. Operator's responsibility to
-    /// ensure the wrapper actually understands RMIB.
+    /// ensure the wrapper actually understands Machine Language.
     #[serde(default)]
     pub dispatch: DispatchKind,
 }
@@ -328,7 +328,7 @@ impl SelectedBackend {
 }
 
 /// JSON result the subprocess wrapper is expected to print on stdout.
-/// Fields mirror what `rmil/run` returns over RAP so an agent gets
+/// Fields mirror what `ml/run` returns over RAP so an agent gets
 /// the same shape regardless of which backend ran the work.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SubprocessResult {
@@ -344,7 +344,7 @@ pub struct SubprocessResult {
     pub error: Option<String>,
 }
 
-/// Run an RMIB blob through a subprocess backend. The wrapper gets
+/// Run an Machine Language blob through a subprocess backend. The wrapper gets
 /// the blob on stdin, metadata in env vars, and is expected to print
 /// a `SubprocessResult` JSON on stdout. Returns the parsed result
 /// or an error string. Mirrors the agent wrapper protocol semantics
@@ -354,7 +354,7 @@ pub fn dispatch_via_subprocess(
     command: &str,
     item_name: &str,
     input_shape: &[usize],
-    rmib_blob: &[u8],
+    machine_blob: &[u8],
 ) -> Result<SubprocessResult, String> {
     use std::io::Write;
     use std::process::{Command, Stdio};
@@ -382,8 +382,8 @@ pub fn dispatch_via_subprocess(
 
     if let Some(mut stdin) = child.stdin.take() {
         stdin
-            .write_all(rmib_blob)
-            .map_err(|e| format!("write RMIB to backend stdin: {e}"))?;
+            .write_all(machine_blob)
+            .map_err(|e| format!("write Machine Language to backend stdin: {e}"))?;
     }
     let output = child.wait_with_output().map_err(|e| format!("wait: {e}"))?;
     if !output.status.success() {

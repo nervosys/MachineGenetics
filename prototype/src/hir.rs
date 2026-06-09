@@ -281,23 +281,27 @@ impl fmt::Display for Effect {
 
 impl Effect {
     pub fn from_name(name: &str) -> Effect {
-        match name {
-            "IO" => Effect::IO,
-            "Net" => Effect::Net,
-            "FS" => Effect::FS,
-            "Async" => Effect::Async,
-            "Alloc" => Effect::Alloc,
-            "Panic" => Effect::Panic,
-            "FFI" => Effect::FFI,
-            "Env" => Effect::Env,
-            "Time" => Effect::Time,
-            "Gpu" => Effect::Gpu,
-            "Npu" => Effect::Npu,
-            "Llm" => Effect::Llm,
-            "Evolve" => Effect::Evolve,
-            "Learn" => Effect::Learn,
-            "Rng" => Effect::Rng,
-            other => Effect::Custom(other.to_string()),
+        // Case-insensitive: source annotations are lowercase (`/ io`, `/ net`,
+        // `/ fs`) while the canonical names render capitalized. Without folding,
+        // a declared `io` became `Custom("io")` and never matched the inferred
+        // `Effect::IO`, silently defeating effect enforcement.
+        match name.to_ascii_lowercase().as_str() {
+            "io" => Effect::IO,
+            "net" => Effect::Net,
+            "fs" => Effect::FS,
+            "async" => Effect::Async,
+            "alloc" => Effect::Alloc,
+            "panic" => Effect::Panic,
+            "ffi" => Effect::FFI,
+            "env" => Effect::Env,
+            "time" => Effect::Time,
+            "gpu" => Effect::Gpu,
+            "npu" => Effect::Npu,
+            "llm" => Effect::Llm,
+            "evolve" => Effect::Evolve,
+            "learn" => Effect::Learn,
+            "rng" => Effect::Rng,
+            _ => Effect::Custom(name.to_string()),
         }
     }
 }
@@ -414,6 +418,63 @@ pub enum DiagnosticCategory {
     SpecViolation,
     /// Other.
     Other,
+}
+
+impl DiagnosticCategory {
+    /// Stable error code for this category. Codes are part of the agent
+    /// contract: machine-matchable, never reused, and (where the concept maps)
+    /// chosen to echo the equivalent rustc code so Rust-trained agents
+    /// recognise them. Used by the `--check --json` diagnostic stream.
+    pub fn code(self) -> &'static str {
+        match self {
+            DiagnosticCategory::BorrowConflict => "E0502",
+            DiagnosticCategory::UseAfterMove => "E0382",
+            DiagnosticCategory::TypeMismatch => "E0308",
+            DiagnosticCategory::UnresolvedName => "E0425",
+            DiagnosticCategory::UnresolvedType => "E0412",
+            DiagnosticCategory::UndeclaredEffect => "E0550",
+            DiagnosticCategory::SyntaxError => "E0001",
+            DiagnosticCategory::DuplicateDefinition => "E0428",
+            DiagnosticCategory::SpecViolation => "E0560",
+            DiagnosticCategory::Other => "E9999",
+        }
+    }
+
+    /// A generic, actionable next step for this category. Specific diagnostics
+    /// may carry a more precise fix; this is the always-available floor so an
+    /// agent never gets an error with no suggested remedy.
+    pub fn fix_hint(self) -> &'static str {
+        match self {
+            DiagnosticCategory::BorrowConflict => {
+                "restructure so the conflicting borrows don't overlap, or clone the value"
+            }
+            DiagnosticCategory::UseAfterMove => {
+                "the value was moved; clone it, or borrow (&) instead of moving"
+            }
+            DiagnosticCategory::TypeMismatch => {
+                "make the types match: adjust the value, add a conversion, or fix the annotation"
+            }
+            DiagnosticCategory::UnresolvedName => {
+                "define the name, bring it into scope, or check for a typo"
+            }
+            DiagnosticCategory::UnresolvedType => {
+                "define or import the type, or check for a typo"
+            }
+            DiagnosticCategory::UndeclaredEffect => {
+                "add the effect to the function's `/ effect` annotation, or remove the operation that performs it"
+            }
+            DiagnosticCategory::SyntaxError => {
+                "check the syntax near this span against the language spec"
+            }
+            DiagnosticCategory::DuplicateDefinition => {
+                "rename or remove one of the duplicate definitions"
+            }
+            DiagnosticCategory::SpecViolation => {
+                "satisfy the contract (@req/@ens/@inv) or correct the contract"
+            }
+            DiagnosticCategory::Other => "see the message for details",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -569,5 +630,34 @@ impl fmt::Display for DiagnosticGraph {
             write!(f, "\n  related: {}", self.related.join(", "))?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod diagnostic_code_tests {
+    use super::*;
+
+    /// Every category has a non-empty code and fix hint, and codes are unique —
+    /// the stable agent contract behind `--check --json`.
+    #[test]
+    fn codes_are_unique_and_nonempty() {
+        let cats = [
+            DiagnosticCategory::BorrowConflict,
+            DiagnosticCategory::UseAfterMove,
+            DiagnosticCategory::TypeMismatch,
+            DiagnosticCategory::UnresolvedName,
+            DiagnosticCategory::UnresolvedType,
+            DiagnosticCategory::UndeclaredEffect,
+            DiagnosticCategory::SyntaxError,
+            DiagnosticCategory::DuplicateDefinition,
+            DiagnosticCategory::SpecViolation,
+            DiagnosticCategory::Other,
+        ];
+        let mut seen = std::collections::HashSet::new();
+        for c in cats {
+            assert!(!c.code().is_empty(), "{c:?} has empty code");
+            assert!(!c.fix_hint().is_empty(), "{c:?} has empty fix hint");
+            assert!(seen.insert(c.code()), "duplicate code for {c:?}: {}", c.code());
+        }
     }
 }

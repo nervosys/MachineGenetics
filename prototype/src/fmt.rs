@@ -151,9 +151,11 @@ fn emit_function(buf: &mut String, f: &FunctionDef, vis: Visibility, mode: Mode,
     emit_where_clause(buf, &f.where_clause, mode);
 
     if !f.effects.is_empty() {
-        buf.push_str(" @fx(");
-        buf.push_str(&f.effects.join(", "));
-        buf.push(')');
+        // Emit the `/ e1 + e2` form the parser accepts (round-trippable).
+        // The old `@fx(...)` rendering did not re-parse as a function effect
+        // annotation — caught by the formatter-idempotence property test.
+        buf.push_str(" / ");
+        buf.push_str(&f.effects.join(" + "));
     }
 
     if f.body.stmts.is_empty() && f.body.tail_expr.is_none() && f.body_expr.is_none() {
@@ -329,7 +331,7 @@ fn emit_impl(buf: &mut String, im: &ImplBlock, mode: Mode, depth: usize) {
     }
     emit_generics(buf, &im.generics);
     if let Some(ref tp) = im.trait_path {
-        buf.push_str(&tp.join("::"));
+        buf.push_str(&tp.join("."));
         match mode {
             Mode::Agent => buf.push_str(" for "),
             Mode::Human => buf.push_str(" for "),
@@ -396,7 +398,7 @@ fn emit_use(buf: &mut String, u: &UseDef, vis: Visibility, mode: Mode, depth: us
             buf.push_str("use ");
         }
     }
-    buf.push_str(&u.path.join("::"));
+    buf.push_str(&u.path.join("."));
     if u.glob {
         buf.push_str("::*");
     }
@@ -410,7 +412,7 @@ fn emit_use(buf: &mut String, u: &UseDef, vis: Visibility, mode: Mode, depth: us
             if i > 0 {
                 buf.push_str(", ");
             }
-            buf.push_str(&g.path.join("::"));
+            buf.push_str(&g.path.join("."));
         }
         buf.push('}');
     }
@@ -928,7 +930,7 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
             segments,
             type_args,
         } => {
-            buf.push_str(&segments.join("::"));
+            buf.push_str(&segments.join("."));
             if !type_args.is_empty() {
                 buf.push('<');
                 for (i, a) in type_args.iter().enumerate() {
@@ -1176,7 +1178,7 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             buf.push(']');
         }
         Expr::StructLit { path, fields } => {
-            buf.push_str(&path.join("::"));
+            buf.push_str(&path.join("."));
             buf.push_str(" { ");
             for (i, f) in fields.iter().enumerate() {
                 if i > 0 {
@@ -1432,7 +1434,7 @@ fn emit_pattern(buf: &mut String, pat: &Pattern) {
             buf.push(')');
         }
         Pattern::Struct { path, fields } => {
-            buf.push_str(&path.join("::"));
+            buf.push_str(&path.join("."));
             buf.push_str(" { ");
             for (i, f) in fields.iter().enumerate() {
                 if i > 0 {
@@ -1447,7 +1449,7 @@ fn emit_pattern(buf: &mut String, pat: &Pattern) {
             buf.push_str(" }");
         }
         Pattern::Enum { path, elements } => {
-            buf.push_str(&path.join("::"));
+            buf.push_str(&path.join("."));
             if !elements.is_empty() {
                 buf.push('(');
                 for (i, p) in elements.iter().enumerate() {
@@ -1673,14 +1675,15 @@ mod tests {
     fn compact_use() {
         let m = parse_source("u std.io;");
         let out = format_agent(&m);
-        assert!(out.contains("u std::io;"), "got: {out}");
+        // MechGen path separator is `.` (no `::` token) — output must round-trip.
+        assert!(out.contains("u std.io;"), "got: {out}");
     }
 
     #[test]
     fn expand_use() {
         let m = parse_source("u std.io;");
         let out = format_human(&m);
-        assert!(out.contains("use std::io;"), "got: {out}");
+        assert!(out.contains("use std.io;"), "got: {out}");
     }
 
     #[test]

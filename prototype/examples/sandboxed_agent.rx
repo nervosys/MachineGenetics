@@ -12,7 +12,7 @@ use redox.sandbox.{SandboxManager, CapabilityToken, ResourceLimits};
 
 // Define strict resource limits for the untrusted agent.
 //
-// let limits = ResourceLimits {
+// val limits = ResourceLimits {
 //     max_memory: 512 * 1024,      // 512 KB — very constrained
 //     max_cpu_ms: 2000,             // 2 seconds
 //     max_syscalls: 50,
@@ -25,7 +25,7 @@ use redox.sandbox.{SandboxManager, CapabilityToken, ResourceLimits};
 // f setup_sandbox(agent_id: &s) -> SandboxManager
 //     @fx mem
 // {
-//     let mgr = SandboxManager.new();
+//     val mgr = SandboxManager.new();
 //
 //     // Create the sandbox
 //     mgr.create(agent_id, limits);
@@ -52,13 +52,13 @@ use redox.sandbox.{SandboxManager, CapabilityToken, ResourceLimits};
 // {
 //     // Each file operation consumes from the sandbox budget
 //     mgr.consume_resource(agent_id, "file_ops", 1)?;
-//     let config = read_config("project.toml")?;
+//     val config = read_config("project.toml")?;
 //
 //     mgr.consume_resource(agent_id, "file_ops", 1)?;
-//     let data = read_data("input.json")?;
+//     val data = read_data("input.json")?;
 //
 //     // Process data (pure computation, no resource consumption)
-//     let result = process(config, data);
+//     val result = process(config, data);
 //
 //     Ok(result)
 // }
@@ -68,13 +68,13 @@ use redox.sandbox.{SandboxManager, CapabilityToken, ResourceLimits};
 // +f run_sandboxed(agent_id: &s) -> s!SandboxError
 //     @fx io, fs, mem
 // {
-//     let mgr = setup_sandbox(agent_id);
+//     val mgr = setup_sandbox(agent_id);
 //
 //     // Execute the agent
-//     let result = agent_task(&mgr, agent_id)?;
+//     val result = agent_task(&mgr, agent_id)?;
 //
 //     // Review the audit log
-//     let log = mgr.audit_log(agent_id);
+//     val log = mgr.audit_log(agent_id);
 //     p"Agent {agent_id} actions:";
 //     @ entry in log.entries() {
 //         p"  [{entry.timestamp}] {entry.kind}: {entry.details}";
@@ -92,17 +92,17 @@ use redox.sandbox.{SandboxManager, CapabilityToken, ResourceLimits};
 //
 // f demonstrate_attenuation() {
 //     // Start with full filesystem capability
-//     let full_fs = CapabilityToken.full("fs");
+//     val full_fs = CapabilityToken.full("fs");
 //     assert!(full_fs.allows("fs.read"));
 //     assert!(full_fs.allows("fs.write"));
 //
 //     // Attenuate to read-only
-//     let read_only = full_fs.attenuate("fs.read");
+//     val read_only = full_fs.attenuate("fs.read");
 //     assert!(read_only.allows("fs.read"));
 //     assert!(!read_only.allows("fs.write"));
 //
 //     // Cannot widen back
-//     // let widened = read_only.attenuate("fs");  // ERROR at compile time
+//     // val widened = read_only.attenuate("fs");  // ERROR at compile time
 // }
 
 // ── Multi-Agent Delegation ─────────────────────────────────────────
@@ -114,7 +114,7 @@ use redox.sandbox.{SandboxManager, CapabilityToken, ResourceLimits};
 //     @fx mem
 // {
 //     // Parent has fs.read — child gets a subset
-//     let child_limits = ResourceLimits {
+//     val child_limits = ResourceLimits {
 //         max_memory: 256 * 1024,   // half of parent
 //         max_cpu_ms: 1000,
 //         max_syscalls: 20,

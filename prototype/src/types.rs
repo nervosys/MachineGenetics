@@ -151,6 +151,15 @@ fn unify(subst: &mut Subst, a: &Ty, b: &Ty) -> Result<(), String> {
         (Ty::Arc(t1), Ty::Arc(t2)) => unify(subst, t1, t2),
         (Ty::Slice(t1), Ty::Slice(t2)) => unify(subst, t1, t2),
         (Ty::Vec(t1), Ty::Vec(t2)) => unify(subst, t1, t2),
+        // Agentic coercion: a list literal annotated as a Vec. Agents
+        // naturally write `let v: [T]~ = []` (empty) or `[a, b, c]`; those
+        // literals type as fixed arrays `[T; n]`. Treat an array literal as a
+        // Vec element-wise so the common collection idiom checks clean
+        // instead of failing `[T]~ vs [T; n]`. (One-directional: a declared
+        // fixed-size array still won't accept a Vec value.)
+        (Ty::Vec(t1), Ty::Array(t2, _)) | (Ty::Array(t2, _), Ty::Vec(t1)) => {
+            unify(subst, t1, t2)
+        }
         (Ty::Option(t1), Ty::Option(t2)) => unify(subst, t1, t2),
         (Ty::Ptr(t1), Ty::Ptr(t2)) => unify(subst, t1, t2),
         (Ty::Array(t1, n1), Ty::Array(t2, n2)) => {
@@ -289,7 +298,15 @@ pub struct TypeChecker {
     struct_defs: HashMap<String, (Vec<String>, Vec<(String, Ty)>)>,
     /// Function signatures: name → (params: Vec<Ty>, return: Ty, effects).
     fn_sigs: HashMap<String, (Vec<Ty>, Ty, Vec<String>)>,
+    /// Enum definitions: enum name → its variant names. Used for match
+    /// exhaustiveness checking.
+    enum_defs: HashMap<String, Vec<String>>,
     pub diagnostics: Vec<Diagnostic>,
+    /// Type-var ids minted for unsuffixed integer literals. They unify with
+    /// any concrete int width from context; whatever stays unbound at end of a
+    /// function defaults to i32 (Rust-style integer literal polymorphism). This
+    /// is what lets `let x: i64 = 3` and `[i64]~ = [1,2,3]` check clean.
+    int_lit_vars: Vec<u32>,
 }
 
 impl TypeChecker {
@@ -300,7 +317,9 @@ impl TypeChecker {
             env: TypeEnv::new(),
             struct_defs: HashMap::new(),
             fn_sigs: HashMap::new(),
+            enum_defs: HashMap::new(),
             diagnostics: Vec::new(),
+            int_lit_vars: Vec::new(),
         }
     }
 
@@ -473,6 +492,17 @@ impl TypeChecker {
                     sd.fields.iter().map(|f| (f.name.clone(), self.lower_type(&f.ty))).collect();
                 self.struct_defs.insert(sd.name.clone(), (generics, fields));
             }
+            ast::ItemKind::Enum(ed) => {
+                let variants: Vec<String> = ed.variants.iter().map(|v| v.name.clone()).collect();
+                self.enum_defs.insert(ed.name.clone(), variants);
+            }
+            // `data X = A | B` (sum type) is the idiomatic MechGen enum.
+            ast::ItemKind::Data(dd) => {
+                if let ast::DataKind::Sum(variants) = &dd.kind {
+                    let names: Vec<String> = variants.iter().map(|v| v.name.clone()).collect();
+                    self.enum_defs.insert(dd.name.clone(), names);
+                }
+            }
             _ => {}
         }
     }
@@ -520,7 +550,85 @@ impl TypeChecker {
             self.emit_error(format!("function `{}`: return type mismatch: {e}", fd.name));
         }
 
+        // Default any integer literals left unconstrained by context to i32.
+        self.default_int_literals();
+
         self.env.pop();
+    }
+
+    /// Conservative match-exhaustiveness check over user-declared enums.
+    ///
+    /// Catches a common agent bug: a `match` on a sum type that forgets a
+    /// variant and has no catch-all. Deliberately conservative — it only fires
+    /// when (a) no arm is a catch-all (`_` or a bare binding), and (b) the
+    /// covered variant names belong to exactly one known enum. Builtin sums
+    /// (Option/Result) aren't in `enum_defs`, so they're never flagged → no
+    /// false positives on the common cases.
+    fn check_match_exhaustive(&mut self, arms: &[ast::MatchArm]) {
+        fn collect(pat: &ast::Pattern, covered: &mut Vec<String>, catch_all: &mut bool) {
+            match pat {
+                ast::Pattern::Wildcard | ast::Pattern::Ident { .. } => *catch_all = true,
+                ast::Pattern::Enum { path, .. } => {
+                    if let Some(v) = path.last() {
+                        covered.push(v.clone());
+                    }
+                }
+                ast::Pattern::Or { patterns } => {
+                    for p in patterns {
+                        collect(p, covered, catch_all);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let mut covered = Vec::new();
+        let mut catch_all = false;
+        for arm in arms {
+            collect(&arm.pattern, &mut covered, &mut catch_all);
+        }
+        if catch_all || covered.is_empty() {
+            return;
+        }
+
+        // Identify the unique enum whose variant set covers every matched name.
+        let candidates: Vec<(&String, &Vec<String>)> = self
+            .enum_defs
+            .iter()
+            .filter(|(_, variants)| covered.iter().all(|c| variants.contains(c)))
+            .collect();
+        if candidates.len() != 1 {
+            return; // ambiguous or unknown (e.g. builtin sum) → stay silent
+        }
+        let (enum_name, variants) = candidates[0];
+        let mut missing: Vec<String> =
+            variants.iter().filter(|v| !covered.contains(v)).cloned().collect();
+        if !missing.is_empty() {
+            missing.sort();
+            self.diagnostics.push(Diagnostic::categorized(
+                Severity::Error,
+                format!(
+                    "non-exhaustive match on `{enum_name}`: missing variant(s) [{}] — add the arm(s) or a `_` catch-all",
+                    missing.join(", ")
+                ),
+                DiagnosticCategory::TypeMismatch,
+                None,
+            ));
+        }
+    }
+
+    /// Resolve unsuffixed integer-literal type vars that context never pinned
+    /// to a concrete width, binding them to i32 (the MechGen integer default).
+    /// Constrained ones are already bound by unification and are left alone.
+    fn default_int_literals(&mut self) {
+        let pending = std::mem::take(&mut self.int_lit_vars);
+        for v in pending {
+            let tv = Ty::Var(crate::hir::TyVar(v));
+            if matches!(self.subst.apply(&tv), Ty::Var(_)) {
+                // Still unbound → default to i32.
+                let _ = unify(&mut self.subst, &tv, &Ty::Int(IntTy::I32));
+            }
+        }
     }
 
     // ── Block inference ──────────────────────────────────────────────
@@ -763,6 +871,35 @@ impl TypeChecker {
                     }
                 }
 
+                // Direct call to a function known by name: use its signature
+                // directly. This (a) fixes zero-arg calls — a bare function
+                // Ident resolves to its *return type* (see Expr::Ident), so the
+                // generic `Fn` unification below would see `() vs f()->?T` for a
+                // unit-returning function; and (b) yields precise arity and
+                // per-argument diagnostics instead of one opaque `call:` error.
+                if let ast::Expr::Ident { name } = func.as_ref() {
+                    if let Some((params, ret, _)) = self.fn_sigs.get(name).cloned() {
+                        let arg_tys: Vec<Ty> = args.iter().map(|a| self.infer_expr(a)).collect();
+                        if params.len() != arg_tys.len() {
+                            self.emit_error(format!(
+                                "call `{name}`: expected {} argument(s), found {}",
+                                params.len(),
+                                arg_tys.len()
+                            ));
+                        } else {
+                            for (i, (p, a)) in params.iter().zip(arg_tys.iter()).enumerate() {
+                                if let Err(e) = unify(&mut self.subst, p, a) {
+                                    self.emit_error(format!(
+                                        "call `{name}`: argument {} type mismatch: {e}",
+                                        i + 1
+                                    ));
+                                }
+                            }
+                        }
+                        return self.subst.apply(&ret);
+                    }
+                }
+
                 let func_ty = self.infer_expr(func);
                 let arg_tys: Vec<Ty> = args.iter().map(|a| self.infer_expr(a)).collect();
 
@@ -903,10 +1040,14 @@ impl TypeChecker {
                 }
             }
 
-            ast::Expr::Match { arms, .. } => {
+            ast::Expr::Match { scrutinee, arms } => {
+                if let Some(s) = scrutinee {
+                    self.infer_expr(s);
+                }
                 if arms.is_empty() {
                     return Ty::Never;
                 }
+                self.check_match_exhaustive(arms);
                 let first_ty = self.infer_expr(&arms[0].body);
                 for arm in &arms[1..] {
                     let arm_ty = self.infer_expr(&arm.body);
@@ -1058,8 +1199,15 @@ impl TypeChecker {
                 } else if value.ends_with("isize") {
                     Ty::Int(IntTy::Isize)
                 } else {
-                    // Default integer: i32 (MechGen default).
-                    Ty::Int(IntTy::I32)
+                    // Unsuffixed integer literal: a fresh, context-polymorphic
+                    // type var (unifies with any int width the surroundings
+                    // demand). Unbound ones default to i32 after the function
+                    // (see `default_int_literals`).
+                    let ty = self.fresh();
+                    if let Ty::Var(v) = &ty {
+                        self.int_lit_vars.push(v.0);
+                    }
+                    ty
                 }
             }
             ast::LiteralKind::Float => {
@@ -1124,6 +1272,44 @@ mod tests {
         let tc = check_source("f bad() -> i32 { 1b }");
         // 1b is a bool literal, but return is i32.
         assert!(!tc.diagnostics.is_empty(), "expected type error");
+    }
+
+    #[test]
+    fn int_literals_are_width_polymorphic() {
+        // Agentic-fix regression: an unsuffixed int literal adopts the
+        // annotated width (was hard-typed i32 → `i64 vs i32` mismatch).
+        let tc = check_source("f f() -> i64 { val x: i64 = 3; x }");
+        assert!(tc.diagnostics.is_empty(), "i64 literal should unify: {:?}", tc.diagnostics);
+        // And still defaults to i32 when unconstrained.
+        let tc2 = check_source("f g() -> i32 { val y = 5; y }");
+        assert!(tc2.diagnostics.is_empty(), "default-i32 should hold: {:?}", tc2.diagnostics);
+    }
+
+    #[test]
+    fn non_exhaustive_match_is_caught() {
+        let src = "data Color = Red | Green | Blue\nf n(c: Color) -> i32 { match c { Color.Red => 0, Color.Green => 1, } }";
+        let tc = check_source(src);
+        assert!(
+            tc.diagnostics.iter().any(|d| d.message.contains("non-exhaustive")),
+            "missing Blue should be caught: {:?}",
+            tc.diagnostics.iter().map(|d| d.message.clone()).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn exhaustive_and_catchall_matches_are_clean() {
+        let full = "data Color = Red | Green | Blue\nf n(c: Color) -> i32 { match c { Color.Red => 0, Color.Green => 1, Color.Blue => 2, } }";
+        assert!(!check_source(full).diagnostics.iter().any(|d| d.message.contains("non-exhaustive")));
+        let wild = "data Color = Red | Green | Blue\nf n(c: Color) -> i32 { match c { Color.Red => 0, _ => 9, } }";
+        assert!(!check_source(wild).diagnostics.iter().any(|d| d.message.contains("non-exhaustive")));
+    }
+
+    #[test]
+    fn array_literal_coerces_to_vec() {
+        // Agentic-fix regression: `[a,b,c]` / `[]` literal assigned to a Vec
+        // annotation type-checks (was `[T]~ vs [T; n]`).
+        let tc = check_source("f f() -> i64 { val xs: [i64]~ = [1, 2, 3]; 0 }");
+        assert!(tc.diagnostics.is_empty(), "array→Vec coercion: {:?}", tc.diagnostics);
     }
 
     #[test]

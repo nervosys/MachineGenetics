@@ -1,13 +1,13 @@
-# Agent Protocol: RMIL Bytes as the Canonical Target
+# Agent Protocol: Machine Language Bytes as the Canonical Target
 
 > Phase 27 measurement showed that MechGen's **text surface** is
 > essentially tied with idiomatic Rust on byte/token count
 > (see [`benchmarks/FINDINGS.md`](benchmarks/FINDINGS.md)).
 >
-> The genuine ~50× efficiency win lives in the **RMIL binary IR** —
+> The genuine ~50× efficiency win lives in the **Machine Language binary IR** —
 > a transformer block fits in 47 bytes, a full multi-item module
 > in ~300 bytes. This document describes how agents should target
-> RMIL directly rather than emitting text.
+> Machine Language directly rather than emitting text.
 
 ## The pitch
 
@@ -15,10 +15,10 @@
 |---|---|---:|
 | Rust source | `pub struct Block { … }` + traits + impl | ~700-1200 |
 | MechGen text | `net Block { layer ln1: LayerNorm; … }` | ~250-400 |
-| **RMIL bytes** | binary `Expr` codec | **47** |
+| **Machine Language bytes** | binary `Expr` codec | **47** |
 
 For an agent token-budgeted at, say, 4096 tokens of output, the
-difference between emitting MechGen text and emitting RMIL bytes is
+difference between emitting MechGen text and emitting Machine Language bytes is
 ~3 orders of magnitude in how many models / programs the agent can
 encode per response.
 
@@ -32,23 +32,23 @@ encode per response.
               │
               ▼
    ┌────────────────────┐
-   │ Agent (LLM)        │   emits binary RMIL bytes
+   │ Agent (LLM)        │   emits binary Machine Language bytes
    │                    │   ─ NOT MechGen text
    └──────────┬─────────┘
               │
-              ▼ .rmib container (RMIB v1)
+              ▼ .ml container (Machine Language v1)
    ┌────────────────────┐
-   │ MechGen-parse      │   --from=rmil-bytes
+   │ MechGen-parse      │   --from=ml-bytes
    │   • verify codec   │
    │   • decompile      │   → human-readable .mg
    │   • dispatch       │   → CpuBackend / GPU / etc.
    └────────────────────┘
 ```
 
-## RMIB container format (v1)
+## Machine Language container format (v1)
 
 ```text
-   magic    "RMIB"  (4 bytes)
+   magic    "Machine Language"  (4 bytes)
    version  u16     (= 1)
    count    u32     — number of items in the module
    for each item:
@@ -67,22 +67,22 @@ ResNet stage, swarm, KB) lands in **300 bytes**. Header overhead is
 The `MechGen-parse` binary has two new flags:
 
 ```sh
-# Emit RMIL bytes from a MechGen source. Optional output path; without
+# Emit Machine Language bytes from a MechGen source. Optional output path; without
 # it, only the size summary is printed.
-MechGen-parse --target=rmil-bytes <file.mg> [out.rmib]
+MechGen-parse --target=ml-bytes <file.mg> [out.ml]
 
-# Decode a .rmib container back to human-readable MechGen via the
+# Decode a .ml container back to human-readable MechGen via the
 # Phase-4 decompiler. Lossy for opcodes that lack canonical layer
 # names (symbolic / agent ops) — see "Limitations" below.
-MechGen-parse --from=rmil-bytes <file.rmib>
+MechGen-parse --from=ml-bytes <file.ml>
 ```
 
 End-to-end demo on `prototype/examples/unified.mg`:
 
 ```
-$ MechGen-parse --target=rmil-bytes unified.mg unified.rmib
-// MechGen → RMIL bytes for unified.mg
-// text source: 1778 bytes    RMIL container: 300 bytes    ratio: 0.169 (83.1% reduction)
+$ MechGen-parse --target=ml-bytes unified.mg unified.ml
+// MechGen → Machine Language bytes for unified.mg
+// text source: 1778 bytes    Machine Language container: 300 bytes    ratio: 0.169 (83.1% reduction)
 //   TransformerBlock: 47B  hash=7def99cdb73a14e2
 //   MLP: 17B  hash=bc5d35ff371e638c
 //   ResNetStage: 35B  hash=87e783b56ef29d60
@@ -91,8 +91,8 @@ $ MechGen-parse --target=rmil-bytes unified.mg unified.rmib
 ```
 
 ```
-$ MechGen-parse --from=rmil-bytes unified.rmib
-// RMIL → MechGen decompiled view
+$ MechGen-parse --from=ml-bytes unified.ml
+// Machine Language → MechGen decompiled view
 // container: 300 bytes, 5 item(s)
 
 // item 0: TransformerBlock (47 bytes expr)
@@ -110,7 +110,7 @@ net TransformerBlock {
 …
 ```
 
-## What agents trade off by emitting RMIL bytes
+## What agents trade off by emitting Machine Language bytes
 
 **Gains**
 - ~50× smaller output → more programs per response, lower inference cost.
@@ -121,7 +121,7 @@ net TransformerBlock {
   text-parse-typecheck pipeline at runtime.
 
 **Limitations (Phase-27 honest list)**
-- Agents need a serializer for RMIL `Expr`. The format is small (12
+- Agents need a serializer for Machine Language `Expr`. The format is small (12
   opcode families, 95 ops) but the agent's BPE tokenizer probably
   doesn't have a vocabulary advantage on raw bytes — base-64 / hex
   encoding adds 33-100 % overhead. **Mitigation**: a tool-call
@@ -131,42 +131,42 @@ net TransformerBlock {
 - Lossy round-trip for opcodes without a canonical MechGen layer
   name (most symbolic / agent ops). Bytes → Expr is exact; bytes →
   `.mg` text via the decompiler is a best-effort view.
-- No source-line debugging in RMIL byte mode. Agent-facing
+- No source-line debugging in Machine Language byte mode. Agent-facing
   diagnostics need to reference content hashes instead of line/col.
 
 ## How this fits with the rest of the unification
 
-- **Phase 1** built the bridge — MechGen AST → RMIL Expr.
-- **Phase 4** added the decompiler — RMIL Expr → MechGen AST.
+- **Phase 1** built the bridge — MechGen AST → Machine Language Expr.
+- **Phase 4** added the decompiler — Machine Language Expr → MechGen AST.
 - **Phase 27** ties them with a CLI + container format and an honest
   measurement of where the size win lives.
 
 The text surface remains useful as a **review and debug medium for
-humans**. For agent-to-runtime communication, RMIL bytes are the
+humans**. For agent-to-runtime communication, Machine Language bytes are the
 canonical path.
 
 ## Status update (Phase 29, 2026-05-22)
 
 - ✅ **Direct dispatch from bytes**:
-  `MechGen-parse --run=rmil-bytes <file.rmib>` now decodes a RMIB
+  `MechGen-parse --run=ml-bytes <file.ml>` now decodes a Machine Language
   container and dispatches each item to `CpuBackend` via
-  `rmil_compute::run_pipeline`. **No text round-trip on the run
+  `machine_compute::run_pipeline`. **No text round-trip on the run
   side** — bytes-in, results-out.
 - ✅ **README re-frame**: root `README.md` now leads with the honest
   framing — binary IR is the agent target, text is the human view.
 
 ## Still open
 
-1. **RAP protocol RMIL profile**: extend the MechGen Agent Protocol
-   to carry `application/rmib` payloads end-to-end. Agents emit
-   structured JSON; the RAP server encodes to RMIB; responses decode
+1. **RAP protocol Machine Language profile**: extend the MechGen Agent Protocol
+   to carry `application/machine` payloads end-to-end. Agents emit
+   structured JSON; the RAP server encodes to Machine Language; responses decode
    the same way. Keeps BPE-friendly text on the wire while binary
    remains canonical at rest.
 2. **Streaming decode**: current `Decoder` reads the whole blob. Fine
    for typical sub-kilobyte modules, but a streaming variant becomes
-   useful once RMIB is a transport payload.
+   useful once Machine Language is a transport payload.
 3. **Decompiler coverage for symbolic / agent ops**: Phase 4 covers
    31 neural opcodes by name. Adding reverse mappings for `UNIFY`,
    `INFER`, `RESOLVE`, `SPAWN`, `SEND`, `RECV`, `REDUCE` would let
-   `--from=rmil-bytes` faithfully reproduce `kb` and `swarm`
+   `--from=ml-bytes` faithfully reproduce `kb` and `swarm`
    declarations too (currently they render as empty `forward { }`).

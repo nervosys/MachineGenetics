@@ -204,6 +204,46 @@ impl Resolver {
         for name in prims {
             self.define_type(name, SymbolKind::TypeAlias);
         }
+        // Builtin std container / wrapper types so annotations like `Vec<T>`,
+        // `Option<T>`, `Result<T,E>`, `HashMap<K,V>` resolve in general code.
+        let std_types = [
+            "String", "Vec", "Option", "Result", "Box", "Rc", "Arc", "HashMap", "HashSet",
+            "BTreeMap", "BTreeSet", "VecDeque",
+        ];
+        for name in std_types {
+            self.define_type(name, SymbolKind::TypeAlias);
+        }
+        // Builtin functions / macros. MechGen surfaces println!/vec!/etc. as
+        // ordinary calls (`println(...)`); without these registered, the most
+        // basic agent-written program fails name resolution. This is the floor
+        // for general-purpose (non-net) code to type-check.
+        let std_fns = [
+            // I/O
+            "println", "print", "eprintln", "eprint", "format", "write", "writeln",
+            // construction / diagnostics
+            "vec", "panic", "assert", "assert_eq", "assert_ne", "dbg", "todo", "unimplemented",
+            "unreachable", "matches",
+            // common free functions
+            "min", "max", "abs", "drop", "swap", "replace", "default",
+            // bare enum-value constructors agents call positionally
+            "Some", "None", "Ok", "Err",
+        ];
+        for name in std_fns {
+            self.define_value(name, SymbolKind::Function);
+        }
+        // Builtin capability namespaces. MechGen is effect-oriented: I/O is
+        // performed through capability handles (`io.println(..)`, `fs.open(..)`,
+        // `net.connect(..)`, `llm.complete(..)`) whose use is tracked by the
+        // effect system. These are the standard library surface (like Rust's
+        // std::io/std::fs) — registering them lets effect-qualified calls
+        // resolve, which is how most real agent code performs side effects.
+        let capabilities = [
+            "io", "fs", "net", "os", "sys", "env", "process", "time", "mem", "rng",
+            "llm", "tools", "agent", "swarm", "kb", "gpu", "db", "http", "json", "log",
+        ];
+        for name in capabilities {
+            self.define_value(name, SymbolKind::Const);
+        }
     }
 
     /// First pass: register the name of a top-level item.
@@ -828,6 +868,25 @@ mod tests {
     fn test_struct_and_field_types() {
         let r = resolve_source("S Point { x: f64, y: f64, }");
         assert!(r.diagnostics.is_empty(), "unexpected errors: {:?}", r.diagnostics);
+    }
+
+    #[test]
+    fn builtin_fns_and_types_resolve() {
+        // Agentic-fix regression: println/vec/Some/etc. and std container
+        // types must resolve so general-purpose programs check clean.
+        let r = resolve_source(
+            "+f main() / io { println(\"hi\"); val x = Some(1); }",
+        );
+        assert!(
+            !r.diagnostics.iter().any(|d| d.message.contains("unresolved name: `println`")),
+            "println should resolve as a builtin: {:?}",
+            r.diagnostics
+        );
+        assert!(
+            !r.diagnostics.iter().any(|d| d.message.contains("unresolved name: `Some`")),
+            "Some should resolve: {:?}",
+            r.diagnostics
+        );
     }
 
     #[test]

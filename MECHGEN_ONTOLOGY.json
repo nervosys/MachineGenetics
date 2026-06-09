@@ -1,5 +1,5 @@
 {
-  "builtin_framework": "Framewerx (rmi crate) — the built-in agentic-first AI framework",
+  "builtin_framework": "RecursiveMachineIntelligence (rmi crate) — the built-in agentic-first AI framework",
   "counts": {
     "ast_kinds": 18,
     "bench_backends": 4,
@@ -11,7 +11,7 @@
     "framewerx_modules": 256,
     "hardware_accelerators": 8,
     "ir_ops": 107,
-    "keywords": 12,
+    "keywords": 102,
     "op_families": 7,
     "project_layout": 22,
     "rap_methods": 37,
@@ -68,27 +68,27 @@
       },
       {
         "kind": "NetDef",
-        "summary": "AI: neural network (RMIL-routed)"
+        "summary": "AI: neural network (Machine Language-routed)"
       },
       {
         "kind": "KbDef",
-        "summary": "AI: symbolic knowledge base (RMIL-routed)"
+        "summary": "AI: symbolic knowledge base (Machine Language-routed)"
       },
       {
         "kind": "AgentDef",
-        "summary": "AI: agent role (RMIL-routed)"
+        "summary": "AI: agent role (Machine Language-routed)"
       },
       {
         "kind": "SwarmDef",
-        "summary": "AI: swarm topology (RMIL-routed)"
+        "summary": "AI: swarm topology (Machine Language-routed)"
       },
       {
         "kind": "TrainDef",
-        "summary": "AI: training pipeline (RMIL-routed)"
+        "summary": "AI: training pipeline (Machine Language-routed)"
       },
       {
         "kind": "EvolveDef",
-        "summary": "AI: evolutionary search (RMIL-routed)"
+        "summary": "AI: evolutionary search (Machine Language-routed)"
       },
       {
         "kind": "EffectDef",
@@ -180,48 +180,48 @@
         "takes_path": true
       },
       {
-        "flag": "--target=rmil",
-        "purpose": "Print per-item RMIL stats (nodes/depth/hash/bytes)",
+        "flag": "--target=ml",
+        "purpose": "Print per-item Machine Language stats (nodes/depth/hash/bytes)",
         "takes_path": true
       },
       {
-        "flag": "--target=rmil-bytes",
-        "purpose": "Encode RMIL-routed items to a binary RMIB container",
+        "flag": "--target=ml-bytes",
+        "purpose": "Encode Machine Language-routed items to a binary Machine Language container",
         "takes_path": true
       },
       {
-        "flag": "--from=rmil-bytes",
-        "purpose": "Decode a RMIB container back to MechGen view",
+        "flag": "--from=ml-bytes",
+        "purpose": "Decode a Machine Language container back to MechGen view",
         "takes_path": true
       },
       {
-        "flag": "--run=rmil-bytes",
-        "purpose": "Decode RMIB and dispatch each item on CpuBackend",
+        "flag": "--run=ml-bytes",
+        "purpose": "Decode Machine Language and dispatch each item on CpuBackend",
         "takes_path": true
       },
       {
-        "flag": "--target=rmil-generate",
+        "flag": "--target=ml-generate",
         "purpose": "Autoregressive generation from a trained checkpoint",
         "takes_path": true
       },
       {
-        "flag": "--target=rmil-infer",
+        "flag": "--target=ml-infer",
         "purpose": "Inference over a `train` block's saved weights",
         "takes_path": true
       },
       {
-        "flag": "--target=rmil-train",
+        "flag": "--target=ml-train",
         "purpose": "Train every `train` block in the module",
         "takes_path": true
       },
       {
-        "flag": "--target=rmil-compute",
-        "purpose": "Forward pass without training over RMIL items",
+        "flag": "--target=ml-compute",
+        "purpose": "Forward pass without training over Machine Language items",
         "takes_path": true
       },
       {
-        "flag": "--target=rmil-run",
-        "purpose": "End-to-end run of RMIL-routed items",
+        "flag": "--target=ml-run",
+        "purpose": "End-to-end run of Machine Language-routed items",
         "takes_path": true
       },
       {
@@ -259,7 +259,7 @@
       {
         "audience": "agent",
         "path": "framework/framewerx/README.md",
-        "purpose": "Framewerx-MG architecture (JAX:FLAX :: RMI:Framewerx-MG)"
+        "purpose": "RecursiveMachineIntelligence-MG architecture (JAX:FLAX :: RMI:RecursiveMachineIntelligence-MG)"
       },
       {
         "audience": "agent",
@@ -426,7 +426,7 @@
       },
       {
         "bytes": 51,
-        "description": "Minimal neural net: one Linear layer (lowers to RMIL).",
+        "description": "Minimal neural net: one Linear layer (lowers to Machine Language).",
         "exercises": [
           "net",
           "layer",
@@ -448,7 +448,7 @@
       },
       {
         "bytes": 92,
-        "description": "Symbolic knowledge base with facts and a rule (lowers to RMIL).",
+        "description": "Symbolic knowledge base with facts and a rule (lowers to Machine Language).",
         "exercises": [
           "kb",
           "fact",
@@ -3265,44 +3265,134 @@
     ],
     "keywords": [
       {
-        "introduces": "NetDef",
-        "keyword": "net",
-        "summary": "neural network definition; lowers to RMIL"
+        "introduces": "KwC",
+        "keyword": "C",
+        "summary": "reserved word → KwC token"
       },
       {
-        "introduces": "KbDef",
-        "keyword": "kb",
-        "summary": "symbolic knowledge base; lowers to RMIL"
+        "introduces": "KwData",
+        "keyword": "D",
+        "summary": "reserved word → KwData token"
+      },
+      {
+        "introduces": "KwE",
+        "keyword": "E",
+        "summary": "reserved word → KwE token"
+      },
+      {
+        "introduces": "KwErr",
+        "keyword": "Err",
+        "summary": "reserved word → KwErr token"
+      },
+      {
+        "introduces": "KwI",
+        "keyword": "I",
+        "summary": "reserved word → KwI token"
+      },
+      {
+        "introduces": "KwMod",
+        "keyword": "M",
+        "summary": "reserved word → KwMod token"
+      },
+      {
+        "introduces": "KwNone",
+        "keyword": "None",
+        "summary": "reserved word → KwNone token"
+      },
+      {
+        "introduces": "KwOk",
+        "keyword": "Ok",
+        "summary": "reserved word → KwOk token"
+      },
+      {
+        "introduces": "KwS",
+        "keyword": "S",
+        "summary": "reserved word → KwS token"
+      },
+      {
+        "introduces": "KwSome",
+        "keyword": "Some",
+        "summary": "reserved word → KwSome token"
+      },
+      {
+        "introduces": "KwT",
+        "keyword": "T",
+        "summary": "reserved word → KwT token"
+      },
+      {
+        "introduces": "KwU",
+        "keyword": "U",
+        "summary": "reserved word → KwU token"
+      },
+      {
+        "introduces": "KwY",
+        "keyword": "Y",
+        "summary": "reserved word → KwY token"
+      },
+      {
+        "introduces": "KwZ",
+        "keyword": "Z",
+        "summary": "reserved word → KwZ token"
+      },
+      {
+        "introduces": "Underscore",
+        "keyword": "_",
+        "summary": "reserved word → Underscore token"
+      },
+      {
+        "introduces": "UnderscoreT",
+        "keyword": "_T",
+        "summary": "reserved word → UnderscoreT token"
+      },
+      {
+        "introduces": "KwAf",
+        "keyword": "af",
+        "summary": "reserved word → KwAf token"
       },
       {
         "introduces": "AgentDef",
         "keyword": "agent",
-        "summary": "agent role; lowers to RMIL agent ops"
+        "summary": "agent role; lowers to Machine Language agent ops"
       },
       {
-        "introduces": "SwarmDef",
-        "keyword": "swarm",
-        "summary": "agent swarm topology; lowers to RMIL"
+        "introduces": "KwAf",
+        "keyword": "async",
+        "summary": "reserved word → KwAf token"
       },
       {
-        "introduces": "TrainDef",
-        "keyword": "train",
-        "summary": "training pipeline; lowers to RMIL compute"
+        "introduces": "KwBreak",
+        "keyword": "break",
+        "summary": "reserved word → KwBreak token"
       },
       {
-        "introduces": "EvolveDef",
-        "keyword": "evolve",
-        "summary": "evolutionary search; lowers to RMIL meta"
+        "introduces": "KwC",
+        "keyword": "const",
+        "summary": "reserved word → KwC token"
       },
       {
-        "introduces": "Layer",
-        "keyword": "layer",
-        "summary": "neural-net layer inside a net block"
+        "introduces": "KwContinue",
+        "keyword": "continue",
+        "summary": "reserved word → KwContinue token"
       },
       {
-        "introduces": "Forward",
-        "keyword": "forward",
-        "summary": "forward pass inside a net block"
+        "introduces": "KwCrossover",
+        "keyword": "crossover",
+        "summary": "reserved word → KwCrossover token"
+      },
+      {
+        "introduces": "Data",
+        "keyword": "data",
+        "summary": "record or sum type (also `D`)"
+      },
+      {
+        "introduces": "Defer",
+        "keyword": "defer",
+        "summary": "run expression on scope exit (also `df`)"
+      },
+      {
+        "introduces": "KwDefer",
+        "keyword": "df",
+        "summary": "reserved word → KwDefer token"
       },
       {
         "introduces": "Effect",
@@ -3310,9 +3400,244 @@
         "summary": "effect declaration"
       },
       {
+        "introduces": "KwElse",
+        "keyword": "else",
+        "summary": "reserved word → KwElse token"
+      },
+      {
+        "introduces": "KwE",
+        "keyword": "enum",
+        "summary": "reserved word → KwE token"
+      },
+      {
+        "introduces": "EvolveDef",
+        "keyword": "evolve",
+        "summary": "evolutionary search; lowers to Machine Language meta"
+      },
+      {
+        "introduces": "Extend",
+        "keyword": "extend",
+        "summary": "inherent/trait methods on a type (also `xd`)"
+      },
+      {
+        "introduces": "Extern",
+        "keyword": "extern",
+        "summary": "FFI block"
+      },
+      {
+        "introduces": "KwF",
+        "keyword": "f",
+        "summary": "reserved word → KwF token"
+      },
+      {
+        "introduces": "KwFact",
+        "keyword": "fact",
+        "summary": "reserved word → KwFact token"
+      },
+      {
+        "introduces": "KwFitness",
+        "keyword": "fitness",
+        "summary": "reserved word → KwFitness token"
+      },
+      {
+        "introduces": "KwF",
+        "keyword": "fn",
+        "summary": "reserved word → KwF token"
+      },
+      {
+        "introduces": "At",
+        "keyword": "for",
+        "summary": "reserved word → At token"
+      },
+      {
+        "introduces": "Forward",
+        "keyword": "forward",
+        "summary": "forward pass inside a net block"
+      },
+      {
+        "introduces": "KwEffect",
+        "keyword": "fx",
+        "summary": "reserved word → KwEffect token"
+      },
+      {
+        "introduces": "KwGuard",
+        "keyword": "gd",
+        "summary": "reserved word → KwGuard token"
+      },
+      {
+        "introduces": "KwGenerations",
+        "keyword": "generations",
+        "summary": "reserved word → KwGenerations token"
+      },
+      {
+        "introduces": "KwGenome",
+        "keyword": "genome",
+        "summary": "reserved word → KwGenome token"
+      },
+      {
+        "introduces": "KwGrad",
+        "keyword": "grad",
+        "summary": "reserved word → KwGrad token"
+      },
+      {
+        "introduces": "KwGrammarExt",
+        "keyword": "grammar_extension",
+        "summary": "reserved word → KwGrammarExt token"
+      },
+      {
+        "introduces": "Guard",
+        "keyword": "guard",
+        "summary": "early-exit guard (also `gd`)"
+      },
+      {
         "introduces": "Handle",
         "keyword": "handle",
         "summary": "effect handler"
+      },
+      {
+        "introduces": "KwHandle",
+        "keyword": "hx",
+        "summary": "reserved word → KwHandle token"
+      },
+      {
+        "introduces": "Question",
+        "keyword": "if",
+        "summary": "reserved word → Question token"
+      },
+      {
+        "introduces": "KwI",
+        "keyword": "impl",
+        "summary": "reserved word → KwI token"
+      },
+      {
+        "introduces": "KwOf",
+        "keyword": "in",
+        "summary": "reserved word → KwOf token"
+      },
+      {
+        "introduces": "KwIs",
+        "keyword": "is",
+        "summary": "reserved word → KwIs token"
+      },
+      {
+        "introduces": "KbDef",
+        "keyword": "kb",
+        "summary": "symbolic knowledge base; lowers to Machine Language"
+      },
+      {
+        "introduces": "Layer",
+        "keyword": "layer",
+        "summary": "neural-net layer inside a net block"
+      },
+      {
+        "introduces": "KwLet",
+        "keyword": "let",
+        "summary": "reserved word → KwLet token"
+      },
+      {
+        "introduces": "KwLoop",
+        "keyword": "loop",
+        "summary": "reserved word → KwLoop token"
+      },
+      {
+        "introduces": "KwM",
+        "keyword": "m",
+        "summary": "reserved word → KwM token"
+      },
+      {
+        "introduces": "Match",
+        "keyword": "match",
+        "summary": "pattern match (sigil `?`)"
+      },
+      {
+        "introduces": "KwMod",
+        "keyword": "mod",
+        "summary": "reserved word → KwMod token"
+      },
+      {
+        "introduces": "KwM",
+        "keyword": "mut",
+        "summary": "reserved word → KwM token"
+      },
+      {
+        "introduces": "KwMutate",
+        "keyword": "mutate",
+        "summary": "reserved word → KwMutate token"
+      },
+      {
+        "introduces": "NetDef",
+        "keyword": "net",
+        "summary": "neural network definition; lowers to Machine Language"
+      },
+      {
+        "introduces": "KwOr",
+        "keyword": "or",
+        "summary": "reserved word → KwOr token"
+      },
+      {
+        "introduces": "KwParam",
+        "keyword": "param",
+        "summary": "reserved word → KwParam token"
+      },
+      {
+        "introduces": "KwPipeline",
+        "keyword": "pipeline",
+        "summary": "reserved word → KwPipeline token"
+      },
+      {
+        "introduces": "KwPolicy",
+        "keyword": "policy",
+        "summary": "reserved word → KwPolicy token"
+      },
+      {
+        "introduces": "KwPopulation",
+        "keyword": "population",
+        "summary": "reserved word → KwPopulation token"
+      },
+      {
+        "introduces": "Plus",
+        "keyword": "pub",
+        "summary": "reserved word → Plus token"
+      },
+      {
+        "introduces": "KwQuery",
+        "keyword": "query",
+        "summary": "reserved word → KwQuery token"
+      },
+      {
+        "introduces": "KwRet",
+        "keyword": "ret",
+        "summary": "reserved word → KwRet token"
+      },
+      {
+        "introduces": "KwRet",
+        "keyword": "return",
+        "summary": "reserved word → KwRet token"
+      },
+      {
+        "introduces": "KwReward",
+        "keyword": "reward",
+        "summary": "reserved word → KwReward token"
+      },
+      {
+        "introduces": "KwRl",
+        "keyword": "rl",
+        "summary": "reserved word → KwRl token"
+      },
+      {
+        "introduces": "KwRule",
+        "keyword": "rule",
+        "summary": "reserved word → KwRule token"
+      },
+      {
+        "introduces": "KwSelect",
+        "keyword": "select",
+        "summary": "reserved word → KwSelect token"
+      },
+      {
+        "introduces": "KwSpec",
+        "keyword": "sp",
+        "summary": "reserved word → KwSpec token"
       },
       {
         "introduces": "Spec",
@@ -3320,9 +3645,134 @@
         "summary": "spec/contract block"
       },
       {
-        "introduces": "Extern",
-        "keyword": "extern",
-        "summary": "FFI block"
+        "introduces": "KwStatic",
+        "keyword": "static",
+        "summary": "reserved word → KwStatic token"
+      },
+      {
+        "introduces": "KwS",
+        "keyword": "struct",
+        "summary": "reserved word → KwS token"
+      },
+      {
+        "introduces": "KwSwarm",
+        "keyword": "sw",
+        "summary": "reserved word → KwSwarm token"
+      },
+      {
+        "introduces": "SwarmDef",
+        "keyword": "swarm",
+        "summary": "agent swarm topology; lowers to Machine Language"
+      },
+      {
+        "introduces": "KwSwarmFanOut",
+        "keyword": "swarm_fan_out",
+        "summary": "reserved word → KwSwarmFanOut token"
+      },
+      {
+        "introduces": "KwSwarmMapReduce",
+        "keyword": "swarm_map_reduce",
+        "summary": "reserved word → KwSwarmMapReduce token"
+      },
+      {
+        "introduces": "KwSwarmPipeline",
+        "keyword": "swarm_pipeline",
+        "summary": "reserved word → KwSwarmPipeline token"
+      },
+      {
+        "introduces": "KwSwarmRace",
+        "keyword": "swarm_race",
+        "summary": "reserved word → KwSwarmRace token"
+      },
+      {
+        "introduces": "KwSwarmSaga",
+        "keyword": "swarm_saga",
+        "summary": "reserved word → KwSwarmSaga token"
+      },
+      {
+        "introduces": "KwTensor",
+        "keyword": "tensor",
+        "summary": "reserved word → KwTensor token"
+      },
+      {
+        "introduces": "TrainDef",
+        "keyword": "train",
+        "summary": "training pipeline; lowers to Machine Language compute"
+      },
+      {
+        "introduces": "KwT",
+        "keyword": "trait",
+        "summary": "reserved word → KwT token"
+      },
+      {
+        "introduces": "KwType",
+        "keyword": "type",
+        "summary": "reserved word → KwType token"
+      },
+      {
+        "introduces": "KwUse",
+        "keyword": "u",
+        "summary": "reserved word → KwUse token"
+      },
+      {
+        "introduces": "KwUf",
+        "keyword": "uf",
+        "summary": "reserved word → KwUf token"
+      },
+      {
+        "introduces": "KwUnsafe",
+        "keyword": "unsafe",
+        "summary": "reserved word → KwUnsafe token"
+      },
+      {
+        "introduces": "KwUse",
+        "keyword": "use",
+        "summary": "reserved word → KwUse token"
+      },
+      {
+        "introduces": "KwV",
+        "keyword": "v",
+        "summary": "reserved word → KwV token"
+      },
+      {
+        "introduces": "Let",
+        "keyword": "val",
+        "summary": "immutable binding (also `v`)"
+      },
+      {
+        "introduces": "Let",
+        "keyword": "var",
+        "summary": "mutable binding (also `m`)"
+      },
+      {
+        "introduces": "TildeArrow",
+        "keyword": "where",
+        "summary": "reserved word → TildeArrow token"
+      },
+      {
+        "introduces": "AtW",
+        "keyword": "while",
+        "summary": "reserved word → AtW token"
+      },
+      {
+        "introduces": "KwExtend",
+        "keyword": "xd",
+        "summary": "reserved word → KwExtend token"
+      },
+      {
+        "introduces": "KwExtern",
+        "keyword": "xn",
+        "summary": "reserved word → KwExtern token"
+      },
+      {
+        "introduces": "KwYield",
+        "keyword": "yield",
+        "summary": "reserved word → KwYield token"
+      },
+      {
+        "introduces": "KwYield",
+        "keyword": "yl",
+        "summary": "reserved word → KwYield token"
       }
     ],
     "layer_map": [
@@ -3453,6 +3903,17 @@
         "surface_name": "GlobalAvgPool"
       }
     ],
+    "machine": {
+      "format": [
+        "magic    : 4 bytes (\"Machine Language\")",
+        "version  : u16 LE",
+        "count    : u32 LE",
+        "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }"
+      ],
+      "magic": "MACH",
+      "media_type": "application/machine",
+      "version": 1
+    },
     "op_families": [
       {
         "code": 0,
@@ -3497,7 +3958,7 @@
       },
       {
         "path": "prototype/src/",
-        "purpose": "Lexer / parser / heal / recover / rmil_bridge / rap / ontology"
+        "purpose": "Lexer / parser / heal / recover / machine_bridge / rap / ontology"
       },
       {
         "path": "prototype/src/bin/",
@@ -3508,20 +3969,20 @@
         "purpose": "Inline `.mg` examples used by parser tests"
       },
       {
-        "path": "Framewerx/",
+        "path": "RecursiveMachineIntelligence/",
         "purpose": "RMI Rust crate: binary IR, opcodes, codec, CpuBackend"
       },
       {
-        "path": "Framewerx/src/lang/",
+        "path": "RecursiveMachineIntelligence/src/lang/",
         "purpose": "Op enum, OpFamily, codec"
       },
       {
-        "path": "Framewerx/src/compute/",
+        "path": "RecursiveMachineIntelligence/src/compute/",
         "purpose": "CpuBackend + dispatch"
       },
       {
         "path": "framework/framewerx/",
-        "purpose": "Framewerx-MG (this framework: FLAX-equivalent in MechGen)"
+        "purpose": "RecursiveMachineIntelligence-MG (this framework: FLAX-equivalent in MechGen)"
       },
       {
         "path": "framework/framewerx/src/",
@@ -3640,7 +4101,7 @@
         "summary": "Run the 5-stage recovery pipeline; return final source."
       },
       {
-        "method": "rmil/encode",
+        "method": "ml/encode",
         "params": [
           "source"
         ],
@@ -3650,24 +4111,24 @@
           "version",
           "container_bytes",
           "items",
-          "rmib_hex"
+          "ml_hex"
         ],
-        "summary": "Source -> RMIB bytes (hex)."
+        "summary": "Source -> Machine Language bytes (hex)."
       },
       {
-        "method": "rmil/decode",
+        "method": "ml/decode",
         "params": [
-          "rmib_hex"
+          "ml_hex"
         ],
         "returns": [
           "ok",
           "container_bytes",
           "items"
         ],
-        "summary": "RMIB bytes (hex) -> decompiled per-item view."
+        "summary": "Machine Language bytes (hex) -> decompiled per-item view."
       },
       {
-        "method": "rmil/run",
+        "method": "ml/run",
         "params": [
           "source"
         ],
@@ -3687,10 +4148,10 @@
           "ok",
           "recover_stage",
           "recovered_source",
-          "rmib_hex",
+          "ml_hex",
           "items"
         ],
-        "summary": "Recover then encode RMIB in one call."
+        "summary": "Recover then encode Machine Language in one call."
       },
       {
         "method": "cost/query",
@@ -4045,17 +4506,6 @@
         "summary": "All stages exhausted; source unchanged."
       }
     ],
-    "rmib": {
-      "format": [
-        "magic    : 4 bytes (\"RMIB\")",
-        "version  : u16 LE",
-        "count    : u32 LE",
-        "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }"
-      ],
-      "magic": "RMIB",
-      "media_type": "application/rmib",
-      "version": 1
-    },
     "sigils": [
       {
         "ast_kind": "Function",

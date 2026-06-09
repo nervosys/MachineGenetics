@@ -18,7 +18,7 @@ I Attention {
 
 // Standard transformer block: norm -> attn -> residual -> norm -> ffn -> residual.
 // Declared as a net so the bridge lowers the whole composition to
-// RMIL in one pass.
+// Machine Language in one pass.
 //
 //   net TransformerBlock {
 //       layer n1: LayerNorm(dim);

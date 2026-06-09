@@ -5,7 +5,7 @@
 //   - struct/enum still available for complex cases (derive, named fields)
 //   - extend keyword (replaces impl)
 //   - Trait definitions (pub trait)
-//   - val / var (replaces let / let mut)
+//   - val / var (replaces val / val mut)
 //   - guard for early exit
 //   - is pattern (pattern test expression)
 //   - T or E (error union)

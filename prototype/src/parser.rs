@@ -12,6 +12,35 @@ pub struct ParseError {
     pub message: String,
 }
 
+/// Fold a well-known std wrapper path (`Option<T>`, `Box<T>`, `Result<T, E>`,
+/// …) into its canonical sigil [`Type`]. Returns `None` for anything that
+/// isn't a recognized wrapper at the exact arity — so user types and
+/// wrong-arity paths fall through to `Type::Path`.
+///
+/// This is what makes the two surface forms (`Option<T>` and `?T`) denote the
+/// *same* AST node: the verbose Rust-style spelling is accepted, but the
+/// formatter re-emits the terse sigil, so canonical/idiomatic code pays the
+/// sigil's lower token cost.
+fn canonical_wrapper(name: &str, args: &[Type]) -> Option<Type> {
+    let one = |args: &[Type]| args.first().cloned().map(Box::new);
+    match (name, args.len()) {
+        ("Option", 1) => Some(Type::Option { inner: one(args)? }),
+        ("Box", 1) => Some(Type::OwnedPtr { inner: one(args)? }),
+        ("Rc", 1) => Some(Type::Rc { inner: one(args)? }),
+        ("Arc", 1) => Some(Type::Arc { inner: one(args)? }),
+        ("Vec", 1) => Some(Type::Vec { inner: one(args)? }),
+        ("Cell", 1) => Some(Type::Cell { inner: one(args)? }),
+        ("RefCell", 1) => Some(Type::RefCell { inner: one(args)? }),
+        ("Mutex", 1) => Some(Type::Mutex { inner: one(args)? }),
+        ("RwLock", 1) => Some(Type::RwLock { inner: one(args)? }),
+        ("Result", 2) => Some(Type::Result {
+            ok: Box::new(args[0].clone()),
+            err: Box::new(args[1].clone()),
+        }),
+        _ => None,
+    }
+}
+
 pub fn parse(tokens: &[Token]) -> Result<Module, ParseError> {
     let mut parser = Parser::new(tokens);
     parser.parse_module()
@@ -490,7 +519,11 @@ impl<'a> Parser<'a> {
             params,
             return_type,
             where_clause,
-            effects: Vec::new(),
+            // Keep the parsed `/ effect` annotations: the block-body path
+            // previously dropped them (`Vec::new()`), silently disabling effect
+            // enforcement for every `f name() / io { ... }`. Now declared
+            // effects flow to the checker so undeclared effects are caught.
+            effects,
             contracts,
             body,
             body_expr: None,
@@ -2334,6 +2367,19 @@ impl<'a> Parser<'a> {
                             Vec::new()
                         };
 
+                        // Canonicalize well-known std wrapper paths into their
+                        // terse sigil AST forms. Either surface compiles, but
+                        // the formatter then emits the canonical sigil
+                        // (`Option<T>` → `?T`), so idiomatic code carries the
+                        // sigil's lower token cost. Folding only fires for a
+                        // single bare segment with the exact arity — a
+                        // user-defined `mymod.Option<T>` (dotted) or wrong arity
+                        // stays a plain path.
+                        if segments.len() == 1 {
+                            if let Some(folded) = canonical_wrapper(&segments[0], &type_args) {
+                                return Ok(folded);
+                            }
+                        }
                         Ok(Type::Path {
                             segments,
                             type_args,
@@ -2462,6 +2508,20 @@ impl<'a> Parser<'a> {
         while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
             // Try to parse a statement
             match self.peek() {
+                // `let` was removed from MechGen — bindings use `val`
+                // (immutable) or `var` (mutable). Reject with a clear,
+                // actionable diagnostic instead of a cryptic cascade.
+                TokenKind::KwLet => {
+                    let tok = self.current();
+                    return Err(ParseError {
+                        line: tok.span.line,
+                        col: tok.span.col,
+                        message: "`let` is not a MechGen keyword — use `val` for an immutable \
+                                  binding or `var` for a mutable one (e.g. `val x = 1;` / \
+                                  `var x = 1;`)"
+                            .to_string(),
+                    });
+                }
                 TokenKind::KwV | TokenKind::KwM | TokenKind::KwVal | TokenKind::KwVar
                     if self.is_let_statement() =>
                 {
@@ -2604,8 +2664,12 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_let_stmt(&mut self) -> Result<Stmt, ParseError> {
+        // Binding keyword: `v`/`val` (immutable) or `m`/`var` (mutable).
+        // `let` was removed from the language — it's rejected earlier in the
+        // statement dispatcher with a "use val/var" hint, so it never reaches
+        // here.
         let mutable = matches!(self.peek(), TokenKind::KwM | TokenKind::KwVar);
-        self.advance(); // consume v or m
+        self.advance(); // consume the binding keyword
 
         let pattern = self.parse_pattern()?;
 
@@ -4235,6 +4299,32 @@ mod tests {
         } else {
             panic!("expected function");
         }
+    }
+
+    #[test]
+    fn test_block_body_keeps_declared_effects() {
+        // Regression: the block-body function path dropped `/ effect`
+        // annotations (`effects: Vec::new()`), silently disabling effect
+        // enforcement. They must survive into the AST.
+        let m = parse_source("f x() / io { greet(); }");
+        if let ItemKind::Function(ref f) = m.items[0].kind {
+            assert_eq!(f.effects, vec!["io".to_string()], "declared effect lost");
+        } else {
+            panic!("expected function");
+        }
+    }
+
+    #[test]
+    fn test_let_keyword_is_rejected() {
+        // `let` was removed from MechGen — bindings use `val`/`var`. A stray
+        // `let` must fail with an actionable diagnostic, not parse silently.
+        let tokens = lexer::lex("f main() { let x = 0; }");
+        let err = parse(&tokens).expect_err("`let` must be rejected");
+        assert!(
+            err.message.contains("val") && err.message.contains("var"),
+            "diagnostic should point at val/var, got: {}",
+            err.message
+        );
     }
 
     #[test]

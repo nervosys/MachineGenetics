@@ -9,7 +9,7 @@
 //   3. If the KB rejects, the system falls back to a default OR
 //      requests refinement from the agent backend.
 //
-// Both branches lower to RMIL: the neural side via existing op-family
+// Both branches lower to Machine Language: the neural side via existing op-family
 // dispatch, the symbolic side via SKB->RMI ontology adapter
 // (`rmi_ontology_adapter.rs`).
 

@@ -9,7 +9,7 @@
 //   - Process exit codes
 //   - Constants (pub const)
 //   - If/else
-//   - val / var bindings (replaces let / let mut)\r\n//   - guard for early exit\r\n//   - data keyword for simple types\r\n//   - extend blocks
+//   - val / var bindings (replaces val / val mut)\r\n//   - guard for early exit\r\n//   - data keyword for simple types\r\n//   - extend blocks
 
 use std::env;
 use std::fs;
@@ -40,21 +40,21 @@ struct Match {
 // ── Argument parsing ─────────────────────────────────────────────────
 
 fn parse_args(args: [String]~) -> Config or String / io {
-    let mut pattern: ?String = None;
-    let mut files: [String]~ = [String]~.new();
-    let mut ignore_case = false;
-    let mut line_numbers = false;
-    let mut count_only = false;
-    let mut invert = false;
+    var pattern: ?String = None;
+    var files: [String]~ = [String]~.new();
+    var ignore_case = false;
+    var line_numbers = false;
+    var count_only = false;
+    var invert = false;
 
-    let mut i: usize = 1; // skip program name
+    var i: usize = 1; // skip program name
     for _ in 0..args.len() {
         if i >= args.len() {
             // Done.
             return Ok(());
         }
 
-        let arg = &args[i];
+        val arg = &args[i];
         match arg.as_str() {
             "--help" | "-h" => {
                 print_usage();
@@ -82,7 +82,7 @@ fn parse_args(args: [String]~) -> Config or String / io {
         i = i + 1;
     }
 
-    let pat = pattern.ok_or("no search pattern specified".to_string())?;
+    val pat = pattern.ok_or("no search pattern specified".to_string())?;
     if files.is_empty() {
         return Err("no files specified".to_string());
     }
@@ -114,26 +114,26 @@ fn print_usage() / io {
 // ── Search logic ─────────────────────────────────────────────────────
 
 fn search_file(path: &str, config: &Config) -> [Match]~ or String / io {
-    let content = fs::read_to_string(path)
+    val content = fs::read_to_string(path)
         .map_err(|e| format!("cannot read {path}: {e}"))?;
 
-    let mut matches: [Match]~ = [Match]~.new();
+    var matches: [Match]~ = [Match]~.new();
 
-    let search_pattern = if config.ignore_case {
+    val search_pattern = if config.ignore_case {
         config.pattern.to_lowercase()
     } else {
         config.pattern.clone()
     };
 
     for (line_num, line) in content.lines().enumerate() {
-        let hay = if config.ignore_case {
+        val hay = if config.ignore_case {
             line.to_lowercase()
         } else {
             line.to_string()
         };
 
-        let found = hay.contains(&search_pattern);
-        let include = if config.invert { !found } else { found };
+        val found = hay.contains(&search_pattern);
+        val include = if config.invert { !found } else { found };
 
         if include {
             matches.push(Match {
@@ -153,8 +153,8 @@ fn print_matches(matches: &[Match]~, config: &Config, multi_file: bool) / io {
     if config.count_only {
         if multi_file {
             // Group by file.
-            let mut current_file: String = "".to_string();
-            let mut count: usize = 0;
+            var current_file: String = "".to_string();
+            var count: usize = 0;
             for m in matches {
                 if m.file != current_file {
                     if !current_file.is_empty() {
@@ -175,7 +175,7 @@ fn print_matches(matches: &[Match]~, config: &Config, multi_file: bool) / io {
     }
 
     for m in matches {
-        let prefix = if multi_file {
+        val prefix = if multi_file {
             if config.line_numbers {
                 format!("{m.file}:{m.line_num}:")
             } else {
@@ -195,9 +195,9 @@ fn print_matches(matches: &[Match]~, config: &Config, multi_file: bool) / io {
 // ── Entry point ──────────────────────────────────────────────────────
 
 pub fn main() / io {
-    let args: Vec<String> = env::args().collect();
+    val args: Vec<String> = env::args().collect();
 
-    let config = match parse_args(args) {
+    val config = match parse_args(args) {
         Ok(c) => c,
         Err(e) => {
             eprintln!("error: {e}");
@@ -206,9 +206,9 @@ pub fn main() / io {
         },
     };
 
-    let multi_file = config.files.len() > 1;
-    let mut all_matches: [Match]~ = Vec::new();
-    let mut had_error = false;
+    val multi_file = config.files.len() > 1;
+    var all_matches: [Match]~ = Vec::new();
+    var had_error = false;
 
     for file in &config.files {
         match search_file(file, &config) {
