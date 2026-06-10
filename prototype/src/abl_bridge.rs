@@ -1040,9 +1040,10 @@ pub fn decompile_symbolic(expr: &Expr) -> SymbolicView {
     let mut leaves = Vec::new();
     flatten_seq(expr, &mut leaves);
 
-    // current rule being assembled: (rule_sym, param_syms, body)
-    let mut cur: Option<(u32, Vec<u32>, Vec<(u32, Vec<u32>)>)> = None;
-    let finish = |cur: &mut Option<(u32, Vec<u32>, Vec<(u32, Vec<u32>)>)>, v: &mut SymbolicView| {
+    // current rule being assembled: (rule_sym, param_syms, body literals)
+    type RuleAccum = (u32, Vec<u32>, Vec<(u32, Vec<u32>)>);
+    let mut cur: Option<RuleAccum> = None;
+    let finish = |cur: &mut Option<RuleAccum>, v: &mut SymbolicView| {
         if let Some((r, params, body)) = cur.take() {
             v.rule_syms.push(r);
             v.rule_param_counts.push(params.len() as i64);
