@@ -277,6 +277,8 @@ fn main() {
                 println!("{}", serde_json::json!({"ok": false, "errors": arr}));
                 std::process::exit(1);
             };
+            // `--fix`: attempt deterministic auto-repair (net/swarm) before rejecting.
+            let fix = args.iter().any(|a| a == "--fix");
             let (src, kind, name, count) = if value.get("items").is_some() {
                 let spec: builder::UnifiedSpec = serde_json::from_value(value).unwrap_or_else(|e| {
                     reject(vec![builder::BuildError::malformed(format!("bad unified spec: {e}"))]);
@@ -297,11 +299,15 @@ fn main() {
                 (builder::to_mg_source_kb(&spec), "kb", spec.kb.clone(), n)
             } else if value.get("swarm").is_some() {
                 // `swarm` before `agent` — a swarm spec also has an "agent" field.
-                let spec: builder::SwarmSpec = serde_json::from_value(value).unwrap_or_else(|e| {
+                let mut spec: builder::SwarmSpec = serde_json::from_value(value).unwrap_or_else(|e| {
                     reject(vec![builder::BuildError::malformed(format!("bad swarm spec: {e}"))]);
                     unreachable!()
                 });
-                let errs = builder::validate_swarm(&spec);
+                let mut errs = builder::validate_swarm(&spec);
+                if !errs.is_empty() && fix {
+                    for f in builder::repair_swarm(&mut spec) { eprintln!("// fix: {f}"); }
+                    errs = builder::validate_swarm(&spec);
+                }
                 if !errs.is_empty() { reject(errs); }
                 (builder::to_mg_source_swarm(&spec), "swarm", spec.swarm.clone(), 1)
             } else if value.get("agent").is_some() {
@@ -314,11 +320,15 @@ fn main() {
                 let n = spec.capabilities.len();
                 (builder::to_mg_source_agent(&spec), "agent", spec.agent.clone(), n)
             } else {
-                let spec: builder::NetSpec = serde_json::from_value(value).unwrap_or_else(|e| {
+                let mut spec: builder::NetSpec = serde_json::from_value(value).unwrap_or_else(|e| {
                     reject(vec![builder::BuildError::malformed(format!("bad net spec: {e}"))]);
                     unreachable!()
                 });
-                let errs = builder::validate(&spec);
+                let mut errs = builder::validate(&spec);
+                if !errs.is_empty() && fix {
+                    for f in builder::repair_net(&mut spec) { eprintln!("// fix: {f}"); }
+                    errs = builder::validate(&spec);
+                }
                 if !errs.is_empty() { reject(errs); }
                 let n = spec.layers.len();
                 (builder::to_mg_source(&spec), "net", spec.net.clone(), n)
@@ -360,6 +370,21 @@ fn main() {
                 std::process::exit(1);
             });
             run_describe_machine_bytes(&blob);
+        }
+        Some("--run=ml") => {
+            // Execute the artifact's symbolic content: forward-chain each kb item
+            // to its fixpoint and report derived facts. Pure data interpretation
+            // (no arbitrary code runs). Neural items defer to --run=ml-bytes;
+            // agent/swarm have no behavior model and are reported as such.
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --run=ml <file.ml>");
+                std::process::exit(1);
+            });
+            let blob = std::fs::read(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            run_eval_machine_bytes(&blob);
         }
         Some("--from=ml-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
@@ -727,6 +752,70 @@ fn run_emit_machine_bytes(module: &ast::Module, src_path: &str, out_path: Option
 /// container size, per-item content hash, and the reconstructed layer
 /// structure. This is the introspection half of the tool-mediated paradigm:
 /// the agent verifies what it built without ever running it.
+/// Drive `--run=ml`: evaluate each item's executable semantics. For `kb` items
+/// this forward-chains the Horn-clause program to its least fixpoint and reports
+/// the derived facts — a safe, terminating, pure-data interpretation.
+fn run_eval_machine_bytes(blob: &[u8]) {
+    let items = match machine::decode_container(blob) {
+        Ok(i) => i,
+        Err(e) => {
+            println!("{}", serde_json::json!({ "ok": false, "error": e }));
+            std::process::exit(1);
+        }
+    };
+    let symbols = machine::decode_symbols(blob).unwrap_or_default();
+    let name = |id: u32| symbols.get(id as usize).cloned().unwrap_or_default();
+    let mut items_json = Vec::new();
+    for item in &items {
+        let sym = machine_bridge::decompile_symbolic(&item.expr);
+        let is_kb = !sym.fact_syms.is_empty() || !sym.rule_syms.is_empty();
+        if is_kb {
+            let facts: Vec<machine_bridge::GroundFact> = sym
+                .fact_syms
+                .iter()
+                .zip(&sym.fact_arg_syms)
+                .map(|(&p, terms)| (name(p), terms.iter().map(|&t| name(t)).collect()))
+                .collect();
+            let rules: Vec<machine_bridge::KbRule> = sym
+                .rule_syms
+                .iter()
+                .zip(&sym.rule_param_syms)
+                .zip(&sym.rule_body_syms)
+                .map(|((&r, params), body)| machine_bridge::KbRule {
+                    head: name(r),
+                    params: params.iter().map(|&p| name(p)).collect(),
+                    body: body
+                        .iter()
+                        .map(|(p, a)| (name(*p), a.iter().map(|&x| name(x)).collect()))
+                        .collect(),
+                })
+                .collect();
+            let derived = machine_bridge::evaluate_kb(&facts, &rules);
+            let derived_json: Vec<serde_json::Value> = derived
+                .iter()
+                .map(|(p, a)| serde_json::json!({ "pred": p, "args": a }))
+                .collect();
+            items_json.push(serde_json::json!({
+                "name": item.name, "kind": "kb",
+                "given_facts": facts.len(), "rules": rules.len(),
+                "derived": derived_json,
+            }));
+        } else if machine_bridge::decompile_agentic(&item.expr).is_some() {
+            items_json.push(serde_json::json!({
+                "name": item.name, "kind": "agentic",
+                "note": "no executable behavior model — agent/swarm artifacts are descriptive (use --describe=ml)",
+            }));
+        } else {
+            items_json.push(serde_json::json!({
+                "name": item.name, "kind": "net",
+                "note": "neural item — use --run=ml-bytes for the forward pass",
+            }));
+        }
+    }
+    let out = serde_json::json!({ "ok": true, "exec": "pure-data interpretation", "items": items_json });
+    println!("{}", serde_json::to_string_pretty(&out).unwrap_or_else(|_| "{}".to_string()));
+}
+
 fn run_describe_machine_bytes(blob: &[u8]) {
     match machine::decode_container(blob) {
         Ok(items) => {
@@ -842,10 +931,19 @@ fn run_describe_machine_bytes(blob: &[u8]) {
                             .rule_syms
                             .iter()
                             .zip(&sym.rule_param_syms)
-                            .map(|(&id, params)| {
+                            .zip(&sym.rule_body_syms)
+                            .map(|((&id, params), body)| {
                                 let mut r = serde_json::Map::new();
                                 if let Some(name) = sym_name(id) { r.insert("name".into(), name.into()); }
                                 r.insert("params".into(), serde_json::Value::Array(names(params)));
+                                let body_json: Vec<serde_json::Value> = body
+                                    .iter()
+                                    .map(|(p, a)| serde_json::json!({
+                                        "pred": sym_name(*p),
+                                        "args": names(a),
+                                    }))
+                                    .collect();
+                                r.insert("body".into(), serde_json::Value::Array(body_json));
                                 serde_json::Value::Object(r)
                             })
                             .collect();
