@@ -208,6 +208,66 @@ each receiver, and decided by the same consensus evaluator MechGen already ships
   `Swarm`, `SwarmCoordinator`, `AgenticWebRuntime`), `spine-agent` (`AgentClient`,
   `execute_binary`), `spine-crypto` (`signed_frame`). No SPINE changes required.
 
+---
+
+## 9. Does SPINE need new code for collaborative agentic SWE?
+
+**Assessment (evidence-grounded, against the Hyperlight tree): essentially no new
+protocol or substrate — SPINE already has what collaborative agentic SWE needs.**
+The remaining items are narrow wiring/conventions built on existing primitives.
+
+### Already present (no work needed)
+
+| Collaboration need | SPINE has it |
+|---|---|
+| Agent identity + discovery | `AgentProfile`, **capability marketplace** — registry, discovery, **bidding, contracts, reputation, audit log** (ROADMAP §106) |
+| Messaging (extensible verbs) | `AgentMessage` / `MessageContent` (Query/Response/ActionRequest/ActionComplete/KnowledgeShare/SwarmInvite/Custom) |
+| Swarm coordination | `SwarmCoordinator` (candidate selection + graphical-model choice), `SwarmRole`, `SwarmTask` |
+| **Consensus** | `spine-agentic/consensus.rs` — weighted `vote`/`tally`/`finalize`/`check_quorum` (tested); cluster-level **Raft** (`spine-cluster/raft.rs`: leader election, log replication, snapshots) |
+| **Shared knowledge** | `spine-knowledge` CRDTs (`VectorClock`, `LwwRegister`, `GSet`), episodic/semantic/collective memory, **content-hashed** entries |
+| Binary artifact transport | `SpineBinary` / `EncodedFrame` (raw CBOR bytes, content-typed) |
+| Sandboxed execution | `AgentClient::execute_binary` → `spine-compiler` + `spine-wasm` (`WasmExecutionResult`) |
+| Per-message security | `spine-crypto` `signed_frame` (Ed25519), W3C TraceContext, bearer+TLS |
+| Planning | `Plan`/`PlanStep`/`Action`/`Goal`/`Intention`, `ExecutionEngine::execute_plan` (parallel steps) |
+
+SWE-specific message *content* (code review, test results, build artifacts, diffs)
+needs **no new wire types** — it rides the existing extensible `MessageContent`
+(`KnowledgeShare` / `ActionRequest` / `ActionComplete` / `Custom`).
+
+### Genuine gaps (small, and built on existing primitives)
+
+1. **Wire `ExecutionEngine::execute_action` to real execution (the one true code
+   gap).** `Action::Execute { command, args }` currently returns a *stub*
+   `{"status":"executed"}` (`spine-agentic/src/lib.rs`) — it runs nothing. To let
+   an agent actually *do* SWE work, route it to the sandboxed path SPINE already
+   has (`execute_binary` → `spine-wasm`). This is **wiring existing capability**,
+   not new infrastructure. Small, real, needed.
+
+2. **A first-class SWE-artifact convention (additive, optional).** There is no
+   typed "versioned build/code artifact with provenance + lineage." The CRDT
+   knowledge layer (content-hash + `GSet`/`LwwRegister` + episodic memory) can
+   model it, but a thin `SweArtifact { content_hash, producer: AgentId,
+   supersedes: Option<hash>, signature }` would make build→review→version flows
+   first-class. A convention on top of existing layers — not a protocol change.
+
+3. **A dependency-aware work-DAG (enhancement, mostly covered).** Decompose →
+   assign is largely handled by `Plan` + `SwarmTask` + the capability marketplace
+   (bidding/contracts). A shared subtask graph with claim/complete/blocked-on
+   would strengthen large multi-agent SWE decomposition, but no missing primitive
+   blocks it today.
+
+4. **The ABL↔SPINE type-safe join — MechGen/glue side, not SPINE.** The
+   ~dozen-line crate inside the Hyperlight workspace (see §8) that
+   `serde_json::from_value`s the bridge envelopes into the real `spine_agentic`
+   types. Glue, already scoped.
+
+### Bottom line
+
+Collaborative agentic SWE is **achievable on SPINE today** with the existing
+substrate plus the MechGen bridge (§1–8). The only must-do SPINE change is one
+wiring fix (#1); #2–#3 are additive ergonomics, not blockers. SPINE was built as
+a general agent-native collaboration plane, and SWE is just one workload over it.
+
 The bridge is intentionally small because the two systems already meet in the
 middle: ABL supplies a self-describing, no-exec, content-hashed **artifact**, and
 SPINE supplies the agent-native **transport, discovery, messaging, swarm, and
