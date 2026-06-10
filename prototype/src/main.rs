@@ -49,6 +49,7 @@ mod abl_shape;
 mod sandbox;
 mod semantic_vcs;
 mod shape;
+mod spine_bridge;
 mod skb;
 mod stdlib_ext;
 mod swarm_bus;
@@ -392,6 +393,49 @@ fn main() {
                 .and_then(|s| serde_json::from_str(s).ok())
                 .unwrap_or(serde_json::Value::Null);
             run_eval_abl_bytes(&blob, &input);
+        }
+        Some("--spine=profile") | Some("--spine=swarm") | Some("--spine=frame") => {
+            // SPINE collaboration bridge: emit SPINE-protocol-shaped JSON for an
+            // ABL agent/swarm spec, or a binary collaboration frame for an .abl
+            // artifact. See SPINE_COLLABORATION.md + spine_bridge.rs.
+            let mode = filtered[0];
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse {mode} <spec.json | file.abl>");
+                std::process::exit(1);
+            });
+            let out = match mode {
+                "--spine=frame" => {
+                    let blob = std::fs::read(path).unwrap_or_else(|e| {
+                        eprintln!("Error reading {path}: {e}");
+                        std::process::exit(1);
+                    });
+                    spine_bridge::artifact_frame(&blob)
+                }
+                _ => {
+                    let json = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                        eprintln!("Error reading {path}: {e}");
+                        std::process::exit(1);
+                    });
+                    if mode == "--spine=swarm" {
+                        match serde_json::from_str::<builder::SwarmSpec>(&json) {
+                            Ok(s) => spine_bridge::swarm_task(&s),
+                            Err(e) => {
+                                eprintln!("bad swarm spec: {e}");
+                                std::process::exit(1);
+                            }
+                        }
+                    } else {
+                        match serde_json::from_str::<builder::AgentSpec>(&json) {
+                            Ok(a) => spine_bridge::agent_profile(&a),
+                            Err(e) => {
+                                eprintln!("bad agent spec: {e}");
+                                std::process::exit(1);
+                            }
+                        }
+                    }
+                }
+            };
+            println!("{}", serde_json::to_string_pretty(&out).unwrap_or_else(|_| "{}".to_string()));
         }
         Some("--from=abl-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
