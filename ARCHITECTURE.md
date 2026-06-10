@@ -98,6 +98,19 @@ execution-safe and recovers losslessly via the symbol table.
   body). Example: `edge(a,b), edge(b,c) ⊢ path(a,c)`.
 - **net** — defer to `--run=abl-bytes`, which dispatches the decoded graph to the
   CPU backend (`abl_compute.rs`) for a real forward pass.
+- **agent** — a **capability-policy evaluator**. Given requested ops via
+  `--input {"ops":[..]}`, each op is decided **allowed** (in `capabilities`, not
+  gated) / **requires-approval** (in both) / **denied** (not a capability).
+  Without input it reports the policy surface.
+- **swarm** — a **consensus evaluator**. Reports propagation rounds for the
+  topology (graph diameter: mesh/star/broadcast = 1, ring = n−1, tree = ⌈log₂n⌉)
+  and, given `--input {"proposals":[..]}`, the decided value under the strategy
+  (`majority`/`weighted` = plurality, `unanimous`, `quorum` = strict majority;
+  deterministic smallest-on-tie). Example: ring/quorum over `[7,7,7,3,7]` → **7**
+  (4/5 quorum, 4 rounds).
+
+All four are **pure-data interpreters** — they read the artifact and compute; no
+arbitrary code runs.
 
 ---
 
@@ -116,11 +129,14 @@ Everything not auto-fixable is still surfaced as a machine-readable error + fix 
 
 ## 6. Honest boundaries
 
-These are deliberate, documented non-features — *not* gaps papered over:
+These are deliberate, documented scope lines — *not* gaps papered over:
 
-- **agent/swarm execution.** `--run=abl` reports them as descriptive only. There
-  is no behavior model (what an agent *does* when run) — defining one is genuine
-  language design, intentionally deferred rather than faked.
+- **agent/swarm execution is a *reference policy/protocol* model, not arbitrary
+  agent behavior.** `--run=abl` evaluates the *declared* policy (capability
+  gating) and protocol (consensus over proposals + topology rounds) — the natural
+  meaning of the fields the spec stores. It does **not** run application logic (an
+  agent has no code body in ABL); that would be a general agent runtime, which is
+  out of scope by design. The model is deterministic and pure.
 - **kb ground terms vs. arg order semantics.** Facts store predicate + ground
   term names verbatim; there is no separate constant/variable type system beyond
   "rule args are variables, fact args are constants."
