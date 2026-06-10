@@ -170,9 +170,30 @@ structure through the serialized symbol table:
   REDUCE(consensus)` (S0001–S0006).
 
 The VM treats the agentic/symbolic ops as arg-agnostic stubs, so carrying these
-names as extra op args is execution-safe and recovers losslessly on decode. The
-only thing still not stored is a fact's argument *order semantics* beyond the
-term list (terms are kept verbatim) — i.e. nothing material remains elided.
+names as extra op args is execution-safe and recovers losslessly on decode.
+
+### Execution + self-repair (built 2026-06-09)
+
+Two capabilities close the loop beyond *construction*:
+
+- **`--run=ml` — real symbolic execution.** A `kb` item is a Horn-clause logic
+  program (`rule h(x,z) where p(x,y), p(y,z)` lowers to
+  `UNIFY >> MATCH* >> INFER`). `--run=ml` forward-chains it to the least
+  fixpoint and reports derived facts — e.g. `parent(alice,bob)`,
+  `parent(bob,carol)` ⊢ `grandparent(alice,carol)`. It is a **safe, terminating,
+  pure-data interpreter** (finite Herbrand base; no arbitrary code), so the
+  no-exec property holds. Rules are **range-safe by construction** (K0007: every
+  head variable must be bound by the body). **Honest boundary:** `agent`/`swarm`
+  artifacts have *no behavior model*, so `--run=ml` reports them as descriptive
+  only — execution is not faked.
+- **`--build=ml --fix` — auto-repair.** On a rejected spec the toolchain applies
+  deterministic, conservative repairs (unknown op → nearest by edit distance;
+  non-positive dim → 1; Linear input → previous output; topology/consensus →
+  nearest valid; bad transport → `rmi_quic`), re-validates, and builds — turning
+  the reject-by-construction signal into a one-shot correction.
+
+Nothing material remains elided across construction; the only deliberate
+non-feature is agent/swarm *execution*, which has no defined semantics to honor.
 
 A `{"items":[..]}` **unified** spec builds a whole application — any mix of the
 four kinds — into ONE container (codes U0001 empty, U0002 unknown-kind, U0003

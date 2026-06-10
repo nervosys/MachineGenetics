@@ -37,11 +37,12 @@ pub struct NetSpec {
 #[derive(Debug, Clone, Deserialize)]
 pub struct FactSpec(pub String, pub Vec<String>);
 
-/// One rule: (name, params, refs). The rule defines a predicate of arity
-/// `params.len()`; `refs` lists the predicates its body depends on (each must
-/// resolve to a declared fact-predicate or rule — checked by construction).
+/// One rule: (name, params, body). A Horn clause — the head predicate `name`
+/// (arity = `params.len()`) holds when every body literal holds. Each body
+/// literal reuses [`FactSpec`] shape `(predicate, [args])`; all args are logic
+/// variables. Example: `["gp", ["x","z"], [["parent",["x","y"]],["parent",["y","z"]]]]`.
 #[derive(Debug, Clone, Deserialize)]
-pub struct RuleSpec(pub String, pub Vec<String>, pub Vec<String>);
+pub struct RuleSpec(pub String, pub Vec<String>, pub Vec<FactSpec>);
 
 /// A knowledge-base construction spec — the *symbolic* half of the
 /// neurosymbolic IR. The agent emits this instead of `kb { ... }` source.
@@ -281,12 +282,12 @@ pub fn build_schema() -> serde_json::Value {
             "spec_format": {
                 "kb": "string, non-empty — the knowledge base's name",
                 "facts": "array of [predicate, [args]] tuples (arity = number of args)",
-                "rules": "array of [name, [params], [refs]] tuples; the rule defines a predicate of arity = params.len(); every ref must resolve to a declared fact-predicate or rule"
+                "rules": "array of [name, [params], [body]] Horn clauses; body is a list of [predicate, [args]] literals (all args are logic variables); the head holds when all body literals hold; every head param must appear in the body (range-safe)"
             },
             "example": {
                 "kb": "Family",
-                "facts": [["parent", ["a", "b"]], ["parent", ["b", "c"]]],
-                "rules": [["grandparent", ["x", "y"], ["parent"]]]
+                "facts": [["parent", ["alice", "bob"]], ["parent", ["bob", "carol"]]],
+                "rules": [["grandparent", ["x", "z"], [["parent", ["x", "y"]], ["parent", ["y", "z"]]]]]
             },
             "artifact_note":
                 "the lowered Machine Language kb artifact stores predicate names, ground term \
@@ -297,7 +298,8 @@ pub fn build_schema() -> serde_json::Value {
                 {"code": "K0002", "when": "kb has no facts and no rules",           "fix": "add at least one fact or rule"},
                 {"code": "K0003", "when": "an identifier is invalid",               "fix": "use [A-Za-z_][A-Za-z0-9_]* for predicates, rules, params, terms"},
                 {"code": "K0004", "when": "a predicate is used at two arities",     "fix": "use a consistent arity for each predicate"},
-                {"code": "K0006", "when": "a rule references an unknown predicate", "fix": "reference a declared fact-predicate or rule"}
+                {"code": "K0006", "when": "a rule body references an unknown predicate", "fix": "reference a declared fact-predicate or rule"},
+                {"code": "K0007", "when": "a head param is not bound by the body",  "fix": "use each head param as an argument in some body literal"}
             ]
         },
         "agent": {
@@ -471,7 +473,7 @@ pub fn validate_kb(spec: &KbSpec) -> Vec<BuildError> {
         }
         decls.push((name, args.len(), "fact"));
     }
-    for RuleSpec(name, params, _refs) in &spec.rules {
+    for RuleSpec(name, params, body) in &spec.rules {
         if !is_ident(name) {
             errs.push(BuildError::new("K0003", format!("rule `{name}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]*"));
             continue;
@@ -479,6 +481,16 @@ pub fn validate_kb(spec: &KbSpec) -> Vec<BuildError> {
         for p in params {
             if !is_ident(p) {
                 errs.push(BuildError::new("K0003", format!("rule `{name}` param `{p}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]* for params"));
+            }
+        }
+        for FactSpec(bp, bargs) in body {
+            if !is_ident(bp) {
+                errs.push(BuildError::new("K0003", format!("rule `{name}` body predicate `{bp}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]*"));
+            }
+            for a in bargs {
+                if !is_ident(a) {
+                    errs.push(BuildError::new("K0003", format!("rule `{name}` body arg `{a}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]* for variables"));
+                }
             }
         }
         decls.push((name, params.len(), "rule"));
@@ -498,14 +510,29 @@ pub fn validate_kb(spec: &KbSpec) -> Vec<BuildError> {
             }
         }
     }
-    // Dangling-reference check: every ref must resolve to a declared predicate.
-    for RuleSpec(name, _params, refs) in &spec.rules {
-        for r in refs {
-            if !arity.contains_key(r.as_str()) {
+    // K0006 (dangling reference): every body predicate must be declared.
+    // K0007 (range restriction / safety): every head param must appear in the
+    // body — an unbound head variable makes the rule unsafe (non-evaluable).
+    for RuleSpec(name, params, body) in &spec.rules {
+        for FactSpec(bp, _) in body {
+            if !arity.contains_key(bp.as_str()) {
                 errs.push(BuildError::new(
                     "K0006",
-                    format!("rule `{name}` references unknown predicate `{r}`"),
+                    format!("rule `{name}` body references unknown predicate `{bp}`"),
                     "reference a declared fact-predicate or rule (or add it)",
+                ));
+            }
+        }
+        let body_vars: std::collections::HashSet<&str> = body
+            .iter()
+            .flat_map(|FactSpec(_, a)| a.iter().map(|s| s.as_str()))
+            .collect();
+        for p in params {
+            if !body_vars.contains(p.as_str()) {
+                errs.push(BuildError::new(
+                    "K0007",
+                    format!("rule `{name}` head param `{p}` is not bound by the body (unsafe rule)"),
+                    "use each head param as an argument in some body literal",
                 ));
             }
         }
@@ -523,12 +550,19 @@ pub fn to_mg_source_kb(spec: &KbSpec) -> String {
     for FactSpec(name, args) in &spec.facts {
         s.push_str(&format!("    fact {name}({});\n", args.join(", ")));
     }
-    for RuleSpec(name, params, _refs) in &spec.rules {
+    for RuleSpec(name, params, body) in &spec.rules {
         let typed: Vec<String> = params.iter().map(|p| format!("{p}: i32")).collect();
-        // Body is a placeholder (param count is all that's encoded); use the
-        // first param so the body type-resolves, else a literal.
-        let body = params.first().cloned().unwrap_or_else(|| "0".to_string());
-        s.push_str(&format!("    rule {name}({}) {{\n        {body}\n    }}\n", typed.join(", ")));
+        let mut head = format!("    rule {name}({})", typed.join(", "));
+        // Body literals lower through the rule's `where` conditions.
+        if !body.is_empty() {
+            let lits: Vec<String> = body
+                .iter()
+                .map(|FactSpec(p, a)| format!("{p}({})", a.join(", ")))
+                .collect();
+            head.push_str(&format!(" where {}", lits.join(", ")));
+        }
+        let bodyexpr = params.first().cloned().unwrap_or_else(|| "0".to_string());
+        s.push_str(&format!("{head} {{\n        {bodyexpr}\n    }}\n"));
     }
     s.push_str("}\n");
     s
@@ -667,6 +701,124 @@ pub fn validate_unified(spec: &UnifiedSpec) -> Vec<BuildError> {
         }
     }
     errs
+}
+
+// ── Auto-fix / ranked repair ─────────────────────────────────────────
+//
+// Reject-by-construction tells the agent *what* is wrong with a stable code +
+// fix hint. Repair goes one step further: it proposes (and, with `--fix`,
+// applies) the concrete edit, closing the self-correction loop without a round
+// trip. Repairs are deterministic and conservative — only unambiguous fixes are
+// auto-applied; everything else is surfaced as a ranked suggestion.
+
+/// Levenshtein edit distance (small strings; iterative two-row).
+fn levenshtein(a: &str, b: &str) -> usize {
+    let (a, b): (Vec<char>, Vec<char>) = (a.chars().collect(), b.chars().collect());
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    let mut cur = vec![0usize; b.len() + 1];
+    for (i, ca) in a.iter().enumerate() {
+        cur[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            let cost = if ca == cb { 0 } else { 1 };
+            cur[j + 1] = (prev[j + 1] + 1).min(cur[j] + 1).min(prev[j] + cost);
+        }
+        std::mem::swap(&mut prev, &mut cur);
+    }
+    prev[b.len()]
+}
+
+/// The closest candidate to `target` within `max` edits, if any.
+fn nearest<'a>(target: &str, candidates: &[&'a str], max: usize) -> Option<&'a str> {
+    candidates
+        .iter()
+        .map(|c| (*c, levenshtein(target, c)))
+        .filter(|(_, d)| *d <= max)
+        .min_by_key(|(_, d)| *d)
+        .map(|(c, _)| c)
+}
+
+/// Sanitize a string into a valid identifier (for suggestions).
+fn to_ident(s: &str) -> String {
+    let mut out = String::new();
+    for (i, c) in s.chars().enumerate() {
+        if c == '_' || c.is_ascii_alphabetic() || (i > 0 && c.is_ascii_digit()) {
+            out.push(c);
+        } else if c.is_ascii_digit() && i == 0 {
+            out.push('_');
+            out.push(c);
+        } else {
+            out.push('_');
+        }
+    }
+    if out.is_empty() { out.push('_'); }
+    out
+}
+
+/// Auto-repair a net spec in place; returns a description of each applied fix.
+/// Fixes: unknown op → nearest known op; non-positive dim → 1; Linear input dim
+/// → previous output (shape chain). Conservative: an unknown op with no close
+/// match is left for the agent.
+pub fn repair_net(spec: &mut NetSpec) -> Vec<String> {
+    let mut fixes = Vec::new();
+    let op_names: Vec<&str> = OPS.iter().map(|o| o.name).collect();
+    let mut running: Option<i64> = None;
+    for LayerSpec(name, op, dims) in spec.layers.iter_mut() {
+        if op_info(op).is_none() {
+            if let Some(best) = nearest(op, &op_names, 3) {
+                fixes.push(format!("layer `{name}`: op `{op}` → `{best}`"));
+                *op = best.to_string();
+            }
+        }
+        for d in dims.iter_mut() {
+            if *d <= 0 {
+                fixes.push(format!("layer `{name}`: dim {d} → 1"));
+                *d = 1;
+            }
+        }
+        if op == "Linear" && dims.len() == 2 {
+            if let Some(prev) = running {
+                if dims[0] != prev {
+                    fixes.push(format!("layer `{name}`: input dim {} → {prev} (shape chain)", dims[0]));
+                    dims[0] = prev;
+                }
+            }
+        }
+        if let Some((_, true)) = op_arity(op) {
+            if let Some(last) = dims.last() {
+                running = Some(*last);
+            }
+        }
+    }
+    fixes
+}
+
+/// Auto-repair a swarm spec: snap unknown topology/consensus to the nearest
+/// valid value; replace an unencodable transport with `rmi_quic`.
+pub fn repair_swarm(spec: &mut SwarmSpec) -> Vec<String> {
+    let mut fixes = Vec::new();
+    if let Some(t) = &spec.topology {
+        if !TOPOLOGIES.contains(&t.as_str()) {
+            if let Some(best) = nearest(t, TOPOLOGIES, 4) {
+                fixes.push(format!("topology `{t}` → `{best}`"));
+                spec.topology = Some(best.to_string());
+            }
+        }
+    }
+    if let Some(c) = &spec.consensus {
+        if !CONSENSUS.contains(&c.as_str()) {
+            if let Some(best) = nearest(c, CONSENSUS, 4) {
+                fixes.push(format!("consensus `{c}` → `{best}`"));
+                spec.consensus = Some(best.to_string());
+            }
+        }
+    }
+    if let Some(t) = &spec.transport {
+        if !is_ident(t) || !t.starts_with("rmi_") {
+            fixes.push(format!("transport `{t}` → `rmi_quic`"));
+            spec.transport = Some("rmi_quic".to_string());
+        }
+    }
+    fixes
 }
 
 /// Render a validated unified spec as one MechGen module (each item's canonical
@@ -819,7 +971,7 @@ mod tests {
         // one arity per fact, one param-count per rule. Names are not in the
         // artifact, by design — so we assert on arities/counts, deterministically.
         let s = kbspec(
-            r#"{"kb":"Family","facts":[["parent",["a","b"]],["parent",["b","c"]],["male",["a"]]],"rules":[["grandparent",["x","y"],["parent"]]]}"#,
+            r#"{"kb":"Family","facts":[["parent",["a","b"]],["parent",["b","c"]],["male",["a"]]],"rules":[["grandparent",["x","z"],[["parent",["x","y"]],["parent",["y","z"]]]]]}"#,
         );
         assert!(validate_kb(&s).is_empty(), "{:?}", validate_kb(&s));
         let src = to_mg_source_kb(&s);
@@ -852,7 +1004,7 @@ mod tests {
         // parent/2 then parent/3 → K0004; rule refs unknown `ancestor` → K0006;
         // bad identifier `2bad` → K0003.
         let s = kbspec(
-            r#"{"kb":"K","facts":[["parent",["a","b"]],["parent",["a","b","c"]],["2bad",["x"]]],"rules":[["r",["x"],["ancestor"]]]}"#,
+            r#"{"kb":"K","facts":[["parent",["a","b"]],["parent",["a","b","c"]],["2bad",["x"]]],"rules":[["r",["x"],[["ancestor",["x"]]]]]}"#,
         );
         let e = validate_kb(&s);
         assert!(e.iter().any(|x| x.code == "K0004"), "arity conflict: {e:?}");
@@ -896,7 +1048,7 @@ mod tests {
         let s = unifiedspec(
             r#"{"items":[
                 {"net":"Encoder","layers":[["fc1","Linear",[8,4]],["a","ReLU",[]]]},
-                {"kb":"Rules","facts":[["valid",["x"]]],"rules":[["ok",["y"],["valid"]]]}
+                {"kb":"Rules","facts":[["valid",["x"]]],"rules":[["ok",["y"],[["valid",["y"]]]]]}
             ]}"#,
         );
         assert!(validate_unified(&s).is_empty(), "{:?}", validate_unified(&s));
@@ -988,6 +1140,41 @@ mod tests {
     }
 
     #[test]
+    fn kb_forward_chaining_derives_grandparent() {
+        // Full vertical: spec → source → encode → decode → reconstruct Horn
+        // clause → evaluate to fixpoint → derive grandparent(alice, carol).
+        let s = kbspec(r#"{"kb":"F","facts":[["parent",["alice","bob"]],["parent",["bob","carol"]]],"rules":[["grandparent",["x","z"],[["parent",["x","y"]],["parent",["y","z"]]]]]}"#);
+        assert!(validate_kb(&s).is_empty(), "{:?}", validate_kb(&s));
+        let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_kb(&s))).expect("parses");
+        let (blob, _) = crate::machine::encode_module(&module);
+        let items = crate::machine::decode_container(&blob).unwrap();
+        let syms = crate::machine::decode_symbols(&blob).unwrap();
+        let name = |id: u32| syms[id as usize].clone();
+        let v = crate::machine_bridge::decompile_symbolic(&items[0].expr);
+        let facts: Vec<_> = v.fact_syms.iter().zip(&v.fact_arg_syms)
+            .map(|(&p, t)| (name(p), t.iter().map(|&x| name(x)).collect::<Vec<_>>())).collect();
+        let rules: Vec<_> = v.rule_syms.iter().zip(&v.rule_param_syms).zip(&v.rule_body_syms)
+            .map(|((&r, params), body)| crate::machine_bridge::KbRule {
+                head: name(r),
+                params: params.iter().map(|&p| name(p)).collect(),
+                body: body.iter().map(|(p, a)| (name(*p), a.iter().map(|&x| name(x)).collect())).collect(),
+            }).collect();
+        assert_eq!(rules[0].body.len(), 2, "rule body round-trips two literals");
+        let derived = crate::machine_bridge::evaluate_kb(&facts, &rules);
+        assert!(
+            derived.iter().any(|(p, a)| p == "grandparent" && a == &vec!["alice".to_string(), "carol".to_string()]),
+            "must derive grandparent(alice, carol): {derived:?}"
+        );
+    }
+
+    #[test]
+    fn kb_rejects_unsafe_rule_unbound_head_var() {
+        // head param `y` never appears in the body → range-restriction failure.
+        let s = kbspec(r#"{"kb":"K","facts":[["p",["a"]]],"rules":[["q",["x","y"],[["p",["x"]]]]]}"#);
+        assert!(validate_kb(&s).iter().any(|e| e.code == "K0007"), "{:?}", validate_kb(&s));
+    }
+
+    #[test]
     fn agent_requires_approval_round_trips() {
         let s: AgentSpec = serde_json::from_str(
             r#"{"agent":"W","capabilities":["read"],"requires_approval":["write_files","deploy"]}"#,
@@ -1063,6 +1250,38 @@ mod tests {
         let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_unified(&s))).expect("parses");
         let (_blob, summary) = crate::machine::encode_module(&module);
         assert_eq!(summary.len(), 4, "four mixed items → four container entries");
+    }
+
+    #[test]
+    fn repair_net_fixes_shape_op_and_dims_to_valid() {
+        // ReLu (typo) → ReLU; -3 dim → 1; fc2 input 4 → 8 (shape chain).
+        let mut s = spec(r#"{"net":"M","layers":[["fc1","Linear",[3,8]],["a","ReLu",[]],["fc2","Linear",[4,-3]]]}"#);
+        assert!(!validate(&s).is_empty(), "starts invalid");
+        let fixes = repair_net(&mut s);
+        assert!(fixes.iter().any(|f| f.contains("ReLU")), "op typo fixed: {fixes:?}");
+        assert!(fixes.iter().any(|f| f.contains("→ 1")), "bad dim fixed: {fixes:?}");
+        assert!(fixes.iter().any(|f| f.contains("shape chain")), "shape fixed: {fixes:?}");
+        assert!(validate(&s).is_empty(), "repaired net must be valid: {:?}", validate(&s));
+    }
+
+    #[test]
+    fn repair_swarm_snaps_enums_and_transport() {
+        let mut s: SwarmSpec = serde_json::from_str(
+            r#"{"swarm":"W","agent":"Worker","topology":"rng","consensus":"majorty","transport":"grpc"}"#,
+        ).unwrap();
+        assert!(!validate_swarm(&s).is_empty());
+        let fixes = repair_swarm(&mut s);
+        assert_eq!(s.topology.as_deref(), Some("ring"), "{fixes:?}");
+        assert_eq!(s.consensus.as_deref(), Some("majority"));
+        assert_eq!(s.transport.as_deref(), Some("rmi_quic"));
+        assert!(validate_swarm(&s).is_empty(), "repaired swarm valid");
+    }
+
+    #[test]
+    fn levenshtein_and_nearest_basic() {
+        assert_eq!(levenshtein("ring", "rng"), 1);
+        assert_eq!(nearest("ReLu", &["ReLU", "GELU", "Tanh"], 3), Some("ReLU"));
+        assert_eq!(nearest("xyzzy", &["ReLU"], 2), None, "too far → no suggestion");
     }
 
     #[test]

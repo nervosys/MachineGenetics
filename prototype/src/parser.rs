@@ -1366,9 +1366,10 @@ impl<'a> Parser<'a> {
                     let params = self.parse_param_list()?;
                     self.expect(TokenKind::RParen)?;
 
-                    // Optional conditions: `where expr, expr, ...`
+                    // Optional conditions: `where expr, expr, ...` (the lexer
+                    // maps the `where` keyword to TildeArrow, same as `~>`).
                     let mut conditions = Vec::new();
-                    if self.peek() == TokenKind::Ident && self.peek_text() == "where" {
+                    if self.peek() == TokenKind::TildeArrow {
                         self.advance();
                         conditions.push(self.parse_expr()?);
                         while self.peek() == TokenKind::Comma {

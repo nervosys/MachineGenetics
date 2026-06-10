@@ -636,15 +636,28 @@ impl KbTranslator {
             stages.push(Expr::op(Op::RESOLVE, args));
         }
 
-        // rule `r(x, y) {…}` → UNIFY(r_sym, x_sym, y_sym) >> INFER: rule name +
-        // parameter names interned (the body lowers to the inference step).
+        // rule `r(x, z) where p(x, y), p(y, z) {…}` lowers to a Horn clause:
+        //   UNIFY(r, x, z) >> MATCH(p, x, y) >> MATCH(p, y, z) >> INFER
+        // — head (name + params) then one MATCH per body literal, INFER closing
+        // the clause. The whole thing recovers via the flat-Seq state machine in
+        // `decompile_symbolic`, and is what the evaluator forward-chains over.
         for rule in &kb.rules {
-            let mut args = vec![Expr::sym(symbols.intern(&rule.name))];
+            let mut head_args = vec![Expr::sym(symbols.intern(&rule.name))];
             for p in &rule.params {
-                args.push(Expr::sym(symbols.intern(&p.name)));
+                head_args.push(Expr::sym(symbols.intern(&p.name)));
             }
-            let head = Expr::op(Op::UNIFY, args);
-            stages.push(head >> Expr::op1(Op::INFER));
+            let mut stage = Expr::op(Op::UNIFY, head_args);
+            for cond in &rule.conditions {
+                if let Some((pred, cargs)) = call_pred(cond) {
+                    let mut m = vec![Expr::sym(symbols.intern(&pred))];
+                    for a in &cargs {
+                        m.push(Expr::sym(symbols.intern(a)));
+                    }
+                    stage = stage >> Expr::op(Op::MATCH, m);
+                }
+            }
+            stage = stage >> Expr::op1(Op::INFER);
+            stages.push(stage);
         }
 
         match stages.len() {
@@ -665,6 +678,21 @@ fn term_name(e: &ast::Expr) -> String {
         ast::Expr::Ident { name } => name.clone(),
         ast::Expr::Literal { value, .. } => value.clone(),
         _ => "_".to_string(),
+    }
+}
+
+/// Extract `(predicate, [args])` from a rule's `where` condition (a call like
+/// `parent(x, y)`). Returns `None` for non-call conditions.
+fn call_pred(e: &ast::Expr) -> Option<(String, Vec<String>)> {
+    match e {
+        ast::Expr::Call { func, args } => {
+            let pred = match func.as_ref() {
+                ast::Expr::Ident { name } => name.clone(),
+                _ => return None,
+            };
+            Some((pred, args.iter().map(term_name).collect()))
+        }
+        _ => None,
     }
 }
 
@@ -985,49 +1013,74 @@ pub struct SymbolicView {
     pub fact_arg_syms: Vec<Vec<u32>>,
     /// Symbol ids of each rule's parameter names (parallel to `rule_syms`).
     pub rule_param_syms: Vec<Vec<u32>>,
+    /// Each rule's body literals as `(pred_sym, [arg_syms])` (parallel to
+    /// `rule_syms`). Empty for a body-less rule.
+    pub rule_body_syms: Vec<Vec<(u32, Vec<u32>)>>,
+}
+
+/// Flatten a (possibly nested) `Seq`/`Par` chain into its leaf nodes, in order.
+fn flatten_seq<'a>(e: &'a Expr, out: &mut Vec<&'a Expr>) {
+    match e {
+        Expr::Seq(a, b) | Expr::Par(a, b) => {
+            flatten_seq(a, out);
+            flatten_seq(b, out);
+        }
+        other => out.push(other),
+    }
 }
 
 /// Decompile a symbolic (`kb`) expression into its recoverable [`SymbolicView`].
 /// Empty result ⇒ the expression is not symbolic (e.g. it's a net).
+///
+/// The op stream is linear: `RESOLVE` = a fact; a rule is `UNIFY (MATCH)* INFER`
+/// — so a small state machine over the flattened sequence reconstructs each
+/// rule's head and body unambiguously.
 pub fn decompile_symbolic(expr: &Expr) -> SymbolicView {
     let mut v = SymbolicView::default();
-    walk_symbolic(expr, &mut v);
-    v
-}
+    let mut leaves = Vec::new();
+    flatten_seq(expr, &mut leaves);
 
-fn walk_symbolic(expr: &Expr, v: &mut SymbolicView) {
-    match expr {
-        Expr::Seq(a, b) | Expr::Par(a, b) => {
-            walk_symbolic(a, v);
-            walk_symbolic(b, v);
+    // current rule being assembled: (rule_sym, param_syms, body)
+    let mut cur: Option<(u32, Vec<u32>, Vec<(u32, Vec<u32>)>)> = None;
+    let mut finish = |cur: &mut Option<(u32, Vec<u32>, Vec<(u32, Vec<u32>)>)>, v: &mut SymbolicView| {
+        if let Some((r, params, body)) = cur.take() {
+            v.rule_syms.push(r);
+            v.rule_param_counts.push(params.len() as i64);
+            v.rule_param_syms.push(params);
+            v.rule_body_syms.push(body);
         }
-        Expr::App(op, args) => {
-            match *op {
-                // KbTranslator: fact → RESOLVE(pred, term…); rule → UNIFY(rule, param…) >> INFER.
-                Op::RESOLVE => {
-                    let syms = ref_syms(args);
-                    if let Some((&pred, terms)) = syms.split_first() {
-                        v.fact_syms.push(pred);
-                        v.fact_arities.push(terms.len() as i64);
-                        v.fact_arg_syms.push(terms.to_vec());
+    };
+
+    for leaf in leaves {
+        let Expr::App(op, args) = leaf else { continue };
+        let syms = ref_syms(args);
+        match *op {
+            Op::RESOLVE => {
+                if let Some((&pred, terms)) = syms.split_first() {
+                    v.fact_syms.push(pred);
+                    v.fact_arities.push(terms.len() as i64);
+                    v.fact_arg_syms.push(terms.to_vec());
+                }
+            }
+            Op::UNIFY => {
+                finish(&mut cur, &mut v); // close any prior rule defensively
+                if let Some((&rule, params)) = syms.split_first() {
+                    cur = Some((rule, params.to_vec(), Vec::new()));
+                }
+            }
+            Op::MATCH => {
+                if let Some((_, _, body)) = cur.as_mut() {
+                    if let Some((&pred, cargs)) = syms.split_first() {
+                        body.push((pred, cargs.to_vec()));
                     }
                 }
-                Op::UNIFY => {
-                    let syms = ref_syms(args);
-                    if let Some((&rule, params)) = syms.split_first() {
-                        v.rule_syms.push(rule);
-                        v.rule_param_counts.push(params.len() as i64);
-                        v.rule_param_syms.push(params.to_vec());
-                    }
-                }
-                _ => {}
             }
-            for a in args {
-                walk_symbolic(a, v);
-            }
+            Op::INFER => finish(&mut cur, &mut v),
+            _ => {}
         }
-        _ => {}
     }
+    finish(&mut cur, &mut v);
+    v
 }
 
 fn first_int(args: &[Expr]) -> Option<i64> {
@@ -1052,6 +1105,101 @@ fn ref_syms(args: &[Expr]) -> Vec<u32> {
             _ => None,
         })
         .collect()
+}
+
+/// A resolved ground fact: predicate name + constant term names.
+pub type GroundFact = (String, Vec<String>);
+
+/// A resolved Horn-clause rule: head predicate + head variables + body literals
+/// (predicate, variable args). All rule args are logic variables.
+#[derive(Debug, Clone)]
+pub struct KbRule {
+    /// Head predicate (the derived relation's name).
+    pub head: String,
+    /// Head parameter variables (range-restricted: each appears in the body).
+    pub params: Vec<String>,
+    /// Body literals: `(predicate, [variable args])`.
+    pub body: Vec<(String, Vec<String>)>,
+}
+
+/// Forward-chain `rules` over `facts` to the least fixpoint and return the
+/// **derived** facts (closure minus the initial set), de-duplicated, in
+/// deterministic order. This is the real execution semantics of a `kb`
+/// artifact — a safe, terminating Datalog evaluation (no function symbols, so
+/// the Herbrand base is finite). It is a pure interpreter: no arbitrary code
+/// runs, preserving the no-exec property of the artifact.
+pub fn evaluate_kb(facts: &[GroundFact], rules: &[KbRule]) -> Vec<GroundFact> {
+    use std::collections::{BTreeMap, BTreeSet};
+    let key = |f: &GroundFact| format!("{}({})", f.0, f.1.join(","));
+    let initial: BTreeSet<String> = facts.iter().map(&key).collect();
+    let mut known = initial.clone();
+    let mut all: Vec<GroundFact> = facts.to_vec();
+
+    loop {
+        let mut added: Vec<GroundFact> = Vec::new();
+        for rule in rules {
+            // Enumerate variable substitutions satisfying every body literal,
+            // joining against the current fact set (relational join).
+            let mut subs: Vec<BTreeMap<String, String>> = vec![BTreeMap::new()];
+            for (bp, bargs) in &rule.body {
+                let mut next = Vec::new();
+                for sub in &subs {
+                    for f in &all {
+                        if &f.0 != bp || f.1.len() != bargs.len() {
+                            continue;
+                        }
+                        let mut s2 = sub.clone();
+                        let mut ok = true;
+                        for (var, c) in bargs.iter().zip(&f.1) {
+                            match s2.get(var) {
+                                Some(prev) if prev != c => {
+                                    ok = false;
+                                    break;
+                                }
+                                Some(_) => {}
+                                None => {
+                                    s2.insert(var.clone(), c.clone());
+                                }
+                            }
+                        }
+                        if ok {
+                            next.push(s2);
+                        }
+                    }
+                }
+                subs = next;
+                if subs.is_empty() {
+                    break;
+                }
+            }
+            for sub in &subs {
+                let mut terms = Vec::with_capacity(rule.params.len());
+                let mut ok = true;
+                for p in &rule.params {
+                    match sub.get(p) {
+                        Some(c) => terms.push(c.clone()),
+                        None => {
+                            ok = false;
+                            break;
+                        }
+                    }
+                }
+                if !ok {
+                    continue;
+                }
+                let nf = (rule.head.clone(), terms);
+                let k = key(&nf);
+                if known.insert(k) {
+                    added.push(nf);
+                }
+            }
+        }
+        if added.is_empty() {
+            break;
+        }
+        all.extend(added);
+    }
+    all.into_iter().filter(|f| !initial.contains(&key(f))).collect()
 }
 
 /// The recoverable structure of an *agentic* artifact (agent or swarm).
