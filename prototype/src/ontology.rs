@@ -1,4 +1,4 @@
-//! Complete ontology over the MechGen language, the Machine Language IR, and the
+//! Complete ontology over the MechGen language, the Agentic Binary Language IR, and the
 //! RAP protocol surface. Built so an autonomous agent can discover
 //! "what exists" without prior training on this codebase.
 //!
@@ -12,12 +12,12 @@
 //!                      `Op::ALL` + `OpMeta`)
 //! - **`op_families`** — The 7 `OpFamily` buckets and their semantics
 //! - **`layer_map`**  — Surface layer name → opcode (from
-//!                      `machine_bridge::layer_name_to_op`)
+//!                      `abl_bridge::layer_name_to_op`)
 //! - **`rap_methods`** — Protocol method catalog with input / output keys
 //! - **`heal_patterns`** — Mechanical heal patterns (from
 //!                          `heal::pattern_names`)
 //! - **`recovery_stages`** — The 4-stage recovery pipeline + agent.refine
-//! - **`machine`**       — Binary IR container format constants
+//! - **`abl`**       — Binary IR container format constants
 //!
 //! Single entry point: [`build`] returns a `serde_json::Value`. The RAP
 //! method `ontology/full` calls it; `ontology/section` returns just one
@@ -74,12 +74,12 @@ const SIGILS: &[(&str, &str, &str)] = &[
 /// complete and can never drift. This map only adds prose where it helps; any
 /// keyword without an entry still appears, with a generated summary.
 const KEYWORD_DOCS: &[(&str, &str, &str)] = &[
-    ("net", "NetDef", "neural network definition; lowers to Machine Language"),
-    ("kb", "KbDef", "symbolic knowledge base; lowers to Machine Language"),
-    ("agent", "AgentDef", "agent role; lowers to Machine Language agent ops"),
-    ("swarm", "SwarmDef", "agent swarm topology; lowers to Machine Language"),
-    ("train", "TrainDef", "training pipeline; lowers to Machine Language compute"),
-    ("evolve", "EvolveDef", "evolutionary search; lowers to Machine Language meta"),
+    ("net", "NetDef", "neural network definition; lowers to Agentic Binary Language"),
+    ("kb", "KbDef", "symbolic knowledge base; lowers to Agentic Binary Language"),
+    ("agent", "AgentDef", "agent role; lowers to Agentic Binary Language agent ops"),
+    ("swarm", "SwarmDef", "agent swarm topology; lowers to Agentic Binary Language"),
+    ("train", "TrainDef", "training pipeline; lowers to Agentic Binary Language compute"),
+    ("evolve", "EvolveDef", "evolutionary search; lowers to Agentic Binary Language meta"),
     ("layer", "Layer", "neural-net layer inside a net block"),
     ("forward", "Forward", "forward pass inside a net block"),
     ("effect", "Effect", "effect declaration"),
@@ -152,12 +152,12 @@ const AST_KINDS: &[(&str, &str)] = &[
     ("Const", "const declaration"),
     ("Static", "static declaration"),
     ("TypeAlias", "type alias"),
-    ("NetDef", "AI: neural network (Machine Language-routed)"),
-    ("KbDef", "AI: symbolic knowledge base (Machine Language-routed)"),
-    ("AgentDef", "AI: agent role (Machine Language-routed)"),
-    ("SwarmDef", "AI: swarm topology (Machine Language-routed)"),
-    ("TrainDef", "AI: training pipeline (Machine Language-routed)"),
-    ("EvolveDef", "AI: evolutionary search (Machine Language-routed)"),
+    ("NetDef", "AI: neural network (Agentic Binary Language-routed)"),
+    ("KbDef", "AI: symbolic knowledge base (Agentic Binary Language-routed)"),
+    ("AgentDef", "AI: agent role (Agentic Binary Language-routed)"),
+    ("SwarmDef", "AI: swarm topology (Agentic Binary Language-routed)"),
+    ("TrainDef", "AI: training pipeline (Agentic Binary Language-routed)"),
+    ("EvolveDef", "AI: evolutionary search (Agentic Binary Language-routed)"),
     ("EffectDef", "Effect declaration"),
     ("SpecBlock", "Spec / contract block"),
 ];
@@ -174,7 +174,7 @@ const OP_FAMILIES: &[(&str, u8, &str)] = &[
 ];
 
 /// Canonical layer surface names that lower to an `Op`. Pulled from the
-/// authoritative mapping in `machine_bridge::layer_name_to_op`.
+/// authoritative mapping in `abl_bridge::layer_name_to_op`.
 const LAYER_SURFACE_NAMES: &[&str] = &[
     "Linear", "Conv2D", "Attention", "Embed", "Dropout", "Softmax",
     "ReLU", "GELU", "SiLU", "Sigmoid", "Tanh", "Mish", "Softplus",
@@ -200,14 +200,14 @@ const RAP_METHODS: &[(&str, &str, &[&str], &[&str])] = &[
         &["source"], &["ok", "diagnostics"]),
     ("build/recover", "Run the 5-stage recovery pipeline; return final source.",
         &["source"], &["ok", "stage", "candidates_tried", "source", "changed"]),
-    ("ml/encode", "Source -> Machine Language bytes (hex).",
-        &["source"], &["ok", "magic", "version", "container_bytes", "items", "ml_hex"]),
-    ("ml/decode", "Machine Language bytes (hex) -> decompiled per-item view.",
-        &["ml_hex"], &["ok", "container_bytes", "items"]),
-    ("ml/run", "Source -> encode -> CpuBackend dispatch.",
+    ("abl/encode", "Source -> Agentic Binary Language bytes (hex).",
+        &["source"], &["ok", "magic", "version", "container_bytes", "items", "abl_hex"]),
+    ("abl/decode", "Agentic Binary Language bytes (hex) -> decompiled per-item view.",
+        &["abl_hex"], &["ok", "container_bytes", "items"]),
+    ("abl/run", "Source -> encode -> CpuBackend dispatch.",
         &["source"], &["ok", "container_bytes", "runs"]),
-    ("pipeline/recover-and-encode", "Recover then encode Machine Language in one call.",
-        &["source"], &["ok", "recover_stage", "recovered_source", "ml_hex", "items"]),
+    ("pipeline/recover-and-encode", "Recover then encode Agentic Binary Language in one call.",
+        &["source"], &["ok", "recover_stage", "recovered_source", "abl_hex", "items"]),
     ("cost/query", "Per-construct cost estimate.",
         &["construct", "target", "opt"], &["construct", "target", "opt", "estimate"]),
     ("cost/compare", "Compare costs of two constructs.",
@@ -310,15 +310,15 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--check", "Lex + parse + resolve; report diagnostics", true),
     ("--fmt-compact", "Reformat source in agent-canonical sigil mode", true),
     ("--fmt-expand", "Reformat source in human-readable keyword mode", true),
-    ("--target=ml", "Print per-item Machine Language stats (nodes/depth/hash/bytes)", true),
-    ("--target=ml-bytes", "Encode Machine Language-routed items to a binary Machine Language container", true),
-    ("--from=ml-bytes", "Decode a Machine Language container back to MechGen view", true),
-    ("--run=ml-bytes", "Decode Machine Language and dispatch each item on CpuBackend", true),
-    ("--target=ml-generate", "Autoregressive generation from a trained checkpoint", true),
-    ("--target=ml-infer", "Inference over a `train` block's saved weights", true),
-    ("--target=ml-train", "Train every `train` block in the module", true),
-    ("--target=ml-compute", "Forward pass without training over Machine Language items", true),
-    ("--target=ml-run", "End-to-end run of Machine Language-routed items", true),
+    ("--target=abl", "Print per-item Agentic Binary Language stats (nodes/depth/hash/bytes)", true),
+    ("--target=abl-bytes", "Encode Agentic Binary Language-routed items to a binary Agentic Binary Language container", true),
+    ("--from=abl-bytes", "Decode a Agentic Binary Language container back to MechGen view", true),
+    ("--run=abl-bytes", "Decode Agentic Binary Language and dispatch each item on CpuBackend", true),
+    ("--target=abl-generate", "Autoregressive generation from a trained checkpoint", true),
+    ("--target=abl-infer", "Inference over a `train` block's saved weights", true),
+    ("--target=abl-train", "Train every `train` block in the module", true),
+    ("--target=abl-compute", "Forward pass without training over Agentic Binary Language items", true),
+    ("--target=abl-run", "End-to-end run of Agentic Binary Language-routed items", true),
     ("--pipeline", "Run the full lex+parse+resolve+effects+verify pipeline", true),
     ("--backend=<name>",
         "Select hardware accelerator for dispatch (default: cpu). See ontology.hardware_accelerators for the catalog.",
@@ -396,7 +396,7 @@ const WRAPPER_PROTOCOL: &[(&str, &str, &str)] = &[
 /// Columns: `(path, purpose)`.
 const PROJECT_LAYOUT: &[(&str, &str)] = &[
     ("prototype/", "Rust compiler + RAP server + benches"),
-    ("prototype/src/", "Lexer / parser / heal / recover / machine_bridge / rap / ontology"),
+    ("prototype/src/", "Lexer / parser / heal / recover / abl_bridge / rap / ontology"),
     ("prototype/src/bin/", "reliability-bench, token-bench"),
     ("prototype/examples/", "Inline `.mg` examples used by parser tests"),
     ("RecursiveMachineIntelligence/", "RMI Rust crate: binary IR, opcodes, codec, CpuBackend"),
@@ -502,7 +502,7 @@ const EXAMPLES: &[(&str, &str, &str, &[&str])] = &[
     ),
     (
         "net-linear",
-        "Minimal neural net: one Linear layer (lowers to Machine Language).",
+        "Minimal neural net: one Linear layer (lowers to Agentic Binary Language).",
         "net tiny { layer fc: Linear(8, 4); forward { fc } }",
         &["net", "layer", "forward"],
     ),
@@ -514,7 +514,7 @@ const EXAMPLES: &[(&str, &str, &str, &[&str])] = &[
     ),
     (
         "kb-rule",
-        "Symbolic knowledge base with facts and a rule (lowers to Machine Language).",
+        "Symbolic knowledge base with facts and a rule (lowers to Agentic Binary Language).",
         "kb FamilyKb { fact parent(a, b); fact parent(b, c); rule grandparent(x: i32, y: i32) { x } }",
         &["kb", "fact", "rule"],
     ),
@@ -1162,7 +1162,7 @@ pub fn build() -> serde_json::Value {
             "rap_methods": rap_methods_section(),
             "heal_patterns": heal_patterns_section(),
             "recovery_stages": recovery_stages_section(),
-            "machine": machine_section(),
+            "abl": abl_section(),
             "examples": examples_section(),
             "framewerx_modules": framewerx_modules_section(),
             "cli_flags": cli_flags_section(),
@@ -1210,7 +1210,7 @@ pub fn section(name: &str) -> Option<serde_json::Value> {
         "rap_methods" => rap_methods_section(),
         "heal_patterns" => heal_patterns_section(),
         "recovery_stages" => recovery_stages_section(),
-        "machine" => machine_section(),
+        "abl" => abl_section(),
         "examples" => examples_section(),
         "framewerx_modules" => framewerx_modules_section(),
         "cli_flags" => cli_flags_section(),
@@ -1309,7 +1309,7 @@ fn layer_map_section() -> serde_json::Value {
     let items: Vec<_> = LAYER_SURFACE_NAMES
         .iter()
         .filter_map(|name| {
-            crate::machine_bridge::layer_name_to_op(name).map(|op| {
+            crate::abl_bridge::layer_name_to_op(name).map(|op| {
                 serde_json::json!({
                     "surface_name": name,
                     "opcode": format!("0x{:04x}", op.0),
@@ -1485,17 +1485,17 @@ fn examples_section() -> serde_json::Value {
     serde_json::json!(items)
 }
 
-fn machine_section() -> serde_json::Value {
+fn abl_section() -> serde_json::Value {
     serde_json::json!({
-        "magic": std::str::from_utf8(crate::machine::MACHINE_MAGIC).unwrap_or("Machine Language"),
-        "version": crate::machine::MACHINE_VERSION,
+        "magic": std::str::from_utf8(crate::abl::ABL_MAGIC).unwrap_or("Agentic Binary Language"),
+        "version": crate::abl::ABL_VERSION,
         "format": [
-            "magic    : 4 bytes (\"Machine Language\")",
+            "magic    : 4 bytes (\"Agentic Binary Language\")",
             "version  : u16 LE",
             "count    : u32 LE",
             "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }",
         ],
-        "media_type": "application/machine",
+        "media_type": "application/abl",
     })
 }
 
@@ -1536,7 +1536,7 @@ mod tests {
         let sections = o["sections"].as_object().expect("sections obj");
         for required in [
             "sigils", "keywords", "types", "ast_kinds", "ir_ops", "op_families",
-            "layer_map", "rap_methods", "heal_patterns", "recovery_stages", "machine",
+            "layer_map", "rap_methods", "heal_patterns", "recovery_stages", "abl",
             "examples", "framewerx_modules",
             // P82 - operational discoverability
             "cli_flags", "bench_backends", "effects", "wrapper_protocol",
@@ -1546,9 +1546,9 @@ mod tests {
         ] {
             assert!(sections.contains_key(required), "missing section: {required}");
             assert!(!sections[required].is_null(), "null section: {required}");
-            // `machine` is an object describing the container layout;
+            // `abl` is an object describing the container layout;
             // every other section is an array.
-            if required != "machine" {
+            if required != "abl" {
                 let arr = sections[required].as_array()
                     .unwrap_or_else(|| panic!("section {required} not an array"));
                 assert!(!arr.is_empty(), "section {required} is empty");
@@ -1565,8 +1565,8 @@ mod tests {
         let v = arr.as_array().unwrap();
         let names: Vec<&str> = v.iter().filter_map(|e| e["flag"].as_str()).collect();
         for required in ["--rap", "--check", "--emit-ontology",
-                         "--target=ml-bytes", "--from=ml-bytes",
-                         "--run=ml-bytes", "--fmt-compact", "--fmt-expand"] {
+                         "--target=abl-bytes", "--from=abl-bytes",
+                         "--run=abl-bytes", "--fmt-compact", "--fmt-expand"] {
             assert!(names.contains(&required), "missing flag: {required}");
         }
     }
@@ -1704,7 +1704,7 @@ mod tests {
         assert!(names.contains(&"ontology/full"));
         assert!(names.contains(&"ontology/section"));
         assert!(names.contains(&"build/recover"));
-        assert!(names.contains(&"ml/encode"));
+        assert!(names.contains(&"abl/encode"));
     }
 
     #[test]
@@ -1885,10 +1885,10 @@ mod tests {
 
     /// End-to-end integration test of the JAX:FLAX :: RMI:RecursiveMachineIntelligence-MG
     /// architecture. Walks every RecursiveMachineIntelligence-MG example through the full
-    /// stack: source -> parse -> machine_bridge::lower_module -> Machine Language
+    /// stack: source -> parse -> abl_bridge::lower_module -> Agentic Binary Language
     /// encode -> decode -> assert per-item structural invariants.
     ///
-    /// If the bridge stops routing `net` blocks to Machine Language, or the codec
+    /// If the bridge stops routing `net` blocks to Agentic Binary Language, or the codec
     /// loses fidelity, this test fires - end-to-end at the layer where
     /// agents actually use the framework.
     #[test]
@@ -1938,24 +1938,24 @@ mod tests {
             let module = crate::parser::parse(&tokens)
                 .unwrap_or_else(|e| panic!("{}: parse: {e:?}", file.display()));
 
-            // 2. lower via the bridge - should produce Machine Language items
-            let lowered = crate::machine_bridge::lower_module(&module);
+            // 2. lower via the bridge - should produce Agentic Binary Language items
+            let lowered = crate::abl_bridge::lower_module(&module);
             assert!(
                 !lowered.items.is_empty(),
-                "{}: bridge produced no Machine Language items (net block not recognized?)",
+                "{}: bridge produced no Agentic Binary Language items (net block not recognized?)",
                 file.display()
             );
 
-            // 3. round-trip through the Machine Language codec
-            let (blob, summary) = crate::machine::encode_module(&module);
-            assert!(blob.len() > 8, "{}: Machine Language blob too small", file.display());
+            // 3. round-trip through the Agentic Binary Language codec
+            let (blob, summary) = crate::abl::encode_module(&module);
+            assert!(blob.len() > 8, "{}: Agentic Binary Language blob too small", file.display());
             assert_eq!(
                 summary.len(),
                 lowered.items.len(),
                 "{}: summary count mismatch",
                 file.display()
             );
-            let decoded = crate::machine::decode_container(&blob)
+            let decoded = crate::abl::decode_container(&blob)
                 .unwrap_or_else(|e| panic!("{}: decode: {e}", file.display()));
             assert_eq!(
                 decoded.len(),
@@ -1984,7 +1984,7 @@ mod tests {
     }
 
     /// **P88 CI-floor**: every framework example listed below must
-    /// not only compile to Machine Language but DISPATCH cleanly on the CpuBackend
+    /// not only compile to Agentic Binary Language but DISPATCH cleanly on the CpuBackend
     /// with the auto-inferred input shape, producing a non-degenerate
     /// output shape. CI-locks the P86 sweep so future bridge / op /
     /// inference changes can't silently regress dispatch coverage.
@@ -2041,17 +2041,17 @@ mod tests {
             any_resolved = true;
             tested += 1;
 
-            // Compile to Machine Language, decode each item, dispatch via CpuBackend.
+            // Compile to Agentic Binary Language, decode each item, dispatch via CpuBackend.
             let source = std::fs::read_to_string(&file).unwrap();
             let tokens = crate::lexer::lex(&source);
             let module = crate::parser::parse(&tokens)
                 .unwrap_or_else(|e| panic!("{}: parse: {e:?}", file.display()));
-            let lowered = crate::machine_bridge::lower_module(&module);
+            let lowered = crate::abl_bridge::lower_module(&module);
 
             for (name, expr) in &lowered.items {
-                let shape = crate::machine_compute::infer_input_shape(expr)
+                let shape = crate::abl_compute::infer_input_shape(expr)
                     .unwrap_or_else(|| vec![8]);
-                match crate::machine_compute::run_pipeline(&backend, expr, &shape, 1.0) {
+                match crate::abl_compute::run_pipeline(&backend, expr, &shape, 1.0) {
                     Ok(r) => {
                         // Output shape sanity: rank >= 2, batch > 0,
                         // and at least one op was dispatched (no

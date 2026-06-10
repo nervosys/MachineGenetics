@@ -488,7 +488,7 @@ pub fn batch_generate(specs: &[SynthesisSpec]) -> Vec<GenerationReport> {
 
 /// Generate a complete module from a high-level description.
 pub fn generate_module(
-    module_name: &str,
+    _module_name: &str,
     function_specs: &[SynthesisSpec],
 ) -> (String, Vec<GenerationReport>) {
     let mut bridge = CodegenBridge::new();

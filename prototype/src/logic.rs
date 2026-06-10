@@ -13,7 +13,7 @@
 /// materializing the knowledge base at compile time.
 use crate::ast;
 use crate::hir::{Diagnostic, DiagnosticCategory, Severity};
-use std::collections::{HashMap, HashSet, BTreeSet};
+use std::collections::{HashMap, BTreeSet};
 
 // ── Terms and atoms ─────────────────────────────────────────────────
 

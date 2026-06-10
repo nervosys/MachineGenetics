@@ -41,7 +41,7 @@ end-to-end without spending tokens on a real LLM.
 | Shared rule | 15,831 | 15,310 | 1.034 | 3.4 % longer |
 
 Honest framing: MechGen text is **at parity with Rust** in syntactic
-tokens. The mission win lives in the **binary IR (Machine Language)** for AI-routed
+tokens. The mission win lives in the **binary IR (Agentic Binary Language)** for AI-routed
 items and the **reliability pipeline**, not in raw text-byte reduction.
 
 ## CI floors
@@ -66,7 +66,7 @@ ratchet upward.
 |---|---|
 | Language | `language/parse`, `language/tokens` |
 | Build | `build/check`, `build/heal`, `build/recover` |
-| Machine Language transport | `ml/encode`, `ml/decode`, `ml/run` |
+| Agentic Binary Language transport | `abl/encode`, `abl/decode`, `abl/run` |
 | Pipeline | `pipeline/recover-and-encode` |
 | Ontology | `ontology/full`, `ontology/section` |
 | Cost | `cost/query`, `cost/compare` |
@@ -94,7 +94,7 @@ ontology/full
   ├─ keywords (12)           — AI constructs (net/kb/agent/swarm/...)
   ├─ types (30)              — built-in scalars + composites
   ├─ ast_kinds (18)          — top-level item families
-  ├─ ir_ops (107)            — every Machine Language opcode w/ metadata
+  ├─ ir_ops (107)            — every Agentic Binary Language opcode w/ metadata
   ├─ op_families (7)         — Neural/Symbolic/Control/Memory/Agent/Meta/Math
   ├─ layer_map (31)          — surface name → opcode
   ├─ rap_methods (37)        — every callable method w/ inputs/outputs
@@ -141,10 +141,10 @@ backends without recompiling:
 
 # Then dispatch through it:
 MechGen-parse --backends-file=~/.mechgen/backends.json \
-              --backend=groq_lpu --run=ml-bytes model.ml
+              --backend=groq_lpu --run=abl-bytes model.abl
 ```
 
-Wrapper protocol: stdin = Machine Language blob, env = `RDX_BACKEND` / `RDX_ITEM_NAME` /
+Wrapper protocol: stdin = Agentic Binary Language blob, env = `RDX_BACKEND` / `RDX_ITEM_NAME` /
 `RDX_INPUT_SHAPE`, stdout = `{ ok, dispatched, output_shape, output_sum, error }` JSON.
 Reference wrapper: `scripts/backend_wrappers/demo_subprocess_backend.sh`.
 
@@ -165,7 +165,7 @@ After 55 phases of measurement:
 
 1. **Token parity** with Rust on syntactic tokens (0.998). The agent
    pays the same inference cost on MechGen text as on Rust text.
-2. **Binary IR (Machine Language)** for AI items (`net` / `kb` / `agent` / `swarm`).
+2. **Binary IR (Agentic Binary Language)** for AI items (`net` / `kb` / `agent` / `swarm`).
    Agents ship and execute these without text round-trip - this is where
    the real size win lives.
 3. **Reliability** - the 5-stage recovery pipeline is load-bearing.

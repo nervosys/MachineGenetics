@@ -1,6 +1,6 @@
 // Phase-12 CSV training demo.
 //
-// Run: MechGen-parse --target=ml-train prototype/examples/train_csv.mg
+// Run: MechGen-parse --target=abl-train prototype/examples/train_csv.mg
 
 net Regressor {
     layer fc1: Linear(2, 4);

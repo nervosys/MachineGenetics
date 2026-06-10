@@ -13,7 +13,6 @@
 /// Generates `MechGen.evolve.*` MLIR dialect ops.
 use crate::ast;
 use crate::hir::{Diagnostic, DiagnosticCategory, Severity};
-use std::collections::HashMap;
 
 // ── IR for evolutionary algorithm loop ──────────────────────────────
 

@@ -22,7 +22,7 @@ honest measurements, the actual delivered reduction ranges from
 **+6.7 % (best case) to −5.5 % (worst case)**.
 
 The only place the ~50 % claim is genuinely realised is in the binary
-**Machine Language IR** (a transformer block in ~47 bytes — see Phase 1 demo). The
+**Agentic Binary Language IR** (a transformer block in ~47 bytes — see Phase 1 demo). The
 text surface, as currently written and used by the corpus, is a wash.
 
 ## Measurement table (100 tasks, all categories)
@@ -78,18 +78,18 @@ loses**. Rust's `if` / `else` / `mut` / `let` are short enough that
 MechGen's `?` / `:` / `m` / `v` don't save much, while MG's longer
 constructs (`R[T,E]`, `?T`) cost.
 
-## Where the ~50 % claim *is* real: the Machine Language binary IR
+## Where the ~50 % claim *is* real: the Agentic Binary Language binary IR
 
 Phase 1 of the unification demonstrated:
-- A full transformer block lowers to **47 bytes** of Machine Language.
+- A full transformer block lowers to **47 bytes** of Agentic Binary Language.
 - An MLP fits in **17 bytes**.
 - A KB definition fits in **68 bytes**.
 
 These are 1-2 orders of magnitude smaller than the equivalent text in
 either MechGen or Rust. **If the goal is "maximally token-efficient
-for agents," the answer is: have agents emit Machine Language directly, not text.**
+for agents," the answer is: have agents emit Agentic Binary Language directly, not text.**
 
-The text surface is best understood as a human-readable view of Machine Language,
+The text surface is best understood as a human-readable view of Agentic Binary Language,
 not as the agent's primary output medium.
 
 ## What this means for the actual mission
@@ -102,7 +102,7 @@ delivered value:
 - A **zero-ambiguity LL(1) grammar** with rich agent-affordances
   (effects, contracts, SKB, cost oracle, self-healing).
 - A **modestly more compact surface** for declaration-heavy code.
-- A **binary IR (Machine Language) that *is* genuinely ~50× smaller** than text,
+- A **binary IR (Agentic Binary Language) that *is* genuinely ~50× smaller** than text,
   intended as the primary agent output target.
 
 The "~50 % text reduction" claim is dropped or qualified.
@@ -120,13 +120,13 @@ Concrete moves:
 
 After surface changes, re-run `token-bench`; target is real 25-30 %.
 
-### Path C: Make Machine Language the canonical agent target
+### Path C: Make Agentic Binary Language the canonical agent target
 Stop pretending the text surface is what agents emit. Add:
-- `--target=ml-bytes` flag where agents emit binary Machine Language directly,
+- `--target=abl-bytes` flag where agents emit binary Agentic Binary Language directly,
   text `.mg` only generated for human review.
 - The decompiler (already exists from Phase 4) provides the
   human-readable view on demand.
-- All cost / token / efficiency claims shift to Machine Language byte counts,
+- All cost / token / efficiency claims shift to Agentic Binary Language byte counts,
   which **already deliver** the ~50× reduction.
 
 Of the three, Path C is the cleanest match to the project's stated
@@ -428,7 +428,7 @@ supports arbitrary text and ranges.
 
 | Mission claim (original) | Measured reality | Delivered fix |
 |---|---|---|
-| "~50 % text token reduction vs Rust" | ~tied | Re-framed README; Machine Language bytes are the actual win |
+| "~50 % text token reduction vs Rust" | ~tied | Re-framed README; Agentic Binary Language bytes are the actual win |
 | "Maximally reliable for agents (compiler accepts all corpus)" | 25 / 100 | 18 parser patches → 69 / 100; +176 % |
 | "Self-healing repairs agent errors" | 0 / 31 parse failures healed | 6 parse-error patterns → 1 / 31 + foundation for more |
 
@@ -493,7 +493,7 @@ No credentials or network code in the bench itself.
 | Finding | Tool | Number | Status |
 |---|---|---|---|
 | Text token reduction vs Rust | `token-bench` | ~tied (claim was 50 %) | Re-framed README; bytes deliver 83 % |
-| Machine Language binary IR efficiency | `token-bench` + manual | 83 % smaller than text | Real; `--target=ml-bytes` ships |
+| Agentic Binary Language binary IR efficiency | `token-bench` + manual | 83 % smaller than text | Real; `--target=abl-bytes` ships |
 | Corpus parse-rate | `reliability-bench` | 25 → 69 / 100 | +176 % via 18 parser patches |
 | Self-heal coverage on corpus | `reliability-bench` (P36) | 0 % healed | Exposed limitation |
 | Self-heal coverage on perturbed | `reliability-bench` (P38) | **17.6 % healed** | First real heal-reach number |

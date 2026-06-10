@@ -1,9 +1,9 @@
-//! Machine Language container codec — pure encode/decode for the `application/machine`
-//! payload that wraps one-or-more Machine Language `Expr` blocks with names.
+//! Agentic Binary Language container codec — pure encode/decode for the `application/abl`
+//! payload that wraps one-or-more Agentic Binary Language `Expr` blocks with names.
 //!
 //! Container layout (little-endian):
 //! ```text
-//!   magic    "Machine Language" (4 bytes)
+//!   magic    "Agentic Binary Language" (4 bytes)
 //!   version  u16 = 1
 //!   count    u32           — number of items
 //!   for each item:
@@ -13,33 +13,33 @@
 //!     expr     codec::Encoder::encode_expr_only output
 //! ```
 //!
-//! Used by both the CLI (`--target=ml-bytes`, `--from=ml-bytes`,
-//! `--run=ml-bytes`) and the RAP server (`ml/encode`, `ml/decode`,
-//! `ml/run`). Keeping the format in one place prevents drift.
+//! Used by both the CLI (`--target=abl-bytes`, `--from=abl-bytes`,
+//! `--run=abl-bytes`) and the RAP server (`abl/encode`, `abl/decode`,
+//! `abl/run`). Keeping the format in one place prevents drift.
 
 use crate::ast;
-use crate::machine_bridge;
+use crate::abl_bridge;
 use rmi::lang::Expr;
 
-pub const MACHINE_MAGIC: &[u8; 4] = b"MACH";
-pub const MACHINE_VERSION: u16 = 2;
+pub const ABL_MAGIC: &[u8; 4] = b"ABL1";
+pub const ABL_VERSION: u16 = 2;
 
-/// One decoded item from a Machine Language container.
+/// One decoded item from a Agentic Binary Language container.
 #[derive(Debug)]
-pub struct MachineItem {
+pub struct AblItem {
     pub name: String,
     pub expr: Expr,
     pub expr_bytes_len: usize,
 }
 
-/// Lower a MechGen module and encode every Machine Language-routed item into a single
-/// Machine Language blob. Returns the blob plus per-item `(name, expr_bytes_len, content_hash)`
+/// Lower a MechGen module and encode every Agentic Binary Language-routed item into a single
+/// Agentic Binary Language blob. Returns the blob plus per-item `(name, expr_bytes_len, content_hash)`
 /// for summary printing; callers can ignore the summary tuple if not needed.
 pub fn encode_module(module: &ast::Module) -> (Vec<u8>, Vec<(String, usize, u64)>) {
-    let lowered = machine_bridge::lower_module(module);
+    let lowered = abl_bridge::lower_module(module);
     let mut blob: Vec<u8> = Vec::new();
-    blob.extend_from_slice(MACHINE_MAGIC);
-    blob.extend_from_slice(&MACHINE_VERSION.to_le_bytes());
+    blob.extend_from_slice(ABL_MAGIC);
+    blob.extend_from_slice(&ABL_VERSION.to_le_bytes());
     blob.extend_from_slice(&(lowered.items.len() as u32).to_le_bytes());
     let mut summary = Vec::with_capacity(lowered.items.len());
     for (name, expr) in &lowered.items {
@@ -81,19 +81,19 @@ fn read_u32(buf: &[u8], pos: &mut usize, what: &str) -> Result<usize, String> {
 
 /// Decode the header + items, returning them plus the offset just past the last
 /// item (where the symbol-table section begins).
-fn decode_items(blob: &[u8]) -> Result<(Vec<MachineItem>, usize), String> {
+fn decode_items(blob: &[u8]) -> Result<(Vec<AblItem>, usize), String> {
     let mut pos = 0usize;
     let magic = take(blob, &mut pos, 4, "magic")?;
-    if magic != MACHINE_MAGIC {
-        return Err(format!("bad magic {magic:?} (expected Machine Language)"));
+    if magic != ABL_MAGIC {
+        return Err(format!("bad magic {magic:?} (expected Agentic Binary Language)"));
     }
     let ver = u16::from_le_bytes(
         take(blob, &mut pos, 2, "version")?
             .try_into()
             .map_err(|_| "version slice".to_string())?,
     );
-    if ver != MACHINE_VERSION {
-        return Err(format!("unsupported Machine Language version {ver}"));
+    if ver != ABL_VERSION {
+        return Err(format!("unsupported Agentic Binary Language version {ver}"));
     }
     let count = read_u32(blob, &mut pos, "count")?;
     let mut items = Vec::with_capacity(count);
@@ -106,14 +106,14 @@ fn decode_items(blob: &[u8]) -> Result<(Vec<MachineItem>, usize), String> {
         let expr_bytes = take(blob, &mut pos, el, "expr")?;
         let expr = rmi::lang::codec::Decoder::decode_expr_only(expr_bytes)
             .map_err(|e| format!("item {i} ({name}): decode error: {e:?}"))?;
-        items.push(MachineItem { name, expr, expr_bytes_len: el });
+        items.push(AblItem { name, expr, expr_bytes_len: el });
     }
     Ok((items, pos))
 }
 
-/// Decode a Machine Language container into its items. Returns a structured error
+/// Decode a Agentic Binary Language container into its items. Returns a structured error
 /// string rather than panicking, so the RAP layer can surface it as JSON.
-pub fn decode_container(blob: &[u8]) -> Result<Vec<MachineItem>, String> {
+pub fn decode_container(blob: &[u8]) -> Result<Vec<AblItem>, String> {
     Ok(decode_items(blob)?.0)
 }
 
@@ -138,7 +138,7 @@ pub fn decode_symbols(blob: &[u8]) -> Result<Vec<String>, String> {
 }
 
 /// Lowercase hex encoder — pure, no deps. Used by the RAP layer to ship
-/// Machine Language bytes through a JSON channel.
+/// Agentic Binary Language bytes through a JSON channel.
 pub fn to_hex(bytes: &[u8]) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";
     let mut out = String::with_capacity(bytes.len() * 2);
@@ -193,7 +193,7 @@ mod tests {
         let tokens = lexer::lex(SAMPLE);
         let module = parser::parse(&tokens).expect("sample parses");
         let (blob, summary) = encode_module(&module);
-        assert!(blob.starts_with(MACHINE_MAGIC));
+        assert!(blob.starts_with(ABL_MAGIC));
         assert_eq!(summary.len(), 1, "tiny net should encode as one item");
         let items = decode_container(&blob).expect("round-trip decode");
         assert_eq!(items.len(), 1);

@@ -41,7 +41,7 @@ pub fn main() / io {
 
 > **Honest framing (2026-05):** MechGen's value for agents lives in
 > two places: (1) a structurally reliable text surface — LL(1) grammar,
-> effects, contracts, SKB, self-healing — and (2) the **Machine Language binary IR**,
+> effects, contracts, SKB, self-healing — and (2) the **Agentic Binary Language binary IR**,
 > where a full neural-network module fits in **~300 bytes**
 > (~83 % smaller than the equivalent text).
 >
@@ -54,7 +54,7 @@ pub fn main() / io {
 
 - **Zero-Ambiguity Syntax** — Deterministic LL(1) grammar eliminates parsing failures for both humans and AI agents. No backtracking, no ambiguity.
 
-- **Binary IR for Agents (Machine Language)** — A transformer block encodes to **47 bytes** of Machine Language, a 5-item module to ~300 bytes (vs ~1.8 KB of text). Agents target the IR directly via `--target=ml-bytes`; the text surface is a human-readable view via the round-trip decompiler.
+- **Binary IR for Agents (Agentic Binary Language)** — A transformer block encodes to **47 bytes** of Agentic Binary Language, a 5-item module to ~300 bytes (vs ~1.8 KB of text). Agents target the IR directly via `--target=abl-bytes`; the text surface is a human-readable view via the round-trip decompiler.
 
 - **Sigil-Based Text Surface** — Canonical forms (`+f` = pub fn, `v`/`val` = immutable binding, `m`/`var` = mutable binding, `?` = match, `@` = for) keep the human view compact. (`let` is *not* a keyword — bindings are always `val`/`var`; the compiler rejects a stray `let` with a fix hint.) On the benchmark corpus the text is ~tied with idiomatic Rust on raw bytes (declaration-heavy code wins 4–14 %, expression-heavy code loses 8–15 %). The structural reliability matters more than the byte delta.
 
@@ -74,7 +74,7 @@ pub fn main() / io {
 
 - **Hardware-Agnostic Compilation** — MLIR-native dialect with lowering passes for LLVM, SPIR-V, WASM, and RISC-V. Autotuning selects optimal strategies per target.
 
-- **Built-in AI Framework (RecursiveMachineIntelligence)** — The [`RecursiveMachineIntelligence/`](RecursiveMachineIntelligence/) `rmi` crate ships inside the project: Machine Language binary neurosymbolic IR, compute backends (CPU + CUDA via IronAccelerator — tensor-core F16/BF16, calibrated INT8/INT4 quantization), a self-describing ontology with a token-compact `manifest()`/`describe()` front door, machine-parseable error diagnostics, and effect-mapped safety. The compiler's `--target=ml-*` modes lower straight onto it.
+- **Built-in AI Framework (RecursiveMachineIntelligence)** — The [`RecursiveMachineIntelligence/`](RecursiveMachineIntelligence/) `rmi` crate ships inside the project: Agentic Binary Language binary neurosymbolic IR, compute backends (CPU + CUDA via IronAccelerator — tensor-core F16/BF16, calibrated INT8/INT4 quantization), a self-describing ontology with a token-compact `manifest()`/`describe()` front door, machine-parseable error diagnostics, and effect-mapped safety. The compiler's `--target=abl-*` modes lower straight onto it.
 
 - **Complete Ontologies, End to End** — Every layer self-describes for agents: the language/compiler (`MechGen-parse --emit-ontology`, `--manifest`), the framework (`rmi::core::manifest`, `FrameworkOntology`), and the CLI (effect-classed mode index). Deterministic output everywhere — agents can cache, diff, and gate without prose docs.
 
@@ -103,15 +103,15 @@ work; see [`UNIFICATION.md`](UNIFICATION.md) for the full phase log.
 
 ```sh
 MechGen-parse <file.mg>                  # parse + check + report
-MechGen-parse --target=ml <file>       # lowering summary (sizes, hashes)
-MechGen-parse --target=ml-bytes <file> [out.ml]
-                                         # emit binary Machine Language container
-MechGen-parse --from=ml-bytes <file.ml>
+MechGen-parse --target=abl <file>       # lowering summary (sizes, hashes)
+MechGen-parse --target=abl-bytes <file> [out.abl]
+                                         # emit binary Agentic Binary Language container
+MechGen-parse --from=abl-bytes <file.abl>
                                          # decode bytes → human-readable .mg
-MechGen-parse --target=ml-compute <file>   # dispatch nets to CpuBackend
-MechGen-parse --target=ml-train    <file>   # SGD/Adam training loop
-MechGen-parse --target=ml-infer    <file>   # load checkpoint, predict
-MechGen-parse --target=ml-generate <file>   # autoregressive decode
+MechGen-parse --target=abl-compute <file>   # dispatch nets to CpuBackend
+MechGen-parse --target=abl-train    <file>   # SGD/Adam training loop
+MechGen-parse --target=abl-infer    <file>   # load checkpoint, predict
+MechGen-parse --target=abl-generate <file>   # autoregressive decode
 ```
 
 ```sh
@@ -164,7 +164,7 @@ compiler/           150+ mechgen_* crates — the full compiler
   ...
 
 library/            Standard library (core, alloc, std)
-RecursiveMachineIntelligence/          Built-in agentic-first AI framework (`rmi` crate): Machine Language
+RecursiveMachineIntelligence/          Built-in agentic-first AI framework (`rmi` crate): Agentic Binary Language
                     binary IR, compute backends (CPU/CUDA, F32→F16/BF16→INT8/4),
                     self-describing ontology + token-compact manifest
 prototype/          Working compiler prototype (36 modules, 920+ tests)

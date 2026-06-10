@@ -661,7 +661,7 @@ This converges because each accepted transform reduces cost (or the cost oracle 
                               │
                               v
 ┌─────────────────────────────────────────────────────────────────────┐
-│ STAGE 6: MACHINE ENCODE  (Direct Binary Emission)                  │
+│ STAGE 6: ABL1INE ENCODE  (Direct Binary Emission)                  │
 │                                                                     │
 │  • No textual assembly. No external assembler.                     │
 │  • O(1) opcode lookup per RIR-Low instruction                      │

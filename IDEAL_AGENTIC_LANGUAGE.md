@@ -102,11 +102,11 @@ reclaim the token axis (0.60 → ~0.72) without surrendering safety.
 
 The proposed way past the floor was tool-mediated construction: the agent emits a
 schema-validated structured spec instead of source, and the toolchain builds the
-artifact. This is now **built** (`MechGen-parse --build=ml <spec.json>`,
+artifact. This is now **built** (`MechGen-parse --build=abl <spec.json>`,
 `prototype/src/builder.rs`): a compact JSON net spec is validated structurally
 (unknown op / bad dims / **shape mismatch** rejected *by construction*, with
 machine-readable errors and no artifact emitted) and lowered to the byte-stable,
-no-exec Machine Language artifact through the existing pipeline.
+no-exec Agentic Binary Language artifact through the existing pipeline.
 
 **But the measurement corrected the thesis.** It does NOT beat the *per-call*
 token floor:
@@ -143,10 +143,10 @@ The paradigm is now a closed, three-step, no-exec loop over the binary artifact:
      → deterministic JSON: op catalog (arities, shape-rule), spec format,
        full error-code catalog with fixes. Fetched ONCE, prompt-cached —
        the standing context the agent grounds in (amortized tokens).
-2. MechGen-parse --build=ml spec.json out.ml
+2. MechGen-parse --build=abl spec.json out.abl
      → validate the spec (reject-by-construction: B0001–B0006, machine-readable,
-       NO artifact on failure) → lower to a byte-stable Machine Language artifact.
-3. MechGen-parse --describe=ml out.ml   # no-exec structured introspection
+       NO artifact on failure) → lower to a byte-stable Agentic Binary Language artifact.
+3. MechGen-parse --describe=abl out.abl   # no-exec structured introspection
      → decode the artifact as PURE DATA (exec:false) into JSON: container size,
        per-item content hash, recovered op/dim structure. The agent verifies
        what it built without ever running it.
@@ -155,7 +155,7 @@ The paradigm is now a closed, three-step, no-exec loop over the binary artifact:
 The loop spans **both halves of the neurosymbolic IR**: a `{"net":..}` spec
 (neural layer stack) or a `{"kb":..}` spec (symbolic facts + rules). The kb path
 carries its own reject-by-construction codes (K0001–K0006: empty kb, invalid
-identifier, **arity conflict**, **dangling reference**), and `--describe=ml`
+identifier, **arity conflict**, **dangling reference**), and `--describe=abl`
 classifies each item (`kind: net|kb`) and reports the recoverable structure.
 
 The loop covers **all four IR item kinds**, each round-tripping its full
@@ -176,17 +176,17 @@ names as extra op args is execution-safe and recovers losslessly on decode.
 
 Two capabilities close the loop beyond *construction*:
 
-- **`--run=ml` — real symbolic execution.** A `kb` item is a Horn-clause logic
+- **`--run=abl` — real symbolic execution.** A `kb` item is a Horn-clause logic
   program (`rule h(x,z) where p(x,y), p(y,z)` lowers to
-  `UNIFY >> MATCH* >> INFER`). `--run=ml` forward-chains it to the least
+  `UNIFY >> MATCH* >> INFER`). `--run=abl` forward-chains it to the least
   fixpoint and reports derived facts — e.g. `parent(alice,bob)`,
   `parent(bob,carol)` ⊢ `grandparent(alice,carol)`. It is a **safe, terminating,
   pure-data interpreter** (finite Herbrand base; no arbitrary code), so the
   no-exec property holds. Rules are **range-safe by construction** (K0007: every
   head variable must be bound by the body). **Honest boundary:** `agent`/`swarm`
-  artifacts have *no behavior model*, so `--run=ml` reports them as descriptive
+  artifacts have *no behavior model*, so `--run=abl` reports them as descriptive
   only — execution is not faked.
-- **`--build=ml --fix` — auto-repair.** On a rejected spec the toolchain applies
+- **`--build=abl --fix` — auto-repair.** On a rejected spec the toolchain applies
   deterministic, conservative repairs (unknown op → nearest by edit distance;
   non-positive dim → 1; Linear input → previous output; topology/consensus →
   nearest valid; bad transport → `rmi_quic`), re-validates, and builds — turning
@@ -197,11 +197,11 @@ non-feature is agent/swarm *execution*, which has no defined semantics to honor.
 
 A `{"items":[..]}` **unified** spec builds a whole application — any mix of the
 four kinds — into ONE container (codes U0001 empty, U0002 unknown-kind, U0003
-duplicate-name; per-item errors are index-prefixed). `--describe=ml` then
+duplicate-name; per-item errors are index-prefixed). `--describe=abl` then
 reports each item's kind and structure from the single artifact.
 
 > kb artifact fidelity: the container serializes its **symbol table** (format
-> v2), so a kb artifact is fully self-describing — `--describe=ml` recovers
+> v2), so a kb artifact is fully self-describing — `--describe=abl` recovers
 > predicate **names + arities** and the unify→infer rule structure. The one
 > thing not stored is **ground argument terms** (`parent(a,b)` keeps `parent/2`,
 > not the `a`,`b`) — that is the symbolic IR the VM executes, and describe says
@@ -211,7 +211,7 @@ Verified properties (all property/regression-tested):
 - **reject-by-construction**, both directions: 6000 generated net specs — no valid
   net refused, no invalid net ever reaches an artifact; plus kb validation
   (arity-conflict, dangling-ref, identifier, empty) (`builder.rs`).
-- **byte-stable construction**: same spec → byte-identical `.ml` across builds
+- **byte-stable construction**: same spec → byte-identical `.abl` across builds
   (net and kb).
 - **drift-proof schema**: the `--build=schema` op catalog and error codes are
   derived from the same `OPS` table the validator uses, with a test that fails on
@@ -236,7 +236,7 @@ tokens (cache the schema once, fewer retries).
   floor, not a knob.
 - The path beyond is **paradigm, not syntax**: a typed, self-describing,
   tool-mediated interface over a deterministic no-exec binary artifact (built:
-  `--build=ml`). It does NOT cut per-call tokens (the payload is irreducible —
+  `--build=abl`). It does NOT cut per-call tokens (the payload is irreducible —
   measured), but it wins on **reliability** (reject-invalid-by-construction),
   **determinism/safety**, and **amortized** tokens (cached schema + fewer
   retries). The binary IR's real wins live on the framework track.

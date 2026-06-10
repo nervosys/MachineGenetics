@@ -34,7 +34,7 @@ Session.vim
 
 ## Run artifacts (regenerable; some embed local paths)
 *.ckpt
-*.ml
+*.abl
 prototype/examples/*.csv
 
 ## ICE reports

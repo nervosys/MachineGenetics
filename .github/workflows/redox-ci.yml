@@ -492,8 +492,8 @@ jobs:
           #   1. JSON registry file is honored (--backends-file)
           #   2. select_backend routes a registered descriptor to the
           #      Subprocess variant
-          #   3. run_dispatch_machine_bytes spawns the wrapper with the
-          #      Machine Language blob on stdin
+          #   3. run_dispatch_abl_bytes spawns the wrapper with the
+          #      Agentic Binary Language blob on stdin
           #   4. wrapper's stdout JSON is parsed back as
           #      SubprocessResult and printed
           # A regression in any link fails CI here, not at runtime.
@@ -517,16 +517,16 @@ jobs:
           cargo run --quiet --release \
             --bin MechGen-parse \
             --manifest-path prototype/Cargo.toml \
-            -- --target=ml-bytes \
+            -- --target=abl-bytes \
                framework/framewerx/examples/agent_test_classifier.mg \
-               "$WORK/cls.ml" >/dev/null
+               "$WORK/cls.abl" >/dev/null
           OUT=$(cargo run --quiet --release \
             --bin MechGen-parse \
             --manifest-path prototype/Cargo.toml \
             -- --backends-file="$WORK/backends.json" \
                --backend=ci_demo_subproc \
-               --run=ml-bytes \
-               "$WORK/cls.ml" 2>&1)
+               --run=abl-bytes \
+               "$WORK/cls.abl" 2>&1)
           echo "$OUT"
           # Required markers: registration fired, subprocess routing
           # fired, wrapper returned the expected SubprocessResult shape.

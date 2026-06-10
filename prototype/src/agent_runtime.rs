@@ -391,7 +391,7 @@ impl AgentRuntime {
             })
             .collect();
 
-        self.task_dag.assign_agents(&descriptors);
+        let _ = self.task_dag.assign_agents(&descriptors);
         self.task_dag.parallel_waves()
     }
 

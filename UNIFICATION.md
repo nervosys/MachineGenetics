@@ -24,14 +24,14 @@
 > knowledge graphs), neurosymbolic (LTN, DeepProbLog, RAG,
 > verification), and agentic (CoT/ToT, multi-agent, decoding). **14
 > framework examples dispatch end-to-end** on the CpuBackend with
-> sensible output shapes (P86). `machine_bridge` resolves **80+ layer
-> names** to opcodes. Measured Machine Language compression on a real transformer
+> sensible output shapes (P86). `abl_bridge` resolves **80+ layer
+> names** to opcodes. Measured Agentic Binary Language compression on a real transformer
 > block: text 471 B → binary 147 B (**68.8% reduction**).
 >
 > **Token-efficiency**: native-lexer ratio 0.998 (parity with Rust;
 > Phase 27 measurement still holds at P49). RecursiveMachineIntelligence-MG transformer
 > block: parity in bytes with FLAX (Python), 15% fewer lines. Real
-> win is binary IR (Machine Language) for AI items + reliability pipeline.
+> win is binary IR (Agentic Binary Language) for AI items + reliability pipeline.
 >
 > **RAP protocol surface: 48 methods.** CI floors on parse, structural-
 > heal, perturbed-heal, refine, subprocess smoke, token ratio.
@@ -40,7 +40,7 @@
 >
 > **Mission:** A maximally token-efficient and reliable programming
 > language + IR for AI agents. Phase 27 measured the text-surface
-> claim and found it ~tied with Rust; Phase 28 commits to **Machine Language
+> claim and found it ~tied with Rust; Phase 28 commits to **Agentic Binary Language
 > bytes as the canonical agent target**, where the genuine ~50×
 > reduction lives. See [`AGENT_PROTOCOL.md`](AGENT_PROTOCOL.md).
 
@@ -55,13 +55,13 @@ This document describes the unification of the two agentic-first systems in
 this repository — **MechGen** (Rust-derived programming language with sigil
 syntax, effects, contracts, swarm primitives, and an MLIR backend) and
 **RMI / RecursiveMachineIntelligence** (a low-level Rust framework with the binary
-neurosymbolic IR **Machine Language**, neural / symbolic / distributed / federated
+neurosymbolic IR **Agentic Binary Language**, neural / symbolic / distributed / federated
 primitives, and seven compute backends).
 
 ## Goals
 
 1. **Token-efficient codegen.** A MechGen `net` definition should lower to
-   Machine Language — a transformer block in ~50 bytes on the wire instead of hundreds of
+   Agentic Binary Language — a transformer block in ~50 bytes on the wire instead of hundreds of
    lines of generated MLIR.
 2. **First-class neurosymbolic ops in MechGen.** `net`, `kb`, `agent`, and
    `swarm` items become real codegen targets, not just AST shapes.
@@ -87,14 +87,14 @@ primitives, and seven compute backends).
                                   ▼
                        ┌──────────────────────┐
                        │  OpFamilyRouter      │
-                       │  (machine_bridge.rs)    │
+                       │  (abl_bridge.rs)    │
                        └─────┬────────────┬───┘
                              │            │
               systems items  │            │  net / kb / agent / swarm
                              │            │
                              ▼            ▼
                   ┌──────────────┐  ┌──────────────────────────┐
-                  │  MLIR codegen│  │  Machine Language Expr (rmi::lang)   │
+                  │  MLIR codegen│  │  Agentic Binary Language Expr (rmi::lang)   │
                   │  (mlir.rs)   │  │  algebraic >> and |       │
                   └──────┬───────┘  │  content-addressed hash   │
                          │          │  binary codec (~bytes)    │
@@ -121,9 +121,9 @@ primitives, and seven compute backends).
   uuid = { version = "1.6", features = ["v4"] }
   ```
 
-### `prototype/src/machine_bridge.rs` — AST → Machine Language
+### `prototype/src/abl_bridge.rs` — AST → Agentic Binary Language
 
-| MechGen surface                         | Machine Language lowering                                       |
+| MechGen surface                         | Agentic Binary Language lowering                                       |
 |-----------------------------------------|-----------------------------------------------------|
 | `net { layer ...; layer ...; }`         | `Op::* >> Op::* >> ...` pipeline                    |
 | `kb { fact ...; rule ...; }`            | `Op::RESOLVE` / `Op::UNIFY >> Op::INFER` stages     |
@@ -134,7 +134,7 @@ primitives, and seven compute backends).
 | `fn`, `struct`, `enum`, …               | unchanged — routed to MLIR                          |
 
 A 31-entry `layer_name_to_op` table maps surface names (`Linear`, `Conv2D`,
-`LayerNorm`, `Attention`, `GELU`, …) to Machine Language opcodes. Unknown layers lower
+`LayerNorm`, `Attention`, `GELU`, …) to Agentic Binary Language opcodes. Unknown layers lower
 to `Op::IDENTITY` with a diagnostic.
 
 `OpFamilyRouter::route(item)` returns `IrTarget::Mlir`, `Machine`, or `Both`,
@@ -162,15 +162,15 @@ for `air.neural` and `air.symbolic` concepts.
 ### CLI
 
 ```sh
-MechGen-parse --target=ml prototype/examples/unified.mg
+MechGen-parse --target=abl prototype/examples/unified.mg
 ```
 
-emits per-item Machine Language statistics:
+emits per-item Agentic Binary Language statistics:
 
 ```
-// MechGen → Machine Language lowering for prototype/examples/unified.mg
+// MechGen → Agentic Binary Language lowering for prototype/examples/unified.mg
 // MLIR-routed items: 2
-// Machine Language-routed items: 4
+// Agentic Binary Language-routed items: 4
 // TransformerBlock: nodes=15 depth=8 hash=7def99cdb73a14e2 wire=47B
 // MLP:              nodes=5  depth=3 hash=bc5d35ff371e638c wire=17B
 // ResNetStage:      nodes=11 depth=6 hash=87e783b56ef29d60 wire=35B
@@ -225,7 +225,7 @@ NetTranslator, train_one_step) into a CLI flag, exercised by the new
 | Question                          | Decision                                            |
 |-----------------------------------|-----------------------------------------------------|
 | Unification depth                 | Shared IR + runtime adapters (1–2 weeks)            |
-| Surface / IR relationship         | Machine Language is a **peer** to MLIR; both reachable          |
+| Surface / IR relationship         | Agentic Binary Language is a **peer** to MLIR; both reachable          |
 | Canonical runtime                 | Merge — MechGen keeps leases/CRDT/consensus/VCS; RMI keeps workspace/delegator/distributed/federated |
 | Bridge location                   | Modules inside `prototype/` (not a separate crate)  |
 | Workspace integration             | `exclude` (RecursiveMachineIntelligence stays standalone-buildable)    |
@@ -234,12 +234,12 @@ NetTranslator, train_one_step) into a CLI flag, exercised by the new
 
 Three items from the Phase 1 backlog landed in Phase 2:
 
-### Forward-pass walker (`ForwardWalker` in `machine_bridge.rs`)
+### Forward-pass walker (`ForwardWalker` in `abl_bridge.rs`)
 
-`NetTranslator` now walks `forward { ... }` blocks and emits Machine Language that
+`NetTranslator` now walks `forward { ... }` blocks and emits Agentic Binary Language that
 respects the user-written data flow:
 
-| Forward shape               | Machine Language produced                                |
+| Forward shape               | Agentic Binary Language produced                                |
 |-----------------------------|----------------------------------------------|
 | `{ fc1 }` (single ident)    | declaration-order fallback                   |
 | `{ x \|> l1 \|> l2 }`       | `App(l1) >> App(l2)`                         |
@@ -260,7 +260,7 @@ are dropped (constant-folding is the frontend's job).
 
 ### End-to-end VM execution
 
-A bridge test now constructs an Machine Language expression, runs it through
+A bridge test now constructs an Agentic Binary Language expression, runs it through
 `rmi::lang::Vm`, and asserts the math result — verifying the full
 MechGen-bridge ↔ RMI VM seam. Net opcodes still return `Nil` from the
 VM as designed (they record intent for the JIT / compute backends).
@@ -277,13 +277,13 @@ VM as designed (they record intent for the JIT / compute backends).
 
 Three more items from the backlog landed in Phase 3:
 
-### VM execution end-to-end (`--target=ml-run`)
+### VM execution end-to-end (`--target=abl-run`)
 
-A second CLI flag walks every Machine Language-routed item, executes through
+A second CLI flag walks every Agentic Binary Language-routed item, executes through
 `rmi::lang::Vm::eval`, and reports per-item status:
 
 ```
-// MechGen → Machine Language → VM execution for prototype/examples/unified.mg
+// MechGen → Agentic Binary Language → VM execution for prototype/examples/unified.mg
 // TransformerBlock: ok  (hash=7def99cdb73a14e2 result=Nil)
 // MLP:              stub (hash=bc5d35ff371e638c families=Neural — ...)
 // Workers:          stub (hash=c0e74dbb1151d588 families=Agent — ...)
@@ -293,7 +293,7 @@ A second CLI flag walks every Machine Language-routed item, executes through
 Items containing neural/symbolic/agent opcodes are honestly classified
 as `stub` (they require a compute backend, not the tree-walking VM) via
 new helpers `expr_op_families` and `is_stubbed_family` in
-`machine_bridge.rs`. Math, control, memory, and meta ops run fine.
+`abl_bridge.rs`. Math, control, memory, and meta ops run fine.
 
 ### Runtime fusion — `RmiAdapter` embedded in `AgentRuntime`
 
@@ -338,9 +338,9 @@ codegen pass can dispatch to `rmi::distributed::transport`. The default
 
 ## Phase 4 additions
 
-### Machine Language → MechGen decompiler (`decompile` in `machine_bridge.rs`)
+### Agentic Binary Language → MechGen decompiler (`decompile` in `abl_bridge.rs`)
 
-A new `decompile(expr, net_name) -> DecompileResult` walks an Machine Language `Expr`
+A new `decompile(expr, net_name) -> DecompileResult` walks an Agentic Binary Language `Expr`
 tree and reconstructs an `ast::NetDef`. Uses a reverse Op→layer-name table
 (`op_to_layer_name`) covering 31 neural opcodes (matches the forward
 table). Carries layer args back through `decompile_arg` (Int/Float/Bool).
@@ -349,17 +349,17 @@ know whether the reconstruction is faithful.
 
 **Round-trip property:** for any canonical `NetDef`, the test
 `decompile_round_trips_through_lowering_with_stable_hash` verifies that
-`translate ∘ decompile ∘ translate` yields the same Machine Language content hash as
+`translate ∘ decompile ∘ translate` yields the same Agentic Binary Language content hash as
 `translate` alone — closing the loop for evolutionary code generation.
 
-### Compute backend dispatch (`machine_compute.rs` + `--target=ml-compute`)
+### Compute backend dispatch (`abl_compute.rs` + `--target=abl-compute`)
 
-A new module dispatches activation-only Machine Language pipelines to a real
+A new module dispatches activation-only Agentic Binary Language pipelines to a real
 [`rmi::compute::Backend`] (CPU today, GPU once features are enabled):
 
 ```
-MechGen-parse --target=ml-compute prototype/examples/unified.mg
-// MechGen → Machine Language → CpuBackend dispatch
+MechGen-parse --target=abl-compute prototype/examples/unified.mg
+// MechGen → Agentic Binary Language → CpuBackend dispatch
 // TransformerBlock: dispatched=1 unsupported=[LayerNorm,Attn,Drop,Linear,...] output_sum=6.7295 shape=[8]
 // MLP:              dispatched=1 unsupported=[Linear,Linear]                  output_sum=8.0000 shape=[8]
 // ResNetStage:      dispatched=1 unsupported=[Conv2D,BatchNorm,...]           output_sum=8.0000 shape=[8]
@@ -377,7 +377,7 @@ extension.
 
 ### Weighted op dispatch with parameter store
 
-`machine_compute.rs` now dispatches `LINEAR` and `MATMUL` against real
+`abl_compute.rs` now dispatches `LINEAR` and `MATMUL` against real
 matmuls on the CPU backend, with a content-hash-keyed `ParamStore`:
 
 - `Linear(in, out)` → allocate weights of shape `[in, out]` seeded
@@ -418,7 +418,7 @@ when `fc1` carries dimensional args.
 
 ### JIT acceleration
 
-`--target=ml-run` switched from `Vm::eval` to `Vm::eval_jit`. Pure
+`--target=abl-run` switched from `Vm::eval` to `Vm::eval_jit`. Pure
 math fragments now go through Cranelift; neural/symbolic/agent ops
 transparently fall back to the tree-walking interpreter (no panic, no
 wrong answers — verified by `jit_path_falls_back_for_neural_ops_without_error`).
@@ -432,13 +432,13 @@ wrong answers — verified by `jit_path_falls_back_for_neural_ops_without_error`
    cuda` etc. requires building RecursiveMachineIntelligence with the appropriate feature
    flag; the same `Backend` trait dispatches transparently.
 3. **Multi-tail forward blocks.** Explicit branching (`if cond { a } else
-   { b }`, multi-output nets) lowers as best-effort and needs Machine Language
+   { b }`, multi-output nets) lowers as best-effort and needs Agentic Binary Language
    `Cond` / `Par` composition logic in the walker.
 4. **First-class shape inference.** Dims are read from `App` args on
    demand during dispatch; no separate `Ty::Tensor` pass yet. A pre-flight
    shape check would catch incompatibilities before the first matmul.
 5. **Distributed transport runtime wiring.** Phase 3 emits the transport
-   sym into Machine Language; an actual backend pass that consumes
+   sym into Agentic Binary Language; an actual backend pass that consumes
    `Op::SEND(rmi-quic)` and instantiates a real
    `rmi::distributed::transport::QuicTransport` is not yet written.
 6. **Training loops.** `train T { net, loss, optim }` lowers to a
@@ -452,8 +452,8 @@ wrong answers — verified by `jit_path_falls_back_for_neural_ops_without_error`
 |-----------------------------------------------------|----------------|
 | `Cargo.toml`                                        | rewrote workspace |
 | `prototype/Cargo.toml`                              | + `rmi`, `uuid` |
-| `prototype/src/main.rs`                             | + 3 mod decls, `--target=ml` flag |
-| `prototype/src/machine_bridge.rs`                      | **new** (415 lines, 5 tests) |
+| `prototype/src/main.rs`                             | + 3 mod decls, `--target=abl` flag |
+| `prototype/src/abl_bridge.rs`                      | **new** (415 lines, 5 tests) |
 | `prototype/src/rmi_runtime_adapter.rs`              | **new** (95 lines, 1 test) |
 | `prototype/src/rmi_ontology_adapter.rs`             | **new** (115 lines, 2 tests) |
 | `prototype/examples/unified.mg`                     | **new** |
@@ -461,12 +461,12 @@ wrong answers — verified by `jit_path_falls_back_for_neural_ops_without_error`
 
 ## How to extend
 
-- **Add a new Machine Language-routed surface form?** Add a variant to `ItemKind`,
+- **Add a new Agentic Binary Language-routed surface form?** Add a variant to `ItemKind`,
   match it in `OpFamilyRouter::route`, and write a translator alongside
   `NetTranslator`.
 - **Add a new neural primitive?** Add the opcode to
   `RecursiveMachineIntelligence/src/lang/op.rs`, then add the surface-name → opcode mapping
-  to `layer_name_to_op` in `machine_bridge.rs`.
+  to `layer_name_to_op` in `abl_bridge.rs`.
 - **Expose a new RMI subsystem to MechGen?** Add a thin wrapper to
   `rmi_runtime_adapter.rs`; keep the wrapper's surface MechGen-shaped so
   swarm code does not directly import `rmi::*`.
@@ -475,7 +475,7 @@ wrong answers — verified by `jit_path_falls_back_for_neural_ops_without_error`
 
 Phases 6-26 built an ML training framework inside MechGen as a
 unification proof-point (autograd, shape inference, evolve codegen,
-Machine Language compute dispatch). Phase 27 re-anchored on the actual mission and
+Agentic Binary Language compute dispatch). Phase 27 re-anchored on the actual mission and
 exposed that the text-token-efficiency claim was overstated (parity
 with Rust, not ~50% reduction). Phases 28-44 built the reliability
 bench (`benchmarks/tasks/*.json`, 100 tasks), grew the parser from
@@ -487,19 +487,19 @@ established CI regression floors on parse and heal counts so the
 numbers can only ratchet upward. Effective pass on perturbed-8
 (realistic LLM input): 36 / 100 by Phase 44.
 
-## Phase 45: RAP carries `application/machine`
+## Phase 45: RAP carries `application/abl`
 
-`prototype/src/machine.rs` lifts the binary IR container codec
+`prototype/src/abl.rs` lifts the binary IR container codec
 (`encode_module`, `decode_container`, `to_hex`, `from_hex`,
-`MACHINE_MAGIC`, `MACHINE_VERSION`) into a single shared module. CLI emitter
-`main.rs::run_emit_machine_bytes` refactored to call it. Three new RAP
+`ABL_MAGIC`, `ABL_VERSION`) into a single shared module. CLI emitter
+`main.rs::run_emit_abl_bytes` refactored to call it. Three new RAP
 methods expose the path over JSON-RPC:
 
 | Method | In | Out |
 |---|---|---|
-| `ml/encode` | `source` | `magic`, `version`, `container_bytes`, `items[]`, `ml_hex` |
-| `ml/decode` | `ml_hex` | `container_bytes`, `items[name, layers, content_hash, skipped]` |
-| `ml/run` | `source` | encode then dispatch to `CpuBackend`, per-item `status` (`dispatched`/`stub`/`error`) |
+| `abl/encode` | `source` | `magic`, `version`, `container_bytes`, `items[]`, `abl_hex` |
+| `abl/decode` | `abl_hex` | `container_bytes`, `items[name, layers, content_hash, skipped]` |
+| `abl/run` | `source` | encode then dispatch to `CpuBackend`, per-item `status` (`dispatched`/`stub`/`error`) |
 
 Hex chosen over base64 for the JSON channel (no deps, eyeballable,
 shared encode/decode means no drift). `Op` is formatted via `Debug`
@@ -545,8 +545,8 @@ any LLM. New CI step asserts refine > 0.
 
 ## Phase 48: `pipeline/recover-and-encode` one-shot
 
-Composes `recover::recover` + `machine::encode_module` so an agent gets
-recovered MechGen + Machine Language bytes in one call. On `ok:false` returns
+Composes `recover::recover` + `abl::encode_module` so an agent gets
+recovered MechGen + Agentic Binary Language bytes in one call. On `ok:false` returns
 `{ stage:"failed", error:"recovery exhausted; refine required" }` -
 explicit hand-off to Stage-3. Tests: +3 rap.
 
@@ -580,7 +580,7 @@ point `build() -> serde_json::Value`. Two RAP methods: `ontology/full`
 returns the entire payload, `ontology/section` returns one named
 slice. Ten sections covering sigils, keywords, ast_kinds, ir_ops
 (programmatic from `Op::ALL`), op_families, layer_map (programmatic
-from `machine_bridge::layer_name_to_op`), rap_methods, heal_patterns
+from `abl_bridge::layer_name_to_op`), rap_methods, heal_patterns
 (via new `heal::pattern_names()` public enumerator), recovery_stages,
 and machine container constants. Tests: +8 ontology + 3 rap.
 
@@ -614,7 +614,7 @@ New `--emit-ontology [path]` CLI flag dumps the complete ontology to
 disk as static JSON (default: `MECHGEN_ONTOLOGY.json`). Generated
 artifact is 54 KB / 2,399 lines covering 38 sigils, 12 keywords, 30
 types, 18 ast_kinds, 107 IR ops, 7 op families, 31 layer mappings, 37
-RAP methods, ~10 heal patterns, 7 recovery stages, Machine Language layout, and
+RAP methods, ~10 heal patterns, 7 recovery stages, Agentic Binary Language layout, and
 10 worked examples. Agents that cannot reach a RAP server can read
 this file directly.
 
@@ -653,7 +653,7 @@ agents to use." The reality after 49 phases of honest measurement:
 1. **Token parity** with Rust on syntactic tokens (0.998 native-lexer
    ratio). The agent's inference cost on MechGen text is the same as
    on Rust text - no win, no penalty.
-2. **Binary IR (Machine Language)** for AI-routed items (`net`/`kb`/`agent`/
+2. **Binary IR (Agentic Binary Language)** for AI-routed items (`net`/`kb`/`agent`/
    `swarm`). Agents can ship and execute these without text
    round-trip. This is where the actual size win lives.
 3. **Reliability** - the 4-stage recovery pipeline (pattern-heal,
@@ -731,7 +731,7 @@ reliability via the ontology + neurosymbolic AI.
   against FLAX (parity in bytes, 15% fewer lines).
 - **P74**: end-to-end integration test
   `framewerx_examples_compile_to_ml` walks every example through
-  lex -> parse -> bridge::lower_module -> machine::encode -> decode ->
+  lex -> parse -> bridge::lower_module -> abl::encode -> decode ->
   per-item name + content-hash invariants. The framework is now
   *exercised*, not just *declared*.
 
@@ -740,7 +740,7 @@ Architecture:
 ```
 RecursiveMachineIntelligence-MG (MechGen .mg)    <- FLAX-equivalent (agent-facing)
        |
-       v  machine_bridge::lower_module
+       v  abl_bridge::lower_module
 RMI / RecursiveMachineIntelligence (Rust crate)  <- JAX-equivalent (107 opcodes, CpuBackend)
 ```
 
@@ -752,13 +752,13 @@ RMI / RecursiveMachineIntelligence (Rust crate)  <- JAX-equivalent (107 opcodes,
 | Heal pipeline | 5 mechanical stages + agent.refine, 13 patterns, all CI-floored |
 | RAP protocol | 48 methods including `ontology/full`, `pipeline/recover-and-encode` |
 | Ontology | 13 sections, ~330 entries, static 61 KB dump |
-| RecursiveMachineIntelligence-MG | 14 `.mg` files, end-to-end-tested through Machine Language codec |
+| RecursiveMachineIntelligence-MG | 14 `.mg` files, end-to-end-tested through Agentic Binary Language codec |
 | Tests | 888 prototype, 2,397+ across all suites |
 | CI floors | parse >=98, heal >=40, refine >0, native-token-ratio <=1.100 |
 
 The "framework written for agents over a binary IR" claim is now
 load-bearing: discoverability via one ontology call, every advertised
-example actually compiles to Machine Language bytecode, content-hash stability
+example actually compiles to Agentic Binary Language bytecode, content-hash stability
 guarantees the codec doesn't drift. Plugging a real LLM into Stage-3
 refine is a credentials-only change (`scripts/agent_wrappers/`).
 
@@ -794,7 +794,7 @@ agent-facing surface concretely.
   walks the same 5 steps an agent takes over RAP (discover → pick →
   encode → decode → dispatch) using the local CLI. Measured the
   binary-IR-transport claim on FlashAttention block: **text 471 B
-  → Machine Language 147 B = 68.8% size reduction**. That's the size win the
+  → Agentic Binary Language 147 B = 68.8% size reduction**. That's the size win the
   project has claimed since P28, now concretely demonstrated.
 
 ## Phase 81-86: complete operational ontology + agent self-test loop
@@ -809,11 +809,11 @@ agent-facing surface concretely.
   sections**. Static dump 106 -> 119 KB. +7 load-bearing tests.
 - **P83** Agent self-test: bootstrapped from `MECHGEN_ONTOLOGY.json`
   alone, used the discovered surface to write and execute a model.
-  **Surfaced a real bug**: `machine_compute::run_pipeline` was called
+  **Surfaced a real bug**: `abl_compute::run_pipeline` was called
   with hardcoded `&[8]` input shape at three callsites; models with
   non-8-dim inputs encoded and decoded cleanly but failed dispatch.
 - **P84** Fixed P83: new `infer_input_shape(expr) -> Option<Vec<usize>>`
-  walks the Machine Language expression to find the first shape-bearing op
+  walks the Agentic Binary Language expression to find the first shape-bearing op
   (LINEAR/MATMUL/ATTN/CONV2D/EMBED). All three callsites use the
   inferred shape with `[8]` as fallback. 1/2 -> 7/11 dispatching.
 - **P85** Re-tested as agent, fixed next layer: CONV2D inference too
@@ -833,7 +833,7 @@ The P83-P86 arc is the classic agent-self-test loop in action:
 bootstrap from the ontology, use the system, find a bug, fix it,
 re-test, repeat until the protocol promise is load-bearing across
 every layer. The framework now genuinely works end-to-end -
-declarations parse, lower to Machine Language, encode to Machine Language, decode losslessly,
+declarations parse, lower to Agentic Binary Language, encode to Agentic Binary Language, decode losslessly,
 and execute on the CpuBackend.
 
 ## Phase 87-95: doc consolidation + agent UX wiring + hardware accelerators
@@ -881,7 +881,7 @@ surface and wired the hardware-accelerator axis.
 - **P94** Closed the **execution** side of the open catalog: new
   `DispatchKind::Subprocess { command }` variant on descriptors lets
   a registered backend dispatch via an external wrapper script. The
-  wrapper gets the Machine Language blob on stdin + env metadata, returns a
+  wrapper gets the Agentic Binary Language blob on stdin + env metadata, returns a
   JSON `SubprocessResult { ok, dispatched, output_shape, output_sum,
   error }` on stdout. Mirrors the P47 refine wrapper protocol for
   symmetry. Reference wrapper at
@@ -895,7 +895,7 @@ The P93-95 trio means an operator wanting to plug in a Groq LPU,
 Cerebras WSE, Google TPU, AWS Trainium, or any other accelerator
 needs to do ONE thing: write a wrapper script implementing the
 documented protocol. No MechGen recompile; no source patch; the
-backend appears in the ontology and dispatches real Machine Language bytecode.
+backend appears in the ontology and dispatches real Agentic Binary Language bytecode.
 
 ## Final state at P95
 
@@ -913,7 +913,7 @@ backend appears in the ontology and dispatches real Machine Language bytecode.
 | **Framework examples dispatching end-to-end** | **14 / 14** |
 | **CI-enforced agent-UX guards** | 3 layers: CLI sweep + RAP wire + subprocess backend |
 | Static `MECHGEN_ONTOLOGY.json` | 122 KB |
-| Measured Machine Language compression | 68.8% on FlashAttnBlock |
+| Measured Agentic Binary Language compression | 68.8% on FlashAttnBlock |
 
 The original prompt was "create a low-level programming language and
 IR that is maximally token-efficient and reliable for agents to use."

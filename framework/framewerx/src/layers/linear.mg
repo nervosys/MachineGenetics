@@ -1,6 +1,6 @@
 // framewerx::layers::linear — affine transform y = xW^T + b
 //
-// Maps to Machine Language opcode 0x0002 (LINEAR) via the bridge. Agent declares
+// Maps to Agentic Binary Language opcode 0x0002 (LINEAR) via the bridge. Agent declares
 // it inside a `net` block; the framework provides this file purely as
 // documentation + ontology hooks. The actual compute lives in
 // rmi/compute/cpu.

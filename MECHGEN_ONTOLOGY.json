@@ -25,6 +25,17 @@
   "project": "MachineGenetics",
   "schema_version": 1,
   "sections": {
+    "abl": {
+      "format": [
+        "magic    : 4 bytes (\"Agentic Binary Language\")",
+        "version  : u16 LE",
+        "count    : u32 LE",
+        "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }"
+      ],
+      "magic": "ABL1",
+      "media_type": "application/abl",
+      "version": 2
+    },
     "ast_kinds": [
       {
         "kind": "Function",
@@ -68,27 +79,27 @@
       },
       {
         "kind": "NetDef",
-        "summary": "AI: neural network (Machine Language-routed)"
+        "summary": "AI: neural network (Agentic Binary Language-routed)"
       },
       {
         "kind": "KbDef",
-        "summary": "AI: symbolic knowledge base (Machine Language-routed)"
+        "summary": "AI: symbolic knowledge base (Agentic Binary Language-routed)"
       },
       {
         "kind": "AgentDef",
-        "summary": "AI: agent role (Machine Language-routed)"
+        "summary": "AI: agent role (Agentic Binary Language-routed)"
       },
       {
         "kind": "SwarmDef",
-        "summary": "AI: swarm topology (Machine Language-routed)"
+        "summary": "AI: swarm topology (Agentic Binary Language-routed)"
       },
       {
         "kind": "TrainDef",
-        "summary": "AI: training pipeline (Machine Language-routed)"
+        "summary": "AI: training pipeline (Agentic Binary Language-routed)"
       },
       {
         "kind": "EvolveDef",
-        "summary": "AI: evolutionary search (Machine Language-routed)"
+        "summary": "AI: evolutionary search (Agentic Binary Language-routed)"
       },
       {
         "kind": "EffectDef",
@@ -180,48 +191,48 @@
         "takes_path": true
       },
       {
-        "flag": "--target=ml",
-        "purpose": "Print per-item Machine Language stats (nodes/depth/hash/bytes)",
+        "flag": "--target=abl",
+        "purpose": "Print per-item Agentic Binary Language stats (nodes/depth/hash/bytes)",
         "takes_path": true
       },
       {
-        "flag": "--target=ml-bytes",
-        "purpose": "Encode Machine Language-routed items to a binary Machine Language container",
+        "flag": "--target=abl-bytes",
+        "purpose": "Encode Agentic Binary Language-routed items to a binary Agentic Binary Language container",
         "takes_path": true
       },
       {
-        "flag": "--from=ml-bytes",
-        "purpose": "Decode a Machine Language container back to MechGen view",
+        "flag": "--from=abl-bytes",
+        "purpose": "Decode a Agentic Binary Language container back to MechGen view",
         "takes_path": true
       },
       {
-        "flag": "--run=ml-bytes",
-        "purpose": "Decode Machine Language and dispatch each item on CpuBackend",
+        "flag": "--run=abl-bytes",
+        "purpose": "Decode Agentic Binary Language and dispatch each item on CpuBackend",
         "takes_path": true
       },
       {
-        "flag": "--target=ml-generate",
+        "flag": "--target=abl-generate",
         "purpose": "Autoregressive generation from a trained checkpoint",
         "takes_path": true
       },
       {
-        "flag": "--target=ml-infer",
+        "flag": "--target=abl-infer",
         "purpose": "Inference over a `train` block's saved weights",
         "takes_path": true
       },
       {
-        "flag": "--target=ml-train",
+        "flag": "--target=abl-train",
         "purpose": "Train every `train` block in the module",
         "takes_path": true
       },
       {
-        "flag": "--target=ml-compute",
-        "purpose": "Forward pass without training over Machine Language items",
+        "flag": "--target=abl-compute",
+        "purpose": "Forward pass without training over Agentic Binary Language items",
         "takes_path": true
       },
       {
-        "flag": "--target=ml-run",
-        "purpose": "End-to-end run of Machine Language-routed items",
+        "flag": "--target=abl-run",
+        "purpose": "End-to-end run of Agentic Binary Language-routed items",
         "takes_path": true
       },
       {
@@ -426,7 +437,7 @@
       },
       {
         "bytes": 51,
-        "description": "Minimal neural net: one Linear layer (lowers to Machine Language).",
+        "description": "Minimal neural net: one Linear layer (lowers to Agentic Binary Language).",
         "exercises": [
           "net",
           "layer",
@@ -448,7 +459,7 @@
       },
       {
         "bytes": 92,
-        "description": "Symbolic knowledge base with facts and a rule (lowers to Machine Language).",
+        "description": "Symbolic knowledge base with facts and a rule (lowers to Agentic Binary Language).",
         "exercises": [
           "kb",
           "fact",
@@ -3352,7 +3363,7 @@
       {
         "introduces": "AgentDef",
         "keyword": "agent",
-        "summary": "agent role; lowers to Machine Language agent ops"
+        "summary": "agent role; lowers to Agentic Binary Language agent ops"
       },
       {
         "introduces": "KwAf",
@@ -3412,7 +3423,7 @@
       {
         "introduces": "EvolveDef",
         "keyword": "evolve",
-        "summary": "evolutionary search; lowers to Machine Language meta"
+        "summary": "evolutionary search; lowers to Agentic Binary Language meta"
       },
       {
         "introduces": "Extend",
@@ -3522,7 +3533,7 @@
       {
         "introduces": "KbDef",
         "keyword": "kb",
-        "summary": "symbolic knowledge base; lowers to Machine Language"
+        "summary": "symbolic knowledge base; lowers to Agentic Binary Language"
       },
       {
         "introduces": "Layer",
@@ -3567,7 +3578,7 @@
       {
         "introduces": "NetDef",
         "keyword": "net",
-        "summary": "neural network definition; lowers to Machine Language"
+        "summary": "neural network definition; lowers to Agentic Binary Language"
       },
       {
         "introduces": "KwOr",
@@ -3662,7 +3673,7 @@
       {
         "introduces": "SwarmDef",
         "keyword": "swarm",
-        "summary": "agent swarm topology; lowers to Machine Language"
+        "summary": "agent swarm topology; lowers to Agentic Binary Language"
       },
       {
         "introduces": "KwSwarmFanOut",
@@ -3697,7 +3708,7 @@
       {
         "introduces": "TrainDef",
         "keyword": "train",
-        "summary": "training pipeline; lowers to Machine Language compute"
+        "summary": "training pipeline; lowers to Agentic Binary Language compute"
       },
       {
         "introduces": "KwT",
@@ -3903,17 +3914,6 @@
         "surface_name": "GlobalAvgPool"
       }
     ],
-    "machine": {
-      "format": [
-        "magic    : 4 bytes (\"Machine Language\")",
-        "version  : u16 LE",
-        "count    : u32 LE",
-        "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }"
-      ],
-      "magic": "MACH",
-      "media_type": "application/machine",
-      "version": 2
-    },
     "op_families": [
       {
         "code": 0,
@@ -3958,7 +3958,7 @@
       },
       {
         "path": "prototype/src/",
-        "purpose": "Lexer / parser / heal / recover / machine_bridge / rap / ontology"
+        "purpose": "Lexer / parser / heal / recover / abl_bridge / rap / ontology"
       },
       {
         "path": "prototype/src/bin/",
@@ -4101,7 +4101,7 @@
         "summary": "Run the 5-stage recovery pipeline; return final source."
       },
       {
-        "method": "ml/encode",
+        "method": "abl/encode",
         "params": [
           "source"
         ],
@@ -4111,24 +4111,24 @@
           "version",
           "container_bytes",
           "items",
-          "ml_hex"
+          "abl_hex"
         ],
-        "summary": "Source -> Machine Language bytes (hex)."
+        "summary": "Source -> Agentic Binary Language bytes (hex)."
       },
       {
-        "method": "ml/decode",
+        "method": "abl/decode",
         "params": [
-          "ml_hex"
+          "abl_hex"
         ],
         "returns": [
           "ok",
           "container_bytes",
           "items"
         ],
-        "summary": "Machine Language bytes (hex) -> decompiled per-item view."
+        "summary": "Agentic Binary Language bytes (hex) -> decompiled per-item view."
       },
       {
-        "method": "ml/run",
+        "method": "abl/run",
         "params": [
           "source"
         ],
@@ -4148,10 +4148,10 @@
           "ok",
           "recover_stage",
           "recovered_source",
-          "ml_hex",
+          "abl_hex",
           "items"
         ],
-        "summary": "Recover then encode Machine Language in one call."
+        "summary": "Recover then encode Agentic Binary Language in one call."
       },
       {
         "method": "cost/query",
