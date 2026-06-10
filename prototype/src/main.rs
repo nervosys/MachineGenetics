@@ -42,10 +42,10 @@ mod recover;
 mod resolve;
 mod rmi_ontology_adapter;
 mod rmi_runtime_adapter;
-mod machine;
-mod machine_bridge;
-mod machine_compute;
-mod machine_shape;
+mod abl;
+mod abl_bridge;
+mod abl_compute;
+mod abl_shape;
 mod sandbox;
 mod semantic_vcs;
 mod shape;
@@ -71,7 +71,7 @@ fn main() {
     // (code/span/category/fix) rather than scraping stderr.
     let json_out = args.iter().any(|a| a == "--json");
     // Optional --backend=<name> selects hardware accelerator for any
-    // subsequent --run=ml-bytes / --target=ml-run dispatch. Lives
+    // subsequent --run=abl-bytes / --target=abl-run dispatch. Lives
     // outside the main flag table so it can attach to any dispatching
     // subcommand without per-command plumbing. Default: cpu.
     let backend_name: String = args
@@ -214,9 +214,9 @@ fn main() {
                 run_check(&source, path, !no_elision, syntax_legacy, token_report);
             }
         }
-        Some("--target=ml-bytes") => {
+        Some("--target=abl-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=ml-bytes <file.mg> [<out.ml>]");
+                eprintln!("Usage: MechGen-parse --target=abl-bytes <file.mg> [<out.abl>]");
                 std::process::exit(1);
             });
             let out_path = filtered.get(2).map(|s| s.to_string());
@@ -237,7 +237,7 @@ fn main() {
                     } else {
                         module
                     };
-                    run_emit_machine_bytes(&module, path, out_path.as_deref());
+                    run_emit_abl_bytes(&module, path, out_path.as_deref());
                 }
                 Err(e) => {
                     eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
@@ -245,13 +245,13 @@ fn main() {
                 }
             }
         }
-        Some("--build=ml") => {
+        Some("--build=abl") => {
             // Tool-mediated construction: agent emits a compact JSON spec (not
             // source text) — a `net` (neural) or `kb` (symbolic) spec — which we
             // validate structurally (reject-by-construction) and lower to the
-            // deterministic Machine Language artifact. See builder.rs.
+            // deterministic Agentic Binary Language artifact. See builder.rs.
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --build=ml <spec.json> [<out.ml>]");
+                eprintln!("Usage: MechGen-parse --build=abl <spec.json> [<out.abl>]");
                 std::process::exit(1);
             });
             let out_path = filtered.get(2).map(|s| s.to_string());
@@ -336,8 +336,8 @@ fn main() {
             // Valid → construct canonical source → reuse the tested lowering.
             match parser::parse(&lexer::lex(&src)) {
                 Ok(module) => {
-                    run_emit_machine_bytes(&module, path, out_path.as_deref());
-                    eprintln!("// built `{name}` from {kind} spec ({count} items) → Machine Language");
+                    run_emit_abl_bytes(&module, path, out_path.as_deref());
+                    eprintln!("// built `{name}` from {kind} spec ({count} items) → Agentic Binary Language");
                 }
                 Err(e) => {
                     eprintln!("internal: generated {kind} failed to parse: {}:{} {}", e.line, e.col, e.message);
@@ -356,61 +356,61 @@ fn main() {
                     .unwrap_or_else(|_| "{}".to_string())
             );
         }
-        Some("--describe=ml") => {
+        Some("--describe=abl") => {
             // Tool-mediated construction, step 3: no-exec structured
             // introspection. Loading the artifact is pure bounds-checked data
             // decode — it NEVER executes code — and yields a machine-readable
             // description the agent can verify against its spec.
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --describe=ml <file.ml>");
+                eprintln!("Usage: MechGen-parse --describe=abl <file.abl>");
                 std::process::exit(1);
             });
             let blob = std::fs::read(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_describe_machine_bytes(&blob);
+            run_describe_abl_bytes(&blob);
         }
-        Some("--run=ml") => {
+        Some("--run=abl") => {
             // Execute the artifact's symbolic content: forward-chain each kb item
             // to its fixpoint and report derived facts. Pure data interpretation
-            // (no arbitrary code runs). Neural items defer to --run=ml-bytes;
+            // (no arbitrary code runs). Neural items defer to --run=abl-bytes;
             // agent/swarm have no behavior model and are reported as such.
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --run=ml <file.ml>");
+                eprintln!("Usage: MechGen-parse --run=abl <file.abl>");
                 std::process::exit(1);
             });
             let blob = std::fs::read(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_eval_machine_bytes(&blob);
+            run_eval_abl_bytes(&blob);
         }
-        Some("--from=ml-bytes") => {
+        Some("--from=abl-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --from=ml-bytes <file.ml>");
+                eprintln!("Usage: MechGen-parse --from=abl-bytes <file.abl>");
                 std::process::exit(1);
             });
             let blob = std::fs::read(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_decode_machine_bytes(&blob, path);
+            run_decode_abl_bytes(&blob, path);
         }
-        Some("--run=ml-bytes") => {
+        Some("--run=abl-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --run=ml-bytes <file.ml>");
+                eprintln!("Usage: MechGen-parse --run=abl-bytes <file.abl>");
                 std::process::exit(1);
             });
             let blob = std::fs::read(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_dispatch_machine_bytes(&blob, path, &backend_name);
+            run_dispatch_abl_bytes(&blob, path, &backend_name);
         }
-        Some("--target=ml-generate") => {
+        Some("--target=abl-generate") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=ml-generate <file>");
+                eprintln!("Usage: MechGen-parse --target=abl-generate <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -438,9 +438,9 @@ fn main() {
                 }
             }
         }
-        Some("--target=ml-infer") => {
+        Some("--target=abl-infer") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=ml-infer <file>");
+                eprintln!("Usage: MechGen-parse --target=abl-infer <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -468,9 +468,9 @@ fn main() {
                 }
             }
         }
-        Some("--target=ml-train") => {
+        Some("--target=abl-train") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=ml-train <file>");
+                eprintln!("Usage: MechGen-parse --target=abl-train <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -498,9 +498,9 @@ fn main() {
                 }
             }
         }
-        Some("--target=ml-compute") => {
+        Some("--target=abl-compute") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=ml-compute <file>");
+                eprintln!("Usage: MechGen-parse --target=abl-compute <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -520,21 +520,21 @@ fn main() {
                     } else {
                         module
                     };
-                    let lowered = machine_bridge::lower_module(&module);
+                    let lowered = abl_bridge::lower_module(&module);
                     let backend = rmi::compute::cpu::CpuBackend::new();
-                    println!("// MechGen → Machine Language → CpuBackend dispatch for {path}");
+                    println!("// MechGen → Agentic Binary Language → CpuBackend dispatch for {path}");
                     for (name, expr) in &lowered.items {
                         // Pre-flight: infer shapes and report mismatches.
-                        let shape_report = machine_shape::infer_shape(expr, &[8]);
+                        let shape_report = abl_shape::infer_shape(expr, &[8]);
                         for m in &shape_report.mismatches {
                             eprintln!(
                                 "shape error in {name}: op {:?} expected last={} but got shape {:?}",
                                 m.op, m.expected_last, m.got
                             );
                         }
-                        let inferred = machine_compute::infer_input_shape(expr);
+                        let inferred = abl_compute::infer_input_shape(expr);
                         let shape: Vec<usize> = inferred.unwrap_or_else(|| vec![8]);
-                        match machine_compute::run_pipeline(&backend, expr, &shape, 1.0) {
+                        match abl_compute::run_pipeline(&backend, expr, &shape, 1.0) {
                             Ok(r) => println!(
                                 "// {name}: dispatched={} unsupported={:?} output_sum={:.4} shape={:?} (input={:?})",
                                 r.dispatched, r.unsupported, r.output_sum, r.output.shape, shape
@@ -549,9 +549,9 @@ fn main() {
                 }
             }
         }
-        Some("--target=ml-run") => {
+        Some("--target=abl-run") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=ml-run <file>");
+                eprintln!("Usage: MechGen-parse --target=abl-run <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -571,14 +571,14 @@ fn main() {
                     } else {
                         module
                     };
-                    let lowered = machine_bridge::lower_module(&module);
+                    let lowered = abl_bridge::lower_module(&module);
                     let mut vm = rmi::lang::Vm::new();
-                    println!("// MechGen → Machine Language → VM execution for {path}");
+                    println!("// MechGen → Agentic Binary Language → VM execution for {path}");
                     for (name, expr) in &lowered.items {
-                        let families = machine_bridge::expr_op_families(expr);
+                        let families = abl_bridge::expr_op_families(expr);
                         let stub_families: Vec<_> = families
                             .iter()
-                            .filter(|f| machine_bridge::is_stubbed_family(**f))
+                            .filter(|f| abl_bridge::is_stubbed_family(**f))
                             .map(|f| format!("{f:?}"))
                             .collect();
                         // JIT path: pure-math fragments compile, neural/symbolic/agent
@@ -611,9 +611,9 @@ fn main() {
                 }
             }
         }
-        Some("--target=ml") => {
+        Some("--target=abl") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=ml <file>");
+                eprintln!("Usage: MechGen-parse --target=abl <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -633,11 +633,11 @@ fn main() {
                     } else {
                         module
                     };
-                    let lowered = machine_bridge::lower_module(&module);
-                    let (mlir_items, machine_items) = machine_bridge::OpFamilyRouter::partition(&module);
-                    println!("// MechGen → Machine Language lowering for {path}");
+                    let lowered = abl_bridge::lower_module(&module);
+                    let (mlir_items, abl_items) = abl_bridge::OpFamilyRouter::partition(&module);
+                    println!("// MechGen → Agentic Binary Language lowering for {path}");
                     println!("// MLIR-routed items: {}", mlir_items.len());
-                    println!("// Machine Language-routed items: {}", machine_items.len());
+                    println!("// Agentic Binary Language-routed items: {}", abl_items.len());
                     for diag in &lowered.diagnostics {
                         eprintln!("warning: {diag}");
                     }
@@ -684,8 +684,8 @@ fn main() {
     }
 }
 
-/// Drive `--target=ml-train`: find each `train` block, locate its named
-/// `net`, lower the net to Machine Language, run N epochs of SGD on a synthetic
+/// Drive `--target=abl-train`: find each `train` block, locate its named
+/// `net`, lower the net to Agentic Binary Language, run N epochs of SGD on a synthetic
 /// dataset, and report per-step loss.
 ///
 /// Defaults when the `.mg` source omits them:
@@ -693,18 +693,18 @@ fn main() {
 /// - **learning rate:** 0.05
 /// - **dataset:** four samples of the form `y = sum(x)` matching the
 ///   net's first Linear input dim and final output dim.
-/// Magic bytes for the per-module Machine Language-bytes container format. Distinct
+/// Magic bytes for the per-module Agentic Binary Language-bytes container format. Distinct
 /// from the per-expression `MGPS` checkpoint magic.
-const MACHINE_MAGIC: &[u8; 4] = b"MACH";
-const MACHINE_VERSION: u16 = 2;
+const ABL_MAGIC: &[u8; 4] = b"ABL1";
+const ABL_VERSION: u16 = 2;
 
-/// Drive `--target=ml-bytes`: lower every Machine Language-routed item in the module
-/// to binary Machine Language via the bridge + RMI codec, then write a single framed
+/// Drive `--target=abl-bytes`: lower every Agentic Binary Language-routed item in the module
+/// to binary Agentic Binary Language via the bridge + RMI codec, then write a single framed
 /// blob to disk (or stdout-summarise if no out path given).
 ///
 /// Container layout:
 /// ```text
-///   magic    "Machine Language" (4 bytes)
+///   magic    "Agentic Binary Language" (4 bytes)
 ///   version  u16 = 1
 ///   count    u32  — number of items
 ///   for each item:
@@ -713,20 +713,20 @@ const MACHINE_VERSION: u16 = 2;
 ///     expr_len u32
 ///     expr     codec::Encoder::encode_expr_only output
 /// ```
-fn run_emit_machine_bytes(module: &ast::Module, src_path: &str, out_path: Option<&str>) {
-    let lowered_diags = machine_bridge::lower_module(module).diagnostics;
-    let (blob, per_item_summary) = machine::encode_module(module);
+fn run_emit_abl_bytes(module: &ast::Module, src_path: &str, out_path: Option<&str>) {
+    let lowered_diags = abl_bridge::lower_module(module).diagnostics;
+    let (blob, per_item_summary) = abl::encode_module(module);
     if per_item_summary.is_empty() {
-        println!("// {src_path}: no Machine Language-routed items (no net/kb/agent/swarm/train/evolve)");
+        println!("// {src_path}: no Agentic Binary Language-routed items (no net/kb/agent/swarm/train/evolve)");
         return;
     }
 
     let text_bytes = std::fs::metadata(src_path).map(|m| m.len()).unwrap_or(0);
     let total_ml = blob.len() as u64;
 
-    println!("// MechGen → Machine Language bytes for {src_path}");
+    println!("// MechGen → Agentic Binary Language bytes for {src_path}");
     println!(
-        "// text source: {} bytes    Machine Language container: {} bytes    ratio: {:.3} ({:.1}% reduction)",
+        "// text source: {} bytes    Agentic Binary Language container: {} bytes    ratio: {:.3} ({:.1}% reduction)",
         text_bytes,
         total_ml,
         if text_bytes > 0 { total_ml as f64 / text_bytes as f64 } else { 0.0 },
@@ -747,41 +747,41 @@ fn run_emit_machine_bytes(module: &ast::Module, src_path: &str, out_path: Option
     }
 }
 
-/// Drive `--describe=ml`: decode a `.ml` container as PURE DATA (no
+/// Drive `--describe=abl`: decode a `.abl` container as PURE DATA (no
 /// execution) and emit a deterministic, machine-readable JSON description —
 /// container size, per-item content hash, and the reconstructed layer
 /// structure. This is the introspection half of the tool-mediated paradigm:
 /// the agent verifies what it built without ever running it.
-/// Drive `--run=ml`: evaluate each item's executable semantics. For `kb` items
+/// Drive `--run=abl`: evaluate each item's executable semantics. For `kb` items
 /// this forward-chains the Horn-clause program to its least fixpoint and reports
 /// the derived facts — a safe, terminating, pure-data interpretation.
-fn run_eval_machine_bytes(blob: &[u8]) {
-    let items = match machine::decode_container(blob) {
+fn run_eval_abl_bytes(blob: &[u8]) {
+    let items = match abl::decode_container(blob) {
         Ok(i) => i,
         Err(e) => {
             println!("{}", serde_json::json!({ "ok": false, "error": e }));
             std::process::exit(1);
         }
     };
-    let symbols = machine::decode_symbols(blob).unwrap_or_default();
+    let symbols = abl::decode_symbols(blob).unwrap_or_default();
     let name = |id: u32| symbols.get(id as usize).cloned().unwrap_or_default();
     let mut items_json = Vec::new();
     for item in &items {
-        let sym = machine_bridge::decompile_symbolic(&item.expr);
+        let sym = abl_bridge::decompile_symbolic(&item.expr);
         let is_kb = !sym.fact_syms.is_empty() || !sym.rule_syms.is_empty();
         if is_kb {
-            let facts: Vec<machine_bridge::GroundFact> = sym
+            let facts: Vec<abl_bridge::GroundFact> = sym
                 .fact_syms
                 .iter()
                 .zip(&sym.fact_arg_syms)
                 .map(|(&p, terms)| (name(p), terms.iter().map(|&t| name(t)).collect()))
                 .collect();
-            let rules: Vec<machine_bridge::KbRule> = sym
+            let rules: Vec<abl_bridge::KbRule> = sym
                 .rule_syms
                 .iter()
                 .zip(&sym.rule_param_syms)
                 .zip(&sym.rule_body_syms)
-                .map(|((&r, params), body)| machine_bridge::KbRule {
+                .map(|((&r, params), body)| abl_bridge::KbRule {
                     head: name(r),
                     params: params.iter().map(|&p| name(p)).collect(),
                     body: body
@@ -790,7 +790,7 @@ fn run_eval_machine_bytes(blob: &[u8]) {
                         .collect(),
                 })
                 .collect();
-            let derived = machine_bridge::evaluate_kb(&facts, &rules);
+            let derived = abl_bridge::evaluate_kb(&facts, &rules);
             let derived_json: Vec<serde_json::Value> = derived
                 .iter()
                 .map(|(p, a)| serde_json::json!({ "pred": p, "args": a }))
@@ -800,15 +800,15 @@ fn run_eval_machine_bytes(blob: &[u8]) {
                 "given_facts": facts.len(), "rules": rules.len(),
                 "derived": derived_json,
             }));
-        } else if machine_bridge::decompile_agentic(&item.expr).is_some() {
+        } else if abl_bridge::decompile_agentic(&item.expr).is_some() {
             items_json.push(serde_json::json!({
                 "name": item.name, "kind": "agentic",
-                "note": "no executable behavior model — agent/swarm artifacts are descriptive (use --describe=ml)",
+                "note": "no executable behavior model — agent/swarm artifacts are descriptive (use --describe=abl)",
             }));
         } else {
             items_json.push(serde_json::json!({
                 "name": item.name, "kind": "net",
-                "note": "neural item — use --run=ml-bytes for the forward pass",
+                "note": "neural item — use --run=abl-bytes for the forward pass",
             }));
         }
     }
@@ -816,11 +816,11 @@ fn run_eval_machine_bytes(blob: &[u8]) {
     println!("{}", serde_json::to_string_pretty(&out).unwrap_or_else(|_| "{}".to_string()));
 }
 
-fn run_describe_machine_bytes(blob: &[u8]) {
-    match machine::decode_container(blob) {
+fn run_describe_abl_bytes(blob: &[u8]) {
+    match abl::decode_container(blob) {
         Ok(items) => {
             // Symbol table (v2): lets us recover predicate/rule NAMES for kb items.
-            let symbols = machine::decode_symbols(blob).unwrap_or_default();
+            let symbols = abl::decode_symbols(blob).unwrap_or_default();
             let sym_name = |id: u32| -> Option<String> { symbols.get(id as usize).cloned() };
             let items_json: Vec<serde_json::Value> = items
                 .iter()
@@ -834,11 +834,11 @@ fn run_describe_machine_bytes(blob: &[u8]) {
                     // Symbolic ops (RESOLVE/UNIFY) appear ONLY in kb artifacts, so a
                     // non-empty symbolic view is the precise net-vs-kb discriminator
                     // (decompile() would otherwise surface them as pseudo-"layers").
-                    let sym = machine_bridge::decompile_symbolic(&item.expr);
+                    let sym = abl_bridge::decompile_symbolic(&item.expr);
                     let is_kb = !sym.fact_arities.is_empty() || !sym.rule_param_counts.is_empty();
                     // Agentic ops (SPAWN) appear only in agent/swarm artifacts.
-                    let ag = if is_kb { None } else { machine_bridge::decompile_agentic(&item.expr) };
-                    let net = machine_bridge::decompile(&item.expr, &item.name);
+                    let ag = if is_kb { None } else { abl_bridge::decompile_agentic(&item.expr) };
+                    let net = abl_bridge::decompile(&item.expr, &item.name);
                     if let Some(ag) = &ag {
                         if ag.is_swarm {
                             map.insert("kind".into(), "swarm".into());
@@ -968,10 +968,10 @@ fn run_describe_machine_bytes(blob: &[u8]) {
     }
 }
 
-/// Drive `--from=ml-bytes`: read a `.ml` container, decode every item
+/// Drive `--from=abl-bytes`: read a `.abl` container, decode every item
 /// via the RMI codec, decompile each to a MechGen `net`/`kb` declaration via
 /// the bridge's existing decompiler, and print the resulting `.mg` source.
-fn run_decode_machine_bytes(blob: &[u8], path: &str) {
+fn run_decode_abl_bytes(blob: &[u8], path: &str) {
     let mut pos = 0usize;
     fn take<'a>(buf: &'a [u8], pos: &mut usize, n: usize, what: &str) -> Option<&'a [u8]> {
         if *pos + n > buf.len() {
@@ -986,15 +986,15 @@ fn run_decode_machine_bytes(blob: &[u8], path: &str) {
         Some(m) => m,
         None => return,
     };
-    if magic != MACHINE_MAGIC {
-        eprintln!("{path}: bad magic {:?} (expected Machine Language)", magic);
+    if magic != ABL_MAGIC {
+        eprintln!("{path}: bad magic {:?} (expected Agentic Binary Language)", magic);
         return;
     }
     let ver = u16::from_le_bytes(match take(blob, &mut pos, 2, "version") {
         Some(b) => b.try_into().unwrap(),
         None => return,
     });
-    if ver != MACHINE_VERSION {
+    if ver != ABL_VERSION {
         eprintln!("{path}: unsupported version {}", ver);
         return;
     }
@@ -1003,7 +1003,7 @@ fn run_decode_machine_bytes(blob: &[u8], path: &str) {
         None => return,
     }) as usize;
 
-    println!("// Machine Language → MechGen decompiled view of {path}");
+    println!("// Agentic Binary Language → MechGen decompiled view of {path}");
     println!("// container: {} bytes, {} item(s)", blob.len(), count);
 
     for i in 0..count {
@@ -1025,7 +1025,7 @@ fn run_decode_machine_bytes(blob: &[u8], path: &str) {
         };
         match rmi::lang::codec::Decoder::decode_expr_only(expr_bytes) {
             Ok(expr) => {
-                let result = machine_bridge::decompile(&expr, &name);
+                let result = abl_bridge::decompile(&expr, &name);
                 println!("\n// item {i}: {name} ({} bytes expr)", el);
                 let mut layer_lines = Vec::new();
                 for layer in &result.net.layers {
@@ -1061,20 +1061,20 @@ fn run_decode_machine_bytes(blob: &[u8], path: &str) {
     }
 }
 
-/// Drive `--run=ml-bytes`: decode every item in a Machine Language container and
-/// dispatch it to the CPU backend via `machine_compute::run_pipeline`,
+/// Drive `--run=abl-bytes`: decode every item in a Agentic Binary Language container and
+/// dispatch it to the CPU backend via `abl_compute::run_pipeline`,
 /// completely **skipping the text round-trip**. This is the
 /// agent-canonical execution path:
 ///
 /// ```text
-///   bytes (.ml) → Decoder → Expr → dispatch → CpuBackend → result
+///   bytes (.abl) → Decoder → Expr → dispatch → CpuBackend → result
 /// ```
 ///
 /// Items that contain neural/symbolic/agent opcodes the dispatcher can
 /// run are executed (activation chains, Linear with cached params, etc.);
 /// items that lower entirely to stub opcodes are reported as `stub`
 /// rather than failing.
-fn run_dispatch_machine_bytes(blob: &[u8], path: &str, backend_name: &str) {
+fn run_dispatch_abl_bytes(blob: &[u8], path: &str, backend_name: &str) {
     use rmi::compute::cpu::CpuBackend;
     // Resolve agent's --backend=<name> choice into a SelectedBackend.
     // Falls back to CpuBackend on error so the dispatch still happens;
@@ -1105,7 +1105,7 @@ fn run_dispatch_machine_bytes(blob: &[u8], path: &str, backend_name: &str) {
         );
     }
     // If the selected backend is subprocess-dispatchable (P94), hand
-    // off the full Machine Language blob + path metadata to the wrapper and
+    // off the full Agentic Binary Language blob + path metadata to the wrapper and
     // print whatever it returns. No per-item CPU dispatch below;
     // the wrapper owns the loop.
     if let Some(crate::backends::SelectedBackend::Subprocess { name, command }) = &selected {
@@ -1140,15 +1140,15 @@ fn run_dispatch_machine_bytes(blob: &[u8], path: &str, backend_name: &str) {
         Some(m) => m,
         None => return,
     };
-    if magic != MACHINE_MAGIC {
-        eprintln!("{path}: bad magic {:?} (expected Machine Language)", magic);
+    if magic != ABL_MAGIC {
+        eprintln!("{path}: bad magic {:?} (expected Agentic Binary Language)", magic);
         return;
     }
     let ver = u16::from_le_bytes(match take(blob, &mut pos, 2, "version") {
         Some(b) => b.try_into().unwrap(),
         None => return,
     });
-    if ver != MACHINE_VERSION {
+    if ver != ABL_VERSION {
         eprintln!("{path}: unsupported version {}", ver);
         return;
     }
@@ -1163,7 +1163,7 @@ fn run_dispatch_machine_bytes(blob: &[u8], path: &str, backend_name: &str) {
     // currently bounce back to CPU via the impl's `cpu` field, but
     // the dispatch path itself is polymorphic, so each TODO swap in
     // cuda_backend.rs lights up real GPU dispatch with zero changes
-    // to main.rs / machine_compute.rs.
+    // to main.rs / abl_compute.rs.
     let cpu_backend = CpuBackend::new();
     #[cfg(feature = "cuda")]
     let backend: &dyn rmi::compute::Backend = match &selected {
@@ -1173,7 +1173,7 @@ fn run_dispatch_machine_bytes(blob: &[u8], path: &str, backend_name: &str) {
     #[cfg(not(feature = "cuda"))]
     let backend: &dyn rmi::compute::Backend = &cpu_backend;
     let backend_name = backend.backend_type();
-    println!("// Machine Language bytes → {backend_name:?} dispatch for {path}");
+    println!("// Agentic Binary Language bytes → {backend_name:?} dispatch for {path}");
     println!("// container: {} bytes, {} item(s)", blob.len(), count);
 
     for i in 0..count {
@@ -1202,10 +1202,10 @@ fn run_dispatch_machine_bytes(blob: &[u8], path: &str, backend_name: &str) {
         };
         // Diagnose stub-only items (Phase-4 classification) without trying
         // to dispatch — they'd just return unsupported.
-        let families = machine_bridge::expr_op_families(&expr);
+        let families = abl_bridge::expr_op_families(&expr);
         let stub_families: Vec<_> = families
             .iter()
-            .filter(|f| machine_bridge::is_stubbed_family(**f))
+            .filter(|f| abl_bridge::is_stubbed_family(**f))
             .filter(|f| !matches!(**f, rmi::lang::OpFamily::Neural))
             .map(|f| format!("{f:?}"))
             .collect();
@@ -1217,9 +1217,9 @@ fn run_dispatch_machine_bytes(blob: &[u8], path: &str, backend_name: &str) {
             continue;
         }
 
-        let shape: Vec<usize> = machine_compute::infer_input_shape(&expr)
+        let shape: Vec<usize> = abl_compute::infer_input_shape(&expr)
             .unwrap_or_else(|| vec![8]);
-        match machine_compute::run_pipeline(backend, &expr, &shape, 1.0) {
+        match abl_compute::run_pipeline(backend, &expr, &shape, 1.0) {
             Ok(r) => println!(
                 "//   item {i}: {name} ({el}B)  dispatched={} unsupported={:?} output_sum={:.4} shape={:?} (input={:?})",
                 r.dispatched, r.unsupported, r.output_sum, r.output.shape, shape
@@ -1245,7 +1245,7 @@ fn run_dispatch_machine_bytes(blob: &[u8], path: &str, backend_name: &str) {
     }
 }
 
-/// Drive `--target=ml-generate`: load checkpoint + prompt, autoregressively
+/// Drive `--target=abl-generate`: load checkpoint + prompt, autoregressively
 /// generate up to `max_tokens` new tokens via greedy argmax decoding.
 ///
 /// The model is expected to be an LM: input is `[seq]` of integer token ids,
@@ -1257,7 +1257,7 @@ fn run_generate(module: &ast::Module, path: &str) {
     use rmi::compute::Backend;
     let backend = CpuBackend::new();
 
-    println!("// MechGen → Machine Language → autoregressive generation for {path}");
+    println!("// MechGen → Agentic Binary Language → autoregressive generation for {path}");
 
     let mut nets: std::collections::HashMap<&str, &ast::NetDef> = Default::default();
     for item in &module.items {
@@ -1283,7 +1283,7 @@ fn run_generate(module: &ast::Module, path: &str) {
         // Load weights if a checkpoint exists; otherwise warn and use fresh.
         let ckpt_path = extract_string_literal(train.checkpoint.as_ref());
         let mut params = match ckpt_path.as_ref().and_then(|p| std::fs::read(p).ok()) {
-            Some(blob) => match machine_compute::ParamStore::load(&blob, &backend) {
+            Some(blob) => match abl_compute::ParamStore::load(&blob, &backend) {
                 Ok(p) => p,
                 Err(e) => {
                     eprintln!("generate `{}`: load checkpoint: {e}", train.name);
@@ -1292,11 +1292,11 @@ fn run_generate(module: &ast::Module, path: &str) {
             },
             None => {
                 eprintln!("generate `{}`: no checkpoint available — using fresh weights", train.name);
-                machine_compute::ParamStore::new()
+                abl_compute::ParamStore::new()
             }
         };
 
-        let lowered = machine_bridge::NetTranslator::translate(net);
+        let lowered = abl_bridge::NetTranslator::translate(net);
 
         // Extract prompt: either nested `[[1, 2, 3]]` or flat `[1, 2, 3]`.
         let mut tokens: Vec<usize> = match extract_nested_floats(train.prompt.as_ref()) {
@@ -1353,7 +1353,7 @@ fn run_generate(module: &ast::Module, path: &str) {
                     break;
                 }
             };
-            let out_handle = match machine_compute::forward_pass(&backend, &lowered.expr, handle, &mut params) {
+            let out_handle = match abl_compute::forward_pass(&backend, &lowered.expr, handle, &mut params) {
                 Ok(h) => h,
                 Err(e) => {
                     eprintln!("  step {step}: forward: {e}");
@@ -1512,7 +1512,7 @@ fn embedding_vocab(net: &ast::NetDef) -> Option<usize> {
     None
 }
 
-/// Drive `--target=ml-infer`: for each `train` block, load its checkpoint,
+/// Drive `--target=abl-infer`: for each `train` block, load its checkpoint,
 /// run forward on its `inputs:` data, and print per-sample predictions.
 /// Requires both `checkpoint:` and `inputs:` to be set.
 fn run_infer(module: &ast::Module, path: &str) {
@@ -1520,7 +1520,7 @@ fn run_infer(module: &ast::Module, path: &str) {
     use rmi::compute::Backend;
     let backend = CpuBackend::new();
 
-    println!("// MechGen → Machine Language → CpuBackend inference for {path}");
+    println!("// MechGen → Agentic Binary Language → CpuBackend inference for {path}");
 
     let mut nets: std::collections::HashMap<&str, &ast::NetDef> = Default::default();
     for item in &module.items {
@@ -1557,7 +1557,7 @@ fn run_infer(module: &ast::Module, path: &str) {
                 continue;
             }
         };
-        let mut params = match machine_compute::ParamStore::load(&blob, &backend) {
+        let mut params = match abl_compute::ParamStore::load(&blob, &backend) {
             Ok(p) => p,
             Err(e) => {
                 eprintln!("infer `{}`: load checkpoint: {e}", train.name);
@@ -1565,7 +1565,7 @@ fn run_infer(module: &ast::Module, path: &str) {
             }
         };
 
-        let lowered = machine_bridge::NetTranslator::translate(net);
+        let lowered = abl_bridge::NetTranslator::translate(net);
         let (in_dim, out_dim) = first_last_linear_dims(net).unwrap_or((1, 1));
 
         let xs = match extract_nested_floats(train.inputs.as_ref()) {
@@ -1596,7 +1596,7 @@ fn run_infer(module: &ast::Module, path: &str) {
                     continue;
                 }
             };
-            match machine_compute::forward_pass(&backend, &lowered.expr, h, &mut params) {
+            match abl_compute::forward_pass(&backend, &lowered.expr, h, &mut params) {
                 Ok(out) => {
                     let bytes = backend.copy_to_host(&out).unwrap_or_default();
                     let preds: Vec<f32> = bytes
@@ -1621,7 +1621,7 @@ fn run_train(module: &ast::Module, path: &str) {
     use rmi::compute::cpu::CpuBackend;
     let backend = CpuBackend::new();
 
-    println!("// MechGen → Machine Language → SGD training for {path}");
+    println!("// MechGen → Agentic Binary Language → SGD training for {path}");
 
     // Index nets by name so train blocks can look them up.
     let mut nets: std::collections::HashMap<&str, &ast::NetDef> = Default::default();
@@ -1650,7 +1650,7 @@ fn run_train(module: &ast::Module, path: &str) {
             }
         };
 
-        let lowered = machine_bridge::NetTranslator::translate(net);
+        let lowered = abl_bridge::NetTranslator::translate(net);
         if !lowered.unknown_layers.is_empty() {
             eprintln!(
                 "train `{}`: net `{}` has unknown layers {:?} — using IDENTITY fallback",
@@ -1818,19 +1818,19 @@ fn run_train(module: &ast::Module, path: &str) {
         };
 
         let mut params = match ckpt_path.as_ref().and_then(|p| std::fs::read(p).ok()) {
-            Some(blob) => match machine_compute::ParamStore::load(&blob, &backend) {
+            Some(blob) => match abl_compute::ParamStore::load(&blob, &backend) {
                 Ok(p) => {
                     println!("// train `{}`: loaded {} weight tensors from {}", train.name, p.len(), ckpt_path.as_deref().unwrap());
                     p
                 }
                 Err(e) => {
                     eprintln!("train `{}`: checkpoint load failed: {e}", train.name);
-                    machine_compute::ParamStore::new()
+                    abl_compute::ParamStore::new()
                 }
             },
-            None => machine_compute::ParamStore::new(),
+            None => abl_compute::ParamStore::new(),
         };
-        let mut state = machine_compute::OptimState::new();
+        let mut state = abl_compute::OptimState::new();
         state.clip_grad = clip;
         state.weight_decay = wd;
         let mut first_loss = None;
@@ -1882,7 +1882,7 @@ fn run_train(module: &ast::Module, path: &str) {
                     _ => lr,
                 };
                 let cur_lr = step_lr(state.step, base);
-                let r = match machine_compute::train_one_step_with_optim_loss(
+                let r = match abl_compute::train_one_step_with_optim_loss(
                     &backend,
                     &lowered.expr,
                     &batch_x[..cur_bs * in_dim],
@@ -2134,39 +2134,39 @@ fn load_csv(path: &str, in_dim: usize, out_dim: usize) -> Result<(Vec<f32>, Vec<
     Ok((xs, ys, n))
 }
 
-/// Decide which [`machine_compute::Optimizer`] the `optimizer:` field requests.
+/// Decide which [`abl_compute::Optimizer`] the `optimizer:` field requests.
 ///
 /// `SGD` / `SGD(lr)` → `Optimizer::Sgd`. `Adam` / `Adam(lr)` → Adam with
 /// default hyperparameters. Defaults to SGD when absent.
-fn extract_optimizer(expr: Option<&ast::Expr>) -> machine_compute::Optimizer {
+fn extract_optimizer(expr: Option<&ast::Expr>) -> abl_compute::Optimizer {
     let name = match expr {
         Some(ast::Expr::Call { func, .. }) => match func.as_ref() {
             ast::Expr::Ident { name } => name.as_str(),
-            _ => return machine_compute::Optimizer::Sgd,
+            _ => return abl_compute::Optimizer::Sgd,
         },
         Some(ast::Expr::Ident { name }) => name.as_str(),
-        _ => return machine_compute::Optimizer::Sgd,
+        _ => return abl_compute::Optimizer::Sgd,
     };
     match name {
-        "Adam" | "ADAM" | "adam" => machine_compute::Optimizer::adam_default(),
-        _ => machine_compute::Optimizer::Sgd,
+        "Adam" | "ADAM" | "adam" => abl_compute::Optimizer::adam_default(),
+        _ => abl_compute::Optimizer::Sgd,
     }
 }
 
-/// Pick a [`machine_compute::Loss`] from a `loss:` expression. Recognises
+/// Pick a [`abl_compute::Loss`] from a `loss:` expression. Recognises
 /// `CrossEntropy`, `CE`, otherwise defaults to MSE.
-fn extract_loss(expr: Option<&ast::Expr>) -> machine_compute::Loss {
+fn extract_loss(expr: Option<&ast::Expr>) -> abl_compute::Loss {
     let name = match expr {
         Some(ast::Expr::Ident { name }) => name.as_str(),
         Some(ast::Expr::Call { func, .. }) => match func.as_ref() {
             ast::Expr::Ident { name } => name.as_str(),
-            _ => return machine_compute::Loss::Mse,
+            _ => return abl_compute::Loss::Mse,
         },
-        _ => return machine_compute::Loss::Mse,
+        _ => return abl_compute::Loss::Mse,
     };
     match name {
-        "CrossEntropy" | "CE" | "cross_entropy" => machine_compute::Loss::CrossEntropy,
-        _ => machine_compute::Loss::Mse,
+        "CrossEntropy" | "CE" | "cross_entropy" => abl_compute::Loss::CrossEntropy,
+        _ => abl_compute::Loss::Mse,
     }
 }
 
@@ -2255,7 +2255,7 @@ fn tied_weight_keys(net: &ast::NetDef) -> Option<(Vec<i64>, Vec<i64>)> {
 /// (`[E, V]`) by transposing rows ↔ columns.
 fn sync_tied_embedding(
     backend: &rmi::compute::cpu::CpuBackend,
-    params: &mut machine_compute::ParamStore,
+    params: &mut abl_compute::ParamStore,
     emb_key: &[i64],
     head_key: &[i64],
 ) -> Result<(), String> {
@@ -2295,17 +2295,17 @@ enum LrSchedule {
     Plateau,
 }
 
-fn loss_label(loss: machine_compute::Loss) -> &'static str {
+fn loss_label(loss: abl_compute::Loss) -> &'static str {
     match loss {
-        machine_compute::Loss::Mse => "MSE",
-        machine_compute::Loss::CrossEntropy => "CrossEntropy",
+        abl_compute::Loss::Mse => "MSE",
+        abl_compute::Loss::CrossEntropy => "CrossEntropy",
     }
 }
 
-fn optim_label(opt: machine_compute::Optimizer) -> &'static str {
+fn optim_label(opt: abl_compute::Optimizer) -> &'static str {
     match opt {
-        machine_compute::Optimizer::Sgd => "SGD",
-        machine_compute::Optimizer::Adam { .. } => "Adam",
+        abl_compute::Optimizer::Sgd => "SGD",
+        abl_compute::Optimizer::Adam { .. } => "Adam",
     }
 }
 
@@ -2318,7 +2318,7 @@ fn compute_val_loss(
     val_y: &[f32],
     out_dim: usize,
     n_val: usize,
-    params: &mut machine_compute::ParamStore,
+    params: &mut abl_compute::ParamStore,
 ) -> Option<f32> {
     use rmi::compute::Backend;
     // When in_dim=1 the model is index-driven (Embedding head). Avoid
@@ -2330,7 +2330,7 @@ fn compute_val_loss(
         vec![n_val, in_dim]
     };
     let handle = backend.from_slice_f32(val_x, &shape).ok()?;
-    let out_handle = machine_compute::forward_pass(backend, expr, handle, params).ok()?;
+    let out_handle = abl_compute::forward_pass(backend, expr, handle, params).ok()?;
     let out_bytes = backend.copy_to_host(&out_handle).ok()?;
     let pred: Vec<f32> = out_bytes
         .chunks_exact(4)

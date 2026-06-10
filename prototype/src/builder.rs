@@ -4,7 +4,7 @@
 //! agent *emitting source text* (token cost floored by identifiers/literals) or
 //! *base64 bytes* (which erases the binary win on emission), the agent emits a
 //! compact, schema-validated **structured spec**, and this layer constructs +
-//! validates + lowers it to the deterministic, no-exec Machine Language artifact.
+//! validates + lowers it to the deterministic, no-exec Agentic Binary Language artifact.
 //!
 //! Why this beats the text-token floor:
 //! - **token**: the spec is positional/minimal JSON — no keywords, no syntax,
@@ -12,7 +12,7 @@
 //! - **reliability**: invalid specs are rejected *by construction* with
 //!   machine-readable errors (unknown op, bad dims, shape mismatch) BEFORE any
 //!   artifact exists — the typed-API reliability the design calls for.
-//! - **determinism / safety**: inherited from the Machine Language artifact (byte-stable,
+//! - **determinism / safety**: inherited from the Agentic Binary Language artifact (byte-stable,
 //!   loads as pure data, never executes).
 //!
 //! Spec format (compact, positional):
@@ -47,7 +47,7 @@ pub struct RuleSpec(pub String, pub Vec<String>, pub Vec<FactSpec>);
 /// A knowledge-base construction spec — the *symbolic* half of the
 /// neurosymbolic IR. The agent emits this instead of `kb { ... }` source.
 ///
-/// NOTE: the lowered Machine Language artifact stores predicate **arities** and
+/// NOTE: the lowered Agentic Binary Language artifact stores predicate **arities** and
 /// the unify→infer rule structure — not ground argument terms or predicate
 /// names (the symbol table is not serialized). Validation operates on the spec,
 /// where names/arities/refs are still present, so reject-by-construction is
@@ -91,7 +91,7 @@ pub struct SwarmSpec {
     pub transport: Option<String>,
 }
 
-/// A unified construction spec: one Machine Language container holding MANY
+/// A unified construction spec: one Agentic Binary Language container holding MANY
 /// items of mixed kinds (nets + knowledge bases) — i.e. build a whole
 /// *neurosymbolic* application (a model AND its knowledge base) in one artifact.
 /// Each item is a `net` or `kb` spec; the kind is detected by its key.
@@ -255,7 +255,7 @@ pub fn build_schema() -> serde_json::Value {
         })
         .collect();
     serde_json::json!({
-        "schema": "mechgen.ml.net-spec",
+        "schema": "mechgen.abl.net-spec",
         "version": 1,
         "spec_format": {
             "net": "string, non-empty — the net's name",
@@ -290,9 +290,9 @@ pub fn build_schema() -> serde_json::Value {
                 "rules": [["grandparent", ["x", "z"], [["parent", ["x", "y"]], ["parent", ["y", "z"]]]]]
             },
             "artifact_note":
-                "the lowered Machine Language kb artifact stores predicate names, ground term \
+                "the lowered Agentic Binary Language kb artifact stores predicate names, ground term \
                  names, and rule parameter names (the symbol table is serialized) — the full \
-                 facts and rule signatures round-trip; --describe=ml reports them.",
+                 facts and rule signatures round-trip; --describe=abl reports them.",
             "errors": [
                 {"code": "K0001", "when": "kb name is empty",                       "fix": "set a non-empty \"kb\" field"},
                 {"code": "K0002", "when": "kb has no facts and no rules",           "fix": "add at least one fact or rule"},
@@ -339,7 +339,7 @@ pub fn build_schema() -> serde_json::Value {
         },
         "unified": {
             "spec_format": {
-                "items": "array of net and/or kb specs — build a whole neurosymbolic application (model + knowledge base) into ONE Machine Language container"
+                "items": "array of net and/or kb specs — build a whole neurosymbolic application (model + knowledge base) into ONE Agentic Binary Language container"
             },
             "example": {
                 "items": [
@@ -418,7 +418,7 @@ pub fn validate(spec: &NetSpec) -> Vec<BuildError> {
 
 /// Render the validated spec as canonical MechGen `net` source. (Internal — the
 /// agent never writes or sees this; it's the bridge to the existing, tested
-/// lexer→parser→Machine Language pipeline. Deterministic: fixed field order.)
+/// lexer→parser→Agentic Binary Language pipeline. Deterministic: fixed field order.)
 pub fn to_mg_source(spec: &NetSpec) -> String {
     let mut s = format!("net {} {{\n", spec.net);
     for LayerSpec(name, op, dims) in &spec.layers {
@@ -541,7 +541,7 @@ pub fn validate_kb(spec: &KbSpec) -> Vec<BuildError> {
 }
 
 /// Render a validated kb spec as canonical MechGen `kb` source. Internal bridge
-/// to the tested lexer→parser→Machine Language pipeline. Deterministic.
+/// to the tested lexer→parser→Agentic Binary Language pipeline. Deterministic.
 ///
 /// The rule body does not affect the lowered artifact (only the param count is
 /// encoded, as `UNIFY(sym, params)`), so a canonical placeholder body is used.
@@ -905,7 +905,7 @@ mod tests {
 
     #[test]
     fn build_then_describe_roundtrips_structure_no_exec() {
-        // The paradigm's end-to-end invariant: a valid spec lowers to Machine Language
+        // The paradigm's end-to-end invariant: a valid spec lowers to Agentic Binary Language
         // bytes, those bytes are byte-stable, and decoding them as PURE DATA
         // (no execution) recovers the SAME op/dim structure the spec declared.
         // This is the "deterministic, introspectable, no-exec artifact" claim.
@@ -916,21 +916,21 @@ mod tests {
         let src = to_mg_source(&s);
         let module = crate::parser::parse(&crate::lexer::lex(&src)).expect("parses");
 
-        let (blob, summary) = crate::machine::encode_module(&module);
+        let (blob, summary) = crate::abl::encode_module(&module);
         assert_eq!(summary.len(), 1, "one net → one item");
         // Byte-stable artifact (content-hashable cache key).
-        let (blob2, _) = crate::machine::encode_module(&module);
-        assert_eq!(blob, blob2, "Machine Language artifact is not byte-stable");
+        let (blob2, _) = crate::abl::encode_module(&module);
+        assert_eq!(blob, blob2, "Agentic Binary Language artifact is not byte-stable");
 
         // No-exec decode recovers the structure faithfully.
-        let items = crate::machine::decode_container(&blob).expect("decode pure data");
+        let items = crate::abl::decode_container(&blob).expect("decode pure data");
         assert_eq!(items.len(), 1);
         assert_eq!(
             items[0].expr.content_hash(),
             summary[0].2,
             "describe hash must equal encode hash"
         );
-        let result = crate::machine_bridge::decompile(&items[0].expr, &items[0].name);
+        let result = crate::abl_bridge::decompile(&items[0].expr, &items[0].name);
         let ops: Vec<String> = result
             .net
             .layers
@@ -977,18 +977,18 @@ mod tests {
         let src = to_mg_source_kb(&s);
         let module = crate::parser::parse(&crate::lexer::lex(&src)).expect("generated kb parses");
 
-        let (blob, summary) = crate::machine::encode_module(&module);
+        let (blob, summary) = crate::abl::encode_module(&module);
         assert_eq!(summary.len(), 1, "one kb → one item");
-        let (blob2, _) = crate::machine::encode_module(&module);
+        let (blob2, _) = crate::abl::encode_module(&module);
         assert_eq!(blob, blob2, "kb artifact is not byte-stable");
 
-        let items = crate::machine::decode_container(&blob).expect("decode pure data");
-        let view = crate::machine_bridge::decompile_symbolic(&items[0].expr);
+        let items = crate::abl::decode_container(&blob).expect("decode pure data");
+        let view = crate::abl_bridge::decompile_symbolic(&items[0].expr);
         assert_eq!(view.fact_arities, vec![2, 2, 1], "fact arities must round-trip");
         assert_eq!(view.rule_param_counts, vec![2], "rule param-count must round-trip");
 
         // Symbol table (v2): predicate NAMES round-trip too (no execution).
-        let symbols = crate::machine::decode_symbols(&blob).expect("decode symbols");
+        let symbols = crate::abl::decode_symbols(&blob).expect("decode symbols");
         let names: Vec<&str> = view
             .fact_syms
             .iter()
@@ -1054,16 +1054,16 @@ mod tests {
         assert!(validate_unified(&s).is_empty(), "{:?}", validate_unified(&s));
         let src = to_mg_source_unified(&s);
         let module = crate::parser::parse(&crate::lexer::lex(&src)).expect("unified source parses");
-        let (blob, summary) = crate::machine::encode_module(&module);
+        let (blob, summary) = crate::abl::encode_module(&module);
         assert_eq!(summary.len(), 2, "two items → two container entries");
         // Byte-stable, and both items decode (net + kb).
-        let (blob2, _) = crate::machine::encode_module(&module);
+        let (blob2, _) = crate::abl::encode_module(&module);
         assert_eq!(blob, blob2, "unified container not byte-stable");
-        let items = crate::machine::decode_container(&blob).expect("decode");
+        let items = crate::abl::decode_container(&blob).expect("decode");
         assert_eq!(items.len(), 2);
         // item 0 is the net (has layer ops), item 1 is the kb (has RESOLVE/UNIFY).
-        assert!(!crate::machine_bridge::decompile(&items[0].expr, &items[0].name).net.layers.is_empty());
-        let kb_view = crate::machine_bridge::decompile_symbolic(&items[1].expr);
+        assert!(!crate::abl_bridge::decompile(&items[0].expr, &items[0].name).net.layers.is_empty());
+        let kb_view = crate::abl_bridge::decompile_symbolic(&items[1].expr);
         assert_eq!(kb_view.fact_arities, vec![1]);
         assert_eq!(kb_view.rule_param_counts, vec![1]);
     }
@@ -1101,10 +1101,10 @@ mod tests {
         ).unwrap();
         assert!(validate_agent(&s).is_empty(), "{:?}", validate_agent(&s));
         let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_agent(&s))).expect("agent parses");
-        let (blob, _) = crate::machine::encode_module(&module);
-        let items = crate::machine::decode_container(&blob).expect("decode");
-        let symbols = crate::machine::decode_symbols(&blob).expect("symbols");
-        let ag = crate::machine_bridge::decompile_agentic(&items[0].expr).expect("agentic");
+        let (blob, _) = crate::abl::encode_module(&module);
+        let items = crate::abl::decode_container(&blob).expect("decode");
+        let symbols = crate::abl::decode_symbols(&blob).expect("symbols");
+        let ag = crate::abl_bridge::decompile_agentic(&items[0].expr).expect("agentic");
         assert!(!ag.is_swarm, "agent is not a swarm");
         let caps: Vec<&str> = ag.cap_syms.iter().map(|&id| symbols[id as usize].as_str()).collect();
         assert_eq!(caps, vec!["read_source", "query_types"], "capability names round-trip");
@@ -1117,10 +1117,10 @@ mod tests {
         ).unwrap();
         assert!(validate_swarm(&s).is_empty(), "{:?}", validate_swarm(&s));
         let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_swarm(&s))).expect("swarm parses");
-        let (blob, _) = crate::machine::encode_module(&module);
-        let items = crate::machine::decode_container(&blob).expect("decode");
-        let symbols = crate::machine::decode_symbols(&blob).expect("symbols");
-        let ag = crate::machine_bridge::decompile_agentic(&items[0].expr).expect("agentic");
+        let (blob, _) = crate::abl::encode_module(&module);
+        let items = crate::abl::decode_container(&blob).expect("decode");
+        let symbols = crate::abl::decode_symbols(&blob).expect("symbols");
+        let ag = crate::abl_bridge::decompile_agentic(&items[0].expr).expect("agentic");
         assert!(ag.is_swarm, "swarm has REDUCE aggregate");
         assert_eq!(ag.size, Some(4), "size round-trips");
         assert_eq!(ag.spawn_sym.map(|id| symbols[id as usize].as_str()), Some("Worker"));
@@ -1131,10 +1131,10 @@ mod tests {
     fn kb_facts_round_trip_ground_terms() {
         let s = kbspec(r#"{"kb":"F","facts":[["parent",["alice","bob"]]],"rules":[]}"#);
         let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_kb(&s))).expect("parses");
-        let (blob, _) = crate::machine::encode_module(&module);
-        let items = crate::machine::decode_container(&blob).unwrap();
-        let syms = crate::machine::decode_symbols(&blob).unwrap();
-        let view = crate::machine_bridge::decompile_symbolic(&items[0].expr);
+        let (blob, _) = crate::abl::encode_module(&module);
+        let items = crate::abl::decode_container(&blob).unwrap();
+        let syms = crate::abl::decode_symbols(&blob).unwrap();
+        let view = crate::abl_bridge::decompile_symbolic(&items[0].expr);
         let terms: Vec<&str> = view.fact_arg_syms[0].iter().map(|&id| syms[id as usize].as_str()).collect();
         assert_eq!(terms, vec!["alice", "bob"], "ground terms must round-trip");
     }
@@ -1146,21 +1146,21 @@ mod tests {
         let s = kbspec(r#"{"kb":"F","facts":[["parent",["alice","bob"]],["parent",["bob","carol"]]],"rules":[["grandparent",["x","z"],[["parent",["x","y"]],["parent",["y","z"]]]]]}"#);
         assert!(validate_kb(&s).is_empty(), "{:?}", validate_kb(&s));
         let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_kb(&s))).expect("parses");
-        let (blob, _) = crate::machine::encode_module(&module);
-        let items = crate::machine::decode_container(&blob).unwrap();
-        let syms = crate::machine::decode_symbols(&blob).unwrap();
+        let (blob, _) = crate::abl::encode_module(&module);
+        let items = crate::abl::decode_container(&blob).unwrap();
+        let syms = crate::abl::decode_symbols(&blob).unwrap();
         let name = |id: u32| syms[id as usize].clone();
-        let v = crate::machine_bridge::decompile_symbolic(&items[0].expr);
+        let v = crate::abl_bridge::decompile_symbolic(&items[0].expr);
         let facts: Vec<_> = v.fact_syms.iter().zip(&v.fact_arg_syms)
             .map(|(&p, t)| (name(p), t.iter().map(|&x| name(x)).collect::<Vec<_>>())).collect();
         let rules: Vec<_> = v.rule_syms.iter().zip(&v.rule_param_syms).zip(&v.rule_body_syms)
-            .map(|((&r, params), body)| crate::machine_bridge::KbRule {
+            .map(|((&r, params), body)| crate::abl_bridge::KbRule {
                 head: name(r),
                 params: params.iter().map(|&p| name(p)).collect(),
                 body: body.iter().map(|(p, a)| (name(*p), a.iter().map(|&x| name(x)).collect())).collect(),
             }).collect();
         assert_eq!(rules[0].body.len(), 2, "rule body round-trips two literals");
-        let derived = crate::machine_bridge::evaluate_kb(&facts, &rules);
+        let derived = crate::abl_bridge::evaluate_kb(&facts, &rules);
         assert!(
             derived.iter().any(|(p, a)| p == "grandparent" && a == &vec!["alice".to_string(), "carol".to_string()]),
             "must derive grandparent(alice, carol): {derived:?}"
@@ -1181,10 +1181,10 @@ mod tests {
         ).unwrap();
         assert!(validate_agent(&s).is_empty());
         let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_agent(&s))).expect("parses");
-        let (blob, _) = crate::machine::encode_module(&module);
-        let items = crate::machine::decode_container(&blob).unwrap();
-        let syms = crate::machine::decode_symbols(&blob).unwrap();
-        let ag = crate::machine_bridge::decompile_agentic(&items[0].expr).unwrap();
+        let (blob, _) = crate::abl::encode_module(&module);
+        let items = crate::abl::decode_container(&blob).unwrap();
+        let syms = crate::abl::decode_symbols(&blob).unwrap();
+        let ag = crate::abl_bridge::decompile_agentic(&items[0].expr).unwrap();
         let appr: Vec<&str> = ag.approval_syms.iter().map(|&id| syms[id as usize].as_str()).collect();
         assert_eq!(appr, vec!["write_files", "deploy"], "requires_approval round-trips");
     }
@@ -1196,10 +1196,10 @@ mod tests {
         ).unwrap();
         assert!(validate_swarm(&s).is_empty(), "{:?}", validate_swarm(&s));
         let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_swarm(&s))).expect("parses");
-        let (blob, _) = crate::machine::encode_module(&module);
-        let items = crate::machine::decode_container(&blob).unwrap();
-        let syms = crate::machine::decode_symbols(&blob).unwrap();
-        let ag = crate::machine_bridge::decompile_agentic(&items[0].expr).unwrap();
+        let (blob, _) = crate::abl::encode_module(&module);
+        let items = crate::abl::decode_container(&blob).unwrap();
+        let syms = crate::abl::decode_symbols(&blob).unwrap();
+        let ag = crate::abl_bridge::decompile_agentic(&items[0].expr).unwrap();
         let name = |o: Option<u32>| o.map(|id| syms[id as usize].clone());
         assert_eq!(name(ag.topology_sym).as_deref(), Some("ring"), "exact topology round-trips");
         assert_eq!(name(ag.consensus_sym).as_deref(), Some("majority"), "consensus round-trips");
@@ -1248,7 +1248,7 @@ mod tests {
         );
         assert!(validate_unified(&s).is_empty(), "{:?}", validate_unified(&s));
         let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_unified(&s))).expect("parses");
-        let (_blob, summary) = crate::machine::encode_module(&module);
+        let (_blob, summary) = crate::abl::encode_module(&module);
         assert_eq!(summary.len(), 4, "four mixed items → four container entries");
     }
 

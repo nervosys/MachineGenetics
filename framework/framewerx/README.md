@@ -14,11 +14,11 @@
 │  • Sigil-mode declarations for token efficiency              │
 │  Implementation: .mg source                                  │
 └────────────────────────────┬─────────────────────────────────┘
-                             │ lowers to Machine Language via machine_bridge
+                             │ lowers to Agentic Binary Language via abl_bridge
                              ▼
 ┌──────────────────────────────────────────────────────────────┐
 │  RMI / Framewerx (Rust crate)        ← JAX-equivalent        │
-│  • 107 Machine Language opcodes (Neural / Symbolic / Control / ...)      │
+│  • 107 Agentic Binary Language opcodes (Neural / Symbolic / Control / ...)      │
 │  • CpuBackend dispatch                                       │
 │  • Autograd, optimizers, distributed                         │
 │  Implementation: Rust                                        │
@@ -38,7 +38,7 @@
 | **Discoverability** | Every module type is in the ontology (`ontology/section { "section": "framewerx_modules" }`). Agent calls one RAP method, gets the full menu of layers, optimizers, loss functions. |
 | **Reliability** | Every module carries a parse-verified example in the ontology. 5-stage recovery pipeline catches typos / partial outputs. CI floors track parse rate (100%) and heal recovery. |
 | **Neurosymbolic** | `net` and `kb` are first-class siblings — Framewerx-MG composes them via the `Hybrid` module. The RMI ontology adapter (already wired) translates SKB rules to RMI Concepts under `air.skb.<database>`. |
-| **Binary transport** | A Framewerx-MG module compiles to an Machine Language container. Agents ship bytes, not text. (See `ml/encode` and `pipeline/recover-and-encode`.) |
+| **Binary transport** | A Framewerx-MG module compiles to an Agentic Binary Language container. Agents ship bytes, not text. (See `abl/encode` and `pipeline/recover-and-encode`.) |
 
 ## Surface layout
 
@@ -84,9 +84,9 @@ net Classifier {
 
 This `net` block:
 1. Parses via MechGen's existing `net`/`layer`/`forward` syntax.
-2. Lowers to Machine Language via `machine_bridge::lower_module` — `Linear` and `ReLU` map to opcodes `0x0002` and `0x0010`.
-3. Encodes as Machine Language bytes (`ml/encode` RAP method).
-4. Executes on `CpuBackend` (`ml/run` RAP method).
+2. Lowers to Agentic Binary Language via `abl_bridge::lower_module` — `Linear` and `ReLU` map to opcodes `0x0002` and `0x0010`.
+3. Encodes as Agentic Binary Language bytes (`abl/encode` RAP method).
+4. Executes on `CpuBackend` (`abl/run` RAP method).
 
 No text round-trip; no Python boilerplate; one call per stage.
 
@@ -100,9 +100,9 @@ agent: GET ontology/section { "section": "framewerx_modules" }
       examples: [mlp_classifier, transformer_block, ...] }
 
 agent: POST pipeline/recover-and-encode { source: "<.mg model>" }
-  → { ok, ml_hex, items: [...] }
+  → { ok, abl_hex, items: [...] }
 
-agent: POST ml/run { source: ... }
+agent: POST abl/run { source: ... }
   → { runs: [{ name, status: "dispatched", output_sum, output_shape }] }
 ```
 

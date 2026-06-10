@@ -1,6 +1,6 @@
-//! # Machine Language Compute Dispatch
+//! # Agentic Binary Language Compute Dispatch
 //!
-//! Runs a bridge-produced Machine Language [`Expr`] pipeline against an
+//! Runs a bridge-produced Agentic Binary Language [`Expr`] pipeline against an
 //! [`rmi::compute::Backend`] for activation-only chains.
 //!
 //! This is the executable counterpart to the tree-walking [`rmi::lang::Vm`]:
@@ -476,7 +476,7 @@ pub fn run_pipeline(
     run_pipeline_with_params(backend, expr, input_shape, seed_value, &mut params)
 }
 
-/// Walk an Machine Language expression and extract the first shape-determining op's
+/// Walk an Agentic Binary Language expression and extract the first shape-determining op's
 /// expected input dimension. Returns `None` for expressions that don't
 /// start with a shape-bearing op (e.g. pure-symbolic chains).
 ///
@@ -2818,9 +2818,9 @@ fn ensure_2d(
 mod tests {
     use super::*;
     use crate::ast;
-    use crate::machine_bridge::NetTranslator;
+    use crate::abl_bridge::NetTranslator;
 
-    /// CONV2D through the Machine Language pipeline now routes to `Backend::conv2d`
+    /// CONV2D through the Agentic Binary Language pipeline now routes to `Backend::conv2d`
     /// (GPU im2col+GEMM on CUDA, naive on CPU). Verify the CPU pipeline
     /// produces the correct output shape and a finite result.
     #[test]
@@ -3881,7 +3881,7 @@ mod tests {
             forward: empty_block(),
         };
         // Forward dispatch table maps name "SinusoidalPE" → Op? Not in
-        // current layer_name_to_op. Use direct Machine Language expression instead.
+        // current layer_name_to_op. Use direct Agentic Binary Language expression instead.
         let _ = lowered_to_silence_warning(net.clone());
         let backend = CpuBackend::new();
         let expr = rmi::lang::Expr::op(Op::SINUSOIDAL_PE, vec![
@@ -4401,7 +4401,7 @@ mod tests {
         // wait — causal flag requires the 4-arg form. So Q/K/V are random.
         // Instead, test a specific property: token 0's output (causal) only
         // attends to itself, so it equals V[0] projection only.
-        // Construct a hand-built Machine Language expression for parameterless-with-mask
+        // Construct a hand-built Agentic Binary Language expression for parameterless-with-mask
         // path: not supported. So we exercise just the QKV+causal mode.
         let net = ast::NetDef {
             name: "Causal".into(),
@@ -4489,7 +4489,7 @@ mod tests {
             forward: empty_block(),
         };
         // SGD_STEP isn't in layer_name_to_op so we exercise it via a
-        // hand-built Machine Language expression instead.
+        // hand-built Agentic Binary Language expression instead.
         let backend = CpuBackend::new();
         let expr = rmi::lang::Expr::op1(Op::SGD_STEP);
         let result = run_pipeline(&backend, &expr, &[4], 1.0).expect("run");

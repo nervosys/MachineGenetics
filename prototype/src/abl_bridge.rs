@@ -1,7 +1,7 @@
-//! # MechGen ↔ Machine Language Bridge
+//! # MechGen ↔ Agentic Binary Language Bridge
 //!
 //! Translates MechGen AST nodes that describe neural, symbolic, or agent
-//! constructs into Machine Language ([`rmi::lang`]) expression trees. The bridge is the
+//! constructs into Agentic Binary Language ([`rmi::lang`]) expression trees. The bridge is the
 //! seam where MechGen's surface language meets RMI's binary neurosymbolic IR.
 //!
 //! ## Routing
@@ -11,15 +11,15 @@
 //! | MechGen item              | IR     | Backend                          |
 //! |---------------------------|--------|----------------------------------|
 //! | `fn` (systems code)       | MLIR   | LLVM, Cranelift, GCC             |
-//! | `net` / `train` / `kb`    | Machine Language   | RMI VM, CUDA, Metal, WebGPU, ANE |
-//! | `agent` / `swarm`         | Machine Language   | RMI agent runtime + transport    |
-//! | `evolve`                  | both   | Machine Language pop loop + MLIR fitness     |
+//! | `net` / `train` / `kb`    | Agentic Binary Language   | RMI VM, CUDA, Metal, WebGPU, ANE |
+//! | `agent` / `swarm`         | Agentic Binary Language   | RMI agent runtime + transport    |
+//! | `evolve`                  | both   | Agentic Binary Language pop loop + MLIR fitness     |
 //!
 //! [`OpFamilyRouter`] decides per-item. [`NetTranslator`], [`KbTranslator`],
-//! [`AgentTranslator`] produce the actual Machine Language [`rmi::lang::Expr`].
+//! [`AgentTranslator`] produce the actual Agentic Binary Language [`rmi::lang::Expr`].
 //!
 //! The bridge intentionally does **no** typechecking; it consumes an AST that
-//! the MechGen frontend has already resolved + checked, and emits Machine Language whose
+//! the MechGen frontend has already resolved + checked, and emits Agentic Binary Language whose
 //! shape/type errors surface via [`rmi::lang::Vm`] or the RMI verifier.
 
 use std::collections::HashMap;
@@ -42,7 +42,7 @@ pub fn is_stubbed_family(f: OpFamily) -> bool {
     matches!(f, OpFamily::Neural | OpFamily::Symbolic | OpFamily::Agent)
 }
 
-/// Collect every distinct [`OpFamily`] referenced by an Machine Language expression
+/// Collect every distinct [`OpFamily`] referenced by an Agentic Binary Language expression
 /// tree. Useful for routing decisions and VM diagnostics.
 pub fn expr_op_families(expr: &Expr) -> Vec<OpFamily> {
     let mut out = Vec::new();
@@ -75,7 +75,7 @@ pub fn expr_op_families(expr: &Expr) -> Vec<OpFamily> {
 pub enum IrTarget {
     /// Lower to MechGen MLIR dialect → LLVM/Cranelift/GCC.
     Mlir,
-    /// Lower to Machine Language → RMI VM / compute backends / agent runtime.
+    /// Lower to Agentic Binary Language → RMI VM / compute backends / agent runtime.
     Machine,
     /// Hybrid: emit both; runtime selects.
     Both,
@@ -98,7 +98,7 @@ impl OpFamilyRouter {
         }
     }
 
-    /// Partition a module into (mlir_items, machine_items). `Both` items appear in
+    /// Partition a module into (mlir_items, abl_items). `Both` items appear in
     /// each.
     pub fn partition(module: &ast::Module) -> (Vec<&ast::Item>, Vec<&ast::Item>) {
         let mut mlir = Vec::new();
@@ -118,10 +118,10 @@ impl OpFamilyRouter {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// Layer name → Machine Language Op lookup
+// Layer name → Agentic Binary Language Op lookup
 // ═══════════════════════════════════════════════════════════════════
 
-/// Map a MechGen layer type name to its Machine Language opcode.
+/// Map a MechGen layer type name to its Agentic Binary Language opcode.
 ///
 /// Returns `None` if the name does not correspond to a known neural primitive
 /// — callers may treat that as a user-defined layer and fall back to a
@@ -244,7 +244,7 @@ fn type_tail_name(ty: &ast::Type) -> Option<&str> {
     }
 }
 
-/// Inverse of [`layer_name_to_op`] — map an Machine Language opcode back to a canonical
+/// Inverse of [`layer_name_to_op`] — map an Agentic Binary Language opcode back to a canonical
 /// MechGen layer surface name. Returns `None` for non-neural opcodes.
 ///
 /// The chosen names are the first variant per family from
@@ -312,7 +312,7 @@ pub fn op_to_layer_name(op: Op) -> Option<&'static str> {
 // Translators
 // ═══════════════════════════════════════════════════════════════════
 
-/// Translate a MechGen [`ast::NetDef`] into an Machine Language pipeline expression.
+/// Translate a MechGen [`ast::NetDef`] into an Agentic Binary Language pipeline expression.
 ///
 /// Each layer becomes a unary opcode; layers are composed with `>>` in
 /// declaration order. The resulting [`Expr`] is content-addressable and
@@ -325,9 +325,9 @@ pub struct NetTranslator;
 /// Outcome of a [`NetTranslator`] run.
 #[derive(Debug, Clone)]
 pub struct NetTranslation {
-    /// The Machine Language expression tree for the network's forward pass.
+    /// The Agentic Binary Language expression tree for the network's forward pass.
     pub expr: Expr,
-    /// Layer names that did not resolve to a known Machine Language opcode.
+    /// Layer names that did not resolve to a known Agentic Binary Language opcode.
     pub unknown_layers: Vec<String>,
 }
 
@@ -413,7 +413,7 @@ impl NetTranslator {
 
 // ─── Literal translation ────────────────────────────────────────────
 
-/// Count the number of `Expr::App` nodes in an Machine Language tree.
+/// Count the number of `Expr::App` nodes in an Agentic Binary Language tree.
 fn count_app_nodes(expr: &Expr) -> usize {
     match expr {
         Expr::App(_, args) => 1 + args.iter().map(count_app_nodes).sum::<usize>(),
@@ -429,7 +429,7 @@ fn count_app_nodes(expr: &Expr) -> usize {
     }
 }
 
-/// Translate a MechGen literal expression into an Machine Language literal expression.
+/// Translate a MechGen literal expression into an Agentic Binary Language literal expression.
 ///
 /// Returns `None` for non-literal expressions; the bridge silently drops
 /// non-literals from layer args because shape inference is the frontend's job
@@ -465,11 +465,11 @@ fn translate_literal(expr: &ast::Expr) -> Option<Expr> {
 // ═══════════════════════════════════════════════════════════════════
 
 /// Walks a MechGen `Block` representing a `forward { ... }` body and emits
-/// an Machine Language [`Expr`] that respects the user-written data flow.
+/// an Agentic Binary Language [`Expr`] that respects the user-written data flow.
 ///
 /// Recognised shapes:
 ///
-/// | MechGen forward block       | Machine Language produced                                |
+/// | MechGen forward block       | Agentic Binary Language produced                                |
 /// |-----------------------------|----------------------------------------------|
 /// | `{ fc1 }` (single ident)    | declaration-order fallback (handled upstream)|
 /// | `{ x \|> l1 \|> l2 }`       | `App(l1) >> App(l2)`                         |
@@ -602,7 +602,7 @@ impl<'a> ForwardWalker<'a> {
         }
     }
 
-    /// If `name` is a declared layer, return its Machine Language App with carried args.
+    /// If `name` is a declared layer, return its Agentic Binary Language App with carried args.
     fn layer_app(&self, name: &str) -> Option<Expr> {
         let (op, args) = self.layers.get(name)?;
         if args.is_empty() {
@@ -613,7 +613,7 @@ impl<'a> ForwardWalker<'a> {
     }
 }
 
-/// Translate a MechGen [`ast::KbDef`] into Machine Language symbolic operations.
+/// Translate a MechGen [`ast::KbDef`] into Agentic Binary Language symbolic operations.
 ///
 /// Each rule becomes a `UNIFY`-then-`INFER` pipeline; facts become `RESOLVE`
 /// applications. The resulting expression evaluates the KB closure via the
@@ -621,7 +621,7 @@ impl<'a> ForwardWalker<'a> {
 pub struct KbTranslator;
 
 impl KbTranslator {
-    /// Translate a `kb` definition into an Machine Language expression.
+    /// Translate a `kb` definition into an Agentic Binary Language expression.
     pub fn translate(kb: &ast::KbDef, symbols: &mut SymbolTable) -> Expr {
         let mut stages: Vec<Expr> = Vec::new();
 
@@ -696,11 +696,11 @@ fn call_pred(e: &ast::Expr) -> Option<(String, Vec<String>)> {
     }
 }
 
-/// Translate a MechGen [`ast::AgentDef`] into an Machine Language `SPAWN` expression.
+/// Translate a MechGen [`ast::AgentDef`] into an Agentic Binary Language `SPAWN` expression.
 pub struct AgentTranslator;
 
 impl AgentTranslator {
-    /// Produce an Machine Language expression that spawns this agent:
+    /// Produce an Agentic Binary Language expression that spawns this agent:
     /// `SPAWN(agent_sym, cap_sym1, …, cap_symN)`. The agent name and every
     /// capability name are interned into the symbol table, so the artifact is
     /// fully self-describing (names recover on decode; the VM ignores the args).
@@ -726,12 +726,12 @@ impl AgentTranslator {
     }
 }
 
-/// Translate a MechGen [`ast::SwarmDef`] into a multi-agent Machine Language expression:
+/// Translate a MechGen [`ast::SwarmDef`] into a multi-agent Agentic Binary Language expression:
 /// `SPAWN(size) >> SEND/RECV on topology >> aggregate`.
 pub struct SwarmTranslator;
 
 impl SwarmTranslator {
-    /// Build an Machine Language expression for a swarm.
+    /// Build an Agentic Binary Language expression for a swarm.
     ///
     /// If `swarm.transport` is one of `"rmi-quic"`, `"rmi-tcp"`, or
     /// `"rmi-grpc"`, the SEND/RECV ops are emitted with a transport-tag
@@ -796,9 +796,9 @@ fn swarm_size(swarm: &ast::SwarmDef) -> i64 {
 // Module-level driver
 // ═══════════════════════════════════════════════════════════════════
 
-/// Result of translating a MechGen module to Machine Language.
-pub struct MachineModule {
-    /// Top-level Machine Language expressions, one per Machine Language-routed item, paired with the
+/// Result of translating a MechGen module to Agentic Binary Language.
+pub struct AblModule {
+    /// Top-level Agentic Binary Language expressions, one per Agentic Binary Language-routed item, paired with the
     /// originating item's display name.
     pub items: Vec<(String, Expr)>,
     /// Symbol table populated during translation. Must be serialized
@@ -809,10 +809,10 @@ pub struct MachineModule {
     pub diagnostics: Vec<String>,
 }
 
-/// Translate every Machine Language-routed item in a [`ast::Module`] to Machine Language.
+/// Translate every Agentic Binary Language-routed item in a [`ast::Module`] to Agentic Binary Language.
 ///
 /// Items routed to MLIR are skipped; use [`crate::mlir::emit`] for those.
-pub fn lower_module(module: &ast::Module) -> MachineModule {
+pub fn lower_module(module: &ast::Module) -> AblModule {
     let mut symbols = SymbolTable::new();
     let mut items = Vec::new();
     let mut diagnostics = Vec::new();
@@ -862,11 +862,11 @@ pub fn lower_module(module: &ast::Module) -> MachineModule {
                     Expr::op1(Op::MAP) >> Expr::op1(Op::REDUCE),
                 ));
             }
-            _ => unreachable!("router said Machine Language but kind unmatched"),
+            _ => unreachable!("router said Agentic Binary Language but kind unmatched"),
         }
     }
 
-    MachineModule {
+    AblModule {
         items,
         symbols,
         diagnostics,
@@ -874,15 +874,15 @@ pub fn lower_module(module: &ast::Module) -> MachineModule {
 }
 
 // Suppress unused-import warnings for re-exports we want available to
-// downstream modules that `use crate::machine_bridge::*`.
+// downstream modules that `use crate::abl_bridge::*`.
 #[allow(dead_code)]
 fn _exports(_: &Sym, _: &Ty, _: &Val) {}
 
 // ═══════════════════════════════════════════════════════════════════
-// Decompiler — Machine Language Expr → MechGen NetDef
+// Decompiler — Agentic Binary Language Expr → MechGen NetDef
 // ═══════════════════════════════════════════════════════════════════
 
-/// Decompile an Machine Language [`Expr`] into a MechGen [`ast::NetDef`].
+/// Decompile an Agentic Binary Language [`Expr`] into a MechGen [`ast::NetDef`].
 ///
 /// Walks a `Seq` chain of neural `App` nodes and emits one [`ast::LayerDef`]
 /// per recognised opcode. Args carried in each `App` are converted back to
@@ -971,7 +971,7 @@ fn decompile_walk(
     }
 }
 
-/// Translate an Machine Language literal arg back to a MechGen literal expression.
+/// Translate an Agentic Binary Language literal arg back to a MechGen literal expression.
 fn decompile_arg(arg: &Expr) -> Option<ast::Expr> {
     match arg {
         Expr::Lit(Val::I64(n)) => Some(ast::Expr::Literal {
@@ -990,7 +990,7 @@ fn decompile_arg(arg: &Expr) -> Option<ast::Expr> {
     }
 }
 
-/// The recoverable structure of a *symbolic* (`kb`) Machine Language artifact:
+/// The recoverable structure of a *symbolic* (`kb`) Agentic Binary Language artifact:
 /// one arity per fact (`RESOLVE`) and one parameter-count per rule (`UNIFY`).
 ///
 /// Predicate **names are not recoverable** from the artifact — the symbol table
@@ -1004,7 +1004,7 @@ pub struct SymbolicView {
     /// Parameter count of each rule, in artifact order (one per `UNIFY`).
     pub rule_param_counts: Vec<i64>,
     /// Symbol id of each fact predicate (parallel to `fact_arities`). Resolve
-    /// against the container's symbol table ([`crate::machine::decode_symbols`])
+    /// against the container's symbol table ([`crate::abl::decode_symbols`])
     /// to recover the predicate name.
     pub fact_syms: Vec<u32>,
     /// Symbol id of each rule (parallel to `rule_param_counts`).
@@ -1042,7 +1042,7 @@ pub fn decompile_symbolic(expr: &Expr) -> SymbolicView {
 
     // current rule being assembled: (rule_sym, param_syms, body)
     let mut cur: Option<(u32, Vec<u32>, Vec<(u32, Vec<u32>)>)> = None;
-    let mut finish = |cur: &mut Option<(u32, Vec<u32>, Vec<(u32, Vec<u32>)>)>, v: &mut SymbolicView| {
+    let finish = |cur: &mut Option<(u32, Vec<u32>, Vec<(u32, Vec<u32>)>)>, v: &mut SymbolicView| {
         if let Some((r, params, body)) = cur.take() {
             v.rule_syms.push(r);
             v.rule_param_counts.push(params.len() as i64);
@@ -1629,7 +1629,7 @@ mod tests {
 
     #[test]
     fn vm_evaluates_math_in_translated_kb_expression() {
-        // Independent end-to-end smoke test: build a small Machine Language expression
+        // Independent end-to-end smoke test: build a small Agentic Binary Language expression
         // through the bridge primitives, encode-decode it, and verify the VM
         // evaluates an embedded math expression.
         use rmi::lang::Vm;
@@ -1724,7 +1724,7 @@ mod tests {
         assert_eq!(
             t1.expr.content_hash(),
             t2.expr.content_hash(),
-            "decompile→lower must reproduce the same Machine Language hash"
+            "decompile→lower must reproduce the same Agentic Binary Language hash"
         );
     }
 

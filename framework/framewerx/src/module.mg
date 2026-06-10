@@ -2,7 +2,7 @@
 //
 // A `Module` is anything that has a `forward` mapping a tensor to a
 // tensor. Framewerx-MG modules are declared with the `net` keyword
-// (which the parser already routes to Machine Language); this file declares the
+// (which the parser already routes to Agentic Binary Language); this file declares the
 // composition glue (Sequential, Residual, Branch) that wraps net
 // definitions into reusable shapes.
 

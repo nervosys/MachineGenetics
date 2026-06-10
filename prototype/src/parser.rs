@@ -169,7 +169,6 @@ impl<'a> Parser<'a> {
             | TokenKind::KwExtend
             | TokenKind::KwIs
             | TokenKind::KwHandle
-            | TokenKind::KwNet
             // Sum-type constructors are keywords in expression position but
             // need to act as identifiers in path / pattern contexts (e.g.
             // `R.Ok(x)`, `match { R.Ok(v) => ... }`).
@@ -182,17 +181,10 @@ impl<'a> Parser<'a> {
             // module path, etc.). Allow it.
             | TokenKind::KwAf
             | TokenKind::KwUf
-            // `val` / `var` are let-binding keywords in human mode but
-            // appear as plain identifiers in parameter names and call
-            // arguments throughout the corpus.
-            | TokenKind::KwVal
-            | TokenKind::KwVar
             // Additional keywords the corpus uses as plain identifiers
-            // (effect-handler methods, struct field names, etc.).
-            | TokenKind::KwYield
-            | TokenKind::KwRule
-            | TokenKind::KwQuery
-            | TokenKind::KwSelect => Ok(self.advance().text.clone()),
+            // (effect-handler methods, struct field names, etc.). KwNet / KwVal /
+            // KwVar / KwRule / KwQuery / KwSelect are already covered above.
+            | TokenKind::KwYield => Ok(self.advance().text.clone()),
             _ => {
                 let tok = self.current();
                 Err(ParseError {
@@ -2389,27 +2381,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            // Single-char type keywords used as identifiers
-            TokenKind::KwF if self.peek() == TokenKind::LParen => {
-                // fn type: f(T, T) -> T
-                self.advance();
-                self.advance(); // (
-                let mut params = Vec::new();
-                while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
-                    params.push(self.parse_type()?);
-                    if self.peek() == TokenKind::Comma {
-                        self.advance();
-                    }
-                }
-                self.expect(TokenKind::RParen)?;
-                let ret = if self.peek() == TokenKind::Arrow {
-                    self.advance();
-                    Some(Box::new(self.parse_type()?))
-                } else {
-                    None
-                };
-                Ok(Type::Fn { params, ret })
-            }
+            // (`f(T, T) -> T` fn types are handled by the KwF | KwAf | KwUf arm above.)
 
             // AI-native types
             // Tensor[T, N, M, ...]
@@ -3518,15 +3490,10 @@ impl<'a> Parser<'a> {
             // `async`, `unsafe` etc. flow through expression-prefix
             // when used as identifiers (variable names, args, etc.).
             TokenKind::Ident
-            | TokenKind::KwVal
-            | TokenKind::KwVar
             | TokenKind::KwAf
-            | TokenKind::KwUf
-            | TokenKind::KwData
-            | TokenKind::KwYield
-            | TokenKind::KwRule
-            | TokenKind::KwQuery
-            | TokenKind::KwSelect => {
+            | TokenKind::KwUf => {
+                // (KwVal/KwVar/KwData/KwYield/KwRule/KwQuery/KwSelect as
+                // identifiers are already handled by earlier arms.)
                 let tok = self.advance();
                 Ok(Expr::Ident {
                     name: tok.text.clone(),

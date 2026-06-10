@@ -1,10 +1,10 @@
-//! # Machine Language Shape Inference
+//! # Agentic Binary Language Shape Inference
 //!
-//! A pre-flight pass that walks an Machine Language [`Expr`] pipeline and threads
+//! A pre-flight pass that walks an Agentic Binary Language [`Expr`] pipeline and threads
 //! tensor shapes layer-by-layer, catching dimension mismatches before the
 //! first compute-backend dispatch.
 //!
-//! The inferer handles the same op set as [`crate::machine_compute`]:
+//! The inferer handles the same op set as [`crate::abl_compute`]:
 //!
 //! | Op          | Shape rule                                            |
 //! |-------------|-------------------------------------------------------|
@@ -17,7 +17,7 @@
 //! | unknown     | shape preserved + diagnostic                          |
 //!
 //! 1-D inputs are auto-reshaped to `[1, dim]` for matmul (matching
-//! `machine_compute::ensure_2d`).
+//! `abl_compute::ensure_2d`).
 
 use rmi::lang::{Expr, Op, Val};
 
@@ -69,7 +69,7 @@ fn walk(
         }
         Expr::App(op, args) => apply_op(*op, args, current, mismatches, unknown),
         Expr::Par(a, _b) => {
-            // Take the left branch only — matches machine_compute::walk semantics.
+            // Take the left branch only — matches abl_compute::walk semantics.
             walk(a, current, mismatches, unknown);
         }
         _ => {}
@@ -135,7 +135,7 @@ fn apply_op(
         }
         // ── Conv2D: shrinks spatial dims by (k-1). ──────────────────
         Op::CONV2D => {
-            // Arg schema matches machine_compute::dispatch_conv2d:
+            // Arg schema matches abl_compute::dispatch_conv2d:
             // [in_ch, out_ch, kernel] (+ optional bias, stride, padding).
             let dims = extract_int_args(args);
             if dims.len() >= 3 && dims[1] > 0 && dims[2] > 0 {
@@ -208,7 +208,7 @@ fn apply_op(
 
 /// Helper for ops that consume `[..., k]` and emit `[..., n]`. Handles
 /// auto-reshape of 1D `[k * m]` into `[m, k]` to match
-/// `machine_compute::ensure_2d`.
+/// `abl_compute::ensure_2d`.
 fn apply_matmul_like(
     op: Op,
     current: &mut Vec<usize>,

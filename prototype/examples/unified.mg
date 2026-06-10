@@ -2,11 +2,11 @@
 //
 // Demonstrates the dual-IR pipeline:
 //   - `fn` items lower to MLIR  (systems code)
-//   - `net`, `kb`, `agent`, `swarm` items lower to Machine Language (neurosymbolic IR)
+//   - `net`, `kb`, `agent`, `swarm` items lower to Agentic Binary Language (neurosymbolic IR)
 //
-// Run: MechGen-parse --target=ml prototype/examples/unified.mg
+// Run: MechGen-parse --target=abl prototype/examples/unified.mg
 //
-// Expected output: per-item Machine Language stats (nodes, depth, content hash,
+// Expected output: per-item Agentic Binary Language stats (nodes, depth, content hash,
 // binary wire size). A full transformer block fits in ~50 bytes.
 
 // ── Systems code (→ MLIR) ──────────────────────────────────────────
@@ -19,7 +19,7 @@ pub fn main() {
     val x = add(2, 3);
 }
 
-// ── Neural network (→ Machine Language pipeline) ───────────────────────────────
+// ── Neural network (→ Agentic Binary Language pipeline) ───────────────────────────────
 
 net TransformerBlock {
     layer ln1: LayerNorm;
@@ -50,7 +50,7 @@ net ResNetStage {
     forward { conv1 }
 }
 
-// ── Multi-agent swarm with distributed transport (→ Machine Language agent ops) ──
+// ── Multi-agent swarm with distributed transport (→ Agentic Binary Language agent ops) ──
 
 swarm Workers {
     agent: Worker;
@@ -59,7 +59,7 @@ swarm Workers {
     transport: rmi_quic;
 }
 
-// ── Knowledge base (→ Machine Language symbolic ops) ───────────────────────────
+// ── Knowledge base (→ Agentic Binary Language symbolic ops) ───────────────────────────
 
 kb FamilyKb {
     fact parent(a, b);

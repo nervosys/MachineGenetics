@@ -4,7 +4,7 @@
 name = "MechGen-prototype"
 version = "0.1.0"
 edition = "2024"
-description = "MachineGenetics (MechGen) prototype compiler — lexer, parser, Machine Language pipeline, and RAP server for the agentic-first language; RecursiveMachineIntelligence (rmi) is the built-in AI framework"
+description = "MachineGenetics (MechGen) prototype compiler — lexer, parser, Agentic Binary Language pipeline, and RAP server for the agentic-first language; RecursiveMachineIntelligence (rmi) is the built-in AI framework"
 license = "Apache-2.0"
 repository = "https://github.com/nervosys/MachineGenetics"
 authors = ["NERVOSYS <opensource@nervosys.ai>"]

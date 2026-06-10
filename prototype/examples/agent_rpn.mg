@@ -1,7 +1,7 @@
 // Agent-built (dogfooding session): a small RPN (reverse-Polish) calculator.
 // Exercises the general MechGen surface — sum types, records, pattern match,
 // effect annotations, generics-free control flow — independent of the
-// neural/Machine Language path.
+// neural/Agentic Binary Language path.
 
 // A token is either a number or one of four binary operators.
 data Token = Num(f64) | Add | Sub | Mul | Div
