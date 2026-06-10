@@ -196,13 +196,16 @@ each receiver, and decided by the same consensus evaluator MechGen already ships
   Unit-tested (5 tests): capability map, profile shape + baseline caps, gate
   decisions, swarm task/decision, deterministic no-exec frame digest.
 
-- **Type-link boundary (honest):** the JSON above targets the `spine_agentic`
-  serde shapes by field name; it is **not** compile-checked against the crate,
-  because `spine-agentic` inherits Hyperlight-workspace deps and cannot be a
-  plain path-dependency from here. To make the join type-safe, add a tiny crate
-  *inside* the Hyperlight workspace that depends on both `spine-agentic` and this
-  bridge's JSON contract and `serde_json::from_value`s the envelopes into the
-  real types — a few dozen lines, no changes to either side.
+- **Type-link boundary — now BUILT** as the `spine-mechgen` crate *inside* the
+  SPINE workspace (`nervosys/SPINE`, `src/spine-mechgen`). It deserializes the
+  JSON above into the real `spine_agentic` types, so the join is **compile-checked**:
+  - `AblAgentEnvelope::into_profile()` → `AgentProfile` (capabilities
+    deserialize straight into `Vec<AgentCapability>` — the proof the vocabularies
+    match)
+  - `AblSwarmEnvelope::into_task()` → `SwarmTask`
+  - `AblArtifactFrame::into_artifact()` → `swe::SweArtifact`, after **FNV-digest
+    cross-validation** of the decoded bytes
+  5 tests parse MechGen's exact `--spine=*` output.
 
 - **SPINE side** — consumed as-is: `spine-agentic` (`AgentProfile`, `AgentMessage`,
   `Swarm`, `SwarmCoordinator`, `AgenticWebRuntime`), `spine-agent` (`AgentClient`,
@@ -267,6 +270,19 @@ Collaborative agentic SWE is **achievable on SPINE today** with the existing
 substrate plus the MechGen bridge (§1–8). The only must-do SPINE change is one
 wiring fix (#1); #2–#3 are additive ergonomics, not blockers. SPINE was built as
 a general agent-native collaboration plane, and SWE is just one workload over it.
+
+### Update — all four items now implemented (in `nervosys/SPINE`)
+
+1. ✅ **Real execution** — `Action::Execute` now compiles + runs the command in
+   the fuel-metered `spine-wasm` sandbox (default-on `wasm-exec` feature); honest
+   error when disabled, never a fake "executed". (`spine-agentic`)
+2. ✅ **SWE artifacts** — `spine-agentic::swe::SweArtifact` (content-addressed,
+   `supersedes` lineage, producer, Ed25519 signature) + `SweArtifactStore`.
+3. ✅ **Work DAG** — `spine-agentic::swe::WorkGraph` (deps, capabilities,
+   Ready/Claimed/Done, claim/complete unblocking, topological-order/cycle check).
+4. ✅ **Type-safe join** — the `spine-mechgen` crate (§8).
+
+spine-agentic 285 tests, spine-mechgen 5 tests, dependents build clean.
 
 The bridge is intentionally small because the two systems already meet in the
 middle: ABL supplies a self-describing, no-exec, content-hashed **artifact**, and
