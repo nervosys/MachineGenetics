@@ -766,8 +766,15 @@ fn run_describe_machine_bytes(blob: &[u8]) {
                                 (false, false) => "none",
                             };
                             map.insert("comm".into(), comm.into());
-                            map.insert("note".into(),
-                                "exact topology label not stored — only the comm pattern".into());
+                            if let Some(n) = ag.topology_sym.and_then(sym_name) {
+                                map.insert("topology".into(), n.into());
+                            }
+                            if let Some(n) = ag.consensus_sym.and_then(sym_name) {
+                                map.insert("consensus".into(), n.into());
+                            }
+                            if let Some(n) = ag.transport_sym.and_then(sym_name) {
+                                map.insert("transport".into(), n.into());
+                            }
                         } else {
                             map.insert("kind".into(), "agent".into());
                             let caps: Vec<serde_json::Value> = ag
@@ -777,6 +784,13 @@ fn run_describe_machine_bytes(blob: &[u8]) {
                                 .map(serde_json::Value::from)
                                 .collect();
                             map.insert("capabilities".into(), serde_json::Value::Array(caps));
+                            let appr: Vec<serde_json::Value> = ag
+                                .approval_syms
+                                .iter()
+                                .filter_map(|&id| sym_name(id))
+                                .map(serde_json::Value::from)
+                                .collect();
+                            map.insert("requires_approval".into(), serde_json::Value::Array(appr));
                         }
                     } else if !is_kb && !net.net.layers.is_empty() {
                         // Neural item: reconstruct the layer chain.
@@ -807,33 +821,36 @@ fn run_describe_machine_bytes(blob: &[u8]) {
                     } else if !is_kb {
                         map.insert("kind".into(), "unknown".into());
                     } else {
-                        // Symbolic (kb) item: recover fact arities + rule param-counts.
-                        // Names are NOT in the artifact (symbol table not serialized).
-                        {
-                            map.insert("kind".into(), "kb".into());
-                            let facts: Vec<serde_json::Value> = sym
-                                .fact_arities
-                                .iter()
-                                .zip(&sym.fact_syms)
-                                .map(|(arity, &id)| match sym_name(id) {
-                                    Some(name) => serde_json::json!({ "name": name, "arity": arity }),
-                                    None => serde_json::json!({ "arity": arity }),
-                                })
-                                .collect();
-                            let rules: Vec<serde_json::Value> = sym
-                                .rule_param_counts
-                                .iter()
-                                .zip(&sym.rule_syms)
-                                .map(|(params, &id)| match sym_name(id) {
-                                    Some(name) => serde_json::json!({ "name": name, "params": params }),
-                                    None => serde_json::json!({ "params": params }),
-                                })
-                                .collect();
-                            map.insert("facts".into(), serde_json::Value::Array(facts));
-                            map.insert("rules".into(), serde_json::Value::Array(rules));
-                            map.insert("note".into(),
-                                "ground argument terms are not stored (symbolic IR: predicate names + arities + inference structure)".into());
-                        }
+                        // Symbolic (kb) item: recover full facts (predicate + ground
+                        // terms) and rule signatures (name + param names).
+                        map.insert("kind".into(), "kb".into());
+                        let names = |ids: &[u32]| -> Vec<serde_json::Value> {
+                            ids.iter().filter_map(|&id| sym_name(id)).map(serde_json::Value::from).collect()
+                        };
+                        let facts: Vec<serde_json::Value> = sym
+                            .fact_syms
+                            .iter()
+                            .zip(&sym.fact_arg_syms)
+                            .map(|(&id, terms)| {
+                                let mut f = serde_json::Map::new();
+                                if let Some(name) = sym_name(id) { f.insert("name".into(), name.into()); }
+                                f.insert("args".into(), serde_json::Value::Array(names(terms)));
+                                serde_json::Value::Object(f)
+                            })
+                            .collect();
+                        let rules: Vec<serde_json::Value> = sym
+                            .rule_syms
+                            .iter()
+                            .zip(&sym.rule_param_syms)
+                            .map(|(&id, params)| {
+                                let mut r = serde_json::Map::new();
+                                if let Some(name) = sym_name(id) { r.insert("name".into(), name.into()); }
+                                r.insert("params".into(), serde_json::Value::Array(names(params)));
+                                serde_json::Value::Object(r)
+                            })
+                            .collect();
+                        map.insert("facts".into(), serde_json::Value::Array(facts));
+                        map.insert("rules".into(), serde_json::Value::Array(rules));
                     }
                     entry
                 })

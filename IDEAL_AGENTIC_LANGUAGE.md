@@ -158,11 +158,21 @@ carries its own reject-by-construction codes (K0001–K0006: empty kb, invalid
 identifier, **arity conflict**, **dangling reference**), and `--describe=ml`
 classifies each item (`kind: net|kb`) and reports the recoverable structure.
 
-The loop covers **all four IR item kinds**: `net` (neural), `kb` (symbolic),
-`agent` (a role + capability names; `SPAWN(agent, caps…)`, A0001–A0002), and
-`swarm` (agent type + size + comm pattern; S0001–S0004). agent/swarm got real
-lowering fidelity first — capability names are interned (recoverable), and the
-swarm size is folded from the spec rather than hardcoded.
+The loop covers **all four IR item kinds**, each round-tripping its full
+structure through the serialized symbol table:
+- `net` — layer ops + dims.
+- `kb` — predicate names, **ground term names**, and rule signatures (name +
+  parameter names): `RESOLVE(pred, term…)`, `UNIFY(rule, param…) >> INFER`.
+- `agent` — capability names + **`requires_approval`** ops:
+  `SPAWN(agent, caps…) [>> DELEGATE(approvals…)]` (A0001–A0003).
+- `swarm` — agent type, size, **exact topology**, **consensus**, and
+  **transport**: `SPAWN(agent, size, topology) >> comm[transport] >>
+  REDUCE(consensus)` (S0001–S0006).
+
+The VM treats the agentic/symbolic ops as arg-agnostic stubs, so carrying these
+names as extra op args is execution-safe and recovers losslessly on decode. The
+only thing still not stored is a fact's argument *order semantics* beyond the
+term list (terms are kept verbatim) — i.e. nothing material remains elided.
 
 A `{"items":[..]}` **unified** spec builds a whole application — any mix of the
 four kinds — into ONE container (codes U0001 empty, U0002 unknown-kind, U0003
