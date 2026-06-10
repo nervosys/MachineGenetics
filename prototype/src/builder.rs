@@ -68,6 +68,8 @@ pub struct AgentSpec {
     pub agent: String,
     #[serde(default)]
     pub capabilities: Vec<String>,
+    #[serde(default)]
+    pub requires_approval: Vec<String>,
 }
 
 /// A swarm construction spec — a multi-agent topology. Lowers to
@@ -82,6 +84,8 @@ pub struct SwarmSpec {
     pub size: Option<i64>,
     #[serde(default)]
     pub topology: Option<String>,
+    #[serde(default)]
+    pub consensus: Option<String>,
     #[serde(default)]
     pub transport: Option<String>,
 }
@@ -285,10 +289,9 @@ pub fn build_schema() -> serde_json::Value {
                 "rules": [["grandparent", ["x", "y"], ["parent"]]]
             },
             "artifact_note":
-                "the lowered Machine Language kb artifact stores predicate NAMES + arities and \
-                 the unify->infer rule structure (the symbol table is serialized into the \
-                 container) — but NOT ground argument terms. That is the symbolic IR the VM \
-                 executes; --describe=ml reports predicate names, arities, and rule param-counts.",
+                "the lowered Machine Language kb artifact stores predicate names, ground term \
+                 names, and rule parameter names (the symbol table is serialized) — the full \
+                 facts and rule signatures round-trip; --describe=ml reports them.",
             "errors": [
                 {"code": "K0001", "when": "kb name is empty",                       "fix": "set a non-empty \"kb\" field"},
                 {"code": "K0002", "when": "kb has no facts and no rules",           "fix": "add at least one fact or rule"},
@@ -300,12 +303,14 @@ pub fn build_schema() -> serde_json::Value {
         "agent": {
             "spec_format": {
                 "agent": "string identifier — the agent's name",
-                "capabilities": "array of capability identifier strings (recoverable from the artifact)"
+                "capabilities": "array of capability identifier strings (recoverable from the artifact)",
+                "requires_approval": "array of operation identifier strings requiring approval (optional, recoverable)"
             },
-            "example": {"agent": "Worker", "capabilities": ["read_source", "query_types"]},
+            "example": {"agent": "Worker", "capabilities": ["read_source", "query_types"], "requires_approval": ["write_files"]},
             "errors": [
                 {"code": "A0001", "when": "agent name is not a valid identifier", "fix": "use [A-Za-z_][A-Za-z0-9_]*"},
-                {"code": "A0002", "when": "a capability is empty",                "fix": "use non-empty capability names"}
+                {"code": "A0002", "when": "a capability is not an identifier",     "fix": "use identifier capability names"},
+                {"code": "A0003", "when": "a requires_approval is not an identifier", "fix": "use identifier operation names"}
             ]
         },
         "swarm": {
@@ -313,17 +318,21 @@ pub fn build_schema() -> serde_json::Value {
                 "swarm": "string identifier — the swarm's name",
                 "agent": "string identifier — the agent type populating the swarm",
                 "size": "positive integer (optional, default 1)",
-                "topology": "one of: star, ring, mesh, broadcast, tree (optional)"
+                "topology": "one of: star, ring, mesh, broadcast, tree (optional)",
+                "consensus": "one of: majority, unanimous, weighted, quorum (optional)",
+                "transport": "an rmi_* identifier, e.g. rmi_quic / rmi_tcp / rmi_grpc (optional)"
             },
-            "example": {"swarm": "Workers", "agent": "Worker", "size": 4, "topology": "ring"},
+            "example": {"swarm": "Workers", "agent": "Worker", "size": 4, "topology": "ring", "consensus": "majority", "transport": "rmi_quic"},
             "artifact_note":
-                "the artifact carries the agent type, size, and comm pattern; the exact topology \
-                 label is not recoverable (ring/mesh/star/tree all lower to the same send>>recv).",
+                "the artifact carries the agent type, size, exact topology, consensus, and \
+                 transport — all round-trip via the serialized symbol table.",
             "errors": [
                 {"code": "S0001", "when": "swarm name is not a valid identifier", "fix": "use [A-Za-z_][A-Za-z0-9_]*"},
                 {"code": "S0002", "when": "agent type is not a valid identifier", "fix": "use [A-Za-z_][A-Za-z0-9_]*"},
                 {"code": "S0003", "when": "size is not positive",                 "fix": "use a positive integer size"},
-                {"code": "S0004", "when": "unknown topology",                     "fix": "use star, ring, mesh, broadcast, or tree"}
+                {"code": "S0004", "when": "unknown topology",                     "fix": "use star, ring, mesh, broadcast, or tree"},
+                {"code": "S0005", "when": "unknown consensus",                    "fix": "use majority, unanimous, weighted, or quorum"},
+                {"code": "S0006", "when": "transport is not an encodable rmi_* identifier", "fix": "use rmi_quic, rmi_tcp, or rmi_grpc"}
             ]
         },
         "unified": {
@@ -527,8 +536,11 @@ pub fn to_mg_source_kb(spec: &KbSpec) -> String {
 
 /// Valid swarm communication topologies (each selects a comm pattern).
 const TOPOLOGIES: &[&str] = &["star", "ring", "mesh", "broadcast", "tree"];
+/// Valid swarm consensus strategies.
+const CONSENSUS: &[&str] = &["majority", "unanimous", "weighted", "quorum"];
 
-/// Validate an agent spec. A0001 invalid/empty name; A0002 empty capability.
+/// Validate an agent spec. A0001 invalid name; A0002 invalid capability;
+/// A0003 invalid `requires_approval` entry.
 pub fn validate_agent(spec: &AgentSpec) -> Vec<BuildError> {
     let mut errs = Vec::new();
     if !is_ident(&spec.agent) {
@@ -539,11 +551,17 @@ pub fn validate_agent(spec: &AgentSpec) -> Vec<BuildError> {
             errs.push(BuildError::new("A0002", format!("capability #{i} (`{c}`) is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]* capability names"));
         }
     }
+    for (i, r) in spec.requires_approval.iter().enumerate() {
+        if !is_ident(r) {
+            errs.push(BuildError::new("A0003", format!("requires_approval #{i} (`{r}`) is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]* operation names"));
+        }
+    }
     errs
 }
 
 /// Validate a swarm spec. S0001 bad swarm name; S0002 bad agent type;
-/// S0003 non-positive size; S0004 unknown topology.
+/// S0003 non-positive size; S0004 unknown topology; S0005 unknown consensus;
+/// S0006 transport that won't be encoded (must be an `rmi_*` identifier).
 pub fn validate_swarm(spec: &SwarmSpec) -> Vec<BuildError> {
     let mut errs = Vec::new();
     if !is_ident(&spec.swarm) {
@@ -562,6 +580,18 @@ pub fn validate_swarm(spec: &SwarmSpec) -> Vec<BuildError> {
             errs.push(BuildError::new("S0004", format!("unknown topology `{t}`"), "use one of: star, ring, mesh, broadcast, tree"));
         }
     }
+    if let Some(c) = &spec.consensus {
+        if !CONSENSUS.contains(&c.as_str()) {
+            errs.push(BuildError::new("S0005", format!("unknown consensus `{c}`"), "use one of: majority, unanimous, weighted, quorum"));
+        }
+    }
+    if let Some(t) = &spec.transport {
+        // Only `rmi_*` transports are encoded into the artifact; reject anything
+        // else (and non-identifiers) so the spec can't claim a silent no-op.
+        if !is_ident(t) || !t.starts_with("rmi_") {
+            errs.push(BuildError::new("S0006", format!("transport `{t}` is not encodable"), "use an rmi_* identifier (e.g. rmi_quic, rmi_tcp, rmi_grpc)"));
+        }
+    }
     errs
 }
 
@@ -571,6 +601,9 @@ pub fn to_mg_source_agent(spec: &AgentSpec) -> String {
     if !spec.capabilities.is_empty() {
         // Capabilities are bare identifiers in the grammar (parse_bracket_string_list).
         s.push_str(&format!("    capabilities: [{}]\n", spec.capabilities.join(", ")));
+    }
+    if !spec.requires_approval.is_empty() {
+        s.push_str(&format!("    requires_approval: [{}]\n", spec.requires_approval.join(", ")));
     }
     s.push_str("}\n");
     s
@@ -584,6 +617,12 @@ pub fn to_mg_source_swarm(spec: &SwarmSpec) -> String {
     }
     if let Some(t) = &spec.topology {
         s.push_str(&format!("    topology: {t};\n"));
+    }
+    if let Some(c) = &spec.consensus {
+        s.push_str(&format!("    consensus: {c};\n"));
+    }
+    if let Some(t) = &spec.transport {
+        s.push_str(&format!("    transport: {t};\n"));
     }
     s.push_str("}\n");
     s
@@ -934,6 +973,61 @@ mod tests {
         assert_eq!(ag.size, Some(4), "size round-trips");
         assert_eq!(ag.spawn_sym.map(|id| symbols[id as usize].as_str()), Some("Worker"));
         assert!(ag.has_send && ag.has_recv, "ring topology lowers to send>>recv");
+    }
+
+    #[test]
+    fn kb_facts_round_trip_ground_terms() {
+        let s = kbspec(r#"{"kb":"F","facts":[["parent",["alice","bob"]]],"rules":[]}"#);
+        let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_kb(&s))).expect("parses");
+        let (blob, _) = crate::machine::encode_module(&module);
+        let items = crate::machine::decode_container(&blob).unwrap();
+        let syms = crate::machine::decode_symbols(&blob).unwrap();
+        let view = crate::machine_bridge::decompile_symbolic(&items[0].expr);
+        let terms: Vec<&str> = view.fact_arg_syms[0].iter().map(|&id| syms[id as usize].as_str()).collect();
+        assert_eq!(terms, vec!["alice", "bob"], "ground terms must round-trip");
+    }
+
+    #[test]
+    fn agent_requires_approval_round_trips() {
+        let s: AgentSpec = serde_json::from_str(
+            r#"{"agent":"W","capabilities":["read"],"requires_approval":["write_files","deploy"]}"#,
+        ).unwrap();
+        assert!(validate_agent(&s).is_empty());
+        let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_agent(&s))).expect("parses");
+        let (blob, _) = crate::machine::encode_module(&module);
+        let items = crate::machine::decode_container(&blob).unwrap();
+        let syms = crate::machine::decode_symbols(&blob).unwrap();
+        let ag = crate::machine_bridge::decompile_agentic(&items[0].expr).unwrap();
+        let appr: Vec<&str> = ag.approval_syms.iter().map(|&id| syms[id as usize].as_str()).collect();
+        assert_eq!(appr, vec!["write_files", "deploy"], "requires_approval round-trips");
+    }
+
+    #[test]
+    fn swarm_topology_consensus_transport_round_trip() {
+        let s: SwarmSpec = serde_json::from_str(
+            r#"{"swarm":"W","agent":"Worker","size":4,"topology":"ring","consensus":"majority","transport":"rmi_quic"}"#,
+        ).unwrap();
+        assert!(validate_swarm(&s).is_empty(), "{:?}", validate_swarm(&s));
+        let module = crate::parser::parse(&crate::lexer::lex(&to_mg_source_swarm(&s))).expect("parses");
+        let (blob, _) = crate::machine::encode_module(&module);
+        let items = crate::machine::decode_container(&blob).unwrap();
+        let syms = crate::machine::decode_symbols(&blob).unwrap();
+        let ag = crate::machine_bridge::decompile_agentic(&items[0].expr).unwrap();
+        let name = |o: Option<u32>| o.map(|id| syms[id as usize].clone());
+        assert_eq!(name(ag.topology_sym).as_deref(), Some("ring"), "exact topology round-trips");
+        assert_eq!(name(ag.consensus_sym).as_deref(), Some("majority"), "consensus round-trips");
+        assert_eq!(name(ag.transport_sym).as_deref(), Some("rmi_quic"), "transport round-trips");
+        assert!(ag.cap_syms.is_empty(), "swarm has no capabilities");
+    }
+
+    #[test]
+    fn swarm_rejects_unknown_consensus_and_bad_transport() {
+        let s: SwarmSpec = serde_json::from_str(
+            r#"{"swarm":"W","agent":"Worker","consensus":"dictator","transport":"http"}"#,
+        ).unwrap();
+        let e = validate_swarm(&s);
+        assert!(e.iter().any(|x| x.code == "S0005"), "unknown consensus: {e:?}");
+        assert!(e.iter().any(|x| x.code == "S0006"), "non-rmi transport: {e:?}");
     }
 
     #[test]

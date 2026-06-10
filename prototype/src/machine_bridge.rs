@@ -625,14 +625,25 @@ impl KbTranslator {
     pub fn translate(kb: &ast::KbDef, symbols: &mut SymbolTable) -> Expr {
         let mut stages: Vec<Expr> = Vec::new();
 
+        // fact `p(a, b)` → RESOLVE(p_sym, a_sym, b_sym): predicate name + every
+        // ground term is interned, so the full fact recovers on decode (arity =
+        // number of term args).
         for fact in &kb.facts {
-            let fact_sym = symbols.intern(&fact.name);
-            stages.push(Expr::op2(Op::RESOLVE, Expr::sym(fact_sym), Expr::int(fact.args.len() as i64)));
+            let mut args = vec![Expr::sym(symbols.intern(&fact.name))];
+            for a in &fact.args {
+                args.push(Expr::sym(symbols.intern(&term_name(a))));
+            }
+            stages.push(Expr::op(Op::RESOLVE, args));
         }
 
+        // rule `r(x, y) {…}` → UNIFY(r_sym, x_sym, y_sym) >> INFER: rule name +
+        // parameter names interned (the body lowers to the inference step).
         for rule in &kb.rules {
-            let rule_sym = symbols.intern(&rule.name);
-            let head = Expr::op2(Op::UNIFY, Expr::sym(rule_sym), Expr::int(rule.params.len() as i64));
+            let mut args = vec![Expr::sym(symbols.intern(&rule.name))];
+            for p in &rule.params {
+                args.push(Expr::sym(symbols.intern(&p.name)));
+            }
+            let head = Expr::op(Op::UNIFY, args);
             stages.push(head >> Expr::op1(Op::INFER));
         }
 
@@ -644,6 +655,16 @@ impl KbTranslator {
                 .reduce(|acc, next| acc >> next)
                 .unwrap_or_else(Expr::id),
         }
+    }
+}
+
+/// Extract a fact term's name for interning (identifiers and literals; other
+/// expression shapes collapse to `_`).
+fn term_name(e: &ast::Expr) -> String {
+    match e {
+        ast::Expr::Ident { name } => name.clone(),
+        ast::Expr::Literal { value, .. } => value.clone(),
+        _ => "_".to_string(),
     }
 }
 
@@ -660,7 +681,20 @@ impl AgentTranslator {
         for cap in &agent.capabilities {
             args.push(Expr::sym(symbols.intern(cap)));
         }
-        Expr::op(Op::SPAWN, args)
+        let spawn = Expr::op(Op::SPAWN, args);
+        // Approval-gated operations lower to a DELEGATE carrying their names, so
+        // `requires_approval` recovers on decode (kept separate from SPAWN's
+        // capabilities). No DELEGATE when there are none.
+        if agent.requires_approval.is_empty() {
+            spawn
+        } else {
+            let approvals: Vec<Expr> = agent
+                .requires_approval
+                .iter()
+                .map(|r| Expr::sym(symbols.intern(r)))
+                .collect();
+            spawn >> Expr::op(Op::DELEGATE, approvals)
+        }
     }
 }
 
@@ -678,13 +712,20 @@ impl SwarmTranslator {
     /// [`crate::swarm_bus`] handles the messaging.
     pub fn translate(swarm: &ast::SwarmDef, symbols: &mut SymbolTable) -> Expr {
         let agent_sym = symbols.intern(&swarm.agent_type);
-        let spawn = Expr::op2(Op::SPAWN, Expr::sym(agent_sym), Expr::int(swarm_size(swarm)));
+        // SPAWN(agent, size, topology?) — the exact topology label is interned
+        // so it recovers on decode (not just the comm pattern it selects).
+        let mut spawn_args = vec![Expr::sym(agent_sym), Expr::int(swarm_size(swarm))];
+        if let Some(topo) = &swarm.topology {
+            spawn_args.push(Expr::sym(symbols.intern(topo)));
+        }
+        let spawn = Expr::op(Op::SPAWN, spawn_args);
 
-        // Encode the transport choice as a literal argument to SEND/RECV.
+        // Encode the transport choice as a symbol argument to SEND/RECV. Accept
+        // both `rmi-*` and `rmi_*` (the source grammar parses an identifier, so
+        // the underscore form is what survives a build-from-spec round-trip).
         let transport_arg = match swarm.transport.as_deref() {
-            Some(t) if t.starts_with("rmi-") => {
-                let s = symbols.intern(t);
-                Some(Expr::sym(s))
+            Some(t) if t.starts_with("rmi-") || t.starts_with("rmi_") => {
+                Some(Expr::sym(symbols.intern(t)))
             }
             _ => None,
         };
@@ -702,7 +743,12 @@ impl SwarmTranslator {
             Some("ring") | Some("mesh") | Some("star") | Some("tree") => send >> recv,
             _ => recv,
         };
-        let aggregate = Expr::op1(Op::REDUCE);
+        // REDUCE(consensus?) — the consensus strategy is interned on the
+        // aggregate so it recovers on decode.
+        let aggregate = match &swarm.consensus {
+            Some(c) => Expr::op(Op::REDUCE, vec![Expr::sym(symbols.intern(c))]),
+            None => Expr::op1(Op::REDUCE),
+        };
         spawn >> comm >> aggregate
     }
 }
@@ -935,6 +981,10 @@ pub struct SymbolicView {
     pub fact_syms: Vec<u32>,
     /// Symbol id of each rule (parallel to `rule_param_counts`).
     pub rule_syms: Vec<u32>,
+    /// Symbol ids of each fact's ground term args (parallel to `fact_syms`).
+    pub fact_arg_syms: Vec<Vec<u32>>,
+    /// Symbol ids of each rule's parameter names (parallel to `rule_syms`).
+    pub rule_param_syms: Vec<Vec<u32>>,
 }
 
 /// Decompile a symbolic (`kb`) expression into its recoverable [`SymbolicView`].
@@ -953,17 +1003,21 @@ fn walk_symbolic(expr: &Expr, v: &mut SymbolicView) {
         }
         Expr::App(op, args) => {
             match *op {
-                // KbTranslator: fact → RESOLVE(sym, arity); rule → UNIFY(sym, params) >> INFER.
+                // KbTranslator: fact → RESOLVE(pred, term…); rule → UNIFY(rule, param…) >> INFER.
                 Op::RESOLVE => {
-                    if let Some(n) = first_int(args) {
-                        v.fact_arities.push(n);
-                        v.fact_syms.push(first_sym(args).unwrap_or(0));
+                    let syms = ref_syms(args);
+                    if let Some((&pred, terms)) = syms.split_first() {
+                        v.fact_syms.push(pred);
+                        v.fact_arities.push(terms.len() as i64);
+                        v.fact_arg_syms.push(terms.to_vec());
                     }
                 }
                 Op::UNIFY => {
-                    if let Some(n) = first_int(args) {
-                        v.rule_param_counts.push(n);
-                        v.rule_syms.push(first_sym(args).unwrap_or(0));
+                    let syms = ref_syms(args);
+                    if let Some((&rule, params)) = syms.split_first() {
+                        v.rule_syms.push(rule);
+                        v.rule_param_counts.push(params.len() as i64);
+                        v.rule_param_syms.push(params.to_vec());
                     }
                 }
                 _ => {}
@@ -990,6 +1044,16 @@ fn first_sym(args: &[Expr]) -> Option<u32> {
     })
 }
 
+/// All `Ref` symbol ids among `args`, in order.
+fn ref_syms(args: &[Expr]) -> Vec<u32> {
+    args.iter()
+        .filter_map(|a| match a {
+            Expr::Ref(s) => Some(s.0),
+            _ => None,
+        })
+        .collect()
+}
+
 /// The recoverable structure of an *agentic* artifact (agent or swarm).
 ///
 /// Agent lowering: `SPAWN(agent_sym, cap_syms…)`. Swarm lowering:
@@ -1004,8 +1068,14 @@ pub struct AgenticView {
     pub spawn_sym: Option<u32>,
     /// Capability symbol ids (agent only — SPAWN's `Ref` args after the first).
     pub cap_syms: Vec<u32>,
+    /// Approval-gated operation symbol ids (agent only — from DELEGATE).
+    pub approval_syms: Vec<u32>,
     /// Swarm size (SPAWN's int arg), if present.
     pub size: Option<i64>,
+    /// Topology symbol id (swarm only — SPAWN's `Ref` arg after the size int).
+    pub topology_sym: Option<u32>,
+    /// Consensus symbol id (swarm only — REDUCE's `Ref` arg).
+    pub consensus_sym: Option<u32>,
     /// Transport symbol id carried on SEND/RECV, if any.
     pub transport_sym: Option<u32>,
     /// Comm pattern observed (for swarms): saw a SEND / saw a RECV.
@@ -1018,11 +1088,14 @@ pub struct AgenticView {
 pub fn decompile_agentic(expr: &Expr) -> Option<AgenticView> {
     let mut v = AgenticView::default();
     walk_agentic(expr, &mut v);
-    if v.spawn_sym.is_some() {
-        Some(v)
-    } else {
-        None
+    v.spawn_sym?;
+    // For a swarm, SPAWN's only post-agent Ref is the topology (capabilities are
+    // agent-only); reinterpret what the walk collected as cap_syms.
+    if v.is_swarm {
+        v.topology_sym = v.cap_syms.first().copied();
+        v.cap_syms.clear();
     }
+    Some(v)
 }
 
 fn walk_agentic(expr: &Expr, v: &mut AgenticView) {
@@ -1056,7 +1129,11 @@ fn walk_agentic(expr: &Expr, v: &mut AgenticView) {
                         v.transport_sym = Some(s);
                     }
                 }
-                Op::REDUCE => v.is_swarm = true,
+                Op::DELEGATE => v.approval_syms = ref_syms(args),
+                Op::REDUCE => {
+                    v.is_swarm = true;
+                    v.consensus_sym = first_sym(args);
+                }
                 _ => {}
             }
             for a in args {
