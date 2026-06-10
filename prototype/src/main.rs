@@ -372,19 +372,26 @@ fn main() {
             run_describe_abl_bytes(&blob);
         }
         Some("--run=abl") => {
-            // Execute the artifact's symbolic content: forward-chain each kb item
-            // to its fixpoint and report derived facts. Pure data interpretation
-            // (no arbitrary code runs). Neural items defer to --run=abl-bytes;
-            // agent/swarm have no behavior model and are reported as such.
+            // Execute each item's semantics as a pure-data interpreter (no
+            // arbitrary code runs): kb → forward-chain to fixpoint; agent →
+            // capability-policy decisions; swarm → consensus over proposals.
+            // Optional `--input <json>` supplies {"ops":[..]} for agents and
+            // {"proposals":[..]} for swarms. Neural items defer to --run=abl-bytes.
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --run=abl <file.abl>");
+                eprintln!("Usage: MechGen-parse --run=abl <file.abl> [--input <json>]");
                 std::process::exit(1);
             });
             let blob = std::fs::read(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_eval_abl_bytes(&blob);
+            let input: serde_json::Value = args
+                .iter()
+                .position(|a| a == "--input")
+                .and_then(|i| args.get(i + 1))
+                .and_then(|s| serde_json::from_str(s).ok())
+                .unwrap_or(serde_json::Value::Null);
+            run_eval_abl_bytes(&blob, &input);
         }
         Some("--from=abl-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
@@ -755,7 +762,7 @@ fn run_emit_abl_bytes(module: &ast::Module, src_path: &str, out_path: Option<&st
 /// Drive `--run=abl`: evaluate each item's executable semantics. For `kb` items
 /// this forward-chains the Horn-clause program to its least fixpoint and reports
 /// the derived facts — a safe, terminating, pure-data interpretation.
-fn run_eval_abl_bytes(blob: &[u8]) {
+fn run_eval_abl_bytes(blob: &[u8], input: &serde_json::Value) {
     let items = match abl::decode_container(blob) {
         Ok(i) => i,
         Err(e) => {
@@ -765,6 +772,17 @@ fn run_eval_abl_bytes(blob: &[u8]) {
     };
     let symbols = abl::decode_symbols(blob).unwrap_or_default();
     let name = |id: u32| symbols.get(id as usize).cloned().unwrap_or_default();
+    // Optional execution input: agents take {"ops":[..]}, swarms {"proposals":[..]}.
+    let ops: Vec<String> = input
+        .get("ops")
+        .and_then(|v| v.as_array())
+        .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+        .unwrap_or_default();
+    let proposals: Vec<i64> = input
+        .get("proposals")
+        .and_then(|v| v.as_array())
+        .map(|a| a.iter().filter_map(|x| x.as_i64()).collect())
+        .unwrap_or_default();
     let mut items_json = Vec::new();
     for item in &items {
         let sym = abl_bridge::decompile_symbolic(&item.expr);
@@ -800,11 +818,40 @@ fn run_eval_abl_bytes(blob: &[u8]) {
                 "given_facts": facts.len(), "rules": rules.len(),
                 "derived": derived_json,
             }));
-        } else if abl_bridge::decompile_agentic(&item.expr).is_some() {
-            items_json.push(serde_json::json!({
-                "name": item.name, "kind": "agentic",
-                "note": "no executable behavior model — agent/swarm artifacts are descriptive (use --describe=abl)",
-            }));
+        } else if let Some(ag) = abl_bridge::decompile_agentic(&item.expr) {
+            if ag.is_swarm {
+                let topology = ag.topology_sym.map(name).unwrap_or_else(|| "(none)".into());
+                let consensus = ag.consensus_sym.map(name).unwrap_or_else(|| "majority".into());
+                let r = abl_bridge::eval_swarm_consensus(ag.size.unwrap_or(1), &topology, &consensus, &proposals);
+                items_json.push(serde_json::json!({
+                    "name": item.name, "kind": "swarm",
+                    "size": r.size, "topology": r.topology, "consensus": r.consensus,
+                    "rounds_to_converge": r.rounds_to_converge,
+                    "proposals": proposals,
+                    "decided": r.decided, "reason": r.reason,
+                }));
+            } else {
+                let caps: Vec<String> = ag.cap_syms.iter().map(|&id| name(id)).collect();
+                let approvals: Vec<String> = ag.approval_syms.iter().map(|&id| name(id)).collect();
+                if ops.is_empty() {
+                    // No requested ops → report the policy surface.
+                    items_json.push(serde_json::json!({
+                        "name": item.name, "kind": "agent",
+                        "capabilities": caps, "requires_approval": approvals,
+                        "note": "policy surface — pass --input {\"ops\":[..]} to evaluate decisions",
+                    }));
+                } else {
+                    let decisions: Vec<serde_json::Value> = abl_bridge::eval_agent_policy(&caps, &approvals, &ops)
+                        .iter()
+                        .map(|(op, d)| serde_json::json!({ "op": op, "decision": d.tag() }))
+                        .collect();
+                    items_json.push(serde_json::json!({
+                        "name": item.name, "kind": "agent",
+                        "capabilities": caps, "requires_approval": approvals,
+                        "decisions": decisions,
+                    }));
+                }
+            }
         } else {
             items_json.push(serde_json::json!({
                 "name": item.name, "kind": "net",

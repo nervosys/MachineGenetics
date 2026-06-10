@@ -1175,6 +1175,39 @@ mod tests {
     }
 
     #[test]
+    fn agent_policy_execution_decides_each_op() {
+        use crate::abl_bridge::{eval_agent_policy, OpDecision};
+        let caps = vec!["read_source".to_string(), "write_files".to_string()];
+        let appr = vec!["write_files".to_string()];
+        let ops = vec!["read_source".to_string(), "write_files".to_string(), "exfiltrate".to_string()];
+        let d = eval_agent_policy(&caps, &appr, &ops);
+        assert_eq!(d[0].1, OpDecision::Allowed);
+        assert_eq!(d[1].1, OpDecision::RequiresApproval);
+        assert_eq!(d[2].1, OpDecision::Denied);
+    }
+
+    #[test]
+    fn swarm_consensus_execution_decides() {
+        use crate::abl_bridge::eval_swarm_consensus as run;
+        assert_eq!(run(3, "ring", "majority", &[1, 1, 2]).decided, Some(1), "plurality");
+        assert_eq!(run(3, "mesh", "unanimous", &[1, 1, 1]).decided, Some(1), "all agree");
+        assert_eq!(run(3, "mesh", "unanimous", &[1, 1, 2]).decided, None, "not unanimous");
+        assert_eq!(run(3, "star", "quorum", &[1, 1, 2]).decided, Some(1), "2/3 quorum");
+        assert_eq!(run(3, "star", "quorum", &[1, 2, 3]).decided, None, "no quorum");
+        assert_eq!(run(4, "mesh", "majority", &[2, 2, 1, 1]).decided, Some(1), "tie → smallest");
+    }
+
+    #[test]
+    fn swarm_rounds_match_topology_diameter() {
+        use crate::abl_bridge::rounds_to_converge as r;
+        assert_eq!(r("mesh", 5), 1);
+        assert_eq!(r("broadcast", 9), 1);
+        assert_eq!(r("ring", 5), 4);
+        assert_eq!(r("tree", 8), 3);
+        assert_eq!(r("tree", 1), 0);
+    }
+
+    #[test]
     fn agent_requires_approval_round_trips() {
         let s: AgentSpec = serde_json::from_str(
             r#"{"agent":"W","capabilities":["read"],"requires_approval":["write_files","deploy"]}"#,

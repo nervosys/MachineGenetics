@@ -1202,6 +1202,154 @@ pub fn evaluate_kb(facts: &[GroundFact], rules: &[KbRule]) -> Vec<GroundFact> {
     all.into_iter().filter(|f| !initial.contains(&key(f))).collect()
 }
 
+// ── Agent / swarm execution semantics ────────────────────────────────
+//
+// A precise, deterministic, pure-data operational model for the agentic kinds —
+// interpreting exactly what the artifact stores. No arbitrary code runs (the
+// no-exec property holds); these are reference evaluators for the declared
+// policy/protocol, not a general agent runtime.
+
+/// The decision for one requested operation under an agent's capability policy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OpDecision {
+    /// In `capabilities` and not approval-gated — permitted.
+    Allowed,
+    /// In `capabilities` AND in `requires_approval` — needs approval first.
+    RequiresApproval,
+    /// Not in `capabilities` — refused.
+    Denied,
+}
+
+impl OpDecision {
+    /// Stable lowercase tag.
+    pub fn tag(self) -> &'static str {
+        match self {
+            OpDecision::Allowed => "allowed",
+            OpDecision::RequiresApproval => "requires-approval",
+            OpDecision::Denied => "denied",
+        }
+    }
+}
+
+/// Evaluate an agent's capability policy over requested operations. Deterministic
+/// and total: every op gets exactly one decision.
+pub fn eval_agent_policy(
+    capabilities: &[String],
+    requires_approval: &[String],
+    ops: &[String],
+) -> Vec<(String, OpDecision)> {
+    ops.iter()
+        .map(|op| {
+            let d = if !capabilities.iter().any(|c| c == op) {
+                OpDecision::Denied
+            } else if requires_approval.iter().any(|a| a == op) {
+                OpDecision::RequiresApproval
+            } else {
+                OpDecision::Allowed
+            };
+            (op.clone(), d)
+        })
+        .collect()
+}
+
+/// Result of evaluating a swarm's consensus protocol.
+#[derive(Debug, Clone)]
+pub struct SwarmResult {
+    /// Number of agents.
+    pub size: i64,
+    /// Topology label.
+    pub topology: String,
+    /// Consensus strategy.
+    pub consensus: String,
+    /// Rounds for a value to propagate across the topology (diameter model).
+    pub rounds_to_converge: u64,
+    /// The decided value, if the strategy reached one.
+    pub decided: Option<i64>,
+    /// Human/agent-readable reason for the outcome.
+    pub reason: String,
+}
+
+fn ceil_log2(n: u64) -> u64 {
+    if n <= 1 {
+        0
+    } else {
+        (u64::BITS - (n - 1).leading_zeros()) as u64
+    }
+}
+
+/// Rounds for a value to reach every agent given the topology (graph diameter):
+/// mesh/star/broadcast = 1, ring = n-1, tree = ceil(log2 n).
+pub fn rounds_to_converge(topology: &str, size: i64) -> u64 {
+    let n = size.max(1) as u64;
+    match topology {
+        "mesh" | "star" | "broadcast" => 1,
+        "ring" => n.saturating_sub(1),
+        "tree" => ceil_log2(n),
+        _ => 1,
+    }
+}
+
+/// Apply a consensus strategy to a set of votes. Deterministic tiebreak: among
+/// values with the top count, the smallest value wins.
+fn decide(consensus: &str, votes: &[i64]) -> (Option<i64>, String) {
+    use std::collections::BTreeMap;
+    let mut counts: BTreeMap<i64, usize> = BTreeMap::new();
+    for &v in votes {
+        *counts.entry(v).or_default() += 1;
+    }
+    let n = votes.len();
+    // Plurality value with deterministic smallest-on-tie selection.
+    let mut best: Option<(i64, usize)> = None;
+    for (&v, &c) in &counts {
+        if best.map(|(_, bc)| c > bc).unwrap_or(true) {
+            best = Some((v, c));
+        }
+    }
+    let (mode, mode_count) = best.unwrap_or((0, 0));
+    match consensus {
+        "unanimous" => {
+            if counts.len() == 1 {
+                (Some(mode), "all agents agree".into())
+            } else {
+                (None, format!("not unanimous ({} distinct values)", counts.len()))
+            }
+        }
+        "quorum" => {
+            if mode_count * 2 > n {
+                (Some(mode), format!("{mode_count}/{n} forms a strict-majority quorum"))
+            } else {
+                (None, format!("no value reached a quorum (top is {mode_count}/{n})"))
+            }
+        }
+        // "majority" and "weighted" (no weights ⇒ plurality).
+        _ => (Some(mode), format!("plurality: {mode_count}/{n} votes")),
+    }
+}
+
+/// Evaluate a swarm: report the propagation rounds for its topology and, if
+/// per-agent `proposals` (votes) are supplied, the consensus decision.
+pub fn eval_swarm_consensus(
+    size: i64,
+    topology: &str,
+    consensus: &str,
+    proposals: &[i64],
+) -> SwarmResult {
+    let rounds = rounds_to_converge(topology, size);
+    let (decided, reason) = if proposals.is_empty() {
+        (None, "no proposals supplied (pass --input {\"proposals\":[..]} to decide)".into())
+    } else {
+        decide(consensus, proposals)
+    };
+    SwarmResult {
+        size,
+        topology: topology.to_string(),
+        consensus: consensus.to_string(),
+        rounds_to_converge: rounds,
+        decided,
+        reason,
+    }
+}
+
 /// The recoverable structure of an *agentic* artifact (agent or swarm).
 ///
 /// Agent lowering: `SPAWN(agent_sym, cap_syms…)`. Swarm lowering:
