@@ -179,11 +179,31 @@ each receiver, and decided by the same consensus evaluator MechGen already ships
 
 ---
 
-## 8. Where the code lives
+## 8. Where the code lives (the MechGen side is BUILT)
 
-- **MechGen side** — a thin `spine_bridge` adapter (proposed `prototype/src/spine_bridge.rs`):
-  `abl_agent_to_profile`, `map_caps`, `artifact_to_binary`, and re-use of the
-  existing `abl_bridge::{eval_agent_policy, eval_swarm_consensus, decode_*}`.
+- **MechGen side — implemented** in `prototype/src/spine_bridge.rs` + CLI:
+  - `agent_profile(&AgentSpec)` → SPINE `AgentProfile`-shaped JSON
+    (`MechGen-parse --spine=profile agent.json`)
+  - `swarm_task(&SwarmSpec)` / `swarm_decide(..)` → `SwarmTask` JSON + the
+    coordinator decision (`--spine=swarm swarm.json`), reusing `eval_swarm_consensus`
+  - `artifact_frame(&[u8])` → the binary collaboration frame: byte length,
+    FNV-1a `content_digest` (what `signed_frame` covers), `exec:false`
+    (`--spine=frame model.abl`)
+  - `gate(&AgentSpec, op)` → receiver-side capability gate, reusing
+    `eval_agent_policy` (the same evaluator `--run=abl` uses)
+  - `map_capability(id)` → SPINE `AgentCapability` (unit variant or `Custom`)
+
+  Unit-tested (5 tests): capability map, profile shape + baseline caps, gate
+  decisions, swarm task/decision, deterministic no-exec frame digest.
+
+- **Type-link boundary (honest):** the JSON above targets the `spine_agentic`
+  serde shapes by field name; it is **not** compile-checked against the crate,
+  because `spine-agentic` inherits Hyperlight-workspace deps and cannot be a
+  plain path-dependency from here. To make the join type-safe, add a tiny crate
+  *inside* the Hyperlight workspace that depends on both `spine-agentic` and this
+  bridge's JSON contract and `serde_json::from_value`s the envelopes into the
+  real types — a few dozen lines, no changes to either side.
+
 - **SPINE side** — consumed as-is: `spine-agentic` (`AgentProfile`, `AgentMessage`,
   `Swarm`, `SwarmCoordinator`, `AgenticWebRuntime`), `spine-agent` (`AgentClient`,
   `execute_binary`), `spine-crypto` (`signed_frame`). No SPINE changes required.
