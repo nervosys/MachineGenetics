@@ -209,7 +209,19 @@ impl Interp {
     fn eval(&self, e: &Expr, env: &mut Env) -> R {
         match e {
             Expr::Literal { value, kind } => parse_literal(value, kind),
-            Expr::Ident { name } => Ok(env.get(name).unwrap_or_else(|| Value::Func(name.clone()))),
+            Expr::Ident { name } => match env.get(name) {
+                Some(v) => Ok(v),
+                None if name == "None" => Ok(Value::Opt(None)),
+                None => Ok(Value::Func(name.clone())),
+            },
+            Expr::Try { expr } => {
+                // `e?` — unwrap an option, or early-return `None` from the fn.
+                match self.eval(expr, env)? {
+                    Value::Opt(Some(inner)) => Ok(*inner),
+                    Value::Opt(None) => Err(Control::Return(Value::Opt(None))),
+                    other => Ok(other),
+                }
+            }
             Expr::Unary { op, operand } => {
                 let v = self.eval(operand, env)?;
                 match (op.as_str(), v) {
@@ -726,6 +738,10 @@ impl Interp {
             }
             "upper" => Ok(Value::Str(as_str(&arg(0))?.to_uppercase())),
             "lower" => Ok(Value::Str(as_str(&arg(0))?.to_lowercase())),
+            // Option construction — pairs with the §8 totality story (first/find/
+            // reduce return `?A`; now you can build and thread options too).
+            "Some" => Ok(Value::Opt(Some(Box::new(arg(0))))),
+            "None" => Ok(Value::Opt(None)),
             other => err(format!("unknown function `{other}`")),
         }
     }
@@ -937,6 +953,9 @@ mod tests {
             ("f s(){ join([\"a\", \"b\", \"c\"], \"-\") }", "s", &[], Value::Str("a-b-c".into())),
             ("f s(){ upper(\"hi\") }", "s", &[], Value::Str("HI".into())),
             ("f s(){ len(keys(freq(chars(\"banana\")))) }", "s", &[], Value::Int(3)),
+            // Option construction + the `?` operator (early-return on None).
+            ("f h(xs){ val x = first(xs)?\n Some(x * 2) }\nf s(){ match h([5,6]) { Some(v) => v, None => 0 } }", "s", &[], Value::Int(10)),
+            ("f h(xs){ val x = first(xs)?\n Some(x * 2) }\nf s(){ match h([]) { Some(v) => v, None => 0 } }", "s", &[], Value::Int(0)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
