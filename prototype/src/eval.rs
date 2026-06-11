@@ -220,6 +220,12 @@ impl Interp {
                 None if name == "None" => Ok(Value::Opt(None)),
                 None => Ok(Value::Func(name.clone())),
             },
+            Expr::Await { expr } => {
+                // `e.await` — this evaluator is synchronous (no event loop), so
+                // an async fn already runs to completion when called. Awaiting is
+                // therefore the identity on its already-available result.
+                self.eval(expr, env)
+            }
             Expr::Try { expr } => {
                 // `e?` — unwrap an option, or early-return `None` from the fn.
                 match self.eval(expr, env)? {
@@ -1268,6 +1274,10 @@ mod tests {
             // mis-parsed as `(prev?) …` because `if` and try share the `?` token.
             ("f s(){ var t = 0\n if 9 > 3 { t = 1 } else { t = 2 }\n t }", "s", &[], Value::Int(1)),
             ("f s(){ val z = 5\n if z < 3 { 100 } else { z * 2 } }", "s", &[], Value::Int(10)),
+            // Postfix `.await` — synchronous run-to-completion: identity on the
+            // value, and awaiting the result of an `af` (async fn) call.
+            ("f s(){ (20 + 1).await * 2 }", "s", &[], Value::Int(42)),
+            ("af dbl(n){ n * 2 }\nf s(){ dbl(21).await }", "s", &[], Value::Int(42)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {

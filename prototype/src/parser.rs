@@ -2809,6 +2809,13 @@ impl<'a> Parser<'a> {
                 TokenKind::Dot => {
                     self.advance();
                     let field = self.expect_ident()?;
+                    // Postfix `.await` (Rust-style). Contextual — `await` stays a
+                    // plain identifier, so this never shadows a real field/var; we
+                    // only treat it as await when it isn't a `.await(...)` call.
+                    if field == "await" && self.peek() != TokenKind::LParen {
+                        lhs = Expr::Await { expr: Box::new(lhs) };
+                        continue;
+                    }
                     // Optional turbofish `::<T, ...>` for generic
                     // method calls. Detect Colon-Colon-Lt (lexer
                     // emits `::` as two separate Colons).
