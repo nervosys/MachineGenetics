@@ -206,11 +206,34 @@ what is and isn't there, and two steps were landed safely:
   add −45%, factorial −19%). Real, not hypothetical — the compiler accepts them.
   **1149 tests green across 2a+2b, zero regressions.**
 
+- **Step 1a — `;` optional (newline-terminated statements): DONE (`parser.rs`).**
+  A binding statement now ends at a newline, a closing `}`, or EOF — `;` is only
+  consumed when present (`expect_stmt_end` + `newline_before_current`). Expression
+  statements already allowed this; only `val/var` required `;`. A same-line
+  statement with no separator is still an error, so it only turns previous errors
+  into successes. Combined with 2a/2b, a full multi-statement function now reads
+  with no `fn`, no types, no return type, and no `;`:
+  ```
+  f area3(w, h) {
+    val a = w * h
+    val b = a + a
+    b
+  }
+  ```
+  **Measured (real cl100k/o200k, `inference_tokens`):** inference + `;`-optional
+  together cut **~30%** of tokens vs the fully-annotated/semicolon form across four
+  functions (area3 −28%). **1149 tests green, zero regressions.**
+
 **Still staged (large, high-value, not rushed):**
-- *Step 1 — offside-rule layout* (replace mandatory `{ }` / `;`): a lexer change
-  (emit INDENT/DEDENT) + parser rework. Probes confirm `;` is still required
-  between same-line statements. The biggest single token lever, and the biggest
-  change — done properly, not blind.
+- *Step 1b — brace-optional layout blocks* (indentation instead of `{ }`): the
+  remaining offside-rule piece. Designed to be additive (in `parse_block`, an
+  `LBrace` keeps the exact existing path; only a newline-introduced body enters a
+  column-tracked layout block), so existing braced code is untouched. **Held back
+  deliberately:** a layout parser's correctness (nesting, dedent boundaries, mixed
+  brace/layout, every block context, error cases) *cannot be validated by the
+  current all-braced test suite* — it needs its own layout test suite first.
+  Rushing it would be exactly the "blind" change this plan refuses. Lower marginal
+  value than 1a too (braces are a fixed ~2 tokens/block; `;` scaled with body).
 - *Step 2c — keyword-less bindings*: probes show `x = 5` (no `val`) is not yet a
   binding (resolve rejects it). Needs binding/assignment disambiguation at resolve
   time (and trades a useful typo-catch error, so it wants care).
