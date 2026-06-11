@@ -881,6 +881,8 @@ mod tests {
             ("f e(n){n%2==0}\nf d(n){n*2}\nf s(){ sum([1,2,3,4,5,6].filter(e).map(d)) }", "s", &[], Value::Int(24)),
             ("f s(){ sum(map(range(5), fn(x) => x * x)) }", "s", &[], Value::Int(30)),
             ("f s(){ len(zip([1,2,3], [4,5,6])) }", "s", &[], Value::Int(3)),
+            // Struct construction (`@Name { ... }`) + field access.
+            ("S P { x: i32, y: i32 }\nf d2(p){ p.x*p.x + p.y*p.y }\nf s(){ d2(@P { x: 3, y: 4 }) }", "s", &[], Value::Int(25)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
@@ -938,5 +940,13 @@ mod tests {
         let src = "f e(n) { n % 2 == 0 }\nf d(n) { n * 2 }\n\
                    f s() { sum([1,2,3,4,5,6].filter(e).map(d)) }";
         assert_eq!(run(src, "s", &[]), Value::Int(24));
+    }
+
+    #[test]
+    fn struct_construction_and_field_access() {
+        // MechGen struct-literal syntax is `@Name { field: value }`.
+        let src = "S P { x: i32, y: i32 }\nf d2(p) { p.x * p.x + p.y * p.y }\n\
+                   f s() { d2(@P { x: 3, y: 4 }) }";
+        assert_eq!(run(src, "s", &[]), Value::Int(25));
     }
 }
