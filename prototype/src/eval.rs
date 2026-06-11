@@ -1152,6 +1152,13 @@ fn binop(op: &str, l: Value, r: Value) -> R {
         ("*", Float(a), Float(b)) => Ok(Float(a * b)),
         ("/", Float(a), Float(b)) => Ok(Float(a / b)),
         ("+", Str(a), Str(b)) => Ok(Str(a + &b)),
+        // Bitwise / shift operators on integers (`|` is bit-or, hence closures
+        // are written `fn(x)`, not `|x|`). Shift counts are masked to 0..63.
+        ("&", Int(a), Int(b)) => Ok(Int(a & b)),
+        ("|", Int(a), Int(b)) => Ok(Int(a | b)),
+        ("^", Int(a), Int(b)) => Ok(Int(a ^ b)),
+        ("<<", Int(a), Int(b)) => Ok(Int(a.wrapping_shl(b as u32))),
+        (">>", Int(a), Int(b)) => Ok(Int(a.wrapping_shr(b as u32))),
         // Mixed numerics promote to float (so `n / 2.0` and `x as f64 / 2` work).
         (o @ ("+" | "-" | "*" | "/"), Int(a), Float(b)) => binop(o, Float(a as f64), Float(b)),
         (o @ ("+" | "-" | "*" | "/"), Float(a), Int(b)) => binop(o, Float(a), Float(b as f64)),
@@ -1354,6 +1361,9 @@ mod tests {
             // Nested function declarations: a local helper, and self-recursion.
             ("f s(){ f dbl(n){ n * 2 }\n dbl(21) }", "s", &[], Value::Int(42)),
             ("f s(){ f fac(n){ if n < 2 { 1 } else { n * fac(n - 1) } }\n fac(5) }", "s", &[], Value::Int(120)),
+            // Bitwise / shift operators on integers.
+            ("f s(){ (5 | 2) + (6 & 3) * 10 }", "s", &[], Value::Int(27)),
+            ("f s(){ (5 ^ 1) + (1 << 4) + (255 >> 4) }", "s", &[], Value::Int(35)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
