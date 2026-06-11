@@ -708,6 +708,29 @@ impl Interp {
                 }
                 _ => false,
             },
+            Pattern::Struct { path, fields } => match val {
+                Value::Struct(name, vfields) => {
+                    // The struct tag must match (`@Circle{..}` won't match a Square),
+                    // then every named field pattern must match its value.
+                    if let Some(want) = path.last() {
+                        if want != name {
+                            return false;
+                        }
+                    }
+                    fields.iter().all(|fp| match vfields.iter().find(|(k, _)| k == &fp.name) {
+                        Some((_, fv)) => match &fp.pattern {
+                            Some(p) => self.match_pat(p, fv, env),
+                            None => {
+                                // Shorthand `{ x }` binds the field's value to `x`.
+                                env.define(fp.name.clone(), fv.clone());
+                                true
+                            }
+                        },
+                        None => false,
+                    })
+                }
+                _ => false,
+            },
             Pattern::Or { patterns } => patterns.iter().any(|p| self.match_pat(p, val, env)),
             Pattern::Ref { pattern } => self.match_pat(pattern, val, env),
             _ => false,
@@ -1237,6 +1260,10 @@ mod tests {
             // Destructuring `let`: tuple and slice (head/tail) binders.
             ("f s(){ val (a, b) = (3, 4)\n a * 10 + b }", "s", &[], Value::Int(34)),
             ("f s(){ val [h, ..t] = [10, 1, 2, 3]\n h + sum(t) }", "s", &[], Value::Int(16)),
+            // Struct patterns (`@Name { … }`): field destructure, and tag
+            // discrimination across two struct types in one match.
+            ("S P { x: i32, y: i32 }\nf s(){ match @P { x: 3, y: 4 } { @P { x, y } => x * 10 + y } }", "s", &[], Value::Int(34)),
+            ("S Circle { r: i32 }\nS Square { s: i32 }\nf ar(sh){ match sh { @Circle { r } => r * r, @Square { s } => s * s } }\nf s(){ ar(@Circle { r: 6 }) + ar(@Square { s: 2 }) }", "s", &[], Value::Int(40)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
