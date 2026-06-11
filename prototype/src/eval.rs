@@ -603,6 +603,22 @@ impl Interp {
                     let v = self.eval_embedded(src.trim(), env)?;
                     out.push_str(&interp_str(&v));
                 }
+                // Backslash escapes in the literal portions (the same set as
+                // plain strings); holes are evaluated expressions, untouched.
+                '\\' => match chars.next() {
+                    Some('n') => out.push('\n'),
+                    Some('t') => out.push('\t'),
+                    Some('r') => out.push('\r'),
+                    Some('0') => out.push('\0'),
+                    Some('\\') => out.push('\\'),
+                    Some('"') => out.push('"'),
+                    Some('\'') => out.push('\''),
+                    Some(o) => {
+                        out.push('\\');
+                        out.push(o);
+                    }
+                    None => out.push('\\'),
+                },
                 _ => out.push(c),
             }
         }
@@ -1203,10 +1219,42 @@ fn parse_literal(value: &str, kind: &LiteralKind) -> R {
         }
         LiteralKind::Bool => Ok(Value::Bool(value == "true")),
         LiteralKind::String | LiteralKind::FormatString => {
-            Ok(Value::Str(value.trim_matches('"').to_string()))
+            Ok(Value::Str(unescape(value.trim_matches('"'))))
         }
-        LiteralKind::Char => Ok(Value::Str(value.trim_matches('\'').to_string())),
+        LiteralKind::Char => Ok(Value::Str(unescape(value.trim_matches('\'')))),
     }
+}
+
+/// Resolve the common backslash escapes in a string/char literal body. Unknown
+/// escapes are passed through verbatim (backslash kept), matching a lenient
+/// Rust-ish reading. The lexer already keeps `\"`/`\\` from ending the string.
+fn unescape(s: &str) -> String {
+    if !s.contains('\\') {
+        return s.to_string();
+    }
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c != '\\' {
+            out.push(c);
+            continue;
+        }
+        match chars.next() {
+            Some('n') => out.push('\n'),
+            Some('t') => out.push('\t'),
+            Some('r') => out.push('\r'),
+            Some('0') => out.push('\0'),
+            Some('\\') => out.push('\\'),
+            Some('"') => out.push('"'),
+            Some('\'') => out.push('\''),
+            Some(other) => {
+                out.push('\\');
+                out.push(other);
+            }
+            None => out.push('\\'),
+        }
+    }
+    out
 }
 
 fn lit_matches(lit: &str, val: &Value) -> bool {
@@ -1216,7 +1264,7 @@ fn lit_matches(lit: &str, val: &Value) -> bool {
             cleaned.parse::<i64>().map(|x| x == *n).unwrap_or(false)
         }
         Value::Bool(b) => lit == if *b { "true" } else { "false" },
-        Value::Str(s) => lit.trim_matches('"') == s,
+        Value::Str(s) => &unescape(lit.trim_matches('"')) == s,
         _ => false,
     }
 }
@@ -1386,6 +1434,11 @@ mod tests {
             // Compound assignment, on a variable and on an indexed element.
             ("f s(){ var x = 5\n x += 3\n x *= 4\n x -= 2\n x }", "s", &[], Value::Int(30)),
             ("f s(){ var xs = [10, 20, 30]\n xs[1] += 5\n xs[2] /= 3\n sum(xs) }", "s", &[], Value::Int(45)),
+            // String escape sequences: `\n`/`\t` are one char each, so this is
+            // length 3 (was 5 when backslashes were kept verbatim).
+            ("f s(){ len(\"a\\nb\") + len(\"x\\ty\") }", "s", &[], Value::Int(6)),
+            // `split` on a real tab from an escape, then join with a real newline.
+            ("f s(){ len(split(\"a\\tb\\tc\", \"\\t\")) }", "s", &[], Value::Int(3)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
