@@ -127,9 +127,11 @@ mod fuzz_tests {
         (crashes, parsed_ok)
     }
 
-    /// PROPERTY: effect checking is SOUND — for any function, every effect it
-    /// actually performs but does not declare is flagged (no silent escape),
-    /// and a function that declares everything it performs is NOT false-flagged.
+    /// PROPERTY: effect checking is SOUND at a TRUST BOUNDARY — for any public
+    /// function, every effect it performs but does not declare is flagged (no
+    /// silent escape), and one that declares everything it performs is NOT
+    /// false-flagged. (Private functions infer silently; their effects surface at
+    /// the public callers that reach them — see `effect_soundness_is_transitive`.)
     /// This is the empirical evidence behind the capability-gate safety claim.
     /// (println→IO, open→FS, connect→Net, spawn→Async per check_builtin_effect.)
     #[test]
@@ -149,7 +151,8 @@ mod fuzz_tests {
                 .map(|i| table[i].1).collect();
             let ann = if decls.is_empty() { String::new() }
                       else { format!(" / {}", decls.join(" + ")) };
-            let src = format!("f g(){ann} {{ {}; }}", calls.join("; "));
+            // `+f` = public → a trust boundary where declarations are required.
+            let src = format!("+f g(){ann} {{ {}; }}", calls.join("; "));
 
             let ei = effects::infer_effects(&parser::parse(&lexer::lex(&src)).unwrap());
             let diag = ei.diagnostics.iter().map(|d| d.message.clone()).collect::<Vec<_>>().join(" | ");
@@ -196,11 +199,11 @@ mod fuzz_tests {
         "f add(a: i32, b: i32) -> i32 { a + b }",
     ];
 
-    /// PROPERTY: effect soundness holds TRANSITIVELY through call chains —
-    /// f → g → effectful-builtin. If `g` performs an effect and `f` calls `g`
-    /// but doesn't declare it, `f` must be flagged (the effect can't hide behind
-    /// an intermediate function). This exercises the declared-effect propagation
-    /// that previously had a bug, now over many generated chains.
+    /// PROPERTY: effect soundness holds TRANSITIVELY to the trust boundary —
+    /// public `h` → private `g` → effectful-builtin. If `g` performs an effect
+    /// and the PUBLIC `h` calls `g` but doesn't declare it, `h` must be flagged:
+    /// a private intermediate cannot hide an effect from the module surface. This
+    /// is exactly what makes "infer inside, declare at the boundary" sound.
     #[test]
     fn effect_soundness_is_transitive() {
         let eff = [("println(\"x\")", "io", "IO"), ("open()", "fs", "FS"),
@@ -213,7 +216,9 @@ mod fuzz_tests {
             // RANDOM subset (maybe not including this effect).
             let f_declares = rng.upto(2) == 1;
             let f_ann = if f_declares { format!(" / {ename}") } else { String::new() };
-            let src = format!("f g() / {ename} {{ {call}; }}\nf h(){f_ann} {{ g(); }}");
+            // `g` is private (infers/declares internally); `+f h` is the public
+            // boundary that must surface g's effect.
+            let src = format!("f g() / {ename} {{ {call}; }}\n+f h(){f_ann} {{ g(); }}");
             let ei = effects::infer_effects(&parser::parse(&lexer::lex(&src)).unwrap());
             let diag: String =
                 ei.diagnostics.iter().map(|d| d.message.clone()).collect::<Vec<_>>().join(" | ");

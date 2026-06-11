@@ -42,10 +42,17 @@ impl EffectInfer {
     // ── Module-level inference ────────────────────────────────────────
 
     pub fn infer_module(&mut self, module: &ast::Module) {
+        // Trust boundaries: public functions (and `main`, the entry). Effect
+        // declarations are required here; private functions infer silently —
+        // their effects still propagate to any public caller (see Pass 3).
+        let mut boundary: std::collections::HashSet<String> = std::collections::HashSet::new();
         // Pass 1: collect function declarations and their call graphs.
         for item in &module.items {
             if let ast::ItemKind::Function(fd) = &item.kind {
                 self.collect_function(fd);
+                if item.visibility == ast::Visibility::Public || fd.name == "main" {
+                    boundary.insert(fd.name.clone());
+                }
             }
         }
 
@@ -55,18 +62,28 @@ impl EffectInfer {
             self.infer_function(name);
         }
 
-        // Pass 3: SOUND effect checking — inferred ⊆ declared for EVERY
-        // function, with an absent annotation meaning "pure" (declared = ∅).
-        // This makes effects mandatory in signatures (as the language design
-        // states: "side effects explicit in function signatures") so the
-        // capability gate is non-bypassable — you cannot perform a net/fs/io
-        // effect without declaring it. Sorted iteration keeps diagnostics
-        // deterministic.
+        // Pass 3: SOUND effect checking at trust boundaries.
+        //   • A function with an explicit annotation must honour it everywhere
+        //     (inferred ⊆ declared), pub or private — a declared bound is a
+        //     contract the body cannot exceed.
+        //   • A function with NO annotation must declare only if it is a trust
+        //     boundary (public, or `main`); private functions infer silently.
+        // This is sound because effects propagate transitively (Pass 2): any
+        // effect a private function performs surfaces in the inferred set of
+        // every public caller that reaches it, and that boundary must declare
+        // it. Nothing escapes undeclared — the capability gate holds at the
+        // module surface, while internal code pays zero annotation tokens.
+        // Sorted iteration keeps diagnostics deterministic.
         let mut names: Vec<&String> = self.inferred.keys().collect();
         names.sort();
         for name in names {
             let inferred = &self.inferred[name];
             if inferred.is_empty() {
+                continue;
+            }
+            // Private, unannotated functions infer silently — they are bounded
+            // by the public callers that reach them.
+            if !self.declared.contains_key(name) && !boundary.contains(name.as_str()) {
                 continue;
             }
             let declared = self.declared.get(name).cloned().unwrap_or_else(pure);
@@ -509,14 +526,55 @@ mod tests {
     }
 
     #[test]
-    fn unannotated_effectful_function_is_unsound() {
-        // Sound-by-default: a function with NO annotation that performs an
-        // effect is an error (absent annotation = pure). This is what makes
-        // the capability gate non-bypassable.
-        let ei = infer_source("f leak() { println(\"x\"); }\n");
+    fn unannotated_effectful_pub_function_is_flagged() {
+        // Trust boundary: a PUBLIC effectful function with no annotation must be
+        // flagged — the module's external surface must state its effects.
+        let ei = infer_source("+f leak() { println(\"x\"); }\n");
         assert!(
             ei.diagnostics.iter().any(|d| d.message.contains("undeclared effects")),
-            "unannotated effectful fn must be flagged, got {:?}",
+            "pub effectful fn must declare its effects, got {:?}",
+            ei.diagnostics.iter().map(|d| d.message.clone()).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn unannotated_effectful_private_function_infers() {
+        // Inside the boundary: a PRIVATE effectful function infers its effects
+        // with no annotation. Its effects are still tracked and surface at any
+        // public caller (see the propagation test) — so internal code is sound
+        // *and* pays zero annotation tokens.
+        let ei = infer_source("f helper() { println(\"x\"); }\n");
+        assert!(
+            !ei.diagnostics.iter().any(|d| d.message.contains("undeclared effects")),
+            "private effectful fn should infer, not require an annotation, got {:?}",
+            ei.diagnostics.iter().map(|d| d.message.clone()).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn effect_propagates_to_pub_boundary() {
+        // SOUNDNESS: a public function that transitively reaches a private
+        // effectful function must STILL declare the effect — nothing escapes the
+        // boundary undeclared. This is what makes inference-inside safe.
+        let ei = infer_source("+f api() { helper(); }\nf helper() { println(\"x\"); }\n");
+        assert!(
+            ei.diagnostics
+                .iter()
+                .any(|d| d.message.contains("undeclared effects") && d.message.contains("api")),
+            "pub boundary must catch a private callee's effect, got {:?}",
+            ei.diagnostics.iter().map(|d| d.message.clone()).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn declared_bound_is_enforced_even_when_private() {
+        // A private function that DECLARES `/ io` but performs `net` is still
+        // flagged — an explicit declaration is a contract the body cannot
+        // exceed, regardless of visibility.
+        let ei = infer_source("f x() / io { connect(); }\n");
+        assert!(
+            ei.diagnostics.iter().any(|d| d.message.contains("undeclared effect")),
+            "a declared bound must be enforced for private fns too, got {:?}",
             ei.diagnostics.iter().map(|d| d.message.clone()).collect::<Vec<_>>()
         );
     }

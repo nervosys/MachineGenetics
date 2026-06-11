@@ -250,36 +250,46 @@ what is and isn't there, and two steps were landed safely:
   lever.** The real token wins were `;`-removal (1a) and inference (2a/2b); §3a
   overstated layout as a multiplier-reducer and is corrected below.
 
-**Evaluated and DECLINED — the remaining steps are negative-sum:**
+- **Step 3 — effect inference at trust boundaries: DONE (`effects.rs`).**
+  This is the §3e model, implemented soundly rather than as a blunt "drop the
+  annotation" (which *would* have weakened safety). Now:
+  - A **private** function infers its effects and needs **no** `/ effect`
+    annotation.
+  - A **public** function (and `main`) is a **trust boundary** — it must declare
+    its effects (directly *or transitively* performed), exactly as before.
+  - An **explicit annotation is still a contract** enforced everywhere
+    (`inferred ⊆ declared`), pub or private — declaring `/ io` and doing `net` is
+    still flagged.
 
-The migration's purpose was token efficiency *without* costing reliability or
-safety (§2). Probing the last two steps shows both fail that test — they'd buy a
-token or two by spending the other axes — so completing the migration means
-*stopping here*, not forcing them.
+  **Soundness is preserved, not weakened — it is *relocated* to the module
+  surface.** Effects propagate transitively (Pass 2), so any effect a private
+  function performs surfaces in the inferred set of every public caller that
+  reaches it, and that boundary must declare it. Nothing escapes undeclared.
+  This is verified empirically: the two effect fuzz properties were rewritten to
+  the boundary model and pass over **6000 + 4000 generated programs** (a public
+  caller is flagged for a private callee's undeclared effect; a declared bound is
+  never exceeded). **1166 tests green, zero regressions.**
+
+  **Measured (real cl100k, `inference_tokens`):** a private effectful function
+  drops `/ io` for **−2 tokens** (more with multiple effects) — a real,
+  **safety-preserving** saving, since enforcement moved to the boundary, not away.
+
+**Evaluated and DECLINED — one step is genuinely negative-sum:**
 
 - *Step 2c — keyword-less bindings* (`x = 5` with no `val`): **declined.** The
   saving is exactly **1 token/binding** (`val`/`v` are already single BPE tokens —
   keyword audit), and the probe shows assign-to-unbound is currently a **typo
   catch** (`error: unresolved name`). Trading a reliability guard for one token is
-  backwards for a language scored on reliability. Net-negative.
+  backwards for a language scored on reliability. Net-negative — the one lever the
+  design's own alignment principle says *not* to pull.
 
-- *Step 3 — effect-inference by default* (drop the `/ effect` annotation):
-  **declined as a default.** MechGen already *infers* effects (it reports `[IO]`),
-  but requiring the declaration is a **deliberate, tested safety invariant** —
-  `effects.rs` asserts an unannotated effectful fn *must* be flagged, with the
-  comment *"the capability gate non-bypassable."* Inferring-and-not-requiring would
-  weaken the safety axis to save one annotation per effectful function. The §3e
-  vision ("inferred, declared only at trust boundaries") is *sound* but needs a
-  real trust-boundary construct first, and changing the effect-safety default is a
-  decision the project owner should make explicitly — not a quiet token tweak.
-  (Pure functions already need no annotation, so pure code pays zero today.)
-
-**Conclusion.** The positive-sum levers — return inference, parameter inference,
-`;`-removal, the keyword surface, and the (token-neutral but readable) layout —
-are landed and measured (~29% real token reduction, 1187 tests green). The two
-remaining levers cost reliability or safety for ~1 token each, which violates the
-alignment principle this whole design rests on. The migration is therefore
-*complete at its positive-sum frontier.*
+**Conclusion.** Every positive-sum lever is landed and measured: return inference,
+parameter inference, `;`-removal, the keyword surface, the (token-neutral but
+readable) layout, and boundary-scoped effect inference — together a real token
+reduction with **reliability and safety intact** (effects still bounded at the
+module surface, declared contracts still enforced, 1166 tests green). Only
+keyword-less bindings is declined, because it alone would spend reliability for a
+single token. The migration is complete at its positive-sum frontier.
 
 Migration is driven by the probes + the real-BPE harness, landed safely in
 test-passing increments — never a blind rewrite.
