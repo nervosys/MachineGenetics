@@ -208,7 +208,10 @@ impl Interp {
 
     fn eval(&self, e: &Expr, env: &mut Env) -> R {
         match e {
-            Expr::Literal { value, kind } => parse_literal(value, kind),
+            Expr::Literal { value, kind } => match kind {
+                LiteralKind::FormatString => self.eval_format_string(value, env),
+                _ => parse_literal(value, kind),
+            },
             Expr::Ident { name } => match env.get(name) {
                 Some(v) => Ok(v),
                 None if name == "None" => Ok(Value::Opt(None)),
@@ -508,6 +511,86 @@ impl Interp {
                 Ok(Value::Bool(self.match_pat(pattern, &v, env)))
             }
             other => err(format!("evaluator does not support {} yet", variant(other))),
+        }
+    }
+
+    /// Evaluate an f-string: `f"x = {x}, sum = {sum(xs)}"`. The raw token text
+    /// is the whole source slice (`f"…"`); we strip the delimiters, then splice
+    /// literal runs with `{expr}` holes. `{{`/`}}` are literal-brace escapes;
+    /// each hole is parsed as a real expression and evaluated in `env`.
+    fn eval_format_string(&self, raw: &str, env: &mut Env) -> R {
+        let inner = match (raw.find('"'), raw.rfind('"')) {
+            (Some(a), Some(b)) if b > a => &raw[a + 1..b],
+            _ => "",
+        };
+        let mut out = String::new();
+        let mut chars = inner.chars().peekable();
+        while let Some(c) = chars.next() {
+            match c {
+                '{' if chars.peek() == Some(&'{') => {
+                    chars.next();
+                    out.push('{');
+                }
+                '}' if chars.peek() == Some(&'}') => {
+                    chars.next();
+                    out.push('}');
+                }
+                '{' => {
+                    // Collect the hole's source up to the matching `}`, tracking
+                    // nested braces so map literals (`{k: v}`) pass through whole.
+                    let mut depth = 1usize;
+                    let mut src = String::new();
+                    for nc in chars.by_ref() {
+                        match nc {
+                            '{' => depth += 1,
+                            '}' => {
+                                depth -= 1;
+                                if depth == 0 {
+                                    break;
+                                }
+                            }
+                            _ => {}
+                        }
+                        src.push(nc);
+                    }
+                    if depth != 0 {
+                        return err("unterminated `{` in format string");
+                    }
+                    let v = self.eval_embedded(src.trim(), env)?;
+                    out.push_str(&interp_str(&v));
+                }
+                _ => out.push(c),
+            }
+        }
+        Ok(Value::Str(out))
+    }
+
+    /// Parse one embedded expression (a format-string hole) and evaluate it in
+    /// the current scope. We wrap it in a throwaway function so the real parser
+    /// handles the full expression grammar, then pull the body expression back.
+    fn eval_embedded(&self, src: &str, env: &mut Env) -> R {
+        if src.is_empty() {
+            return err("empty `{}` in format string");
+        }
+        let wrapped = format!("f __interp__() {{ {src} }}");
+        let toks = crate::lexer::lex(&wrapped);
+        let module = crate::parser::parse(&toks)
+            .map_err(|e| Control::Err(format!("format expr parse error in `{src}`: {e:?}")))?;
+        let expr = module.items.iter().find_map(|it| match &it.kind {
+            ItemKind::Function(fd) if fd.name == "__interp__" => fd
+                .body_expr
+                .clone()
+                .or_else(|| fd.body.tail_expr.clone())
+                .map(|b| *b)
+                .or_else(|| fd.body.stmts.iter().rev().find_map(|s| match s {
+                    Stmt::Expr { expr } => Some(expr.clone()),
+                    _ => None,
+                })),
+            _ => None,
+        });
+        match expr {
+            Some(e) => self.eval(&e, env),
+            None => err(format!("could not parse format expression `{src}`")),
         }
     }
 
@@ -827,6 +910,15 @@ impl Interp {
 
 // ── helpers ──────────────────────────────────────────────────────────
 
+/// Render a value for string interpolation: bare strings come through without
+/// the debug quotes `Display` adds, everything else uses its `Display` form.
+fn interp_str(v: &Value) -> String {
+    match v {
+        Value::Str(s) => s.clone(),
+        other => other.to_string(),
+    }
+}
+
 /// The variable name at the base of an assignment target, e.g. `xs` in `xs[i]`.
 /// Compound paths (`a.b[i]`, `a[i][j]`) aren't supported — one level only.
 fn ident_base(e: &Expr) -> Result<&str, Control> {
@@ -1056,6 +1148,11 @@ mod tests {
             // Indexed element assignment and struct field assignment.
             ("f s(){ var xs = [1, 2, 3]\n xs[1] = 20\n sum(xs) }", "s", &[], Value::Int(24)),
             ("S P { x: i32, y: i32 }\nf s(){ var p = @P { x: 1, y: 2 }\n p.x = 10\n p.x + p.y }", "s", &[], Value::Int(12)),
+            // f-string interpolation: a simple binding, an embedded vocabulary
+            // call, and a `{{`/`}}` literal-brace escape.
+            ("f s(){ val n = 6\n f\"n={n} sq={n * n}\" }", "s", &[], Value::Str("n=6 sq=36".into())),
+            ("f s(){ f\"total={sum([1,2,3,4])}\" }", "s", &[], Value::Str("total=10".into())),
+            ("f s(){ f\"{{literal}} {upper(\"hi\")}\" }", "s", &[], Value::Str("{literal} HI".into())),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
