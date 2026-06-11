@@ -1130,77 +1130,162 @@ pub struct KbRule {
 /// the Herbrand base is finite). It is a pure interpreter: no arbitrary code
 /// runs, preserving the no-exec property of the artifact.
 pub fn evaluate_kb(facts: &[GroundFact], rules: &[KbRule]) -> Vec<GroundFact> {
-    use std::collections::{BTreeMap, BTreeSet};
-    let key = |f: &GroundFact| format!("{}({})", f.0, f.1.join(","));
-    let initial: BTreeSet<String> = facts.iter().map(&key).collect();
-    let mut known = initial.clone();
-    let mut all: Vec<GroundFact> = facts.to_vec();
+    use std::collections::{HashMap, HashSet};
 
-    loop {
-        let mut added: Vec<GroundFact> = Vec::new();
-        for rule in rules {
-            // Enumerate variable substitutions satisfying every body literal,
-            // joining against the current fact set (relational join).
-            let mut subs: Vec<BTreeMap<String, String>> = vec![BTreeMap::new()];
-            for (bp, bargs) in &rule.body {
-                let mut next = Vec::new();
-                for sub in &subs {
-                    for f in &all {
-                        if &f.0 != bp || f.1.len() != bargs.len() {
-                            continue;
-                        }
-                        let mut s2 = sub.clone();
-                        let mut ok = true;
-                        for (var, c) in bargs.iter().zip(&f.1) {
-                            match s2.get(var) {
-                                Some(prev) if prev != c => {
-                                    ok = false;
-                                    break;
-                                }
-                                Some(_) => {}
-                                None => {
-                                    s2.insert(var.clone(), c.clone());
-                                }
-                            }
-                        }
-                        if ok {
-                            next.push(s2);
-                        }
-                    }
+    // ── Interning: map predicate/term/var names to u32 so the inner join loop
+    //    compares and hashes integers, not strings. ──
+    let mut ids: HashMap<String, u32> = HashMap::new();
+    let mut names: Vec<String> = Vec::new();
+    let mut intern = |s: &str| -> u32 {
+        if let Some(&id) = ids.get(s) {
+            id
+        } else {
+            let id = names.len() as u32;
+            names.push(s.to_string());
+            ids.insert(s.to_string(), id);
+            id
+        }
+    };
+    // Encode rules and facts.
+    type EncFact = (u32, Vec<u32>);
+    let enc_rules: Vec<(u32, Vec<u32>, Vec<(u32, Vec<u32>)>)> = rules
+        .iter()
+        .map(|r| {
+            (
+                intern(&r.head),
+                r.params.iter().map(|p| intern(p)).collect(),
+                r.body.iter().map(|(p, a)| (intern(p), a.iter().map(|x| intern(x)).collect())).collect(),
+            )
+        })
+        .collect();
+    let enc_initial: Vec<EncFact> = facts
+        .iter()
+        .map(|(p, a)| (intern(p), a.iter().map(|x| intern(x)).collect()))
+        .collect();
+
+    // ── Indexed relation: by predicate, and by (predicate, arg0) so a join whose
+    //    leading variable is already bound is an O(matches) lookup, not a scan. ──
+    #[derive(Default)]
+    struct Index {
+        tuples: Vec<EncFact>,
+        by_pred: HashMap<u32, Vec<usize>>,
+        by_pred_arg0: HashMap<(u32, u32), Vec<usize>>,
+    }
+    impl Index {
+        fn build(facts: &[EncFact]) -> Self {
+            let mut ix = Index::default();
+            ix.extend(facts);
+            ix
+        }
+        fn extend(&mut self, facts: &[EncFact]) {
+            for f in facts {
+                let i = self.tuples.len();
+                self.by_pred.entry(f.0).or_default().push(i);
+                if let Some(&a0) = f.1.first() {
+                    self.by_pred_arg0.entry((f.0, a0)).or_default().push(i);
                 }
-                subs = next;
-                if subs.is_empty() {
-                    break;
-                }
+                self.tuples.push(f.clone());
             }
-            for sub in &subs {
-                let mut terms = Vec::with_capacity(rule.params.len());
+        }
+        fn match_lit(&self, lp: u32, largs: &[u32], sub: &HashMap<u32, u32>, out: &mut Vec<HashMap<u32, u32>>) {
+            // Candidate tuples: use the arg0 index when the leading var is bound.
+            let cand = match largs.first().and_then(|v| sub.get(v)) {
+                Some(&bound) => self.by_pred_arg0.get(&(lp, bound)),
+                None => self.by_pred.get(&lp),
+            };
+            let Some(cand) = cand else { return };
+            for &ti in cand {
+                let (_, fargs) = &self.tuples[ti];
+                if fargs.len() != largs.len() {
+                    continue;
+                }
+                let mut s2 = sub.clone();
                 let mut ok = true;
-                for p in &rule.params {
-                    match sub.get(p) {
-                        Some(c) => terms.push(c.clone()),
-                        None => {
+                for (v, c) in largs.iter().zip(fargs) {
+                    match s2.get(v) {
+                        Some(prev) if prev != c => {
                             ok = false;
                             break;
                         }
+                        Some(_) => {}
+                        None => {
+                            s2.insert(*v, *c);
+                        }
                     }
                 }
-                if !ok {
-                    continue;
-                }
-                let nf = (rule.head.clone(), terms);
-                let k = key(&nf);
-                if known.insert(k) {
-                    added.push(nf);
+                if ok {
+                    out.push(s2);
                 }
             }
         }
-        if added.is_empty() {
+    }
+
+    let mut known: HashSet<EncFact> = enc_initial.iter().cloned().collect();
+    let initial_set = known.clone();
+    let mut full = Index::build(&enc_initial);
+    let mut delta = Index::build(&enc_initial);
+    let mut derived: Vec<EncFact> = Vec::new();
+
+    // ── Semi-naive fixpoint: each round, a rule fires only via at least one fact
+    //    from last round's delta (the `d` position ranges over delta, the rest
+    //    over the full relation). Each derived fact is produced ~once. ──
+    loop {
+        let mut round_new: Vec<EncFact> = Vec::new();
+        for (head, params, body) in &enc_rules {
+            if body.is_empty() {
+                continue;
+            }
+            for d in 0..body.len() {
+                let mut subs: Vec<HashMap<u32, u32>> = vec![HashMap::new()];
+                for (i, (lp, largs)) in body.iter().enumerate() {
+                    let rel = if i == d { &delta } else { &full };
+                    let mut next: Vec<HashMap<u32, u32>> = Vec::new();
+                    for sub in &subs {
+                        rel.match_lit(*lp, largs, sub, &mut next);
+                    }
+                    subs = next;
+                    if subs.is_empty() {
+                        break;
+                    }
+                }
+                for sub in &subs {
+                    let mut args = Vec::with_capacity(params.len());
+                    let mut ok = true;
+                    for p in params {
+                        match sub.get(p) {
+                            Some(&v) => args.push(v),
+                            None => {
+                                ok = false;
+                                break;
+                            }
+                        }
+                    }
+                    if !ok {
+                        continue;
+                    }
+                    let nf = (*head, args);
+                    if known.insert(nf.clone()) {
+                        round_new.push(nf);
+                    }
+                }
+            }
+        }
+        if round_new.is_empty() {
             break;
         }
-        all.extend(added);
+        full.extend(&round_new);
+        delta = Index::build(&round_new);
+        derived.extend(round_new);
     }
-    all.into_iter().filter(|f| !initial.contains(&key(f))).collect()
+
+    // Decode to names; deterministic (sorted) order, derived ∖ initial.
+    let mut out: Vec<GroundFact> = derived
+        .into_iter()
+        .filter(|f| !initial_set.contains(f))
+        .map(|(p, a)| (names[p as usize].to_string(), a.iter().map(|&x| names[x as usize].to_string()).collect()))
+        .collect();
+    out.sort();
+    out
 }
 
 // ── Agent / swarm execution semantics ────────────────────────────────
