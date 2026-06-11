@@ -1209,20 +1209,58 @@ fn binop(op: &str, l: Value, r: Value) -> R {
 
 fn parse_literal(value: &str, kind: &LiteralKind) -> R {
     match kind {
-        LiteralKind::Int | LiteralKind::Byte => {
-            let cleaned: String = value.chars().take_while(|c| c.is_ascii_digit() || *c == '-').collect();
-            cleaned.parse::<i64>().map(Value::Int).map_err(|_| Control::Err(format!("bad int `{value}`")))
-        }
-        LiteralKind::Float => {
-            let cleaned: String = value.chars().take_while(|c| c.is_ascii_digit() || *c == '.' || *c == '-').collect();
-            cleaned.parse::<f64>().map(Value::Float).map_err(|_| Control::Err(format!("bad float `{value}`")))
-        }
+        LiteralKind::Int | LiteralKind::Byte => parse_int_literal(value).map(Value::Int),
+        LiteralKind::Float => parse_float_literal(value).map(Value::Float),
         LiteralKind::Bool => Ok(Value::Bool(value == "true")),
         LiteralKind::String | LiteralKind::FormatString => {
             Ok(Value::Str(unescape(value.trim_matches('"'))))
         }
         LiteralKind::Char => Ok(Value::Str(unescape(value.trim_matches('\'')))),
     }
+}
+
+/// Parse an integer literal: `0xFF` / `0o17` / `0b1010` (radix prefixes),
+/// `1_000_000` (digit separators), a trailing type suffix (`5i64`), an optional
+/// leading `-`, and the byte-char form `b'A'` (its code point).
+fn parse_int_literal(value: &str) -> Result<i64, Control> {
+    let bad = || Control::Err(format!("bad int `{value}`"));
+    let v = value.trim();
+    if let Some(rest) = v.strip_prefix("b'") {
+        let inner = rest.strip_suffix('\'').unwrap_or(rest);
+        return unescape(inner).chars().next().map(|c| c as i64).ok_or_else(bad);
+    }
+    let neg = v.starts_with('-');
+    let v = v.strip_prefix('-').unwrap_or(v);
+    let (radix, digits) = if let Some(h) = v.strip_prefix("0x").or_else(|| v.strip_prefix("0X")) {
+        (16u32, h)
+    } else if let Some(o) = v.strip_prefix("0o").or_else(|| v.strip_prefix("0O")) {
+        (8, o)
+    } else if let Some(b) = v.strip_prefix("0b").or_else(|| v.strip_prefix("0B")) {
+        (2, b)
+    } else {
+        (10, v)
+    };
+    // Take valid digits (and `_`), which also drops a trailing type suffix.
+    let cleaned: String = digits
+        .chars()
+        .take_while(|c| c.is_digit(radix) || *c == '_')
+        .filter(|c| *c != '_')
+        .collect();
+    let n = i64::from_str_radix(&cleaned, radix).map_err(|_| bad())?;
+    Ok(if neg { -n } else { n })
+}
+
+/// Parse a float literal: digit separators (`1_000.5`), exponents (`2e10`,
+/// `1.5e-2`), and a trailing `f32`/`f64` suffix.
+fn parse_float_literal(value: &str) -> Result<f64, Control> {
+    let mut cleaned: String = value.trim().chars().filter(|c| *c != '_').collect();
+    for suffix in ["f64", "f32"] {
+        if let Some(stripped) = cleaned.strip_suffix(suffix) {
+            cleaned.truncate(stripped.len());
+            break;
+        }
+    }
+    cleaned.parse::<f64>().map_err(|_| Control::Err(format!("bad float `{value}`")))
 }
 
 /// Resolve the common backslash escapes in a string/char literal body. Unknown
@@ -1259,10 +1297,7 @@ fn unescape(s: &str) -> String {
 
 fn lit_matches(lit: &str, val: &Value) -> bool {
     match val {
-        Value::Int(n) => {
-            let cleaned: String = lit.chars().take_while(|c| c.is_ascii_digit() || *c == '-').collect();
-            cleaned.parse::<i64>().map(|x| x == *n).unwrap_or(false)
-        }
+        Value::Int(n) => parse_int_literal(lit).map(|x| x == *n).unwrap_or(false),
         Value::Bool(b) => lit == if *b { "true" } else { "false" },
         Value::Str(s) => &unescape(lit.trim_matches('"')) == s,
         _ => false,
@@ -1439,6 +1474,10 @@ mod tests {
             ("f s(){ len(\"a\\nb\") + len(\"x\\ty\") }", "s", &[], Value::Int(6)),
             // `split` on a real tab from an escape, then join with a real newline.
             ("f s(){ len(split(\"a\\tb\\tc\", \"\\t\")) }", "s", &[], Value::Int(3)),
+            // Numeric literal formats: hex, binary, octal, digit separators.
+            ("f s(){ 0xFF + 0b1010 + 0o17 + 1_000 }", "s", &[], Value::Int(1280)),
+            // Float exponents and separators: (1000.5 + 15.0) as i64 = 1015.
+            ("f s(){ (1_000.5 + 1.5e1) as i64 }", "s", &[], Value::Int(1015)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
