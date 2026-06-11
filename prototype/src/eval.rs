@@ -320,11 +320,45 @@ impl Interp {
             }))),
             Expr::Assign { target, value } => {
                 let v = self.eval(value, env)?;
-                if let Expr::Ident { name } = target.as_ref() {
-                    env.assign(name, v);
-                    Ok(Value::Unit)
-                } else {
-                    err("only simple `x = ...` assignment is supported")
+                match target.as_ref() {
+                    Expr::Ident { name } => {
+                        env.assign(name, v);
+                        Ok(Value::Unit)
+                    }
+                    // `xs[i] = v` / `m[k] = v` — mutate an element through an ident base.
+                    Expr::Index { object, index } => {
+                        let name = ident_base(object)?;
+                        let key = self.eval(index, env)?;
+                        let mut base = env.get(name).ok_or(Control::Err(format!("unknown `{name}`")))?;
+                        match (&mut base, key) {
+                            (Value::List(xs), Value::Int(n)) => {
+                                let i = n as usize;
+                                *xs.get_mut(i).ok_or(Control::Err("index out of bounds".into()))? = v;
+                            }
+                            (Value::Map(m), k) => match m.iter_mut().find(|(ek, _)| *ek == k) {
+                                Some(entry) => entry.1 = v,
+                                None => m.push((k, v)),
+                            },
+                            _ => return err("cannot index-assign this value"),
+                        }
+                        env.assign(name, base);
+                        Ok(Value::Unit)
+                    }
+                    // `p.field = v` — mutate a struct field through an ident base.
+                    Expr::FieldAccess { object, field } => {
+                        let name = ident_base(object)?;
+                        let mut base = env.get(name).ok_or(Control::Err(format!("unknown `{name}`")))?;
+                        match &mut base {
+                            Value::Struct(_, fields) => match fields.iter_mut().find(|(k, _)| k == field) {
+                                Some(entry) => entry.1 = v,
+                                None => fields.push((field.clone(), v)),
+                            },
+                            _ => return err("field-assign on a non-struct value"),
+                        }
+                        env.assign(name, base);
+                        Ok(Value::Unit)
+                    }
+                    _ => err("unsupported assignment target"),
                 }
             }
             Expr::For { pattern, iter, body } => {
@@ -793,6 +827,15 @@ impl Interp {
 
 // ── helpers ──────────────────────────────────────────────────────────
 
+/// The variable name at the base of an assignment target, e.g. `xs` in `xs[i]`.
+/// Compound paths (`a.b[i]`, `a[i][j]`) aren't supported — one level only.
+fn ident_base(e: &Expr) -> Result<&str, Control> {
+    match e {
+        Expr::Ident { name } => Ok(name),
+        _ => err("assignment target must be a simple variable element/field"),
+    }
+}
+
 fn truthy(v: &Value) -> bool {
     matches!(v, Value::Bool(true)) || matches!(v, Value::Int(n) if *n != 0)
 }
@@ -850,6 +893,9 @@ fn binop(op: &str, l: Value, r: Value) -> R {
         ("*", Float(a), Float(b)) => Ok(Float(a * b)),
         ("/", Float(a), Float(b)) => Ok(Float(a / b)),
         ("+", Str(a), Str(b)) => Ok(Str(a + &b)),
+        // Mixed numerics promote to float (so `n / 2.0` and `x as f64 / 2` work).
+        (o @ ("+" | "-" | "*" | "/"), Int(a), Float(b)) => binop(o, Float(a as f64), Float(b)),
+        (o @ ("+" | "-" | "*" | "/"), Float(a), Int(b)) => binop(o, Float(a), Float(b as f64)),
         ("==", a, b) => Ok(Bool(a == b)),
         ("!=", a, b) => Ok(Bool(a != b)),
         ("<", a, b) => Ok(Bool(cmp_value(&a, &b).is_lt())),
@@ -1005,6 +1051,11 @@ mod tests {
             ("f s(){ sum([7; 4]) }", "s", &[], Value::Int(28)),
             ("f s(){ 7 as f64 / 2 as f64 }", "s", &[], Value::Float(3.5)),
             ("f s(){ if first([9]) is Some(v) { v } else { 0 } }", "s", &[], Value::Int(9)),
+            // Mixed Int/Float arithmetic promotes to float.
+            ("f s(){ 7 / 2 as f64 }", "s", &[], Value::Float(3.5)),
+            // Indexed element assignment and struct field assignment.
+            ("f s(){ var xs = [1, 2, 3]\n xs[1] = 20\n sum(xs) }", "s", &[], Value::Int(24)),
+            ("S P { x: i32, y: i32 }\nf s(){ var p = @P { x: 1, y: 2 }\n p.x = 10\n p.x + p.y }", "s", &[], Value::Int(12)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
