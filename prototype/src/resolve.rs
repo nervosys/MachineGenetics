@@ -41,6 +41,14 @@ pub const VOCABULARY: &[(&str, &str, &str)] = &[
     ("group", "([A], A->K) -> {K: [A]}", "group elements by key"),
     ("scan", "([A], B, (B,A)->B) -> [B]", "running fold (each intermediate)"),
     ("contains", "([A], A) -> bool", "membership test"),
+    // String / text vocabulary (SWE is text-heavy).
+    ("split", "(str, str) -> [str]", "split a string on a separator"),
+    ("join", "([str], str) -> str", "join strings with a separator"),
+    ("chars", "str -> [str]", "the characters of a string"),
+    ("words", "str -> [str]", "whitespace-separated words"),
+    ("lines", "str -> [str]", "newline-separated lines"),
+    ("upper", "str -> str", "uppercase"),
+    ("lower", "str -> str", "lowercase"),
 ];
 
 // ── Symbol Table ─────────────────────────────────────────────────────

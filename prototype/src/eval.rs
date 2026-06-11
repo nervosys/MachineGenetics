@@ -504,7 +504,11 @@ impl Interp {
     fn call_builtin(&self, name: &str, a: Vec<Value>) -> R {
         let arg = |i: usize| a.get(i).cloned().unwrap_or(Value::Unit);
         match name {
-            "len" | "count" => Ok(Value::Int(as_list(&arg(0))?.len() as i64)),
+            "len" | "count" => match arg(0) {
+                Value::Map(m) => Ok(Value::Int(m.len() as i64)),
+                Value::Str(s) => Ok(Value::Int(s.chars().count() as i64)),
+                other => Ok(Value::Int(as_list(&other)?.len() as i64)),
+            },
             "sum" => {
                 let xs = as_list(&arg(0))?;
                 let mut acc = Value::Int(0);
@@ -690,6 +694,38 @@ impl Interp {
                 }
                 Ok(Value::Map(m))
             }
+            // String / text vocabulary.
+            "split" => {
+                let s = as_str(&arg(0))?;
+                let sep = as_str(&arg(1))?;
+                let parts: Vec<Value> = if sep.is_empty() {
+                    s.chars().map(|c| Value::Str(c.to_string())).collect()
+                } else {
+                    s.split(&sep).map(|p| Value::Str(p.to_string())).collect()
+                };
+                Ok(Value::List(parts))
+            }
+            "words" => Ok(Value::List(
+                as_str(&arg(0))?.split_whitespace().map(|w| Value::Str(w.to_string())).collect(),
+            )),
+            "lines" => Ok(Value::List(
+                as_str(&arg(0))?.lines().map(|l| Value::Str(l.to_string())).collect(),
+            )),
+            "chars" => Ok(Value::List(
+                as_str(&arg(0))?.chars().map(|c| Value::Str(c.to_string())).collect(),
+            )),
+            "join" => {
+                let parts: Vec<String> = as_list(&arg(0))?
+                    .iter()
+                    .map(|v| match v {
+                        Value::Str(s) => s.clone(),
+                        other => other.to_string(),
+                    })
+                    .collect();
+                Ok(Value::Str(parts.join(&as_str(&arg(1))?)))
+            }
+            "upper" => Ok(Value::Str(as_str(&arg(0))?.to_uppercase())),
+            "lower" => Ok(Value::Str(as_str(&arg(0))?.to_lowercase())),
             other => err(format!("unknown function `{other}`")),
         }
     }
@@ -720,6 +756,13 @@ fn as_map(v: &Value) -> Result<Vec<(Value, Value)>, Control> {
     match v {
         Value::Map(m) => Ok(m.clone()),
         _ => err("expected a map"),
+    }
+}
+
+fn as_str(v: &Value) -> Result<String, Control> {
+    match v {
+        Value::Str(s) => Ok(s.clone()),
+        _ => err("expected a string"),
     }
 }
 
@@ -889,6 +932,11 @@ mod tests {
             ("f s(){ var i = 0\n var t = 0\n while i < 5 { t = t + i\n i = i + 1 }\n t }", "s", &[], Value::Int(10)),
             ("f big(xs){ for x in xs { if x > 3 { return x } }\n 0 }\nf s(){ big([1,2,3,7,2]) }", "s", &[], Value::Int(7)),
             ("f p(n){ n > 0 }\nf s(){ all([1,2,3], p) }", "s", &[], Value::Bool(true)),
+            // String / text vocabulary.
+            ("f s(){ len(words(\"the quick brown fox\")) }", "s", &[], Value::Int(4)),
+            ("f s(){ join([\"a\", \"b\", \"c\"], \"-\") }", "s", &[], Value::Str("a-b-c".into())),
+            ("f s(){ upper(\"hi\") }", "s", &[], Value::Str("HI".into())),
+            ("f s(){ len(keys(freq(chars(\"banana\")))) }", "s", &[], Value::Int(3)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
