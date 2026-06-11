@@ -3,7 +3,7 @@
 //! results — the combinators' runtime. Pure subset (data, functions, the
 //! vocabulary); IO/structs/traits are out of scope and report an honest error.
 
-use crate::ast::{Block, Expr, FunctionDef, ItemKind, LiteralKind, Module, Pattern, Stmt};
+use crate::ast::{Block, Expr, FunctionDef, ItemKind, LiteralKind, Module, Pattern, Stmt, Type};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -428,6 +428,50 @@ impl Interp {
                         .ok_or(Control::Err(format!("no tuple field `{field}`"))),
                     _ => err("field access on a non-struct value"),
                 }
+            }
+            Expr::Loop { body } => {
+                // `loop { ... break v }` — infinite loop whose value is the break.
+                loop {
+                    match self.eval_block(body, env) {
+                        Ok(_) | Err(Control::Continue) => {}
+                        Err(Control::Break(v)) => return Ok(v),
+                        Err(other) => return Err(other),
+                    }
+                }
+            }
+            Expr::ArrayRepeat { value, count } => {
+                // `[x; n]` — a list of `n` copies of `x`.
+                let v = self.eval(value, env)?;
+                let n = as_int(&self.eval(count, env)?)?;
+                Ok(Value::List(vec![v; n.max(0) as usize]))
+            }
+            Expr::Cast { expr, ty } => {
+                // Numeric casts: `x as f64` / `x as i64` (the well-defined ones).
+                let v = self.eval(expr, env)?;
+                let target = match ty {
+                    Type::Path { segments, .. } => segments.last().map(|s| s.as_str()).unwrap_or(""),
+                    _ => "",
+                };
+                match target {
+                    "f64" | "f32" => Ok(Value::Float(match v {
+                        Value::Int(n) => n as f64,
+                        Value::Float(f) => f,
+                        _ => return err("cannot cast this value to a float"),
+                    })),
+                    "i64" | "i32" | "u64" | "u32" | "usize" | "isize" => Ok(Value::Int(match v {
+                        Value::Float(f) => f as i64,
+                        Value::Int(n) => n,
+                        Value::Bool(b) => b as i64,
+                        _ => return err("cannot cast this value to an integer"),
+                    })),
+                    other => err(format!("unsupported cast to `{other}`")),
+                }
+            }
+            Expr::Is { expr, pattern } => {
+                // `x is Pattern` — a boolean test that also flow-binds into the
+                // current scope, so `if c is Some(v) { ..v.. }` can use `v`.
+                let v = self.eval(expr, env)?;
+                Ok(Value::Bool(self.match_pat(pattern, &v, env)))
             }
             other => err(format!("evaluator does not support {} yet", variant(other))),
         }
@@ -956,6 +1000,11 @@ mod tests {
             // Option construction + the `?` operator (early-return on None).
             ("f h(xs){ val x = first(xs)?\n Some(x * 2) }\nf s(){ match h([5,6]) { Some(v) => v, None => 0 } }", "s", &[], Value::Int(10)),
             ("f h(xs){ val x = first(xs)?\n Some(x * 2) }\nf s(){ match h([]) { Some(v) => v, None => 0 } }", "s", &[], Value::Int(0)),
+            // loop + break value; [x; n] repeat; numeric cast; `is` pattern test.
+            ("f s(){ var i = 0\n loop { if i == 5 { break i * 10 }\n i = i + 1 } }", "s", &[], Value::Int(50)),
+            ("f s(){ sum([7; 4]) }", "s", &[], Value::Int(28)),
+            ("f s(){ 7 as f64 / 2 as f64 }", "s", &[], Value::Float(3.5)),
+            ("f s(){ if first([9]) is Some(v) { v } else { 0 } }", "s", &[], Value::Int(9)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
