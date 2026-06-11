@@ -2549,6 +2549,18 @@ impl<'a> Parser<'a> {
                 TokenKind::KwDefer => {
                     stmts.push(self.parse_defer_stmt()?);
                 }
+                // Nested function declaration: `f name(…){…}`. Disambiguated from
+                // a `fn(…) => …` closure (also KwF) by the following token — a
+                // name means a declaration, `(` means a closure expression.
+                TokenKind::KwF | TokenKind::KwAf | TokenKind::KwUf
+                    if matches!(
+                        self.tokens.get(self.pos + 1).map(|t| t.kind),
+                        Some(TokenKind::Ident)
+                    ) =>
+                {
+                    let item = self.parse_item()?;
+                    stmts.push(Stmt::Item { item: Box::new(item) });
+                }
                 _ => {
                     let expr = self.parse_expr()?;
                     if self.peek() == TokenKind::Semi {
