@@ -443,5 +443,16 @@ The first slice is shipped:
   ontology section covers every `VOCABULARY` entry, and the same table registers
   the names, so resolution / typing / discovery cannot diverge. **1004 tests green.**
 
-  **§8 is fully implemented:** registered → precisely typed/total → discoverable,
-  all from one authoritative table.
+- **Runtime — now LANDED (`eval.rs`, `--eval`).** A focused tree-walking
+  evaluator executes the vocabulary and the arithmetic/control-flow around it, so
+  the combinators compute real results (not just type). `Value` covers
+  int/float/bool/str/list/map/tuple/option/closure; `map/filter/fold/reduce/sum/
+  freq/sort/zip/first/…` are implemented over it, with named-function and closure
+  (`fn(x) => …`) arguments, recursion, `for`/`while`, and the `|>` pipeline.
+  Verified end-to-end (`--eval`): `fold(map(filter([1..6], even), dbl), 0, add) =
+  24`, `freq([7,7,8,7]) = {7: 3, 8: 1}`, `sum(range(100)) = 4950`, `fact(6) = 720`.
+  8 evaluator tests; **1012 tests green, zero regressions.** (Pure subset —
+  IO/structs/traits report an honest "unsupported" rather than miscomputing.)
+
+  **§8 is fully implemented:** registered → precisely typed/total → discoverable →
+  **executable**, all from one authoritative table.
