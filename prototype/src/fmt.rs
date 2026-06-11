@@ -1461,7 +1461,7 @@ fn emit_pattern(buf: &mut String, pat: &Pattern) {
                 buf.push(')');
             }
         }
-        Pattern::Slice { elements, rest } => {
+        Pattern::Slice { elements, rest, rest_name } => {
             buf.push('[');
             for (i, p) in elements.iter().enumerate() {
                 if i > 0 {
@@ -1471,6 +1471,9 @@ fn emit_pattern(buf: &mut String, pat: &Pattern) {
             }
             if *rest {
                 buf.push_str(", ..");
+                if let Some(name) = rest_name {
+                    buf.push_str(name);
+                }
             }
             buf.push(']');
         }

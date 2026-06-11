@@ -3689,6 +3689,30 @@ impl<'a> Parser<'a> {
                 self.expect(TokenKind::RParen)?;
                 Ok(Pattern::Tuple { elements })
             }
+            // Slice patterns: `[a, b]` (exact), `[a, ..]` (prefix, anonymous
+            // rest), `[head, ..tail]` (named rest binds the remaining elements).
+            TokenKind::LBrack => {
+                self.advance();
+                let mut elements = Vec::new();
+                let mut rest = false;
+                let mut rest_name = None;
+                while self.peek() != TokenKind::RBrack && self.peek() != TokenKind::Eof {
+                    if self.peek() == TokenKind::DotDot {
+                        self.advance();
+                        rest = true;
+                        if self.peek() == TokenKind::Ident {
+                            rest_name = Some(self.advance().text.clone());
+                        }
+                    } else {
+                        elements.push(self.parse_pattern()?);
+                    }
+                    if self.peek() == TokenKind::Comma {
+                        self.advance();
+                    }
+                }
+                self.expect(TokenKind::RBrack)?;
+                Ok(Pattern::Slice { elements, rest, rest_name })
+            }
             _ => {
                 let tok = self.advance();
                 Ok(Pattern::Ident {

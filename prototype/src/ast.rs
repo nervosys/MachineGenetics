@@ -386,6 +386,9 @@ pub enum Pattern {
     Slice {
         elements: Vec<Pattern>,
         rest: bool,
+        /// A named rest binding, e.g. `tail` in `[head, ..tail]`. `None` means
+        /// the rest is anonymous (`[head, ..]`) or absent (`rest == false`).
+        rest_name: Option<String>,
     },
     Or {
         patterns: Vec<Pattern>,

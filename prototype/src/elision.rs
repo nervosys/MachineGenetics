@@ -613,9 +613,10 @@ fn elide_pattern(pat: &Pattern) -> Pattern {
             path: path.clone(),
             elements: elements.iter().map(elide_pattern).collect(),
         },
-        Pattern::Slice { elements, rest } => Pattern::Slice {
+        Pattern::Slice { elements, rest, rest_name } => Pattern::Slice {
             elements: elements.iter().map(elide_pattern).collect(),
             rest: *rest,
+            rest_name: rest_name.clone(),
         },
         Pattern::Or { patterns } => Pattern::Or {
             patterns: patterns.iter().map(elide_pattern).collect(),
