@@ -118,6 +118,10 @@ impl Env {
     fn get(&self, name: &str) -> Option<Value> {
         self.scopes.iter().rev().find_map(|s| s.get(name).cloned())
     }
+    /// A mutable reference to an existing binding — the root of a mutable path.
+    fn get_mut(&mut self, name: &str) -> Option<&mut Value> {
+        self.scopes.iter_mut().rev().find_map(|s| s.get_mut(name))
+    }
     /// Define a binding in the current scope.
     fn define(&mut self, name: String, v: Value) {
         self.scopes.last_mut().unwrap().insert(name, v);
@@ -323,45 +327,15 @@ impl Interp {
             }))),
             Expr::Assign { target, value } => {
                 let v = self.eval(value, env)?;
-                match target.as_ref() {
-                    Expr::Ident { name } => {
-                        env.assign(name, v);
-                        Ok(Value::Unit)
-                    }
-                    // `xs[i] = v` / `m[k] = v` — mutate an element through an ident base.
-                    Expr::Index { object, index } => {
-                        let name = ident_base(object)?;
-                        let key = self.eval(index, env)?;
-                        let mut base = env.get(name).ok_or(Control::Err(format!("unknown `{name}`")))?;
-                        match (&mut base, key) {
-                            (Value::List(xs), Value::Int(n)) => {
-                                let i = n as usize;
-                                *xs.get_mut(i).ok_or(Control::Err("index out of bounds".into()))? = v;
-                            }
-                            (Value::Map(m), k) => match m.iter_mut().find(|(ek, _)| *ek == k) {
-                                Some(entry) => entry.1 = v,
-                                None => m.push((k, v)),
-                            },
-                            _ => return err("cannot index-assign this value"),
-                        }
-                        env.assign(name, base);
-                        Ok(Value::Unit)
-                    }
-                    // `p.field = v` — mutate a struct field through an ident base.
-                    Expr::FieldAccess { object, field } => {
-                        let name = ident_base(object)?;
-                        let mut base = env.get(name).ok_or(Control::Err(format!("unknown `{name}`")))?;
-                        match &mut base {
-                            Value::Struct(_, fields) => match fields.iter_mut().find(|(k, _)| k == field) {
-                                Some(entry) => entry.1 = v,
-                                None => fields.push((field.clone(), v)),
-                            },
-                            _ => return err("field-assign on a non-struct value"),
-                        }
-                        env.assign(name, base);
-                        Ok(Value::Unit)
-                    }
-                    _ => err("unsupported assignment target"),
+                if let Expr::Ident { name } = target.as_ref() {
+                    // Plain `x = v` may also introduce a binding (mirrors `assign`).
+                    env.assign(name, v);
+                    Ok(Value::Unit)
+                } else {
+                    // `a.b.c = v`, `xs[i][j] = v`, `grid[r][c].field = v`, … — walk
+                    // an arbitrary path of fields/indices to the slot and write it.
+                    self.assign_place(target, v, env)?;
+                    Ok(Value::Unit)
                 }
             }
             Expr::For { pattern, iter, body } => {
@@ -592,6 +566,36 @@ impl Interp {
             Some(e) => self.eval(&e, env),
             None => err(format!("could not parse format expression `{src}`")),
         }
+    }
+
+    /// Assign `v` to an arbitrary lvalue path: `a.b.c = v`, `xs[i][j] = v`,
+    /// `grid[r][c].field = v`. The path is decomposed root-to-leaf (index
+    /// expressions are evaluated up front, before the mutable borrow), then we
+    /// descend mutably through the value and write the final slot.
+    fn assign_place(&self, target: &Expr, v: Value, env: &mut Env) -> Result<(), Control> {
+        let mut accessors: Vec<Accessor> = Vec::new();
+        let mut cur = target;
+        let root = loop {
+            match cur {
+                Expr::Ident { name } => break name.as_str(),
+                Expr::FieldAccess { object, field } => {
+                    accessors.push(Accessor::Field(field.clone()));
+                    cur = object;
+                }
+                Expr::Index { object, index } => {
+                    accessors.push(Accessor::Index(self.eval(index, env)?));
+                    cur = object;
+                }
+                _ => return err("assignment target must root in a variable"),
+            }
+        };
+        accessors.reverse();
+        let mut place = env.get_mut(root).ok_or(Control::Err(format!("unknown `{root}`")))?;
+        for acc in &accessors {
+            place = descend(place, acc)?;
+        }
+        *place = v;
+        Ok(())
     }
 
     fn eval_call(&self, func: &Expr, args: &[Expr], env: &mut Env) -> R {
@@ -919,12 +923,41 @@ fn interp_str(v: &Value) -> String {
     }
 }
 
-/// The variable name at the base of an assignment target, e.g. `xs` in `xs[i]`.
-/// Compound paths (`a.b[i]`, `a[i][j]`) aren't supported — one level only.
-fn ident_base(e: &Expr) -> Result<&str, Control> {
-    match e {
-        Expr::Ident { name } => Ok(name),
-        _ => err("assignment target must be a simple variable element/field"),
+/// One step of an lvalue path: `.field` or `[index]` (the index pre-evaluated).
+enum Accessor {
+    Field(String),
+    Index(Value),
+}
+
+/// Descend one accessor into a mutable place, returning a reference to the
+/// targeted slot. A missing map key or struct field is created (so `m[k] = v`
+/// and `p.newfield = v` work); a list index out of bounds is an error.
+fn descend<'a>(place: &'a mut Value, acc: &Accessor) -> Result<&'a mut Value, Control> {
+    match (place, acc) {
+        (Value::List(xs), Accessor::Index(Value::Int(n))) => {
+            xs.get_mut(*n as usize).ok_or(Control::Err("index out of bounds".into()))
+        }
+        (Value::Map(m), Accessor::Index(k)) => {
+            match m.iter().position(|(ek, _)| ek == k) {
+                Some(i) => Ok(&mut m[i].1),
+                None => {
+                    m.push((k.clone(), Value::Unit));
+                    let i = m.len() - 1;
+                    Ok(&mut m[i].1)
+                }
+            }
+        }
+        (Value::Struct(_, fields), Accessor::Field(f)) => {
+            match fields.iter().position(|(k, _)| k == f) {
+                Some(i) => Ok(&mut fields[i].1),
+                None => {
+                    fields.push((f.clone(), Value::Unit));
+                    let i = fields.len() - 1;
+                    Ok(&mut fields[i].1)
+                }
+            }
+        }
+        _ => err("assignment path does not match the value's shape"),
     }
 }
 
@@ -1153,6 +1186,9 @@ mod tests {
             ("f s(){ val n = 6\n f\"n={n} sq={n * n}\" }", "s", &[], Value::Str("n=6 sq=36".into())),
             ("f s(){ f\"total={sum([1,2,3,4])}\" }", "s", &[], Value::Str("total=10".into())),
             ("f s(){ f\"{{literal}} {upper(\"hi\")}\" }", "s", &[], Value::Str("{literal} HI".into())),
+            // Nested lvalue paths: grid[r][c] = v, and struct field through index.
+            ("f s(){ var g = [[1, 2], [3, 4]]\n g[1][0] = 30\n g[0][1] = 20\n g[0][1] + g[1][0] }", "s", &[], Value::Int(50)),
+            ("S P { x: i32, y: i32 }\nf s(){ var ps = [@P { x: 1, y: 1 }]\n ps[0].x = 9\n ps[0].x + ps[0].y }", "s", &[], Value::Int(10)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
