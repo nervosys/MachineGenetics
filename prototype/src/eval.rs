@@ -883,6 +883,12 @@ mod tests {
             ("f s(){ len(zip([1,2,3], [4,5,6])) }", "s", &[], Value::Int(3)),
             // Struct construction (`@Name { ... }`) + field access.
             ("S P { x: i32, y: i32 }\nf d2(p){ p.x*p.x + p.y*p.y }\nf s(){ d2(@P { x: 3, y: 4 }) }", "s", &[], Value::Int(25)),
+            // Diverse real programs.
+            ("f s(){ sum(flatten([[1,2],[3,4],[5]])) }", "s", &[], Value::Int(15)),
+            ("f a(x,y){x+y}\nf s(){ last(scan([1,2,3,4], 0, a)) }", "s", &[], Value::Opt(Some(Box::new(Value::Int(10))))),
+            ("f s(){ var i = 0\n var t = 0\n while i < 5 { t = t + i\n i = i + 1 }\n t }", "s", &[], Value::Int(10)),
+            ("f big(xs){ for x in xs { if x > 3 { return x } }\n 0 }\nf s(){ big([1,2,3,7,2]) }", "s", &[], Value::Int(7)),
+            ("f p(n){ n > 0 }\nf s(){ all([1,2,3], p) }", "s", &[], Value::Bool(true)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
