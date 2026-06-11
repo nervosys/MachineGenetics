@@ -16,6 +16,7 @@ mod cost_calibration;
 mod crdt;
 mod decompose;
 mod effects;
+mod eval;
 mod elision;
 mod evolve_gen;
 mod ffi_gen;
@@ -395,6 +396,28 @@ fn main() {
                 .and_then(|s| serde_json::from_str(s).ok())
                 .unwrap_or(serde_json::Value::Null);
             run_eval_abl_bytes(&blob, &input);
+        }
+        Some("--eval") => {
+            // Run a pure function and print its value — executes the §8 standard
+            // vocabulary (map/filter/fold/…) and the arithmetic/control flow
+            // around it. Usage: MechGen-parse --eval <file.mg> <fn> [int args...]
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --eval <file.mg> <fn> [int args...]");
+                std::process::exit(1);
+            });
+            let func = filtered.get(2).map(|s| &**s).unwrap_or("main");
+            let nums: Vec<i64> = filtered.iter().skip(3).filter_map(|s| s.parse().ok()).collect();
+            let src = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            match eval::run_source(&src, func, &nums) {
+                Ok(v) => println!("{v}"),
+                Err(e) => {
+                    eprintln!("eval error: {e}");
+                    std::process::exit(1);
+                }
+            }
         }
         Some("--rain") => {
             // Digital rain: a Matrix-inspired dense-UTF-8 representation. One
