@@ -225,6 +225,16 @@ impl Resolver {
             "unreachable", "matches",
             // common free functions
             "min", "max", "abs", "drop", "swap", "replace", "default",
+            // Standard SWE vocabulary (AB_INITIO_DESIGN §8 — the vocabulary
+            // frontier): high-frequency, single-BPE-token, total combinators so
+            // an agent NAMES an intent instead of hand-rolling it (measured ~65%
+            // fewer payload tokens, and fewer hand-rolled bugs). They resolve and
+            // type (inferred from use) like `max`; precise/total signatures are a
+            // staged backend follow-on. Names are audited single-token
+            // (`agentic-eval --example vocabulary_audit`).
+            "map", "filter", "fold", "reduce", "sum", "len", "sort", "reverse",
+            "zip", "freq", "first", "last", "count", "any", "all", "find", "take",
+            "range", "keys", "values", "flatten", "group", "scan", "contains",
             // bare enum-value constructors agents call positionally
             "Some", "None", "Ok", "Err",
         ];
