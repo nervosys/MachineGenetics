@@ -620,7 +620,8 @@ impl TypeChecker {
         const TYPED: &[&str] = &[
             "len", "count", "sum", "first", "last", "sort", "reverse", "take",
             "flatten", "contains", "zip", "freq", "keys", "values", "range", "map",
-            "filter", "any", "all", "find", "fold", "reduce",
+            "filter", "any", "all", "find", "fold", "reduce", "split", "join",
+            "chars", "words", "lines", "upper", "lower",
         ];
         if !TYPED.contains(&name) {
             return None;
@@ -760,6 +761,38 @@ impl TypeChecker {
                     let _ = unify(&mut self.subst, &a[1], &f);
                 }
                 Ty::Option(Box::new(e))
+            }
+            // String / text vocabulary.
+            "split" => {
+                self.vocab_arity(name, n, 2);
+                for t in a.iter().take(2) {
+                    let _ = unify(&mut self.subst, t, &Ty::Str);
+                }
+                Ty::Vec(Box::new(Ty::Str))
+            }
+            "chars" | "words" | "lines" => {
+                self.vocab_arity(name, n, 1);
+                if n >= 1 {
+                    let _ = unify(&mut self.subst, &a[0], &Ty::Str);
+                }
+                Ty::Vec(Box::new(Ty::Str))
+            }
+            "join" => {
+                self.vocab_arity(name, n, 2);
+                if n >= 1 {
+                    let _ = unify(&mut self.subst, &a[0], &Ty::Vec(Box::new(Ty::Str)));
+                }
+                if n >= 2 {
+                    let _ = unify(&mut self.subst, &a[1], &Ty::Str);
+                }
+                Ty::Str
+            }
+            "upper" | "lower" => {
+                self.vocab_arity(name, n, 1);
+                if n >= 1 {
+                    let _ = unify(&mut self.subst, &a[0], &Ty::Str);
+                }
+                Ty::Str
             }
             _ => return None,
         };
