@@ -2481,11 +2481,47 @@ impl<'a> Parser<'a> {
     // ── Block ───────────────────────────────────────────────
 
     fn parse_block(&mut self) -> Result<Block, ParseError> {
+        if self.peek() == TokenKind::LBrace {
+            self.advance();
+            let block = self.parse_block_body(None)?;
+            self.expect(TokenKind::RBrace)?;
+            return Ok(block);
+        }
+        // Offside-rule layout (step 1b): a body on a new line, no braces. The
+        // block's statements share the indentation of its first token; a token
+        // that dedents below that column (or EOF / an enclosing `}`) ends it.
+        // Braced code never reaches here (the `{` path runs first), so existing
+        // programs are unaffected.
+        if self.newline_before_current() {
+            let base_col = self.current().span.col;
+            return self.parse_block_body(Some(base_col));
+        }
+        // Same line, no brace → preserve the existing "expected `{`" error.
         self.expect(TokenKind::LBrace)?;
+        unreachable!("expect(LBrace) on a non-brace token returns Err above")
+    }
+
+    /// At the end of a block: `}` (braced) or EOF / enclosing `}` / a dedent
+    /// below `col` (layout).
+    fn at_block_end(&self, layout_col: Option<usize>) -> bool {
+        match layout_col {
+            None => self.peek() == TokenKind::RBrace,
+            Some(col) => {
+                self.peek() == TokenKind::Eof
+                    || self.peek() == TokenKind::RBrace
+                    || self.current().span.col < col
+            }
+        }
+    }
+
+    /// Parse a block's statements. `None` = braced (bounded by `}`); `Some(col)`
+    /// = layout (bounded by a dedent below `col`). The braced path reproduces the
+    /// original behaviour exactly.
+    fn parse_block_body(&mut self, layout_col: Option<usize>) -> Result<Block, ParseError> {
         let mut stmts = Vec::new();
         let mut tail_expr = None;
 
-        while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
+        while self.peek() != TokenKind::Eof && !self.at_block_end(layout_col) {
             // Try to parse a statement
             match self.peek() {
                 // `let` was removed from MechGen — bindings use `val`
@@ -2518,8 +2554,9 @@ impl<'a> Parser<'a> {
                     if self.peek() == TokenKind::Semi {
                         self.advance();
                         stmts.push(Stmt::Expr { expr });
-                    } else if self.peek() == TokenKind::RBrace {
+                    } else if self.at_block_end(layout_col) {
                         tail_expr = Some(Box::new(expr));
+                        break;
                     } else {
                         stmts.push(Stmt::Expr { expr });
                     }
@@ -2527,7 +2564,6 @@ impl<'a> Parser<'a> {
             }
         }
 
-        self.expect(TokenKind::RBrace)?;
         Ok(Block { stmts, tail_expr })
     }
 
@@ -3671,6 +3707,68 @@ mod tests {
     fn parse_source(source: &str) -> Module {
         let tokens = lexer::lex(source);
         parse(&tokens).unwrap()
+    }
+
+    fn try_parse(source: &str) -> Result<Module, ParseError> {
+        parse(&lexer::lex(source))
+    }
+
+    // ── Offside-rule layout blocks (migration step 1b) ──────────────────
+    // A block body on a new line, indented, with no braces. Braced code is
+    // unchanged (the `{` path runs first); only newline-introduced bodies use
+    // the column-tracked layout path.
+
+    #[test]
+    fn layout_braced_block_unchanged() {
+        // Regression sentinel — explicit braces still parse.
+        assert_eq!(parse_source("f sq(n) { n * n }").items.len(), 1);
+    }
+
+    #[test]
+    fn layout_single_expr_body() {
+        let m = parse_source("f sq(n)\n  n * n\n");
+        if let ItemKind::Function(ref f) = m.items[0].kind {
+            assert_eq!(f.body.stmts.len(), 0);
+            assert!(f.body.tail_expr.is_some(), "`n * n` is the tail expr");
+        } else {
+            panic!("expected function");
+        }
+    }
+
+    #[test]
+    fn layout_multi_statement_body() {
+        let m = parse_source("f area(w, h)\n  val a = w * h\n  a\n");
+        if let ItemKind::Function(ref f) = m.items[0].kind {
+            assert_eq!(f.body.stmts.len(), 1, "one `val` statement");
+            assert!(f.body.tail_expr.is_some(), "`a` is the tail");
+        } else {
+            panic!("expected function");
+        }
+    }
+
+    #[test]
+    fn layout_two_functions_dedent_boundary() {
+        // The first fn's layout body must end where the second fn begins.
+        let m = parse_source("f sq(n)\n  n * n\nf cube(n)\n  n * n * n\n");
+        assert_eq!(m.items.len(), 2);
+    }
+
+    #[test]
+    fn layout_nested_if_else() {
+        let m = parse_source("f sign(n)\n  if n > 0\n    1\n  else\n    2\n");
+        assert_eq!(m.items.len(), 1);
+    }
+
+    #[test]
+    fn layout_mixed_brace_inside_layout() {
+        let m = parse_source("f sign(n)\n  if n > 0 { 1 } else { 2 }\n");
+        assert_eq!(m.items.len(), 1);
+    }
+
+    #[test]
+    fn layout_same_line_without_brace_still_errors() {
+        // No brace and body on the SAME line is still a syntax error.
+        assert!(try_parse("f sq(n) n * n").is_err());
     }
 
     #[test]

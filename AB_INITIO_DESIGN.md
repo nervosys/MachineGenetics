@@ -64,8 +64,11 @@ goals *aligned*, not opposed:
 - **Maximal inference.** No local type annotations, no mutability markers, no
   return types, no imports. The compiler reconstructs all of it. (This is C/Go's
   measured edge, taken to the limit.)
-- **Layout, not delimiters.** Significant indentation replaces `{ }` and `;` —
-  each is ~1 token, and a function body has many. (Python's main token edge.)
+- **Drop `;`; layout for readability.** Omitting `;` is a real per-statement token
+  win. Replacing `{ }` with indentation is **token-neutral** (measured: BPE charges
+  for the indentation whitespace ≈ what the braces cost — see §7), so layout is a
+  readability choice, not a token lever. (This corrects the original assumption
+  that significant indentation is itself a multiplier-reducer.)
 - **Terse safety sigils.** `?T` optional, `T!E` result, postfix `?` propagation —
   safety in *one* token, not a four-token `Option<T>` wrapper.
 - **Ambient builtins + capabilities.** `io`, `fs`, `net`, `llm`, collections,
@@ -224,16 +227,30 @@ what is and isn't there, and two steps were landed safely:
   together cut **~30%** of tokens vs the fully-annotated/semicolon form across four
   functions (area3 −28%). **1149 tests green, zero regressions.**
 
+- **Step 1b — brace-optional layout blocks: DONE (`parser.rs`, TDD).**
+  An indented body on a new line needs no braces. Built test-first: a layout test
+  suite (single-expr, multi-statement, nested if/else, mixed brace+layout, dedent
+  boundary between two fns, same-line-still-errors) was written and made to fail,
+  then `parse_block` was refactored so an `{` keeps the exact original path and
+  only a newline-introduced body enters a column-tracked `parse_block_body`. Works
+  end-to-end (parses *and* type-checks, incl. nested if/else). **1187 tests green
+  (8 new layout tests), zero regressions.** The full form-C surface now compiles:
+  ```
+  f area3(w, h)
+    val a = w * h
+    val b = a + a
+    b
+  ```
+
+  **Honest measured sub-finding (real cl100k, `inference_tokens`):** dropping
+  braces is **token-neutral — often slightly worse** (area3: braced-no-`;` 24 →
+  layout 25). BPE charges for the indentation whitespace about what the two brace
+  tokens saved — the same "whitespace tokenizes too" lesson as the digital-rain
+  experiment. **So braces→layout is a readability/aesthetic feature, NOT a token
+  lever.** The real token wins were `;`-removal (1a) and inference (2a/2b); §3a
+  overstated layout as a multiplier-reducer and is corrected below.
+
 **Still staged (large, high-value, not rushed):**
-- *Step 1b — brace-optional layout blocks* (indentation instead of `{ }`): the
-  remaining offside-rule piece. Designed to be additive (in `parse_block`, an
-  `LBrace` keeps the exact existing path; only a newline-introduced body enters a
-  column-tracked layout block), so existing braced code is untouched. **Held back
-  deliberately:** a layout parser's correctness (nesting, dedent boundaries, mixed
-  brace/layout, every block context, error cases) *cannot be validated by the
-  current all-braced test suite* — it needs its own layout test suite first.
-  Rushing it would be exactly the "blind" change this plan refuses. Lower marginal
-  value than 1a too (braces are a fixed ~2 tokens/block; `;` scaled with body).
 - *Step 2c — keyword-less bindings*: probes show `x = 5` (no `val`) is not yet a
   binding (resolve rejects it). Needs binding/assignment disambiguation at resolve
   time (and trades a useful typo-catch error, so it wants care).
