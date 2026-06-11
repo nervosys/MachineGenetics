@@ -398,3 +398,23 @@ total, capability-typed standard vocabulary** with a near-free pipeline operator
 audit its names as single BPE tokens; publish it in the cached ontology; and apply
 **infer-inside / contract-at-boundary** uniformly. That is where the next real
 token efficiency lives — and it buys reliability rather than spending it.
+
+### 8f. Implementation status (landed 2026-06-10)
+
+The first slice is shipped:
+- **24 vocabulary combinators registered** (`resolve.rs`): `map filter fold reduce
+  sum len sort reverse zip freq first last count any all find take range keys
+  values flatten group scan contains`. They resolve and type (inferred from use,
+  generic-safe per call, like `max`), so an agent can write `freq(ws)`,
+  `sum(map(xs, sq))`, and `xs |> filter(even) |> map(double)` — all `--check`ed.
+  **997 prototype tests green, zero regressions.**
+- **Pipeline operator** `|>` already existed and composes the vocabulary.
+- **Names audited single-token** (`vocabulary_audit`, real cl100k+o200k):
+  **27/27** (the 24 + min/max/abs) are a single BPE token — §8b holds.
+
+**Staged (honest):** precise *total* signatures (e.g. `first: [A] -> ?A`,
+`map: ([A], A->B) -> [B]`) are inferred-from-use today, not yet enforced — that
+needs per-call generic instantiation for higher-order builtins, a backend
+follow-on. So the **token** win (name the intent) is real and landed; the full
+**reliability** win (compiler-guaranteed totality) is partially staged. The
+vocabulary is usable now; tightening its types is the next increment.
