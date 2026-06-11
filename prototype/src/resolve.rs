@@ -9,6 +9,40 @@ use crate::ast;
 use crate::hir::{Diagnostic, DiagnosticCategory, Severity, SymbolId, Ty};
 use std::collections::HashMap;
 
+/// The standard SWE vocabulary (AB_INITIO_DESIGN §8 — the vocabulary frontier):
+/// `(name, signature, summary)`. SINGLE SOURCE OF TRUTH — `register_builtins`
+/// registers each name, `types::infer_vocab_call` types them, and the ontology's
+/// `vocabulary` section publishes them for agent discovery (drift-proof: a test
+/// asserts the ontology section covers every entry). High-frequency, single-
+/// BPE-token (audited), total, capability-pure combinators so an agent NAMES an
+/// intent instead of hand-rolling it (~65% fewer payload tokens, measured).
+pub const VOCABULARY: &[(&str, &str, &str)] = &[
+    ("map", "([A], A->B) -> [B]", "apply a function to each element"),
+    ("filter", "([A], A->bool) -> [A]", "keep elements matching a predicate"),
+    ("fold", "([A], B, (B,A)->B) -> B", "reduce with an initial accumulator"),
+    ("reduce", "([A], (A,A)->A) -> ?A", "reduce without an initial value"),
+    ("sum", "[A] -> A", "sum of the elements"),
+    ("len", "[A] -> usize", "number of elements"),
+    ("count", "[A] -> usize", "number of elements"),
+    ("sort", "[A] -> [A]", "sorted copy"),
+    ("reverse", "[A] -> [A]", "reversed copy"),
+    ("zip", "([A], [B]) -> [(A,B)]", "pair up two collections"),
+    ("freq", "[A] -> {A: usize}", "frequency of each element"),
+    ("first", "[A] -> ?A", "first element, if any"),
+    ("last", "[A] -> ?A", "last element, if any"),
+    ("any", "([A], A->bool) -> bool", "does any element match"),
+    ("all", "([A], A->bool) -> bool", "do all elements match"),
+    ("find", "([A], A->bool) -> ?A", "first matching element, if any"),
+    ("take", "([A], usize) -> [A]", "the first n elements"),
+    ("range", "(usize) -> [usize]", "0..n as a list"),
+    ("keys", "{K: V} -> [K]", "the map's keys"),
+    ("values", "{K: V} -> [V]", "the map's values"),
+    ("flatten", "[[A]] -> [A]", "flatten one level of nesting"),
+    ("group", "([A], A->K) -> {K: [A]}", "group elements by key"),
+    ("scan", "([A], B, (B,A)->B) -> [B]", "running fold (each intermediate)"),
+    ("contains", "([A], A) -> bool", "membership test"),
+];
+
 // ── Symbol Table ─────────────────────────────────────────────────────
 
 /// What kind of symbol was defined.
@@ -225,20 +259,16 @@ impl Resolver {
             "unreachable", "matches",
             // common free functions
             "min", "max", "abs", "drop", "swap", "replace", "default",
-            // Standard SWE vocabulary (AB_INITIO_DESIGN §8 — the vocabulary
-            // frontier): high-frequency, single-BPE-token, total combinators so
-            // an agent NAMES an intent instead of hand-rolling it (measured ~65%
-            // fewer payload tokens, and fewer hand-rolled bugs). They resolve and
-            // type (inferred from use) like `max`; precise/total signatures are a
-            // staged backend follow-on. Names are audited single-token
-            // (`agentic-eval --example vocabulary_audit`).
-            "map", "filter", "fold", "reduce", "sum", "len", "sort", "reverse",
-            "zip", "freq", "first", "last", "count", "any", "all", "find", "take",
-            "range", "keys", "values", "flatten", "group", "scan", "contains",
             // bare enum-value constructors agents call positionally
             "Some", "None", "Ok", "Err",
         ];
         for name in std_fns {
+            self.define_value(name, SymbolKind::Function);
+        }
+        // Standard SWE vocabulary (AB_INITIO_DESIGN §8) — registered from the
+        // single-source VOCABULARY table (also typed in `types` and published in
+        // the ontology). An agent names an intent instead of hand-rolling it.
+        for (name, _sig, _doc) in VOCABULARY {
             self.define_value(name, SymbolKind::Function);
         }
         // Builtin capability namespaces. MechGen is effect-oriented: I/O is

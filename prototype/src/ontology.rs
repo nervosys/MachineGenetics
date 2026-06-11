@@ -1168,6 +1168,7 @@ pub fn build() -> serde_json::Value {
             "cli_flags": cli_flags_section(),
             "bench_backends": bench_backends_section(),
             "effects": effects_section(),
+            "vocabulary": vocabulary_section(),
             "wrapper_protocol": wrapper_protocol_section(),
             "project_layout": project_layout_section(),
             "docs": docs_section(),
@@ -1188,6 +1189,7 @@ pub fn build() -> serde_json::Value {
             "cli_flags": CLI_FLAGS.len(),
             "bench_backends": BENCH_BACKENDS.len(),
             "effects": EFFECTS.len(),
+            "vocabulary": crate::resolve::VOCABULARY.len(),
             "wrapper_protocol": WRAPPER_PROTOCOL.len(),
             "project_layout": PROJECT_LAYOUT.len(),
             "docs": DOCS.len(),
@@ -1216,6 +1218,7 @@ pub fn section(name: &str) -> Option<serde_json::Value> {
         "cli_flags" => cli_flags_section(),
         "bench_backends" => bench_backends_section(),
         "effects" => effects_section(),
+        "vocabulary" => vocabulary_section(),
         "wrapper_protocol" => wrapper_protocol_section(),
         "project_layout" => project_layout_section(),
         "docs" => docs_section(),
@@ -1263,6 +1266,18 @@ fn types_section() -> serde_json::Value {
     let items: Vec<_> = TYPES
         .iter()
         .map(|(n, c, d)| serde_json::json!({ "name": n, "category": c, "summary": d }))
+        .collect();
+    serde_json::json!(items)
+}
+
+/// The standard SWE vocabulary (§8) — enumerated from the authoritative
+/// `resolve::VOCABULARY` table so an agent discovers every combinator (name,
+/// signature, summary) from the cached ontology without spending tokens to
+/// rediscover it. No drift: the same table drives name resolution + typing.
+fn vocabulary_section() -> serde_json::Value {
+    let items: Vec<_> = crate::resolve::VOCABULARY
+        .iter()
+        .map(|(n, sig, d)| serde_json::json!({ "name": n, "signature": sig, "summary": d }))
         .collect();
     serde_json::json!(items)
 }
@@ -1502,6 +1517,28 @@ fn abl_section() -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ontology_vocabulary_covers_every_registered_combinator() {
+        // §8c drift guard: the ontology's vocabulary section must list every
+        // combinator in the authoritative resolve::VOCABULARY table, so an agent
+        // discovers the full standard vocabulary (name, signature) from the
+        // cached ontology — the discoverability the token saving depends on.
+        let section = vocabulary_section();
+        let listed: std::collections::HashSet<String> = section
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e["name"].as_str().unwrap().to_string())
+            .collect();
+        for (name, _sig, _doc) in crate::resolve::VOCABULARY {
+            assert!(
+                listed.contains(*name),
+                "ontology vocabulary section is missing `{name}`"
+            );
+        }
+        assert_eq!(listed.len(), crate::resolve::VOCABULARY.len());
+    }
 
     #[test]
     fn ontology_keywords_cover_every_lexer_keyword() {

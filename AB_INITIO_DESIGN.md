@@ -432,3 +432,16 @@ The first slice is shipped:
   So both halves of §8a are now real: the **token** win (name the intent, ~65%)
   *and* the **reliability** win (total, precisely-typed primitives that catch the
   mistakes hand-rolled code makes).
+
+- **Discoverability — now LANDED (§8c).** A single-source `resolve::VOCABULARY`
+  table `(name, signature, summary)` drives name resolution, typing, *and* a new
+  **`vocabulary` section in the self-ontology** (`--emit-ontology`): the emitted
+  JSON carries all 24 combinators with their signatures (e.g.
+  `map: ([A], A->B) -> [B]`). So an agent grounding in the **cached** ontology
+  discovers the full vocabulary without spending tokens to rediscover it — the
+  coupled requirement that makes the lever pay. Drift-proof: a test asserts the
+  ontology section covers every `VOCABULARY` entry, and the same table registers
+  the names, so resolution / typing / discovery cannot diverge. **1004 tests green.**
+
+  **§8 is fully implemented:** registered → precisely typed/total → discoverable,
+  all from one authoritative table.
