@@ -38,6 +38,7 @@ mod ontology;
 mod parser;
 mod perf_annot;
 mod perf_measure;
+mod rain;
 mod rap;
 mod recover;
 mod resolve;
@@ -394,6 +395,34 @@ fn main() {
                 .and_then(|s| serde_json::from_str(s).ok())
                 .unwrap_or(serde_json::Value::Null);
             run_eval_abl_bytes(&blob, &input);
+        }
+        Some("--rain") => {
+            // Digital rain: a Matrix-inspired dense-UTF-8 representation. One
+            // glyph per token; writes <file>.rain (glyph stream) + <file>.legend.
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: MechGen-parse --rain <file.mg>");
+                std::process::exit(1);
+            });
+            let src = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("Error reading {path}: {e}");
+                std::process::exit(1);
+            });
+            let r = rain::encode(&src);
+            let src_chars = src.chars().count();
+            let _ = std::fs::write(format!("{path}.rain"), &r.stream);
+            let _ = std::fs::write(format!("{path}.legend"), r.legend_text());
+            println!("// MechGen digital rain — {path}");
+            println!(
+                "// source: {src_chars} chars / {} bytes   rain: {} glyphs ({} distinct)   legend: {} entries",
+                src.len(), r.tokens(), r.distinct(), r.legend.len()
+            );
+            println!(
+                "// CHAR compression: {:.2}x ({} → {} codepoints). NOTE: this is character/visual",
+                src_chars as f64 / r.tokens().max(1) as f64, src_chars, r.tokens()
+            );
+            println!("// density, NOT token efficiency — see agentic-eval rain_tokens (BPE measured).");
+            println!("// wrote {path}.rain + {path}.legend");
+            println!("\n{}", r.stream);
         }
         Some("--spine=profile") | Some("--spine=swarm") | Some("--spine=frame") => {
             // SPINE collaboration bridge: emit SPINE-protocol-shaped JSON for an
