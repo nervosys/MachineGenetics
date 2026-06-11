@@ -250,12 +250,36 @@ what is and isn't there, and two steps were landed safely:
   lever.** The real token wins were `;`-removal (1a) and inference (2a/2b); §3a
   overstated layout as a multiplier-reducer and is corrected below.
 
-**Still staged (large, high-value, not rushed):**
-- *Step 2c — keyword-less bindings*: probes show `x = 5` (no `val`) is not yet a
-  binding (resolve rejects it). Needs binding/assignment disambiguation at resolve
-  time (and trades a useful typo-catch error, so it wants care).
-- *Step 3 — fully ambient capabilities*: builtins are already ambient (zero-import
-  works); the remaining piece is making capability surfaces ambient-by-default.
+**Evaluated and DECLINED — the remaining steps are negative-sum:**
+
+The migration's purpose was token efficiency *without* costing reliability or
+safety (§2). Probing the last two steps shows both fail that test — they'd buy a
+token or two by spending the other axes — so completing the migration means
+*stopping here*, not forcing them.
+
+- *Step 2c — keyword-less bindings* (`x = 5` with no `val`): **declined.** The
+  saving is exactly **1 token/binding** (`val`/`v` are already single BPE tokens —
+  keyword audit), and the probe shows assign-to-unbound is currently a **typo
+  catch** (`error: unresolved name`). Trading a reliability guard for one token is
+  backwards for a language scored on reliability. Net-negative.
+
+- *Step 3 — effect-inference by default* (drop the `/ effect` annotation):
+  **declined as a default.** MechGen already *infers* effects (it reports `[IO]`),
+  but requiring the declaration is a **deliberate, tested safety invariant** —
+  `effects.rs` asserts an unannotated effectful fn *must* be flagged, with the
+  comment *"the capability gate non-bypassable."* Inferring-and-not-requiring would
+  weaken the safety axis to save one annotation per effectful function. The §3e
+  vision ("inferred, declared only at trust boundaries") is *sound* but needs a
+  real trust-boundary construct first, and changing the effect-safety default is a
+  decision the project owner should make explicitly — not a quiet token tweak.
+  (Pure functions already need no annotation, so pure code pays zero today.)
+
+**Conclusion.** The positive-sum levers — return inference, parameter inference,
+`;`-removal, the keyword surface, and the (token-neutral but readable) layout —
+are landed and measured (~29% real token reduction, 1187 tests green). The two
+remaining levers cost reliability or safety for ~1 token each, which violates the
+alignment principle this whole design rests on. The migration is therefore
+*complete at its positive-sum frontier.*
 
 Migration is driven by the probes + the real-BPE harness, landed safely in
 test-passing increments — never a blind rewrite.
