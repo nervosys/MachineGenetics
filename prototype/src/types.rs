@@ -579,6 +579,193 @@ impl TypeChecker {
         self.env.pop();
     }
 
+    /// Element type of a collection argument. Extracts from Vec/Slice/Array,
+    /// constrains an unconstrained var to a Vec, and reports a precise error for
+    /// a non-collection (e.g. `sum(5)`).
+    fn collection_elem(&mut self, ty: &Ty) -> Ty {
+        let t = self.subst.apply(ty);
+        match &t {
+            Ty::Array(e, _) | Ty::Slice(e) | Ty::Vec(e) => self.subst.apply(e),
+            // An unconstrained integer literal (e.g. `sum(5)`) is NOT a collection.
+            Ty::Var(tv) if self.int_lit_vars.contains(&tv.0) => {
+                self.emit_error("expected a collection, found an integer".to_string());
+                self.fresh()
+            }
+            // A genuinely unconstrained type var → constrain it to a Vec.
+            Ty::Var(_) => {
+                let e = self.fresh();
+                let _ = unify(&mut self.subst, &t, &Ty::Vec(Box::new(e.clone())));
+                e
+            }
+            _ => {
+                self.emit_error(format!("expected a collection, found {t}"));
+                self.fresh()
+            }
+        }
+    }
+
+    fn vocab_arity(&mut self, name: &str, got: usize, want: usize) {
+        if got != want {
+            self.emit_error(format!("`{name}` expects {want} argument(s), found {got}"));
+        }
+    }
+
+    /// Precise, fresh-per-call types for the §8 standard vocabulary, so misuse is
+    /// caught (the reliability win) rather than inferred loosely. Returns `Some`
+    /// for a typed combinator; `None` lets the call fall through to generic
+    /// inference (min/max/abs, group/scan, or a user function that shadows it —
+    /// user functions are handled before this is reached). No args are inferred
+    /// for names it does not type, so there is no double inference.
+    fn infer_vocab_call(&mut self, name: &str, args: &[ast::Expr]) -> Option<Ty> {
+        const TYPED: &[&str] = &[
+            "len", "count", "sum", "first", "last", "sort", "reverse", "take",
+            "flatten", "contains", "zip", "freq", "keys", "values", "range", "map",
+            "filter", "any", "all", "find", "fold", "reduce",
+        ];
+        if !TYPED.contains(&name) {
+            return None;
+        }
+        let usize_ty = Ty::Uint(crate::hir::UintTy::Usize);
+        let a: Vec<Ty> = args.iter().map(|e| self.infer_expr(e)).collect();
+        let n = a.len();
+        let res = match name {
+            "len" | "count" => {
+                self.vocab_arity(name, n, 1);
+                if n >= 1 {
+                    self.collection_elem(&a[0]);
+                }
+                usize_ty
+            }
+            "sum" => {
+                self.vocab_arity(name, n, 1);
+                if n >= 1 {
+                    self.collection_elem(&a[0])
+                } else {
+                    self.fresh()
+                }
+            }
+            "first" | "last" => {
+                self.vocab_arity(name, n, 1);
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                Ty::Option(Box::new(e))
+            }
+            "sort" | "reverse" | "take" => {
+                self.vocab_arity(name, n, if name == "take" { 2 } else { 1 });
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                Ty::Vec(Box::new(e))
+            }
+            "flatten" => {
+                self.vocab_arity(name, n, 1);
+                let outer = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                let inner = self.collection_elem(&outer);
+                Ty::Vec(Box::new(inner))
+            }
+            "contains" => {
+                self.vocab_arity(name, n, 2);
+                if n >= 1 {
+                    let e = self.collection_elem(&a[0]);
+                    if n >= 2 {
+                        let _ = unify(&mut self.subst, &e, &a[1]);
+                    }
+                }
+                Ty::Bool
+            }
+            "zip" => {
+                self.vocab_arity(name, n, 2);
+                let x = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                let y = if n >= 2 { self.collection_elem(&a[1]) } else { self.fresh() };
+                Ty::Vec(Box::new(Ty::Tuple(vec![x, y])))
+            }
+            "freq" => {
+                self.vocab_arity(name, n, 1);
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                Ty::Map(Box::new(e), Box::new(usize_ty))
+            }
+            "keys" | "values" => {
+                self.vocab_arity(name, n, 1);
+                let m = if n >= 1 { self.subst.apply(&a[0]) } else { self.fresh() };
+                let (k, v) = match &m {
+                    Ty::Map(k, v) => (self.subst.apply(k), self.subst.apply(v)),
+                    _ => {
+                        let k = self.fresh();
+                        let v = self.fresh();
+                        let _ = unify(
+                            &mut self.subst,
+                            &m,
+                            &Ty::Map(Box::new(k.clone()), Box::new(v.clone())),
+                        );
+                        (k, v)
+                    }
+                };
+                Ty::Vec(Box::new(if name == "keys" { k } else { v }))
+            }
+            "range" => {
+                for t in &a {
+                    let _ = unify(&mut self.subst, t, &usize_ty);
+                }
+                Ty::Vec(Box::new(usize_ty))
+            }
+            "map" => {
+                self.vocab_arity(name, n, 2);
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                let b = self.fresh();
+                if n >= 2 {
+                    let f = Ty::Fn(vec![e], Box::new(b.clone()), pure());
+                    let _ = unify(&mut self.subst, &a[1], &f);
+                }
+                Ty::Vec(Box::new(self.subst.apply(&b)))
+            }
+            "filter" => {
+                self.vocab_arity(name, n, 2);
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                if n >= 2 {
+                    let f = Ty::Fn(vec![e.clone()], Box::new(Ty::Bool), pure());
+                    let _ = unify(&mut self.subst, &a[1], &f);
+                }
+                Ty::Vec(Box::new(e))
+            }
+            "any" | "all" => {
+                self.vocab_arity(name, n, 2);
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                if n >= 2 {
+                    let f = Ty::Fn(vec![e], Box::new(Ty::Bool), pure());
+                    let _ = unify(&mut self.subst, &a[1], &f);
+                }
+                Ty::Bool
+            }
+            "find" => {
+                self.vocab_arity(name, n, 2);
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                if n >= 2 {
+                    let f = Ty::Fn(vec![e.clone()], Box::new(Ty::Bool), pure());
+                    let _ = unify(&mut self.subst, &a[1], &f);
+                }
+                Ty::Option(Box::new(e))
+            }
+            "fold" => {
+                self.vocab_arity(name, n, 3);
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                let acc = if n >= 2 { a[1].clone() } else { self.fresh() };
+                if n >= 3 {
+                    let f = Ty::Fn(vec![acc.clone(), e], Box::new(acc.clone()), pure());
+                    let _ = unify(&mut self.subst, &a[2], &f);
+                }
+                self.subst.apply(&acc)
+            }
+            "reduce" => {
+                self.vocab_arity(name, n, 2);
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                if n >= 2 {
+                    let f = Ty::Fn(vec![e.clone(), e.clone()], Box::new(e.clone()), pure());
+                    let _ = unify(&mut self.subst, &a[1], &f);
+                }
+                Ty::Option(Box::new(e))
+            }
+            _ => return None,
+        };
+        Some(self.subst.apply(&res))
+    }
+
     /// Conservative match-exhaustiveness check over user-declared enums.
     ///
     /// Catches a common agent bug: a `match` on a sum type that forgets a
@@ -920,6 +1107,15 @@ impl TypeChecker {
                             }
                         }
                         return self.subst.apply(&ret);
+                    }
+                }
+
+                // §8 standard vocabulary: precise, fresh-per-call types so misuse
+                // is caught (the reliability win). User functions (handled above)
+                // shadow these; unhandled names fall through to generic inference.
+                if let ast::Expr::Ident { name } = func.as_ref() {
+                    if let Some(t) = self.infer_vocab_call(name, args) {
+                        return t;
                     }
                 }
 
@@ -1295,6 +1491,54 @@ mod tests {
         let tc = check_source("f bad() -> i32 { 1b }");
         // 1b is a bool literal, but return is i32.
         assert!(!tc.diagnostics.is_empty(), "expected type error");
+    }
+
+    // ── §8 standard-vocabulary precise typing ────────────────────────────
+    #[test]
+    fn vocab_scalar_returns_are_precise() {
+        // len → usize, sum → element type — both type-check cleanly.
+        let tc = check_source("f a() -> usize { len([1, 2, 3]) }\nf b() -> i32 { sum([1, 2, 3]) }");
+        assert!(tc.diagnostics.is_empty(), "errors: {:?}", tc.diagnostics);
+    }
+
+    #[test]
+    fn vocab_rejects_non_collection() {
+        // The reliability win: a non-collection argument is caught (concrete and
+        // integer-literal forms).
+        assert!(!check_source("f t() { sum(\"hi\") }").diagnostics.is_empty());
+        assert!(!check_source("f t() { sum(5) }").diagnostics.is_empty());
+        assert!(!check_source("f t() { len(42) }").diagnostics.is_empty());
+    }
+
+    #[test]
+    fn vocab_totality_first_returns_option() {
+        // `first` returns `?A`, so using it as a bare value is an error — the
+        // agent is forced to handle the empty case (totality).
+        let tc = check_source("f t() -> i32 { first([1, 2, 3]) }");
+        assert!(!tc.diagnostics.is_empty(), "first must return an Option");
+    }
+
+    #[test]
+    fn vocab_higher_order_compose() {
+        // map + fold with named functions, the result threaded into an i32.
+        let tc = check_source(
+            "f sq(n) { n * n }\nf add(acc, x) { acc + x }\nf t() -> i32 { fold(map([1, 2, 3], sq), 0, add) }",
+        );
+        assert!(tc.diagnostics.is_empty(), "errors: {:?}", tc.diagnostics);
+    }
+
+    #[test]
+    fn vocab_arity_is_checked() {
+        assert!(!check_source("f t() { sum() }").diagnostics.is_empty());
+        assert!(!check_source("f t() { map([1, 2, 3]) }").diagnostics.is_empty());
+    }
+
+    #[test]
+    fn user_function_shadows_vocab() {
+        // A user-defined `sum` takes precedence over the builtin — `sum(5)` is
+        // then a valid call to the user function, not a vocabulary misuse.
+        let tc = check_source("f sum(x: i32) -> i32 { x }\nf t() -> i32 { sum(5) }");
+        assert!(tc.diagnostics.is_empty(), "user fn should shadow: {:?}", tc.diagnostics);
     }
 
     #[test]
