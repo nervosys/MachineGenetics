@@ -33,6 +33,10 @@ pub struct ClosureData {
     params: Vec<String>,
     body: Expr,
     env: HashMap<String, Value>,
+    /// Set for named nested functions (`f helper(){…}` inside a block). On each
+    /// call the name is re-bound to the closure in its own scope, so it can
+    /// recurse. Anonymous `fn(x) => …` closures leave this `None`.
+    name: Option<String>,
 }
 
 impl std::fmt::Display for Value {
@@ -218,8 +222,26 @@ impl Interp {
                     deferred.push(expr);
                     Ok(())
                 }
-                // Nested item declarations aren't hoisted into the runtime.
-                Stmt::Item { .. } => Ok(()),
+                // Nested function declaration: bind it as a named closure that
+                // captures the current scope. Self-recursion works (apply re-binds
+                // the name); it can't see bindings made later in the block (its
+                // captured env is a snapshot), so mutual recursion isn't supported.
+                Stmt::Item { item } => {
+                    if let ItemKind::Function(fd) = &item.kind {
+                        let body = match &fd.body_expr {
+                            Some(be) => (**be).clone(),
+                            None => Expr::Block { block: fd.body.clone() },
+                        };
+                        let closure = Value::Closure(Rc::new(ClosureData {
+                            params: fd.params.iter().map(|p| p.name.clone()).collect(),
+                            body,
+                            env: env.flatten(),
+                            name: Some(fd.name.clone()),
+                        }));
+                        env.define(fd.name.clone(), closure);
+                    }
+                    Ok(())
+                }
             };
             if let Err(e) = step {
                 early = Some(e);
@@ -360,6 +382,7 @@ impl Interp {
                 params: params.iter().map(|p| p.name.clone()).collect(),
                 body: (**body).clone(),
                 env: env.flatten(),
+                name: None,
             }))),
             Expr::Assign { target, value } => {
                 let v = self.eval(value, env)?;
@@ -659,6 +682,12 @@ impl Interp {
             av.push(self.eval(a, env)?);
         }
         if let Expr::Ident { name } = func {
+            // A locally-bound function value (nested `f`, or a closure in a
+            // variable) shadows globals — check the environment first, but only
+            // intercept when it actually holds something callable.
+            if let Some(v @ (Value::Closure(_) | Value::Func(_))) = env.get(name) {
+                return self.apply(&v, av);
+            }
             // User function?
             if let Some(fd) = self.funcs.get(name) {
                 return self.call_user(fd, av);
@@ -685,11 +714,20 @@ impl Interp {
                 for (k, v) in &c.env {
                     env.define(k.clone(), v.clone());
                 }
+                // A named nested function sees itself, so it can recurse.
+                if let Some(n) = &c.name {
+                    env.define(n.clone(), Value::Closure(Rc::clone(c)));
+                }
                 env.push();
                 for (p, v) in c.params.iter().zip(args.into_iter()) {
                     env.define(p.clone(), v);
                 }
-                self.eval(&c.body, &mut env)
+                // Catch `return` so it stays within the callee (named nested
+                // functions use it); harmless for `=> expr` closures.
+                match self.eval(&c.body, &mut env) {
+                    Err(Control::Return(v)) => Ok(v),
+                    other => other,
+                }
             }
             _ => err("value is not callable"),
         }
@@ -1313,6 +1351,9 @@ mod tests {
             ("f sd(a, b){ guard b != 0 else { return 99 }\n a / b }\nf s(){ sd(8, 0) + sd(20, 5) }", "s", &[], Value::Int(103)),
             // `defer` — runs at block exit, LIFO: x+5 then x*2 => (0+5)*2 = 10.
             ("f s(){ var x = 0\n { defer x = x * 2\n defer x = x + 5 }\n x }", "s", &[], Value::Int(10)),
+            // Nested function declarations: a local helper, and self-recursion.
+            ("f s(){ f dbl(n){ n * 2 }\n dbl(21) }", "s", &[], Value::Int(42)),
+            ("f s(){ f fac(n){ if n < 2 { 1 } else { n * fac(n - 1) } }\n fac(5) }", "s", &[], Value::Int(120)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
