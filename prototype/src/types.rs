@@ -537,9 +537,20 @@ impl TypeChecker {
             self.env.insert(gp.name.clone(), tv);
         }
 
-        // Bind parameters.
-        for param in &fd.params {
-            let ty = self.lower_type(&param.ty);
+        // Bind parameters. An un-annotated param (`Type::Inferred`) reuses the
+        // fresh var registered in the signature, so the body's use *and* callers
+        // constrain the same type — sound inference. Annotated params (including
+        // generics, which need the generic env bound above) keep the exact
+        // existing path, so no existing program changes.
+        for (i, param) in fd.params.iter().enumerate() {
+            let ty = if matches!(param.ty, ast::Type::Inferred) {
+                self.fn_sigs
+                    .get(&fd.name)
+                    .and_then(|s| s.0.get(i).cloned())
+                    .unwrap_or_else(|| self.fresh())
+            } else {
+                self.lower_type(&param.ty)
+            };
             self.env.insert(param.name.clone(), ty);
         }
 

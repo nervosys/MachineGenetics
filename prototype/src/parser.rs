@@ -2018,8 +2018,15 @@ impl<'a> Parser<'a> {
                 }
                 _ => {
                     let name = self.expect_ident()?;
-                    self.expect(TokenKind::Colon)?;
-                    (name, self.parse_type()?)
+                    // The param type is optional — omit it to infer it from use
+                    // (`f add(a, b) { a + b }`). Annotated params are unchanged.
+                    let ty = if self.peek() == TokenKind::Colon {
+                        self.advance();
+                        self.parse_type()?
+                    } else {
+                        Type::Inferred
+                    };
+                    (name, ty)
                 }
             };
             let default = if self.peek() == TokenKind::Assign {
