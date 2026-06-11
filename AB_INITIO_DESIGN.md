@@ -168,3 +168,44 @@ This is not a rewrite from zero — it is current MechGen minus ceremony:
 Each step is independently measurable on the token-bench + the real-BPE
 `design_tokens` harness — so the redesign is driven by numbers, the same way this
 analysis was.
+
+---
+
+## 7. Migration status (performed 2026-06-10)
+
+Empirical probes of the *current* surface (`MechGen-parse --check`) mapped exactly
+what is and isn't there, and two steps were landed safely:
+
+- **Step 4 — tokenizer-audited keywords: DONE (measured).**
+  `agentic-eval --example keyword_audit --features real-tokens` audits all 94
+  reserved words against cl100k + o200k: **87/94 are already a single BPE token**
+  (the agent-mode `f`/`m`/`v`/`u`… forms and common words `if`/`for`/`match`…).
+  The 7 offenders are rare compound words (`swarm_fan_out` = 4 tokens,
+  `swarm_map_reduce` = 3, `grammar_extension` = 2, …). They are the documented
+  work-list; aliasing them is deferred as low-value (rarely emitted, cryptic
+  aliases would cost more clarity than the tokens they save). The keyword surface
+  is essentially already token-optimal.
+
+- **Step 2a — return-type inference: DONE (landed in `types.rs`).**
+  An un-annotated function now *infers* its return type from the body instead of
+  defaulting to `()`. Implemented soundly via the two-pass checker: the signature
+  registers a fresh type var (pass 1) that the body resolves (pass 2), so it is
+  **recursion-correct** (`fn fact(n) { if n<=1 {1} else { n*fact(n-1) } }` checks)
+  and callers see the inferred type. It only turns previous *errors* into
+  successes — **987 prototype tests stay green, zero regressions**. Every
+  value-returning function can now drop `-> T`.
+
+**Still staged (large, high-value, not rushed):**
+- *Step 1 — offside-rule layout* (replace mandatory `{ }` / `;`): a lexer change
+  (emit INDENT/DEDENT) + parser rework. Probes confirm `;` is still required
+  between same-line statements. The biggest single token lever, and the biggest
+  change — done properly, not blind.
+- *Step 2b — parameter-type inference & keyword-less bindings*: probes show
+  `f add(a, b) {…}` and `x = 5` (no `val`) are not yet accepted. Param inference
+  is a unification extension; keyword-less bindings need binding/assignment
+  disambiguation at resolve time.
+- *Step 3 — fully ambient capabilities*: builtins are already ambient (zero-import
+  works); the remaining piece is making capability surfaces ambient-by-default.
+
+Migration is driven by the probes + the real-BPE harness, landed safely in
+test-passing increments — never a blind rewrite.
