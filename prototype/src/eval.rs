@@ -305,6 +305,25 @@ impl Interp {
                         l || truthy(&self.eval(right, env)?)
                     }));
                 }
+                // Compound assignment: `x += e` is `x = x <op> e`, writing back
+                // to the lvalue. The parser emits these as a Binary node (only
+                // plain `=` becomes Expr::Assign), so unfold them here. Matched
+                // explicitly — `==`/`<=`/`>=`/`!=` also end in `=` but aren't this.
+                let compound = match op.as_str() {
+                    "+=" => Some("+"),
+                    "-=" => Some("-"),
+                    "*=" => Some("*"),
+                    "/=" => Some("/"),
+                    "%=" => Some("%"),
+                    _ => None,
+                };
+                if let Some(base) = compound {
+                    let cur = self.eval(left, env)?;
+                    let r = self.eval(right, env)?;
+                    let new = binop(base, cur, r)?;
+                    self.assign_target(left, new, env)?;
+                    return Ok(Value::Unit);
+                }
                 let l = self.eval(left, env)?;
                 let r = self.eval(right, env)?;
                 binop(op, l, r)
@@ -1364,6 +1383,9 @@ mod tests {
             // Bitwise / shift operators on integers.
             ("f s(){ (5 | 2) + (6 & 3) * 10 }", "s", &[], Value::Int(27)),
             ("f s(){ (5 ^ 1) + (1 << 4) + (255 >> 4) }", "s", &[], Value::Int(35)),
+            // Compound assignment, on a variable and on an indexed element.
+            ("f s(){ var x = 5\n x += 3\n x *= 4\n x -= 2\n x }", "s", &[], Value::Int(30)),
+            ("f s(){ var xs = [10, 20, 30]\n xs[1] += 5\n xs[2] /= 3\n sum(xs) }", "s", &[], Value::Int(45)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
