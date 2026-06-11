@@ -67,28 +67,31 @@ A realistic 50-layer net (1620 B / 509 tokens):
 An 858 B (32-layer) artifact: decode_container + decode_symbols + decompile →
 **12.6 µs/op**. Loading is pure bounds-checked data — no code executes.
 
-### kb Datalog evaluation — correct, but a NAIVE evaluator (honest limitation)
-2-hop join over an N-edge chain:
-| N edges | Derived | Eval time |
-|--:|--:|--:|
-| 100 | 99 | 3.0 ms |
-| 500 | 499 | 62 ms |
-| 1000 | 999 | 250 ms |
-| 2000 | 1999 | 1344 ms |
+### kb Datalog evaluation — now **indexed semi-naive** (was naive; optimized)
+The evaluator was rewritten with term/predicate **interning** (u32, no string
+compares in the hot loop), a **`(pred, arg0)` join index**, and **semi-naive**
+evaluation (join only against the previous round's delta). Same results, ~linear/
+quadratic instead of quadratic/cubic. Measured before → after:
 
-Recursive transitive closure (fixpoint):
-| Chain | Closure facts | Time |
-|--:|--:|--:|
-| 20 | 210 | 16 ms |
-| 40 | 820 | 173 ms |
-| 80 | 3240 | 3298 ms |
+2-hop join over an N-edge chain (now ≈ linear):
+| N edges | Derived | Naive | **Indexed semi-naive** | Speedup |
+|--:|--:|--:|--:|--:|
+| 100 | 99 | 3.0 ms | **0.22 ms** | 13× |
+| 500 | 499 | 62 ms | **0.66 ms** | 95× |
+| 1000 | 999 | 250 ms | **1.36 ms** | 184× |
+| 2000 | 1999 | 1344 ms | **3.10 ms** | **433×** |
 
-**Finding:** the join is **~O(N²)** (nested loop, no hash-index on join vars) and
-the fixpoint **~O(N³)** (naive, re-derives each round — no semi-naive evaluation).
-This is **fine for the tool-mediated use case** (specs are small — tens of
-facts/rules), but it would **not** scale to large fact bases. The fix is standard
-(hash-join index + semi-naive evaluation) and is the clear next perf item if kb
-size grows. Correctness is unaffected (terminates at the least fixpoint).
+Recursive transitive closure / fixpoint (now ≈ output-size, was cubic):
+| Chain | Closure facts | Naive | **Indexed semi-naive** | Speedup |
+|--:|--:|--:|--:|--:|
+| 20 | 210 | 16 ms | **0.31 ms** | 52× |
+| 40 | 820 | 173 ms | **0.60 ms** | 288× |
+| 80 | 3240 | 3298 ms | **2.31 ms** | **~1430×** |
+
+**Complexity:** join went from ~O(N²) → ~O(N) (the `arg0` index makes a chain
+join an O(matches) lookup); the fixpoint went from ~O(N³) → ~O(output) (semi-naive
+derives each fact ~once). Correctness unchanged (984 tests green, terminates at
+the least fixpoint). This was the one perf gap the prior report flagged — now fixed.
 
 ### CLI per-invocation latency (what an agent experiences)
 25-run mean, release binary:
@@ -119,9 +122,10 @@ run-to-run identical. → content-hashable cache keys, meaningful diffs.
   on the corpus with recovery).
 - **ABL build/decode are µs-scale, linear, compact, deterministic, no-exec** —
   the agent-facing hot path is cheap.
-- **One real perf gap:** the kb Datalog evaluator is naive (O(N²) join / O(N³)
-  fixpoint) — correct and fine for small specs, but needs semi-naive + indexing
-  before large knowledge bases. Reported, not hidden.
+- **The kb Datalog evaluator was the one perf gap — now FIXED:** rewritten as
+  indexed semi-naive (interning + `(pred,arg0)` index + delta evaluation), giving
+  up to **~1430×** on transitive closure and ~O(N)/~O(N²) instead of ~O(N²)/~O(N³),
+  with identical results (984 tests green).
 - **Per-invocation latency is startup-bound (~30 ms)**, not compute-bound — use
   the RAP server for high-frequency agent loops.
 - **Tokens are at the irreducible text floor**; the leverage is the binary IR +
