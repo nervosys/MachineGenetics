@@ -37,6 +37,7 @@ mod nl_engine;
 mod ontology;
 mod parser;
 mod perf_annot;
+mod perf_measure;
 mod rap;
 mod recover;
 mod resolve;
