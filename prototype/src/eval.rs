@@ -689,6 +689,25 @@ impl Interp {
                 }
                 _ => false,
             },
+            Pattern::Slice { elements, rest, rest_name } => match val {
+                Value::List(vs) => {
+                    // Without `..`: exact arity. With `..`: at least `elements`.
+                    let fits = if *rest { vs.len() >= elements.len() } else { vs.len() == elements.len() };
+                    if !fits {
+                        return false;
+                    }
+                    if !elements.iter().zip(vs).all(|(p, v)| self.match_pat(p, v, env)) {
+                        return false;
+                    }
+                    // Bind the named tail (`..tail`) to the remaining elements.
+                    if let Some(name) = rest_name {
+                        let tail = vs[elements.len()..].to_vec();
+                        env.define(name.clone(), Value::List(tail));
+                    }
+                    true
+                }
+                _ => false,
+            },
             Pattern::Or { patterns } => patterns.iter().any(|p| self.match_pat(p, val, env)),
             Pattern::Ref { pattern } => self.match_pat(pattern, val, env),
             _ => false,
@@ -1211,6 +1230,9 @@ mod tests {
             // value-ending line would merge into a `0(a, b)` call (parser layout).
             ("f s(){ (a, b) = (3, 4)\n a * 10 + b }", "s", &[], Value::Int(34)),
             ("f s(){ var t = 0\n for (i, x) in zip([1,2,3], [10,20,30]) { t = t + i * x }\n t }", "s", &[], Value::Int(140)),
+            // Slice patterns: exact-arity destructure, and head/tail recursion.
+            ("f s(){ match [4, 5] { [a, b] => a * b, _ => 0 } }", "s", &[], Value::Int(20)),
+            ("f rsum(xs){ match xs { [] => 0, [h, ..t] => h + rsum(t) } }\nf s(){ rsum([1,2,3,4,5]) }", "s", &[], Value::Int(15)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
