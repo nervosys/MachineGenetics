@@ -192,10 +192,9 @@ impl Interp {
         for s in &b.stmts {
             match s {
                 Stmt::Let { pattern, value, .. } => {
+                    // Full pattern binding: `val x = …`, `val (a, b) = …`, etc.
                     let v = self.eval(value, env)?;
-                    if let Pattern::Ident { name } = pattern {
-                        env.define(name.clone(), v);
-                    }
+                    self.match_pat(pattern, &v, env);
                 }
                 Stmt::Expr { expr } => {
                     out = self.eval(expr, env)?;
@@ -327,24 +326,16 @@ impl Interp {
             }))),
             Expr::Assign { target, value } => {
                 let v = self.eval(value, env)?;
-                if let Expr::Ident { name } = target.as_ref() {
-                    // Plain `x = v` may also introduce a binding (mirrors `assign`).
-                    env.assign(name, v);
-                    Ok(Value::Unit)
-                } else {
-                    // `a.b.c = v`, `xs[i][j] = v`, `grid[r][c].field = v`, … — walk
-                    // an arbitrary path of fields/indices to the slot and write it.
-                    self.assign_place(target, v, env)?;
-                    Ok(Value::Unit)
-                }
+                self.assign_target(target, v, env)?;
+                Ok(Value::Unit)
             }
             Expr::For { pattern, iter, body } => {
                 let seq = self.eval(iter, env)?;
                 let items = as_list(&seq)?;
-                let var = if let Pattern::Ident { name } = pattern { name.clone() } else { "_".into() };
                 for it in items {
                     env.push();
-                    env.define(var.clone(), it);
+                    // Destructure the loop variable: `for x in …`, `for (i, v) in …`.
+                    self.match_pat(pattern, &it, env);
                     let r = self.eval_block(body, env);
                     env.pop();
                     match r {
@@ -565,6 +556,32 @@ impl Interp {
         match expr {
             Some(e) => self.eval(&e, env),
             None => err(format!("could not parse format expression `{src}`")),
+        }
+    }
+
+    /// Assign `v` to a target: a plain variable (introducing it if new), a
+    /// tuple/list destructuring pattern (`(a, b) = pair`, possibly nested), or
+    /// an arbitrary lvalue path (delegated to `assign_place`).
+    fn assign_target(&self, target: &Expr, v: Value, env: &mut Env) -> Result<(), Control> {
+        match target {
+            Expr::Ident { name } => {
+                env.assign(name, v);
+                Ok(())
+            }
+            Expr::TupleLit { elements } | Expr::ArrayLit { elements } => {
+                let parts = match v {
+                    Value::Tuple(xs) | Value::List(xs) => xs,
+                    _ => return err("destructuring assignment expects a tuple or list"),
+                };
+                if parts.len() != elements.len() {
+                    return err("destructuring assignment arity mismatch");
+                }
+                for (t, pv) in elements.iter().zip(parts) {
+                    self.assign_target(t, pv, env)?;
+                }
+                Ok(())
+            }
+            _ => self.assign_place(target, v, env),
         }
     }
 
@@ -1189,6 +1206,11 @@ mod tests {
             // Nested lvalue paths: grid[r][c] = v, and struct field through index.
             ("f s(){ var g = [[1, 2], [3, 4]]\n g[1][0] = 30\n g[0][1] = 20\n g[0][1] + g[1][0] }", "s", &[], Value::Int(50)),
             ("S P { x: i32, y: i32 }\nf s(){ var ps = [@P { x: 1, y: 1 }]\n ps[0].x = 9\n ps[0].x + ps[0].y }", "s", &[], Value::Int(10)),
+            // Tuple destructuring: assignment (`(a, b) = pair`) and a `for` loop
+            // over zip(...). NB `(a,b)=…` must lead its block — a preceding
+            // value-ending line would merge into a `0(a, b)` call (parser layout).
+            ("f s(){ (a, b) = (3, 4)\n a * 10 + b }", "s", &[], Value::Int(34)),
+            ("f s(){ var t = 0\n for (i, x) in zip([1,2,3], [10,20,30]) { t = t + i * x }\n t }", "s", &[], Value::Int(140)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
