@@ -192,18 +192,28 @@ what is and isn't there, and two steps were landed safely:
   registers a fresh type var (pass 1) that the body resolves (pass 2), so it is
   **recursion-correct** (`fn fact(n) { if n<=1 {1} else { n*fact(n-1) } }` checks)
   and callers see the inferred type. It only turns previous *errors* into
-  successes — **987 prototype tests stay green, zero regressions**. Every
-  value-returning function can now drop `-> T`.
+  successes. Every value-returning function can now drop `-> T`.
+
+- **Step 2b — parameter-type inference: DONE (landed in `parser.rs` + `types.rs`).**
+  The param type annotation is now optional (`f add(a, b) { a + b }`); an omitted
+  type becomes `Type::Inferred` and binds the *same* signature fresh var the body
+  and callers constrain — sound, and **generics + annotated params keep the exact
+  existing path**, so it is provably non-regressing. With 2a this makes the full
+  inferred signature `f sq(n) { n * n }` valid.
+
+  **Measured (real cl100k/o200k, `inference_tokens`):** the now-valid inferred
+  forms cost **~32% fewer tokens** than the annotated equivalents (square −40%,
+  add −45%, factorial −19%). Real, not hypothetical — the compiler accepts them.
+  **1149 tests green across 2a+2b, zero regressions.**
 
 **Still staged (large, high-value, not rushed):**
 - *Step 1 — offside-rule layout* (replace mandatory `{ }` / `;`): a lexer change
   (emit INDENT/DEDENT) + parser rework. Probes confirm `;` is still required
   between same-line statements. The biggest single token lever, and the biggest
   change — done properly, not blind.
-- *Step 2b — parameter-type inference & keyword-less bindings*: probes show
-  `f add(a, b) {…}` and `x = 5` (no `val`) are not yet accepted. Param inference
-  is a unification extension; keyword-less bindings need binding/assignment
-  disambiguation at resolve time.
+- *Step 2c — keyword-less bindings*: probes show `x = 5` (no `val`) is not yet a
+  binding (resolve rejects it). Needs binding/assignment disambiguation at resolve
+  time (and trades a useful typo-catch error, so it wants care).
 - *Step 3 — fully ambient capabilities*: builtins are already ambient (zero-import
   works); the remaining piece is making capability surfaces ambient-by-default.
 
