@@ -1225,14 +1225,18 @@ mod tests {
             // Nested lvalue paths: grid[r][c] = v, and struct field through index.
             ("f s(){ var g = [[1, 2], [3, 4]]\n g[1][0] = 30\n g[0][1] = 20\n g[0][1] + g[1][0] }", "s", &[], Value::Int(50)),
             ("S P { x: i32, y: i32 }\nf s(){ var ps = [@P { x: 1, y: 1 }]\n ps[0].x = 9\n ps[0].x + ps[0].y }", "s", &[], Value::Int(10)),
-            // Tuple destructuring: assignment (`(a, b) = pair`) and a `for` loop
-            // over zip(...). NB `(a,b)=…` must lead its block — a preceding
-            // value-ending line would merge into a `0(a, b)` call (parser layout).
+            // Tuple destructuring: bare assignment (`(a, b) = pair`) and a `for`
+            // loop over zip(...). NB a leading `(a,b)=…` must head its block — a
+            // preceding value-ending line merges into a `0(a, b)` call (layout);
+            // the `val (a, b) = …` let form below has no such constraint.
             ("f s(){ (a, b) = (3, 4)\n a * 10 + b }", "s", &[], Value::Int(34)),
             ("f s(){ var t = 0\n for (i, x) in zip([1,2,3], [10,20,30]) { t = t + i * x }\n t }", "s", &[], Value::Int(140)),
             // Slice patterns: exact-arity destructure, and head/tail recursion.
             ("f s(){ match [4, 5] { [a, b] => a * b, _ => 0 } }", "s", &[], Value::Int(20)),
             ("f rsum(xs){ match xs { [] => 0, [h, ..t] => h + rsum(t) } }\nf s(){ rsum([1,2,3,4,5]) }", "s", &[], Value::Int(15)),
+            // Destructuring `let`: tuple and slice (head/tail) binders.
+            ("f s(){ val (a, b) = (3, 4)\n a * 10 + b }", "s", &[], Value::Int(34)),
+            ("f s(){ val [h, ..t] = [10, 1, 2, 3]\n h + sum(t) }", "s", &[], Value::Int(16)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {

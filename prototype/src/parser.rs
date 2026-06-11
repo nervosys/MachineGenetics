@@ -2645,6 +2645,11 @@ impl<'a> Parser<'a> {
                 t.kind,
                 TokenKind::Ident
                     | TokenKind::Underscore
+                    // Destructuring binders: `val (a, b) = …`, `val [h, ..t] = …`.
+                    // `val`/`var` are keywords, so there is no competing
+                    // `val(...)` / `val[...]` expression to be ambiguous with.
+                    | TokenKind::LParen
+                    | TokenKind::LBrack
                     // Keywords that double as identifiers in
                     // binding-name position. The lexer tokenises
                     // common variable names (`val`, `guard`, `data`,
