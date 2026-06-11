@@ -188,25 +188,56 @@ impl Interp {
 
     fn eval_block(&self, b: &Block, env: &mut Env) -> R {
         env.push();
+        // `defer`red expressions run on the way out (LIFO), no matter how the
+        // block exits — normal fall-through, early return/break, or an error.
+        let mut deferred: Vec<&Expr> = Vec::new();
         let mut out = Value::Unit;
+        let mut early: Option<Control> = None;
         for s in &b.stmts {
-            match s {
+            let step: Result<(), Control> = match s {
                 Stmt::Let { pattern, value, .. } => {
                     // Full pattern binding: `val x = …`, `val (a, b) = …`, etc.
-                    let v = self.eval(value, env)?;
-                    self.match_pat(pattern, &v, env);
+                    match self.eval(value, env) {
+                        Ok(v) => {
+                            self.match_pat(pattern, &v, env);
+                            Ok(())
+                        }
+                        Err(e) => Err(e),
+                    }
                 }
-                Stmt::Expr { expr } => {
-                    out = self.eval(expr, env)?;
+                Stmt::Expr { expr } => self.eval(expr, env).map(|v| out = v),
+                // `guard cond else { … }` — when the condition fails, run the
+                // else block (which normally diverges via return/break), and let
+                // its control flow propagate. A non-diverging else falls through.
+                Stmt::Guard { cond, else_block } => match self.eval(cond, env) {
+                    Ok(c) if truthy(&c) => Ok(()),
+                    Ok(_) => self.eval_block(else_block, env).map(|_| ()),
+                    Err(e) => Err(e),
+                },
+                Stmt::Defer { expr } => {
+                    deferred.push(expr);
+                    Ok(())
                 }
-                _ => {}
+                // Nested item declarations aren't hoisted into the runtime.
+                Stmt::Item { .. } => Ok(()),
+            };
+            if let Err(e) = step {
+                early = Some(e);
+                break;
             }
         }
-        if let Some(te) = &b.tail_expr {
-            out = self.eval(te, env)?;
+        let result = if let Some(e) = early {
+            Err(e)
+        } else if let Some(te) = &b.tail_expr {
+            self.eval(te, env)
+        } else {
+            Ok(out)
+        };
+        for d in deferred.iter().rev() {
+            let _ = self.eval(d, env);
         }
         env.pop();
-        Ok(out)
+        result
     }
 
     fn eval(&self, e: &Expr, env: &mut Env) -> R {
@@ -1278,6 +1309,10 @@ mod tests {
             // value, and awaiting the result of an `af` (async fn) call.
             ("f s(){ (20 + 1).await * 2 }", "s", &[], Value::Int(42)),
             ("af dbl(n){ n * 2 }\nf s(){ dbl(21).await }", "s", &[], Value::Int(42)),
+            // `guard cond else { … }` — early exit when the precondition fails.
+            ("f sd(a, b){ guard b != 0 else { return 99 }\n a / b }\nf s(){ sd(8, 0) + sd(20, 5) }", "s", &[], Value::Int(103)),
+            // `defer` — runs at block exit, LIFO: x+5 then x*2 => (0+5)*2 = 10.
+            ("f s(){ var x = 0\n { defer x = x * 2\n defer x = x + 5 }\n x }", "s", &[], Value::Int(10)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
