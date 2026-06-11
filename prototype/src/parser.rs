@@ -2775,7 +2775,12 @@ impl<'a> Parser<'a> {
                             | Expr::While { .. }
                             | Expr::Block { .. }
                     );
-                    if is_control_flow {
+                    // A `?` that begins a new line is the next statement's `if`
+                    // (the lexer emits `if` as Question too), not a postfix try
+                    // on `lhs`. A real try (`first(xs)?`) hugs its operand with
+                    // no intervening newline. Without this, `7\n if c {} else {}`
+                    // parses as `(7?) ...` and the `else` later dangles.
+                    if is_control_flow || self.newline_before_current() {
                         break;
                     }
                     self.advance();

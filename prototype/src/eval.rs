@@ -1264,6 +1264,10 @@ mod tests {
             // discrimination across two struct types in one match.
             ("S P { x: i32, y: i32 }\nf s(){ match @P { x: 3, y: 4 } { @P { x, y } => x * 10 + y } }", "s", &[], Value::Int(34)),
             ("S Circle { r: i32 }\nS Square { s: i32 }\nf ar(sh){ match sh { @Circle { r } => r * r, @Square { s } => s * s } }\nf s(){ ar(@Circle { r: 6 }) + ar(@Square { s: 2 }) }", "s", &[], Value::Int(40)),
+            // A newline-leading `if … else` as a non-final statement: previously
+            // mis-parsed as `(prev?) …` because `if` and try share the `?` token.
+            ("f s(){ var t = 0\n if 9 > 3 { t = 1 } else { t = 2 }\n t }", "s", &[], Value::Int(1)),
+            ("f s(){ val z = 5\n if z < 3 { 100 } else { z * 2 } }", "s", &[], Value::Int(10)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
