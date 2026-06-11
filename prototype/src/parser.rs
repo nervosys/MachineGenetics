@@ -2662,7 +2662,7 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::Assign)?;
         let value = self.parse_expr()?;
-        self.expect(TokenKind::Semi)?;
+        self.expect_stmt_end()?;
 
         Ok(Stmt::Let {
             mutable,
@@ -2670,6 +2670,40 @@ impl<'a> Parser<'a> {
             ty,
             value,
         })
+    }
+
+    /// True when the current token starts a new source line relative to the
+    /// previously consumed token (i.e. a newline separates them).
+    fn newline_before_current(&self) -> bool {
+        if self.pos == 0 {
+            return false;
+        }
+        match (self.tokens.get(self.pos - 1), self.tokens.get(self.pos)) {
+            (Some(prev), Some(cur)) => cur.span.line > prev.span.line,
+            _ => false,
+        }
+    }
+
+    /// Consume a statement terminator (offside-rule layout). A `;` is consumed
+    /// when present, but is **optional** when the statement is already ended by a
+    /// newline, a closing `}`, or EOF — so `val x = 5` on its own line needs no
+    /// `;`. A same-line statement with no separator is still an error.
+    fn expect_stmt_end(&mut self) -> Result<(), ParseError> {
+        if self.peek() == TokenKind::Semi {
+            self.advance();
+            Ok(())
+        } else if matches!(self.peek(), TokenKind::RBrace | TokenKind::Eof)
+            || self.newline_before_current()
+        {
+            Ok(())
+        } else {
+            let tok = self.current();
+            Err(ParseError {
+                line: tok.span.line,
+                col: tok.span.col,
+                message: "expected `;` or a newline to end the statement".to_string(),
+            })
+        }
     }
 
     // ── Expression (Pratt Parsing) ──────────────────────────
