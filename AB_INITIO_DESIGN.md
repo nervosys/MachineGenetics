@@ -293,3 +293,108 @@ single token. The migration is complete at its positive-sum frontier.
 
 Migration is driven by the probes + the real-BPE harness, landed safely in
 test-passing increments — never a blind rewrite.
+
+---
+
+## 8. Second pass — the vocabulary frontier (2026-06-10)
+
+The first pass was a *design*; it has now been *implemented and measured*, and a
+second pass should be driven by what that taught — not a re-derivation. Two
+results reframe the problem:
+
+1. **The surface is now AT the payload floor.** With inference + `;`-removal
+   landed, MechGen is **#1 of six** on the real-BPE `swe_token_benchmark`
+   (85 cl100k vs Python 89, Rust 113) — but only ~5% ahead of Python. There is
+   **no more text-surface headroom**: you are spending tokens on the payload
+   (names/ops/literals), which is the floor.
+2. **Whitespace is a cost, not a lever** (measured). Layout/indentation is
+   token-neutral-to-worse (braces 24 → layout 25); BPE charges for indentation.
+   Encoding tricks (binary, dense UTF-8 "rain") are token-neutral-to-worse too.
+   **No representation beats the payload.** §3a's "layout reduces the multiplier"
+   was wrong and is corrected.
+
+So the first pass exhausted the *surface*. The second pass asks: with the surface
+at the floor, **what is the next per-call token lever?** The answer is the one
+thing that reduces the payload *itself* — **abstraction**.
+
+### 8a. The lever: a standard vocabulary (measured 65%)
+
+The payload is irreducible only *at a fixed abstraction level*. A high-level
+primitive expresses an intent in far fewer payload tokens than hand-rolling it.
+Measured (`--example abstraction_tokens`, real cl100k), hand-rolled vs a primitive:
+
+| Intent | hand-rolled | via vocabulary | saved |
+|---|--:|--:|--:|
+| sum a list | 26 | `fold(xs, 0, +)` 13 | 50% |
+| word frequencies | 29 | `freq(ws)` 8 | 73% |
+| evens, doubled | 35 | `xs \| filter even \| map double` 12 | 66% |
+| max of a list | 31 | `reduce(xs, max)` 10 | 68% |
+| **total** | **121** | **43** | **65%** |
+
+**65% — more than double the surface levers' ~30%.** And uniquely, it is
+**positive-sum across all three axes** — the only lever that is:
+- **Token** ↓ — the intent is named, not spelled out.
+- **Reliability** ↑ — a *total, verified* primitive has no hand-rolled off-by-one,
+  empty-list, or accumulator bug. Less agent-authored code is less to get wrong;
+  this is the *first-pass-success* half of reliability, raised directly.
+- **Safety** = — the primitive is *capability-typed*: its effect rides its type to
+  the boundary (§7 step 3), so `read_file` carries FS automatically.
+
+### 8b. The design discipline for the vocabulary
+
+A standard library is not automatically a *token* lever — it is one only if
+designed for it:
+- **Single-BPE-token names.** `sum` not `summation`, `map` not `transform`, `freq`
+  not `frequencies`. Audited against cl100k/o200k exactly like keywords
+  (`keyword_audit` extended to the stdlib). A two-token primitive name leaks the
+  saving back.
+- **Total / well-defined.** No panics — `max` of an empty list returns `?T`, etc.
+  Totality is what lets the agent *not* write the guard, and what makes the axis
+  win real instead of moving the bug into the library.
+- **Capability-typed.** Effects in the primitive's signature, inferred-and-bounded
+  at the boundary — safety stays free.
+- **Frequency-matched.** Chosen by the empirical distribution of agentic-SWE
+  intents (map/filter/fold/reduce/freq/sort/zip/group/scan…), not by completeness.
+  The long tail of rare operations is *not* worth a reserved name.
+- **Composable in one operator.** A pipeline `xs | filter even | map double` chains
+  primitives at ~1 token per stage — the combinator glue must itself be near-free.
+
+### 8c. The coupled requirement: discoverability is amortized, not paid
+
+The payload moves from "spell out the loop" to "name the operation" — but only if
+the agent *knows the operation exists*. That knowledge must cost ~0 per call, so
+the vocabulary lives in the **cached, drift-proof self-ontology** (the schema-cache
+lever already built): fetched once, prompt-cached, never re-emitted. The token
+math is then: novel logic pays the payload floor; vocabulary-covered intents pay
+~1 token (the name) + a one-time cached cost to know the name. This is why
+abstraction beats every encoding trick — it doesn't re-encode the payload, it
+*removes* it for the common case.
+
+### 8d. The universal law (generalized from the effects work)
+
+The session proved one pattern soundly for effects (§7 step 3) — **infer inside,
+contract at the boundary**: private functions infer; public boundaries declare;
+the compiler enforces `inferred ⊆ declared`; transitivity makes it sound. The
+second pass elevates this to the **design law for all verification** — types,
+effects, contracts, and the vocabulary's capability typing alike. It is the
+concrete mechanism behind §2's thesis ("verification is the compiler's cost, not
+the token budget"): internal code pays *zero* annotation tokens; only the module
+surface declares; nothing escapes. Reliability and safety become free *inside*,
+enforced *at the edge*.
+
+### 8e. Honest end state
+
+- The **text surface is at the payload floor** — confirmed, not asserted. Further
+  syntax work is readability, not tokens.
+- The **vocabulary lever cuts the payload ~65% on covered intents** — the dominant
+  remaining lever, and the only positive-sum one. Novel logic stays at the floor.
+- Below that lies only **paradigm**: tool-mediated construction (emit intent, the
+  toolchain builds the artifact) — and even there the intent is written *in the
+  vocabulary*, so the vocabulary is upstream of everything.
+
+**Actionable second-pass design for MechGen:** freeze the surface (it is at the
+floor; treat whitespace as cost); curate a **frequency-matched, single-token,
+total, capability-typed standard vocabulary** with a near-free pipeline operator;
+audit its names as single BPE tokens; publish it in the cached ontology; and apply
+**infer-inside / contract-at-boundary** uniformly. That is where the next real
+token efficiency lives — and it buys reliability rather than spending it.
