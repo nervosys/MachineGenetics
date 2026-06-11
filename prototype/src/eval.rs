@@ -19,6 +19,8 @@ pub enum Value {
     Tuple(Vec<Value>),
     /// Optional (the result of `first`/`last`/`find`/`reduce`).
     Opt(Option<Box<Value>>),
+    /// A struct value: type name + named fields.
+    Struct(String, Vec<(String, Value)>),
     /// A named function (user-defined or a builtin) usable as a value.
     Func(String),
     /// A closure: parameter names, body, and captured environment.
@@ -54,6 +56,10 @@ impl std::fmt::Display for Value {
             }
             Value::Opt(Some(v)) => write!(f, "Some({v})"),
             Value::Opt(None) => write!(f, "None"),
+            Value::Struct(name, fields) => {
+                let parts: Vec<String> = fields.iter().map(|(k, v)| format!("{k}: {v}")).collect();
+                write!(f, "{name} {{ {} }}", parts.join(", "))
+            }
             Value::Func(n) => write!(f, "<fn {n}>"),
             Value::Closure(_) => write!(f, "<closure>"),
             Value::Unit => write!(f, "()"),
@@ -73,6 +79,7 @@ impl PartialEq for Value {
             (Map(a), Map(b)) => a == b,
             (Tuple(a), Tuple(b)) => a == b,
             (Opt(a), Opt(b)) => a == b,
+            (Struct(n1, f1), Struct(n2, f2)) => n1 == n2 && f1 == f2,
             (Func(a), Func(b)) => a == b,
             (Unit, Unit) => true,
             // Closures (and mismatched variants) are not comparable.
@@ -235,6 +242,22 @@ impl Interp {
                 }
             }
             Expr::Block { block } => self.eval_block(block, env),
+            Expr::Match { scrutinee, arms } => {
+                let v = match scrutinee {
+                    Some(e) => self.eval(e, env)?,
+                    None => Value::Unit,
+                };
+                for arm in arms {
+                    env.push();
+                    if self.match_pat(&arm.pattern, &v, env) {
+                        let r = self.eval(&arm.body, env);
+                        env.pop();
+                        return r;
+                    }
+                    env.pop();
+                }
+                err("no match arm matched")
+            }
             Expr::ArrayLit { elements } => {
                 let mut v = Vec::with_capacity(elements.len());
                 for el in elements {
@@ -352,6 +375,48 @@ impl Interp {
                 let argv: Vec<Expr> = args.clone();
                 self.eval_call(func, &argv, env)
             }
+            Expr::MethodCall { receiver, method, args, .. } => {
+                // `recv.method(a, b)` desugars to `method(recv, a, b)` — so the
+                // vocabulary works in method position (`xs.filter(e).map(d)`).
+                let mut av = vec![self.eval(receiver, env)?];
+                for a in args {
+                    av.push(self.eval(a, env)?);
+                }
+                if let Some(fd) = self.funcs.get(method) {
+                    self.call_user(fd, av)
+                } else {
+                    self.call_builtin(method, av)
+                }
+            }
+            Expr::StructLit { path, fields } => {
+                let name = path.last().cloned().unwrap_or_default();
+                let mut fvals = Vec::with_capacity(fields.len());
+                for fi in fields {
+                    let v = match &fi.value {
+                        Some(e) => self.eval(e, env)?,
+                        None => env.get(&fi.name).unwrap_or(Value::Unit), // field shorthand
+                    };
+                    fvals.push((fi.name.clone(), v));
+                }
+                Ok(Value::Struct(name, fvals))
+            }
+            Expr::FieldAccess { object, field } => {
+                let o = self.eval(object, env)?;
+                match o {
+                    Value::Struct(_, fields) => fields
+                        .iter()
+                        .find(|(k, _)| k == field)
+                        .map(|(_, v)| v.clone())
+                        .ok_or(Control::Err(format!("no field `{field}`"))),
+                    // tuple.0 / tuple.1 positional access
+                    Value::Tuple(xs) => field
+                        .parse::<usize>()
+                        .ok()
+                        .and_then(|i| xs.get(i).cloned())
+                        .ok_or(Control::Err(format!("no tuple field `{field}`"))),
+                    _ => err("field access on a non-struct value"),
+                }
+            }
             other => err(format!("evaluator does not support {} yet", variant(other))),
         }
     }
@@ -396,6 +461,43 @@ impl Interp {
                 self.eval(&c.body, &mut env)
             }
             _ => err("value is not callable"),
+        }
+    }
+
+    /// Try to match `pat` against `val`, binding variables into the current
+    /// scope on success. Supports the patterns vocabulary results need:
+    /// `Some(x)`/`None` (totality), literals, tuples, wildcards, idents, `or`.
+    fn match_pat(&self, pat: &Pattern, val: &Value, env: &mut Env) -> bool {
+        match pat {
+            Pattern::Wildcard => true,
+            Pattern::Ident { name } => {
+                // `None` written as a bare ident still matches the empty option.
+                if name == "None" {
+                    matches!(val, Value::Opt(None))
+                } else {
+                    env.define(name.clone(), val.clone());
+                    true
+                }
+            }
+            Pattern::Literal { value } => lit_matches(value, val),
+            Pattern::Enum { path, elements } => {
+                match (path.last().map(|s| s.as_str()).unwrap_or(""), val) {
+                    ("Some", Value::Opt(Some(inner))) => {
+                        elements.first().map(|p| self.match_pat(p, inner, env)).unwrap_or(true)
+                    }
+                    ("None", Value::Opt(None)) => true,
+                    _ => false,
+                }
+            }
+            Pattern::Tuple { elements } => match val {
+                Value::Tuple(vs) if vs.len() == elements.len() => {
+                    elements.iter().zip(vs).all(|(p, v)| self.match_pat(p, v, env))
+                }
+                _ => false,
+            },
+            Pattern::Or { patterns } => patterns.iter().any(|p| self.match_pat(p, val, env)),
+            Pattern::Ref { pattern } => self.match_pat(pattern, val, env),
+            _ => false,
         }
     }
 
@@ -673,9 +775,20 @@ fn parse_literal(value: &str, kind: &LiteralKind) -> R {
     }
 }
 
+fn lit_matches(lit: &str, val: &Value) -> bool {
+    match val {
+        Value::Int(n) => {
+            let cleaned: String = lit.chars().take_while(|c| c.is_ascii_digit() || *c == '-').collect();
+            cleaned.parse::<i64>().map(|x| x == *n).unwrap_or(false)
+        }
+        Value::Bool(b) => lit == if *b { "true" } else { "false" },
+        Value::Str(s) => lit.trim_matches('"') == s,
+        _ => false,
+    }
+}
+
 fn variant(e: &Expr) -> &'static str {
     match e {
-        Expr::Match { .. } => "match",
         Expr::MethodCall { .. } => "method calls",
         Expr::FieldAccess { .. } => "field access",
         Expr::StructLit { .. } => "struct literals",
@@ -750,10 +863,80 @@ mod tests {
         assert_eq!(run("f s() { first(sort([3, 1, 2])) }", "s", &[]), Value::Opt(Some(Box::new(Value::Int(1)))));
     }
 
+    /// Continuous benchmark: correctness coverage + throughput. Run with
+    ///   cargo test --release eval_bench -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn eval_bench() {
+        use std::time::Instant;
+        // Correctness coverage — programs the evaluator must compute exactly.
+        let cases: &[(&str, &str, &[i64], Value)] = &[
+            ("f s() { sum([1,2,3,4]) }", "s", &[], Value::Int(10)),
+            ("f e(n){n%2==0}\nf s(){ len(filter([1,2,3,4,5,6], e)) }", "s", &[], Value::Int(3)),
+            ("f a(x,y){x+y}\nf s(){ fold([1,2,3,4], 0, a) }", "s", &[], Value::Int(10)),
+            ("f s(){ sum(range(10)) }", "s", &[], Value::Int(45)),
+            ("f fib(n){ if n<2 {n} else {fib(n-1)+fib(n-2)} }", "fib", &[15], Value::Int(610)),
+            ("f g(x){x>2}\nf s(){ match find([1,2,3,4], g) { Some(v) => v, None => 0 } }", "s", &[], Value::Int(3)),
+            ("f s(){ match first([]) { Some(v) => v, None => 99 } }", "s", &[], Value::Int(99)),
+            ("f e(n){n%2==0}\nf d(n){n*2}\nf s(){ sum([1,2,3,4,5,6].filter(e).map(d)) }", "s", &[], Value::Int(24)),
+            ("f s(){ sum(map(range(5), fn(x) => x * x)) }", "s", &[], Value::Int(30)),
+            ("f s(){ len(zip([1,2,3], [4,5,6])) }", "s", &[], Value::Int(3)),
+        ];
+        let mut ok = 0;
+        for (src, f, args, want) in cases {
+            match run_source(src, f, args) {
+                Ok(v) if v == *want => ok += 1,
+                other => println!("  MISS [{f}]: got {other:?}, want {want:?}"),
+            }
+        }
+        println!("\n[eval-bench] correctness: {ok}/{} programs exact", cases.len());
+
+        // Throughput.
+        let t = Instant::now();
+        let v = run_source("f fib(n){ if n<2 {n} else {fib(n-1)+fib(n-2)} }", "fib", &[28]);
+        println!("[eval-bench] fib(28) = {v:?} in {:.1}ms", t.elapsed().as_secs_f64() * 1e3);
+
+        let pipe = "f e(n){n%2==0}\nf d(n){n*2}\nf a(x,y){x+y}\n\
+                    f s(){ fold(map(filter(range(1000), e), d), 0, a) }";
+        let t = Instant::now();
+        let iters = 200;
+        let mut last = Value::Unit;
+        for _ in 0..iters {
+            last = run_source(pipe, "s", &[]).unwrap();
+        }
+        println!(
+            "[eval-bench] vocab pipeline over range(1000) = {last:?}, {:.1}µs/run",
+            t.elapsed().as_secs_f64() / iters as f64 * 1e6
+        );
+        assert_eq!(ok, cases.len(), "all benchmark programs must compute exactly");
+    }
+
     #[test]
     fn closures_work() {
         // MechGen closure syntax is `fn(x) => expr`.
         assert_eq!(run("f s() { map([1, 2, 3], fn(x) => x * 10) }", "s", &[]),
                    Value::List(vec![Value::Int(10), Value::Int(20), Value::Int(30)]));
+    }
+
+    #[test]
+    fn match_unwraps_option() {
+        // The totality loop: a `?A` result is used via match — Some and None.
+        let g = "f gt2(n) { n > 2 }\n";
+        assert_eq!(
+            run(&format!("{g}f s() {{ match find([1,2,3,4], gt2) {{ Some(v) => v, None => 0 }} }}"), "s", &[]),
+            Value::Int(3),
+        );
+        assert_eq!(
+            run("f s() { match first([]) { Some(v) => v, None => 42 } }", "s", &[]),
+            Value::Int(42),
+        );
+    }
+
+    #[test]
+    fn method_chaining_desugars() {
+        // `xs.filter(e).map(d)` == `map(filter(xs, e), d)`.
+        let src = "f e(n) { n % 2 == 0 }\nf d(n) { n * 2 }\n\
+                   f s() { sum([1,2,3,4,5,6].filter(e).map(d)) }";
+        assert_eq!(run(src, "s", &[]), Value::Int(24));
     }
 }
