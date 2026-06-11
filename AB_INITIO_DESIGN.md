@@ -412,9 +412,23 @@ The first slice is shipped:
 - **Names audited single-token** (`vocabulary_audit`, real cl100k+o200k):
   **27/27** (the 24 + min/max/abs) are a single BPE token — §8b holds.
 
-**Staged (honest):** precise *total* signatures (e.g. `first: [A] -> ?A`,
-`map: ([A], A->B) -> [B]`) are inferred-from-use today, not yet enforced — that
-needs per-call generic instantiation for higher-order builtins, a backend
-follow-on. So the **token** win (name the intent) is real and landed; the full
-**reliability** win (compiler-guaranteed totality) is partially staged. The
-vocabulary is usable now; tightening its types is the next increment.
+- **Precise total signatures — now LANDED (`types.rs`).** The combinators are
+  typed precisely with *fresh-per-call generics* (`infer_vocab_call` +
+  `collection_elem`), so misuse is caught and the **reliability** win is real, not
+  just the token win:
+  - scalar/element: `len/count → usize`, `sum → A`, `first/last → ?A`;
+  - collection: `sort/reverse/take/flatten → [A]`, `zip → [(A,B)]`,
+    `freq → {A: usize}`, `keys/values → [K]/[V]`, `range → [usize]`;
+  - higher-order: `map(xs, f) → [B]` (f: `A→B`), `filter/any/all/find` (pred:
+    `A→bool`), `fold(xs, init, f) → B`, `reduce → ?A`.
+  - **Totality enforced:** `first/last/find/reduce` return `?A`, so `first(xs)`
+    used as a bare value is a *type error* — the agent must handle the empty case.
+  - **Misuse caught:** `sum("hi")` and `sum(5)` (concrete *and* integer-literal
+    non-collections), wrong arity, and a predicate of the wrong shape.
+  - **User functions shadow** the vocabulary; `min/max/abs/group/scan` fall through
+    to generic inference. 6 new typing tests; **1003 prototype tests green, zero
+    regressions.**
+
+  So both halves of §8a are now real: the **token** win (name the intent, ~65%)
+  *and* the **reliability** win (total, precisely-typed primitives that catch the
+  mistakes hand-rolled code makes).
