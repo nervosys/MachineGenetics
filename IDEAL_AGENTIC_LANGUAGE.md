@@ -253,6 +253,17 @@ worse*. The scoring corpus was already at the floor (the verbose spellings lived
 only in hand-written examples). The token axis was therefore **not** raised —
 the floor is not a knob, even when the terser surface exists and is free to use.
 
+**Dense-symbol confirmation (2026-06-10).** Tested the "use the full UTF-8 symbol
+library / Matrix digital-rain to pack more per token" idea directly. A reversible
+codec (`prototype/src/rain.rs`, `--rain`) maps each MechGen token to one dense
+glyph (half-width katakana → CJK). Measured with the **real cl100k + o200k BPE**
+(`agentic-eval --example rain_tokens --features real-tokens`): it compresses
+**characters ~3×** (the Matrix look) but the glyph stream costs **~1.8–2× MORE
+tokens** than the ASCII source (cl100k 113→222, o200k 114→203), and ~4× worse with
+the legend reversibility needs — because BPE splits rare multi-byte glyphs into
+several tokens each. Dense symbols shrink bytes/characters, never token streams:
+an LLM emits **tokens, not glyphs**.
+
 Across every representation tested — terse text, simple languages
 (C/Go), low-level IR (LLVM), binary-as-base64, structured JSON, *and now the
 canonical sigil form re-measured on the scoring corpus itself* — the token
