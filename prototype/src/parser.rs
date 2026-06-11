@@ -3718,6 +3718,35 @@ impl<'a> Parser<'a> {
                 self.expect(TokenKind::RBrack)?;
                 Ok(Pattern::Slice { elements, rest, rest_name })
             }
+            // Struct pattern: `@Point { x, y }` / `@Point { x: px, y: 0 }`. The
+            // `@` mirrors struct-literal syntax (`@Point { x: 3 }`) and makes the
+            // pattern unambiguous — it can never be confused with a match-arm or
+            // `is`-condition block, which the bare-`Name { … }` form would be.
+            TokenKind::At => {
+                self.advance(); // consume @
+                let mut path = vec![self.expect_ident()?];
+                while self.peek() == TokenKind::Dot {
+                    self.advance();
+                    path.push(self.expect_ident()?);
+                }
+                self.expect(TokenKind::LBrace)?;
+                let mut fields = Vec::new();
+                while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
+                    let name = self.expect_ident()?;
+                    let pattern = if self.peek() == TokenKind::Colon {
+                        self.advance();
+                        Some(self.parse_pattern()?)
+                    } else {
+                        None // shorthand `{ x }` binds the field to `x`
+                    };
+                    fields.push(FieldPattern { name, pattern });
+                    if self.peek() == TokenKind::Comma {
+                        self.advance();
+                    }
+                }
+                self.expect(TokenKind::RBrace)?;
+                Ok(Pattern::Struct { path, fields })
+            }
             _ => {
                 let tok = self.advance();
                 Ok(Pattern::Ident {
