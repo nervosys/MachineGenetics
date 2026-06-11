@@ -483,7 +483,14 @@ impl TypeChecker {
         match &item.kind {
             ast::ItemKind::Function(fd) => {
                 let params: Vec<Ty> = fd.params.iter().map(|p| self.lower_type(&p.ty)).collect();
-                let ret = fd.return_type.as_ref().map(|t| self.lower_type(t)).unwrap_or(Ty::Unit);
+                // No return annotation → a fresh inference var, resolved from the
+                // body in pass 2. Sharing it here means recursive calls and
+                // external callers unify against the same (eventually inferred)
+                // type, so return-type inference is sound even under recursion.
+                let ret = match &fd.return_type {
+                    Some(t) => self.lower_type(t),
+                    None => self.fresh(),
+                };
                 self.fn_sigs.insert(fd.name.clone(), (params, ret, fd.effects.clone()));
             }
             ast::ItemKind::Struct(sd) => {
@@ -543,8 +550,13 @@ impl TypeChecker {
             self.infer_block(&fd.body)
         };
 
-        // Unify body type with declared return type.
-        let ret_ty = fd.return_type.as_ref().map(|t| self.lower_type(t)).unwrap_or(Ty::Unit);
+        // Unify body type with the return type. When unannotated, reuse the
+        // fresh var registered in the signature so the body *infers* the return
+        // type (and recursive calls resolve to the same one).
+        let ret_ty = match &fd.return_type {
+            Some(t) => self.lower_type(t),
+            None => self.fn_sigs.get(&fd.name).map(|s| s.1.clone()).unwrap_or(Ty::Unit),
+        };
 
         if let Err(e) = unify(&mut self.subst, &ret_ty, &body_ty) {
             self.emit_error(format!("function `{}`: return type mismatch: {e}", fd.name));
