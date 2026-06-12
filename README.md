@@ -125,9 +125,10 @@ expected value (measured 2026-06-11):
 
 ## Why MechGen?
 
-> **Honest framing (2026-05):** MechGen's value for agents lives in
-> two places: (1) a structurally reliable text surface — LL(1) grammar,
-> effects, contracts, SKB, self-healing — and (2) the **Agentic Binary Language binary IR**,
+> **Honest framing:** MechGen's value for agents lives in two places:
+> (1) a structurally reliable, executable text surface — LL(1) grammar, tracked
+> effects, machine-readable diagnostics, a self-describing ontology, and an
+> evaluator that runs it — and (2) the **Agentic Binary Language binary IR**,
 > where a full neural-network module fits in **~300 bytes**
 > (~83 % smaller than the equivalent text).
 >
@@ -137,32 +138,38 @@ expected value (measured 2026-06-11):
 > [`benchmarks/FINDINGS.md`](benchmarks/FINDINGS.md) for measurement
 > and [`AGENT_PROTOCOL.md`](AGENT_PROTOCOL.md) for how agents should
 > target the IR directly.
+>
+> The capabilities below are marked **✅ working in the prototype today** or
+> **🎯 design goal** (specified/partially built, not yet in the prototype). See
+> [ROADMAP.md](ROADMAP.md) for status.
 
-- **Zero-Ambiguity Syntax** — Deterministic LL(1) grammar eliminates parsing failures for both humans and AI agents. No backtracking, no ambiguity.
+- ✅ **Executes End to End** — A tree-walking evaluator (`MechGen-parse --eval`) runs general-purpose programs across the full surface — every expression/statement form, all pattern kinds, and the standard vocabulary over lists/strings/maps. The `eval_bench` suite computes **72 / 72** programs to exact results.
 
-- **Binary IR for Agents (Agentic Binary Language)** — A transformer block encodes to **47 bytes** of Agentic Binary Language, a 5-item module to ~300 bytes (vs ~1.8 KB of text). Agents target the IR directly via `--target=abl-bytes`; the text surface is a human-readable view via the round-trip decompiler.
+- ✅ **Zero-Ambiguity Syntax** — Deterministic LL(1) grammar eliminates parsing failures for both humans and AI agents. No backtracking, no ambiguity.
 
-- **Sigil-Based Text Surface** — Canonical forms (`+f` = pub fn, `v`/`val` = immutable binding, `m`/`var` = mutable binding, `?` = match, `@` = for) keep the human view compact. (`let` is *not* a keyword — bindings are always `val`/`var`; the compiler rejects a stray `let` with a fix hint.) On the benchmark corpus the text is ~tied with idiomatic Rust on raw bytes (declaration-heavy code wins 4–14 %, expression-heavy code loses 8–15 %). The structural reliability matters more than the byte delta.
+- ✅ **Binary IR for Agents (Agentic Binary Language)** — A transformer block encodes to **47 bytes** of Agentic Binary Language, a 5-item module to ~300 bytes (vs ~1.8 KB of text). Agents target the IR directly via `--target=abl-bytes`; the text surface is a human-readable view via the round-trip decompiler.
 
-- **Algebraic Effects** — A tracked effect system (`/ io`, `/ net`, `/ io + net`) makes side effects explicit in function signatures, enabling composition without monadic boilerplate.
+- ✅ **Sigil-Based Text Surface** — Canonical forms (`+f` = pub fn, `v`/`val` = immutable binding, `m`/`var` = mutable binding, `?` = match, `@` = for) keep the human view compact. (`let` is *not* a keyword — bindings are always `val`/`var`; the compiler rejects a stray `let` with a fix hint.) On the benchmark corpus the text is ~tied with idiomatic Rust on raw bytes (declaration-heavy code wins 4–14 %, expression-heavy code loses 8–15 %). The structural reliability matters more than the byte delta.
 
-- **Formal Contracts** — Built-in `@req`, `@ens`, and `@inv` annotations enable spec-first development. The compiler verifies contracts and uses them for synthesis.
+- ✅ **Algebraic Effects** — A tracked effect system (`/ io`, `/ net`, `/ io + net`) makes side effects explicit in function signatures, enabling composition without monadic boilerplate.
 
-- **Safety Knowledge Base** — 9,157 safety rules across ownership, borrowing, lifetimes, type safety, concurrency, and FFI — queryable at compile time via SKB-QL, removing surface-syntax noise (no lifetime annotations in source).
+- 🎯 **Formal Contracts** — Built-in `@req`, `@ens`, and `@inv` annotations enable spec-first development. The compiler verifies contracts and uses them for synthesis.
 
-- **Cost Oracle** — Every construct exposes predicted cost (cycles, memory, latency, energy) per target architecture **before** code generation. Agents make informed optimization decisions.
+- 🎯 **Safety Knowledge Base** — 9,157 safety rules across ownership, borrowing, lifetimes, type safety, concurrency, and FFI — queryable at compile time via SKB-QL, removing surface-syntax noise (no lifetime annotations in source).
 
-- **Self-Healing Compiler** — Errors produce ranked repair candidates with confidence scores. The compiler proposes fixes, applies them, and re-checks automatically.
+- 🎯 **Cost Oracle** — Every construct exposes predicted cost (cycles, memory, latency, energy) per target architecture **before** code generation. Agents make informed optimization decisions.
 
-- **Swarm-Native** — First-class multi-agent coordination primitives: leases, consensus protocols, capability-based sandboxing, CRDT-based merging, and a message bus.
+- 🎯 **Self-Healing Compiler** — Errors produce ranked repair candidates with confidence scores. The compiler proposes fixes, applies them, and re-checks automatically.
 
-- **Hot Reload** — Function-level live patching with <1ms swap time. Rollback on regression, versioned function slots, zero-downtime iteration.
+- 🎯 **Swarm-Native** — First-class multi-agent coordination primitives: leases, consensus protocols, capability-based sandboxing, CRDT-based merging, and a message bus.
 
-- **Hardware-Agnostic Compilation** — MLIR-native dialect with lowering passes for LLVM, SPIR-V, WASM, and RISC-V. Autotuning selects optimal strategies per target.
+- 🎯 **Hot Reload** — Function-level live patching with <1ms swap time. Rollback on regression, versioned function slots, zero-downtime iteration.
 
-- **Built-in AI Framework (RecursiveMachineIntelligence)** — The [`RecursiveMachineIntelligence/`](RecursiveMachineIntelligence/) `rmi` crate ships inside the project: Agentic Binary Language binary neurosymbolic IR, compute backends (CPU + CUDA via IronAccelerator — tensor-core F16/BF16, calibrated INT8/INT4 quantization), a self-describing ontology with a token-compact `manifest()`/`describe()` front door, machine-parseable error diagnostics, and effect-mapped safety. The compiler's `--target=abl-*` modes lower straight onto it.
+- 🎯 **Hardware-Agnostic Compilation** — MLIR-native dialect with lowering passes for LLVM, SPIR-V, WASM, and RISC-V. Autotuning selects optimal strategies per target.
 
-- **Complete Ontologies, End to End** — Every layer self-describes for agents: the language/compiler (`MechGen-parse --emit-ontology`, `--manifest`), the framework (`rmi::core::manifest`, `FrameworkOntology`), and the CLI (effect-classed mode index). Deterministic output everywhere — agents can cache, diff, and gate without prose docs.
+- ✅ **Built-in AI Framework (RecursiveMachineIntelligence)** — The [`RecursiveMachineIntelligence/`](RecursiveMachineIntelligence/) `rmi` crate ships inside the project: Agentic Binary Language binary neurosymbolic IR, compute backends (CPU + CUDA via IronAccelerator — tensor-core F16/BF16, calibrated INT8/INT4 quantization), a self-describing ontology with a token-compact `manifest()`/`describe()` front door, machine-parseable error diagnostics, and effect-mapped safety. The compiler's `--target=abl-*` modes lower straight onto it.
+
+- ✅ **Complete Ontologies, End to End** — Every layer self-describes for agents: the language/compiler (`MechGen-parse --emit-ontology`, `--manifest`), the framework (`rmi::core::manifest`, `FrameworkOntology`), and the CLI (effect-classed mode index). Deterministic output everywhere — agents can cache, diff, and gate without prose docs.
 
 ## Quick Start
 
@@ -250,40 +257,35 @@ cargo run --bin token-bench --manifest-path prototype/Cargo.toml
 ## Project Structure
 
 ```
-compiler/           150+ mechgen_* crates — the full compiler
-  mechgen_lexer/        Lexer and tokenizer
-  mechgen_parser/       LL(1) parser
-  mechgen_ast/          Abstract syntax tree
-  mechgen_effects/      Algebraic effect system
-  mechgen_contracts/    Contract checking (@req, @ens, @inv)
-  mechgen_mlir/         MLIR dialect and lowering
-  mechgen_codegen_*/    LLVM, GCC, Cranelift backends
-  mechgen_swarm*/       Multi-agent coordination (7 crates)
-  mechgen_aci_*/        Agent-Computer Interface (7 crates)
-  mechgen_rap*/         MechGen Agent Protocol / IDE integration
-  mechgen_skb*/         Safety Knowledge Base
-  mechgen_cost_*/       Cost oracle and calibration
-  mechgen_self_heal/    Auto-repair engine
-  mechgen_hot_reload/   Live function patching
-  mechgen_ffi/          Foreign function interface generation
-  ...
-
-library/            Standard library (core, alloc, std)
-RecursiveMachineIntelligence/          Built-in agentic-first AI framework (`rmi` crate): Agentic Binary Language
-                    binary IR, compute backends (CPU/CUDA, F32→F16/BF16→INT8/4),
+prototype/          The working compiler + evaluator (this is MechGen today):
+                    lexer, LL(1) parser, type inference, tree-walking evaluator,
+                    Agentic Binary Language lowering, and the RAP agent server
+                    — 1,184 tests
+RecursiveMachineIntelligence/   Built-in agentic-first AI framework (`rmi` crate):
+                    Agentic Binary Language binary IR, compute backends
+                    (CPU + CUDA via IronAccelerator, F32→F16/BF16→INT8/4),
                     self-describing ontology + token-compact manifest
-prototype/          Working compiler prototype (36 modules, 920+ tests)
-examples/           12 example projects
-skb/                Safety Knowledge Base (9,157 rules)
-agent-guide/        AI agent integration guide
-training/           Training data (100 samples, JSONL)
-benchmarks/         100-task evaluation corpus
-cookbook/            Practical recipes (I/O, HTTP, agents, CLI)
+framework/          Framewerx — neurosymbolic layer over `rmi`
+forge/              Package-registry prototype (`Forge.toml` manifests)
+stdlib/             Standard library (`.mg` source)
+skb/                Safety Knowledge Base (9,157 rules, 6 categories)
+benchmarks/         Evaluation corpus + cross-language executability harness
+examples/           Self-contained example projects (`Forge.toml` + `src/main.mg`)
+editors/            Editor support: tree-sitter grammar, Helix, Neovim
+agent-guide/        AI-agent integration guide (prompts, RAP methods)
+cookbook/           Practical recipes (I/O, HTTP, agents, CLI)
+quick-start/        Install → hello-world → syntax → build/run/test tutorials
+internals/          Compiler-internals documentation
 migration-guide/    Rust → MechGen migration guide
-forge/              Package registry prototype
-MechGen-vscode/       VS Code extension (syntax, effects, cost hints)
-ci/                 CI/CD pipeline (lint → build → test → transpile → validate)
+community/          Contributing, governance, issue templates
+training/           Training data (100 samples, JSONL)
 ```
+
+> An earlier branch carried a forked-rustc native compiler (`compiler/`, MLIR +
+> LLVM backends). It was a separate, dormant experiment and has been removed;
+> code generation today runs through the Agentic Binary Language IR onto the
+> `rmi` backends. Native text-language codegen is a roadmap item, not a current
+> claim.
 
 ## Examples
 
@@ -305,10 +307,11 @@ Twelve self-contained projects in [`examples/`](examples/), each with a
 | [multilang-bindings](examples/multilang-bindings/)     | FFI bridge (C, Python, WASM)     |
 | [cost-aware-optimizer](examples/cost-aware-optimizer/) | Cost-model strategy selection    |
 
-```bash
-cd examples/hello-world
-mg run
-```
+> These projects target the **planned** Forge toolchain (`mg run`) and exercise
+> the full intended surface — they are scaffolds, not all accepted by the current
+> prototype checker. For `.mg` programs that **check and run today**, see
+> [`prototype/examples/`](prototype/examples/) (e.g. `agent_rpn.mg`, the `net`
+> examples) and the `--eval` quick start above.
 
 ## Documentation
 
@@ -351,9 +354,11 @@ cargo test  --release --manifest-path prototype/Cargo.toml
 
 ## Contributing
 
-Issues and pull requests are welcome. For compiler internals and module layout,
-see [prototype/docs/INTERNALS.md](prototype/docs/INTERNALS.md); for how agents
-consume the language, see [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md).
+Issues and pull requests are welcome — see
+[community/CONTRIBUTING.md](community/CONTRIBUTING.md) and
+[community/GOVERNANCE.md](community/GOVERNANCE.md). For compiler internals and
+module layout, see [prototype/docs/INTERNALS.md](prototype/docs/INTERNALS.md);
+for how agents consume the language, see [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md).
 
 ## License
 
