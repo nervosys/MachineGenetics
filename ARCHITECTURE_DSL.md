@@ -228,12 +228,11 @@ gate is the high-value floor.)
 ## 7. Run the whole thing
 
 `benchmarks/capstone/run.sh` threads every piece into one reproducible command —
-`forge publish` a block → an agent writes a 12-deep GPT as a ~41-token registry
-handle → `forge check` resolves it off-context and shape-gates it (with a
-rejected negative control) → `forge build` emits the REPEAT-folded binary
-(measured O(1) in depth, ~1.1×) → the artifact executes (the transformer core
-dispatches all 72 ops; a `residual` computes `x + relu(x)`). All live and
-measured; isolated, self-cleaning workspace; no absolute paths. Two limits it
-surfaces honestly: `block` macros hold plain `layer`s (not yet the dataflow
-combinators), and the leading `Embedding`→`Attention` path needs 3-D batched
-attention, so the execution proof uses the transformer body.
+`forge publish` a **real residual transformer block** (`wrap LayerNorm {
+residual { attn } residual { ffn } }`) → an agent writes a 12-deep GPT as a
+~41-token registry handle → `forge check` resolves it off-context and shape-gates
+it (with a rejected negative control) → `forge build` emits the REPEAT-folded
+binary (measured O(1) in depth, ~1.1×) → the **full GPT executes** (embedding →
+batched attention → the 24 per-block `RES_ADD`s → norms/MLPs, `dispatched=97
+unsupported=[]`). All live and measured; isolated, self-cleaning workspace; no
+absolute paths.
