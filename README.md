@@ -22,7 +22,7 @@
 | Real tokens | **173** | 199 | 220 | 271 | 275 | 297 |
 | vs MechGen | **1.00×** | 1.15× | 1.27× | 1.57× | 1.59× | 1.72× |
 
-**Tersest of every runnable language — and it runs.** General-purpose programs execute end to end: the evaluator's correctness suite computes **72 / 72** programs to exact results.
+**Tersest of every runnable language — and it runs.** General-purpose programs execute end to end: the evaluator's correctness suite computes **73 / 73** programs to exact results.
 
 </div>
 
@@ -111,10 +111,28 @@ expected value (measured 2026-06-11):
   languages × 3 different tasks) agrees: MechGen 85 cl100k vs Python 89, Go 93,
   Java 98, TS 102, Rust 113.
 - **MechGen surface coverage:** its `eval_bench` correctness harness asserts
-  **72 / 72** general-purpose programs each compute an *exact* result, exercising
+  **73 / 73** general-purpose programs each compute an *exact* result, exercising
   every reachable expression/statement form, all pattern kinds
   (tuple/slice/struct/option), and the standard vocabulary over lists/strings/maps.
   Reproduce: `cargo test --release eval_bench -- --ignored` (in `prototype/`).
+
+**Agentic-first toolchain — measured improvement.** The same lens applied to the
+**Forge** project toolchain (`forge`): a human-text baseline vs. the agentic-first
+surface (self-describing `manifest`, `--json`, effect classes). Every figure
+measured (`forge` runs + real BPE + `node JSON.parse` + 5× sha256; reproduce:
+`agentic-eval --example swe_forge_agentic`):
+
+| Axis (same toolchain, 8 commands) | text-only baseline | agentic-first |
+|---|:--:|:--:|
+| Result machine-parseable (reliability) | 0.00 | **1.00** (8/8 structured JSON) |
+| Effect-gated before exec (safety) | 0.00 | **1.00** (8/8 effect-classed) |
+| Output reproducible (determinism) | — | **1.00** (5/5 byte-identical) |
+| Discovery cost (real cl100k tokens) | 547 (prose) | **232** (`forge manifest`) |
+
+Self-describing + machine-readable lifts reliability and safety 0 → 1.00, keeps
+output deterministic, and makes discovery **2.36× cheaper in real tokens *and*
+parseable**. The one measured cost is +3 tokens (12%) per structured result —
+reported, not hidden.
 
 > **Honesty.** Executability is a gate, not a parity claim: the runtime is a
 > young tree-walker (no JIT; `await` is run-to-completion) and the task set is
@@ -143,7 +161,7 @@ expected value (measured 2026-06-11):
 > **🎯 design goal** (specified/partially built, not yet in the prototype). See
 > [ROADMAP.md](ROADMAP.md) for status.
 
-- ✅ **Executes End to End** — A tree-walking evaluator (`MechGen-parse --eval`) runs general-purpose programs across the full surface — every expression/statement form, all pattern kinds, and the standard vocabulary over lists/strings/maps. The `eval_bench` suite computes **72 / 72** programs to exact results.
+- ✅ **Executes End to End** — A tree-walking evaluator (`MechGen-parse --eval`) runs general-purpose programs across the full surface — every expression/statement form, all pattern kinds, and the standard vocabulary over lists/strings/maps. The `eval_bench` suite computes **73 / 73** programs to exact results.
 
 - ✅ **Zero-Ambiguity Syntax** — Deterministic LL(1) grammar eliminates parsing failures for both humans and AI agents. No backtracking, no ambiguity.
 
@@ -230,7 +248,7 @@ MechGen-parse --eval <file.mg> <fn> [int args]
 
 The `--eval` evaluator runs general-purpose `.mg` programs end to end
 (lex → parse → evaluate). Its correctness harness (`eval_bench`) executes
-**72 programs to exact results**, covering every expression/statement form, all
+**73 programs to exact results**, covering every expression/statement form, all
 pattern kinds (tuple/slice/struct/option), and the standard vocabulary over
 lists, strings, and maps — see [Benchmarks](#benchmarks-measured).
 
