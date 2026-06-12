@@ -4,8 +4,15 @@
 //! vocabulary); IO/structs/traits are out of scope and report an honest error.
 
 use crate::ast::{Block, Expr, FunctionDef, ItemKind, LiteralKind, Module, Pattern, Stmt, Type};
+use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
+
+/// A block's group of nested functions, shared so they can call each other.
+/// Closures hold this `Rc` strong; it holds them back via `Weak`, so there is
+/// no reference cycle — the group frees with the block scope that owns the
+/// closures (escaping closures simply lose siblings they no longer co-own).
+type SiblingGroup = Rc<RefCell<Vec<(String, Weak<ClosureData>)>>>;
 
 /// A runtime value.
 #[derive(Debug, Clone)]
@@ -37,6 +44,10 @@ pub struct ClosureData {
     /// call the name is re-bound to the closure in its own scope, so it can
     /// recurse. Anonymous `fn(x) => …` closures leave this `None`.
     name: Option<String>,
+    /// The sibling nested functions declared in the same block. Injected at call
+    /// time so they can call each other (mutual recursion). `None` for anonymous
+    /// closures and the only entry for a lone nested function is itself.
+    siblings: Option<SiblingGroup>,
 }
 
 impl std::fmt::Display for Value {
@@ -197,6 +208,9 @@ impl Interp {
         let mut deferred: Vec<&Expr> = Vec::new();
         let mut out = Value::Unit;
         let mut early: Option<Control> = None;
+        // Nested functions in this block share one group (built incrementally as
+        // they are declared) so they can call each other.
+        let mut nested_group: Option<SiblingGroup> = None;
         for s in &b.stmts {
             let step: Result<(), Control> = match s {
                 Stmt::Let { pattern, value, .. } => {
@@ -223,22 +237,28 @@ impl Interp {
                     Ok(())
                 }
                 // Nested function declaration: bind it as a named closure that
-                // captures the current scope. Self-recursion works (apply re-binds
-                // the name); it can't see bindings made later in the block (its
-                // captured env is a snapshot), so mutual recursion isn't supported.
+                // captures the current scope and shares the block's sibling group.
+                // Self- and mutual recursion work (apply injects the group);
+                // outer locals are captured at the definition point, so a sibling
+                // must be declared before the call that reaches it executes.
                 Stmt::Item { item } => {
                     if let ItemKind::Function(fd) = &item.kind {
                         let body = match &fd.body_expr {
                             Some(be) => (**be).clone(),
                             None => Expr::Block { block: fd.body.clone() },
                         };
-                        let closure = Value::Closure(Rc::new(ClosureData {
+                        let group = nested_group
+                            .get_or_insert_with(|| Rc::new(RefCell::new(Vec::new())))
+                            .clone();
+                        let rc = Rc::new(ClosureData {
                             params: fd.params.iter().map(|p| p.name.clone()).collect(),
                             body,
                             env: env.flatten(),
                             name: Some(fd.name.clone()),
-                        }));
-                        env.define(fd.name.clone(), closure);
+                            siblings: Some(group.clone()),
+                        });
+                        group.borrow_mut().push((fd.name.clone(), Rc::downgrade(&rc)));
+                        env.define(fd.name.clone(), Value::Closure(rc));
                     }
                     Ok(())
                 }
@@ -432,6 +452,7 @@ impl Interp {
                 body: (**body).clone(),
                 env: env.flatten(),
                 name: None,
+                siblings: None,
             }))),
             Expr::Assign { target, value } => {
                 let v = self.eval(value, env)?;
@@ -793,6 +814,16 @@ impl Interp {
                 // A named nested function sees itself, so it can recurse.
                 if let Some(n) = &c.name {
                     env.define(n.clone(), Value::Closure(Rc::clone(c)));
+                }
+                // …and its siblings declared in the same block, so two nested
+                // functions can call each other (mutual recursion). Weak refs
+                // upgrade while the defining block scope is still live.
+                if let Some(group) = &c.siblings {
+                    for (name, weak) in group.borrow().iter() {
+                        if let Some(rc) = weak.upgrade() {
+                            env.define(name.clone(), Value::Closure(rc));
+                        }
+                    }
                 }
                 env.push();
                 for (p, v) in c.params.iter().zip(args.into_iter()) {
@@ -1531,6 +1562,8 @@ mod tests {
             // Nested function declarations: a local helper, and self-recursion.
             ("f s(){ f dbl(n){ n * 2 }\n dbl(21) }", "s", &[], Value::Int(42)),
             ("f s(){ f fac(n){ if n < 2 { 1 } else { n * fac(n - 1) } }\n fac(5) }", "s", &[], Value::Int(120)),
+            // Mutual recursion between two nested functions (even/odd).
+            ("f s(){ f ev(n){ if n == 0 { 1b } else { od(n - 1) } }\n f od(n){ if n == 0 { 0b } else { ev(n - 1) } }\n if ev(10) { 1 } else { 0 } }", "s", &[], Value::Int(1)),
             // Bitwise / shift operators on integers.
             ("f s(){ (5 | 2) + (6 & 3) * 10 }", "s", &[], Value::Int(27)),
             ("f s(){ (5 ^ 1) + (1 << 4) + (255 >> 4) }", "s", &[], Value::Int(35)),
