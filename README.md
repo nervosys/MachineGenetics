@@ -278,8 +278,8 @@ mg run
 | [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md)                     | How agents target the binary IR directly           |
 | [MEASUREMENTS.md](MEASUREMENTS.md)                         | Measured results and methodology                   |
 | [ROADMAP.md](ROADMAP.md)                                   | Roadmap and status                                 |
-| [REDOX_ECOSYSTEM.md](REDOX_ECOSYSTEM.md)                   | Ecosystem architecture (Forge, RAP, migration)     |
-| [REDOX_PROPOSAL.md](REDOX_PROPOSAL.md)                     | Design philosophy and design principles            |
+| [MECHGEN_ECOSYSTEM.md](MECHGEN_ECOSYSTEM.md)               | Ecosystem architecture (Forge, RAP, migration)     |
+| [MECHGEN_PROPOSAL.md](MECHGEN_PROPOSAL.md)                 | Design philosophy and design principles            |
 | [prototype/docs/BOOK.md](prototype/docs/BOOK.md)           | User guide (12 chapters)                           |
 | [prototype/docs/INTERNALS.md](prototype/docs/INTERNALS.md) | Compiler architecture (36 modules)                 |
 | [agent-guide/](agent-guide/)                               | AI agent SDK (prompts, patterns, RAP methods)      |

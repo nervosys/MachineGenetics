@@ -1,4 +1,4 @@
-# Redox: An Agentic-First Programming Language for the 21st Century
+# MechGen: An Agentic-First Programming Language for the 21st Century
 
 > Transforming Rust into a Language for Humans and AI Agents Alike
 
@@ -13,7 +13,7 @@
 1. [Executive Summary](#1-executive-summary)
 2. [Design Principles](#2-design-principles)
 3. [Transformation Methodology](#3-transformation-methodology)
-4. [Ontology of the Redox System](#4-ontology-of-the-redox-system)
+4. [Ontology of the MechGen System](#4-ontology-of-the-redox-system)
 5. [Language-Level Changes](#5-language-level-changes)
 6. [Compiler Architecture for Agents](#6-compiler-architecture-for-agents)
 7. [Swarm Collaboration Model](#7-swarm-collaboration-model)
@@ -29,11 +29,11 @@
 
 Rust provides the strongest compile-time safety guarantees of any systems language: ownership, borrowing, lifetime enforcement, data-race freedom, and exhaustiveness checking. However, its tooling and language interfaces were designed for *human developers* operating through CLI tools, text editors, and manual reasoning. Its syntax is context-sensitive and ambiguous in ways that cause agent parsing failures. Its compile-time safety machinery is redundant for AI agents that can internalize safety rules from a knowledge base. And its performance model is tightly coupled to specific hardware targets.
 
-**Redox** reimagines Rust as an **agentic-first** language — one where AI agents are first-class participants in the development lifecycle. The language is redesigned around twelve pillars: **(1) zero-ambiguity syntax** that eliminates agent parsing errors, **(2) communication-first primitives** that maximize inter-agent bandwidth, **(3) hardware-agnostic high performance** built on **MLIR and LLVM** compiler infrastructure that compiles to any target without sacrificing speed, **(4) token-minimal syntax** that minimizes the tokens agents must emit, because every token costs time, money, and memory, **(5) safety-free syntax simplification** that eliminates lifetimes, borrow annotations, ownership markers, and all other compile-time safety syntax — since agents consult the SKB directly, the syntax need not carry safety information at all, **(6) an agentic compiler** — the compiler itself is an AI-powered system that provides dynamic warnings, intelligent debugging, performance suggestions, and learns from the codebase and the swarm's history, **(7) cost model transparency** — every construct has a queryable cost (cycles, memory, energy, tokens) per target, so agents choose before emitting rather than profiling after, **(8) synthesis-first design** — formal specifications (`@req`/`@ens`/`@perf`/`@fx`) enable spec-to-code synthesis with compiler verification, closing the guess-compile-fix cycle, **(9) persistent agent memory** — a four-tier memory model (ephemeral, session, project, global) that lets agents learn across sessions and share knowledge across the ecosystem, **(10) self-healing compilation** — the compiler auto-repairs errors with ranked fix candidates, collapsing the emit→error→fix→re-emit loop into a single step, **(11) live iteration** — function-level hot-reload patches running processes in sub-millisecond time without restart, and **(12) zero-friction interop** — automatic FFI binding generation from C/C++ headers, Python stubs, WASM interfaces, and GPU kernels with capability-based sandbox security. Safety knowledge moves from compile-time enforcement to a **queryable Safety Knowledge Base (SKB)** — a structured database of rules, invariants, and constraints that agents reference directly, eliminating the compile-time overhead that slows iteration.
+**MechGen** reimagines Rust as an **agentic-first** language — one where AI agents are first-class participants in the development lifecycle. The language is redesigned around twelve pillars: **(1) zero-ambiguity syntax** that eliminates agent parsing errors, **(2) communication-first primitives** that maximize inter-agent bandwidth, **(3) hardware-agnostic high performance** built on **MLIR and LLVM** compiler infrastructure that compiles to any target without sacrificing speed, **(4) token-minimal syntax** that minimizes the tokens agents must emit, because every token costs time, money, and memory, **(5) safety-free syntax simplification** that eliminates lifetimes, borrow annotations, ownership markers, and all other compile-time safety syntax — since agents consult the SKB directly, the syntax need not carry safety information at all, **(6) an agentic compiler** — the compiler itself is an AI-powered system that provides dynamic warnings, intelligent debugging, performance suggestions, and learns from the codebase and the swarm's history, **(7) cost model transparency** — every construct has a queryable cost (cycles, memory, energy, tokens) per target, so agents choose before emitting rather than profiling after, **(8) synthesis-first design** — formal specifications (`@req`/`@ens`/`@perf`/`@fx`) enable spec-to-code synthesis with compiler verification, closing the guess-compile-fix cycle, **(9) persistent agent memory** — a four-tier memory model (ephemeral, session, project, global) that lets agents learn across sessions and share knowledge across the ecosystem, **(10) self-healing compilation** — the compiler auto-repairs errors with ranked fix candidates, collapsing the emit→error→fix→re-emit loop into a single step, **(11) live iteration** — function-level hot-reload patches running processes in sub-millisecond time without restart, and **(12) zero-friction interop** — automatic FFI binding generation from C/C++ headers, Python stubs, WASM interfaces, and GPU kernels with capability-based sandbox security. Safety knowledge moves from compile-time enforcement to a **queryable Safety Knowledge Base (SKB)** — a structured database of rules, invariants, and constraints that agents reference directly, eliminating the compile-time overhead that slows iteration.
 
-By building on MLIR (Multi-Level Intermediate Representation) and LLVM, Redox inherits the broadest hardware backend ecosystem in existence — 20+ CPU architectures, GPU compute (AMDGPU, NVPTX), WASM, SPIR-V — while gaining MLIR's extensible dialect system for defining custom optimization passes for agent-specific workloads, ML accelerators (NPU/TPU), FPGA synthesis, and domain-specific hardware. MLIR's multi-level abstraction preserves high-level semantic information (parallelism intent, memory layout preferences, effect annotations) deep into the optimization pipeline, where LLVM alone would have discarded it.
+By building on MLIR (Multi-Level Intermediate Representation) and LLVM, MechGen inherits the broadest hardware backend ecosystem in existence — 20+ CPU architectures, GPU compute (AMDGPU, NVPTX), WASM, SPIR-V — while gaining MLIR's extensible dialect system for defining custom optimization passes for agent-specific workloads, ML accelerators (NPU/TPU), FPGA synthesis, and domain-specific hardware. MLIR's multi-level abstraction preserves high-level semantic information (parallelism intent, memory layout preferences, effect annotations) deep into the optimization pipeline, where LLVM alone would have discarded it.
 
-Critically, following the architectural insight pioneered by Modular AI's Mojo language, the **Redox MLIR Dialect is not a translation target — it is the language's semantic backbone**. Ownership, effects, contracts, and performance annotations are first-class MLIR operations and attributes, not metadata bolted onto a generic IR. This means the compiler's semantic understanding is preserved through the entire optimization pipeline, enabling **MLIR-native autotuning** (the compiler generates multiple lowering variants per kernel and benchmarks them per-target), **language-level SIMD types** backed directly by MLIR's vector dialect, and **automatic device placement** where the MLIR pipeline — not the programmer — decides whether a kernel runs on CPU, GPU, or NPU based on cost modeling. These are not Mojo features copied for humans; they are Mojo's architectural insights **re-derived for agent swarms**, where autotuning is a swarm-parallelizable search, device placement is an agent-queryable decision, and SIMD types are token-efficient first-class citizens.
+Critically, following the architectural insight pioneered by Modular AI's Mojo language, the **MechGen MLIR Dialect is not a translation target — it is the language's semantic backbone**. Ownership, effects, contracts, and performance annotations are first-class MLIR operations and attributes, not metadata bolted onto a generic IR. This means the compiler's semantic understanding is preserved through the entire optimization pipeline, enabling **MLIR-native autotuning** (the compiler generates multiple lowering variants per kernel and benchmarks them per-target), **language-level SIMD types** backed directly by MLIR's vector dialect, and **automatic device placement** where the MLIR pipeline — not the programmer — decides whether a kernel runs on CPU, GPU, or NPU based on cost modeling. These are not Mojo features copied for humans; they are Mojo's architectural insights **re-derived for agent swarms**, where autotuning is a swarm-parallelizable search, device placement is an agent-queryable decision, and SIMD types are token-efficient first-class citizens.
 
 ### Core Thesis
 
@@ -43,7 +43,7 @@ Critically, following the architectural insight pioneered by Modular AI's Mojo l
 
 ### What Changes
 
-| Dimension                 | Rust Today                                          | Redox                                                                        |
+| Dimension                 | Rust Today                                          | MechGen                                                                        |
 | ------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------- |
 | **Syntax**                | Context-sensitive, ambiguous                        | Zero-ambiguity canonical grammar, deterministic LL(1) parsing                |
 | **Primary Interface**     | CLI (`rustc`, `cargo`)                              | Structured API (programmatic, query-based, multi-tenant)                     |
@@ -79,7 +79,7 @@ Critically, following the architectural insight pioneered by Modular AI's Mojo l
 Every language feature must compile to the fastest possible code on any target hardware. Compile-time safety checks are *opt-in* overhead, not mandatory gates. The compiler's primary job is *optimizing translation*, not policing correctness — agents handle correctness through their own training and the Safety Knowledge Base.
 
 ### P2: The Compiler Is an Optimizing Translator
-The compiler's primary role is transforming Redox source into the fastest possible target code across all hardware platforms. Its secondary role is serving as a queryable oracle for semantic information. Safety enforcement is delegated to the Safety Knowledge Base and agent-side validation.
+The compiler's primary role is transforming MechGen source into the fastest possible target code across all hardware platforms. Its secondary role is serving as a queryable oracle for semantic information. Safety enforcement is delegated to the Safety Knowledge Base and agent-side validation.
 
 ### P3: All Knowledge Is Structured
 No information should exist only as unstructured text. Diagnostics, documentation, type signatures, lifetime constraints, borrow regions, control-flow graphs, and safety rules must all be available as typed, queryable data — either from the compiler or the Safety Knowledge Base.
@@ -97,7 +97,7 @@ Every compilation, transformation, and verification step produces a deterministi
 Every operation available to an agent must be *at least as available* to a human developer, and vice versa. The agentic interface is not a separate system — it is the *primary* interface that both humans (via IDE) and agents use.
 
 ### P8: Swarm-Native Concurrency
-The system is designed for *many agents operating simultaneously* on the same codebase. Just as Rust's ownership model prevents data races in programs, Redox's swarm model prevents semantic conflicts between concurrent agent modifications. The compiler acts as an arbiter — agents acquire *semantic locks* on code regions (functions, modules, trait impls) rather than file-level locks, and the system automatically detects and resolves conflicts at the semantic level.
+The system is designed for *many agents operating simultaneously* on the same codebase. Just as Rust's ownership model prevents data races in programs, MechGen's swarm model prevents semantic conflicts between concurrent agent modifications. The compiler acts as an arbiter — agents acquire *semantic locks* on code regions (functions, modules, trait impls) rather than file-level locks, and the system automatically detects and resolves conflicts at the semantic level.
 
 ### P9: Compositional Decomposition
 Large tasks are automatically decomposable into independent subtasks that can be distributed across a swarm. The compiler's dependency graph, module boundaries, and trait interfaces define natural *seams* along which work can be parallelized. An agent working on module A's implementation cannot break module B's contract if B depends only on A's interface.
@@ -106,19 +106,19 @@ Large tasks are automatically decomposable into independent subtasks that can be
 No change to shared state (public APIs, trait definitions, type signatures) is applied without swarm consensus. The compiler enforces a *propose-verify-accept* protocol where changes to shared interfaces require validation by all dependent agents before integration. This mirrors Rust's `&mut` exclusivity — at the swarm coordination level.
 
 ### P11: Zero-Ambiguity Syntax
-The language grammar must be **deterministic LL(1)** — every token uniquely determines the parse path with zero backtracking. No context-sensitive parsing, no ambiguous constructs, no lookahead beyond one token. Rust's turbofish (`::<>`), trailing closure ambiguity, type ascription vs. struct literals — all eliminated. Agents parse Redox with a simple state machine, not a backtracking parser. **The single biggest source of agent coding errors is parsing ambiguity — Redox eliminates it by design.**
+The language grammar must be **deterministic LL(1)** — every token uniquely determines the parse path with zero backtracking. No context-sensitive parsing, no ambiguous constructs, no lookahead beyond one token. Rust's turbofish (`::<>`), trailing closure ambiguity, type ascription vs. struct literals — all eliminated. Agents parse MechGen with a simple state machine, not a backtracking parser. **The single biggest source of agent coding errors is parsing ambiguity — MechGen eliminates it by design.**
 
 ### P12: Communication-First Design
 Inter-agent message passing is the highest-priority bottleneck to optimize. Every language construct, every compiler data structure, every protocol message is designed for **zero-copy serialization** and **sub-microsecond latency**. The swarm message bus is not an add-on — it is the foundational primitive around which the entire toolchain is built. Agent-to-agent bandwidth determines swarm performance more than any other factor.
 
 ### P13: Hardware-Agnostic Performance via MLIR + LLVM
-Redox code compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** to target any hardware: x86, ARM, RISC-V, WASM, GPU (AMDGPU, NVPTX, SPIR-V), NPU/TPU, FPGA. The **Redox MLIR Dialect encodes the language's semantics directly** — ownership, effects, contracts, and performance annotations are first-class MLIR operations, not metadata translated from a separate IR. This dialect-as-semantics architecture (pioneered by Modular AI, adapted here for agent swarms) means high-level intent survives through the entire progressive lowering pipeline. LLVM provides battle-tested codegen for 20+ CPU architectures. Language-level SIMD types (`Simd[T, N]`) map directly to MLIR vector dialect ops. **MLIR-native autotuning** generates multiple lowering variants and benchmarks per-target — a search that agent swarms can parallelize across hardware configurations. **Automatic device placement** (`@pt(auto)`) lets the MLIR cost model decide CPU vs GPU vs NPU per kernel, queryable by agents via RAP. Write once, run fast everywhere — on the broadest compiler infrastructure in existence.
+MechGen code compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** to target any hardware: x86, ARM, RISC-V, WASM, GPU (AMDGPU, NVPTX, SPIR-V), NPU/TPU, FPGA. The **MechGen MLIR Dialect encodes the language's semantics directly** — ownership, effects, contracts, and performance annotations are first-class MLIR operations, not metadata translated from a separate IR. This dialect-as-semantics architecture (pioneered by Modular AI, adapted here for agent swarms) means high-level intent survives through the entire progressive lowering pipeline. LLVM provides battle-tested codegen for 20+ CPU architectures. Language-level SIMD types (`Simd[T, N]`) map directly to MLIR vector dialect ops. **MLIR-native autotuning** generates multiple lowering variants and benchmarks per-target — a search that agent swarms can parallelize across hardware configurations. **Automatic device placement** (`@pt(auto)`) lets the MLIR cost model decide CPU vs GPU vs NPU per kernel, queryable by agents via RAP. Write once, run fast everywhere — on the broadest compiler infrastructure in existence.
 
 ### P14: Database-Driven Safety
 Safety rules (ownership patterns, borrow violations, lifetime errors, type mismatches) are stored in a **Safety Knowledge Base (SKB)** — a structured, versioned, queryable database. Agents consult the SKB directly instead of waiting for compile-time error messages. The compiler can *optionally* enforce SKB rules at compile time (for human developers or CI pipelines), but this is a policy choice, not a language requirement. This eliminates the compile-time overhead tax that slows agentic iteration cycles from milliseconds to seconds.
 
 ### P15: Token Economy
-Every language construct must minimize the number of tokens an agent must emit to express intent. Tokens cost time, money, and memory — they are the fundamental unit of agent resource consumption. Every keyword, attribute, delimiter, and syntactic form is designed for **minimum token footprint**: short keywords, compact operators, abbreviated attributes, and structural compression. Where Rust uses `pub fn`, Redox offers `+f`; where Rust uses `#[derive(Clone, Debug)]`, Redox offers `@d(Cl,Db)`. The **token-optimal syntax** is not a separate mode — it is the canonical form, designed so that agents express maximal semantic intent per token spent. Human-readable aliases remain available in legacy mode. The goal: any program expressible in N Rust tokens should be expressible in ≤ N/2 Redox tokens, with no loss of semantics.
+Every language construct must minimize the number of tokens an agent must emit to express intent. Tokens cost time, money, and memory — they are the fundamental unit of agent resource consumption. Every keyword, attribute, delimiter, and syntactic form is designed for **minimum token footprint**: short keywords, compact operators, abbreviated attributes, and structural compression. Where Rust uses `pub fn`, MechGen offers `+f`; where Rust uses `#[derive(Clone, Debug)]`, MechGen offers `@d(Cl,Db)`. The **token-optimal syntax** is not a separate mode — it is the canonical form, designed so that agents express maximal semantic intent per token spent. Human-readable aliases remain available in legacy mode. The goal: any program expressible in N Rust tokens should be expressible in ≤ N/2 MechGen tokens, with no loss of semantics.
 
 ### P16: Dual Representation Parity
 Every token-compressed construct has a unique, deterministic expansion to its full-form equivalent, and vice versa. The compiler, formatter, and toolchain can losslessly convert between compact and verbose representations. Agents write compact; humans read expanded; the AST is identical. This ensures that token compression never creates ambiguity or information loss.
@@ -142,10 +142,10 @@ Every language feature is designed so that code can be **synthesized from a form
 When an agent emits invalid code, the compiler should not merely report errors — it should **attempt to repair them**. The ACI analyzes the error, infers the most probable intended code, applies the fix, and returns the corrected version alongside the diagnostic. For agents, the compile-error-fix loop is the single largest source of wasted tokens and latency. A self-healing compiler collapses `emit → error → read → fix → re-emit` into `emit → auto-fix → confirm`. Recovery strategies are ranked by confidence and cost (token savings vs. semantic risk). The agent always sees the fix and can accept, reject, or refine — the compiler never silently changes semantics.
 
 ### P23: Live Patching
-Agent swarms iterate continuously — stopping a running system to recompile defeats the purpose. Redox supports **function-level hot-reload**: individual functions can be recompiled and patched into a running process without restart. The MLIR pipeline emits position-independent code with stable ABIs at function boundaries. The swarm can patch a function, observe the result, and roll back within milliseconds. This transforms the development loop from batch compilation to **continuous, incremental, live evolution** — the natural mode for agent swarms that never sleep.
+Agent swarms iterate continuously — stopping a running system to recompile defeats the purpose. MechGen supports **function-level hot-reload**: individual functions can be recompiled and patched into a running process without restart. The MLIR pipeline emits position-independent code with stable ABIs at function boundaries. The swarm can patch a function, observe the result, and roll back within milliseconds. This transforms the development loop from batch compilation to **continuous, incremental, live evolution** — the natural mode for agent swarms that never sleep.
 
 ### P24: Zero-Friction Foreign Function Interface
-Agents work across language boundaries — calling C libraries, Python ML frameworks, WASM modules, and GPU kernels. Redox provides a **zero-ceremony FFI** that requires no `unsafe`, no manual struct layout matching, and no binding generators. The compiler reads C headers, Python type stubs, and WASM component model interfaces directly and generates safe Redox bindings automatically. Cross-language calls are as cheap as intra-language calls when the MLIR pipeline can inline across boundaries.
+Agents work across language boundaries — calling C libraries, Python ML frameworks, WASM modules, and GPU kernels. MechGen provides a **zero-ceremony FFI** that requires no `unsafe`, no manual struct layout matching, and no binding generators. The compiler reads C headers, Python type stubs, and WASM component model interfaces directly and generates safe MechGen bindings automatically. Cross-language calls are as cheap as intra-language calls when the MLIR pipeline can inline across boundaries.
 
 ---
 
@@ -211,7 +211,7 @@ Agents work across language boundaries — calling C libraries, Python ML framew
 
 **Work Streams:**
 
-6. **Redox Agent Protocol (RAP)**
+6. **MechGen Agent Protocol (RAP)**
    - A structured protocol (analogous to LSP but for *compilation semantics*, not just IDE features) that agents use to:
      - Submit code for analysis (incremental)
      - Query types, traits, lifetimes, borrow constraints
@@ -221,7 +221,7 @@ Agents work across language boundaries — calling C libraries, Python ML framew
    - **Deliverable:** `redox_protocol` crate + reference server implementation.
 
 7. **Agent Capability System**
-   - Agents operating on Redox code are themselves subject to capability bounds:
+   - Agents operating on MechGen code are themselves subject to capability bounds:
      ```
      agent CodeReviewer {
          capabilities: [read_source, query_types, emit_diagnostics]
@@ -245,9 +245,9 @@ Agents work across language boundaries — calling C libraries, Python ML framew
    - Built on `rustc_borrowck`, `rustc_const_eval`, `rustc_pattern_analysis`, and `rustc_transmute`.
    - **Deliverable:** `redox_verify` crate exposing verification as a composable service.
 
-### Phase 3: Language Evolution — Redox Syntax and Semantics (Months 12–24)
+### Phase 3: Language Evolution — MechGen Syntax and Semantics (Months 12–24)
 
-**Goal:** Introduce language features that make Redox natively agent-friendly while remaining human-ergonomic.
+**Goal:** Introduce language features that make MechGen natively agent-friendly while remaining human-ergonomic.
 
 **Work Streams:**
 
@@ -290,12 +290,12 @@ Agents work across language boundaries — calling C libraries, Python ML framew
 
 ---
 
-## 4. Ontology of the Redox System
+## 4. Ontology of the MechGen System
 
 ### 4.1 Top-Level Ontology
 
 ```
-Redox System
+MechGen System
 ├── Language
 │   ├── Syntax (zero-ambiguity LL(1) canonical grammar)
 │   ├── Semantics (types, traits, lifetimes, effects, contracts)
@@ -321,12 +321,12 @@ Redox System
 │   └── Query API (agents pre-validate before writing code)
 │
 ├── Toolchain
-│   ├── Build System (Redox Build — multi-target orchestration)
+│   ├── Build System (MechGen Build — multi-target orchestration)
 │   ├── Package Manager (capability-indexed registry)
 │   ├── Formatter (redoxfmt — canonical form enforcement)
 │   ├── Linter (redox-lint — opt-in)
 │   ├── Documentation (redox-doc)
-│   ├── Interpreter (Redox Interpret — opt-in UB detection)
+│   ├── Interpreter (MechGen Interpret — opt-in UB detection)
 │   └── Language Server (RAP Server)
 │
 ├── Agent Infrastructure
@@ -346,11 +346,11 @@ Redox System
 
 ### 4.2 Compiler Crate Ontology (Mapped from Rust)
 
-Each existing `rustc_*` crate maps to a Redox subsystem with its agent-facing interface:
+Each existing `rustc_*` crate maps to a MechGen subsystem with its agent-facing interface:
 
 #### Frontend Pipeline
 
-| Rust Crate           | Redox Subsystem | Agent Interface                                                                         |
+| Rust Crate           | MechGen Subsystem | Agent Interface                                                                         |
 | -------------------- | --------------- | --------------------------------------------------------------------------------------- |
 | `rustc_lexer`        | `redox_lexer`   | Token stream API: agents can tokenize arbitrary source fragments                        |
 | `rustc_parse`        | `redox_parse`   | Parse API: agents submit source, receive AST with full span info                        |
@@ -361,7 +361,7 @@ Each existing `rustc_*` crate maps to a Redox subsystem with its agent-facing in
 
 #### Middle (Semantic Analysis)
 
-| Rust Crate               | Redox Subsystem    | Agent Interface                                                              |
+| Rust Crate               | MechGen Subsystem    | Agent Interface                                                              |
 | ------------------------ | ------------------ | ---------------------------------------------------------------------------- |
 | `rustc_hir`              | `redox_hir`        | HIR query: agents access desugared, resolved program structure               |
 | `rustc_hir_analysis`     | `redox_typecheck`  | Type query: agents ask "what is the type of X in context Y?"                 |
@@ -377,7 +377,7 @@ Each existing `rustc_*` crate maps to a Redox subsystem with its agent-facing in
 
 #### Backend Pipeline
 
-| Rust Crate            | Redox Subsystem   | Agent Interface                                                               |
+| Rust Crate            | MechGen Subsystem   | Agent Interface                                                               |
 | --------------------- | ----------------- | ----------------------------------------------------------------------------- |
 | `rustc_mir_build`     | `redox_mir_build` | MIR construction: agents observe HIR→MIR lowering                             |
 | `rustc_mir_transform` | `redox_mir_opt`   | MIR optimization: agents query which passes ran and their effects             |
@@ -388,7 +388,7 @@ Each existing `rustc_*` crate maps to a Redox subsystem with its agent-facing in
 
 #### Infrastructure
 
-| Rust Crate          | Redox Subsystem     | Agent Interface                                      |
+| Rust Crate          | MechGen Subsystem     | Agent Interface                                      |
 | ------------------- | ------------------- | ---------------------------------------------------- |
 | `rustc_errors`      | `redox_diagnostics` | Structured diagnostic API with fix graphs            |
 | `rustc_lint`        | `redox_lint`        | Lint registration and query API                      |
@@ -402,7 +402,7 @@ Each existing `rustc_*` crate maps to a Redox subsystem with its agent-facing in
 
 ### 4.3 Tooling Ontology
 
-| Rust Tool       | Redox Tool        | Agent Interface                                                        |
+| Rust Tool       | MechGen Tool        | Agent Interface                                                        |
 | --------------- | ----------------- | ---------------------------------------------------------------------- |
 | `cargo`         | `redox build`     | Build orchestration API: dependency resolution, compilation scheduling |
 | `rustfmt`       | `redoxfmt`        | Format API: agents request formatting with configurable style          |
@@ -436,7 +436,7 @@ Safety Model
 │   ├── `dyn`/`impl` dispatch split eliminated (compiler decides)
 │   └── Where clauses contain only semantic bounds (safety bounds in SKB)
 │
-├── Compile-Time (Opt-In — controlled by Redox.toml safety profiles)
+├── Compile-Time (Opt-In — controlled by MechGen.toml safety profiles)
 │   ├── Ownership System (skippable — agents know the rules)
 │   │   ├── Move semantics (affine types)
 │   │   ├── Copy trait (unrestricted duplication)
@@ -482,7 +482,7 @@ Safety Model
 │   └── Capability Monitors (agent sandbox enforcement)
 │
 ├── Performance Infrastructure [NEW IN REDOX — MLIR + LLVM]
-│   ├── MLIR-based multi-level IR (Redox Dialect → Linalg/Affine → LLVM Dialect)
+│   ├── MLIR-based multi-level IR (MechGen Dialect → Linalg/Affine → LLVM Dialect)
 │   ├── Dialect-as-semantics: ownership, effects, contracts are first-class MLIR ops
 │   ├── LLVM backend codegen (20+ CPU architectures, AMDGPU, NVPTX, WASM)
 │   ├── Custom MLIR dialects for GPU compute, NPU/TPU, FPGA synthesis
@@ -563,7 +563,7 @@ Safety Model
 
 ### 5.1 Backwards Compatibility
 
-Redox supports **dual syntax modes**. The **canonical syntax** (default) is a zero-ambiguity LL(1) grammar optimized for agent parsing. The **legacy syntax mode** accepts standard Rust and transpiles to canonical form. All valid Rust programs can be compiled in legacy mode. The `redox fmt --canonicalize` command converts Rust source to canonical Redox. New features (effects, contracts, performance annotations, SKB integration) are only available in canonical syntax.
+MechGen supports **dual syntax modes**. The **canonical syntax** (default) is a zero-ambiguity LL(1) grammar optimized for agent parsing. The **legacy syntax mode** accepts standard Rust and transpiles to canonical form. All valid Rust programs can be compiled in legacy mode. The `redox fmt --canonicalize` command converts Rust source to canonical MechGen. New features (effects, contracts, performance annotations, SKB integration) are only available in canonical syntax.
 
 ### 5.2 New Syntax and Semantics
 
@@ -577,7 +577,7 @@ fn longest<'a>(x: &'a str, y: &'a str) -> &'a str { ... }
 fn process(data: &mut Vec<u8>, config: &Config) -> Result<(), Error> { ... }
 unsafe fn raw_read(ptr: *const u8, len: usize) -> &[u8] { ... }
 
-// Redox: no lifetimes, no borrow annotations, no unsafe keyword
+// MechGen: no lifetimes, no borrow annotations, no unsafe keyword
 f longest(x: s, y: s) -> s { ... }              // compiler infers reference semantics
 f process(data: [u8]~, config: Config) -> R[(),Error] { ... }  // mutability is implicit
 f raw_read(ptr: Ptr[u8], len: usize) -> [u8] { ... }          // no unsafe needed
@@ -669,11 +669,11 @@ capability_block!(io::read + alloc) {
 
 ### 5.3 Canonical Syntax: Designed for Zero Parse Errors
 
-Rust's syntax, while ergonomic for humans, causes systematic agent parsing failures due to context-sensitive constructs and ambiguous token sequences. Redox's **canonical syntax** eliminates every known source of agent parse errors:
+Rust's syntax, while ergonomic for humans, causes systematic agent parsing failures due to context-sensitive constructs and ambiguous token sequences. MechGen's **canonical syntax** eliminates every known source of agent parse errors:
 
 #### 5.3.1 Ambiguity Eliminations
 
-| Rust Ambiguity                                     | Agent Failure Mode                         | Redox Solution                                               |
+| Rust Ambiguity                                     | Agent Failure Mode                         | MechGen Solution                                               |
 | -------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------ |
 | Turbofish `::<T>` vs. `<` comparison               | Agent emits `foo<T>` instead of `foo::<T>` | Unified `foo[T]` for type params everywhere                  |
 | Struct literal `Foo { x: 1 }` vs. block `{ x: 1 }` | Agent confuses expression context          | Struct literals require `@Foo { x: 1 }` prefix               |
@@ -711,28 +711,28 @@ Because of these properties, agents get:
 
 #### 5.3.4 Dual Syntax Mode
 
-For human developers transitioning from Rust, Redox supports a **legacy syntax mode** that accepts standard Rust syntax and transpiles to canonical form:
+For human developers transitioning from Rust, MechGen supports a **legacy syntax mode** that accepts standard Rust syntax and transpiles to canonical form:
 
 ```bash
 redox build --syntax=legacy    # accepts Rust syntax, transpiles
 redox build --syntax=canonical # default: zero-ambiguity syntax only
-redox fmt --canonicalize       # convert legacy Rust syntax to canonical Redox
+redox fmt --canonicalize       # convert legacy Rust syntax to canonical MechGen
 ```
 
 ### 5.4 Hardware-Agnostic Performance Model (MLIR + LLVM)
 
-Redox compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** — the broadest and most mature compiler infrastructure in existence. Following the key architectural insight from Modular AI's Mojo (but adapted for agent swarms, not human ML engineers): **the MLIR dialect is not a translation target — it is the language's semantic backbone**. Ownership, effects, contracts, performance annotations, and agent capability declarations are encoded as first-class MLIR operations and attributes in the Redox Dialect. This means the compiler's full semantic understanding is preserved through the entire optimization pipeline — unlike a traditional approach where MIR→LLVM IR lowering discards high-level intent.
+MechGen compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** — the broadest and most mature compiler infrastructure in existence. Following the key architectural insight from Modular AI's Mojo (but adapted for agent swarms, not human ML engineers): **the MLIR dialect is not a translation target — it is the language's semantic backbone**. Ownership, effects, contracts, performance annotations, and agent capability declarations are encoded as first-class MLIR operations and attributes in the MechGen Dialect. This means the compiler's full semantic understanding is preserved through the entire optimization pipeline — unlike a traditional approach where MIR→LLVM IR lowering discards high-level intent.
 
 MLIR provides extensible multi-level abstractions that preserve performance intent (parallelism, memory layout, vectorization) through progressive lowering, while LLVM provides battle-tested optimization and native code generation for 20+ architectures.
 
 #### 5.4.1 MLIR-Based Compilation Pipeline
 
 ```
-Source → AST → HIR → MIR → MLIR (Redox Dialect) → MLIR (Lowered) → Target Code
+Source → AST → HIR → MIR → MLIR (MechGen Dialect) → MLIR (Lowered) → Target Code
                               │                       │
                               │ Progressive Lowering:  │
                               │ ┌─────────────────┐   │
-                              ├─┤ Redox Dialect    │   │  (effects, contracts, perf annotations)
+                              ├─┤ MechGen Dialect    │   │  (effects, contracts, perf annotations)
                               │ └────────┬────────┘   │
                               │ ┌────────▼────────┐   │
                               ├─┤ Linalg Dialect   │   │  (linear algebra, tensor ops)
@@ -765,7 +765,7 @@ Source → AST → HIR → MIR → MLIR (Redox Dialect) → MLIR (Lowered) → T
 
 #### Why MLIR + LLVM?
 
-| Criterion                    | LLVM Alone                       | MLIR + LLVM (Redox)                                       |
+| Criterion                    | LLVM Alone                       | MLIR + LLVM (MechGen)                                       |
 | ---------------------------- | -------------------------------- | --------------------------------------------------------- |
 | **CPU targets**              | 20+ architectures                | Same 20+ (LLVM backend unchanged)                         |
 | **GPU targets**              | NVPTX, AMDGPU only               | + SPIR-V dialect, custom compute dialects                 |
@@ -861,11 +861,11 @@ These annotations are **not safety checks** — they are performance directives.
 
 ### 5.5 Token-Efficient Syntax: Minimizing Agent Cost
 
-Every token an agent emits costs **time** (inference latency), **money** (API billing), and **memory** (context window consumption). Redox's canonical syntax is designed to express maximum semantic intent per token. The goal: any program expressible in N Rust tokens should be expressible in ≤ N/2 Redox tokens with identical semantics.
+Every token an agent emits costs **time** (inference latency), **money** (API billing), and **memory** (context window consumption). MechGen's canonical syntax is designed to express maximum semantic intent per token. The goal: any program expressible in N Rust tokens should be expressible in ≤ N/2 MechGen tokens with identical semantics.
 
 #### 5.5.1 Keyword Compression Table
 
-| Rust Keyword / Construct        | Tokens | Redox Compact Form | Tokens |      Savings      |
+| Rust Keyword / Construct        | Tokens | MechGen Compact Form | Tokens |      Savings      |
 | ------------------------------- | :----: | ------------------ | :----: | :---------------: |
 | `fn`                            |   1    | `f`                |   1    | 0 (already short) |
 | `pub fn`                        |   2    | `+f`               |   1    |        50%        |
@@ -933,10 +933,10 @@ Every token an agent emits costs **time** (inference latency), **money** (API bi
 
 #### 5.5.2 Attribute Compression
 
-Redox attributes use single-character prefixes and abbreviated names:
+MechGen attributes use single-character prefixes and abbreviated names:
 
 ```
-Rust                                    Redox Compact
+Rust                                    MechGen Compact
 ─────────────────────────────           ─────────────────────
 #[derive(Clone, Debug, PartialEq)]     @d(Cl,Db,PEq)
 #[repr(C)]                             @r(C)
@@ -975,7 +975,7 @@ pub fn process_items(items: &[Item], config: &Config) -> Result<Vec<Output>, Err
 }
 ```
 
-**Redox Compact (19 tokens):**
+**MechGen Compact (19 tokens):**
 ```
 +f process_items(items: &[Item], config: &Config) -> R[[Output]~, Error] {
     m results = [Output]~.new;
@@ -1007,7 +1007,7 @@ impl User {
 }
 ```
 
-**Redox Compact (30 tokens):**
+**MechGen Compact (30 tokens):**
 ```
 @d(Cl,Db)
 +S User {
@@ -1031,7 +1031,7 @@ I User {
 
 High-frequency Rust patterns get dedicated compact forms:
 
-| Pattern                                              | Rust Tokens | Redox Compact        | Redox Tokens |
+| Pattern                                              | Rust Tokens | MechGen Compact        | MechGen Tokens |
 | ---------------------------------------------------- | :---------: | -------------------- | :----------: |
 | Error propagation: `fn f() -> Result<T, E>`          |      7      | `f f() -> R[T,E]`    |      5       |
 | Option handling: `if let Some(v) = x { ... }`        |      9      | `?x => v { ... }`    |      4       |
@@ -1045,9 +1045,9 @@ High-frequency Rust patterns get dedicated compact forms:
 
 #### 5.5.5 Token Economy Guarantees
 
-The Redox compiler enforces these token economy properties:
+The MechGen compiler enforces these token economy properties:
 
-1. **No construct requires more tokens than its Rust equivalent** — every Redox form is ≤ the token count of the corresponding Rust form
+1. **No construct requires more tokens than its Rust equivalent** — every MechGen form is ≤ the token count of the corresponding Rust form
 2. **High-frequency constructs get the shortest forms** — token length is inversely proportional to usage frequency across all known Rust codebases
 3. **`redoxfmt --agent`** produces the minimum-token canonical form; **`redoxfmt --human`** produces the human-readable expanded form
 4. **Token budget reporting**: `redox build --token-report` emits per-function and per-module token counts, enabling agents to track and optimize their token expenditure
@@ -1081,7 +1081,7 @@ Since agents consult the SKB directly for all safety rules, **the syntax need no
 
 #### 5.6.1 What Gets Eliminated
 
-| Rust Syntax / Concept                   | Purpose (for humans)                    | Redox (for agents)                               | Rationale                                                           |
+| Rust Syntax / Concept                   | Purpose (for humans)                    | MechGen (for agents)                               | Rationale                                                           |
 | --------------------------------------- | --------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------- |
 | `'a`, `'b`, `'static`, `for<'a>`        | Lifetime annotations                    | **Eliminated** — compiler infers all             | Agents know lifetime rules via SKB; syntax annotations waste tokens |
 | `&T` vs `&mut T`                        | Borrow checking at call sites           | Single reference type: `&T`; mutability inferred | Agents pre-validate borrows via SKB before writing code             |
@@ -1100,7 +1100,7 @@ Since agents consult the SKB directly for all safety rules, **the syntax need no
 
 #### 5.6.2 The Simplified Language
 
-With safety syntax eliminated, Redox function signatures become radically simpler:
+With safety syntax eliminated, MechGen function signatures become radically simpler:
 
 ```
 // Rust (21 tokens):
@@ -1111,7 +1111,7 @@ pub fn merge<'a, 'b, T: Send + Sync + Clone + 'a>(
 where
     'b: 'a,
 
-// Redox (8 tokens):
+// MechGen (8 tokens):
 +f merge[T: Cl](left: [T], right: [T]) -> [T]~
 
 // What was removed:
@@ -1128,7 +1128,7 @@ unsafe fn transmute_slice<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
     unsafe { std::slice::from_raw_parts(ptr, len) }
 }
 
-// Redox (8 tokens):
+// MechGen (8 tokens):
 f transmute_slice(ptr: Ptr[u8], len: usize) -> [u8] {
     slice.from_parts(ptr, len)
 }
@@ -1150,7 +1150,7 @@ pub struct Future<'a, T: Send + 'static> {
     _phantom: PhantomData<&'a ()>,
 }
 
-// Redox (8 tokens):
+// MechGen (8 tokens):
 +S Future[T] {
     inner: ^T,          // compiler manages pinning, boxing, dispatch
 }
@@ -1166,7 +1166,7 @@ pub struct Future<'a, T: Send + 'static> {
 
 #### 5.6.3 Token Impact of Safety Elimination
 
-| Metric                                       | Rust     | Redox (safety-free) | Savings        |
+| Metric                                       | Rust     | MechGen (safety-free) | Savings        |
 | -------------------------------------------- | -------- | ------------------- | -------------- |
 | Average tokens per function signature        | 12–25    | 4–8                 | 60–70%         |
 | Lifetime annotations per 1000 LOC            | 15–50    | 0                   | 100%           |
@@ -1177,7 +1177,7 @@ pub struct Future<'a, T: Send + 'static> {
 
 ### 5.7 Cost Model Transparency: Query Before You Emit
 
-Agents are economic actors — every choice they make (which type, which algorithm, which allocation strategy) has a measurable cost. Redox exposes a **cost oracle** that agents query *before* emitting code, turning compilation from a feedback loop into a feed-forward pipeline.
+Agents are economic actors — every choice they make (which type, which algorithm, which allocation strategy) has a measurable cost. MechGen exposes a **cost oracle** that agents query *before* emitting code, turning compilation from a feedback loop into a feed-forward pipeline.
 
 #### 5.7.1 Cost Oracle API
 
@@ -1261,7 +1261,7 @@ The grammar is not fixed — agents can register **domain-specific syntax extens
 #### 5.8.1 Extension Registration
 
 ```toml
-# Redox.toml — project-level grammar extensions
+# MechGen.toml — project-level grammar extensions
 [grammar.extensions]
 genomic-seq = { module = "bio::seq", version = "1.0" }
 ml-layers = { module = "nn::layer", version = "2.1" }
@@ -1331,7 +1331,7 @@ v suggestions = rap.query("aci.grammar_suggestions", project_id);
 
 ### 5.9 Synthesis Specifications: From Spec to Code
 
-Redox treats formal specifications as first-class inputs to the compiler. Agents don't write code from scratch — they compose specifications, and the compiler verifies that candidate implementations satisfy them.
+MechGen treats formal specifications as first-class inputs to the compiler. Agents don't write code from scratch — they compose specifications, and the compiler verifies that candidate implementations satisfy them.
 
 #### 5.9.1 Specification Syntax
 
@@ -1412,7 +1412,7 @@ pipeline data_ingest {
 
 ### 5.10 Self-Healing Compilation: Error Recovery as a Service
 
-When an agent emits code that doesn't compile, the traditional response is an error message. The agent reads the error, reasons about the fix, emits corrected code, and recompiles. This loop wastes tokens, latency, and agent compute. Redox's ACI collapses this loop.
+When an agent emits code that doesn't compile, the traditional response is an error message. The agent reads the error, reasons about the fix, emits corrected code, and recompiles. This loop wastes tokens, latency, and agent compute. MechGen's ACI collapses this loop.
 
 #### 5.10.1 Auto-Repair Pipeline
 
@@ -1466,7 +1466,7 @@ v result = rap.query("compile", source_code);
 
 ### 5.11 Hot-Reload: Live Function Patching
 
-Agent swarms iterate continuously. Stopping a running system to recompile is incompatible with the agentic paradigm. Redox supports **function-level hot-reload** — individual functions recompiled and injected into a running process without restart.
+Agent swarms iterate continuously. Stopping a running system to recompile is incompatible with the agentic paradigm. MechGen supports **function-level hot-reload** — individual functions recompiled and injected into a running process without restart.
 
 #### 5.11.1 Hot-Reload Architecture
 
@@ -1521,7 +1521,7 @@ rap.query("hotpatch.rollback", "patch_a3f2");
 
 ### 5.12 Zero-Friction Foreign Function Interface
 
-Agents routinely cross language boundaries — calling C libraries, Python ML frameworks, WASM modules, GPU kernels. Redox's FFI requires **zero ceremony**: no `unsafe`, no manual layout, no binding generators.
+Agents routinely cross language boundaries — calling C libraries, Python ML frameworks, WASM modules, GPU kernels. MechGen's FFI requires **zero ceremony**: no `unsafe`, no manual layout, no binding generators.
 
 #### 5.12.1 Automatic Binding Generation
 
@@ -1530,7 +1530,7 @@ Agents routinely cross language boundaries — calling C libraries, Python ML fr
 @ffi("c", header: "openssl/evp.h", link: "ssl")
 mod openssl;
 
-// Use it like native Redox code — no unsafe, no manual types
+// Use it like native MechGen code — no unsafe, no manual types
 v ctx = openssl.EVP_CIPHER_CTX_new();
 openssl.EVP_EncryptInit_ex(ctx, openssl.EVP_aes_256_gcm(), ...);
 // Compiler auto-generates safe wrappers with null checks, length validation
@@ -1541,7 +1541,7 @@ mod torch;
 
 v tensor = torch.randn([3, 224, 224]);
 v result = torch.nn.functional.relu(tensor);
-// Data crosses Python↔Redox boundary via zero-copy buffer protocol
+// Data crosses Python↔MechGen boundary via zero-copy buffer protocol
 
 // Import WASM component
 @ffi("wasm", component: "image-processor.wasm")
@@ -1586,13 +1586,13 @@ v cost = rap.query("cost", CostQuery {
 
 ### 6.1 The Query Oracle
 
-The Redox compiler exposes its entire semantic model through a query interface. Every piece of information the compiler computes is available as a named, typed, cached query.
+The MechGen compiler exposes its entire semantic model through a query interface. Every piece of information the compiler computes is available as a named, typed, cached query.
 
 ```
 ┌─────────────────────────────────────────────────┐
 │                 Agent / IDE / CLI                │
 ├─────────────────────────────────────────────────┤
-│              Redox Agent Protocol (RAP)         │
+│              MechGen Agent Protocol (RAP)         │
 ├───────┬───────┬───────┬───────┬────────┬────────┤
 │ Parse │ Types │Borrow │ MIR   │ Diag   │ Verify │
 │Queries│Queries│Queries│Queries│Queries │Queries │
@@ -1601,7 +1601,7 @@ The Redox compiler exposes its entire semantic model through a query interface. 
 ├─────────────────────────────────────────────────┤
 │         Incremental Query Engine (Salsa)         │
 ├─────────────────────────────────────────────────┤
-│         MLIR (Redox Dialect → LLVM Dialect)       │
+│         MLIR (MechGen Dialect → LLVM Dialect)       │
 ├─────────────────────────────────────────────────┤
 │    LLVM Backend (20+ CPU, GPU, WASM targets)     │
 ├─────────────────────────────────────────────────┤
@@ -1611,7 +1611,7 @@ The Redox compiler exposes its entire semantic model through a query interface. 
 
 ### 6.2 Structured Diagnostic Graph
 
-Instead of flat error messages, Redox emits **diagnostic graphs**:
+Instead of flat error messages, MechGen emits **diagnostic graphs**:
 
 ```rust
 DiagnosticGraph {
@@ -1678,7 +1678,7 @@ VerificationCertificate {
 
 ### 6.4 Agentic Compiler Intelligence
 
-The Redox compiler is not a static analyzer — it is an **agentic AI system** that learns, adapts, and collaborates with the agent swarm. This is the second major departure from traditional compiler design: the compiler itself embeds AI capabilities that go far beyond fixed lint passes and static analysis.
+The MechGen compiler is not a static analyzer — it is an **agentic AI system** that learns, adapts, and collaborates with the agent swarm. This is the second major departure from traditional compiler design: the compiler itself embeds AI capabilities that go far beyond fixed lint passes and static analysis.
 
 #### 6.4.1 Architecture
 
@@ -1841,10 +1841,10 @@ v advice = rap.query("aci.swarm", task);
 
 ### 7.1 The Ownership Model for Agent Swarms
 
-Just as Rust's type system enforces memory safety through ownership, Redox enforces *codebase safety* through a **semantic ownership model for agent swarms**. The core insight: Rust already solved concurrent access to shared mutable state — we apply the same discipline at the agent coordination level.
+Just as Rust's type system enforces memory safety through ownership, MechGen enforces *codebase safety* through a **semantic ownership model for agent swarms**. The core insight: Rust already solved concurrent access to shared mutable state — we apply the same discipline at the agent coordination level.
 
 ```
-Rust Memory Model              Redox Swarm Model
+Rust Memory Model              MechGen Swarm Model
 ─────────────────               ─────────────────
 &T      (shared read)      ←→   &Module   (many agents read)
 &mut T  (exclusive write)  ←→   &mut Fn   (one agent modifies a function)
@@ -1883,7 +1883,7 @@ enum SemanticLease {
 
 ### 7.2 Swarm Topology and Roles
 
-A Redox swarm is a **directed acyclic graph of specialized agents** that mirrors the compiler's own pass structure:
+A MechGen swarm is a **directed acyclic graph of specialized agents** that mirrors the compiler's own pass structure:
 
 ```
                     ┌─────────────────┐
@@ -1927,7 +1927,7 @@ A Redox swarm is a **directed acyclic graph of specialized agents** that mirrors
 
 ### 7.3 Conflict-Free Concurrent Editing (CRDT-Based)
 
-Redox uses **semantic CRDTs** (Conflict-free Replicated Data Types) for concurrent codebase modification. Unlike text-level CRDTs (which merge character-by-character), semantic CRDTs operate on the AST/HIR:
+MechGen uses **semantic CRDTs** (Conflict-free Replicated Data Types) for concurrent codebase modification. Unlike text-level CRDTs (which merge character-by-character), semantic CRDTs operate on the AST/HIR:
 
 ```rust
 /// A semantic CRDT operation on the codebase
@@ -2152,7 +2152,7 @@ Super-Orchestrator
 
 ### 7.9 Swarm-Aware Version Control
 
-Redox replaces file-based version control (git) with **semantic version control** built into the compiler:
+MechGen replaces file-based version control (git) with **semantic version control** built into the compiler:
 
 ```rust
 /// Semantic version control — replaces git for agent swarms
@@ -2260,7 +2260,7 @@ The compiler verifies orchestration patterns at compile time:
 
 ### 7.11 Agent Memory Model: Persistent Learning Across Sessions
 
-Swarm agents are not stateless — they accumulate knowledge across sessions. Redox provides a structured **Agent Memory Model** that persists patterns, decisions, and project-specific knowledge.
+Swarm agents are not stateless — they accumulate knowledge across sessions. MechGen provides a structured **Agent Memory Model** that persists patterns, decisions, and project-specific knowledge.
 
 #### 7.10.1 Memory Tiers
 
@@ -2338,10 +2338,10 @@ Project memory feeds back into every aspect of the compilation pipeline:
 
 ## 8. Toolchain as Swarm Infrastructure
 
-### 8.1 Redox Build (Evolution of Cargo)
+### 8.1 MechGen Build (Evolution of Cargo)
 
 ```toml
-# Redox.toml (evolution of Cargo.toml)
+# MechGen.toml (evolution of Cargo.toml)
 [package]
 name = "flight-controller"
 version = "2.1.0"
@@ -2396,7 +2396,7 @@ message-serialization = "zero-copy"             # zero-copy | flatbuffers | prot
 
 ### 8.2 Unified RAP Server
 
-The Redox Agent Protocol server replaces separate tools with a unified service:
+The MechGen Agent Protocol server replaces separate tools with a unified service:
 
 ```
 RAP Server
@@ -2450,8 +2450,8 @@ RAP Server
 │   └── Rule corpus management (add, deprecate, fork rules)
 │
 ├── MLIR/LLVM Service [NEW]
-│   ├── MIR → MLIR (Redox Dialect) translation — dialect encodes full language semantics
-│   ├── Progressive lowering: Redox → Linalg/Affine → Vector → LLVM Dialect
+│   ├── MIR → MLIR (MechGen Dialect) translation — dialect encodes full language semantics
+│   ├── Progressive lowering: MechGen → Linalg/Affine → Vector → LLVM Dialect
 │   ├── Multi-target LLVM codegen (20+ CPU architectures, AMDGPU, NVPTX, WASM)
 │   ├── Custom MLIR dialect pipelines (SPIR-V for GPU, CIRCT for FPGA, StableHLO for NPU/TPU)
 │   ├── MLIR-native autotuning engine (generate N lowering variants, benchmark per-target)
@@ -2634,7 +2634,7 @@ impl AuditOrchestrator {
 
 ### 8.4 Agentic Standard Library
 
-The Redox standard library is redesigned for agent consumption patterns. Where Rust's stdlib is optimized for human ergonomics (readable names, discoverable method chains), Redox's is optimized for **minimum-token, maximum-throughput agent interaction**.
+The MechGen standard library is redesigned for agent consumption patterns. Where Rust's stdlib is optimized for human ergonomics (readable names, discoverable method chains), MechGen's is optimized for **minimum-token, maximum-throughput agent interaction**.
 
 #### 8.4.1 Design Principles
 
@@ -2646,7 +2646,7 @@ The Redox standard library is redesigned for agent consumption patterns. Where R
 
 #### 8.4.2 Key Differences from Rust's stdlib
 
-| Aspect                | Rust stdlib                         | Redox stdlib                                                                |
+| Aspect                | Rust stdlib                         | MechGen stdlib                                                                |
 | --------------------- | ----------------------------------- | --------------------------------------------------------------------------- |
 | **Method naming**     | `push`, `insert`, `contains`        | Same semantics, but with batch: `push_batch`, `insert_batch`                |
 | **Error handling**    | `Result<T, E>` with `?` propagation | Same, plus `R[T, E]` abbreviation and error chains                          |
@@ -2693,7 +2693,7 @@ v items = ArenaVec[Item].in(arena);
 // Rust: reads entire file into memory
 // let data = std::fs::read("large_file.csv")?;  // allocates full Vec<u8>
 
-// Redox: streams data lazily, matching agent token-streaming nature
+// MechGen: streams data lazily, matching agent token-streaming nature
 v stream = fs.stream("large_file.csv")?;     // returns Stream[u8], no allocation
 @ chunk : stream.chunks(64_KB) {              // process in 64KB chunks
     v records = csv.parse_batch(chunk);        // batch parse
@@ -2709,14 +2709,14 @@ v stream = fs.stream("large_file.csv")?;     // returns Stream[u8], no allocatio
 
 Rust's safety model assumes a *human developer* who makes mistakes and needs the compiler to catch them. Agentic AI SWE agents operate differently — they can internalize safety rules from training data and structured databases. Forcing agents to wait for compile-time error messages to learn what they already know is **pure overhead**.
 
-Redox introduces the **Safety Knowledge Base (SKB)** — a structured, versioned, queryable database of all safety rules, patterns, invariants, and constraints. Agents query the SKB *before* writing code, not after. The compiler becomes an *optimizing translator* that trusts well-formed input, not a safety gatekeeper that blocks every submission.
+MechGen introduces the **Safety Knowledge Base (SKB)** — a structured, versioned, queryable database of all safety rules, patterns, invariants, and constraints. Agents query the SKB *before* writing code, not after. The compiler becomes an *optimizing translator* that trusts well-formed input, not a safety gatekeeper that blocks every submission.
 
 ```
 Rust Model (Compiler-Enforced):
   Agent writes code → Compiler rejects → Agent reads error → Agent rewrites → Compiler accepts
   Latency: seconds per iteration (compile + parse errors + resubmit)
 
-Redox Model (SKB-Driven):
+MechGen Model (SKB-Driven):
   Agent queries SKB → Agent writes correct code → Compiler translates and optimizes
   Latency: microseconds (SKB query) + milliseconds (fast compile, no safety passes)
 ```
@@ -2792,7 +2792,7 @@ let compat = skb.query(Pattern::TypeConversion {
 Safety checking at compile time is **configurable per-project** and **per-profile**:
 
 ```toml
-# Redox.toml
+# MechGen.toml
 [safety]
 mode = "skb-only"          # Options: "full" | "warnings" | "skb-only" | "none"
                             # "full" = Rust-style compile-time enforcement (for humans/CI)
@@ -2815,7 +2815,7 @@ production = { borrow-check = "error", lifetime-check = "error", bounds-check = 
 
 ### 9.5 What Agents Gain from SKB-Driven Safety
 
-| Metric                                 | Rust (Compiler-Enforced)    | Redox (SKB-Driven)                           | Improvement          |
+| Metric                                 | Rust (Compiler-Enforced)    | MechGen (SKB-Driven)                           | Improvement          |
 | -------------------------------------- | --------------------------- | -------------------------------------------- | -------------------- |
 | **Code-to-compile latency**            | 2-30 seconds                | 50-500ms                                     | 10-60x faster        |
 | **Parse error rate**                   | 5-15% of agent submissions  | <0.1% (zero-ambiguity syntax)                | 50-150x fewer        |
@@ -2842,7 +2842,7 @@ While compile-time *code* safety is optional, swarm *coordination* safety remain
 
 ### 9.7 Runtime Security and Sandboxing
 
-Agent swarms execute code — and code execution requires security guarantees that go beyond compile-time safety. Redox provides a **capability-based runtime security model** that sandboxes agent-generated code.
+Agent swarms execute code — and code execution requires security guarantees that go beyond compile-time safety. MechGen provides a **capability-based runtime security model** that sandboxes agent-generated code.
 
 #### 9.7.1 Capability-Based Sandboxing
 
@@ -2877,7 +2877,7 @@ v result = sandbox.execute(agent_generated_code)?;
 #### 9.7.3 Trust Levels
 
 ```toml
-# Redox.toml — security configuration
+# MechGen.toml — security configuration
 [security]
 trust-level = "verified"  # verified | audited | sandboxed | unrestricted
 
@@ -2906,7 +2906,7 @@ Today, an agent trying to use a Rust library must:
 3. Guess at behavior (no formal specs)
 4. Discover by trial-and-error (compile, read errors, retry)
 
-### 10.2 The Redox Solution: Structured Capability Manifests
+### 10.2 The MechGen Solution: Structured Capability Manifests
 
 Every crate publishes a **capability manifest** alongside its code:
 
@@ -2986,25 +2986,25 @@ let pipeline = compose![
 - [ ] Implement token-compressed keyword set and lexer (single-char keywords, sigil prefixes)
 - [ ] Implement safety elision pass (P33): strip all lifetime, borrow, ownership syntax in agentic mode
 - [ ] Implement safety-free type inference: compiler infers `&`/`&mut`, `move`/`ref`, `dyn`/`impl` from usage
-- [ ] Build dual-syntax transpiler (legacy Rust → canonical Redox compact form)
+- [ ] Build dual-syntax transpiler (legacy Rust → canonical MechGen compact form)
 - [ ] Implement `redoxfmt --agent` (minimum-token canonical form) and `redoxfmt --human` (human-readable form)
 - [ ] Stabilize `redox_public` API to cover all MIR, HIR, and type system constructs
-- [ ] Define Redox MLIR dialect: ownership, effects, contracts, perf annotations as first-class MLIR ops
-- [ ] Implement MIR → MLIR (Redox Dialect) translation layer (thin boundary, dialect-as-semantics)
+- [ ] Define MechGen MLIR dialect: ownership, effects, contracts, perf annotations as first-class MLIR ops
+- [ ] Implement MIR → MLIR (MechGen Dialect) translation layer (thin boundary, dialect-as-semantics)
 - [ ] Implement language-level SIMD types (`Simd[T, N]`) backed by MLIR vector dialect ops
-- [ ] Implement MLIR progressive lowering pipeline: Redox Dialect → Linalg/Affine → Vector → LLVM Dialect
+- [ ] Implement MLIR progressive lowering pipeline: MechGen Dialect → Linalg/Affine → Vector → LLVM Dialect
 - [ ] Wire LLVM backend codegen through MLIR LLVM Dialect (replacing direct MIR→LLVM IR path)
 - [ ] Implement compile-time metaprogramming (`@pp` / `@parameter`) via MLIR constant folding
 - [ ] Implement Structured Diagnostics Protocol (JSON diagnostic graphs)
 - [ ] Externalize core queries as stable API (`redox_query`)
-- [ ] Establish CI/CD pipeline for the Redox compiler
+- [ ] Establish CI/CD pipeline for the MechGen compiler
 - [ ] Implement semantic region decomposition in compiler query system
 - [ ] Define standard abbreviation registry v1 (core types, traits, derives)
 
 ### Phase 1: SKB + Swarm Primitives + Multi-Target + Cost Oracle (Months 4–12)
 - [ ] Build Safety Knowledge Base (SKB) with initial rule corpus (ownership, borrowing, lifetimes, types)
 - [ ] Implement SKB query API (`redox_skb` crate)
-- [ ] Make all safety compiler passes opt-in via `Redox.toml` safety profiles
+- [ ] Make all safety compiler passes opt-in via `MechGen.toml` safety profiles
 - [ ] Build `redox_index` (persistent semantic knowledge graph)
 - [ ] Implement capability inference pass in MIR pipeline
 - [ ] Extend `redox_metadata` with capability manifest serialization
@@ -3020,7 +3020,7 @@ let pipeline = compose![
 - [ ] Validate MLIR→LLVM backend targets: x86-64, AArch64, WASM
 
 ### Phase 2: Agent Protocol + Swarm Coordination + GPU/NPU Targets + ACI (Months 8–18)
-- [ ] Define and implement Redox Agent Protocol (RAP) specification
+- [ ] Define and implement MechGen Agent Protocol (RAP) specification
 - [ ] Build agent capability system and enforcement layer
 - [ ] Implement verification oracle (contracts, effects, capabilities) as opt-in service
 - [ ] Build swarm SDK (`redox_swarm` crate with orchestrator, synthesizer, verifier roles)
@@ -3070,7 +3070,7 @@ let pipeline = compose![
 - [ ] Migrate core ecosystem crates with capability manifests
 - [ ] Build agent swarm marketplace and pre-composed swarm templates
 - [ ] Develop certification pipeline for safety-critical industries (opt-in full safety mode)
-- [ ] Publish Redox language specification
+- [ ] Publish MechGen language specification
 - [ ] Ship reference swarm configurations (audit swarm, migration swarm, greenfield swarm)
 - [ ] Build swarm performance benchmarking suite (throughput, latency, conflict rate metrics)
 - [ ] Publish SKB rule corpus as open dataset for agent training
@@ -3218,11 +3218,11 @@ let pipeline = compose![
 | P21     | Lease Validation [NEW]     | Agent ops        | Lease proof           |   Write exclusivity    | `lease_status(region)`     |
 | P22     | Semantic Merge [NEW]       | Concurrent ops   | Merged AST            |    Conflict freedom    | `merge_status(ops)`        |
 | P23     | Consensus Check [NEW]      | Interface change | Consensus proof       |   Atomic integration   | `consensus_status(change)` |
-| P24     | MLIR Lowering [NEW]        | Optimized MIR    | MLIR (Redox Dialect)  |           —            | `mlir_of(func)`            |
-| P25     | MLIR→LLVM Lowering [NEW]   | MLIR Redox       | LLVM IR / Target code |           —            | `target_code_of(func)`     |
+| P24     | MLIR Lowering [NEW]        | Optimized MIR    | MLIR (MechGen Dialect)  |           —            | `mlir_of(func)`            |
+| P25     | MLIR→LLVM Lowering [NEW]   | MLIR MechGen       | LLVM IR / Target code |           —            | `target_code_of(func)`     |
 | P26     | SKB Validation [NEW]       | Source + SKB     | Rule violations       |   Opt-in enforcement   | `skb_check(func)`          |
-| P30     | Autotuning [NEW]           | MLIR Redox       | N lowering variants   |           —            | `autotune_of(func)`        |
-| P31     | Device Placement [NEW]     | MLIR Redox       | Target assignment     |           —            | `placement_of(func)`       |
+| P30     | Autotuning [NEW]           | MLIR MechGen       | N lowering variants   |           —            | `autotune_of(func)`        |
+| P31     | Device Placement [NEW]     | MLIR MechGen       | Target assignment     |           —            | `placement_of(func)`       |
 | P32     | MLIR Const Eval [NEW]      | MLIR @parameter  | Constant values       |           —            | `const_eval_mlir(expr)`    |
 | P27     | Token Expansion [NEW]      | Compact AST      | Expanded AST          |           —            | `expand_tokens(file)`      |
 | P28     | Token Compression [NEW]    | Expanded AST     | Compact AST           |           —            | `compress_tokens(file)`    |
@@ -3239,7 +3239,7 @@ let pipeline = compose![
 | P42     | Memory Recall [NEW]        | Memory stores    | Relevant patterns     |           —            | `memory_recall(query)`     |
 | P43     | Auto-Repair [NEW]          | Error + Context  | Repair candidates     |           —            | `auto_repair(error)`       |
 | P44     | Hot-Patch [NEW]            | New func source  | Patched binary        |     ABI stability      | `hotpatch(func, source)`   |
-| P45     | FFI Binding Gen [NEW]      | Foreign headers  | Safe Redox bindings   |     Layout safety      | `ffi_bindings(header)`     |
+| P45     | FFI Binding Gen [NEW]      | Foreign headers  | Safe MechGen bindings   |     Layout safety      | `ffi_bindings(header)`     |
 | P46     | Sandbox Exec [NEW]         | Code + Policy    | Sandboxed result      |    Capability check    | `sandbox_exec(code, pol)`  |
 
 ### C. Diagnostic Categories Ontology
@@ -3461,7 +3461,7 @@ fn infer_borrow_modes(mir: &MIR, ownership: &OwnershipMap) -> BorrowMap {
 }
 ```
 
-**Key insight**: In Rust, the programmer writes `&` or `&mut` and the borrow checker validates. In Redox, the programmer writes nothing — the compiler observes how the reference is used and *derives* the mode. The SKB provides the aliasing rules; the compiler applies them automatically.
+**Key insight**: In Rust, the programmer writes `&` or `&mut` and the borrow checker validates. In MechGen, the programmer writes nothing — the compiler observes how the reference is used and *derives* the mode. The SKB provides the aliasing rules; the compiler applies them automatically.
 
 ### 13.4 Phase 3: Lifetime Inference
 
@@ -3528,7 +3528,7 @@ fn infer_lifetimes(mir: &MIR, borrows: &BorrowMap) -> LifetimeMap {
 
 #### 13.4.3 Cross-Function Lifetime Inference
 
-For function signatures, Redox applies **lifetime elision on steroids** — not just the three Rust elision rules, but full inter-procedural inference:
+For function signatures, MechGen applies **lifetime elision on steroids** — not just the three Rust elision rules, but full inter-procedural inference:
 
 ```
 // Rule 1 (Rust-compatible): Single input ref → output gets same lifetime
@@ -3665,7 +3665,7 @@ v w = MyStruct { ... };     // compiler decides (default)
 | ------------------------- | ------------------------------------------------------------------------- |
 | **Determinism**           | Same source always produces same inference result                         |
 | **Soundness**             | Inferred modes are at least as restrictive as manual annotations would be |
-| **Completeness**          | Every well-typed Rust program has a valid Redox inference                 |
+| **Completeness**          | Every well-typed Rust program has a valid MechGen inference                 |
 | **Monotonicity**          | Adding code never invalidates previously inferred ownership               |
 | **Performance**           | Inference is $O(n \log n)$ in function size for 95% of functions          |
 | **Worst-case complexity** | $O(n^2 \cdot R)$ for pathological alias sets ($R$ = region variables)     |
@@ -3676,16 +3676,16 @@ v w = MyStruct { ... };     // compiler decides (default)
 
 ## 14. Deep Dive: MLIR Dialect Operation Definitions
 
-Section 5.4 describes the Redox MLIR dialect at a high level. This section provides **formal operation definitions** for every operation in the dialect, following MLIR's ODS (Operation Definition Specification) conventions.
+Section 5.4 describes the MechGen MLIR dialect at a high level. This section provides **formal operation definitions** for every operation in the dialect, following MLIR's ODS (Operation Definition Specification) conventions.
 
 ### 14.1 Dialect Registration
 
 ```tablegen
 def Redox_Dialect : Dialect {
   let name = "redox";
-  let summary = "Redox agentic language dialect for MLIR";
+  let summary = "MechGen agentic language dialect for MLIR";
   let description = [{
-    The Redox dialect encodes the full semantics of the Redox language —
+    The MechGen dialect encodes the full semantics of the MechGen language —
     ownership, effects, contracts, performance annotations, agent capabilities,
     and safety knowledge base queries — as first-class MLIR operations and
     attributes. This enables the compiler's semantic understanding to be
@@ -3991,30 +3991,30 @@ def Redox_SKBValidateOp : Redox_Op<"skb.validate", []> {
 
 ### 14.9 Lowering Rules
 
-The Redox dialect lowers progressively through MLIR's dialect hierarchy:
+The MechGen dialect lowers progressively through MLIR's dialect hierarchy:
 
-| Redox Operation          | Lowers To                            | Phase          |
+| MechGen Operation          | Lowers To                            | Phase          |
 | ------------------------ | ------------------------------------ | -------------- |
-| `redox.move`             | SSA value copy + source invalidation | Redox → Std    |
-| `redox.copy`             | `memref.copy` or SSA value copy      | Redox → MemRef |
-| `redox.borrow`           | `memref.view` or SSA alias           | Redox → MemRef |
-| `redox.drop`             | Destructor call sequence             | Redox → Func   |
-| `redox.effect.decl`      | No-op (metadata preserved)           | Redox → Redox  |
-| `redox.effect.perform`   | `func.call` to effect handler        | Redox → Func   |
-| `redox.contract.require` | `cf.assert` (debug) or removed (opt) | Redox → CF     |
-| `redox.contract.ensure`  | `cf.assert` (debug) or removed (opt) | Redox → CF     |
-| `redox.perf.place "gpu"` | `gpu.launch_func`                    | Redox → GPU    |
-| `redox.perf.vectorize`   | `vector.transfer_read/write` + ops   | Redox → Vector |
-| `redox.perf.autotune`    | N clones of body with different opts | Redox → Redox  |
-| `redox.perf.cost_query`  | Compile-time eval → constant         | Redox → Arith  |
-| `redox.capability.gate`  | `scf.if` on runtime capability check | Redox → SCF    |
+| `redox.move`             | SSA value copy + source invalidation | MechGen → Std    |
+| `redox.copy`             | `memref.copy` or SSA value copy      | MechGen → MemRef |
+| `redox.borrow`           | `memref.view` or SSA alias           | MechGen → MemRef |
+| `redox.drop`             | Destructor call sequence             | MechGen → Func   |
+| `redox.effect.decl`      | No-op (metadata preserved)           | MechGen → MechGen  |
+| `redox.effect.perform`   | `func.call` to effect handler        | MechGen → Func   |
+| `redox.contract.require` | `cf.assert` (debug) or removed (opt) | MechGen → CF     |
+| `redox.contract.ensure`  | `cf.assert` (debug) or removed (opt) | MechGen → CF     |
+| `redox.perf.place "gpu"` | `gpu.launch_func`                    | MechGen → GPU    |
+| `redox.perf.vectorize`   | `vector.transfer_read/write` + ops   | MechGen → Vector |
+| `redox.perf.autotune`    | N clones of body with different opts | MechGen → MechGen  |
+| `redox.perf.cost_query`  | Compile-time eval → constant         | MechGen → Arith  |
+| `redox.capability.gate`  | `scf.if` on runtime capability check | MechGen → SCF    |
 | `redox.skb.query`        | Compile-time eval → diagnostics      | Erased         |
 | `redox.skb.validate`     | Compile-time eval → diagnostics      | Erased         |
 
 Full lowering sequence:
 
 ```
-Redox Dialect
+MechGen Dialect
   ↓  (ownership/borrow/drop → memory operations)
 MemRef + Func + SCF
   ↓  (perf annotations → target-specific dialects)
@@ -4071,7 +4071,7 @@ Rule {
 
 ### 15.2 Pattern Language
 
-Patterns are structural templates that match against Redox MIR nodes:
+Patterns are structural templates that match against MechGen MIR nodes:
 
 ```
 Pattern ::=
@@ -4327,7 +4327,7 @@ The swarm bus uses a **length-prefixed, zero-copy binary protocol** optimized fo
 ```
 Offset  Size  Field            Description
 ──────  ────  ──────────────── ─────────────────────────────────
-0       4     magic            0x52445853 ("RDXS" — Redox Swarm)
+0       4     magic            0x52445853 ("RDXS" — MechGen Swarm)
 4       1     version          Protocol version (current: 0x01)
 5       1     flags            Bit flags (see below)
 6       2     message_type     SwarmMessage discriminant (u16)
@@ -4387,7 +4387,7 @@ Type ID   SwarmMessage Variant      Category        Ack Required
 
 ### 16.5 Payload Serialization
 
-Payloads use a **FlatBuffers-inspired zero-copy format** with a Redox-specific schema:
+Payloads use a **FlatBuffers-inspired zero-copy format** with a MechGen-specific schema:
 
 ```
 Payload Layout:
@@ -4582,7 +4582,7 @@ Verification:
 
 ## Summary
 
-Redox transforms Rust from a language *for human developers with CLI tools* into a language *for swarms of AI agents with maximum parsing speed, communication throughput, hardware-agnostic performance, and minimum token cost*. The transformation **shifts safety from compile-time enforcement to a queryable Safety Knowledge Base**, eliminates every source of agent parsing ambiguity, introduces a portable performance IR that targets any hardware, and compresses every language construct to its **minimum token footprint**:
+MechGen transforms Rust from a language *for human developers with CLI tools* into a language *for swarms of AI agents with maximum parsing speed, communication throughput, hardware-agnostic performance, and minimum token cost*. The transformation **shifts safety from compile-time enforcement to a queryable Safety Knowledge Base**, eliminates every source of agent parsing ambiguity, introduces a portable performance IR that targets any hardware, and compresses every language construct to its **minimum token footprint**:
 
 1. **Token-minimal syntax** — every construct is compressed to ≤50% of its Rust token count: `pub fn` → `+f`, `#[derive(Clone, Debug)]` → `@d(Cl,Db)`, `let mut` → `m`, `Option<T>` → `?T`
 2. **Zero-ambiguity syntax** — deterministic LL(1) grammar eliminates 100% of agent parsing errors caused by context-sensitive constructs
@@ -4616,7 +4616,7 @@ Redox transforms Rust from a language *for human developers with CLI tools* into
 30. **Runtime security** — capability-based sandboxing bounds agent-generated code execution: memory limits, CPU timeouts, syscall allowlists, FFI allowlists, cryptographic audit trails, deterministic replay
 31. **Swarm orchestration patterns** — `swarm_map_reduce`, `swarm_pipeline`, `swarm_scatter_gather`, `swarm_saga` as first-class language constructs with compile-time verification (effect purity, contract chaining, deadlock freedom, liveness guarantees)
 
-The compiler becomes an **agentic AI system, synthesis engine, and swarm arbiter**, built on the **MLIR + LLVM** compiler infrastructure — the broadest and most mature in existence. Its MLIR dialect encodes the full language semantics (ownership, effects, contracts) as first-class operations — not metadata on a generic IR — enabling MLIR-native autotuning, automatic device placement, and compile-time metaprogramming that survives through the entire optimization pipeline. Its **Agentic Compiler Intelligence (ACI)** learns from the project's bug history, swarm session outcomes, and codebase patterns to provide dynamic warnings, intelligent debugging, and performance suggestions that static analyzers cannot match. Its **Cost Oracle** transforms agent decision-making from guess-and-profile to query-and-choose. Its **Synthesis Oracle** closes the loop from formal spec to verified implementation. Its **Agent Memory Model** ensures that every lesson learned persists across sessions, projects, and the ecosystem. Its primary job is *making code run fast on any hardware with the fewest tokens possible while actively helping agents write better code*, not blocking submissions with safety errors that agents already know how to avoid. Safety knowledge lives in a database. Performance lives in MLIR's multi-level optimization pipeline and LLVM's battle-tested backends. Communication lives in the swarm bus. Parsing lives in a zero-ambiguity grammar. Compiler intelligence lives in a learned model that improves with every build. Synthesis lives in a formal specification system. Memory lives in a four-tier persistent store. And every construct lives in its **most compressed form** — because tokens are the currency of agentic intelligence, and Redox is designed to spend them wisely.
+The compiler becomes an **agentic AI system, synthesis engine, and swarm arbiter**, built on the **MLIR + LLVM** compiler infrastructure — the broadest and most mature in existence. Its MLIR dialect encodes the full language semantics (ownership, effects, contracts) as first-class operations — not metadata on a generic IR — enabling MLIR-native autotuning, automatic device placement, and compile-time metaprogramming that survives through the entire optimization pipeline. Its **Agentic Compiler Intelligence (ACI)** learns from the project's bug history, swarm session outcomes, and codebase patterns to provide dynamic warnings, intelligent debugging, and performance suggestions that static analyzers cannot match. Its **Cost Oracle** transforms agent decision-making from guess-and-profile to query-and-choose. Its **Synthesis Oracle** closes the loop from formal spec to verified implementation. Its **Agent Memory Model** ensures that every lesson learned persists across sessions, projects, and the ecosystem. Its primary job is *making code run fast on any hardware with the fewest tokens possible while actively helping agents write better code*, not blocking submissions with safety errors that agents already know how to avoid. Safety knowledge lives in a database. Performance lives in MLIR's multi-level optimization pipeline and LLVM's battle-tested backends. Communication lives in the swarm bus. Parsing lives in a zero-ambiguity grammar. Compiler intelligence lives in a learned model that improves with every build. Synthesis lives in a formal specification system. Memory lives in a four-tier persistent store. And every construct lives in its **most compressed form** — because tokens are the currency of agentic intelligence, and MechGen is designed to spend them wisely.
 
 Every error the compiler detects is an error it can **fix** — auto-repair candidates ranked by confidence eliminate the agent round-trip tax. Every function can be **hot-patched** into a running process without restart — because agent swarms never stop iterating. Every foreign library is accessible through **zero-ceremony FFI** — C headers, Python stubs, WASM components read directly by the compiler. Every agent runs in a **capability-bounded sandbox** — memory-limited, CPU-bounded, audit-trailed, deterministically replayable. And common multi-agent workflows — map-reduce, pipeline, scatter-gather, saga — are **first-class language constructs** verified by the compiler for deadlock freedom and contract satisfaction.
 

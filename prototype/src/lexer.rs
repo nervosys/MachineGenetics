@@ -3,7 +3,7 @@
 /// Design: single-pass, no backtracking, every token is unambiguous from
 /// its first character. Optimized for streaming (agent consumption).
 ///
-/// Covers all keyword/attribute/type mappings from REDOX_PROPOSAL.md §5.5.
+/// Covers all keyword/attribute/type mappings from MECHGEN_PROPOSAL.md §5.5.
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

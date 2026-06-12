@@ -1,4 +1,4 @@
-# Redox Ecosystem Design
+# MechGen Ecosystem Design
 
 _Redox Language — Package Registry, Migration Tooling, IDE Integration, Agent Training, and Standard Library_
 
@@ -21,9 +21,9 @@ _Redox Language — Package Registry, Migration Tooling, IDE Integration, Agent 
 
 ### 1.1 Overview
 
-The Redox package registry (**Forge**) serves as the central repository for Redox
-packages (called **crates** for Rust compatibility, **modules** in Redox terminology).
-Forge supports dual-format packages: native Redox (`.mg`) and transpiled Rust (`.rs`).
+The MechGen package registry (**Forge**) serves as the central repository for MechGen
+packages (called **crates** for Rust compatibility, **modules** in MechGen terminology).
+Forge supports dual-format packages: native MechGen (`.mg`) and transpiled Rust (`.rs`).
 
 ### 1.2 Registry Data Model
 
@@ -74,8 +74,8 @@ Forge maintains a compatibility layer with crates.io:
 | ------------------------- | --------------------------------------------------------------------- |
 | **Import Rust crates**    | Auto-transpile on first use via `rust2mg`                            |
 | **Publish to both**       | `forge publish --also-crates-io` generates `.rs` wrapper              |
-| **Dependency resolution** | Unified resolver handles Rust + Redox deps                            |
-| **Version mapping**       | Redox `u http.Client` resolves to crates.io `reqwest` via alias table |
+| **Dependency resolution** | Unified resolver handles Rust + MechGen deps                            |
+| **Version mapping**       | MechGen `u http.Client` resolves to crates.io `reqwest` via alias table |
 | **FFI bridge**            | Rust crates used as-is through FFI binding generation (P45)           |
 
 ### 1.5 MLIR Artifact Caching
@@ -85,7 +85,7 @@ Forge stores pre-lowered MLIR artifacts to accelerate builds:
 ```
 Artifact Cache Structure:
   module-name/1.3.0/
-    ├── redox-dialect.mlir         # Redox dialect (highest level)
+    ├── redox-dialect.mlir         # MechGen dialect (highest level)
     ├── linalg-dialect.mlir        # After Linalg lowering
     ├── affine-dialect.mlir        # After Affine lowering
     ├── llvm-dialect.mlir          # After LLVM lowering
@@ -102,9 +102,9 @@ SKB rule changes.
 
 ## 2. Migration Tooling
 
-### 2.1 `rust2mg` — Rust-to-Redox Transpiler
+### 2.1 `rust2mg` — Rust-to-MechGen Transpiler
 
-Automated source-level translation from Rust to Redox.
+Automated source-level translation from Rust to MechGen.
 
 #### 2.1.1 Translation Pipeline
 
@@ -114,14 +114,14 @@ Rust source (.rs)
     ├─ (1) Parse with rustc → HIR
     ├─ (2) Extract ownership/lifetime info from borrow checker
     ├─ (3) Generate SKB rules from explicit annotations
-    ├─ (4) Syntax transform: Rust → Redox canonical syntax
-    ├─ (5) Verify: parse output with Redox parser
+    ├─ (4) Syntax transform: Rust → MechGen canonical syntax
+    ├─ (5) Verify: parse output with MechGen parser
     └─ (6) Emit .mg files + module definition
 ```
 
 #### 2.1.2 Translation Rules
 
-| Rust Construct            | Redox Output                   | Confidence |
+| Rust Construct            | MechGen Output                   | Confidence |
 | ------------------------- | :----------------------------- | :--------: |
 | `pub fn name(...)`        | `+f name(...)`                 |    100%    |
 | `fn name(...)`            | `f name(...)`                  |    100%    |
@@ -161,7 +161,7 @@ Arguments:
 
 Options:
   --output, -o       Output directory (default: ./rdx/)
-  --verify           Parse output with Redox parser (default: on)
+  --verify           Parse output with MechGen parser (default: on)
   --preserve-unsafe  Keep unsafe blocks as @unsafe annotations
   --generate-skb     Emit SKB rules from lifetime annotations
   --diff             Show side-by-side diff instead of writing files
@@ -170,11 +170,11 @@ Options:
   --stats            Print token count comparison
 ```
 
-### 2.2 `mg2rs` — Redox-to-Rust Back-Transpiler
+### 2.2 `mg2rs` — MechGen-to-Rust Back-Transpiler
 
-For interoperability, Redox code can be transpiled back to Rust:
+For interoperability, MechGen code can be transpiled back to Rust:
 
-| Redox Construct        | Rust Output               | Notes                     |
+| MechGen Construct        | Rust Output               | Notes                     |
 | ---------------------- | :------------------------ | ------------------------- |
 | `+f name(...)`         | `pub fn name(...)`        | Direct                    |
 | `v x = ...`            | `let x = ...`             | Direct                    |
@@ -190,7 +190,7 @@ For interoperability, Redox code can be transpiled back to Rust:
 ```
 Phase 1: Analyze
   $ rust2mg --stats my_crate/
-  → Report: 5,000 LOC Rust → ~2,350 LOC Redox (53% reduction)
+  → Report: 5,000 LOC Rust → ~2,350 LOC MechGen (53% reduction)
   → 142 lifetime annotations → 0
   → 23 unsafe blocks → 0 (12 become capabilities, 11 become SKB rules)
 
@@ -215,7 +215,7 @@ Phase 4: Test
 
 ## 3. IDE & Editor Integration
 
-### 3.1 RAP (Redox Agent Protocol) — Language Server
+### 3.1 RAP (MechGen Agent Protocol) — Language Server
 
 The RAP server provides IDE features over JSON-RPC (see prototype/src/rap.rs):
 
@@ -253,7 +253,7 @@ redox-vscode/
 │   ├── skb-explorer.ts       # SKB rule browser
 │   └── swarm-panel.ts        # Swarm orchestration dashboard
 └── media/
-    └── icons/                # Redox-themed icons
+    └── icons/                # MechGen-themed icons
 ```
 
 #### Key features:
@@ -262,7 +262,7 @@ redox-vscode/
 - **Effect gutter icons**: Color-coded indicators for function effect sets.
 - **SKB rule hover**: Hover over any construct to see which SKB rules apply.
 - **Swarm dashboard**: Live view of agent activity when running multi-agent builds.
-- **One-click migration**: Right-click `.rs` file → "Convert to Redox".
+- **One-click migration**: Right-click `.rs` file → "Convert to MechGen".
 
 ### 3.3 Other Editor Support
 
@@ -277,7 +277,7 @@ redox-vscode/
 
 ### 3.4 Syntax Highlighting
 
-TextMate grammar scopes for Redox:
+TextMate grammar scopes for MechGen:
 
 | Scope                        | Constructs                                        |
 | ---------------------------- | ------------------------------------------------- |
@@ -303,7 +303,7 @@ TextMate grammar scopes for Redox:
 
 ### 4.1 Training Data Format
 
-Redox defines a standard format for AI agent training data:
+MechGen defines a standard format for AI agent training data:
 
 ```json
 {
@@ -337,7 +337,7 @@ Redox defines a standard format for AI agent training data:
 
 ### 4.2 Agent Instruction Format
 
-Standard prompts for AI agents working with Redox:
+Standard prompts for AI agents working with MechGen:
 
 ```yaml
 # .redox/agent-instructions.yaml
@@ -377,7 +377,7 @@ style:
 
 ### 4.3 Benchmark Corpus
 
-A standardized set of 100 programming tasks for evaluating Redox agent performance:
+A standardized set of 100 programming tasks for evaluating MechGen agent performance:
 
 | Category                |  Tasks  | Token Range | Complexity |
 | ----------------------- | :-----: | :---------: | :--------: |
@@ -395,7 +395,7 @@ A standardized set of 100 programming tasks for evaluating Redox agent performan
 
 Each task includes:
 - Natural language description
-- Expected Redox solution (reference)
+- Expected MechGen solution (reference)
 - Equivalent Rust solution (baseline)
 - Token count for both
 - Expected effects and SKB rules
@@ -409,7 +409,7 @@ Each task includes:
 | **Token Efficiency**        | Agent tokens / reference tokens         |  < 1.1  |
 | **Effect Correctness**      | % of correctly declared effects         |  > 99%  |
 | **Spec Compliance**         | % of generated code satisfying specs    |  > 98%  |
-| **Migration Accuracy**      | % of Rust→Redox translations that parse |  > 99%  |
+| **Migration Accuracy**      | % of Rust→MechGen translations that parse |  > 99%  |
 | **Iteration Count**         | Average roundtrips to correct code      |  < 1.5  |
 | **Cost/Task**               | API tokens consumed per benchmark task  | < $0.05 |
 
@@ -479,7 +479,7 @@ std
 │   ├── Command
 │   ├── exit
 │   └── signal
-├── agent           # Agent primitives (Redox-unique)
+├── agent           # Agent primitives (MechGen-unique)
 │   ├── Agent       # Agent trait
 │   ├── Swarm       # Swarm orchestration
 │   ├── Message     # Inter-agent message
@@ -519,7 +519,7 @@ std
 
 ### 5.3 Naming Conventions
 
-| Rust                        | Redox          | Rationale                  |
+| Rust                        | MechGen          | Rationale                  |
 | --------------------------- | -------------- | -------------------------- |
 | `std::collections::HashMap` | `std.col.Map`  | Shorter path, simpler name |
 | `std::sync::Arc`            | `@T` (sigil)   | Built into type syntax     |
@@ -572,8 +572,8 @@ lease-timeout = "5m"              # Default lease timeout
 rdx <COMMAND>
 
 Commands:
-  new <name>          Create a new Redox project
-  init                Initialize Redox in existing directory
+  new <name>          Create a new MechGen project
+  init                Initialize MechGen in existing directory
   build               Compile the project
   check               Type-check without codegen
   test                Run tests
@@ -607,7 +607,7 @@ Forge uses a SAT-based dependency resolver (like Cargo) with extensions:
 
 | Feature                    | Description                                       |
 | -------------------------- | ------------------------------------------------- |
-| **Dual-source resolution** | Resolve Redox modules and Rust crates together    |
+| **Dual-source resolution** | Resolve MechGen modules and Rust crates together    |
 | **MLIR artifact matching** | Prefer cached MLIR artifacts over source builds   |
 | **Effect compatibility**   | Reject dependencies with incompatible effect sets |
 | **SKB rule merging**       | Merge package-level SKB rules into project SKB    |
@@ -623,11 +623,11 @@ Forge uses a SAT-based dependency resolver (like Cargo) with extensions:
 | ------------------- | ----------------------- | --------------------- | ---------------- |
 | **Quick Start**     | 10-min tutorial         | Interactive web       | New users        |
 | **Book**            | Comprehensive guide     | mdBook site           | All users        |
-| **Reference**       | Formal language spec    | REDOX_SPEC.md         | Language lawyers |
+| **Reference**       | Formal language spec    | MECHGEN_SPEC.md         | Language lawyers |
 | **API Docs**        | Standard library docs   | Generated from source | Developers       |
 | **Cookbook**        | Recipe-style examples   | Searchable web        | Practitioners    |
 | **Agent Guide**     | Agent-specific patterns | Structured prompts    | AI agents        |
-| **Migration Guide** | Rust → Redox            | Step-by-step          | Rust developers  |
+| **Migration Guide** | Rust → MechGen            | Step-by-step          | Rust developers  |
 | **Internals**       | Compiler architecture   | Technical docs        | Contributors     |
 
 ### 7.2 Auto-Generated Documentation
@@ -676,7 +676,7 @@ Sorts a vector in place using an adaptive merge sort.
 | **Core Team**        | Language design, compiler development |
 | **SKB Curators**     | Safety Knowledge Base rule curation   |
 | **Forge Moderators** | Package registry quality control      |
-| **RFC Authors**      | Design proposals (Redox RFC process)  |
+| **RFC Authors**      | Design proposals (MechGen RFC process)  |
 | **ACI Trainers**     | AI Coding Intelligence model training |
 
 ### 8.2 Contribution Workflow
