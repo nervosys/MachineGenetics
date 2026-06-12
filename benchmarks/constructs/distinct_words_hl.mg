@@ -1,0 +1,1 @@
+f s(text){ len(keys(freq(words(text)))) }

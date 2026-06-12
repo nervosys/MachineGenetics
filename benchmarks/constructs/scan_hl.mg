@@ -1,0 +1,1 @@
+f s(xs){ scan(xs, 0, fn(a, b) => a + b) }

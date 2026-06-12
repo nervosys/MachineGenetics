@@ -1,0 +1,1 @@
+f s(xs){ sum(xs) }

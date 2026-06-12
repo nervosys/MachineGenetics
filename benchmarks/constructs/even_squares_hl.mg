@@ -1,0 +1,1 @@
+f s(xs){ sum(map(filter(xs, fn(x) => x % 2 == 0), fn(x) => x * x)) }
