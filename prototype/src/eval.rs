@@ -383,6 +383,12 @@ impl Interp {
                         .get(n as usize)
                         .cloned()
                         .ok_or(Control::Err("index out of bounds".into())),
+                    // `s[i]` — the i-th character as a one-char string.
+                    (Value::Str(s), Value::Int(n)) => s
+                        .chars()
+                        .nth(n as usize)
+                        .map(|c| Value::Str(c.to_string()))
+                        .ok_or(Control::Err("index out of bounds".into())),
                     (Value::Map(m), key) => Ok(m
                         .iter()
                         .find(|(k, _)| *k == key)
@@ -1186,6 +1192,7 @@ fn binop(op: &str, l: Value, r: Value) -> R {
         ("-", Float(a), Float(b)) => Ok(Float(a - b)),
         ("*", Float(a), Float(b)) => Ok(Float(a * b)),
         ("/", Float(a), Float(b)) => Ok(Float(a / b)),
+        ("%", Float(a), Float(b)) => Ok(Float(a % b)),
         ("+", Str(a), Str(b)) => Ok(Str(a + &b)),
         // Bitwise / shift operators on integers (`|` is bit-or, hence closures
         // are written `fn(x)`, not `|x|`). Shift counts are masked to 0..63.
@@ -1195,8 +1202,8 @@ fn binop(op: &str, l: Value, r: Value) -> R {
         ("<<", Int(a), Int(b)) => Ok(Int(a.wrapping_shl(b as u32))),
         (">>", Int(a), Int(b)) => Ok(Int(a.wrapping_shr(b as u32))),
         // Mixed numerics promote to float (so `n / 2.0` and `x as f64 / 2` work).
-        (o @ ("+" | "-" | "*" | "/"), Int(a), Float(b)) => binop(o, Float(a as f64), Float(b)),
-        (o @ ("+" | "-" | "*" | "/"), Float(a), Int(b)) => binop(o, Float(a), Float(b as f64)),
+        (o @ ("+" | "-" | "*" | "/" | "%"), Int(a), Float(b)) => binop(o, Float(a as f64), Float(b)),
+        (o @ ("+" | "-" | "*" | "/" | "%"), Float(a), Int(b)) => binop(o, Float(a), Float(b as f64)),
         ("==", a, b) => Ok(Bool(a == b)),
         ("!=", a, b) => Ok(Bool(a != b)),
         ("<", a, b) => Ok(Bool(cmp_value(&a, &b).is_lt())),
@@ -1478,6 +1485,9 @@ mod tests {
             ("f s(){ 0xFF + 0b1010 + 0o17 + 1_000 }", "s", &[], Value::Int(1280)),
             // Float exponents and separators: (1000.5 + 15.0) as i64 = 1015.
             ("f s(){ (1_000.5 + 1.5e1) as i64 }", "s", &[], Value::Int(1015)),
+            // Float modulo (incl. mixed Int%Float promotion) and string indexing.
+            ("f s(){ ((5.5 % 2.0) + (7 % 2.5)) as i64 }", "s", &[], Value::Int(3)),
+            ("f s(){ join([\"hello\"[0], \"world\"[0]], \"\") }", "s", &[], Value::Str("hw".into())),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
