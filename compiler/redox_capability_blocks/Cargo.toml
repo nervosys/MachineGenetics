@@ -1,7 +1,0 @@
-[package]
-name = "redox_capability_blocks"
-version = "0.1.0"
-edition = "2024"
-description = "Capability blocks in HIR lowering: scoped capability grants that limit what code can do"
-
-[dependencies]

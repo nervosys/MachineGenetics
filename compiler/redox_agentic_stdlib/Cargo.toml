@@ -1,6 +1,0 @@
-[package]
-name = "redox_agentic_stdlib"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]

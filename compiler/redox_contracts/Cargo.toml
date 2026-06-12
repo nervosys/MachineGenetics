@@ -1,7 +1,0 @@
-[package]
-name = "redox_contracts"
-version = "0.1.0"
-edition = "2024"
-description = "Contract syntax and checking: preconditions, postconditions, invariants with compile-time and runtime verification"
-
-[dependencies]
