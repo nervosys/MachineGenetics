@@ -10,32 +10,74 @@
 
 ---
 
-MechGen extends Rust's type system, performance model, and safety guarantees with
-features designed for multi-agent AI development workflows. It compiles `.mg`
-source files through a token-minimal, zero-ambiguity syntax to native code via
-MLIR and LLVM, targeting CPU, GPU, NPU, WASM, and RISC-V.
+<div align="center">
 
-```MechGen
-use std::io;
+### Measured vs traditional human-first languages
 
-#[derive(Debug, Clone)]
-pub struct Task {
-    name: String,
-    priority: i32,
-}
+*Identical 5 tasks, **actually compiled and run** on the host, **real cl100k BPE** tokens — not estimates ([reproduce](benchmarks/cross_lang/run.sh)).*
 
-pub fn main() / io {
-    val tasks = vec![
-        Task { name: "parse".into(), priority: 1 },
-        Task { name: "check".into(), priority: 2 },
-        Task { name: "emit".into(), priority: 3 },
-    ];
+| | **MechGen** | JavaScript | TypeScript | Go | Rust | Java |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|
+| Executes (5/5) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Real tokens | **173** | 199 | 220 | 271 | 275 | 297 |
+| vs MechGen | **1.00×** | 1.15× | 1.27× | 1.57× | 1.59× | 1.72× |
 
-    for task in &tasks {
-        println!("[{task.priority}] {task.name}");
+**Tersest of every runnable language — and it runs.** General-purpose programs execute end to end: the evaluator's correctness suite computes **72 / 72** programs to exact results.
+
+</div>
+
+MechGen is an **agentic-first** language: the *same* logic spans human-readable
+prose, agent-dense sigils, a declarative IR, and a byte-level binary — each a
+view of the one artifact, each measured. The prototype lexes, type-checks, and
+**executes** general `.mg` programs, and lowers neural networks to a compact
+binary IR (Agentic Binary Language) run on a CPU/CUDA backend.
+
+### One language, four forms
+
+**1 · Human-first** — a typed surface that reads like a modern language *(verified `--check`; 61 cl100k tokens):*
+
+```rust
+pub fn sum_even_squares(xs: [i32]~) -> i32 {
+    var total: i32 = 0;
+    for x in xs {
+        if x % 2 == 0 {
+            total = total + x * x;
+        }
     }
+    total
 }
 ```
+
+**2 · Agentic-first** — the *same program* in sigils (`+f` = `pub fn`) + the standard vocabulary (`map`/`filter`/`fold`, each a single BPE token). **−25 % real tokens, identical result** *(verified: `--check` + executes → `56`; 46 cl100k tokens):*
+
+```rust
++f sum_even_squares(xs) = fold(map(filter(xs, fn(x) => x % 2 == 0), fn(x) => x * x), 0, fn(a, b) => a + b)
+```
+
+**3 · Intermediate representation** — neural networks declared, not hand-wired:
+
+```rust
+net MLP {
+    layer fc1: Linear(8, 16);
+    layer act1: ReLU;
+    layer fc2: Linear(16, 4);
+    layer act2: Sigmoid;
+    forward { fc1 }
+}
+```
+
+**4 · Binary IR** — what an agent actually *ships*: the net above lowered to the
+Agentic Binary Language container. **92 bytes — 71.9 % smaller than its text — and it round-trips back to source** *(measured):*
+
+```
+ABL1 02 00 01 00 …  4d 4c 50 3f …      ← "ABL1" magic + the MLP module
+327 B  .mg text   →   92 B  binary   →   decompiles to the exact net above
+```
+
+> An agent writes intent in form 2 (fewest tokens), the compiler verifies it
+> against form 1's types, and ships form 4 (fewest bytes) — none of which a
+> human-first language gives you in one artifact. Every figure above is
+> reproduced by the commands in [Benchmarks](#benchmarks-measured).
 
 ## Benchmarks (measured)
 
