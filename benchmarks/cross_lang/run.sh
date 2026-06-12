@@ -7,7 +7,10 @@
 #   fact(12)=479001600  sumto(100)=5050  fib(25)=75025  distinct=5  collatz(27)=111
 set -u
 cd "$(dirname "$0")"
-MG=/c/Users/adamm/dev/nervosys/ai/MechGen/prototype/target/release/MechGen-parse.exe
+# MechGen evaluator binary: env override, else the repo-relative release build
+# (this script lives in <repo>/benchmarks/cross_lang). Set MG to point elsewhere.
+MG="${MG:-../../prototype/target/release/MechGen-parse.exe}"
+[ -x "$MG" ] || MG="${MG}.exe"  # tolerate the .exe suffix on non-Windows checkouts
 EXPECT=(479001600 5050 75025 5 111)
 
 # compare NAME <multiline-output> : compares 5 lines to EXPECT, prints the row.
