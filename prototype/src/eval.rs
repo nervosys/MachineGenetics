@@ -1154,6 +1154,11 @@ fn as_list(v: &Value) -> Result<Vec<Value>, Control> {
     match v {
         Value::List(xs) => Ok(xs.clone()),
         Value::Tuple(xs) => Ok(xs.clone()),
+        // Iterating a string yields its characters; a map yields `(k, v)` pairs.
+        // This makes `for c in "ab"`, `for (k, v) in m`, and the vocabulary
+        // combinators (map/filter/…) work uniformly over strings and maps.
+        Value::Str(s) => Ok(s.chars().map(|c| Value::Str(c.to_string())).collect()),
+        Value::Map(m) => Ok(m.iter().map(|(k, v)| Value::Tuple(vec![k.clone(), v.clone()])).collect()),
         _ => err("expected a collection"),
     }
 }
@@ -1505,6 +1510,11 @@ mod tests {
             ("f s(){ var n = 0\n if 5 == 5.0 { n += 1 }\n if 2 < 3.5 { n += 1 }\n if 7.0 > 3 { n += 1 }\n n }", "s", &[], Value::Int(3)),
             // `contains` on a string (substring) and a map (key membership).
             ("f s(){ var n = 0\n if contains(\"hello\", \"ell\") { n += 1 }\n if contains(freq(chars(\"aabb\")), \"a\") { n += 10 }\n n }", "s", &[], Value::Int(11)),
+            // Iterating a string (chars) and a map (key/value pairs), plus a
+            // vocabulary combinator (filter) applied directly to a string.
+            ("f s(){ var n = 0\n for c in \"abcde\" { n += 1 }\n n }", "s", &[], Value::Int(5)),
+            ("f s(){ var t = 0\n for (k, v) in freq(chars(\"banana\")) { t += v }\n t }", "s", &[], Value::Int(6)),
+            ("f s(){ len(filter(\"hello world\", fn(c) => c != \" \")) }", "s", &[], Value::Int(10)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
