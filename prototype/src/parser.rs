@@ -2649,19 +2649,28 @@ impl<'a> Parser<'a> {
         // let-statements like `v a = 0; v val = 1;` previously parsed
         // the first then failed the second. Accept the most common
         // keyword-but-identifier-like next tokens here.
-        matches!(
-            self.peek(),
+        let first = self.peek();
+        if !matches!(
+            first,
             TokenKind::KwV | TokenKind::KwM | TokenKind::KwVal | TokenKind::KwVar
-        ) && self.tokens.get(self.pos + 1).is_some_and(|t| {
-            matches!(
-                t.kind,
-                TokenKind::Ident
+        ) {
+            return false;
+        }
+        let next = match self.tokens.get(self.pos + 1).map(|t| t.kind) {
+            Some(k) => k,
+            None => return false,
+        };
+        // Destructuring binders `val (a, b) = …` / `val [h, ..t] = …` are only
+        // recognised after the LONG keywords `val`/`var`. After the short forms
+        // `v`/`m` a following `(`/`[` is a variable call/index (`m[k] = …`,
+        // `v(x)`) — those `v`/`m` are ordinary variable names, not binders.
+        if matches!(next, TokenKind::LParen | TokenKind::LBrack) {
+            return matches!(first, TokenKind::KwVal | TokenKind::KwVar);
+        }
+        matches!(
+            next,
+            TokenKind::Ident
                     | TokenKind::Underscore
-                    // Destructuring binders: `val (a, b) = …`, `val [h, ..t] = …`.
-                    // `val`/`var` are keywords, so there is no competing
-                    // `val(...)` / `val[...]` expression to be ambiguous with.
-                    | TokenKind::LParen
-                    | TokenKind::LBrack
                     // Keywords that double as identifiers in
                     // binding-name position. The lexer tokenises
                     // common variable names (`val`, `guard`, `data`,
@@ -2692,8 +2701,7 @@ impl<'a> Parser<'a> {
                     | TokenKind::KwFitness
                     | TokenKind::KwGenome
                     | TokenKind::KwMutate
-            )
-        })
+        )
     }
 
     fn parse_let_stmt(&mut self) -> Result<Stmt, ParseError> {

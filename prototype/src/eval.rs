@@ -1515,6 +1515,10 @@ mod tests {
             ("f s(){ var n = 0\n for c in \"abcde\" { n += 1 }\n n }", "s", &[], Value::Int(5)),
             ("f s(){ var t = 0\n for (k, v) in freq(chars(\"banana\")) { t += v }\n t }", "s", &[], Value::Int(6)),
             ("f s(){ len(filter(\"hello world\", fn(c) => c != \" \")) }", "s", &[], Value::Int(10)),
+            // Compound assignment to a map element (`m[k] += …`) — the classic
+            // histogram build. `m`/`v` are KwM/KwV but must read as variables.
+            ("f s(){ var m = {\"a\": 10}\n m[\"a\"] += 5\n m[\"b\"] = 1\n m[\"a\"] + m[\"b\"] }", "s", &[], Value::Int(16)),
+            ("f s(){ var v = [1, 2, 3]\n v[0] *= 100\n v[0] + v[1] }", "s", &[], Value::Int(102)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
