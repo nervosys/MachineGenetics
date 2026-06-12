@@ -886,10 +886,13 @@ impl Interp {
                 let n = as_int(&arg(1))? as usize;
                 Ok(Value::List(xs.into_iter().take(n).collect()))
             }
-            "contains" => {
-                let xs = as_list(&arg(0))?;
-                Ok(Value::Bool(xs.iter().any(|x| *x == arg(1))))
-            }
+            "contains" => match arg(0) {
+                // Substring test for strings, key membership for maps, else
+                // element membership for lists.
+                Value::Str(s) => Ok(Value::Bool(s.contains(&as_str(&arg(1))?))),
+                Value::Map(m) => Ok(Value::Bool(m.iter().any(|(k, _)| *k == arg(1)))),
+                other => Ok(Value::Bool(as_list(&other)?.iter().any(|x| *x == arg(1)))),
+            },
             "min" | "max" => {
                 // Either min(a, b) or min(list).
                 let items = if a.len() == 1 { as_list(&arg(0))? } else { a.clone() };
@@ -1174,7 +1177,12 @@ fn cmp_value(a: &Value, b: &Value) -> std::cmp::Ordering {
     match (a, b) {
         (Value::Int(x), Value::Int(y)) => x.cmp(y),
         (Value::Float(x), Value::Float(y)) => x.partial_cmp(y).unwrap_or(Ordering::Equal),
+        // Mixed numerics compare by promoting the integer to float, matching
+        // how arithmetic promotes (so `2 < 3.5` and `5 == 5.0` behave sanely).
+        (Value::Int(x), Value::Float(y)) => (*x as f64).partial_cmp(y).unwrap_or(Ordering::Equal),
+        (Value::Float(x), Value::Int(y)) => x.partial_cmp(&(*y as f64)).unwrap_or(Ordering::Equal),
         (Value::Str(x), Value::Str(y)) => x.cmp(y),
+        (Value::Bool(x), Value::Bool(y)) => x.cmp(y),
         _ => Ordering::Equal,
     }
 }
@@ -1204,6 +1212,11 @@ fn binop(op: &str, l: Value, r: Value) -> R {
         // Mixed numerics promote to float (so `n / 2.0` and `x as f64 / 2` work).
         (o @ ("+" | "-" | "*" | "/" | "%"), Int(a), Float(b)) => binop(o, Float(a as f64), Float(b)),
         (o @ ("+" | "-" | "*" | "/" | "%"), Float(a), Int(b)) => binop(o, Float(a), Float(b as f64)),
+        // Mixed-numeric equality promotes (matches arithmetic and ordering).
+        ("==", Int(a), Float(b)) => Ok(Bool(a as f64 == b)),
+        ("==", Float(a), Int(b)) => Ok(Bool(a == b as f64)),
+        ("!=", Int(a), Float(b)) => Ok(Bool(a as f64 != b)),
+        ("!=", Float(a), Int(b)) => Ok(Bool(a != b as f64)),
         ("==", a, b) => Ok(Bool(a == b)),
         ("!=", a, b) => Ok(Bool(a != b)),
         ("<", a, b) => Ok(Bool(cmp_value(&a, &b).is_lt())),
@@ -1488,6 +1501,10 @@ mod tests {
             // Float modulo (incl. mixed Int%Float promotion) and string indexing.
             ("f s(){ ((5.5 % 2.0) + (7 % 2.5)) as i64 }", "s", &[], Value::Int(3)),
             ("f s(){ join([\"hello\"[0], \"world\"[0]], \"\") }", "s", &[], Value::Str("hw".into())),
+            // Mixed Int/Float comparison: equality and ordering promote.
+            ("f s(){ var n = 0\n if 5 == 5.0 { n += 1 }\n if 2 < 3.5 { n += 1 }\n if 7.0 > 3 { n += 1 }\n n }", "s", &[], Value::Int(3)),
+            // `contains` on a string (substring) and a map (key membership).
+            ("f s(){ var n = 0\n if contains(\"hello\", \"ell\") { n += 1 }\n if contains(freq(chars(\"aabb\")), \"a\") { n += 10 }\n n }", "s", &[], Value::Int(11)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
