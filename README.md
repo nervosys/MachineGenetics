@@ -4,7 +4,7 @@
 
 **Agentic-first Programming Language and Compiler Infra for Recursive Self-Improvement**
 
-[Specification](mechgen_SPEC.md) · [Ecosystem](mechgen_ECOSYSTEM.md) · [Proposal](mechgen_PROPOSAL.md) · [Examples](examples/) · [Contributing](CONTRIBUTING.md)
+[Specification](MECHGEN_SPEC.md) · [Architecture](ARCHITECTURE.md) · [Benchmarks](#benchmarks-measured) · [Agent Protocol](AGENT_PROTOCOL.md) · [Roadmap](ROADMAP.md) · [Examples](examples/)
 
 </div>
 
@@ -124,20 +124,25 @@ expected value (measured 2026-06-11):
 
 ## Quick Start
 
+MechGen is a **prototype**. The working entry point today is the
+`MechGen-parse` binary; build it from `prototype/` and run a program:
+
 ```bash
-# Create a new project
-mg new my-project
-cd my-project
+# Build the prototype compiler/evaluator
+cargo build --release --manifest-path prototype/Cargo.toml
 
-# Build and run
-mg run
+# Write and run a program
+echo 'f main(){ sum(map(range(5), fn(x) => x * x)) }' > squares.mg
+./prototype/target/release/MechGen-parse --eval squares.mg main   # → 30
 
-# Transpile existing Rust code to MechGen
-rust2mg src/main.rs --output src/main.mg
-
-# Back-transpile to Rust
-mg2rs src/main.mg --output rs/
+# Parse + typecheck + report on any .mg file
+./prototype/target/release/MechGen-parse squares.mg
 ```
+
+> **Planned toolchain.** A higher-level CLI (`mg new`, `mg run`) and the Rust
+> transpilers are on the [roadmap](ROADMAP.md) and **not yet built** — use
+> `MechGen-parse` directly for now. The targets below are the real, shipping
+> interface.
 
 ### Working prototype CLI (`MechGen-parse`)
 
@@ -156,6 +161,20 @@ MechGen-parse --target=abl-compute <file>   # dispatch nets to CpuBackend
 MechGen-parse --target=abl-train    <file>   # SGD/Adam training loop
 MechGen-parse --target=abl-infer    <file>   # load checkpoint, predict
 MechGen-parse --target=abl-generate <file>   # autoregressive decode
+MechGen-parse --eval <file.mg> <fn> [int args]
+                                         # execute a function in the tree-walking
+                                         # evaluator and print its result
+```
+
+The `--eval` evaluator runs general-purpose `.mg` programs end to end
+(lex → parse → evaluate). Its correctness harness (`eval_bench`) executes
+**72 programs to exact results**, covering every expression/statement form, all
+pattern kinds (tuple/slice/struct/option), and the standard vocabulary over
+lists, strings, and maps — see [Benchmarks](#benchmarks-measured).
+
+```sh
+# e.g. given `f fib(n){ if n < 2 { n } else { fib(n-1) + fib(n-2) } }` in fib.mg
+MechGen-parse --eval fib.mg fib 25       # → 75025
 ```
 
 ```sh
@@ -253,9 +272,14 @@ mg run
 
 | Document                                                   | Description                                        |
 | ---------------------------------------------------------- | -------------------------------------------------- |
-| [mechgen_SPEC.md](mechgen_SPEC.md)                         | Formal language specification                      |
-| [mechgen_ECOSYSTEM.md](mechgen_ECOSYSTEM.md)               | Ecosystem architecture (Forge, RAP, migration)     |
-| [mechgen_PROPOSAL.md](mechgen_PROPOSAL.md)                 | Design philosophy and 24 design principles         |
+| [MECHGEN_SPEC.md](MECHGEN_SPEC.md)                         | Formal language specification                      |
+| [ARCHITECTURE.md](ARCHITECTURE.md)                         | Compiler and system architecture                   |
+| [AB_INITIO_DESIGN.md](AB_INITIO_DESIGN.md)                 | Ab-initio language design (standard vocabulary §8) |
+| [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md)                     | How agents target the binary IR directly           |
+| [MEASUREMENTS.md](MEASUREMENTS.md)                         | Measured results and methodology                   |
+| [ROADMAP.md](ROADMAP.md)                                   | Roadmap and status                                 |
+| [REDOX_ECOSYSTEM.md](REDOX_ECOSYSTEM.md)                   | Ecosystem architecture (Forge, RAP, migration)     |
+| [REDOX_PROPOSAL.md](REDOX_PROPOSAL.md)                     | Design philosophy and design principles            |
 | [prototype/docs/BOOK.md](prototype/docs/BOOK.md)           | User guide (12 chapters)                           |
 | [prototype/docs/INTERNALS.md](prototype/docs/INTERNALS.md) | Compiler architecture (36 modules)                 |
 | [agent-guide/](agent-guide/)                               | AI agent SDK (prompts, patterns, RAP methods)      |
@@ -267,26 +291,29 @@ mg run
 
 ## Building from Source
 
-See [INSTALL.md](INSTALL.md) for full instructions. Summary:
+The prototype builds with a stable Rust toolchain — no LLVM or external build
+system required for the core compiler/evaluator:
 
 ```bash
-# Prerequisites: Python 3, C compiler, LLVM, cmake
-git clone https://github.com/nervosys/MechGen.git
-cd MechGen
-cp bootstrap.example.toml bootstrap.toml  # edit as needed
-./x build
-./x test
+# Prerequisites: Rust (stable, edition 2024)
+git clone https://github.com/nervosys/MachineGenetics.git
+cd MachineGenetics
+
+# Build and test the prototype
+cargo build --release --manifest-path prototype/Cargo.toml
+cargo test  --release --manifest-path prototype/Cargo.toml
 ```
+
+(The optional CUDA backend is feature-gated and loads the driver at runtime via
+`dlopen`; the build succeeds with or without a GPU present.)
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). For compiler internals, see
-[prototype/docs/INTERNALS.md](prototype/docs/INTERNALS.md).
+Issues and pull requests are welcome. For compiler internals and module layout,
+see [prototype/docs/INTERNALS.md](prototype/docs/INTERNALS.md); for how agents
+consume the language, see [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md).
 
 ## License
 
-MechGen is distributed under the terms of both the MIT license and the Apache
-License (Version 2.0), with portions covered by various BSD-like licenses.
-
-See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and
-[COPYRIGHT](COPYRIGHT) for details.
+MechGen is licensed under the **Apache License, Version 2.0**. See
+[LICENSE](LICENSE) for the full text.
