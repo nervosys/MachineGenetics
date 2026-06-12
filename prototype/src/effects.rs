@@ -1,6 +1,6 @@
 /// MechGen Effect Inference — bottom-up effect set computation.
 ///
-/// Implements the effect inference algorithm from REDOX_SPEC.md §5:
+/// Implements the effect inference algorithm from MECHGEN_SPEC.md §5:
 ///   InferEffects(fn):
 ///     1. Collect all effect.perform calls in fn body
 ///     2. For each called function g, recursively InferEffects(g)

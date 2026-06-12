@@ -98,8 +98,8 @@ The compiler is organized into the following crates, mirroring the pipeline:
 
 ## Quick Links
 
-- [REDOX_PROPOSAL.md](../REDOX_PROPOSAL.md) — Language design proposal
+- [MECHGEN_PROPOSAL.md](../MECHGEN_PROPOSAL.md) — Language design proposal
 - [MECHGEN_SPEC.md](../MECHGEN_SPEC.md) — Formal language specification
-- [REDOX_ECOSYSTEM.md](../REDOX_ECOSYSTEM.md) — Ecosystem architecture
+- [MECHGEN_ECOSYSTEM.md](../MECHGEN_ECOSYSTEM.md) — Ecosystem architecture
 - [Agent Guide](../agent-guide/README.md) — AI agent coding patterns
 - [prototype/src/](../prototype/src/) — Working prototype implementation
