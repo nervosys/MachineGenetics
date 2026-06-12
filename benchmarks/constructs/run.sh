@@ -74,3 +74,23 @@ echo "Reproduce token counts (real cl100k BPE), from this directory:"
 echo "  cargo run -q -p agentic-eval --example tokens_of --features real-tokens -- *_hl.mg *_ll.mg *_mechgen.mg *_pytorch.py"
 echo "  (run in nervosys/cli/AetherShell, passing absolute paths to these files)"
 rm -f /tmp/_h.mg /tmp/_l.mg 2>/dev/null
+
+echo
+echo "=== Depth scaling — the 'stack N' repeat combinator (O(depth) -> O(1) surface) ==="
+echo "A 12-deep transformer, written by hand (12× the block) vs \`stack 12 { block }\`."
+echo "Tokens real cl100k (recorded); text + ABL bytes measured live."
+# generate the manual 12× form
+{ echo "net Manual {"; for i in $(seq 1 12); do
+  printf '    layer attn%d: MultiHeadAttention(256, 8);\n    layer n%da: LayerNorm;\n    layer ff%da: Linear(256, 1024);\n    layer act%d: GELU;\n    layer ff%db: Linear(1024, 256);\n    layer n%db: LayerNorm;\n' $i $i $i $i $i $i
+done; echo "    forward { attn1 }"; echo "}"; } > /tmp/_manual12.mg
+"$MG" /tmp/_manual12.mg >/dev/null 2>&1 && mok=✓ || mok=FAIL
+"$MG" deep_transformer_stack.mg >/dev/null 2>&1 && sok=✓ || sok=FAIL
+"$MG" --target=abl-bytes /tmp/_manual12.mg /tmp/_m.abl >/dev/null 2>&1
+"$MG" --target=abl-bytes deep_transformer_stack.mg /tmp/_s.abl >/dev/null 2>&1
+printf "  %-18s %6s %8s %8s   %s\n" "form" "tokens" "text" "ABL" "check"
+printf "  %-18s %6s %7dB %7dB   %s\n" "manual 12×" "839" "$(wc -c </tmp/_manual12.mg)" "$(wc -c </tmp/_m.abl)" "$mok"
+printf "  %-18s %6s %7dB %7dB   %s\n" "stack 12 { block }" "82" "$(wc -c <deep_transformer_stack.mg)" "$(wc -c </tmp/_s.abl)" "$sok"
+echo "  → surface: 82 vs 839 tokens (10.2× fewer), FLAT in depth (100 layers ≈ 83 tok)."
+echo "  → ABL still O(depth) (expands at parse); a binary REPEAT op is the next piece"
+echo "    (see ARCHITECTURE_DSL.md §4.4)."
+rm -f /tmp/_manual12.mg /tmp/_m.abl /tmp/_s.abl 2>/dev/null
