@@ -377,6 +377,25 @@ impl Interp {
             }
             Expr::Index { object, index } => {
                 let o = self.eval(object, env)?;
+                // Slice syntax: `xs[a..b]`, `s[a..]`, `xs[..b]`, `xs[..]`. The
+                // parser makes the index a Range; open ends use an `_` sentinel.
+                if let Expr::Range { start, end, inclusive } = index.as_ref() {
+                    let len = match &o {
+                        Value::List(xs) => xs.len() as i64,
+                        Value::Str(s) => s.chars().count() as i64,
+                        _ => return err("cannot slice this value"),
+                    };
+                    let lo = self.slice_bound(start, env, 0)?.clamp(0, len);
+                    let raw = self.slice_bound(end, env, len)?;
+                    let hi = (if *inclusive { raw + 1 } else { raw }).clamp(lo, len);
+                    return match o {
+                        Value::List(xs) => Ok(Value::List(xs[lo as usize..hi as usize].to_vec())),
+                        Value::Str(s) => {
+                            Ok(Value::Str(s.chars().skip(lo as usize).take((hi - lo) as usize).collect()))
+                        }
+                        _ => unreachable!(),
+                    };
+                }
                 let i = self.eval(index, env)?;
                 match (o, i) {
                     (Value::List(xs), Value::Int(n)) => xs
@@ -562,6 +581,17 @@ impl Interp {
             }
             other => err(format!("evaluator does not support {} yet", variant(other))),
         }
+    }
+
+    /// A slice bound: the `_` sentinel (an open `..` end) becomes `default`;
+    /// any other expression is evaluated to an integer.
+    fn slice_bound(&self, e: &Expr, env: &mut Env, default: i64) -> Result<i64, Control> {
+        if let Expr::Ident { name } = e {
+            if name == "_" {
+                return Ok(default);
+            }
+        }
+        as_int(&self.eval(e, env)?)
     }
 
     /// Evaluate an f-string: `f"x = {x}, sum = {sum(xs)}"`. The raw token text
@@ -1519,6 +1549,10 @@ mod tests {
             // histogram build. `m`/`v` are KwM/KwV but must read as variables.
             ("f s(){ var m = {\"a\": 10}\n m[\"a\"] += 5\n m[\"b\"] = 1\n m[\"a\"] + m[\"b\"] }", "s", &[], Value::Int(16)),
             ("f s(){ var v = [1, 2, 3]\n v[0] *= 100\n v[0] + v[1] }", "s", &[], Value::Int(102)),
+            // Slice indexing: list sub-range, open-ended, and substring.
+            ("f s(){ sum([10, 20, 30, 40, 50][1..3]) }", "s", &[], Value::Int(50)),
+            ("f s(){ sum([1, 2, 3, 4, 5][2..]) + len([1,2,3,4,5][..2]) }", "s", &[], Value::Int(14)),
+            ("f s(){ \"hello world\"[0..5] }", "s", &[], Value::Str("hello".into())),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
