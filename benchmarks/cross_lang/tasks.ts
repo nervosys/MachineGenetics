@@ -1,0 +1,10 @@
+const fact = (n: number): number => n < 2 ? 1 : n * fact(n - 1);
+const sumto = (n: number): number => { let t = 0; for (let i = 1; i <= n; i++) t += i; return t; };
+const fib = (n: number): number => n < 2 ? n : fib(n - 1) + fib(n - 2);
+const distinct = (): number => new Set(["the", "quick", "brown", "the", "lazy", "the", "fox"]).size;
+const collatz = (n: number): number => { let x = n, s = 0; while (x !== 1) { x = x % 2 === 0 ? x / 2 : 3 * x + 1; s++; } return s; };
+console.log(fact(12));
+console.log(sumto(100));
+console.log(fib(25));
+console.log(distinct());
+console.log(collatz(27));
