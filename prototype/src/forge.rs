@@ -391,7 +391,7 @@ mod tests {
         let mut reg = ForgeRegistry::new();
 
         reg.publish(ForgePackage {
-            name: "redox-math".into(),
+            name: "mechgen-math".into(),
             version: "1.0.0".into(),
             description: "Math utilities".into(),
             capabilities: vec!["arithmetic".into(), "linear-algebra".into()],
@@ -406,7 +406,7 @@ mod tests {
         });
 
         reg.publish(ForgePackage {
-            name: "redox-io".into(),
+            name: "mechgen-io".into(),
             version: "2.0.0".into(),
             description: "I/O utilities".into(),
             capabilities: vec!["file-read".into(), "file-write".into(), "network".into()],
@@ -421,7 +421,7 @@ mod tests {
         });
 
         reg.publish(ForgePackage {
-            name: "redox-agent".into(),
+            name: "mechgen-agent".into(),
             version: "0.5.0".into(),
             description: "Agent toolkit".into(),
             capabilities: vec!["code-analysis".into(), "arithmetic".into()],
@@ -432,7 +432,7 @@ mod tests {
             }],
             effects: vec!["pure".into()],
             dependencies: vec![Dependency {
-                package: "redox-math".into(),
+                package: "mechgen-math".into(),
                 version_req: ">=1.0".into(),
                 required_capabilities: vec!["arithmetic".into()],
             }],
@@ -448,7 +448,7 @@ mod tests {
     fn publish_and_latest() {
         let reg = sample_registry();
         assert_eq!(reg.package_count(), 3);
-        let math = reg.latest("redox-math").unwrap();
+        let math = reg.latest("mechgen-math").unwrap();
         assert_eq!(math.version, "1.0.0");
     }
 
@@ -465,9 +465,9 @@ mod tests {
     fn search_multiple_capabilities() {
         let reg = sample_registry();
         let results = reg.search_by_capabilities(&["arithmetic", "code-analysis"]);
-        // redox-agent has both, redox-math has one
+        // mechgen-agent has both, mechgen-math has one
         assert!(!results.is_empty());
-        assert_eq!(results[0].package_name, "redox-agent"); // highest score
+        assert_eq!(results[0].package_name, "mechgen-agent"); // highest score
     }
 
     #[test]
@@ -499,7 +499,7 @@ mod tests {
     #[test]
     fn compatible_packages() {
         let reg = sample_registry();
-        let result = reg.check_compatibility("redox-math", "redox-agent");
+        let result = reg.check_compatibility("mechgen-math", "mechgen-agent");
         assert!(result.compatible);
         assert!(result.satisfied_contracts.iter().any(|s| s.contains("arithmetic")));
     }
@@ -508,20 +508,20 @@ mod tests {
     fn incompatible_missing_cap() {
         let mut reg = sample_registry();
         reg.publish(ForgePackage {
-            name: "redox-consumer".into(),
+            name: "mechgen-consumer".into(),
             version: "1.0.0".into(),
             description: "Needs GPU".into(),
             capabilities: vec![],
             contracts: vec![],
             effects: vec![],
             dependencies: vec![Dependency {
-                package: "redox-math".into(),
+                package: "mechgen-math".into(),
                 version_req: ">=1.0".into(),
                 required_capabilities: vec!["gpu-compute".into()],
             }],
             agents: vec![],
         });
-        let result = reg.check_compatibility("redox-math", "redox-consumer");
+        let result = reg.check_compatibility("mechgen-math", "mechgen-consumer");
         assert!(!result.compatible);
         assert!(result.missing_capabilities.contains(&"gpu-compute".into()));
     }
@@ -529,7 +529,7 @@ mod tests {
     #[test]
     fn compatibility_package_not_found() {
         let reg = sample_registry();
-        let result = reg.check_compatibility("nonexistent", "redox-agent");
+        let result = reg.check_compatibility("nonexistent", "mechgen-agent");
         assert!(!result.compatible);
     }
 
@@ -539,17 +539,17 @@ mod tests {
     fn dependency_graph() {
         let reg = sample_registry();
         let graph = reg.dependency_graph();
-        assert_eq!(graph["redox-agent"], vec!["redox-math".to_string()]);
-        assert!(graph["redox-math"].is_empty());
+        assert_eq!(graph["mechgen-agent"], vec!["mechgen-math".to_string()]);
+        assert!(graph["mechgen-math"].is_empty());
     }
 
     #[test]
     fn transitive_capabilities() {
         let reg = sample_registry();
-        let caps = reg.transitive_capabilities("redox-agent");
+        let caps = reg.transitive_capabilities("mechgen-agent");
         assert!(caps.contains("code-analysis"));
         assert!(caps.contains("arithmetic"));
-        assert!(caps.contains("linear-algebra")); // from redox-math
+        assert!(caps.contains("linear-algebra")); // from mechgen-math
     }
 
     // ── Effect search ─────────────────────────────────────────────
@@ -559,7 +559,7 @@ mod tests {
         let reg = sample_registry();
         let results = reg.search_by_effect("io");
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].package_name, "redox-io");
+        assert_eq!(results[0].package_name, "mechgen-io");
     }
 
     // ── Stats ─────────────────────────────────────────────────────
@@ -593,8 +593,8 @@ mod tests {
     #[test]
     fn contract_ensures_requires_match() {
         let reg = sample_registry();
-        // redox-math ensures "result >= 0", redox-agent requires "result >= 0"
-        let result = reg.check_compatibility("redox-math", "redox-agent");
+        // mechgen-math ensures "result >= 0", mechgen-agent requires "result >= 0"
+        let result = reg.check_compatibility("mechgen-math", "mechgen-agent");
         assert!(result.satisfied_contracts.iter().any(|s| s.contains("result >= 0")));
     }
 

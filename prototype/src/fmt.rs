@@ -1,4 +1,4 @@
-/// MechGen Formatter (redoxfmt) — bidirectional pretty-printer.
+/// MechGen Formatter (mechgenfmt) — bidirectional pretty-printer.
 ///
 /// Two modes:
 ///   `agent`   — emit minimal-token MechGen canonical form (sigils: f, +f, S, v, m …)

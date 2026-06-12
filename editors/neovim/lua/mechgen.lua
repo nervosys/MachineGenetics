@@ -12,7 +12,7 @@ local M = {}
 
 vim.filetype.add({
   extension = {
-    rdx = 'MechGen',
+    mg = 'MechGen',
   },
   filename = {
     ['Forge.toml'] = 'toml',
@@ -102,81 +102,81 @@ function M.setup_syntax()
         if exists('b:current_syntax') | finish | endif
 
         " Comments
-        syn match   redoxComment      "//.*$"
-        syn region  redoxCommentBlock start="/\*" end="\*/"
+        syn match   mechgenComment      "//.*$"
+        syn region  mechgenCommentBlock start="/\*" end="\*/"
 
         " Strings
-        syn region  redoxString       start='"' end='"' contains=redoxEscape,redoxInterp
-        syn region  redoxPrintStr     start='p"' end='"' contains=redoxEscape,redoxInterp
-        syn region  redoxFmtStr       start='f"' end='"' contains=redoxEscape,redoxInterp
-        syn match   redoxEscape       contained "\\."
-        syn region  redoxInterp       contained start="{" end="}"
+        syn region  mechgenString       start='"' end='"' contains=mechgenEscape,mechgenInterp
+        syn region  mechgenPrintStr     start='p"' end='"' contains=mechgenEscape,mechgenInterp
+        syn region  mechgenFmtStr       start='f"' end='"' contains=mechgenEscape,mechgenInterp
+        syn match   mechgenEscape       contained "\\."
+        syn region  mechgenInterp       contained start="{" end="}"
 
         " Declarations
-        syn match   redoxFnDecl       "\v(\+f|~f|\baf\b|\bf\b)\s+[a-zA-Z_]\w*"
-        syn match   redoxStructDecl   "\v(\+S|\bS\b)\s+[A-Z]\w*"
-        syn match   redoxEnumDecl     "\v(\+E|\bE\b)\s+[A-Z]\w*"
-        syn match   redoxTraitDecl    "\v(\+T|\bT\b)\s+[A-Z]\w*"
-        syn match   redoxImplDecl     "\v\bI\b\s+[A-Z]\w*"
-        syn match   redoxModDecl      "\v\+?M\s+\w+"
-        syn match   redoxUseDecl      "\v\bu\b\s+[a-zA-Z_][\w.]*"
-        syn match   redoxVarDecl      "\v\bv\b\s+[a-zA-Z_]\w*"
-        syn match   redoxMutDecl      "\v\bm\b\s+[a-zA-Z_]\w*"
+        syn match   mechgenFnDecl       "\v(\+f|~f|\baf\b|\bf\b)\s+[a-zA-Z_]\w*"
+        syn match   mechgenStructDecl   "\v(\+S|\bS\b)\s+[A-Z]\w*"
+        syn match   mechgenEnumDecl     "\v(\+E|\bE\b)\s+[A-Z]\w*"
+        syn match   mechgenTraitDecl    "\v(\+T|\bT\b)\s+[A-Z]\w*"
+        syn match   mechgenImplDecl     "\v\bI\b\s+[A-Z]\w*"
+        syn match   mechgenModDecl      "\v\+?M\s+\w+"
+        syn match   mechgenUseDecl      "\v\bu\b\s+[a-zA-Z_][\w.]*"
+        syn match   mechgenVarDecl      "\v\bv\b\s+[a-zA-Z_]\w*"
+        syn match   mechgenMutDecl      "\v\bm\b\s+[a-zA-Z_]\w*"
 
         " Keywords
-        syn keyword redoxControl      loop break continue ret yield while
-        syn keyword redoxKeyword      effect handle spec type static self Self super crate as where move unsafe extern dyn
-        syn keyword redoxBoolean      true false
-        syn keyword redoxConstant     None Some Ok Err
+        syn keyword mechgenControl      loop break continue ret yield while
+        syn keyword mechgenKeyword      effect handle spec type static self Self super crate as where move unsafe extern dyn
+        syn keyword mechgenBoolean      true false
+        syn keyword mechgenConstant     None Some Ok Err
 
         " Attributes
-        syn match   redoxAttribute    "@\w\+\>"
-        syn region  redoxAttrArgs     start="@\w\+(" end=")" contains=redoxType
+        syn match   mechgenAttribute    "@\w\+\>"
+        syn region  mechgenAttrArgs     start="@\w\+(" end=")" contains=mechgenType
 
         " Types
-        syn keyword redoxPrimType     i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32 f64 bool char str never
-        syn match   redoxType         "\v\b[A-Z]\w*\b"
+        syn keyword mechgenPrimType     i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32 f64 bool char str never
+        syn match   mechgenType         "\v\b[A-Z]\w*\b"
 
         " Numbers
-        syn match   redoxNumber       "\v<\d[\d_]*(\.\d[\d_]*)?([eE][+-]?\d+)?"
-        syn match   redoxHexNumber    "\v<0x[0-9a-fA-F_]+"
-        syn match   redoxOctNumber    "\v<0o[0-7_]+"
-        syn match   redoxBinNumber    "\v<0b[01_]+"
+        syn match   mechgenNumber       "\v<\d[\d_]*(\.\d[\d_]*)?([eE][+-]?\d+)?"
+        syn match   mechgenHexNumber    "\v<0x[0-9a-fA-F_]+"
+        syn match   mechgenOctNumber    "\v<0o[0-7_]+"
+        syn match   mechgenBinNumber    "\v<0b[01_]+"
 
         " Operators
-        syn match   redoxOperator     "\v\=\>|\-\>|\<\-"
-        syn match   redoxOperator     "\v\=\=|\!\=|\<\=|\>\="
+        syn match   mechgenOperator     "\v\=\>|\-\>|\<\-"
+        syn match   mechgenOperator     "\v\=\=|\!\=|\<\=|\>\="
 
         " Highlighting
-        hi def link redoxComment      Comment
-        hi def link redoxCommentBlock Comment
-        hi def link redoxString       String
-        hi def link redoxPrintStr     String
-        hi def link redoxFmtStr       String
-        hi def link redoxEscape       SpecialChar
-        hi def link redoxInterp       Special
-        hi def link redoxFnDecl       Function
-        hi def link redoxStructDecl   Type
-        hi def link redoxEnumDecl     Type
-        hi def link redoxTraitDecl    Type
-        hi def link redoxImplDecl     Type
-        hi def link redoxModDecl      Include
-        hi def link redoxUseDecl      Include
-        hi def link redoxVarDecl      Identifier
-        hi def link redoxMutDecl      Identifier
-        hi def link redoxControl      Conditional
-        hi def link redoxKeyword      Keyword
-        hi def link redoxBoolean      Boolean
-        hi def link redoxConstant     Constant
-        hi def link redoxAttribute    PreProc
-        hi def link redoxAttrArgs     PreProc
-        hi def link redoxPrimType     Type
-        hi def link redoxType         Type
-        hi def link redoxNumber       Number
-        hi def link redoxHexNumber    Number
-        hi def link redoxOctNumber    Number
-        hi def link redoxBinNumber    Number
-        hi def link redoxOperator     Operator
+        hi def link mechgenComment      Comment
+        hi def link mechgenCommentBlock Comment
+        hi def link mechgenString       String
+        hi def link mechgenPrintStr     String
+        hi def link mechgenFmtStr       String
+        hi def link mechgenEscape       SpecialChar
+        hi def link mechgenInterp       Special
+        hi def link mechgenFnDecl       Function
+        hi def link mechgenStructDecl   Type
+        hi def link mechgenEnumDecl     Type
+        hi def link mechgenTraitDecl    Type
+        hi def link mechgenImplDecl     Type
+        hi def link mechgenModDecl      Include
+        hi def link mechgenUseDecl      Include
+        hi def link mechgenVarDecl      Identifier
+        hi def link mechgenMutDecl      Identifier
+        hi def link mechgenControl      Conditional
+        hi def link mechgenKeyword      Keyword
+        hi def link mechgenBoolean      Boolean
+        hi def link mechgenConstant     Constant
+        hi def link mechgenAttribute    PreProc
+        hi def link mechgenAttrArgs     PreProc
+        hi def link mechgenPrimType     Type
+        hi def link mechgenType         Type
+        hi def link mechgenNumber       Number
+        hi def link mechgenHexNumber    Number
+        hi def link mechgenOctNumber    Number
+        hi def link mechgenBinNumber    Number
+        hi def link mechgenOperator     Operator
 
         let b:current_syntax = 'MechGen'
       ]])
@@ -192,12 +192,12 @@ function M.setup_keymaps()
     callback = function(ev)
       local opts = { buffer = ev.buf, silent = true }
 
-      -- Build / run via rdx CLI.
-      vim.keymap.set('n', '<leader>rb', '<cmd>!rdx build<CR>', opts)
-      vim.keymap.set('n', '<leader>rr', '<cmd>!rdx run<CR>', opts)
-      vim.keymap.set('n', '<leader>rt', '<cmd>!rdx test<CR>', opts)
-      vim.keymap.set('n', '<leader>rf', '<cmd>!rdx fmt<CR>', opts)
-      vim.keymap.set('n', '<leader>rc', '<cmd>!rdx check<CR>', opts)
+      -- Build / run via mg CLI.
+      vim.keymap.set('n', '<leader>rb', '<cmd>!mg build<CR>', opts)
+      vim.keymap.set('n', '<leader>rr', '<cmd>!mg run<CR>', opts)
+      vim.keymap.set('n', '<leader>rt', '<cmd>!mg test<CR>', opts)
+      vim.keymap.set('n', '<leader>rf', '<cmd>!mg fmt<CR>', opts)
+      vim.keymap.set('n', '<leader>rc', '<cmd>!mg check<CR>', opts)
     end,
   })
 end

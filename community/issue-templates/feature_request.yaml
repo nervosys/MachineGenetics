@@ -21,7 +21,7 @@ body:
         - Standard Library
         - Compiler / Parser
         - Transpiler (rust2mg / mg2rs)
-        - Build System (rdx CLI / Forge.toml)
+        - Build System (mg CLI / Forge.toml)
         - Editor / IDE Support
         - Agent Training / ACI
         - Documentation

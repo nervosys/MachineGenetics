@@ -77,8 +77,8 @@ extend TypeMapping {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         val ptr = if self.is_pointer { "*" } else { "" };
         val null = if self.is_nullable { "?" } else { "" };
-        write!(f, "{rdx} → {ptr}{foreign}{null}",
-            rdx = self.MechGen_type,
+        write!(f, "{mg} → {ptr}{foreign}{null}",
+            mg = self.MechGen_type,
             ptr = ptr,
             foreign = self.foreign_type,
             null = null)

@@ -13,7 +13,7 @@
 1. [Executive Summary](#1-executive-summary)
 2. [Design Principles](#2-design-principles)
 3. [Transformation Methodology](#3-transformation-methodology)
-4. [Ontology of the MechGen System](#4-ontology-of-the-redox-system)
+4. [Ontology of the MechGen System](#4-ontology-of-the-mechgen-system)
 5. [Language-Level Changes](#5-language-level-changes)
 6. [Compiler Architecture for Agents](#6-compiler-architecture-for-agents)
 7. [Swarm Collaboration Model](#7-swarm-collaboration-model)
@@ -169,7 +169,7 @@ Agents work across language boundaries — calling C libraries, Python ML framew
      - A machine-actionable fix graph (not just text substitutions)
      - Preconditions and postconditions for each suggested fix
      - Confidence levels and alternative fix branches
-   - **Deliverable:** `redox_diagnostics` crate with `DiagnosticGraph` type.
+   - **Deliverable:** `mechgen_diagnostics` crate with `DiagnosticGraph` type.
 
 3. **Query API Externalization**
    - The `rustc_query_impl` system uses `QueryVTable`, on-disk caching, and dependency tracking.
@@ -178,7 +178,7 @@ Agents work across language boundaries — calling C libraries, Python ML framew
      - Safety queries: `is_freeze(Ty)`, `is_send(Ty)`, `is_sync(Ty)`, `needs_drop(Ty)`
      - MIR queries: `optimized_mir(DefId)`, `mir_borrowck(DefId)`
      - Diagnostic queries: `lint_levels(HirId)`, `check_match(DefId)`
-   - **Deliverable:** `redox_query` crate, versioned independently of compiler internals.
+   - **Deliverable:** `mechgen_query` crate, versioned independently of compiler internals.
 
 ### Phase 1: Semantic Index — The Knowledge Graph (Months 4–12)
 
@@ -188,12 +188,12 @@ Agents work across language boundaries — calling C libraries, Python ML framew
 
 4. **Semantic Code Index**
    - Merge the capabilities of `rustdoc-json-types` (documentation), `rust-analyzer`'s `Analysis` (IDE queries), and `rustc_public` (compiler semantics) into a unified index.
-   - **Action:** Create `redox_index`, a persistent database that stores:
+   - **Action:** Create `mechgen_index`, a persistent database that stores:
      - All items with full type signatures, trait bounds, and lifetime parameters
      - Cross-reference graph (callers, callees, implementors, dependents)
      - Capability manifests (what effects each function has: I/O, allocation, panic, unsafe)
      - Natural-language documentation linked to semantic entities
-   - **Deliverable:** `redox_index` crate with both in-memory and on-disk backends.
+   - **Deliverable:** `mechgen_index` crate with both in-memory and on-disk backends.
 
 5. **Capability Manifests**
    - Extend the type system with *effect annotations* (inspired by Rust's existing `const`, `async`, `unsafe` qualifiers).
@@ -203,7 +203,7 @@ Agents work across language boundaries — calling C libraries, Python ML framew
      fn process_file(path: &Path) -> Result<Data, Error> { ... }
      ```
    - These are inferred by the compiler for any function body, or declared explicitly on trait methods and FFI boundaries.
-   - **Deliverable:** `redox_capabilities` analysis pass integrated into MIR transform pipeline.
+   - **Deliverable:** `mechgen_capabilities` analysis pass integrated into MIR transform pipeline.
 
 ### Phase 2: Agent Protocol — The Interface Contract (Months 8–18)
 
@@ -217,8 +217,8 @@ Agents work across language boundaries — calling C libraries, Python ML framew
      - Query types, traits, lifetimes, borrow constraints
      - Request transformations (refactors with pre/post-condition checking)
      - Receive verification results (safety proofs, capability audits)
-   - **Action:** Define RAP as a typed RPC protocol with request/response schemas derived from `redox_query` types.
-   - **Deliverable:** `redox_protocol` crate + reference server implementation.
+   - **Action:** Define RAP as a typed RPC protocol with request/response schemas derived from `mechgen_query` types.
+   - **Deliverable:** `mechgen_protocol` crate + reference server implementation.
 
 7. **Agent Capability System**
    - Agents operating on MechGen code are themselves subject to capability bounds:
@@ -235,7 +235,7 @@ Agents work across language boundaries — calling C libraries, Python ML framew
      }
      ```
    - **Action:** Define agent capability taxonomy. Enforce at protocol level.
-   - **Deliverable:** `redox_agent` crate with capability checking.
+   - **Deliverable:** `mechgen_agent` crate with capability checking.
 
 8. **Verification Oracle**
    - Extend the compiler's verification beyond type-checking into a continuous verification service:
@@ -243,7 +243,7 @@ Agents work across language boundaries — calling C libraries, Python ML framew
      - Post-synthesis: "Does this generated code satisfy the specification?"
      - Invariant monitoring: "Does this crate maintain its safety contracts across versions?"
    - Built on `rustc_borrowck`, `rustc_const_eval`, `rustc_pattern_analysis`, and `rustc_transmute`.
-   - **Deliverable:** `redox_verify` crate exposing verification as a composable service.
+   - **Deliverable:** `mechgen_verify` crate exposing verification as a composable service.
 
 ### Phase 3: Language Evolution — MechGen Syntax and Semantics (Months 12–24)
 
@@ -262,7 +262,7 @@ Agents work across language boundaries — calling C libraries, Python ML framew
      struct Buffer { ... }
      ```
    - Contracts are *checked* at compile-time where possible (via `rustc_const_eval`), *enforced* at runtime in debug builds, and *used as specifications* by agents for code synthesis and verification.
-   - **Deliverable:** Contract syntax + `redox_contracts` analysis pass.
+   - **Deliverable:** Contract syntax + `mechgen_contracts` analysis pass.
 
 10. **Effect Types**
     - Formalize Rust's existing effect-like qualifiers (`const`, `async`, `unsafe`) into a unified effect system:
@@ -283,10 +283,10 @@ Agents work across language boundaries — calling C libraries, Python ML framew
       ```rust
       #[agent::discoverable(category = "crypto", security_level = "critical")]
       #[agent::alternatives("ring::aead", "openssl::symm")]
-      #[agent::deprecation_path("use redox_crypto::aead instead")]
+      #[agent::deprecation_path("use mechgen_crypto::aead instead")]
       pub fn encrypt(key: &Key, plaintext: &[u8]) -> Vec<u8> { ... }
       ```
-    - **Deliverable:** `redox_attrs` attribute namespace + processing in `rustc_attr_parsing`.
+    - **Deliverable:** `mechgen_attrs` attribute namespace + processing in `rustc_attr_parsing`.
 
 ---
 
@@ -323,9 +323,9 @@ MechGen System
 ├── Toolchain
 │   ├── Build System (MechGen Build — multi-target orchestration)
 │   ├── Package Manager (capability-indexed registry)
-│   ├── Formatter (redoxfmt — canonical form enforcement)
-│   ├── Linter (redox-lint — opt-in)
-│   ├── Documentation (redox-doc)
+│   ├── Formatter (mechgenfmt — canonical form enforcement)
+│   ├── Linter (mechgen-lint — opt-in)
+│   ├── Documentation (mechgen-doc)
 │   ├── Interpreter (MechGen Interpret — opt-in UB detection)
 │   └── Language Server (RAP Server)
 │
@@ -352,66 +352,66 @@ Each existing `rustc_*` crate maps to a MechGen subsystem with its agent-facing 
 
 | Rust Crate           | MechGen Subsystem | Agent Interface                                                                         |
 | -------------------- | --------------- | --------------------------------------------------------------------------------------- |
-| `rustc_lexer`        | `redox_lexer`   | Token stream API: agents can tokenize arbitrary source fragments                        |
-| `rustc_parse`        | `redox_parse`   | Parse API: agents submit source, receive AST with full span info                        |
-| `rustc_ast`          | `redox_ast`     | AST query: agents traverse, pattern-match, and transform AST nodes                      |
-| `rustc_expand`       | `redox_expand`  | Macro expansion API: agents can expand macros incrementally and observe transformations |
-| `rustc_ast_lowering` | `redox_lower`   | Lowering API: agents observe AST→HIR transformation with semantic annotations           |
-| `rustc_resolve`      | `redox_resolve` | Name resolution API: agents query what any name resolves to in any scope                |
+| `rustc_lexer`        | `mechgen_lexer`   | Token stream API: agents can tokenize arbitrary source fragments                        |
+| `rustc_parse`        | `mechgen_parse`   | Parse API: agents submit source, receive AST with full span info                        |
+| `rustc_ast`          | `mechgen_ast`     | AST query: agents traverse, pattern-match, and transform AST nodes                      |
+| `rustc_expand`       | `mechgen_expand`  | Macro expansion API: agents can expand macros incrementally and observe transformations |
+| `rustc_ast_lowering` | `mechgen_lower`   | Lowering API: agents observe AST→HIR transformation with semantic annotations           |
+| `rustc_resolve`      | `mechgen_resolve` | Name resolution API: agents query what any name resolves to in any scope                |
 
 #### Middle (Semantic Analysis)
 
 | Rust Crate               | MechGen Subsystem    | Agent Interface                                                              |
 | ------------------------ | ------------------ | ---------------------------------------------------------------------------- |
-| `rustc_hir`              | `redox_hir`        | HIR query: agents access desugared, resolved program structure               |
-| `rustc_hir_analysis`     | `redox_typecheck`  | Type query: agents ask "what is the type of X in context Y?"                 |
-| `rustc_hir_typeck`       | `redox_infer`      | Inference query: agents observe type inference decisions and constraints     |
-| `rustc_trait_selection`  | `redox_traits`     | Trait query: "does T implement Trait? which impl? what are the bounds?"      |
-| `rustc_borrowck`         | `redox_borrow`     | Borrow query: "is this borrow valid? what conflicts? what are the regions?"  |
-| `rustc_infer`            | `redox_unify`      | Unification query: agents observe and query type unification state           |
-| `rustc_middle`           | `redox_middle`     | Central type registry: all `Ty`, `TyKind`, `Predicate`, `Region` definitions |
-| `rustc_const_eval`       | `redox_consteval`  | Const evaluation query: "what does this const expression evaluate to?"       |
-| `rustc_pattern_analysis` | `redox_patterns`   | Pattern query: "is this match exhaustive? what cases are missing?"           |
-| `rustc_privacy`          | `redox_visibility` | Visibility query: "is this item accessible from this module/crate?"          |
-| `rustc_transmute`        | `redox_transmute`  | Transmute query: "is this transmutation safe? what assumptions are needed?"  |
+| `rustc_hir`              | `mechgen_hir`        | HIR query: agents access desugared, resolved program structure               |
+| `rustc_hir_analysis`     | `mechgen_typecheck`  | Type query: agents ask "what is the type of X in context Y?"                 |
+| `rustc_hir_typeck`       | `mechgen_infer`      | Inference query: agents observe type inference decisions and constraints     |
+| `rustc_trait_selection`  | `mechgen_traits`     | Trait query: "does T implement Trait? which impl? what are the bounds?"      |
+| `rustc_borrowck`         | `mechgen_borrow`     | Borrow query: "is this borrow valid? what conflicts? what are the regions?"  |
+| `rustc_infer`            | `mechgen_unify`      | Unification query: agents observe and query type unification state           |
+| `rustc_middle`           | `mechgen_middle`     | Central type registry: all `Ty`, `TyKind`, `Predicate`, `Region` definitions |
+| `rustc_const_eval`       | `mechgen_consteval`  | Const evaluation query: "what does this const expression evaluate to?"       |
+| `rustc_pattern_analysis` | `mechgen_patterns`   | Pattern query: "is this match exhaustive? what cases are missing?"           |
+| `rustc_privacy`          | `mechgen_visibility` | Visibility query: "is this item accessible from this module/crate?"          |
+| `rustc_transmute`        | `mechgen_transmute`  | Transmute query: "is this transmutation safe? what assumptions are needed?"  |
 
 #### Backend Pipeline
 
 | Rust Crate            | MechGen Subsystem   | Agent Interface                                                               |
 | --------------------- | ----------------- | ----------------------------------------------------------------------------- |
-| `rustc_mir_build`     | `redox_mir_build` | MIR construction: agents observe HIR→MIR lowering                             |
-| `rustc_mir_transform` | `redox_mir_opt`   | MIR optimization: agents query which passes ran and their effects             |
-| `rustc_mir_dataflow`  | `redox_dataflow`  | Dataflow query: agents access liveness, reachability, initialization analysis |
-| `rustc_codegen_ssa`   | `redox_codegen`   | Codegen query: agents observe MIR→target code translation                     |
-| `rustc_codegen_llvm`  | `redox_llvm`      | LLVM backend: agents can inspect generated LLVM IR                            |
-| `rustc_monomorphize`  | `redox_mono`      | Monomorphization query: agents see concrete instantiations                    |
+| `rustc_mir_build`     | `mechgen_mir_build` | MIR construction: agents observe HIR→MIR lowering                             |
+| `rustc_mir_transform` | `mechgen_mir_opt`   | MIR optimization: agents query which passes ran and their effects             |
+| `rustc_mir_dataflow`  | `mechgen_dataflow`  | Dataflow query: agents access liveness, reachability, initialization analysis |
+| `rustc_codegen_ssa`   | `mechgen_codegen`   | Codegen query: agents observe MIR→target code translation                     |
+| `rustc_codegen_llvm`  | `mechgen_llvm`      | LLVM backend: agents can inspect generated LLVM IR                            |
+| `rustc_monomorphize`  | `mechgen_mono`      | Monomorphization query: agents see concrete instantiations                    |
 
 #### Infrastructure
 
 | Rust Crate          | MechGen Subsystem     | Agent Interface                                      |
 | ------------------- | ------------------- | ---------------------------------------------------- |
-| `rustc_errors`      | `redox_diagnostics` | Structured diagnostic API with fix graphs            |
-| `rustc_lint`        | `redox_lint`        | Lint registration and query API                      |
-| `rustc_session`     | `redox_session`     | Session configuration and state                      |
-| `rustc_span`        | `redox_span`        | Source location management                           |
-| `rustc_query_impl`  | `redox_query`       | Query system: the backbone of all agent interactions |
-| `rustc_interface`   | `redox_interface`   | Top-level compiler invocation API                    |
-| `rustc_feature`     | `redox_features`    | Feature gate query and management                    |
-| `rustc_metadata`    | `redox_metadata`    | Crate metadata serialization and loading             |
-| `rustc_incremental` | `redox_incremental` | Incremental compilation infrastructure               |
+| `rustc_errors`      | `mechgen_diagnostics` | Structured diagnostic API with fix graphs            |
+| `rustc_lint`        | `mechgen_lint`        | Lint registration and query API                      |
+| `rustc_session`     | `mechgen_session`     | Session configuration and state                      |
+| `rustc_span`        | `mechgen_span`        | Source location management                           |
+| `rustc_query_impl`  | `mechgen_query`       | Query system: the backbone of all agent interactions |
+| `rustc_interface`   | `mechgen_interface`   | Top-level compiler invocation API                    |
+| `rustc_feature`     | `mechgen_features`    | Feature gate query and management                    |
+| `rustc_metadata`    | `mechgen_metadata`    | Crate metadata serialization and loading             |
+| `rustc_incremental` | `mechgen_incremental` | Incremental compilation infrastructure               |
 
 ### 4.3 Tooling Ontology
 
 | Rust Tool       | MechGen Tool        | Agent Interface                                                        |
 | --------------- | ----------------- | ---------------------------------------------------------------------- |
-| `cargo`         | `redox build`     | Build orchestration API: dependency resolution, compilation scheduling |
-| `rustfmt`       | `redoxfmt`        | Format API: agents request formatting with configurable style          |
-| `clippy`        | `redox lint`      | Extended lint API: agents register custom lints, query lint results    |
-| `rustdoc`       | `redox doc`       | Documentation generation with semantic linking                         |
-| `miri`          | `redox interpret` | Interpretation API: agents run code in sandbox with full UB detection  |
-| `rust-analyzer` | `redox analyze`   | Merged into RAP server: all IDE features available programmatically    |
-| `compiletest`   | `redox test`      | Test infrastructure with property-based verification                   |
-| `rustc-perf`    | `redox perf`      | Performance query: agents benchmark and profile code changes           |
+| `cargo`         | `mechgen build`     | Build orchestration API: dependency resolution, compilation scheduling |
+| `rustfmt`       | `mechgenfmt`        | Format API: agents request formatting with configurable style          |
+| `clippy`        | `mechgen lint`      | Extended lint API: agents register custom lints, query lint results    |
+| `rustdoc`       | `mechgen doc`       | Documentation generation with semantic linking                         |
+| `miri`          | `mechgen interpret` | Interpretation API: agents run code in sandbox with full UB detection  |
+| `rust-analyzer` | `mechgen analyze`   | Merged into RAP server: all IDE features available programmatically    |
+| `compiletest`   | `mechgen test`      | Test infrastructure with property-based verification                   |
+| `rustc-perf`    | `mechgen perf`      | Performance query: agents benchmark and profile code changes           |
 
 ### 4.4 Safety Mechanism Ontology
 
@@ -455,7 +455,7 @@ Safety Model
 │   │   ├── Transmute validity (opt-in)
 │   │   └── Const evaluation safety (opt-in)
 │   │
-│   ├── Effect System [NEW IN REDOX]
+│   ├── Effect System [NEW IN MECHGEN]
 │   │   ├── io — filesystem, network, system calls
 │   │   ├── alloc — heap allocation
 │   │   ├── panic — unwinding, abort
@@ -463,13 +463,13 @@ Safety Model
 │   │   ├── async — asynchronous suspension points
 │   │   └── custom — user-defined effects
 │   │
-│   ├── Contract System [NEW IN REDOX] (opt-in verification)
+│   ├── Contract System [NEW IN MECHGEN] (opt-in verification)
 │   │   ├── Preconditions (#[requires])
 │   │   ├── Postconditions (#[ensures])
 │   │   ├── Invariants (#[invariant])
 │   │   └── Refinement types (bounded integers, non-empty collections)
 │   │
-│   └── Capability System [NEW IN REDOX]
+│   └── Capability System [NEW IN MECHGEN]
 │       ├── Function capabilities (declared or inferred effects)
 │       ├── Module capabilities (aggregate of contained items)
 │       ├── Crate capabilities (published in manifest)
@@ -481,7 +481,7 @@ Safety Model
 │   ├── Contract Assertions (debug-mode pre/post checks)
 │   └── Capability Monitors (agent sandbox enforcement)
 │
-├── Performance Infrastructure [NEW IN REDOX — MLIR + LLVM]
+├── Performance Infrastructure [NEW IN MECHGEN — MLIR + LLVM]
 │   ├── MLIR-based multi-level IR (MechGen Dialect → Linalg/Affine → LLVM Dialect)
 │   ├── Dialect-as-semantics: ownership, effects, contracts are first-class MLIR ops
 │   ├── LLVM backend codegen (20+ CPU architectures, AMDGPU, NVPTX, WASM)
@@ -494,56 +494,56 @@ Safety Model
 │   ├── Target-optimal memory layout via MLIR data layout modeling (#[repr(target_optimal)])
 │   └── Cost Oracle (per-target cost queries for any expression/type before emit)
 │
-├── Self-Evolving Grammar [NEW IN REDOX]
+├── Self-Evolving Grammar [NEW IN MECHGEN]
 │   ├── Agent-registerable domain-specific abbreviations
 │   ├── Namespace-scoped syntax extensions (version-controlled)
 │   ├── Frequency-driven promotion (ACI suggests new abbreviations)
 │   └── Grammar extension discovery API
 │
-├── Synthesis Infrastructure [NEW IN REDOX]
+├── Synthesis Infrastructure [NEW IN MECHGEN]
 │   ├── Formal specification syntax (spec blocks with @req/@ens/@perf/@fx)
 │   ├── Synthesis oracle (spec → candidate implementations)
 │   ├── Verification oracle (candidate → spec satisfaction proof)
 │   ├── Pipeline composition from specs
 │   └── Cost-constrained synthesis (agents specify budget)
 │
-├── Agent Memory Model [NEW IN REDOX]
+├── Agent Memory Model [NEW IN MECHGEN]
 │   ├── Ephemeral memory (per-task scratchpad)
 │   ├── Session memory (per-swarm-session patterns and caches)
 │   ├── Project memory (conventions, bug patterns, perf profiles)
 │   └── Global memory (cross-project ecosystem patterns)
 │
-├── Self-Healing Compiler [NEW IN REDOX]
+├── Self-Healing Compiler [NEW IN MECHGEN]
 │   ├── Auto-repair pipeline (error → infer intent → generate fix candidates)
 │   ├── Confidence-ranked fixes with token cost accounting
 │   └── Accept/reject/refine feedback loop (agent always in control)
 │
-├── Hot-Reload Runtime [NEW IN REDOX]
+├── Hot-Reload Runtime [NEW IN MECHGEN]
 │   ├── Function-level live patching (sub-ms injection)
 │   ├── ABI stability enforcement at MLIR level
 │   ├── Rollback with retention window
 │   └── Active call draining (no forced interruption)
 │
-├── Zero-Friction FFI [NEW IN REDOX]
+├── Zero-Friction FFI [NEW IN MECHGEN]
 │   ├── Auto-binding from C/C++ headers, Python stubs, WASM .wit, CUDA kernels
 │   ├── Safe wrappers with null checks and length validation
 │   ├── Cost oracle integration (cross-language overhead visible)
 │   └── Zero-copy data passing where possible (buffer protocol)
 │
-├── Runtime Security [NEW IN REDOX]
+├── Runtime Security [NEW IN MECHGEN]
 │   ├── Capability-based sandboxing (memory, CPU, syscall, FFI bounds)
 │   ├── Capability attenuation (child ≤ parent capabilities)
 │   ├── Cryptographic audit trail (every sandbox execution logged)
 │   └── Deterministic replay for audit and debugging
 │
-├── Swarm Orchestration Patterns [NEW IN REDOX]
+├── Swarm Orchestration Patterns [NEW IN MECHGEN]
 │   ├── Map-reduce (parallel map, single-agent reduce)
 │   ├── Pipeline (staged with backpressure)
 │   ├── Scatter-gather (broadcast + quorum-based collection)
 │   ├── Saga (distributed transaction with compensation)
 │   └── Compile-time verification (effect purity, contract chaining, deadlock freedom)
 │
-├── Agentic Compiler Intelligence (ACI) [NEW IN REDOX]
+├── Agentic Compiler Intelligence (ACI) [NEW IN MECHGEN]
 │   ├── Dynamic Warning Engine (learns from project bug history + swarm sessions)
 │   ├── Intelligent Debugging Engine (causal root-cause analysis via ML)
 │   ├── Performance Advisor Engine (MLIR cost model + profiling data suggestions)
@@ -563,7 +563,7 @@ Safety Model
 
 ### 5.1 Backwards Compatibility
 
-MechGen supports **dual syntax modes**. The **canonical syntax** (default) is a zero-ambiguity LL(1) grammar optimized for agent parsing. The **legacy syntax mode** accepts standard Rust and transpiles to canonical form. All valid Rust programs can be compiled in legacy mode. The `redox fmt --canonicalize` command converts Rust source to canonical MechGen. New features (effects, contracts, performance annotations, SKB integration) are only available in canonical syntax.
+MechGen supports **dual syntax modes**. The **canonical syntax** (default) is a zero-ambiguity LL(1) grammar optimized for agent parsing. The **legacy syntax mode** accepts standard Rust and transpiles to canonical form. All valid Rust programs can be compiled in legacy mode. The `mechgen fmt --canonicalize` command converts Rust source to canonical MechGen. New features (effects, contracts, performance annotations, SKB integration) are only available in canonical syntax.
 
 ### 5.2 New Syntax and Semantics
 
@@ -707,16 +707,16 @@ Because of these properties, agents get:
 - **Single-pass parsing**: No backtracking, no speculative parsing, no parser recovery heuristics
 - **Zero ambiguous token sequences**: Every token stream has exactly one parse tree
 - **Streaming parse**: Agents can parse partial code (incomplete functions, partial modules) without context from the rest of the file
-- **Canonical form**: `redoxfmt` produces one unique canonical representation per AST — agents never face formatting-induced parse variations
+- **Canonical form**: `mechgenfmt` produces one unique canonical representation per AST — agents never face formatting-induced parse variations
 
 #### 5.3.4 Dual Syntax Mode
 
 For human developers transitioning from Rust, MechGen supports a **legacy syntax mode** that accepts standard Rust syntax and transpiles to canonical form:
 
 ```bash
-redox build --syntax=legacy    # accepts Rust syntax, transpiles
-redox build --syntax=canonical # default: zero-ambiguity syntax only
-redox fmt --canonicalize       # convert legacy Rust syntax to canonical MechGen
+mechgen build --syntax=legacy    # accepts Rust syntax, transpiles
+mechgen build --syntax=canonical # default: zero-ambiguity syntax only
+mechgen fmt --canonicalize       # convert legacy Rust syntax to canonical MechGen
 ```
 
 ### 5.4 Hardware-Agnostic Performance Model (MLIR + LLVM)
@@ -787,7 +787,7 @@ Source → AST → HIR → MIR → MLIR (MechGen Dialect) → MLIR (Lowered) →
 // Maps directly to MLIR vector dialect ops (inspired by Mojo's SIMD[DType, width],
 // but as a token-efficient first-class type with agent-queryable semantics)
 f dot_product(a: &[f32], b: &[f32]) -> f32 {
-    v sum = Simd[f32, 8].zero;       // language-level type, not redox::simd::Vector
+    v sum = Simd[f32, 8].zero;       // language-level type, not mechgen::simd::Vector
     @ i : 0..a.len.step(8) {
         v va = Simd[f32, 8].load(&a[i..]);
         v vb = Simd[f32, 8].load(&b[i..]);
@@ -1049,8 +1049,8 @@ The MechGen compiler enforces these token economy properties:
 
 1. **No construct requires more tokens than its Rust equivalent** — every MechGen form is ≤ the token count of the corresponding Rust form
 2. **High-frequency constructs get the shortest forms** — token length is inversely proportional to usage frequency across all known Rust codebases
-3. **`redoxfmt --agent`** produces the minimum-token canonical form; **`redoxfmt --human`** produces the human-readable expanded form
-4. **Token budget reporting**: `redox build --token-report` emits per-function and per-module token counts, enabling agents to track and optimize their token expenditure
+3. **`mechgenfmt --agent`** produces the minimum-token canonical form; **`mechgenfmt --human`** produces the human-readable expanded form
+4. **Token budget reporting**: `mechgen build --token-report` emits per-function and per-module token counts, enabling agents to track and optimize their token expenditure
 5. **Standard abbreviation registry**: all compact forms are deterministic, documented, and version-stable — agents never need to guess abbreviations
 
 #### 5.5.6 Trait and Type Abbreviation Registry
@@ -1597,7 +1597,7 @@ The MechGen compiler exposes its entire semantic model through a query interface
 │ Parse │ Types │Borrow │ MIR   │ Diag   │ Verify │
 │Queries│Queries│Queries│Queries│Queries │Queries │
 ├───────┴───────┴───────┴───────┴────────┴────────┤
-│              redox_query (Stable API)            │
+│              mechgen_query (Stable API)            │
 ├─────────────────────────────────────────────────┤
 │         Incremental Query Engine (Salsa)         │
 ├─────────────────────────────────────────────────┤
@@ -1649,7 +1649,7 @@ DiagnosticGraph {
         },
     ],
     related: ["E0499", "E0503"],
-    documentation_url: "https://doc.redox-lang.org/error/E0502",
+    documentation_url: "https://doc.mechgen-lang.org/error/E0502",
 }
 ```
 
@@ -1671,7 +1671,7 @@ VerificationCertificate {
         Check::PanicFreedom { status: Conditional, conditions: ["inputs satisfy preconditions"] },
         Check::StackOverflowFreedom { status: Bounded, max_depth: 42 },
     ],
-    compiler_version: "redox 1.0.0",
+    compiler_version: "mechgen 1.0.0",
     hash: "sha256:abc123...",
 }
 ```
@@ -2345,7 +2345,7 @@ Project memory feeds back into every aspect of the compilation pipeline:
 [package]
 name = "flight-controller"
 version = "2.1.0"
-edition = "redox-2026"
+edition = "mechgen-2026"
 syntax = "canonical"       # canonical | legacy (for Rust compat)
 
 [performance]
@@ -2529,8 +2529,8 @@ RAP Server
 ### 8.3 Swarm SDK
 
 ```rust
-use redox_swarm::{Swarm, SwarmAgent, Role, SemanticLease, SwarmBus, Consensus};
-use redox_agent::{Agent, Capability, Session};
+use mechgen_swarm::{Swarm, SwarmAgent, Role, SemanticLease, SwarmBus, Consensus};
+use mechgen_agent::{Agent, Capability, Session};
 
 /// A swarm-aware safety auditor that works in parallel with other verifiers
 #[derive(SwarmAgent)]
@@ -2755,7 +2755,7 @@ MechGen Model (SKB-Driven):
 ### 9.3 SKB Query Examples
 
 ```rust
-use redox_skb::{SafetyKB, Context, Pattern};
+use mechgen_skb::{SafetyKB, Context, Pattern};
 
 // Agent queries SKB before writing code
 let rules = skb.query(Pattern::MutableBorrow {
@@ -2912,7 +2912,7 @@ Every crate publishes a **capability manifest** alongside its code:
 
 ```json
 {
-  "crate": "redox_crypto",
+  "crate": "mechgen_crypto",
   "version": "1.0.0",
   "capabilities_required": ["alloc::heap"],
   "capabilities_provided": {
@@ -2956,7 +2956,7 @@ let results = registry.search(CapabilityQuery {
     ],
     sort_by: SortOrder::SecurityCertifications,
 });
-// Returns: [redox_crypto::aead, ring::aead, ...]
+// Returns: [mechgen_crypto::aead, ring::aead, ...]
 ```
 
 ### 10.4 Contract-Based Composition
@@ -2981,14 +2981,14 @@ let pipeline = compose![
 ## 11. Phased Implementation Plan
 
 ### Phase 0: Foundation (Months 1–6)
-- [ ] Fork and rebrand compiler crates (`rustc_*` → `redox_*`)
+- [ ] Fork and rebrand compiler crates (`rustc_*` → `mechgen_*`)
 - [ ] Implement zero-ambiguity LL(1) canonical grammar and parser
 - [ ] Implement token-compressed keyword set and lexer (single-char keywords, sigil prefixes)
 - [ ] Implement safety elision pass (P33): strip all lifetime, borrow, ownership syntax in agentic mode
 - [ ] Implement safety-free type inference: compiler infers `&`/`&mut`, `move`/`ref`, `dyn`/`impl` from usage
 - [ ] Build dual-syntax transpiler (legacy Rust → canonical MechGen compact form)
-- [ ] Implement `redoxfmt --agent` (minimum-token canonical form) and `redoxfmt --human` (human-readable form)
-- [ ] Stabilize `redox_public` API to cover all MIR, HIR, and type system constructs
+- [ ] Implement `mechgenfmt --agent` (minimum-token canonical form) and `mechgenfmt --human` (human-readable form)
+- [ ] Stabilize `mechgen_public` API to cover all MIR, HIR, and type system constructs
 - [ ] Define MechGen MLIR dialect: ownership, effects, contracts, perf annotations as first-class MLIR ops
 - [ ] Implement MIR → MLIR (MechGen Dialect) translation layer (thin boundary, dialect-as-semantics)
 - [ ] Implement language-level SIMD types (`Simd[T, N]`) backed by MLIR vector dialect ops
@@ -2996,22 +2996,22 @@ let pipeline = compose![
 - [ ] Wire LLVM backend codegen through MLIR LLVM Dialect (replacing direct MIR→LLVM IR path)
 - [ ] Implement compile-time metaprogramming (`@pp` / `@parameter`) via MLIR constant folding
 - [ ] Implement Structured Diagnostics Protocol (JSON diagnostic graphs)
-- [ ] Externalize core queries as stable API (`redox_query`)
+- [ ] Externalize core queries as stable API (`mechgen_query`)
 - [ ] Establish CI/CD pipeline for the MechGen compiler
 - [ ] Implement semantic region decomposition in compiler query system
 - [ ] Define standard abbreviation registry v1 (core types, traits, derives)
 
 ### Phase 1: SKB + Swarm Primitives + Multi-Target + Cost Oracle (Months 4–12)
 - [ ] Build Safety Knowledge Base (SKB) with initial rule corpus (ownership, borrowing, lifetimes, types)
-- [ ] Implement SKB query API (`redox_skb` crate)
+- [ ] Implement SKB query API (`mechgen_skb` crate)
 - [ ] Make all safety compiler passes opt-in via `MechGen.toml` safety profiles
-- [ ] Build `redox_index` (persistent semantic knowledge graph)
+- [ ] Build `mechgen_index` (persistent semantic knowledge graph)
 - [ ] Implement capability inference pass in MIR pipeline
-- [ ] Extend `redox_metadata` with capability manifest serialization
+- [ ] Extend `mechgen_metadata` with capability manifest serialization
 - [ ] Build prototype RAP server (merging rust-analyzer + compiler queries)
 - [ ] Implement agent discovery attributes in compact form (`@as`, `@ac`, `@ax`, `@ao`, `@ae`)
 - [ ] Implement attribute compression system (full `#[...]` → compact `@...` mapping)
-- [ ] Implement token budget reporting (`redox build --token-report`)
+- [ ] Implement token budget reporting (`mechgen build --token-report`)
 - [ ] Implement Cost Oracle (P38): per-target cost queries for expressions, types, and operations
 - [ ] Implement multi-target cost comparison API (`cost.compare` endpoint)
 - [ ] Implement semantic lease manager (shared read / exclusive write on code regions)
@@ -3023,7 +3023,7 @@ let pipeline = compose![
 - [ ] Define and implement MechGen Agent Protocol (RAP) specification
 - [ ] Build agent capability system and enforcement layer
 - [ ] Implement verification oracle (contracts, effects, capabilities) as opt-in service
-- [ ] Build swarm SDK (`redox_swarm` crate with orchestrator, synthesizer, verifier roles)
+- [ ] Build swarm SDK (`mechgen_swarm` crate with orchestrator, synthesizer, verifier roles)
 - [ ] Implement consensus protocol engine (propose → vote → resolve → integrate)
 - [ ] Build task decomposition engine (dependency-aware parallel work splitting)
 - [ ] Implement semantic VCS (operation-log-based version control replacing git for agents)
@@ -3042,8 +3042,8 @@ let pipeline = compose![
 - [ ] Expose all ACI services via RAP endpoints (`aci.warnings`, `aci.debug`, `aci.perf`, `aci.swarm`)
 
 ### Phase 3: Language Evolution + Synthesis + Grammar Extensions (Months 12–24)
-- [ ] Implement effect type system in `redox_hir_analysis`
-- [ ] Implement contract syntax and checking in `redox_contracts`
+- [ ] Implement effect type system in `mechgen_hir_analysis`
+- [ ] Implement contract syntax and checking in `mechgen_contracts`
 - [ ] Implement refinement types in type checker
 - [ ] Implement capability blocks in HIR lowering
 - [ ] Implement compact performance annotations (`@pi!`, `@pnb`, `@pv(N)`, `@pt(target)`)
@@ -3059,7 +3059,7 @@ let pipeline = compose![
 - [ ] Implement agentic standard library: `SwarmVec`, `ArenaVec`, `SwarmChannel`, streaming I/O
 - [ ] Conduct corpus-wide token frequency analysis on crates.io ecosystem for abbreviation optimization
 - [ ] Finalize standard abbreviation registry v2 (full ecosystem coverage, frequency-weighted)
-- [ ] Define `redox-2026` edition with all new features including token-compact canonical form
+- [ ] Define `mechgen-2026` edition with all new features including token-compact canonical form
 - [ ] Build verification certificate emission pipeline (opt-in for safety-critical)
 - [ ] Implement swarm-of-swarms hierarchical orchestration for million-LOC+ codebases
 - [ ] Implement MLIR→CIRCT pipeline for FPGA targets (Verilog/SystemVerilog synthesis)
@@ -3681,8 +3681,8 @@ Section 5.4 describes the MechGen MLIR dialect at a high level. This section pro
 ### 14.1 Dialect Registration
 
 ```tablegen
-def Redox_Dialect : Dialect {
-  let name = "redox";
+def MechGen_Dialect : Dialect {
+  let name = "mechgen";
   let summary = "MechGen agentic language dialect for MLIR";
   let description = [{
     The MechGen dialect encodes the full semantics of the MechGen language —
@@ -3692,7 +3692,7 @@ def Redox_Dialect : Dialect {
     preserved through the entire optimization pipeline, unlike traditional
     approaches where MIR→LLVM IR lowering discards high-level intent.
   }];
-  let cppNamespace = "::redox";
+  let cppNamespace = "::mechgen";
   let useDefaultTypePrinterParser = 1;
   let useDefaultAttributePrinterParser = 1;
 }
@@ -3702,14 +3702,14 @@ def Redox_Dialect : Dialect {
 
 ```tablegen
 // Owned value type — compiler manages ownership transfer
-def Redox_OwnedType : Redox_Type<"Owned", "owned"> {
+def MechGen_OwnedType : MechGen_Type<"Owned", "owned"> {
   let summary = "An owned value with compiler-managed ownership semantics";
   let parameters = (ins "Type":$elementType);
   let assemblyFormat = "`<` $elementType `>`";
 }
 
 // Reference type — borrow mode (shared/exclusive) inferred
-def Redox_RefType : Redox_Type<"Ref", "ref"> {
+def MechGen_RefType : MechGen_Type<"Ref", "ref"> {
   let summary = "A reference with inferred borrow mode";
   let parameters = (ins
     "Type":$elementType,
@@ -3719,19 +3719,19 @@ def Redox_RefType : Redox_Type<"Ref", "ref"> {
 }
 
 // Region type — lifetime region variable
-def Redox_RegionType : Redox_Type<"Region", "region"> {
+def MechGen_RegionType : MechGen_Type<"Region", "region"> {
   let summary = "A lifetime region variable";
   let parameters = (ins "StringAttr":$name);
 }
 
 // Effect type — algebraic effect annotation
-def Redox_EffectType : Redox_Type<"Effect", "effect"> {
+def MechGen_EffectType : MechGen_Type<"Effect", "effect"> {
   let summary = "An algebraic effect (IO, Async, Alloc, etc.)";
   let parameters = (ins "StringAttr":$effectName);
 }
 
 // Capability type — agent capability token
-def Redox_CapabilityType : Redox_Type<"Capability", "cap"> {
+def MechGen_CapabilityType : MechGen_Type<"Capability", "cap"> {
   let summary = "An agent capability token for discovery";
   let parameters = (ins "ArrayAttr":$capabilities);
 }
@@ -3741,7 +3741,7 @@ def Redox_CapabilityType : Redox_Type<"Capability", "cap"> {
 
 ```tablegen
 // Move a value — transfers ownership from source to destination
-def Redox_MoveOp : Redox_Op<"move", [Pure]> {
+def MechGen_MoveOp : MechGen_Op<"move", [Pure]> {
   let summary = "Transfer ownership of a value";
   let description = [{
     Transfers ownership from the source SSA value to the result. After this
@@ -3757,10 +3757,10 @@ def Redox_MoveOp : Redox_Op<"move", [Pure]> {
 }
 
 // --- Example MLIR ---
-// %1 = redox.move %0 : !redox.owned<tensor<4xf32>> -> !redox.owned<tensor<4xf32>>
+// %1 = mechgen.move %0 : !mechgen.owned<tensor<4xf32>> -> !mechgen.owned<tensor<4xf32>>
 
 // Copy a value — duplicates for Copy types
-def Redox_CopyOp : Redox_Op<"copy", [Pure]> {
+def MechGen_CopyOp : MechGen_Op<"copy", [Pure]> {
   let summary = "Copy a value (only valid for Copy types)";
   let arguments = (ins AnyType:$source);
   let results = (outs AnyType:$result);
@@ -3770,37 +3770,37 @@ def Redox_CopyOp : Redox_Op<"copy", [Pure]> {
 }
 
 // Borrow a value — creates a reference
-def Redox_BorrowOp : Redox_Op<"borrow", []> {
+def MechGen_BorrowOp : MechGen_Op<"borrow", []> {
   let summary = "Create a reference to a value";
   let arguments = (ins
     AnyType:$source,
     BorrowModeAttr:$mode,     // shared | exclusive | inferred
-    Redox_RegionType:$region  // lifetime region
+    MechGen_RegionType:$region  // lifetime region
   );
-  let results = (outs Redox_RefType:$ref);
+  let results = (outs MechGen_RefType:$ref);
   let assemblyFormat = "$mode $source `in` $region attr-dict `:` type($source)";
 }
 
 // --- Example MLIR ---
-// %ref = redox.borrow shared %val in %rgn : !redox.owned<i64>
-//   → !redox.ref<i64, shared>
+// %ref = mechgen.borrow shared %val in %rgn : !mechgen.owned<i64>
+//   → !mechgen.ref<i64, shared>
 
 // Drop a value — runs destructor and releases resources
-def Redox_DropOp : Redox_Op<"drop", []> {
+def MechGen_DropOp : MechGen_Op<"drop", []> {
   let summary = "Drop a value, releasing owned resources";
   let arguments = (ins AnyType:$value);
   let assemblyFormat = "$value attr-dict `:` type($value)";
 }
 
 // --- Example MLIR ---
-// redox.drop %vec : !redox.owned<!redox.vec<f32>>
+// mechgen.drop %vec : !mechgen.owned<!mechgen.vec<f32>>
 ```
 
 ### 14.4 Effect Operations
 
 ```tablegen
 // Declare effects on a function
-def Redox_EffectDeclOp : Redox_Op<"effect.decl", [IsolatedFromAbove]> {
+def MechGen_EffectDeclOp : MechGen_Op<"effect.decl", [IsolatedFromAbove]> {
   let summary = "Declare algebraic effects for a function region";
   let arguments = (ins
     ArrayAttr:$effects,       // ["IO", "Async", "Alloc"]
@@ -3811,15 +3811,15 @@ def Redox_EffectDeclOp : Redox_Op<"effect.decl", [IsolatedFromAbove]> {
 }
 
 // --- Example MLIR ---
-// redox.effect.decl ["IO", "Async"] {
+// mechgen.effect.decl ["IO", "Async"] {
 //   // function body with IO and Async effects
 // }
 
 // Perform an effect — runtime effect invocation
-def Redox_EffectPerformOp : Redox_Op<"effect.perform", []> {
+def MechGen_EffectPerformOp : MechGen_Op<"effect.perform", []> {
   let summary = "Perform an algebraic effect";
   let arguments = (ins
-    Redox_EffectType:$effect,
+    MechGen_EffectType:$effect,
     Variadic<AnyType>:$args
   );
   let results = (outs Optional<AnyType>:$result);
@@ -3827,9 +3827,9 @@ def Redox_EffectPerformOp : Redox_Op<"effect.perform", []> {
 }
 
 // Effect handler — catches and handles effects from a child region
-def Redox_EffectHandleOp : Redox_Op<"effect.handle", []> {
+def MechGen_EffectHandleOp : MechGen_Op<"effect.handle", []> {
   let summary = "Install an effect handler for a region";
-  let arguments = (ins Redox_EffectType:$effect);
+  let arguments = (ins MechGen_EffectType:$effect);
   let regions = (region SizedRegion<1>:$body, SizedRegion<1>:$handler);
   let assemblyFormat = "$effect $body `with` $handler attr-dict";
 }
@@ -3839,7 +3839,7 @@ def Redox_EffectHandleOp : Redox_Op<"effect.handle", []> {
 
 ```tablegen
 // Precondition — must hold before function execution
-def Redox_RequireOp : Redox_Op<"contract.require", [Pure]> {
+def MechGen_RequireOp : MechGen_Op<"contract.require", [Pure]> {
   let summary = "Assert a precondition (contract)";
   let arguments = (ins
     I1:$condition,
@@ -3849,7 +3849,7 @@ def Redox_RequireOp : Redox_Op<"contract.require", [Pure]> {
 }
 
 // Postcondition — must hold after function execution
-def Redox_EnsureOp : Redox_Op<"contract.ensure", [Pure]> {
+def MechGen_EnsureOp : MechGen_Op<"contract.ensure", [Pure]> {
   let summary = "Assert a postcondition (contract)";
   let arguments = (ins
     I1:$condition,
@@ -3860,7 +3860,7 @@ def Redox_EnsureOp : Redox_Op<"contract.ensure", [Pure]> {
 }
 
 // Invariant — must hold at specific program points
-def Redox_InvariantOp : Redox_Op<"contract.invariant", []> {
+def MechGen_InvariantOp : MechGen_Op<"contract.invariant", []> {
   let summary = "Assert a loop or type invariant";
   let arguments = (ins
     I1:$condition,
@@ -3870,16 +3870,16 @@ def Redox_InvariantOp : Redox_Op<"contract.invariant", []> {
 }
 
 // --- Example MLIR ---
-// redox.contract.require %cond, "index must be in bounds"
+// mechgen.contract.require %cond, "index must be in bounds"
 // ... function body ...
-// redox.contract.ensure %post, "result is sorted", %ret_val
+// mechgen.contract.ensure %post, "result is sorted", %ret_val
 ```
 
 ### 14.6 Performance Annotation Operations
 
 ```tablegen
 // Target placement hint — compiled by MLIR cost model
-def Redox_PlaceOp : Redox_Op<"perf.place", []> {
+def MechGen_PlaceOp : MechGen_Op<"perf.place", []> {
   let summary = "Hint target device for a computation region";
   let arguments = (ins
     StrAttr:$target,          // "cpu" | "gpu" | "npu" | "auto"
@@ -3890,13 +3890,13 @@ def Redox_PlaceOp : Redox_Op<"perf.place", []> {
 }
 
 // --- Example MLIR ---
-// redox.perf.place "auto" {
+// mechgen.perf.place "auto" {
 //   // compiler evaluates cost model for each available target
 //   // and selects optimal dispatch
 // }
 
 // Vectorization hint
-def Redox_VectorizeOp : Redox_Op<"perf.vectorize", []> {
+def MechGen_VectorizeOp : MechGen_Op<"perf.vectorize", []> {
   let summary = "Hint vectorization width for a loop region";
   let arguments = (ins I64Attr:$width);  // SIMD width: 4, 8, 16, etc.
   let regions = (region SizedRegion<1>:$body);
@@ -3904,14 +3904,14 @@ def Redox_VectorizeOp : Redox_Op<"perf.vectorize", []> {
 }
 
 // No-bounds-check annotation
-def Redox_NoBoundsCheckOp : Redox_Op<"perf.no_bounds_check", []> {
+def MechGen_NoBoundsCheckOp : MechGen_Op<"perf.no_bounds_check", []> {
   let summary = "Disable bounds checking in a region (agent-trusted)";
   let regions = (region SizedRegion<1>:$body);
   let assemblyFormat = "$body attr-dict";
 }
 
 // Autotune — generate N variants and benchmark
-def Redox_AutotuneOp : Redox_Op<"perf.autotune", []> {
+def MechGen_AutotuneOp : MechGen_Op<"perf.autotune", []> {
   let summary = "Generate N optimization variants for autotuning";
   let arguments = (ins
     I64Attr:$variants,                     // number of variants to generate
@@ -3922,7 +3922,7 @@ def Redox_AutotuneOp : Redox_Op<"perf.autotune", []> {
 }
 
 // Cost query — compile-time cost model evaluation
-def Redox_CostQueryOp : Redox_Op<"perf.cost_query", [Pure]> {
+def MechGen_CostQueryOp : MechGen_Op<"perf.cost_query", [Pure]> {
   let summary = "Query the cost model for an expression";
   let arguments = (ins
     StrAttr:$target_hw,       // "x86_64" | "aarch64" | "nvptx" | ...
@@ -3938,7 +3938,7 @@ def Redox_CostQueryOp : Redox_Op<"perf.cost_query", [Pure]> {
 
 ```tablegen
 // Declare agent capabilities for a module
-def Redox_CapabilityDeclOp : Redox_Op<"capability.decl", [IsolatedFromAbove]> {
+def MechGen_CapabilityDeclOp : MechGen_Op<"capability.decl", [IsolatedFromAbove]> {
   let summary = "Declare capabilities provided by a module";
   let arguments = (ins
     StrAttr:$name,
@@ -3949,16 +3949,16 @@ def Redox_CapabilityDeclOp : Redox_Op<"capability.decl", [IsolatedFromAbove]> {
 }
 
 // Capability check — verify agent has required capability at compile time
-def Redox_CapabilityCheckOp : Redox_Op<"capability.check", [Pure]> {
+def MechGen_CapabilityCheckOp : MechGen_Op<"capability.check", [Pure]> {
   let summary = "Verify a capability is available";
   let arguments = (ins StrAttr:$capability);
   let results = (outs I1:$available);
 }
 
 // Capability-gated region — code only executes if capability is held
-def Redox_CapabilityGateOp : Redox_Op<"capability.gate", []> {
+def MechGen_CapabilityGateOp : MechGen_Op<"capability.gate", []> {
   let summary = "Gate a region on a capability token";
-  let arguments = (ins Redox_CapabilityType:$token);
+  let arguments = (ins MechGen_CapabilityType:$token);
   let regions = (region SizedRegion<1>:$body);
   let assemblyFormat = "$token $body attr-dict";
 }
@@ -3968,18 +3968,18 @@ def Redox_CapabilityGateOp : Redox_Op<"capability.gate", []> {
 
 ```tablegen
 // Query the Safety Knowledge Base during compilation
-def Redox_SKBQueryOp : Redox_Op<"skb.query", [Pure]> {
+def MechGen_SKBQueryOp : MechGen_Op<"skb.query", [Pure]> {
   let summary = "Query the Safety Knowledge Base for applicable rules";
   let arguments = (ins
     StrAttr:$pattern,         // e.g., "MutableBorrow", "TypeConversion"
     DictionaryAttr:$context   // key-value context for the query
   );
-  let results = (outs Redox_RuleSetType:$rules);
+  let results = (outs MechGen_RuleSetType:$rules);
   let assemblyFormat = "$pattern $context attr-dict";
 }
 
 // SKB validation — verify code against SKB rules
-def Redox_SKBValidateOp : Redox_Op<"skb.validate", []> {
+def MechGen_SKBValidateOp : MechGen_Op<"skb.validate", []> {
   let summary = "Validate a region against SKB rules";
   let arguments = (ins
     StrAttr:$rule_set,        // "ownership" | "borrow" | "lifetime" | "concurrency"
@@ -3995,21 +3995,21 @@ The MechGen dialect lowers progressively through MLIR's dialect hierarchy:
 
 | MechGen Operation          | Lowers To                            | Phase          |
 | ------------------------ | ------------------------------------ | -------------- |
-| `redox.move`             | SSA value copy + source invalidation | MechGen → Std    |
-| `redox.copy`             | `memref.copy` or SSA value copy      | MechGen → MemRef |
-| `redox.borrow`           | `memref.view` or SSA alias           | MechGen → MemRef |
-| `redox.drop`             | Destructor call sequence             | MechGen → Func   |
-| `redox.effect.decl`      | No-op (metadata preserved)           | MechGen → MechGen  |
-| `redox.effect.perform`   | `func.call` to effect handler        | MechGen → Func   |
-| `redox.contract.require` | `cf.assert` (debug) or removed (opt) | MechGen → CF     |
-| `redox.contract.ensure`  | `cf.assert` (debug) or removed (opt) | MechGen → CF     |
-| `redox.perf.place "gpu"` | `gpu.launch_func`                    | MechGen → GPU    |
-| `redox.perf.vectorize`   | `vector.transfer_read/write` + ops   | MechGen → Vector |
-| `redox.perf.autotune`    | N clones of body with different opts | MechGen → MechGen  |
-| `redox.perf.cost_query`  | Compile-time eval → constant         | MechGen → Arith  |
-| `redox.capability.gate`  | `scf.if` on runtime capability check | MechGen → SCF    |
-| `redox.skb.query`        | Compile-time eval → diagnostics      | Erased         |
-| `redox.skb.validate`     | Compile-time eval → diagnostics      | Erased         |
+| `mechgen.move`             | SSA value copy + source invalidation | MechGen → Std    |
+| `mechgen.copy`             | `memref.copy` or SSA value copy      | MechGen → MemRef |
+| `mechgen.borrow`           | `memref.view` or SSA alias           | MechGen → MemRef |
+| `mechgen.drop`             | Destructor call sequence             | MechGen → Func   |
+| `mechgen.effect.decl`      | No-op (metadata preserved)           | MechGen → MechGen  |
+| `mechgen.effect.perform`   | `func.call` to effect handler        | MechGen → Func   |
+| `mechgen.contract.require` | `cf.assert` (debug) or removed (opt) | MechGen → CF     |
+| `mechgen.contract.ensure`  | `cf.assert` (debug) or removed (opt) | MechGen → CF     |
+| `mechgen.perf.place "gpu"` | `gpu.launch_func`                    | MechGen → GPU    |
+| `mechgen.perf.vectorize`   | `vector.transfer_read/write` + ops   | MechGen → Vector |
+| `mechgen.perf.autotune`    | N clones of body with different opts | MechGen → MechGen  |
+| `mechgen.perf.cost_query`  | Compile-time eval → constant         | MechGen → Arith  |
+| `mechgen.capability.gate`  | `scf.if` on runtime capability check | MechGen → SCF    |
+| `mechgen.skb.query`        | Compile-time eval → diagnostics      | Erased         |
+| `mechgen.skb.validate`     | Compile-time eval → diagnostics      | Erased         |
 
 Full lowering sequence:
 
@@ -4103,7 +4103,7 @@ Pattern ::=
 
     // FFI patterns
     | NullPointerDeref { source: FFISource, site: SitePattern }
-    | LayoutMismatch { redox_type: TypePattern, foreign_type: TypePattern }
+    | LayoutMismatch { mechgen_type: TypePattern, foreign_type: TypePattern }
     | MissingFree { alloc_site: SitePattern, foreign_allocator: String }
 
 // VarPattern and TypePattern support wildcards:
@@ -4282,9 +4282,9 @@ Major version bumps require all dependent rules to be re-validated.
 The SKB is distributed to agents as a **versioned, content-addressed artifact**:
 
 ```
-skb-v1.4.2.rdxdb          -- binary database file
-skb-v1.4.2.rdxdb.sig      -- Ed25519 signature
-skb-v1.4.2.rdxdb.manifest -- rule inventory (JSON)
+skb-v1.4.2.mgdb          -- binary database file
+skb-v1.4.2.mgdb.sig      -- Ed25519 signature
+skb-v1.4.2.mgdb.manifest -- rule inventory (JSON)
 
 Manifest:
 {
@@ -4300,7 +4300,7 @@ Manifest:
 }
 
 // Delta updates — only download changed rules
-skb-delta-v1.4.1-to-v1.4.2.rdxpatch
+skb-delta-v1.4.1-to-v1.4.2.mgpatch
 ```
 
 ---
@@ -4601,7 +4601,7 @@ MechGen transforms Rust from a language *for human developers with CLI tools* in
 15. **Semantic version control** — operation-log-based history replaces text diffs
 16. **Opt-in compile-time safety profiles** — `safety.mode = "full"` for humans/CI, `"skb-only"` for agents, `"none"` for raw performance
 17. **Standard abbreviation registry** — deterministic, versioned compact forms for all std library types and traits
-18. **Token budget reporting** — `redox build --token-report` tracks per-function token expenditure for agent optimization
+18. **Token budget reporting** — `mechgen build --token-report` tracks per-function token expenditure for agent optimization
 19. **Safety-free syntax** — lifetimes, borrow annotations, `unsafe`, `Send`/`Sync`, `Pin`, `PhantomData`, and all other compile-time safety constructs are eliminated from the syntax; agents consult the SKB; the compiler infers everything else; function signatures are 60–70% shorter
 20. **Agentic Compiler Intelligence (ACI)** — the compiler embeds a learned model that provides dynamic warnings (adapted to the project's actual bug patterns), intelligent debugging (causal root-cause analysis), performance advisories (MLIR cost model + profiling data), and swarm coordination intelligence (conflict prediction, decomposition learning)
 21. **ACI RAP endpoints** — `aci.warnings`, `aci.debug`, `aci.perf`, `aci.swarm`, `aci.learn`, `aci.explain`, `aci.similar_bugs`, `aci.predict_regression` — all queryable via the standard RAP protocol

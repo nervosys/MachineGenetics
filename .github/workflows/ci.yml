@@ -1,0 +1,43 @@
+name: CI
+
+# Builds and tests the two live crates — the prototype compiler/evaluator and
+# the Forge toolchain. The old forked-rustc compiler CI was removed with that
+# compiler; this is the accurate, working pipeline for what ships today.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "prototype/**"
+      - "forge/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "prototype/**"
+      - "forge/**"
+      - ".github/workflows/ci.yml"
+
+jobs:
+  prototype:
+    name: prototype — build + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --release --manifest-path prototype/Cargo.toml
+      - name: Test
+        run: cargo test --release --manifest-path prototype/Cargo.toml
+      - name: Evaluator correctness bench (72/72 exact)
+        run: cargo test --release --manifest-path prototype/Cargo.toml eval_bench -- --ignored --nocapture
+
+  forge:
+    name: forge — build + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --release --manifest-path forge/Cargo.toml
+      - name: Test
+        run: cargo test --manifest-path forge/Cargo.toml

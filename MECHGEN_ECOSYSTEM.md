@@ -1,6 +1,6 @@
 # MechGen Ecosystem Design
 
-_Redox Language — Package Registry, Migration Tooling, IDE Integration, Agent Training, and Standard Library_
+_MechGen Language — Package Registry, Migration Tooling, IDE Integration, Agent Training, and Standard Library_
 
 ---
 
@@ -42,7 +42,7 @@ Module
 │   ├── repository: ?Url
 │   ├── keywords: [String]
 │   ├── categories: [String]
-│   ├── edition: RedoxEdition        # e.g., "2025"
+│   ├── edition: MechGenEdition        # e.g., "2025"
 │   └── rust_compatibility: ?RustVersion  # If transpilable to Rust
 ├── dependencies: [{name, version_req, features}]
 ├── skb_rules: [SkbRule]             # Package-specific safety rules
@@ -85,7 +85,7 @@ Forge stores pre-lowered MLIR artifacts to accelerate builds:
 ```
 Artifact Cache Structure:
   module-name/1.3.0/
-    ├── redox-dialect.mlir         # MechGen dialect (highest level)
+    ├── mechgen-dialect.mlir         # MechGen dialect (highest level)
     ├── linalg-dialect.mlir        # After Linalg lowering
     ├── affine-dialect.mlir        # After Affine lowering
     ├── llvm-dialect.mlir          # After LLVM lowering
@@ -160,7 +160,7 @@ Arguments:
   <INPUT>            Rust source file or directory
 
 Options:
-  --output, -o       Output directory (default: ./rdx/)
+  --output, -o       Output directory (default: ./mg/)
   --verify           Parse output with MechGen parser (default: on)
   --preserve-unsafe  Keep unsafe blocks as @unsafe annotations
   --generate-skb     Emit SKB rules from lifetime annotations
@@ -195,19 +195,19 @@ Phase 1: Analyze
   → 23 unsafe blocks → 0 (12 become capabilities, 11 become SKB rules)
 
 Phase 2: Translate
-  $ rust2mg --crate my_crate/ -o my_crate_rdx/
+  $ rust2mg --crate my_crate/ -o my_crate_mg/
   → Generated 45 .mg files
   → Generated 23 SKB rules
   → 100% parse validation passed
 
 Phase 3: Verify
-  $ redox check my_crate_rdx/
+  $ mechgen check my_crate_mg/
   → All specs satisfied
   → SKB coverage: 98.2%
   → 3 items need manual review (complex unsafe patterns)
 
 Phase 4: Test
-  $ redox test my_crate_rdx/
+  $ mechgen test my_crate_mg/
   → 234/234 tests pass (transpiled from Rust test suite)
 ```
 
@@ -281,21 +281,21 @@ TextMate grammar scopes for MechGen:
 
 | Scope                        | Constructs                                        |
 | ---------------------------- | ------------------------------------------------- |
-| `keyword.declaration.redox`  | `f`, `m`, `v`, `c`, `S`, `E`, `T`, `I`, `M`, `u`  |
-| `keyword.control.redox`      | `loop`, `break`, `continue`, `ret`, `yield`       |
-| `keyword.operator.redox`     | `?` (if/match), `@` (for/attr/struct), `:` (else) |
-| `keyword.other.redox`        | `effect`, `handle`, `spec`, `type`, `static`      |
-| `entity.name.function.redox` | Function names after `f`/`+f`/`~f`                |
-| `entity.name.type.redox`     | Type names after `S`/`E`/`T`                      |
-| `storage.modifier.redox`     | `+` (pub), `~` (crate), `-` (private)             |
-| `string.quoted.double.redox` | `"..."`                                           |
-| `string.interpolated.redox`  | `f"...{expr}..."`                                 |
-| `string.print.redox`         | `p"...{expr}..."`                                 |
-| `comment.line.redox`         | `// ...`                                          |
-| `comment.block.redox`        | `/* ... */`                                       |
-| `variable.parameter.redox`   | Function parameter names                          |
-| `support.type.redox`         | `s`, `i32`, `f64`, `u8`, `bool`                   |
-| `punctuation.sigil.redox`    | `^`, `$`, `@`, `?`, `~`, `&!`                     |
+| `keyword.declaration.mechgen`  | `f`, `m`, `v`, `c`, `S`, `E`, `T`, `I`, `M`, `u`  |
+| `keyword.control.mechgen`      | `loop`, `break`, `continue`, `ret`, `yield`       |
+| `keyword.operator.mechgen`     | `?` (if/match), `@` (for/attr/struct), `:` (else) |
+| `keyword.other.mechgen`        | `effect`, `handle`, `spec`, `type`, `static`      |
+| `entity.name.function.mechgen` | Function names after `f`/`+f`/`~f`                |
+| `entity.name.type.mechgen`     | Type names after `S`/`E`/`T`                      |
+| `storage.modifier.mechgen`     | `+` (pub), `~` (crate), `-` (private)             |
+| `string.quoted.double.mechgen` | `"..."`                                           |
+| `string.interpolated.mechgen`  | `f"...{expr}..."`                                 |
+| `string.print.mechgen`         | `p"...{expr}..."`                                 |
+| `comment.line.mechgen`         | `// ...`                                          |
+| `comment.block.mechgen`        | `/* ... */`                                       |
+| `variable.parameter.mechgen`   | Function parameter names                          |
+| `support.type.mechgen`         | `s`, `i32`, `f64`, `u8`, `bool`                   |
+| `punctuation.sigil.mechgen`    | `^`, `$`, `@`, `?`, `~`, `&!`                     |
 
 ---
 
@@ -307,7 +307,7 @@ MechGen defines a standard format for AI agent training data:
 
 ```json
 {
-  "format": "redox-training-v1",
+  "format": "mechgen-training-v1",
   "samples": [
     {
       "id": "sample-001",
@@ -340,8 +340,8 @@ MechGen defines a standard format for AI agent training data:
 Standard prompts for AI agents working with MechGen:
 
 ```yaml
-# .redox/agent-instructions.yaml
-language: redox
+# .mechgen/agent-instructions.yaml
+language: mechgen
 edition: "2025"
 
 syntax_rules:
@@ -566,10 +566,10 @@ consensus = "majority"            # Consensus strategy
 lease-timeout = "5m"              # Default lease timeout
 ```
 
-### 6.2 CLI — `rdx` Command
+### 6.2 CLI — `mg` Command
 
 ```
-rdx <COMMAND>
+mg <COMMAND>
 
 Commands:
   new <name>          Create a new MechGen project
@@ -632,7 +632,7 @@ Forge uses a SAT-based dependency resolver (like Cargo) with extensions:
 
 ### 7.2 Auto-Generated Documentation
 
-The `rdx doc` command generates documentation from:
+The `mg doc` command generates documentation from:
 
 1. **Source comments** (`///` and `//!`)
 2. **Spec blocks** — formatted as API contracts
@@ -683,8 +683,8 @@ Sorts a vector in place using an adaptive merge sort.
 
 ```
 1. Discuss    → GitHub Discussions or Discord
-2. Propose    → RFC (rdx-rfcs repository)
-3. Prototype  → Branch on rdx-compiler
+2. Propose    → RFC (mg-rfcs repository)
+3. Prototype  → Branch on mg-compiler
 4. Review     → Pull request with CI (build + test + benchmark)
 5. Merge      → After core team approval
 6. Release    → Included in next edition
@@ -694,15 +694,15 @@ Sorts a vector in place using an adaptive merge sort.
 
 | Stage              | Action                    | Duration Target |
 | ------------------ | ------------------------- | :-------------: |
-| Lint               | `rdx lint`                |      < 5s       |
-| Format Check       | `rdx fmt --check`         |      < 2s       |
-| Type Check         | `rdx check`               |      < 30s      |
-| Test               | `rdx test`                |      < 60s      |
-| Spec Verify        | `rdx spec --verify`       |      < 30s      |
-| SKB Validate       | `rdx skb --validate`      |      < 10s      |
-| Benchmark          | `rdx bench --compare`     |     < 120s      |
-| Multi-target Build | `rdx build --all-targets` |     < 180s      |
-| Publish            | `rdx publish` (on tag)    |      < 30s      |
+| Lint               | `mg lint`                |      < 5s       |
+| Format Check       | `mg fmt --check`         |      < 2s       |
+| Type Check         | `mg check`               |      < 30s      |
+| Test               | `mg test`                |      < 60s      |
+| Spec Verify        | `mg spec --verify`       |      < 30s      |
+| SKB Validate       | `mg skb --validate`      |      < 10s      |
+| Benchmark          | `mg bench --compare`     |     < 120s      |
+| Multi-target Build | `mg build --all-targets` |     < 180s      |
+| Publish            | `mg publish` (on tag)    |      < 30s      |
 
 ### 8.4 Interoperability Ecosystem
 
@@ -723,7 +723,7 @@ Sorts a vector in place using an adaptive merge sort.
     └──────────┴───────────┴───────────┴──────────┘
                            │
                     ┌──────┴──────┐
-                    │  rdx CLI    │
+                    │  mg CLI    │
                     │ (build/test │
                     │  /run/doc)  │
                     └──────┬──────┘
@@ -745,5 +745,5 @@ Sorts a vector in place using an adaptive merge sort.
 | 2027    | 2027  | Full ACI, Cost Oracle, hot-reload, swarm orchestration         |
 | 2028+   | 2028+ | Self-hosting compiler, advanced synthesis, formal verification |
 
-Edition migration is automated via `rdx migrate --edition 2026`, which applies
+Edition migration is automated via `mg migrate --edition 2026`, which applies
 syntax and semantic changes with full backward compatibility guarantees.

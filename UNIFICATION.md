@@ -113,7 +113,7 @@ primitives, and seven compute backends).
 ### Workspace + dependency wiring
 
 - Root `Cargo.toml` reshaped: pre-existing duplicate-workspace conflicts
-  resolved by treating `prototype/`, `RecursiveMachineIntelligence/`, and `compiler/redox_grammar/`
+  resolved by treating `prototype/`, `RecursiveMachineIntelligence/`, and `compiler/mechgen_grammar/`
   as standalone workspaces (`exclude` list).
 - `prototype/Cargo.toml` adds a path dependency on `rmi`:
   ```toml

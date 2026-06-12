@@ -6,7 +6,7 @@
 /// This is the same algorithm as `tools/rust2mg` but embedded in the
 /// prototype compiler so that `--syntax=legacy` works in a single binary.
 ///
-/// Implements the translation rules from REDOX_PROPOSAL §5.3.4:
+/// Implements the translation rules from MECHGEN_PROPOSAL §5.3.4:
 ///   - `pub fn` → `+f`, `fn` → `f`, `async fn` → `af`, `unsafe fn` → `uf`
 ///   - `struct`/`enum`/`trait`/`impl`/`mod` → `S`/`E`/`T`/`I`/`M`
 ///   - `let`/`let mut` → `v`/`m`, `const` → `C`, `type` → `Y`
@@ -597,8 +597,8 @@ pub fn add(a: i32, b: i32) -> i32 {
     let result = a + b;
     result
 }";
-        let rdx = translate(rust);
-        assert!(rdx.contains("+f add"), "got: {rdx}");
-        assert!(rdx.contains("v result"), "got: {rdx}");
+        let mg = translate(rust);
+        assert!(mg.contains("+f add"), "got: {mg}");
+        assert!(mg.contains("v result"), "got: {mg}");
     }
 }

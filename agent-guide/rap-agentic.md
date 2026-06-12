@@ -127,7 +127,7 @@ The `std::agent::Memory` type provides 4-tier persistent memory:
 | Project   | Per-project, persistent | Learned patterns, project rules     |
 | Global    | Cross-project, shared   | Ecosystem knowledge, shared models  |
 
-```rdx
+```mg
 let mem = Memory::new(ephemeral_store, session_store, project_store, global_store);
 mem.set(MemoryTier::Project, "convention", "use_camelCase", &["style"]);
 let entry = mem.get("convention");  // searches all tiers
@@ -144,7 +144,7 @@ mem.promote("convention", MemoryTier::Session, MemoryTier::Project);
 | Fan-Out    | Same task to N agents, collect all     | `swarm_fan_out`    |
 | Race       | First successful result wins           | `swarm_race`       |
 
-```rdx
+```mg
 // Map-reduce: distribute items across swarm agents, then merge
 let result = swarm_map_reduce(&swarm, &items, map_fn, reduce_fn);
 

@@ -89,7 +89,7 @@ Envelope {
 6. **Release Lease**: Agent releases semantic region lock.
 7. **Report**: Agent sends `TaskResult` to `Orchestrator`.
 
-### 5. RAP (Redox Agent Protocol) — Compiler Interface
+### 5. RAP (MechGen Agent Protocol) — Compiler Interface
 
 RAP exposes 24 JSON-RPC 2.0 endpoints. Each request is a JSON object with `method`, `params`, `id`:
 
@@ -934,7 +934,7 @@ Both are bijective: `format_X(parse(format_X(ast))) ≡ format_X(ast)`.
 - `Void`, `Int(bits)`, `UInt(bits)`, `Float(bits)`, `Bool`, `CString`
 - `Ptr(ForeignType)`, `Array(ForeignType, size)`, `Struct(name)`, `Opaque(name)`
 
-Each `ForeignType` maps to three representations: `.to_c_type()`, `.to_redox_type()`, `.to_python_type()`.
+Each `ForeignType` maps to three representations: `.to_c_type()`, `.to_mechgen_type()`, `.to_python_type()`.
 
 #### 20.5 Invariants
 
