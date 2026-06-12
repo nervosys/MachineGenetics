@@ -319,6 +319,38 @@ pub fn run(start: &Path, func: Option<&str>) -> Outcome {
     }
 }
 
+/// `forge fmt [--human]` — reformat the entry in place via the compiler's
+/// deterministic formatter (agent surface by default, human surface with
+/// `--human`).
+pub fn fmt(start: &Path, human: bool) -> Outcome {
+    let (proj, mg, entry) = match resolved("fmt", start) {
+        Ok(v) => v,
+        Err(o) => return o,
+    };
+    let flag = if human { "--fmt-expand" } else { "--fmt-compact" };
+    let entry_s = entry.to_string_lossy().into_owned();
+    // The compiler prints the formatted source to stdout; capture it and write
+    // it back to the entry for in-place formatting.
+    match run_compiler_quiet(&mg, &[flag, &entry_s], &proj.root) {
+        Ok(formatted) => {
+            if let Err(e) = std::fs::write(&entry, &formatted) {
+                return Outcome::err("fmt", format!("writing {}: {e}", entry.display()));
+            }
+            let surface = if human { "human" } else { "agent" };
+            Outcome::ok(
+                "fmt",
+                format!("✓ formatted {} ({surface} surface)", proj.manifest.entry()),
+                vec![
+                    ("project", proj.manifest.module.name.clone()),
+                    ("entry", proj.manifest.entry().to_string()),
+                    ("surface", surface.to_string()),
+                ],
+            )
+        }
+        Err(e) => Outcome::err("fmt", e),
+    }
+}
+
 /// `forge info` — the resolved manifest.
 pub fn info(start: &Path) -> Outcome {
     let proj = match Project::discover(start) {

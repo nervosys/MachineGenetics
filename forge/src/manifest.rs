@@ -79,6 +79,16 @@ pub const COMMANDS: &[ForgeCommand] = &[
                  {command, project, fn, ok, result?, error?}.",
     },
     ForgeCommand {
+        name: "fmt",
+        args: "[--human] [--json]",
+        summary: "format the entry to the agent (default) or human surface, in place",
+        effect: "write_local",
+        detail: "Rewrites the entry file via MechGen-parse's deterministic formatter:\n\
+                 the agent surface (+f, v/m, sigils) by default, or the human surface\n\
+                 (pub fn, val/var) with --human. Byte-stable: fmt(fmt(x)) == fmt(x).\n\
+                 With --json: {command, project, entry, surface, ok, error?}.",
+    },
+    ForgeCommand {
         name: "info",
         args: "[--json]",
         summary: "print the resolved manifest (name, version, entry, …)",
