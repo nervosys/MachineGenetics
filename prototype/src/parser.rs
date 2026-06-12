@@ -4,6 +4,17 @@
 /// Every decision point uses a single token of lookahead.
 use crate::ast::*;
 use crate::lexer::{Token, TokenKind};
+use std::collections::HashMap;
+
+/// A parse-time **block macro**: `block Name(p1, p2) { layer …; }`. Stored on the
+/// parser and expanded where referenced inside a `net`/`stack` body, with the
+/// params substituted into the layer args. Blocks are macros — they lower away,
+/// so nothing downstream of the parser needs to know about them.
+#[derive(Debug, Clone)]
+struct BlockDef {
+    params: Vec<String>,
+    layers: Vec<LayerDef>,
+}
 
 #[derive(Debug)]
 pub struct ParseError {
@@ -46,14 +57,38 @@ pub fn parse(tokens: &[Token]) -> Result<Module, ParseError> {
     parser.parse_module()
 }
 
+/// Substitute block-macro parameters (`Ident`s) with their call-site argument
+/// expressions, recursively through the common layer-arg shapes.
+fn subst_expr(e: &Expr, map: &HashMap<String, Expr>) -> Expr {
+    match e {
+        Expr::Ident { name } => map.get(name).cloned().unwrap_or_else(|| e.clone()),
+        Expr::Binary { op, left, right } => Expr::Binary {
+            op: op.clone(),
+            left: Box::new(subst_expr(left, map)),
+            right: Box::new(subst_expr(right, map)),
+        },
+        Expr::Unary { op, operand } => Expr::Unary {
+            op: op.clone(),
+            operand: Box::new(subst_expr(operand, map)),
+        },
+        Expr::Call { func, args } => Expr::Call {
+            func: Box::new(subst_expr(func, map)),
+            args: args.iter().map(|a| subst_expr(a, map)).collect(),
+        },
+        other => other.clone(),
+    }
+}
+
 struct Parser<'a> {
     tokens: &'a [Token],
     pos: usize,
+    /// `block` macros seen so far, by name (resolved at their use site).
+    blocks: HashMap<String, BlockDef>,
 }
 
 impl<'a> Parser<'a> {
     fn new(tokens: &'a [Token]) -> Self {
-        Self { tokens, pos: 0 }
+        Self { tokens, pos: 0, blocks: HashMap::new() }
     }
 
     fn peek(&self) -> TokenKind {
@@ -210,9 +245,91 @@ impl<'a> Parser<'a> {
     fn parse_module(&mut self) -> Result<Module, ParseError> {
         let mut items = Vec::new();
         while self.peek() != TokenKind::Eof {
+            // `block Name(params) { layer …; }` — a macro for the architecture
+            // DSL. Recorded for expansion at use sites; emits no module item.
+            // Contextual: `block` stays a plain identifier everywhere else.
+            if self.peek() == TokenKind::Ident
+                && self.current().text == "block"
+                && self.peek_n(1) == TokenKind::Ident
+            {
+                self.parse_block_def()?;
+                continue;
+            }
             items.push(self.parse_item()?);
         }
         Ok(Module { items })
+    }
+
+    /// Parse and record a `block Name(p1, p2) { layer …; }` macro.
+    fn parse_block_def(&mut self) -> Result<(), ParseError> {
+        self.advance(); // `block`
+        let name = self.expect_ident()?;
+        let mut params = Vec::new();
+        if self.peek() == TokenKind::LParen {
+            self.advance();
+            while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
+                params.push(self.expect_ident()?);
+                if self.peek() == TokenKind::Comma {
+                    self.advance();
+                }
+            }
+            self.expect(TokenKind::RParen)?;
+        }
+        self.expect(TokenKind::LBrace)?;
+        let mut layers = Vec::new();
+        while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
+            match self.peek() {
+                TokenKind::KwLayer => {
+                    self.advance();
+                    layers.push(self.parse_layer_body()?);
+                }
+                TokenKind::Semi | TokenKind::Comma => {
+                    self.advance();
+                }
+                _ => return Err(self.error("expected `layer` inside `block { … }`")),
+            }
+        }
+        self.expect(TokenKind::RBrace)?;
+        self.blocks.insert(name, BlockDef { params, layers });
+        Ok(())
+    }
+
+    /// If the cursor is on a known block reference `Name(args)`, expand the
+    /// block's layers (params substituted) into `out` and return true.
+    fn try_expand_block_ref(&mut self, out: &mut Vec<LayerDef>) -> Result<bool, ParseError> {
+        if self.peek() != TokenKind::Ident {
+            return Ok(false);
+        }
+        let name = self.current().text.clone();
+        if !self.blocks.contains_key(&name) {
+            return Ok(false);
+        }
+        self.advance(); // block name
+        let mut args = Vec::new();
+        if self.peek() == TokenKind::LParen {
+            self.advance();
+            while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
+                args.push(self.parse_expr()?);
+                if self.peek() == TokenKind::Comma {
+                    self.advance();
+                }
+            }
+            self.expect(TokenKind::RParen)?;
+        }
+        if self.peek() == TokenKind::Semi {
+            self.advance();
+        }
+        let block = self.blocks[&name].clone();
+        let subst: HashMap<String, Expr> =
+            block.params.iter().cloned().zip(args).collect();
+        for l in &block.layers {
+            out.push(LayerDef {
+                name: l.name.clone(),
+                layer_type: l.layer_type.clone(),
+                args: l.args.iter().map(|a| subst_expr(a, &subst)).collect(),
+            });
+        }
+        Ok(true)
     }
 
     // ── Item ────────────────────────────────────────────────
@@ -1294,7 +1411,13 @@ impl<'a> Parser<'a> {
                             TokenKind::Semi | TokenKind::Comma => {
                                 self.advance();
                             }
-                            _ => return Err(self.error("expected `layer` inside `stack { … }`")),
+                            // A `block` reference repeated by the stack.
+                            TokenKind::Ident if self.blocks.contains_key(&self.current().text) => {
+                                self.try_expand_block_ref(&mut body)?;
+                            }
+                            _ => return Err(self.error(
+                                "expected `layer` or a block reference inside `stack { … }`",
+                            )),
                         }
                     }
                     self.expect(TokenKind::RBrace)?;
@@ -1315,9 +1438,13 @@ impl<'a> Parser<'a> {
                 TokenKind::Semi | TokenKind::Comma => {
                     self.advance();
                 }
+                // A `block` reference used directly in the net body.
+                TokenKind::Ident if self.blocks.contains_key(&self.current().text) => {
+                    self.try_expand_block_ref(&mut layers)?;
+                }
                 _ => {
                     return Err(self.error(&format!(
-                        "expected `layer`, `forward`, or `}}` in net, found {:?}",
+                        "expected `layer`, `forward`, a block reference, or `}}` in net, found {:?}",
                         self.peek()
                     )));
                 }
@@ -4383,6 +4510,42 @@ mod tests {
             assert_eq!(nd.layers[5].name, "norm_2");
             // body args are preserved per copy
             assert_eq!(nd.layers[4].name, "attn_2");
+        } else {
+            panic!("expected net def");
+        }
+    }
+
+    #[test]
+    fn test_parse_block_macro_and_reference() {
+        // A `block` macro is recorded (emits no item) and expands at its use
+        // site with params substituted; `stack` repeats it.
+        let src = r#"block TB(d, ff) {
+            layer attn: Attention(d, 4);
+            layer ff1: Linear(d, ff);
+        }
+        net GPT {
+            stack 3 { TB(64, 256) }
+            forward { attn_0 }
+        }"#;
+        let module = parse_source(src);
+        // The block emits no module item — only the net remains.
+        assert_eq!(module.items.len(), 1, "block macro should not emit an item");
+        if let ItemKind::Net(ref nd) = module.items[0].kind {
+            assert_eq!(nd.layers.len(), 6, "3 × 2-layer block");
+            assert_eq!(nd.layers[0].name, "attn_0");
+            assert_eq!(nd.layers[1].name, "ff1_0");
+            assert_eq!(nd.layers[2].name, "attn_1");
+            // params substituted: Linear(d, ff) → Linear(64, 256)
+            if let Expr::Literal { value, .. } = &nd.layers[1].args[0] {
+                assert_eq!(value, "64", "d → 64");
+            } else {
+                panic!("expected substituted literal for d");
+            }
+            if let Expr::Literal { value, .. } = &nd.layers[1].args[1] {
+                assert_eq!(value, "256", "ff → 256");
+            } else {
+                panic!("expected substituted literal for ff");
+            }
         } else {
             panic!("expected net def");
         }
