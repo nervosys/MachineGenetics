@@ -146,13 +146,28 @@ artifact decodes/decompiles back to the **full 72 layers** and `--run=abl-bytes`
 **dispatches all 72** — so the shipped net is now O(1) in depth in *both* tokens
 and bytes, with execution and round-trip intact.
 
-### 4.5 Typed / contracted composition (safety) ◻
+### 4.5 Typed / contracted composition (safety) ✅
 
-A big block library only helps if composition is *safe*. Gate it with the
-existing contract system (`@req`/`@ens` on blocks — shape/dtype pre/postconditions)
-and the **SKB** (9,157 rules): `stack`/`residual`/`branch` check that adjacent
-blocks' output/input shapes unify, so "arbitrarily selected and composed" is
-*checkable*, not just possible.
+A big block library only helps if composition is *safe*. The shape inferer
+(`abl_shape.rs`) is now a **`--check`-time gate** (`check_module_shapes`): every
+`net` is lowered and its pipeline threaded layer-by-layer, so a shape-mismatched
+composition is rejected *before* the first compute dispatch, with an actionable
+diagnostic. It catches the two real failure modes of "arbitrarily composed":
+
+- **Chain mismatch** — `Linear(256, 512)` feeding `Linear(256, …)`: *"shape
+  mismatch into a `linear` layer — it expects last dim 256, but the preceding
+  layer produced [1, 512]."*
+- **Residual not shape-preserving** — `residual { Linear(256, 512) }` (the
+  classic mistake, since `x + f(x)` needs `f` to return its input shape): *"the
+  residual body outputs [1, 512] … requires the body to return the shape it
+  received (last dim 256)."*
+
+Wired into `--check` and `--check --json` (code `E0710`, exits non-zero), so
+`forge check` inherits it. Conservative: a net with no weighted layer to anchor
+the entry dim is skipped, and only *definite* conflicts trip the gate — every
+existing example net and the deep transformer stack still check clean. (Deeper
+`@req`/`@ens` contract + SKB-rule checking is the natural next layer; the shape
+gate is the high-value floor.)
 
 ## 5. Falsifiable targets (verify each piece by measurement)
 
@@ -170,8 +185,9 @@ blocks' output/input shapes unify, so "arbitrarily selected and composed" is
   `wrap LayerNorm { residual { … } residual { … } }`), and a composed net
   round-trips through the `REPEAT` fold. Plain nets keep `composition: None`
   (zero regression). Limit: the CPU VM doesn't yet *compute* `RES_ADD`/`PAR`.
-- typed composition ◻ — a shape-mismatched `stack`/`branch` is rejected at
-  `--check` with an actionable diagnostic.
+- typed composition ✅ — a shape-mismatched `residual`/chain is rejected at
+  `--check` (and `--check --json`, code `E0710`, non-zero exit) with an
+  actionable diagnostic; well-typed nets and every existing example still pass.
 
 ## 6. Honest limits
 

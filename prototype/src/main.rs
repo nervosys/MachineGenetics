@@ -2662,6 +2662,19 @@ fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool) 
             let code = d.id.clone().unwrap_or_else(|| cat.code().to_string());
             push(sev, line, col, &code, &format!("{cat:?}"), d.message.clone(), cat.fix_hint());
         }
+
+        // Typed-composition gate (§4.5): reject shape-mismatched net compositions.
+        for d in &abl_shape::check_module_shapes(&module) {
+            push(
+                "error",
+                0,
+                0,
+                "E0710",
+                "ShapeError",
+                d.message.clone(),
+                "align the layer dims so each layer's output dim matches the next layer's input dim",
+            );
+        }
     }
 
     // Deterministic order so output is cacheable/diffable across runs.
@@ -2776,6 +2789,15 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
         .iter()
         .filter(|v| v.status == verify::VerifyStatus::Failed)
         .count();
+
+    // Phase 5.6: Typed-composition gate — a shape-mismatched `net` composition
+    // (`stack`/`residual`/`branch`/`wrap` whose layer dims don't line up) is
+    // rejected here with an actionable diagnostic (§4.5).
+    let shape_diags = abl_shape::check_module_shapes(&module);
+    for d in &shape_diags {
+        eprintln!("{filename}: error: {}", d.message);
+        total_errors += 1;
+    }
 
     // Phase 6: Self-healing — generate fix candidates for all diagnostics.
     let mut all_diagnostics: Vec<hir::Diagnostic> = Vec::new();

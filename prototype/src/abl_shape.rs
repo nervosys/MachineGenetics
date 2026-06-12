@@ -67,9 +67,33 @@ fn walk(
             walk(a, current, mismatches, unknown);
             walk(b, current, mismatches, unknown);
         }
+        // `residual { f }` lowers to `App(RES_ADD, [id, f])`: out = x + f(x).
+        // For the add to type-check, f must map the input shape to itself, so we
+        // thread a copy through the body and flag a non-shape-preserving body —
+        // the classic residual mistake (`residual { Linear(d, d') }`, d' ≠ d).
+        Expr::App(op, args) if *op == Op::RES_ADD => {
+            let input = current.clone();
+            if let Some(body) = args.get(1) {
+                let mut body_shape = input.clone();
+                walk(body, &mut body_shape, mismatches, unknown);
+                if !input.is_empty() && !body_shape.is_empty() && body_shape != input {
+                    mismatches.push(ShapeMismatch {
+                        op: Op::RES_ADD,
+                        got: body_shape,
+                        expected_last: *input.last().unwrap(),
+                    });
+                }
+            }
+            // The residual preserves the input shape (`current` unchanged).
+        }
         Expr::App(op, args) => apply_op(*op, args, current, mismatches, unknown),
-        Expr::Par(a, _b) => {
-            // Take the left branch only — matches abl_compute::walk semantics.
+        Expr::Par(a, b) => {
+            // Branch: both paths run on the same input. Validate each path's
+            // internal shapes (on a copy); the left determines the output shape,
+            // matching `abl_compute::walk`. Paths may legitimately differ, so we
+            // don't require them to agree.
+            let mut right = current.clone();
+            walk(b, &mut right, mismatches, unknown);
             walk(a, current, mismatches, unknown);
         }
         _ => {}
@@ -235,6 +259,70 @@ fn apply_matmul_like(
     });
 }
 
+// ─── Module-level typed-composition gate (§4.5) ─────────────────────
+//
+// Composability is only useful if it is *safe*. This turns the shape inferer
+// into a `--check`-time gate: every `net` is lowered and its pipeline threaded,
+// so a shape-mismatched composition (`stack`/`residual`/`branch` of layers whose
+// dims don't line up) is rejected with an actionable diagnostic instead of
+// failing at the first compute dispatch.
+
+/// One shape inconsistency in a `net`'s composed pipeline.
+#[derive(Debug, Clone)]
+pub struct NetShapeDiag {
+    /// The offending `net`'s name.
+    pub net: String,
+    /// Actionable, human-readable explanation + fix hint.
+    pub message: String,
+}
+
+/// Check every `net` in a module for shape consistency across its composed
+/// pipeline. Conservative by design: a net whose entry shape can't be inferred
+/// (no weighted layer to anchor the dims) is skipped, and only *definite*
+/// dimension conflicts are reported — unknown ops never trip the gate.
+pub fn check_module_shapes(module: &crate::ast::Module) -> Vec<NetShapeDiag> {
+    let mut out = Vec::new();
+    for item in &module.items {
+        let crate::ast::ItemKind::Net(net) = &item.kind else {
+            continue;
+        };
+        let expr = crate::abl_bridge::NetTranslator::translate(net).expr;
+        let Some(input) = crate::abl_compute::infer_input_shape(&expr) else {
+            continue;
+        };
+        let report = infer_shape(&expr, &input);
+        for m in &report.mismatches {
+            out.push(NetShapeDiag {
+                net: net.name.clone(),
+                message: describe_mismatch(&net.name, m),
+            });
+        }
+    }
+    out
+}
+
+/// Render a [`ShapeMismatch`] as an actionable diagnostic.
+fn describe_mismatch(net: &str, m: &ShapeMismatch) -> String {
+    if m.op == Op::RES_ADD {
+        format!(
+            "net `{net}`: residual body is not shape-preserving — it outputs {:?}, \
+             but a residual `x + f(x)` requires the body to return the shape it \
+             received (last dim {}). Make the body's output dim equal its input dim.",
+            m.got, m.expected_last
+        )
+    } else {
+        format!(
+            "net `{net}`: shape mismatch into a `{}` layer — it expects last dim {}, \
+             but the preceding layer produced {:?}. Make the producing layer's output \
+             dim equal {}.",
+            m.op.name(),
+            m.expected_last,
+            m.got,
+            m.expected_last
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -270,6 +358,50 @@ mod tests {
         let expr = Expr::op(Op::LINEAR, vec![Expr::int(4), Expr::int(2)]) >> Expr::op1(Op::MSE_LOSS);
         let report = infer_shape(&expr, &[4]);
         assert_eq!(report.output_shape, vec![1]);
+    }
+
+    #[test]
+    fn residual_body_must_preserve_shape() {
+        // residual { Linear(8, 16) }: body maps 8→16, so x + f(x) is ill-typed.
+        let expr = (Expr::op(Op::LINEAR, vec![Expr::int(8), Expr::int(16)])).residual();
+        let report = infer_shape(&expr, &[1, 8]);
+        assert_eq!(report.mismatches.len(), 1, "{:?}", report.mismatches);
+        assert_eq!(report.mismatches[0].op, Op::RES_ADD);
+        // A shape-preserving residual is clean.
+        let ok = (Expr::op(Op::LINEAR, vec![Expr::int(8), Expr::int(8)])).residual();
+        assert!(infer_shape(&ok, &[1, 8]).mismatches.is_empty());
+    }
+
+    // ── Module-level typed-composition gate (§4.5) ──────
+
+    fn check_src(src: &str) -> Vec<NetShapeDiag> {
+        let module = crate::parser::parse(&crate::lexer::lex(src)).expect("parses");
+        check_module_shapes(&module)
+    }
+
+    #[test]
+    fn gate_rejects_non_preserving_residual() {
+        let d = check_src("net Bad { residual { layer up: Linear(256, 512); } }");
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].net, "Bad");
+        assert!(d[0].message.contains("residual"), "{}", d[0].message);
+    }
+
+    #[test]
+    fn gate_rejects_mismatched_linear_chain() {
+        let d = check_src("net Chain { layer a: Linear(256, 512); layer b: Linear(256, 128); }");
+        assert_eq!(d.len(), 1);
+        assert!(d[0].message.contains("mismatch"), "{}", d[0].message);
+    }
+
+    #[test]
+    fn gate_accepts_a_well_typed_composition() {
+        // A residual whose body returns to the input dim, in a lined-up chain.
+        let d = check_src(
+            "net Good { layer e: Linear(256, 256); \
+             residual { layer ff1: Linear(256, 1024); layer ff2: Linear(1024, 256); } }",
+        );
+        assert!(d.is_empty(), "well-typed net should pass: {d:?}");
     }
 
     #[test]

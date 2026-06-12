@@ -529,7 +529,10 @@ pub fn infer_input_shape(expr: &Expr) -> Option<Vec<usize>> {
                 // compact enough for downstream ops. Use [1, 4] = 4
                 // tokens in a single batch.
                 Op::EMBED => Some(vec![1, 4]),
-                _ => None,
+                // Wrapper/structural ops (RES_ADD, REPEAT, …) carry the real
+                // pipeline in their args — recurse so a `residual { Linear … }`
+                // still anchors the entry dim from the layer inside it.
+                _ => args.iter().find_map(walk),
             },
             // For Seq, the LEFT side runs first - probe it.
             Expr::Seq(l, r) => walk(l).or_else(|| walk(r)),
