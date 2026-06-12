@@ -74,7 +74,7 @@ manual 12× repeat — 10.2× fewer, and flat in depth** (100 layers stays ~83
 tokens). Source 271 B vs 2320 B. It expands at parse (`parser.rs`,
 `parse_layer_body` + the `stack` arm), so lowering is unchanged.
 
-### 4.2 Named blocks ◻
+### 4.2 Named blocks ✅
 
 ```
 block TransformerBlock(d, h, ff) {
@@ -85,14 +85,16 @@ block TransformerBlock(d, h, ff) {
     layer ff2: Linear(ff, d);
     layer norm2: LayerNorm;
 }
-net GPT { stack 12 { TransformerBlock(256, 8, 1024) } forward { … } }
+net GPT { layer embed: Embedding(50000, 256); stack 12 { TransformerBlock(256, 8, 1024) } forward { embed } }
 ```
 
-A `block` is a parameterized macro over layers. `stack N { Block(args) }`
-references it; the surface cost of a 12-layer net becomes **one block definition +
-one reference + a count**. AST: a new `BlockDef { name, params, layers }` item; a
-block-reference inside `stack`/`net` bodies that expands with the params
-substituted.
+A `block` is a parameterized macro over layers (parser-level: recorded on the
+parser, emits no item, expands at the use site with params substituted — so
+nothing downstream changes). Measured (real cl100k BPE), full 12-layer GPT:
+**block def + `stack 12 { Block(args) }` = 107 tokens** (vs 839 manual, 7.8×
+fewer) — and with the block as a **registry handle (def off-context) = 41
+tokens** (20.5× fewer). The block definition is paid once and amortizes across
+every net that reuses it; a registry keeps it out of context entirely.
 
 ### 4.3 Registry handles (the knowledgebase) ◻
 
@@ -124,10 +126,11 @@ blocks' output/input shapes unify, so "arbitrarily selected and composed" is
 ## 5. Falsifiable targets (verify each piece by measurement)
 
 - `stack` ✅ — token cost O(1) in depth (10.2×, measured).
-- named `block` + reference — a 12-layer GPT ≈ `block def + stack ref`; target
-  **< 1.3×** the single-block token count.
-- registry handle — referencing a published block costs **≤ 3 tokens**; the block
-  def is *not* in the agent's context (fetched via `describe`).
+- named `block` + reference ✅ — 12-layer GPT = 107 tokens (block def + stack
+  ref), ≈1.34× a single block; **41 tokens** with the block off-context.
+- registry handle ◻ — referencing a *published* block keeps its def out of the
+  agent's context (the 41-token result above simulates this); next: a single-token
+  Forge handle fetched via `describe`.
 - ABL `REPEAT` — 12-block container ≤ **1.5×** the 1-block container (vs 9.6×
   today).
 - typed composition — a shape-mismatched `stack`/`branch` is rejected at
