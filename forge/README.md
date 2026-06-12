@@ -23,6 +23,31 @@ forge run [fn]       # execute the entry function (default: the manifest's `main
 forge info           # print the resolved manifest
 ```
 
+### Agentic-first interface
+
+Forge self-describes, so an agent never needs these prose docs (the same
+progressive-disclosure pattern the MechGen-parse CLI and `rmi` ship):
+
+```bash
+forge manifest          # token-compact, effect-classed command index (read first)
+forge manifest --json   # the same, machine-readable
+forge describe run      # expand one command
+```
+
+Every command takes `--json` for deterministic, machine-readable output an agent
+can parse, cache, and gate on — instead of scraping prose:
+
+```bash
+$ forge check --json
+{"command": "check", "ok": true, "project": "demo", "version": "0.1.0", "entry": "src/main.mg"}
+$ forge run --json
+{"command": "run", "ok": true, "project": "demo", "fn": "main", "result": "120"}
+```
+
+Each command carries an **effect class** (`pure` / `read_local` / `write_local`)
+in the manifest, so an agent policy can gate invocations without trial-running
+them. `new` is the only `write_local` command outside an explicit target.
+
 `Forge.toml`:
 
 ```toml

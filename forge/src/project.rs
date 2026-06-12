@@ -133,24 +133,10 @@ pub fn locate_compiler(start: &Path) -> Result<PathBuf, String> {
     Ok(PathBuf::from("MechGen-parse"))
 }
 
-/// Run `MechGen-parse` with `args` in `cwd`, inheriting stdio so its output
-/// (e.g. an evaluated result) reaches the user. Maps a non-zero exit to an error.
-fn run_compiler(mg: &Path, args: &[&str], cwd: &Path) -> Result<(), String> {
-    let status = Command::new(mg)
-        .args(args)
-        .current_dir(cwd)
-        .status()
-        .map_err(|e| launch_err(mg, e))?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(format!("`MechGen-parse {}` failed (exit {})", args.join(" "), status.code().unwrap_or(-1)))
-    }
-}
-
-/// Like [`run_compiler`] but **captures** stdout+stderr: on success the output
-/// is returned (callers discard the AST dump); on failure it is surfaced in the
-/// error so the compiler diagnostic is shown without the noise of a clean run.
+/// Run `MechGen-parse` with `args` in `cwd`, **capturing** stdout+stderr: on
+/// success the output is returned (callers use or discard it); on failure it is
+/// surfaced in the error so the compiler diagnostic is shown without the noise
+/// of a clean run.
 fn run_compiler_quiet(mg: &Path, args: &[&str], cwd: &Path) -> Result<String, String> {
     let out = Command::new(mg)
         .args(args)
@@ -176,100 +162,211 @@ fn launch_err(mg: &Path, e: std::io::Error) -> String {
     )
 }
 
-/// `forge check` — parse + typecheck the entry point.
-pub fn check(start: &Path) -> Result<(), String> {
-    let proj = Project::discover(start)?;
-    let mg = locate_compiler(&proj.root)?;
-    let entry = proj.entry_path();
-    if !entry.is_file() {
-        return Err(format!("entry file `{}` not found", entry.display()));
-    }
-    println!("  Checking {} v{}", proj.manifest.module.name, proj.manifest.module.version);
-    run_compiler_quiet(&mg, &[&entry.to_string_lossy()], &proj.root)?;
-    println!("  ✓ check passed");
-    Ok(())
+/// The structured result of a command — rendered as human text or, for agents,
+/// as a deterministic JSON object (`forge <cmd> --json`).
+pub struct Outcome {
+    /// Command name (`check`, `run`, …).
+    pub command: &'static str,
+    /// Whether the command succeeded.
+    pub ok: bool,
+    /// Human one-line headline (empty on error).
+    pub headline: String,
+    /// Ordered structured fields (also the JSON body).
+    pub fields: Vec<(&'static str, String)>,
+    /// Error message when `ok` is false.
+    pub error: Option<String>,
 }
 
-/// `forge build` — check, then print the Agentic Binary Language lowering
-/// summary (sizes/hashes). There is no native text-language backend yet, so a
-/// successful build means "checks clean and lowers to the binary IR".
-pub fn build(start: &Path) -> Result<(), String> {
-    let proj = Project::discover(start)?;
-    let mg = locate_compiler(&proj.root)?;
-    let entry = proj.entry_path();
-    if !entry.is_file() {
-        return Err(format!("entry file `{}` not found", entry.display()));
+impl Outcome {
+    fn ok(command: &'static str, headline: String, fields: Vec<(&'static str, String)>) -> Self {
+        Outcome { command, ok: true, headline, fields, error: None }
     }
-    println!("  Building {} v{}", proj.manifest.module.name, proj.manifest.module.version);
-    run_compiler_quiet(&mg, &[&entry.to_string_lossy()], &proj.root)?;
-    // The IR summary is best-effort: nets lower to ABL; pure programs simply
-    // report no lowerable items. The check above is the gate. Surface only the
-    // human-readable `//` summary lines, not the raw container dump.
-    if let Ok(out) = run_compiler_quiet(&mg, &["--target=abl", &entry.to_string_lossy()], &proj.root) {
-        for line in out.lines().filter(|l| l.trim_start().starts_with("//")) {
-            println!("  {}", line.trim_start_matches("//").trim());
+    fn err(command: &'static str, error: String) -> Self {
+        Outcome { command, ok: false, headline: String::new(), fields: Vec::new(), error: Some(error) }
+    }
+    /// Process exit code: 0 on success, 1 on failure.
+    pub fn exit_code(&self) -> i32 {
+        if self.ok { 0 } else { 1 }
+    }
+    /// Human-readable rendering.
+    pub fn text(&self) -> String {
+        if !self.ok {
+            return format!("error: {}", self.error.as_deref().unwrap_or("unknown"));
+        }
+        let mut s = String::new();
+        if !self.headline.is_empty() {
+            s.push_str("  ");
+            s.push_str(&self.headline);
+            s.push('\n');
+        }
+        for (k, v) in &self.fields {
+            s.push_str(&format!("    {k:<11} {v}\n"));
+        }
+        s.trim_end().to_string()
+    }
+    /// Deterministic machine-readable rendering for agents.
+    pub fn json(&self) -> String {
+        let mut s = String::with_capacity(256);
+        s.push_str("{\"command\": \"");
+        s.push_str(self.command);
+        s.push_str("\", \"ok\": ");
+        s.push_str(if self.ok { "true" } else { "false" });
+        for (k, v) in &self.fields {
+            s.push_str(", \"");
+            s.push_str(k);
+            s.push_str("\": \"");
+            s.push_str(&json_escape(v));
+            s.push('"');
+        }
+        if let Some(e) = &self.error {
+            s.push_str(", \"error\": \"");
+            s.push_str(&json_escape(e));
+            s.push('"');
+        }
+        s.push('}');
+        s
+    }
+}
+
+/// Escape a string for a JSON double-quoted value.
+fn json_escape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 8);
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
         }
     }
-    println!("  ✓ build complete (checked + lowered through the Agentic Binary Language IR)");
-    Ok(())
+    out
+}
+
+/// Resolve a project + its entry file, or an `Outcome` error.
+fn resolved(command: &'static str, start: &Path) -> Result<(Project, PathBuf, PathBuf), Outcome> {
+    let proj = Project::discover(start).map_err(|e| Outcome::err(command, e))?;
+    let mg = locate_compiler(&proj.root).map_err(|e| Outcome::err(command, e))?;
+    let entry = proj.entry_path();
+    if !entry.is_file() {
+        return Err(Outcome::err(command, format!("entry file `{}` not found", entry.display())));
+    }
+    Ok((proj, mg, entry))
+}
+
+/// `forge check` — parse + typecheck the entry point.
+pub fn check(start: &Path) -> Outcome {
+    let (proj, mg, entry) = match resolved("check", start) {
+        Ok(v) => v,
+        Err(o) => return o,
+    };
+    let m = &proj.manifest.module;
+    match run_compiler_quiet(&mg, &[&entry.to_string_lossy()], &proj.root) {
+        Ok(_) => Outcome::ok(
+            "check",
+            format!("✓ check passed: {} v{}", m.name, m.version),
+            vec![("project", m.name.clone()), ("version", m.version.clone()), ("entry", proj.manifest.entry().to_string())],
+        ),
+        Err(e) => Outcome::err("check", e),
+    }
+}
+
+/// `forge build` — check, then lower through the Agentic Binary Language IR.
+pub fn build(start: &Path) -> Outcome {
+    let (proj, mg, entry) = match resolved("build", start) {
+        Ok(v) => v,
+        Err(o) => return o,
+    };
+    let m = &proj.manifest.module;
+    if let Err(e) = run_compiler_quiet(&mg, &[&entry.to_string_lossy()], &proj.root) {
+        return Outcome::err("build", e);
+    }
+    let mut ir = String::new();
+    if let Ok(out) = run_compiler_quiet(&mg, &["--target=abl", &entry.to_string_lossy()], &proj.root) {
+        ir = out
+            .lines()
+            .filter(|l| l.trim_start().starts_with("//"))
+            .map(|l| l.trim_start_matches('/').trim())
+            .collect::<Vec<_>>()
+            .join("; ");
+    }
+    Outcome::ok(
+        "build",
+        format!("✓ build complete: {} v{} (checked + lowered through the binary IR)", m.name, m.version),
+        vec![("project", m.name.clone()), ("version", m.version.clone()), ("ir", ir)],
+    )
 }
 
 /// `forge run [fn]` — execute the entry function (default from the manifest).
-pub fn run(start: &Path, func: Option<&str>) -> Result<(), String> {
-    let proj = Project::discover(start)?;
-    let mg = locate_compiler(&proj.root)?;
-    let entry = proj.entry_path();
-    if !entry.is_file() {
-        return Err(format!("entry file `{}` not found", entry.display()));
+pub fn run(start: &Path, func: Option<&str>) -> Outcome {
+    let (proj, mg, entry) = match resolved("run", start) {
+        Ok(v) => v,
+        Err(o) => return o,
+    };
+    let f = func.unwrap_or(proj.manifest.main_fn()).to_string();
+    match run_compiler_quiet(&mg, &["--eval", &entry.to_string_lossy(), &f], &proj.root) {
+        Ok(out) => {
+            let result = out.trim().to_string();
+            Outcome::ok(
+                "run",
+                format!("{} :: {} ⇒ {}", proj.manifest.module.name, f, result),
+                vec![("project", proj.manifest.module.name.clone()), ("fn", f), ("result", result)],
+            )
+        }
+        Err(e) => Outcome::err("run", e),
     }
-    let f = func.unwrap_or(proj.manifest.main_fn());
-    println!("  Running {} :: {}", proj.manifest.module.name, f);
-    run_compiler(&mg, &["--eval", &entry.to_string_lossy(), f], &proj.root)
 }
 
-/// `forge info` — print the resolved manifest.
-pub fn info(start: &Path) -> Result<(), String> {
-    let proj = Project::discover(start)?;
+/// `forge info` — the resolved manifest.
+pub fn info(start: &Path) -> Outcome {
+    let proj = match Project::discover(start) {
+        Ok(p) => p,
+        Err(e) => return Outcome::err("info", e),
+    };
     let m = &proj.manifest;
-    println!("name        {}", m.module.name);
-    println!("version     {}", m.module.version);
+    let mut fields = vec![
+        ("name", m.module.name.clone()),
+        ("version", m.module.version.clone()),
+    ];
     if let Some(e) = &m.module.edition {
-        println!("edition     {e}");
+        fields.push(("edition", e.clone()));
     }
     if let Some(d) = &m.module.description {
-        println!("description {d}");
+        fields.push(("description", d.clone()));
     }
     if let Some(l) = &m.module.license {
-        println!("license     {l}");
+        fields.push(("license", l.clone()));
     }
-    println!("entry       {}", m.entry());
-    println!("main fn     {}", m.main_fn());
-    println!("root        {}", proj.root.display());
-    Ok(())
+    fields.push(("entry", m.entry().to_string()));
+    fields.push(("main", m.main_fn().to_string()));
+    fields.push(("root", proj.root.display().to_string()));
+    Outcome::ok("info", format!("{} v{}", m.module.name, m.module.version), fields)
 }
 
 /// `forge new <name>` — scaffold a new project that checks and runs out of the
 /// box. Creates `<name>/Forge.toml` and `<name>/src/main.mg`.
-pub fn new_project(name: &str) -> Result<(), String> {
+pub fn new_project(name: &str) -> Outcome {
     if name.is_empty() || name.contains(['/', '\\']) {
-        return Err(format!("invalid project name `{name}`"));
+        return Outcome::err("new", format!("invalid project name `{name}`"));
     }
     let root = PathBuf::from(name);
     if root.exists() {
-        return Err(format!("`{name}` already exists"));
+        return Outcome::err("new", format!("`{name}` already exists"));
     }
-    std::fs::create_dir_all(root.join("src")).map_err(|e| format!("creating {name}/src: {e}"))?;
-
+    if let Err(e) = std::fs::create_dir_all(root.join("src")) {
+        return Outcome::err("new", format!("creating {name}/src: {e}"));
+    }
     let manifest = format!(
         "[module]\nname = \"{name}\"\nversion = \"0.1.0\"\nedition = \"2025\"\n\
          description = \"A MechGen project.\"\nlicense = \"Apache-2.0\"\n\n\
          [build]\nentry = \"src/main.mg\"\nmain = \"main\"\n"
     );
-    std::fs::write(root.join("Forge.toml"), manifest)
-        .map_err(|e| format!("writing Forge.toml: {e}"))?;
-
-    // A `main` that runs through `forge run` (returns a value the evaluator
-    // prints) — verified to check + evaluate on the current prototype.
+    if let Err(e) = std::fs::write(root.join("Forge.toml"), manifest) {
+        return Outcome::err("new", format!("writing Forge.toml: {e}"));
+    }
+    // A `main` that runs through `forge run` — verified to check + evaluate.
     let main_mg = "\
 // Entry point. `forge run` evaluates `main` and prints its result.
 f main() {
@@ -277,16 +374,17 @@ f main() {
     sum(map(filter(nums, fn(x) => x % 2 == 0), fn(x) => x * x))
 }
 ";
-    std::fs::write(root.join("src/main.mg"), main_mg)
-        .map_err(|e| format!("writing src/main.mg: {e}"))?;
-
-    println!("  Created project `{name}`");
-    println!("    {name}/Forge.toml");
-    println!("    {name}/src/main.mg");
-    println!("\n  Next:");
-    println!("    cd {name}");
-    println!("    forge run        # → 120  (sum of squares of the even numbers 0..9)");
-    Ok(())
+    if let Err(e) = std::fs::write(root.join("src/main.mg"), main_mg) {
+        return Outcome::err("new", format!("writing src/main.mg: {e}"));
+    }
+    Outcome::ok(
+        "new",
+        format!("created project `{name}` — `cd {name} && forge run` → 120"),
+        vec![
+            ("forge_toml", format!("{name}/Forge.toml")),
+            ("entry", format!("{name}/src/main.mg")),
+        ],
+    )
 }
 
 #[cfg(test)]
