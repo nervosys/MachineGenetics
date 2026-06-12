@@ -855,6 +855,16 @@ fn dispatch_one(
                 let bias_handle = params.get_or_alloc(backend, op, &bias_key, &[out_dim])?;
                 out = add_bias_2d(backend, &out, &bias_handle)?;
             }
+            // Restore leading dims for rank-≥3 inputs ([b, s, dim] → [b, s, out])
+            // — `ensure_2d` collapsed them for the matmul. Without this a Linear
+            // inside a `residual` would change [b,s,d]→[b*s,out] and break the
+            // shape-preserving add.
+            if handle.shape.len() >= 3 {
+                let mut shape: Vec<usize> = handle.shape[..handle.shape.len() - 1].to_vec();
+                shape.push(out_dim);
+                let data = read_as_f32(backend, &out)?;
+                out = backend.from_slice_f32(&data, &shape)?;
+            }
             Some(out)
         }
 
@@ -3376,6 +3386,28 @@ mod tests {
         let result = run_pipeline(&backend, &expr, &[4], 1.0).expect("run");
         assert!(result.unsupported.is_empty(), "PAR must run: {:?}", result.unsupported);
         assert!((result.output_sum - 8.0).abs() < 1e-3, "branch sum → 8, got {}", result.output_sum);
+    }
+
+    #[test]
+    fn linear_preserves_leading_dims_on_3d_input() {
+        // Linear(8, 4) on [batch=2, seq=3, dim=8] must yield [2, 3, 4], not
+        // [6, 4] — else a Linear inside a residual would break the shape match.
+        let expr = Expr::op(Op::LINEAR, vec![Expr::int(8), Expr::int(4)]);
+        let backend = CpuBackend::new();
+        let result = run_pipeline(&backend, &expr, &[2, 3, 8], 0.5).expect("run");
+        assert!(result.unsupported.is_empty());
+        assert_eq!(result.output.shape, vec![2, 3, 4], "leading dims preserved");
+    }
+
+    #[test]
+    fn residual_with_linear_runs_on_3d_input() {
+        // residual { Linear(8,8) } on [1,2,8] — Linear preserves [1,2,8], so the
+        // RES_ADD shapes match and it dispatches (not skipped as unsupported).
+        let expr = Expr::op(Op::LINEAR, vec![Expr::int(8), Expr::int(8)]).residual();
+        let backend = CpuBackend::new();
+        let result = run_pipeline(&backend, &expr, &[1, 2, 8], 0.5).expect("run");
+        assert!(result.unsupported.is_empty(), "RES_ADD must run on 3-D: {:?}", result.unsupported);
+        assert_eq!(result.output.shape, vec![1, 2, 8]);
     }
 
     #[test]

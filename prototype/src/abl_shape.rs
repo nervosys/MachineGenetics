@@ -148,6 +148,19 @@ fn apply_op(
             *current = vec![1];
         }
 
+        // ── Embedding: token ids [.., seq] → [.., seq, dim] ─────────
+        // Appends the embedding dim (`Embedding(vocab, dim)` → args[1]) as a new
+        // last axis, so a downstream `Linear(dim, …)` sees the right input dim
+        // instead of tripping the typed-composition gate.
+        Op::EMBED => {
+            let dims = extract_int_args(args);
+            if let Some(&edim) = dims.get(1) {
+                if edim > 0 {
+                    current.push(edim as usize);
+                }
+            }
+        }
+
         // ── Weighted ops with explicit dims ─────────────────────────
         Op::LINEAR => {
             let dims = extract_int_args(args);
@@ -392,6 +405,16 @@ mod tests {
         let d = check_src("net Chain { layer a: Linear(256, 512); layer b: Linear(256, 128); }");
         assert_eq!(d.len(), 1);
         assert!(d[0].message.contains("mismatch"), "{}", d[0].message);
+    }
+
+    #[test]
+    fn gate_accepts_embedding_then_linear() {
+        // Embedding(vocab, 256) → Linear(256, …) is well-typed: the inferer must
+        // model the embed dim, not flag a false mismatch.
+        let d = check_src(
+            "net LM { layer e: Embedding(50000, 256); layer l: Linear(256, 1024); }",
+        );
+        assert!(d.is_empty(), "embed→linear should pass: {d:?}");
     }
 
     #[test]
