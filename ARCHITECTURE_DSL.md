@@ -118,17 +118,31 @@ every net that reuses it; a registry keeps it out of context entirely.
 
 ### 4.3 Registry handles (the knowledgebase) ✅ (local library; networked registry ◻)
 
-The leaf library is a project's `blocks/*.mg`. `forge check`/`build` resolve a
-handle by prepending the library's `block` macro to the entry, so the agent's
-source references a block by name while its definition lives off-context.
-`forge block` lists the library (the registry's `describe` — progressive
-disclosure). Verified end to end: an agent's `src/main.mg` = the 41-token net;
-`forge` resolves `TransformerBlock` from `blocks/` and compiles + lowers to ABL.
+The leaf library has **two tiers**, both resolved by `forge check`/`build` so the
+agent's source carries only the reference while the definition lives off-context:
 
-Next ◻: connect this to the **networked Forge registry server** (capability-
-indexed, contract-typed, SHA-256 dedup — already built in `forge/`) so blocks are
-shared/published, and make the handle a true single BPE token. Known limit: the
-local-library resolution shifts diagnostic line numbers by the prepended defs (a
+1. **Local** — a project's `blocks/*.mg`.
+2. **Shared registry** — a content-addressed `BlockStore` (`forge/src/registry/
+   blocks.rs`) rooted at `$FORGE_REGISTRY` (else `~/.forge/registry`). `forge
+   publish <file.mg>` stores each `block` under the **SHA-256 of its source**
+   (`<root>/blocks/<sha>.mg`) — identical definitions **deduplicate** to one
+   artifact (§3's "store the lowering once"). The index maps the short **name**
+   (the ≈1-token handle the agent writes) to the content hash (the integrity/
+   dedup key, off-context).
+
+`resolve_entry` prepends the local library, then pulls from the registry any
+block referenced (as a whole word) but not locally defined — a fixpoint so a
+block that references another resolves transitively, deps first. `forge block`
+lists both tiers (progressive disclosure). **Verified end to end:** `forge
+publish transformer_block.mg` → an agent project with *no* `blocks/` whose
+`src/main.mg` is just `stack 12 { TransformerBlock(256, 8, 1024) }` →
+`forge check` resolves `TransformerBlock` from the shared registry and compiles
+clean, `forge build` lowers it to ABL. The SHA is stable across runs/stores
+(deterministic content addressing).
+
+Next ◻: an HTTP transport over this store (the `forge-server` routes are
+scaffolded) for cross-machine sharing, and a true single-BPE-token handle. Known
+limit: resolution shifts diagnostic line numbers by the prepended defs (a
 source-map is the refinement).
 
 ### 4.4 Binary dedup — a REPEAT op ✅
@@ -177,9 +191,11 @@ gate is the high-value floor.)
 - `stack` ✅ — token cost O(1) in depth (10.2×, measured).
 - named `block` + reference ✅ — 12-layer GPT = 107 tokens (block def + stack
   ref), ≈1.34× a single block; **41 tokens** with the block off-context.
-- registry handle ✅ (local) — `forge` resolves a `blocks/` handle; the agent's
-  net is 41 tokens, the def off-context; `forge block` lists the library. Next ◻:
-  the networked Forge registry + a true single-token handle.
+- registry handle ✅ (local + shared) — `forge` resolves a handle from a
+  project's `blocks/` **or** the shared content-addressed `BlockStore`
+  (`$FORGE_REGISTRY`, SHA-256 dedup). Verified: `forge publish` a block, then an
+  agent project with no local `blocks/` checks + builds against it by name, def
+  off-context. Next ◻: HTTP transport + a true single-token handle.
 - ABL `REPEAT` ✅ — 12-block container **1.12×** the 1-block container (141 B vs
   126 B; expr 110 B vs 95 B), well under the 1.5× target and vs ≈9.6× before.
   Decodes to the full 72 layers; `--run` dispatches all 72.

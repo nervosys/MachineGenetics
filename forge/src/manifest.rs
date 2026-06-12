@@ -91,12 +91,23 @@ pub const COMMANDS: &[ForgeCommand] = &[
     ForgeCommand {
         name: "block",
         args: "[--json]",
-        summary: "list the block library (registry blocks a net can reference)",
+        summary: "list referenceable blocks (local blocks/ + shared registry)",
         effect: "read_local",
-        detail: "Lists `block Name(params)` macros under blocks/. A net references one by\n\
-                 name (`stack N { Name(args) }`) and `check`/`build` resolve its definition\n\
-                 from the library — so the agent's source carries the reference, not the body.\n\
-                 The registry-handle workflow in local form. With --json: {command, ok, block:[…]}.",
+        detail: "Lists `block Name(params)` macros under blocks/ AND in the shared\n\
+                 content-addressed registry. A net references one by name\n\
+                 (`stack N { Name(args) }`) and `check`/`build` resolve its definition from\n\
+                 the local library or the registry — so the agent's source carries the\n\
+                 reference, not the body. With --json: {command, ok, block:[…], registry:[…]}.",
+    },
+    ForgeCommand {
+        name: "publish",
+        args: "<file.mg>",
+        summary: "publish a file's blocks to the shared content-addressed registry",
+        effect: "write_local",
+        detail: "Stores every `block Name(params) { … }` in <file.mg> under its SHA-256 in\n\
+                 the shared registry ($FORGE_REGISTRY, else ~/.forge/registry), deduplicated\n\
+                 by content. Other projects can then reference the block by name and have\n\
+                 `check`/`build` resolve it off-context. With --json: {command, ok, published:[…]}.",
     },
     ForgeCommand {
         name: "info",
