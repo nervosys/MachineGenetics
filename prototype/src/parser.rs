@@ -1269,28 +1269,44 @@ impl<'a> Parser<'a> {
             match self.peek() {
                 TokenKind::KwLayer => {
                     self.advance();
-                    let lname = self.expect_ident()?;
-                    self.expect(TokenKind::Colon)?;
-                    let layer_type = self.parse_type()?;
-                    let mut args = Vec::new();
-                    if self.peek() == TokenKind::LParen {
-                        self.advance();
-                        while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
-                            args.push(self.parse_expr()?);
-                            if self.peek() == TokenKind::Comma {
+                    layers.push(self.parse_layer_body()?);
+                }
+                // `stack N { layer …; layer …; }` — the repeat combinator. Expands
+                // to N copies of the body with names suffixed `_<i>`, so a deep
+                // net costs ~one block + a count at the surface instead of N× the
+                // block. (Contextual keyword: `stack` stays a plain identifier
+                // elsewhere.)
+                TokenKind::Ident if self.current().text == "stack" => {
+                    self.advance(); // stack
+                    let count: usize = if self.peek() == TokenKind::IntLiteral {
+                        self.advance().text.parse().unwrap_or(0)
+                    } else {
+                        return Err(self.error("expected a repeat count after `stack`"));
+                    };
+                    self.expect(TokenKind::LBrace)?;
+                    let mut body = Vec::new();
+                    while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
+                        match self.peek() {
+                            TokenKind::KwLayer => {
+                                self.advance();
+                                body.push(self.parse_layer_body()?);
+                            }
+                            TokenKind::Semi | TokenKind::Comma => {
                                 self.advance();
                             }
+                            _ => return Err(self.error("expected `layer` inside `stack { … }`")),
                         }
-                        self.expect(TokenKind::RParen)?;
                     }
-                    if self.peek() == TokenKind::Semi {
-                        self.advance();
+                    self.expect(TokenKind::RBrace)?;
+                    for i in 0..count {
+                        for l in &body {
+                            layers.push(LayerDef {
+                                name: format!("{}_{i}", l.name),
+                                layer_type: l.layer_type.clone(),
+                                args: l.args.clone(),
+                            });
+                        }
                     }
-                    layers.push(LayerDef {
-                        name: lname,
-                        layer_type,
-                        args,
-                    });
                 }
                 TokenKind::KwForward => {
                     self.advance();
@@ -1319,6 +1335,30 @@ impl<'a> Parser<'a> {
             layers,
             forward,
         })
+    }
+
+    /// Parse the body of a layer declaration — `name: Type(args)` plus an
+    /// optional trailing `;` — after the `layer` keyword has been consumed.
+    /// Shared by plain `layer …` and the `stack N { … }` combinator.
+    fn parse_layer_body(&mut self) -> Result<LayerDef, ParseError> {
+        let name = self.expect_ident()?;
+        self.expect(TokenKind::Colon)?;
+        let layer_type = self.parse_type()?;
+        let mut args = Vec::new();
+        if self.peek() == TokenKind::LParen {
+            self.advance();
+            while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
+                args.push(self.parse_expr()?);
+                if self.peek() == TokenKind::Comma {
+                    self.advance();
+                }
+            }
+            self.expect(TokenKind::RParen)?;
+        }
+        if self.peek() == TokenKind::Semi {
+            self.advance();
+        }
+        Ok(LayerDef { name, layer_type, args })
     }
 
     // ── Knowledge Base ──────────────────────────────────────
@@ -4317,6 +4357,32 @@ mod tests {
             assert_eq!(nd.layers.len(), 2);
             assert_eq!(nd.layers[0].name, "fc1");
             assert_eq!(nd.layers[1].name, "fc2");
+        } else {
+            panic!("expected net def");
+        }
+    }
+
+    #[test]
+    fn test_parse_net_stack_combinator() {
+        // `stack N { … }` expands at parse time to N copies with `_<i>` suffixes,
+        // so a deep net costs ~one block at the surface but lowers to the full
+        // layer list. Here: a 2-layer body × 3 = 6 layers.
+        let src = r#"net Deep {
+            stack 3 {
+                layer attn: Attention(64, 4);
+                layer norm: LayerNorm;
+            }
+            forward { attn_0 }
+        }"#;
+        let module = parse_source(src);
+        if let ItemKind::Net(ref nd) = module.items[0].kind {
+            assert_eq!(nd.layers.len(), 6, "3 × 2-layer body");
+            assert_eq!(nd.layers[0].name, "attn_0");
+            assert_eq!(nd.layers[1].name, "norm_0");
+            assert_eq!(nd.layers[2].name, "attn_1");
+            assert_eq!(nd.layers[5].name, "norm_2");
+            // body args are preserved per copy
+            assert_eq!(nd.layers[4].name, "attn_2");
         } else {
             panic!("expected net def");
         }
