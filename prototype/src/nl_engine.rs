@@ -553,6 +553,7 @@ impl NlEngine {
                 stmts: Vec::new(),
                 tail_expr: None,
             },
+            composition: None,
         };
 
         let module = Module {

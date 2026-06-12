@@ -1380,13 +1380,22 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::LBrace)?;
         let mut layers = Vec::new();
+        // Compose body, tracked in parallel with `layers`: plain layers and
+        // `stack` expansions become `Compose::Layer` leaves; the dataflow
+        // combinators wrap sub-bodies. Only emitted (as `composition: Some`)
+        // when a dataflow operator actually appears — otherwise the net lowers
+        // exactly as before via declaration order.
+        let mut body: Vec<Compose> = Vec::new();
+        let mut has_dataflow = false;
         let mut forward = None;
 
         while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
             match self.peek() {
                 TokenKind::KwLayer => {
                     self.advance();
-                    layers.push(self.parse_layer_body()?);
+                    let l = self.parse_layer_body()?;
+                    body.push(Compose::Layer(l.name.clone()));
+                    layers.push(l);
                 }
                 // `stack N { layer …; layer …; }` — the repeat combinator. Expands
                 // to N copies of the body with names suffixed `_<i>`, so a deep
@@ -1401,19 +1410,19 @@ impl<'a> Parser<'a> {
                         return Err(self.error("expected a repeat count after `stack`"));
                     };
                     self.expect(TokenKind::LBrace)?;
-                    let mut body = Vec::new();
+                    let mut sbody = Vec::new();
                     while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
                         match self.peek() {
                             TokenKind::KwLayer => {
                                 self.advance();
-                                body.push(self.parse_layer_body()?);
+                                sbody.push(self.parse_layer_body()?);
                             }
                             TokenKind::Semi | TokenKind::Comma => {
                                 self.advance();
                             }
                             // A `block` reference repeated by the stack.
                             TokenKind::Ident if self.blocks.contains_key(&self.current().text) => {
-                                self.try_expand_block_ref(&mut body)?;
+                                self.try_expand_block_ref(&mut sbody)?;
                             }
                             _ => return Err(self.error(
                                 "expected `layer` or a block reference inside `stack { … }`",
@@ -1422,14 +1431,44 @@ impl<'a> Parser<'a> {
                     }
                     self.expect(TokenKind::RBrace)?;
                     for i in 0..count {
-                        for l in &body {
+                        for l in &sbody {
+                            let name = format!("{}_{i}", l.name);
+                            body.push(Compose::Layer(name.clone()));
                             layers.push(LayerDef {
-                                name: format!("{}_{i}", l.name),
+                                name,
                                 layer_type: l.layer_type.clone(),
                                 args: l.args.clone(),
                             });
                         }
                     }
+                }
+                // `residual { … }` — wrap the body in `x + f(x)` (RMIL RES_ADD).
+                TokenKind::Ident if self.current().text == "residual" => {
+                    self.advance();
+                    has_dataflow = true;
+                    let inner = self.parse_compose_body(&mut layers)?;
+                    body.push(Compose::Residual(inner));
+                }
+                // `wrap Op { … }` — sandwich the body: `Op >> body >> Op` (e.g. norm).
+                TokenKind::Ident if self.current().text == "wrap" => {
+                    self.advance();
+                    has_dataflow = true;
+                    let op = self.expect_ident()?;
+                    let inner = self.parse_compose_body(&mut layers)?;
+                    body.push(Compose::Wrap(op, inner));
+                }
+                // `branch { … } { … }` — parallel paths (RMIL PAR), one `{}` each.
+                TokenKind::Ident if self.current().text == "branch" => {
+                    self.advance();
+                    has_dataflow = true;
+                    let mut paths = Vec::new();
+                    while self.peek() == TokenKind::LBrace {
+                        paths.push(self.parse_compose_body(&mut layers)?);
+                    }
+                    if paths.is_empty() {
+                        return Err(self.error("`branch` needs at least one `{ … }` path"));
+                    }
+                    body.push(Compose::Branch(paths));
                 }
                 TokenKind::KwForward => {
                     self.advance();
@@ -1440,7 +1479,11 @@ impl<'a> Parser<'a> {
                 }
                 // A `block` reference used directly in the net body.
                 TokenKind::Ident if self.blocks.contains_key(&self.current().text) => {
+                    let before = layers.len();
                     self.try_expand_block_ref(&mut layers)?;
+                    for l in &layers[before..] {
+                        body.push(Compose::Layer(l.name.clone()));
+                    }
                 }
                 _ => {
                     return Err(self.error(&format!(
@@ -1461,7 +1504,67 @@ impl<'a> Parser<'a> {
             generics,
             layers,
             forward,
+            composition: if has_dataflow { Some(body) } else { None },
         })
+    }
+
+    /// Parse a `{ … }` body for a dataflow combinator (`residual`/`branch`/`wrap`),
+    /// returning its [`Compose`] items and appending every layer it declares to
+    /// `layers_out`. Handles `layer`, block references, and nested combinators —
+    /// so combinators compose arbitrarily (e.g. `residual { wrap Norm { … } }`).
+    fn parse_compose_body(
+        &mut self,
+        layers_out: &mut Vec<LayerDef>,
+    ) -> Result<Vec<Compose>, ParseError> {
+        self.expect(TokenKind::LBrace)?;
+        let mut items = Vec::new();
+        while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
+            match self.peek() {
+                TokenKind::KwLayer => {
+                    self.advance();
+                    let l = self.parse_layer_body()?;
+                    items.push(Compose::Layer(l.name.clone()));
+                    layers_out.push(l);
+                }
+                TokenKind::Semi | TokenKind::Comma => {
+                    self.advance();
+                }
+                TokenKind::Ident if self.current().text == "residual" => {
+                    self.advance();
+                    items.push(Compose::Residual(self.parse_compose_body(layers_out)?));
+                }
+                TokenKind::Ident if self.current().text == "wrap" => {
+                    self.advance();
+                    let op = self.expect_ident()?;
+                    items.push(Compose::Wrap(op, self.parse_compose_body(layers_out)?));
+                }
+                TokenKind::Ident if self.current().text == "branch" => {
+                    self.advance();
+                    let mut paths = Vec::new();
+                    while self.peek() == TokenKind::LBrace {
+                        paths.push(self.parse_compose_body(layers_out)?);
+                    }
+                    if paths.is_empty() {
+                        return Err(self.error("`branch` needs at least one `{ … }` path"));
+                    }
+                    items.push(Compose::Branch(paths));
+                }
+                TokenKind::Ident if self.blocks.contains_key(&self.current().text) => {
+                    let before = layers_out.len();
+                    self.try_expand_block_ref(layers_out)?;
+                    for l in &layers_out[before..] {
+                        items.push(Compose::Layer(l.name.clone()));
+                    }
+                }
+                _ => {
+                    return Err(self.error(
+                        "expected `layer`, a block reference, or a nested combinator inside `{ … }`",
+                    ))
+                }
+            }
+        }
+        self.expect(TokenKind::RBrace)?;
+        Ok(items)
     }
 
     /// Parse the body of a layer declaration — `name: Type(args)` plus an

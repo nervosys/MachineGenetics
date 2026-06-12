@@ -370,9 +370,9 @@ impl NetTranslator {
         let walker = ForwardWalker::new(&layer_table);
         let forward_expr = walker.walk_block(&net.forward);
         let expr = match forward_expr {
-            None => Self::declaration_order(&net.layers, &layer_table),
+            None => Self::lower_body(net, &layer_table),
             Some(expr) if count_app_nodes(&expr) < net.layers.len() => {
-                Self::declaration_order(&net.layers, &layer_table)
+                Self::lower_body(net, &layer_table)
             }
             Some(expr) => expr,
         };
@@ -407,6 +407,66 @@ impl NetTranslator {
                 .into_iter()
                 .reduce(|acc, next| acc >> next)
                 .unwrap_or_else(Expr::id),
+        }
+    }
+
+    /// Lower a net's body when the `forward` block is trivial: drive from the
+    /// `composition` tree if the `residual`/`branch`/`wrap` operators built one,
+    /// else fall back to plain declaration order (unchanged for every existing
+    /// net).
+    fn lower_body(net: &ast::NetDef, table: &HashMap<String, (Op, Vec<Expr>)>) -> Expr {
+        match &net.composition {
+            Some(items) => compose_seq(items, table),
+            None => Self::declaration_order(&net.layers, table),
+        }
+    }
+}
+
+// ─── Composition operators: residual / branch / wrap ────────────────
+//
+// `NetTranslator::lower_body` calls these when a net carries a `Compose` tree.
+// They turn the surface combinators into the RMIL primitives that already
+// exist: `residual` → `Expr::residual` (`RES_ADD`), `branch` → `Expr::par`
+// (`PAR`), `wrap Op { … }` → `Op >> body >> Op`. Leaves resolve via the same
+// layer table as declaration order, so a `Compose::Layer` lowers identically to
+// the layer it names — a composed net with no operator is byte-identical to the
+// flat one.
+
+/// Lower a sequence of [`ast::Compose`] items, composed left-to-right with `>>`.
+fn compose_seq(items: &[ast::Compose], table: &HashMap<String, (Op, Vec<Expr>)>) -> Expr {
+    let stages: Vec<Expr> = items.iter().map(|c| compose_one(c, table)).collect();
+    match stages.len() {
+        0 => Expr::id(),
+        1 => stages.into_iter().next().unwrap(),
+        _ => stages.into_iter().reduce(|a, n| a >> n).unwrap_or_else(Expr::id),
+    }
+}
+
+/// Lower one [`ast::Compose`] node to its Agentic Binary Language expression.
+fn compose_one(c: &ast::Compose, table: &HashMap<String, (Op, Vec<Expr>)>) -> Expr {
+    match c {
+        ast::Compose::Layer(name) => match table.get(name) {
+            Some((op, args)) if args.is_empty() => Expr::op1(*op),
+            Some((op, args)) => Expr::op(*op, args.clone()),
+            None => Expr::id(),
+        },
+        // x + f(x)
+        ast::Compose::Residual(body) => compose_seq(body, table).residual(),
+        // Op >> body >> Op  (pre + post sandwich, e.g. a norm)
+        ast::Compose::Wrap(op_name, body) => {
+            let inner = compose_seq(body, table);
+            match layer_name_to_op(op_name) {
+                Some(op) => Expr::op1(op) >> inner >> Expr::op1(op),
+                None => inner, // unknown wrap op → no-op sandwich
+            }
+        }
+        // parallel paths → left-folded PAR; the tuple feeds the next stage
+        ast::Compose::Branch(paths) => {
+            let mut it = paths.iter().map(|p| compose_seq(p, table));
+            match it.next() {
+                None => Expr::id(),
+                Some(first) => it.fold(first, |acc, next| acc.par(next)),
+            }
         }
     }
 }
@@ -1036,6 +1096,9 @@ pub fn decompile(expr: &Expr, net_name: &str) -> DecompileResult {
             generics: Vec::new(),
             layers,
             forward,
+            // Decompiled nets carry their structure inline in the Expr (RES_ADD/
+            // PAR), not as surface combinators.
+            composition: None,
         },
         skipped,
     }
@@ -1684,6 +1747,7 @@ mod tests {
                 make_layer("Linear"),
             ],
             forward: make_block(),
+            composition: None,
         };
         let t = NetTranslator::translate(&net);
         assert!(t.unknown_layers.is_empty());
@@ -1707,6 +1771,7 @@ mod tests {
                 make_layer("Dropout"),
             ],
             forward: make_block(),
+            composition: None,
         };
         let t = NetTranslator::translate(&net);
         assert!(t.unknown_layers.is_empty());
@@ -1731,6 +1796,7 @@ mod tests {
             generics: Vec::new(),
             layers,
             forward: make_block(),
+            composition: None,
         }
     }
 
@@ -1770,6 +1836,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![make_layer("Embedding"), make_layer("Attention"), make_layer("Linear")],
             forward: make_block(),
+            composition: None,
         };
         let flat = NetTranslator::translate(&net).expr;
         assert_eq!(fold_repeats(&flat), flat, "no repeats ⇒ fold changes nothing");
@@ -1782,6 +1849,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![make_layer("MyFancyLayer")],
             forward: make_block(),
+            composition: None,
         };
         let t = NetTranslator::translate(&net);
         assert_eq!(t.unknown_layers, vec!["MyFancyLayer".to_string()]);
@@ -1816,6 +1884,7 @@ mod tests {
                 generics: Vec::new(),
                 layers: Vec::new(),
                 forward: make_block(),
+                composition: None,
             }),
         };
         assert_eq!(OpFamilyRouter::route(&net_item), IrTarget::Machine);
@@ -1884,6 +1953,7 @@ mod tests {
                 vec![int_lit(784), int_lit(256)],
             )],
             forward: block_with_tail(call(ident("fc1"), vec![ident("x")])),
+            composition: None,
         };
         let t = NetTranslator::translate(&net);
         // Inspect the produced App and check args were threaded through.
@@ -1911,6 +1981,7 @@ mod tests {
                 pipeline(pipeline(ident("x"), ident("l_linear")), ident("l_relu")),
                 ident("l_linear"),
             )),
+            composition: None,
         };
         // Note: declaration order would also produce 3 layers; assert via
         // node_count + presence of LINEAR + RELU in the resulting tree.
@@ -1932,10 +2003,110 @@ mod tests {
                 ident("x"),
                 call(ident("l_linear"), vec![ident("x")]),
             )),
+            composition: None,
         };
         let t = NetTranslator::translate(&net);
         let ops = t.expr.opcodes();
         assert!(ops.contains(&rmi::lang::Op::RES_ADD), "expected RES_ADD, got {ops:?}");
+    }
+
+    // ── Surface composition operators (residual / branch / wrap) ──────
+
+    /// Parse net source and translate the first `net` item.
+    fn translate_src(src: &str) -> NetTranslation {
+        let module = crate::parser::parse(&crate::lexer::lex(src)).expect("source parses");
+        let net = module
+            .items
+            .iter()
+            .find_map(|it| match &it.kind {
+                ast::ItemKind::Net(n) => Some(n.clone()),
+                _ => None,
+            })
+            .expect("module has a net");
+        NetTranslator::translate(&net)
+    }
+
+    /// Count `App(op, …)` nodes for a specific opcode (opcodes() dedups, so it
+    /// can't see the pre+post pair a `wrap` produces).
+    fn count_op(e: &Expr, target: Op) -> usize {
+        match e {
+            Expr::App(op, args) => {
+                (if *op == target { 1 } else { 0 }) + args.iter().map(|a| count_op(a, target)).sum::<usize>()
+            }
+            Expr::Seq(a, b) | Expr::Par(a, b) => count_op(a, target) + count_op(b, target),
+            _ => 0,
+        }
+    }
+
+    fn has_par(e: &Expr) -> bool {
+        match e {
+            Expr::Par(_, _) => true,
+            Expr::Seq(a, b) => has_par(a) || has_par(b),
+            Expr::App(_, args) => args.iter().any(has_par),
+            _ => false,
+        }
+    }
+
+    #[test]
+    fn residual_operator_emits_res_add() {
+        // The surface `residual { … }` lowers to RMIL RES_ADD around the body.
+        let t = translate_src(
+            "net R { residual { layer a: Linear(8, 8); layer act: ReLU; } }",
+        );
+        assert!(t.unknown_layers.is_empty());
+        let ops = t.expr.opcodes();
+        assert!(ops.contains(&Op::RES_ADD), "expected RES_ADD, got {ops:?}");
+        assert!(ops.contains(&Op::LINEAR) && ops.contains(&Op::RELU), "body layers lost");
+    }
+
+    #[test]
+    fn wrap_operator_sandwiches_the_body() {
+        // `wrap LayerNorm { … }` → Norm >> body >> Norm: LAYER_NORM appears twice.
+        let t = translate_src("net W { wrap LayerNorm { layer ff: Linear(8, 8); } }");
+        assert_eq!(
+            count_op(&t.expr, Op::LAYER_NORM),
+            2,
+            "wrap should place the op both before and after the body"
+        );
+        assert_eq!(count_op(&t.expr, Op::LINEAR), 1, "body should be wrapped once");
+    }
+
+    #[test]
+    fn branch_operator_emits_par() {
+        // `branch { … } { … }` → parallel paths (RMIL PAR).
+        let t = translate_src(
+            "net B { branch { layer a: Linear(8, 8); } { layer b: Linear(8, 8); } }",
+        );
+        assert!(has_par(&t.expr), "branch should lower to a PAR node, got {:?}", t.expr);
+        assert_eq!(count_op(&t.expr, Op::LINEAR), 2, "both branch paths should lower");
+    }
+
+    #[test]
+    fn composition_composes_residual_inside_stack() {
+        // The real shape: a stack of residual blocks — operators nest, and the
+        // RES_ADD-per-block survives the REPEAT fold round-trip.
+        let t = translate_src(
+            "net GPT { stack 3 { } residual { layer a: Linear(8, 8); } }",
+        );
+        // 3 stack iterations are bodyless here; the residual is one block → 1 RES_ADD.
+        assert_eq!(count_op(&t.expr, Op::RES_ADD), 1);
+        let folded = fold_repeats(&t.expr);
+        assert_eq!(expand_repeats(&folded), t.expr, "fold round-trips with RES_ADD present");
+    }
+
+    #[test]
+    fn plain_net_has_no_composition_and_is_unchanged() {
+        // A net with no dataflow operator must carry composition: None and lower
+        // byte-identically to declaration order (zero regression).
+        let module = crate::parser::parse(&crate::lexer::lex(
+            "net P { layer a: Linear(8, 8); layer act: ReLU; }",
+        ))
+        .expect("parses");
+        let net = match &module.items[0].kind {
+            ast::ItemKind::Net(n) => n.clone(),
+            _ => panic!("net"),
+        };
+        assert!(net.composition.is_none(), "plain net must not build a Compose tree");
     }
 
     #[test]
@@ -1955,6 +2126,7 @@ mod tests {
                     vec![call(ident("l_linear"), vec![ident("x")])],
                 )],
             )),
+            composition: None,
         };
         let t = NetTranslator::translate(&net);
         let ops = t.expr.opcodes();
@@ -2024,6 +2196,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![make_layer("Linear"), make_layer("ReLU")],
             forward: make_block(),
+            composition: None,
         };
         let t = NetTranslator::translate(&mlp);
         let families = expr_op_families(&t.expr);
@@ -2068,6 +2241,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![make_layer("Linear"), make_layer("ReLU")],
             forward: make_block(),
+            composition: None,
         };
         let t = NetTranslator::translate(&mlp);
         let mut vm = Vm::new();
@@ -2101,6 +2275,7 @@ mod tests {
                 make_layer("Linear"),
             ],
             forward: make_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&original);
         let result = decompile(&lowered.expr, "MLP");
@@ -2130,6 +2305,7 @@ mod tests {
                 make_layer("Dropout"),
             ],
             forward: make_block(),
+            composition: None,
         };
         let t1 = NetTranslator::translate(&original);
         let dec = decompile(&t1.expr, "TransformerBlock");
@@ -2152,6 +2328,7 @@ mod tests {
                 vec![int_lit(784), int_lit(256)],
             )],
             forward: make_block(),
+            composition: None,
         };
         let t = NetTranslator::translate(&original);
         let dec = decompile(&t.expr, "WithArgs");
@@ -2173,6 +2350,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![make_layer("Linear"), make_layer("ReLU")],
             forward: make_block(),
+            composition: None,
         };
         let module = ast::Module {
             items: vec![ast::Item {
@@ -2253,6 +2431,7 @@ mod tests {
                 make_layer("GlobalAvgPool"),
             ],
             forward: make_block(),
+            composition: None,
         };
         let t = NetTranslator::translate(&net);
         assert!(

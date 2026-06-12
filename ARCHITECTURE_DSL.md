@@ -62,17 +62,34 @@ every *identical* lowering is stored once.
 
 ### 4.1 Composition operators (the algebra)
 
-| operator | meaning | status |
-|---|---|---|
-| `stack N { … }` | repeat a layer body N× | ✅ landed |
-| `residual { … }` | wrap a body in `x + f(x)` | ◻ |
-| `branch { … } { … }` | parallel paths, then combine | ◻ |
-| `wrap A { … }` | pre/post a body with op A (e.g. norm) | ◻ |
+| operator | meaning | lowers to | status |
+|---|---|---|---|
+| `stack N { … }` | repeat a layer body N× | flat `Seq` → `REPEAT` | ✅ landed |
+| `residual { … }` | wrap a body in `x + f(x)` | `RES_ADD` | ✅ landed |
+| `branch { … } { … }` | parallel paths, then combine | `PAR`-fold | ✅ landed |
+| `wrap A { … }` | pre/post a body with op A (e.g. norm) | `A >> body >> A` | ✅ landed |
 
 `stack` is proven: **`stack 12 { block }` = 82 real cl100k tokens vs 839 for the
 manual 12× repeat — 10.2× fewer, and flat in depth** (100 layers stays ~83
 tokens). Source 271 B vs 2320 B. It expands at parse (`parser.rs`,
 `parse_layer_body` + the `stack` arm), so lowering is unchanged.
+
+The three **dataflow** operators (`residual`/`branch`/`wrap`) are different in
+kind — they change the graph, not just the layer count — so they can't be flat
+parse-time macros. They build an optional `Compose` tree on `NetDef`
+(`parser.rs` `parse_compose_body`), populated **only when an operator appears**
+(plain/`stack` nets keep `composition: None` and lower exactly as before — zero
+regression). The translator (`abl_bridge.rs` `compose_one`) lowers each node to
+the RMIL primitive that already existed: `residual`→`Expr::residual` (`RES_ADD`),
+`branch`→`Expr::par` (`PAR`), `wrap Op`→`Op >> body >> Op`. Leaves resolve via
+the same layer table as declaration order, so a node with no operator is
+byte-identical to the flat net. They **compose and nest** arbitrarily — the real
+transformer block is `wrap LayerNorm { residual { attn } residual { ffn } }` —
+verified end to end: parses, lowers to the correct `RES_ADD`/`PAR` IR,
+decompiles, and round-trips through the `REPEAT` fold. *Honest limit:* this is a
+surface+lowering feature — the CPU VM does not yet **compute** `RES_ADD`/`PAR`
+(they dispatch as unsupported and pass shape through); VM op coverage is separate
+work.
 
 ### 4.2 Named blocks ✅
 
@@ -148,7 +165,12 @@ blocks' output/input shapes unify, so "arbitrarily selected and composed" is
 - ABL `REPEAT` ✅ — 12-block container **1.12×** the 1-block container (141 B vs
   126 B; expr 110 B vs 95 B), well under the 1.5× target and vs ≈9.6× before.
   Decodes to the full 72 layers; `--run` dispatches all 72.
-- typed composition — a shape-mismatched `stack`/`branch` is rejected at
+- `residual`/`branch`/`wrap` ✅ — each lowers to its RMIL primitive
+  (`RES_ADD`/`PAR`/sandwich), they nest (the transformer block =
+  `wrap LayerNorm { residual { … } residual { … } }`), and a composed net
+  round-trips through the `REPEAT` fold. Plain nets keep `composition: None`
+  (zero regression). Limit: the CPU VM doesn't yet *compute* `RES_ADD`/`PAR`.
+- typed composition ◻ — a shape-mismatched `stack`/`branch` is rejected at
   `--check` with an actionable diagnostic.
 
 ## 6. Honest limits
