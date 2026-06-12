@@ -3268,6 +3268,7 @@ mod tests {
                 activation_layer("ReLU"),
             ],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3291,6 +3292,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![activation_layer("Sigmoid")],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3307,6 +3309,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![activation_layer("Linear"), activation_layer("ReLU")],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3348,6 +3351,7 @@ mod tests {
                 activation_layer("ReLU"),
             ],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3365,6 +3369,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![layer_with_int_args("Linear", vec![4, 8])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3404,6 +3409,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![1, 1])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3443,6 +3449,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![2, 2])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3494,6 +3501,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![2, 3])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3537,12 +3545,14 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![1, 1, 1])],
             forward: empty_block(),
+            composition: None,
         };
         let no_bias_net = ast::NetDef {
             name: "NoBias".into(),
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![1, 1])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered_b = NetTranslator::translate(&bias_net);
         let lowered_n = NetTranslator::translate(&no_bias_net);
@@ -3591,6 +3601,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![1, 1])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3636,6 +3647,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![1, 1])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3687,6 +3699,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![1, 1])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3720,6 +3733,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("d", "Dropout", vec![50])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3741,6 +3755,7 @@ mod tests {
                 named_layer("fc", "Linear", vec![64, 1, 1]),
             ],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3765,6 +3780,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("pe", "LearnedPE", vec![8, 4])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3793,6 +3809,7 @@ mod tests {
                 named_layer("fc", "Linear", vec![2, 1, 1]),
             ],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3826,6 +3843,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("emb", "Embedding", vec![4, 3])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3851,6 +3869,7 @@ mod tests {
                 named_layer("fc", "Linear", vec![3, 1, 1]),
             ],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3879,6 +3898,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("pe", "SinusoidalPE", vec![16, 4])],
             forward: empty_block(),
+            composition: None,
         };
         // Forward dispatch table maps name "SinusoidalPE" → Op? Not in
         // current layer_name_to_op. Use direct Agentic Binary Language expression instead.
@@ -3918,6 +3938,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![2, 4, 2])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3949,6 +3970,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![2, 4])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -3984,6 +4006,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("c", "Conv2D", vec![1, 1, 2, 1])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4007,6 +4030,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("c", "Conv2D", vec![1, 1, 2, 1])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4036,6 +4060,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("c", "Conv2D", vec![1, 1, 2])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4080,6 +4105,7 @@ mod tests {
                 named_layer("fc2", "Linear", vec![4, 1]),
             ],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4119,6 +4145,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![2])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4146,6 +4173,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![4, 8, 2])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4170,6 +4198,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![4, 7, 2])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4192,6 +4221,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![4, 8])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4218,6 +4248,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![2])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4245,6 +4276,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("conv", "Conv2D", vec![1, 1, 1])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4273,6 +4305,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("conv", "Conv2D", vec![2, 4, 3])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4295,6 +4328,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("mp", "MaxPool", vec![2, 2])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4322,6 +4356,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("ap", "AvgPool", vec![2])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4347,6 +4382,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![norm_layer("ln", "LayerNorm")],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4372,6 +4408,7 @@ mod tests {
                 named_layer("fc", "Linear", vec![2, 1, 1]),
             ],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4408,6 +4445,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![2, 4, 1, 1])],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4449,6 +4487,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![norm_layer("rn", "RMSNorm")],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4468,6 +4507,7 @@ mod tests {
             generics: Vec::new(),
             layers: vec![norm_layer("loss", "MSE")],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4487,6 +4527,7 @@ mod tests {
                 norm_layer("step", "SGD_STEP"), // not in our forward table
             ],
             forward: empty_block(),
+            composition: None,
         };
         // SGD_STEP isn't in layer_name_to_op so we exercise it via a
         // hand-built Agentic Binary Language expression instead.
@@ -4511,6 +4552,7 @@ mod tests {
                 activation_layer("Sigmoid"),
             ],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let backend = CpuBackend::new();
@@ -4547,6 +4589,7 @@ mod tests {
                 },
             ],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let shape = infer_input_shape(&lowered.expr)
@@ -4579,6 +4622,7 @@ mod tests {
                 },
             ],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let shape = infer_input_shape(&lowered.expr)
@@ -4610,6 +4654,7 @@ mod tests {
                 },
             ],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let shape = infer_input_shape(&lowered.expr)
@@ -4640,6 +4685,7 @@ mod tests {
                 },
             ],
             forward: empty_block(),
+            composition: None,
         };
         let lowered = NetTranslator::translate(&net);
         let shape = infer_input_shape(&lowered.expr).expect("inferable");

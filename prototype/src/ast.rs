@@ -578,6 +578,31 @@ pub struct NetDef {
     pub generics: Vec<GenericParam>,
     pub layers: Vec<LayerDef>,
     pub forward: Block,
+    /// Optional dataflow structure over the declared `layers`, built by the
+    /// `residual`/`branch`/`wrap` surface combinators. `None` (the common case —
+    /// plain `layer`/`stack` nets) lowers exactly as before via declaration
+    /// order; `Some(tree)` drives lowering instead. The flat `layers` always
+    /// holds every declared layer (the tree references them by name), so every
+    /// reader of `layers` is unaffected. Defaults to `None` via `serde`.
+    #[serde(default)]
+    pub composition: Option<Vec<Compose>>,
+}
+
+/// A dataflow combinator over a net's declared layers — the lowered form of the
+/// `residual`/`branch`/`wrap` surface operators (§4.1). Leaves reference declared
+/// layers by name; the operators wrap sub-trees into RMIL `RES_ADD`/`PAR`/sandwich
+/// structure. Composes arbitrarily (e.g. a `stack` of `residual` blocks).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Compose {
+    /// Reference a declared layer by name → its opcode.
+    Layer(String),
+    /// `residual { … }` → `x + f(x)` (RMIL `RES_ADD`).
+    Residual(Vec<Compose>),
+    /// `branch { … } { … }` → parallel paths (RMIL `PAR`-fold); the tuple output
+    /// feeds whatever stage follows (the combine).
+    Branch(Vec<Vec<Compose>>),
+    /// `wrap Op { … }` → `Op >> body >> Op` (pre+post sandwich, e.g. a norm).
+    Wrap(String, Vec<Compose>),
 }
 
 /// A single layer inside a `net` definition.
