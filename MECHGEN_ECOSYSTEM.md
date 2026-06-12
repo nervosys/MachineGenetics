@@ -240,10 +240,10 @@ The RAP server provides IDE features over JSON-RPC (see prototype/src/rap.rs):
 ### 3.2 VS Code Extension
 
 ```
-redox-vscode/
+mechgen-vscode/
 ├── package.json              # Extension manifest
 ├── syntaxes/
-│   └── redox.tmLanguage.json # TextMate grammar for syntax highlighting
+│   └── mechgen.tmLanguage.json # TextMate grammar for syntax highlighting
 ├── language-configuration.json
 ├── src/
 │   ├── extension.ts          # Extension entry point

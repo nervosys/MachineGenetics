@@ -1,6 +1,0 @@
-[package]
-name = "redox_token_frequency"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]

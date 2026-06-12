@@ -1,7 +1,0 @@
-[package]
-name = "redox_aci_perf_advisor"
-version = "0.1.0"
-edition = "2024"
-description = "ACI Performance Advisor Engine: suggestions from MLIR cost models and profiling data"
-
-[dependencies]

@@ -1,7 +1,0 @@
-[package]
-name = "redox_aci_debugger"
-version = "0.1.0"
-edition = "2024"
-description = "ACI Intelligent Debugging Engine: causal root-cause analysis from runtime traces"
-
-[dependencies]

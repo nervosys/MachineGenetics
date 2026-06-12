@@ -1,7 +1,0 @@
-[package]
-name = "redox_aci_swarm_intel"
-version = "0.1.0"
-edition = "2024"
-description = "ACI Swarm Coordination Intelligence: conflict prediction and decomposition learning from swarm history"
-
-[dependencies]

@@ -1,7 +1,0 @@
-[package]
-name = "redox_aci_rap"
-version = "0.1.0"
-edition = "2024"
-description = "Unified RAP endpoints for all ACI services: aci.warnings, aci.debug, aci.perf, aci.swarm"
-
-[dependencies]
