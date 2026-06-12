@@ -188,10 +188,23 @@ echo 'f main(){ sum(map(range(5), fn(x) => x * x)) }' > squares.mg
 ./prototype/target/release/MechGen-parse squares.mg
 ```
 
-> **Planned toolchain.** A higher-level CLI (`mg new`, `mg run`) and the Rust
-> transpilers are on the [roadmap](ROADMAP.md) and **not yet built** — use
-> `MechGen-parse` directly for now. The targets below are the real, shipping
-> interface.
+Or use the **Forge** project toolchain (`forge/`) for a manifest-driven project:
+
+```bash
+cargo build --release --manifest-path forge/Cargo.toml   # builds the `forge` binary
+
+forge new my-project        # scaffold Forge.toml + src/main.mg
+cd my-project
+forge check                 # parse + typecheck the entry point
+forge build                 # check, then lower through the binary IR
+forge run                   # execute `main` → 120
+```
+
+`forge` drives the same `MechGen-parse` compiler (auto-located, or set
+`FORGE_MG`). The lower-level targets below are the compiler's own interface.
+
+> **Still planned.** A `mg` short alias for `forge` and the Rust transpilers are
+> on the [roadmap](ROADMAP.md) and not yet built.
 
 ### Working prototype CLI (`MechGen-parse`)
 
@@ -307,11 +320,12 @@ Twelve self-contained projects in [`examples/`](examples/), each with a
 | [multilang-bindings](examples/multilang-bindings/)     | FFI bridge (C, Python, WASM)     |
 | [cost-aware-optimizer](examples/cost-aware-optimizer/) | Cost-model strategy selection    |
 
-> These projects target the **planned** Forge toolchain (`mg run`) and exercise
-> the full intended surface — they are scaffolds, not all accepted by the current
-> prototype checker. For `.mg` programs that **check and run today**, see
-> [`prototype/examples/`](prototype/examples/) (e.g. `agent_rpn.mg`, the `net`
-> examples) and the `--eval` quick start above.
+> These projects are driven by the [Forge toolchain](#quick-start) (`forge
+> check` / `forge build` / `forge run`), but their `.mg` sources exercise the
+> full *intended* surface and predate the current checker — not all `forge
+> check` clean yet. `forge new` scaffolds a project that does. For `.mg` programs
+> that **check and run today**, see [`prototype/examples/`](prototype/examples/)
+> (e.g. `agent_rpn.mg`, the `net` examples) and the `--eval` quick start above.
 
 ## Documentation
 

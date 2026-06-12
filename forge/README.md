@@ -1,9 +1,50 @@
-# Forge — MechGen Package Registry
+# Forge — MechGen Toolchain & Package Registry
 
-Forge is the package registry for the MechGen programming language. It serves as
-the central repository for MechGen modules, supporting dual-format packages
-(native `.mg` and transpiled `.rs`), MLIR artifact caching, and crates.io
-compatibility.
+Forge is the MechGen toolchain. It has two parts:
+
+1. **Project toolchain** (`forge` binary, [`src/project.rs`](src/project.rs)) —
+   a manifest-driven build/run driver over `Forge.toml`.
+2. **Package registry** (`forge-server` binary + client library) — the central
+   repository for MechGen modules, with crates.io compatibility.
+
+## Project toolchain
+
+A Forge project is a directory with a `Forge.toml` manifest and a `.mg` entry
+point (default `src/main.mg`). The `forge` binary locates the real MechGen
+compiler/evaluator (`MechGen-parse`) and drives it:
+
+```bash
+cargo build --release --bin forge   # build the toolchain
+
+forge new <name>     # scaffold Forge.toml + src/main.mg (checks + runs as-is)
+forge check          # parse + typecheck the entry point
+forge build          # check, then lower through the Agentic Binary Language IR
+forge run [fn]       # execute the entry function (default: the manifest's `main`)
+forge info           # print the resolved manifest
+```
+
+`Forge.toml`:
+
+```toml
+[module]
+name = "my-project"
+version = "0.1.0"
+edition = "2025"
+license = "Apache-2.0"
+
+[build]            # optional
+entry = "src/main.mg"   # default
+main  = "main"          # entry function for `forge run`
+```
+
+The compiler is auto-located at `prototype/target/release/MechGen-parse` (found
+by walking up from the project), or taken from the `FORGE_MG` environment
+variable.
+
+## Package registry
+
+The registry serves dual-format packages (native `.mg` and transpiled `.rs`)
+and crates.io compatibility.
 
 ## Directory Structure
 
