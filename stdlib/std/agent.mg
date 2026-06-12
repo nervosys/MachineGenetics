@@ -319,7 +319,7 @@ impl Memory {
 
 /// Map-reduce over a swarm: distribute work, collect, and merge.
 ///
-/// ```rdx
+/// ```mg
 /// let results = swarm_map_reduce(&swarm, items, map_fn, reduce_fn);
 /// ```
 pub fn swarm_map_reduce<A: Agent, T, R>(
@@ -331,7 +331,7 @@ pub fn swarm_map_reduce<A: Agent, T, R>(
 
 /// Pipeline: chain agents sequentially, output of one feeds input of next.
 ///
-/// ```rdx
+/// ```mg
 /// let result = swarm_pipeline(&stages, input);
 /// ```
 pub fn swarm_pipeline<T>(

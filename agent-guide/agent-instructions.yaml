@@ -1,8 +1,8 @@
-# .redox/agent-instructions.yaml
+# .mechgen/agent-instructions.yaml
 # Standard instruction file for AI agents working with this project.
-# Place in the project root under .redox/ to configure agent behavior.
+# Place in the project root under .mechgen/ to configure agent behavior.
 
-language: redox
+language: mechgen
 edition: "2025"
 
 # ─── Syntax Rules ────────────────────────────────────────────────────────────

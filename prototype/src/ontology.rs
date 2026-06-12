@@ -416,7 +416,7 @@ const PROJECT_LAYOUT: &[(&str, &str)] = &[
     ("examples/", "Standalone `.mg` examples (agent-swarm, http-client, cli-tool, etc.)"),
     ("UNIFICATION.md", "Architecture doc with per-phase history"),
     ("MECHGEN_ONTOLOGY.json", "Static dump of this ontology (refresh via --emit-ontology)"),
-    (".github/workflows/redox-ci.yml", "CI with floors on parse / heal / refine / token-ratio"),
+    (".github/workflows/ci.yml", "CI with floors on parse / heal / refine / token-ratio"),
 ];
 
 /// Documentation pointers. Where to read what.
@@ -436,7 +436,7 @@ const DOCS: &[(&str, &str, &str)] = &[
 
 /// Current CI floors. An agent proposing a change can check whether
 /// its measured numbers stay above each. Read from
-/// `.github/workflows/redox-ci.yml`.
+/// `.github/workflows/ci.yml`.
 ///
 /// Columns: `(name, threshold, what_it_protects)`.
 const CI_FLOORS: &[(&str, &str, &str)] = &[

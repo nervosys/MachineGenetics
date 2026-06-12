@@ -594,7 +594,7 @@ token_budget = 8192
 
 MechGen provides bidirectional translation with Rust:
 
-- **MechGen → Rust**: `MechGen transpile --to-rust src/main.rx`
+- **MechGen → Rust**: `MechGen transpile --to-rust src/main.mg`
 - **Rust → MechGen**: `MechGen transpile --from-rust src/main.rs`
 - **Legacy mode**: Supports `fn`, `struct`, `enum`, `impl` as aliases.
 

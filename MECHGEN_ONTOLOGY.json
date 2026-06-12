@@ -18,6 +18,7 @@
     "recovery_stages": 7,
     "sigils": 38,
     "types": 30,
+    "vocabulary": 31,
     "wrapper_protocol": 9
   },
   "ok": true,
@@ -4037,7 +4038,7 @@
         "purpose": "Static dump of this ontology (refresh via --emit-ontology)"
       },
       {
-        "path": ".github/workflows/redox-ci.yml",
+        "path": ".github/workflows/ci.yml",
         "purpose": "CI with floors on parse / heal / refine / token-ratio"
       }
     ],
@@ -4848,6 +4849,163 @@
         "category": "fn",
         "name": "f(T)->R",
         "summary": "function pointer type; (T) -> R signature"
+      }
+    ],
+    "vocabulary": [
+      {
+        "name": "map",
+        "signature": "([A], A->B) -> [B]",
+        "summary": "apply a function to each element"
+      },
+      {
+        "name": "filter",
+        "signature": "([A], A->bool) -> [A]",
+        "summary": "keep elements matching a predicate"
+      },
+      {
+        "name": "fold",
+        "signature": "([A], B, (B,A)->B) -> B",
+        "summary": "reduce with an initial accumulator"
+      },
+      {
+        "name": "reduce",
+        "signature": "([A], (A,A)->A) -> ?A",
+        "summary": "reduce without an initial value"
+      },
+      {
+        "name": "sum",
+        "signature": "[A] -> A",
+        "summary": "sum of the elements"
+      },
+      {
+        "name": "len",
+        "signature": "[A] -> usize",
+        "summary": "number of elements"
+      },
+      {
+        "name": "count",
+        "signature": "[A] -> usize",
+        "summary": "number of elements"
+      },
+      {
+        "name": "sort",
+        "signature": "[A] -> [A]",
+        "summary": "sorted copy"
+      },
+      {
+        "name": "reverse",
+        "signature": "[A] -> [A]",
+        "summary": "reversed copy"
+      },
+      {
+        "name": "zip",
+        "signature": "([A], [B]) -> [(A,B)]",
+        "summary": "pair up two collections"
+      },
+      {
+        "name": "freq",
+        "signature": "[A] -> {A: usize}",
+        "summary": "frequency of each element"
+      },
+      {
+        "name": "first",
+        "signature": "[A] -> ?A",
+        "summary": "first element, if any"
+      },
+      {
+        "name": "last",
+        "signature": "[A] -> ?A",
+        "summary": "last element, if any"
+      },
+      {
+        "name": "any",
+        "signature": "([A], A->bool) -> bool",
+        "summary": "does any element match"
+      },
+      {
+        "name": "all",
+        "signature": "([A], A->bool) -> bool",
+        "summary": "do all elements match"
+      },
+      {
+        "name": "find",
+        "signature": "([A], A->bool) -> ?A",
+        "summary": "first matching element, if any"
+      },
+      {
+        "name": "take",
+        "signature": "([A], usize) -> [A]",
+        "summary": "the first n elements"
+      },
+      {
+        "name": "range",
+        "signature": "(usize) -> [usize]",
+        "summary": "0..n as a list"
+      },
+      {
+        "name": "keys",
+        "signature": "{K: V} -> [K]",
+        "summary": "the map's keys"
+      },
+      {
+        "name": "values",
+        "signature": "{K: V} -> [V]",
+        "summary": "the map's values"
+      },
+      {
+        "name": "flatten",
+        "signature": "[[A]] -> [A]",
+        "summary": "flatten one level of nesting"
+      },
+      {
+        "name": "group",
+        "signature": "([A], A->K) -> {K: [A]}",
+        "summary": "group elements by key"
+      },
+      {
+        "name": "scan",
+        "signature": "([A], B, (B,A)->B) -> [B]",
+        "summary": "running fold (each intermediate)"
+      },
+      {
+        "name": "contains",
+        "signature": "([A], A) -> bool",
+        "summary": "membership test"
+      },
+      {
+        "name": "split",
+        "signature": "(str, str) -> [str]",
+        "summary": "split a string on a separator"
+      },
+      {
+        "name": "join",
+        "signature": "([str], str) -> str",
+        "summary": "join strings with a separator"
+      },
+      {
+        "name": "chars",
+        "signature": "str -> [str]",
+        "summary": "the characters of a string"
+      },
+      {
+        "name": "words",
+        "signature": "str -> [str]",
+        "summary": "whitespace-separated words"
+      },
+      {
+        "name": "lines",
+        "signature": "str -> [str]",
+        "summary": "newline-separated lines"
+      },
+      {
+        "name": "upper",
+        "signature": "str -> str",
+        "summary": "uppercase"
+      },
+      {
+        "name": "lower",
+        "signature": "str -> str",
+        "summary": "lowercase"
       }
     ],
     "wrapper_protocol": [

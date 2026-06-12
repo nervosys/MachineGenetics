@@ -28,7 +28,7 @@
   "tree-sitter": [
     {
       "scope": "source.MechGen",
-      "file-types": ["rdx"],
+      "file-types": ["mg"],
       "injection-regex": "^MechGen$"
     }
   ]

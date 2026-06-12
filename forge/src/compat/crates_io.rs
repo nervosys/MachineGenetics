@@ -11,7 +11,7 @@
 #[derive(Debug, Clone)]
 pub struct CrateAlias {
     /// MechGen-style import path, e.g. `http.Client`
-    pub redox_path: String,
+    pub mechgen_path: String,
     /// Corresponding crates.io crate name, e.g. `reqwest`
     pub crate_name: String,
     /// Version requirement for the crate, e.g. `^0.12`
@@ -21,9 +21,9 @@ pub struct CrateAlias {
 }
 
 impl CrateAlias {
-    pub fn new(redox_path: &str, crate_name: &str, version_req: &str) -> Self {
+    pub fn new(mechgen_path: &str, crate_name: &str, version_req: &str) -> Self {
         Self {
-            redox_path: redox_path.to_string(),
+            mechgen_path: mechgen_path.to_string(),
             crate_name: crate_name.to_string(),
             version_req: version_req.to_string(),
             features: Vec::new(),
@@ -53,8 +53,8 @@ impl AliasTable {
     }
 
     /// Look up the crates.io crate for a MechGen import path.
-    pub fn resolve(&self, redox_path: &str) -> Option<&CrateAlias> {
-        self.aliases.iter().find(|a| a.redox_path == redox_path)
+    pub fn resolve(&self, mechgen_path: &str) -> Option<&CrateAlias> {
+        self.aliases.iter().find(|a| a.mechgen_path == mechgen_path)
     }
 
     /// Return all registered aliases.

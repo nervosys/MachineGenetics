@@ -123,7 +123,7 @@ pub struct SwarmConfig {
 impl Default for SwarmConfig {
     fn default() -> Self {
         Self {
-            name: "redox-swarm".into(),
+            name: "mechgen-swarm".into(),
             max_agents: 16,
             task_timeout_ticks: 100,
             require_review: true,

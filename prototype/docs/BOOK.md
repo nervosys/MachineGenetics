@@ -29,7 +29,7 @@ cd MechGen/prototype
 cargo build
 
 # Run a MechGen file
-cargo run -- input.rx
+cargo run -- input.mg
 
 # Run tests
 cargo test
@@ -286,10 +286,10 @@ The MechGen compiler pipeline:
 
 ```bash
 # Convert Rust to MechGen
-MechGen transpile --from-rust src/main.rs -o src/main.rx
+MechGen transpile --from-rust src/main.rs -o src/main.mg
 
 # Convert MechGen to Rust
-MechGen transpile --to-rust src/main.rx -o src/main.rs
+MechGen transpile --to-rust src/main.mg -o src/main.rs
 ```
 
 ### Chapter 17: Project Configuration

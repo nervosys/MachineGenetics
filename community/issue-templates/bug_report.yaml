@@ -13,8 +13,8 @@ body:
     id: version
     attributes:
       label: MechGen Version
-      description: Output of `rdx --version`
-      placeholder: rdx 0.1.0
+      description: Output of `mg --version`
+      placeholder: mg 0.1.0
     validations:
       required: true
 
@@ -27,7 +27,7 @@ body:
         - Compiler / Parser
         - rust2mg Transpiler
         - mg2rs Back-Transpiler
-        - rdx CLI
+        - mg CLI
         - Standard Library
         - VS Code Extension
         - Editor Integration (Neovim/Helix/Zed)
@@ -57,7 +57,7 @@ body:
         ```
 
         **Steps:**
-        1. Run `rdx build`
+        1. Run `mg build`
         2. See error...
     validations:
       required: true
