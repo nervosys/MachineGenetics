@@ -16,6 +16,7 @@
 //! Codegen runs through the Agentic Binary Language IR (there is no native
 //! text-language backend yet), so `build` is `check` plus the IR summary.
 
+use crate::registry::{blocks, BlockStore};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -262,22 +263,59 @@ fn block_library(root: &Path) -> Vec<PathBuf> {
     out
 }
 
-/// The source to actually compile: the block library prepended to the entry, so
-/// the parser records the library's `block` macros before the entry references
-/// them. The agent's entry carries only references. Returns `(path, is_temp)`;
-/// with no library this is the entry itself. (Line numbers in diagnostics shift
-/// by the prepended defs — a source-map is a future refinement.)
+/// The source to actually compile: every block the entry references, prepended
+/// so the parser records the `block` macros before the references. Blocks come
+/// from two tiers — the project's local `blocks/*.mg` library, then the shared
+/// content-addressed registry (`BlockStore`) for any handle the entry references
+/// but the local library doesn't define. The agent's entry carries only the
+/// references; definitions live off-context. Returns `(path, is_temp)`; with
+/// nothing to resolve this is the entry itself. (Line numbers in diagnostics
+/// shift by the prepended defs — a source-map is a future refinement.)
 fn resolve_entry(root: &Path, entry: &Path) -> Result<(PathBuf, bool), String> {
     let lib = block_library(root);
-    if lib.is_empty() {
+    let entry_src =
+        std::fs::read_to_string(entry).map_err(|e| format!("reading {}: {e}", entry.display()))?;
+
+    // Tier 1: the local library.
+    let mut local = String::new();
+    let mut defined: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for b in &lib {
+        let s = std::fs::read_to_string(b).map_err(|e| format!("reading {}: {e}", b.display()))?;
+        for name in blocks::block_names(&s) {
+            defined.insert(name);
+        }
+        local.push_str(&s);
+        local.push('\n');
+    }
+
+    // Tier 2: the shared registry. Pull any indexed block that is referenced
+    // (as a whole word) anywhere in the accumulating source but not yet defined.
+    // Fixpoint over the index handles blocks that reference other blocks; newly
+    // pulled defs are prepended so a dependency precedes its user.
+    let store = BlockStore::open_default();
+    let index = store.list();
+    let mut registry_defs: Vec<String> = Vec::new();
+    loop {
+        let scan = format!("{}{}{}", registry_defs.concat(), local, entry_src);
+        let mut added = false;
+        for h in &index {
+            if !defined.contains(&h.name) && blocks::mentions_word(&scan, &h.name) {
+                if let Some(def) = store.get_by_sha(&h.sha256) {
+                    registry_defs.insert(0, format!("{def}\n"));
+                    defined.insert(h.name.clone());
+                    added = true;
+                }
+            }
+        }
+        if !added {
+            break;
+        }
+    }
+
+    if lib.is_empty() && registry_defs.is_empty() {
         return Ok((entry.to_path_buf(), false));
     }
-    let mut src = String::new();
-    for b in &lib {
-        src.push_str(&std::fs::read_to_string(b).map_err(|e| format!("reading {}: {e}", b.display()))?);
-        src.push('\n');
-    }
-    src.push_str(&std::fs::read_to_string(entry).map_err(|e| format!("reading {}: {e}", entry.display()))?);
+    let src = format!("{}{}{}", registry_defs.concat(), local, entry_src);
     let tmp = root.join(".forge-resolved.mg");
     std::fs::write(&tmp, src).map_err(|e| format!("writing resolved source: {e}"))?;
     Ok((tmp, true))
@@ -442,13 +480,47 @@ pub fn block_list(start: &Path) -> Outcome {
             }
         }
     }
-    let fields: Vec<(&'static str, String)> =
+    let local = sigs.len();
+    let mut fields: Vec<(&'static str, String)> =
         sigs.iter().map(|s| ("block", s.clone())).collect();
+    // Also surface the shared registry (content-addressed, cross-project).
+    let registry = BlockStore::open_default().list();
+    for h in &registry {
+        fields.push(("registry", format!("{}  [{}]", h.signature, &h.sha256[..h.sha256.len().min(12)])));
+    }
     Outcome::ok(
         "block",
-        format!("{} block(s) in the library (blocks/)", sigs.len()),
+        format!(
+            "{local} local block(s) in blocks/, {} in the shared registry",
+            registry.len()
+        ),
         fields,
     )
+}
+
+/// `forge publish <file.mg>` — publish every `block` in the file to the shared
+/// content-addressed registry, so other projects can reference it by name. Each
+/// block is stored under its SHA-256 (deduplicated); prints the handles.
+pub fn publish_blocks(file: &Path) -> Outcome {
+    let src = match std::fs::read_to_string(file) {
+        Ok(s) => s,
+        Err(e) => return Outcome::err("publish", format!("reading {}: {e}", file.display())),
+    };
+    let store = BlockStore::open_default();
+    match store.publish_source(&src) {
+        Ok(handles) => {
+            let fields: Vec<(&'static str, String)> = handles
+                .iter()
+                .map(|h| ("published", format!("{} = {}", h.signature, h.sha256)))
+                .collect();
+            Outcome::ok(
+                "publish",
+                format!("published {} block(s) to the shared registry", handles.len()),
+                fields,
+            )
+        }
+        Err(e) => Outcome::err("publish", e),
+    }
 }
 
 /// `forge info` — the resolved manifest.
@@ -593,6 +665,42 @@ mod tests {
         assert!(!temp, "no library → no temp file");
         assert_eq!(path, entry);
         std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn resolve_entry_pulls_a_block_from_the_shared_registry() {
+        // With no local blocks/, a net that references a registry-published block
+        // by name must still resolve — its definition pulled from the shared
+        // content-addressed store, off-context.
+        let pid = std::process::id();
+        let reg = std::env::temp_dir().join(format!("forge_reg_{pid}"));
+        std::fs::remove_dir_all(&reg).ok();
+        // Unique name so concurrent tests reading FORGE_REGISTRY never match it.
+        let blk = format!("RegBlk{pid}");
+        let store = BlockStore::new(&reg);
+        store
+            .publish_source(&format!("block {blk}(d) {{ layer x: Linear(d, d); }}\n"))
+            .unwrap();
+
+        let root = std::env::temp_dir().join(format!("forge_regproj_{pid}"));
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        let entry = root.join("src/main.mg");
+        std::fs::write(&entry, format!("net N {{ stack 2 {{ {blk}(8) }} forward {{ x_0 }} }}\n")).unwrap();
+
+        // Point the default store at our temp registry for this resolution.
+        std::env::set_var("FORGE_REGISTRY", &reg);
+        let (path, temp) = resolve_entry(&root, &entry).unwrap();
+        std::env::remove_var("FORGE_REGISTRY");
+
+        assert!(temp, "registry pull produces a temp resolved file");
+        let src = std::fs::read_to_string(&path).unwrap();
+        assert!(src.contains(&format!("block {blk}(d)")), "registry def prepended");
+        assert!(
+            src.find("block ").unwrap() < src.find("net N").unwrap(),
+            "the pulled def must precede the entry"
+        );
+        std::fs::remove_dir_all(&root).ok();
+        std::fs::remove_dir_all(&reg).ok();
     }
 
     #[test]

@@ -1,3 +1,4 @@
+pub mod block;
 pub mod dependency;
 pub mod effect;
 pub mod metadata;
@@ -6,6 +7,7 @@ pub mod skb_rule;
 pub mod spec;
 pub mod version;
 
+pub use block::BlockHandle;
 pub use dependency::{Dependency, DependencySource};
 pub use effect::{EffectDecl, EffectMethod};
 pub use metadata::ModuleMetadata;
