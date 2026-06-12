@@ -38,8 +38,9 @@ programs to exact results. Full measured tables in [Benchmarks](#benchmarks-meas
 </div>
 
 MechGen is an **agentic-first** language: the *same* logic spans human-readable
-prose, agent-dense sigils, a declarative IR, and a byte-level binary — each a
-view of the one artifact, each measured. The prototype lexes, type-checks, and
+prose, agent-dense sigils, a declarative neural-net DSL, and the byte-level
+binary IR they lower to — each a view of the one artifact, each measured. The
+prototype lexes, type-checks, and
 **executes** general `.mg` programs, and lowers neural networks to a compact
 binary IR (Agentic Binary Language) run on a CPU/CUDA backend.
 
@@ -65,7 +66,7 @@ pub fn sum_even_squares(xs: [i32]~) -> i32 {
 +f sum_even_squares(xs) = fold(map(filter(xs, fn(x) => x % 2 == 0), fn(x) => x * x), 0, fn(a, b) => a + b)
 ```
 
-**3 · Intermediate representation** — neural networks declared, not hand-wired:
+**3 · High-level declarative form** — neural networks declared, not hand-wired (still source — it lowers to the binary IR in form 4):
 
 ```rust
 net MLP {
