@@ -108,9 +108,14 @@ block TransformerBlock(d, h, ff) {
 net GPT { layer embed: Embedding(50000, 256); stack 12 { TransformerBlock(256, 8, 1024) } forward { embed } }
 ```
 
-A `block` is a parameterized macro over layers (parser-level: recorded on the
-parser, emits no item, expands at the use site with params substituted — so
-nothing downstream changes). Measured (real cl100k BPE), full 12-layer GPT:
+A `block` is a parameterized macro over a **composition** (parser-level: recorded
+on the parser, emits no item, expands at the use site with params substituted —
+so nothing downstream changes). Its body is parsed exactly like a net's, so a
+block can itself be a `residual`/`wrap`/`branch` composition — the real
+transformer block, `wrap LayerNorm { residual { attn } residual { ffn } }`, *is*
+a publishable block. Each `stack`/direct instance renames the block's layers and
+their dataflow references in lock-step, so the structure survives repetition.
+Measured (real cl100k BPE), full 12-layer GPT:
 **block def + `stack 12 { Block(args) }` = 107 tokens** (vs 839 manual, 7.8×
 fewer) — and with the block as a **registry handle (def off-context) = 41
 tokens** (20.5× fewer). The block definition is paid once and amortizes across

@@ -13,7 +13,12 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 struct BlockDef {
     params: Vec<String>,
+    /// Every layer declared in the block body (the block's local symbol table).
     layers: Vec<LayerDef>,
+    /// The block body's dataflow structure over those layers — so a block can
+    /// itself be a `residual`/`wrap`/`branch` composition, not just a flat layer
+    /// stack. `Compose::Layer` leaves reference `layers` by name.
+    body: Vec<Compose>,
 }
 
 #[derive(Debug)]
@@ -77,6 +82,42 @@ fn subst_expr(e: &Expr, map: &HashMap<String, Expr>) -> Expr {
         },
         other => other.clone(),
     }
+}
+
+/// Suffix every layer name (used to make each `stack`/block instance unique).
+fn rename_layers(layers: &[LayerDef], suffix: &str) -> Vec<LayerDef> {
+    layers
+        .iter()
+        .map(|l| LayerDef {
+            name: format!("{}{}", l.name, suffix),
+            layer_type: l.layer_type.clone(),
+            args: l.args.clone(),
+        })
+        .collect()
+}
+
+/// Suffix every `Compose::Layer` reference (kept in lock-step with
+/// [`rename_layers`] so an instance's dataflow still points at its own layers).
+/// `Wrap`'s op is a layer *type*, not a declared layer — left untouched.
+fn rename_compose(items: &[Compose], suffix: &str) -> Vec<Compose> {
+    items.iter().map(|c| rename_compose_one(c, suffix)).collect()
+}
+
+fn rename_compose_one(c: &Compose, suffix: &str) -> Compose {
+    match c {
+        Compose::Layer(n) => Compose::Layer(format!("{n}{suffix}")),
+        Compose::Residual(b) => Compose::Residual(rename_compose(b, suffix)),
+        Compose::Wrap(op, b) => Compose::Wrap(op.clone(), rename_compose(b, suffix)),
+        Compose::Branch(paths) => {
+            Compose::Branch(paths.iter().map(|p| rename_compose(p, suffix)).collect())
+        }
+    }
+}
+
+/// Whether a compose body carries any real dataflow (a `residual`/`branch`/`wrap`
+/// node) — i.e. it must drive lowering instead of plain declaration order.
+fn compose_has_dataflow(items: &[Compose]) -> bool {
+    items.iter().any(|c| !matches!(c, Compose::Layer(_)))
 }
 
 struct Parser<'a> {
@@ -275,34 +316,29 @@ impl<'a> Parser<'a> {
             }
             self.expect(TokenKind::RParen)?;
         }
-        self.expect(TokenKind::LBrace)?;
+        // The body may itself compose with `residual`/`wrap`/`branch`, so it is
+        // parsed exactly like a net's dataflow body (which also collects every
+        // declared layer). A block referencing another already-defined block is
+        // fine; it cannot reference itself (not yet inserted).
         let mut layers = Vec::new();
-        while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
-            match self.peek() {
-                TokenKind::KwLayer => {
-                    self.advance();
-                    layers.push(self.parse_layer_body()?);
-                }
-                TokenKind::Semi | TokenKind::Comma => {
-                    self.advance();
-                }
-                _ => return Err(self.error("expected `layer` inside `block { … }`")),
-            }
-        }
-        self.expect(TokenKind::RBrace)?;
-        self.blocks.insert(name, BlockDef { params, layers });
+        let body = self.parse_compose_body(&mut layers)?;
+        self.blocks.insert(name, BlockDef { params, layers, body });
         Ok(())
     }
 
-    /// If the cursor is on a known block reference `Name(args)`, expand the
-    /// block's layers (params substituted) into `out` and return true.
-    fn try_expand_block_ref(&mut self, out: &mut Vec<LayerDef>) -> Result<bool, ParseError> {
+    /// If the cursor is on a known block reference `Name(args)`, consume it and
+    /// return the block's (layers, body) with params substituted into the layer
+    /// args. Names are returned unsuffixed; callers (e.g. `stack`) rename them
+    /// for each instance. Returns `None` if the cursor is not a block reference.
+    fn expand_block_ref(
+        &mut self,
+    ) -> Result<Option<(Vec<LayerDef>, Vec<Compose>)>, ParseError> {
         if self.peek() != TokenKind::Ident {
-            return Ok(false);
+            return Ok(None);
         }
         let name = self.current().text.clone();
         if !self.blocks.contains_key(&name) {
-            return Ok(false);
+            return Ok(None);
         }
         self.advance(); // block name
         let mut args = Vec::new();
@@ -320,16 +356,17 @@ impl<'a> Parser<'a> {
             self.advance();
         }
         let block = self.blocks[&name].clone();
-        let subst: HashMap<String, Expr> =
-            block.params.iter().cloned().zip(args).collect();
-        for l in &block.layers {
-            out.push(LayerDef {
+        let subst: HashMap<String, Expr> = block.params.iter().cloned().zip(args).collect();
+        let layers = block
+            .layers
+            .iter()
+            .map(|l| LayerDef {
                 name: l.name.clone(),
                 layer_type: l.layer_type.clone(),
                 args: l.args.iter().map(|a| subst_expr(a, &subst)).collect(),
-            });
-        }
-        Ok(true)
+            })
+            .collect();
+        Ok(Some((layers, block.body.clone())))
     }
 
     // ── Item ────────────────────────────────────────────────
@@ -1409,37 +1446,19 @@ impl<'a> Parser<'a> {
                     } else {
                         return Err(self.error("expected a repeat count after `stack`"));
                     };
-                    self.expect(TokenKind::LBrace)?;
-                    let mut sbody = Vec::new();
-                    while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
-                        match self.peek() {
-                            TokenKind::KwLayer => {
-                                self.advance();
-                                sbody.push(self.parse_layer_body()?);
-                            }
-                            TokenKind::Semi | TokenKind::Comma => {
-                                self.advance();
-                            }
-                            // A `block` reference repeated by the stack.
-                            TokenKind::Ident if self.blocks.contains_key(&self.current().text) => {
-                                self.try_expand_block_ref(&mut sbody)?;
-                            }
-                            _ => return Err(self.error(
-                                "expected `layer` or a block reference inside `stack { … }`",
-                            )),
-                        }
+                    // Parse the stack body ONCE as a (layers, dataflow) template,
+                    // then instantiate it `count` times with names suffixed `_<i>`
+                    // (both the layers and their `Compose` references), so a stack
+                    // of `residual`/`wrap`/`branch` blocks keeps its structure.
+                    let mut tmpl_layers = Vec::new();
+                    let tmpl_body = self.parse_compose_body(&mut tmpl_layers)?;
+                    if compose_has_dataflow(&tmpl_body) {
+                        has_dataflow = true;
                     }
-                    self.expect(TokenKind::RBrace)?;
                     for i in 0..count {
-                        for l in &sbody {
-                            let name = format!("{}_{i}", l.name);
-                            body.push(Compose::Layer(name.clone()));
-                            layers.push(LayerDef {
-                                name,
-                                layer_type: l.layer_type.clone(),
-                                args: l.args.clone(),
-                            });
-                        }
+                        let sfx = format!("_{i}");
+                        layers.extend(rename_layers(&tmpl_layers, &sfx));
+                        body.extend(rename_compose(&tmpl_body, &sfx));
                     }
                 }
                 // `residual { … }` — wrap the body in `x + f(x)` (RMIL RES_ADD).
@@ -1479,10 +1498,12 @@ impl<'a> Parser<'a> {
                 }
                 // A `block` reference used directly in the net body.
                 TokenKind::Ident if self.blocks.contains_key(&self.current().text) => {
-                    let before = layers.len();
-                    self.try_expand_block_ref(&mut layers)?;
-                    for l in &layers[before..] {
-                        body.push(Compose::Layer(l.name.clone()));
+                    if let Some((blk_layers, blk_body)) = self.expand_block_ref()? {
+                        if compose_has_dataflow(&blk_body) {
+                            has_dataflow = true;
+                        }
+                        layers.extend(blk_layers);
+                        body.extend(blk_body);
                     }
                 }
                 _ => {
@@ -1550,10 +1571,9 @@ impl<'a> Parser<'a> {
                     items.push(Compose::Branch(paths));
                 }
                 TokenKind::Ident if self.blocks.contains_key(&self.current().text) => {
-                    let before = layers_out.len();
-                    self.try_expand_block_ref(layers_out)?;
-                    for l in &layers_out[before..] {
-                        items.push(Compose::Layer(l.name.clone()));
+                    if let Some((blk_layers, blk_body)) = self.expand_block_ref()? {
+                        layers_out.extend(blk_layers);
+                        items.extend(blk_body);
                     }
                 }
                 _ => {

@@ -2095,6 +2095,33 @@ mod tests {
     }
 
     #[test]
+    fn block_can_hold_dataflow_combinators() {
+        // A block whose body is a residual/wrap composition — referenced by a net,
+        // it must lower to the RES_ADD/LAYER_NORM structure, not flat layers.
+        let t = translate_src(
+            "block Blk(d) { wrap LayerNorm { residual { layer a: Linear(d, d); } } } \
+             net N { Blk(8) }",
+        );
+        assert!(t.unknown_layers.is_empty());
+        assert_eq!(count_op(&t.expr, Op::RES_ADD), 1, "residual inside the block");
+        assert_eq!(count_op(&t.expr, Op::LAYER_NORM), 2, "wrap sandwich inside the block");
+    }
+
+    #[test]
+    fn stack_of_residual_blocks_repeats_the_structure() {
+        // `stack 3 { Blk }` where Blk is a residual block → 3 RES_ADD nodes, and
+        // the per-instance layers stay distinct (renamed _0/_1/_2).
+        let t = translate_src(
+            "block Blk(d) { residual { layer a: Linear(d, d); } } \
+             net N { stack 3 { Blk(8) } forward { a_0 } }",
+        );
+        assert_eq!(count_op(&t.expr, Op::RES_ADD), 3, "one residual per stack instance");
+        // Fold/expand round-trips with the residual structure present.
+        let folded = fold_repeats(&t.expr);
+        assert_eq!(expand_repeats(&folded), t.expr);
+    }
+
+    #[test]
     fn plain_net_has_no_composition_and_is_unchanged() {
         // A net with no dataflow operator must carry composition: None and lower
         // byte-identically to declaration order (zero regression).
