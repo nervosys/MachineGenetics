@@ -271,6 +271,10 @@ impl Interp {
             Expr::Ident { name } => match env.get(name) {
                 Some(v) => Ok(v),
                 None if name == "None" => Ok(Value::Opt(None)),
+                // `true`/`false` lex as bare identifiers (the canonical bool
+                // literals are `1b`/`0b`); map the words so both forms work.
+                None if name == "true" => Ok(Value::Bool(true)),
+                None if name == "false" => Ok(Value::Bool(false)),
                 None => Ok(Value::Func(name.clone())),
             },
             Expr::Await { expr } => {
@@ -292,7 +296,8 @@ impl Interp {
                 match (op.as_str(), v) {
                     ("-", Value::Int(n)) => Ok(Value::Int(-n)),
                     ("-", Value::Float(f)) => Ok(Value::Float(-f)),
-                    ("!", Value::Bool(b)) => Ok(Value::Bool(!b)),
+                    // `!` negates truthiness, so `!0` / `![]` work, not just bools.
+                    ("!", v) => Ok(Value::Bool(!truthy(&v))),
                     (o, _) => err(format!("unsupported unary `{o}`")),
                 }
             }
@@ -1237,6 +1242,12 @@ fn binop(op: &str, l: Value, r: Value) -> R {
         ("/", Float(a), Float(b)) => Ok(Float(a / b)),
         ("%", Float(a), Float(b)) => Ok(Float(a % b)),
         ("+", Str(a), Str(b)) => Ok(Str(a + &b)),
+        // List concatenation: `[1,2] + [3,4]` => `[1,2,3,4]` (so fold over a
+        // list accumulator works: `fold(xs, [], fn(a, x) => a + [f(x)])`).
+        ("+", List(mut a), List(b)) => {
+            a.extend(b);
+            Ok(List(a))
+        }
         // Bitwise / shift operators on integers (`|` is bit-or, hence closures
         // are written `fn(x)`, not `|x|`). Shift counts are masked to 0..63.
         ("&", Int(a), Int(b)) => Ok(Int(a & b)),
@@ -1266,7 +1277,9 @@ fn parse_literal(value: &str, kind: &LiteralKind) -> R {
     match kind {
         LiteralKind::Int | LiteralKind::Byte => parse_int_literal(value).map(Value::Int),
         LiteralKind::Float => parse_float_literal(value).map(Value::Float),
-        LiteralKind::Bool => Ok(Value::Bool(value == "true")),
+        // Bool literals: canonical `1b`/`0b` (the lexer keeps the text) and the
+        // Rust-style words `true`/`false`. Anything else (incl. `0b`) is false.
+        LiteralKind::Bool => Ok(Value::Bool(value == "true" || value == "1b")),
         LiteralKind::String | LiteralKind::FormatString => {
             Ok(Value::Str(unescape(value.trim_matches('"'))))
         }
@@ -1553,6 +1566,10 @@ mod tests {
             ("f s(){ sum([10, 20, 30, 40, 50][1..3]) }", "s", &[], Value::Int(50)),
             ("f s(){ sum([1, 2, 3, 4, 5][2..]) + len([1,2,3,4,5][..2]) }", "s", &[], Value::Int(14)),
             ("f s(){ \"hello world\"[0..5] }", "s", &[], Value::Str("hello".into())),
+            // Boolean literals (`1b`/`true` were silently false), `!` on a
+            // non-bool, and list concatenation with `+`.
+            ("f s(){ var n = 0\n if true { n += 1 }\n if 1b { n += 10 }\n if !0 { n += 100 }\n if !false { n += 1000 }\n n }", "s", &[], Value::Int(1111)),
+            ("f s(){ sum(fold([1,2,3], [], fn(a, x) => a + [x * x])) + len([1,2] + [3,4,5]) }", "s", &[], Value::Int(19)),
         ];
         let mut ok = 0;
         for (src, f, args, want) in cases {
