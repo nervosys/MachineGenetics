@@ -219,3 +219,16 @@ gate is the high-value floor.)
 - The operators must stay **few and orthogonal**; every new named composition
   that isn't expressible from the algebra is a smell (re-derive it from
   `stack`/`residual`/`branch`/`wrap` + leaf blocks instead).
+
+## 7. Run the whole thing
+
+`benchmarks/capstone/run.sh` threads every piece into one reproducible command —
+`forge publish` a block → an agent writes a 12-deep GPT as a ~41-token registry
+handle → `forge check` resolves it off-context and shape-gates it (with a
+rejected negative control) → `forge build` emits the REPEAT-folded binary
+(measured O(1) in depth, ~1.1×) → the artifact executes (the transformer core
+dispatches all 72 ops; a `residual` computes `x + relu(x)`). All live and
+measured; isolated, self-cleaning workspace; no absolute paths. Two limits it
+surfaces honestly: `block` macros hold plain `layer`s (not yet the dataflow
+combinators), and the leading `Embedding`→`Attention` path needs 3-D batched
+attention, so the execution proof uses the transformer body.
