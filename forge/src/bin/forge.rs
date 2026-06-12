@@ -57,6 +57,7 @@ fn main() {
         Some("build") => emit(project::build(&cwd), json),
         Some("run") => emit(project::run(&cwd, args.get(1).copied()), json),
         Some("fmt") => emit(project::fmt(&cwd, raw.iter().any(|a| a == "--human")), json),
+        Some("block") => emit(project::block_list(&cwd), json),
         Some("info") => emit(project::info(&cwd), json),
 
         Some("--help") | Some("-h") | Some("help") | None => print_help(),

@@ -245,6 +245,44 @@ fn json_escape(s: &str) -> String {
     out
 }
 
+/// The project's **block library**: `<root>/blocks/*.mg`, each a published
+/// `block` macro the entry can reference without carrying its definition inline
+/// (the registry-handle workflow, local form). Sorted for determinism.
+fn block_library(root: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    if let Ok(rd) = std::fs::read_dir(root.join("blocks")) {
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.extension().and_then(|s| s.to_str()) == Some("mg") {
+                out.push(p);
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// The source to actually compile: the block library prepended to the entry, so
+/// the parser records the library's `block` macros before the entry references
+/// them. The agent's entry carries only references. Returns `(path, is_temp)`;
+/// with no library this is the entry itself. (Line numbers in diagnostics shift
+/// by the prepended defs — a source-map is a future refinement.)
+fn resolve_entry(root: &Path, entry: &Path) -> Result<(PathBuf, bool), String> {
+    let lib = block_library(root);
+    if lib.is_empty() {
+        return Ok((entry.to_path_buf(), false));
+    }
+    let mut src = String::new();
+    for b in &lib {
+        src.push_str(&std::fs::read_to_string(b).map_err(|e| format!("reading {}: {e}", b.display()))?);
+        src.push('\n');
+    }
+    src.push_str(&std::fs::read_to_string(entry).map_err(|e| format!("reading {}: {e}", entry.display()))?);
+    let tmp = root.join(".forge-resolved.mg");
+    std::fs::write(&tmp, src).map_err(|e| format!("writing resolved source: {e}"))?;
+    Ok((tmp, true))
+}
+
 /// Resolve a project + its entry file, or an `Outcome` error.
 fn resolved(command: &'static str, start: &Path) -> Result<(Project, PathBuf, PathBuf), Outcome> {
     let proj = Project::discover(start).map_err(|e| Outcome::err(command, e))?;
@@ -263,11 +301,25 @@ pub fn check(start: &Path) -> Outcome {
         Err(o) => return o,
     };
     let m = &proj.manifest.module;
-    match run_compiler_quiet(&mg, &[&entry.to_string_lossy()], &proj.root) {
+    let (target, temp) = match resolve_entry(&proj.root, &entry) {
+        Ok(v) => v,
+        Err(e) => return Outcome::err("check", e),
+    };
+    let nblocks = block_library(&proj.root).len();
+    let r = run_compiler_quiet(&mg, &[&target.to_string_lossy()], &proj.root);
+    if temp {
+        let _ = std::fs::remove_file(&target);
+    }
+    match r {
         Ok(_) => Outcome::ok(
             "check",
             format!("✓ check passed: {} v{}", m.name, m.version),
-            vec![("project", m.name.clone()), ("version", m.version.clone()), ("entry", proj.manifest.entry().to_string())],
+            vec![
+                ("project", m.name.clone()),
+                ("version", m.version.clone()),
+                ("entry", proj.manifest.entry().to_string()),
+                ("blocks", nblocks.to_string()),
+            ],
         ),
         Err(e) => Outcome::err("check", e),
     }
@@ -280,11 +332,20 @@ pub fn build(start: &Path) -> Outcome {
         Err(o) => return o,
     };
     let m = &proj.manifest.module;
-    if let Err(e) = run_compiler_quiet(&mg, &[&entry.to_string_lossy()], &proj.root) {
+    let (target, temp) = match resolve_entry(&proj.root, &entry) {
+        Ok(v) => v,
+        Err(e) => return Outcome::err("build", e),
+    };
+    let nblocks = block_library(&proj.root).len();
+    let ts = target.to_string_lossy().into_owned();
+    if let Err(e) = run_compiler_quiet(&mg, &[&ts], &proj.root) {
+        if temp {
+            let _ = std::fs::remove_file(&target);
+        }
         return Outcome::err("build", e);
     }
     let mut ir = String::new();
-    if let Ok(out) = run_compiler_quiet(&mg, &["--target=abl", &entry.to_string_lossy()], &proj.root) {
+    if let Ok(out) = run_compiler_quiet(&mg, &["--target=abl", &ts], &proj.root) {
         ir = out
             .lines()
             .filter(|l| l.trim_start().starts_with("//"))
@@ -292,10 +353,18 @@ pub fn build(start: &Path) -> Outcome {
             .collect::<Vec<_>>()
             .join("; ");
     }
+    if temp {
+        let _ = std::fs::remove_file(&target);
+    }
     Outcome::ok(
         "build",
         format!("✓ build complete: {} v{} (checked + lowered through the binary IR)", m.name, m.version),
-        vec![("project", m.name.clone()), ("version", m.version.clone()), ("ir", ir)],
+        vec![
+            ("project", m.name.clone()),
+            ("version", m.version.clone()),
+            ("blocks", nblocks.to_string()),
+            ("ir", ir),
+        ],
     )
 }
 
@@ -349,6 +418,37 @@ pub fn fmt(start: &Path, human: bool) -> Outcome {
         }
         Err(e) => Outcome::err("fmt", e),
     }
+}
+
+/// `forge block` — list the block library (the registry's `describe`: an agent
+/// learns the available blocks and their params without carrying their bodies).
+pub fn block_list(start: &Path) -> Outcome {
+    let proj = match Project::discover(start) {
+        Ok(p) => p,
+        Err(e) => return Outcome::err("block", e),
+    };
+    let mut sigs = Vec::new();
+    for f in block_library(&proj.root) {
+        if let Ok(s) = std::fs::read_to_string(&f) {
+            for line in s.lines() {
+                let t = line.trim();
+                if let Some(rest) = t.strip_prefix("block ") {
+                    // keep up to the opening brace: `Name(p1, p2)`
+                    let sig = rest.split('{').next().unwrap_or(rest).trim().to_string();
+                    if !sig.is_empty() {
+                        sigs.push(sig);
+                    }
+                }
+            }
+        }
+    }
+    let fields: Vec<(&'static str, String)> =
+        sigs.iter().map(|s| ("block", s.clone())).collect();
+    Outcome::ok(
+        "block",
+        format!("{} block(s) in the library (blocks/)", sigs.len()),
+        fields,
+    )
 }
 
 /// `forge info` — the resolved manifest.
@@ -455,6 +555,43 @@ mod tests {
         let found = Project::discover(&proj.join("src/deep")).unwrap();
         assert_eq!(found.manifest.module.name, "p");
         assert_eq!(found.root, proj);
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn block_library_resolves_handles() {
+        // A net references a block by handle; resolution prepends the library
+        // definition so the entry carries only the reference.
+        let base = std::env::temp_dir().join(format!("forge_blk_{}", std::process::id()));
+        let root = base.join("proj");
+        std::fs::create_dir_all(root.join("blocks")).unwrap();
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::write(root.join("blocks/b.mg"), "block B(d) { layer x: Linear(d, d); }\n").unwrap();
+        let entry = root.join("src/main.mg");
+        std::fs::write(&entry, "net N { stack 2 { B(8) } forward { x_0 } }\n").unwrap();
+
+        assert_eq!(block_library(&root).len(), 1, "one library block");
+        let (path, temp) = resolve_entry(&root, &entry).unwrap();
+        assert!(temp, "produces a temp resolved file");
+        let src = std::fs::read_to_string(&path).unwrap();
+        assert!(src.contains("block B(d)"), "library def prepended");
+        assert!(src.contains("net N"), "entry appended");
+        assert!(
+            src.find("block B").unwrap() < src.find("net N").unwrap(),
+            "defs must precede the entry that references them"
+        );
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn no_library_leaves_entry_untouched() {
+        let base = std::env::temp_dir().join(format!("forge_nolib_{}", std::process::id()));
+        std::fs::create_dir_all(&base).unwrap();
+        let entry = base.join("main.mg");
+        std::fs::write(&entry, "net N {}\n").unwrap();
+        let (path, temp) = resolve_entry(&base, &entry).unwrap();
+        assert!(!temp, "no library → no temp file");
+        assert_eq!(path, entry);
         std::fs::remove_dir_all(&base).ok();
     }
 
