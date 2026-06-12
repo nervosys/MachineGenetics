@@ -85,3 +85,4 @@ flake.lock
 # Before adding new lines, see the comment at the top.
 .git.standalone-backup/
 RecursiveMachineIntelligence/.git.standalone-backup/
+.forge-resolved.mg

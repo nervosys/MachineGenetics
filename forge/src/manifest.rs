@@ -89,6 +89,16 @@ pub const COMMANDS: &[ForgeCommand] = &[
                  With --json: {command, project, entry, surface, ok, error?}.",
     },
     ForgeCommand {
+        name: "block",
+        args: "[--json]",
+        summary: "list the block library (registry blocks a net can reference)",
+        effect: "read_local",
+        detail: "Lists `block Name(params)` macros under blocks/. A net references one by\n\
+                 name (`stack N { Name(args) }`) and `check`/`build` resolve its definition\n\
+                 from the library — so the agent's source carries the reference, not the body.\n\
+                 The registry-handle workflow in local form. With --json: {command, ok, block:[…]}.",
+    },
+    ForgeCommand {
         name: "info",
         args: "[--json]",
         summary: "print the resolved manifest (name, version, entry, …)",
