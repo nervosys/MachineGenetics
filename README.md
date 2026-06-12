@@ -12,17 +12,28 @@
 
 <div align="center">
 
-### Measured vs traditional human-first languages
+### Agentic-SWE scorecard — MechGen vs traditional languages
 
-*Identical 5 tasks, **actually compiled and run** on the host, **real cl100k BPE** tokens — not estimates ([reproduce](benchmarks/cross_lang/run.sh)).*
+*`agentic-eval`'s four agentic axes (0–1) + composite, across the profiled
+languages. MechGen ranks **#1 of implemented languages** — only the unreachable
+`ideal` design-target ceiling scores higher.*
 
-| | **MechGen** | JavaScript | TypeScript | Go | Rust | Java |
+| Language | token | determ | reliab | safety | **fitness** | SWE-wt¹ |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|
-| Executes (5/5) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Real tokens | **173** | 199 | 220 | 271 | 275 | 297 |
-| vs MechGen | **1.00×** | 1.15× | 1.27× | 1.57× | 1.59× | 1.72× |
+| **MechGen** | 0.80 | **0.97** | 0.94 | **0.95** | **0.915** | **0.930** |
+| Rust | 0.55 | 0.90 | **0.95** | 0.80 | 0.800 | 0.845 |
+| Go | 0.60 | 0.85 | 0.70 | 0.55 | 0.675 | 0.700 |
+| Java | 0.40 | 0.75 | 0.70 | 0.60 | 0.612 | 0.650 |
+| TypeScript | 0.65 | 0.55 | 0.70 | 0.40 | 0.575 | 0.588 |
+| Python | **0.85** | 0.45 | 0.45 | 0.35 | 0.525 | 0.490 |
+| *`ideal` (ceiling)* | 0.85 | 0.97 | 0.95 | 0.96 | *0.932* | *0.943* |
 
-**Tersest of every runnable language — and it runs.** General-purpose programs execute end to end: the evaluator's correctness suite computes **73 / 73** programs to exact results.
+<sub>¹ SWE-weighted = reliability·.35 + determinism·.30 + safety·.20 + token·.15. The four axes are `agentic-eval`'s **curated, bias-audited** judgments (`--example swe_languages`).</sub>
+
+**Measured anchor** (compile+run, real BPE — *not* curated): MechGen **executes
+5/5** of the cross-language task suite and is the **tersest** runnable language
+(**173** cl100k tokens vs Rust 275, Java 297); `eval_bench` computes **73/73**
+programs to exact results. Full measured tables in [Benchmarks](#benchmarks-measured).
 
 </div>
 
@@ -134,35 +145,20 @@ output deterministic, and makes discovery **2.36× cheaper in real tokens *and*
 parseable**. The one measured cost is +3 tokens (12%) per structured result —
 reported, not hidden.
 
-**Full agentic-SWE profile (`agentic-eval` language axes — curated, *not* measured).**
-The complete agentic-SWE scorecard: four 0–1 axes and their composite, across the
-profiled languages (`agentic-eval --example swe_languages`). These are encoded,
-**bias-audited judgments** — distinct from the measured tables above — included
-here so the picture is complete:
+The **full agentic-SWE scorecard** (`agentic-eval`'s four 0–1 axes + composite
+across all profiled languages) is the table at the [top of this
+README](#machinegenetics-mechgen); falsifiable guards hold there: token (0.80) ≤
+Python (0.85), reliability (0.94) ≤ Rust (0.95), no axis ≥ 0.98 (it is a
+prototype). Reproduce with `agentic-eval --example swe_languages`.
 
-| Language | token | determ | reliab | safety | **fitness** | SWE-weighted¹ |
-|---|:--:|:--:|:--:|:--:|:--:|:--:|
-| **MechGen** | 0.80 | **0.97** | 0.94 | **0.95** | **0.915** | **0.930** |
-| Rust | 0.55 | 0.90 | **0.95** | 0.80 | 0.800 | 0.845 |
-| Go | 0.60 | 0.85 | 0.70 | 0.55 | 0.675 | 0.700 |
-| Java | 0.40 | 0.75 | 0.70 | 0.60 | 0.612 | 0.650 |
-| TypeScript | 0.65 | 0.55 | 0.70 | 0.40 | 0.575 | 0.588 |
-| Python | **0.85** | 0.45 | 0.45 | 0.35 | 0.525 | 0.490 |
-| *`ideal` (ceiling)* | 0.85 | 0.97 | 0.95 | 0.96 | *0.932* | *0.943* |
-
-¹ SWE-weighted = reliability ·0.35 + determinism ·0.30 + safety ·0.20 + token ·0.15.
-MechGen ranks **#1 of implemented languages** on both the unweighted composite and
-the SWE weighting; only the unreachable `ideal` design-target ceiling scores above
-it. Falsifiable guards hold: token (0.80) ≤ Python (0.85); reliability (0.94) ≤
-Rust (0.95); no axis ≥ 0.98 (it is a prototype).
-
-> **Honesty.** Two kinds of number sit here, kept distinct. **Measured** (compile+
-> run, real BPE, sha256, JSON-parse): the executability/terseness, eval-bench,
-> and agentic-toolchain tables. **Curated** (`agentic-eval`'s 0–1 language axes):
-> the four-axis profile directly above — judgments, bias-audited (scores were
-> corrected *down* on evidence; this is the project's own language). Executability
-> is a gate, not a parity claim — the runtime is a young tree-walker (no JIT;
-> `await` is run-to-completion) on curated tasks, not an application corpus.
+> **Honesty.** Two kinds of number appear in this README, kept distinct.
+> **Measured** (compile+run, real BPE, sha256, JSON-parse): the executability/
+> terseness, eval-bench, and agentic-toolchain tables. **Curated** (`agentic-eval`'s
+> 0–1 language axes): the four-axis scorecard at the top — encoded judgments,
+> bias-audited (scores were corrected *down* on evidence; this is the project's
+> own language). Executability is a gate, not a parity claim — the runtime is a
+> young tree-walker (no JIT; `await` is run-to-completion) on curated tasks, not
+> an application corpus.
 
 ## Why MechGen?
 
