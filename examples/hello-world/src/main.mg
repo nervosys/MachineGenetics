@@ -1,32 +1,14 @@
-// hello-world — Minimal MechGen program.
+// hello-world — a minimal, runnable MechGen program.
 //
-// Demonstrates:
-//   - Entry point (pub fn main)
-//   - Value binding (val) — replaces `let`
-//   - Mutable variable (var) — replaces `val mut`
-//   - String type (String)
-//   - Print macro (println!("..."))
-//   - Format strings (format!("..."))
+// `forge run` evaluates `main` and prints its result. This `main` returns a
+// formatted greeting (the evaluator has no side-effecting I/O yet), showing:
+//   - value bindings (val) and f-string interpolation `f"…{expr}…"`
+//   - the standard vocabulary (len) over a string
+//
+// Run:  forge run        (or:  MechGen-parse --eval src/main.mg main)
 
-pub fn main() {
-    // Simple print.
-    println!("Hello, MechGen!");
-
-    // Value binding: immutable by default.
-    val name: String = "World";
-    val greeting: String = format!("Hello, {name}!");
-    println!("{greeting}");
-
-    // Mutable variable.
-    var counter: i32 = 0;
-    counter = counter + 1;
-    println!("Counter: {counter}");
-
-    // Boolean literals.
-    val is_mechgen: bool = true;
-    val is_legacy: bool = false;
-    println!("is_mechgen={is_mechgen}, is_legacy={is_legacy}");
-
-    // Return value (implicit — last expression).
-    println!("Goodbye!");
+f main() {
+    val name = "MechGen"
+    val n = len(name)
+    f"Hello, {name}! (your name has {n} letters)"
 }

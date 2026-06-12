@@ -307,8 +307,8 @@ Twelve self-contained projects in [`examples/`](examples/), each with a
 
 | Project                                                | Focus                            |
 | ------------------------------------------------------ | -------------------------------- |
-| [hello-world](examples/hello-world/)                   | Entry point, printing, variables |
-| [data-structures](examples/data-structures/)           | Structs, enums, generics, traits |
+| ✅ [hello-world](examples/hello-world/)                | Bindings, f-strings, vocabulary — `forge run`-able |
+| ✅ [data-structures](examples/data-structures/)        | Structs, pattern matching, map/sum/min — `forge run`-able |
 | [http-client](examples/http-client/)                   | Async HTTP, effects, JSON        |
 | [cli-tool](examples/cli-tool/)                         | File I/O, iterators, arguments   |
 | [agent-swarm](examples/agent-swarm/)                   | Multi-agent coordination         |
@@ -320,12 +320,14 @@ Twelve self-contained projects in [`examples/`](examples/), each with a
 | [multilang-bindings](examples/multilang-bindings/)     | FFI bridge (C, Python, WASM)     |
 | [cost-aware-optimizer](examples/cost-aware-optimizer/) | Cost-model strategy selection    |
 
-> These projects are driven by the [Forge toolchain](#quick-start) (`forge
-> check` / `forge build` / `forge run`), but their `.mg` sources exercise the
-> full *intended* surface and predate the current checker — not all `forge
-> check` clean yet. `forge new` scaffolds a project that does. For `.mg` programs
-> that **check and run today**, see [`prototype/examples/`](prototype/examples/)
-> (e.g. `agent_rpn.mg`, the `net` examples) and the `--eval` quick start above.
+> The ✅ examples **`forge check` and `forge run` today** (`cd
+> examples/hello-world && forge run`). The rest exercise the full *intended*
+> surface — async HTTP, FFI, swarm coordination, hot reload — which the prototype
+> evaluator does not execute yet; they are scaffolds for the
+> [roadmap](ROADMAP.md), not runnable demos. `forge new` also scaffolds a project
+> that checks and runs out of the box. More `.mg` programs that run today live in
+> [`prototype/examples/`](prototype/examples/) (e.g. `agent_rpn.mg`, the `net`
+> examples).
 
 ## Documentation
 
