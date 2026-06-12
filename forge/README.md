@@ -20,6 +20,7 @@ forge new <name>     # scaffold Forge.toml + src/main.mg (checks + runs as-is)
 forge check          # parse + typecheck the entry point
 forge build          # check, then lower through the Agentic Binary Language IR
 forge run [fn]       # execute the entry function (default: the manifest's `main`)
+forge fmt [--human]  # reformat the entry in place (agent or human surface)
 forge info           # print the resolved manifest
 ```
 
