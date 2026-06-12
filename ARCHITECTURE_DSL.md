@@ -96,15 +96,20 @@ fewer) — and with the block as a **registry handle (def off-context) = 41
 tokens** (20.5× fewer). The block definition is paid once and amortizes across
 every net that reuses it; a registry keeps it out of context entirely.
 
-### 4.3 Registry handles (the knowledgebase) ◻
+### 4.3 Registry handles (the knowledgebase) ✅ (local library; networked registry ◻)
 
-The leaf library is the **Forge registry** (`forge/`, capability-indexed,
-contract-typed, dedup by SHA-256). A block published to Forge is referenced by a
-**single-token handle**; the full definition is fetched on demand via the
-ontology's progressive disclosure (`manifest`/`describe`) — so the agent
-*discovers* blocks without carrying the KB in context. This is the
-already-built `forge` toolchain + registry + the agentic `manifest --json`
-surface, connected to the `net` DSL.
+The leaf library is a project's `blocks/*.mg`. `forge check`/`build` resolve a
+handle by prepending the library's `block` macro to the entry, so the agent's
+source references a block by name while its definition lives off-context.
+`forge block` lists the library (the registry's `describe` — progressive
+disclosure). Verified end to end: an agent's `src/main.mg` = the 41-token net;
+`forge` resolves `TransformerBlock` from `blocks/` and compiles + lowers to ABL.
+
+Next ◻: connect this to the **networked Forge registry server** (capability-
+indexed, contract-typed, SHA-256 dedup — already built in `forge/`) so blocks are
+shared/published, and make the handle a true single BPE token. Known limit: the
+local-library resolution shifts diagnostic line numbers by the prepended defs (a
+source-map is the refinement).
 
 ### 4.4 Binary dedup — a REPEAT op ◻
 
@@ -128,9 +133,9 @@ blocks' output/input shapes unify, so "arbitrarily selected and composed" is
 - `stack` ✅ — token cost O(1) in depth (10.2×, measured).
 - named `block` + reference ✅ — 12-layer GPT = 107 tokens (block def + stack
   ref), ≈1.34× a single block; **41 tokens** with the block off-context.
-- registry handle ◻ — referencing a *published* block keeps its def out of the
-  agent's context (the 41-token result above simulates this); next: a single-token
-  Forge handle fetched via `describe`.
+- registry handle ✅ (local) — `forge` resolves a `blocks/` handle; the agent's
+  net is 41 tokens, the def off-context; `forge block` lists the library. Next ◻:
+  the networked Forge registry + a true single-token handle.
 - ABL `REPEAT` — 12-block container ≤ **1.5×** the 1-block container (vs 9.6×
   today).
 - typed composition — a shape-mismatched `stack`/`branch` is rejected at
