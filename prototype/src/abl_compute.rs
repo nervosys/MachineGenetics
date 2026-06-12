@@ -1066,6 +1066,26 @@ fn dispatch_attention(
     handle: &TensorHandle,
     params: &mut ParamStore,
 ) -> Result<TensorHandle, rmi::error::RmiError> {
+    // Batched input `[batch, seq, dim]` (e.g. the output of an `Embedding`): run
+    // attention independently per batch element and stack the results — a flat
+    // `[batch*seq, dim]` reshape would wrongly let one batch element attend to
+    // another. Recurses on the 2-D path below for each `[seq, dim]` slice.
+    if handle.shape.len() == 3 {
+        let (b, s, d) = (handle.shape[0], handle.shape[1], handle.shape[2]);
+        let flat = bytes_to_f32(&backend.copy_to_host(handle)?);
+        let mut out: Vec<f32> = Vec::with_capacity(flat.len());
+        let mut inner_shape = vec![s, d];
+        for bi in 0..b {
+            let slice = backend.from_slice_f32(&flat[bi * s * d..(bi + 1) * s * d], &[s, d])?;
+            let res = dispatch_attention(backend, args, &slice, params)?;
+            inner_shape = res.shape.clone();
+            out.extend(bytes_to_f32(&backend.copy_to_host(&res)?));
+        }
+        let mut shape = vec![b];
+        shape.extend(inner_shape);
+        return backend.from_slice_f32(&out, &shape);
+    }
+
     let dims = extract_int_args(args);
     let (seq, in_dim) = match handle.shape.as_slice() {
         [s, d] => (*s, *d),
@@ -3356,6 +3376,18 @@ mod tests {
         let result = run_pipeline(&backend, &expr, &[4], 1.0).expect("run");
         assert!(result.unsupported.is_empty(), "PAR must run: {:?}", result.unsupported);
         assert!((result.output_sum - 8.0).abs() < 1e-3, "branch sum → 8, got {}", result.output_sum);
+    }
+
+    #[test]
+    fn attention_runs_on_batched_3d_input() {
+        // [batch=2, seq=3, dim=8] — e.g. the output of an Embedding. Attention
+        // runs per batch element (not a flat reshape) and preserves the batch dim.
+        let expr = Expr::op(Op::ATTN, vec![Expr::int(8), Expr::int(8), Expr::int(2)]);
+        let backend = CpuBackend::new();
+        let result = run_pipeline(&backend, &expr, &[2, 3, 8], 0.5).expect("run");
+        assert!(result.unsupported.is_empty(), "ATTN must run on 3-D input: {:?}", result.unsupported);
+        assert_eq!(result.dispatched, 1);
+        assert_eq!(result.output.shape, vec![2, 3, 8], "batch + seq + dim preserved");
     }
 
     #[test]
