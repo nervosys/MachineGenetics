@@ -91,6 +91,48 @@ ABL1 02 00 01 00 …  4d 4c 50 3f …      ← "ABL1" magic + the MLP module
 > human-first language gives you in one artifact. Every figure above is
 > reproduced by the commands in [Benchmarks](#benchmarks-measured).
 
+### Composing architectures — a small algebra over a shared block library
+
+The `net` DSL is more than a flat layer list. A handful of orthogonal **composition
+operators** combine **reusable blocks**, so an agent expresses a deep architecture
+in a few tokens instead of hand-wiring every layer:
+
+```rust
+// A reusable block — published once to a shared, content-addressed registry
+// (forge publish), then referenced by name; its body lives off-context.
+block TransformerBlock(d, h, ff) {
+    wrap LayerNorm {                                         // pre/post sandwich
+        residual { layer attn: MultiHeadAttention(d, h); }  // x + f(x)
+        residual { layer ff1: Linear(d, ff); layer act: GELU; layer ff2: Linear(ff, d); }
+    }
+}
+
+net GPT {
+    layer embed: Embedding(50000, 256);
+    stack 12 { TransformerBlock(256, 8, 1024) }             // repeat — O(1) in depth
+    forward { embed }
+}
+```
+
+- **Operators** — `stack N { … }` (repeat), `residual { … }` (`x + f(x)`),
+  `branch { … } { … }` (parallel paths), `wrap Op { … }` (`Op >> body >> Op`) —
+  lower to the RMIL primitives `REPEAT`/`RES_ADD`/`PAR` and **execute** on the CPU
+  backend.
+- **Registry handles** — `forge publish` stores a block under the SHA-256 of its
+  source (deduplicated); any project references it **by name** while `forge
+  check`/`build` resolve the definition off-context.
+- **Typed-composition gate** — a shape-mismatched composition (e.g. a `residual`
+  whose body changes dimension) is **rejected at `--check`** with an actionable
+  diagnostic, before any compute runs.
+- **O(1) artifact** — `stack 12` ships as one block + a count (a `REPEAT` fold), so
+  the binary is flat in depth.
+
+One reproducible command threads the whole story —
+[`benchmarks/capstone/run.sh`](benchmarks/capstone/run.sh): `forge publish` →
+~41-token GPT → `forge check` (resolve + gate) → `forge build` (REPEAT-folded
+binary, ~1.1× for 12 blocks) → the full GPT **runs** (`dispatched=97,
+unsupported=[]`).
+
 ## Benchmarks (measured)
 
 Every number below is produced by **actually compiling and running** code and
@@ -146,6 +188,24 @@ output deterministic, and makes discovery **2.36× cheaper in real tokens *and*
 parseable**. The one measured cost is +3 tokens (12%) per structured result —
 reported, not hidden.
 
+**Neural architecture DSL vs. PyTorch.** The same architecture declared in
+MechGen's `net` DSL vs. an equivalent PyTorch `nn.Module` (MechGen declares the
+layers; PyTorch must also spell out the imperative `forward`). Token counts real
+cl100k BPE; binary sizes measured live (reproduce:
+[`benchmarks/constructs/run.sh`](benchmarks/constructs/run.sh)):
+
+| Architecture | MechGen | PyTorch | fewer tokens | MechGen text → binary IR |
+|---|:--:|:--:|:--:|:--:|
+| MLP | 50 | 78 | **36 %** | 139 B → 92 B (−34 %) |
+| Transformer | 73 | 142 | **49 %** | 235 B → 137 B (−42 %) |
+
+The saving grows with complexity (the more forward-wiring the DSL subsumes, the
+bigger the win), and the declaration then lowers to a binary IR a further ~34–42 %
+under its own text. The full pipeline — registry block → `--check` shape-gate →
+`REPEAT`-folded binary → execution — runs in
+[`benchmarks/capstone/run.sh`](benchmarks/capstone/run.sh) (a 12-deep GPT in ~41
+tokens, binary 1.09× for 12 blocks vs. 1, `dispatched=97 unsupported=[]`).
+
 The **full agentic-SWE scorecard** (`agentic-eval`'s four 0–1 axes + composite
 across all profiled languages) is the table at the [top of this
 README](#machinegenetics-mechgen); falsifiable guards hold there: token (0.80) ≤
@@ -186,6 +246,8 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 - ✅ **Zero-Ambiguity Syntax** — Deterministic LL(1) grammar eliminates parsing failures for both humans and AI agents. No backtracking, no ambiguity.
 
 - ✅ **Binary IR for Agents (Agentic Binary Language)** — A transformer block encodes to **47 bytes** of Agentic Binary Language, a 5-item module to ~300 bytes (vs ~1.8 KB of text). Agents target the IR directly via `--target=abl-bytes`; the text surface is a human-readable view via the round-trip decompiler.
+
+- ✅ **Neural architecture DSL + composition algebra** — declarative `net`s composed from a few orthogonal operators (`stack`/`residual`/`branch`/`wrap`) over reusable `block`s, shared across projects via a content-addressed registry (`forge publish` + name handles). Shape-mismatched compositions are rejected at `--check`; repeated depth folds to an `O(1)` binary (`REPEAT`); and the operators **execute** on the CPU backend. See [Composing architectures](#composing-architectures--a-small-algebra-over-a-shared-block-library).
 
 - ✅ **Sigil-Based Text Surface** — Canonical forms (`+f` = pub fn, `v`/`val` = immutable binding, `m`/`var` = mutable binding, `?` = match, `@` = for) keep the human view compact. (`let` is *not* a keyword — bindings are always `val`/`var`; the compiler rejects a stray `let` with a fix hint.) On the benchmark corpus the text is ~tied with idiomatic Rust on raw bytes (declaration-heavy code wins 4–14 %, expression-heavy code loses 8–15 %). The structural reliability matters more than the byte delta.
 
@@ -233,13 +295,18 @@ cargo build --release --manifest-path forge/Cargo.toml   # builds the `forge` bi
 
 forge new my-project        # scaffold Forge.toml + src/main.mg
 cd my-project
-forge check                 # parse + typecheck the entry point
+forge check                 # parse + typecheck the entry point (+ shape gate)
 forge build                 # check, then lower through the binary IR
 forge run                   # execute `main` → 120
+forge publish block.mg      # publish a block to the shared registry (SHA-256)
+forge block                 # list referenceable blocks (local + registry)
+forge manifest              # token-compact, effect-classed command index (--json)
 ```
 
 `forge` drives the same `MechGen-parse` compiler (auto-located, or set
-`FORGE_MG`). The lower-level targets below are the compiler's own interface.
+`FORGE_MG`). It is agentic-first — `forge manifest`/`forge describe <cmd>`
+self-describe the toolchain and every command takes `--json`. The lower-level
+targets below are the compiler's own interface.
 
 > **Still planned.** A `mg` short alias for `forge` and the Rust transpilers are
 > on the [roadmap](ROADMAP.md) and not yet built.
@@ -317,7 +384,8 @@ RecursiveMachineIntelligence/   Built-in agentic-first AI framework (`rmi` crate
                     (CPU + CUDA via IronAccelerator, F32→F16/BF16→INT8/4),
                     self-describing ontology + token-compact manifest
 framework/          Framewerx — neurosymbolic layer over `rmi`
-forge/              Package-registry prototype (`Forge.toml` manifests)
+forge/              Project toolchain + content-addressed block registry
+                    (`forge new/check/build/run/publish/block`, `Forge.toml`)
 stdlib/             Standard library (`.mg` source)
 skb/                Safety Knowledge Base (9,157 rules, 6 categories)
 benchmarks/         Evaluation corpus + cross-language executability harness
