@@ -704,6 +704,24 @@ fn walk(
             walk(backend, a, handle, dispatched, unsupported, params)?;
             walk(backend, b, handle, dispatched, unsupported, params)?;
         }
+        // `residual { f }` = `App(RES_ADD, [identity, f])`: out = x + f(x).
+        // Run the body on a copy of the running tensor, then add it back. The
+        // shapes match for a well-typed residual (enforced by the §4.5 `--check`
+        // gate); the explicit guard keeps a raw/unchecked artifact from panicking
+        // the ndarray add.
+        Expr::App(op, args) if *op == Op::RES_ADD => {
+            let input = handle.clone();
+            if let Some(body) = args.get(1) {
+                let mut f = input.clone();
+                walk(backend, body, &mut f, dispatched, unsupported, params)?;
+                if f.shape == input.shape {
+                    *handle = backend.add(&input, &f)?;
+                    *dispatched += 1;
+                } else {
+                    unsupported.push(*op);
+                }
+            }
+        }
         Expr::App(op, args) => {
             if let Some(out) = dispatch_one(backend, *op, args, handle, params)? {
                 // P120: keep the running tensor in the pipeline's compute
@@ -720,10 +738,24 @@ fn walk(
                 unsupported.push(*op);
             }
         }
-        Expr::Par(a, _b) => {
-            // Take the left branch only. Real Par handling needs a join/
-            // concat strategy; deferred to a later phase.
-            walk(backend, a, handle, dispatched, unsupported, params)?;
+        Expr::Par(a, b) => {
+            // `branch { … } { … }`: run both paths on the same input. Combine by
+            // elementwise sum when their shapes agree (the well-defined,
+            // shape-preserving combine — parallel/ensemble paths); otherwise fall
+            // back to the left path (e.g. concat-style branches the runtime can't
+            // yet join).
+            let input = handle.clone();
+            let mut left = input.clone();
+            walk(backend, a, &mut left, dispatched, unsupported, params)?;
+            let mut right = input.clone();
+            walk(backend, b, &mut right, dispatched, unsupported, params)?;
+            *handle = if left.shape == right.shape {
+                let summed = backend.add(&left, &right)?;
+                *dispatched += 1;
+                summed
+            } else {
+                left
+            };
         }
         _ => {}
     }
@@ -3302,6 +3334,28 @@ mod tests {
         let result = run_pipeline(&backend, &lowered.expr, &[4], 0.0).expect("run");
         assert_eq!(result.dispatched, 1);
         assert!((result.output_sum - 2.0).abs() < 1e-3, "got {}", result.output_sum);
+    }
+
+    #[test]
+    fn residual_computes_x_plus_fx() {
+        // residual { ReLU }: out = x + relu(x). For x = 1 over [4], relu(1) = 1,
+        // so each element becomes 2 → sum 8. RES_ADD is dispatched, not skipped.
+        let expr = Expr::op1(Op::RELU).residual();
+        let backend = CpuBackend::new();
+        let result = run_pipeline(&backend, &expr, &[4], 1.0).expect("run");
+        assert!(result.unsupported.is_empty(), "RES_ADD must run: {:?}", result.unsupported);
+        assert_eq!(result.dispatched, 2, "ReLU + RES_ADD");
+        assert!((result.output_sum - 8.0).abs() < 1e-3, "x+relu(x) over [4] of 1 → 8, got {}", result.output_sum);
+    }
+
+    #[test]
+    fn branch_sums_equal_shape_paths() {
+        // branch { ReLU } { ReLU }: both paths run on x=1, summed → 2 each → 8.
+        let expr = Expr::op1(Op::RELU).par(Expr::op1(Op::RELU));
+        let backend = CpuBackend::new();
+        let result = run_pipeline(&backend, &expr, &[4], 1.0).expect("run");
+        assert!(result.unsupported.is_empty(), "PAR must run: {:?}", result.unsupported);
+        assert!((result.output_sum - 8.0).abs() < 1e-3, "branch sum → 8, got {}", result.output_sum);
     }
 
     #[test]

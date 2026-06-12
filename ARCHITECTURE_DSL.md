@@ -86,10 +86,13 @@ the same layer table as declaration order, so a node with no operator is
 byte-identical to the flat net. They **compose and nest** arbitrarily — the real
 transformer block is `wrap LayerNorm { residual { attn } residual { ffn } }` —
 verified end to end: parses, lowers to the correct `RES_ADD`/`PAR` IR,
-decompiles, and round-trips through the `REPEAT` fold. *Honest limit:* this is a
-surface+lowering feature — the CPU VM does not yet **compute** `RES_ADD`/`PAR`
-(they dispatch as unsupported and pass shape through); VM op coverage is separate
-work.
+decompiles, round-trips through the `REPEAT` fold, **and executes** — the CPU
+backend now computes both (`abl_compute.rs` `walk`): `residual` runs the body and
+adds it back (`x + f(x)`), `branch` runs both paths and sums them when their
+shapes agree (else falls back to the left path). Measured: `residual { ReLU }` on
+`x = 1` yields `2` per element (`x + relu(x)`), `dispatched`, `unsupported = []`
+— a 6-layer `wrap`/`residual` block now reports `dispatched = 8, unsupported = []`
+(was `2` / `[RES_ADD, RES_ADD]`).
 
 ### 4.2 Named blocks ✅
 
@@ -184,7 +187,9 @@ gate is the high-value floor.)
   (`RES_ADD`/`PAR`/sandwich), they nest (the transformer block =
   `wrap LayerNorm { residual { … } residual { … } }`), and a composed net
   round-trips through the `REPEAT` fold. Plain nets keep `composition: None`
-  (zero regression). Limit: the CPU VM doesn't yet *compute* `RES_ADD`/`PAR`.
+  (zero regression). The CPU backend **executes** both: `residual { ReLU }` on
+  `x=1` → `2` per element (`x+relu(x)`); a `wrap`/`residual` block dispatches all
+  ops with `unsupported = []`.
 - typed composition ✅ — a shape-mismatched `residual`/chain is rejected at
   `--check` (and `--check --json`, code `E0710`, non-zero exit) with an
   actionable diagnostic; well-typed nets and every existing example still pass.
