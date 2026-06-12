@@ -111,14 +111,23 @@ shared/published, and make the handle a true single BPE token. Known limit: the
 local-library resolution shifts diagnostic line numbers by the prepended defs (a
 source-map is the refinement).
 
-### 4.4 Binary dedup — a REPEAT op ◻
+### 4.4 Binary dedup — a REPEAT op ✅
 
-Today `stack 12` still lowers to 12× ABL items (binary is O(depth): measured
-1180 B for 12 blocks vs 123 B for one, ≈9.6×). Add a **`REPEAT(count, block)` op**
-to the Agentic Binary Language container so the *artifact* is O(1) too: store the
-block once + a count, content-addressed by the block hash. Then the shipped net is
-O(1) in depth in *both* tokens and bytes. (`abl_bridge.rs` op table +
-container encoder.)
+`stack N { block }` flattens at parse, so the in-memory IR is a flat `Seq` of
+N·P stages — every consumer (execution, shape, decompile) reads that simple
+form. At the **encode boundary only**, `fold_repeats` (`abl_bridge.rs`) rewrites
+the flat `Seq` into `App(REPEAT, [block, count])` — RMIL's `Op::REPEAT` already
+existed and the codec encodes `App` generically, so the block is stored **once**
+plus a count. `expand_repeats` is the exact inverse, applied on decode, so the
+byte round-trip is the identity (the container's content hash stays on the flat
+form). Container bumped to **v3**.
+
+Measured (real `--target=abl-bytes`, `deep_transformer_stack.mg`): the 12-block
+container is **141 B vs 126 B for one block — 1.12×** (vs ≈9.6× before), and the
+per-item expr is **110 B vs 95 B**: +15 B buys 12× the depth. The folded 141-B
+artifact decodes/decompiles back to the **full 72 layers** and `--run=abl-bytes`
+**dispatches all 72** — so the shipped net is now O(1) in depth in *both* tokens
+and bytes, with execution and round-trip intact.
 
 ### 4.5 Typed / contracted composition (safety) ◻
 
@@ -136,8 +145,9 @@ blocks' output/input shapes unify, so "arbitrarily selected and composed" is
 - registry handle ✅ (local) — `forge` resolves a `blocks/` handle; the agent's
   net is 41 tokens, the def off-context; `forge block` lists the library. Next ◻:
   the networked Forge registry + a true single-token handle.
-- ABL `REPEAT` — 12-block container ≤ **1.5×** the 1-block container (vs 9.6×
-  today).
+- ABL `REPEAT` ✅ — 12-block container **1.12×** the 1-block container (141 B vs
+  126 B; expr 110 B vs 95 B), well under the 1.5× target and vs ≈9.6× before.
+  Decodes to the full 72 layers; `--run` dispatches all 72.
 - typed composition — a shape-mismatched `stack`/`branch` is rejected at
   `--check` with an actionable diagnostic.
 

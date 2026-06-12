@@ -411,6 +411,124 @@ impl NetTranslator {
     }
 }
 
+// ─── Binary dedup: REPEAT folding ───────────────────────────────────
+//
+// `stack N { block }` expands at parse time into N copies of the block's
+// layers, so `NetTranslator` yields a flat `Seq` chain of N·P stages. That flat
+// form is what every in-memory consumer reads (execution, shape, decompile), so
+// those stay simple. But the *shipped binary* would then be O(depth): 12
+// transformer blocks cost ~12× the bytes of one. `fold_repeats` rewrites a flat
+// `Seq` into `App(REPEAT, [block, count])` at the encode boundary, storing the
+// block once plus a count — O(1) in depth. `expand_repeats` is its exact
+// inverse, applied on decode, so the byte round-trip is the identity at the
+// `Expr` level (the container's content hash is computed on the flat form, so it
+// is unchanged by folding).
+
+/// Flatten a (possibly nested) `Seq` chain into owned stage clones, in order.
+/// (Distinct from the borrowing [`flatten_seq`], which also descends `Par`.)
+fn flatten_seq_owned(expr: &Expr, out: &mut Vec<Expr>) {
+    match expr {
+        Expr::Seq(a, b) => {
+            flatten_seq_owned(a, out);
+            flatten_seq_owned(b, out);
+        }
+        other => out.push(other.clone()),
+    }
+}
+
+/// Rebuild a `Seq` chain from stages, left-reduced with `>>` exactly as
+/// [`NetTranslator::declaration_order`] does — so folding then expanding
+/// reproduces the original tree shape byte-for-byte. Empty → identity.
+fn rebuild_seq(stages: Vec<Expr>) -> Expr {
+    let mut it = stages.into_iter();
+    match it.next() {
+        None => Expr::id(),
+        Some(first) => it.fold(first, |acc, next| acc >> next),
+    }
+}
+
+/// Collapse maximal contiguous repeats in a stage list into `REPEAT` nodes.
+/// Picks the *smallest* period that yields ≥2 consecutive copies (maximal
+/// dedup), and recurses into each block so nested stacks fold too.
+fn fold_stage_run(stages: &[Expr]) -> Vec<Expr> {
+    let n = stages.len();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < n {
+        let max_p = (n - i) / 2;
+        let mut chosen = None;
+        for p in 1..=max_p {
+            let mut reps = 1;
+            while i + (reps + 1) * p <= n
+                && stages[i + reps * p..i + (reps + 1) * p] == stages[i..i + p]
+            {
+                reps += 1;
+            }
+            if reps >= 2 {
+                chosen = Some((p, reps));
+                break; // smallest period → most compact REPEAT
+            }
+        }
+        match chosen {
+            Some((p, reps)) => {
+                let block = fold_repeats(&rebuild_seq(stages[i..i + p].to_vec()));
+                out.push(Expr::op(Op::REPEAT, vec![block, Expr::int(reps as i64)]));
+                i += reps * p;
+            }
+            None => {
+                out.push(stages[i].clone());
+                i += 1;
+            }
+        }
+    }
+    out
+}
+
+/// Fold a flat `Seq` chain's contiguous repeats into `REPEAT` nodes. Pure and
+/// reversible: `expand_repeats(&fold_repeats(e)) == e` for any `e`. Non-`Seq`
+/// expressions pass through unchanged (a stack always lowers to a `Seq`).
+pub fn fold_repeats(expr: &Expr) -> Expr {
+    match expr {
+        Expr::Seq(..) => {
+            let mut stages = Vec::new();
+            flatten_seq_owned(expr, &mut stages);
+            rebuild_seq(fold_stage_run(&stages))
+        }
+        other => other.clone(),
+    }
+}
+
+/// Walk a folded expression, expanding every `REPEAT(block, n)` into `n` copies
+/// of the block's stages, accumulating the flat stage list.
+fn expand_into(expr: &Expr, out: &mut Vec<Expr>) {
+    match expr {
+        Expr::Seq(a, b) => {
+            expand_into(a, out);
+            expand_into(b, out);
+        }
+        Expr::App(op, args) if *op == Op::REPEAT && args.len() == 2 => {
+            let count = match &args[1] {
+                Expr::Lit(Val::I64(n)) => (*n).max(0) as usize,
+                _ => 1,
+            };
+            let mut block = Vec::new();
+            expand_into(&args[0], &mut block);
+            for _ in 0..count {
+                out.extend(block.iter().cloned());
+            }
+        }
+        other => out.push(other.clone()),
+    }
+}
+
+/// Exact inverse of [`fold_repeats`]: expand every `REPEAT` back into the flat
+/// `Seq` the in-memory consumers expect.
+pub fn expand_repeats(expr: &Expr) -> Expr {
+    let mut stages = Vec::new();
+    expand_into(expr, &mut stages);
+    rebuild_seq(stages)
+}
+
 // ─── Literal translation ────────────────────────────────────────────
 
 /// Count the number of `Expr::App` nodes in an Agentic Binary Language tree.
@@ -1594,6 +1712,67 @@ mod tests {
         assert!(t.unknown_layers.is_empty());
         let size = codec::wire_size(&t.expr);
         assert!(size < 200, "transformer block wire size = {} (expected < 200)", size);
+    }
+
+    /// A net whose layers are N consecutive copies of a P-layer block — exactly
+    /// what `stack N { block }` produces after parse-time expansion.
+    fn stacked_net(reps: usize) -> ast::NetDef {
+        let block = ["LayerNorm", "Attention", "Linear", "GELU", "Linear", "LayerNorm"];
+        let mut layers = vec![make_layer("Embedding")];
+        for i in 0..reps {
+            for ty in block {
+                let mut l = make_layer(ty);
+                l.name = format!("{}_{i}", l.name); // unique names, identical ops/args
+                layers.push(l);
+            }
+        }
+        ast::NetDef {
+            name: "GPT".into(),
+            generics: Vec::new(),
+            layers,
+            forward: make_block(),
+        }
+    }
+
+    #[test]
+    fn fold_repeats_round_trips_to_the_flat_expr() {
+        let net = stacked_net(12);
+        let flat = NetTranslator::translate(&net).expr;
+        let folded = fold_repeats(&flat);
+        // Folding must be the exact inverse of expanding — byte-for-byte tree.
+        assert_eq!(expand_repeats(&folded), flat, "round-trip must be identity");
+        // And the folded form must actually contain a REPEAT (it compressed).
+        assert!(
+            codec::Encoder::encode_expr_only(&folded).len()
+                < codec::Encoder::encode_expr_only(&flat).len(),
+            "folded artifact should be smaller than the flat one"
+        );
+    }
+
+    #[test]
+    fn fold_makes_the_artifact_o1_in_depth() {
+        let one = fold_repeats(&NetTranslator::translate(&stacked_net(1)).expr);
+        let twelve = fold_repeats(&NetTranslator::translate(&stacked_net(12)).expr);
+        let s1 = codec::Encoder::encode_expr_only(&one).len();
+        let s12 = codec::Encoder::encode_expr_only(&twelve).len();
+        // §5 target: 12-block container ≤ 1.5× the 1-block container.
+        assert!(
+            (s12 as f64) <= 1.5 * (s1 as f64),
+            "12 blocks = {s12} B vs 1 block = {s1} B (target ≤ 1.5×)"
+        );
+    }
+
+    #[test]
+    fn fold_is_a_noop_without_repeats() {
+        // A net with all-distinct layers has nothing to fold.
+        let net = ast::NetDef {
+            name: "Distinct".into(),
+            generics: Vec::new(),
+            layers: vec![make_layer("Embedding"), make_layer("Attention"), make_layer("Linear")],
+            forward: make_block(),
+        };
+        let flat = NetTranslator::translate(&net).expr;
+        assert_eq!(fold_repeats(&flat), flat, "no repeats ⇒ fold changes nothing");
     }
 
     #[test]

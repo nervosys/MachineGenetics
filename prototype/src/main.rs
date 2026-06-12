@@ -800,7 +800,9 @@ fn main() {
 /// Magic bytes for the per-module Agentic Binary Language-bytes container format. Distinct
 /// from the per-expression `MGPS` checkpoint magic.
 const ABL_MAGIC: &[u8; 4] = b"ABL1";
-const ABL_VERSION: u16 = 2;
+// Single source of truth — these private decoders share the container version
+// with the `abl` codec, so a bump (e.g. v3's REPEAT folding) can't drift.
+const ABL_VERSION: u16 = abl::ABL_VERSION;
 
 /// Drive `--target=abl-bytes`: lower every Agentic Binary Language-routed item in the module
 /// to binary Agentic Binary Language via the bridge + RMI codec, then write a single framed
@@ -809,7 +811,7 @@ const ABL_VERSION: u16 = 2;
 /// Container layout:
 /// ```text
 ///   magic    "Agentic Binary Language" (4 bytes)
-///   version  u16 = 1
+///   version  u16 = 3   (v3: per-item exprs are REPEAT-folded)
 ///   count    u32  — number of items
 ///   for each item:
 ///     name_len u32
@@ -1169,6 +1171,9 @@ fn run_decode_abl_bytes(blob: &[u8], path: &str) {
         };
         match rmi::lang::codec::Decoder::decode_expr_only(expr_bytes) {
             Ok(expr) => {
+                // Expand any REPEAT folds back to the flat pipeline the
+                // decompiler walks (Seq/Par only).
+                let expr = abl_bridge::expand_repeats(&expr);
                 let result = abl_bridge::decompile(&expr, &name);
                 println!("\n// item {i}: {name} ({} bytes expr)", el);
                 let mut layer_lines = Vec::new();
@@ -1338,7 +1343,7 @@ fn run_dispatch_abl_bytes(blob: &[u8], path: &str, backend_name: &str) {
             None => return,
         };
         let expr = match rmi::lang::codec::Decoder::decode_expr_only(expr_bytes) {
-            Ok(e) => e,
+            Ok(e) => abl_bridge::expand_repeats(&e), // unfold REPEAT before dispatch
             Err(e) => {
                 eprintln!("item {i} ({name}): decode error: {e:?}");
                 continue;
