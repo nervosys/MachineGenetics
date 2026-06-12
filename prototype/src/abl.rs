@@ -4,7 +4,7 @@
 //! Container layout (little-endian):
 //! ```text
 //!   magic    "Agentic Binary Language" (4 bytes)
-//!   version  u16 = 1
+//!   version  u16 = 3   (v3: per-item exprs are REPEAT-folded)
 //!   count    u32           — number of items
 //!   for each item:
 //!     name_len u32
@@ -22,7 +22,10 @@ use crate::abl_bridge;
 use rmi::lang::Expr;
 
 pub const ABL_MAGIC: &[u8; 4] = b"ABL1";
-pub const ABL_VERSION: u16 = 2;
+// v3: per-item exprs are REPEAT-folded (a `stack N { block }` ships as the block
+// once + a count, so the artifact is O(1) in depth). Decode expands them back to
+// the flat `Seq`, so the format change is invisible above this codec.
+pub const ABL_VERSION: u16 = 3;
 
 /// One decoded item from a Agentic Binary Language container.
 #[derive(Debug)]
@@ -44,7 +47,10 @@ pub fn encode_module(module: &ast::Module) -> (Vec<u8>, Vec<(String, usize, u64)
     let mut summary = Vec::with_capacity(lowered.items.len());
     for (name, expr) in &lowered.items {
         let name_bytes = name.as_bytes();
-        let expr_bytes = rmi::lang::codec::Encoder::encode_expr_only(expr);
+        // Fold contiguous repeats (e.g. `stack N { … }`) so the shipped expr is
+        // O(1) in depth; the content hash below stays on the flat `expr`.
+        let folded = abl_bridge::fold_repeats(expr);
+        let expr_bytes = rmi::lang::codec::Encoder::encode_expr_only(&folded);
         blob.extend_from_slice(&(name_bytes.len() as u32).to_le_bytes());
         blob.extend_from_slice(name_bytes);
         blob.extend_from_slice(&(expr_bytes.len() as u32).to_le_bytes());
@@ -104,8 +110,11 @@ fn decode_items(blob: &[u8]) -> Result<(Vec<AblItem>, usize), String> {
             .to_string();
         let el = read_u32(blob, &mut pos, "expr_len")?;
         let expr_bytes = take(blob, &mut pos, el, "expr")?;
-        let expr = rmi::lang::codec::Decoder::decode_expr_only(expr_bytes)
+        let decoded = rmi::lang::codec::Decoder::decode_expr_only(expr_bytes)
             .map_err(|e| format!("item {i} ({name}): decode error: {e:?}"))?;
+        // Expand REPEAT folds back to the flat `Seq` every consumer expects;
+        // `expr_bytes_len` stays the on-wire (folded) size.
+        let expr = abl_bridge::expand_repeats(&decoded);
         items.push(AblItem { name, expr, expr_bytes_len: el });
     }
     Ok((items, pos))
@@ -199,6 +208,42 @@ mod tests {
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].name, summary[0].0);
         assert_eq!(items[0].expr_bytes_len, summary[0].1);
+    }
+
+    const STACK_SRC: &str = r#"
+        net DeepT {
+            stack 12 {
+                layer attn: MultiHeadAttention(256, 8);
+                layer norm1: LayerNorm;
+                layer ff1: Linear(256, 1024);
+                layer act: GELU;
+                layer ff2: Linear(1024, 256);
+                layer norm2: LayerNorm;
+            }
+            forward { attn_0 }
+        }
+    "#;
+
+    /// A `stack 12 { … }` net must ship as a small REPEAT-folded blob, yet decode
+    /// back to the full flat expression — proving the artifact is O(1) in depth
+    /// while the format change stays invisible above this codec.
+    #[test]
+    fn stack_net_ships_folded_decodes_flat() {
+        let module = parser::parse(&lexer::lex(STACK_SRC)).expect("stack net parses");
+        let (blob, summary) = encode_module(&module);
+        // 12 six-layer blocks = 72 stages, but the folded item is tiny.
+        let item_bytes = summary[0].1;
+        assert!(item_bytes < 200, "folded DeepT item = {item_bytes} B (expected < 200)");
+
+        // Decode expands REPEAT → the flat 72-stage pipeline the consumers expect.
+        let items = decode_container(&blob).expect("round-trip decode");
+        assert_eq!(items.len(), 1);
+        let net = match &module.items[0].kind {
+            ast::ItemKind::Net(n) => n.clone(),
+            _ => panic!("first item is the net"),
+        };
+        let flat = abl_bridge::NetTranslator::translate(&net).expr;
+        assert_eq!(items[0].expr, flat, "decoded expr must equal the flat translation");
     }
 
     #[test]

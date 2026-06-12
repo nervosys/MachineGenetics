@@ -85,12 +85,19 @@ echo "Tokens real cl100k (recorded); text + ABL bytes measured live."
 done; echo "    forward { attn1 }"; echo "}"; } > /tmp/_manual12.mg
 "$MG" /tmp/_manual12.mg >/dev/null 2>&1 && mok=✓ || mok=FAIL
 "$MG" deep_transformer_stack.mg >/dev/null 2>&1 && sok=✓ || sok=FAIL
+# one-block form, for the binary O(1)-in-depth ratio
+sed 's/stack 12/stack 1/' deep_transformer_stack.mg > /tmp/_one.mg
 "$MG" --target=abl-bytes /tmp/_manual12.mg /tmp/_m.abl >/dev/null 2>&1
 "$MG" --target=abl-bytes deep_transformer_stack.mg /tmp/_s.abl >/dev/null 2>&1
+"$MG" --target=abl-bytes /tmp/_one.mg /tmp/_one.abl >/dev/null 2>&1
+ b1=$(wc -c </tmp/_one.abl); b12=$(wc -c </tmp/_s.abl)
 printf "  %-18s %6s %8s %8s   %s\n" "form" "tokens" "text" "ABL" "check"
 printf "  %-18s %6s %7dB %7dB   %s\n" "manual 12×" "839" "$(wc -c </tmp/_manual12.mg)" "$(wc -c </tmp/_m.abl)" "$mok"
-printf "  %-18s %6s %7dB %7dB   %s\n" "stack 12 { block }" "82" "$(wc -c <deep_transformer_stack.mg)" "$(wc -c </tmp/_s.abl)" "$sok"
+printf "  %-18s %6s %7dB %7dB   %s\n" "stack 12 { block }" "82" "$(wc -c <deep_transformer_stack.mg)" "$b12" "$sok"
+printf "  %-18s %6s %8s %7dB\n" "(1 block, ref)" "" "" "$b1"
 echo "  → surface: 82 vs 839 tokens (10.2× fewer), FLAT in depth (100 layers ≈ 83 tok)."
-echo "  → ABL still O(depth) (expands at parse); a binary REPEAT op is the next piece"
-echo "    (see ARCHITECTURE_DSL.md §4.4)."
-rm -f /tmp/_manual12.mg /tmp/_m.abl /tmp/_s.abl 2>/dev/null
+echo "  → ABL is now O(1) in depth too: the container REPEAT-folds at encode, so 12"
+printf  "    blocks = %dB vs %dB for one = %s× (decodes to the full 72 layers; --run\n" \
+        "$b12" "$b1" "$(awk "BEGIN{printf \"%.2f\", $b12/$b1}")"
+echo "    dispatches all 72). See ARCHITECTURE_DSL.md §4.4."
+rm -f /tmp/_manual12.mg /tmp/_m.abl /tmp/_s.abl /tmp/_one.mg /tmp/_one.abl 2>/dev/null
